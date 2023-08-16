@@ -764,10 +764,7 @@ fn except_type(i_s: &InferenceState, t: &DbType, allow_tuple: bool) -> ExceptTyp
         DbType::Type(t) => {
             let db = i_s.db;
             if let Some(cls) = Type::new(t.as_ref()).maybe_class(i_s.db) {
-                if cls.class_link_in_mro(
-                    db,
-                    db.python_state.base_exception_group_node_ref().as_link(),
-                ) {
+                if cls.is_base_exception_group(i_s.db) {
                     return ExceptType::HasExceptionGroup;
                 } else if cls
                     .class_link_in_mro(db, db.python_state.base_exception_node_ref().as_link())

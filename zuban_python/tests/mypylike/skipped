@@ -8,8 +8,6 @@ testNarrowedVariableInNestedModifiedInWalrus
 testTryStarMultiple
 # Exception group issues
 testTryStarInvalidType
-testTryStarGroupInvalid
-testTryStarGroupInvalidTuple
 # BaseExceptions lead to BaseExceptionGroup, not ExceptionGroup
 testTryStarBase
 

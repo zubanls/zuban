@@ -2040,9 +2040,17 @@ fn instantiate_except(i_s: &InferenceState, t: &DbType) -> DbType {
 
 fn instantiate_except_star(i_s: &InferenceState, t: &DbType) -> DbType {
     match t {
-        // Diagnostics are calculated when calculating diagnostics, not here.
         DbType::Type(t) => match t.as_ref() {
-            inner @ DbType::Class(..) => inner.clone(),
+            inner @ DbType::Class(c) => {
+                let cls = Class::from_generic_class(i_s.db, c);
+                dbg!(cls);
+                if cls.is_base_exception_group(i_s.db) {
+                    // Diagnostics are calculated when calculating diagnostics, not here.
+                    DbType::Any
+                } else {
+                    inner.clone()
+                }
+            }
             _ => todo!(),
         },
         DbType::Any => DbType::Any,
@@ -2051,14 +2059,14 @@ fn instantiate_except_star(i_s: &InferenceState, t: &DbType) -> DbType {
                 for t in ts.iter() {
                     match t {
                         TypeOrTypeVarTuple::Type(t) => {
-                            add(Inferred::from_type(instantiate_except(i_s, t)))
+                            add(Inferred::from_type(instantiate_except_star(i_s, t)))
                         }
                         TypeOrTypeVarTuple::TypeVarTuple(_) => todo!(),
                     }
                 }
             }
             Some(TupleTypeArguments::ArbitraryLength(t)) => {
-                add(Inferred::from_type(instantiate_except(i_s, t)))
+                add(Inferred::from_type(instantiate_except_star(i_s, t)))
             }
             _ => todo!(),
         })
@@ -2069,7 +2077,7 @@ fn instantiate_except_star(i_s: &InferenceState, t: &DbType) -> DbType {
                 .entries
                 .iter()
                 .map(|e| UnionEntry {
-                    type_: instantiate_except(i_s, &e.type_),
+                    type_: instantiate_except_star(i_s, &e.type_),
                     format_index: e.format_index,
                 })
                 .collect(),
