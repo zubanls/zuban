@@ -6,8 +6,6 @@ testNarrowedVariableInNestedModifiedInWalrus
 
 # Except Foo as bar where bar is bound over its existence as a variable
 testTryStarMultiple
-# BaseExceptions lead to BaseExceptionGroup, not ExceptionGroup
-testTryStarBase
 
 # EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
 testStrEnumCreation

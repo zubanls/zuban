@@ -73,6 +73,7 @@ pub struct PythonState {
     builtins_complex_index: NodeIndex,
     builtins_function_index: NodeIndex,
     builtins_base_exception_index: NodeIndex,
+    builtins_exception_index: NodeIndex,
     builtins_base_exception_group_index: NodeIndex,
     builtins_exception_group_index: NodeIndex,
     builtins_str_index: NodeIndex,
@@ -134,6 +135,7 @@ impl PythonState {
             builtins_complex_index: 0,
             builtins_function_index: 0,
             builtins_base_exception_index: 0,
+            builtins_exception_index: 0,
             builtins_base_exception_group_index: 0,
             builtins_exception_group_index: 0,
             builtins_str_index: 0,
@@ -273,6 +275,7 @@ impl PythonState {
         cache_index!(builtins_tuple_index, db, builtins, "tuple");
         cache_index!(builtins_function_index, db, builtins, "function");
         cache_index!(builtins_base_exception_index, db, builtins, "BaseException");
+        cache_index!(builtins_exception_index, db, builtins, "Exception");
         cache_index!(
             builtins_base_exception_group_index,
             db,
@@ -436,6 +439,7 @@ impl PythonState {
     builtins_attribute_node_ref!(property_node_ref, builtins_property_index);
     builtins_attribute_node_ref!(function_node_ref, builtins_function_index);
     builtins_attribute_node_ref!(base_exception_node_ref, builtins_base_exception_index);
+    builtins_attribute_node_ref!(exception_node_ref, builtins_exception_index);
     builtins_attribute_node_ref!(
         base_exception_group_node_ref,
         builtins_base_exception_group_index

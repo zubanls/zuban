@@ -6,10 +6,10 @@ use parsa_python_ast::*;
 use super::{on_argument_type_error, File, PythonFile};
 use crate::arguments::{CombinedArguments, KnownArguments, NoArguments, SimpleArguments};
 use crate::database::{
-    CallableContent, CallableParams, ClassGenerics, ComplexPoint, DbType, FileIndex, FunctionKind,
-    GenericItem, GenericsList, Literal, LiteralKind, Locality, Namespace, ParamSpecific, Point,
-    PointLink, PointType, Specific, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple,
-    UnionEntry, UnionType,
+    CallableContent, CallableParams, ClassGenerics, ComplexPoint, Database, DbType, FileIndex,
+    FunctionKind, GenericItem, GenericsList, Literal, LiteralKind, Locality, Namespace,
+    ParamSpecific, Point, PointLink, PointType, Specific, TupleContent, TupleTypeArguments,
+    TypeOrTypeVarTuple, UnionEntry, UnionType,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -2031,12 +2031,35 @@ fn instantiate_except(i_s: &InferenceState, t: &DbType) -> DbType {
 
 fn instantiate_except_star(i_s: &InferenceState, t: &DbType) -> DbType {
     let result = gather_except_star(i_s, t);
+    // When BaseException is used, we need a BaseExceptionGroup. Otherwise when every exception
+    // inherits from Exception, ExceptionGroup is used.
+    let is_base_exception_group = has_base_exception(i_s.db, &result);
     DbType::new_class(
-        i_s.db.python_state.exception_group_node_ref().as_link(),
+        match is_base_exception_group {
+            false => i_s.db.python_state.exception_group_node_ref().as_link(),
+            true => i_s
+                .db
+                .python_state
+                .base_exception_group_node_ref()
+                .as_link(),
+        },
         ClassGenerics::List(GenericsList::new_generics(Rc::new([
             GenericItem::TypeArgument(result),
         ]))),
     )
+}
+
+fn has_base_exception(db: &Database, t: &DbType) -> bool {
+    match t {
+        DbType::Class(c) => {
+            let cls = Class::from_generic_class(db, c);
+            !cls.is_exception(db)
+        }
+        DbType::Union(u) => u.iter().any(|t| has_base_exception(db, t)),
+        DbType::Any => false,
+        // Gathering the exceptions already makes sure we do not end up with arbitrary types here.
+        _ => unreachable!(),
+    }
 }
 
 fn gather_except_star(i_s: &InferenceState, t: &DbType) -> DbType {
