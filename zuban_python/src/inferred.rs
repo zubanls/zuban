@@ -226,10 +226,7 @@ impl<'db: 'slf, 'slf> Inferred {
             DbType::Type(t) => match t.as_ref() {
                 DbType::Class(c) => {
                     let c = Class::from_generic_class(i_s.db, c);
-                    let MetaclassState::Some(link) = c.use_cached_class_infos(i_s.db).metaclass else {
-                        unreachable!();
-                    };
-                    Class::from_non_generic_link(i_s.db, link)
+                    c.use_cached_class_infos(i_s.db).metaclass(i_s.db)
                 }
                 _ => unreachable!(),
             },

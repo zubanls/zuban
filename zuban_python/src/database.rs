@@ -3179,6 +3179,15 @@ pub struct ClassInfos {
     pub incomplete_mro: bool,
 }
 
+impl ClassInfos {
+    pub fn metaclass<'db>(&self, db: &'db Database) -> Class<'db> {
+        match self.metaclass {
+            MetaclassState::Some(link) => Class::from_non_generic_link(db, link),
+            _ => Class::from_non_generic_node_ref(db.python_state.type_node_ref()),
+        }
+    }
+}
+
 impl std::clone::Clone for ClassStorage {
     fn clone(&self) -> Self {
         unreachable!("This should never happen, because should never be cloned");

@@ -67,3 +67,11 @@ reveal_type(foo.v)  # N: Revealed type is "int"
 [case inplace_operator_on_undefined_target]
 undefined += 1  # E: Name "undefined" is not defined
 undefined *= 1
+
+[case alias_of_classes]
+class A: ...
+class B: ...
+X = A | B
+x: X
+reveal_type(X)  # N: Revealed type is "types.UnionType"
+reveal_type(x)  # N: Revealed type is "__main__.A | __main__.B"

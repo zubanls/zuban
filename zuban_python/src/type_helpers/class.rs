@@ -947,9 +947,9 @@ impl<'db: 'a, 'a> Class<'a> {
         match result {
             Some(LookupResult::None) | None => {
                 let result = match class_infos.metaclass {
-                    MetaclassState::Some(link) => {
-                        let instance =
-                            Instance::new(Class::from_non_generic_link(i_s.db, link), None);
+                    MetaclassState::Unknown => LookupResult::any(),
+                    _ => {
+                        let instance = Instance::new(class_infos.metaclass(i_s.db), None);
                         instance
                             .lookup_with_explicit_self_binding(
                                 i_s,
@@ -961,8 +961,6 @@ impl<'db: 'a, 'a> Class<'a> {
                             )
                             .1
                     }
-                    MetaclassState::Unknown => LookupResult::any(),
-                    MetaclassState::None => LookupResult::None,
                 };
                 if matches!(result, LookupResult::None) && self.incomplete_mro(i_s.db) {
                     (LookupResult::any(), in_class)
