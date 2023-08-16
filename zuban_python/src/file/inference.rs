@@ -144,18 +144,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             let (expr, name_def) = except_expr.unpack();
                             if let Some(name_def) = name_def {
                                 let inf = self.infer_expression(expr);
-                                Inferred::from_type(DbType::new_class(
-                                    self.i_s
-                                        .db
-                                        .python_state
-                                        .exception_group_node_ref()
-                                        .as_link(),
-                                    ClassGenerics::List(GenericsList::new_generics(Rc::new([
-                                        GenericItem::TypeArgument(instantiate_except_star(
-                                            self.i_s,
-                                            inf.as_type(self.i_s).as_ref(),
-                                        )),
-                                    ]))),
+                                Inferred::from_type(instantiate_except_star(
+                                    self.i_s,
+                                    inf.as_type(self.i_s).as_ref(),
                                 ))
                                 .maybe_save_redirect(
                                     self.i_s,
@@ -2039,6 +2030,16 @@ fn instantiate_except(i_s: &InferenceState, t: &DbType) -> DbType {
 }
 
 fn instantiate_except_star(i_s: &InferenceState, t: &DbType) -> DbType {
+    let result = gather_except_star(i_s, t);
+    DbType::new_class(
+        i_s.db.python_state.exception_group_node_ref().as_link(),
+        ClassGenerics::List(GenericsList::new_generics(Rc::new([
+            GenericItem::TypeArgument(result),
+        ]))),
+    )
+}
+
+fn gather_except_star(i_s: &InferenceState, t: &DbType) -> DbType {
     match t {
         DbType::Type(t) => match t.as_ref() {
             inner @ DbType::Class(c) => {
@@ -2060,14 +2061,14 @@ fn instantiate_except_star(i_s: &InferenceState, t: &DbType) -> DbType {
                 for t in ts.iter() {
                     match t {
                         TypeOrTypeVarTuple::Type(t) => {
-                            add(Inferred::from_type(instantiate_except_star(i_s, t)))
+                            add(Inferred::from_type(gather_except_star(i_s, t)))
                         }
                         TypeOrTypeVarTuple::TypeVarTuple(_) => todo!(),
                     }
                 }
             }
             Some(TupleTypeArguments::ArbitraryLength(t)) => {
-                add(Inferred::from_type(instantiate_except_star(i_s, t)))
+                add(Inferred::from_type(gather_except_star(i_s, t)))
             }
             _ => todo!(),
         })
@@ -2078,7 +2079,7 @@ fn instantiate_except_star(i_s: &InferenceState, t: &DbType) -> DbType {
                 .entries
                 .iter()
                 .map(|e| UnionEntry {
-                    type_: instantiate_except_star(i_s, &e.type_),
+                    type_: gather_except_star(i_s, &e.type_),
                     format_index: e.format_index,
                 })
                 .collect(),
