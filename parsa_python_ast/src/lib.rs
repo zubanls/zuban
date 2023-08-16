@@ -1293,6 +1293,25 @@ impl<'db> Stmt<'db> {
             StmtContent::Newline
         }
     }
+
+    pub fn find_syntax_error(&self) -> Option<NodeIndex> {
+        fn find_syntax_error_in_node(node: PyNode) -> Option<NodeIndex> {
+            for child in node.iter_children() {
+                // Avoid errors in sub statements, because these will be handled separately.
+                if !child.is_type(Nonterminal(stmt)) {
+                    if child.is_error_recovery_node() {
+                        return Some(child.index);
+                    } else {
+                        if let Some(error) = find_syntax_error_in_node(child) {
+                            return Some(error);
+                        }
+                    }
+                }
+            }
+            None
+        }
+        find_syntax_error_in_node(self.node)
+    }
 }
 
 #[derive(Debug)]

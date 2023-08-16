@@ -10,6 +10,8 @@ use crate::utils::InsertOnlyVec;
 #[allow(dead_code)]  // TODO remove this
 #[rustfmt::skip]  // This is way more readable if we are not auto-formatting this.
 pub(crate) enum IssueType {
+    InvalidSyntax,
+
     AttributeError { object: Box<str>, name: Box<str> },
     UnionAttributeError { object: Box<str>, union: Box<str>, name: Box<str> },
     UnionAttributeErrorOfUpperBound(Box<str>),
@@ -191,6 +193,7 @@ impl IssueType {
         use IssueType::*;
         Some(match &self {
             Note(_) | InvariantNote { .. } => return None,
+            InvalidSyntax => "syntax",
             AttributeError { .. }
             | ImportAttributeError { .. }
             | ModuleAttributeError { .. }
@@ -334,6 +337,8 @@ impl<'db> Diagnostic<'db> {
         let mut additional_notes = vec![];
         use IssueType::*;
         let error = match &self.issue.type_ {
+            InvalidSyntax => "invalid syntax".to_string(),
+
             AttributeError{object, name} => format!("{object} has no attribute {name:?}"),
             UnionAttributeError{object, union, name} => format!("Item {object} of \"{union}\" has no attribute {name:?}"),
             UnionAttributeErrorOfUpperBound(s) => s.to_string(),

@@ -274,6 +274,12 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     ) -> NodeIndex {
         let mut latest_return_or_yield = 0;
         for stmt in stmts {
+            if let Some(node_index) = stmt.find_syntax_error() {
+                self.add_issue(node_index, IssueType::InvalidSyntax);
+                self.points
+                    .set(stmt.index(), Point::new_node_analysis(Locality::File));
+                continue;
+            }
             let return_or_yield = match stmt.unpack() {
                 StmtContent::SimpleStmts(s) => self.index_simple_stmts(s, ordered, in_base_scope),
                 StmtContent::FunctionDef(func) => {

@@ -6,9 +6,8 @@ use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
 use crate::database::{
     CallableContent, CallableParams, ClassGenerics, ComplexPoint, Database, DbString, DbType, Enum,
     FileIndex, FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList,
-    Literal as DbLiteral, LiteralKind, Locality, MetaclassState, MroIndex, NewType,
-    OverloadDefinition, Point, PointLink, PointType, Specific, TypeVarKind, TypeVarLike,
-    TypeVarLikes,
+    Literal as DbLiteral, LiteralKind, Locality, MroIndex, NewType, OverloadDefinition, Point,
+    PointLink, PointType, Specific, TypeVarKind, TypeVarLike, TypeVarLikes,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
