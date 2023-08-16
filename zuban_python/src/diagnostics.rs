@@ -157,6 +157,7 @@ pub(crate) enum IssueType {
     PropertyIsReadOnly { class_name: Box<str>, property_name: Box<str> },
 
     MethodWithoutArguments,
+    MultipleStarredExpressionsInAssignment,
 
     EnumFirstArgMustBeString,
     EnumInvalidSecondArgument,
@@ -429,9 +430,12 @@ impl<'db> Diagnostic<'db> {
                 "Invalid index type {actual:?} for {type_:?}; expected type {expected:?}",
             ),
             NotIndexable{type_} => format!("Value of type {type_:?} is not indexable"),
+
             MethodWithoutArguments => {
                 "Method must have at least one argument. Did you forget the \"self\" argument?".to_string()
             }
+            MultipleStarredExpressionsInAssignment =>
+                "Two starred expressions in assignment".to_string(),
 
             EnumFirstArgMustBeString =>
                 "Enum() expects a string literal as the first argument".to_string(),

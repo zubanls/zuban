@@ -816,7 +816,19 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     if let Target::Starred(star_target) = target {
                         let (stars, normal) = targets.clone().remaining_stars_and_normal_count();
                         if stars > 0 {
-                            todo!()
+                            NodeRef::new(self.file, star_target.index()).add_issue(
+                                self.i_s,
+                                IssueType::MultipleStarredExpressionsInAssignment,
+                            );
+                            for target in targets {
+                                self.assign_targets(
+                                    star_target.as_target(),
+                                    Inferred::new_any(),
+                                    value_node_ref,
+                                    is_definition,
+                                );
+                            }
+                            return;
                         } else if let Some(len) = value_iterator.len() {
                             let fetch = len - normal;
                             let union = Inferred::gather_union(self.i_s, |callable| {

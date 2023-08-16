@@ -2768,7 +2768,6 @@ testAssignToTypeDef
 
 # parser shit
 testInvalidLvalues*
-testTwoStarExpressions
 testTwoStarExpressionsInForStmt
 testTwoStarExpressionsInGeneratorExpr
 testStarExpressionRhs
