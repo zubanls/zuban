@@ -13,10 +13,11 @@ use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments, Know
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database, DbType,
     DoubleStarredParamSpecific, FormatStyle, FunctionKind, FunctionOverload, GenericClass,
-    GenericItem, Locality, OverloadDefinition, OverloadImplementation, ParamSpecUsage,
-    ParamSpecific, Point, PointType, Specific, StarredParamSpecific, StringSlice, TupleContent,
-    TupleTypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage,
-    TypeVarLikes, TypeVarManager, TypeVarName, TypeVarUsage, Variance, WrongPositionalCount,
+    GenericItem, GenericsList, Locality, OverloadDefinition, OverloadImplementation,
+    ParamSpecUsage, ParamSpecific, Point, PointType, Specific, StarredParamSpecific, StringSlice,
+    TupleContent, TupleTypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarKind, TypeVarLike,
+    TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarName, TypeVarUsage, Variance,
+    WrongPositionalCount,
 };
 use crate::debug;
 use crate::diagnostics::{Issue, IssueType};
@@ -1039,7 +1040,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             result_context,
             Some(on_type_error),
         );
-        if let Some(return_annotation) = return_annotation {
+        let result = if let Some(return_annotation) = return_annotation {
             self.apply_type_args_in_return_annotation(
                 i_s,
                 calculated_type_vars,
@@ -1056,7 +1057,21 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 )
             }
             self.execute_without_annotation(i_s, args)
+        };
+        if matches!(
+            self.node().parent(),
+            FunctionParent::Async | FunctionParent::DecoratedAsync(_)
+        ) {
+            return Inferred::from_type(DbType::new_class(
+                i_s.db.python_state.coroutine_link(),
+                ClassGenerics::List(GenericsList::new_generics(Rc::new([
+                    GenericItem::TypeArgument(DbType::Any),
+                    GenericItem::TypeArgument(DbType::Any),
+                    GenericItem::TypeArgument(result.as_type(i_s).into_db_type()),
+                ]))),
+            ));
         }
+        result
     }
 
     fn apply_type_args_in_return_annotation(

@@ -1188,21 +1188,19 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
             ExpressionPart::AwaitPrimary(await_) => {
                 let from = NodeRef::new(self.file, await_.index());
-                self.infer_primary(await_.primary(), &mut ResultContext::Unknown)
-                    .type_lookup_and_execute(
-                        self.i_s,
-                        from,
-                        "__await__",
-                        &NoArguments::new(from),
-                        &|_| todo!(),
-                    )
-                    .type_lookup_and_execute(
-                        self.i_s,
-                        from,
-                        "__next__",
-                        &NoArguments::new(from),
-                        &|_| todo!(),
-                    )
+                Inferred::from_type(get_generator_return_type(
+                    self.i_s.db,
+                    self.infer_primary(await_.primary(), &mut ResultContext::Unknown)
+                        .type_lookup_and_execute(
+                            self.i_s,
+                            from,
+                            "__await__",
+                            &NoArguments::new(from),
+                            &|_| todo!(),
+                        )
+                        .as_type(self.i_s)
+                        .as_ref(),
+                ))
             }
         }
     }
@@ -2124,6 +2122,19 @@ fn gather_except_star(i_s: &InferenceState, t: &DbType) -> DbType {
                 })
                 .collect(),
         )),
+        _ => todo!("{t:?}"),
+    }
+}
+
+fn get_generator_return_type(db: &Database, t: &DbType) -> DbType {
+    match t {
+        DbType::Class(c) => {
+            if c.link == db.python_state.generator_link() {
+                Class::from_generic_class(db, c).nth_type_argument(db, 2)
+            } else {
+                todo!("{t:?}")
+            }
+        }
         _ => todo!("{t:?}"),
     }
 }

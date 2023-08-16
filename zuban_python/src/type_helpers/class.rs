@@ -986,6 +986,13 @@ impl<'db: 'a, 'a> Class<'a> {
         matches!(self.generics, Generics::Self_ { .. }) && self.type_var_remap.is_none()
     }
 
+    pub fn nth_type_argument(&self, db: &Database, nth: usize) -> DbType {
+        let type_vars = self.use_cached_type_vars(db).unwrap();
+        self.generics()
+            .nth_type_argument(db, &type_vars[nth], nth)
+            .into_db_type()
+    }
+
     fn mro_maybe_without_object(
         &self,
         db: &'db Database,

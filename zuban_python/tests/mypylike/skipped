@@ -3,6 +3,7 @@ testOverloadDetectsPossibleMatchesWithGenerics
 testNewSyntaxWithDict
 testNewSyntaxSpecialAssign
 testNarrowedVariableInNestedModifiedInWalrus
+testNewNamedTupleWithMethods
 
 # EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
 testStrEnumCreation
@@ -2141,11 +2142,9 @@ testAwaitOverloadSpecialCase
 testUnusedAwaitable
 testAwaitMissingNote
 testAsyncGeneratorExpressionAwait
-testAwaitAndAsyncDef-only_when_nocache
 testAwaitAnd__await__-only_when_nocache
 testAsyncWith2-only_when_nocache
 test__aiter__and__anext__
-testNewNamedTupleWithMethods
 testAsyncGeneratorWithinComprehension
 
 # "Trying to read deleted variable "Foo""
