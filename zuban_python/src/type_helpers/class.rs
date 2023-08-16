@@ -672,6 +672,10 @@ impl<'db: 'a, 'a> Class<'a> {
         )
     }
 
+    pub fn is_base_exception(&self, db: &Database) -> bool {
+        self.class_link_in_mro(db, db.python_state.base_exception_node_ref().as_link())
+    }
+
     pub fn is_protocol(&self, db: &Database) -> bool {
         self.use_cached_class_infos(db).class_type == ClassType::Protocol
     }

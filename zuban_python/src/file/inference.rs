@@ -2043,12 +2043,13 @@ fn instantiate_except_star(i_s: &InferenceState, t: &DbType) -> DbType {
         DbType::Type(t) => match t.as_ref() {
             inner @ DbType::Class(c) => {
                 let cls = Class::from_generic_class(i_s.db, c);
-                dbg!(cls);
                 if cls.is_base_exception_group(i_s.db) {
                     // Diagnostics are calculated when calculating diagnostics, not here.
                     DbType::Any
-                } else {
+                } else if cls.is_base_exception(i_s.db) {
                     inner.clone()
+                } else {
+                    DbType::Any
                 }
             }
             _ => todo!(),
