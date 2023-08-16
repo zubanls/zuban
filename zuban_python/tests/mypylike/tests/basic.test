@@ -63,3 +63,7 @@ reveal_type(foo.x)  # N: Revealed type is "str"
 reveal_type(foo.y)  # N: Revealed type is "int"
 reveal_type(foo.u)  # N: Revealed type is "str"
 reveal_type(foo.v)  # N: Revealed type is "int"
+
+[case inplace_operator_on_undefined_target]
+undefined += 1  # E: Name "undefined" is not defined
+undefined *= 1
