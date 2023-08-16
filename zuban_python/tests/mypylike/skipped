@@ -10,16 +10,9 @@ testStrEnumCreation
 testRegression12258
 
 # parser issues
-testDel
-testNotAsBinaryOp
-testBinaryNegAsBinaryOp
-testNotIs
 testAssert
 testOperatorAssignment
-testWhitespaceInStringLiteralType
 testTrailingSemicolon
-testStarExpression
-testStarExpressionInFor
 
 # --new-type-inference
 testInferenceAgainstGenericCallable
@@ -101,6 +94,8 @@ testDictStarInference
 testDictStarAnyKeyJoinValue
 # star tuples
 testStarredExpressionsInForLoop
+testStarExpression
+testStarExpressionInFor
 
 # Type var constraints not enforced in type alias
 testValidTypeAliasValues
@@ -2173,8 +2168,7 @@ testDelStatementWithAssignmentSimple
 testDelStatementWithAssignmentTuple
 testDelStatementWithAssignmentList
 testDelStatementWithConditions
-
-# "Trying to read deleted variable "e"
+testDel
 testReuseTryExceptionVariable
 testReuseDefinedTryExceptionVariable
 testRaiseFromStatement
@@ -2803,6 +2797,10 @@ testInvalidTypeAnnotation2
 testDelMultipleThingsInvalid
 # "invalid syntax"
 testNewSyntaxSyntaxError
+testNotAsBinaryOp
+testBinaryNegAsBinaryOp
+testNotIs
+testWhitespaceInStringLiteralType
 
 # "Not all union combinations were tried because there are too many unions"
 testTooManyUnionsException

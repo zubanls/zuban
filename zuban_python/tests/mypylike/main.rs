@@ -382,7 +382,10 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 // For now just ignore different versions and overwrite the out. This works,
                 // because we always target the latest version and older versions are currently
                 // listed below newer ones (by convention?).
-                if !rest.starts_with("version>=") && rest != "skip-path-normalization" {
+                if !rest.starts_with("version>=")
+                    && !rest.starts_with("version==")
+                    && rest != "skip-path-normalization"
+                {
                     assert_eq!(rest, "");
                 }
                 for (i, part) in in_between.split("==\n").enumerate() {
