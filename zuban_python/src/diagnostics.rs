@@ -315,6 +315,10 @@ impl<'db> Diagnostic<'db> {
             .unwrap_or(self.file)
     }
 
+    pub fn mypy_error_code(&self) -> &'static str {
+        self.issue.type_.mypy_error_code().unwrap_or("note")
+    }
+
     pub fn as_string(&self, config: &DiagnosticConfig) -> String {
         let mut type_ = "error";
         // TODO REMOVE mypy removal

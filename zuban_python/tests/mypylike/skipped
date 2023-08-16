@@ -9,6 +9,18 @@ testNewNamedTupleWithMethods
 testStrEnumCreation
 testRegression12258
 
+# parser issues
+testDel
+testNotAsBinaryOp
+testBinaryNegAsBinaryOp
+testNotIs
+testAssert
+testOperatorAssignment
+testWhitespaceInStringLiteralType
+testTrailingSemicolon
+testStarExpression
+testStarExpressionInFor
+
 # --new-type-inference
 testInferenceAgainstGenericCallable
 testInferenceAgainstGenericCallableNoLeak
@@ -224,6 +236,7 @@ testConditionalExceptionAlias
 testListAssignmentUnequalAmountToUnpack
 testSelfReferentialSubscriptExpression
 testNewAnalyzerMemberNameMatchesNamedTuple
+testVariableTypeWithQualifiedName
 
 # Module attributes
 testModuleImplicitAttributes
@@ -658,6 +671,9 @@ testDictionaryComprehensionWithCondition
 testComprehensionShadowBinder
 testIterableProtocolOnClass
 testIterableProtocolOnMetaclass
+testDictionaryComprehensionComplex
+testSetComprehensionComplex
+testConditionalExpressionInSetComprehension
 # comprehensions Scoping
 testListComprehensionSpecialScoping
 # "Assignment expression within a comprehension cannot be used in a class body"
@@ -681,6 +697,9 @@ testLambdaAndReachability
 testNoCrashOnPartialLambdaInference
 testGenericLambdaGenericMethodNoCrash
 testFastParserDuplicateNames
+testLambda
+testComplexLambda
+testLambdaPrecedence
 # lambda: Name "UNDEFINED" is not defined
 testLambdaInheritsCheckedContextFromTypedFunc
 testLambdaInheritsCheckedContextFromTypedFuncForced

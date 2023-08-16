@@ -10,7 +10,7 @@ use regex::{Captures, Regex, Replacer};
 
 use zuban_python::{DiagnosticConfig, Project, ProjectOptions};
 
-const USE_MYPY_TEST_FILES: [&str; 82] = [
+const USE_MYPY_TEST_FILES: [&str; 83] = [
     // Type checking tests
     "check-generics.test",
     "check-generic-alias.test",
@@ -136,7 +136,7 @@ const USE_MYPY_TEST_FILES: [&str; 82] = [
     "check-semanal-error.test",
     "check-newsemanal.test",
     // parse tests
-    //"parse.test",
+    "parse.test",
     //"parse-errors.test",
     //"parse-python310.test",
     // Probably not relevant, because additional almost unrelated mypy features
@@ -239,6 +239,8 @@ impl<'name, 'code> TestCase<'name, 'code> {
         }
         let project = projects.get_mut(&config).unwrap();
 
+        let is_parse_test = self.file_name.starts_with("parse");
+
         if steps
             .flags
             .iter()
@@ -283,7 +285,10 @@ impl<'name, 'code> TestCase<'name, 'code> {
             let diagnostics: Vec<_> = project
                 .diagnostics(&diagnostics_config)
                 .iter()
-                .map(|d| d.as_string(&diagnostics_config))
+                .filter_map(|d| {
+                    (!is_parse_test || d.mypy_error_code() == "syntax")
+                        .then(|| d.as_string(&diagnostics_config))
+                })
                 .collect();
 
             let _ = std::panic::take_hook();
@@ -356,7 +361,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
             if type_ == "file" || type_ == "fixture" {
                 step.files.insert(rest, in_between);
             } else if type_ == "out" {
-                if !(self.file_name.contains("semanal-")
+                if !((self.file_name.contains("semanal-") || self.file_name.starts_with("parse"))
                     && (in_between.starts_with("MypyFile:1")
                         || in_between.starts_with("TypeInfoMap(")))
                 {
