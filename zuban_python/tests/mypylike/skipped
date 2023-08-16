@@ -4,6 +4,15 @@ testNewSyntaxWithDict
 testNewSyntaxSpecialAssign
 testNarrowedVariableInNestedModifiedInWalrus
 
+# Exception group issues
+testTryStarMultiple
+testTryStarTuple
+testTryStarInvalidType
+testTryStarGroupInvalid
+testTryStarGroupInvalidTuple
+# BaseExceptions lead to BaseExceptionGroup, not ExceptionGroup
+testTryStarBase
+
 # EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
 testStrEnumCreation
 testRegression12258
@@ -2143,6 +2152,7 @@ testAwaitAnd__await__-only_when_nocache
 testAsyncWith2-only_when_nocache
 test__aiter__and__anext__
 testNewNamedTupleWithMethods
+testAsyncGeneratorWithinComprehension
 
 # "Trying to read deleted variable "Foo""
 testDelStmtWithTypeInfo

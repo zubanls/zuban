@@ -148,12 +148,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     self.i_s
                                         .db
                                         .python_state
-                                        .base_exception_group_node_ref()
+                                        .exception_group_node_ref()
                                         .as_link(),
                                     ClassGenerics::List(GenericsList::new_generics(Rc::new([
-                                        GenericItem::TypeArgument(
-                                            inf.as_type(self.i_s).into_db_type(),
-                                        ),
+                                        GenericItem::TypeArgument(instantiate_except(
+                                            self.i_s,
+                                            inf.as_type(self.i_s).as_ref(),
+                                        )),
                                     ]))),
                                 ))
                                 .maybe_save_redirect(
