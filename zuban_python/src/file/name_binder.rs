@@ -12,10 +12,10 @@ use crate::utils::SymbolTable;
 use parsa_python_ast::{
     AssignmentContentWithSimpleTargets, AssignmentRightSide, AsyncStmtContent, Block, BlockContent,
     ClassDef, CommonComprehensionExpression, Comprehension, Decoratee, DictComprehension,
-    Expression, File, ForIfClause, ForIfClauseIterator, ForStmt, FunctionDef, IfBlockType, IfStmt,
-    ImportFromTargets, InterestingNode, InterestingNodeSearcher, Lambda, MatchStmt, Name,
-    NameDefinition, NameParent, NodeIndex, SimpleStmts, StmtContent, StmtIterator, Tree,
-    TryBlockType, TryStmt, WhileStmt, WithStmt,
+    ExceptExpression, Expression, File, ForIfClause, ForIfClauseIterator, ForStmt, FunctionDef,
+    IfBlockType, IfStmt, ImportFromTargets, InterestingNode, InterestingNodeSearcher, Lambda,
+    MatchStmt, Name, NameDefinition, NameParent, NodeIndex, SimpleStmts, StmtContent, StmtIterator,
+    Tree, TryBlockType, TryStmt, WhileStmt, WithStmt,
 };
 
 #[derive(PartialEq, Debug)]
@@ -562,17 +562,19 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 TryBlockType::Except(except) => {
                     let (except_expression, block) = except.unpack();
                     if let Some(except_expression) = except_expression {
-                        let (expression, name_def) = except_expression.unpack();
-                        let latest = self.index_non_block_node(&expression, ordered, false);
-                        latest_return_or_yield =
+                        let latest = self.index_except_expression(except_expression, ordered);
+                        let latest_return_or_yield =
                             self.merge_latest_return_or_yield(latest_return_or_yield, latest);
-                        if let Some(name_def) = name_def {
-                            self.add_new_definition(name_def, Point::new_uncalculated(), false)
-                        }
                     }
                     self.index_block(block, ordered, false)
                 }
-                TryBlockType::ExceptStar(except_star) => todo!(),
+                TryBlockType::ExceptStar(except_star) => {
+                    let (except_expression, block) = except_star.unpack();
+                    let latest = self.index_except_expression(except_expression, ordered);
+                    let latest_return_or_yield =
+                        self.merge_latest_return_or_yield(latest_return_or_yield, latest);
+                    self.index_block(block, ordered, false)
+                }
                 TryBlockType::Else(else_) => self.index_block(else_.block(), ordered, false),
                 TryBlockType::Finally(finally) => self.index_block(finally.block(), ordered, false),
             };
@@ -580,6 +582,18 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 self.merge_latest_return_or_yield(latest_return_or_yield, latest);
         }
         latest_return_or_yield
+    }
+
+    fn index_except_expression(
+        &mut self,
+        except_expr: ExceptExpression<'db>,
+        ordered: bool,
+    ) -> NodeIndex {
+        let (expression, name_def) = except_expr.unpack();
+        if let Some(name_def) = name_def {
+            self.add_new_definition(name_def, Point::new_uncalculated(), false)
+        }
+        self.index_non_block_node(&expression, ordered, false)
     }
 
     fn index_class(&mut self, class: ClassDef<'db>, is_decorated: bool, in_base_scope: bool) {

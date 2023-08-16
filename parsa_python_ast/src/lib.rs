@@ -1238,8 +1238,8 @@ impl<'db> ExceptBlock<'db> {
 
 impl<'db> ExceptStarBlock<'db> {
     pub fn unpack(&self) -> (ExceptExpression<'db>, Block<'db>) {
-        // "except" except_expression ":" block
-        let mut iterator = self.node.iter_children().skip(1);
+        // "except" "*" except_expression ":" block
+        let mut iterator = self.node.iter_children().skip(2);
         let except_expr = iterator.next().unwrap();
         iterator.next();
         let block_ = Block::new(iterator.next().unwrap());
