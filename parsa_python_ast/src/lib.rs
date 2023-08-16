@@ -1410,7 +1410,13 @@ impl<'db> Iterator for SimpleStmtIterator<'db> {
     type Item = SimpleStmt<'db>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.0.next().map(Self::Item::new)
+        let next = self.0.next()?;
+        if next.is_type(Nonterminal(simple_stmt)) {
+            Some(Self::Item::new(next))
+        } else {
+            debug_assert_eq!(next.as_code(), "\n");
+            None
+        }
     }
 }
 

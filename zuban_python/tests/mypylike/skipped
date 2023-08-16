@@ -12,7 +12,6 @@ testRegression12258
 # parser issues
 testAssert
 testOperatorAssignment
-testTrailingSemicolon
 
 # --new-type-inference
 testInferenceAgainstGenericCallable
