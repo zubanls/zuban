@@ -107,8 +107,11 @@ const USE_MYPY_TEST_FILES: [&str; 82] = [
     "check-columns.test",
     "check-errorcodes.test",
     //"check-flags.test",
+    //"pythoneval.test",
+    //"pythoneval-asyncio.test",
     //"cmdline.test",
     //"cmdline.pyproject.test",
+    //"envvars.test",
     "pep561.test",
     //"check-reports.test",
     //"check-inline-config.test",
@@ -132,16 +135,33 @@ const USE_MYPY_TEST_FILES: [&str; 82] = [
     "semanal-types.test",
     "check-semanal-error.test",
     "check-newsemanal.test",
-    // Won't do:
+    // parse tests
+    //"parse.test",
+    //"parse-errors.test",
+    //"parse-python310.test",
+    // Probably not relevant, because additional almost unrelated mypy features
+    //"stubgen.test",
+    //"typeexport-basic.test",
     // dmypy suggest feature,
     // see https://mypy.readthedocs.io/en/stable/mypy_daemon.html#static-inference-of-annotations
     //"fine-grained-suggest.test",
     // Inspect feature, see https://mypy.readthedocs.io/en/stable/mypy_daemon.html#static-inference-of-annotations
     //"fine-grained-inspect.test",
-    // tests mypy internals
+    // Won't do, because they test mypy internals
     //"check-incomplete-fixture.test",
     //"check-native-int.test",
     //"semanal-symtable.test",
+    //"daemon.test",
+    //"deps-classes.test",
+    //"deps-expressions.test",
+    //"deps-generics.test",
+    //"deps-statements.test",
+    //"deps.test",
+    //"deps-types.test",
+    //"diff.test",
+    //"errorstream.test",
+    //"merge.test",
+    //"ref-info.test",
 ];
 
 const BASE_PATH: &str = "/mypylike/";
