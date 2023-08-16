@@ -2284,6 +2284,12 @@ impl<'db> RaiseStmt<'db> {
     }
 }
 
+impl<'db> AwaitPrimary<'db> {
+    pub fn primary(&self) -> Primary<'db> {
+        Primary::new(self.node.nth_child(1))
+    }
+}
+
 impl<'db> PrimaryTarget<'db> {
     pub fn first(&self) -> PrimaryTargetOrAtom<'db> {
         let first = self.node.nth_child(0);

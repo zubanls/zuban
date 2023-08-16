@@ -1186,7 +1186,24 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     },
                 )
             }
-            ExpressionPart::AwaitPrimary(_) => todo!(),
+            ExpressionPart::AwaitPrimary(await_) => {
+                let from = NodeRef::new(self.file, await_.index());
+                self.infer_primary(await_.primary(), &mut ResultContext::Unknown)
+                    .type_lookup_and_execute(
+                        self.i_s,
+                        from,
+                        "__await__",
+                        &NoArguments::new(from),
+                        &|_| todo!(),
+                    )
+                    .type_lookup_and_execute(
+                        self.i_s,
+                        from,
+                        "__next__",
+                        &NoArguments::new(from),
+                        &|_| todo!(),
+                    )
+            }
         }
     }
 
