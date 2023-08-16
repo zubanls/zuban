@@ -121,8 +121,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             StmtContent::TryStmt(try_stmt) => {
                 for block in try_stmt.iter_blocks() {
                     match block {
-                        TryBlockType::Except(except_block) => {
-                            if let (Some(except_expr), _) = except_block.unpack() {
+                        TryBlockType::Except(except) => {
+                            if let (Some(except_expr), _) = except.unpack() {
                                 let (expr, name_def) = except_expr.unpack();
                                 if let Some(name_def) = name_def {
                                     let inf = self.infer_expression(expr);
@@ -139,7 +139,31 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 }
                             }
                         }
-                        TryBlockType::ExceptStar(_) => todo!(),
+                        TryBlockType::ExceptStar(except_star) => {
+                            let (except_expr, _) = except_star.unpack();
+                            let (expr, name_def) = except_expr.unpack();
+                            if let Some(name_def) = name_def {
+                                let inf = self.infer_expression(expr);
+                                Inferred::from_type(DbType::new_class(
+                                    self.i_s
+                                        .db
+                                        .python_state
+                                        .base_exception_group_node_ref()
+                                        .as_link(),
+                                    ClassGenerics::List(GenericsList::new_generics(Rc::new([
+                                        GenericItem::TypeArgument(
+                                            inf.as_type(self.i_s).into_db_type(),
+                                        ),
+                                    ]))),
+                                ))
+                                .maybe_save_redirect(
+                                    self.i_s,
+                                    self.file,
+                                    name_def.index(),
+                                    true,
+                                );
+                            }
+                        }
                         _ => (),
                     }
                 }

@@ -642,14 +642,32 @@ impl<'db> Inference<'db, '_, '_> {
                     if let Some(except_expression) = except_expression {
                         let expression = except_expression.expression();
                         let inf = self.infer_expression(expression);
-                        if !is_valid_except_type(self.i_s, inf.as_type(self.i_s).as_ref(), true) {
+                        if !matches!(
+                            except_type(self.i_s, inf.as_type(self.i_s).as_ref(), true),
+                            ExceptType::ContainsOnlyBaseExceptions
+                        ) {
                             NodeRef::new(self.file, expression.index())
                                 .add_issue(self.i_s, IssueType::BaseExceptionExpected);
                         }
                     }
                     self.calc_block_diagnostics(block, class, func)
                 }
-                TryBlockType::ExceptStar(_) => todo!(),
+                TryBlockType::ExceptStar(except_star) => {
+                    let (except_expression, block) = except_star.unpack();
+                    let expression = except_expression.expression();
+                    let inf = self.infer_expression(expression);
+                    match except_type(self.i_s, inf.as_type(self.i_s).as_ref(), true) {
+                        ExceptType::ContainsOnlyBaseExceptions => (),
+                        ExceptType::HasExceptionGroup => {
+                            todo!()
+                        }
+                        ExceptType::Invalid => {
+                            NodeRef::new(self.file, expression.index())
+                                .add_issue(self.i_s, IssueType::BaseExceptionExpected);
+                        }
+                    }
+                    self.calc_block_diagnostics(block, class, func)
+                }
                 TryBlockType::Else(b) => self.calc_block_diagnostics(b.block(), class, func),
                 TryBlockType::Finally(b) => self.calc_block_diagnostics(b.block(), class, func),
             }
@@ -732,28 +750,58 @@ fn valid_raise_type(db: &Database, t: Type, allow_none: bool) -> bool {
     }
 }
 
-fn is_valid_except_type(i_s: &InferenceState, t: &DbType, allow_tuple: bool) -> bool {
+enum ExceptType {
+    ContainsOnlyBaseExceptions,
+    HasExceptionGroup,
+    Invalid,
+}
+
+fn except_type(i_s: &InferenceState, t: &DbType, allow_tuple: bool) -> ExceptType {
     match t {
         DbType::Type(t) => {
             let db = i_s.db;
-            Type::new(t.as_ref())
-                .maybe_class(i_s.db)
-                .is_some_and(|cls| {
-                    cls.class_link_in_mro(db, db.python_state.base_exception_node_ref().as_link())
-                })
+            if let Some(cls) = Type::new(t.as_ref()).maybe_class(i_s.db) {
+                if cls.class_link_in_mro(db, db.python_state.base_exception_node_ref().as_link()) {
+                    return ExceptType::ContainsOnlyBaseExceptions;
+                } else if cls.class_link_in_mro(
+                    db,
+                    db.python_state.base_exception_group_node_ref().as_link(),
+                ) {
+                    return ExceptType::HasExceptionGroup;
+                }
+            }
+            ExceptType::Invalid
         }
         DbType::Tuple(content) if allow_tuple => match &content.args {
-            Some(TupleTypeArguments::FixedLength(ts)) => ts.iter().all(|t| match t {
-                TypeOrTypeVarTuple::Type(t) => is_valid_except_type(i_s, t, false),
-                TypeOrTypeVarTuple::TypeVarTuple(_) => todo!(),
-            }),
-            Some(TupleTypeArguments::ArbitraryLength(t)) => is_valid_except_type(i_s, t, false),
+            Some(TupleTypeArguments::FixedLength(ts)) => {
+                let mut result = ExceptType::ContainsOnlyBaseExceptions;
+                for t in ts.iter() {
+                    match t {
+                        TypeOrTypeVarTuple::Type(t) => match except_type(i_s, t, false) {
+                            ExceptType::ContainsOnlyBaseExceptions => (),
+                            x @ ExceptType::HasExceptionGroup => result = x,
+                            ExceptType::Invalid => return ExceptType::Invalid,
+                        },
+                        TypeOrTypeVarTuple::TypeVarTuple(_) => todo!(),
+                    }
+                }
+                result
+            }
+            Some(TupleTypeArguments::ArbitraryLength(t)) => except_type(i_s, t, false),
             _ => todo!(),
         },
-        DbType::Union(union) => union
-            .iter()
-            .all(|t| is_valid_except_type(i_s, t, allow_tuple)),
-        _ => false,
+        DbType::Union(union) => {
+            let mut result = ExceptType::ContainsOnlyBaseExceptions;
+            for t in union.iter() {
+                match except_type(i_s, t, allow_tuple) {
+                    ExceptType::ContainsOnlyBaseExceptions => (),
+                    x @ ExceptType::HasExceptionGroup => result = x,
+                    ExceptType::Invalid => return ExceptType::Invalid,
+                }
+            }
+            result
+        }
+        _ => ExceptType::Invalid,
     }
 }
 
