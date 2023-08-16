@@ -108,6 +108,9 @@ impl<'db> Inference<'db, '_, '_> {
     ) {
         // TODO In general all {} blocks are todos
         for stmt in stmts {
+            let StmtOrError::Stmt(stmt) = stmt else {
+                continue
+            };
             let point = self.file.points.get(stmt.index());
             if point.calculated() {
                 debug_assert_eq!(point.type_(), PointType::NodeAnalysis);

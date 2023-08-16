@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use parsa_python_ast::{
     Argument, AssignmentContent, BlockContent, ClassDef, Decoratee, SimpleStmtContent, SimpleStmts,
-    StmtContent, Target,
+    StmtContent, StmtOrError, Target,
 };
 
 use super::enum_::execute_functional_enum;
@@ -1093,6 +1093,9 @@ impl<'db: 'a, 'a> Class<'a> {
         match self.node().block().unpack() {
             BlockContent::Indented(stmts) => {
                 for stmt in stmts {
+                    let StmtOrError::Stmt(stmt) = stmt else {
+                        continue
+                    };
                     match stmt.unpack() {
                         StmtContent::SimpleStmts(simple) => {
                             find_stmt_named_tuple_types(i_s, file, &mut vec, simple)

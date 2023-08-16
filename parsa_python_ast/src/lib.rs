@@ -1058,13 +1058,20 @@ impl<'db> Iterator for RelevantUntypedNodes<'db> {
 
 pub struct StmtIterator<'db>(SiblingIterator<'db>);
 
+pub enum StmtOrError<'db> {
+    Stmt(Stmt<'db>),
+    Error(NodeIndex),
+}
+
 impl<'db> Iterator for StmtIterator<'db> {
-    type Item = Stmt<'db>;
+    type Item = StmtOrError<'db>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(n) = self.0.next() {
             if n.is_type(Nonterminal(stmt)) {
-                Some(Self::Item::new(n))
+                Some(Self::Item::Stmt(Stmt::new(n)))
+            } else if n.is_error_recovery_node() {
+                Some(StmtOrError::Error(n.index))
             } else {
                 debug_assert!(
                     n.is_type(Terminal(TerminalType::Dedent))
@@ -1292,25 +1299,6 @@ impl<'db> Stmt<'db> {
             debug_assert_eq!(child.type_(), Terminal(TerminalType::Newline));
             StmtContent::Newline
         }
-    }
-
-    pub fn find_syntax_error(&self) -> Option<NodeIndex> {
-        fn find_syntax_error_in_node(node: PyNode) -> Option<NodeIndex> {
-            for child in node.iter_children() {
-                // Avoid errors in sub statements, because these will be handled separately.
-                if !child.is_type(Nonterminal(stmt)) {
-                    if child.is_error_recovery_node() {
-                        return Some(child.index);
-                    } else {
-                        if let Some(error) = find_syntax_error_in_node(child) {
-                            return Some(error);
-                        }
-                    }
-                }
-            }
-            None
-        }
-        find_syntax_error_in_node(self.node)
     }
 }
 

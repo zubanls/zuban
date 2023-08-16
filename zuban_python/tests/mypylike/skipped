@@ -4,6 +4,7 @@ testNewSyntaxWithDict
 testNewSyntaxSpecialAssign
 testNarrowedVariableInNestedModifiedInWalrus
 testNewNamedTupleWithMethods
+testWhitespaceInStringLiteralType
 
 # EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
 testStrEnumCreation
@@ -2793,12 +2794,9 @@ testInvalidLvalueWithExplicitType3
 testInvalidWithTarget
 testInvalidTypeAnnotation2
 testDelMultipleThingsInvalid
-# "invalid syntax"
-testNewSyntaxSyntaxError
+# "invalid syntax. Perhaps you forgot a comma?"
 testNotAsBinaryOp
 testBinaryNegAsBinaryOp
-testNotIs
-testWhitespaceInStringLiteralType
 
 # "Not all union combinations were tried because there are too many unions"
 testTooManyUnionsException

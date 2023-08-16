@@ -15,7 +15,7 @@ use parsa_python_ast::{
     ExceptExpression, Expression, File, ForIfClause, ForIfClauseIterator, ForStmt, FunctionDef,
     IfBlockType, IfStmt, ImportFromTargets, InterestingNode, InterestingNodeSearcher, Lambda,
     MatchStmt, Name, NameDefinition, NameParent, NodeIndex, SimpleStmts, StmtContent, StmtIterator,
-    Tree, TryBlockType, TryStmt, WhileStmt, WithStmt,
+    StmtOrError, Tree, TryBlockType, TryStmt, WhileStmt, WithStmt,
 };
 
 #[derive(PartialEq, Debug)]
@@ -273,13 +273,19 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         in_base_scope: bool,
     ) -> NodeIndex {
         let mut latest_return_or_yield = 0;
-        for stmt in stmts {
-            if let Some(node_index) = stmt.find_syntax_error() {
-                self.add_issue(node_index, IssueType::InvalidSyntax);
-                self.points
-                    .set(stmt.index(), Point::new_node_analysis(Locality::File));
-                continue;
-            }
+        let mut last_was_an_error = false;
+        for stmt_or_error in stmts {
+            let stmt = match stmt_or_error {
+                StmtOrError::Stmt(stmt) => stmt,
+                StmtOrError::Error(node_index) => {
+                    if !last_was_an_error {
+                        last_was_an_error = true;
+                        self.add_issue(node_index, IssueType::InvalidSyntax);
+                    }
+                    continue;
+                }
+            };
+            last_was_an_error = false;
             let return_or_yield = match stmt.unpack() {
                 StmtContent::SimpleStmts(s) => self.index_simple_stmts(s, ordered, in_base_scope),
                 StmtContent::FunctionDef(func) => {
