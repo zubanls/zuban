@@ -694,7 +694,8 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     }
 
     fn index_match_stmt(&mut self, match_stmt: MatchStmt<'db>, ordered: bool) -> NodeIndex {
-        todo!("match_stmt")
+        debug!("TODO match_stmt name binding");
+        0
     }
 
     fn index_non_block_node<T: InterestingNodeSearcher<'db>>(

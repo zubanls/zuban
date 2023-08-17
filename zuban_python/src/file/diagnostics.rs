@@ -177,7 +177,7 @@ impl<'db> Inference<'db, '_, '_> {
                     self.calc_block_diagnostics(block, class, func);
                 }
                 StmtContent::MatchStmt(match_stmt) => {
-                    todo!()
+                    debug!("TODO match_stmt diagnostics");
                 }
                 StmtContent::AsyncStmt(async_stmt) => match async_stmt.unpack() {
                     AsyncStmtContent::FunctionDef(func) => {
