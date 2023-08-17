@@ -10,6 +10,13 @@ testTwoStarExpressionsInForStmt
 testTwoStarExpressionsInGeneratorExpr
 testInvalidDel3
 testInvalidLvalueWithExplicitType3
+testInvalidTypeComment
+testInvalidTypeComment2
+testInvalidTypeComment3
+testInvalidTypeComment4
+testInvalidTypeComment5
+testInvalidTypeComment6
+testInvalidTypeComment7
 
 # EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
 testStrEnumCreation
@@ -2783,6 +2790,40 @@ testContinueOutsideLoop
 testInvalidGlobalDecl
 testAssignToTypeDef
 
+# "unknown encoding: uft-8"
+testInvalidEncoding
+testInvalidEncoding2
+testInvalidEncoding3
+testDoubleEncoding
+testDoubleEncoding2
+
+# All of these are really not important at all, because there are syntax
+# errors, just not the fancy ones.
+# Too many invalid syntax errors?
+testInvalidFunction
+testInvalidFuncDefArgs3
+testInvalidFuncDefArgs4
+testExceptCommaInPython3
+# "unexpected indent"
+testUnexpectedIndent
+testInconsistentIndent
+# "unindent does not match any outer indentation level"
+testInconsistentIndent2
+# "unexpected EOF while parsing"
+testUnexpectedEof
+testParseErrorInExtendedSlicing
+testParseErrorInExtendedSlicing2
+testParseErrorInExtendedSlicing3
+# "positional argument follows keyword argument"
+testInvalidKeywordArguments1
+# "positional argument follows keyword argument unpacking"
+testInvalidKeywordArguments2
+# "named arguments must follow bare *"
+testInvalidBareAsteriskAndVarArgs4
+testInvalidBareAsterisk1
+testInvalidBareAsterisk2
+# "non-default argument follows default argument"
+testInvalidFuncDefArgs1
 # "invalid syntax. Perhaps you forgot a comma?"
 testNotAsBinaryOp
 testBinaryNegAsBinaryOp
@@ -2800,6 +2841,10 @@ testInvalidLvalues*
 testInvalidTypeAnnotation2
 # "cannot delete expression"
 testDelMultipleThingsInvalid
+# "Missing parentheses in call to 'print'. Did you mean print(1)?"
+testPrintStatementInPython3
+# "invalid character in identifier"
+testSmartQuotes
 
 # "Not all union combinations were tried because there are too many unions"
 testTooManyUnionsException
@@ -2919,6 +2964,13 @@ testErrorCodeInvalidCommentSignature
 testErrorCodeIgnoreAfterArgComment
 testColumnsMethodDefaultArgumentsAndSignatureAsComment
 testColumnTypeSignatureHasTooFewArguments
+testInvalidSignatureInComment*
+testDuplicateSignatures1
+testDuplicateSignatures2
+testTooManyTypes
+testTooFewTypes
+testCommentFunctionAnnotationVarArgMispatch-skip
+testCommentFunctionAnnotationVarArgMispatch2-skip
 
 # --scripts-are-modules
 testScriptsAreModules

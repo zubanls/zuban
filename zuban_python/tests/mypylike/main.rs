@@ -10,7 +10,7 @@ use regex::{Captures, Regex, Replacer};
 
 use zuban_python::{DiagnosticConfig, Project, ProjectOptions};
 
-const USE_MYPY_TEST_FILES: [&str; 83] = [
+const USE_MYPY_TEST_FILES: [&str; 84] = [
     // Type checking tests
     "check-generics.test",
     "check-generic-alias.test",
@@ -137,7 +137,7 @@ const USE_MYPY_TEST_FILES: [&str; 83] = [
     "check-newsemanal.test",
     // parse tests
     "parse.test",
-    //"parse-errors.test",
+    "parse-errors.test",
     //"parse-python310.test",
     // Probably not relevant, because additional almost unrelated mypy features
     //"stubgen.test",
@@ -294,7 +294,11 @@ impl<'name, 'code> TestCase<'name, 'code> {
 
             let _ = std::panic::take_hook();
 
-            let actual = replace_annoyances(diagnostics.join("\n"));
+            let mut actual = replace_annoyances(diagnostics.join("\n"));
+            if is_parse_test && self.file_name == "parse-errors" {
+                // For whatever reason mypy uses a different file name for these tests
+                actual = actual.replace("main:", "file:")
+            }
             let mut actual_lines = actual
                 .trim()
                 .split('\n')
