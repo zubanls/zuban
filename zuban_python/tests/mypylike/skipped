@@ -5,11 +5,8 @@ testNewSyntaxSpecialAssign
 testNarrowedVariableInNestedModifiedInWalrus
 testNewNamedTupleWithMethods
 testWhitespaceInStringLiteralType
-# used to be parser issues
+# starred unpacking leads to undefined names
 testTwoStarExpressionsInForStmt
-testTwoStarExpressionsInGeneratorExpr
-testInvalidDel3
-testInvalidLvalueWithExplicitType3
 
 # EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
 testStrEnumCreation
@@ -670,6 +667,7 @@ testIterableProtocolOnMetaclass
 testDictionaryComprehensionComplex
 testSetComprehensionComplex
 testConditionalExpressionInSetComprehension
+testTwoStarExpressionsInGeneratorExpr
 # comprehensions Scoping
 testListComprehensionSpecialScoping
 # "Assignment expression within a comprehension cannot be used in a class body"
@@ -1994,6 +1992,7 @@ testNewAnalyzerNewTypeForwardClassAliasReversed
 # undefined += 1 where undefined is a NameError
 testOperatorAssignment
 inplace_operator_on_undefined_target
+testInvalidDel3
 
 # Import Redefinition
 testRedefineTypeViaImport
