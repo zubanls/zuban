@@ -11,6 +11,7 @@ use crate::utils::InsertOnlyVec;
 #[rustfmt::skip]  // This is way more readable if we are not auto-formatting this.
 pub(crate) enum IssueType {
     InvalidSyntax,
+    InvalidSyntaxInTypeComment { type_comment: Box<str> },
 
     AttributeError { object: Box<str>, name: Box<str> },
     UnionAttributeError { object: Box<str>, union: Box<str>, name: Box<str> },
@@ -193,7 +194,7 @@ impl IssueType {
         use IssueType::*;
         Some(match &self {
             Note(_) | InvariantNote { .. } => return None,
-            InvalidSyntax => "syntax",
+            InvalidSyntax | InvalidSyntaxInTypeComment { .. } => "syntax",
             AttributeError { .. }
             | ImportAttributeError { .. }
             | ModuleAttributeError { .. }
@@ -338,6 +339,9 @@ impl<'db> Diagnostic<'db> {
         use IssueType::*;
         let error = match &self.issue.type_ {
             InvalidSyntax => "invalid syntax".to_string(),
+            InvalidSyntaxInTypeComment { type_comment } => format!(
+                r#"Syntax error in type comment "{type_comment}""#
+            ),
 
             AttributeError{object, name} => format!("{object} has no attribute {name:?}"),
             UnionAttributeError{object, union, name} => format!("Item {object} of \"{union}\" has no attribute {name:?}"),

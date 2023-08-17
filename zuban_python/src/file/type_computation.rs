@@ -16,7 +16,7 @@ use crate::database::{
     UnionType,
 };
 use crate::debug;
-use crate::diagnostics::IssueType;
+use crate::diagnostics::{Issue, IssueType};
 use crate::file::File;
 use crate::file::{Inference, PythonFile};
 use crate::getitem::{SliceOrSimple, SliceType, SliceTypeIterator};
@@ -2740,8 +2740,23 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 StarExpressionContent::StarExpression(s) => todo!(),
             }
         } else {
+            for stmt_or_error in f.tree.root().iter_stmts() {
+                if let StmtOrError::Error(node_index) = stmt_or_error {
+                    return (Inferred::new_any(), Type::new(&DbType::Any));
+                }
+            }
             debug!("Found non-expression in annotation: {}", f.tree.code());
-            todo!()
+            self.file.add_issue(
+                self.i_s,
+                Issue {
+                    start_position: start,
+                    end_position: start + s.len() as CodeIndex,
+                    type_: IssueType::InvalidSyntaxInTypeComment {
+                        type_comment: s.into(),
+                    },
+                },
+            );
+            return (Inferred::new_any(), Type::new(&DbType::Any));
         }
     }
 

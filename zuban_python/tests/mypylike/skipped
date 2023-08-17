@@ -10,13 +10,6 @@ testTwoStarExpressionsInForStmt
 testTwoStarExpressionsInGeneratorExpr
 testInvalidDel3
 testInvalidLvalueWithExplicitType3
-testInvalidTypeComment
-testInvalidTypeComment2
-testInvalidTypeComment3
-testInvalidTypeComment4
-testInvalidTypeComment5
-testInvalidTypeComment6
-testInvalidTypeComment7
 
 # EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
 testStrEnumCreation
