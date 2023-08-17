@@ -17,7 +17,6 @@ testInvalidTypeComment4
 testInvalidTypeComment5
 testInvalidTypeComment6
 testInvalidTypeComment7
-testClassPattern
 
 # EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
 testStrEnumCreation

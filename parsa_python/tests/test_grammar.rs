@@ -223,6 +223,17 @@ parametrize_snapshots!(
         match foo:
             case bar as _: pass
         ");
+    match_class_pattern: dedent("
+        match a:
+            case A():
+                pass
+            case B(1, 2):
+                pass
+            case B(1, b=2):
+                pass
+            case B(a=1, b=2):
+                pass
+        ");
     dict_literal1: dedent("
         {1: 2}
         {**foo}

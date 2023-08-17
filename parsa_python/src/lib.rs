@@ -193,8 +193,9 @@ create_grammar!(
     as_pattern: or_pattern "as" pattern_capture_target
     or_pattern: "|".closed_pattern+
     closed_pattern:
-        | literal_pattern | wildcard_pattern | pattern_capture_target | value_pattern
-        | group_pattern | sequence_pattern | mapping_pattern | class_pattern
+        | literal_pattern | class_pattern | wildcard_pattern
+        | group_pattern | sequence_pattern | mapping_pattern
+        | pattern_capture_target | value_pattern
 
     literal_pattern:
         | complex_number | signed_number | strings | bytes
@@ -223,11 +224,10 @@ create_grammar!(
 
     class_pattern:
         | dotted_name "(" ")"
-        | dotted_name "(" positional_patterns ","? ")"
-        | dotted_name "(" keyword_patterns ","? ")"
-        | dotted_name "(" positional_patterns "," keyword_patterns ","? ")"
-    positional_patterns: ",".pattern+
-    keyword_patterns: ",".keyword_pattern+
+        | dotted_name "(" param_patterns ","? ")"
+    param_patterns:
+        | ",".(pattern !"=")+ [",".(keyword_pattern)+]
+        | ",".(keyword_pattern)+
     keyword_pattern: Name "=" pattern
 
     // Type statement

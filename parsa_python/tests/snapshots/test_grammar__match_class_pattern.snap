@@ -1,0 +1,158 @@
+---
+source: parsa_python/tests/test_grammar.rs
+expression: tree_to_string(tree)
+---
+file: 0-136
+ stmt: 1-136
+  match_stmt: 1-136
+   Keyword: 1-6 "match"
+   subject_expr: 7-8
+    named_expression: 7-8
+     expression: 7-8
+      atom: 7-8
+       Name: 7-8 "a"
+   Keyword: 8-9 ":"
+   Newline: 9-10 "\n"
+   Indent: 14-14 ""
+   case_block: 14-41
+    Keyword: 14-18 "case"
+    patterns: 19-22
+     pattern: 19-22
+      or_pattern: 19-22
+       closed_pattern: 19-22
+        class_pattern: 19-22
+         dotted_name: 19-20
+          Name: 19-20 "A"
+         Keyword: 20-21 "("
+         Keyword: 21-22 ")"
+    Keyword: 22-23 ":"
+    block: 23-41
+     Newline: 23-24 "\n"
+     Indent: 32-32 ""
+     stmt: 32-37
+      simple_stmts: 32-37
+       simple_stmt: 32-36
+        pass_stmt: 32-36
+         Keyword: 32-36 "pass"
+       Newline: 36-37 "\n"
+     Dedent: 41-41 ""
+   case_block: 41-72
+    Keyword: 41-45 "case"
+    patterns: 46-53
+     pattern: 46-53
+      or_pattern: 46-53
+       closed_pattern: 46-53
+        class_pattern: 46-53
+         dotted_name: 46-47
+          Name: 46-47 "B"
+         Keyword: 47-48 "("
+         param_patterns: 48-52
+          pattern: 48-49
+           or_pattern: 48-49
+            closed_pattern: 48-49
+             literal_pattern: 48-49
+              signed_number: 48-49
+               Number: 48-49 "1"
+          Keyword: 49-50 ","
+          pattern: 51-52
+           or_pattern: 51-52
+            closed_pattern: 51-52
+             literal_pattern: 51-52
+              signed_number: 51-52
+               Number: 51-52 "2"
+         Keyword: 52-53 ")"
+    Keyword: 53-54 ":"
+    block: 54-72
+     Newline: 54-55 "\n"
+     Indent: 63-63 ""
+     stmt: 63-68
+      simple_stmts: 63-68
+       simple_stmt: 63-67
+        pass_stmt: 63-67
+         Keyword: 63-67 "pass"
+       Newline: 67-68 "\n"
+     Dedent: 72-72 ""
+   case_block: 72-105
+    Keyword: 72-76 "case"
+    patterns: 77-86
+     pattern: 77-86
+      or_pattern: 77-86
+       closed_pattern: 77-86
+        class_pattern: 77-86
+         dotted_name: 77-78
+          Name: 77-78 "B"
+         Keyword: 78-79 "("
+         param_patterns: 79-85
+          pattern: 79-80
+           or_pattern: 79-80
+            closed_pattern: 79-80
+             literal_pattern: 79-80
+              signed_number: 79-80
+               Number: 79-80 "1"
+          Keyword: 80-81 ","
+          keyword_pattern: 82-85
+           Name: 82-83 "b"
+           Keyword: 83-84 "="
+           pattern: 84-85
+            or_pattern: 84-85
+             closed_pattern: 84-85
+              literal_pattern: 84-85
+               signed_number: 84-85
+                Number: 84-85 "2"
+         Keyword: 85-86 ")"
+    Keyword: 86-87 ":"
+    block: 87-105
+     Newline: 87-88 "\n"
+     Indent: 96-96 ""
+     stmt: 96-101
+      simple_stmts: 96-101
+       simple_stmt: 96-100
+        pass_stmt: 96-100
+         Keyword: 96-100 "pass"
+       Newline: 100-101 "\n"
+     Dedent: 105-105 ""
+   case_block: 105-136
+    Keyword: 105-109 "case"
+    patterns: 110-121
+     pattern: 110-121
+      or_pattern: 110-121
+       closed_pattern: 110-121
+        class_pattern: 110-121
+         dotted_name: 110-111
+          Name: 110-111 "B"
+         Keyword: 111-112 "("
+         param_patterns: 112-120
+          keyword_pattern: 112-115
+           Name: 112-113 "a"
+           Keyword: 113-114 "="
+           pattern: 114-115
+            or_pattern: 114-115
+             closed_pattern: 114-115
+              literal_pattern: 114-115
+               signed_number: 114-115
+                Number: 114-115 "1"
+          Keyword: 115-116 ","
+          keyword_pattern: 117-120
+           Name: 117-118 "b"
+           Keyword: 118-119 "="
+           pattern: 119-120
+            or_pattern: 119-120
+             closed_pattern: 119-120
+              literal_pattern: 119-120
+               signed_number: 119-120
+                Number: 119-120 "2"
+         Keyword: 120-121 ")"
+    Keyword: 121-122 ":"
+    block: 122-136
+     Newline: 122-123 "\n"
+     Indent: 131-131 ""
+     stmt: 131-136
+      simple_stmts: 131-136
+       simple_stmt: 131-135
+        pass_stmt: 131-135
+         Keyword: 131-135 "pass"
+       Newline: 135-136 "\n"
+     Dedent: 136-136 ""
+   Dedent: 136-136 ""
+ Endmarker: 136-136 ""
+
