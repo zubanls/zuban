@@ -75,3 +75,12 @@ X = A | B
 x: X
 reveal_type(X)  # N: Revealed type is "types.UnionType"
 reveal_type(x)  # N: Revealed type is "__main__.A | __main__.B"
+
+[case yield_with_generator]
+from typing import Generator
+
+def yield_send() -> Generator[bytes, str, float]:
+    reveal_type((yield b""))  # N: Revealed type is "str"
+    if int():
+        pass # TODO enable return 1.0
+    # TODO shouldn't this cause an error?
