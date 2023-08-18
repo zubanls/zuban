@@ -1385,7 +1385,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 let inf = lookup_result.into_inferred().execute_with_details(
                     i_s,
                     args,
-                    &mut ResultContext::Unknown,
+                    &mut ResultContext::ExpectUnused,
                     on_type_error,
                 );
                 result = if let Some(r) = result.take() {

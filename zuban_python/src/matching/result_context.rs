@@ -13,6 +13,7 @@ pub enum ResultContext<'a, 'b> {
     AssignmentNewDefinition,
     Unknown,
     ExpectLiteral,
+    ExpectUnused,
     RevealType,
 }
 
@@ -32,6 +33,7 @@ impl<'a> ResultContext<'a, '_> {
             Self::Unknown
             | Self::AssignmentNewDefinition
             | Self::ExpectLiteral
+            | Self::ExpectUnused
             | Self::RevealType => None,
         }
     }
@@ -47,6 +49,7 @@ impl<'a> ResultContext<'a, '_> {
             Self::Unknown
             | Self::AssignmentNewDefinition
             | Self::ExpectLiteral
+            | Self::ExpectUnused
             | Self::RevealType => None,
         }
     }
@@ -77,13 +80,14 @@ impl<'a> ResultContext<'a, '_> {
             }
             Self::Unknown
             | Self::ExpectLiteral
+            | Self::ExpectUnused
             | Self::RevealType
             | Self::AssignmentNewDefinition => false,
         }
     }
 
     pub fn expect_not_none(&self) -> bool {
-        !matches!(self, Self::Unknown | Self::RevealType)
+        !matches!(self, Self::ExpectUnused | Self::RevealType)
     }
 }
 
@@ -94,6 +98,7 @@ impl fmt::Debug for ResultContext<'_, '_> {
             Self::WithMatcher { type_, .. } => write!(f, "WithMatcher(_, {type_:?})"),
             Self::Unknown => write!(f, "Unknown"),
             Self::ExpectLiteral => write!(f, "ExpectLiteral"),
+            Self::ExpectUnused => write!(f, "ExpectUnused"),
             Self::RevealType => write!(f, "RevealType"),
             Self::AssignmentNewDefinition => write!(f, "AssignmentNewDefinition"),
         }

@@ -171,11 +171,11 @@ impl<'db> TypingCast {
                                 .compute_cast_target(node_ref),
                         )
                     } else {
-                        arg.infer(i_s, &mut ResultContext::Unknown);
+                        arg.infer(i_s, &mut ResultContext::ExpectUnused);
                     }
                 }
                 _ => {
-                    arg.infer(i_s, &mut ResultContext::Unknown);
+                    arg.infer(i_s, &mut ResultContext::ExpectUnused);
                     had_non_positional = true;
                 }
             }
@@ -213,7 +213,7 @@ impl RevealTypeFunction {
         let mut iterator = args.iter();
         let arg = iterator.next().unwrap_or_else(|| todo!());
 
-        let inferred = if matches!(result_context, ResultContext::Unknown) {
+        let inferred = if matches!(result_context, ResultContext::ExpectUnused) {
             // For some reason mypy wants to generate a literal here if possible.
             arg.infer(i_s, &mut ResultContext::RevealType)
         } else {

@@ -364,7 +364,7 @@ fn calculate_descriptor(
             &KnownArguments::new(&instance, from),
             &KnownArguments::new(value, from),
         ),
-        &mut ResultContext::Unknown,
+        &mut ResultContext::ExpectUnused,
         OnTypeError::new(&|i_s, error_text, argument, got, expected| {
             if argument.index == 2 {
                 from.add_issue(i_s, IssueType::IncompatibleAssignment { got, expected });
