@@ -913,7 +913,7 @@ impl<'db> NamedExpression<'db> {
         if node.is_type(Nonterminal(expression)) {
             NamedExpressionContent::Expression(Expression::new(node))
         } else {
-            let expr = node.nth_child(2);
+            let expr = self.node.nth_child(2);
             NamedExpressionContent::Definition(NameDefinition::new(node), Expression::new(expr))
         }
     }
