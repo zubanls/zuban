@@ -45,7 +45,7 @@ impl<'a> Callable<'a> {
                 i_s,
                 IssueType::CallableDoesNotReturnAValue(
                     self.diagnostic_string(i_s.db)
-                        .unwrap_or_else(|| todo!())
+                        .unwrap_or_else(|| "Function".into())
                         .into(),
                 ),
             );
