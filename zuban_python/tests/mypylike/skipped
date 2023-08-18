@@ -2173,11 +2173,6 @@ testGeneratorUnion
 testYieldWithNoValueWhenValueRequired
 # ""yield" outside function"
 testCannotIgnoreBlockingError
-# The return type of a generator function should be "Generator" or one of its supertypes
-testYieldFromInFunctionReturningFunction
-testYieldFromNotIterableReturnType
-testYieldInFunctionReturningFunction
-testWithInvalidInstanceReturnType
 # Function does not return a value in case of yield from foo() where foo() -> Generator[..., ..., None]
 testYieldFromIteratorHasNoValue
 

@@ -3,8 +3,8 @@ use std::ptr::null;
 use std::rc::Rc;
 
 use crate::database::{
-    CallableContent, ClassGenerics, Database, DbType, LiteralKind, Locality, Point, PointLink,
-    PointType, Specific, TupleContent,
+    CallableContent, ClassGenerics, Database, DbType, GenericItem, GenericsList, LiteralKind,
+    Locality, Point, PointLink, PointType, Specific, TupleContent,
 };
 use crate::file::File;
 use crate::file::PythonFile;
@@ -112,6 +112,7 @@ pub struct PythonState {
     pub type_of_self: DbType,
     pub type_of_arbitrary_tuple: DbType,
     pub any_callable: Rc<CallableContent>,
+    pub generator_with_any_generics: DbType,
 }
 
 impl PythonState {
@@ -180,6 +181,7 @@ impl PythonState {
                 DbType::Tuple(TupleContent::new_empty()),
             )),
             any_callable: Rc::new(CallableContent::new_any()),
+            generator_with_any_generics: DbType::Any, // Will be set later
         }
     }
 
@@ -347,6 +349,14 @@ impl PythonState {
         let s = &mut db.python_state;
         let object_db_type = s.object_db_type();
         s.type_of_object = DbType::Type(Rc::new(object_db_type));
+        s.generator_with_any_generics = DbType::new_class(
+            s.generator_link(),
+            ClassGenerics::List(GenericsList::new_generics(Rc::new([
+                GenericItem::TypeArgument(DbType::Any),
+                GenericItem::TypeArgument(DbType::Any),
+                GenericItem::TypeArgument(DbType::Any),
+            ]))),
+        );
 
         // Set promotions
         s.int()

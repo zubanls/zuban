@@ -30,6 +30,7 @@ pub(crate) enum IssueType {
     IncompatibleReturn { got: Box<str>, expected: Box<str> },
     IncompatibleYield { cause: &'static str, got: Box<str>, expected: Box<str> },
     CallableDoesNotReturnAValue(Box<str>),
+    InvalidGeneratorReturnType,
     IncompatibleAssignment { got: Box<str>, expected: Box<str> },
     CannotAssignToClassVarViaInstance { name: Box<str> },
     ListItemMismatch { item: usize, got: Box<str>, expected: Box<str> },
@@ -368,6 +369,8 @@ impl<'db> Diagnostic<'db> {
                 format!(r#"Incompatible types in "{cause}" (actual type "{got}", expected type "{expected}")"#)
             }
             CallableDoesNotReturnAValue(named) => format!("{named} does not return a value"),
+            InvalidGeneratorReturnType =>
+                r#"The return type of a generator function should be "Generator" or one of its supertypes"#.to_string(),
             IncompatibleAssignment{got, expected} => {
                 format!(
                     "Incompatible types in assignment (expression has type \"{got}\", variable has type \"{expected}\")",

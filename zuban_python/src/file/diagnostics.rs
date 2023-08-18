@@ -466,6 +466,22 @@ impl<'db> Inference<'db, '_, '_> {
             }
         }
 
+        if let Some(return_annotation) = return_annotation {
+            if function.is_generator() {
+                if !self
+                    .use_cached_return_annotation_type(return_annotation)
+                    .is_simple_super_type_of(
+                        self.i_s,
+                        &Type::new(&self.i_s.db.python_state.generator_with_any_generics),
+                    )
+                    .bool()
+                {
+                    NodeRef::new(self.file, return_annotation.index())
+                        .add_issue(self.i_s, IssueType::InvalidGeneratorReturnType);
+                }
+            }
+        }
+
         let is_dynamic = function.is_dynamic();
         if !is_dynamic || self.i_s.db.python_state.project.check_untyped_defs {
             let args = NoArguments::new(NodeRef::new(self.file, f.index()));
