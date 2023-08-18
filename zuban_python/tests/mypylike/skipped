@@ -4,7 +4,6 @@ testNewSyntaxWithDict
 testNewSyntaxSpecialAssign
 testNarrowedVariableInNestedModifiedInWalrus
 testNewNamedTupleWithMethods
-testWhitespaceInStringLiteralType
 
 # EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
 testStrEnumCreation

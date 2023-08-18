@@ -389,9 +389,15 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 
     fn compute_forward_reference(
         &mut self,
-        start: CodeIndex,
-        string: Box<str>,
+        mut start: CodeIndex,
+        mut string: Box<str>,
     ) -> TypeContent<'db, 'db> {
+        let maybe_new = string.trim_start();
+        let whitespace_in_beginning = string.len() - maybe_new.len();
+        if whitespace_in_beginning > 0 {
+            start += whitespace_in_beginning as CodeIndex;
+            string = maybe_new.into()
+        }
         let f: &'db PythonFile =
             self.inference
                 .file
