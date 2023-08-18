@@ -2,6 +2,7 @@ use super::function::{format_pretty_function_like, format_pretty_function_with_p
 use super::Class;
 use crate::arguments::Arguments;
 use crate::database::{CallableContent, CallableParams, Database, DbType, FormatStyle};
+use crate::diagnostics::IssueType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{
@@ -39,6 +40,17 @@ impl<'a> Callable<'a> {
         on_type_error: OnTypeError<'db, '_>,
         result_context: &mut ResultContext,
     ) -> Inferred {
+        if result_context.expect_not_none() && matches!(&self.content.result_type, DbType::None) {
+            args.as_node_ref().add_issue(
+                i_s,
+                IssueType::CallableDoesNotReturnAValue(
+                    self.diagnostic_string(i_s.db)
+                        .unwrap_or_else(|| todo!())
+                        .into(),
+                ),
+            );
+            return Inferred::new_any();
+        }
         let calculated_type_vars = calculate_callable_type_vars_and_return(
             i_s,
             *self,

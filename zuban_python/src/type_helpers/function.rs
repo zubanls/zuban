@@ -1046,6 +1046,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 calculated_type_vars,
                 replace_self_type,
                 return_annotation,
+                args,
+                result_context,
             )
         } else {
             if i_s.db.python_state.project.disallow_untyped_calls && self.is_dynamic() {
@@ -1080,7 +1082,21 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         calculated_type_vars: CalculatedTypeArguments,
         replace_self_type: ReplaceSelf,
         return_annotation: ReturnAnnotation,
+        args: &dyn Arguments<'db>,
+        result_context: &mut ResultContext,
     ) -> Inferred {
+        let return_type = self
+            .node_ref
+            .file
+            .inference(i_s)
+            .use_cached_return_annotation_type(return_annotation);
+        if result_context.expect_not_none() && matches!(return_type.as_ref(), DbType::None) {
+            args.as_node_ref().add_issue(
+                i_s,
+                IssueType::CallableDoesNotReturnAValue(self.diagnostic_string().into()),
+            );
+            return Inferred::new_any();
+        }
         // We check first if type vars are involved, because if they aren't we can reuse the
         // annotation expression cache instead of recalculating.
         if NodeRef::new(self.node_ref.file, return_annotation.index())
@@ -1095,16 +1111,12 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     .unwrap_or_else(|| "".to_owned()),
                 self.name()
             );
-            self.node_ref
-                .file
-                .inference(i_s)
-                .use_cached_return_annotation_type(return_annotation)
-                .execute_and_resolve_type_vars(
-                    i_s,
-                    &calculated_type_vars,
-                    self.class.as_ref(),
-                    replace_self_type,
-                )
+            return_type.execute_and_resolve_type_vars(
+                i_s,
+                &calculated_type_vars,
+                self.class.as_ref(),
+                replace_self_type,
+            )
         } else {
             self.node_ref
                 .file

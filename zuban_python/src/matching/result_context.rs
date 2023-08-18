@@ -13,6 +13,7 @@ pub enum ResultContext<'a, 'b> {
     AssignmentNewDefinition,
     Unknown,
     ExpectLiteral,
+    RevealType,
 }
 
 impl<'a> ResultContext<'a, '_> {
@@ -28,7 +29,10 @@ impl<'a> ResultContext<'a, '_> {
                 let t = matcher.replace_type_var_likes_for_nested_context(i_s.db, &t);
                 Some(callable(i_s, &Type::new(&t)))
             }
-            Self::Unknown | Self::AssignmentNewDefinition | Self::ExpectLiteral => None,
+            Self::Unknown
+            | Self::AssignmentNewDefinition
+            | Self::ExpectLiteral
+            | Self::RevealType => None,
         }
     }
 
@@ -40,12 +44,17 @@ impl<'a> ResultContext<'a, '_> {
         match self {
             Self::Known(type_) => Some(callable(i_s, type_, &mut Matcher::default())),
             Self::WithMatcher { matcher, type_ } => Some(callable(i_s, type_, matcher)),
-            Self::Unknown | Self::AssignmentNewDefinition | Self::ExpectLiteral => None,
+            Self::Unknown
+            | Self::AssignmentNewDefinition
+            | Self::ExpectLiteral
+            | Self::RevealType => None,
         }
     }
 
     pub fn is_literal_context<'db>(&self, i_s: &InferenceState<'db, '_>) -> bool {
-        if matches!(self, Self::ExpectLiteral) || i_s.is_calculating_enum_members() {
+        if matches!(self, Self::ExpectLiteral | Self::RevealType)
+            || i_s.is_calculating_enum_members()
+        {
             return true;
         }
         self.with_type_if_exists_and_replace_type_var_likes(
@@ -66,8 +75,15 @@ impl<'a> ResultContext<'a, '_> {
             Self::Known(type_) | Self::WithMatcher { type_, .. } => {
                 matches!(type_.as_ref(), DbType::Union(_))
             }
-            Self::Unknown | Self::ExpectLiteral | Self::AssignmentNewDefinition => false,
+            Self::Unknown
+            | Self::ExpectLiteral
+            | Self::RevealType
+            | Self::AssignmentNewDefinition => false,
         }
+    }
+
+    pub fn expect_not_none(&self) -> bool {
+        !matches!(self, Self::Unknown | Self::RevealType)
     }
 }
 
@@ -78,6 +94,7 @@ impl fmt::Debug for ResultContext<'_, '_> {
             Self::WithMatcher { type_, .. } => write!(f, "WithMatcher(_, {type_:?})"),
             Self::Unknown => write!(f, "Unknown"),
             Self::ExpectLiteral => write!(f, "ExpectLiteral"),
+            Self::RevealType => write!(f, "RevealType"),
             Self::AssignmentNewDefinition => write!(f, "AssignmentNewDefinition"),
         }
     }

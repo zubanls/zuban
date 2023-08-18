@@ -215,7 +215,7 @@ impl RevealTypeFunction {
 
         let inferred = if matches!(result_context, ResultContext::Unknown) {
             // For some reason mypy wants to generate a literal here if possible.
-            arg.infer(i_s, &mut ResultContext::ExpectLiteral)
+            arg.infer(i_s, &mut ResultContext::RevealType)
         } else {
             arg.infer(i_s, result_context)
         };

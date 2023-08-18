@@ -28,6 +28,7 @@ pub(crate) enum IssueType {
     IncompatibleDefaultArgument{ argument_name: Box<str>, got: Box<str>, expected: Box<str> },
     InvalidCastTarget,
     IncompatibleReturn { got: Box<str>, expected: Box<str> },
+    CallableDoesNotReturnAValue(Box<str>),
     IncompatibleAssignment { got: Box<str>, expected: Box<str> },
     CannotAssignToClassVarViaInstance { name: Box<str> },
     ListItemMismatch { item: usize, got: Box<str>, expected: Box<str> },
@@ -361,6 +362,7 @@ impl<'db> Diagnostic<'db> {
             IncompatibleReturn{got, expected} => {
                 format!("Incompatible return value type (got {got:?}, expected {expected:?})")
             }
+            CallableDoesNotReturnAValue(named) => format!("{named} does not return a value"),
             IncompatibleAssignment{got, expected} => {
                 format!(
                     "Incompatible types in assignment (expression has type \"{got}\", variable has type \"{expected}\")",

@@ -2289,12 +2289,9 @@ testUnpackInExpression3-only_when_nocache
 functional_enum_starred_dict_literal_errors
 
 # "???" does not return a value / Function does not return a value
-testCallingVarArgsFunction
 testFunctionTypeCompatibilityWithOtherTypes
-testLvarInitializedToVoid
 testForStatementInferenceWithVoid
 testUseOfNoneReturningFunction
-testNoneReturnTypeBasics
 testNoneReturnTypeWithStatements
 testNoneReturnTypeWithExpressions
 testNoneReturnTypeWithExpressions2
@@ -2302,6 +2299,10 @@ testConditionalExpressionWithEmptyCondition
 testConditionalExpressionStatementNoReturn
 testVoidValueInTuple
 testErrorCodeFunctionDoesNotReturnValue
+# Should maybe not cause an error
+testVoidLambda
+testLambdaReturningNone
+testReturnNoneInFunctionReturningNone
 
 # "Missing return statement"
 testWarnNoReturnWorksWithStrictOptional
