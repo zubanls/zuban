@@ -21,7 +21,9 @@ use crate::matching::{
     FormatData, Generics, LookupKind, LookupResult, OnTypeError, ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
-use crate::type_helpers::{lookup_in_namespace, Class, FirstParamKind, Function, Instance, Module};
+use crate::type_helpers::{
+    lookup_in_namespace, Class, FirstParamKind, Function, GeneratorType, Instance, Module,
+};
 use crate::utils::debug_indent;
 
 pub struct Inference<'db: 'file, 'file, 'i_s> {
@@ -674,9 +676,23 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     Inferred::new_any()
                 }
             }
-            YieldExprContent::YieldFrom(y) => {
-                debug!("TODO yield from");
-                Inferred::new_none()
+            YieldExprContent::YieldFrom(yield_from) => {
+                if let Some(generator) = self
+                    .i_s
+                    .current_function()
+                    .and_then(|func| func.generator_return(self.i_s))
+                {
+                    let expr_result = self.infer_expression(yield_from.expression());
+                    if let Some(other) =
+                        GeneratorType::from_type(self.i_s.db, expr_result.as_type(self.i_s))
+                    {
+                        Inferred::from_type(other.return_type.unwrap_or(DbType::None))
+                    } else {
+                        Inferred::new_none()
+                    }
+                } else {
+                    Inferred::new_any()
+                }
             }
             YieldExprContent::None => Inferred::new_none(),
         }

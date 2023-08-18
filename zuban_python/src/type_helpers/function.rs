@@ -101,28 +101,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 .file
                 .inference(i_s)
                 .use_cached_return_annotation_type(return_annotation);
-            match return_type.as_ref() {
-                DbType::Class(c)
-                    if c.link == i_s.db.python_state.iterator_link()
-                        || c.link == i_s.db.python_state.iterable_link() =>
-                {
-                    let cls = Class::from_generic_class(i_s.db, c);
-                    Some(GeneratorType {
-                        yield_type: cls.nth_type_argument(i_s.db, 0),
-                        send_type: None,
-                        return_type: None,
-                    })
-                }
-                DbType::Class(c) if c.link == i_s.db.python_state.generator_link() => {
-                    let cls = Class::from_generic_class(i_s.db, c);
-                    Some(GeneratorType {
-                        yield_type: cls.nth_type_argument(i_s.db, 0),
-                        send_type: Some(cls.nth_type_argument(i_s.db, 1)),
-                        return_type: Some(cls.nth_type_argument(i_s.db, 2)),
-                    })
-                }
-                _ => None,
-            }
+            GeneratorType::from_type(i_s.db, return_type)
         })
     }
 
@@ -2198,4 +2177,31 @@ pub struct GeneratorType {
     pub yield_type: DbType,
     pub send_type: Option<DbType>,
     pub return_type: Option<DbType>,
+}
+
+impl GeneratorType {
+    pub fn from_type(db: &Database, t: Type) -> Option<Self> {
+        match t.as_ref() {
+            DbType::Class(c)
+                if c.link == db.python_state.iterator_link()
+                    || c.link == db.python_state.iterable_link() =>
+            {
+                let cls = Class::from_generic_class(db, c);
+                Some(GeneratorType {
+                    yield_type: cls.nth_type_argument(db, 0),
+                    send_type: None,
+                    return_type: None,
+                })
+            }
+            DbType::Class(c) if c.link == db.python_state.generator_link() => {
+                let cls = Class::from_generic_class(db, c);
+                Some(GeneratorType {
+                    yield_type: cls.nth_type_argument(db, 0),
+                    send_type: Some(cls.nth_type_argument(db, 1)),
+                    return_type: Some(cls.nth_type_argument(db, 2)),
+                })
+            }
+            _ => None,
+        }
+    }
 }

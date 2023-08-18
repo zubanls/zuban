@@ -2902,6 +2902,12 @@ pub enum YieldExprContent<'db> {
     None,
 }
 
+impl<'db> YieldFrom<'db> {
+    pub fn expression(&self) -> Expression<'db> {
+        Expression::new(self.node.nth_child(1))
+    }
+}
+
 impl<'db> Lambda<'db> {
     fn calculate_param_iterator(lambda_param_node: &PyNode<'db>) -> ParamIterator<'db> {
         if lambda_param_node.is_type(Nonterminal(lambda_parameters)) {
