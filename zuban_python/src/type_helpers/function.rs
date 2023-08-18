@@ -219,7 +219,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
-    fn is_generator(&self) -> bool {
+    pub fn is_generator(&self) -> bool {
         for return_or_yield in self.iter_return_or_yield() {
             if let ReturnOrYield::Yield(_) = return_or_yield {
                 return true;

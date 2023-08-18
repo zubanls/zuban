@@ -642,11 +642,17 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             AssignmentRightSide::StarExpressions(star_exprs) => {
                 self.infer_star_expressions(star_exprs, result_context)
             }
-            AssignmentRightSide::YieldExpr(yield_expr) => self.infer_yield_expr(yield_expr),
+            AssignmentRightSide::YieldExpr(yield_expr) => {
+                self.infer_yield_expr(yield_expr, result_context)
+            }
         }
     }
 
-    pub fn infer_yield_expr(&mut self, yield_expr: YieldExpr) -> Inferred {
+    pub fn infer_yield_expr(
+        &mut self,
+        yield_expr: YieldExpr,
+        result_context: &mut ResultContext,
+    ) -> Inferred {
         match yield_expr.unpack() {
             YieldExprContent::StarExpressions(s) => {
                 if let Some(generator) = self
@@ -688,7 +694,19 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     {
                         Inferred::from_type(other.return_type.unwrap_or(DbType::None))
                     } else {
-                        Inferred::new_none()
+                        if result_context.expect_not_none(self.i_s) {
+                            /*
+                             * TODO this should be enabled for functions only
+                            args.as_node_ref().add_issue(
+                                self.i_s,
+                                IssueType::CallableDoesNotReturnAValue(self.diagnostic_string().into()),
+                            );
+                            Inferred::new_any()
+                            */
+                            Inferred::new_none()
+                        } else {
+                            Inferred::new_none()
+                        }
                     }
                 } else {
                     Inferred::new_any()
@@ -1637,7 +1655,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 )
             }
             GeneratorComprehension(_) => Specific::GeneratorComprehension,
-            YieldExpr(yield_expr) => return self.infer_yield_expr(yield_expr),
+            YieldExpr(yield_expr) => return self.infer_yield_expr(yield_expr, result_context),
             NamedExpression(named_expression) => {
                 return self.infer_named_expression_with_context(named_expression, result_context)
             }

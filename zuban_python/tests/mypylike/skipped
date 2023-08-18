@@ -2162,13 +2162,10 @@ testAddModuleAfterCache1-only_when_cache
 testFollowImportsNormalPackageInitFileStub
 
 # Yield
-testYieldFrom
 testYieldExpression
 testYieldFromIteratorHasNoValue
-testYieldFromGeneratorHasValue
 testYieldFromTupleExpression
 testNoCrashOnLambdaGenerator
-testReturnInGenerator
 testTypeInferenceContextAndYield
 testYieldWithNoValueWhenValueRequired
 testGeneratorUnion
@@ -2180,10 +2177,6 @@ testYieldFromInFunctionReturningFunction
 testYieldFromNotIterableReturnType
 testYieldFromNotAppliedIterator
 testYieldFromCheckIncompatibleTypesTwoIterables
-testYieldFromNotAppliedToNothing
-testYieldFromAndYieldTogether
-testYieldFromAny
-testYieldFromGenericCall
 testYieldFromTupleStatement
 
 # "The return type of a generator should be "Generator" or one of its supertypes"

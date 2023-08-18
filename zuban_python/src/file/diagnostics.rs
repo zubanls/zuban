@@ -19,8 +19,8 @@ use crate::matching::{
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
-    format_pretty_callable, is_private, Class, FirstParamProperties, Function, Instance,
-    TypeOrClass,
+    format_pretty_callable, is_private, Class, FirstParamProperties, Function, GeneratorType,
+    Instance, TypeOrClass,
 };
 
 impl<'db> Inference<'db, '_, '_> {
@@ -52,7 +52,7 @@ impl<'db> Inference<'db, '_, '_> {
                     self.calc_return_stmt_diagnostics(func, return_stmt)
                 }
                 SimpleStmtContent::YieldExpr(yield_expr) => {
-                    self.infer_yield_expr(yield_expr);
+                    self.infer_yield_expr(yield_expr, &mut ResultContext::ExpectUnused);
                 }
                 SimpleStmtContent::RaiseStmt(raise_stmt) => {
                     if let Some((expr, from_expr)) = raise_stmt.unpack() {
@@ -581,7 +581,14 @@ impl<'db> Inference<'db, '_, '_> {
         if let Some(func) = func {
             if let Some(annotation) = func.return_annotation() {
                 if let Some(star_expressions) = return_stmt.star_expressions() {
-                    let t = self.use_cached_return_annotation_type(annotation);
+                    let mut t = self.use_cached_return_annotation_type(annotation);
+                    if func.is_generator() {
+                        t = Type::owned(
+                            GeneratorType::from_type(self.i_s.db, t)
+                                .map(|g| g.return_type.unwrap_or(DbType::None))
+                                .unwrap_or(DbType::Any),
+                        );
+                    }
                     let inf = self
                         .infer_star_expressions(star_expressions, &mut ResultContext::Known(&t));
                     t.error_if_not_matches(self.i_s, &inf, |i_s, got, expected| {
