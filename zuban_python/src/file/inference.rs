@@ -820,6 +820,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 self.i_s,
                                 IssueType::MultipleStarredExpressionsInAssignment,
                             );
+                            self.assign_targets(
+                                target,
+                                Inferred::new_any(),
+                                value_node_ref,
+                                is_definition,
+                            );
                             for target in targets {
                                 self.assign_targets(
                                     star_target.as_target(),

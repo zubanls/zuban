@@ -5,8 +5,6 @@ testNewSyntaxSpecialAssign
 testNarrowedVariableInNestedModifiedInWalrus
 testNewNamedTupleWithMethods
 testWhitespaceInStringLiteralType
-# starred unpacking leads to undefined names
-testTwoStarExpressionsInForStmt
 
 # EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
 testStrEnumCreation
@@ -94,6 +92,8 @@ testDictStarAnyKeyJoinValue
 testStarredExpressionsInForLoop
 testStarExpression
 testStarExpressionInFor
+testTwoStarExpressions
+testTwoStarExpressionsInForStmt
 
 # Type var constraints not enforced in type alias
 testValidTypeAliasValues
