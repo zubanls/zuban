@@ -640,10 +640,15 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             AssignmentRightSide::StarExpressions(star_exprs) => {
                 self.infer_star_expressions(star_exprs, result_context)
             }
-            AssignmentRightSide::YieldExpr(yield_expr) => match yield_expr.unpack() {
-                YieldExprContent::StarExpressions(s) => todo!(),
-                YieldExprContent::YieldFrom(y) => todo!(),
-            },
+            AssignmentRightSide::YieldExpr(yield_expr) => self.infer_yield_expr(yield_expr),
+        }
+    }
+
+    fn infer_yield_expr(&mut self, yield_expr: YieldExpr) -> Inferred {
+        match yield_expr.unpack() {
+            YieldExprContent::StarExpressions(s) => todo!(),
+            YieldExprContent::YieldFrom(y) => todo!(),
+            YieldExprContent::None => Inferred::new_none(),
         }
     }
 
@@ -1586,7 +1591,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 )
             }
             GeneratorComprehension(_) => Specific::GeneratorComprehension,
-            YieldExpr(_) => todo!(),
+            YieldExpr(yield_expr) => return self.infer_yield_expr(yield_expr),
             NamedExpression(named_expression) => {
                 return self.infer_named_expression_with_context(named_expression, result_context)
             }

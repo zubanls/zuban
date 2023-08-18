@@ -2885,7 +2885,9 @@ impl<'db> ReturnStmt<'db> {
 
 impl<'db> YieldExpr<'db> {
     pub fn unpack(&self) -> YieldExprContent<'db> {
-        let node = self.node.nth_child(1);
+        let Some(node) = self.node.iter_children().skip(1).next() else {
+            return YieldExprContent::None
+        };
         if node.is_type(Nonterminal(star_expressions)) {
             YieldExprContent::StarExpressions(StarExpressions::new(node))
         } else {
@@ -2897,6 +2899,7 @@ impl<'db> YieldExpr<'db> {
 pub enum YieldExprContent<'db> {
     StarExpressions(StarExpressions<'db>),
     YieldFrom(YieldFrom<'db>),
+    None,
 }
 
 impl<'db> Lambda<'db> {
