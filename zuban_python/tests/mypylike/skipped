@@ -2169,7 +2169,6 @@ testYieldFromGeneratorHasValue
 testYieldFromTupleExpression
 testNoCrashOnLambdaGenerator
 testReturnInGenerator
-testSimpleYield
 testTypeInferenceContextAndYield
 testYieldWithNoValueWhenValueRequired
 testGeneratorUnion

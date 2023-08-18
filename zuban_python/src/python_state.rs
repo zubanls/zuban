@@ -88,6 +88,8 @@ pub struct PythonState {
     typing_namedtuple_index: NodeIndex, // TODO Appears to be unused currently.
     typing_type_var: NodeIndex,
     typing_coroutine_index: NodeIndex,
+    typing_iterator_index: NodeIndex,
+    typing_iterable_index: NodeIndex,
     typing_generator_index: NodeIndex,
     typing_overload_index: NodeIndex,
     types_module_type_index: NodeIndex,
@@ -155,6 +157,8 @@ impl PythonState {
             typing_type_var: 0,
             typing_overload_index: 0,
             typing_coroutine_index: 0,
+            typing_iterator_index: 0,
+            typing_iterable_index: 0,
             typing_generator_index: 0,
             collections_namedtuple_index: 0,
             abc_abc_meta_index: 0,
@@ -309,6 +313,8 @@ impl PythonState {
         cache_index!(typing_namedtuple_index, db, typing, "NamedTuple");
         cache_index!(typing_type_var, db, typing, "TypeVar");
         cache_index!(typing_coroutine_index, db, typing, "Coroutine");
+        cache_index!(typing_iterator_index, db, typing, "Iterator");
+        cache_index!(typing_iterable_index, db, typing, "Iterable");
         cache_index!(typing_generator_index, db, typing, "Generator");
         cache_index!(types_module_type_index, db, types, "ModuleType");
         cache_index!(types_none_type_index, db, types, "NoneType");
@@ -562,6 +568,16 @@ impl PythonState {
     pub fn generator_link(&self) -> PointLink {
         debug_assert!(self.typing_generator_index != 0);
         PointLink::new(self.typing().file_index(), self.typing_generator_index)
+    }
+
+    pub fn iterator_link(&self) -> PointLink {
+        debug_assert!(self.typing_iterator_index != 0);
+        PointLink::new(self.typing().file_index(), self.typing_iterator_index)
+    }
+
+    pub fn iterable_link(&self) -> PointLink {
+        debug_assert!(self.typing_iterable_index != 0);
+        PointLink::new(self.typing().file_index(), self.typing_iterable_index)
     }
 
     pub fn mypy_extensions_arg_func(&self, db: &Database, specific: Specific) -> Inferred {

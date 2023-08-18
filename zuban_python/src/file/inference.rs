@@ -644,10 +644,40 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    fn infer_yield_expr(&mut self, yield_expr: YieldExpr) -> Inferred {
+    pub fn infer_yield_expr(&mut self, yield_expr: YieldExpr) -> Inferred {
         match yield_expr.unpack() {
-            YieldExprContent::StarExpressions(s) => todo!(),
-            YieldExprContent::YieldFrom(y) => todo!(),
+            YieldExprContent::StarExpressions(s) => {
+                if let Some(generator) = self
+                    .i_s
+                    .current_function()
+                    .and_then(|func| func.generator_return(self.i_s))
+                {
+                    let from = NodeRef::new(self.file, yield_expr.index());
+                    Inferred::from_type(generator.yield_type)
+                        .as_type(self.i_s)
+                        .error_if_not_matches(
+                            self.i_s,
+                            &self.infer_star_expressions(s, &mut ResultContext::Unknown),
+                            |i_s, got, expected| {
+                                from.add_issue(i_s, IssueType::IncompatibleYield { got, expected });
+                                from.to_db_lifetime(i_s.db)
+                            },
+                        );
+                    if let Some(send_type) = generator.send_type {
+                        Inferred::from_type(send_type)
+                    } else {
+                        Inferred::new_none()
+                    }
+                } else {
+                    // In case we do not know the generator return, just don't check here. The
+                    // function type will be checked in a different place.
+                    Inferred::new_any()
+                }
+            }
+            YieldExprContent::YieldFrom(y) => {
+                debug!("TODO yield from");
+                Inferred::new_none()
+            }
             YieldExprContent::None => Inferred::new_none(),
         }
     }

@@ -51,7 +51,9 @@ impl<'db> Inference<'db, '_, '_> {
                 SimpleStmtContent::ReturnStmt(return_stmt) => {
                     self.calc_return_stmt_diagnostics(func, return_stmt)
                 }
-                SimpleStmtContent::YieldExpr(x) => {}
+                SimpleStmtContent::YieldExpr(yield_expr) => {
+                    self.infer_yield_expr(yield_expr);
+                }
                 SimpleStmtContent::RaiseStmt(raise_stmt) => {
                     if let Some((expr, from_expr)) = raise_stmt.unpack() {
                         self.check_valid_raise_type(expr, false);

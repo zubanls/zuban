@@ -94,6 +94,38 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 .any(|p| p.annotation().is_some())
     }
 
+    pub fn generator_return(&self, i_s: &InferenceState) -> Option<GeneratorType> {
+        self.return_annotation().and_then(|return_annotation| {
+            let return_type = self
+                .node_ref
+                .file
+                .inference(i_s)
+                .use_cached_return_annotation_type(return_annotation);
+            match return_type.as_ref() {
+                DbType::Class(c)
+                    if c.link == i_s.db.python_state.iterator_link()
+                        || c.link == i_s.db.python_state.iterable_link() =>
+                {
+                    let cls = Class::from_generic_class(i_s.db, c);
+                    Some(GeneratorType {
+                        yield_type: cls.nth_type_argument(i_s.db, 0),
+                        send_type: None,
+                        return_type: None,
+                    })
+                }
+                DbType::Class(c) if c.link == i_s.db.python_state.generator_link() => {
+                    let cls = Class::from_generic_class(i_s.db, c);
+                    Some(GeneratorType {
+                        yield_type: cls.nth_type_argument(i_s.db, 0),
+                        send_type: Some(cls.nth_type_argument(i_s.db, 1)),
+                        return_type: Some(cls.nth_type_argument(i_s.db, 2)),
+                    })
+                }
+                _ => None,
+            }
+        })
+    }
+
     pub fn is_missing_param_annotations(&self, i_s: &InferenceState) -> bool {
         let mut iterator = self.node().params().iter();
         if self.class.is_some() && self.kind(i_s) != FunctionKind::Staticmethod {
@@ -2160,4 +2192,10 @@ pub enum FirstParamKind {
     Self_,
     ClassOfSelf,
     InStaticmethod,
+}
+
+pub struct GeneratorType {
+    pub yield_type: DbType,
+    pub send_type: Option<DbType>,
+    pub return_type: Option<DbType>,
 }
