@@ -1254,7 +1254,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let (params, expr) = lambda.unpack();
                 if params.count() == 0 {
                     let result =
-                        self.infer_expression_without_cache(expr, &mut ResultContext::Unknown);
+                        self.infer_expression_without_cache(expr, &mut ResultContext::ExpectUnused);
                     let c = CallableContent {
                         name: None,
                         class_name: None,

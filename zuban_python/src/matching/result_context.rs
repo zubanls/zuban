@@ -86,8 +86,11 @@ impl<'a> ResultContext<'a, '_> {
         }
     }
 
-    pub fn expect_not_none(&self) -> bool {
-        !matches!(self, Self::ExpectUnused | Self::RevealType)
+    pub fn expect_not_none(&mut self, i_s: &InferenceState) -> bool {
+        self.with_type_if_exists(i_s, |i_s, type_, matcher| {
+            !matches!(type_.as_ref(), DbType::None)
+        })
+        .unwrap_or_else(|| !matches!(self, Self::ExpectUnused | Self::RevealType))
     }
 }
 

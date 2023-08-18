@@ -40,7 +40,8 @@ impl<'a> Callable<'a> {
         on_type_error: OnTypeError<'db, '_>,
         result_context: &mut ResultContext,
     ) -> Inferred {
-        if result_context.expect_not_none() && matches!(&self.content.result_type, DbType::None) {
+        let return_type = &self.content.result_type;
+        if result_context.expect_not_none(i_s) && matches!(&return_type, DbType::None) {
             args.as_node_ref().add_issue(
                 i_s,
                 IssueType::CallableDoesNotReturnAValue(
@@ -60,8 +61,7 @@ impl<'a> Callable<'a> {
             result_context,
             Some(on_type_error),
         );
-        let g_o = Type::new(&self.content.result_type);
-        g_o.execute_and_resolve_type_vars(
+        Type::new(return_type).execute_and_resolve_type_vars(
             i_s,
             &calculated_type_vars,
             self.defined_in.as_ref(),
