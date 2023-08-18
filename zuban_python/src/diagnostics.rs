@@ -29,7 +29,7 @@ pub(crate) enum IssueType {
     InvalidCastTarget,
     IncompatibleReturn { got: Box<str>, expected: Box<str> },
     IncompatibleYield { cause: &'static str, got: Box<str>, expected: Box<str> },
-    CallableDoesNotReturnAValue(Box<str>),
+    DoesNotReturnAValue(Box<str>),
     InvalidGeneratorReturnType,
     YieldFromCannotBeApplied { to: Box<str> },
     IncompatibleAssignment { got: Box<str>, expected: Box<str> },
@@ -235,7 +235,7 @@ impl IssueType {
             FunctionIsDynamic
             | FunctionMissingReturnAnnotation
             | FunctionMissingParamAnnotations => "no-untyped-def",
-            CallableDoesNotReturnAValue(_) => "func-returns-value",
+            DoesNotReturnAValue(_) => "func-returns-value",
             CallToUntypedFunction { .. } => "no-untyped-call",
             AnnotationInUntypedFunction => "annotation-unchecked",
             _ => "misc",
@@ -369,7 +369,7 @@ impl<'db> Diagnostic<'db> {
             IncompatibleYield{cause, got, expected} => {
                 format!(r#"Incompatible types in "{cause}" (actual type "{got}", expected type "{expected}")"#)
             }
-            CallableDoesNotReturnAValue(named) => format!("{named} does not return a value"),
+            DoesNotReturnAValue(named) => format!("{named} does not return a value"),
             InvalidGeneratorReturnType =>
                 r#"The return type of a generator function should be "Generator" or one of its supertypes"#.to_string(),
             YieldFromCannotBeApplied { to } => format!(r#""yield from" can't be applied to "{to}""#),

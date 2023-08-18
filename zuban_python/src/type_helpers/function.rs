@@ -1104,7 +1104,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         if result_context.expect_not_none(i_s) && matches!(return_type.as_ref(), DbType::None) {
             args.as_node_ref().add_issue(
                 i_s,
-                IssueType::CallableDoesNotReturnAValue(self.diagnostic_string().into()),
+                IssueType::DoesNotReturnAValue(self.diagnostic_string().into()),
             );
             return Inferred::new_any();
         }

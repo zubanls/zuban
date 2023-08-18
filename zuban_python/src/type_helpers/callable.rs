@@ -44,7 +44,7 @@ impl<'a> Callable<'a> {
         if result_context.expect_not_none(i_s) && matches!(&return_type, DbType::None) {
             args.as_node_ref().add_issue(
                 i_s,
-                IssueType::CallableDoesNotReturnAValue(
+                IssueType::DoesNotReturnAValue(
                     self.diagnostic_string(i_s.db)
                         .unwrap_or_else(|| "Function".into())
                         .into(),
