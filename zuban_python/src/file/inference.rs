@@ -989,6 +989,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             ExpressionContent::Lambda(l) => self.infer_lambda(l, result_context),
             ExpressionContent::Ternary(t) => {
                 let (if_, condition, else_) = t.unpack();
+                self.infer_expression_part(condition, &mut ResultContext::Unknown);
                 let else_inf = self.infer_expression(else_);
                 self.infer_expression_part(if_, &mut ResultContext::Unknown)
                     .types_union(self.i_s, else_inf, result_context)
