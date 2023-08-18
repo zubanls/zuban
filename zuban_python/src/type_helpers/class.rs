@@ -3,8 +3,8 @@ use std::fmt;
 use std::rc::Rc;
 
 use parsa_python_ast::{
-    Argument, AssignmentContent, BlockContent, ClassDef, Decoratee, SimpleStmtContent, SimpleStmts,
-    StmtContent, StmtOrError, Target,
+    Argument, AssignmentContent, AsyncStmtContent, BlockContent, ClassDef, Decoratee,
+    SimpleStmtContent, SimpleStmts, StmtContent, StmtOrError, Target,
 };
 
 use super::enum_::execute_functional_enum;
@@ -1101,6 +1101,8 @@ impl<'db: 'a, 'a> Class<'a> {
                             find_stmt_named_tuple_types(i_s, file, &mut vec, simple)
                         }
                         StmtContent::FunctionDef(_) => (),
+                        StmtContent::AsyncStmt(async_stmt)
+                            if matches!(async_stmt.unpack(), AsyncStmtContent::FunctionDef(_)) => {}
                         StmtContent::Decorated(dec)
                             if matches!(
                                 dec.decoratee(),

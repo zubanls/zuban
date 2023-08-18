@@ -3,7 +3,6 @@ testOverloadDetectsPossibleMatchesWithGenerics
 testNewSyntaxWithDict
 testNewSyntaxSpecialAssign
 testNarrowedVariableInNestedModifiedInWalrus
-testNewNamedTupleWithMethods
 
 # EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
 testStrEnumCreation
