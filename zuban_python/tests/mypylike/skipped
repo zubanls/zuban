@@ -1,7 +1,5 @@
 # Next up
-testOverloadDetectsPossibleMatchesWithGenerics
 testNewSyntaxWithDict
-testNewSyntaxSpecialAssign
 
 # EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
 testStrEnumCreation
@@ -53,8 +51,6 @@ testErrorCodeInvalidTypeArg
 
 # raise with brackets and no parentheses
 testRaiseClassObjectCustomInit
-# tuple assignment tuple[Any, ...] to tuple[A, A]
-testSubtypingWithNamedTupleType
 
 # Flakey in --release
 testReturnInIterator
@@ -66,31 +62,6 @@ testSelfTypeRestrictedMethodOverloadInitBadTypeNoCrash
 testTypeApplicationWithQualifiedTypeAlias
 # typing.Union used in type alias
 testUnionTypeAliasWithQualifiedUnion
-
-# dict specialities
-testDictWithKeywordArgsOnly
-testDictWithoutKeywordArgs
-testDictFromList
-testDictFromIterableAndKeywordArg
-testDictFromIterableAndKeywordArg2
-testDictFromIterableAndStarStarArgs
-testDictFromIterableAndStarStarArgs2
-testSpecialSignatureForSubclassOfDict
-testSpecialSignatureForSubclassOfDict2
-testDictWithStarStarExpr
-testDictIncompatibleTypeErrorMessage
-testDictIncompatibleKeyVerbosity
-testDictIncompatibleValueVerbosity
-testDictExpressionErrorLocations
-# star star in dict literal
-testDictStarInference
-testDictStarAnyKeyJoinValue
-# star tuples
-testStarredExpressionsInForLoop
-testStarExpression
-testStarExpressionInFor
-testTwoStarExpressions
-testTwoStarExpressionsInForStmt
 
 # Type var constraints not enforced in type alias
 testValidTypeAliasValues
@@ -166,6 +137,8 @@ testUnpackIterableClassWithOverloadedIter
 testUnpackIterableClassWithOverloadedIter2
 # Overload union math for __init__
 overload_union_math_on_class_init_constrained
+# union math for None vs. TypeVar
+testOverloadDetectsPossibleMatchesWithGenerics
 # Overload __init__ formatting shows a return type
 testOverloadedInitSupertype
 testSerializeOverloaded__init__
@@ -400,6 +373,83 @@ testAssertType
 testAssertTypeGeneric
 testAssertTypeUncheckedFunction
 testAssertTypeUncheckedFunctionWithUntypedCheck
+
+# dict specialities
+testDictWithKeywordArgsOnly
+testDictWithoutKeywordArgs
+testDictFromList
+testDictFromIterableAndKeywordArg
+testDictFromIterableAndKeywordArg2
+testDictFromIterableAndStarStarArgs
+testDictFromIterableAndStarStarArgs2
+testSpecialSignatureForSubclassOfDict
+testSpecialSignatureForSubclassOfDict2
+testDictWithStarStarExpr
+testDictIncompatibleTypeErrorMessage
+testDictIncompatibleKeyVerbosity
+testDictIncompatibleValueVerbosity
+testDictExpressionErrorLocations
+# star star in dict literal
+testDictStarInference
+testDictStarAnyKeyJoinValue
+
+# Incompatible number of tuple items
+testVariableDeclWithInvalidNumberOfTypes
+testVariableDeclWithInvalidNumberOfTypesNested
+testVariableDeclWithInvalidNumberOfTypesNested2
+testVariableDeclWithInvalidNumberOfTypesNested4
+# "Too many values to unpack (2 expected, 3 provided)"
+testInferringLvarTypesInMultiDefWithInvalidTuple
+testMultipleAssignmentWithDynamic
+testMultipleAssignmentWithInvalidNumberOfValues
+testInitializationWithMultipleValues
+testNestedTupleAssignment2
+testUnionAlwaysTooMany
+testUnionAlwaysTooFew
+testUnionOfVariableLengthTupleUnpacking
+# Union IteratorContent len() call
+testUnionUnpackingChainedList2
+# "Unsupported target for indexed assignment ("tuple[A, B]")"
+testAssigningToTupleItems
+testErrorCodeIndexing
+testColumnInvalidIndexing
+testNewSyntaxSpecialAssign
+# star unpacking for tuples
+testAssignmentToStarAnnotation
+testAssignmentToStarCount1
+testAssignmentToStarCount2
+testAssignmentToStarFromAny
+testAssignmentToComplexStar
+testAssignmentToStarFromTupleType
+testStarredExpressionsInForLoop
+testStarExpression
+testStarExpressionInFor
+testTwoStarExpressions
+testTwoStarExpressionsInForStmt
+# star input for tuple
+testTupleWithStarExpr2
+testTupleWithStarExpr3
+testTupleWithStarExpr
+# "Can use starred expression only as assignment target"
+testUnpackSyntaxError
+# union tuple index
+testUnionOfTupleIndex
+testUnionOfTupleIndexMixed
+# tuple concatenation
+testFixedLengthTupleConcatenation
+# tuple multiplication
+testMultiplyTupleByIntegerLiteral
+testMultiplyTupleByIntegerLiteralReverse
+# "Expression tuple item 8 has type "str"; "int" expected;"
+testAssigningWithLongTupleInitializer
+# Tuple operator in
+testTupleMethods
+# tuple maybe ok error messages?
+testTupleWithUndersizedContext
+testTupleWithOversizedContext
+testAssignEmptyBogus
+# tuple assignment tuple[Any, ...] to tuple[A, A]
+testSubtypingWithNamedTupleType
 
 # Tuple Super Class
 testGenericTupleTypeCreation
@@ -2437,56 +2487,6 @@ testColumnSyntaxErrorInTypeAnnotation2
 
 # Assignment like ac[b] += c with both __getitem__ and __setitem__ has same error twice
 testOperatorAssignmentWithIndexLvalue1
-
-# Incompatible number of tuple items
-testVariableDeclWithInvalidNumberOfTypes
-testVariableDeclWithInvalidNumberOfTypesNested
-testVariableDeclWithInvalidNumberOfTypesNested2
-testVariableDeclWithInvalidNumberOfTypesNested4
-# "Too many values to unpack (2 expected, 3 provided)"
-testInferringLvarTypesInMultiDefWithInvalidTuple
-testMultipleAssignmentWithDynamic
-testMultipleAssignmentWithInvalidNumberOfValues
-testInitializationWithMultipleValues
-testNestedTupleAssignment2
-testUnionAlwaysTooMany
-testUnionAlwaysTooFew
-testUnionOfVariableLengthTupleUnpacking
-# Union IteratorContent len() call
-testUnionUnpackingChainedList2
-# "Unsupported target for indexed assignment ("tuple[A, B]")"
-testAssigningToTupleItems
-testErrorCodeIndexing
-testColumnInvalidIndexing
-# star unpacking for tuples
-testAssignmentToStarAnnotation
-testAssignmentToStarCount1
-testAssignmentToStarCount2
-testAssignmentToStarFromAny
-testAssignmentToComplexStar
-testAssignmentToStarFromTupleType
-# star input for tuple
-testTupleWithStarExpr2
-testTupleWithStarExpr3
-testTupleWithStarExpr
-# "Can use starred expression only as assignment target"
-testUnpackSyntaxError
-# union tuple index
-testUnionOfTupleIndex
-testUnionOfTupleIndexMixed
-# tuple concatenation
-testFixedLengthTupleConcatenation
-# tuple multiplication
-testMultiplyTupleByIntegerLiteral
-testMultiplyTupleByIntegerLiteralReverse
-# "Expression tuple item 8 has type "str"; "int" expected;"
-testAssigningWithLongTupleInitializer
-# Tuple operator in
-testTupleMethods
-# tuple maybe ok error messages?
-testTupleWithUndersizedContext
-testTupleWithOversizedContext
-testAssignEmptyBogus
 
 # EllipsisType
 testUnionWithEllipsis
