@@ -232,6 +232,7 @@ impl IssueType {
             FunctionIsDynamic
             | FunctionMissingReturnAnnotation
             | FunctionMissingParamAnnotations => "no-untyped-def",
+            CallableDoesNotReturnAValue(_) => "func-returns-value",
             CallToUntypedFunction { .. } => "no-untyped-call",
             AnnotationInUntypedFunction => "annotation-unchecked",
             _ => "misc",
