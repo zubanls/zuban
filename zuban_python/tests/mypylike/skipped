@@ -2166,7 +2166,6 @@ testYieldExpression
 testYieldFromTupleExpression
 testNoCrashOnLambdaGenerator
 testTypeInferenceContextAndYield
-testYieldFromNotAppliedIterator
 # yield union of two generators
 testGeneratorUnion
 # "Yield value expected"

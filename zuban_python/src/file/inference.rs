@@ -702,7 +702,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             from,
                             "__iter__",
                             &NoArguments::new(from),
-                            &|_| todo!(),
+                            &|_| {
+                                from.add_issue(
+                                    self.i_s,
+                                    IssueType::YieldFromCannotBeApplied {
+                                        to: expr_result.format_short(self.i_s),
+                                    },
+                                )
+                            },
                         )
                         .type_lookup_and_execute(
                             self.i_s,
