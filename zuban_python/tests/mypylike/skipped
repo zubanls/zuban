@@ -2289,7 +2289,6 @@ testUnpackInExpression3-only_when_nocache
 functional_enum_starred_dict_literal_errors
 
 # "???" does not return a value / Function does not return a value
-testConditionalExpressionStatementNoReturn
 # Should maybe not cause an error
 testVoidLambda
 testLambdaReturningNone
