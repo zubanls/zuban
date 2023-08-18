@@ -766,6 +766,8 @@ testLambdaDeferredCrash
 testParamSpecLiteralsTypeApplication
 # Param Spec lambda type inference
 testParamSpecInferredFromLambda
+# Generator in lambda
+testNoCrashOnLambdaGenerator
 
 # Protocol invalid "Access to generic instance variables via class is ambiguous"
 testGenericSubProtocols
@@ -2164,15 +2166,12 @@ testFollowImportsNormalPackageInitFileStub
 # Yield
 testYieldExpression
 testYieldFromTupleExpression
-testNoCrashOnLambdaGenerator
 # yield union of two generators
 testGeneratorUnion
 # "Yield value expected"
 testYieldWithNoValueWhenValueRequired
 # ""yield" outside function"
 testCannotIgnoreBlockingError
-# Function does not return a value in case of yield from foo() where foo() -> Generator[..., ..., None]
-testYieldFromIteratorHasNoValue
 
 # async/await
 testAwaitCoroutine

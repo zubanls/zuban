@@ -736,21 +736,22 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     if let Some(other) =
                         GeneratorType::from_type(self.i_s.db, expr_result.as_type(self.i_s))
                     {
-                        Inferred::from_type(other.return_type.unwrap_or(DbType::None))
-                    } else {
-                        if result_context.expect_not_none(self.i_s) {
-                            /*
-                             * TODO this should be enabled for functions only
-                            args.as_node_ref().add_issue(
-                                self.i_s,
-                                IssueType::CallableDoesNotReturnAValue(self.diagnostic_string().into()),
-                            );
-                            Inferred::new_any()
-                            */
-                            Inferred::new_none()
+                        if let Some(return_type) = other.return_type {
+                            Inferred::from_type(return_type)
                         } else {
-                            Inferred::new_none()
+                            if result_context.expect_not_none(self.i_s) {
+                                from.add_issue(
+                                    self.i_s,
+                                    IssueType::DoesNotReturnAValue("Function".into()),
+                                );
+                                Inferred::new_any()
+                            } else {
+                                Inferred::new_none()
+                            }
                         }
+                    } else {
+                        // An invalid type
+                        Inferred::new_any()
                     }
                 } else {
                     Inferred::new_any()
