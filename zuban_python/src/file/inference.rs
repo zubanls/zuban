@@ -653,6 +653,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         yield_expr: YieldExpr,
         result_context: &mut ResultContext,
     ) -> Inferred {
+        let from = NodeRef::new(self.file, yield_expr.index());
         match yield_expr.unpack() {
             YieldExprContent::StarExpressions(s) => {
                 if let Some(generator) = self
@@ -660,14 +661,20 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     .current_function()
                     .and_then(|func| func.generator_return(self.i_s))
                 {
-                    let from = NodeRef::new(self.file, yield_expr.index());
                     Inferred::from_type(generator.yield_type)
                         .as_type(self.i_s)
                         .error_if_not_matches(
                             self.i_s,
                             &self.infer_star_expressions(s, &mut ResultContext::Unknown),
                             |i_s, got, expected| {
-                                from.add_issue(i_s, IssueType::IncompatibleYield { got, expected });
+                                from.add_issue(
+                                    i_s,
+                                    IssueType::IncompatibleYield {
+                                        cause: "yield",
+                                        got,
+                                        expected,
+                                    },
+                                );
                                 from.to_db_lifetime(i_s.db)
                             },
                         );
@@ -689,6 +696,36 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     .and_then(|func| func.generator_return(self.i_s))
                 {
                     let expr_result = self.infer_expression(yield_from.expression());
+                    let yields = expr_result
+                        .type_lookup_and_execute(
+                            self.i_s,
+                            from,
+                            "__iter__",
+                            &NoArguments::new(from),
+                            &|_| todo!(),
+                        )
+                        .type_lookup_and_execute(
+                            self.i_s,
+                            from,
+                            "__next__",
+                            &NoArguments::new(from),
+                            &|_| todo!(),
+                        );
+                    Type::owned(generator.yield_type).error_if_not_matches(
+                        self.i_s,
+                        &yields,
+                        |i_s, got, expected| {
+                            from.add_issue(
+                                i_s,
+                                IssueType::IncompatibleYield {
+                                    cause: "yield from",
+                                    got,
+                                    expected,
+                                },
+                            );
+                            from.to_db_lifetime(i_s.db)
+                        },
+                    );
                     if let Some(other) =
                         GeneratorType::from_type(self.i_s.db, expr_result.as_type(self.i_s))
                     {
