@@ -784,15 +784,17 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     &|_| {
                         debug!("TODO __setitem__ not found");
                     },
-                    OnTypeError::new(&|i_s, function, arg, actual, expected| {
-                        arg.as_node_ref().add_issue(
-                            i_s,
+                    OnTypeError::new(&|i_s, function, arg, got, expected| {
+                        let type_ = if arg.index == 1 {
                             IssueType::InvalidGetItem {
-                                actual,
+                                actual: got,
                                 type_: base.format_short(i_s),
                                 expected,
-                            },
-                        )
+                            }
+                        } else {
+                            IssueType::InvalidSetItemTarget { got, expected }
+                        };
+                        arg.as_node_ref().add_issue(i_s, type_)
                     }),
                 );
             }

@@ -47,6 +47,7 @@ pub(crate) enum IssueType {
     UnsupportedIn { right: Box<str> },
     UnsupportedOperandForUnary { operand: &'static str, got: Box<str>},
     InvalidGetItem { actual: Box<str>, type_: Box<str>, expected: Box<str> },
+    InvalidSetItemTarget { got: Box<str>, expected: Box<str> },
     NotIndexable { type_: Box<str> },
     TooFewValuesToUnpack { actual: usize, expected: usize },
     StarredExpressionOnlyNoTarget,
@@ -206,7 +207,9 @@ impl IssueType {
             TooFewArguments { .. } => "call-arg",
             InvalidType(_) => "valid-type",
             IncompatibleReturn { .. } => "return-value",
-            IncompatibleDefaultArgument { .. } | IncompatibleAssignment { .. } => "assignment",
+            IncompatibleDefaultArgument { .. }
+            | IncompatibleAssignment { .. }
+            | InvalidSetItemTarget { .. } => "assignment",
             InvalidGetItem { .. } | NotIndexable { .. } => "index",
             TypeVarInReturnButNotArgument
             | InvalidTypeVarValue { .. }
@@ -441,6 +444,10 @@ impl<'db> Diagnostic<'db> {
             }
             InvalidGetItem{actual, type_, expected} => format!(
                 "Invalid index type {actual:?} for {type_:?}; expected type {expected:?}",
+            ),
+            InvalidSetItemTarget{got, expected} => format!(
+                "Incompatible types in assignment (expression has type \
+                 \"{got}\", target has type \"{expected}\")",
             ),
             NotIndexable{type_} => format!("Value of type {type_:?} is not indexable"),
 
