@@ -714,6 +714,7 @@ testDictionaryComprehensionComplex
 testSetComprehensionComplex
 testConditionalExpressionInSetComprehension
 testTwoStarExpressionsInGeneratorExpr
+testYieldOutsideFunction
 # comprehensions Scoping
 testListComprehensionSpecialScoping
 # "Assignment expression within a comprehension cannot be used in a class body"
@@ -2161,7 +2162,6 @@ testAddModuleAfterCache1-only_when_cache
 testFollowImportsNormalPackageInitFileStub
 
 # Yield
-testYieldOutsideFunction
 testYieldFrom
 testYieldExpression
 testYieldExpressionWithNone

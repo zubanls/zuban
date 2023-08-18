@@ -755,6 +755,12 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                     }
                 }
                 InterestingNode::YieldExpr(n) => {
+                    if self.type_ != NameBinderType::Function {
+                        self.add_issue(
+                            n.index(),
+                            IssueType::StmtOutsideFunction { keyword: "yield" },
+                        )
+                    }
                     self.index_return_or_yield(&mut latest_return_or_yield, n.index());
                 }
                 InterestingNode::ReturnStmt(n) => {
