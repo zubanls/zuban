@@ -2288,12 +2288,6 @@ testNotDirectIterableAndMappingSubtyping
 testUnpackInExpression3-only_when_nocache
 functional_enum_starred_dict_literal_errors
 
-# "???" does not return a value / Function does not return a value
-# Should maybe not cause an error
-testLambdaReturningNone
-testReturnNoneInFunctionReturningNone
-testPropagatedAnyConstraintsAreOK
-
 # "Missing return statement"
 testWarnNoReturnWorksWithStrictOptional
 testAssertCurrentFrameIsNotUnreachable
