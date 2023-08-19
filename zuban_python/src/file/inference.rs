@@ -655,102 +655,99 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     ) -> Inferred {
         let i_s = self.i_s;
         let from = NodeRef::new(self.file, yield_expr.index());
+        let Some(generator) = self
+            .i_s
+            .current_function()
+            .and_then(|func| func.generator_return(i_s)) else
+        {
+            match yield_expr.unpack() {
+                YieldExprContent::StarExpressions(s) => {
+                    self.infer_star_expressions(s, &mut ResultContext::Unknown);
+                }
+                YieldExprContent::YieldFrom(yield_from) => {
+                    self.infer_expression(yield_from.expression());
+                }
+                YieldExprContent::None => (),
+            }
+            // In case we do not know the generator return, just don't check here. The
+            // function type will be checked in a different place.
+            return Inferred::new_any()
+        };
+
         match yield_expr.unpack() {
             YieldExprContent::StarExpressions(s) => {
                 let inf = self.infer_star_expressions(s, &mut ResultContext::Unknown);
-                if let Some(generator) = self
-                    .i_s
-                    .current_function()
-                    .and_then(|func| func.generator_return(i_s))
-                {
-                    Inferred::from_type(generator.yield_type)
-                        .as_type(i_s)
-                        .error_if_not_matches(i_s, &inf, |i_s, got, expected| {
-                            from.add_issue(
-                                i_s,
-                                IssueType::IncompatibleYield {
-                                    cause: "yield",
-                                    got,
-                                    expected,
-                                },
-                            );
-                            from.to_db_lifetime(i_s.db)
-                        });
-                    if let Some(send_type) = generator.send_type {
-                        Inferred::from_type(send_type)
-                    } else {
-                        Inferred::new_none()
-                    }
+                Inferred::from_type(generator.yield_type)
+                    .as_type(i_s)
+                    .error_if_not_matches(i_s, &inf, |i_s, got, expected| {
+                        from.add_issue(
+                            i_s,
+                            IssueType::IncompatibleYield {
+                                cause: "yield",
+                                got,
+                                expected,
+                            },
+                        );
+                        from.to_db_lifetime(i_s.db)
+                    });
+                if let Some(send_type) = generator.send_type {
+                    Inferred::from_type(send_type)
                 } else {
-                    // In case we do not know the generator return, just don't check here. The
-                    // function type will be checked in a different place.
-                    Inferred::new_any()
+                    Inferred::new_none()
                 }
             }
             YieldExprContent::YieldFrom(yield_from) => {
-                if let Some(generator) = self
-                    .i_s
-                    .current_function()
-                    .and_then(|func| func.generator_return(i_s))
-                {
-                    let expr_result = self.infer_expression(yield_from.expression());
-                    let yields = expr_result
-                        .type_lookup_and_execute(
-                            i_s,
-                            from,
-                            "__iter__",
-                            &NoArguments::new(from),
-                            &|_| {
-                                from.add_issue(
-                                    i_s,
-                                    IssueType::YieldFromCannotBeApplied {
-                                        to: expr_result.format_short(i_s),
-                                    },
-                                )
-                            },
-                        )
-                        .type_lookup_and_execute(
-                            i_s,
-                            from,
-                            "__next__",
-                            &NoArguments::new(from),
-                            &|_| todo!(),
-                        );
-                    Type::owned(generator.yield_type).error_if_not_matches(
+                let expr_result = self.infer_expression(yield_from.expression());
+                let yields = expr_result
+                    .type_lookup_and_execute(
                         i_s,
-                        &yields,
-                        |i_s, got, expected| {
+                        from,
+                        "__iter__",
+                        &NoArguments::new(from),
+                        &|_| {
                             from.add_issue(
                                 i_s,
-                                IssueType::IncompatibleYield {
-                                    cause: "yield from",
-                                    got,
-                                    expected,
+                                IssueType::YieldFromCannotBeApplied {
+                                    to: expr_result.format_short(i_s),
                                 },
-                            );
-                            from.to_db_lifetime(i_s.db)
+                            )
                         },
+                    )
+                    .type_lookup_and_execute(
+                        i_s,
+                        from,
+                        "__next__",
+                        &NoArguments::new(from),
+                        &|_| todo!(),
                     );
-                    if let Some(other) = GeneratorType::from_type(i_s.db, expr_result.as_type(i_s))
-                    {
-                        if let Some(return_type) = other.return_type {
-                            Inferred::from_type(return_type)
-                        } else {
-                            if result_context.expect_not_none(i_s) {
-                                from.add_issue(
-                                    i_s,
-                                    IssueType::DoesNotReturnAValue("Function".into()),
-                                );
-                                Inferred::new_any()
-                            } else {
-                                Inferred::new_none()
-                            }
-                        }
+                Type::owned(generator.yield_type).error_if_not_matches(
+                    i_s,
+                    &yields,
+                    |i_s, got, expected| {
+                        from.add_issue(
+                            i_s,
+                            IssueType::IncompatibleYield {
+                                cause: "yield from",
+                                got,
+                                expected,
+                            },
+                        );
+                        from.to_db_lifetime(i_s.db)
+                    },
+                );
+                if let Some(other) = GeneratorType::from_type(i_s.db, expr_result.as_type(i_s)) {
+                    if let Some(return_type) = other.return_type {
+                        Inferred::from_type(return_type)
                     } else {
-                        // An invalid type
-                        Inferred::new_any()
+                        if result_context.expect_not_none(i_s) {
+                            from.add_issue(i_s, IssueType::DoesNotReturnAValue("Function".into()));
+                            Inferred::new_any()
+                        } else {
+                            Inferred::new_none()
+                        }
                     }
                 } else {
+                    // An invalid type
                     Inferred::new_any()
                 }
             }
