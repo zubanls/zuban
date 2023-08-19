@@ -268,7 +268,11 @@ pub fn execute_assert_type<'db>(
     let ArgumentKind::Positional { node_ref: second_node_ref, ..}= second.kind else {
         return error_non_positional()
     };
-    let first = first.infer(i_s, result_context);
+    let first = if matches!(result_context, ResultContext::ExpectUnused) {
+        first.infer(i_s, &mut ResultContext::ExpectLiteral)
+    } else {
+        first.infer(i_s, result_context)
+    };
     let first_type = first.as_type(i_s);
 
     let Ok(second) = second_node_ref

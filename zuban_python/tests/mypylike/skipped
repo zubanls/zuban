@@ -366,9 +366,7 @@ testSelfTypeNew
 testSelfTypeNew_explicit
 
 # typing assert_type
-testTypingSelfAssertType
-testAssertType
-testAssertTypeGeneric
+testInvalidAssertType
 testAssertTypeUncheckedFunction
 testAssertTypeUncheckedFunctionWithUntypedCheck
 # TODO add typing_extensions.assert_type

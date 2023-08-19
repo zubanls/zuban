@@ -1760,10 +1760,16 @@ impl NewType {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct Literal {
     pub kind: LiteralKind,
     pub implicit: bool,
+}
+
+impl std::cmp::PartialEq for Literal {
+    fn eq(&self, other: &Self) -> bool {
+        self.kind == other.kind
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

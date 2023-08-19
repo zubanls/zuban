@@ -687,7 +687,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 SpecialType::Callable => {
                     Some(DbType::Callable(Rc::new(CallableContent::new_any())))
                 }
-                SpecialType::Any => None,
+                SpecialType::Any => Some(DbType::Any),
                 SpecialType::Type => Some(db.python_state.type_of_any.clone()),
                 SpecialType::Tuple => Some(DbType::Tuple(TupleContent::new_empty())),
                 SpecialType::ClassVar => {
