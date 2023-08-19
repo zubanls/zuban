@@ -1,6 +1,6 @@
 use parsa_python_ast::*;
 
-use crate::arguments::NoArguments;
+use crate::arguments::{CombinedArguments, KnownArguments, NoArguments};
 use crate::database::{
     CallableContent, ComplexPoint, Database, DbType, FunctionKind, Locality,
     OverloadImplementation, Point, PointType, Specific, TupleTypeArguments, TypeOrTypeVarTuple,
@@ -11,7 +11,7 @@ use crate::diagnostics::IssueType;
 use crate::file::Inference;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
-use crate::inferred::infer_class_method;
+use crate::inferred::{infer_class_method, Inferred};
 use crate::matching::params::has_overlapping_params;
 use crate::matching::{
     matches_params, FormatData, Generics, LookupKind, LookupResult, Match, Matcher, ResultContext,
@@ -166,12 +166,34 @@ impl<'db> Inference<'db, '_, '_> {
                     let (with_items, block) = with_stmt.unpack();
                     for with_item in with_items.iter() {
                         let (expr, target) = with_item.unpack();
+                        let from = NodeRef::new(self.file, expr.index());
                         let result = self.infer_expression(expr);
+                        let enter_result = result.type_lookup_and_execute(
+                            self.i_s,
+                            from,
+                            "__enter__",
+                            &NoArguments::new(from),
+                            &|_| todo!(),
+                        );
+                        result.type_lookup_and_execute(
+                            self.i_s,
+                            from,
+                            "__exit__",
+                            &CombinedArguments::new(
+                                &KnownArguments::new(&Inferred::new_any(), from),
+                                &CombinedArguments::new(
+                                    // TODO don't use any here.
+                                    &KnownArguments::new(&Inferred::new_any(), from),
+                                    &KnownArguments::new(&Inferred::new_any(), from),
+                                ),
+                            ),
+                            &|_| todo!(),
+                        );
                         if let Some(target) = target {
                             self.assign_targets(
                                 target,
-                                result,
-                                NodeRef::new(self.file, expr.index()),
+                                enter_result,
+                                NodeRef::new(self.file, with_item.index()),
                                 true,
                             )
                         }

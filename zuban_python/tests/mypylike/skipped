@@ -2171,21 +2171,21 @@ testReuseTryExceptionVariable
 testReuseDefinedTryExceptionVariable
 testRaiseFromStatement
 
-# With statement
-testWithStmtAndInvalidExit
-testWithStmtAndMissingExit
+# semanal with statment issues
+testWith
+testWithAndVariable
+testComplexWith
+testSimpleWithRenaming
+testSimpleWithRenamingFailure
+# Wrong diagnostic
 testWithStmtAndInvalidEnter
+testWithStmtScopeAndImport2
+# With statement
+testWithStmtAndMissingExit
 testWithStmtAndMissingEnter
 testWithStmtAndMultipleExprs
-testWithStmtAndResult
-testWithStmtAndMultipleResults
-testWithStmtAndComplexTarget
-testWithStmtTypeComment
-testWithStmtTupleTypeComment
-testWithStmtComplexTypeComment
 testWithStmtBoolExitReturnWithResultFalse
 testWithStmtScopeBasics
-testWithStmtScopeAndImport2
 testWithStmtScopeNestedWith1
 testWithStmtScopeNestedWith2
 testWithStmtScopeInnerAndOuterScopes
@@ -2193,7 +2193,6 @@ testWithStmtScopeMultipleContextManagers
 testWithStmtScopeMultipleAssignment
 testWithStmtScopeComplexAssignments
 testWithStmtScopeAndClass
-testWithStmtScopeInnerScopeReference
 testWithStmtScopeAndLambda
 testErrorCode__exit__Return
 
@@ -2818,6 +2817,9 @@ testErrorCodeSyntaxError3
 # with type comment
 testWithStmt
 testWithStmtInClassBody
+testWithStmtTypeComment
+testWithStmtTupleTypeComment
+testWithStmtComplexTypeComment
 
 # Type Vars qualified names
 testQualifiedTypeVariableName
