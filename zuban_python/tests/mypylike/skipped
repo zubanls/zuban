@@ -372,6 +372,7 @@ testAssertType
 testAssertTypeGeneric
 testAssertTypeUncheckedFunction
 testAssertTypeUncheckedFunctionWithUntypedCheck
+# TODO add typing_extensions.assert_type
 
 # dict specialities
 testDictWithKeywordArgsOnly

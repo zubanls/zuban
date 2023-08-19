@@ -468,6 +468,7 @@ pub enum Specific {
     TypingAny,
     TypedDict,
     RevealTypeFunction,
+    AssertTypeFunction,
     TypingNamedTuple,      // typing.NamedTuple
     CollectionsNamedTuple, // collections.namedtuple
 

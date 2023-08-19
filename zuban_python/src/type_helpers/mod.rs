@@ -22,6 +22,6 @@ pub use module::{dotted_path_from_dir, lookup_in_namespace, Module};
 pub use named_tuple::NamedTupleValue;
 pub use tuple::Tuple;
 pub use typing::{
-    NewTypeClass, ParamSpecClass, RevealTypeFunction, TypeVarClass, TypeVarTupleClass, TypingCast,
-    TypingClass, TypingType,
+    execute_assert_type, NewTypeClass, ParamSpecClass, RevealTypeFunction, TypeVarClass,
+    TypeVarTupleClass, TypingCast, TypingClass, TypingType,
 };

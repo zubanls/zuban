@@ -117,6 +117,8 @@ pub(crate) enum IssueType {
     AmbigousClassVariableAccess,
     CannotInstantiateProtocol { name: Box<str> },
 
+    InvalidAssertType { actual: Box<str>, wanted: Box<str> },
+
     SuperUsedOutsideClass,
     SuperWithSingleArgumentNotSupported,
     SuperVarargsNotSupported,
@@ -649,6 +651,10 @@ impl<'db> Diagnostic<'db> {
                 "Access to generic instance variables via class is ambiguous".to_string(),
             CannotInstantiateProtocol{name} => format!(
                 "Cannot instantiate protocol class \"{name}\""
+            ),
+
+            InvalidAssertType { actual, wanted } => format!(
+                r#"Expression is of type "{actual}", not "{wanted}"#
             ),
 
             SuperUsedOutsideClass => "\"super\" used outside class".to_string(),

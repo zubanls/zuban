@@ -24,9 +24,9 @@ use crate::matching::{
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
-    execute_super, BoundMethod, BoundMethodFunction, Callable, Class, FirstParamProperties,
-    Function, Instance, NewTypeClass, OverloadedFunction, ParamSpecClass, RevealTypeFunction,
-    TypeOrClass, TypeVarClass, TypeVarTupleClass, TypingCast, TypingClass,
+    execute_assert_type, execute_super, BoundMethod, BoundMethodFunction, Callable, Class,
+    FirstParamProperties, Function, Instance, NewTypeClass, OverloadedFunction, ParamSpecClass,
+    RevealTypeFunction, TypeOrClass, TypeVarClass, TypeVarTupleClass, TypingCast, TypingClass,
 };
 
 #[derive(Debug)]
@@ -1500,6 +1500,9 @@ impl<'db: 'slf, 'slf> Inferred {
                                     result_context,
                                     on_type_error,
                                 )
+                            }
+                            Specific::AssertTypeFunction => {
+                                return execute_assert_type(i_s, args, on_type_error)
                             }
                             Specific::TypingNewType => {
                                 return NewTypeClass().execute(

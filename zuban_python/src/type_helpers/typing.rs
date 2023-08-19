@@ -234,6 +234,39 @@ impl RevealTypeFunction {
     }
 }
 
+pub fn execute_assert_type<'db>(
+    i_s: &InferenceState<'db, '_>,
+    args: &dyn Arguments<'db>,
+    on_type_error: OnTypeError<'db, '_>,
+) -> Inferred {
+    let mut iterator = args.iter();
+    let first = iterator.next().unwrap_or_else(|| todo!());
+    let second = iterator.next().unwrap_or_else(|| todo!());
+
+    let first = first.infer(i_s, &mut ResultContext::ExpectLiteral);
+    let first_type = first.as_type(i_s);
+
+    let second_node_ref = second.as_node_ref();
+    let second = second_node_ref
+        .file
+        .inference(i_s)
+        .compute_cast_target(second_node_ref);
+    let second_type = second.as_type(i_s);
+    if first_type.as_ref() != second_type.as_ref() {
+        args.as_node_ref().add_issue(
+            i_s,
+            IssueType::InvalidAssertType {
+                actual: first_type.format_short(i_s.db),
+                wanted: second_type.format_short(i_s.db),
+            },
+        );
+    }
+    if iterator.next().is_some() {
+        todo!()
+    }
+    first
+}
+
 #[derive(Debug)]
 pub struct TypeVarClass();
 
