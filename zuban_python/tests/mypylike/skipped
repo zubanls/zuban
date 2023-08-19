@@ -367,8 +367,6 @@ testSelfTypeNew_explicit
 
 # typing assert_type
 testInvalidAssertType
-testAssertTypeUncheckedFunction
-testAssertTypeUncheckedFunctionWithUntypedCheck
 
 # dict specialities
 testDictWithKeywordArgsOnly
@@ -1437,10 +1435,6 @@ testInferAttributeTypeAndAssignInInit
 testTypingSelfInternalSafe
 testTypingSelfClashInBodies
 
-# untyped (inferred?) instance attributes
-testChangeBaseClassAttributeType
-testCheckUntypedDefsSelf2
-
 # subclass preferred over class for types
 testAddBaseClassAttributeCausingErrorInSubclass
 
@@ -2261,6 +2255,12 @@ testDecoratedProperty
 
 # function type mismatch when untyped
 testSubtypingFunctionsImplicitNames
+# typing.assert_type in untyped functions
+testAssertTypeUncheckedFunction
+testAssertTypeUncheckedFunctionWithUntypedCheck
+# untyped (inferred?) instance attributes
+testChangeBaseClassAttributeType
+testCheckUntypedDefsSelf2
 
 # Global
 testAssignToFuncDefViaGlobalDecl2
