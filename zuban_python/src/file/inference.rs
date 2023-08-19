@@ -656,6 +656,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let from = NodeRef::new(self.file, yield_expr.index());
         match yield_expr.unpack() {
             YieldExprContent::StarExpressions(s) => {
+                let inf = self.infer_star_expressions(s, &mut ResultContext::Unknown);
                 if let Some(generator) = self
                     .i_s
                     .current_function()
@@ -663,21 +664,17 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 {
                     Inferred::from_type(generator.yield_type)
                         .as_type(self.i_s)
-                        .error_if_not_matches(
-                            self.i_s,
-                            &self.infer_star_expressions(s, &mut ResultContext::Unknown),
-                            |i_s, got, expected| {
-                                from.add_issue(
-                                    i_s,
-                                    IssueType::IncompatibleYield {
-                                        cause: "yield",
-                                        got,
-                                        expected,
-                                    },
-                                );
-                                from.to_db_lifetime(i_s.db)
-                            },
-                        );
+                        .error_if_not_matches(self.i_s, &inf, |i_s, got, expected| {
+                            from.add_issue(
+                                i_s,
+                                IssueType::IncompatibleYield {
+                                    cause: "yield",
+                                    got,
+                                    expected,
+                                },
+                            );
+                            from.to_db_lifetime(i_s.db)
+                        });
                     if let Some(send_type) = generator.send_type {
                         Inferred::from_type(send_type)
                     } else {

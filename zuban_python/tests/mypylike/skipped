@@ -2164,7 +2164,6 @@ testAddModuleAfterCache1-only_when_cache
 testFollowImportsNormalPackageInitFileStub
 
 # Yield
-testYieldExpression
 testYieldFromTupleExpression
 # yield union of two generators
 testGeneratorUnion
