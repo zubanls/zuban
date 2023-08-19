@@ -686,28 +686,27 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
             YieldExprContent::YieldFrom(yield_from) => {
                 let expr_result = self.infer_expression(yield_from.expression());
-                let yields = expr_result
-                    .type_lookup_and_execute(
-                        i_s,
-                        from,
-                        "__iter__",
-                        &NoArguments::new(from),
-                        &|_| {
-                            from.add_issue(
-                                i_s,
-                                IssueType::YieldFromCannotBeApplied {
-                                    to: expr_result.format_short(i_s),
-                                },
-                            )
-                        },
-                    )
-                    .type_lookup_and_execute(
-                        i_s,
-                        from,
-                        "__next__",
-                        &NoArguments::new(from),
-                        &|_| todo!(),
-                    );
+                let iter_result = expr_result.type_lookup_and_execute(
+                    i_s,
+                    from,
+                    "__iter__",
+                    &NoArguments::new(from),
+                    &|_| {
+                        from.add_issue(
+                            i_s,
+                            IssueType::YieldFromCannotBeApplied {
+                                to: expr_result.format_short(i_s),
+                            },
+                        )
+                    },
+                );
+                let yields = iter_result.type_lookup_and_execute(
+                    i_s,
+                    from,
+                    "__next__",
+                    &NoArguments::new(from),
+                    &|_| todo!(),
+                );
                 Type::owned(generator.yield_type).error_if_not_matches(
                     i_s,
                     &yields,
@@ -724,7 +723,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     },
                 );
                 return if let Some(other) =
-                    GeneratorType::from_type(i_s.db, expr_result.as_type(i_s))
+                    GeneratorType::from_type(i_s.db, iter_result.as_type(i_s))
                 {
                     if let Some(return_type) = other.return_type {
                         Inferred::from_type(return_type)

@@ -2163,9 +2163,6 @@ testIncrCacheProtocol3
 testAddModuleAfterCache1-only_when_cache
 testFollowImportsNormalPackageInitFileStub
 
-# Yield
-testYieldFromTupleExpression
-
 # async/await
 testAwaitCoroutine
 testAwaitDefaultContext
