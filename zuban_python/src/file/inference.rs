@@ -653,6 +653,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         yield_expr: YieldExpr,
         result_context: &mut ResultContext,
     ) -> Inferred {
+        let i_s = self.i_s;
         let from = NodeRef::new(self.file, yield_expr.index());
         match yield_expr.unpack() {
             YieldExprContent::StarExpressions(s) => {
@@ -660,11 +661,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 if let Some(generator) = self
                     .i_s
                     .current_function()
-                    .and_then(|func| func.generator_return(self.i_s))
+                    .and_then(|func| func.generator_return(i_s))
                 {
                     Inferred::from_type(generator.yield_type)
-                        .as_type(self.i_s)
-                        .error_if_not_matches(self.i_s, &inf, |i_s, got, expected| {
+                        .as_type(i_s)
+                        .error_if_not_matches(i_s, &inf, |i_s, got, expected| {
                             from.add_issue(
                                 i_s,
                                 IssueType::IncompatibleYield {
@@ -690,33 +691,33 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 if let Some(generator) = self
                     .i_s
                     .current_function()
-                    .and_then(|func| func.generator_return(self.i_s))
+                    .and_then(|func| func.generator_return(i_s))
                 {
                     let expr_result = self.infer_expression(yield_from.expression());
                     let yields = expr_result
                         .type_lookup_and_execute(
-                            self.i_s,
+                            i_s,
                             from,
                             "__iter__",
                             &NoArguments::new(from),
                             &|_| {
                                 from.add_issue(
-                                    self.i_s,
+                                    i_s,
                                     IssueType::YieldFromCannotBeApplied {
-                                        to: expr_result.format_short(self.i_s),
+                                        to: expr_result.format_short(i_s),
                                     },
                                 )
                             },
                         )
                         .type_lookup_and_execute(
-                            self.i_s,
+                            i_s,
                             from,
                             "__next__",
                             &NoArguments::new(from),
                             &|_| todo!(),
                         );
                     Type::owned(generator.yield_type).error_if_not_matches(
-                        self.i_s,
+                        i_s,
                         &yields,
                         |i_s, got, expected| {
                             from.add_issue(
@@ -730,15 +731,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             from.to_db_lifetime(i_s.db)
                         },
                     );
-                    if let Some(other) =
-                        GeneratorType::from_type(self.i_s.db, expr_result.as_type(self.i_s))
+                    if let Some(other) = GeneratorType::from_type(i_s.db, expr_result.as_type(i_s))
                     {
                         if let Some(return_type) = other.return_type {
                             Inferred::from_type(return_type)
                         } else {
-                            if result_context.expect_not_none(self.i_s) {
+                            if result_context.expect_not_none(i_s) {
                                 from.add_issue(
-                                    self.i_s,
+                                    i_s,
                                     IssueType::DoesNotReturnAValue("Function".into()),
                                 );
                                 Inferred::new_any()

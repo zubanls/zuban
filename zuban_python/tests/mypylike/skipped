@@ -2167,8 +2167,6 @@ testFollowImportsNormalPackageInitFileStub
 testYieldFromTupleExpression
 # "Yield value expected"
 testYieldWithNoValueWhenValueRequired
-# ""yield" outside function"
-testCannotIgnoreBlockingError
 
 # async/await
 testAwaitCoroutine
@@ -2507,6 +2505,8 @@ testImportUnusedIgnore2
 testErrorCodeMissingWhenRequired
 testErrorCodeMissingDoesntTrampleUnusedIgnoresWarning
 testErrorCodeMissingWholeFileIgnores
+# type: ignore blocking errors cannot be ignored: ""yield" outside function"
+testCannotIgnoreBlockingError
 
 # Very weird annotation resolution order
 testNewAnalyzerAnnotationConflictsWithAttributeSinglePass
