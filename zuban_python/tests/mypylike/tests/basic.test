@@ -76,11 +76,49 @@ x: X
 reveal_type(X)  # N: Revealed type is "types.UnionType"
 reveal_type(x)  # N: Revealed type is "__main__.A | __main__.B"
 
+[case yield_without_expr]
+from typing import Generator
+
+def yield_receive1() -> Generator[None, str, None]:
+    reveal_type((yield))  # N: Revealed type is "str"
+
+def yield_receive2() -> Generator[str | None, str, None]:
+    reveal_type((yield))  # N: Revealed type is "str"
+    reveal_type((yield ""))  # N: Revealed type is "str"
+
+def yield_receive3() -> Generator[bytes | int, str, None]:
+    reveal_type((yield))  # E: Yield value expected \
+                          # N: Revealed type is "str"
+    reveal_type((yield b""))  # N: Revealed type is "str"
+
+[case yield_without_expr_with_any]
+from typing import Generator
+
+def yield_receive4() -> object:
+    reveal_type((yield))  # N: Revealed type is "Any"
+    reveal_type((yield b""))  # N: Revealed type is "Any"
+    return 1
+
+def yield_receive5() -> None:  # E: The return type of a generator function should be "Generator" or one of its supertypes
+    reveal_type((yield))  # N: Revealed type is "Any"
+    reveal_type((yield b""))  # N: Revealed type is "Any"
+    return 1
+
+[case yield_without_expr_with_generator_sub_type]
+from typing import Generator
+
+class SubGenerator(Generator[int, str, bytes]): ...
+
+def yield_receive() -> SubGenerator:  # E: The return type of a generator function should be "Generator" or one of its supertypes
+    reveal_type((yield))  # N: Revealed type is "Any"
+    reveal_type((yield b""))  # N: Revealed type is "Any"
+    return 1
+
 [case yield_with_generator]
 from typing import Generator
 
 def yield_send() -> Generator[bytes, str, float]:
     reveal_type((yield b""))  # N: Revealed type is "str"
     if int():
-        pass # TODO enable return 1.0
+        return 1.0
     # TODO shouldn't this cause an error?

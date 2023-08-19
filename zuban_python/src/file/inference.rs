@@ -683,11 +683,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         );
                         from.to_db_lifetime(i_s.db)
                     });
-                if let Some(send_type) = generator.send_type {
-                    Inferred::from_type(send_type)
-                } else {
-                    Inferred::new_none()
-                }
             }
             YieldExprContent::YieldFrom(yield_from) => {
                 let expr_result = self.infer_expression(yield_from.expression());
@@ -728,7 +723,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         from.to_db_lifetime(i_s.db)
                     },
                 );
-                if let Some(other) = GeneratorType::from_type(i_s.db, expr_result.as_type(i_s)) {
+                return if let Some(other) =
+                    GeneratorType::from_type(i_s.db, expr_result.as_type(i_s))
+                {
                     if let Some(return_type) = other.return_type {
                         Inferred::from_type(return_type)
                     } else {
@@ -742,19 +739,21 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 } else {
                     // An invalid type
                     Inferred::new_any()
-                }
+                };
             }
             YieldExprContent::None => {
-                if Type::owned(generator.yield_type)
+                if !Type::owned(generator.yield_type)
                     .is_simple_super_type_of(i_s, &Type::new(&DbType::None))
                     .bool()
                 {
-                    Inferred::new_none()
-                } else {
                     from.add_issue(i_s, IssueType::YieldValueExpected);
-                    Inferred::new_any()
                 }
             }
+        }
+        if let Some(send_type) = generator.send_type {
+            Inferred::from_type(send_type)
+        } else {
+            Inferred::new_none()
         }
     }
 
