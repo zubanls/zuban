@@ -2185,10 +2185,6 @@ testReuseTryExceptionVariable
 testReuseDefinedTryExceptionVariable
 testRaiseFromStatement
 
-# Wrong diagnostic
-testWithStmtAndInvalidEnter
-testWithStmtScopeAndImport2
-
 # match statement
 testValuePattern
 testCapturePattern
