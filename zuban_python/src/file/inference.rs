@@ -1666,7 +1666,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     ClassGenerics::List(generics),
                 ));
             }
-            DictComprehension(comp) => todo!(), // return self.infer_comprehension(comp.unpack(), ComprehensionKind::SetOrDict),
+            DictComprehension(comp) => {
+                return self.infer_comprehension(comp.unpack(), ComprehensionKind::SetOrDict)
+            }
             Set(set) => {
                 if let elements @ StarLikeExpressionIterator::Elements(_) = set.unpack() {
                     return Inferred::from_type(new_class!(
@@ -2155,15 +2157,18 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
 
         debug!("TODO ANY INSTEAD OF ACTUAL VALUE IN COMPREHENSION");
-        match comp_expr {
-            CommonComprehensionExpression::Single(named_expr) => Inferred::from_type(new_class!(
+        Inferred::from_type(match comp_expr {
+            CommonComprehensionExpression::Single(named_expr) => new_class!(
                 self.i_s.db.python_state.list_node_ref().as_link(),
                 self.infer_named_expression(named_expr).as_db_type(self.i_s),
-            )),
-            CommonComprehensionExpression::DictKeyValue(key_value) => {
-                todo!()
-            }
-        }
+            ),
+            CommonComprehensionExpression::DictKeyValue(key_value) => new_class!(
+                self.i_s.db.python_state.list_node_ref().as_link(),
+                self.infer_expression(key_value.key()).as_db_type(self.i_s),
+                self.infer_expression(key_value.value())
+                    .as_db_type(self.i_s),
+            ),
+        })
     }
 }
 
