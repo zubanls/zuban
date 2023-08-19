@@ -670,7 +670,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 YieldExprContent::None => (),
             }
             // In case we do not know the generator return, just don't check here. The
-            // function type will be checked in a different place.
+            // function type will be checked in a different place. This means that the generator
+            // can be a Generator[Any, Any, Any], which is satisfied by everything.
             return Inferred::new_any()
         };
 
