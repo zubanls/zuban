@@ -655,25 +655,17 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     ) -> Inferred {
         let i_s = self.i_s;
         let from = NodeRef::new(self.file, yield_expr.index());
-        let Some(generator) = self
+        let generator = self
             .i_s
             .current_function()
-            .and_then(|func| func.generator_return(i_s)) else
-        {
-            match yield_expr.unpack() {
-                YieldExprContent::StarExpressions(s) => {
-                    self.infer_star_expressions(s, &mut ResultContext::Unknown);
-                }
-                YieldExprContent::YieldFrom(yield_from) => {
-                    self.infer_expression(yield_from.expression());
-                }
-                YieldExprContent::None => (),
-            }
-            // In case we do not know the generator return, just don't check here. The
-            // function type will be checked in a different place. This means that the generator
-            // can be a Generator[Any, Any, Any], which is satisfied by everything.
-            return Inferred::new_any()
-        };
+            .and_then(|func| func.generator_return(i_s))
+            // In case we do not know the generator return, just return an Any version of it. The
+            // function type will be checked in a different place.
+            .unwrap_or(GeneratorType {
+                yield_type: DbType::Any,
+                send_type: Some(DbType::Any),
+                return_type: Some(DbType::Any),
+            });
 
         match yield_expr.unpack() {
             YieldExprContent::StarExpressions(s) => {
