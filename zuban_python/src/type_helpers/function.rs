@@ -2201,6 +2201,33 @@ impl GeneratorType {
                     return_type: Some(cls.nth_type_argument(db, 2)),
                 })
             }
+            DbType::Union(union) => union.iter().fold(None, |a, b| {
+                if let Some(b) = Self::from_type(db, Type::new(b)) {
+                    if let Some(a) = a {
+                        let optional_union = |t1: Option<DbType>, t2: Option<DbType>| {
+                            if let Some(t1) = t1 {
+                                if let Some(t2) = t2 {
+                                    Some(t1.union(db, t2))
+                                } else {
+                                    Some(t1)
+                                }
+                            } else {
+                                t2
+                            }
+                        };
+                        Some(Self {
+                            yield_type: a.yield_type.union(db, b.yield_type),
+                            // TODO is taking the Union here correct, since its contravariant?
+                            send_type: optional_union(a.send_type, b.send_type),
+                            return_type: optional_union(a.return_type, b.return_type),
+                        })
+                    } else {
+                        Some(b)
+                    }
+                } else {
+                    a
+                }
+            }),
             _ => None,
         }
     }
