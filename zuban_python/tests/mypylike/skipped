@@ -2141,27 +2141,8 @@ testFastParseFunctionAnnotationSyntaxErrorSpaces
 testFastParseInvalidFunctionAnnotation
 
 # syntax errors
-testPreferPackageOverFile
-testPreferPackageOverFile2
-testTrailingCommaInIfParsing
-testDictWithStarExpr
-testNotPreferPackageOverFileCase
-testIgnoreImportBadModule
-testIgnoreImportStarFromBadModule
-testFastParseSyntaxError
-testErrorCodeNoteHasNoCode
-testErrorCodeUndefinedName
-testErrorCodeNoteHasNoCode
-testErrorCodeSyntaxError
-testErrorCodeSyntaxError2
 testErrorCodeSyntaxError3
 testErrorCodeSyntaxErrorIgnoreNote
-testColumnsSyntaxError
-testIncrCacheProtocol1
-testIncrCacheProtocol2
-testIncrCacheProtocol3
-testAddModuleAfterCache1-only_when_cache
-testFollowImportsNormalPackageInitFileStub
 
 # async/await
 testAwaitCoroutine
@@ -2427,18 +2408,6 @@ testInvalidStrLiteralSpaces
 testInvalidStrLiteralStrayBrace
 testInvalidMultilineLiteralType
 testLiteralInvalidString
-
-# "Syntax error in type annotation"
-# Suggestion: Use tuple[T1, ..., Tn] instead of (T1, ..., Tn)
-testImplicitTuple2
-# "Suggestion: Use tuple[()] instead of () for an empty tuple, or None for a function without a return value"
-testReturnEmptyTuple
-# "Suggestion: Is there a spurious trailing comma?"
-testColumnSyntaxErrorInTypeAnnotation
-
-# Syntax error in type comment
-testErrorCodeTypeIgnoreMisspelled2
-testColumnSyntaxErrorInTypeAnnotation2
 
 # Assignment like ac[b] += c with both __getitem__ and __setitem__ has same error twice
 testOperatorAssignmentWithIndexLvalue1
@@ -2713,6 +2682,11 @@ testTypeCheckNamedModuleWithImportCycle
 testStubImportNonStubWhileSilent
 # cmd: mypy a.py
 testErrorInReAddedModule
+testFollowImportsNormalPackageInitFileStub
+# Not all modules are checked even in default mypy
+testPreferPackageOverFile
+testPreferPackageOverFile2
+testNotPreferPackageOverFileCase
 
 # --soft-error-limit
 testLimitLegacyStubErrorVolume
@@ -2744,6 +2718,16 @@ testInvalidEncoding3
 testDoubleEncoding
 testDoubleEncoding2
 
+# "Syntax error in type annotation"
+# Suggestion: Use tuple[T1, ..., Tn] instead of (T1, ..., Tn)
+testImplicitTuple2
+# "Suggestion: Use tuple[()] instead of () for an empty tuple, or None for a function without a return value"
+testReturnEmptyTuple
+# "Suggestion: Is there a spurious trailing comma?"
+testColumnSyntaxErrorInTypeAnnotation
+# Syntax error in type comment, because used `# type:` twice
+testErrorCodeTypeIgnoreMisspelled2
+
 # All of these are really not important at all, because there are syntax
 # errors, just not the fancy ones.
 # Too many invalid syntax errors?
@@ -2774,6 +2758,7 @@ testInvalidFuncDefArgs1
 # "invalid syntax. Perhaps you forgot a comma?"
 testNotAsBinaryOp
 testBinaryNegAsBinaryOp
+testErrorCodeSyntaxError
 # "cannot delete function call"
 testInvalidDel1
 # "cannot delete expression"
@@ -2918,6 +2903,7 @@ testTooManyTypes
 testTooFewTypes
 testCommentFunctionAnnotationVarArgMispatch-skip
 testCommentFunctionAnnotationVarArgMispatch2-skip
+testErrorCodeSyntaxError2
 
 # --scripts-are-modules
 testScriptsAreModules
