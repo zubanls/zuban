@@ -122,3 +122,26 @@ def yield_send() -> Generator[bytes, str, float]:
     if int():
         return 1.0
     # TODO shouldn't this cause an error?
+
+[case yield_from_with_generator_subtype]
+from typing import Generator, Any
+
+a: Any
+
+class SubGenerator1(Generator[int, str, bytes]):
+    send = a
+    throw = a
+
+class SubGenerator2(Generator[int, str, bytes]):
+    send = a
+    throw = a
+    def __iter__(self) -> Self:
+        raise NotImplementedError
+
+def g() -> Generator[int, None, None]:
+    x = yield from ()  # E: Function does not return a value
+    y = yield from SubGenerator1()
+    reveal_type(y)  # N: Revealed type is "bytes"
+    z = yield from SubGenerator2()
+    # TODO This Any is wrong, but that's also how Mypy does it.
+    reveal_type(z)  # N: Revealed type is "Any"
