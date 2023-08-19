@@ -2171,18 +2171,10 @@ testReuseTryExceptionVariable
 testReuseDefinedTryExceptionVariable
 testRaiseFromStatement
 
-# semanal with statment issues
-testWith
-testWithAndVariable
-testComplexWith
-testSimpleWithRenaming
-testSimpleWithRenamingFailure
 # Wrong diagnostic
 testWithStmtAndInvalidEnter
 testWithStmtScopeAndImport2
 # With statement
-testWithStmtAndMissingExit
-testWithStmtAndMissingEnter
 testWithStmtAndMultipleExprs
 testWithStmtBoolExitReturnWithResultFalse
 testWithStmtScopeBasics

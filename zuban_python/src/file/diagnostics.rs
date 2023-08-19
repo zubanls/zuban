@@ -168,14 +168,13 @@ impl<'db> Inference<'db, '_, '_> {
                         let (expr, target) = with_item.unpack();
                         let from = NodeRef::new(self.file, expr.index());
                         let result = self.infer_expression(expr);
-                        let enter_result = result.type_lookup_and_execute(
+                        let enter_result = result.type_lookup_and_execute_with_attribute_error(
                             self.i_s,
                             from,
                             "__enter__",
                             &NoArguments::new(from),
-                            &|_| todo!(),
                         );
-                        result.type_lookup_and_execute(
+                        result.type_lookup_and_execute_with_attribute_error(
                             self.i_s,
                             from,
                             "__exit__",
@@ -187,7 +186,6 @@ impl<'db> Inference<'db, '_, '_> {
                                     &KnownArguments::new(&Inferred::new_any(), from),
                                 ),
                             ),
-                            &|_| todo!(),
                         );
                         if let Some(target) = target {
                             self.assign_targets(

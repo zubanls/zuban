@@ -1363,6 +1363,18 @@ impl<'db: 'slf, 'slf> Inferred {
         )
     }
 
+    pub fn type_lookup_and_execute_with_attribute_error(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        from: NodeRef,
+        name: &str,
+        args: &dyn Arguments<'db>,
+    ) -> Self {
+        self.type_lookup_and_execute(i_s, from, name, args, &|t| {
+            add_attribute_error(i_s, from, &self.as_type(i_s), t, name)
+        })
+    }
+
     pub fn type_lookup_and_execute_with_details(
         &self,
         i_s: &InferenceState<'db, '_>,
