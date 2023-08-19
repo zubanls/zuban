@@ -1502,7 +1502,12 @@ impl<'db: 'slf, 'slf> Inferred {
                                 )
                             }
                             Specific::AssertTypeFunction => {
-                                return execute_assert_type(i_s, args, on_type_error)
+                                return execute_assert_type(
+                                    i_s,
+                                    args,
+                                    result_context,
+                                    on_type_error,
+                                )
                             }
                             Specific::TypingNewType => {
                                 return NewTypeClass().execute(

@@ -168,7 +168,8 @@ impl<'db> TypingCast {
                             arg.as_node_ref()
                                 .file
                                 .inference(i_s)
-                                .compute_cast_target(node_ref),
+                                .compute_cast_target(node_ref)
+                                .unwrap_or(Inferred::new_any()),
                         )
                     } else {
                         arg.infer(i_s, &mut ResultContext::ExpectUnused);
@@ -237,6 +238,7 @@ impl RevealTypeFunction {
 pub fn execute_assert_type<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Arguments<'db>,
+    result_context: &mut ResultContext,
     on_type_error: OnTypeError<'db, '_>,
 ) -> Inferred {
     if args.iter().count() != 2 {
@@ -266,13 +268,15 @@ pub fn execute_assert_type<'db>(
     let ArgumentKind::Positional { node_ref: second_node_ref, ..}= second.kind else {
         return error_non_positional()
     };
-    let first = first.infer(i_s, &mut ResultContext::ExpectLiteral);
+    let first = first.infer(i_s, result_context);
     let first_type = first.as_type(i_s);
 
-    let second = second_node_ref
+    let Ok(second) = second_node_ref
         .file
         .inference(i_s)
-        .compute_cast_target(second_node_ref);
+        .compute_cast_target(second_node_ref) else {
+        return Inferred::new_any()
+    };
     let second_type = second.as_type(i_s);
     if first_type.as_ref() != second_type.as_ref() {
         args.as_node_ref().add_issue(

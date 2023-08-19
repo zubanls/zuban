@@ -655,42 +655,49 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     }
 
     fn as_db_type(&mut self, type_: TypeContent, node_ref: NodeRef) -> DbType {
+        self.as_db_type_or_error(type_, node_ref)
+            .unwrap_or(DbType::Any)
+    }
+
+    fn as_db_type_or_error(&mut self, type_: TypeContent, node_ref: NodeRef) -> Option<DbType> {
         let db = self.inference.i_s.db;
         match type_ {
             TypeContent::Class { node_ref, .. } => {
-                Class::with_undefined_generics(node_ref).as_db_type(db)
+                Some(Class::with_undefined_generics(node_ref).as_db_type(db))
             }
             TypeContent::SimpleGeneric {
                 class_link,
                 generics,
                 ..
-            } => DbType::new_class(class_link, generics),
-            TypeContent::DbType(d) => d,
+            } => Some(DbType::new_class(class_link, generics)),
+            TypeContent::DbType(d) => Some(d),
             TypeContent::Module(file) => {
                 self.add_module_issue(node_ref, &Module::new(file).qualified_name(db));
-                DbType::Any
+                None
             }
             TypeContent::Namespace(n) => {
                 self.add_module_issue(node_ref, &n.qualified_name());
-                DbType::Any
+                None
             }
             TypeContent::TypeAlias(a) => {
                 self.is_recursive_alias |= a.is_recursive();
-                a.as_db_type_and_set_type_vars_any(db)
+                Some(a.as_db_type_and_set_type_vars_any(db))
             }
             TypeContent::SpecialType(m) => match m {
-                SpecialType::Callable => DbType::Callable(Rc::new(CallableContent::new_any())),
-                SpecialType::Any => DbType::Any,
-                SpecialType::Type => db.python_state.type_of_any.clone(),
-                SpecialType::Tuple => DbType::Tuple(TupleContent::new_empty()),
+                SpecialType::Callable => {
+                    Some(DbType::Callable(Rc::new(CallableContent::new_any())))
+                }
+                SpecialType::Any => None,
+                SpecialType::Type => Some(db.python_state.type_of_any.clone()),
+                SpecialType::Tuple => Some(DbType::Tuple(TupleContent::new_empty())),
                 SpecialType::ClassVar => {
                     self.add_issue(node_ref, IssueType::ClassVarNestedInsideOtherType);
-                    DbType::Any
+                    None
                 }
-                SpecialType::LiteralString => DbType::new_class(
+                SpecialType::LiteralString => Some(DbType::new_class(
                     db.python_state.str_node_ref().as_link(),
                     ClassGenerics::None,
-                ),
+                )),
                 SpecialType::Literal => {
                     self.add_issue(
                         node_ref,
@@ -698,7 +705,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             "Literal[...] must have at least one parameter",
                         )),
                     );
-                    DbType::Any
+                    None
                 }
                 SpecialType::Self_
                     if !matches!(
@@ -708,10 +715,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 {
                     if self.inference.i_s.current_class().unwrap().is_metaclass(db) {
                         self.add_issue(node_ref, IssueType::SelfTypeInMetaclass);
-                        DbType::Any
+                        None
                     } else {
                         self.has_type_vars_or_self = true;
-                        DbType::Self_
+                        Some(DbType::Self_)
                     }
                 }
                 SpecialType::Self_ => {
@@ -721,7 +728,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             "Self type is only allowed in annotations within class definition",
                         )),
                     );
-                    DbType::Any
+                    None
                 }
                 SpecialType::Annotated => {
                     self.add_issue(
@@ -730,15 +737,15 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             "Annotated[...] must have exactly one type argument and at least one annotation",
                         )),
                     );
-                    DbType::Any
+                    None
                 }
                 SpecialType::Optional => {
                     self.add_issue(node_ref, IssueType::OptionalMustHaveOneArgument);
-                    DbType::Any
+                    None
                 }
                 _ => {
                     self.add_issue(node_ref, IssueType::InvalidType(Box::from("Invalid type")));
-                    DbType::Any
+                    None
                 }
             },
             TypeContent::TypeVarTuple(t) => todo!(),
@@ -757,9 +764,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     node_ref,
                     IssueType::Note(Box::from("You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'"))
                 );
-                DbType::Any
+                None
             }
-            TypeContent::Unpacked(t) => DbType::Any, // TODO Should probably raise an error?
+            TypeContent::Unpacked(t) => None, // TODO Should probably raise an error?
             TypeContent::Concatenate(_) => {
                 self.add_issue(
                     node_ref,
@@ -771,17 +778,19 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         "You can use Concatenate as the first argument to Callable",
                     )),
                 );
-                DbType::Any
+                None
             }
             // TODO here we would need to check if the generics are actually valid.
             TypeContent::RecursiveAlias(link) => {
                 self.is_recursive_alias = true;
-                DbType::RecursiveAlias(Rc::new(RecursiveAlias::new(link, None)))
+                Some(DbType::RecursiveAlias(Rc::new(RecursiveAlias::new(
+                    link, None,
+                ))))
             }
-            TypeContent::Unknown => DbType::Any,
+            TypeContent::Unknown => None,
             TypeContent::ClassVar(t) => {
                 self.add_issue(node_ref, IssueType::ClassVarNestedInsideOtherType);
-                DbType::Any
+                None
             }
             TypeContent::EnumMember(m) => {
                 let format_data = FormatData::new_short(self.inference.i_s.db);
@@ -795,7 +804,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         .into(),
                     ),
                 );
-                DbType::Any
+                None
             }
             TypeContent::InvalidVariable(t) => {
                 t.add_issue(
@@ -803,7 +812,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     |t| self.add_issue(node_ref, t),
                     self.origin,
                 );
-                DbType::Any
+                None
             }
         }
     }
@@ -2840,7 +2849,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         }
         None
     }
-    pub fn compute_cast_target(&mut self, node_ref: NodeRef) -> Inferred {
+    pub fn compute_cast_target(&mut self, node_ref: NodeRef) -> Result<Inferred, ()> {
         let named_expr = node_ref.as_named_expression();
         let mut x = type_computation_for_variable_annotation;
         let mut comp = TypeComputation::new(
@@ -2851,12 +2860,14 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         );
 
         let t = comp.compute_type(named_expr.expression());
-        let mut db_type = comp.as_db_type(t, node_ref);
+        let Some(mut db_type) = comp.as_db_type_or_error(t, node_ref) else {
+            return Err(())
+        };
         let type_vars = comp.into_type_vars(|inf, recalculate_type_vars| {
             db_type = recalculate_type_vars(&db_type);
         });
         debug_assert!(type_vars.is_empty());
-        Inferred::from_type(db_type)
+        Ok(Inferred::from_type(db_type))
     }
 
     pub fn compute_type_var_constraint(&mut self, expr: Expression) -> Option<DbType> {
