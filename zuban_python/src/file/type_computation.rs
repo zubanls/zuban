@@ -15,7 +15,6 @@ use crate::database::{
     TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, UnionEntry,
     UnionType,
 };
-use crate::debug;
 use crate::diagnostics::{Issue, IssueType};
 use crate::file::File;
 use crate::file::{Inference, PythonFile};
@@ -26,6 +25,7 @@ use crate::inferred::Inferred;
 use crate::matching::{FormatData, Generics, ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{start_namedtuple_params, Class, Function, Module};
+use crate::{debug, new_class};
 
 pub(super) const ASSIGNMENT_TYPE_CACHE_OFFSET: u32 = 1;
 const ANNOTATION_TO_EXPR_DIFFERENCE: u32 = 2;
@@ -3207,12 +3207,10 @@ fn wrap_starred(t: DbType) -> DbType {
 fn wrap_double_starred(db: &Database, t: DbType) -> DbType {
     match &t {
         DbType::ParamSpecKwargs(_) => t,
-        _ => DbType::new_class(
+        _ => new_class!(
             db.python_state.dict_node_ref().as_link(),
-            ClassGenerics::List(GenericsList::new_generics(Rc::new([
-                GenericItem::TypeArgument(db.python_state.str_db_type()),
-                GenericItem::TypeArgument(t),
-            ]))),
+            db.python_state.str_db_type(),
+            t,
         ),
     }
 }

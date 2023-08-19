@@ -11,7 +11,6 @@ use crate::database::{
     ParamSpecific, Point, PointLink, PointType, Specific, TupleContent, TupleTypeArguments,
     TypeOrTypeVarTuple, UnionEntry, UnionType,
 };
-use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
 use crate::imports::{find_ancestor, global_import, python_import, ImportResult};
@@ -25,6 +24,7 @@ use crate::type_helpers::{
     lookup_in_namespace, Class, FirstParamKind, Function, GeneratorType, Instance, Module,
 };
 use crate::utils::debug_indent;
+use crate::{debug, new_class};
 
 pub struct Inference<'db: 'file, 'file, 'i_s> {
     pub(super) file: &'file PythonFile,
@@ -2128,11 +2128,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
         debug!("TODO ANY INSTEAD OF ACTUAL VALUE IN COMPREHENSION");
         match comp_expr {
-            CommonComprehensionExpression::Single(expr) => Inferred::from_type(DbType::new_class(
+            CommonComprehensionExpression::Single(expr) => Inferred::from_type(new_class!(
                 self.i_s.db.python_state.list_node_ref().as_link(),
-                ClassGenerics::List(GenericsList::new_generics(Rc::new([
-                    GenericItem::TypeArgument(DbType::Any),
-                ]))),
+                DbType::Any,
             )),
             CommonComprehensionExpression::DictKeyValue(key_value) => {
                 todo!()
@@ -2186,7 +2184,7 @@ fn instantiate_except_star(i_s: &InferenceState, t: &DbType) -> DbType {
     // When BaseException is used, we need a BaseExceptionGroup. Otherwise when every exception
     // inherits from Exception, ExceptionGroup is used.
     let is_base_exception_group = has_base_exception(i_s.db, &result);
-    DbType::new_class(
+    new_class!(
         match is_base_exception_group {
             false => i_s.db.python_state.exception_group_node_ref().as_link(),
             true => i_s
@@ -2195,9 +2193,7 @@ fn instantiate_except_star(i_s: &InferenceState, t: &DbType) -> DbType {
                 .base_exception_group_node_ref()
                 .as_link(),
         },
-        ClassGenerics::List(GenericsList::new_generics(Rc::new([
-            GenericItem::TypeArgument(result),
-        ]))),
+        result,
     )
 }
 

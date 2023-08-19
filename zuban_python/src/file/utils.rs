@@ -15,7 +15,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::UnionValue;
 use crate::matching::{Matcher, MismatchReason, ResultContext, Type};
 use crate::node_ref::NodeRef;
-use crate::{debug, Inferred};
+use crate::{debug, new_class, Inferred};
 
 impl<'db> Inference<'db, '_, '_> {
     pub fn create_list_or_set_generics(
@@ -209,14 +209,7 @@ fn check_list_with_context<'db>(
             StarLikeExpression::StarExpression(e) => unreachable!(),
         };
     }
-    found.map(|inner| {
-        DbType::new_class(
-            i_s.db.python_state.list_node_ref().as_link(),
-            ClassGenerics::List(GenericsList::new_generics(Rc::new([
-                GenericItem::TypeArgument(inner),
-            ]))),
-        )
-    })
+    found.map(|inner| new_class!(i_s.db.python_state.list_node_ref().as_link(), inner,))
 }
 
 pub fn on_argument_type_error(

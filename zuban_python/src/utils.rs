@@ -36,6 +36,18 @@ macro_rules! debug {
     }
 }
 
+#[macro_export]
+macro_rules! new_class {
+    ($link:expr, $($arg:expr),+,) => {
+        DbType::new_class(
+            $link,
+            ClassGenerics::List(GenericsList::new_generics(Rc::new([
+                $(GenericItem::TypeArgument($arg)),*
+            ])))
+        )
+    }
+}
+
 pub struct InsertOnlyVec<T: ?Sized> {
     vec: UnsafeCell<Vec<Pin<Box<T>>>>,
 }

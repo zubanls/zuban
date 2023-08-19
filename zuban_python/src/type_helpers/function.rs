@@ -19,7 +19,6 @@ use crate::database::{
     TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarName, TypeVarUsage, Variance,
     WrongPositionalCount,
 };
-use crate::debug;
 use crate::diagnostics::{Issue, IssueType};
 use crate::file::{
     use_cached_annotation_type, PythonFile, TypeComputation, TypeComputationOrigin,
@@ -40,6 +39,7 @@ use crate::matching::{
 use crate::node_ref::NodeRef;
 use crate::type_helpers::Class;
 use crate::utils::rc_unwrap_or_clone;
+use crate::{debug, new_class};
 
 #[derive(Clone, Copy)]
 pub struct Function<'a, 'class> {
@@ -1075,13 +1075,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             self.node().parent(),
             FunctionParent::Async | FunctionParent::DecoratedAsync(_)
         ) {
-            return Inferred::from_type(DbType::new_class(
+            return Inferred::from_type(new_class!(
                 i_s.db.python_state.coroutine_link(),
-                ClassGenerics::List(GenericsList::new_generics(Rc::new([
-                    GenericItem::TypeArgument(DbType::Any),
-                    GenericItem::TypeArgument(DbType::Any),
-                    GenericItem::TypeArgument(result.as_type(i_s).into_db_type()),
-                ]))),
+                DbType::Any,
+                DbType::Any,
+                result.as_type(i_s).into_db_type(),
             ));
         }
         result

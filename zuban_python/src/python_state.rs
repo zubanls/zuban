@@ -12,7 +12,7 @@ use crate::inferred::Inferred;
 use crate::matching::{Generics, Type};
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{Class, Function, Instance};
-use crate::{InferenceState, PythonProject};
+use crate::{new_class, InferenceState, PythonProject};
 
 // This is a bit hacky, but I'm sure the tests will fail somewhere if this constant is
 // wrong. Basically it goes three nodes back: name_def class literal and then the actual
@@ -349,14 +349,8 @@ impl PythonState {
         let s = &mut db.python_state;
         let object_db_type = s.object_db_type();
         s.type_of_object = DbType::Type(Rc::new(object_db_type));
-        s.generator_with_any_generics = DbType::new_class(
-            s.generator_link(),
-            ClassGenerics::List(GenericsList::new_generics(Rc::new([
-                GenericItem::TypeArgument(DbType::Any),
-                GenericItem::TypeArgument(DbType::Any),
-                GenericItem::TypeArgument(DbType::Any),
-            ]))),
-        );
+        s.generator_with_any_generics =
+            new_class!(s.generator_link(), DbType::Any, DbType::Any, DbType::Any,);
 
         // Set promotions
         s.int()
