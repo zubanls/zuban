@@ -654,7 +654,7 @@ impl<'db> Diagnostic<'db> {
             ),
 
             InvalidAssertType { actual, wanted } => format!(
-                r#"Expression is of type "{actual}", not "{wanted}"#
+                r#"Expression is of type "{actual}", not "{wanted}""#
             ),
 
             SuperUsedOutsideClass => "\"super\" used outside class".to_string(),

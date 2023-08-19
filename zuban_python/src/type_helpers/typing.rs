@@ -239,14 +239,36 @@ pub fn execute_assert_type<'db>(
     args: &dyn Arguments<'db>,
     on_type_error: OnTypeError<'db, '_>,
 ) -> Inferred {
-    let mut iterator = args.iter();
-    let first = iterator.next().unwrap_or_else(|| todo!());
-    let second = iterator.next().unwrap_or_else(|| todo!());
+    if args.iter().count() != 2 {
+        args.as_node_ref().add_issue(
+            i_s,
+            IssueType::ArgumentIssue(Box::from("\"assert_type\" expects 2 arguments")),
+        );
+        return Inferred::new_any();
+    };
 
+    let mut iterator = args.iter();
+    let first = iterator.next().unwrap();
+    let second = iterator.next().unwrap();
+
+    let error_non_positional = || {
+        args.as_node_ref().add_issue(
+            i_s,
+            IssueType::ArgumentIssue(Box::from(
+                "\"assert_type\" must be called with 2 positional arguments",
+            )),
+        );
+        Inferred::new_any()
+    };
+    if !matches!(&first.kind, ArgumentKind::Positional { .. }) {
+        return error_non_positional();
+    }
+    let ArgumentKind::Positional { node_ref: second_node_ref, ..}= second.kind else {
+        return error_non_positional()
+    };
     let first = first.infer(i_s, &mut ResultContext::ExpectLiteral);
     let first_type = first.as_type(i_s);
 
-    let second_node_ref = second.as_node_ref();
     let second = second_node_ref
         .file
         .inference(i_s)
@@ -260,9 +282,6 @@ pub fn execute_assert_type<'db>(
                 wanted: second_type.format_short(i_s.db),
             },
         );
-    }
-    if iterator.next().is_some() {
-        todo!()
     }
     first
 }
