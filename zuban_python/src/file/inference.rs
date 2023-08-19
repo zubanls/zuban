@@ -744,7 +744,17 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     Inferred::new_any()
                 }
             }
-            YieldExprContent::None => Inferred::new_none(),
+            YieldExprContent::None => {
+                if Type::owned(generator.yield_type)
+                    .is_simple_super_type_of(i_s, &Type::new(&DbType::None))
+                    .bool()
+                {
+                    Inferred::new_none()
+                } else {
+                    from.add_issue(i_s, IssueType::YieldValueExpected);
+                    Inferred::new_any()
+                }
+            }
         }
     }
 

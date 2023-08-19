@@ -32,6 +32,7 @@ pub(crate) enum IssueType {
     DoesNotReturnAValue(Box<str>),
     InvalidGeneratorReturnType,
     YieldFromCannotBeApplied { to: Box<str> },
+    YieldValueExpected,
     IncompatibleAssignment { got: Box<str>, expected: Box<str> },
     CannotAssignToClassVarViaInstance { name: Box<str> },
     ListItemMismatch { item: usize, got: Box<str>, expected: Box<str> },
@@ -373,6 +374,7 @@ impl<'db> Diagnostic<'db> {
             InvalidGeneratorReturnType =>
                 r#"The return type of a generator function should be "Generator" or one of its supertypes"#.to_string(),
             YieldFromCannotBeApplied { to } => format!(r#""yield from" can't be applied to "{to}""#),
+            YieldValueExpected => "Yield value expected".to_string(),
             IncompatibleAssignment{got, expected} => {
                 format!(
                     "Incompatible types in assignment (expression has type \"{got}\", variable has type \"{expected}\")",
