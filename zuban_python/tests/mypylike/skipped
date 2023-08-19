@@ -1401,6 +1401,10 @@ testErrorCodeAssignment
 # List item 0 has incompatible type "str"; expected "int"
 testVariableTypeVarList
 testInWithInvalidArgs
+ 
+# Signature of __exit__ is wrong
+testWithStmtBoolExitReturnWithResultFalse
+testErrorCode__exit__Return
 
 # "Definition of "f" in base class "A" is incompatible with definition in base class "B""
 # Defintition mismatch in classes lower than first classes
@@ -1768,6 +1772,16 @@ testSerializeDummyType
 
 # Except Foo as bar where bar is bound over its existence as a variable
 testTryStarMultiple
+# with scoping is special
+testWithStmtScopeBasics
+testWithStmtScopeNestedWith1
+testWithStmtScopeNestedWith2
+testWithStmtScopeInnerAndOuterScopes
+testWithStmtScopeMultipleContextManagers
+testWithStmtScopeMultipleAssignment
+testWithStmtScopeComplexAssignments
+testWithStmtScopeAndClass
+testWithStmtScopeAndLambda
 
 # isinstance
 testLiteralErrorsWithIsInstanceAndIsSubclass
@@ -2174,19 +2188,6 @@ testRaiseFromStatement
 # Wrong diagnostic
 testWithStmtAndInvalidEnter
 testWithStmtScopeAndImport2
-# With statement
-testWithStmtAndMultipleExprs
-testWithStmtBoolExitReturnWithResultFalse
-testWithStmtScopeBasics
-testWithStmtScopeNestedWith1
-testWithStmtScopeNestedWith2
-testWithStmtScopeInnerAndOuterScopes
-testWithStmtScopeMultipleContextManagers
-testWithStmtScopeMultipleAssignment
-testWithStmtScopeComplexAssignments
-testWithStmtScopeAndClass
-testWithStmtScopeAndLambda
-testErrorCode__exit__Return
 
 # match statement
 testValuePattern
