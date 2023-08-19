@@ -149,3 +149,9 @@ def g() -> Generator[int, None, None]:
 [case invalid_forward_reference]
 a: 'int; str'  # E: Syntax error in type annotation
 b: 'int str'  # E: invalid syntax
+
+[case typing_extensions_assert_type]
+from typing_extensions import assert_type
+
+assert_type(1, Literal[1])
+assert_type(1, Literal[2])  # E: Expression is of type "Literal[1]", not "Literal[2]"

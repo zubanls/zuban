@@ -707,6 +707,7 @@ fn typing_changes(
     set_typing_inference(t, "Self", Specific::TypingSelf);
     set_typing_inference(t, "Annotated", Specific::TypingAnnotated);
     set_typing_inference(t, "reveal_type", Specific::RevealTypeFunction);
+    set_typing_inference(t, "assert_type", Specific::AssertTypeFunction);
     set_typing_inference(t, "NamedTuple", Specific::TypingNamedTuple);
     set_typing_inference(t, "Protocol", Specific::TypingProtocol);
 }

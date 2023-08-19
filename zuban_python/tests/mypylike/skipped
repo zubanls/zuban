@@ -369,7 +369,6 @@ testSelfTypeNew_explicit
 testInvalidAssertType
 testAssertTypeUncheckedFunction
 testAssertTypeUncheckedFunctionWithUntypedCheck
-# TODO add typing_extensions.assert_type
 
 # dict specialities
 testDictWithKeywordArgsOnly
