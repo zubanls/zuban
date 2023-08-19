@@ -424,7 +424,6 @@ pub enum Specific {
     BoolLiteral,
 
     Ellipsis,
-    GeneratorComprehension,
 
     MaybeSelfParam,
     Param,

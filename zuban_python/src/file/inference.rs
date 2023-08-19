@@ -1656,7 +1656,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     result,
                 ));
             }
-            ListComprehension(comp) => return self.infer_comprehension(comp),
+            ListComprehension(comp) => {
+                return self.infer_comprehension(comp.unpack(), ComprehensionKind::List)
+            }
             Dict(dict) => {
                 let generics = self.create_dict_generics(dict, result_context);
                 return Inferred::from_type(DbType::new_class(
@@ -1664,7 +1666,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     ClassGenerics::List(generics),
                 ));
             }
-            DictComprehension(_) => todo!(),
+            DictComprehension(comp) => todo!(), // return self.infer_comprehension(comp.unpack(), ComprehensionKind::SetOrDict),
             Set(set) => {
                 if let elements @ StarLikeExpressionIterator::Elements(_) = set.unpack() {
                     return Inferred::from_type(new_class!(
@@ -1676,7 +1678,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     todo!()
                 }
             }
-            SetComprehension(_) => todo!(),
+            SetComprehension(comp) => todo!(), // return self.infer_comprehension(comp.unpack(), ComprehensionKind::SetOrDict),
             Tuple(tuple) => {
                 return self.infer_tuple_iterator(tuple.iter()).save_redirect(
                     self.i_s,
@@ -1684,7 +1686,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     atom.index(),
                 )
             }
-            GeneratorComprehension(_) => Specific::GeneratorComprehension,
+            GeneratorComprehension(comp) => {
+                return self.infer_comprehension(comp.unpack(), ComprehensionKind::Generator)
+            }
             YieldExpr(yield_expr) => return self.infer_yield_expr(yield_expr, result_context),
             NamedExpression(named_expression) => {
                 return self.infer_named_expression_with_context(named_expression, result_context)
@@ -2120,8 +2124,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             .unwrap_or_else(|| todo!())
     }
 
-    pub fn infer_comprehension(&mut self, comprehension: Comprehension) -> Inferred {
-        let (comp_expr, for_if_clauses) = comprehension.unpack();
+    pub fn infer_comprehension(
+        &mut self,
+        unpacked: (CommonComprehensionExpression, ForIfClauses),
+        kind: ComprehensionKind,
+    ) -> Inferred {
+        let (comp_expr, for_if_clauses) = unpacked;
         for clause in for_if_clauses.iter() {
             match clause {
                 ForIfClause::Sync(sync) => {
@@ -2315,4 +2323,10 @@ fn first_defined_name(file: &PythonFile, name_index: NodeIndex) -> Option<NodeIn
         }
         current = next;
     }
+}
+
+pub enum ComprehensionKind {
+    SetOrDict,
+    List,
+    Generator,
 }

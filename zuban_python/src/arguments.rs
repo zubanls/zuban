@@ -338,9 +338,9 @@ impl<'db, 'a> Argument<'db, 'a> {
                 file,
                 comprehension,
                 i_s,
-            } => file
+            } => todo!()/*file
                 .inference(&i_s.use_mode_of(func_i_s))
-                .infer_comprehension(*comprehension),
+                .infer_comprehension(comprehension.unpack(), ComprehensionKind::Generator)*/,
             ArgumentKind::ParamSpec { usage, .. } => {
                 Inferred::from_type(DbType::ParamSpecArgs(usage.clone()))
             }

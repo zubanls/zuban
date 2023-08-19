@@ -11,6 +11,7 @@ pub use file_state::{
     File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, Leaf, PythonFileLoader,
     Vfs,
 };
+pub use inference::ComprehensionKind;
 use inference::Inference;
 pub use python_file::{ComplexValues, PythonFile};
 pub use type_computation::{
