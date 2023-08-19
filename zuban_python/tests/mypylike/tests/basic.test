@@ -145,3 +145,7 @@ def g() -> Generator[int, None, None]:
     z = yield from SubGenerator2()
     # TODO This Any is wrong, but that's also how Mypy does it.
     reveal_type(z)  # N: Revealed type is "Any"
+
+[case invalid_forward_reference]
+a: 'int; str'  # E: Syntax error in type annotation
+b: 'int str'  # E: invalid syntax

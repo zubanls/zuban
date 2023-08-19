@@ -2140,10 +2140,6 @@ testFastParseFunctionAnnotationSyntaxError
 testFastParseFunctionAnnotationSyntaxErrorSpaces
 testFastParseInvalidFunctionAnnotation
 
-# syntax errors
-testErrorCodeSyntaxError3
-testErrorCodeSyntaxErrorIgnoreNote
-
 # async/await
 testAwaitCoroutine
 testAwaitDefaultContext
@@ -2471,6 +2467,8 @@ testErrorCodeMissingDoesntTrampleUnusedIgnoresWarning
 testErrorCodeMissingWholeFileIgnores
 # type: ignore blocking errors cannot be ignored: ""yield" outside function"
 testCannotIgnoreBlockingError
+# type: ignore on forward reference
+testErrorCodeSyntaxErrorIgnoreNote
 
 # Very weird annotation resolution order
 testNewAnalyzerAnnotationConflictsWithAttributeSinglePass
@@ -2816,6 +2814,7 @@ testForStatementTypeComments
 testForStatementMultipleTypeComments
 testForIndex
 testForIndexInClassBody
+testErrorCodeSyntaxError3
 # with type comment
 testWithStmt
 testWithStmtInClassBody

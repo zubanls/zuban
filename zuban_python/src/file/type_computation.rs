@@ -428,7 +428,20 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             type_
         } else {
             debug!("Found non-expression in annotation: {}", f.tree.code());
-            todo!()
+            for stmt_or_error in f.tree.root().iter_stmts() {
+                if let StmtOrError::Error(node_index) = stmt_or_error {
+                    return TypeContent::Unknown;
+                }
+            }
+            self.inference.file.add_issue(
+                self.inference.i_s,
+                Issue {
+                    start_position: start,
+                    end_position: start + f.tree.code().len() as CodeIndex,
+                    type_: IssueType::InvalidSyntaxInTypeAnnotation,
+                },
+            );
+            TypeContent::Unknown
         }
     }
 

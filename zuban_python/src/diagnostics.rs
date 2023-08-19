@@ -12,6 +12,7 @@ use crate::utils::InsertOnlyVec;
 pub(crate) enum IssueType {
     InvalidSyntax,
     InvalidSyntaxInTypeComment { type_comment: Box<str> },
+    InvalidSyntaxInTypeAnnotation,
 
     AttributeError { object: Box<str>, name: Box<str> },
     UnionAttributeError { object: Box<str>, union: Box<str>, name: Box<str> },
@@ -200,7 +201,9 @@ impl IssueType {
         use IssueType::*;
         Some(match &self {
             Note(_) | InvariantNote { .. } => return None,
-            InvalidSyntax | InvalidSyntaxInTypeComment { .. } => "syntax",
+            InvalidSyntax | InvalidSyntaxInTypeComment { .. } | InvalidSyntaxInTypeAnnotation => {
+                "syntax"
+            }
             AttributeError { .. }
             | ImportAttributeError { .. }
             | ModuleAttributeError { .. }
@@ -351,6 +354,7 @@ impl<'db> Diagnostic<'db> {
             InvalidSyntaxInTypeComment { type_comment } => format!(
                 r#"Syntax error in type comment "{type_comment}""#
             ),
+            InvalidSyntaxInTypeAnnotation => "Syntax error in type annotation".to_string(),
 
             AttributeError{object, name} => format!("{object} has no attribute {name:?}"),
             UnionAttributeError{object, union, name} => format!("Item {object} of \"{union}\" has no attribute {name:?}"),
