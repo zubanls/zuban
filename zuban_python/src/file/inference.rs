@@ -1680,7 +1680,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     todo!()
                 }
             }
-            SetComprehension(comp) => todo!(), // return self.infer_comprehension(comp.unpack(), ComprehensionKind::SetOrDict),
+            SetComprehension(comp) => {
+                return self.infer_comprehension(comp.unpack(), ComprehensionKind::SetOrDict)
+            }
             Tuple(tuple) => {
                 return self.infer_tuple_iterator(tuple.iter()).save_redirect(
                     self.i_s,
@@ -2158,10 +2160,21 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
         debug!("TODO ANY INSTEAD OF ACTUAL VALUE IN COMPREHENSION");
         Inferred::from_type(match comp_expr {
-            CommonComprehensionExpression::Single(named_expr) => new_class!(
-                self.i_s.db.python_state.list_node_ref().as_link(),
-                self.infer_named_expression(named_expr).as_db_type(self.i_s),
-            ),
+            CommonComprehensionExpression::Single(named_expr) => {
+                let t = self.infer_named_expression(named_expr).as_db_type(self.i_s);
+                match kind {
+                    ComprehensionKind::List => {
+                        new_class!(self.i_s.db.python_state.list_node_ref().as_link(), t,)
+                    }
+                    ComprehensionKind::SetOrDict => {
+                        new_class!(self.i_s.db.python_state.set_node_ref().as_link(), t,)
+                    }
+                    ComprehensionKind::Generator => new_class!(
+                        self.i_s.db.python_state.list_node_ref().as_link(),
+                        t, // TODO this is wrong
+                    ),
+                }
+            }
             CommonComprehensionExpression::DictKeyValue(key_value) => new_class!(
                 self.i_s.db.python_state.list_node_ref().as_link(),
                 self.infer_expression(key_value.key()).as_db_type(self.i_s),
