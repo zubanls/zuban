@@ -18,10 +18,7 @@ use crate::node_ref::NodeRef;
 use crate::{debug, new_class, Inferred};
 
 impl<'db> Inference<'db, '_, '_> {
-    pub fn create_list_or_set_generics(
-        &mut self,
-        elements: StarLikeExpressionIterator,
-    ) -> GenericItem {
+    pub fn create_list_or_set_generics(&mut self, elements: StarLikeExpressionIterator) -> DbType {
         let mut result = DbType::Never;
         for child in elements {
             let mut t = match child {
@@ -43,7 +40,7 @@ impl<'db> Inference<'db, '_, '_> {
             }
             result.union_in_place(self.i_s.db, t);
         }
-        GenericItem::TypeArgument(result)
+        result
     }
 
     pub fn infer_list_literal_from_context(

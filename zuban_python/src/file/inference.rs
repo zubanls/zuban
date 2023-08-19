@@ -955,10 +955,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             });
 
                             let generic = union.as_db_type(self.i_s);
-                            let list = Inferred::create_instance(
+                            let list = Inferred::from_type(new_class!(
                                 self.i_s.db.python_state.list_node_ref().as_link(),
-                                Some(Rc::new([GenericItem::TypeArgument(generic)])),
-                            );
+                                generic,
+                            ));
                             self.assign_targets(
                                 star_target.as_target(),
                                 list,
@@ -967,12 +967,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             );
                         } else if value_iterator.len().is_none() {
                             let value = value_iterator.next(self.i_s).unwrap();
-                            let list = Inferred::create_instance(
+                            let list = Inferred::from_type(new_class!(
                                 self.i_s.db.python_state.list_node_ref().as_link(),
-                                Some(Rc::new([GenericItem::TypeArgument(
-                                    value.as_db_type(self.i_s),
-                                )])),
-                            );
+                                value.as_db_type(self.i_s),
+                            ));
                             self.assign_targets(
                                 star_target.as_target(),
                                 list,
@@ -1651,11 +1649,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     elements @ StarLikeExpressionIterator::Elements(_) => {
                         self.create_list_or_set_generics(elements)
                     }
-                    StarLikeExpressionIterator::Empty => GenericItem::TypeArgument(DbType::Any), // TODO shouldn't this be Never?
+                    StarLikeExpressionIterator::Empty => DbType::Any, // TODO shouldn't this be Never?
                 };
-                return Inferred::from_type(DbType::new_class(
+                return Inferred::from_type(new_class!(
                     self.i_s.db.python_state.list_node_ref().as_link(),
-                    ClassGenerics::List(GenericsList::new_generics(Rc::new([result]))),
+                    result,
                 ));
             }
             ListComprehension(comp) => return self.infer_comprehension(comp),
@@ -1669,10 +1667,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             DictComprehension(_) => todo!(),
             Set(set) => {
                 if let elements @ StarLikeExpressionIterator::Elements(_) = set.unpack() {
-                    return Inferred::create_instance(
+                    return Inferred::from_type(new_class!(
                         self.i_s.db.python_state.set_node_ref().as_link(),
-                        Some(Rc::new([self.create_list_or_set_generics(elements)])),
-                    )
+                        self.create_list_or_set_generics(elements),
+                    ))
                     .save_redirect(self.i_s, self.file, atom.index());
                 } else {
                     todo!()

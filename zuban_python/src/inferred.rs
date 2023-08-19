@@ -162,16 +162,6 @@ impl<'db: 'slf, 'slf> Inferred {
         Self { state }
     }
 
-    pub fn create_instance(class: PointLink, generics: Option<Rc<[GenericItem]>>) -> Self {
-        Self::new_unsaved_complex(ComplexPoint::TypeInstance(DbType::new_class(
-            class,
-            match generics {
-                Some(generics) => ClassGenerics::List(GenericsList::new_generics(generics)),
-                None => ClassGenerics::None,
-            },
-        )))
-    }
-
     pub fn saved_as_type(&self, i_s: &InferenceState<'db, '_>) -> Option<Type<'db>> {
         match &self.state {
             InferredState::Saved(definition) => Some(saved_as_type(i_s, *definition)),
