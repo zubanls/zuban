@@ -2122,13 +2122,35 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
     pub fn infer_comprehension(&mut self, comprehension: Comprehension) -> Inferred {
         let (comp_expr, for_if_clauses) = comprehension.unpack();
-        let clauses = for_if_clauses.iter();
+        for clause in for_if_clauses.iter() {
+            match clause {
+                ForIfClause::Sync(sync) => {
+                    let (targets, expr_part, comp_ifs) = sync.unpack();
+                    let inf = self
+                        .infer_expression_part(expr_part, &mut ResultContext::Unknown)
+                        .iter(self.i_s, NodeRef::new(self.file, expr_part.index()))
+                        .infer_all(self.i_s);
+                    self.assign_targets(
+                        targets.as_target(),
+                        inf,
+                        NodeRef::new(self.file, clause.index()),
+                        false,
+                    );
+                    for comp_if in comp_ifs {
+                        debug!("TODO implement comp_if {comp_if:?}");
+                    }
+                }
+                ForIfClause::Async(async_) => {
+                    todo!()
+                }
+            }
+        }
 
         debug!("TODO ANY INSTEAD OF ACTUAL VALUE IN COMPREHENSION");
         match comp_expr {
-            CommonComprehensionExpression::Single(expr) => Inferred::from_type(new_class!(
+            CommonComprehensionExpression::Single(named_expr) => Inferred::from_type(new_class!(
                 self.i_s.db.python_state.list_node_ref().as_link(),
-                DbType::Any,
+                self.infer_named_expression(named_expr).as_db_type(self.i_s),
             )),
             CommonComprehensionExpression::DictKeyValue(key_value) => {
                 todo!()
