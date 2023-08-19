@@ -1658,15 +1658,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     ClassGenerics::List(GenericsList::new_generics(Rc::new([result]))),
                 ));
             }
-            ListComprehension(_) => {
-                debug!("TODO ANY INSTEAD OF ACTUAL VALUE IN COMPREHENSION");
-                return Inferred::from_type(DbType::new_class(
-                    self.i_s.db.python_state.list_node_ref().as_link(),
-                    ClassGenerics::List(GenericsList::new_generics(Rc::new([
-                        GenericItem::TypeArgument(DbType::Any),
-                    ]))),
-                ));
-            }
+            ListComprehension(comp) => return self.infer_comprehension(comp),
             Dict(dict) => {
                 let generics = self.create_dict_generics(dict, result_context);
                 return Inferred::from_type(DbType::new_class(
@@ -2131,9 +2123,21 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     pub fn infer_comprehension(&mut self, comprehension: Comprehension) -> Inferred {
-        let (expr, for_if_clauses) = comprehension.unpack();
+        let (comp_expr, for_if_clauses) = comprehension.unpack();
         let clauses = for_if_clauses.iter();
-        todo!()
+
+        debug!("TODO ANY INSTEAD OF ACTUAL VALUE IN COMPREHENSION");
+        match comp_expr {
+            CommonComprehensionExpression::Single(expr) => Inferred::from_type(DbType::new_class(
+                self.i_s.db.python_state.list_node_ref().as_link(),
+                ClassGenerics::List(GenericsList::new_generics(Rc::new([
+                    GenericItem::TypeArgument(DbType::Any),
+                ]))),
+            )),
+            CommonComprehensionExpression::DictKeyValue(key_value) => {
+                todo!()
+            }
+        }
     }
 }
 
