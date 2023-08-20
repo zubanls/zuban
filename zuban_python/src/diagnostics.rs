@@ -61,6 +61,7 @@ pub(crate) enum IssueType {
     StmtOutsideFunction { keyword: &'static str },
     AwaitOutsideFunction,
     AwaitOutsideCoroutine,
+    YieldFromInAsyncFunction,
     OnlyClassTypeApplication,
     InvalidBaseClass,
     InvalidMetaclass,
@@ -544,8 +545,9 @@ impl<'db> Diagnostic<'db> {
             StarredExpressionOnlyNoTarget =>
                 "Can use starred expression only as assignment target".to_string(),
             StmtOutsideFunction{keyword} => format!("{keyword:?} outside function"),
-            AwaitOutsideFunction => format!(r#""await" outside function"#),
-            AwaitOutsideCoroutine => format!(r#""await" outside coroutine ("async def")"#),
+            AwaitOutsideFunction => r#""await" outside function"#.to_string(),
+            AwaitOutsideCoroutine => r#""await" outside coroutine ("async def")"#.to_string(),
+            YieldFromInAsyncFunction => r#""yield from" in async function"#.to_string(),
             InvalidBaseClass => format!("Invalid base class {:?}", self.code_under_issue()),
             InvalidMetaclass => format!("Invalid metaclass {:?}", self.code_under_issue()),
             MetaclassMustInheritFromType =>

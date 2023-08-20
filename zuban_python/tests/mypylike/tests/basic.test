@@ -155,3 +155,16 @@ from typing_extensions import assert_type
 
 assert_type(1, Literal[1])
 assert_type(1, Literal[2])  # E: Expression is of type "Literal[1]", not "Literal[2]"
+
+[case yield_from_in_typed_and_untyped]
+# testNoYieldFromInAsyncDef tests this as well, but not with untyped.
+from typing import Any
+
+async def f1():
+    yield from []  # E: "yield from" in async function
+async def g1():
+    x = yield from []  # E: "yield from" in async function
+async def f2() -> Any:
+    yield from []  # E: "yield from" in async function
+async def g2() -> Any:
+    x = yield from []  # E: "yield from" in async function

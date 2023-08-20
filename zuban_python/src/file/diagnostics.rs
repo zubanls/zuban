@@ -294,6 +294,22 @@ impl<'db> Inference<'db, '_, '_> {
                 }
                 RelevantUntypedNode::ImportFrom(i) => self.cache_import_from(i),
                 RelevantUntypedNode::ImportName(i) => self.cache_import_name(i),
+                RelevantUntypedNode::FunctionDef(func) => {
+                    // TODO
+                }
+                RelevantUntypedNode::ClassDef(class) => {
+                    // TODO
+                }
+                RelevantUntypedNode::YieldFrom(yield_from) => {
+                    if let Some(func) = self.i_s.current_function() {
+                        if func.is_async() {
+                            NodeRef::new(self.file, yield_from.index())
+                                .add_issue(self.i_s, IssueType::YieldFromInAsyncFunction);
+                        }
+                    } else {
+                        todo!()
+                    }
+                }
             }
         }
     }
@@ -541,13 +557,13 @@ impl<'db> Inference<'db, '_, '_> {
         }
 
         let is_dynamic = function.is_dynamic();
+        let args = NoArguments::new(NodeRef::new(self.file, f.index()));
+        let function_i_s = &mut self.i_s.with_diagnostic_func_and_args(&function, &args);
+        let mut inference = self.file.inference(function_i_s);
         if !is_dynamic || self.i_s.db.python_state.project.check_untyped_defs {
-            let args = NoArguments::new(NodeRef::new(self.file, f.index()));
-            let function_i_s = &mut self.i_s.with_diagnostic_func_and_args(&function, &args);
-            let mut inference = self.file.inference(function_i_s);
             inference.calc_block_diagnostics(block, None, Some(&function))
         } else {
-            self.calc_untyped_block_diagnostics(block)
+            inference.calc_untyped_block_diagnostics(block)
         }
         if self.i_s.db.python_state.project.disallow_untyped_defs {
             match (

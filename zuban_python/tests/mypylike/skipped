@@ -2140,7 +2140,6 @@ testFastParseInvalidFunctionAnnotation
 # "Are you missing an await?"
 testUnusedAwaitable
 # ""yield from" in async function"
-testNoYieldFromInAsyncDef
 testAsyncIteratorWithIgnoredErrorsAndYieldFrom
 # async generators
 testAsyncGenerator

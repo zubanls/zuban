@@ -687,6 +687,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     });
             }
             YieldExprContent::YieldFrom(yield_from) => {
+                if current_function.is_async() {
+                    from.add_issue(i_s, IssueType::YieldFromInAsyncFunction);
+                    return Inferred::new_any();
+                }
                 let expr_result = self.infer_expression(yield_from.expression());
                 let iter_result = expr_result.type_lookup_and_execute(
                     i_s,
