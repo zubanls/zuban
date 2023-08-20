@@ -211,7 +211,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
         if steps.flags.contains(&"--ignore-missing-imports") {
             diagnostics_config.ignore_missing_imports = true;
         }
-        if self.file_name == "check-errorcodes" {
+        if self.file_name == "check-errorcodes" || steps.flags.contains(&"--show-error-codes") {
             diagnostics_config.show_error_codes = true;
         }
         if self.file_name == "check-columns" || steps.flags.contains(&"--show-column-numbers") {

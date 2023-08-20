@@ -1318,12 +1318,28 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     },
                 )
             }
-            ExpressionPart::AwaitPrimary(await_node) => await_(
-                self.i_s,
-                self.infer_expression_part(await_node.primary(), &mut ResultContext::Unknown),
-                NodeRef::new(self.file, await_node.index()),
-                "\"await\"",
-            ),
+            ExpressionPart::AwaitPrimary(await_node) => {
+                let from = NodeRef::new(self.file, await_node.index());
+                if let Some(function) = self.i_s.current_function() {
+                    if function.is_async() {
+                        await_(
+                            self.i_s,
+                            self.infer_expression_part(
+                                await_node.primary(),
+                                &mut ResultContext::Unknown,
+                            ),
+                            from,
+                            "\"await\"",
+                        )
+                    } else {
+                        from.add_issue(self.i_s, IssueType::AwaitOutsideCoroutine);
+                        Inferred::new_any()
+                    }
+                } else {
+                    from.add_issue(self.i_s, IssueType::AwaitOutsideFunction);
+                    Inferred::new_any()
+                }
+            }
         }
     }
 

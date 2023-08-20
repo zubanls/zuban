@@ -2139,8 +2139,6 @@ testFastParseInvalidFunctionAnnotation
 # "Value of type "Coroutine[Any, Any, None]" must be used"
 # "Are you missing an await?"
 testUnusedAwaitable
-# async/await
-testAsyncGeneratorExpressionAwait
 # ""yield from" in async function"
 testNoYieldFromInAsyncDef
 testAsyncIteratorWithIgnoredErrorsAndYieldFrom
@@ -2153,14 +2151,12 @@ testAsyncGeneratorAthrow
 testAsyncGeneratorNoSyncIteration
 testAsyncGeneratorNoYieldFrom
 testAsyncGeneratorNoReturnWithValue
+testAsyncGeneratorExpressionAwait
 testAsyncGenDisallowUntyped
 testAsyncGenDisallowUntypedTriggers
 testNestedAsyncGeneratorAndTypeVarAvalues
 testNestedDecoratedCoroutineAndTypeVarValues
-# ""await" outside function  [top-level-await]"
-# ""await" outside coroutine ("async def")  [await-not-async]"
-testInvalidComprehensionNoCrash
-# rest
+# async/await rest
 testAsyncForComprehension
 testAsyncForComprehensionErrors
 testFullCoroutineMatrix

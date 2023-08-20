@@ -228,7 +228,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         false
     }
 
-    fn is_async(&self) -> bool {
+    pub fn is_async(&self) -> bool {
         matches!(
             self.node().parent(),
             FunctionParent::Async | FunctionParent::DecoratedAsync(_)

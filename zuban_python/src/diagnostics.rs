@@ -59,6 +59,8 @@ pub(crate) enum IssueType {
     TooFewValuesToUnpack { actual: usize, expected: usize },
     StarredExpressionOnlyNoTarget,
     StmtOutsideFunction { keyword: &'static str },
+    AwaitOutsideFunction,
+    AwaitOutsideCoroutine,
     OnlyClassTypeApplication,
     InvalidBaseClass,
     InvalidMetaclass,
@@ -246,6 +248,8 @@ impl IssueType {
             DoesNotReturnAValue(_) => "func-returns-value",
             CallToUntypedFunction { .. } => "no-untyped-call",
             AnnotationInUntypedFunction => "annotation-unchecked",
+            AwaitOutsideFunction => "top-level-await",
+            AwaitOutsideCoroutine => "await-not-async",
             _ => "misc",
         })
     }
@@ -540,6 +544,8 @@ impl<'db> Diagnostic<'db> {
             StarredExpressionOnlyNoTarget =>
                 "Can use starred expression only as assignment target".to_string(),
             StmtOutsideFunction{keyword} => format!("{keyword:?} outside function"),
+            AwaitOutsideFunction => format!(r#""await" outside function"#),
+            AwaitOutsideCoroutine => format!(r#""await" outside coroutine ("async def")"#),
             InvalidBaseClass => format!("Invalid base class {:?}", self.code_under_issue()),
             InvalidMetaclass => format!("Invalid metaclass {:?}", self.code_under_issue()),
             MetaclassMustInheritFromType =>
