@@ -2328,6 +2328,16 @@ fn get_generator_return_type(db: &Database, t: &DbType) -> DbType {
             }
         }
         DbType::Any => DbType::Any,
+        DbType::Union(union) => DbType::Union(UnionType::new(
+            union
+                .entries
+                .iter()
+                .map(|entry| UnionEntry {
+                    type_: get_generator_return_type(db, &entry.type_),
+                    format_index: entry.format_index,
+                })
+                .collect(),
+        )),
         _ => todo!("{t:?}"),
     }
 }
