@@ -29,44 +29,29 @@ testShadowTypingModule
 testTypeshedRecursiveTypesExample
 testGenericInferenceWithDataclass
 testGenericInferenceWithItertools
-
-# pythoneval weird names
-testOpenReturnTypeInferenceSpecialCases
 testMapStr
-testCollectionsAliases
-testChainMapUnimported
-testDequeWrongCase
-testAsyncioGatherPreciseType-xfail
 testNoCrashOnGenericUnionUnpacking
-testMetaclassOpAccess
-testMetaclassOpAccessUnion
-testMetaclassOpAccessAny
-testEnumIterationAndPreciseElementType
-testIntEnumIterable
-testInvalidSlots
-testLoadsOfOverloads
-testNamedTupleNew
 testNamedTupleTypeInheritanceSpecialCase
-testNewAnalyzerBasicTypeshed_newsemanal
-testNewAnalyzerTypedDictInStub_newsemanal
-testStrictEqualityAllowlist
 testIsInstanceAdHocIntersectionWithStrAndBytes
-testNoPython3StubAvailable
-testTypingExtensionsOrderedDictAlias
 testEnumValueWithPlaceholderNodeType
-testNarrowTypeForDictKeys
 testTypeAliasWithNewStyleUnion
-testEnumNameWorkCorrectlyOn311
 testTypeAliasNotSupportedWithNewStyleUnion
 testTupleWithDifferentArgsPy310
 testEnumIterMetaInference
-testEnumUnpackedViaMetaclass
 testNativeIntTypes
 testStarUnpackNestedUnderscore
-testStrictEqualitywithParamSpec
 testInferenceOfDunderDictOnClassObjects
+
+testChainMapUnimported
+testTypingExtensionsOrderedDictAlias
+# pythoneval weird names
+testAsyncioGatherPreciseType-xfail
+testEnumIterationAndPreciseElementType
+testNamedTupleNew
+testIntEnumIterable
+testEnumUnpackedViaMetaclass
+testMetaclassOpAccess
 testDataclassReplaceOptional
-testDataclassStrictOptionalAlwaysSet
 
 # EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
 testStrEnumCreation
@@ -742,6 +727,7 @@ testTypedDictGet
 testTypedDictMappingMethods
 testCanConvertTypedDictToAnySuperclassOfMapping
 testTypedDictUnionGetFull
+testNewAnalyzerTypedDictInStub_newsemanal
 
 # NoReturn
 testNoReturnTypeAlias
@@ -1062,6 +1048,7 @@ testFutureMetaclassAny
 # "Library stubs not installed for "requests""
 testLibraryStubsNotInstalled
 testIgnoreImportIfNoPython3StubAvailable
+testNoPython3StubAvailable
 # six imports
 testNewAnalyzerMetaclassSix1
 testNewAnalyzerMetaclassSix2
@@ -1106,6 +1093,7 @@ testImportMisspellingMultipleCandidates
 testImportMisspellingMultipleCandidatesTruncated
 testColumnHasNoAttribute
 testErrorCodeNoAttribute
+testDequeWrongCase
 # "C" has no attribute "__aenter__"; maybe "__enter__"?
 testAsyncWithError
 
@@ -1599,6 +1587,7 @@ testGetattrAndSetattr
 # __slots__
 testSlotsSerialization
 testProtocolSlotsIsNotProtocolMember
+testInvalidSlots
 
 # "The return type of "__init__" must be None"
 testConstructorWithReturnValueType
@@ -2054,6 +2043,8 @@ testExceptionVariableReuseInDeferredNode4
 testExceptionVariableReuseInDeferredNode5
 testExceptionVariableReuseInDeferredNode6
 testSerializeNamedTuple
+# narrowing with dict keys
+testNarrowTypeForDictKeys
 
 # None late binding, because it's None (x = None; x = 3)
 *PartialType*
@@ -2649,6 +2640,8 @@ testStrictEqualityBytesSpecialUnion
 testErrorCodeNonOverlappingEquality
 testColumnNonOverlappingEqualityCheck
 testStrictEqualityAndEnumWithCustomEq
+testStrictEqualityAllowlist
+testStrictEqualitywithParamSpec
 
 # --show-column-numbers and tuple targets
 testColumnsAssignment

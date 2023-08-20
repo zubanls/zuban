@@ -302,7 +302,12 @@ impl<'name, 'code> TestCase<'name, 'code> {
             }
             if self.file_name.starts_with("pythoneval") {
                 // pythoneval tests use different file names. It feels so random...
-                actual = actual.replace("main:", "_program.py:")
+                // It even uses two different ways...
+                let file_name_dot_py = format!("_{}.py:", self.name);
+                for line in wanted.iter_mut() {
+                    *line = line.replace("_program.py:", "main:");
+                    *line = line.replace(&file_name_dot_py, "main:");
+                }
             }
             let mut actual_lines = actual
                 .trim()
