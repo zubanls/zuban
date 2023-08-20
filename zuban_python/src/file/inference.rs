@@ -110,7 +110,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let (star_targets, star_exprs, _, _) = for_stmt.unpack();
                 // Performance: We probably do not need to calculate diagnostics just for
                 // calculating the names.
-                self.cache_for_stmt_names(star_targets, star_exprs);
+                self.cache_for_stmt_names(star_targets, star_exprs, false);
+                // TODO do the async case as well
             }
             StmtContent::ClassDef(cls) => self.cache_class(name_def, cls),
             StmtContent::Decorated(decorated) => match decorated.decoratee() {

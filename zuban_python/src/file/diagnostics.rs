@@ -151,7 +151,7 @@ impl<'db> Inference<'db, '_, '_> {
                     }
                 }
                 StmtContent::ForStmt(for_stmt) => {
-                    self.calc_for_stmt_diagnostics(for_stmt, class, func)
+                    self.calc_for_stmt_diagnostics(for_stmt, class, func, false)
                 }
                 StmtContent::TryStmt(try_stmt) => {
                     self.calc_try_stmt_diagnostics(try_stmt, class, func)
@@ -174,7 +174,9 @@ impl<'db> Inference<'db, '_, '_> {
                     AsyncStmtContent::FunctionDef(func) => {
                         self.calc_function_diagnostics(func, class)
                     }
-                    AsyncStmtContent::ForStmt(_) => todo!(),
+                    AsyncStmtContent::ForStmt(for_stmt) => {
+                        self.calc_for_stmt_diagnostics(for_stmt, class, func, true)
+                    }
                     AsyncStmtContent::WithStmt(with_stmt) => {
                         self.calc_with_stmt(with_stmt, class, func, true)
                     }
@@ -665,23 +667,42 @@ impl<'db> Inference<'db, '_, '_> {
         }
     }
 
-    pub fn cache_for_stmt_names(&mut self, star_targets: StarTargets, star_exprs: StarExpressions) {
+    pub fn cache_for_stmt_names(
+        &mut self,
+        star_targets: StarTargets,
+        star_exprs: StarExpressions,
+        is_async: bool,
+    ) {
         let star_targets_point = self.file.points.get(star_targets.index());
         if star_targets_point.calculated() {
             debug_assert_eq!(star_targets_point.type_(), PointType::NodeAnalysis);
             return;
         }
-        let element = self
-            .infer_star_expressions(star_exprs, &mut ResultContext::Unknown)
-            .iter(self.i_s, NodeRef::new(self.file, star_exprs.index()))
-            .infer_all(self.i_s);
+        let inf = self.infer_star_expressions(star_exprs, &mut ResultContext::Unknown);
+        let from = NodeRef::new(self.file, star_exprs.index());
+        let element = if is_async {
+            await_(
+                self.i_s,
+                inf.type_lookup_and_execute_with_attribute_error(
+                    self.i_s,
+                    from,
+                    "__aiter__",
+                    &NoArguments::new(from),
+                )
+                .type_lookup_and_execute_with_attribute_error(
+                    self.i_s,
+                    from,
+                    "__anext__",
+                    &NoArguments::new(from),
+                ),
+                from,
+            )
+        } else {
+            inf.iter(self.i_s, NodeRef::new(self.file, star_exprs.index()))
+                .infer_all(self.i_s)
+        };
         debug!("For loop input: {}", element.format_short(self.i_s));
-        self.assign_targets(
-            star_targets.as_target(),
-            element,
-            NodeRef::new(self.file, star_exprs.index()),
-            false,
-        );
+        self.assign_targets(star_targets.as_target(), element, from, false);
         self.file.points.set(
             star_targets.index(),
             Point::new_node_analysis(Locality::Todo),
@@ -693,9 +714,10 @@ impl<'db> Inference<'db, '_, '_> {
         for_stmt: ForStmt,
         class: Option<Class>,
         func: Option<&Function>,
+        is_async: bool,
     ) {
         let (star_targets, star_exprs, block, else_block) = for_stmt.unpack();
-        self.cache_for_stmt_names(star_targets, star_exprs);
+        self.cache_for_stmt_names(star_targets, star_exprs, is_async);
         self.calc_block_diagnostics(block, class, func);
         if let Some(else_block) = else_block {
             self.calc_block_diagnostics(else_block.block(), class, func);
