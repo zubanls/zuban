@@ -656,10 +656,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     ) -> Inferred {
         let i_s = self.i_s;
         let from = NodeRef::new(self.file, yield_expr.index());
-        let generator = self
-            .i_s
-            .current_function()
-            .and_then(|func| func.generator_return(i_s))
+        let Some(current_function) = self.i_s.current_function() else {
+            todo!()
+        };
+        let generator = current_function
+            .generator_return(i_s)
             // In case we do not know the generator return, just return an Any version of it. The
             // function type will be checked in a different place.
             .unwrap_or(GeneratorType {
