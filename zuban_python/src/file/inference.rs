@@ -2333,7 +2333,7 @@ fn first_defined_name(file: &PythonFile, name_index: NodeIndex) -> Option<NodeIn
     }
 }
 
-fn await_(i_s: &InferenceState, inf: Inferred, from: NodeRef) -> Inferred {
+pub fn await_(i_s: &InferenceState, inf: Inferred, from: NodeRef) -> Inferred {
     Inferred::from_type(get_generator_return_type(
         i_s.db,
         inf.type_lookup_and_execute(

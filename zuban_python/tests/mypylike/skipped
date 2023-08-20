@@ -2149,7 +2149,6 @@ testAwaitOverloadSpecialCase
 testUnusedAwaitable
 testAwaitMissingNote
 testAsyncGeneratorExpressionAwait
-testAsyncWith2-only_when_nocache
 test__aiter__and__anext__
 
 # "Trying to read deleted variable "Foo""

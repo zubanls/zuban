@@ -23,6 +23,8 @@ use crate::type_helpers::{
     Instance, TypeOrClass,
 };
 
+use super::inference::await_;
+
 impl<'db> Inference<'db, '_, '_> {
     pub fn calculate_diagnostics(&mut self) {
         self.calc_stmts_diagnostics(self.file.tree.root().iter_stmts(), None, None);
@@ -163,40 +165,7 @@ impl<'db> Inference<'db, '_, '_> {
                     }
                 }
                 StmtContent::WithStmt(with_stmt) => {
-                    let (with_items, block) = with_stmt.unpack();
-                    for with_item in with_items.iter() {
-                        let (expr, target) = with_item.unpack();
-                        let from = NodeRef::new(self.file, expr.index());
-                        let result = self.infer_expression(expr);
-                        let enter_result = result.type_lookup_and_execute_with_attribute_error(
-                            self.i_s,
-                            from,
-                            "__enter__",
-                            &NoArguments::new(from),
-                        );
-                        result.type_lookup_and_execute_with_attribute_error(
-                            self.i_s,
-                            from,
-                            "__exit__",
-                            &CombinedArguments::new(
-                                &KnownArguments::new(&Inferred::new_any(), from),
-                                &CombinedArguments::new(
-                                    // TODO don't use any here.
-                                    &KnownArguments::new(&Inferred::new_any(), from),
-                                    &KnownArguments::new(&Inferred::new_any(), from),
-                                ),
-                            ),
-                        );
-                        if let Some(target) = target {
-                            self.assign_targets(
-                                target,
-                                enter_result,
-                                NodeRef::new(self.file, with_item.index()),
-                                true,
-                            )
-                        }
-                    }
-                    self.calc_block_diagnostics(block, class, func);
+                    self.calc_with_stmt(with_stmt, class, func, false)
                 }
                 StmtContent::MatchStmt(match_stmt) => {
                     debug!("TODO match_stmt diagnostics");
@@ -206,7 +175,9 @@ impl<'db> Inference<'db, '_, '_> {
                         self.calc_function_diagnostics(func, class)
                     }
                     AsyncStmtContent::ForStmt(_) => todo!(),
-                    AsyncStmtContent::WithStmt(_) => todo!(),
+                    AsyncStmtContent::WithStmt(with_stmt) => {
+                        self.calc_with_stmt(with_stmt, class, func, true)
+                    }
                 },
                 StmtContent::Newline => {}
             };
@@ -214,6 +185,61 @@ impl<'db> Inference<'db, '_, '_> {
                 .points
                 .set(stmt.index(), Point::new_node_analysis(Locality::Todo));
         }
+    }
+
+    fn calc_with_stmt(
+        &mut self,
+        with_stmt: WithStmt,
+        class: Option<Class>,
+        func: Option<&Function>,
+        is_async: bool,
+    ) {
+        let (with_items, block) = with_stmt.unpack();
+        for with_item in with_items.iter() {
+            let (expr, target) = with_item.unpack();
+            let from = NodeRef::new(self.file, expr.index());
+            let result = self.infer_expression(expr);
+            let mut enter_result = result.type_lookup_and_execute_with_attribute_error(
+                self.i_s,
+                from,
+                match is_async {
+                    false => "__enter__",
+                    true => "__aenter__",
+                },
+                &NoArguments::new(from),
+            );
+            if is_async {
+                enter_result = await_(self.i_s, enter_result, from);
+            }
+            let exit_result = result.type_lookup_and_execute_with_attribute_error(
+                self.i_s,
+                from,
+                match is_async {
+                    false => "__exit__",
+                    true => "__aexit__",
+                },
+                &CombinedArguments::new(
+                    &KnownArguments::new(&Inferred::new_any(), from),
+                    &CombinedArguments::new(
+                        // TODO don't use any here.
+                        &KnownArguments::new(&Inferred::new_any(), from),
+                        &KnownArguments::new(&Inferred::new_any(), from),
+                    ),
+                ),
+            );
+            if is_async {
+                await_(self.i_s, exit_result, from);
+            }
+            if let Some(target) = target {
+                self.assign_targets(
+                    target,
+                    enter_result,
+                    NodeRef::new(self.file, with_item.index()),
+                    true,
+                )
+            }
+        }
+        self.calc_block_diagnostics(block, class, func);
     }
 
     fn calc_untyped_block_diagnostics(&mut self, block: Block) {
