@@ -1019,6 +1019,8 @@ testImportMisspellingMultipleCandidates
 testImportMisspellingMultipleCandidatesTruncated
 testColumnHasNoAttribute
 testErrorCodeNoAttribute
+# "C" has no attribute "__aenter__"; maybe "__enter__"?
+testAsyncWithError
 
 # Unexpected keyword argument "otter" for "f"; did you mean "other"?
 testKeywordMisspelling
@@ -2134,21 +2136,41 @@ testFastParseFunctionAnnotationSyntaxErrorSpaces
 testFastParseInvalidFunctionAnnotation
 
 # async/await
-testAwaitCoroutine
-testAwaitDefaultContext
-testAwaitAnyContext
 testAwaitExplicitContext
 testAwaitGeneratorError
 testAwaitIteratorError
 testAwaitArgumentError
-testAwaitResultError
-testAwaitReturnError
-testYieldFromNoAwaitable
-testAwaitableSubclass
-testAwaitOverloadSpecialCase
 testUnusedAwaitable
-testAwaitMissingNote
 testAsyncGeneratorExpressionAwait
+# Additional
+testAsyncForError
+testAsyncForComprehension
+testAsyncForComprehensionErrors
+testAsyncWithErrorBadAenter
+testAsyncWithErrorBadAenter2
+testAsyncWithErrorBadAexit
+testAsyncWithErrorBadAexit2
+testNoYieldFromInAsyncDef
+testAsyncGenerator
+testAsyncGeneratorReturnIterator
+testAsyncGeneratorManualIter
+testAsyncGeneratorAsend
+testAsyncGeneratorAthrow
+testAsyncGeneratorNoSyncIteration
+testAsyncGeneratorNoYieldFrom
+testAsyncGeneratorNoReturnWithValue
+testFullCoroutineMatrix
+testAsyncGenDisallowUntyped
+testAsyncGenDisallowUntypedTriggers
+testAsyncOverloadedFunction
+testAsyncForwardRefInBody
+testAsyncWithInGenericClass
+testAwaitUnion
+testAsyncIteratorWithIgnoredErrors
+testAsyncIteratorWithIgnoredErrorsAndYieldFrom
+testInvalidComprehensionNoCrash
+testNestedAsyncGeneratorAndTypeVarAvalues
+testNestedDecoratedCoroutineAndTypeVarValues
 
 # "Trying to read deleted variable "Foo""
 testDelStmtWithTypeInfo
@@ -2211,6 +2233,7 @@ testEmptyBodyProhibitedFunction
 testEmptyBodyProhibitedMethodNonAbstract
 testEmptyBodyProhibitedPropertyNonAbstract
 testEmptyBodyNoteABCMeta
+testAsyncDefMissingReturn
 # "Use "-> None" if function does not return a value"
 testDecoratedFunctionLine
 
@@ -2222,6 +2245,7 @@ testReturnWithoutAValue
 testEmptyReturnInGenerator
 testErrorCodeMissingReturnValueInReturnStatement
 testColumnReturnValueExpected
+testAsyncDefReturnWithoutValue
 
 # "No return value expected"
 testNonEmptyReturnInNoneTypedGenerator
@@ -2785,12 +2809,14 @@ testForStatementMultipleTypeComments
 testForIndex
 testForIndexInClassBody
 testErrorCodeSyntaxError3
+testAsyncForTypeComments
 # with type comment
 testWithStmt
 testWithStmtInClassBody
 testWithStmtTypeComment
 testWithStmtTupleTypeComment
 testWithStmtComplexTypeComment
+testAsyncWithTypeComments
 
 # Type Vars qualified names
 testQualifiedTypeVariableName
