@@ -1317,22 +1317,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     },
                 )
             }
-            ExpressionPart::AwaitPrimary(await_) => {
-                let from = NodeRef::new(self.file, await_.index());
-                Inferred::from_type(get_generator_return_type(
-                    self.i_s.db,
-                    self.infer_expression_part(await_.primary(), &mut ResultContext::Unknown)
-                        .type_lookup_and_execute(
-                            self.i_s,
-                            from,
-                            "__await__",
-                            &NoArguments::new(from),
-                            &|_| todo!(),
-                        )
-                        .as_type(self.i_s)
-                        .as_ref(),
-                ))
-            }
+            ExpressionPart::AwaitPrimary(await_node) => await_(
+                self.i_s,
+                self.infer_expression_part(await_node.primary(), &mut ResultContext::Unknown),
+                NodeRef::new(self.file, await_node.index()),
+            ),
         }
     }
 
@@ -2135,30 +2124,28 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     ) -> Inferred {
         let (comp_expr, for_if_clauses) = unpacked;
         for clause in for_if_clauses.iter() {
-            match clause {
-                ForIfClause::Sync(sync) => {
-                    let (targets, expr_part, comp_ifs) = sync.unpack();
-                    let inf = self
-                        .infer_expression_part(expr_part, &mut ResultContext::Unknown)
-                        .iter(self.i_s, NodeRef::new(self.file, expr_part.index()))
-                        .infer_all(self.i_s);
-                    self.assign_targets(
-                        targets.as_target(),
-                        inf,
-                        NodeRef::new(self.file, clause.index()),
-                        false,
-                    );
-                    for comp_if in comp_ifs {
-                        debug!("TODO implement comp_if {comp_if:?}");
-                    }
-                }
+            let mut needs_await = false;
+            let (targets, expr_part, comp_ifs) = match clause {
+                ForIfClause::Sync(sync) => sync.unpack(),
                 ForIfClause::Async(async_) => {
-                    todo!()
+                    needs_await = true;
+                    async_.unpack()
                 }
+            };
+            let clause_node_ref = NodeRef::new(self.file, clause.index());
+            let mut inf = self.infer_expression_part(expr_part, &mut ResultContext::Unknown);
+            if needs_await {
+                inf = await_(self.i_s, inf, clause_node_ref);
+            }
+            let inf = inf
+                .iter(self.i_s, NodeRef::new(self.file, expr_part.index()))
+                .infer_all(self.i_s);
+            self.assign_targets(targets.as_target(), inf, clause_node_ref, false);
+            for comp_if in comp_ifs {
+                debug!("TODO implement comp_if {comp_if:?}");
             }
         }
 
-        debug!("TODO ANY INSTEAD OF ACTUAL VALUE IN COMPREHENSION");
         Inferred::from_type(match comp_expr {
             CommonComprehensionExpression::Single(named_expr) => {
                 let t = self.infer_named_expression(named_expr).as_db_type(self.i_s);
@@ -2170,8 +2157,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         new_class!(self.i_s.db.python_state.set_node_ref().as_link(), t,)
                     }
                     ComprehensionKind::Generator => new_class!(
-                        self.i_s.db.python_state.list_node_ref().as_link(),
-                        t, // TODO this is wrong
+                        self.i_s.db.python_state.generator_link(),
+                        t,
+                        DbType::None,
+                        DbType::None,
                     ),
                 }
             }
@@ -2314,6 +2303,7 @@ fn get_generator_return_type(db: &Database, t: &DbType) -> DbType {
                 todo!("{t:?}")
             }
         }
+        DbType::Any => DbType::Any,
         _ => todo!("{t:?}"),
     }
 }
@@ -2341,6 +2331,21 @@ fn first_defined_name(file: &PythonFile, name_index: NodeIndex) -> Option<NodeIn
         }
         current = next;
     }
+}
+
+fn await_(i_s: &InferenceState, inf: Inferred, from: NodeRef) -> Inferred {
+    Inferred::from_type(get_generator_return_type(
+        i_s.db,
+        inf.type_lookup_and_execute(
+            i_s,
+            from,
+            "__await__",
+            &NoArguments::new(from),
+            &|_| todo!(),
+        )
+        .as_type(i_s)
+        .as_ref(),
+    ))
 }
 
 pub enum ComprehensionKind {

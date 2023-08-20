@@ -228,6 +228,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         false
     }
 
+    fn is_async(&self) -> bool {
+        matches!(
+            self.node().parent(),
+            FunctionParent::Async | FunctionParent::DecoratedAsync(_)
+        )
+    }
+
     pub fn type_vars(&self, i_s: &InferenceState<'db, '_>) -> Option<&'a TypeVarLikes> {
         // To save the generics just use the ( operator's storage.
         // + 1 for def; + 2 for name + 1 for (...)
@@ -927,7 +934,15 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         };
         let mut params = params.peekable();
         let result_type = self.result_type(i_s);
-        let result_type = as_db_type(i_s, result_type);
+        let mut result_type = as_db_type(i_s, result_type);
+        if self.is_async() {
+            result_type = new_class!(
+                i_s.db.python_state.coroutine_link(),
+                DbType::Any,
+                DbType::Any,
+                result_type,
+            );
+        }
 
         let return_result = |params| CallableContent {
             name: Some(self.name_string_slice()),
@@ -1071,10 +1086,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             }
             self.execute_without_annotation(i_s, args)
         };
-        if matches!(
-            self.node().parent(),
-            FunctionParent::Async | FunctionParent::DecoratedAsync(_)
-        ) {
+        if self.is_async() {
             return Inferred::from_type(new_class!(
                 i_s.db.python_state.coroutine_link(),
                 DbType::Any,

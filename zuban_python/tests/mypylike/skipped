@@ -704,8 +704,6 @@ testYieldOutsideFunction
 testListComprehensionSpecialScoping
 # "Assignment expression within a comprehension cannot be used in a class body"
 testNoCrashOnAssignmentExprClass
-# async comprehensions
-testAsyncGeneratorWithinComprehension
 
 # lambda
 testIncrementalWithDecorators
@@ -2151,7 +2149,6 @@ testAwaitOverloadSpecialCase
 testUnusedAwaitable
 testAwaitMissingNote
 testAsyncGeneratorExpressionAwait
-testAwaitAnd__await__-only_when_nocache
 testAsyncWith2-only_when_nocache
 test__aiter__and__anext__
 
