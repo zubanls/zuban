@@ -301,12 +301,17 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 actual = actual.replace("main:", "file:")
             }
             if self.file_name.starts_with("pythoneval") {
-                // pythoneval tests use different file names. It feels so random...
-                // It even uses two different ways...
+                // pythoneval tests use different file names, because in mypy these are actually
+                // created as files.
+                // It uses two different ways for convenience...
                 let file_name_dot_py = format!("_{}.py:", self.name);
+                let file_name_qualified = format!("_{}.", self.name);
                 for line in wanted.iter_mut() {
                     *line = line.replace("_program.py:", "main:");
                     *line = line.replace(&file_name_dot_py, "main:");
+                    // Since the file name can be in a reveal_type like _fooTest.A, but it should
+                    // actually be __main__.A to be closer to what we do.
+                    *line = line.replace(&file_name_qualified, "__main__.");
                 }
             }
             let mut actual_lines = actual

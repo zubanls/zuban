@@ -41,17 +41,8 @@ testEnumIterMetaInference
 testNativeIntTypes
 testStarUnpackNestedUnderscore
 testInferenceOfDunderDictOnClassObjects
-
-testChainMapUnimported
-testTypingExtensionsOrderedDictAlias
-# pythoneval weird names
-testAsyncioGatherPreciseType-xfail
-testEnumIterationAndPreciseElementType
-testNamedTupleNew
 testIntEnumIterable
-testEnumUnpackedViaMetaclass
-testMetaclassOpAccess
-testDataclassReplaceOptional
+testTypingExtensionsOrderedDictAlias
 
 # EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
 testStrEnumCreation
@@ -609,6 +600,7 @@ updateDataclassTransformParameterViaDecorator
 updateDataclassTransformParameterViaParentClass
 updateBaseClassToUseDataclassTransform
 frozenInheritanceViaDefault
+testDataclassReplaceOptional
 
 # Enum is also a NamedTuple. wtf?
 testNamedTupleEnum
@@ -1159,6 +1151,7 @@ testErrorOneMoreFutureInReturnType
 testErrorOneLessFutureInReturnType
 testErrorAssignmentDifferentType
 testForwardRefToBadAsyncShouldNotCrash_newsemanal
+testAsyncioGatherPreciseType-xfail
 # Mypy does follow imports and doesn't check all files (Submodule was not imported)
 testFollowImportsNormalDeleteFile4
 testFollowImportsNormalDeleteFile5
