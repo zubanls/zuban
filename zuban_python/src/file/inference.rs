@@ -1332,7 +1332,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             self.i_s,
                             self.infer_expression_part(
                                 await_node.primary(),
-                                &mut ResultContext::Unknown,
+                                &mut match result_context {
+                                    ResultContext::ExpectUnused => ResultContext::ExpectUnused,
+                                    _ => ResultContext::Unknown,
+                                },
                             ),
                             from,
                             "\"await\"",
