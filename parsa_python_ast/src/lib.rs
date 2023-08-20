@@ -1725,7 +1725,7 @@ impl<'db> FunctionDef<'db> {
         } else if parent.is_type(Nonterminal(async_stmt)) {
             FunctionParent::Async
         } else if parent.is_type(Nonterminal(async_function_def)) {
-            FunctionParent::DecoratedAsync(Decorated::new(parent))
+            FunctionParent::DecoratedAsync(Decorated::new(parent.parent().unwrap()))
         } else {
             unreachable!()
         }

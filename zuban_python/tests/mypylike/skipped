@@ -2159,7 +2159,6 @@ testAsyncGeneratorWithinComprehension
 testAsyncDeferredAnalysis
 testAsyncForComprehension
 testFullCoroutineMatrix
-testAsyncOverloadedFunction
 testAsyncForwardRefInBody
 testAsyncWithInGenericClass
 testAwaitUnion

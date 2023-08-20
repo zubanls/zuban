@@ -488,10 +488,12 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     fn expect_decorated_node(&self) -> Decorated {
-        let FunctionParent::Decorated(decorated) = self.node().parent() else {
-            unreachable!();
-        };
-        decorated
+        match self.node().parent() {
+            FunctionParent::Decorated(decorated) | FunctionParent::DecoratedAsync(decorated) => {
+                decorated
+            }
+            _ => unreachable!(),
+        }
     }
 
     fn calculate_decorated_function_details(

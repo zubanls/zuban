@@ -135,7 +135,9 @@ impl<'db> Inference<'db, '_, '_> {
                         }
                         self.calc_class_diagnostics(class)
                     }
-                    Decoratee::AsyncFunctionDef(f) => todo!(),
+                    Decoratee::AsyncFunctionDef(func) => {
+                        self.calc_function_diagnostics(func, class)
+                    }
                 },
                 StmtContent::IfStmt(if_stmt) => {
                     for block in if_stmt.iter_blocks() {
