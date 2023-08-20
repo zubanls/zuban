@@ -2135,21 +2135,27 @@ testFastParseFunctionAnnotationSyntaxError
 testFastParseFunctionAnnotationSyntaxErrorSpaces
 testFastParseInvalidFunctionAnnotation
 
-# async/await
-testAwaitGeneratorError
-testAwaitIteratorError
-testAwaitArgumentError
+# "Value of type "A" must be used"
+# "Value of type "Coroutine[Any, Any, None]" must be used"
+# "Are you missing an await?"
 testUnusedAwaitable
+# async/await
 testAsyncGeneratorExpressionAwait
-# Additional
+# ""List[int]" has no attribute "__aiter__" (not async iterable)"
 testAsyncForError
+# Additional
 testAsyncForComprehension
 testAsyncForComprehensionErrors
+# Incompatible types in "async with" for "__aenter__" (actual type "int", expected type "Awaitable [Any]")
 testAsyncWithErrorBadAenter
 testAsyncWithErrorBadAenter2
+# Incompatible types in "async with" for "__aexit__" (actual type "int", expected type "Awaitable [Any]")
 testAsyncWithErrorBadAexit
 testAsyncWithErrorBadAexit2
+# ""yield from" in async function"
 testNoYieldFromInAsyncDef
+testAsyncIteratorWithIgnoredErrorsAndYieldFrom
+# async generators
 testAsyncGenerator
 testAsyncGeneratorReturnIterator
 testAsyncGeneratorManualIter
@@ -2158,17 +2164,20 @@ testAsyncGeneratorAthrow
 testAsyncGeneratorNoSyncIteration
 testAsyncGeneratorNoYieldFrom
 testAsyncGeneratorNoReturnWithValue
-testFullCoroutineMatrix
 testAsyncGenDisallowUntyped
 testAsyncGenDisallowUntypedTriggers
+testNestedAsyncGeneratorAndTypeVarAvalues
+testNestedDecoratedCoroutineAndTypeVarValues
+# ""await" outside function  [top-level-await]"
+# ""await" outside coroutine ("async def")  [await-not-async]"
+testInvalidComprehensionNoCrash
+# rest
+testFullCoroutineMatrix
 testAsyncOverloadedFunction
 testAsyncForwardRefInBody
 testAsyncWithInGenericClass
 testAwaitUnion
 testAsyncIteratorWithIgnoredErrors
-testAsyncIteratorWithIgnoredErrorsAndYieldFrom
-testInvalidComprehensionNoCrash
-testNestedAsyncGeneratorAndTypeVarAvalues
 testNestedDecoratedCoroutineAndTypeVarValues
 
 # "Trying to read deleted variable "Foo""

@@ -374,7 +374,7 @@ impl<'db> Diagnostic<'db> {
                 format!("Incompatible return value type (got {got:?}, expected {expected:?})")
             }
             IncompatibleTypes{cause, got, expected} => {
-                format!(r#"Incompatible types in "{cause}" (actual type "{got}", expected type "{expected}")"#)
+                format!(r#"Incompatible types in {cause} (actual type "{got}", expected type "{expected}")"#)
             }
             DoesNotReturnAValue(named) => format!("{named} does not return a value"),
             InvalidGeneratorReturnType =>

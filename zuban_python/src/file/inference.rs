@@ -677,7 +677,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         from.add_issue(
                             i_s,
                             IssueType::IncompatibleTypes {
-                                cause: "yield",
+                                cause: "\"yield\"",
                                 got,
                                 expected,
                             },
@@ -715,7 +715,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         from.add_issue(
                             i_s,
                             IssueType::IncompatibleTypes {
-                                cause: "yield from",
+                                cause: "\"yield from\"",
                                 got,
                                 expected,
                             },
@@ -2337,13 +2337,16 @@ fn first_defined_name(file: &PythonFile, name_index: NodeIndex) -> Option<NodeIn
 pub fn await_(i_s: &InferenceState, inf: Inferred, from: NodeRef) -> Inferred {
     Inferred::from_type(get_generator_return_type(
         i_s.db,
-        inf.type_lookup_and_execute(
-            i_s,
-            from,
-            "__await__",
-            &NoArguments::new(from),
-            &|_| todo!(),
-        )
+        inf.type_lookup_and_execute(i_s, from, "__await__", &NoArguments::new(from), &|t| {
+            from.add_issue(
+                i_s,
+                IssueType::IncompatibleTypes {
+                    cause: "\"await\"",
+                    got: t.format_short(i_s.db),
+                    expected: "Awaitable[Any]".into(),
+                },
+            );
+        })
         .as_type(i_s)
         .as_ref(),
     ))
