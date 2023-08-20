@@ -29,7 +29,7 @@ pub(crate) enum IssueType {
     IncompatibleDefaultArgument{ argument_name: Box<str>, got: Box<str>, expected: Box<str> },
     InvalidCastTarget,
     IncompatibleReturn { got: Box<str>, expected: Box<str> },
-    IncompatibleYield { cause: &'static str, got: Box<str>, expected: Box<str> },
+    IncompatibleTypes { cause: &'static str, got: Box<str>, expected: Box<str> },
     DoesNotReturnAValue(Box<str>),
     InvalidGeneratorReturnType,
     YieldFromCannotBeApplied { to: Box<str> },
@@ -373,7 +373,7 @@ impl<'db> Diagnostic<'db> {
             IncompatibleReturn{got, expected} => {
                 format!("Incompatible return value type (got {got:?}, expected {expected:?})")
             }
-            IncompatibleYield{cause, got, expected} => {
+            IncompatibleTypes{cause, got, expected} => {
                 format!(r#"Incompatible types in "{cause}" (actual type "{got}", expected type "{expected}")"#)
             }
             DoesNotReturnAValue(named) => format!("{named} does not return a value"),

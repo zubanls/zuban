@@ -676,7 +676,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     .error_if_not_matches(i_s, &inf, |i_s, got, expected| {
                         from.add_issue(
                             i_s,
-                            IssueType::IncompatibleYield {
+                            IssueType::IncompatibleTypes {
                                 cause: "yield",
                                 got,
                                 expected,
@@ -714,7 +714,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     |i_s, got, expected| {
                         from.add_issue(
                             i_s,
-                            IssueType::IncompatibleYield {
+                            IssueType::IncompatibleTypes {
                                 cause: "yield from",
                                 got,
                                 expected,

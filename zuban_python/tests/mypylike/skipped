@@ -2136,7 +2136,6 @@ testFastParseFunctionAnnotationSyntaxErrorSpaces
 testFastParseInvalidFunctionAnnotation
 
 # async/await
-testAwaitExplicitContext
 testAwaitGeneratorError
 testAwaitIteratorError
 testAwaitArgumentError
