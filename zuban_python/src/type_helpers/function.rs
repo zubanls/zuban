@@ -2215,6 +2215,14 @@ impl GeneratorType {
                     return_type: Some(cls.nth_type_argument(db, 2)),
                 })
             }
+            DbType::Class(c) if c.link == db.python_state.async_generator_link() => {
+                let cls = Class::from_generic_class(db, c);
+                Some(GeneratorType {
+                    yield_type: cls.nth_type_argument(db, 0),
+                    send_type: Some(cls.nth_type_argument(db, 1)),
+                    return_type: None,
+                })
+            }
             DbType::Union(union) => union.iter().fold(None, |a, b| {
                 if let Some(b) = Self::from_type(db, Type::new(b)) {
                     if let Some(a) = a {

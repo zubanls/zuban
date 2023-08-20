@@ -2141,7 +2141,6 @@ testFastParseInvalidFunctionAnnotation
 # --enable-error-code unused-awaitable
 testUnusedAwaitable
 # async generators
-testAsyncGenerator
 testAsyncGeneratorManualIter
 testAsyncGeneratorAsend
 testAsyncGeneratorNoReturnWithValue

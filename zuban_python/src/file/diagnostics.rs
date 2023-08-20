@@ -554,8 +554,13 @@ impl<'db> Inference<'db, '_, '_> {
                     .is_simple_super_type_of(self.i_s, &Type::new(&expected))
                     .bool()
                 {
-                    NodeRef::new(self.file, return_annotation.index())
-                        .add_issue(self.i_s, IssueType::InvalidGeneratorReturnType);
+                    if function.is_async() {
+                        NodeRef::new(self.file, return_annotation.index())
+                            .add_issue(self.i_s, IssueType::InvalidAsyncGeneratorReturnType);
+                    } else {
+                        NodeRef::new(self.file, return_annotation.index())
+                            .add_issue(self.i_s, IssueType::InvalidGeneratorReturnType);
+                    }
                 }
             }
         }

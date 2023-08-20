@@ -32,6 +32,7 @@ pub(crate) enum IssueType {
     IncompatibleTypes { cause: &'static str, got: Box<str>, expected: Box<str> },
     DoesNotReturnAValue(Box<str>),
     InvalidGeneratorReturnType,
+    InvalidAsyncGeneratorReturnType,
     YieldFromCannotBeApplied { to: Box<str> },
     YieldValueExpected,
     IncompatibleAssignment { got: Box<str>, expected: Box<str> },
@@ -386,6 +387,8 @@ impl<'db> Diagnostic<'db> {
             DoesNotReturnAValue(named) => format!("{named} does not return a value"),
             InvalidGeneratorReturnType =>
                 r#"The return type of a generator function should be "Generator" or one of its supertypes"#.to_string(),
+            InvalidAsyncGeneratorReturnType =>
+                r#"The return type of an async generator function should be "AsyncGenerator" or one of its supertypes"#.to_string(),
             YieldFromCannotBeApplied { to } => format!(r#""yield from" can't be applied to "{to}""#),
             YieldValueExpected => "Yield value expected".to_string(),
             IncompatibleAssignment{got, expected} => {
