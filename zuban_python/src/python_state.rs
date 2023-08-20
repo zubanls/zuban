@@ -92,6 +92,8 @@ pub struct PythonState {
     typing_iterable_index: NodeIndex,
     typing_generator_index: NodeIndex,
     typing_async_generator_index: NodeIndex,
+    typing_async_iterator_index: NodeIndex,
+    typing_async_iterable_index: NodeIndex,
     typing_overload_index: NodeIndex,
     types_module_type_index: NodeIndex,
     types_none_type_index: NodeIndex,
@@ -164,6 +166,8 @@ impl PythonState {
             typing_iterable_index: 0,
             typing_generator_index: 0,
             typing_async_generator_index: 0,
+            typing_async_iterator_index: 0,
+            typing_async_iterable_index: 0,
             collections_namedtuple_index: 0,
             abc_abc_meta_index: 0,
             abc_abstractmethod_index: 0,
@@ -323,6 +327,8 @@ impl PythonState {
         cache_index!(typing_iterable_index, db, typing, "Iterable");
         cache_index!(typing_generator_index, db, typing, "Generator");
         cache_index!(typing_async_generator_index, db, typing, "AsyncGenerator");
+        cache_index!(typing_async_iterator_index, db, typing, "AsyncIterator");
+        cache_index!(typing_async_iterable_index, db, typing, "AsyncIterable");
         cache_index!(types_module_type_index, db, types, "ModuleType");
         cache_index!(types_none_type_index, db, types, "NoneType");
         cache_index!(abc_abstractproperty_index, db, abc, "abstractproperty");
@@ -581,14 +587,6 @@ impl PythonState {
         PointLink::new(self.typing().file_index(), self.typing_generator_index)
     }
 
-    pub fn async_generator_link(&self) -> PointLink {
-        debug_assert!(self.typing_async_generator_index != 0);
-        PointLink::new(
-            self.typing().file_index(),
-            self.typing_async_generator_index,
-        )
-    }
-
     pub fn iterator_link(&self) -> PointLink {
         debug_assert!(self.typing_iterator_index != 0);
         PointLink::new(self.typing().file_index(), self.typing_iterator_index)
@@ -597,6 +595,24 @@ impl PythonState {
     pub fn iterable_link(&self) -> PointLink {
         debug_assert!(self.typing_iterable_index != 0);
         PointLink::new(self.typing().file_index(), self.typing_iterable_index)
+    }
+
+    pub fn async_generator_link(&self) -> PointLink {
+        debug_assert!(self.typing_async_generator_index != 0);
+        PointLink::new(
+            self.typing().file_index(),
+            self.typing_async_generator_index,
+        )
+    }
+
+    pub fn async_iterator_link(&self) -> PointLink {
+        debug_assert!(self.typing_async_iterator_index != 0);
+        PointLink::new(self.typing().file_index(), self.typing_async_iterator_index)
+    }
+
+    pub fn async_iterable_link(&self) -> PointLink {
+        debug_assert!(self.typing_async_iterable_index != 0);
+        PointLink::new(self.typing().file_index(), self.typing_async_iterable_index)
     }
 
     pub fn mypy_extensions_arg_func(&self, db: &Database, specific: Specific) -> Inferred {

@@ -2196,7 +2196,9 @@ impl GeneratorType {
         match t.as_ref() {
             DbType::Class(c)
                 if c.link == db.python_state.iterator_link()
-                    || c.link == db.python_state.iterable_link() =>
+                    || c.link == db.python_state.iterable_link()
+                    || c.link == db.python_state.async_iterator_link()
+                    || c.link == db.python_state.async_iterable_link() =>
             {
                 let cls = Class::from_generic_class(db, c);
                 Some(GeneratorType {
