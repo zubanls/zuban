@@ -1668,6 +1668,7 @@ testSuperWithTypeVarValues1
 testSuperWithTypeVarValues2
 testInnerFunctionWithTypevarValues
 testInnerFunctionMutualRecursionWithTypevarValues
+testNestedDecoratedCoroutineAndTypeVarValues
 
 # Callable[..., int] | Callable[..., str] lambda inference may conflict
 testOptionalLambdaInference
@@ -2140,14 +2141,12 @@ testFastParseInvalidFunctionAnnotation
 # "Are you missing an await?"
 # --enable-error-code unused-awaitable
 testUnusedAwaitable
-# async generators
-testAsyncGeneratorManualIter
+# async await when is a generator comprehension becoming an asyncgenerator?
 testAsyncGeneratorExpressionAwait
+testAsyncForComprehension
 # async/await rest
 testAsyncDeferredAnalysis
-testAsyncForComprehension
 testFullCoroutineMatrix
-testNestedDecoratedCoroutineAndTypeVarValues
 
 # "Trying to read deleted variable "Foo""
 testDelStmtWithTypeInfo
