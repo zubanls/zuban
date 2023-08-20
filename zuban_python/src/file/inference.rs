@@ -1322,6 +1322,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 self.i_s,
                 self.infer_expression_part(await_node.primary(), &mut ResultContext::Unknown),
                 NodeRef::new(self.file, await_node.index()),
+                "\"await\"",
             ),
         }
     }
@@ -2136,7 +2137,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             let clause_node_ref = NodeRef::new(self.file, clause.index());
             let mut inf = self.infer_expression_part(expr_part, &mut ResultContext::Unknown);
             if needs_await {
-                inf = await_(self.i_s, inf, clause_node_ref);
+                inf = await_(self.i_s, inf, clause_node_ref, "\"await\"");
             }
             let inf = inf
                 .iter(self.i_s, NodeRef::new(self.file, expr_part.index()))
@@ -2334,14 +2335,19 @@ fn first_defined_name(file: &PythonFile, name_index: NodeIndex) -> Option<NodeIn
     }
 }
 
-pub fn await_(i_s: &InferenceState, inf: Inferred, from: NodeRef) -> Inferred {
+pub fn await_(
+    i_s: &InferenceState,
+    inf: Inferred,
+    from: NodeRef,
+    no_lookup_cause: &'static str,
+) -> Inferred {
     Inferred::from_type(get_generator_return_type(
         i_s.db,
         inf.type_lookup_and_execute(i_s, from, "__await__", &NoArguments::new(from), &|t| {
             from.add_issue(
                 i_s,
                 IssueType::IncompatibleTypes {
-                    cause: "\"await\"",
+                    cause: no_lookup_cause,
                     got: t.format_short(i_s.db),
                     expected: "Awaitable[Any]".into(),
                 },

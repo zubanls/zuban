@@ -2143,15 +2143,6 @@ testUnusedAwaitable
 testAsyncGeneratorExpressionAwait
 # ""List[int]" has no attribute "__aiter__" (not async iterable)"
 testAsyncForError
-# Additional
-testAsyncForComprehension
-testAsyncForComprehensionErrors
-# Incompatible types in "async with" for "__aenter__" (actual type "int", expected type "Awaitable [Any]")
-testAsyncWithErrorBadAenter
-testAsyncWithErrorBadAenter2
-# Incompatible types in "async with" for "__aexit__" (actual type "int", expected type "Awaitable [Any]")
-testAsyncWithErrorBadAexit
-testAsyncWithErrorBadAexit2
 # ""yield from" in async function"
 testNoYieldFromInAsyncDef
 testAsyncIteratorWithIgnoredErrorsAndYieldFrom
@@ -2172,6 +2163,8 @@ testNestedDecoratedCoroutineAndTypeVarValues
 # ""await" outside coroutine ("async def")  [await-not-async]"
 testInvalidComprehensionNoCrash
 # rest
+testAsyncForComprehension
+testAsyncForComprehensionErrors
 testFullCoroutineMatrix
 testAsyncOverloadedFunction
 testAsyncForwardRefInBody

@@ -211,7 +211,12 @@ impl<'db> Inference<'db, '_, '_> {
                 &NoArguments::new(from),
             );
             if is_async {
-                enter_result = await_(self.i_s, enter_result, from);
+                enter_result = await_(
+                    self.i_s,
+                    enter_result,
+                    from,
+                    r#""async with" for "__aenter__""#,
+                );
             }
             let exit_result = result.type_lookup_and_execute_with_attribute_error(
                 self.i_s,
@@ -230,7 +235,12 @@ impl<'db> Inference<'db, '_, '_> {
                 ),
             );
             if is_async {
-                await_(self.i_s, exit_result, from);
+                await_(
+                    self.i_s,
+                    exit_result,
+                    from,
+                    r#""async with" for "__aexit__""#,
+                );
             }
             if let Some(target) = target {
                 self.assign_targets(
@@ -696,6 +706,7 @@ impl<'db> Inference<'db, '_, '_> {
                     &NoArguments::new(from),
                 ),
                 from,
+                r#""async for""#,
             )
         } else {
             inf.iter(self.i_s, NodeRef::new(self.file, star_exprs.index()))
