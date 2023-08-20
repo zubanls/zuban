@@ -10,7 +10,7 @@ use regex::{Captures, Regex, Replacer};
 
 use zuban_python::{DiagnosticConfig, Project, ProjectOptions};
 
-const USE_MYPY_TEST_FILES: [&str; 86] = [
+const USE_MYPY_TEST_FILES: [&str; 88] = [
     // Type checking tests
     "check-generics.test",
     "check-generic-alias.test",
@@ -106,8 +106,8 @@ const USE_MYPY_TEST_FILES: [&str; 86] = [
     "check-columns.test",
     "check-errorcodes.test",
     //"check-flags.test",
-    //"pythoneval.test",
-    //"pythoneval-asyncio.test",
+    "pythoneval.test",
+    "pythoneval-asyncio.test",
     //"cmdline.test",
     //"cmdline.pyproject.test",
     //"envvars.test",
@@ -300,6 +300,10 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 // For whatever reason mypy uses a different file name for these tests
                 actual = actual.replace("main:", "file:")
             }
+            if self.file_name.starts_with("pythoneval") {
+                // pythoneval tests use different file names. It feels so random...
+                actual = actual.replace("main:", "_program.py:")
+            }
             let mut actual_lines = actual
                 .trim()
                 .split('\n')
@@ -375,6 +379,10 @@ impl<'name, 'code> TestCase<'name, 'code> {
                     // errors, because zuban's tree is probably different. We still test however
                     // that there are no errors in those cases.
                     step.out = in_between;
+                }
+                if self.file_name.starts_with("pythoneval") && !in_between.contains(".py:") {
+                    // pythoneval.test and pythoneval-asyncio.test
+                    step.out = "";
                 }
             } else if type_ == "delete" {
                 step.deletions.push(rest)

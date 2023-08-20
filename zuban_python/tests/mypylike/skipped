@@ -1,4 +1,72 @@
 # Next up
+testCallMethodViaTypeObject
+testTypeAttributes
+testDictFromkeys
+testAnyStr
+testIOTypes
+testGenericPatterns
+testGenericMatch
+testListInplaceAdd
+testListMethods
+testTupleAsSubtypeOfSequence
+testMapWithLambdaSpecialCase
+testInternalBuiltinDefinition
+testVarArgsFunctionSubtyping
+testSuperNew
+testMultiplyTupleByInteger
+testMultiplyTupleByIntegerReverse
+testDictWithKeywordArgs
+testDefaultDict
+testDictUpdateInference
+testMetaclassAndSuper
+testSortedNoError
+testReModuleBytes
+testReModuleString
+testCrashOnComplexCheckWithNamedTupleNext
+testEnumIterable
+testDerivedEnumIterable
+testShadowTypingModule
+testTypeshedRecursiveTypesExample
+testGenericInferenceWithDataclass
+testGenericInferenceWithItertools
+
+# pythoneval weird names
+testOpenReturnTypeInferenceSpecialCases
+testMapStr
+testCollectionsAliases
+testChainMapUnimported
+testDequeWrongCase
+testAsyncioGatherPreciseType-xfail
+testNoCrashOnGenericUnionUnpacking
+testMetaclassOpAccess
+testMetaclassOpAccessUnion
+testMetaclassOpAccessAny
+testEnumIterationAndPreciseElementType
+testIntEnumIterable
+testInvalidSlots
+testLoadsOfOverloads
+testNamedTupleNew
+testNamedTupleTypeInheritanceSpecialCase
+testNewAnalyzerBasicTypeshed_newsemanal
+testNewAnalyzerTypedDictInStub_newsemanal
+testStrictEqualityAllowlist
+testIsInstanceAdHocIntersectionWithStrAndBytes
+testNoPython3StubAvailable
+testTypingExtensionsOrderedDictAlias
+testEnumValueWithPlaceholderNodeType
+testNarrowTypeForDictKeys
+testTypeAliasWithNewStyleUnion
+testEnumNameWorkCorrectlyOn311
+testTypeAliasNotSupportedWithNewStyleUnion
+testTupleWithDifferentArgsPy310
+testEnumIterMetaInference
+testEnumUnpackedViaMetaclass
+testNativeIntTypes
+testStarUnpackNestedUnderscore
+testStrictEqualitywithParamSpec
+testInferenceOfDunderDictOnClassObjects
+testDataclassReplaceOptional
+testDataclassStrictOptionalAlwaysSet
 
 # EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
 testStrEnumCreation
@@ -126,6 +194,7 @@ testUnsafeOverlappingWithOperatorMethodsAndOverloading2
 testUnsafeOverlappingWithLineNo
 testReverseComparisonOperator
 testUnsafeOverlappingNamedTuple
+testOverlappingOperatorMethods
 # "Forward operator "__add__" is not callable"
 testReverseOperatorMethodForwardIsAny3
 # Formatting?
@@ -483,6 +552,9 @@ testNewAnalyzerIncrementalBrokenNamedTuple
 testNewAnalyzerIncrementalBrokenNamedTupleNested
 # "Statement is unreachable"
 testNamedTupleWithBoolNarrowsToBool
+testUnreachableWithStdlibContextManagers
+testUnreachableWithStdlibContextManagersNoStrictOptional
+testSpecialTypingProtocols
 # "Self type cannot be used in NamedTuple item type"
 testNamedTupleSelfItemNotAllowed
 # "Property "y" defined in "Point" is read-only"
@@ -544,7 +616,8 @@ testSelfTypeProperSupertypeAttributeTuple
 # Formatting qualified names like tuple[int, fallback=b.C.Hidden@5]
 testNewAnalyzerIncrementalMethodNamedTuple
 
-# data class (currently all are passing)
+# dataclass
+testDataclassReplace
 
 # Enum is also a NamedTuple. wtf?
 testNamedTupleEnum
@@ -659,6 +732,10 @@ testUnpackKwargsSerialize
 testNoCrashDoubleReexportTypedDictEmpty
 testGenericTypedDictWithError
 testIncrementalNewTypeInMethod
+testTypedDictGet
+testTypedDictMappingMethods
+testCanConvertTypedDictToAnySuperclassOfMapping
+testTypedDictUnionGetFull
 
 # NoReturn
 testNoReturnTypeAlias
@@ -929,6 +1006,7 @@ testVariadicAliasVariadicTupleArg
 testVariadicAliasVariadicTupleArgGeneric
 testVariadicAliasVariadicTupleArgSplit
 testTypeVarTuplePep646ArrayExampleInfer
+testTypeVarTupleTypingExtensions
 # typing_extensions.Unpack
 testRuntimeProtoTwoBases
 testUnpackKwargsReveal
@@ -977,6 +1055,7 @@ testFutureMetaclassErrors
 testFutureMetaclassAny
 # "Library stubs not installed for "requests""
 testLibraryStubsNotInstalled
+testIgnoreImportIfNoPython3StubAvailable
 # six imports
 testNewAnalyzerMetaclassSix1
 testNewAnalyzerMetaclassSix2
@@ -1067,6 +1146,25 @@ testImportCycleSpecialCase
 testPackagePath
 testIncrementalNestedBrokenCascade
 
+# asyncio missing attributes
+testSimpleCoroutineSleep
+testCoroutineCallingOtherCoroutine
+testCoroutineChangingFuture
+testFunctionAssignedAsCallback
+testMultipleTasks
+testConcatenatedCoroutines
+testConcatenatedCoroutinesReturningFutures
+testCoroutineWithOwnClass
+testErrorAssigningCoroutineThatDontReturn
+testErrorReturnIsNotTheSameType
+testErrorSetFutureDifferentInternalType
+testErrorUsingDifferentFutureType
+testErrorUsingDifferentFutureTypeAndSetFutureDifferentInternalType
+testErrorSettingCallbackWithDifferentFutureType
+testErrorOneMoreFutureInReturnType
+testErrorOneLessFutureInReturnType
+testErrorAssignmentDifferentType
+testForwardRefToBadAsyncShouldNotCrash_newsemanal
 # Mypy does follow imports and doesn't check all files (Submodule was not imported)
 testFollowImportsNormalDeleteFile4
 testFollowImportsNormalDeleteFile5
@@ -1722,6 +1820,8 @@ testFinalAddFinalMethodOverride
 testLiteralWithFinalPropagation
 testLiteralWithFinalPropagationIsNotLeaking
 testEnumCreatedFromFinalValue
+# "Cannot inherit from final class "bool""
+testCannotExtendBoolUnlessIgnored
 
 # Conditional definitions
 testNewAnalyzerConditionalFunc
@@ -2198,6 +2298,7 @@ testSubtypingMappingUnpacking3
 testNotDirectIterableAndMappingSubtyping
 testUnpackInExpression3-only_when_nocache
 functional_enum_starred_dict_literal_errors
+testDictWithStarStarSpecialCase
 
 # "Missing return statement"
 testWarnNoReturnWorksWithStrictOptional
@@ -2211,6 +2312,7 @@ testEmptyBodyProhibitedMethodNonAbstract
 testEmptyBodyProhibitedPropertyNonAbstract
 testEmptyBodyNoteABCMeta
 testAsyncDefMissingReturn
+testUnreachableWithStdlibContextManagers
 # "Use "-> None" if function does not return a value"
 testDecoratedFunctionLine
 
