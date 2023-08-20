@@ -618,6 +618,12 @@ testNewAnalyzerIncrementalMethodNamedTuple
 
 # dataclass
 testDataclassReplace
+testReplace
+# dataclass transform
+updateDataclassTransformParameterViaDecorator
+updateDataclassTransformParameterViaParentClass
+updateBaseClassToUseDataclassTransform
+frozenInheritanceViaDefault
 
 # Enum is also a NamedTuple. wtf?
 testNamedTupleEnum
@@ -2428,6 +2434,9 @@ testDescriptorUncallableDunderSet
 
 # attrs
 testAttrs*
+updateMagicField
+magicAttributeConsistency
+magicAttributeConsistency2-only_when_cache
 
 # Special case for assignment to '_'
 testUnusedTargetLocal
@@ -2768,6 +2777,7 @@ testLimitLegacyStubErrorVolume
 testReprocessMethodShowSource
 testGenericTypeAliasesWithNestedArgs
 testPrettyMessageSorting
+testParseErrorShowSource
 
 # --no-silence-site-packages
 testAddFileWhichImportsLibModuleWithErrors
@@ -2783,6 +2793,7 @@ testNoCrashOnBreakOutsideLoopClass
 testContinueOutsideLoop
 testInvalidGlobalDecl
 testAssignToTypeDef
+testSemanticAnalysisBlockingError
 
 # "unknown encoding: uft-8"
 testInvalidEncoding
@@ -2790,6 +2801,10 @@ testInvalidEncoding2
 testInvalidEncoding3
 testDoubleEncoding
 testDoubleEncoding2
+# coding: ascii
+testDecodeErrorBlocker1-posix
+testDecodeErrorBlocker2-windows
+testDecodeErrorBlockerOnInitialRun-posix
 
 # "Syntax error in type annotation"
 # Suggestion: Use tuple[T1, ..., Tn] instead of (T1, ..., Tn)
@@ -2800,6 +2815,11 @@ testReturnEmptyTuple
 testColumnSyntaxErrorInTypeAnnotation
 # Syntax error in type comment, because used `# type:` twice
 testErrorCodeTypeIgnoreMisspelled2
+
+# invalid syntax, and therefore name errors, names should probably be Any
+testModifyTwoFilesOneWithBlockingError1
+testModifyTwoFilesOneWithBlockingError2
+testModifyTwoFilesIntroduceTwoBlockingErrors
 
 # All of these are really not important at all, because there are syntax
 # errors, just not the fancy ones.
@@ -2832,6 +2852,13 @@ testInvalidFuncDefArgs1
 testNotAsBinaryOp
 testBinaryNegAsBinaryOp
 testErrorCodeSyntaxError
+testUpdateClassReferenceAcrossBlockingError
+testAddFileWithBlockingError
+testBlockingErrorRemainsUnfixed
+testDeleteFileWithBlockingError-only_when_nocache
+testDeleteFileWithBlockingError2-only_when_cache
+testModifyFileWhileBlockingErrorElsewhere
+testInitialBlocker
 # "cannot delete function call"
 testInvalidDel1
 # "cannot delete expression"
@@ -2850,6 +2877,15 @@ testDelMultipleThingsInvalid
 testPrintStatementInPython3
 # "invalid character in identifier"
 testSmartQuotes
+# "expected ':'"
+testParseError
+testParseErrorMultipleTimes
+testBlockingErrorWithPreviousError
+
+# Needs lib-stub/blocker.pyi
+testImportBringsAnotherFileWithBlockingError1
+testImportBringsAnotherFileWithSemanticAnalysisBlockingError
+testFixingBlockingErrorBringsInAnotherModuleWithBlocker
 
 # "Not all union combinations were tried because there are too many unions"
 testTooManyUnionsException

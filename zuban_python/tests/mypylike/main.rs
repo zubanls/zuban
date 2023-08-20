@@ -10,7 +10,7 @@ use regex::{Captures, Regex, Replacer};
 
 use zuban_python::{DiagnosticConfig, Project, ProjectOptions};
 
-const USE_MYPY_TEST_FILES: [&str; 88] = [
+const USE_MYPY_TEST_FILES: [&str; 92] = [
     // Type checking tests
     "check-generics.test",
     "check-generic-alias.test",
@@ -96,12 +96,12 @@ const USE_MYPY_TEST_FILES: [&str; 88] = [
     "fine-grained.test",
     "fine-grained-modules.test",
     "fine-grained-follow-imports.test",
-    //"fine-grained-blockers.test",
+    "fine-grained-blockers.test",
     "fine-grained-cache-incremental.test",
     "fine-grained-cycles.test",
-    //"fine-grained-attr.test",
-    //"fine-grained-dataclass.test",
-    //"fine-grained-dataclass-transform.test",
+    "fine-grained-attr.test",
+    "fine-grained-dataclass.test",
+    "fine-grained-dataclass-transform.test",
     // Mypy flag checking
     "check-columns.test",
     "check-errorcodes.test",
