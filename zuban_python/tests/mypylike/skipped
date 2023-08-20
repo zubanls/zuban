@@ -2590,6 +2590,8 @@ testNamespacePackageInsideClassicPackage
 testNamespacePackagePickFirstOnMypyPathCase
 testTypedPkgNoSitePkgsIgnoredImports
 testTypedPkg_config_nositepackages
+# Uses an environment variable in mypy.ini files=$MYPY_CONFIG_FILE_DIR/good.py
+testEnvvar_MYPY_CONFIG_FILE_DIR
 
 # Mypy plugins
 testChangedPluginsInvalidateCache
