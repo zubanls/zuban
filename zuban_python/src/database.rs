@@ -2892,7 +2892,10 @@ impl Database {
     }
 
     pub fn loaded_file(&self, index: FileIndex) -> &(dyn File + 'static) {
-        let f = self.file_state(index).file(&*self.vfs).unwrap();
+        let state = self.file_state(index);
+        let f = state
+            .file(&*self.vfs)
+            .unwrap_or_else(|| panic!("file #{index}: {}", state.path()));
         f.ensure_initialized(&self.python_state.project);
         f
     }

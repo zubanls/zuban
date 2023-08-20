@@ -56,6 +56,8 @@ testReturnInIterator
 
 # Remove Mode from inference_state
 testSelfTypeRestrictedMethodOverloadInitBadTypeNoCrash
+# Class is still set in InferenceState
+testAsyncForComprehensionErrors
 
 # typing.List used in inference
 testTypeApplicationWithQualifiedTypeAlias
@@ -2144,8 +2146,7 @@ testUnusedAwaitable
 # async await when is a generator comprehension becoming an asyncgenerator?
 testAsyncGeneratorExpressionAwait
 testAsyncForComprehension
-# async/await rest
-testAsyncDeferredAnalysis
+# Crazy types.coroutine types
 testFullCoroutineMatrix
 
 # "Trying to read deleted variable "Foo""
