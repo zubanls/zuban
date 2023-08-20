@@ -937,7 +937,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut params = params.peekable();
         let result_type = self.result_type(i_s);
         let mut result_type = as_db_type(i_s, result_type);
-        if self.is_async() {
+        if self.is_async() && !self.is_generator() {
             result_type = new_class!(
                 i_s.db.python_state.coroutine_link(),
                 DbType::Any,
@@ -1088,7 +1088,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             }
             self.execute_without_annotation(i_s, args)
         };
-        if self.is_async() {
+        if self.is_async() && !self.is_generator() {
             return Inferred::from_type(new_class!(
                 i_s.db.python_state.coroutine_link(),
                 DbType::Any,

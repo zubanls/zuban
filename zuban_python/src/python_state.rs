@@ -91,6 +91,7 @@ pub struct PythonState {
     typing_iterator_index: NodeIndex,
     typing_iterable_index: NodeIndex,
     typing_generator_index: NodeIndex,
+    typing_async_generator_index: NodeIndex,
     typing_overload_index: NodeIndex,
     types_module_type_index: NodeIndex,
     types_none_type_index: NodeIndex,
@@ -113,6 +114,7 @@ pub struct PythonState {
     pub type_of_arbitrary_tuple: DbType,
     pub any_callable: Rc<CallableContent>,
     pub generator_with_any_generics: DbType,
+    pub async_generator_with_any_generics: DbType,
 }
 
 impl PythonState {
@@ -161,6 +163,7 @@ impl PythonState {
             typing_iterator_index: 0,
             typing_iterable_index: 0,
             typing_generator_index: 0,
+            typing_async_generator_index: 0,
             collections_namedtuple_index: 0,
             abc_abc_meta_index: 0,
             abc_abstractmethod_index: 0,
@@ -182,6 +185,7 @@ impl PythonState {
             )),
             any_callable: Rc::new(CallableContent::new_any()),
             generator_with_any_generics: DbType::Any, // Will be set later
+            async_generator_with_any_generics: DbType::Any, // Will be set later
         }
     }
 
@@ -318,6 +322,7 @@ impl PythonState {
         cache_index!(typing_iterator_index, db, typing, "Iterator");
         cache_index!(typing_iterable_index, db, typing, "Iterable");
         cache_index!(typing_generator_index, db, typing, "Generator");
+        cache_index!(typing_async_generator_index, db, typing, "AsyncGenerator");
         cache_index!(types_module_type_index, db, types, "ModuleType");
         cache_index!(types_none_type_index, db, types, "NoneType");
         cache_index!(abc_abstractproperty_index, db, abc, "abstractproperty");
@@ -351,6 +356,8 @@ impl PythonState {
         s.type_of_object = DbType::Type(Rc::new(object_db_type));
         s.generator_with_any_generics =
             new_class!(s.generator_link(), DbType::Any, DbType::Any, DbType::Any,);
+        s.async_generator_with_any_generics =
+            new_class!(s.async_generator_link(), DbType::Any, DbType::Any,);
 
         // Set promotions
         s.int()
@@ -572,6 +579,14 @@ impl PythonState {
     pub fn generator_link(&self) -> PointLink {
         debug_assert!(self.typing_generator_index != 0);
         PointLink::new(self.typing().file_index(), self.typing_generator_index)
+    }
+
+    pub fn async_generator_link(&self) -> PointLink {
+        debug_assert!(self.typing_async_generator_index != 0);
+        PointLink::new(
+            self.typing().file_index(),
+            self.typing_async_generator_index,
+        )
     }
 
     pub fn iterator_link(&self) -> PointLink {

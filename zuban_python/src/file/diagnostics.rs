@@ -544,12 +544,14 @@ impl<'db> Inference<'db, '_, '_> {
 
         if let Some(return_annotation) = return_annotation {
             if function.is_generator() {
+                let expected = if function.is_async() {
+                    &self.i_s.db.python_state.async_generator_with_any_generics
+                } else {
+                    &self.i_s.db.python_state.generator_with_any_generics
+                };
                 if !self
                     .use_cached_return_annotation_type(return_annotation)
-                    .is_simple_super_type_of(
-                        self.i_s,
-                        &Type::new(&self.i_s.db.python_state.generator_with_any_generics),
-                    )
+                    .is_simple_super_type_of(self.i_s, &Type::new(&expected))
                     .bool()
                 {
                     NodeRef::new(self.file, return_annotation.index())
