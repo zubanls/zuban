@@ -693,11 +693,19 @@ impl<'db> Inference<'db, '_, '_> {
         let element = if is_async {
             await_(
                 self.i_s,
-                inf.type_lookup_and_execute_with_attribute_error(
+                inf.type_lookup_and_execute(
                     self.i_s,
                     from,
                     "__aiter__",
                     &NoArguments::new(from),
+                    &|t| {
+                        from.add_issue(
+                            self.i_s,
+                            IssueType::AsyncNotIterable {
+                                type_: t.format_short(self.i_s.db),
+                            },
+                        )
+                    },
                 )
                 .type_lookup_and_execute_with_attribute_error(
                     self.i_s,

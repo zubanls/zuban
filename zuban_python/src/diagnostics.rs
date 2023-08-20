@@ -47,6 +47,7 @@ pub(crate) enum IssueType {
     NotCallable { type_: Box<str> },
     AnyNotCallable,
     NotIterable { type_: Box<str> },
+    AsyncNotIterable { type_: Box<str> },
     InvalidCallableArgCount,
     UnsupportedOperand { operand: Box<str>, left: Box<str>, right: Box<str> },
     UnsupportedLeftOperand { operand: Box<str>, left: Box<str> },
@@ -209,6 +210,7 @@ impl IssueType {
             AttributeError { .. }
             | ImportAttributeError { .. }
             | ModuleAttributeError { .. }
+            | AsyncNotIterable { .. }
             | NotIterable { .. } => "attr-defined",
             NameError { .. } => "name-defined",
             UnionAttributeError { .. } | UnionAttributeErrorOfUpperBound(..) => "union-attr",
@@ -447,6 +449,9 @@ impl<'db> Diagnostic<'db> {
             NotCallable{type_} => format!("{type_} not callable"),
             AnyNotCallable => "Any(...) is no longer supported. Use cast(Any, ...) instead".to_string(),
             NotIterable{type_} => format!("{type_} object is not iterable"),
+            AsyncNotIterable{type_} => format!(
+                r#""{type_}" has no attribute "__aiter__" (not async iterable)"#
+            ),
             InvalidCallableArgCount => "Please use \"Callable[[<parameters>], <return type>]\" or \"Callable\"".to_string(),
             UnsupportedOperand{operand, left, right} => {
                 format!(

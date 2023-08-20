@@ -2141,8 +2141,6 @@ testFastParseInvalidFunctionAnnotation
 testUnusedAwaitable
 # async/await
 testAsyncGeneratorExpressionAwait
-# ""List[int]" has no attribute "__aiter__" (not async iterable)"
-testAsyncForError
 # ""yield from" in async function"
 testNoYieldFromInAsyncDef
 testAsyncIteratorWithIgnoredErrorsAndYieldFrom
