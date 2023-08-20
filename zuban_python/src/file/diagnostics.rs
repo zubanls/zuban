@@ -682,11 +682,17 @@ impl<'db> Inference<'db, '_, '_> {
                 if let Some(star_expressions) = return_stmt.star_expressions() {
                     let mut t = self.use_cached_return_annotation_type(annotation);
                     if func.is_generator() {
-                        t = Type::owned(
-                            GeneratorType::from_type(self.i_s.db, t)
-                                .map(|g| g.return_type.unwrap_or(DbType::None))
-                                .unwrap_or(DbType::Any),
-                        );
+                        if func.is_async() {
+                            NodeRef::new(self.file, star_expressions.index())
+                                .add_issue(self.i_s, IssueType::ReturnInAsyncGenerator);
+                            return;
+                        } else {
+                            t = Type::owned(
+                                GeneratorType::from_type(self.i_s.db, t)
+                                    .map(|g| g.return_type.unwrap_or(DbType::None))
+                                    .unwrap_or(DbType::Any),
+                            );
+                        }
                     }
                     let inf = self
                         .infer_star_expressions(star_expressions, &mut ResultContext::Known(&t));

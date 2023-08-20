@@ -2142,7 +2142,6 @@ testFastParseInvalidFunctionAnnotation
 testUnusedAwaitable
 # async generators
 testAsyncGeneratorManualIter
-testAsyncGeneratorNoReturnWithValue
 testAsyncGeneratorExpressionAwait
 # async/await rest
 testAsyncDeferredAnalysis
