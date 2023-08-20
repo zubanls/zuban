@@ -3,6 +3,7 @@ use std::rc::Rc;
 
 use parsa_python_ast::*;
 
+use super::diagnostics::await_aiter_and_next;
 use super::{on_argument_type_error, File, PythonFile};
 use crate::arguments::{CombinedArguments, KnownArguments, NoArguments, SimpleArguments};
 use crate::database::{
@@ -2156,13 +2157,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
             };
             let clause_node_ref = NodeRef::new(self.file, clause.index());
-            let mut inf = self.infer_expression_part(expr_part, &mut ResultContext::Unknown);
-            if needs_await {
-                inf = await_(self.i_s, inf, clause_node_ref, "\"await\"");
-            }
-            let inf = inf
-                .iter(self.i_s, NodeRef::new(self.file, expr_part.index()))
-                .infer_all(self.i_s);
+            let base = self.infer_expression_part(expr_part, &mut ResultContext::Unknown);
+            let inf = if needs_await {
+                await_aiter_and_next(self.i_s, base, clause_node_ref)
+            } else {
+                base.iter(self.i_s, NodeRef::new(self.file, expr_part.index()))
+                    .infer_all(self.i_s)
+            };
             self.assign_targets(targets.as_target(), inf, clause_node_ref, false);
             for comp_if in comp_ifs {
                 debug!("TODO implement comp_if {comp_if:?}");

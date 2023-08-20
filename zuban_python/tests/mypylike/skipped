@@ -2138,9 +2138,8 @@ testFastParseInvalidFunctionAnnotation
 # "Value of type "A" must be used"
 # "Value of type "Coroutine[Any, Any, None]" must be used"
 # "Are you missing an await?"
+# --enable-error-code unused-awaitable
 testUnusedAwaitable
-# ""yield from" in async function"
-testAsyncIteratorWithIgnoredErrorsAndYieldFrom
 # async generators
 testAsyncGenerator
 testAsyncGeneratorReturnIterator
@@ -2155,9 +2154,10 @@ testAsyncGenDisallowUntyped
 testAsyncGenDisallowUntypedTriggers
 testNestedAsyncGeneratorAndTypeVarAvalues
 testNestedDecoratedCoroutineAndTypeVarValues
+testAsyncGeneratorWithinComprehension
 # async/await rest
+testAsyncDeferredAnalysis
 testAsyncForComprehension
-testAsyncForComprehensionErrors
 testFullCoroutineMatrix
 testAsyncOverloadedFunction
 testAsyncForwardRefInBody
@@ -2457,6 +2457,8 @@ testErrorCodeMissingWholeFileIgnores
 testCannotIgnoreBlockingError
 # type: ignore on forward reference
 testErrorCodeSyntaxErrorIgnoreNote
+# mypy: ignore-errors=True
+testAsyncIteratorWithIgnoredErrorsAndYieldFrom
 
 # Very weird annotation resolution order
 testNewAnalyzerAnnotationConflictsWithAttributeSinglePass

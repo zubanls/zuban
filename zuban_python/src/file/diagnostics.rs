@@ -707,31 +707,7 @@ impl<'db> Inference<'db, '_, '_> {
         let inf = self.infer_star_expressions(star_exprs, &mut ResultContext::Unknown);
         let from = NodeRef::new(self.file, star_exprs.index());
         let element = if is_async {
-            await_(
-                self.i_s,
-                inf.type_lookup_and_execute(
-                    self.i_s,
-                    from,
-                    "__aiter__",
-                    &NoArguments::new(from),
-                    &|t| {
-                        from.add_issue(
-                            self.i_s,
-                            IssueType::AsyncNotIterable {
-                                type_: t.format_short(self.i_s.db),
-                            },
-                        )
-                    },
-                )
-                .type_lookup_and_execute_with_attribute_error(
-                    self.i_s,
-                    from,
-                    "__anext__",
-                    &NoArguments::new(from),
-                ),
-                from,
-                r#""async for""#,
-            )
+            await_aiter_and_next(self.i_s, inf, from)
         } else {
             inf.iter(self.i_s, NodeRef::new(self.file, star_exprs.index()))
                 .infer_all(self.i_s)
@@ -934,6 +910,28 @@ fn except_type(i_s: &InferenceState, t: &DbType, allow_tuple: bool) -> ExceptTyp
         }
         _ => ExceptType::Invalid,
     }
+}
+
+pub fn await_aiter_and_next(i_s: &InferenceState, base: Inferred, from: NodeRef) -> Inferred {
+    await_(
+        i_s,
+        base.type_lookup_and_execute(i_s, from, "__aiter__", &NoArguments::new(from), &|t| {
+            from.add_issue(
+                i_s,
+                IssueType::AsyncNotIterable {
+                    type_: t.format_short(i_s.db),
+                },
+            )
+        })
+        .type_lookup_and_execute_with_attribute_error(
+            i_s,
+            from,
+            "__anext__",
+            &NoArguments::new(from),
+        ),
+        from,
+        r#""async for""#,
+    )
 }
 
 fn try_pretty_format(
