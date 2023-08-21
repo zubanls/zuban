@@ -44,8 +44,6 @@ testInferenceOfDunderDictOnClassObjects
 testIntEnumIterable
 testTypingExtensionsOrderedDictAlias
 
-testGenericClassInnerFunctionTypeVariable
-
 # EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
 testStrEnumCreation
 testRegression12258
