@@ -235,18 +235,18 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         )
     }
 
-    pub fn type_vars(&self, i_s: &InferenceState<'db, '_>) -> Option<&'a TypeVarLikes> {
+    pub fn type_vars(&self, i_s: &InferenceState<'db, '_>) -> &'a TypeVarLikes {
         // To save the generics just use the ( operator's storage.
         // + 1 for def; + 2 for name + 1 for (...)
         let type_var_reference = self.node_ref.add_to_node_index(4);
         if type_var_reference.point().calculated() {
             if let Some(complex) = type_var_reference.complex() {
                 match complex {
-                    ComplexPoint::TypeVarLikes(vars) => return Some(vars),
+                    ComplexPoint::TypeVarLikes(vars) => return vars,
                     _ => unreachable!(),
                 }
             }
-            return None;
+            return &i_s.db.python_state.empty_type_var_likes;
         }
         let func_node = self.node();
         let implicit_optional = i_s.db.python_state.project.implicit_optional;
@@ -759,7 +759,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     if !next_details.has_decorator && next_func.is_dynamic() || t.is_any() {
                         implementation = Some(OverloadImplementation {
                             function_link: func_ref.as_link(),
-                            callable: CallableContent::new_any_with_defined_at(func_ref.as_link()),
+                            callable: CallableContent::new_any_with_defined_at(
+                                i_s.db,
+                                func_ref.as_link(),
+                            ),
                         });
                     } else if let Some(callable) = t.maybe_callable(i_s) {
                         implementation = Some(OverloadImplementation {
@@ -769,7 +772,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     } else {
                         implementation = Some(OverloadImplementation {
                             function_link: func_ref.as_link(),
-                            callable: CallableContent::new_any_with_defined_at(func_ref.as_link()),
+                            callable: CallableContent::new_any_with_defined_at(
+                                i_s.db,
+                                func_ref.as_link(),
+                            ),
                         });
                         NodeRef::new(func_ref.file, next_func.expect_decorated_node().index())
                             .add_issue(
@@ -836,12 +842,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut params = self.iter_params().peekable();
         let mut self_type_var_usage = None;
         let defined_at = self.node_ref.as_link();
-        let mut type_vars = self.type_vars(i_s).cloned(); // Cache annotation types
-        let mut type_vars = if let Some(type_vars) = type_vars.take() {
-            type_vars.as_vec()
-        } else {
-            vec![]
-        };
+        let mut type_vars = self.type_vars(i_s).as_vec();
         match first {
             FirstParamProperties::MethodAccessedOnClass => {
                 let mut needs_self_type_variable =
@@ -909,7 +910,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         };
         let mut callable =
             self.internal_as_db_type(i_s, params, self_type_var_usage.is_some(), as_db_type);
-        callable.type_vars = (!type_vars.is_empty()).then(|| TypeVarLikes::from_vec(type_vars));
+        callable.type_vars = TypeVarLikes::from_vec(type_vars);
         callable
     }
 
@@ -953,7 +954,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             // The actual kind is set by using the decorated() function.
             kind: FunctionKind::Function,
             params,
-            type_vars: None,
+            type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
             result_type,
         };
 
@@ -1056,14 +1057,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         result_context: &mut ResultContext,
     ) -> Inferred {
         let return_annotation = self.return_annotation();
-        let func_type_vars = return_annotation.and_then(|_| self.type_vars(i_s));
         let calculated_type_vars = calculate_function_type_vars_and_return(
             i_s,
             *self,
             args.iter(),
             &|| args.as_node_ref(),
             false,
-            func_type_vars,
+            self.type_vars(i_s),
             self.node_ref.as_link(),
             result_context,
             Some(on_type_error),
@@ -1959,7 +1959,7 @@ pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
     class: Option<Class>,
     avoid_self_annotation: bool,
     name: &str,
-    type_vars: Option<&TypeVarLikes>,
+    type_vars: &TypeVarLikes,
     params: impl Iterator<Item = P>,
     return_type: Option<Type>,
 ) -> Box<str> {
@@ -2037,12 +2037,12 @@ pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
 pub fn format_pretty_function_with_params(
     format_data: &FormatData,
     class: Option<Class>,
-    type_vars: Option<&TypeVarLikes>,
+    type_vars: &TypeVarLikes,
     return_type: Option<Type>,
     name: &str,
     params: &str,
 ) -> Box<str> {
-    let type_var_string = type_vars.map(|type_vars| {
+    let type_var_string = (!type_vars.is_empty()).then(|| {
         format!(
             "[{}] ",
             type_vars

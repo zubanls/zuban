@@ -269,7 +269,7 @@ macro_rules! compute_type_application {
             if let Some(function) = i_s.current_function() {
                 if let Some(usage) = function
                     .type_vars(i_s)
-                    .and_then(|t| t.find(type_var_like.clone(), function.node_ref.as_link()))
+                    .find(type_var_like.clone(), function.node_ref.as_link())
                 {
                     if $from_alias_definition {
                         $slice_type.as_node_ref().add_issue(
@@ -339,11 +339,11 @@ fn type_computation_for_variable_annotation(
         }
     }
     if let Some(func) = i_s.current_function() {
-        if let Some(type_vars) = func.type_vars(i_s) {
-            let usage = type_vars.find(type_var_like, func.node_ref.as_link());
-            if let Some(usage) = usage {
-                return TypeVarCallbackReturn::TypeVarLike(usage);
-            }
+        let usage = func
+            .type_vars(i_s)
+            .find(type_var_like, func.node_ref.as_link());
+        if let Some(usage) = usage {
+            return TypeVarCallbackReturn::TypeVarLike(usage);
         }
     }
     match current_callable {
@@ -684,9 +684,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 Some(a.as_db_type_and_set_type_vars_any(db))
             }
             TypeContent::SpecialType(m) => match m {
-                SpecialType::Callable => {
-                    Some(DbType::Callable(Rc::new(CallableContent::new_any())))
-                }
+                SpecialType::Callable => Some(DbType::Callable(
+                    self.inference.i_s.db.python_state.any_callable.clone(),
+                )),
                 SpecialType::Any => Some(DbType::Any),
                 SpecialType::Type => Some(db.python_state.type_of_any.clone()),
                 SpecialType::Tuple => Some(DbType::Tuple(TupleContent::new_empty())),
@@ -1675,21 +1675,27 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 .next()
                 .map(|slice_content| self.compute_slice_db_type(slice_content))
                 .unwrap_or(DbType::Any);
-            CallableContent {
+            Rc::new(CallableContent {
                 name: None,
                 class_name: None,
                 defined_at,
                 kind: FunctionKind::Function,
-                type_vars: None,
+                type_vars: self
+                    .inference
+                    .i_s
+                    .db
+                    .python_state
+                    .empty_type_var_likes
+                    .clone(),
                 params,
                 result_type,
-            }
+            })
         } else {
             self.add_issue(slice_type.as_node_ref(), IssueType::InvalidCallableArgCount);
-            CallableContent::new_any()
+            self.inference.i_s.db.python_state.any_callable.clone()
         };
         self.current_callable = old;
-        TypeContent::DbType(DbType::Callable(Rc::new(content)))
+        TypeContent::DbType(DbType::Callable(content))
     }
 
     fn compute_type_get_item_on_union(
@@ -3331,7 +3337,7 @@ pub fn new_typing_named_tuple(
             class_name: None,
             defined_at: args_node_ref.as_link(),
             kind: FunctionKind::Function,
-            type_vars: (!type_var_likes.is_empty()).then_some(type_var_likes),
+            type_vars: type_var_likes,
             params: CallableParams::Simple(Rc::from(params)),
             result_type: DbType::Self_,
         };
@@ -3407,7 +3413,7 @@ pub fn new_collections_named_tuple(
         class_name: None,
         defined_at: args_node_ref.as_link(),
         kind: FunctionKind::Function,
-        type_vars: None,
+        type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
         params: CallableParams::Simple(Rc::from(params)),
         result_type: DbType::Self_,
     };

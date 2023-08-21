@@ -1853,11 +1853,7 @@ fn proper_classmethod_callable(
     let mut class_method_type_var_usage = None;
     // TODO performance this clone might not be necessary.
     let mut callable = callable.clone();
-    let mut type_vars = if let Some(type_vars) = &callable.type_vars {
-        type_vars.as_vec()
-    } else {
-        vec![]
-    };
+    let mut type_vars = callable.type_vars.as_vec();
     match &callable.params {
         CallableParams::Simple(params) => {
             let mut vec = params.to_vec();
@@ -1962,7 +1958,7 @@ fn proper_classmethod_callable(
         &|| get_class_method_class(),
     );
     let type_vars = type_vars.into_inner();
-    new_callable.type_vars = (!type_vars.is_empty()).then(|| TypeVarLikes::from_vec(type_vars));
+    new_callable.type_vars = TypeVarLikes::from_vec(type_vars);
     Some(new_callable)
 }
 

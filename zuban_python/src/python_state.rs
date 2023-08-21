@@ -122,6 +122,7 @@ pub struct PythonState {
 
 impl PythonState {
     pub fn reserve(project: PythonProject) -> Self {
+        let empty_type_var_likes = TypeVarLikes::new(Rc::new([]));
         Self {
             project,
             builtins: null(),
@@ -188,10 +189,10 @@ impl PythonState {
             type_of_arbitrary_tuple: DbType::Type(Rc::new(
                 DbType::Tuple(TupleContent::new_empty()),
             )),
-            any_callable: Rc::new(CallableContent::new_any()),
+            any_callable: Rc::new(CallableContent::new_any(empty_type_var_likes.clone())),
             generator_with_any_generics: DbType::Any, // Will be set later
             async_generator_with_any_generics: DbType::Any, // Will be set later
-            empty_type_var_likes: TypeVarLikes::new(Rc::new([])),
+            empty_type_var_likes,
         }
     }
 

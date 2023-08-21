@@ -74,7 +74,6 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
     let type_vars = class.type_vars(i_s);
     let has_generics =
         !matches!(class.generics, Generics::None | Generics::NotDefinedYet) || type_vars.is_empty();
-    let type_vars = (!type_vars.is_empty()).then_some(type_vars);
     // Function type vars need to be calculated, so annotations are used.
     let func_type_vars = func_or_callable.type_vars(i_s);
 
@@ -181,7 +180,7 @@ pub fn calculate_function_type_vars_and_return<'db: 'a, 'a>(
     args: impl Iterator<Item = Argument<'db, 'a>>,
     args_node_ref: &impl Fn() -> NodeRef<'a>,
     skip_first_param: bool,
-    type_vars: Option<&TypeVarLikes>,
+    type_vars: &TypeVarLikes,
     match_in_definition: PointLink,
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
@@ -213,7 +212,7 @@ pub fn calculate_callable_type_vars_and_return<'db: 'a, 'a>(
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> CalculatedTypeArguments {
     let func_or_callable = FunctionOrCallable::Callable(callable);
-    let type_vars = callable.content.type_vars.as_ref();
+    let type_vars = &callable.content.type_vars;
     calculate_type_vars(
         i_s,
         get_matcher(
@@ -238,9 +237,10 @@ fn get_matcher<'a>(
     class: Option<&'a Class>,
     func_or_callable: FunctionOrCallable<'a>,
     match_in_definition: PointLink,
-    type_vars: Option<&TypeVarLikes>,
+    type_vars: &TypeVarLikes,
 ) -> Matcher<'a> {
-    let matcher = type_vars.map(|t| TypeVarMatcher::new(match_in_definition, t.len()));
+    let matcher =
+        (!type_vars.is_empty()).then(|| TypeVarMatcher::new(match_in_definition, type_vars.len()));
     Matcher::new(class, func_or_callable, matcher)
 }
 
@@ -288,7 +288,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
     mut args: impl Iterator<Item = Argument<'db, 'a>>,
     args_node_ref: &impl Fn() -> NodeRef<'a>,
     skip_first_param: bool,
-    type_vars: Option<&TypeVarLikes>,
+    type_vars: &TypeVarLikes,
     match_in_definition: PointLink,
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
@@ -398,16 +398,14 @@ fn calculate_type_vars<'db: 'a, 'a>(
             }
         },
     };
-    let type_arguments = matcher.type_var_matcher.and_then(|m| {
-        type_vars.map(|type_vars| {
-            GenericsList::new_generics(
-                m.calculated_type_vars
-                    .into_iter()
-                    .zip(type_vars.iter())
-                    .map(|(c, type_var_like)| c.into_generic_item(i_s.db, type_var_like))
-                    .collect(),
-            )
-        })
+    let type_arguments = matcher.type_var_matcher.map(|m| {
+        GenericsList::new_generics(
+            m.calculated_type_vars
+                .into_iter()
+                .zip(type_vars.iter())
+                .map(|(c, type_var_like)| c.into_generic_item(i_s.db, type_var_like))
+                .collect(),
+        )
     });
     if cfg!(feature = "zuban_debug") {
         if let Some(type_arguments) = &type_arguments {

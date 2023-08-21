@@ -106,7 +106,7 @@ pub fn create_signature_without_self(
 ) -> Option<CallableContent> {
     match_self_type(i_s, &mut matcher, instance, func_class, first_type)?;
     let mut callable = get_callable();
-    if let Some(type_vars) = &callable.type_vars {
+    if !callable.type_vars.is_empty() {
         let calculated = matcher.unwrap_calculated_type_args();
         callable = Type::replace_type_var_likes_and_self_for_callable(
             &callable,
@@ -116,7 +116,9 @@ pub fn create_signature_without_self(
                 if usage.in_definition() == callable.defined_at {
                     let c = &calculated[index];
                     if c.calculated() {
-                        return (*c).clone().into_generic_item(i_s.db, &type_vars[index]);
+                        return (*c)
+                            .clone()
+                            .into_generic_item(i_s.db, &callable.type_vars[index]);
                     }
                 }
                 let new_index = calculated
@@ -128,14 +130,18 @@ pub fn create_signature_without_self(
             },
             &|| unreachable!("Self should have been remapped already"),
         );
-        let mut old_type_vars = callable.type_vars.take().unwrap().as_vec();
+        let mut old_type_vars = std::mem::replace(
+            &mut callable.type_vars,
+            i_s.db.python_state.empty_type_var_likes.clone(),
+        )
+        .as_vec();
         for (i, c) in calculated.iter().enumerate().rev() {
             if c.calculated() {
                 old_type_vars.remove(i);
             }
         }
         if !old_type_vars.is_empty() {
-            callable.type_vars = Some(TypeVarLikes::from_vec(old_type_vars));
+            callable.type_vars = TypeVarLikes::from_vec(old_type_vars);
         }
     }
     Some(callable)
@@ -155,19 +161,21 @@ pub fn calculate_property_return(
         instance.clone()
     });
 
-    if let Some(type_vars) = &callable.type_vars {
+    Some(if callable.type_vars.is_empty() {
+        t
+    } else {
         let calculated = matcher.unwrap_calculated_type_args();
-        Some(Type::owned(t).replace_type_var_likes(i_s.db, &mut |usage| {
+        Type::owned(t).replace_type_var_likes(i_s.db, &mut |usage| {
             let index = usage.index().as_usize();
             if usage.in_definition() == callable.defined_at {
                 let c = &calculated[index];
                 if c.calculated() {
-                    return (*c).clone().into_generic_item(i_s.db, &type_vars[index]);
+                    return (*c)
+                        .clone()
+                        .into_generic_item(i_s.db, &callable.type_vars[index]);
                 }
             }
             usage.into_generic_item()
-        }))
-    } else {
-        Some(t)
-    }
+        })
+    })
 }

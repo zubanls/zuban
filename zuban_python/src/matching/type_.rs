@@ -347,7 +347,7 @@ impl<'a> Type<'a> {
                 DbType::NamedTuple(nt2) => {
                     let c1 = &nt1.__new__;
                     let c2 = &nt2.__new__;
-                    if c1.type_vars.is_some() || c2.type_vars.is_some() {
+                    if !c1.type_vars.is_empty() || !c2.type_vars.is_empty() {
                         todo!()
                     } else {
                         (c1.defined_at == c2.defined_at).into()
@@ -846,7 +846,7 @@ impl<'a> Type<'a> {
     ) -> Match {
         // TODO This if is weird.
         if !matcher.has_type_var_matcher() {
-            if let Some(c2_type_vars) = c2.type_vars.as_ref() {
+            if !c2.type_vars.is_empty() {
                 let mut matcher = Matcher::new_reverse_callable_matcher(c2);
                 return Type::matches_callable(i_s, &mut matcher, c1, c2);
             }
@@ -857,7 +857,7 @@ impl<'a> Type<'a> {
                 matcher,
                 &c1.params,
                 &c2.params,
-                c2.type_vars.as_ref().map(|t| (t, c2.defined_at)),
+                (!c2.type_vars.is_empty()).then(|| (&c2.type_vars, c2.defined_at)),
                 Variance::Contravariant,
                 false,
             )
@@ -1513,7 +1513,8 @@ impl<'a> Type<'a> {
         callable: ReplaceTypeVarLike,
         replace_self: ReplaceSelf,
     ) -> CallableContent {
-        let mut type_vars = c.type_vars.clone().map(|t| t.as_vec());
+        let has_type_vars = !c.type_vars.is_empty();
+        let mut type_vars = has_type_vars.then(|| c.type_vars.clone().as_vec());
         let (params, remap_data) = Self::remap_callable_params(
             db,
             &c.params,
@@ -1536,7 +1537,9 @@ impl<'a> Type<'a> {
             class_name: c.class_name,
             defined_at: c.defined_at,
             kind: c.kind,
-            type_vars: type_vars.map(TypeVarLikes::from_vec),
+            type_vars: type_vars
+                .map(TypeVarLikes::from_vec)
+                .unwrap_or_else(|| db.python_state.empty_type_var_likes.clone()),
             params,
             result_type,
         }
@@ -1557,7 +1560,7 @@ impl<'a> Type<'a> {
             class_name: c.class_name,
             defined_at: c.defined_at,
             kind: c.kind,
-            type_vars: (!type_vars.is_empty()).then_some(TypeVarLikes::new(type_vars)),
+            type_vars: TypeVarLikes::new(type_vars),
             params: match &c.params {
                 CallableParams::Simple(params) => CallableParams::Simple(
                     params
@@ -2495,7 +2498,9 @@ impl<'a> Type<'a> {
                 _ => DbType::Any,
             },
             DbType::Callable(content1) => match other.into_db_type() {
-                DbType::Callable(content2) => DbType::Callable(Rc::new(CallableContent::new_any())),
+                DbType::Callable(content2) => {
+                    DbType::Callable(db.python_state.any_callable.clone())
+                }
                 _ => DbType::Any,
             },
             _ => DbType::Any,

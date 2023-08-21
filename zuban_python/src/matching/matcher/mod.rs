@@ -75,10 +75,8 @@ impl<'a> Matcher<'a> {
     }
 
     pub fn new_callable_matcher(callable: &'a CallableContent) -> Self {
-        let type_var_matcher = callable
-            .type_vars
-            .as_ref()
-            .map(|type_vars| TypeVarMatcher::new(callable.defined_at, type_vars.len()));
+        let type_var_matcher = (!callable.type_vars.is_empty())
+            .then(|| TypeVarMatcher::new(callable.defined_at, callable.type_vars.len()));
         Self {
             class: None,
             type_var_matcher,
@@ -93,12 +91,9 @@ impl<'a> Matcher<'a> {
         m
     }
 
-    pub fn new_function_matcher(
-        function: Function<'a, 'a>,
-        type_vars: Option<&TypeVarLikes>,
-    ) -> Self {
-        let type_var_matcher = type_vars
-            .map(|type_vars| TypeVarMatcher::new(function.node_ref.as_link(), type_vars.len()));
+    pub fn new_function_matcher(function: Function<'a, 'a>, type_vars: &TypeVarLikes) -> Self {
+        let type_var_matcher = (!type_vars.is_empty())
+            .then(|| TypeVarMatcher::new(function.node_ref.as_link(), type_vars.len()));
         Self {
             type_var_matcher,
             func_or_callable: Some(FunctionOrCallable::Function(function)),

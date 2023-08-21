@@ -1130,7 +1130,7 @@ impl<'db: 'a, 'a> Class<'a> {
             class_name: None,
             defined_at: self.node_ref.as_link(),
             kind: FunctionKind::Function,
-            type_vars: (!tvls.is_empty()).then(|| tvls.clone()),
+            type_vars: self.use_cached_type_vars(i_s.db).clone(),
             params: CallableParams::Simple(Rc::from(vec)),
             result_type: DbType::Self_,
         }
@@ -1703,7 +1703,7 @@ impl NewOrInitConstructor<'_> {
             callable.and_then(|c| {
                 // Since __init__ does not have a return, We need to check the params
                 // of the __init__ functions and the class as a return type separately.
-                if c.type_vars.is_some() {
+                if !c.type_vars.is_empty() {
                     todo!()
                 }
                 let mut c = c.remove_first_param();

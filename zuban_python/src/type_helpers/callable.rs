@@ -94,7 +94,7 @@ pub fn format_pretty_callable(format_data: &FormatData, callable: &CallableConte
                 callable.class_name.map(|c| c.as_str(db)) == first_param.as_deref()
                     && not_reveal_type,
                 name,
-                callable.type_vars.as_ref(),
+                &callable.type_vars,
                 params.iter(),
                 Some(Type::new(&callable.result_type)),
             )
@@ -107,7 +107,7 @@ pub fn format_pretty_callable(format_data: &FormatData, callable: &CallableConte
             format_pretty_function_with_params(
                 format_data,
                 None,
-                callable.type_vars.as_ref(),
+                &callable.type_vars,
                 Some(Type::new(&callable.result_type)),
                 name,
                 &format!("*{spec}.args, **{spec}.kwargs"),

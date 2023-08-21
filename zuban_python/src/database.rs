@@ -1577,26 +1577,29 @@ pub struct CallableContent {
     pub class_name: Option<StringSlice>,
     pub defined_at: PointLink,
     pub kind: FunctionKind,
-    pub type_vars: Option<TypeVarLikes>,
+    pub type_vars: TypeVarLikes,
     pub params: CallableParams,
     pub result_type: DbType,
 }
 
 impl CallableContent {
-    pub fn new_any() -> Self {
-        Self::new_any_with_defined_at(PointLink::new(FileIndex(0), 0))
+    pub fn new_any(type_vars: TypeVarLikes) -> Self {
+        Self::new_any_internal(PointLink::new(FileIndex(0), 0), type_vars)
     }
 
-    pub fn new_any_with_defined_at(defined_at: PointLink) -> Self {
+    fn new_any_internal(defined_at: PointLink, type_vars: TypeVarLikes) -> Self {
         Self {
             name: None,
             class_name: None,
             defined_at,
             kind: FunctionKind::Function,
-            type_vars: None,
+            type_vars,
             params: CallableParams::Any,
             result_type: DbType::Any,
         }
+    }
+    pub fn new_any_with_defined_at(db: &Database, defined_at: PointLink) -> Self {
+        Self::new_any_internal(defined_at, db.python_state.empty_type_var_likes.clone())
     }
 
     pub fn remove_first_param(&self) -> Option<Self> {

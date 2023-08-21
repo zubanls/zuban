@@ -161,13 +161,11 @@ impl<'db, 'a> InferenceState<'db, 'a> {
 
     pub fn find_parent_type_var(&self, searched: &TypeVarLike) -> Option<TypeVarCallbackReturn> {
         if let Some(func) = self.current_function() {
-            if let Some(type_vars) = func.type_vars(self) {
-                for (index, type_var) in type_vars.iter().enumerate() {
-                    if type_var == searched {
-                        return Some(TypeVarCallbackReturn::TypeVarLike(
-                            type_var.as_type_var_like_usage(index.into(), func.node_ref.as_link()),
-                        ));
-                    }
+            for (index, type_var) in func.type_vars(self).iter().enumerate() {
+                if type_var == searched {
+                    return Some(TypeVarCallbackReturn::TypeVarLike(
+                        type_var.as_type_var_like_usage(index.into(), func.node_ref.as_link()),
+                    ));
                 }
             }
         }

@@ -998,7 +998,7 @@ fn is_overload_unmatchable(
         &mut matcher,
         &c2.params,
         &c1.params,
-        c1.type_vars.as_ref().map(|t| (t, c1.defined_at)),
+        (!c1.type_vars.is_empty()).then(|| (&c1.type_vars, c1.defined_at)),
         Variance::Contravariant,
         false,
     );
