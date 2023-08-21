@@ -203,12 +203,11 @@ impl<'db: 'a, 'a> Class<'a> {
         StringSlice::new(self.node_ref.file_index(), name.start(), name.end())
     }
 
-    pub fn use_cached_type_vars(&self, db: &'db Database) -> Option<&'a TypeVarLikes> {
+    pub fn use_cached_type_vars(&self, db: &'db Database) -> &'a TypeVarLikes {
         let node_ref = self.type_vars_node_ref();
         let point = node_ref.point();
         debug_assert!(point.calculated());
-        let type_vars = Self::get_calculated_type_vars(db, node_ref, point);
-        (!type_vars.is_empty()).then_some(type_vars)
+        Self::get_calculated_type_vars(db, node_ref, point)
     }
 
     fn get_calculated_type_vars(
@@ -302,7 +301,7 @@ impl<'db: 'a, 'a> Class<'a> {
             if let MetaclassState::Some(link) = class_infos.metaclass {
                 if link == i_s.db.python_state.enum_meta_link() {
                     was_enum_base = true;
-                    if self.use_cached_type_vars(i_s.db).is_some() {
+                    if !self.use_cached_type_vars(i_s.db).is_empty() {
                         self.node_ref.add_issue(i_s, IssueType::EnumCannotBeGeneric);
                     }
                     class_infos.class_type = ClassType::Enum;
@@ -995,7 +994,7 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn nth_type_argument(&self, db: &Database, nth: usize) -> DbType {
-        let type_vars = self.use_cached_type_vars(db).unwrap();
+        let type_vars = self.use_cached_type_vars(db);
         self.generics()
             .nth_type_argument(db, &type_vars[nth], nth)
             .into_db_type()
@@ -1125,12 +1124,13 @@ impl<'db: 'a, 'a> Class<'a> {
             }
             BlockContent::OneLine(simple) => todo!(), //find_stmt_named_tuple_types(i_s, file, &mut vec, simple),
         }
+        let tvls = self.use_cached_type_vars(i_s.db);
         CallableContent {
             name: Some(name),
             class_name: None,
             defined_at: self.node_ref.as_link(),
             kind: FunctionKind::Function,
-            type_vars: self.use_cached_type_vars(i_s.db).cloned(),
+            type_vars: (!tvls.is_empty()).then(|| tvls.clone()),
             params: CallableParams::Simple(Rc::from(vec)),
             result_type: DbType::Self_,
         }

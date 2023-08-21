@@ -35,7 +35,7 @@ pub enum Generics<'a> {
     List(&'a GenericsList, Option<&'a Generics<'a>>),
     Self_ {
         class_definition: PointLink,
-        type_var_likes: Option<&'a TypeVarLikes>,
+        type_var_likes: &'a TypeVarLikes,
     },
     None,
     NotDefinedYet,
@@ -177,7 +177,7 @@ impl<'a> Generics<'a> {
                 class_definition,
                 type_var_likes,
             } => GenericsIteratorItem::TypeVarLikeIterator {
-                iterator: type_var_likes.unwrap().iter().enumerate(),
+                iterator: type_var_likes.iter().enumerate(),
                 definition: *class_definition,
             },
             Self::None | Self::NotDefinedYet => GenericsIteratorItem::None,

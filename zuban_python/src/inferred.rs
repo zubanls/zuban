@@ -1827,7 +1827,9 @@ pub fn infer_class_method<'db: 'class, 'class>(
     if class_generics_not_defined_yet {
         // Check why this is necessary by following class_generics_not_defined_yet.
         let self_generics = Generics::Self_ {
-            type_var_likes: class.type_vars(i_s),
+            type_var_likes: class
+                .type_vars(i_s)
+                .unwrap_or_else(|| &i_s.db.python_state.empty_type_var_likes),
             class_definition: class.node_ref.as_link(),
         };
         class.generics = self_generics;
@@ -1901,15 +1903,17 @@ fn proper_classmethod_callable(
     };
     let get_class_method_class = || {
         if class_generics_not_defined_yet {
+            let type_var_likes = class.use_cached_type_vars(i_s.db);
             DbType::new_class(
                 class.node_ref.as_link(),
-                match class.use_cached_type_vars(i_s.db) {
-                    Some(tvls) => ClassGenerics::List(GenericsList::new_generics(
-                        tvls.iter()
+                match type_var_likes.len() {
+                    0 => ClassGenerics::None,
+                    _ => ClassGenerics::List(GenericsList::new_generics(
+                        type_var_likes
+                            .iter()
                             .map(|tvl| ensure_classmethod_type_var_like(tvl.clone()))
                             .collect(),
                     )),
-                    None => ClassGenerics::None,
                 },
             )
         } else {
