@@ -308,7 +308,7 @@ macro_rules! compute_type_application {
                         todo!("{type_vars:?}")
                     }
                     Inferred::new_unsaved_complex(ComplexPoint::TypeAlias(Box::new(TypeAlias::new_valid(
-                        Some(type_vars),
+                        type_vars,
                         $slice_type.as_node_ref().as_link(),
                         None,
                         Rc::new(db_type),
@@ -1015,10 +1015,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     },
                     TypeContent::RecursiveAlias(link) => {
                         self.is_recursive_alias = true;
-                        let type_vars = RecursiveAlias::new(link, None)
+                        let type_vars = &RecursiveAlias::new(link, None)
                             .type_alias(self.inference.i_s.db)
-                            .type_vars
-                            .as_ref();
+                            .type_vars;
                         let generics = self.compute_generics_for_alias(s, type_vars);
                         TypeContent::DbType(DbType::RecursiveAlias(Rc::new(RecursiveAlias::new(
                             link,
@@ -1165,7 +1164,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     fn compute_generics_for_alias(
         &mut self,
         slice_type: SliceType,
-        type_var_likes: Option<&TypeVarLikes>,
+        type_var_likes: &TypeVarLikes,
     ) -> GenericsList {
         let mut generics = vec![];
         let mut mismatch = false;
@@ -1173,7 +1172,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             slice_type,
             &mut generics,
             slice_type.iter(),
-            type_var_likes,
+            (!type_var_likes.is_empty()).then_some(type_var_likes),
             &|| Box::from("TODO alias name"),
             |slf: &mut Self, given_count, expected_count| {
                 mismatch = true;
@@ -1188,13 +1187,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         );
         // TODO merge this with class stuff
         if mismatch {
-            if let Some(type_var_likes) = type_var_likes {
-                generics.clear();
+            generics.clear();
+            if !type_var_likes.is_empty() {
                 for missing_type_var in type_var_likes.iter().skip(generics.len()) {
                     generics.push(missing_type_var.as_any_generic_item())
                 }
-            } else {
-                generics.clear();
             }
         }
         GenericsList::generics_from_vec(generics)
@@ -1759,7 +1756,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         alias: &TypeAlias,
         slice_type: SliceType,
     ) -> TypeContent<'db, 'db> {
-        let generics = self.compute_generics_for_alias(slice_type, alias.type_vars.as_ref());
+        let generics = self.compute_generics_for_alias(slice_type, &alias.type_vars);
         self.is_recursive_alias |= alias.is_recursive();
         TypeContent::DbType(
             alias
@@ -2621,7 +2618,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 cached_type_node_ref.set_point(Point::new_calculating());
                 let type_var_likes = TypeVarFinder::find_alias_type_vars(self, expr);
                 let complex = ComplexPoint::TypeAlias(Box::new(TypeAlias::new(
-                    (!type_var_likes.is_empty()).then_some(type_var_likes),
+                    type_var_likes,
                     in_definition,
                     Some(PointLink::new(file.file_index(), name_def.name().index())),
                 )));

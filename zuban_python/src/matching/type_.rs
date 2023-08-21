@@ -2717,9 +2717,9 @@ impl TypeAlias {
         if self.is_recursive() {
             return DbType::RecursiveAlias(Rc::new(RecursiveAlias::new(
                 self.location,
-                self.type_vars.as_ref().map(|type_vars| {
+                (!self.type_vars.is_empty()).then(|| {
                     GenericsList::new_generics(
-                        type_vars
+                        self.type_vars
                             .iter()
                             .map(|tv| tv.as_any_generic_item())
                             .collect(),
@@ -2728,7 +2728,7 @@ impl TypeAlias {
             )));
         }
         let db_type = self.db_type_if_valid();
-        if self.type_vars.is_none() {
+        if self.type_vars.is_empty() {
             db_type.clone()
         } else {
             Type::new(db_type).replace_type_var_likes(db, &mut |t| match t.in_definition()
@@ -2749,9 +2749,9 @@ impl TypeAlias {
         if self.is_recursive() && !remove_recursive_wrapper {
             return Cow::Owned(DbType::RecursiveAlias(Rc::new(RecursiveAlias::new(
                 self.location,
-                self.type_vars.as_ref().map(|type_vars| {
+                (!self.type_vars.is_empty()).then(|| {
                     GenericsList::new_generics(
-                        type_vars
+                        self.type_vars
                             .iter()
                             .enumerate()
                             .map(|(i, type_var_like)| match type_var_like {
@@ -2783,7 +2783,7 @@ impl TypeAlias {
             ))));
         }
         let db_type = self.db_type_if_valid();
-        if self.type_vars.is_none() {
+        if self.type_vars.is_empty() {
             Cow::Borrowed(db_type)
         } else {
             Cow::Owned(Type::new(db_type).replace_type_var_likes(db, callable))

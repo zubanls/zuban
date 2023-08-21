@@ -2740,7 +2740,7 @@ enum TypeAliasState {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct TypeAlias {
-    pub type_vars: Option<TypeVarLikes>,
+    pub type_vars: TypeVarLikes,
     pub location: PointLink,
     pub name: Option<PointLink>,
     // The two attributes around is_recursive are calculated after the TypeAlias is
@@ -2749,11 +2749,7 @@ pub struct TypeAlias {
 }
 
 impl TypeAlias {
-    pub fn new(
-        type_vars: Option<TypeVarLikes>,
-        location: PointLink,
-        name: Option<PointLink>,
-    ) -> Self {
+    pub fn new(type_vars: TypeVarLikes, location: PointLink, name: Option<PointLink>) -> Self {
         Self {
             type_vars,
             location,
@@ -2763,7 +2759,7 @@ impl TypeAlias {
     }
 
     pub fn new_valid(
-        type_vars: Option<TypeVarLikes>,
+        type_vars: TypeVarLikes,
         location: PointLink,
         name: Option<PointLink>,
         db_type: Rc<DbType>,
