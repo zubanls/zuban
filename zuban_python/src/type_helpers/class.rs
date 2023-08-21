@@ -203,25 +203,35 @@ impl<'db: 'a, 'a> Class<'a> {
         StringSlice::new(self.node_ref.file_index(), name.start(), name.end())
     }
 
-    pub fn use_cached_type_vars(&self, db: &Database) -> Option<&'a TypeVarLikes> {
+    pub fn use_cached_type_vars(&self, db: &'db Database) -> Option<&'a TypeVarLikes> {
         let node_ref = self.type_vars_node_ref();
         let point = node_ref.point();
         debug_assert!(point.calculated());
-        Self::get_calculated_type_vars(node_ref, point)
+        let type_vars = Self::get_calculated_type_vars(db, node_ref, point);
+        (!type_vars.is_empty()).then_some(type_vars)
     }
 
-    fn get_calculated_type_vars(node_ref: NodeRef, point: Point) -> Option<&TypeVarLikes> {
-        (point.type_() != PointType::NodeAnalysis).then(|| match node_ref.complex().unwrap() {
-            ComplexPoint::TypeVarLikes(type_vars) => type_vars,
-            _ => unreachable!(),
-        })
+    fn get_calculated_type_vars(
+        db: &'db Database,
+        node_ref: NodeRef<'a>,
+        point: Point,
+    ) -> &'a TypeVarLikes {
+        if point.type_() == PointType::NodeAnalysis {
+            &db.python_state.empty_type_var_likes
+        } else {
+            match node_ref.complex().unwrap() {
+                ComplexPoint::TypeVarLikes(type_vars) => type_vars,
+                _ => unreachable!(),
+            }
+        }
     }
 
-    pub fn type_vars(&self, i_s: &InferenceState) -> Option<&'a TypeVarLikes> {
+    pub fn type_vars(&self, i_s: &InferenceState<'db, '_>) -> Option<&'a TypeVarLikes> {
         let node_ref = self.type_vars_node_ref();
         let point = node_ref.point();
         if point.calculated() {
-            return Self::get_calculated_type_vars(node_ref, point);
+            let type_vars = Self::get_calculated_type_vars(i_s.db, node_ref, point);
+            return (!type_vars.is_empty()).then_some(type_vars);
         }
 
         let type_vars =

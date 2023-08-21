@@ -1815,9 +1815,9 @@ fn infer_overloaded_class_method(
     )))
 }
 
-pub fn infer_class_method(
-    i_s: &InferenceState,
-    mut class: Class,
+pub fn infer_class_method<'db: 'class, 'class>(
+    i_s: &InferenceState<'db, '_>,
+    mut class: Class<'class>,
     func_class: Class,
     callable: &CallableContent,
 ) -> Option<CallableContent> {

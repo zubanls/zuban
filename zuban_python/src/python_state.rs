@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use crate::database::{
     CallableContent, ClassGenerics, Database, DbType, GenericItem, GenericsList, LiteralKind,
-    Locality, Point, PointLink, PointType, Specific, TupleContent,
+    Locality, Point, PointLink, PointType, Specific, TupleContent, TypeVarLikes,
 };
 use crate::file::File;
 use crate::file::PythonFile;
@@ -117,6 +117,7 @@ pub struct PythonState {
     pub any_callable: Rc<CallableContent>,
     pub generator_with_any_generics: DbType,
     pub async_generator_with_any_generics: DbType,
+    pub empty_type_var_likes: TypeVarLikes,
 }
 
 impl PythonState {
@@ -190,6 +191,7 @@ impl PythonState {
             any_callable: Rc::new(CallableContent::new_any()),
             generator_with_any_generics: DbType::Any, // Will be set later
             async_generator_with_any_generics: DbType::Any, // Will be set later
+            empty_type_var_likes: TypeVarLikes::new(Rc::new([])),
         }
     }
 
