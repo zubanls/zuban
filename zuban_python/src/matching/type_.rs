@@ -726,7 +726,8 @@ impl<'a> Type<'a> {
         if class1.node_ref != class2.node_ref {
             return Match::new_false();
         }
-        if let Some(type_vars) = class1.type_vars(i_s) {
+        let type_vars = class1.type_vars(i_s);
+        if !type_vars.is_empty() {
             let c1_generics = class1.generics();
             let c2_generics = class2.generics();
             let result = c1_generics

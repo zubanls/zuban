@@ -129,9 +129,10 @@ impl<'db: 'a, 'a> Class<'a> {
             } else {
                 debug_assert!(self.incomplete_mro(i_s.db));
             }
-            return Some(match self.type_vars(i_s) {
-                Some(type_vars) => ClassGenerics::List(type_vars.as_any_generic_list()),
-                None => ClassGenerics::None,
+            let type_var_likes = self.type_vars(i_s);
+            return Some(match type_var_likes.is_empty() {
+                false => ClassGenerics::List(type_var_likes.as_any_generic_list()),
+                true => ClassGenerics::None,
             })
         };
         match inf.init_as_function(i_s, init_class) {
@@ -225,12 +226,11 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    pub fn type_vars(&self, i_s: &InferenceState<'db, '_>) -> Option<&'a TypeVarLikes> {
+    pub fn type_vars(&self, i_s: &InferenceState<'db, '_>) -> &'a TypeVarLikes {
         let node_ref = self.type_vars_node_ref();
         let point = node_ref.point();
         if point.calculated() {
-            let type_vars = Self::get_calculated_type_vars(i_s.db, node_ref, point);
-            return (!type_vars.is_empty()).then_some(type_vars);
+            return Self::get_calculated_type_vars(i_s.db, node_ref, point);
         }
 
         let type_vars =
@@ -260,7 +260,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     .or_else(|| {
                         parent_class
                             .type_vars(i_s)
-                            .and_then(|t| t.find(type_var.clone(), parent_class.node_ref.as_link()))
+                            .find(type_var.clone(), parent_class.node_ref.as_link())
                     })
             }
             ParentScope::Function(node_index) => todo!(),
@@ -500,12 +500,10 @@ impl<'db: 'a, 'a> Class<'a> {
                             &mut inference,
                             self.node_ref.as_link(),
                             &mut |i_s, _: &_, type_var_like: TypeVarLike, _| {
-                                if let Some(type_vars) = type_vars {
-                                    if let Some(usage) = type_vars
-                                        .find(type_var_like.clone(), self.node_ref.as_link())
-                                    {
-                                        return TypeVarCallbackReturn::TypeVarLike(usage);
-                                    }
+                                if let Some(usage) =
+                                    type_vars.find(type_var_like.clone(), self.node_ref.as_link())
+                                {
+                                    return TypeVarCallbackReturn::TypeVarLike(usage);
                                 }
                                 if let Some(usage) =
                                     self.maybe_type_var_like_in_parent(i_s, &type_var_like)
@@ -1043,9 +1041,11 @@ impl<'db: 'a, 'a> Class<'a> {
                 self.qualified_name(format_data.db)
             }
         };
-        let type_vars = self.type_vars(&InferenceState::new(format_data.db));
-        if let Some(type_vars) = type_vars {
-            result += &self.generics().format(format_data, Some(type_vars.len()));
+        let type_var_likes = self.type_vars(&InferenceState::new(format_data.db));
+        if !type_var_likes.is_empty() {
+            result += &self
+                .generics()
+                .format(format_data, Some(type_var_likes.len()));
         }
         let class_infos = self.use_cached_class_infos(format_data.db);
         match &class_infos.class_type {

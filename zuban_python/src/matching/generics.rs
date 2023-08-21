@@ -185,15 +185,14 @@ impl<'a> Generics<'a> {
         GenericsIterator::new(db, item)
     }
 
-    pub fn as_generics_list(
-        &self,
-        db: &Database,
-        type_vars: Option<&TypeVarLikes>,
-    ) -> ClassGenerics {
-        match type_vars {
-            Some(type_vars) => match self {
+    pub fn as_generics_list(&self, db: &Database, type_var_likes: &TypeVarLikes) -> ClassGenerics {
+        match type_var_likes.is_empty() {
+            false => match self {
                 Self::NotDefinedYet => ClassGenerics::List(GenericsList::new_generics(
-                    type_vars.iter().map(|t| t.as_any_generic_item()).collect(),
+                    type_var_likes
+                        .iter()
+                        .map(|t| t.as_any_generic_item())
+                        .collect(),
                 )),
                 Self::ExpressionWithClassType(file, expr) => {
                     ClassGenerics::ExpressionWithClassType(PointLink::new(
@@ -209,7 +208,7 @@ impl<'a> Generics<'a> {
                     self.iter(db).map(|g| g.into_generic_item(db)).collect(),
                 )),
             },
-            None => ClassGenerics::None,
+            true => ClassGenerics::None,
         }
     }
 
@@ -255,13 +254,13 @@ impl<'a> Generics<'a> {
         self,
         i_s: &InferenceState,
         other_generics: Self,
-        type_vars: Option<&TypeVarLikes>,
+        type_vars: &TypeVarLikes,
     ) -> bool {
         let other_generics = other_generics.iter(i_s.db);
         let mut matches = true;
-        let mut type_var_iterator = type_vars.map(|t| t.iter());
+        let mut type_var_iterator = type_vars.iter();
         for (t1, t2) in self.iter(i_s.db).zip(other_generics) {
-            if let Some(t) = type_var_iterator.as_mut().and_then(|t| t.next()) {
+            if let Some(t) = type_var_iterator.next() {
                 // TODO ?
             } else {
             };

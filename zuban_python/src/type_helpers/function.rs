@@ -261,7 +261,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 .and_then(|class| {
                     class
                         .type_vars(i_s)
-                        .and_then(|t| t.find(type_var.clone(), class.node_ref.as_link()))
+                        .find(type_var.clone(), class.node_ref.as_link())
                         .map(TypeVarCallbackReturn::TypeVarLike)
                 })
                 .or_else(|| i_s.find_parent_type_var(&type_var))

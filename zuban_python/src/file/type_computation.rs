@@ -252,7 +252,7 @@ macro_rules! compute_type_application {
             if let Some(class) = i_s.current_class() {
                 if let Some(usage) = class
                     .type_vars(i_s)
-                    .and_then(|t| t.find(type_var_like.clone(), class.node_ref.as_link()))
+                    .find(type_var_like.clone(), class.node_ref.as_link())
                 {
                     if $from_alias_definition {
                         $slice_type.as_node_ref().add_issue(
@@ -333,7 +333,7 @@ fn type_computation_for_variable_annotation(
     if let Some(class) = i_s.current_class() {
         if let Some(usage) = class
             .type_vars(i_s)
-            .and_then(|t| t.find(type_var_like.clone(), class.node_ref.as_link()))
+            .find(type_var_like.clone(), class.node_ref.as_link())
         {
             return TypeVarCallbackReturn::TypeVarLike(usage);
         }
@@ -618,7 +618,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         if uses_class_generics {
                             self.add_issue(node_ref, IssueType::ClassVarCannotContainTypeVariables);
                             DbType::Any
-                        } else if class.type_vars(i_s).is_some() && t.has_self_type() {
+                        } else if !class.type_vars(i_s).is_empty() && t.has_self_type() {
                             self.add_issue(
                                 node_ref,
                                 IssueType::ClassVarCannotContainSelfTypeInGenericClass,
@@ -1172,7 +1172,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             slice_type,
             &mut generics,
             slice_type.iter(),
-            (!type_var_likes.is_empty()).then_some(type_var_likes),
+            type_var_likes,
             &|| Box::from("TODO alias name"),
             |slf: &mut Self, given_count, expected_count| {
                 mismatch = true;
@@ -1274,7 +1274,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut iterator = slice_type.iter();
         let mut generics = vec![];
 
-        if let Some(tvs) = type_var_likes {
+        if !type_var_likes.is_empty() {
             // First check if we can make a SimpleGeneric. This happens if all generics are
             // SimpleGeneric or classes.
             if let Some(result) = self.maybe_generic_class_without_type_var(
@@ -1282,7 +1282,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 slice_type,
                 &mut generics,
                 &mut iterator,
-                tvs,
+                type_var_likes,
                 primary,
             ) {
                 return result;
@@ -1311,16 +1311,16 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 );
             },
         );
-        TypeContent::DbType(match type_var_likes {
-            None => DbType::new_class(class.node_ref.as_link(), ClassGenerics::None),
-            Some(type_vars) => {
+        TypeContent::DbType(match type_var_likes.is_empty() {
+            true => DbType::new_class(class.node_ref.as_link(), ClassGenerics::None),
+            false => {
                 // Need to fill the generics, because we might have been in a
                 // SimpleGeneric case where the generic count is wrong.
                 if generics.is_empty() {
-                    for missing_type_var in type_vars.iter().skip(generics.len()) {
+                    for missing_type_var in type_var_likes.iter().skip(generics.len()) {
                         generics.push(missing_type_var.as_any_generic_item())
                     }
-                    let expected_count = type_var_likes.map(|t| t.len()).unwrap_or(0);
+                    let expected_count = type_var_likes.len();
                     generics.truncate(expected_count);
                 }
                 DbType::new_class(
@@ -1406,64 +1406,58 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         slice_type: SliceType,
         generics: &mut Vec<GenericItem>,
         mut iterator: impl Iterator<Item = SliceOrSimple<'x>>,
-        type_var_likes: Option<&TypeVarLikes>,
+        type_var_likes: &TypeVarLikes,
         get_of: &impl Fn() -> Box<str>,
         on_count_mismatch: impl FnOnce(&mut Self, usize, usize),
     ) {
         let mut given_count = generics.len();
-        let expected_count = type_var_likes.map(|t| t.len()).unwrap_or(0);
-        if let Some(type_var_likes) = type_var_likes {
-            for type_var_like in type_var_likes.iter().skip(generics.len()) {
-                let generic_item = match type_var_like {
-                    TypeVarLike::TypeVar(type_var) => {
-                        if let Some(slice_content) = iterator.next() {
-                            let t = self.compute_slice_type(slice_content);
-                            self.check_constraints(type_var, &slice_content, &t, get_of);
-                            given_count += 1;
-                            GenericItem::TypeArgument(
-                                self.as_db_type(t, slice_content.as_node_ref()),
-                            )
-                        } else {
-                            type_var_like.as_any_generic_item()
-                        }
-                    }
-                    TypeVarLike::TypeVarTuple(_) => {
-                        let fetch =
-                            slice_type.iter().count() as isize + 1 - expected_count as isize;
-                        GenericItem::TypeArguments(TypeArguments::new_fixed_length(
-                            if let Ok(fetch) = fetch.try_into() {
-                                given_count += 1;
-                                iterator
-                                    .by_ref()
-                                    .take(fetch)
-                                    .map(|s| self.compute_slice_type_or_type_var_tuple(s))
-                                    .collect()
-                            } else {
-                                // If not enough type arguments are given, an error is raised elsewhere.
-                                Rc::new([])
-                            },
-                        ))
-                    }
-                    TypeVarLike::ParamSpec(_) => {
+        let expected_count = type_var_likes.len();
+        for type_var_like in type_var_likes.iter().skip(generics.len()) {
+            let generic_item = match type_var_like {
+                TypeVarLike::TypeVar(type_var) => {
+                    if let Some(slice_content) = iterator.next() {
+                        let t = self.compute_slice_type(slice_content);
+                        self.check_constraints(&type_var, &slice_content, &t, get_of);
                         given_count += 1;
-                        if expected_count == 1 && slice_type.iter().count() != 1 {
-                            // PEP 612 allows us to write C[int, str] instead of C[[int, str]],
-                            // because "for aesthetic purposes we allow these to be omitted".
-                            let params =
-                                self.calculate_simplified_param_spec_generics(&mut iterator);
-                            GenericItem::ParamSpecArgument(ParamSpecArgument::new(params, None))
-                        } else {
-                            let params = self.calculate_callable_params(
-                                iterator.next().unwrap(),
-                                true,
-                                expected_count == 1,
-                            );
-                            GenericItem::ParamSpecArgument(ParamSpecArgument::new(params, None))
-                        }
+                        GenericItem::TypeArgument(self.as_db_type(t, slice_content.as_node_ref()))
+                    } else {
+                        type_var_like.as_any_generic_item()
                     }
-                };
-                generics.push(generic_item);
-            }
+                }
+                TypeVarLike::TypeVarTuple(_) => {
+                    let fetch = slice_type.iter().count() as isize + 1 - expected_count as isize;
+                    GenericItem::TypeArguments(TypeArguments::new_fixed_length(
+                        if let Ok(fetch) = fetch.try_into() {
+                            given_count += 1;
+                            iterator
+                                .by_ref()
+                                .take(fetch)
+                                .map(|s| self.compute_slice_type_or_type_var_tuple(s))
+                                .collect()
+                        } else {
+                            // If not enough type arguments are given, an error is raised elsewhere.
+                            Rc::new([])
+                        },
+                    ))
+                }
+                TypeVarLike::ParamSpec(_) => {
+                    given_count += 1;
+                    if expected_count == 1 && slice_type.iter().count() != 1 {
+                        // PEP 612 allows us to write C[int, str] instead of C[[int, str]],
+                        // because "for aesthetic purposes we allow these to be omitted".
+                        let params = self.calculate_simplified_param_spec_generics(&mut iterator);
+                        GenericItem::ParamSpecArgument(ParamSpecArgument::new(params, None))
+                    } else {
+                        let params = self.calculate_callable_params(
+                            iterator.next().unwrap(),
+                            true,
+                            expected_count == 1,
+                        );
+                        GenericItem::ParamSpecArgument(ParamSpecArgument::new(params, None))
+                    }
+                }
+            };
+            generics.push(generic_item);
         }
         for slice_content in iterator {
             // Still calculate errors for the rest of the types given. After all they are still
@@ -2078,9 +2072,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeNameLookup::Namespace(namespace) => TypeContent::Namespace(namespace),
             TypeNameLookup::Class { node_ref } => TypeContent::Class {
                 node_ref,
-                has_type_vars: Class::with_undefined_generics(node_ref)
+                has_type_vars: !Class::with_undefined_generics(node_ref)
                     .type_vars(self.inference.i_s)
-                    .is_some(),
+                    .is_empty(),
             },
             TypeNameLookup::TypeVarLike(type_var_like) => {
                 self.has_type_vars_or_self = true;
@@ -2871,13 +2865,11 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         let mut on_type_var =
             |i_s: &InferenceState, _: &_, type_var_like: TypeVarLike, current_callable| {
                 if let Some(class) = i_s.current_class() {
-                    if let Some(type_var_likes) = class.type_vars(i_s) {
-                        for (i, tvl) in type_var_likes.iter().enumerate() {
-                            if type_var_like == *tvl {
-                                return TypeVarCallbackReturn::TypeVarLike(
-                                    tvl.as_type_var_like_usage(i.into(), class.node_ref.as_link()),
-                                );
-                            }
+                    for (i, tvl) in class.type_vars(i_s).iter().enumerate() {
+                        if type_var_like == *tvl {
+                            return TypeVarCallbackReturn::TypeVarLike(
+                                tvl.as_type_var_like_usage(i.into(), class.node_ref.as_link()),
+                            );
                         }
                     }
                 }

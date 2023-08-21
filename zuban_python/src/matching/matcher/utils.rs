@@ -73,7 +73,8 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
     debug!("Calculate __init__ type vars for class {}", class.name());
     let type_vars = class.type_vars(i_s);
     let has_generics =
-        !matches!(class.generics, Generics::None | Generics::NotDefinedYet) || type_vars.is_none();
+        !matches!(class.generics, Generics::None | Generics::NotDefinedYet) || type_vars.is_empty();
+    let type_vars = (!type_vars.is_empty()).then_some(type_vars);
     // Function type vars need to be calculated, so annotations are used.
     let func_type_vars = func_or_callable.type_vars(i_s);
 
@@ -297,7 +298,8 @@ fn calculate_type_vars<'db: 'a, 'a>(
             if let Some(class) = expected_return_class {
                 // This is kind of a special case. Since __init__ has no return annotation, we simply
                 // check if the classes match and then push the generics there.
-                if let Some(type_vars) = class.type_vars(i_s) {
+                let type_var_likes = class.type_vars(i_s);
+                if !type_var_likes.is_empty() {
                     type_.on_any_class(
                         i_s,
                         &mut Matcher::default(),
@@ -308,7 +310,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
                                         add_generics_from_result_context_class(
                                             i_s,
                                             &mut matcher,
-                                            type_vars,
+                                            type_var_likes,
                                             result_class,
                                         );
                                         return true;

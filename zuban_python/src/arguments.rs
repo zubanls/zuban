@@ -571,7 +571,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                             let mut iter = matcher
                                 .unwrap_calculated_type_args()
                                 .into_iter()
-                                .zip(wanted_cls.type_vars(i_s).unwrap().iter())
+                                .zip(wanted_cls.type_vars(i_s).iter())
                                 .map(|(c, type_var_like)| {
                                     let GenericItem::TypeArgument(t) = c.into_generic_item(
                                         i_s.db,

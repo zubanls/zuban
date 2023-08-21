@@ -55,10 +55,9 @@ impl<'db> Inference<'db, '_, '_> {
                 let mut fallback = None;
                 type_.on_any_class(i_s, matcher, &mut |i_s, matcher, list_cls| {
                     if list_cls.node_ref == i_s.db.python_state.list_node_ref() {
-                        let type_vars = list_cls.type_vars(i_s).unwrap();
                         let generic_t = list_cls
                             .generics()
-                            .nth(i_s.db, &type_vars[0], 0)
+                            .nth(i_s.db, &list_cls.type_vars(i_s)[0], 0)
                             .expect_type_argument();
                         found = check_list_with_context(i_s, matcher, generic_t, file, list);
                         if found.is_none() {

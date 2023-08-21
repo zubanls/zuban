@@ -1113,7 +1113,7 @@ impl<'db: 'slf, 'slf> Inferred {
         }
         let needs_remapping = match attribute_class.generics {
             Generics::Self_ { .. } => !attribute_class.has_simple_self_generics(),
-            _ => attribute_class.type_vars(i_s).is_some(),
+            _ => !attribute_class.type_vars(i_s).is_empty(),
         };
         let mut new = None;
         if needs_remapping {
@@ -1823,13 +1823,11 @@ pub fn infer_class_method<'db: 'class, 'class>(
 ) -> Option<CallableContent> {
     let mut func_class = func_class;
     let class_generics_not_defined_yet =
-        matches!(class.generics, Generics::NotDefinedYet) && class.type_vars(i_s).is_some();
+        matches!(class.generics, Generics::NotDefinedYet) && !class.type_vars(i_s).is_empty();
     if class_generics_not_defined_yet {
         // Check why this is necessary by following class_generics_not_defined_yet.
         let self_generics = Generics::Self_ {
-            type_var_likes: class
-                .type_vars(i_s)
-                .unwrap_or_else(|| &i_s.db.python_state.empty_type_var_likes),
+            type_var_likes: class.type_vars(i_s),
             class_definition: class.node_ref.as_link(),
         };
         class.generics = self_generics;

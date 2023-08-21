@@ -60,11 +60,17 @@ impl<'a> Matcher<'a> {
     }
 
     pub fn new_class_matcher(i_s: &InferenceState, class: Class) -> Self {
-        Self {
-            type_var_matcher: class
-                .type_vars(i_s)
-                .map(|type_vars| TypeVarMatcher::new(class.node_ref.as_link(), type_vars.len())),
-            ..Self::default()
+        let type_var_likes = class.type_vars(i_s);
+        if type_var_likes.is_empty() {
+            Self::default()
+        } else {
+            Self {
+                type_var_matcher: Some(TypeVarMatcher::new(
+                    class.node_ref.as_link(),
+                    type_var_likes.len(),
+                )),
+                ..Self::default()
+            }
         }
     }
 
