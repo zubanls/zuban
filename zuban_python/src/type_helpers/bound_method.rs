@@ -1,17 +1,14 @@
-use std::rc::Rc;
-
-use super::{Callable, FirstParamProperties, Function, OverloadedFunction};
+use super::{FirstParamProperties, Function, OverloadedFunction};
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
 use crate::database::DbType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{replace_class_type_vars_in_callable, OnTypeError, ResultContext, Type};
+use crate::matching::{OnTypeError, ResultContext, Type};
 
 #[derive(Debug)]
 pub enum BoundMethodFunction<'a> {
     Function(Function<'a, 'a>),
     Overload(OverloadedFunction<'a>),
-    Callable(Callable<'a>),
 }
 
 #[derive(Debug)]
@@ -46,9 +43,6 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
             BoundMethodFunction::Overload(f) => {
                 f.execute(i_s, &args, result_context, on_type_error)
             }
-            BoundMethodFunction::Callable(f) => {
-                f.execute(i_s, &args, on_type_error, result_context)
-            }
         }
     }
 
@@ -61,20 +55,6 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
                 },
             ),
             BoundMethodFunction::Overload(f) => f.as_db_type(i_s, Some(&|| self.instance.clone())),
-            BoundMethodFunction::Callable(c) => {
-                let callable = c
-                    .content
-                    .remove_first_param()
-                    .expect("Bound methods should always contain first params");
-                DbType::Callable(Rc::new({
-                    replace_class_type_vars_in_callable(
-                        i_s.db,
-                        &callable,
-                        c.defined_in.as_ref(),
-                        &|| self.instance.clone(),
-                    )
-                }))
-            }
         };
         // TODO performance: it may be questionable that we allocate here again.
         Type::owned(t)

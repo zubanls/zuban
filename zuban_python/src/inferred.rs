@@ -24,7 +24,7 @@ use crate::matching::{
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
-    execute_assert_type, execute_super, BoundMethod, BoundMethodFunction, Callable, Class,
+    execute_assert_type, execute_super, BoundMethod, BoundMethodFunction, Class,
     FirstParamProperties, Function, Instance, NewTypeClass, OverloadedFunction, ParamSpecClass,
     RevealTypeFunction, TypeOrClass, TypeVarClass, TypeVarTupleClass, TypingCast, TypingClass,
 };
@@ -1725,13 +1725,6 @@ fn load_bound_method<'db: 'a, 'a, 'b>(
             let func = OverloadedFunction::new(&overload.functions, Some(class));
             BoundMethod::new(instance, BoundMethodFunction::Overload(func))
         }
-        Some(ComplexPoint::TypeInstance(t)) => match t {
-            DbType::Callable(c) => BoundMethod::new(
-                instance,
-                BoundMethodFunction::Callable(Callable::new(c, Some(class))),
-            ),
-            _ => unreachable!("{t:?}"),
-        },
         None => {
             let func = Function::new(reference, Some(class));
             BoundMethod::new(instance, BoundMethodFunction::Function(func))
