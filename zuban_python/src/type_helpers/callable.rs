@@ -40,6 +40,17 @@ impl<'a> Callable<'a> {
         on_type_error: OnTypeError<'db, '_>,
         result_context: &mut ResultContext,
     ) -> Inferred {
+        self.execute_internal(i_s, args, false, on_type_error, result_context)
+    }
+
+    pub(super) fn execute_internal<'db>(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
+        skip_first_argument: bool,
+        on_type_error: OnTypeError<'db, '_>,
+        result_context: &mut ResultContext,
+    ) -> Inferred {
         let return_type = &self.content.result_type;
         if result_context.expect_not_none(i_s) && matches!(&return_type, DbType::None) {
             args.as_node_ref().add_issue(
@@ -57,7 +68,7 @@ impl<'a> Callable<'a> {
             *self,
             args.iter(),
             &|| args.as_node_ref(),
-            false,
+            skip_first_argument,
             result_context,
             Some(on_type_error),
         );

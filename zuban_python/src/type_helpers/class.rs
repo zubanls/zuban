@@ -173,8 +173,15 @@ impl<'db: 'a, 'a> Class<'a> {
                 Some(calculated_type_args.type_arguments_into_class_generics())
             }
             Some(FunctionOrOverload::Overload(overloaded_function)) => match overloaded_function
-                .find_matching_function(i_s, args, Some(self), true, result_context, on_type_error)
-            {
+                .find_matching_function(
+                    i_s,
+                    args,
+                    false,
+                    Some(self),
+                    true,
+                    result_context,
+                    on_type_error,
+                ) {
                 OverloadResult::Single(callable) => {
                     // Execute the found function to create the diagnostics.
                     let result = calculate_callable_init_type_vars_and_return(

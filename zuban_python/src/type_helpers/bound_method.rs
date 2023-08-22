@@ -1,5 +1,5 @@
 use super::{FirstParamProperties, Function, OverloadedFunction};
-use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
+use crate::arguments::Arguments;
 use crate::database::DbType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -25,24 +25,21 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
     pub fn execute<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
-        original_args: &dyn Arguments<'db>,
+        args: &dyn Arguments<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
-        let instance_inf = Inferred::from_type(self.instance.clone());
-        let instance_arg = KnownArguments::new_bound(&instance_inf, original_args.as_node_ref());
-        let args = CombinedArguments::new(&instance_arg, original_args);
         match &self.function {
             BoundMethodFunction::Function(f) => f.execute_internal(
                 i_s,
-                original_args,
+                args,
                 true,
                 on_type_error,
                 &|| self.instance.clone(),
                 result_context,
             ),
             BoundMethodFunction::Overload(f) => {
-                f.execute(i_s, &args, result_context, on_type_error)
+                f.execute_internal(i_s, args, true, result_context, on_type_error)
             }
         }
     }

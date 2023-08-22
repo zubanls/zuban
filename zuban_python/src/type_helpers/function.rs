@@ -1538,6 +1538,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
+        skip_first_argument: bool,
         class: Option<&Class>,
         search_init: bool, // TODO this feels weird, maybe use a callback?
         result_context: &mut ResultContext,
@@ -1562,7 +1563,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     callable,
                     args.iter(),
                     &|| args.as_node_ref(),
-                    false,
+                    skip_first_argument,
                     result_context,
                     None,
                 )
@@ -1665,6 +1666,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 i_s,
                 result_context,
                 args.iter(),
+                skip_first_argument,
                 &mut non_union_args,
                 args.as_node_ref(),
                 search_init,
@@ -1715,6 +1717,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         i_s: &InferenceState<'db, '_>,
         result_context: &mut ResultContext,
         mut args: ArgumentIterator<'db, 'x>,
+        skip_first_argument: bool,
         non_union_args: &mut Vec<Argument<'db, 'x>>,
         args_node_ref: NodeRef,
         search_init: bool,
@@ -1748,6 +1751,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         i_s,
                         result_context,
                         args.clone(),
+                        skip_first_argument,
                         non_union_args,
                         args_node_ref,
                         search_init,
@@ -1792,6 +1796,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     i_s,
                     result_context,
                     args,
+                    skip_first_argument,
                     non_union_args,
                     args_node_ref,
                     search_init,
@@ -1819,7 +1824,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             callable,
                             non_union_args.clone().into_iter(),
                             &|| args_node_ref,
-                            false,
+                            skip_first_argument,
                             result_context,
                             None,
                         )
@@ -1936,10 +1941,22 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         debug!("Execute overloaded function {}", self.name(i_s.db));
-        match self.find_matching_function(i_s, args, None, false, result_context, on_type_error) {
-            OverloadResult::Single(callable) => {
-                callable.execute(i_s, args, on_type_error, result_context)
-            }
+        match self.find_matching_function(
+            i_s,
+            args,
+            skip_first_argument,
+            None,
+            false,
+            result_context,
+            on_type_error,
+        ) {
+            OverloadResult::Single(callable) => callable.execute_internal(
+                i_s,
+                args,
+                skip_first_argument,
+                on_type_error,
+                result_context,
+            ),
             OverloadResult::Union(t) => Inferred::from_type(t),
             OverloadResult::NotFound => self.fallback_type(i_s),
         }

@@ -785,9 +785,6 @@ impl<'db: 'slf, 'slf> Inferred {
                                                 Rc::new(results.into_iter().next().unwrap()),
                                             )));
                                         }
-                                        // That's just everything, so we can just return it as a
-                                        // bound method instance.
-                                        _ if results.len() == o.iter_functions().count() => (),
                                         _ => {
                                             return Some(Inferred::from_type(
                                                 DbType::FunctionOverload(FunctionOverload::new(
