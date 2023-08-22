@@ -25,17 +25,18 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
     pub fn execute<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
+        original_args: &dyn Arguments<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         let instance_inf = Inferred::from_type(self.instance.clone());
-        let instance_arg = KnownArguments::new_bound(&instance_inf, args.as_node_ref());
-        let args = CombinedArguments::new(&instance_arg, args);
+        let instance_arg = KnownArguments::new_bound(&instance_inf, original_args.as_node_ref());
+        let args = CombinedArguments::new(&instance_arg, original_args);
         match &self.function {
             BoundMethodFunction::Function(f) => f.execute_internal(
                 i_s,
-                &args,
+                original_args,
+                true,
                 on_type_error,
                 &|| self.instance.clone(),
                 result_context,

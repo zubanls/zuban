@@ -1052,6 +1052,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
+        skip_first_argument: bool,
         on_type_error: OnTypeError<'db, '_>,
         replace_self_type: ReplaceSelf,
         result_context: &mut ResultContext,
@@ -1062,7 +1063,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             *self,
             args.iter(),
             &|| args.as_node_ref(),
-            false,
+            skip_first_argument,
             self.type_vars(i_s),
             self.node_ref.as_link(),
             result_context,
@@ -1208,12 +1209,20 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             self.execute_internal(
                 &i_s.with_class_context(class),
                 args,
+                false,
                 on_type_error,
                 &|| class.as_db_type(i_s.db),
                 result_context,
             )
         } else {
-            self.execute_internal(i_s, args, on_type_error, &|| DbType::Self_, result_context)
+            self.execute_internal(
+                i_s,
+                args,
+                false,
+                on_type_error,
+                &|| DbType::Self_,
+                result_context,
+            )
         }
     }
 
@@ -1912,6 +1921,17 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
+        result_context: &mut ResultContext,
+        on_type_error: OnTypeError<'db, '_>,
+    ) -> Inferred {
+        self.execute_internal(i_s, args, false, result_context, on_type_error)
+    }
+
+    pub(super) fn execute_internal(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
+        skip_first_argument: bool,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
