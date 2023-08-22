@@ -452,7 +452,7 @@ impl<'a> Type<'a> {
                 Match::new_false()
             });
         debug!(
-            "Match covariant {} against {} -> {:?}",
+            "Match covariant {} ≤ {} -> {:?}",
             self.format_short(i_s.db),
             value_type.format_short(i_s.db),
             result
@@ -501,7 +501,7 @@ impl<'a> Type<'a> {
             self.check_protocol_and_other_side(i_s, matcher, value_type, Variance::Invariant)
         });
         debug!(
-            "Match invariant {} against {} -> {:?}",
+            "Match invariant {} ≡ {} -> {:?}",
             self.format_short(i_s.db),
             value_type.format_short(i_s.db),
             result
