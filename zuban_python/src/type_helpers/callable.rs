@@ -159,15 +159,22 @@ pub fn merge_class_type_vars_into_callable(
         type_vars.push(type_var.clone());
     }
     if needs_self_type_variable {
+        let bound = Type::owned(Class::with_self_generics(db, class.node_ref).as_db_type(db))
+            .replace_type_var_likes(db, &mut |mut usage| {
+                if usage.in_definition() == class.node_ref.as_link() {
+                    usage.add_to_index(callable.type_vars.len() as i32);
+                }
+                usage.into_generic_item()
+            });
         let self_type_var = Rc::new(TypeVar {
             name_string: TypeVarName::Self_,
-            kind: TypeVarKind::Bound(class.as_db_type(db)),
+            kind: TypeVarKind::Bound(bound),
             variance: Variance::Invariant,
         });
         self_type_var_usage = Some(TypeVarUsage {
             in_definition: callable.defined_at,
             type_var: self_type_var.clone(),
-            index: 0.into(),
+            index: type_vars.len().into(),
         });
         type_vars.push(TypeVarLike::TypeVar(self_type_var));
     }
