@@ -1,6 +1,4 @@
 # Next up
-testTypeAttributes
-testDictFromkeys
 testAnyStr
 testIOTypes
 testGenericPatterns
@@ -1348,6 +1346,7 @@ testReadWriteDeleteAbstractProperty
 # Property access from class
 testOverrideMethodProperty
 testOverridePropertyMethod
+testTypeAttributes
 # Self definitions different from parent
 testCantImplementAbstractPropertyViaInstanceVariable
 

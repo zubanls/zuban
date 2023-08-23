@@ -157,7 +157,7 @@ impl<'a> Matcher<'a> {
                     .generics()
                     .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(Cow::Borrowed(t1)))
                     .expect_type_argument();
-                return g.simple_matches(i_s, value_type, t1.type_var.variance);
+                return g.simple_matches(i_s, value_type, variance);
             }
         }
         // If we're in a class context, we must also be in a method.
@@ -167,7 +167,7 @@ impl<'a> Matcher<'a> {
                     .generics()
                     .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(Cow::Borrowed(t1)))
                     .expect_type_argument();
-                return g.matches(i_s, self, value_type, t1.type_var.variance);
+                return g.matches(i_s, self, value_type, variance);
             }
             // The case that the if does not hit happens e.g. for
             // testInvalidNumberOfTypeArgs:
