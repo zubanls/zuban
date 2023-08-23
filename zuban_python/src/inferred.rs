@@ -24,9 +24,10 @@ use crate::matching::{
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
-    execute_assert_type, execute_super, BoundMethod, BoundMethodFunction, Class,
-    FirstParamProperties, Function, Instance, NewTypeClass, OverloadedFunction, ParamSpecClass,
-    RevealTypeFunction, TypeOrClass, TypeVarClass, TypeVarTupleClass, TypingCast, TypingClass,
+    execute_assert_type, execute_super, merge_class_type_vars_into_callable, BoundMethod,
+    BoundMethodFunction, Class, FirstParamProperties, Function, Instance, NewTypeClass,
+    OverloadedFunction, ParamSpecClass, RevealTypeFunction, TypeOrClass, TypeVarClass,
+    TypeVarTupleClass, TypingCast, TypingClass,
 };
 
 #[derive(Debug)]
@@ -1036,7 +1037,20 @@ impl<'db: 'slf, 'slf> Inferred {
                         match file.complex_points.get(point.complex_index()) {
                             ComplexPoint::FunctionOverload(o) => match o.kind() {
                                 FunctionKind::Function => {
-                                    debug!("TODO callable decorated class descriptor")
+                                    return Some(Inferred::from_type(DbType::FunctionOverload(
+                                        FunctionOverload::new(
+                                            o.iter_functions()
+                                                .map(|c| {
+                                                    merge_class_type_vars_into_callable(
+                                                        i_s.db,
+                                                        *class,
+                                                        attribute_class,
+                                                        c,
+                                                    )
+                                                })
+                                                .collect(),
+                                        ),
+                                    )))
                                 }
                                 FunctionKind::Property { .. } => unreachable!(),
                                 FunctionKind::Classmethod => {

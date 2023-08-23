@@ -1,12 +1,18 @@
+use std::rc::Rc;
+
 use super::function::{format_pretty_function_like, format_pretty_function_with_params};
 use super::Class;
 use crate::arguments::Arguments;
-use crate::database::{CallableContent, CallableParams, Database, DbType, FormatStyle};
+use crate::database::{
+    CallableContent, CallableParams, Database, DbType, FormatStyle, TypeVar, TypeVarKind,
+    TypeVarLike, TypeVarLikes, TypeVarName, TypeVarUsage, Variance,
+};
 use crate::diagnostics::IssueType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{
-    calculate_callable_type_vars_and_return, FormatData, OnTypeError, ResultContext, Type,
+    calculate_callable_type_vars_and_return, maybe_class_usage, FormatData, OnTypeError,
+    ResultContext, Type,
 };
 
 #[derive(Debug, Copy, Clone)]
@@ -130,4 +136,65 @@ pub fn format_pretty_callable(format_data: &FormatData, callable: &CallableConte
         )
         .into(),
     }
+}
+
+pub fn merge_class_type_vars_into_callable(
+    db: &Database,
+    class: Class,
+    attribute_class: Class,
+    callable: &CallableContent,
+) -> CallableContent {
+    let mut needs_self_type_variable = Type::new(&callable.result_type).has_explicit_self_type(db);
+    let CallableParams::Simple(params) = &callable.params else {
+        unreachable!()
+    };
+    for param in params.iter().skip(1) {
+        if let Some(t) = param.param_specific.maybe_db_type() {
+            needs_self_type_variable |= Type::new(t).has_explicit_self_type(db);
+        }
+    }
+    let mut type_vars = callable.type_vars.as_vec();
+    let mut self_type_var_usage = None;
+    if needs_self_type_variable {
+        let self_type_var = Rc::new(TypeVar {
+            name_string: TypeVarName::Self_,
+            kind: TypeVarKind::Bound(class.as_db_type(db)),
+            variance: Variance::Invariant,
+        });
+        self_type_var_usage = Some(TypeVarUsage {
+            in_definition: callable.defined_at,
+            type_var: self_type_var.clone(),
+            index: 0.into(),
+        });
+        type_vars.insert(0, TypeVarLike::TypeVar(self_type_var));
+    }
+    let type_vars = TypeVarLikes::from_vec(type_vars);
+    Type::replace_type_var_likes_and_self_for_callable(
+        callable,
+        db,
+        &mut |usage| {
+            let in_definition = usage.in_definition();
+            if let Some(result) = maybe_class_usage(db, &attribute_class, &usage) {
+                result.replace_type_var_likes(
+                    db,
+                    &mut |usage| {
+                        if usage.in_definition() == class.node_ref.as_link() {
+                            type_vars
+                                .find(usage.as_type_var_like(), callable.defined_at)
+                                .unwrap()
+                                .into_generic_item()
+                        } else {
+                            usage.into_generic_item()
+                        }
+                    },
+                    &|| todo!("DbType::TypeVar(self_type_var_usage.clone().unwrap())"),
+                )
+            } else {
+                // This can happen for example if the return value is a Callable with its
+                // own type vars.
+                usage.into_generic_item()
+            }
+        },
+        &|| DbType::TypeVar(self_type_var_usage.clone().unwrap()),
+    )
 }

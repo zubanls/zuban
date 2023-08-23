@@ -1453,6 +1453,17 @@ impl ParamSpecific {
             _ => unreachable!(),
         }
     }
+
+    pub fn maybe_db_type(&self) -> Option<&DbType> {
+        match self {
+            Self::PositionalOnly(t)
+            | Self::PositionalOrKeyword(t)
+            | Self::KeywordOnly(t)
+            | Self::Starred(StarredParamSpecific::ArbitraryLength(t))
+            | Self::DoubleStarred(DoubleStarredParamSpecific::ValueType(t)) => Some(t),
+            Self::Starred(StarredParamSpecific::ParamSpecArgs(_)) | Self::DoubleStarred(_) => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
