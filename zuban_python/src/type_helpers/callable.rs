@@ -148,13 +148,16 @@ pub fn merge_class_type_vars_into_callable(
     let CallableParams::Simple(params) = &callable.params else {
         unreachable!()
     };
-    for param in params.iter().skip(1) {
+    for param in params.iter() {
         if let Some(t) = param.param_specific.maybe_db_type() {
             needs_self_type_variable |= Type::new(t).has_explicit_self_type(db);
         }
     }
     let mut type_vars = callable.type_vars.as_vec();
     let mut self_type_var_usage = None;
+    for type_var in class.use_cached_type_vars(db).iter() {
+        type_vars.push(type_var.clone());
+    }
     if needs_self_type_variable {
         let self_type_var = Rc::new(TypeVar {
             name_string: TypeVarName::Self_,
@@ -166,10 +169,10 @@ pub fn merge_class_type_vars_into_callable(
             type_var: self_type_var.clone(),
             index: 0.into(),
         });
-        type_vars.insert(0, TypeVarLike::TypeVar(self_type_var));
+        type_vars.push(TypeVarLike::TypeVar(self_type_var));
     }
     let type_vars = TypeVarLikes::from_vec(type_vars);
-    Type::replace_type_var_likes_and_self_for_callable(
+    let mut callable = Type::replace_type_var_likes_and_self_for_callable(
         callable,
         db,
         &mut |usage| {
@@ -196,5 +199,7 @@ pub fn merge_class_type_vars_into_callable(
             }
         },
         &|| DbType::TypeVar(self_type_var_usage.clone().unwrap()),
-    )
+    );
+    callable.type_vars = type_vars;
+    callable
 }

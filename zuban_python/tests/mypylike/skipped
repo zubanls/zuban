@@ -2939,9 +2939,11 @@ testSuggestClassVarOnTooFewArgumentsMethod
 # Create a class with a base class based on Type[..] of self.foo
 testNewAnalyzerUnsupportedBaseClassInsideFunction
 
-# My own hard tests
+# My own hard/special tests
 class_context_super_class
 namedtuple__new__
+generic_method_on_class_access_no_overload
+generic_method_on_class_access_overload
 
 # Won't support for now: "t" is a type variable and only valid in type context
 testExpressionRefersToTypeVariable

@@ -832,3 +832,37 @@ bar: Foo[str]
 reveal_type(foo.f)  # N: Revealed type is "builtins.int"
 reveal_type(bar.f)  # E: Invalid self argument "Foo[str]" to attribute function "f" with type "Callable[[Foo[int]], T]" \
                     # N: Revealed type is "Any"
+
+[case generic_method_on_class_access_no_overload]
+from typing import TypeVar, Generic, Self, Tuple
+
+T = TypeVar('T')
+U = TypeVar('U', bound=int)
+
+class Foo(Generic[T]):
+    def foo(self: Self, t: T, u: U) -> Tuple[Self, T, U]: ...
+
+reveal_type(Foo.foo)  # N: Revealed type is "def [T, Self <: __main__.Foo[T], U <: builtins.int] (self: Self, t: T, u: U) -> Tuple[Self, T, U]"
+
+fooi: Foo[int]
+reveal_type(Foo.foo(fooi, "", 1))  # N: Revealed type is "tuple[__main__.Foo[int], str, int]"
+reveal_type(Foo.foo(fooi, b"", 1))  # N: Revealed type is "tuple[__main__.Foo[int], object, int]"
+
+[case generic_method_on_class_access_overload]
+from typing import TypeVar, Generic, Self, overload, Tuple
+
+T = TypeVar('T')
+U = TypeVar('U', bound=int)
+
+class Foo(Generic[T]):
+    @overload
+    def bar(self: Self, t: T, u: U) -> Tuple[Self, T, U]: ...
+    @overload
+    def bar(self: Self, t: T, u: U, q: int) -> Tuple[Self, T, U]: ...
+    def bar(self: Self, t: T, u: U, q: int | None = None) -> Tuple[Self, T, U]: ...
+
+reveal_type(Foo.bar)  # N: Revealed type is "Overload(def [T, Self <: __main__.Foo[T], U <: builtins.int] (self: Self, t: T, u: U) -> Tuple[Self, T, U], def [T, Self <: __main__.Foo[T], U <: builtins.int] (self: Self, t: T, u: U, q: builtins.int) -> Tuple[Self, T, U])"
+
+fooi: Foo[int]
+reveal_type(Foo.bar(fooi, "", 1))  # N: Revealed type is "tuple[__main__.Foo[int], str, int]"
+reveal_type(Foo.bar(fooi, b"", 1))  # N: Revealed type is "tuple[__main__.Foo[int], object, int]"
