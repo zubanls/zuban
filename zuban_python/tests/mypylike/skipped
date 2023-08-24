@@ -1,8 +1,4 @@
 # Next up
-testListInplaceAdd
-testTupleAsSubtypeOfSequence
-testVarArgsFunctionSubtyping
-testDictUpdateInference
 
 # EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
 testStrEnumCreation
@@ -114,6 +110,7 @@ testRecursiveClassLevelAlias
 testInvalidNumberOfTypeArgs
 testInheritedConstructor2
 testMapStr
+testVarArgsFunctionSubtyping
 
 # Uses function context but is in fact in module context
 testFunctionForwardRefAlias
@@ -406,6 +403,9 @@ testDictExpressionErrorLocations
 testDictStarInference
 testDictStarAnyKeyJoinValue
 
+# tuple() / tuple([1])
+testTupleAsSubtypeOfSequence
+testListInplaceAdd
 # Incompatible number of tuple items
 testVariableDeclWithInvalidNumberOfTypes
 testVariableDeclWithInvalidNumberOfTypesNested
@@ -739,6 +739,7 @@ testIterableProtocolOnClass
 testIterableProtocolOnMetaclass
 testTwoStarExpressionsInGeneratorExpr
 testYieldOutsideFunction
+testDictUpdateInference
 # comprehensions Scoping
 testListComprehensionSpecialScoping
 # "Assignment expression within a comprehension cannot be used in a class body"

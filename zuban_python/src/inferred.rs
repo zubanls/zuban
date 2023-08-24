@@ -1470,21 +1470,23 @@ impl<'db: 'slf, 'slf> Inferred {
                             }
                             Specific::TypingProtocol
                             | Specific::TypingGeneric
-                            | Specific::TypingTuple
                             | Specific::TypingUnion
                             | Specific::TypingOptional
-                            | Specific::TypingType
                             | Specific::TypingLiteral
                             | Specific::TypingAnnotated
-                            | Specific::TypingNamedTuple
+                            | Specific::TypingCallable => todo!(),
+                            Specific::TypingNamedTuple
                             | Specific::CollectionsNamedTuple
-                            | Specific::TypingCallable => {
+                            | Specific::TypingType => {
                                 return TypingClass::new(specific).execute(
                                     i_s,
                                     args,
                                     result_context,
                                     on_type_error,
                                 )
+                            }
+                            Specific::TypingTuple => {
+                                todo!()
                             }
                             Specific::TypingCast => {
                                 return TypingCast().execute(
