@@ -37,7 +37,7 @@ with debug enabled:
 - 2023-05-23: 2881 / 4845 (0.34s ->  8473 tests/s 2653b7365e335a51adc3eb7dcfede26fe7c7d3d0)
 - 2023-06-23: 3411 / 5752 (0.39s ->  8746 tests/s 52f55a6477c9ecb71a76323cb9f8937e8f0c2433)
 - 2023-07-23: 3744 / 6061 (0.48s ->  7800 tests/s 0d94b68467ac9b4f82e393af4a2d462beee12ead) (note: Removed a dbg)
-- 2023-08-23: 4262 / 6513
+- 2023-08-23: 4443 / 6770 (0.53s ->  8383 tests/s d306fda4bcd8455212122ddb683168a2d9da850e)
 
 ### Unsound?
 
