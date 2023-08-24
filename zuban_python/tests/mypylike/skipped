@@ -5,7 +5,6 @@ testVarArgsFunctionSubtyping
 testDictUpdateInference
 testCrashOnComplexCheckWithNamedTupleNext
 testTypeshedRecursiveTypesExample
-testMapStr
 
 # EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
 testStrEnumCreation
@@ -116,6 +115,7 @@ testRecursiveClassLevelAlias
 # func type var in __init__
 testInvalidNumberOfTypeArgs
 testInheritedConstructor2
+testMapStr
 
 # Uses function context but is in fact in module context
 testFunctionForwardRefAlias

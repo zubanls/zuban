@@ -1696,7 +1696,29 @@ impl NewOrInitConstructor<'_> {
     pub fn maybe_callable(self, i_s: &InferenceState, cls: Class) -> Option<CallableLike> {
         let inf = self.constructor.into_inferred();
         if self.is_new {
-            inf.as_type(i_s).maybe_callable(i_s)
+            inf.as_type(i_s).maybe_callable(i_s).map(
+                |callable_like| /*match self.init_class {
+                                       // TODO probably enable??
+                    Some(class) => match callable_like {
+                        CallableLike::Callable(c) => {
+                            CallableLike::Callable(Rc::new(merge_class_type_vars_into_callable(
+                                i_s.db,
+                                class,
+                                class,
+                                &c,
+                            )))
+                        }
+                        CallableLike::Overload(overload) => CallableLike::Overload(FunctionOverload::new(overload.iter_functions().map(|c| {
+                            dbg!(merge_class_type_vars_into_callable(
+                                i_s.db,
+                                class,
+                                class,
+                                &c,
+                            ))
+                        }).collect()))
+                    },
+                    None => */callable_like, /*}*/
+            )
         } else {
             let callable = if let Some(c) = self.init_class {
                 let i_s = &i_s.with_class_context(&c);
