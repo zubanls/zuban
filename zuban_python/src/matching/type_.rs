@@ -161,7 +161,7 @@ impl<'a> Type<'a> {
                     .into_maybe_inferred()
                     .and_then(|i| i.as_type(i_s).maybe_callable(i_s))
             }
-            DbType::FunctionOverload(overload) => todo!(),
+            DbType::FunctionOverload(overload) => Some(CallableLike::Overload(overload.clone())),
             _ => None,
         }
     }
@@ -833,8 +833,16 @@ impl<'a> Type<'a> {
             }
             _ => match value_type.maybe_callable(i_s) {
                 Some(CallableLike::Callable(c2)) => Self::matches_callable(i_s, matcher, c1, &c2),
-                Some(CallableLike::Overload(overload)) => todo!(),
-                None => Match::new_false(),
+                Some(CallableLike::Overload(overload)) if variance == Variance::Covariant => {
+                    Self::matches_callable_against_arbitrary(
+                        i_s,
+                        matcher,
+                        c1,
+                        &Type::owned(DbType::FunctionOverload(overload)),
+                        variance,
+                    )
+                }
+                _ => Match::new_false(),
             },
         }
     }
