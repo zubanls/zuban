@@ -3,8 +3,6 @@ testListInplaceAdd
 testTupleAsSubtypeOfSequence
 testVarArgsFunctionSubtyping
 testDictUpdateInference
-testCrashOnComplexCheckWithNamedTupleNext
-testTypeshedRecursiveTypesExample
 
 # EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
 testStrEnumCreation
@@ -274,6 +272,8 @@ testNestedProtocolGenericUnionsDeep
 testNoCrashOnGenericUnionUnpacking
 # Tuple iter fixes
 testTupleBaseClass
+# union context inference
+testCrashOnComplexCheckWithNamedTupleNext
 
 # Not able to infer context with unions and literals
 testLiteralAndGenericWithUnion
@@ -1889,6 +1889,7 @@ testNamedTupleSubclassMulti
 testNarrowSelfType
 testRuntimeIterableProtocolCheck
 testColumnsSimpleIsinstance
+testTypeshedRecursiveTypesExample
 # issubclass narrowing
 testIsInstanceTypeIsSubclass
 testIsInstanceTypeTypeVar

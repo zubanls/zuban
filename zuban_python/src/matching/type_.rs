@@ -2297,6 +2297,16 @@ impl<'a> Type<'a> {
                 self,
                 lookup_on_enum_member_instance(i_s, from, member, name),
             ),
+            DbType::RecursiveAlias(r) => Type::new(r.calculated_db_type(i_s.db))
+                .run_after_lookup_on_each_union_member(
+                    i_s,
+                    None,
+                    from,
+                    name,
+                    kind,
+                    result_context,
+                    callable,
+                ),
             _ => todo!("{self:?}"),
         }
     }

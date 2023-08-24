@@ -1175,7 +1175,7 @@ impl DbType {
             | Self::Module(_)
             | Self::Namespace(_) => false,
             Self::Enum(_) => false,
-            Self::NamedTuple(nt) => todo!(),
+            Self::NamedTuple(nt) => nt.__new__.has_any_internal(i_s, already_checked),
             Self::EnumMember(_) => todo!(),
             Self::Super { .. } => todo!(),
         }
