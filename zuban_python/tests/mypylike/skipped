@@ -2,34 +2,16 @@
 testListInplaceAdd
 testTupleAsSubtypeOfSequence
 testVarArgsFunctionSubtyping
-testDictWithKeywordArgs
-testDefaultDict
 testDictUpdateInference
-testMetaclassAndSuper
-testSortedNoError
-testReModuleBytes
-testReModuleString
 testCrashOnComplexCheckWithNamedTupleNext
-testEnumIterable
-testDerivedEnumIterable
-testShadowTypingModule
 testTypeshedRecursiveTypesExample
-testGenericInferenceWithDataclass
-testGenericInferenceWithItertools
 testMapStr
 testNoCrashOnGenericUnionUnpacking
-testNamedTupleTypeInheritanceSpecialCase
-testIsInstanceAdHocIntersectionWithStrAndBytes
 testEnumValueWithPlaceholderNodeType
+testEnumIterMetaInference
+testIntEnumIterable
 testTypeAliasWithNewStyleUnion
 testTypeAliasNotSupportedWithNewStyleUnion
-testTupleWithDifferentArgsPy310
-testEnumIterMetaInference
-testNativeIntTypes
-testStarUnpackNestedUnderscore
-testInferenceOfDunderDictOnClassObjects
-testIntEnumIterable
-testTypingExtensionsOrderedDictAlias
 
 # EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
 testStrEnumCreation
@@ -51,6 +33,9 @@ testInferenceAgainstGenericSplitOrder
 testInferenceAgainstGenericSplitOrderGeneric
 testInferenceAgainstGenericCallableNewVariable
 testInferenceAgainstGenericBoundsAndValues
+testDefaultDict
+testGenericInferenceWithDataclass
+testGenericInferenceWithItertools
 
 # super with Type[...]
 testSuperWithAny
@@ -73,6 +58,7 @@ testMixinProtocolSuper
 # Super in classmethod or __new__
 testSuperWithNew
 testSuperNew
+testMetaclassAndSuper
 
 # Any base class now matches everything for union simplification
 testUnionSimplificationSpecialCases2
@@ -268,6 +254,7 @@ testLiteralInferredInTupleContext
 testCallerVarArgsListWithTypeInference
 testCallerVarArgsTupleWithTypeInference
 testCallerVarargsAndComplexTypeInference
+testStarUnpackNestedUnderscore
 # bottom up inference list multiply
 testListMultiplyInContext
 # bottom up dict
@@ -276,6 +263,7 @@ testLiteralInferredInDictContext
 # "Dict entry 0 has incompatible type "int": "str"; expected "int": "int""
 testErrorCodeListOrDictItem
 testColumnListOrDictItemHasIncompatibleType
+testDictWithKeywordArgs
 
 # context inference from class statement
 testSetDescriptorOnClass
@@ -560,6 +548,7 @@ testNewNamedTupleAsDict
 testNewNamedTupleReplaceTyped
 testNewNamedTupleFields
 testNewNamedTupleUnit
+testNamedTupleTypeInheritanceSpecialCase
 # Namedtuple class attr access
 testNamedTupleForwardFunctionIndirectReveal
 testNamedTupleMissingClassAttribute
@@ -778,6 +767,9 @@ testComplexLambda
 testLambdaPrecedence
 testListMethods
 testMapWithLambdaSpecialCase
+testSortedNoError
+testReModuleBytes
+testReModuleString
 # lambda: Name "UNDEFINED" is not defined
 testLambdaInheritsCheckedContextFromTypedFunc
 testLambdaInheritsCheckedContextFromTypedFuncForced
@@ -806,6 +798,9 @@ testParamSpecInferredFromLambda
 # Generator in lambda
 testNoCrashOnLambdaGenerator
 
+# Random protocol issues
+testEnumIterable
+testDerivedEnumIterable
 # Protocol invalid "Access to generic instance variables via class is ambiguous"
 testGenericSubProtocols
 testProtocolConcreteUpdateTypeMethodGeneric
@@ -1172,6 +1167,9 @@ testReExportChildStubs3
 # underscore names are not exported in an import with stubs
 testInternalBuiltinDefinition
 
+# "mypy: "tmp/typing.py" shadows library module "typing""
+testShadowTypingModule
+
 # Metaclass descriptor
 metaclass_descriptor
 # Metaclass Union
@@ -1180,6 +1178,7 @@ testNotSimplifyingUnionWithMetaclass
 testInferringLvarTypesUnpackedFromIterableClassObjectWithGenericIter
 # Metaclass instance vs. class members
 testMetaclassConflictingInstanceVars
+testInferenceOfDunderDictOnClassObjects
 
 # Use type(foo) when foo has a metaclass
 testMetaclassTypeCallable
@@ -1722,6 +1721,9 @@ testLiteralFinalErasureInMutableDatastructures2
 testInferNonOptionalListType
 testInferNonOptionalDictType
 
+# OrderedDict = _Alias()
+testTypingExtensionsOrderedDictAlias
+
 # Type Var Value in func
 testCheckGenericFunctionBodyWithTypeVarValues
 testCheckGenericFunctionBodyWithTypeVarValues2
@@ -2121,6 +2123,7 @@ testIsInstanceAdHocIntersectionFineGrainedIncrementalIsInstanceChange
 testIsInstanceAdHocIntersectionFineGrainedIncrementalUnderlyingObjChang
 testIsInstanceAdHocIntersectionFineGrainedIncrementalIntersectionToUnreachable
 testIsInstanceAdHocIntersectionFineGrainedIncrementalUnreachaableToIntersection
+testIsInstanceAdHocIntersectionWithStrAndBytes
 
 # "Name "C" is used before definition"
 testNewAnalyzerNewTypeForwardClassAliasReversed
@@ -2942,6 +2945,9 @@ class_context_super_class
 namedtuple__new__
 generic_method_on_class_access_no_overload
 generic_method_on_class_access_overload
+
+# Weird native types of mypy like `from mypy_extensions import i64, i32`
+testNativeIntTypes
 
 # Won't support for now: "t" is a type variable and only valid in type context
 testExpressionRefersToTypeVariable
