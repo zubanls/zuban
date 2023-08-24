@@ -460,7 +460,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             TypeContent::SpecialType(SpecialType::Type) => {
                 CalculatedBaseClass::DbType(DbType::new_class(
-                    self.inference.i_s.db.python_state.type_node_ref().as_link(),
+                    self.inference
+                        .i_s
+                        .db
+                        .python_state
+                        .bare_type_node_ref()
+                        .as_link(),
                     ClassGenerics::None,
                 ))
             }
@@ -481,7 +486,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     }
                     DbType::Type(t) if matches!(t.as_ref(), DbType::Any) => {
                         CalculatedBaseClass::DbType(DbType::new_class(
-                            self.inference.i_s.db.python_state.type_node_ref().as_link(),
+                            self.inference
+                                .i_s
+                                .db
+                                .python_state
+                                .bare_type_node_ref()
+                                .as_link(),
                             ClassGenerics::None,
                         ))
                     }

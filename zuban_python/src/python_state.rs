@@ -452,7 +452,7 @@ impl PythonState {
     }
 
     builtins_attribute_node_ref!(object_node_ref, builtins_object_index);
-    builtins_attribute_node_ref!(type_node_ref, builtins_type_index);
+    builtins_attribute_node_ref!(bare_type_node_ref, builtins_type_index);
     builtins_attribute_node_ref!(list_node_ref, builtins_list_index);
     builtins_attribute_node_ref!(tuple_node_ref, builtins_tuple_index);
     builtins_attribute_node_ref!(dict_node_ref, builtins_dict_index);
@@ -484,6 +484,7 @@ impl PythonState {
     node_ref_to_class!(memoryview, memoryview_node_ref);
     node_ref_to_class!(bytearray, bytearray_node_ref);
     node_ref_to_class!(pub function_class, function_node_ref);
+    node_ref_to_class!(pub bare_type_class, bare_type_node_ref);
 
     node_ref_to_db_type_class_without_generic!(pub object_db_type, object_node_ref);
     node_ref_to_db_type_class_without_generic!(pub slice_db_type, slice_node_ref);
@@ -492,6 +493,7 @@ impl PythonState {
     node_ref_to_db_type_class_without_generic!(pub bool_db_type, bool_node_ref);
     node_ref_to_db_type_class_without_generic!(pub module_db_type, module_node_ref);
     node_ref_to_db_type_class_without_generic!(pub function_db_type, function_node_ref);
+    node_ref_to_db_type_class_without_generic!(pub bare_type_db_type, bare_type_node_ref);
 
     #[inline]
     fn none_type_node_ref(&self) -> NodeRef {

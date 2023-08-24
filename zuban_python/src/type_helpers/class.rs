@@ -475,7 +475,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                 if c.incomplete_mro(db)
                                     || c.class_link_in_mro(
                                         db,
-                                        db.python_state.type_node_ref().as_link(),
+                                        db.python_state.bare_type_node_ref().as_link(),
                                     )
                                 {
                                     Self::update_metaclass(
@@ -669,10 +669,7 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn is_metaclass(&self, db: &Database) -> bool {
-        let python_type = DbType::new_class(
-            db.python_state.type_node_ref().as_link(),
-            ClassGenerics::None,
-        );
+        let python_type = db.python_state.bare_type_db_type();
         self.use_cached_class_infos(db)
             .mro
             .iter()
