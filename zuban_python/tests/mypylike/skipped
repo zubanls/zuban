@@ -7,9 +7,6 @@ testCrashOnComplexCheckWithNamedTupleNext
 testTypeshedRecursiveTypesExample
 testMapStr
 testNoCrashOnGenericUnionUnpacking
-testEnumValueWithPlaceholderNodeType
-testEnumIterMetaInference
-testIntEnumIterable
 
 # EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
 testStrEnumCreation
@@ -801,6 +798,8 @@ testNoCrashOnLambdaGenerator
 # Random protocol issues
 testEnumIterable
 testDerivedEnumIterable
+testEnumIterMetaInference
+testIntEnumIterable
 # Protocol invalid "Access to generic instance variables via class is ambiguous"
 testGenericSubProtocols
 testProtocolConcreteUpdateTypeMethodGeneric
