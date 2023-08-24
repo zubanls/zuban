@@ -19,9 +19,11 @@ pub use function::{
 };
 pub use instance::{execute_super, Instance};
 pub use module::{dotted_path_from_dir, lookup_in_namespace, Module};
-pub use named_tuple::NamedTupleValue;
+pub use named_tuple::{
+    execute_collections_named_tuple, execute_typing_named_tuple, NamedTupleValue,
+};
 pub use tuple::Tuple;
 pub use typing::{
-    execute_assert_type, NewTypeClass, ParamSpecClass, RevealTypeFunction, TypeVarClass,
-    TypeVarTupleClass, TypingCast, TypingClass, TypingType,
+    execute_assert_type, execute_type, NewTypeClass, ParamSpecClass, RevealTypeFunction,
+    TypeVarClass, TypeVarTupleClass, TypingCast, TypingType,
 };

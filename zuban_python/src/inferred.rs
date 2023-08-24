@@ -24,10 +24,11 @@ use crate::matching::{
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
-    execute_assert_type, execute_super, merge_class_type_vars_into_callable, BoundMethod,
+    execute_assert_type, execute_collections_named_tuple, execute_super, execute_type,
+    execute_typing_named_tuple, merge_class_type_vars_into_callable, BoundMethod,
     BoundMethodFunction, Class, FirstParamProperties, Function, Instance, NewTypeClass,
     OverloadedFunction, ParamSpecClass, RevealTypeFunction, TypeOrClass, TypeVarClass,
-    TypeVarTupleClass, TypingCast, TypingClass,
+    TypeVarTupleClass, TypingCast,
 };
 
 #[derive(Debug)]
@@ -1475,16 +1476,18 @@ impl<'db: 'slf, 'slf> Inferred {
                             | Specific::TypingLiteral
                             | Specific::TypingAnnotated
                             | Specific::TypingCallable => todo!(),
-                            Specific::TypingNamedTuple
-                            | Specific::CollectionsNamedTuple
-                            | Specific::TypingType => {
-                                return TypingClass::new(specific).execute(
+                            Specific::TypingNamedTuple => {
+                                return execute_typing_named_tuple(i_s, args)
+                            }
+                            Specific::CollectionsNamedTuple => {
+                                return execute_collections_named_tuple(
                                     i_s,
                                     args,
                                     result_context,
                                     on_type_error,
                                 )
                             }
+                            Specific::TypingType => return execute_type(i_s, args, on_type_error),
                             Specific::TypingTuple => {
                                 todo!()
                             }

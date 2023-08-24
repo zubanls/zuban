@@ -1,13 +1,18 @@
 use std::rc::Rc;
 
-use crate::database::{DbType, FormatStyle, NamedTuple, RecursiveAlias, TupleTypeArguments};
+use crate::arguments::Arguments;
+use crate::database::{
+    ComplexPoint, DbType, FormatStyle, NamedTuple, RecursiveAlias, TupleTypeArguments,
+};
 use crate::debug;
 use crate::diagnostics::IssueType;
-use crate::file::infer_index;
+use crate::file::{infer_index, new_collections_named_tuple, new_typing_named_tuple};
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{FormatData, Generics, IteratorContent, LookupResult, ResultContext, Type};
+use crate::matching::{
+    FormatData, Generics, IteratorContent, LookupResult, OnTypeError, ResultContext, Type,
+};
 use crate::{database::Database, node_ref::NodeRef};
 
 #[derive(Debug)]
@@ -111,5 +116,32 @@ impl<'a> NamedTupleValue<'a> {
             SliceTypeContent::Slice(_) => todo!(),
             SliceTypeContent::Slices(_) => todo!(),
         }
+    }
+}
+
+pub fn execute_typing_named_tuple(i_s: &InferenceState, args: &dyn Arguments) -> Inferred {
+    match new_typing_named_tuple(i_s, args) {
+        Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(Rc::new(
+            DbType::NamedTuple(rc),
+        ))),
+        None => Inferred::new_any(),
+    }
+}
+
+pub fn execute_collections_named_tuple<'db>(
+    i_s: &InferenceState<'db, '_>,
+    args: &dyn Arguments<'db>,
+    result_context: &mut ResultContext,
+    on_type_error: OnTypeError<'db, '_>,
+) -> Inferred {
+    i_s.db
+        .python_state
+        .collections_namedtuple_function()
+        .execute(i_s, args, result_context, on_type_error);
+    match new_collections_named_tuple(i_s, args) {
+        Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(Rc::new(
+            DbType::NamedTuple(rc),
+        ))),
+        None => Inferred::new_any(),
     }
 }

@@ -4,67 +4,33 @@ use std::rc::Rc;
 use super::{lookup_on_enum_class, Class};
 use crate::arguments::{ArgumentKind, Arguments};
 use crate::database::{
-    ComplexPoint, Database, DbType, FormatStyle, NewType, ParamSpec, PointLink, Specific, TypeVar,
+    ComplexPoint, Database, DbType, FormatStyle, NewType, ParamSpec, PointLink, TypeVar,
     TypeVarKind, TypeVarLike, TypeVarName, TypeVarTuple, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
-use crate::file::{new_collections_named_tuple, new_typing_named_tuple};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{FormatData, LookupKind, LookupResult, OnTypeError, ResultContext, Type};
 use crate::node_ref::NodeRef;
 
-#[derive(Debug, Clone, Copy)]
-pub struct TypingClass {
-    pub specific: Specific,
-}
-
-impl TypingClass {
-    pub fn new(specific: Specific) -> Self {
-        Self { specific }
-    }
-
-    pub fn execute<'db>(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-        result_context: &mut ResultContext,
-        on_type_error: OnTypeError<'db, '_>,
-    ) -> Inferred {
-        if self.specific == Specific::TypingNamedTuple {
-            return match new_typing_named_tuple(i_s, args) {
-                Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(
-                    Rc::new(DbType::NamedTuple(rc)),
-                )),
-                None => Inferred::new_any(),
-            };
-        }
-        if self.specific == Specific::CollectionsNamedTuple {
-            i_s.db
-                .python_state
-                .collections_namedtuple_function()
-                .execute(i_s, args, result_context, on_type_error);
-            return match new_collections_named_tuple(i_s, args) {
-                Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(
-                    Rc::new(DbType::NamedTuple(rc)),
-                )),
-                None => Inferred::new_any(),
-            };
-        }
-        let mut iterator = args.iter();
-        let first = iterator.next();
-        if let Some(x) = iterator.next() {
-            todo!()
-        } else if let Some(first) = first {
-            Inferred::from_type(DbType::Type(Rc::new(
-                first
-                    .infer(i_s, &mut ResultContext::Unknown)
-                    .as_db_type(i_s),
-            )))
-        } else {
-            todo!()
-        }
+pub fn execute_type<'db>(
+    i_s: &InferenceState<'db, '_>,
+    args: &dyn Arguments<'db>,
+    on_type_error: OnTypeError<'db, '_>,
+) -> Inferred {
+    let mut iterator = args.iter();
+    let first = iterator.next();
+    if let Some(x) = iterator.next() {
+        todo!()
+    } else if let Some(first) = first {
+        Inferred::from_type(DbType::Type(Rc::new(
+            first
+                .infer(i_s, &mut ResultContext::Unknown)
+                .as_db_type(i_s),
+        )))
+    } else {
+        todo!()
     }
 }
 
