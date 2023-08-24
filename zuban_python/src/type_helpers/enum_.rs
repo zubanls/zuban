@@ -15,7 +15,7 @@ use crate::{
     file::File,
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{LookupKind, LookupResult, ResultContext},
+    matching::{CallableLike, LookupKind, LookupResult, ResultContext},
     node_ref::NodeRef,
 };
 
@@ -94,7 +94,10 @@ pub fn infer_value_on_member(
                                 }
                                 inf.as_type(i_s).maybe_callable(i_s)
                             })
-                            .map(|callable| callable.result_type.clone())
+                            .map(|callable| match callable {
+                                CallableLike::Callable(c) => c.result_type.clone(),
+                                CallableLike::Overload(_) => todo!(),
+                            })
                             .unwrap_or(i_s.db.python_state.int_db_type()),
                     )
                 }

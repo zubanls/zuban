@@ -6,7 +6,6 @@ testDictUpdateInference
 testCrashOnComplexCheckWithNamedTupleNext
 testTypeshedRecursiveTypesExample
 testMapStr
-testNoCrashOnGenericUnionUnpacking
 
 # EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
 testStrEnumCreation
@@ -271,6 +270,8 @@ enum_ignore_deleted
 testUnpackingUnionOfListsInFunction
 testNestedProtocolGenericUnions
 testNestedProtocolGenericUnionsDeep
+# union dict context inference
+testNoCrashOnGenericUnionUnpacking
 # Tuple iter fixes
 testTupleBaseClass
 

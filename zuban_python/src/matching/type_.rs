@@ -10,8 +10,8 @@ use super::{
 use crate::arguments::Arguments;
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database, DbType,
-    DoubleStarredParamSpecific, EnumMember, GenericClass, GenericItem, GenericsList,
-    MetaclassState, NamedTuple, ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage,
+    DoubleStarredParamSpecific, EnumMember, FunctionOverload, GenericClass, GenericItem,
+    GenericsList, MetaclassState, NamedTuple, ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage,
     ParamSpecific, PointLink, RecursiveAlias, StarredParamSpecific, TupleContent,
     TupleTypeArguments, TypeAlias, TypeArguments, TypeOrTypeVarTuple, TypeVarKind, TypeVarLike,
     TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, UnionEntry,
@@ -126,9 +126,9 @@ impl<'a> Type<'a> {
         )
     }
 
-    pub fn maybe_callable(&self, i_s: &InferenceState) -> Option<Rc<CallableContent>> {
+    pub fn maybe_callable(&self, i_s: &InferenceState) -> Option<CallableLike> {
         match self.as_ref() {
-            DbType::Callable(c) => Some(c.clone()),
+            DbType::Callable(c) => Some(CallableLike::Callable(c.clone())),
             DbType::Type(t) => match t.as_ref() {
                 DbType::Class(c) => {
                     let cls = Class::from_generic_class(i_s.db, c);
@@ -149,7 +149,9 @@ impl<'a> Type<'a> {
                     None
                 }
             },
-            DbType::Any => Some(i_s.db.python_state.any_callable.clone()),
+            DbType::Any => Some(CallableLike::Callable(
+                i_s.db.python_state.any_callable.clone(),
+            )),
             DbType::Class(c) => {
                 let cls = Class::from_generic_class(i_s.db, c);
                 debug!("TODO this from is completely wrong and should never be used.");
@@ -159,6 +161,7 @@ impl<'a> Type<'a> {
                     .into_maybe_inferred()
                     .and_then(|i| i.as_type(i_s).maybe_callable(i_s))
             }
+            DbType::FunctionOverload(overload) => todo!(),
             _ => None,
         }
     }
@@ -828,13 +831,11 @@ impl<'a> Type<'a> {
             DbType::Type(t2) if c1.params == CallableParams::Any => {
                 Type::new(&c1.result_type).is_super_type_of(i_s, matcher, &Type::new(t2.as_ref()))
             }
-            _ => {
-                if let Some(c2) = value_type.maybe_callable(i_s) {
-                    Self::matches_callable(i_s, matcher, c1, &c2)
-                } else {
-                    Match::new_false()
-                }
-            }
+            _ => match value_type.maybe_callable(i_s) {
+                Some(CallableLike::Callable(c2)) => Self::matches_callable(i_s, matcher, c1, &c2),
+                Some(CallableLike::Overload(overload)) => todo!(),
+                None => Match::new_false(),
+            },
         }
     }
 
@@ -2832,4 +2833,9 @@ impl RecursiveAlias {
             })
         }
     }
+}
+
+pub enum CallableLike {
+    Callable(Rc<CallableContent>),
+    Overload(Rc<FunctionOverload>),
 }

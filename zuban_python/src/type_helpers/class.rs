@@ -30,9 +30,9 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred};
 use crate::matching::{
     calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
-    calculate_class_init_type_vars_and_return, FormatData, FunctionOrCallable, Generics,
-    IteratorContent, LookupKind, LookupResult, Match, Matcher, MismatchReason, OnTypeError,
-    ResultContext, Type,
+    calculate_class_init_type_vars_and_return, CallableLike, FormatData, FunctionOrCallable,
+    Generics, IteratorContent, LookupKind, LookupResult, Match, Matcher, MismatchReason,
+    OnTypeError, ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::python_state::NAME_TO_FUNCTION_DIFF;
@@ -1693,7 +1693,7 @@ pub struct NewOrInitConstructor<'a> {
 }
 
 impl NewOrInitConstructor<'_> {
-    pub fn maybe_callable(self, i_s: &InferenceState, cls: Class) -> Option<Rc<CallableContent>> {
+    pub fn maybe_callable(self, i_s: &InferenceState, cls: Class) -> Option<CallableLike> {
         let inf = self.constructor.into_inferred();
         if self.is_new {
             inf.as_type(i_s).maybe_callable(i_s)
@@ -1704,17 +1704,19 @@ impl NewOrInitConstructor<'_> {
             } else {
                 inf.as_type(i_s).maybe_callable(i_s)
             };
-            callable.and_then(|c| {
-                // Since __init__ does not have a return, We need to check the params
-                // of the __init__ functions and the class as a return type separately.
-                if !c.type_vars.is_empty() {
-                    todo!()
+            callable.and_then(|callable_like| match callable_like {
+                CallableLike::Callable(c) => {
+                    // Since __init__ does not have a return, We need to check the params
+                    // of the __init__ functions and the class as a return type separately.
+                    if !c.type_vars.is_empty() {
+                        todo!()
+                    }
+                    c.remove_first_param().map(|mut c| {
+                        c.result_type = cls.as_db_type(i_s.db);
+                        CallableLike::Callable(Rc::new(c))
+                    })
                 }
-                let mut c = c.remove_first_param();
-                if let Some(c) = &mut c {
-                    c.result_type = cls.as_db_type(i_s.db);
-                }
-                c.map(Rc::new)
+                CallableLike::Overload(_) => todo!(),
             })
         }
     }

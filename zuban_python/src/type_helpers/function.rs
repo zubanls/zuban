@@ -33,8 +33,8 @@ use crate::matching::{
     calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
     calculate_function_type_vars_and_return, maybe_class_usage,
     replace_class_type_vars_in_callable, ArgumentIndexWithParam, CalculatedTypeArguments,
-    FormatData, FunctionOrCallable, Generic, LookupResult, OnTypeError, ReplaceSelf, ResultContext,
-    SignatureMatch, Type,
+    CallableLike, FormatData, FunctionOrCallable, Generic, LookupResult, OnTypeError, ReplaceSelf,
+    ResultContext, SignatureMatch, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::Class;
@@ -679,7 +679,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let file = self.node_ref.file;
         let mut functions = vec![];
         let mut add_func = |inf: Inferred| {
-            if let Some(callable) = inf.as_type(i_s).maybe_callable(i_s) {
+            if let Some(CallableLike::Callable(callable)) = inf.as_type(i_s).maybe_callable(i_s) {
                 functions.push(rc_unwrap_or_clone(callable))
             } else {
                 todo!()
@@ -764,7 +764,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                                 func_ref.as_link(),
                             ),
                         });
-                    } else if let Some(callable) = t.maybe_callable(i_s) {
+                    } else if let Some(CallableLike::Callable(callable)) = t.maybe_callable(i_s) {
                         implementation = Some(OverloadImplementation {
                             function_link: func_ref.as_link(),
                             callable: rc_unwrap_or_clone(callable),
