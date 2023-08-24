@@ -10,8 +10,6 @@ testNoCrashOnGenericUnionUnpacking
 testEnumValueWithPlaceholderNodeType
 testEnumIterMetaInference
 testIntEnumIterable
-testTypeAliasWithNewStyleUnion
-testTypeAliasNotSupportedWithNewStyleUnion
 
 # EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
 testStrEnumCreation
@@ -81,6 +79,8 @@ testAsyncForComprehensionErrors
 testTypeApplicationWithQualifiedTypeAlias
 # typing.Union used in type alias
 testUnionTypeAliasWithQualifiedUnion
+# Type alias inference should be typing._SpecialForm
+testTypeAliasWithNewStyleUnion
 
 # Type var constraints not enforced in type alias
 testValidTypeAliasValues
@@ -3045,6 +3045,7 @@ testObsoleteTypevarValuesSyntax
 testUnionOrSyntaxWithinRuntimeContextNotAllowed
 testUnionOrSyntaxWithinRuntimeContextNotAllowed2
 testUnionOrSyntaxMissingFutureImport
+testTypeAliasNotSupportedWithNewStyleUnion
 
 # Won't support ever: Mypy test case details
 testNewAnalyzerIncompleteFixture
