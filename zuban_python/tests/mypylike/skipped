@@ -1,17 +1,7 @@
 # Next up
-testAnyStr
-testIOTypes
-testGenericPatterns
-testGenericMatch
 testListInplaceAdd
-testListMethods
 testTupleAsSubtypeOfSequence
-testMapWithLambdaSpecialCase
-testInternalBuiltinDefinition
 testVarArgsFunctionSubtyping
-testSuperNew
-testMultiplyTupleByInteger
-testMultiplyTupleByIntegerReverse
 testDictWithKeywordArgs
 testDefaultDict
 testDictUpdateInference
@@ -82,6 +72,7 @@ testSelfTypeSuper
 testMixinProtocolSuper
 # Super in classmethod or __new__
 testSuperWithNew
+testSuperNew
 
 # Any base class now matches everything for union simplification
 testUnionSimplificationSpecialCases2
@@ -189,6 +180,7 @@ testSerializeOverloaded__init__
 testOverloadClassmethodDisappears
 testGenericClassAlternativeConstructorPreciseOverloaded
 testOverloaded__new__
+testIOTypes
 
 # Class function Foo.bar something like a BoundFunction
 testParamSpecConstraintOnOtherParamSpec
@@ -784,6 +776,8 @@ testFastParserDuplicateNames
 testLambda
 testComplexLambda
 testLambdaPrecedence
+testListMethods
+testMapWithLambdaSpecialCase
 # lambda: Name "UNDEFINED" is not defined
 testLambdaInheritsCheckedContextFromTypedFunc
 testLambdaInheritsCheckedContextFromTypedFuncForced
@@ -1175,6 +1169,8 @@ testUnimportedHintAnyLower
 testFromImportAsInStub
 testImportAsInStub
 testReExportChildStubs3
+# underscore names are not exported in an import with stubs
+testInternalBuiltinDefinition
 
 # Metaclass descriptor
 metaclass_descriptor
@@ -1755,6 +1751,7 @@ testSuperWithTypeVarValues2
 testInnerFunctionWithTypevarValues
 testInnerFunctionMutualRecursionWithTypevarValues
 testNestedDecoratedCoroutineAndTypeVarValues
+testAnyStr
 
 # Callable[..., int] | Callable[..., str] lambda inference may conflict
 testOptionalLambdaInference
@@ -2012,6 +2009,8 @@ testIsInstanceAdHocIntersectionIncrementalIsInstanceChange
 testIsInstanceAdHocIntersectionIncrementalUnderlyingObjChang
 testIsInstanceAdHocIntersectionIncrementalIntersectionToUnreachable
 testIsInstanceAdHocIntersectionIncrementalUnreachaableToIntersection
+testGenericPatterns
+testGenericMatch
 # General assert
 testFastParseMalformedAssert
 testFastParseAssertMessage
