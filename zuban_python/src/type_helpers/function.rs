@@ -1114,7 +1114,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             .file
             .inference(i_s)
             .use_cached_return_annotation_type(return_annotation);
-        if result_context.expect_not_none(i_s) && matches!(return_type.as_ref(), DbType::None) {
+        if result_context.expect_not_none(i_s)
+            && matches!(return_type.as_ref(), DbType::None)
+            && !self.is_async()
+        {
             args.as_node_ref().add_issue(
                 i_s,
                 IssueType::DoesNotReturnAValue(self.diagnostic_string().into()),

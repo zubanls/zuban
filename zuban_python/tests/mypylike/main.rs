@@ -304,8 +304,9 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 // pythoneval tests use different file names, because in mypy these are actually
                 // created as files.
                 // It uses two different ways for convenience...
-                let file_name_dot_py = format!("_{}.py:", self.name);
-                let file_name_qualified = format!("_{}.", self.name);
+                let name = self.name.strip_suffix("-xfail").unwrap_or(&self.name);
+                let file_name_dot_py = format!("_{}.py:", name);
+                let file_name_qualified = format!("_{}.", name);
                 for line in wanted.iter_mut() {
                     *line = line.replace("_program.py:", "main:");
                     *line = line.replace(&file_name_dot_py, "main:");
