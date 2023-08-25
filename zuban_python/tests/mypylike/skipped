@@ -1119,13 +1119,6 @@ testImportCycleSpecialCase
 testPackagePath
 testIncrementalNestedBrokenCascade
 
-# stubs are wrong https://github.com/python/typeshed/pull/10532#issuecomment-1693670617
-testCoroutineChangingFuture
-testMultipleTasks
-testErrorSetFutureDifferentInternalType
-testErrorUsingDifferentFutureType
-testErrorUsingDifferentFutureTypeAndSetFutureDifferentInternalType
-
 # Stub Reexport
 testNoReExportFromStubs
 testNoReExportFromStubsMemberType
