@@ -2587,6 +2587,15 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
 
         if let Some(name) = assignment.maybe_simple_type_reassignment() {
             // For very simple cases like `Foo = int`. Not sure yet if this going to stay.
+
+            if self
+                .infer_name_reference(name)
+                .maybe_saved_specific(self.i_s.db)
+                == Some(Specific::Any)
+            {
+                return TypeNameLookup::Unknown;
+            }
+
             let node_ref = NodeRef::new(file, name.index());
             debug_assert!(node_ref.point().calculated());
             return check_type_name(self.i_s, node_ref);
@@ -2695,7 +2704,10 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         let point = self.file.points.get(name.index());
         debug_assert!(self.file.points.get(name.index()).calculated());
         match point.type_() {
-            PointType::Specific => todo!(),
+            PointType::Specific => match point.specific() {
+                Specific::Any => TypeNameLookup::Unknown,
+                _ => todo!(),
+            },
             PointType::Redirect => {
                 check_type_name(self.i_s, point.as_redirected_node_ref(self.i_s.db))
             }

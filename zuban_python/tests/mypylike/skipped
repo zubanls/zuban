@@ -1131,7 +1131,6 @@ testErrorUsingDifferentFutureType
 testErrorUsingDifferentFutureTypeAndSetFutureDifferentInternalType
 # asyncio missing attributes
 testErrorAssigningCoroutineThatDontReturn
-testForwardRefToBadAsyncShouldNotCrash_newsemanal
 
 # Stub Reexport
 testNoReExportFromStubs
@@ -2224,6 +2223,7 @@ testFastParseInvalidFunctionAnnotation
 # "Are you missing an await?"
 # --enable-error-code unused-awaitable
 testUnusedAwaitable
+testForwardRefToBadAsyncShouldNotCrash_newsemanal
 # async await when is a generator comprehension becoming an asyncgenerator?
 testAsyncGeneratorExpressionAwait
 testAsyncForComprehension
