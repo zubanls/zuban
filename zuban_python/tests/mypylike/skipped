@@ -1132,13 +1132,6 @@ testErrorSettingCallbackWithDifferentFutureType
 testErrorOneMoreFutureInReturnType
 testErrorOneLessFutureInReturnType
 testForwardRefToBadAsyncShouldNotCrash_newsemanal
-# Mypy does follow imports and doesn't check all files (Submodule was not imported)
-testFollowImportsNormalDeleteFile4
-testFollowImportsNormalDeleteFile5
-testFollowImportsNormalDeleteFile6
-testFollowImportsNormalDeleteFile7
-testSubmoduleImportFromDoesNotAddParents
-testSubmoduleMixingImportFromAndImport
 
 # Stub Reexport
 testNoReExportFromStubs
@@ -2752,6 +2745,12 @@ testFollowImportsNormalPackageInitFileStub
 testPreferPackageOverFile
 testPreferPackageOverFile2
 testNotPreferPackageOverFileCase
+testFollowImportsNormalDeleteFile4
+testFollowImportsNormalDeleteFile5
+testFollowImportsNormalDeleteFile6
+testFollowImportsNormalDeleteFile7
+testSubmoduleMixingImportFromAndImport
+testSubmoduleImportFromDoesNotAddParents
 
 # --soft-error-limit
 testLimitLegacyStubErrorVolume
