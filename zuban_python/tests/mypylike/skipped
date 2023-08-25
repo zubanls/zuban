@@ -2450,12 +2450,6 @@ testVariableDeclWithInvalidType
 testVariableDeclWithInvalidNumberOfTypesNested3
 testVariableDeclWithInvalidNumberOfTypesNested5
 
-# parser recovery in type comments / types in string literals
-testInvalidStrLiteralSpaces
-testInvalidStrLiteralStrayBrace
-testInvalidMultilineLiteralType
-testLiteralInvalidString
-
 # Assignment like ac[b] += c with both __getitem__ and __setitem__ has same error twice
 testOperatorAssignmentWithIndexLvalue1
 
