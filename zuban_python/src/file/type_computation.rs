@@ -2836,22 +2836,24 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         &mut self,
         assignment: Assignment,
     ) -> Option<(Inferred, Type<'db>)> {
-        const TYPE: &str = "# type:";
         let suffix = assignment.suffix();
-        if let Some(start) = suffix.find(TYPE) {
-            let mut start = start + TYPE.len();
-            let with_spaces = &suffix[start..];
-            let full_rest = with_spaces.trim_start_matches(' ');
-            // Use only the part before the comment after the type definition.
-            let s = full_rest.split('#').next().unwrap();
-            start += with_spaces.len() - full_rest.len();
-            debug!("Infer type comment {s:?} on {:?}", assignment.as_code());
-            if maybe_type_ignore(s).is_none() {
-                return Some(self.compute_type_comment(
-                    assignment.end() + start as CodeIndex,
-                    s,
-                    NodeRef::new(self.file, assignment.index()),
-                ));
+        if let Some(start) = suffix.find('#') {
+            let mut start = start + 1;
+            let after_hash = &suffix[start..];
+            const TYPE: &str = "type:";
+            if let Some(after) = after_hash.trim_start_matches(' ').strip_prefix(TYPE) {
+                let full_rest = after.trim_start_matches(' ');
+                // Use only the part before the comment after the type definition.
+                let s = full_rest.split('#').next().unwrap();
+                start += after_hash.len() - full_rest.len();
+                debug!("Infer type comment {s:?} on {:?}", assignment.as_code());
+                if maybe_type_ignore(s).is_none() {
+                    return Some(self.compute_type_comment(
+                        assignment.end() + start as CodeIndex,
+                        s,
+                        NodeRef::new(self.file, assignment.index()),
+                    ));
+                }
             }
         }
         None

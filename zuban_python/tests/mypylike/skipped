@@ -1,5 +1,9 @@
 # Next up
 
+# Self in bound method shouldn't probably be there
+testFunctionAssignedAsCallback
+testErrorSettingCallbackWithDifferentFutureType
+
 # EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
 testStrEnumCreation
 testRegression12258
@@ -1126,12 +1130,7 @@ testErrorSetFutureDifferentInternalType
 testErrorUsingDifferentFutureType
 testErrorUsingDifferentFutureTypeAndSetFutureDifferentInternalType
 # asyncio missing attributes
-testFunctionAssignedAsCallback
-testConcatenatedCoroutinesReturningFutures
 testErrorAssigningCoroutineThatDontReturn
-testErrorSettingCallbackWithDifferentFutureType
-testErrorOneMoreFutureInReturnType
-testErrorOneLessFutureInReturnType
 testForwardRefToBadAsyncShouldNotCrash_newsemanal
 
 # Stub Reexport
@@ -1273,6 +1272,9 @@ testTypingSelfConflict
 # "Self argument missing for a non-static method"
 # "The erased type of self "None" is not a supertype of its class "__main__.A""
 testSelfTypeNotSelfType
+
+# "Maybe you forgot to use "await"?"
+testErrorOneLessFutureInReturnType
 
 # None as a default for class variables, even if not optional?
 testNoneClassVariable
