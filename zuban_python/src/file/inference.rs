@@ -1854,7 +1854,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         self.infer_name_reference(name)
     }
 
-    fn lookup_from_star_import(&mut self, name: &str, check_local: bool) -> Option<PointLink> {
+    pub fn lookup_from_star_import(&mut self, name: &str, check_local: bool) -> Option<PointLink> {
         if !name.starts_with('_') {
             for star_import in self.file.star_imports.borrow().iter() {
                 // TODO these feel a bit weird and do not include parent functions (when in a

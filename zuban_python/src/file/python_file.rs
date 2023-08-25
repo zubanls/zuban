@@ -172,6 +172,7 @@ impl File for PythonFile {
     }
 }
 
+#[derive(Debug)]
 pub struct StarImport {
     pub(super) scope: NodeIndex,
     pub(super) import_from_node: NodeIndex,

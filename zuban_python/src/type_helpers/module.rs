@@ -75,6 +75,19 @@ impl<'a> Module<'a> {
                     ImportResult::Namespace { .. } => todo!(),
                 })
             })
+            .or_else(|| {
+                self.file
+                    .inference(i_s)
+                    .lookup_from_star_import(name, false)
+                    .map(|link| {
+                        let inf = i_s
+                            .db
+                            .loaded_python_file(link.file)
+                            .inference(i_s)
+                            .infer_name_by_index(link.node_index);
+                        LookupResult::GotoName(link, inf)
+                    })
+            })
             .unwrap_or_else(|| {
                 i_s.db
                     .python_state
