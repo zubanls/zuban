@@ -218,6 +218,7 @@ impl<'db> Inference<'db, '_, '_> {
                     enter_result,
                     from,
                     r#""async with" for "__aenter__""#,
+                    false,
                 );
             }
             let exit_result = result.type_lookup_and_execute_with_attribute_error(
@@ -242,6 +243,7 @@ impl<'db> Inference<'db, '_, '_> {
                     exit_result,
                     from,
                     r#""async with" for "__aexit__""#,
+                    false,
                 );
             }
             if let Some(target) = target {
@@ -946,6 +948,7 @@ pub fn await_aiter_and_next(i_s: &InferenceState, base: Inferred, from: NodeRef)
         ),
         from,
         r#""async for""#,
+        false,
     )
 }
 

@@ -1129,8 +1129,6 @@ testMultipleTasks
 testErrorSetFutureDifferentInternalType
 testErrorUsingDifferentFutureType
 testErrorUsingDifferentFutureTypeAndSetFutureDifferentInternalType
-# asyncio missing attributes
-testErrorAssigningCoroutineThatDontReturn
 
 # Stub Reexport
 testNoReExportFromStubs

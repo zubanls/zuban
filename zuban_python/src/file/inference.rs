@@ -1339,6 +1339,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             ),
                             from,
                             "\"await\"",
+                            result_context.expect_not_none(self.i_s),
                         )
                     } else {
                         from.add_issue(self.i_s, IssueType::AwaitOutsideCoroutine);
@@ -2375,8 +2376,9 @@ pub fn await_(
     inf: Inferred,
     from: NodeRef,
     no_lookup_cause: &'static str,
+    expect_not_none: bool,
 ) -> Inferred {
-    Inferred::from_type(get_generator_return_type(
+    let t = get_generator_return_type(
         i_s.db,
         inf.type_lookup_and_execute(i_s, from, "__await__", &NoArguments::new(from), &|t| {
             from.add_issue(
@@ -2390,7 +2392,13 @@ pub fn await_(
         })
         .as_type(i_s)
         .as_ref(),
-    ))
+    );
+    if expect_not_none && matches!(t, DbType::None) {
+        from.add_issue(i_s, IssueType::DoesNotReturnAValue("Function".into()));
+        Inferred::new_any()
+    } else {
+        Inferred::from_type(t)
+    }
 }
 
 pub enum ComprehensionKind {
