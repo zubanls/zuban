@@ -1165,7 +1165,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             self.compute_type_name(name)
         } else {
             debug!("TypeComputation: Attribute on class not found");
-            debug_assert_eq!(point_type, PointType::Unknown);
+            debug_assert_eq!(point_type, PointType::Specific);
             self.add_issue_for_index(primary.index(), IssueType::TypeNotFound);
             TypeContent::Unknown
         }
@@ -2716,7 +2716,6 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 //TypeNameLookup::Module(file)
                 todo!();
             }
-            PointType::Unknown => TypeNameLookup::Unknown,
             _ => todo!("{point:?}"),
         }
     }
@@ -3158,7 +3157,7 @@ fn check_type_name<'db: 'file, 'file>(
                         return TypeNameLookup::Namespace(namespace.clone());
                     }
                 }
-                debug_assert_eq!(p.type_(), PointType::Unknown);
+                debug_assert_eq!(p.maybe_specific(), Some(Specific::Any));
                 TypeNameLookup::Unknown
             } else {
                 name_node_ref.file.inference(i_s).infer_name(new_name);

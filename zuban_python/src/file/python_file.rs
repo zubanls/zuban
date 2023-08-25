@@ -10,7 +10,7 @@ use super::file_state::{File, Leaf};
 use super::inference::Inference;
 use super::name_binder::NameBinder;
 use crate::database::{
-    ComplexPoint, Database, FileIndex, Locality, LocalityLink, Point, PointType, Points,
+    ComplexPoint, Database, FileIndex, Locality, LocalityLink, Point, Points, Specific,
 };
 use crate::debug;
 use crate::diagnostics::{Diagnostic, DiagnosticConfig, Diagnostics, Issue};
@@ -184,7 +184,7 @@ impl StarImport {
     pub(super) fn to_file<'db>(&self, inf: &mut Inference<'db, '_, '_>) -> Option<&'db PythonFile> {
         let point = inf.file.points.get(self.star_node);
         if point.calculated() {
-            return if point.type_() == PointType::Unknown {
+            return if point.maybe_specific() == Some(Specific::Any) {
                 None
             } else {
                 Some(inf.i_s.db.loaded_python_file(point.file_index()))

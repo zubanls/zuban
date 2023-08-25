@@ -2097,7 +2097,6 @@ fn saved_as_type<'db>(i_s: &InferenceState<'db, '_>, definition: PointLink) -> T
             let complex = definition.file.complex_points.get(point.complex_index());
             type_of_complex(i_s, complex, Some(definition))
         }
-        PointType::Unknown => Type::new(&DbType::Any),
         PointType::FileReference => Type::owned(DbType::Module(point.file_index())),
         x => unreachable!("{x:?}"),
     }

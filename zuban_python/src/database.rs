@@ -209,11 +209,7 @@ impl Point {
     }
 
     pub fn new_unknown(locality: Locality) -> Self {
-        let flags = Self::calculate_flags(PointType::Unknown, 0, locality);
-        Self {
-            flags,
-            node_index: 0,
-        }
+        Self::new_simple_specific(Specific::Any, locality)
     }
 
     pub fn new_simple_specific(type_: Specific, locality: Locality) -> Self {
@@ -393,8 +389,6 @@ pub enum PointType {
     Redirect,
     MultiDefinition,
     Complex,
-    // In case of a reference it's missing otherwise unknown.
-    Unknown,
     FileReference,
     // Basically stuff like if/for nodes
     NodeAnalysis,

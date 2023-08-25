@@ -1847,7 +1847,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     ),
                 );
             }
-            Point::new_simple_specific(Specific::Any, Locality::Todo)
+            Point::new_unknown(Locality::Todo)
         };
         self.file.points.set(name.index(), point);
         debug_assert!(self.file.points.get(name.index()).calculated());
@@ -2061,7 +2061,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     let name = Name::by_index(&self.file.tree, node_index);
                     self.infer_name_definition(name.name_definition().unwrap())
                 }
-                PointType::Complex | PointType::Unknown | PointType::FileReference => {
+                PointType::Complex | PointType::FileReference => {
                     Inferred::new_saved(self.file, node_index)
                 }
                 PointType::NodeAnalysis => {
