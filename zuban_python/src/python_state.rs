@@ -492,6 +492,7 @@ impl PythonState {
     node_ref_to_db_type_class_without_generic!(pub int_db_type, int_node_ref);
     node_ref_to_db_type_class_without_generic!(pub bool_db_type, bool_node_ref);
     node_ref_to_db_type_class_without_generic!(pub module_db_type, module_node_ref);
+    node_ref_to_db_type_class_without_generic!(pub property_db_type, property_node_ref);
     node_ref_to_db_type_class_without_generic!(pub function_db_type, function_node_ref);
     node_ref_to_db_type_class_without_generic!(pub bare_type_db_type, bare_type_node_ref);
 

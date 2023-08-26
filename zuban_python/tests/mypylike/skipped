@@ -1328,10 +1328,6 @@ testUnsafeDunderOverlapInSubclass
 testColumnProperty
 testOnlyImplementGetterOfReadWriteAbstractProperty
 testReadWriteDeleteAbstractProperty
-# Property access from class
-testOverrideMethodProperty
-testOverridePropertyMethod
-testTypeAttributes
 # Self definitions different from parent
 testCantImplementAbstractPropertyViaInstanceVariable
 

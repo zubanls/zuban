@@ -1107,7 +1107,11 @@ impl<'db: 'slf, 'slf> Inferred {
         if let DbType::Callable(c) = t {
             match c.kind {
                 FunctionKind::Function => (),
-                FunctionKind::Property { .. } => todo!(),
+                FunctionKind::Property { .. } => {
+                    return Some(Some(Inferred::from_type(
+                        i_s.db.python_state.property_db_type(),
+                    )))
+                }
                 FunctionKind::Classmethod => {
                     let result = infer_class_method(i_s, *class, attribute_class, c);
                     if result.is_none() {
