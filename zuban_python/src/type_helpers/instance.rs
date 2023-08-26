@@ -93,7 +93,15 @@ impl<'a> Instance<'a> {
                         from,
                         self.class.as_db_type(i_s.db),
                     ) {
-                        //check_compatible(t, &inf)
+                        // It feels weird that a descriptor that only defines __get__ should
+                        // match the value with __get__'s return type. But this makes sense:
+                        // When a descriptor does not define __set__, writing Foo().bar = 3 will
+                        // write Foo.__dict__['bar'] = true instead of changing anything on
+                        // the class attribute Foo.bar.
+                        // Here we ensure that the contract that the __get__ descriptor gives us is
+                        // not violated.
+                        check_compatible(&inf.as_type(i_s), value);
+                        return;
                     }
                 }
                 DbType::Callable(c) if matches!(c.kind, FunctionKind::Property { .. }) => {
