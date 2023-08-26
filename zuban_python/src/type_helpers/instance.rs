@@ -48,71 +48,66 @@ impl<'a> Instance<'a> {
     ) -> bool {
         let mut had_set = false;
         let mut had_no_set = false;
-        for (mro_index, t) in self.class.mro(i_s.db) {
-            if let TypeOrClass::Class(class) = t {
-                if let Some(inf) = class
-                    .lookup_symbol(i_s, name.as_str())
-                    .into_maybe_inferred()
+        let (result, class) = self
+            .class
+            .lookup_without_descriptors(i_s, from, name.as_str());
+        if let Some(inf) = result.into_maybe_inferred() {
+            if let Some(class) = class {
+                if inf.maybe_saved_specific(i_s.db)
+                    == Some(Specific::AnnotationOrTypeCommentClassVar)
                 {
-                    if inf.maybe_saved_specific(i_s.db)
-                        == Some(Specific::AnnotationOrTypeCommentClassVar)
-                    {
-                        from.add_issue(
-                            i_s,
-                            IssueType::CannotAssignToClassVarViaInstance {
-                                name: name.as_str().into(),
-                            },
-                        );
-                        break;
-                    }
-                    inf.resolve_class_type_vars(i_s, &self.class, &class)
-                        .as_type(i_s)
-                        .run_on_each_union_type(&mut |t| {
-                            if had_no_set {
-                                todo!()
-                            }
-                            match t.as_ref() {
-                                DbType::Class(c) => {
-                                    let descriptor = Class::from_generic_class(i_s.db, c);
-                                    if let Some(set) = Instance::new(descriptor, None)
-                                        .type_lookup(i_s, from, "__set__")
-                                        .into_maybe_inferred()
-                                    {
-                                        had_set = true;
-                                        let inst = self.as_inferred(i_s);
-                                        calculate_descriptor(i_s, from, set, inst, value)
-                                    }
-                                }
-                                DbType::Callable(c)
-                                    if matches!(c.kind, FunctionKind::Property { .. }) =>
-                                {
-                                    if had_no_set || had_set {
-                                        unreachable!()
-                                    }
-                                    match c.kind {
-                                        FunctionKind::Property { writable: false } => from
-                                            .add_issue(
-                                                i_s,
-                                                IssueType::PropertyIsReadOnly {
-                                                    class_name: class.name().into(),
-                                                    property_name: name.as_str().into(),
-                                                },
-                                            ),
-                                        FunctionKind::Property { writable: true } => {}
-                                        _ => unreachable!(),
-                                    }
-                                    had_no_set = true;
-                                }
-                                _ => {
-                                    if had_set {
-                                        todo!()
-                                    }
-                                    had_no_set = true;
-                                }
-                            }
-                        });
-                    break;
+                    from.add_issue(
+                        i_s,
+                        IssueType::CannotAssignToClassVarViaInstance {
+                            name: name.as_str().into(),
+                        },
+                    );
                 }
+                inf.resolve_class_type_vars(i_s, &self.class, &class)
+                    .as_type(i_s)
+                    .run_on_each_union_type(&mut |t| {
+                        if had_no_set {
+                            todo!()
+                        }
+                        match t.as_ref() {
+                            DbType::Class(c) => {
+                                let descriptor = Class::from_generic_class(i_s.db, c);
+                                if let Some(set) = Instance::new(descriptor, None)
+                                    .type_lookup(i_s, from, "__set__")
+                                    .into_maybe_inferred()
+                                {
+                                    had_set = true;
+                                    let inst = self.as_inferred(i_s);
+                                    calculate_descriptor(i_s, from, set, inst, value)
+                                }
+                            }
+                            DbType::Callable(c)
+                                if matches!(c.kind, FunctionKind::Property { .. }) =>
+                            {
+                                if had_no_set || had_set {
+                                    unreachable!()
+                                }
+                                match c.kind {
+                                    FunctionKind::Property { writable: false } => from.add_issue(
+                                        i_s,
+                                        IssueType::PropertyIsReadOnly {
+                                            class_name: class.name().into(),
+                                            property_name: name.as_str().into(),
+                                        },
+                                    ),
+                                    FunctionKind::Property { writable: true } => {}
+                                    _ => unreachable!(),
+                                }
+                                had_no_set = true;
+                            }
+                            _ => {
+                                if had_set {
+                                    todo!()
+                                }
+                                had_no_set = true;
+                            }
+                        }
+                    });
             }
         }
         had_set

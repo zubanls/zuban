@@ -842,7 +842,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     i_s,
                                     node_ref,
                                     name_definition.as_code(),
-                                    LookupKind::Normal,
                                 )
                                 .0
                                 .into_maybe_inferred()

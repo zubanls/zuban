@@ -1,5 +1,21 @@
 # Next up
 
+# "Property "f" defined in "A" is read-only"
+testAssigningToReadOnlyProperty
+testAssigningToInheritedReadOnlyProperty
+testDynamicallyTypedProperty
+testPropertyWithSetter
+testPropertyWithDeleterButNoSetter
+testReadOnlyAbstractProperty
+testReadOnlyAbstractPropertyForwardRef
+testReadWriteAbstractProperty
+testDynamicallyTypedReadOnlyAbstractProperty
+testDynamicallyTypedReadOnlyAbstractPropertyForwardRef
+testDynamicallyTypedReadWriteAbstractProperty
+testSerializeReadOnlyProperty
+testSerializeReadWriteProperty
+testNewAnalyzerProperty
+
 # Self in bound method shouldn't probably be there
 testFunctionAssignedAsCallback
 testErrorSettingCallbackWithDifferentFutureType

@@ -1000,7 +1000,9 @@ impl<'db: 'slf, 'slf> Inferred {
                         | Specific::AnnotationOrTypeCommentClassVar
                         | Specific::AnnotationOrTypeCommentWithTypeVars
                         | Specific::AnnotationOrTypeCommentSimpleClassInstance) => {
-                            if specific == Specific::AnnotationOrTypeCommentWithTypeVars {
+                            if specific == Specific::AnnotationOrTypeCommentWithTypeVars
+                                && apply_descriptor
+                            {
                                 from.add_issue(i_s, IssueType::AmbigousClassVariableAccess);
                             }
                             let mut t = use_cached_annotation_or_type_comment(

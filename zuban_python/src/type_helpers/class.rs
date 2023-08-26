@@ -913,9 +913,15 @@ impl<'db: 'a, 'a> Class<'a> {
         i_s: &InferenceState<'db, '_>,
         node_ref: NodeRef,
         name: &str,
-        kind: LookupKind,
     ) -> (LookupResult, Option<Class>) {
-        self.lookup_with_or_without_descriptors_internal(i_s, node_ref, name, kind, false, false)
+        self.lookup_with_or_without_descriptors_internal(
+            i_s,
+            node_ref,
+            name,
+            LookupKind::Normal,
+            false,
+            false,
+        )
     }
 
     pub fn lookup_with_or_without_descriptors_internal(
