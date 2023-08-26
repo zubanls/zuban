@@ -49,3 +49,4 @@ with debug enabled:
   - Checks of inplace operators (However this does not matter, probably).
   - overlapping checks
 - Sequence[str] :> str have both different __contains__ implementations (see Michi's email)
+- property narrowing with `__set__` narrows `__get__` (see testSubclassDescriptorsBinder)

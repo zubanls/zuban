@@ -95,6 +95,7 @@ pub struct PythonState {
     typing_async_iterator_index: NodeIndex,
     typing_async_iterable_index: NodeIndex,
     typing_overload_index: NodeIndex,
+    typing_override_index: NodeIndex,
     types_module_type_index: NodeIndex,
     types_none_type_index: NodeIndex,
     collections_namedtuple_index: NodeIndex,
@@ -163,6 +164,7 @@ impl PythonState {
             typing_namedtuple_index: 0,
             typing_type_var: 0,
             typing_overload_index: 0,
+            typing_override_index: 0,
             typing_coroutine_index: 0,
             typing_iterator_index: 0,
             typing_iterable_index: 0,
@@ -357,6 +359,14 @@ impl PythonState {
             .typing()
             .symbol_table
             .lookup_symbol("overload")
+            .unwrap()
+            - NAME_TO_FUNCTION_DIFF;
+
+        db.python_state.typing_override_index = db
+            .python_state
+            .typing()
+            .symbol_table
+            .lookup_symbol("override")
             .unwrap()
             - NAME_TO_FUNCTION_DIFF;
 
