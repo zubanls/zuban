@@ -1328,9 +1328,22 @@ testUnsafeDunderOverlapInSubclass
 testColumnProperty
 testOnlyImplementGetterOfReadWriteAbstractProperty
 testReadWriteDeleteAbstractProperty
+# Property access from class
+testTypeAttributes
 # Self definitions different from parent
 testCantImplementAbstractPropertyViaInstanceVariable
 
+# @override  "Method "g" is marked as an override, but no base method was found with this name"
+explicitOverride
+explicitOverrideStaticmethod
+explicitOverrideClassmethod
+explicitOverrideProperty
+explicitOverrideSettableProperty
+invalidExplicitOverride
+explicitOverrideFromExtensions
+explicitOverrideOverloads
+explicitOverrideNotOnOverloadsImplementation
+explicitOverrideOnMultipleOverloads
 # @override
 requireExplicitOverrideMethod
 requireExplicitOverrideProperty
@@ -1470,18 +1483,6 @@ testOverrideWithNormalAttribute
 # "Cannot override instance variable (previously declared on base class "A") with class variable"
 testOverrideWithAttributeWithClassVar
 testOverrideClassVarManyBases
-
-# "Method "g" is marked as an override, but no base method was found with this name"
-explicitOverride
-explicitOverrideStaticmethod
-explicitOverrideClassmethod
-explicitOverrideProperty
-explicitOverrideSettableProperty
-invalidExplicitOverride
-explicitOverrideFromExtensions
-explicitOverrideOverloads
-explicitOverrideNotOnOverloadsImplementation
-explicitOverrideOnMultipleOverloads
 
 # setting class attributes on self
 self_instance_variable1
