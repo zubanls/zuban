@@ -824,14 +824,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     let node_ref = NodeRef::new(self.file, primary_target.index());
                     base.run_on_each_union_type(&mut |t| {
                         if let Some(cls) = t.maybe_class(i_s.db) {
-                            if Instance::new(cls, None).checked_set_descriptor(
+                            return Instance::new(cls, None).check_set_descriptor(
                                 i_s,
                                 node_ref,
                                 name_definition.name(),
                                 value,
-                            ) {
-                                return;
-                            }
+                            );
                         }
                         let inf = t
                             .maybe_type_of_class(i_s.db)

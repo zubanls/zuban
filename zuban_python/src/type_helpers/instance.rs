@@ -13,7 +13,7 @@ use crate::diagnostics::IssueType;
 use crate::file::{on_argument_type_error, File};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
-use crate::inferred::Inferred;
+use crate::inferred::{add_attribute_error, Inferred};
 use crate::matching::{
     IteratorContent, LookupKind, LookupResult, OnTypeError, ResultContext, Type,
 };
@@ -39,74 +39,75 @@ impl<'a> Instance<'a> {
         }
     }
 
-    pub fn checked_set_descriptor(
+    pub fn check_set_descriptor(
         &self,
         i_s: &InferenceState,
         from: NodeRef,
         name: Name,
         value: &Inferred,
-    ) -> bool {
-        let mut had_set = false;
-        let mut had_no_set = false;
+    ) {
         let (result, class) = self
             .class
             .lookup_without_descriptors(i_s, from, name.as_str());
-        if let Some(inf) = result.into_maybe_inferred() {
-            if let Some(class) = class {
-                if inf.maybe_saved_specific(i_s.db)
-                    == Some(Specific::AnnotationOrTypeCommentClassVar)
-                {
-                    from.add_issue(
-                        i_s,
-                        IssueType::CannotAssignToClassVarViaInstance {
-                            name: name.as_str().into(),
-                        },
-                    );
-                }
-                inf.as_type(i_s).run_on_each_union_type(&mut |t| {
-                    if had_no_set {
-                        todo!()
+        let result = result.or_else(|| self.lookup(i_s, from, name.as_str(), LookupKind::Normal));
+        let Some(inf) = result.into_maybe_inferred() else {
+            let t = Type::owned(self.class.as_db_type(i_s.db));
+            add_attribute_error(
+                i_s,
+                from,
+                &t,
+                &t,
+                name.as_code(),
+            );
+            return
+        };
+        if inf.maybe_saved_specific(i_s.db) == Some(Specific::AnnotationOrTypeCommentClassVar) {
+            from.add_issue(
+                i_s,
+                IssueType::CannotAssignToClassVarViaInstance {
+                    name: name.as_str().into(),
+                },
+            );
+        }
+        inf.as_type(i_s).run_on_each_union_type(&mut |t| {
+            match t.as_ref() {
+                DbType::Class(c) => {
+                    let descriptor = Class::from_generic_class(i_s.db, c);
+                    if let Some(set) = Instance::new(descriptor, None)
+                        .type_lookup(i_s, from, "__set__")
+                        .into_maybe_inferred()
+                    {
+                        let inst = self.as_inferred(i_s);
+                        calculate_descriptor(i_s, from, set, inst, value);
+                        return;
                     }
-                    match t.as_ref() {
-                        DbType::Class(c) => {
-                            let descriptor = Class::from_generic_class(i_s.db, c);
-                            if let Some(set) = Instance::new(descriptor, None)
-                                .type_lookup(i_s, from, "__set__")
-                                .into_maybe_inferred()
-                            {
-                                had_set = true;
-                                let inst = self.as_inferred(i_s);
-                                calculate_descriptor(i_s, from, set, inst, value)
-                            }
-                        }
-                        DbType::Callable(c) if matches!(c.kind, FunctionKind::Property { .. }) => {
-                            if had_no_set || had_set {
-                                unreachable!()
-                            }
-                            match c.kind {
-                                FunctionKind::Property { writable: false } => from.add_issue(
+                }
+                DbType::Callable(c) if matches!(c.kind, FunctionKind::Property { .. }) => {
+                    match c.kind {
+                        FunctionKind::Property { writable: false } => {
+                            if let Some(class) = class {
+                                from.add_issue(
                                     i_s,
                                     IssueType::PropertyIsReadOnly {
                                         class_name: class.name().into(),
                                         property_name: name.as_str().into(),
                                     },
-                                ),
-                                FunctionKind::Property { writable: true } => {}
-                                _ => unreachable!(),
-                            }
-                            had_no_set = true;
-                        }
-                        _ => {
-                            if had_set {
+                                )
+                            } else {
                                 todo!()
                             }
-                            had_no_set = true;
                         }
+                        FunctionKind::Property { writable: true } => {}
+                        _ => unreachable!(),
                     }
-                });
+                }
+                _ => {}
             }
-        }
-        had_set
+            t.error_if_not_matches(i_s, value, |i_s, got, expected| {
+                from.add_issue(i_s, IssueType::IncompatibleAssignment { got, expected });
+                from.to_db_lifetime(i_s.db)
+            });
+        });
     }
 
     pub fn execute<'db>(

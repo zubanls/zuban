@@ -15,6 +15,9 @@ testDynamicallyTypedReadWriteAbstractProperty
 testSerializeReadOnlyProperty
 testSerializeReadWriteProperty
 testNewAnalyzerProperty
+# __get__ only defined on descriptor
+testSettingNonDataDescriptor
+testDescriptorDunderGetTooManyArgs
 
 # Self in bound method shouldn't probably be there
 testFunctionAssignedAsCallback
