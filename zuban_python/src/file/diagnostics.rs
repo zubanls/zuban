@@ -413,7 +413,11 @@ impl<'db> Inference<'db, '_, '_> {
                     let got = instance.full_lookup(self.i_s, hack, name).into_inferred();
                     let got = got.as_type(self.i_s);
                     if !expected
-                        .is_same_type(self.i_s, &mut Matcher::new_class_matcher(self.i_s, c), &got)
+                        .is_super_type_of(
+                            self.i_s,
+                            &mut Matcher::new_class_matcher(self.i_s, c),
+                            &got,
+                        )
                         .bool()
                     {
                         NodeRef::new(self.file, *index).add_issue(

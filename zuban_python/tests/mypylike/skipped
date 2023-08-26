@@ -262,7 +262,6 @@ testDictWithKeywordArgs
 
 # context inference from class statement
 testSetDescriptorOnClass
-testEnumIgnoreIsDeleted
 enum_ignore_deleted
 
 # union list context inference
