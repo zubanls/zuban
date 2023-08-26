@@ -838,13 +838,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             .and_then(|c| {
                                 // We need to handle class descriptors separately, because
                                 // there the __get__ descriptor should not be applied.
-                                c.lookup_with_or_without_descriptors(
+                                c.lookup_without_descriptors(
                                     i_s,
                                     node_ref,
                                     name_definition.as_code(),
                                     LookupKind::Normal,
-                                    false,
                                 )
+                                .0
                                 .into_maybe_inferred()
                             })
                             .unwrap_or_else(|| {

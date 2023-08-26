@@ -908,23 +908,14 @@ impl<'db: 'a, 'a> Class<'a> {
         self.lookup_with_or_without_descriptors_internal(i_s, hack, name, kind, false, ignore_self)
     }
 
-    pub fn lookup_with_or_without_descriptors(
+    pub fn lookup_without_descriptors(
         &self,
-        i_s: &InferenceState,
+        i_s: &InferenceState<'db, '_>,
         node_ref: NodeRef,
         name: &str,
         kind: LookupKind,
-        use_descriptors: bool,
-    ) -> LookupResult {
-        self.lookup_with_or_without_descriptors_internal(
-            i_s,
-            node_ref,
-            name,
-            kind,
-            use_descriptors,
-            false,
-        )
-        .0
+    ) -> (LookupResult, Option<Class>) {
+        self.lookup_with_or_without_descriptors_internal(i_s, node_ref, name, kind, false, false)
     }
 
     pub fn lookup_with_or_without_descriptors_internal(
@@ -1311,7 +1302,8 @@ impl<'db: 'a, 'a> Class<'a> {
         name: &str,
         kind: LookupKind,
     ) -> LookupResult {
-        self.lookup_with_or_without_descriptors(i_s, node_ref, name, kind, true)
+        self.lookup_with_or_without_descriptors_internal(i_s, node_ref, name, kind, true, false)
+            .0
     }
 
     pub fn qualified_name(&self, db: &Database) -> String {
