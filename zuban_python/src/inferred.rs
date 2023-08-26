@@ -943,20 +943,13 @@ impl<'db: 'slf, 'slf> Inferred {
         }
 
         if let DbType::Class(c) = t {
-            let inst = use_instance_with_ref(
+            let potential_descriptor = use_instance_with_ref(
                 NodeRef::from_link(i_s.db, c.link),
                 Generics::from_class_generics(i_s.db, &c.generics),
                 None,
             );
-            if let Some(inf) = inst.type_lookup(i_s, from, "__get__").into_maybe_inferred() {
-                let c_t = DbType::Type(Rc::new(instance.clone()));
-                return Some(Some(inf.execute(
-                    i_s,
-                    &CombinedArguments::new(
-                        &KnownArguments::new(&Inferred::from_type(instance), from),
-                        &KnownArguments::new(&Inferred::from_type(c_t), from),
-                    ),
-                )));
+            if let Some(inf) = potential_descriptor.bind_dunder_get(i_s, from, instance) {
+                return Some(Some(inf));
             }
         }
         if let Some(new) = new {

@@ -69,17 +69,31 @@ impl<'a> Instance<'a> {
                 },
             );
         }
+
+        let check_compatible = |t: &Type, value: &_| {
+            t.error_if_not_matches(i_s, value, |i_s, got, expected| {
+                from.add_issue(i_s, IssueType::IncompatibleAssignment { got, expected });
+                from.to_db_lifetime(i_s.db)
+            });
+        };
+
         inf.as_type(i_s).run_on_each_union_type(&mut |t| {
             match t.as_ref() {
                 DbType::Class(c) => {
                     let descriptor = Class::from_generic_class(i_s.db, c);
-                    if let Some(set) = Instance::new(descriptor, None)
+                    if let Some(__set__) = Instance::new(descriptor, None)
                         .type_lookup(i_s, from, "__set__")
                         .into_maybe_inferred()
                     {
                         let inst = self.as_inferred(i_s);
-                        calculate_descriptor(i_s, from, set, inst, value);
+                        calculate_descriptor(i_s, from, __set__, inst, value);
                         return;
+                    } else if let Some(inf) = Instance::new(descriptor, None).bind_dunder_get(
+                        i_s,
+                        from,
+                        self.class.as_db_type(i_s.db),
+                    ) {
+                        //check_compatible(t, &inf)
                     }
                 }
                 DbType::Callable(c) if matches!(c.kind, FunctionKind::Property { .. }) => {
@@ -103,11 +117,29 @@ impl<'a> Instance<'a> {
                 }
                 _ => {}
             }
-            t.error_if_not_matches(i_s, value, |i_s, got, expected| {
-                from.add_issue(i_s, IssueType::IncompatibleAssignment { got, expected });
-                from.to_db_lifetime(i_s.db)
-            });
+
+            check_compatible(t, value)
         });
+    }
+
+    pub fn bind_dunder_get(
+        &self,
+        i_s: &InferenceState,
+        from: NodeRef,
+        instance: DbType,
+    ) -> Option<Inferred> {
+        self.type_lookup(i_s, from, "__get__")
+            .into_maybe_inferred()
+            .map(|inf| {
+                let c_t = DbType::Type(Rc::new(instance.clone()));
+                inf.execute(
+                    i_s,
+                    &CombinedArguments::new(
+                        &KnownArguments::new(&Inferred::from_type(instance), from),
+                        &KnownArguments::new(&Inferred::from_type(c_t), from),
+                    ),
+                )
+            })
     }
 
     pub fn execute<'db>(
