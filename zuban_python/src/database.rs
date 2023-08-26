@@ -459,6 +459,7 @@ pub enum Specific {
     TypingAnnotated,
     // TODO maybe NoReturn?
     TypingAny,
+    TypingDataclassTransform,
     TypedDict,
     RevealTypeFunction,
     AssertTypeFunction,
