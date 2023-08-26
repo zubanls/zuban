@@ -28,11 +28,14 @@ pub fn lookup_on_enum_class(
     name: &str,
     result_context: &mut ResultContext,
 ) -> LookupResult {
-    lookup_members_on_enum(i_s, enum_, name, result_context).or_else(|| {
-        enum_
-            .class(i_s.db)
-            .lookup(i_s, from, name, LookupKind::Normal)
-    })
+    match name {
+        "_ignore_" => LookupResult::None,
+        _ => lookup_members_on_enum(i_s, enum_, name, result_context).or_else(|| {
+            enum_
+                .class(i_s.db)
+                .lookup(i_s, from, name, LookupKind::Normal)
+        }),
+    }
 }
 
 pub fn lookup_on_enum_instance(
@@ -42,16 +45,16 @@ pub fn lookup_on_enum_instance(
     name: &str,
     result_context: &mut ResultContext,
 ) -> LookupResult {
-    if matches!(name, "value" | "_value_") {
-        LookupResult::UnknownName(Inferred::gather_union(i_s, |add| {
+    match name {
+        "value" | "_value_" => LookupResult::UnknownName(Inferred::gather_union(i_s, |add| {
             for member in enum_.members.iter() {
                 add(infer_value_on_member(i_s, enum_, member.value))
             }
-        }))
-    } else {
-        lookup_members_on_enum(i_s, enum_, name, result_context).or_else(|| {
+        })),
+        "_ignore_" => LookupResult::None,
+        _ => lookup_members_on_enum(i_s, enum_, name, result_context).or_else(|| {
             Instance::new(enum_.class(i_s.db), None).lookup(i_s, from, name, LookupKind::Normal)
-        })
+        }),
     }
 }
 
@@ -153,9 +156,6 @@ fn lookup_members_on_enum(
     name: &str,
     result_context: &mut ResultContext,
 ) -> LookupResult {
-    if name == "_ignore_" {
-        return LookupResult::None;
-    }
     match Enum::lookup(enum_, i_s.db, name) {
         Some(m) => LookupResult::UnknownName(Inferred::from_type(
             match result_context.is_literal_context(i_s) {

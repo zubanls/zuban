@@ -262,7 +262,6 @@ testDictWithKeywordArgs
 
 # context inference from class statement
 testSetDescriptorOnClass
-enum_ignore_deleted
 
 # union list context inference
 testUnpackingUnionOfListsInFunction
