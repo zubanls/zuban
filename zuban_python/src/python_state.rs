@@ -58,6 +58,7 @@ pub struct PythonState {
     types: *const PythonFile,
     abc: *const PythonFile,
     enum_file: *const PythonFile,
+    dataclasses_file: *const PythonFile,
     mypy_extensions: *const PythonFile,
     typing_extensions: *const PythonFile,
 
@@ -133,6 +134,7 @@ impl PythonState {
             types: null(),
             abc: null(),
             enum_file: null(),
+            dataclasses_file: null(),
             mypy_extensions: null(),
             typing_extensions: null(),
             builtins_object_index: 0,
@@ -207,6 +209,7 @@ impl PythonState {
         types: *const PythonFile,
         abc: *const PythonFile,
         enum_file: *const PythonFile,
+        dataclasses_file: *const PythonFile,
         typing_extensions: *const PythonFile,
         mypy_extensions: *const PythonFile,
     ) {
@@ -218,6 +221,7 @@ impl PythonState {
         s.types = types;
         s.abc = abc;
         s.enum_file = enum_file;
+        s.dataclasses_file = dataclasses_file;
         s.typing_extensions = typing_extensions;
         s.mypy_extensions = mypy_extensions;
 
@@ -225,6 +229,7 @@ impl PythonState {
             s.typing(),
             s.builtins(),
             s.collections(),
+            s.dataclasses_file(),
             s.typing_extensions(),
         );
 
@@ -437,6 +442,12 @@ impl PythonState {
     pub fn enum_file(&self) -> &PythonFile {
         debug_assert!(!self.enum_file.is_null());
         unsafe { &*self.enum_file }
+    }
+
+    #[inline]
+    pub fn dataclasses_file(&self) -> &PythonFile {
+        debug_assert!(!self.dataclasses_file.is_null());
+        unsafe { &*self.dataclasses_file }
     }
 
     #[inline]
@@ -684,6 +695,7 @@ fn typing_changes(
     typing: &PythonFile,
     builtins: &PythonFile,
     collections: &PythonFile,
+    dataclasses: &PythonFile,
     typing_extensions: &PythonFile,
 ) {
     set_typing_inference(typing, "Protocol", Specific::TypingProtocol);
@@ -724,6 +736,7 @@ fn typing_changes(
     set_typing_inference(typing, "cast", Specific::TypingCast);
 
     set_typing_inference(collections, "namedtuple", Specific::CollectionsNamedTuple);
+    set_typing_inference(dataclasses, "dataclass", Specific::DataclassesDataclass);
 
     setup_type_alias(typing, "Tuple", builtins, "tuple");
     setup_type_alias(typing, "List", builtins, "list");
@@ -778,6 +791,7 @@ fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
         "Self",
         "reveal_type",
         "assert_type",
+        "dataclass",
         "dataclass_transform",
         "super",
     ]

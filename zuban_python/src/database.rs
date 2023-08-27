@@ -461,6 +461,7 @@ pub enum Specific {
     TypingAny,
     TypingDataclassTransform,
     TypedDict,
+    DataclassesDataclass,
     RevealTypeFunction,
     AssertTypeFunction,
     TypingNamedTuple,      // typing.NamedTuple
@@ -3149,6 +3150,8 @@ impl Database {
         let types = self.py_load_tmp(&stdlib_dir, "../typeshed/stdlib/types.pyi") as *const _;
         let abc = self.py_load_tmp(&stdlib_dir, "../typeshed/stdlib/abc.pyi") as *const _;
         let enum_file = self.py_load_tmp(&stdlib_dir, "../typeshed/stdlib/enum.pyi") as *const _;
+        let dataclasses_file =
+            self.py_load_tmp(&stdlib_dir, "../typeshed/stdlib/dataclasses.pyi") as *const _;
         let typing_extensions =
             self.py_load_tmp(&stdlib_dir, "../typeshed/stdlib/typing_extensions.pyi") as *const _;
         let mypy_extensions = self.py_load_tmp(
@@ -3170,6 +3173,7 @@ impl Database {
             types,
             abc,
             enum_file,
+            dataclasses_file,
             typing_extensions,
             mypy_extensions,
         );
