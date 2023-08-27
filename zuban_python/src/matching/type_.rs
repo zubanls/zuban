@@ -243,6 +243,7 @@ impl<'a> Type<'a> {
             DbType::Module(file_index) => todo!(),
             DbType::Namespace(file_index) => todo!(),
             DbType::Dataclass(_) => todo!(),
+            DbType::DataclassBuilder(_) => todo!(),
             DbType::NamedTuple(_) => todo!(),
             DbType::Enum(_) => todo!(),
             DbType::EnumMember(_) => todo!(),
@@ -348,6 +349,7 @@ impl<'a> Type<'a> {
                 _ => Match::new_false(),
             },
             DbType::Dataclass(_) => todo!(),
+            DbType::DataclassBuilder(_) => todo!(),
             DbType::NamedTuple(nt1) => match value_type.as_ref() {
                 DbType::NamedTuple(nt2) => {
                     let c1 = &nt1.__new__;
@@ -1486,6 +1488,7 @@ impl<'a> Type<'a> {
             DbType::ParamSpecArgs(usage) => todo!(),
             DbType::ParamSpecKwargs(usage) => todo!(),
             DbType::Dataclass(_) => todo!(),
+            DbType::DataclassBuilder(_) => todo!(),
             DbType::NamedTuple(nt) => {
                 let mut constructor = nt.__new__.as_ref().clone();
                 let CallableParams::Simple(params) = &constructor.params else {
@@ -1902,6 +1905,7 @@ impl<'a> Type<'a> {
             DbType::ParamSpecArgs(usage) => todo!(),
             DbType::ParamSpecKwargs(usage) => todo!(),
             DbType::Dataclass(_) => todo!(),
+            DbType::DataclassBuilder(_) => todo!(),
             DbType::NamedTuple(_) => todo!(),
             DbType::Enum(_) => todo!(),
             DbType::EnumMember(_) => todo!(),

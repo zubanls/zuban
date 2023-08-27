@@ -791,6 +791,7 @@ pub enum DbType {
     ParamSpecKwargs(ParamSpecUsage),
     Literal(Literal),
     Dataclass(Rc<Dataclass>),
+    DataclassBuilder(DataclassOptions),
     NamedTuple(Rc<NamedTuple>),
     Enum(Rc<Enum>),
     EnumMember(EnumMember),
@@ -952,6 +953,7 @@ impl DbType {
                 format!("{}.kwargs", usage.param_spec.name(format_data.db)).into()
             }
             Self::Dataclass(_) => todo!(),
+            Self::DataclassBuilder(_) => todo!(),
             Self::NamedTuple(nt) => {
                 use crate::type_helpers::NamedTupleValue;
                 match format_data.style {
@@ -1083,6 +1085,7 @@ impl DbType {
             Self::ParamSpecArgs(usage) => todo!(),
             Self::ParamSpecKwargs(usage) => todo!(),
             Self::Dataclass(_) => todo!(),
+            Self::DataclassBuilder(_) => todo!(),
             Self::NamedTuple(_) => {
                 debug!("TODO do we need to support namedtuple searching for type vars?");
             }
@@ -1171,9 +1174,10 @@ impl DbType {
             Self::ParamSpecArgs(_)
             | Self::ParamSpecKwargs(_)
             | Self::Module(_)
+            | Self::DataclassBuilder(_)
+            | Self::Enum(_)
             | Self::Namespace(_) => false,
             Self::Dataclass(_) => todo!(),
-            Self::Enum(_) => false,
             Self::NamedTuple(nt) => nt.__new__.has_any_internal(i_s, already_checked),
             Self::EnumMember(_) => todo!(),
             Self::Super { .. } => todo!(),
@@ -1222,6 +1226,7 @@ impl DbType {
             | Self::RecursiveAlias(_)
             | Self::Module(_)
             | Self::Namespace(_)
+            | Self::DataclassBuilder(_)
             | Self::TypeVar(_) => false,
             Self::Super { .. } => todo!(),
         }
@@ -2570,7 +2575,7 @@ impl CallableParams {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-struct DataclassOptions {
+pub struct DataclassOptions {
     init: bool,
     eq: bool,
     order: bool,
