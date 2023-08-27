@@ -790,6 +790,7 @@ pub enum DbType {
     ParamSpecArgs(ParamSpecUsage),
     ParamSpecKwargs(ParamSpecUsage),
     Literal(Literal),
+    Dataclass(Rc<Dataclass>),
     NamedTuple(Rc<NamedTuple>),
     Enum(Rc<Enum>),
     EnumMember(EnumMember),
@@ -950,6 +951,7 @@ impl DbType {
             Self::ParamSpecKwargs(usage) => {
                 format!("{}.kwargs", usage.param_spec.name(format_data.db)).into()
             }
+            Self::Dataclass(_) => todo!(),
             Self::NamedTuple(nt) => {
                 use crate::type_helpers::NamedTupleValue;
                 match format_data.style {
@@ -1080,6 +1082,7 @@ impl DbType {
             }
             Self::ParamSpecArgs(usage) => todo!(),
             Self::ParamSpecKwargs(usage) => todo!(),
+            Self::Dataclass(_) => todo!(),
             Self::NamedTuple(_) => {
                 debug!("TODO do we need to support namedtuple searching for type vars?");
             }
@@ -1169,6 +1172,7 @@ impl DbType {
             | Self::ParamSpecKwargs(_)
             | Self::Module(_)
             | Self::Namespace(_) => false,
+            Self::Dataclass(_) => todo!(),
             Self::Enum(_) => false,
             Self::NamedTuple(nt) => nt.__new__.has_any_internal(i_s, already_checked),
             Self::EnumMember(_) => todo!(),
@@ -1200,6 +1204,7 @@ impl DbType {
             }),
             Self::Callable(content) => content.has_self_type(),
             Self::Self_ => true,
+            Self::Dataclass(_) => todo!(),
             Self::NamedTuple(_) => {
                 debug!("TODO namedtuple has_self_type");
                 false
@@ -2562,6 +2567,42 @@ impl CallableParams {
             Self::Any => true,
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct DataclassOptions {
+    init: bool,
+    eq: bool,
+    order: bool,
+    unsafe_hash: bool,
+    frozen: bool,
+    match_args: bool,
+    kw_only: bool,
+    slots: bool,
+    // the keyword arguments `weakref_slot = false` and `repr = true` are ignored here, because
+    // they are not relevant for us as a typechecker.
+}
+
+impl Default for DataclassOptions {
+    fn default() -> Self {
+        Self {
+            init: true,
+            eq: true,
+            order: false,
+            unsafe_hash: false,
+            frozen: false,
+            match_args: true,
+            kw_only: false,
+            slots: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Dataclass {
+    class: PointLink,
+    __init__: CallableContent,
+    options: DataclassOptions,
 }
 
 #[derive(Debug, PartialEq, Clone)]
