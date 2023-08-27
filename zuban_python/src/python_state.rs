@@ -736,7 +736,7 @@ fn typing_changes(
     set_typing_inference(typing, "cast", Specific::TypingCast);
 
     set_typing_inference(collections, "namedtuple", Specific::CollectionsNamedTuple);
-    set_typing_inference(dataclasses, "dataclass", Specific::DataclassesDataclass);
+    // set_typing_inference(dataclasses, "dataclass", Specific::DataclassesDataclass);
 
     setup_type_alias(typing, "Tuple", builtins, "tuple");
     setup_type_alias(typing, "List", builtins, "list");

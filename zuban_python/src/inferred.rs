@@ -1539,6 +1539,9 @@ impl<'db: 'slf, 'slf> Inferred {
                                     .mypy_extensions_arg_func(i_s.db, specific)
                                     .execute_with_details(i_s, args, result_context, on_type_error)
                             }
+                            Specific::DataclassesDataclass => {
+                                todo!()
+                            }
                             _ => (),
                         }
                     }
