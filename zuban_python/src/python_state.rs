@@ -290,6 +290,7 @@ impl PythonState {
         cache_index!(builtins_object_index, db, builtins, "object");
         cache_index!(builtins_type_index, db, builtins, "type");
         cache_index!(abc_abc_meta_index, db, abc, "ABCMeta");
+        cache_index!(types_module_type_index, db, types, "ModuleType");
         cache_index!(enum_enum_meta_index, db, enum_file, "EnumMeta");
         cache_index!(enum_enum_index, db, enum_file, "Enum");
         cache_index!(enum_auto_index, db, enum_file, "auto");
@@ -339,7 +340,6 @@ impl PythonState {
         cache_index!(typing_async_generator_index, db, typing, "AsyncGenerator");
         cache_index!(typing_async_iterator_index, db, typing, "AsyncIterator");
         cache_index!(typing_async_iterable_index, db, typing, "AsyncIterable");
-        cache_index!(types_module_type_index, db, types, "ModuleType");
         cache_index!(types_none_type_index, db, types, "NoneType");
         cache_index!(abc_abstractproperty_index, db, abc, "abstractproperty");
 

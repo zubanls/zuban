@@ -2313,9 +2313,7 @@ testErrorCodeReturnValueNotExpected
 testKwargsArgumentInFunctionBodyWithImplicitAny
 
 # Class decorator
-testDecoratingClassesThatUseParamSpec
-testClassDecoratorIsTypeChecked
-testClassDecoratorIncorrect
+testProtocolSlotsAndRuntimeCheckable
 
 # "Decorators on top of @property are not supported"
 testDecoratedProperty

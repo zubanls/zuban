@@ -556,10 +556,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     }
                     kind = k
                 }
-                InferredDecorator::Inferred(inf) => {
+                InferredDecorator::Inferred(decorate) => {
                     // TODO check if it's an function without a return annotation and
                     // abort in that case.
-                    inferred = inf.execute(
+                    inferred = decorate.execute(
                         i_s,
                         &KnownArguments::new(
                             &inferred,

@@ -10,7 +10,7 @@ use parsa_python_ast::{
 use super::enum_::execute_functional_enum;
 use super::function::OverloadResult;
 use super::{Callable, Instance, Module, NamedTupleValue};
-use crate::arguments::{Arguments, NoArguments};
+use crate::arguments::{Arguments, KnownArguments, NoArguments};
 use crate::database::{
     BaseClass, CallableContent, CallableParam, CallableParams, ClassGenerics, ClassInfos,
     ClassStorage, ClassType, ComplexPoint, Database, DbType, Enum, EnumMemberDefinition,
@@ -407,11 +407,20 @@ impl<'db: 'a, 'a> Class<'a> {
         }
 
         if let Some(decorated) = self.node().maybe_decorated() {
-            for decorator in decorated.decorators().iter() {
-                self.node_ref
+            let mut inferred = Inferred::from_saved_node_ref(self.node_ref);
+            for decorator in decorated.decorators().iter_reverse() {
+                let decorate = self
+                    .node_ref
                     .file
                     .inference(i_s)
                     .infer_named_expression(decorator.named_expression());
+                inferred = decorate.execute(
+                    i_s,
+                    &KnownArguments::new(
+                        &inferred,
+                        NodeRef::new(self.node_ref.file, decorator.index()),
+                    ),
+                );
             }
         }
     }
