@@ -459,7 +459,7 @@ impl<'a> Type<'a> {
                 Match::new_false()
             });
         debug!(
-            "Match covariant {} ≤ {} -> {:?}",
+            "Match covariant {} :> {} -> {:?}",
             self.format_short(i_s.db),
             value_type.format_short(i_s.db),
             result
