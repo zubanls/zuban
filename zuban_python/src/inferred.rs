@@ -24,8 +24,8 @@ use crate::matching::{
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
-    execute_assert_type, execute_collections_named_tuple, execute_super, execute_type,
-    execute_typing_named_tuple, merge_class_type_vars_into_callable, BoundMethod,
+    execute_assert_type, execute_collections_named_tuple, execute_dataclass, execute_super,
+    execute_type, execute_typing_named_tuple, merge_class_type_vars_into_callable, BoundMethod,
     BoundMethodFunction, Class, FirstParamProperties, Function, Instance, NewTypeClass,
     OverloadedFunction, ParamSpecClass, RevealTypeFunction, TypeOrClass, TypeVarClass,
     TypeVarTupleClass, TypingCast,
@@ -1540,7 +1540,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     .execute_with_details(i_s, args, result_context, on_type_error)
                             }
                             Specific::DataclassesDataclass => {
-                                todo!()
+                                return execute_dataclass(i_s, args, on_type_error)
                             }
                             _ => (),
                         }

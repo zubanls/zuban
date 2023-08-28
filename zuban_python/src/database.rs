@@ -2606,9 +2606,9 @@ impl Default for DataclassOptions {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Dataclass {
-    class: PointLink,
-    __init__: CallableContent,
-    options: DataclassOptions,
+    pub class: PointLink,
+    pub __init__: CallableContent,
+    pub options: DataclassOptions,
 }
 
 #[derive(Debug, PartialEq, Clone)]
