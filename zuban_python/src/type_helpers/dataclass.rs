@@ -2,7 +2,10 @@ use std::rc::Rc;
 
 use crate::{
     arguments::{Argument, ArgumentKind, Arguments},
-    database::{Dataclass, DataclassOptions, DbType},
+    database::{
+        CallableContent, CallableParam, CallableParams, Dataclass, DataclassOptions, DbType,
+        FunctionKind, ParamSpecific, StringSlice,
+    },
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{LookupKind, LookupResult, OnTypeError, ResultContext},
@@ -32,12 +35,14 @@ pub fn execute_dataclass<'db>(
                 .as_type(i_s)
                 .maybe_type_of_class(i_s.db)
             {
+                let options = options.unwrap_or(Default::default());
+                let __init__ = calculate_init_of_dataclass(i_s, cls, options);
                 return Inferred::from_type(DbType::Type(Rc::new(DbType::Dataclass(Rc::new(
                     Dataclass {
                         class: cls.node_ref.as_link(),
-                        options: options.unwrap_or(Default::default()),
+                        options,
                         // TODO this is quite obviously wrong.
-                        __init__: i_s.db.python_state.any_callable.as_ref().clone(),
+                        __init__,
                     },
                 )))));
             } else {
@@ -74,14 +79,10 @@ impl DataclassHelper<'_> {
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
+        result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
-        Callable::new(&self.0.__init__, None).execute(
-            i_s,
-            args,
-            on_type_error,
-            &mut ResultContext::Unknown,
-        );
+        Callable::new(&self.0.__init__, None).execute(i_s, args, on_type_error, result_context);
         Inferred::from_type(DbType::Dataclass(self.0.clone()))
     }
 
@@ -92,5 +93,44 @@ impl DataclassHelper<'_> {
             name,
             LookupKind::Normal,
         )
+    }
+}
+pub fn calculate_init_of_dataclass(
+    i_s: &InferenceState,
+    cls: Class,
+    options: DataclassOptions,
+) -> CallableContent {
+    let mut with_indexes = vec![];
+    for (name, name_index) in unsafe {
+        cls.class_storage
+            .class_symbol_table
+            .iter_on_finished_table()
+    } {
+        let name = NodeRef::new(cls.node_ref.file, *name_index).as_name();
+        if let Some(annotation) = name.maybe_assignment_annotation() {
+            with_indexes.push((
+                *name_index,
+                CallableParam {
+                    // TODO the type is wrong
+                    param_specific: ParamSpecific::PositionalOrKeyword(DbType::Any),
+                    name: Some(StringSlice::from_name(cls.node_ref.file_index(), name)),
+                    has_default: false,
+                },
+            ));
+        }
+    }
+
+    // The name indexes are not guarantueed to be sorted by its order in the tree. We however
+    // want the original order in an enum.
+    with_indexes.sort_by_key(|w| w.0);
+
+    CallableContent {
+        name: Some(cls.name_string_slice()),
+        class_name: None,
+        defined_at: cls.node_ref.as_link(),
+        kind: FunctionKind::Function,
+        type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
+        params: CallableParams::Simple(with_indexes.into_iter().map(|param| param.1).collect()),
+        result_type: DbType::None,
     }
 }

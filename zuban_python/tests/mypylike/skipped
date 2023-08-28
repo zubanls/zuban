@@ -1857,6 +1857,8 @@ testIncompatibleConditionalMethodDefinition
 
 # TYPE_CHECKING
 testIfTypeCheckingUnreachableClass
+# --always-true TRUTH
+testIfConditionsInDefinition
 
 # if sys.version
 testNewAnalyzerVersionCheck

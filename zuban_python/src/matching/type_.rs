@@ -2728,7 +2728,9 @@ pub fn execute_type_of_type<'db>(
             Inferred::from_type(DbType::Self_)
         }
         DbType::Any => Inferred::new_any(),
-        DbType::Dataclass(d) => DataclassHelper(d).initialize(i_s, args, on_type_error),
+        DbType::Dataclass(d) => {
+            DataclassHelper(d).initialize(i_s, args, result_context, on_type_error)
+        }
         DbType::NamedTuple(nt) => {
             let calculated_type_vars = calculate_callable_type_vars_and_return(
                 i_s,
