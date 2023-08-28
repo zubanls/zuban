@@ -1654,7 +1654,7 @@ impl<'db> ClassDef<'db> {
         PotentialSelfAssignments(self.node.search(&[Nonterminal(t_primary)]))
     }
 
-    pub fn maybe_decorated(&self) -> Option<Decorated> {
+    pub fn maybe_decorated(&self) -> Option<Decorated<'db>> {
         let parent = self.node.parent().unwrap();
         if parent.is_type(Nonterminal(decorated)) {
             Some(Decorated::new(parent))

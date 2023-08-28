@@ -294,13 +294,20 @@ impl<'db: 'a, 'a> Class<'a> {
         if point.calculated() {
             return;
         }
+
         debug_assert!(!name_def.point().calculated());
-        // We can redirect now, because we are going to calculate the class infos.
-        name_def.set_point(Point::new_redirect(
-            self.node_ref.file_index(),
-            self.node_ref.node_index,
-            Locality::Todo,
-        ));
+        let maybe_decorated = self.node().maybe_decorated();
+        if maybe_decorated.is_some() {
+            name_def.set_point(Point::new_calculating());
+        } else {
+            // TODO it is questionable that we are just marking this as OK, because it could be an
+            // Enum.
+            name_def.set_point(Point::new_redirect(
+                self.node_ref.file_index(),
+                self.node_ref.node_index,
+                Locality::Todo,
+            ));
+        }
 
         let node_ref = self.class_info_node_ref();
         node_ref.set_point(Point::new_calculating());
@@ -324,12 +331,6 @@ impl<'db: 'a, 'a> Class<'a> {
                         members,
                         OnceCell::new(),
                     );
-                    let c = ComplexPoint::TypeInstance(DbType::Type(Rc::new(DbType::Enum(
-                        enum_.clone(),
-                    ))));
-                    // The locality is implicit, because we have a OnceCell that is inferred
-                    // after what we are doing here.
-                    name_def.insert_complex(c, Locality::ImplicitExtern);
                     was_enum = Some(enum_);
                 }
             }
@@ -337,7 +338,30 @@ impl<'db: 'a, 'a> Class<'a> {
         node_ref.insert_complex(ComplexPoint::ClassInfos(class_infos), Locality::Todo);
         debug_assert!(node_ref.point().calculated());
 
+        if let Some(decorated) = maybe_decorated {
+            let mut inferred = Inferred::from_saved_node_ref(self.node_ref);
+            for decorator in decorated.decorators().iter_reverse() {
+                let decorate = self
+                    .node_ref
+                    .file
+                    .inference(i_s)
+                    .infer_named_expression(decorator.named_expression());
+                inferred = decorate.execute(
+                    i_s,
+                    &KnownArguments::new(
+                        &inferred,
+                        NodeRef::new(self.node_ref.file, decorator.index()),
+                    ),
+                );
+            }
+        }
+
         if let Some(enum_) = was_enum {
+            let c = ComplexPoint::TypeInstance(DbType::Type(Rc::new(DbType::Enum(enum_.clone()))));
+            // The locality is implicit, because we have a OnceCell that is inferred
+            // after what we are doing here.
+            name_def.insert_complex(c, Locality::ImplicitExtern);
+
             // Precalculate the enum values here. Note that this is intentionally done after
             // the insertion, to avoid recursions.
             // We need to calculate here, because otherwise the normal class
@@ -347,6 +371,12 @@ impl<'db: 'a, 'a> Class<'a> {
                     infer_value_on_member(i_s, &enum_, member.value);
                 }
             }
+        } else {
+            name_def.set_point(Point::new_redirect(
+                self.node_ref.file_index(),
+                self.node_ref.node_index,
+                Locality::Todo,
+            ));
         }
 
         if was_enum_base {
@@ -403,24 +433,6 @@ impl<'db: 'a, 'a> Class<'a> {
                         }
                     }
                 }
-            }
-        }
-
-        if let Some(decorated) = self.node().maybe_decorated() {
-            let mut inferred = Inferred::from_saved_node_ref(self.node_ref);
-            for decorator in decorated.decorators().iter_reverse() {
-                let decorate = self
-                    .node_ref
-                    .file
-                    .inference(i_s)
-                    .infer_named_expression(decorator.named_expression());
-                inferred = decorate.execute(
-                    i_s,
-                    &KnownArguments::new(
-                        &inferred,
-                        NodeRef::new(self.node_ref.file, decorator.index()),
-                    ),
-                );
             }
         }
     }
