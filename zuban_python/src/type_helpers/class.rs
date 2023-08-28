@@ -342,6 +342,10 @@ impl<'db: 'a, 'a> Class<'a> {
             // TODO we pretty much just ignore the fact that a decorated class can also be an enum.
             let mut inferred = Inferred::from_saved_node_ref(self.node_ref);
             for decorator in decorated.decorators().iter_reverse() {
+                if matches!(decorator.as_code(), "final" | "type_check_only") {
+                    // TODO this branch should not be here!
+                    continue;
+                }
                 let decorate = self
                     .node_ref
                     .file
@@ -373,12 +377,6 @@ impl<'db: 'a, 'a> Class<'a> {
                     infer_value_on_member(i_s, &enum_, member.value);
                 }
             }
-        } else {
-            name_def.set_point(Point::new_redirect(
-                self.node_ref.file_index(),
-                self.node_ref.node_index,
-                Locality::Todo,
-            ));
         }
 
         if was_enum_base {

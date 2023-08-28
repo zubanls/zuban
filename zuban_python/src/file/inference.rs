@@ -2089,7 +2089,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
         }
         match name.name_definition() {
-            Some(name_def) => self.infer_name_definition(name_def),
+            Some(name_def) => dbg!(self.infer_name_definition(name_def)),
             None => {
                 todo!()
                 /* TODO maybe use this???

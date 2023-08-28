@@ -2283,6 +2283,7 @@ impl<'a> Type<'a> {
                 }
                 callable(self, result)
             }
+            DbType::Dataclass(_) => todo!(),
             DbType::NamedTuple(nt) => {
                 callable(self, NamedTupleValue::new(i_s.db, nt).lookup(i_s, name))
             }
@@ -2724,6 +2725,7 @@ pub fn execute_type_of_type<'db>(
             Inferred::from_type(DbType::Self_)
         }
         DbType::Any => Inferred::new_any(),
+        DbType::Dataclass(_) => todo!(),
         DbType::NamedTuple(nt) => {
             let calculated_type_vars = calculate_callable_type_vars_and_return(
                 i_s,
