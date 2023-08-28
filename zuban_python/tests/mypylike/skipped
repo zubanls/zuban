@@ -963,6 +963,7 @@ testConcreteClassesUnionInProtocolsIsInstance
 testOnlyMethodProtocolUsableWithIsSubclass
 testPartialAttributeNoneType
 testPartialAttributeNoneTypeStrictOptional
+testProtocolSlotsAndRuntimeCheckable
 
 # TypeVarTuple
 testTypeVarTupleMixed
@@ -2311,9 +2312,6 @@ testErrorCodeReturnValueNotExpected
 
 # Implicit any param
 testKwargsArgumentInFunctionBodyWithImplicitAny
-
-# Class decorator
-testProtocolSlotsAndRuntimeCheckable
 
 # "Decorators on top of @property are not supported"
 testDecoratedProperty
