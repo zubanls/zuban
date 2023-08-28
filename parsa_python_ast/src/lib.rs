@@ -1653,6 +1653,16 @@ impl<'db> ClassDef<'db> {
     pub fn search_potential_self_assignments(&self) -> PotentialSelfAssignments<'db> {
         PotentialSelfAssignments(self.node.search(&[Nonterminal(t_primary)]))
     }
+
+    pub fn maybe_decorated(&self) -> Option<Decorated> {
+        let parent = self.node.parent().unwrap();
+        if parent.is_type(Nonterminal(decorated)) {
+            Some(Decorated::new(parent))
+        } else {
+            debug_assert_eq!(parent.type_(), Nonterminal(stmt));
+            None
+        }
+    }
 }
 
 pub struct PotentialSelfAssignments<'db>(SearchIterator<'db>);

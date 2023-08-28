@@ -291,119 +291,127 @@ impl<'db: 'a, 'a> Class<'a> {
     pub fn ensure_calculated_class_infos(&self, i_s: &InferenceState<'db, '_>, name_def: NodeRef) {
         let node_ref = self.class_info_node_ref();
         let point = node_ref.point();
-        if !point.calculated() {
-            debug_assert!(!name_def.point().calculated());
-            // We can redirect now, because we are going to calculate the class infos.
-            name_def.set_point(Point::new_redirect(
-                self.node_ref.file_index(),
-                self.node_ref.node_index,
-                Locality::Todo,
-            ));
+        if point.calculated() {
+            return;
+        }
+        debug_assert!(!name_def.point().calculated());
+        // We can redirect now, because we are going to calculate the class infos.
+        name_def.set_point(Point::new_redirect(
+            self.node_ref.file_index(),
+            self.node_ref.node_index,
+            Locality::Todo,
+        ));
 
-            let node_ref = self.class_info_node_ref();
-            node_ref.set_point(Point::new_calculating());
-            let mut class_infos = self.calculate_class_infos(i_s);
-            let mut was_enum = None;
-            let mut was_enum_base = false;
-            if let MetaclassState::Some(link) = class_infos.metaclass {
-                if link == i_s.db.python_state.enum_meta_link() {
-                    was_enum_base = true;
-                    if !self.use_cached_type_vars(i_s.db).is_empty() {
-                        self.node_ref.add_issue(i_s, IssueType::EnumCannotBeGeneric);
+        let node_ref = self.class_info_node_ref();
+        node_ref.set_point(Point::new_calculating());
+        let mut class_infos = self.calculate_class_infos(i_s);
+        let mut was_enum = None;
+        let mut was_enum_base = false;
+        if let MetaclassState::Some(link) = class_infos.metaclass {
+            if link == i_s.db.python_state.enum_meta_link() {
+                was_enum_base = true;
+                if !self.use_cached_type_vars(i_s.db).is_empty() {
+                    self.node_ref.add_issue(i_s, IssueType::EnumCannotBeGeneric);
+                }
+                class_infos.class_type = ClassType::Enum;
+                let members = self.enum_members(i_s);
+                if !members.is_empty() {
+                    let enum_ = Enum::new(
+                        self.name_string_slice(),
+                        self.node_ref.as_link(),
+                        self.node_ref.as_link(),
+                        self.class_storage.parent_scope,
+                        members,
+                        OnceCell::new(),
+                    );
+                    let c = ComplexPoint::TypeInstance(DbType::Type(Rc::new(DbType::Enum(
+                        enum_.clone(),
+                    ))));
+                    // The locality is implicit, because we have a OnceCell that is inferred
+                    // after what we are doing here.
+                    name_def.insert_complex(c, Locality::ImplicitExtern);
+                    was_enum = Some(enum_);
+                }
+            }
+        }
+        node_ref.insert_complex(ComplexPoint::ClassInfos(class_infos), Locality::Todo);
+        debug_assert!(node_ref.point().calculated());
+
+        if let Some(enum_) = was_enum {
+            // Precalculate the enum values here. Note that this is intentionally done after
+            // the insertion, to avoid recursions.
+            // We need to calculate here, because otherwise the normal class
+            // calculation will do it for us, which we probably do not want.
+            for member in enum_.members.iter() {
+                if member.value.is_some() {
+                    infer_value_on_member(i_s, &enum_, member.value);
+                }
+            }
+        }
+
+        if was_enum_base {
+            // Check if __new__ was correctly used in combination with enums (1)
+            // Also check if mixins appear after enums (2)
+            let mut had_new = 0;
+            let mut enum_spotted: Option<Class> = None;
+            for base in self.bases(i_s.db) {
+                if let TypeOrClass::Class(c) = &base {
+                    let is_enum = c.use_cached_class_infos(i_s.db).class_type == ClassType::Enum;
+                    let has_mixin_enum_new = if is_enum {
+                        c.bases(i_s.db).any(|inner| match inner {
+                            TypeOrClass::Class(inner) => {
+                                inner.use_cached_class_infos(i_s.db).class_type != ClassType::Enum
+                                    && inner.has_customized_enum_new(i_s)
+                            }
+                            TypeOrClass::Type(_) => false,
+                        })
+                    } else {
+                        c.has_customized_enum_new(i_s)
+                    };
+                    // (1)
+                    if has_mixin_enum_new {
+                        had_new += 1;
+                        if had_new > 1 {
+                            self.node_ref.add_issue(
+                                i_s,
+                                IssueType::EnumMultipleMixinNew {
+                                    extra: c.format(&FormatData::with_style(
+                                        i_s.db,
+                                        FormatStyle::Qualified,
+                                    )),
+                                },
+                            );
+                        }
                     }
-                    class_infos.class_type = ClassType::Enum;
-                    let members = self.enum_members(i_s);
-                    if !members.is_empty() {
-                        let enum_ = Enum::new(
-                            self.name_string_slice(),
-                            self.node_ref.as_link(),
-                            self.node_ref.as_link(),
-                            self.class_storage.parent_scope,
-                            members,
-                            OnceCell::new(),
-                        );
-                        let c = ComplexPoint::TypeInstance(DbType::Type(Rc::new(DbType::Enum(
-                            enum_.clone(),
-                        ))));
-                        // The locality is implicit, because we have a OnceCell that is inferred
-                        // after what we are doing here.
-                        name_def.insert_complex(c, Locality::ImplicitExtern);
-                        was_enum = Some(enum_);
+                    // (2)
+                    match enum_spotted {
+                        Some(after) if !is_enum => {
+                            self.node_ref.add_issue(
+                                i_s,
+                                IssueType::EnumMixinNotAllowedAfterEnum {
+                                    after: after.format(&FormatData::with_style(
+                                        i_s.db,
+                                        FormatStyle::Qualified,
+                                    )),
+                                },
+                            );
+                        }
+                        _ => {
+                            if is_enum {
+                                enum_spotted = Some(*c);
+                            }
+                        }
                     }
                 }
             }
-            node_ref.insert_complex(ComplexPoint::ClassInfos(class_infos), Locality::Todo);
-            debug_assert!(node_ref.point().calculated());
+        }
 
-            if let Some(enum_) = was_enum {
-                // Precalculate the enum values here. Note that this is intentionally done after
-                // the insertion, to avoid recursions.
-                // We need to calculate here, because otherwise the normal class
-                // calculation will do it for us, which we probably do not want.
-                for member in enum_.members.iter() {
-                    if member.value.is_some() {
-                        infer_value_on_member(i_s, &enum_, member.value);
-                    }
-                }
-            }
-
-            if was_enum_base {
-                // Check if __new__ was correctly used in combination with enums (1)
-                // Also check if mixins appear after enums (2)
-                let mut had_new = 0;
-                let mut enum_spotted: Option<Class> = None;
-                for base in self.bases(i_s.db) {
-                    if let TypeOrClass::Class(c) = &base {
-                        let is_enum =
-                            c.use_cached_class_infos(i_s.db).class_type == ClassType::Enum;
-                        let has_mixin_enum_new = if is_enum {
-                            c.bases(i_s.db).any(|inner| match inner {
-                                TypeOrClass::Class(inner) => {
-                                    inner.use_cached_class_infos(i_s.db).class_type
-                                        != ClassType::Enum
-                                        && inner.has_customized_enum_new(i_s)
-                                }
-                                TypeOrClass::Type(_) => false,
-                            })
-                        } else {
-                            c.has_customized_enum_new(i_s)
-                        };
-                        // (1)
-                        if has_mixin_enum_new {
-                            had_new += 1;
-                            if had_new > 1 {
-                                self.node_ref.add_issue(
-                                    i_s,
-                                    IssueType::EnumMultipleMixinNew {
-                                        extra: c.format(&FormatData::with_style(
-                                            i_s.db,
-                                            FormatStyle::Qualified,
-                                        )),
-                                    },
-                                );
-                            }
-                        }
-                        // (2)
-                        match enum_spotted {
-                            Some(after) if !is_enum => {
-                                self.node_ref.add_issue(
-                                    i_s,
-                                    IssueType::EnumMixinNotAllowedAfterEnum {
-                                        after: after.format(&FormatData::with_style(
-                                            i_s.db,
-                                            FormatStyle::Qualified,
-                                        )),
-                                    },
-                                );
-                            }
-                            _ => {
-                                if is_enum {
-                                    enum_spotted = Some(*c);
-                                }
-                            }
-                        }
-                    }
-                }
+        if let Some(decorated) = self.node().maybe_decorated() {
+            for decorator in decorated.decorators().iter() {
+                self.node_ref
+                    .file
+                    .inference(i_s)
+                    .infer_named_expression(decorator.named_expression());
             }
         }
     }

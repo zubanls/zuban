@@ -129,12 +129,7 @@ impl<'db> Inference<'db, '_, '_> {
                 StmtContent::ClassDef(class) => self.calc_class_diagnostics(class),
                 StmtContent::Decorated(decorated) => match decorated.decoratee() {
                     Decoratee::FunctionDef(f) => self.calc_function_diagnostics(f, class),
-                    Decoratee::ClassDef(class) => {
-                        for decorator in decorated.decorators().iter() {
-                            self.infer_named_expression(decorator.named_expression());
-                        }
-                        self.calc_class_diagnostics(class)
-                    }
+                    Decoratee::ClassDef(class) => self.calc_class_diagnostics(class),
                     Decoratee::AsyncFunctionDef(func) => {
                         self.calc_function_diagnostics(func, class)
                     }

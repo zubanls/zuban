@@ -116,10 +116,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
             StmtContent::ClassDef(cls) => self.cache_class(name_def, cls),
             StmtContent::Decorated(decorated) => match decorated.decoratee() {
-                Decoratee::ClassDef(cls) => {
-                    // TODO this just ignores decorators? Should this even be reachable?
-                    self.cache_class(name_def, cls)
-                }
+                Decoratee::ClassDef(cls) => self.cache_class(name_def, cls),
                 _ => unreachable!(),
             },
             StmtContent::TryStmt(try_stmt) => {
