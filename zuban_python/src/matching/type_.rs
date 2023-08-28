@@ -24,9 +24,9 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
-    lookup_in_namespace, lookup_on_enum_instance, lookup_on_enum_member_instance, Callable, Class,
-    DataclassHelper, Instance, Module, MroIterator, NamedTupleValue, OverloadedFunction, Tuple,
-    TypeOrClass, TypingType,
+    execute_dataclass, lookup_in_namespace, lookup_on_enum_instance,
+    lookup_on_enum_member_instance, Callable, Class, DataclassHelper, Instance, Module,
+    MroIterator, NamedTupleValue, OverloadedFunction, Tuple, TypeOrClass, TypingType,
 };
 use crate::utils::rc_unwrap_or_clone;
 
@@ -1953,6 +1953,9 @@ impl<'a> Type<'a> {
             DbType::Any | DbType::Never => {
                 args.iter().calculate_diagnostics(i_s);
                 Inferred::new_unknown()
+            }
+            DbType::DataclassBuilder(options) => {
+                execute_dataclass(i_s, Some(*options), args, on_type_error)
             }
             _ => {
                 let t = self.format_short(i_s.db);

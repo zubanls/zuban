@@ -4,10 +4,11 @@ use std::rc::Rc;
 
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
 use crate::database::{
-    CallableContent, CallableParams, ClassGenerics, ComplexPoint, Database, DbString, DbType, Enum,
-    FileIndex, FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList,
-    Literal as DbLiteral, LiteralKind, Locality, MroIndex, NewType, OverloadDefinition, Point,
-    PointLink, PointType, Specific, TypeVarKind, TypeVarLike, TypeVarLikes,
+    CallableContent, CallableParams, ClassGenerics, ComplexPoint, Database, DataclassOptions,
+    DbString, DbType, Enum, FileIndex, FunctionKind, FunctionOverload, GenericClass, GenericItem,
+    GenericsList, Literal as DbLiteral, LiteralKind, Locality, MroIndex, NewType,
+    OverloadDefinition, Point, PointLink, PointType, Specific, TypeVarKind, TypeVarLike,
+    TypeVarLikes,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -426,6 +427,18 @@ impl<'db: 'slf, 'slf> Inferred {
             }
         }
         None
+    }
+
+    pub fn maybe_bool_literal(&self, i_s: &InferenceState) -> Option<bool> {
+        if let DbType::Literal(DbLiteral {
+            kind: LiteralKind::Bool(b),
+            ..
+        }) = self.as_type(i_s).as_ref()
+        {
+            Some(*b)
+        } else {
+            None
+        }
     }
 
     pub fn save_redirect(self, i_s: &InferenceState, file: &PythonFile, index: NodeIndex) -> Self {
@@ -1540,7 +1553,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     .execute_with_details(i_s, args, result_context, on_type_error)
                             }
                             Specific::DataclassesDataclass => {
-                                return execute_dataclass(i_s, args, on_type_error)
+                                return execute_dataclass(i_s, None, args, on_type_error)
                             }
                             _ => (),
                         }

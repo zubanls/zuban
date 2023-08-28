@@ -954,7 +954,7 @@ impl DbType {
                 format!("{}.kwargs", usage.param_spec.name(format_data.db)).into()
             }
             Self::Dataclass(_) => format!("TODO dataclass format").into(),
-            Self::DataclassBuilder(_) => todo!(),
+            Self::DataclassBuilder(_) => format!("TODO dataclassbuilder format").into(),
             Self::NamedTuple(nt) => {
                 use crate::type_helpers::NamedTupleValue;
                 match format_data.style {
@@ -2575,16 +2575,16 @@ impl CallableParams {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct DataclassOptions {
-    init: bool,
-    eq: bool,
-    order: bool,
-    unsafe_hash: bool,
-    frozen: bool,
-    match_args: bool,
-    kw_only: bool,
-    slots: bool,
+    pub init: bool,
+    pub eq: bool,
+    pub order: bool,
+    pub unsafe_hash: bool,
+    pub frozen: bool,
+    pub match_args: bool,
+    pub kw_only: bool,
+    pub slots: bool,
     // the keyword arguments `weakref_slot = false` and `repr = true` are ignored here, because
     // they are not relevant for us as a typechecker.
 }
