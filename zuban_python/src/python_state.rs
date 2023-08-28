@@ -85,6 +85,7 @@ pub struct PythonState {
     builtins_classmethod_index: NodeIndex,
     builtins_staticmethod_index: NodeIndex,
     builtins_property_index: NodeIndex,
+    builtins_ellipsis_index: NodeIndex,
     typeshed_supports_keys_and_get_item_index: NodeIndex,
     typing_namedtuple_index: NodeIndex, // TODO Appears to be unused currently.
     typing_type_var: NodeIndex,
@@ -160,6 +161,7 @@ impl PythonState {
             builtins_classmethod_index: 0,
             builtins_staticmethod_index: 0,
             builtins_property_index: 0,
+            builtins_ellipsis_index: 0,
             types_module_type_index: 0,
             types_none_type_index: 0,
             typeshed_supports_keys_and_get_item_index: 0,
@@ -325,6 +327,7 @@ impl PythonState {
         cache_index!(builtins_classmethod_index, db, builtins, "classmethod");
         cache_index!(builtins_staticmethod_index, db, builtins, "staticmethod");
         cache_index!(builtins_property_index, db, builtins, "property");
+        cache_index!(builtins_ellipsis_index, db, builtins, "ellipsis");
         cache_index!(
             typeshed_supports_keys_and_get_item_index,
             db,
@@ -490,6 +493,7 @@ impl PythonState {
     builtins_attribute_node_ref!(classmethod_node_ref, builtins_classmethod_index);
     builtins_attribute_node_ref!(staticmethod_node_ref, builtins_staticmethod_index);
     builtins_attribute_node_ref!(property_node_ref, builtins_property_index);
+    builtins_attribute_node_ref!(ellipsis_node_ref, builtins_ellipsis_index);
     builtins_attribute_node_ref!(function_node_ref, builtins_function_index);
     builtins_attribute_node_ref!(base_exception_node_ref, builtins_base_exception_index);
     builtins_attribute_node_ref!(exception_node_ref, builtins_exception_index);
@@ -516,6 +520,7 @@ impl PythonState {
     node_ref_to_db_type_class_without_generic!(pub property_db_type, property_node_ref);
     node_ref_to_db_type_class_without_generic!(pub function_db_type, function_node_ref);
     node_ref_to_db_type_class_without_generic!(pub bare_type_db_type, bare_type_node_ref);
+    node_ref_to_db_type_class_without_generic!(pub ellipsis_db_type, ellipsis_node_ref);
 
     #[inline]
     fn none_type_node_ref(&self) -> NodeRef {

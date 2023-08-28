@@ -1759,10 +1759,12 @@ fn resolve_specific(i_s: &InferenceState, specific: Specific) -> Type<'static> {
             Specific::String | Specific::StringLiteral => "str",
             Specific::IntLiteral | Specific::Int => "int",
             Specific::Float => "float",
-            Specific::BoolLiteral | Specific::Bool => "bool",
+            Specific::BoolLiteral | Specific::Bool => {
+                return Type::owned(i_s.db.python_state.bool_db_type())
+            }
             Specific::BytesLiteral | Specific::Bytes => "bytes",
             Specific::Complex => "complex",
-            Specific::Ellipsis => "ellipsis", // TODO this should not even be public
+            Specific::Ellipsis => return Type::owned(i_s.db.python_state.ellipsis_db_type()),
             actual => unreachable!("{actual:?}"),
         },
     )

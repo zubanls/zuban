@@ -342,10 +342,14 @@ impl<'db: 'a, 'a> Class<'a> {
             // TODO we pretty much just ignore the fact that a decorated class can also be an enum.
             let mut inferred = Inferred::from_saved_node_ref(self.node_ref);
             for decorator in decorated.decorators().iter_reverse() {
-                if matches!(decorator.as_code(), "final" | "type_check_only") {
+                if matches!(
+                    decorator.as_code(),
+                    "@final\n" | "@type_check_only\n" | "@runtime_checkable\n"
+                ) {
                     // TODO this branch should not be here!
                     continue;
                 }
+                dbg!(decorator.as_code());
                 let decorate = self
                     .node_ref
                     .file
