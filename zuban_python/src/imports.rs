@@ -53,7 +53,6 @@ pub fn global_import<'a>(
         return Some(ImportResult::File(db.python_state.types().file_index()));
     }
     if name == "mypy_extensions" {
-        // TODO this is completely wrong
         return Some(ImportResult::File(
             db.python_state.mypy_extensions().file_index(),
         ));
@@ -63,6 +62,11 @@ pub fn global_import<'a>(
     }
     if name == "enum" {
         return Some(ImportResult::File(db.python_state.enum_file().file_index()));
+    }
+    if name == "dataclasses" {
+        return Some(ImportResult::File(
+            db.python_state.dataclasses_file().file_index(),
+        ));
     }
 
     for (dir_path, dir) in db.workspaces.directories() {

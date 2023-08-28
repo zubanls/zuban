@@ -339,6 +339,7 @@ impl<'db: 'a, 'a> Class<'a> {
         debug_assert!(node_ref.point().calculated());
 
         if let Some(decorated) = maybe_decorated {
+            // TODO we pretty much just ignore the fact that a decorated class can also be an enum.
             let mut inferred = Inferred::from_saved_node_ref(self.node_ref);
             for decorator in decorated.decorators().iter_reverse() {
                 let decorate = self
@@ -354,6 +355,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     ),
                 );
             }
+            inferred.save_redirect(i_s, name_def.file, name_def.node_index);
         }
 
         if let Some(enum_) = was_enum {

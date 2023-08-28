@@ -588,6 +588,7 @@ testNewAnalyzerIncrementalMethodNamedTuple
 
 # dataclass
 testDataclassReplace
+testDataclassStrictOptionalAlwaysSet
 testReplace
 # dataclass transform
 updateDataclassTransformParameterViaDecorator
