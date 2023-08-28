@@ -349,7 +349,6 @@ impl<'db: 'a, 'a> Class<'a> {
                     // TODO this branch should not be here!
                     continue;
                 }
-                dbg!(decorator.as_code());
                 let decorate = self
                     .node_ref
                     .file

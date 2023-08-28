@@ -953,7 +953,7 @@ impl DbType {
             Self::ParamSpecKwargs(usage) => {
                 format!("{}.kwargs", usage.param_spec.name(format_data.db)).into()
             }
-            Self::Dataclass(_) => todo!(),
+            Self::Dataclass(_) => format!("TODO dataclass format").into(),
             Self::DataclassBuilder(_) => todo!(),
             Self::NamedTuple(nt) => {
                 use crate::type_helpers::NamedTupleValue;

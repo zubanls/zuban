@@ -25,8 +25,8 @@ use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
     lookup_in_namespace, lookup_on_enum_instance, lookup_on_enum_member_instance, Callable, Class,
-    Instance, Module, MroIterator, NamedTupleValue, OverloadedFunction, Tuple, TypeOrClass,
-    TypingType,
+    DataclassHelper, Instance, Module, MroIterator, NamedTupleValue, OverloadedFunction, Tuple,
+    TypeOrClass, TypingType,
 };
 use crate::utils::rc_unwrap_or_clone;
 
@@ -2283,7 +2283,7 @@ impl<'a> Type<'a> {
                 }
                 callable(self, result)
             }
-            DbType::Dataclass(_) => todo!(),
+            DbType::Dataclass(d) => callable(self, DataclassHelper(d).lookup(i_s, from, name)),
             DbType::NamedTuple(nt) => {
                 callable(self, NamedTupleValue::new(i_s.db, nt).lookup(i_s, name))
             }
@@ -2725,7 +2725,7 @@ pub fn execute_type_of_type<'db>(
             Inferred::from_type(DbType::Self_)
         }
         DbType::Any => Inferred::new_any(),
-        DbType::Dataclass(_) => todo!(),
+        DbType::Dataclass(d) => DataclassHelper(d).initialize(i_s, args, on_type_error),
         DbType::NamedTuple(nt) => {
             let calculated_type_vars = calculate_callable_type_vars_and_return(
                 i_s,
