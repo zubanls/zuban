@@ -441,13 +441,19 @@ impl<'db> Name<'db> {
         }
     }
 
-    pub fn maybe_assignment_annotation(&self) -> Option<Annotation> {
+    pub fn maybe_assignment_definition_name(&self) -> Option<Assignment> {
         let node = self
             .node
-            .parent_until(&[Nonterminal(assignment), Nonterminal(stmt)])
+            .parent_until(&[
+                Nonterminal(assignment),
+                Nonterminal(stmt),
+                Nonterminal(named_expression),
+                Nonterminal(lambda),
+                Nonterminal(t_primary),
+            ])
             .expect("There should always be a stmt");
         if node.is_type(Nonterminal(assignment)) {
-            Assignment::new(node).maybe_annotation()
+            Some(Assignment::new(node))
         } else {
             None
         }

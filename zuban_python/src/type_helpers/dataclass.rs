@@ -101,22 +101,30 @@ pub fn calculate_init_of_dataclass(
     options: DataclassOptions,
 ) -> CallableContent {
     let mut with_indexes = vec![];
+    let cls_i_s = i_s.with_class_context(&cls);
+    let mut inference = cls.node_ref.file.inference(&cls_i_s);
     for (name, name_index) in unsafe {
         cls.class_storage
             .class_symbol_table
             .iter_on_finished_table()
     } {
         let name = NodeRef::new(cls.node_ref.file, *name_index).as_name();
-        if let Some(annotation) = name.maybe_assignment_annotation() {
-            with_indexes.push((
-                *name_index,
-                CallableParam {
-                    // TODO the type is wrong
-                    param_specific: ParamSpecific::PositionalOrKeyword(DbType::Any),
-                    name: Some(StringSlice::from_name(cls.node_ref.file_index(), name)),
-                    has_default: false,
-                },
-            ));
+        if let Some(assignment) = name.maybe_assignment_definition_name() {
+            if let Some(annotation) = assignment.maybe_annotation() {
+                inference.cache_assignment_nodes(assignment);
+                let t = inference
+                    .use_cached_annotation_type(annotation)
+                    .into_db_type();
+                with_indexes.push((
+                    *name_index,
+                    CallableParam {
+                        // TODO the type is wrong
+                        param_specific: ParamSpecific::PositionalOrKeyword(t),
+                        name: Some(StringSlice::from_name(cls.node_ref.file_index(), name)),
+                        has_default: false,
+                    },
+                ));
+            }
         }
     }
 

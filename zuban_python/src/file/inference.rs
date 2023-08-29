@@ -462,7 +462,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    pub(super) fn cache_assignment_nodes(&mut self, assignment: Assignment) {
+    pub fn cache_assignment_nodes(&mut self, assignment: Assignment) {
         let node_ref = NodeRef::new(self.file, assignment.index()).to_db_lifetime(self.i_s.db);
         if node_ref.point().calculated() {
             return;
