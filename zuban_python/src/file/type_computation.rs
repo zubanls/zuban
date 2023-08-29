@@ -7,10 +7,10 @@ use super::TypeVarFinder;
 use crate::arguments::{ArgumentIterator, ArgumentKind, Arguments, SimpleArguments};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, CallableWithParent, ClassGenerics,
-    ComplexPoint, Database, DbString, DbType, DoubleStarredParamSpecific, Enum, EnumMember,
-    FunctionKind, GenericClass, GenericItem, GenericsList, Literal, LiteralKind, Locality,
-    NamedTuple, Namespace, NewType, ParamSpecArgument, ParamSpecUsage, ParamSpecific, Point,
-    PointLink, PointType, RecursiveAlias, Specific, StarredParamSpecific, StringSlice,
+    ComplexPoint, Database, Dataclass, DbString, DbType, DoubleStarredParamSpecific, Enum,
+    EnumMember, FunctionKind, GenericClass, GenericItem, GenericsList, Literal, LiteralKind,
+    Locality, NamedTuple, Namespace, NewType, ParamSpecArgument, ParamSpecUsage, ParamSpecific,
+    Point, PointLink, PointType, RecursiveAlias, Specific, StarredParamSpecific, StringSlice,
     TupleContent, TypeAlias, TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarKind, TypeVarLike,
     TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, UnionEntry,
     UnionType,
@@ -230,6 +230,7 @@ pub(super) enum TypeNameLookup<'db, 'a> {
     InvalidVariable(InvalidVariableType<'a>),
     NamedTupleDefinition(DbType),
     Enum(Rc<Enum>),
+    Dataclass(Rc<Dataclass>),
     RecursiveAlias(PointLink),
     Unknown,
 }
@@ -476,6 +477,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::ParamSpec(_) | TypeContent::InvalidVariable(_) => {
                 CalculatedBaseClass::Invalid
             }
+            TypeContent::DbType(t @ DbType::Dataclass(_)) => CalculatedBaseClass::DbType(t),
             TypeContent::DbType(DbType::Enum(e)) => CalculatedBaseClass::InvalidEnum(e),
             _ => {
                 let db_type =
@@ -2154,6 +2156,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeNameLookup::NewType(n) => TypeContent::DbType(DbType::NewType(n)),
             TypeNameLookup::NamedTupleDefinition(t) => TypeContent::DbType(t),
             TypeNameLookup::Enum(t) => TypeContent::DbType(DbType::Enum(t)),
+            TypeNameLookup::Dataclass(t) => TypeContent::DbType(DbType::Dataclass(t)),
             TypeNameLookup::InvalidVariable(t) => TypeContent::InvalidVariable(t),
             TypeNameLookup::Unknown => TypeContent::Unknown,
             TypeNameLookup::SpecialType(special) => TypeContent::SpecialType(special),
@@ -3100,8 +3103,10 @@ fn check_type_name<'db: 'file, 'file>(
             );
             name_def.file.inference(i_s).cache_class(name_def, c);
             if let Some(ComplexPoint::TypeInstance(DbType::Type(t))) = name_def.complex() {
-                if let DbType::Enum(e) = t.as_ref() {
-                    return TypeNameLookup::Enum(e.clone());
+                match t.as_ref() {
+                    DbType::Enum(e) => return TypeNameLookup::Enum(e.clone()),
+                    DbType::Dataclass(d) => return TypeNameLookup::Dataclass(d.clone()),
+                    _ => (),
                 }
             }
             // Classes can be defined recursive, so use the NamedTuple stuff here.

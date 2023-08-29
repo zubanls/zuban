@@ -1487,7 +1487,10 @@ impl<'a> Type<'a> {
             DbType::Self_ => replace_self(),
             DbType::ParamSpecArgs(usage) => todo!(),
             DbType::ParamSpecKwargs(usage) => todo!(),
-            DbType::Dataclass(_) => todo!(),
+            DbType::Dataclass(d) => {
+                debug!("TODO type var remapping for data classes is not implemented");
+                DbType::Dataclass(d.clone())
+            }
             DbType::DataclassBuilder(_) => todo!(),
             DbType::NamedTuple(nt) => {
                 let mut constructor = nt.__new__.as_ref().clone();
@@ -2359,6 +2362,7 @@ impl<'a> Type<'a> {
     pub fn lookup_symbol(&self, i_s: &InferenceState, name: &str) -> LookupResult {
         match self.as_ref() {
             DbType::Class(c) => todo!(),
+            DbType::Dataclass(d) => d.class(i_s.db).lookup_symbol(i_s, name),
             DbType::Tuple(t) => LookupResult::None, // TODO this probably omits index/count
             DbType::NamedTuple(nt) => NamedTupleValue::new(i_s.db, nt).lookup(i_s, name),
             DbType::Callable(t) => todo!(),

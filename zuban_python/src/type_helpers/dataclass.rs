@@ -20,7 +20,7 @@ use crate::{
     type_helpers::Callable,
 };
 
-use super::{Class, Function};
+use super::{Class, Function, TypeOrClass};
 
 pub fn execute_dataclass<'db>(
     i_s: &InferenceState<'db, '_>,
@@ -118,6 +118,21 @@ pub fn calculate_init_of_dataclass(
     let file = cls.node_ref.file;
     let mut inference = file.inference(&cls_i_s);
 
+    let mut params: Vec<CallableParam> = vec![];
+
+    for (_, c) in cls.mro(i_s.db) {
+        if let TypeOrClass::Type(t) = c {
+            if let DbType::Dataclass(dataclass) = t.as_ref() {
+                let CallableParams::Simple(init_params) = &dataclass.__init__.params else {
+                    unreachable!();
+                };
+                for param in init_params.iter() {
+                    params.push(param.clone());
+                }
+            }
+        }
+    }
+
     for (_, name_index) in unsafe {
         cls.class_storage
             .class_symbol_table
@@ -147,7 +162,6 @@ pub fn calculate_init_of_dataclass(
     with_indexes.sort_by_key(|w| w.0);
 
     let mut had_kw_only_marker = false;
-    let mut params: Vec<CallableParam> = vec![];
     for (node_index, t, name, field_infos) in with_indexes.into_iter() {
         match t {
             DbType::Class(c) if c.link == i_s.db.python_state.dataclasses_kw_only_link() => {

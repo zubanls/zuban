@@ -569,6 +569,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                     DbType::Class(c) => Some(Class::from_generic_class(db, c)),
                                     DbType::Tuple(content) => None,
                                     DbType::Callable(content) => None,
+                                    DbType::Dataclass(d) => Some(d.class(db)),
                                     _ => unreachable!(),
                                 };
                                 if let Some(class) = class {
@@ -1430,6 +1431,7 @@ impl fmt::Debug for Class<'_> {
 #[derive(Debug, PartialEq, Eq)]
 enum BaseKind {
     Class(PointLink),
+    Dataclass,
     NamedTuple,
     Tuple,
     Type,
@@ -1442,6 +1444,7 @@ fn to_base_kind(t: &DbType) -> BaseKind {
         DbType::Class(c) => BaseKind::Class(c.link),
         DbType::Type(_) => BaseKind::Type,
         DbType::Tuple(_) => BaseKind::Tuple,
+        DbType::Dataclass(_) => BaseKind::Dataclass,
         DbType::NamedTuple(_) => BaseKind::NamedTuple,
         DbType::Enum(_) => BaseKind::Enum,
         DbType::Callable(_) => BaseKind::Callable,

@@ -11,9 +11,7 @@ use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{
-    CallableLike, FormatData, LookupKind, LookupResult, OnTypeError, ResultContext, Type,
-};
+use crate::matching::{FormatData, LookupKind, LookupResult, OnTypeError, ResultContext, Type};
 use crate::node_ref::NodeRef;
 
 pub fn execute_type<'db>(
