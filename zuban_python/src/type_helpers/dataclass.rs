@@ -105,7 +105,10 @@ pub fn calculate_init_of_dataclass(
     let mut with_indexes = vec![];
     let cls_i_s = i_s.with_class_context(&cls);
     let mut inference = cls.node_ref.file.inference(&cls_i_s);
-    for (name, name_index) in unsafe {
+
+    let mut kw_only_marker = None;
+
+    for (_, name_index) in unsafe {
         cls.class_storage
             .class_symbol_table
             .iter_on_finished_table()
@@ -117,18 +120,22 @@ pub fn calculate_init_of_dataclass(
                 let t = inference
                     .use_cached_annotation_type(annotation)
                     .into_db_type();
-                with_indexes.push((
-                    *name_index,
-                    CallableParam {
-                        // TODO the type is wrong
-                        param_specific: match options.kw_only {
-                            false => ParamSpecific::PositionalOrKeyword(t),
-                            true => ParamSpecific::KeywordOnly(t),
+                match t {
+                    DbType::Class(c)
+                        if c.link == i_s.db.python_state.dataclasses_kw_only_link() =>
+                    {
+                        kw_only_marker = Some(name_index);
+                    }
+                    _ => with_indexes.push((
+                        *name_index,
+                        CallableParam {
+                            // TODO the type is wrong
+                            param_specific: ParamSpecific::PositionalOrKeyword(t),
+                            name: Some(StringSlice::from_name(cls.node_ref.file_index(), name)),
+                            has_default: default.is_some(),
                         },
-                        name: Some(StringSlice::from_name(cls.node_ref.file_index(), name)),
-                        has_default: default.is_some(),
-                    },
-                ));
+                    )),
+                }
             }
         }
     }
@@ -137,13 +144,23 @@ pub fn calculate_init_of_dataclass(
     // want the original order in an enum.
     with_indexes.sort_by_key(|w| w.0);
 
+    let mut params = vec![];
+    for (node_index, mut param) in with_indexes.into_iter() {
+        if options.kw_only || kw_only_marker.is_some_and(|index| node_index > *index) {
+            // If it's not positional, it's already a keyword argument
+            if let ParamSpecific::PositionalOrKeyword(t) = param.param_specific {
+                param.param_specific = ParamSpecific::KeywordOnly(t);
+            }
+        }
+        params.push(param);
+    }
     CallableContent {
         name: Some(cls.name_string_slice()),
         class_name: None,
         defined_at: cls.node_ref.as_link(),
         kind: FunctionKind::Function,
         type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
-        params: CallableParams::Simple(with_indexes.into_iter().map(|param| param.1).collect()),
+        params: CallableParams::Simple(params.into()),
         result_type: DbType::None,
     }
 }

@@ -113,6 +113,7 @@ pub struct PythonState {
     mypy_extensions_default_named_arg_func: NodeIndex,
     mypy_extensions_kw_arg_func: NodeIndex,
     mypy_extensions_var_arg_func: NodeIndex,
+    dataclasses_kw_only: NodeIndex,
     pub type_of_object: DbType,
     pub type_of_any: DbType,
     pub type_of_self: DbType,
@@ -189,6 +190,7 @@ impl PythonState {
             mypy_extensions_default_named_arg_func: 0,
             mypy_extensions_kw_arg_func: 0,
             mypy_extensions_var_arg_func: 0,
+            dataclasses_kw_only: 0,
             type_of_object: DbType::Any, // Will be set later
             type_of_any: DbType::Type(Rc::new(DbType::Any)),
             type_of_self: DbType::Type(Rc::new(DbType::Self_)),
@@ -345,6 +347,7 @@ impl PythonState {
         cache_index!(typing_async_iterable_index, db, typing, "AsyncIterable");
         cache_index!(types_none_type_index, db, types, "NoneType");
         cache_index!(abc_abstractproperty_index, db, abc, "abstractproperty");
+        cache_index!(dataclasses_kw_only, db, dataclasses_file, "KW_ONLY");
 
         db.python_state.abc_abstractmethod_index = db
             .python_state
@@ -645,6 +648,14 @@ impl PythonState {
     pub fn async_iterable_link(&self) -> PointLink {
         debug_assert!(self.typing_async_iterable_index != 0);
         PointLink::new(self.typing().file_index(), self.typing_async_iterable_index)
+    }
+
+    pub fn dataclasses_kw_only_link(&self) -> PointLink {
+        debug_assert!(self.dataclasses_kw_only != 0);
+        PointLink::new(
+            self.dataclasses_file().file_index(),
+            self.dataclasses_kw_only,
+        )
     }
 
     pub fn mypy_extensions_arg_func(&self, db: &Database, specific: Specific) -> Inferred {
