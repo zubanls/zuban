@@ -243,18 +243,6 @@ impl<'name, 'code> TestCase<'name, 'code> {
 
         let is_parse_test = self.file_name.starts_with("parse");
 
-        if steps
-            .flags
-            .iter()
-            .position(|&r| r == "--python-version")
-            .map(|p| ["3.7"].contains(&steps.flags[p + 1]))
-            .unwrap_or(false)
-        {
-            // For now skip Python tests < 3.9, because it looks like we won't support them.
-            println!("Skipped: {}, because {:?}", self.file_name, steps.flags);
-            return;
-        }
-
         for (i, step) in steps.steps.iter().enumerate() {
             if cfg!(feature = "zuban_debug") {
                 println!(
