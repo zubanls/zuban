@@ -83,7 +83,7 @@ testReturnInIterator
 testSelfTypeRestrictedMethodOverloadInitBadTypeNoCrash
 # Class is still set in InferenceState
 testAsyncForComprehensionErrors
-testDataclassesOrderingKwOnlyOnFieldFalse
+# TODO ^ also clean up dataclass field calculation
 
 # typing.List used in inference
 testTypeApplicationWithQualifiedTypeAlias

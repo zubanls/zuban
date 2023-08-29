@@ -20,7 +20,7 @@ use crate::{
     type_helpers::Callable,
 };
 
-use super::Class;
+use super::{Class, Function};
 
 pub fn execute_dataclass<'db>(
     i_s: &InferenceState<'db, '_>,
@@ -203,6 +203,15 @@ fn calculate_field_arg(
                 expr.unpack()
             {
                 if let PrimaryContent::Execution(details) = primary.second() {
+                    // TODO hack executing this before actually using it, makes sure that we are
+                    // not in a class context and it does not cross polute it that way. This should
+                    // be cleaned up once the name binder was reworked.
+                    Function::new(
+                        NodeRef::from_link(i_s.db, i_s.db.python_state.dataclasses_field_link()),
+                        None,
+                    )
+                    .decorated(&InferenceState::new(i_s.db));
+
                     let left = file.inference(i_s).infer_primary_or_atom(primary.first());
                     if left.maybe_saved_link() == Some(i_s.db.python_state.dataclasses_field_link())
                     {
