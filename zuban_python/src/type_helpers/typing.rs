@@ -11,7 +11,9 @@ use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{FormatData, LookupKind, LookupResult, OnTypeError, ResultContext, Type};
+use crate::matching::{
+    CallableLike, FormatData, LookupKind, LookupResult, OnTypeError, ResultContext, Type,
+};
 use crate::node_ref::NodeRef;
 
 pub fn execute_type<'db>(
@@ -191,10 +193,7 @@ impl RevealTypeFunction {
         } else {
             arg.infer(i_s, result_context)
         };
-        let s = inferred.format(
-            i_s,
-            &FormatData::with_style(i_s.db, FormatStyle::MypyRevealType),
-        );
+        let s = reveal_type_info(i_s, inferred.as_type(i_s));
         arg.as_node_ref().add_issue(
             i_s,
             IssueType::Note(format!("Revealed type is \"{s}\"").into()),
@@ -204,6 +203,22 @@ impl RevealTypeFunction {
         }
         inferred
     }
+}
+
+fn reveal_type_info(i_s: &InferenceState, t: Type) -> Box<str> {
+    let format_data = FormatData::with_style(i_s.db, FormatStyle::MypyRevealType);
+    if let DbType::Type(t) = t.as_ref() {
+        if let DbType::Dataclass(d) = t.as_ref() {
+            // For whatever reason Mypy formats dataclasses and types as a callable.
+            return format!(
+                "{} -> {}",
+                d.__init__.format(&format_data),
+                t.format(&format_data)
+            )
+            .into();
+        }
+    }
+    t.format(&format_data)
 }
 
 pub fn execute_assert_type<'db>(

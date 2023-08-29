@@ -2613,6 +2613,12 @@ pub struct Dataclass {
     pub options: DataclassOptions,
 }
 
+impl Dataclass {
+    pub fn class<'db>(&self, db: &'db Database) -> Class<'db> {
+        Class::from_non_generic_link(db, self.class)
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct NamedTuple {
     pub name: StringSlice,
