@@ -247,7 +247,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
             .flags
             .iter()
             .position(|&r| r == "--python-version")
-            .map(|p| ["2.7", "3.5", "3.6", "3.7", "3.8"].contains(&steps.flags[p + 1]))
+            .map(|p| ["3.7", "3.8"].contains(&steps.flags[p + 1]))
             .unwrap_or(false)
         {
             // For now skip Python tests < 3.9, because it looks like we won't support them.
