@@ -1,5 +1,7 @@
 use std::rc::Rc;
 
+use parsa_python_ast::AssignmentContent;
+
 use crate::{
     arguments::{Argument, ArgumentKind, Arguments},
     database::{
@@ -110,7 +112,7 @@ pub fn calculate_init_of_dataclass(
     } {
         let name = NodeRef::new(cls.node_ref.file, *name_index).as_name();
         if let Some(assignment) = name.maybe_assignment_definition_name() {
-            if let Some(annotation) = assignment.maybe_annotation() {
+            if let AssignmentContent::WithAnnotation(_, annotation, default) = assignment.unpack() {
                 inference.cache_assignment_nodes(assignment);
                 let t = inference
                     .use_cached_annotation_type(annotation)
@@ -119,9 +121,12 @@ pub fn calculate_init_of_dataclass(
                     *name_index,
                     CallableParam {
                         // TODO the type is wrong
-                        param_specific: ParamSpecific::PositionalOrKeyword(t),
+                        param_specific: match options.kw_only {
+                            false => ParamSpecific::PositionalOrKeyword(t),
+                            true => ParamSpecific::KeywordOnly(t),
+                        },
                         name: Some(StringSlice::from_name(cls.node_ref.file_index(), name)),
-                        has_default: false,
+                        has_default: default.is_some(),
                     },
                 ));
             }

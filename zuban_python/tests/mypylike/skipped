@@ -587,7 +587,6 @@ testSelfTypeProperSupertypeAttributeTuple
 testNewAnalyzerIncrementalMethodNamedTuple
 
 # dataclass
-testDataclassesOrderingKwOnly
 testDataclassesOrderingKwOnlyOnField
 testDataclassesOrderingKwOnlyOnFieldFalse
 testDataclassesOrderingKwOnlyWithSentinel
