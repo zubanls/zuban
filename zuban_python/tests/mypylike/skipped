@@ -1,4 +1,24 @@
 # Next up
+testParamSpecConcatenateNamedArgs
+testCallablesAsParameters
+testPEP570Calls
+testPEP570Unannotated
+testWalrus
+testWalrusConditionalTypeBinder
+testWalrusConditionalTypeCheck
+testWalrusConditionalTypeCheck2
+testWalrusAssignmentAndConditionScopeForLiteral
+testWalrusAssignmentAndConditionScopeForProperty
+testWalrusAssignmentAndConditionScopeForFunction
+testWalrusUsedBeforeDef
+testOverloadWithPositionalOnlySelf
+testOverloadPositionalOnlyErrorMessage
+testOverloadPositionalOnlyErrorMessageAllTypes
+testOverloadPositionalOnlyErrorMessageMultiplePosArgs
+testOverloadPositionalOnlyErrorMessageMethod
+testOverloadPositionalOnlyErrorMessageClassMethod
+testUnpackWithDuplicateNamePositionalOnly
+testPossiblyUndefinedWithAssignmentExpr
 
 # "Property "f" defined in "A" is read-only"
 testAssigningToReadOnlyProperty
@@ -2112,6 +2132,9 @@ testRefreshImportIfMypyElse1
 
 # TypeGuard
 testSerializeTypeGuardFunction
+testTypeGuardWithPositionalOnlyArg
+testTypeGuardKeywordFollowingWalrus
+testWalrusTypeGuard
 
 # Function local self attribute name binding
 testOptionalDescriptorsBinder
@@ -3077,6 +3100,8 @@ testNewAnalyzerIncompleteFixture
 
 # Won't support ever: python 2
 testMypyPathAndPython2Dir
+# Won't support: Python 3.8 specialties
+testTupleWithDifferentArgsPy38
 
 # Won't support list/dict/tuple "is not subscriptable" (python <3.10)
 testNoSubscriptionOfBuiltinAliases
