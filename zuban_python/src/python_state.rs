@@ -114,6 +114,7 @@ pub struct PythonState {
     mypy_extensions_kw_arg_func: NodeIndex,
     mypy_extensions_var_arg_func: NodeIndex,
     dataclasses_kw_only_index: NodeIndex,
+    dataclasses_field_index: NodeIndex,
     pub type_of_object: DbType,
     pub type_of_any: DbType,
     pub type_of_self: DbType,
@@ -191,6 +192,7 @@ impl PythonState {
             mypy_extensions_kw_arg_func: 0,
             mypy_extensions_var_arg_func: 0,
             dataclasses_kw_only_index: 0,
+            dataclasses_field_index: 0,
             type_of_object: DbType::Any, // Will be set later
             type_of_any: DbType::Type(Rc::new(DbType::Any)),
             type_of_self: DbType::Type(Rc::new(DbType::Self_)),
@@ -348,6 +350,13 @@ impl PythonState {
         cache_index!(types_none_type_index, db, types, "NoneType");
         cache_index!(abc_abstractproperty_index, db, abc, "abstractproperty");
         cache_index!(dataclasses_kw_only_index, db, dataclasses_file, "KW_ONLY");
+        db.python_state.dataclasses_field_index = db
+            .python_state
+            .dataclasses_file()
+            .symbol_table
+            .lookup_symbol("field")
+            .unwrap()
+            - NAME_TO_FUNCTION_DIFF;
 
         db.python_state.abc_abstractmethod_index = db
             .python_state
@@ -655,6 +664,14 @@ impl PythonState {
         PointLink::new(
             self.dataclasses_file().file_index(),
             self.dataclasses_kw_only_index,
+        )
+    }
+
+    pub fn dataclasses_field_link(&self) -> PointLink {
+        debug_assert!(self.dataclasses_field_index != 0);
+        PointLink::new(
+            self.dataclasses_file().file_index(),
+            self.dataclasses_field_index,
         )
     }
 

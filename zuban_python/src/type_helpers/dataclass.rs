@@ -1,14 +1,18 @@
 use std::rc::Rc;
 
-use parsa_python_ast::AssignmentContent;
+use parsa_python_ast::{
+    AssignmentContent, AssignmentRightSide, ExpressionContent, ExpressionPart, PrimaryContent,
+    StarExpressionContent,
+};
 
 use crate::{
-    arguments::{Argument, ArgumentKind, Arguments},
+    arguments::{Argument, ArgumentKind, Arguments, SimpleArguments},
     database::{
         CallableContent, CallableParam, CallableParams, Dataclass, DataclassOptions, DbType,
         FunctionKind, ParamSpecific, StringSlice,
     },
     diagnostics::IssueType,
+    file::PythonFile,
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{LookupKind, LookupResult, OnTypeError, ResultContext},
@@ -105,16 +109,20 @@ pub fn calculate_init_of_dataclass(
 ) -> CallableContent {
     let mut with_indexes = vec![];
     let cls_i_s = i_s.with_class_context(&cls);
-    let mut inference = cls.node_ref.file.inference(&cls_i_s);
+    let file = cls.node_ref.file;
+    let mut inference = file.inference(&cls_i_s);
 
     for (_, name_index) in unsafe {
         cls.class_storage
             .class_symbol_table
             .iter_on_finished_table()
     } {
-        let name = NodeRef::new(cls.node_ref.file, *name_index).as_name();
+        let name = NodeRef::new(file, *name_index).as_name();
         if let Some(assignment) = name.maybe_assignment_definition_name() {
-            if let AssignmentContent::WithAnnotation(_, annotation, default) = assignment.unpack() {
+            if let AssignmentContent::WithAnnotation(_, annotation, right_side) =
+                assignment.unpack()
+            {
+                let field_infos = calculate_field_arg(i_s, file, right_side);
                 inference.cache_assignment_nodes(assignment);
                 with_indexes.push((
                     *name_index,
@@ -122,7 +130,7 @@ pub fn calculate_init_of_dataclass(
                         .use_cached_annotation_type(annotation)
                         .into_db_type(),
                     StringSlice::from_name(cls.node_ref.file_index(), name),
-                    default.is_some(),
+                    field_infos,
                 ));
             }
         }
@@ -134,11 +142,11 @@ pub fn calculate_init_of_dataclass(
 
     let mut had_kw_only_marker = false;
     let mut params = vec![];
-    for (node_index, t, name, has_default) in with_indexes.into_iter() {
+    for (node_index, t, name, field_infos) in with_indexes.into_iter() {
         match t {
             DbType::Class(c) if c.link == i_s.db.python_state.dataclasses_kw_only_link() => {
                 if had_kw_only_marker {
-                    NodeRef::new(cls.node_ref.file, node_index)
+                    NodeRef::new(file, node_index)
                         .add_issue(i_s, IssueType::DataclassesMultipleKwOnly);
                 } else {
                     had_kw_only_marker = true;
@@ -146,12 +154,15 @@ pub fn calculate_init_of_dataclass(
             }
             _ => {
                 params.push(CallableParam {
-                    param_specific: match options.kw_only || had_kw_only_marker {
+                    param_specific: match options.kw_only
+                        || had_kw_only_marker
+                        || field_infos.kw_only.unwrap_or(false)
+                    {
                         false => ParamSpecific::PositionalOrKeyword(t),
                         true => ParamSpecific::KeywordOnly(t),
                     },
                     name: Some(name),
-                    has_default,
+                    has_default: field_infos.has_default,
                 });
             }
         }
@@ -165,4 +176,66 @@ pub fn calculate_init_of_dataclass(
         params: CallableParams::Simple(params.into()),
         result_type: DbType::None,
     }
+}
+
+struct FieldOptions {
+    has_default: bool,
+    kw_only: Option<bool>,
+}
+
+fn calculate_field_arg(
+    i_s: &InferenceState,
+    file: &PythonFile,
+    right_side: Option<AssignmentRightSide>,
+) -> FieldOptions {
+    if let Some(AssignmentRightSide::StarExpressions(star_exprs)) = right_side {
+        if let StarExpressionContent::Expression(expr) = star_exprs.unpack() {
+            if let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) =
+                expr.unpack()
+            {
+                if let PrimaryContent::Execution(details) = primary.second() {
+                    let left = file.inference(i_s).infer_primary_or_atom(primary.first());
+                    if left.maybe_saved_link() == Some(i_s.db.python_state.dataclasses_field_link())
+                    {
+                        let args = SimpleArguments::new(*i_s, file, primary.index(), details);
+                        return field_options_from_args(i_s, args);
+                    }
+                }
+            }
+        }
+    }
+    FieldOptions {
+        has_default: right_side.is_some(),
+        kw_only: None,
+    }
+}
+
+fn field_options_from_args<'db>(
+    i_s: &InferenceState<'db, '_>,
+    args: SimpleArguments<'db, '_>,
+) -> FieldOptions {
+    let mut options = FieldOptions {
+        has_default: false,
+        kw_only: None,
+    };
+    for arg in args.iter() {
+        if let ArgumentKind::Keyword {
+            key, expression, ..
+        } = &arg.kind
+        {
+            match *key {
+                "default" | "default_factory" => todo!(), //options.has_default = true,
+                "kw_only" => {
+                    let result = arg.infer(i_s, &mut ResultContext::ExpectLiteral);
+                    if let Some(bool_) = result.maybe_bool_literal(i_s) {
+                        options.kw_only = Some(bool_);
+                    } else {
+                        todo!()
+                    }
+                }
+                _ => (), // Type checking is done in a separate place.
+            }
+        }
+    }
+    options
 }

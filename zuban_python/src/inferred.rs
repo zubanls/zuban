@@ -4,11 +4,10 @@ use std::rc::Rc;
 
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
 use crate::database::{
-    CallableContent, CallableParams, ClassGenerics, ComplexPoint, Database, DataclassOptions,
-    DbString, DbType, Enum, FileIndex, FunctionKind, FunctionOverload, GenericClass, GenericItem,
-    GenericsList, Literal as DbLiteral, LiteralKind, Locality, MroIndex, NewType,
-    OverloadDefinition, Point, PointLink, PointType, Specific, TypeVarKind, TypeVarLike,
-    TypeVarLikes,
+    CallableContent, CallableParams, ClassGenerics, ComplexPoint, Database, DbString, DbType, Enum,
+    FileIndex, FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList,
+    Literal as DbLiteral, LiteralKind, Locality, MroIndex, NewType, OverloadDefinition, Point,
+    PointLink, PointType, Specific, TypeVarKind, TypeVarLike, TypeVarLikes,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
