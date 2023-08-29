@@ -141,23 +141,32 @@ pub fn calculate_init_of_dataclass(
     with_indexes.sort_by_key(|w| w.0);
 
     let mut had_kw_only_marker = false;
-    let mut params = vec![];
+    let mut params: Vec<CallableParam> = vec![];
     for (node_index, t, name, field_infos) in with_indexes.into_iter() {
         match t {
             DbType::Class(c) if c.link == i_s.db.python_state.dataclasses_kw_only_link() => {
                 if had_kw_only_marker {
                     NodeRef::new(file, node_index)
-                        .add_issue(i_s, IssueType::DataclassesMultipleKwOnly);
+                        .add_issue(i_s, IssueType::DataclassMultipleKwOnly);
                 } else {
                     had_kw_only_marker = true;
                 }
             }
             _ => {
+                let kw_only =
+                    options.kw_only || had_kw_only_marker || field_infos.kw_only.unwrap_or(false);
+                if let Some(last) = params.last() {
+                    if !kw_only && last.has_default && !field_infos.has_default {
+                        // Just reset the other params so that we have a valid signature again.
+                        for param in params.iter_mut() {
+                            param.has_default = false;
+                        }
+                        NodeRef::new(file, node_index)
+                            .add_issue(i_s, IssueType::DataclassNoDefaultAfterDefault);
+                    }
+                }
                 params.push(CallableParam {
-                    param_specific: match options.kw_only
-                        || had_kw_only_marker
-                        || field_infos.kw_only.unwrap_or(false)
-                    {
+                    param_specific: match kw_only {
                         false => ParamSpecific::PositionalOrKeyword(t),
                         true => ParamSpecific::KeywordOnly(t),
                     },

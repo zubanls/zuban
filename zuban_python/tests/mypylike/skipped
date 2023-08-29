@@ -83,6 +83,7 @@ testReturnInIterator
 testSelfTypeRestrictedMethodOverloadInitBadTypeNoCrash
 # Class is still set in InferenceState
 testAsyncForComprehensionErrors
+testDataclassesOrderingKwOnlyOnFieldFalse
 
 # typing.List used in inference
 testTypeApplicationWithQualifiedTypeAlias
@@ -587,7 +588,6 @@ testSelfTypeProperSupertypeAttributeTuple
 testNewAnalyzerIncrementalMethodNamedTuple
 
 # dataclass
-testDataclassesOrderingKwOnlyOnFieldFalse
 testDataclassesOrderingKwOnlyWithSentinelAndFieldOverride
 testDataclassesOrderingKwOnlyWithSentinelAndSubclass
 testDataclassWithSlotsArg
