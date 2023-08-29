@@ -89,7 +89,13 @@ impl DataclassHelper<'_> {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
-        Callable::new(&self.0.__init__, None).execute(i_s, args, on_type_error, result_context);
+        let class = self.0.class(i_s.db);
+        if class.lookup_symbol(i_s, "__init__").is_some() {
+            // If the class has an __init__ method defined, the class itself wins.
+            class.execute(i_s, args, result_context, on_type_error);
+        } else {
+            Callable::new(&self.0.__init__, None).execute(i_s, args, on_type_error, result_context);
+        }
         Inferred::from_type(DbType::Dataclass(self.0.clone()))
     }
 
