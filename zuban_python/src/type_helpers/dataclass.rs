@@ -242,7 +242,7 @@ fn field_options_from_args<'db>(
         } = &arg.kind
         {
             match *key {
-                "default" | "default_factory" => todo!(), //options.has_default = true,
+                "default" | "default_factory" => options.has_default = true,
                 "kw_only" => {
                     let result = arg.infer(i_s, &mut ResultContext::ExpectLiteral);
                     if let Some(bool_) = result.maybe_bool_literal(i_s) {
