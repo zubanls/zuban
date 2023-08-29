@@ -953,7 +953,9 @@ impl DbType {
             Self::ParamSpecKwargs(usage) => {
                 format!("{}.kwargs", usage.param_spec.name(format_data.db)).into()
             }
-            Self::Dataclass(_) => format!("TODO dataclass format").into(),
+            Self::Dataclass(d) => {
+                Class::from_non_generic_link(format_data.db, d.class).format(format_data)
+            }
             Self::DataclassBuilder(_) => format!("TODO dataclassbuilder format").into(),
             Self::NamedTuple(nt) => {
                 use crate::type_helpers::NamedTupleValue;
