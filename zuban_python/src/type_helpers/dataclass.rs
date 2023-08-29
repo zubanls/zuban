@@ -8,6 +8,7 @@ use crate::{
         CallableContent, CallableParam, CallableParams, Dataclass, DataclassOptions, DbType,
         FunctionKind, ParamSpecific, StringSlice,
     },
+    diagnostics::IssueType,
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{LookupKind, LookupResult, OnTypeError, ResultContext},
@@ -106,8 +107,6 @@ pub fn calculate_init_of_dataclass(
     let cls_i_s = i_s.with_class_context(&cls);
     let mut inference = cls.node_ref.file.inference(&cls_i_s);
 
-    let mut kw_only_marker = None;
-
     for (_, name_index) in unsafe {
         cls.class_storage
             .class_symbol_table
@@ -117,25 +116,14 @@ pub fn calculate_init_of_dataclass(
         if let Some(assignment) = name.maybe_assignment_definition_name() {
             if let AssignmentContent::WithAnnotation(_, annotation, default) = assignment.unpack() {
                 inference.cache_assignment_nodes(assignment);
-                let t = inference
-                    .use_cached_annotation_type(annotation)
-                    .into_db_type();
-                match t {
-                    DbType::Class(c)
-                        if c.link == i_s.db.python_state.dataclasses_kw_only_link() =>
-                    {
-                        kw_only_marker = Some(name_index);
-                    }
-                    _ => with_indexes.push((
-                        *name_index,
-                        CallableParam {
-                            // TODO the type is wrong
-                            param_specific: ParamSpecific::PositionalOrKeyword(t),
-                            name: Some(StringSlice::from_name(cls.node_ref.file_index(), name)),
-                            has_default: default.is_some(),
-                        },
-                    )),
-                }
+                with_indexes.push((
+                    *name_index,
+                    inference
+                        .use_cached_annotation_type(annotation)
+                        .into_db_type(),
+                    StringSlice::from_name(cls.node_ref.file_index(), name),
+                    default.is_some(),
+                ));
             }
         }
     }
@@ -144,15 +132,29 @@ pub fn calculate_init_of_dataclass(
     // want the original order in an enum.
     with_indexes.sort_by_key(|w| w.0);
 
+    let mut had_kw_only_marker = false;
     let mut params = vec![];
-    for (node_index, mut param) in with_indexes.into_iter() {
-        if options.kw_only || kw_only_marker.is_some_and(|index| node_index > *index) {
-            // If it's not positional, it's already a keyword argument
-            if let ParamSpecific::PositionalOrKeyword(t) = param.param_specific {
-                param.param_specific = ParamSpecific::KeywordOnly(t);
+    for (node_index, t, name, has_default) in with_indexes.into_iter() {
+        match t {
+            DbType::Class(c) if c.link == i_s.db.python_state.dataclasses_kw_only_link() => {
+                if had_kw_only_marker {
+                    NodeRef::new(cls.node_ref.file, node_index)
+                        .add_issue(i_s, IssueType::DataclassesMultipleKwOnly);
+                } else {
+                    had_kw_only_marker = true;
+                }
+            }
+            _ => {
+                params.push(CallableParam {
+                    param_specific: match options.kw_only || had_kw_only_marker {
+                        false => ParamSpecific::PositionalOrKeyword(t),
+                        true => ParamSpecific::KeywordOnly(t),
+                    },
+                    name: Some(name),
+                    has_default,
+                });
             }
         }
-        params.push(param);
     }
     CallableContent {
         name: Some(cls.name_string_slice()),

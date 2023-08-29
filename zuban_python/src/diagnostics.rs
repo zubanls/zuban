@@ -192,6 +192,8 @@ pub(crate) enum IssueType {
     EnumMixinNotAllowedAfterEnum { after: Box<str> },
     EnumMembersAttributeOverwritten,
 
+    DataclassesMultipleKwOnly,
+
     // From --disallow-untyped-defs
     FunctionIsDynamic,
     FunctionMissingReturnAnnotation,
@@ -529,6 +531,9 @@ impl<'db> Diagnostic<'db> {
             ),
             EnumMembersAttributeOverwritten =>
                 r#"Assigned "__members__" will be overridden by "Enum" internally"#.to_string(),
+
+            DataclassesMultipleKwOnly =>
+                "There may not be more than one field with the KW_ONLY type".to_string(),
 
             FunctionIsDynamic => "Function is missing a type annotation".to_string(),
             FunctionMissingReturnAnnotation =>
