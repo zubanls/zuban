@@ -70,6 +70,7 @@ pub fn execute_dataclass<'db>(
         if let ArgumentKind::Keyword { key, .. } = &arg.kind {
             match *key {
                 "kw_only" => assign_option(&mut options.kw_only, arg),
+                "frozen" => assign_option(&mut options.frozen, arg),
                 _ => todo!("{key}"),
             }
         } else {

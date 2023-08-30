@@ -828,6 +828,17 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 value,
                             );
                         }
+                        if let DbType::Dataclass(d) = t.as_ref() {
+                            if d.options.frozen {
+                                from.add_issue(
+                                    i_s,
+                                    IssueType::PropertyIsReadOnly {
+                                        class_name: d.class(i_s.db).name().into(),
+                                        property_name: name_definition.as_code().into(),
+                                    },
+                                )
+                            }
+                        }
                         let inf = t
                             .maybe_type_of_class(i_s.db)
                             .and_then(|c| {

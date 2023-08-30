@@ -619,10 +619,11 @@ testNewAnalyzerIncrementalMethodNamedTuple
 
 # dataclass init=False
 testDataclassesDeepInitVarInheritance
-# dataclass
+# overrides
 testDataclassesOverridingWithDefaults
+# inheritance access
 testDataclassMultipleInheritance
-testDataclassIncompatibleFrozenOverride
+# dataclass random
 testDataclassesFreezing
 testDataclassesInconsistentFreezing
 testDataclassesFields
@@ -1586,6 +1587,7 @@ testClassMethodSubclassing
 testClassStaticMethodSubclassing
 # "Dataclass attribute may only be overridden by another attribute"
 testDataclassIncompatibleOverrides
+testDataclassIncompatibleFrozenOverride
 
 # "Return type "int" of "foo" incompatible with return type "str" in supertype "B""
 testPreviousErrorInDecoratedMethodOverride
