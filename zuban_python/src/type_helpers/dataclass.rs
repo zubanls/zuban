@@ -120,7 +120,7 @@ pub fn calculate_init_of_dataclass(
 
     let mut params: Vec<CallableParam> = vec![];
 
-    for (_, c) in cls.mro(i_s.db) {
+    for (_, c) in cls.mro(i_s.db).rev() {
         if let TypeOrClass::Type(t) = c {
             if let DbType::Dataclass(dataclass) = t.as_ref() {
                 let CallableParams::Simple(init_params) = &dataclass.__init__.params else {

@@ -1630,6 +1630,30 @@ impl<'db: 'a, 'a> Iterator for MroIterator<'db, 'a> {
     }
 }
 
+impl<'db: 'a, 'a> DoubleEndedIterator for MroIterator<'db, 'a> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        if !self.returned_object {
+            self.returned_object = true;
+            Some((
+                MroIndex(self.mro_index),
+                TypeOrClass::Class(self.db.python_state.object_class()),
+            ))
+        } else if let Some(c) = self.iterator.next_back() {
+            let r = Some((
+                MroIndex(self.mro_index),
+                apply_generics_to_base_class(self.db, &c.type_, self.generics),
+            ));
+            self.mro_index += 1;
+            r
+        } else if self.class.is_some() {
+            self.mro_index += 1;
+            Some((MroIndex(0), self.class.take().unwrap()))
+        } else {
+            None
+        }
+    }
+}
+
 fn apply_generics_to_base_class<'a>(
     db: &'a Database,
     t: &'a DbType,
