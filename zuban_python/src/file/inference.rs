@@ -838,7 +838,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     },
                                 )
                             }
+                            return Instance::new(d.class(i_s.db), None).check_set_descriptor(
+                                i_s,
+                                node_ref,
+                                name_definition.name(),
+                                value,
+                            );
                         }
+
                         let inf = t
                             .maybe_type_of_class(i_s.db)
                             .and_then(|c| {

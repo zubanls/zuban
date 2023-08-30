@@ -9,7 +9,7 @@ use crate::{
     arguments::{Argument, ArgumentKind, Arguments, SimpleArguments},
     database::{
         CallableContent, CallableParam, CallableParams, Dataclass, DataclassOptions, DbType,
-        FunctionKind, ParamSpecific, StringSlice,
+        FunctionKind, ParamSpecific, Specific, StringSlice,
     },
     diagnostics::IssueType,
     file::PythonFile,
@@ -166,6 +166,11 @@ pub fn calculate_init_of_dataclass(
             {
                 let field_infos = calculate_field_arg(i_s, file, right_side);
                 inference.cache_assignment_nodes(assignment);
+                let point = file.points.get(annotation.index());
+                if point.maybe_specific() == Some(Specific::AnnotationOrTypeCommentClassVar) {
+                    // ClassVar[] are not part of the dataclass.
+                    continue;
+                }
                 let mut t = inference
                     .use_cached_annotation_type(annotation)
                     .into_db_type();
