@@ -71,6 +71,7 @@ pub fn execute_dataclass<'db>(
             match *key {
                 "kw_only" => assign_option(&mut options.kw_only, arg),
                 "frozen" => assign_option(&mut options.frozen, arg),
+                "order" => assign_option(&mut options.order, arg),
                 _ => todo!("{key}"),
             }
         } else {
@@ -101,6 +102,25 @@ impl DataclassHelper<'_> {
     }
 
     pub fn lookup(&self, i_s: &InferenceState, from: NodeRef, name: &str) -> LookupResult {
+        if matches!(name, "__lt__" | "__gt__" | "__le__" | "__ge__") {
+            return LookupResult::UnknownName(Inferred::from_type(DbType::Callable(Rc::new(
+                CallableContent {
+                    name: None,
+                    class_name: None,
+                    defined_at: self.0.class,
+                    kind: FunctionKind::Function,
+                    type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
+                    params: CallableParams::Simple(Rc::new([CallableParam {
+                        param_specific: ParamSpecific::PositionalOnly(DbType::Dataclass(
+                            self.0.clone(),
+                        )),
+                        name: None,
+                        has_default: false,
+                    }])),
+                    result_type: i_s.db.python_state.bool_db_type(),
+                },
+            ))));
+        }
         Class::from_non_generic_link(i_s.db, self.0.class).lookup(
             i_s,
             from,

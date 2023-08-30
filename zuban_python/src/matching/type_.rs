@@ -348,7 +348,10 @@ impl<'a> Type<'a> {
                 DbType::ParamSpecKwargs(usage2) => (usage1 == usage2).into(),
                 _ => Match::new_false(),
             },
-            DbType::Dataclass(_) => todo!(),
+            DbType::Dataclass(d1) => match value_type.as_ref() {
+                DbType::Dataclass(d2) => (d1.class == d2.class).into(),
+                _ => Match::new_false(),
+            },
             DbType::DataclassBuilder(_) => todo!(),
             DbType::NamedTuple(nt1) => match value_type.as_ref() {
                 DbType::NamedTuple(nt2) => {

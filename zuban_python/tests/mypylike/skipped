@@ -625,13 +625,14 @@ testDataclassesOverridingWithDefaults
 testDataclassMultipleInheritance
 # "Cannot inherit non-frozen dataclass from a frozen one"
 testDataclassesInconsistentFreezing
+# normal class inheritcs from dataclass
+testDataclassOrdering
 # dataclass random
 testDataclassesClassmethods
 testDataclassesOverloadsAndClassmethods
 testClassmethodShadowingFieldDoesNotCrash
 testDataclassesClassVars
 testTypeAliasInDataclassDoesNotCrash
-testDataclassOrdering
 testDataclassOrderingWithoutEquality
 testDataclassOrderingWithCustomMethods
 testDataclassDefaultsInheritance
@@ -651,7 +652,6 @@ testDataclassesInitVarPostInitOverride
 testDataclassesInitVarIncremental
 testNoComplainFieldNone
 testNoComplainFieldNoneStrict
-testDataclassOrderingDeferred
 testDeferredDataclassInitSignature
 testDeferredDataclassInitSignatureSubclass
 testDataclassesDefaultsMroOtherFile
