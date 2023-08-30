@@ -194,6 +194,7 @@ pub(crate) enum IssueType {
 
     DataclassMultipleKwOnly,
     DataclassNoDefaultAfterDefault,
+    DataclassOrderEnabledButNotEq,
 
     // From --disallow-untyped-defs
     FunctionIsDynamic,
@@ -537,6 +538,8 @@ impl<'db> Diagnostic<'db> {
                 "There may not be more than one field with the KW_ONLY type".to_string(),
             DataclassNoDefaultAfterDefault =>
                 "Attributes without a default cannot follow attributes with one".to_string(),
+            DataclassOrderEnabledButNotEq =>
+                r#""eq" must be True if "order" is True"#.to_string(),
 
             FunctionIsDynamic => "Function is missing a type annotation".to_string(),
             FunctionMissingReturnAnnotation =>

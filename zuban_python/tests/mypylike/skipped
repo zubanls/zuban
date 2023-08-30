@@ -627,12 +627,13 @@ testDataclassMultipleInheritance
 testDataclassesInconsistentFreezing
 # normal class inheritcs from dataclass
 testDataclassOrdering
-# dataclass random
+# dataclass classmethod
 testDataclassesClassmethods
 testDataclassesOverloadsAndClassmethods
 testClassmethodShadowingFieldDoesNotCrash
+# : TypeAlias in dataclasses
 testTypeAliasInDataclassDoesNotCrash
-testDataclassOrderingWithoutEquality
+# dataclass random
 testDataclassOrderingWithCustomMethods
 testDataclassDefaultsInheritance
 testDataclassGenerics

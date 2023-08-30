@@ -72,11 +72,17 @@ pub fn execute_dataclass<'db>(
                 "kw_only" => assign_option(&mut options.kw_only, arg),
                 "frozen" => assign_option(&mut options.frozen, arg),
                 "order" => assign_option(&mut options.order, arg),
+                "eq" => assign_option(&mut options.eq, arg),
                 _ => todo!("{key}"),
             }
         } else {
             todo!("{:?}", arg)
         }
+    }
+    if !options.eq && options.order {
+        options.eq = true;
+        args.as_node_ref()
+            .add_issue(i_s, IssueType::DataclassOrderEnabledButNotEq);
     }
     Inferred::from_type(DbType::DataclassBuilder(options))
 }
