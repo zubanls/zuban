@@ -1444,7 +1444,7 @@ fn to_base_kind(t: &DbType) -> BaseKind {
         DbType::Class(c) => BaseKind::Class(c.link),
         DbType::Type(_) => BaseKind::Type,
         DbType::Tuple(_) => BaseKind::Tuple,
-        DbType::Dataclass(d) => BaseKind::Dataclass(d.class),
+        DbType::Dataclass(d) => BaseKind::Dataclass(d.class.link),
         DbType::NamedTuple(_) => BaseKind::NamedTuple,
         DbType::Enum(_) => BaseKind::Enum,
         DbType::Callable(_) => BaseKind::Callable,

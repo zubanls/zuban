@@ -954,7 +954,7 @@ impl DbType {
                 format!("{}.kwargs", usage.param_spec.name(format_data.db)).into()
             }
             Self::Dataclass(d) => {
-                Class::from_non_generic_link(format_data.db, d.class).format(format_data)
+                Class::from_generic_class(format_data.db, &d.class).format(format_data)
             }
             Self::DataclassBuilder(_) => format!("TODO dataclassbuilder format").into(),
             Self::NamedTuple(nt) => {
@@ -2608,14 +2608,14 @@ impl Default for DataclassOptions {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Dataclass {
-    pub class: PointLink,
+    pub class: GenericClass,
     pub __init__: CallableContent,
     pub options: DataclassOptions,
 }
 
 impl Dataclass {
-    pub fn class<'db>(&self, db: &'db Database) -> Class<'db> {
-        Class::from_non_generic_link(db, self.class)
+    pub fn class<'a>(&'a self, db: &'a Database) -> Class<'a> {
+        Class::from_generic_class(db, &self.class)
     }
 }
 

@@ -46,7 +46,7 @@ pub fn execute_dataclass<'db>(
                 let __init__ = calculate_init_of_dataclass(i_s, cls, options);
                 return Inferred::from_type(DbType::Type(Rc::new(DbType::Dataclass(Rc::new(
                     Dataclass {
-                        class: cls.node_ref.as_link(),
+                        class: cls.as_generic_class(i_s.db),
                         options,
                         // TODO this is quite obviously wrong.
                         __init__,
@@ -113,7 +113,7 @@ impl DataclassHelper<'_> {
                 CallableContent {
                     name: None,
                     class_name: None,
-                    defined_at: self.0.class,
+                    defined_at: self.0.class.link,
                     kind: FunctionKind::Function,
                     type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
                     params: CallableParams::Simple(Rc::new([CallableParam {
@@ -127,12 +127,7 @@ impl DataclassHelper<'_> {
                 },
             ))));
         }
-        Class::from_non_generic_link(i_s.db, self.0.class).lookup(
-            i_s,
-            from,
-            name,
-            LookupKind::Normal,
-        )
+        Class::from_generic_class(i_s.db, &self.0.class).lookup(i_s, from, name, LookupKind::Normal)
     }
 }
 pub fn calculate_init_of_dataclass(
