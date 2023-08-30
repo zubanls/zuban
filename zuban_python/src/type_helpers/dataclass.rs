@@ -185,14 +185,16 @@ pub fn calculate_init_of_dataclass(
                             .add_issue(i_s, IssueType::DataclassNoDefaultAfterDefault);
                     }
                 }
-                params.push(CallableParam {
-                    param_specific: match kw_only {
-                        false => ParamSpecific::PositionalOrKeyword(t),
-                        true => ParamSpecific::KeywordOnly(t),
-                    },
-                    name: Some(name),
-                    has_default: field_infos.has_default,
-                });
+                if field_infos.init {
+                    params.push(CallableParam {
+                        param_specific: match kw_only {
+                            false => ParamSpecific::PositionalOrKeyword(t),
+                            true => ParamSpecific::KeywordOnly(t),
+                        },
+                        name: Some(name),
+                        has_default: field_infos.has_default,
+                    });
+                }
             }
         }
     }
@@ -210,6 +212,7 @@ pub fn calculate_init_of_dataclass(
 struct FieldOptions {
     has_default: bool,
     kw_only: Option<bool>,
+    init: bool,
 }
 
 fn calculate_field_arg(
@@ -245,6 +248,7 @@ fn calculate_field_arg(
     FieldOptions {
         has_default: right_side.is_some(),
         kw_only: None,
+        init: true,
     }
 }
 
@@ -255,6 +259,7 @@ fn field_options_from_args<'db>(
     let mut options = FieldOptions {
         has_default: false,
         kw_only: None,
+        init: true,
     };
     for arg in args.iter() {
         if let ArgumentKind::Keyword {
@@ -267,6 +272,14 @@ fn field_options_from_args<'db>(
                     let result = arg.infer(i_s, &mut ResultContext::ExpectLiteral);
                     if let Some(bool_) = result.maybe_bool_literal(i_s) {
                         options.kw_only = Some(bool_);
+                    } else {
+                        todo!()
+                    }
+                }
+                "init" => {
+                    let result = arg.infer(i_s, &mut ResultContext::ExpectLiteral);
+                    if let Some(bool_) = result.maybe_bool_literal(i_s) {
+                        options.init = bool_
                     } else {
                         todo!()
                     }
