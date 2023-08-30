@@ -63,6 +63,9 @@ pub fn execute_dataclass<'db>(
             }
         }
     }
+    if options.is_some() {
+        todo!()
+    }
     let mut options = DataclassOptions::default();
     let assign_option = |target: &mut _, arg: Argument<'db, '_>| {
         let result = arg.infer(i_s, &mut ResultContext::ExpectLiteral);

@@ -631,6 +631,7 @@ testDataclassOrdering
 testDataclassesClassmethods
 testDataclassesOverloadsAndClassmethods
 testClassmethodShadowingFieldDoesNotCrash
+testDataclassGenericsClassmethod
 # : TypeAlias in dataclasses
 testTypeAliasInDataclassDoesNotCrash
 # dataclass random
@@ -638,7 +639,6 @@ testDataclassUntypedGenericInheritance
 testDataclassGenericSubtype
 testDataclassGenericInheritance
 testDataclassMultiGenericInheritance
-testDataclassGenericsClassmethod
 testDataclassesForwardRefs
 testDataclassesInitVars
 testDataclassesInitVarsAndDefer
@@ -653,20 +653,16 @@ testDeferredDataclassInitSignature
 testDeferredDataclassInitSignatureSubclass
 testDataclassesDefaultsMroOtherFile
 testDataclassesInheritingDuplicateField
-testDataclassInheritanceNoAnnotation2
 testDataclassHasAttributeWithFields
-testDataclassCallableFieldAccess
 testDataclassFieldDoesNotFailOnKwargsUnpacking
 testDataclassFieldWithPositionalArguments
 testDataclassFieldWithTypedDictUnpacking
 testDataclassesAnyInherit
 testDataclassesCallableFrozen
 testDataclassGenericInheritance2
-testDataclassInheritOptionalType
 testDataclassGenericInheritanceSpecialCase1
 testDataclassGenericInheritanceSpecialCase2
 testDataclassGenericWithBound
-testDataclassGenericBoundToInvalidTypeVarDoesNotCrash
 testNoCrashOnSelfWithForwardRefGenericDataclass
 testDataclassInitVarCannotBeSet
 testDataclassCheckTypeVarBounds
@@ -1561,6 +1557,7 @@ testClassStaticMethodSubclassing
 # "Dataclass attribute may only be overridden by another attribute"
 testDataclassIncompatibleOverrides
 testDataclassIncompatibleFrozenOverride
+testDataclassInheritanceNoAnnotation2
 
 # "Return type "int" of "foo" incompatible with return type "str" in supertype "B""
 testPreviousErrorInDecoratedMethodOverride
