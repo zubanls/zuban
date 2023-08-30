@@ -1431,7 +1431,7 @@ impl fmt::Debug for Class<'_> {
 #[derive(Debug, PartialEq, Eq)]
 enum BaseKind {
     Class(PointLink),
-    Dataclass,
+    Dataclass(PointLink),
     NamedTuple,
     Tuple,
     Type,
@@ -1444,7 +1444,7 @@ fn to_base_kind(t: &DbType) -> BaseKind {
         DbType::Class(c) => BaseKind::Class(c.link),
         DbType::Type(_) => BaseKind::Type,
         DbType::Tuple(_) => BaseKind::Tuple,
-        DbType::Dataclass(_) => BaseKind::Dataclass,
+        DbType::Dataclass(d) => BaseKind::Dataclass(d.class),
         DbType::NamedTuple(_) => BaseKind::NamedTuple,
         DbType::Enum(_) => BaseKind::Enum,
         DbType::Callable(_) => BaseKind::Callable,
