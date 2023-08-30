@@ -216,7 +216,7 @@ pub fn calculate_init_of_dataclass(
         kind: FunctionKind::Function,
         type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
         params: CallableParams::Simple(params.into()),
-        result_type: DbType::None,
+        result_type: DbType::Any,
     }
 }
 

@@ -624,7 +624,6 @@ testDataclassesOverridingWithDefaults
 # inheritance access
 testDataclassMultipleInheritance
 # dataclass random
-testDataclassesFreezing
 testDataclassesInconsistentFreezing
 testDataclassesFields
 testDataclassesBadInit

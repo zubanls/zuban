@@ -209,8 +209,9 @@ fn reveal_type_info(i_s: &InferenceState, t: Type) -> Box<str> {
         if let DbType::Dataclass(d) = t.as_ref() {
             // For whatever reason Mypy formats dataclasses and types as a callable.
             return format!(
-                "{} -> {}",
-                d.__init__.format(&format_data),
+                "{}{}",
+                // Remove the Any part and replace it with the result
+                d.__init__.format(&format_data).trim_end_matches("Any"),
                 t.format(&format_data)
             )
             .into();
