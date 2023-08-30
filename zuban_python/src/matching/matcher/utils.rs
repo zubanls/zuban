@@ -150,7 +150,6 @@ impl CalculatedTypeArguments {
     pub fn lookup_type_var_usage(
         &self,
         i_s: &InferenceState,
-        class: Option<&Class>,
         usage: TypeVarLikeUsage,
     ) -> GenericItem {
         if self.in_definition == usage.in_definition() {
@@ -161,14 +160,6 @@ impl CalculatedTypeArguments {
                 // usage.into_generic_item()
                 todo!()
             };
-        }
-        if let Some(c) = class {
-            if usage.in_definition() == c.node_ref.as_link() {
-                return c
-                    .generics()
-                    .nth_usage(i_s.db, &usage)
-                    .into_generic_item(i_s.db);
-            }
         }
         usage.into_generic_item()
     }

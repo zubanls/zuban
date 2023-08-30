@@ -3,9 +3,9 @@ use std::rc::Rc;
 
 use super::params::has_overlapping_params;
 use super::{
-    calculate_callable_type_vars_and_return, matches_params, CalculatedTypeArguments, FormatData,
-    Generics, IteratorContent, LookupResult, Match, Matcher, MismatchReason, OnLookupError,
-    OnTypeError, ResultContext,
+    calculate_callable_type_vars_and_return, matches_params, maybe_class_usage,
+    CalculatedTypeArguments, FormatData, Generics, IteratorContent, LookupResult, Match, Matcher,
+    MismatchReason, OnLookupError, OnTypeError, ResultContext,
 };
 use crate::arguments::Arguments;
 use crate::database::{
@@ -1235,7 +1235,14 @@ impl<'a> Type<'a> {
     ) -> DbType {
         self.replace_type_var_likes_and_self(
             i_s.db,
-            &mut |t| calculated_type_args.lookup_type_var_usage(i_s, class, t),
+            &mut |usage| {
+                if let Some(c) = class {
+                    if let Some(generic_item) = maybe_class_usage(i_s.db, c, &usage) {
+                        return generic_item;
+                    }
+                }
+                calculated_type_args.lookup_type_var_usage(i_s, usage)
+            },
             replace_self_type,
         )
     }

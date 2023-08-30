@@ -121,7 +121,7 @@ impl DataclassHelper<'_> {
                 i_s.db,
                 &mut |usage| {
                     if class.node_ref.as_link() == usage.in_definition() {
-                        class_generics.lookup_type_var_usage(i_s, None, usage)
+                        class_generics.lookup_type_var_usage(i_s, usage)
                     } else {
                         usage.into_generic_item()
                     }
