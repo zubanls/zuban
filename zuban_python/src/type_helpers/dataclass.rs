@@ -145,11 +145,17 @@ pub fn calculate_init_of_dataclass(
             {
                 let field_infos = calculate_field_arg(i_s, file, right_side);
                 inference.cache_assignment_nodes(assignment);
+                let mut t = inference
+                    .use_cached_annotation_type(annotation)
+                    .into_db_type();
+                if let DbType::Class(c) = &t {
+                    if c.link == i_s.db.python_state.dataclasses_init_var_link() {
+                        t = Class::from_generic_class(i_s.db, c).nth_type_argument(i_s.db, 0);
+                    }
+                }
                 with_indexes.push((
                     *name_index,
-                    inference
-                        .use_cached_annotation_type(annotation)
-                        .into_db_type(),
+                    t,
                     StringSlice::from_name(cls.node_ref.file_index(), name),
                     field_infos,
                 ));
