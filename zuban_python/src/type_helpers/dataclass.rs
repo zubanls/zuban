@@ -292,7 +292,7 @@ fn field_options_from_args<'db>(
                     if let Some(bool_) = result.maybe_bool_literal(i_s) {
                         options.init = bool_
                     } else {
-                        todo!()
+                        ()
                     }
                 }
                 _ => (), // Type checking is done in a separate place.
