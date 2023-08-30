@@ -617,11 +617,10 @@ testSelfTypeProperSupertypeAttributeTuple
 # Formatting qualified names like tuple[int, fallback=b.C.Hidden@5]
 testNewAnalyzerIncrementalMethodNamedTuple
 
-# dataclass
+# dataclass init=False
 testDataclassesDeepInitVarInheritance
-testDataclassesOverriding
+# dataclass
 testDataclassesOverridingWithDefaults
-testDataclassIncompatibleOverrides
 testDataclassMultipleInheritance
 testDataclassIncompatibleFrozenOverride
 testDataclassesFreezing
@@ -1585,6 +1584,8 @@ testMultipleInheritance_MethodDefinitionsIncompatibleOverride
 # classmethod/staticmethod Incompatible with superclass
 testClassMethodSubclassing
 testClassStaticMethodSubclassing
+# "Dataclass attribute may only be overridden by another attribute"
+testDataclassIncompatibleOverrides
 
 # "Return type "int" of "foo" incompatible with return type "str" in supertype "B""
 testPreviousErrorInDecoratedMethodOverride

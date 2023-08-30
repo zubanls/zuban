@@ -191,7 +191,11 @@ pub fn calculate_init_of_dataclass(
                             .add_issue(i_s, IssueType::DataclassNoDefaultAfterDefault);
                     }
                 }
-                if field_infos.init {
+                if field_infos.init
+                    && !params
+                        .iter()
+                        .any(|p| p.name.unwrap().as_str(i_s.db) == name.as_str(i_s.db))
+                {
                     params.push(CallableParam {
                         param_specific: match kw_only {
                             false => ParamSpecific::PositionalOrKeyword(t),
