@@ -15,7 +15,10 @@ use crate::{
     file::PythonFile,
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{LookupKind, LookupResult, OnTypeError, ResultContext},
+    matching::{
+        calculate_callable_type_vars_and_return, LookupKind, LookupResult, OnTypeError,
+        ResultContext, Type,
+    },
     node_ref::NodeRef,
     type_helpers::Callable,
 };
@@ -98,18 +101,33 @@ impl DataclassHelper<'_> {
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         let class = self.0.class(i_s.db);
-        if class.lookup_symbol(i_s, "__init__").is_some() {
+        let class_generics = if class.lookup_symbol(i_s, "__init__").is_some() {
             // If the class has an __init__ method defined, the class itself wins.
             class.execute(i_s, args, result_context, on_type_error);
+            return Inferred::from_type(DbType::Dataclass(self.0.clone()));
         } else {
-            Callable::new(&self.0.__init__, Some(class)).execute(
+            calculate_callable_type_vars_and_return(
                 i_s,
-                args,
-                on_type_error,
+                Callable::new(&self.0.__init__, Some(class)),
+                args.iter(),
+                &|| args.as_node_ref(),
+                false,
                 result_context,
-            );
-        }
-        Inferred::from_type(DbType::Dataclass(self.0.clone()))
+                Some(on_type_error),
+            )
+        };
+        Inferred::from_type(
+            Type::owned(DbType::Dataclass(self.0.clone())).replace_type_var_likes(
+                i_s.db,
+                &mut |usage| {
+                    if class.node_ref.as_link() == usage.in_definition() {
+                        class_generics.lookup_type_var_usage(i_s, None, usage)
+                    } else {
+                        usage.into_generic_item()
+                    }
+                },
+            ),
+        )
     }
 
     pub fn lookup(&self, i_s: &InferenceState, from: NodeRef, name: &str) -> LookupResult {
@@ -259,7 +277,7 @@ pub fn calculate_init_of_dataclass(
         class_name: None,
         defined_at: cls.node_ref.as_link(),
         kind: FunctionKind::Function,
-        type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
+        type_vars: cls.use_cached_type_vars(i_s.db).clone(),
         params: CallableParams::Simple(params.into()),
         result_type: DbType::Any,
     }

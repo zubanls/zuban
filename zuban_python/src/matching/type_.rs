@@ -9,10 +9,10 @@ use super::{
 };
 use crate::arguments::Arguments;
 use crate::database::{
-    CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database, DbType,
-    DoubleStarredParamSpecific, EnumMember, FunctionOverload, GenericClass, GenericItem,
-    GenericsList, MetaclassState, NamedTuple, ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage,
-    ParamSpecific, PointLink, RecursiveAlias, StarredParamSpecific, TupleContent,
+    CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database,
+    Dataclass, DbType, DoubleStarredParamSpecific, EnumMember, FunctionOverload, GenericClass,
+    GenericItem, GenericsList, MetaclassState, NamedTuple, ParamSpecArgument, ParamSpecTypeVars,
+    ParamSpecUsage, ParamSpecific, PointLink, RecursiveAlias, StarredParamSpecific, TupleContent,
     TupleTypeArguments, TypeAlias, TypeArguments, TypeOrTypeVarTuple, TypeVarKind, TypeVarLike,
     TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, UnionEntry,
     UnionType, Variance,
@@ -1490,10 +1490,21 @@ impl<'a> Type<'a> {
             DbType::Self_ => replace_self(),
             DbType::ParamSpecArgs(usage) => todo!(),
             DbType::ParamSpecKwargs(usage) => todo!(),
-            DbType::Dataclass(d) => {
-                debug!("TODO type var remapping for data classes is not implemented");
-                DbType::Dataclass(d.clone())
-            }
+            DbType::Dataclass(d) => DbType::Dataclass(Rc::new({
+                Dataclass {
+                    class: GenericClass {
+                        link: d.class.link,
+                        generics: d.class.generics.map_list(remap_generics),
+                    },
+                    __init__: Self::replace_type_var_likes_and_self_for_callable(
+                        &d.__init__,
+                        db,
+                        callable,
+                        replace_self,
+                    ),
+                    options: d.options,
+                }
+            })),
             DbType::DataclassBuilder(_) => todo!(),
             DbType::NamedTuple(nt) => {
                 let mut constructor = nt.__new__.as_ref().clone();
