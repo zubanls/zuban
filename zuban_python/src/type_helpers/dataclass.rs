@@ -240,6 +240,20 @@ pub fn calculate_init_of_dataclass(
             }
         }
     }
+    if options.order {
+        for method_name in ["__lt__", "__gt__", "__le__", "__ge__"] {
+            if let Some(node_index) = cls
+                .class_storage
+                .class_symbol_table
+                .lookup_symbol(method_name)
+            {
+                NodeRef::new(file, node_index).add_issue(
+                    i_s,
+                    IssueType::DataclassCustomOrderMethodNotAllowed { method_name },
+                );
+            }
+        }
+    }
     CallableContent {
         name: Some(cls.name_string_slice()),
         class_name: None,

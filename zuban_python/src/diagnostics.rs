@@ -195,6 +195,7 @@ pub(crate) enum IssueType {
     DataclassMultipleKwOnly,
     DataclassNoDefaultAfterDefault,
     DataclassOrderEnabledButNotEq,
+    DataclassCustomOrderMethodNotAllowed { method_name: &'static str },
 
     // From --disallow-untyped-defs
     FunctionIsDynamic,
@@ -540,6 +541,9 @@ impl<'db> Diagnostic<'db> {
                 "Attributes without a default cannot follow attributes with one".to_string(),
             DataclassOrderEnabledButNotEq =>
                 r#""eq" must be True if "order" is True"#.to_string(),
+            DataclassCustomOrderMethodNotAllowed { method_name } => format!(
+                r#"You may not have a custom "{method_name}" method when "order" is True"#
+            ),
 
             FunctionIsDynamic => "Function is missing a type annotation".to_string(),
             FunctionMissingReturnAnnotation =>
