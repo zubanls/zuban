@@ -1258,6 +1258,26 @@ impl<'db: 'a, 'a> Class<'a> {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
+        match self.execute_and_return_generics(original_i_s, args, result_context, on_type_error) {
+            ClassExecutionResult::ClassGenerics(generics) => {
+                let result = Inferred::from_type(DbType::Class(GenericClass {
+                    link: self.node_ref.as_link(),
+                    generics,
+                }));
+                debug!("Class execute: {}", result.format_short(original_i_s));
+                result
+            }
+            ClassExecutionResult::Inferred(inf) => inf,
+        }
+    }
+
+    fn execute_and_return_generics(
+        &self,
+        original_i_s: &InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
+        result_context: &mut ResultContext,
+        on_type_error: OnTypeError<'db, '_>,
+    ) -> ClassExecutionResult {
         let i_s = &original_i_s.with_class_context(self);
         let had_type_error = Cell::new(false);
         let d = |_: &FunctionOrCallable, _: &Database| {
@@ -1288,10 +1308,12 @@ impl<'db: 'a, 'a> Class<'a> {
                 Callable::new(o.iter_functions().nth(1).unwrap(), Some(metaclass.class));
             significant_call.execute(i_s, args, on_type_error, result_context);
             if had_type_error.get() {
-                return Inferred::new_any();
+                return ClassExecutionResult::Inferred(Inferred::new_any());
             }
-            return execute_functional_enum(original_i_s, *self, args, result_context)
-                .unwrap_or_else(Inferred::new_any);
+            return ClassExecutionResult::Inferred(
+                execute_functional_enum(original_i_s, *self, args, result_context)
+                    .unwrap_or_else(Inferred::new_any),
+            );
         }
 
         let constructor = self.find_relevant_constructor(i_s);
@@ -1301,7 +1323,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 .into_inferred()
                 .execute_with_details(i_s, args, result_context, on_type_error)
                 .as_db_type(i_s);
-            return Inferred::from_type(match &result {
+            return match &result {
                 // Only subclasses of the current class are valid, otherwise return the current
                 // class. Diagnostics will care about these cases and raise errors when needed.
                 DbType::Class(c)
@@ -1309,13 +1331,13 @@ impl<'db: 'a, 'a> Class<'a> {
                         .is_simple_super_type_of(i_s, &Type::new(&result))
                         .bool() =>
                 {
-                    result
+                    ClassExecutionResult::Inferred(Inferred::from_type(result))
                 }
-                _ => self.as_db_type(i_s.db),
-            });
+                _ => ClassExecutionResult::ClassGenerics(self.generics_as_list(i_s.db)),
+            };
         }
 
-        if let Some(generics) = self.type_check_init_func(
+        match self.type_check_init_func(
             i_s,
             constructor.constructor,
             constructor.init_class,
@@ -1323,14 +1345,8 @@ impl<'db: 'a, 'a> Class<'a> {
             result_context,
             on_type_error,
         ) {
-            let result = Inferred::from_type(DbType::Class(GenericClass {
-                link: self.node_ref.as_link(),
-                generics,
-            }));
-            debug!("Class execute: {}", result.format_short(i_s));
-            result
-        } else {
-            Inferred::new_any()
+            Some(generics) => ClassExecutionResult::ClassGenerics(generics),
+            None => ClassExecutionResult::Inferred(Inferred::new_any()),
         }
     }
 
@@ -1426,6 +1442,11 @@ impl fmt::Debug for Class<'_> {
             .field("type_var_remap", &self.type_var_remap)
             .finish()
     }
+}
+
+pub enum ClassExecutionResult {
+    ClassGenerics(ClassGenerics),
+    Inferred(Inferred),
 }
 
 #[derive(Debug, PartialEq, Eq)]
