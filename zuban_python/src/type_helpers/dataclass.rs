@@ -8,8 +8,8 @@ use parsa_python_ast::{
 use crate::{
     arguments::{Argument, ArgumentKind, Arguments, SimpleArguments},
     database::{
-        CallableContent, CallableParam, CallableParams, Dataclass, DataclassOptions, DbType,
-        FunctionKind, ParamSpecific, Specific, StringSlice,
+        CallableContent, CallableParam, CallableParams, ClassGenerics, Dataclass, DataclassOptions,
+        DbType, FunctionKind, GenericClass, ParamSpecific, Specific, StringSlice,
     },
     diagnostics::IssueType,
     file::PythonFile,
@@ -23,7 +23,7 @@ use crate::{
     type_helpers::Callable,
 };
 
-use super::{Class, Function, TypeOrClass};
+use super::{Class, Function, Instance, TypeOrClass};
 
 pub fn execute_dataclass<'db>(
     i_s: &InferenceState<'db, '_>,
@@ -49,7 +49,10 @@ pub fn execute_dataclass<'db>(
                 let __init__ = calculate_init_of_dataclass(i_s, cls, options);
                 return Inferred::from_type(DbType::Type(Rc::new(DbType::Dataclass(Rc::new(
                     Dataclass {
-                        class: cls.as_generic_class(i_s.db),
+                        class: GenericClass {
+                            link: cls.node_ref.as_link(),
+                            generics: ClassGenerics::NotDefinedYet,
+                        },
                         options,
                         // TODO this is quite obviously wrong.
                         __init__,
@@ -116,18 +119,22 @@ impl DataclassHelper<'_> {
                 Some(on_type_error),
             )
         };
-        Inferred::from_type(
-            Type::owned(DbType::Dataclass(self.0.clone())).replace_type_var_likes(
-                i_s.db,
-                &mut |usage| {
-                    if class.node_ref.as_link() == usage.in_definition() {
-                        class_generics.lookup_type_var_usage(i_s, usage)
-                    } else {
-                        usage.into_generic_item()
-                    }
+        let __init__ = Type::replace_type_var_likes_and_self_for_callable(
+            &self.0.__init__,
+            i_s.db,
+            &mut |usage| class_generics.lookup_type_var_usage(i_s, usage),
+            &|| todo!(),
+        );
+        Inferred::from_type(DbType::Dataclass(Rc::new({
+            Dataclass {
+                class: GenericClass {
+                    link: self.0.class.link,
+                    generics: class_generics.type_arguments_into_class_generics(),
                 },
-            ),
-        )
+                __init__,
+                options: self.0.options,
+            }
+        })))
     }
 
     pub fn lookup(&self, i_s: &InferenceState, from: NodeRef, name: &str) -> LookupResult {
@@ -150,7 +157,12 @@ impl DataclassHelper<'_> {
                 },
             ))));
         }
-        Class::from_generic_class(i_s.db, &self.0.class).lookup(i_s, from, name, LookupKind::Normal)
+        Instance::new(Class::from_generic_class(i_s.db, &self.0.class), None).lookup(
+            i_s,
+            from,
+            name,
+            LookupKind::Normal,
+        )
     }
 }
 pub fn calculate_init_of_dataclass(

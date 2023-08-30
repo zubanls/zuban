@@ -213,7 +213,8 @@ fn reveal_type_info(i_s: &InferenceState, t: Type) -> Box<str> {
                 "{}{}",
                 // Remove the Any part and replace it with the result
                 d.__init__.format(&format_data).trim_end_matches("Any"),
-                t.format(&format_data)
+                Class::with_self_generics(i_s.db, NodeRef::from_link(i_s.db, d.class.link))
+                    .format(&format_data)
             )
             .into();
         }

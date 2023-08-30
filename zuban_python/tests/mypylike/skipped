@@ -634,7 +634,6 @@ testClassmethodShadowingFieldDoesNotCrash
 # : TypeAlias in dataclasses
 testTypeAliasInDataclassDoesNotCrash
 # dataclass random
-testDataclassGenerics
 testDataclassUntypedGenericInheritance
 testDataclassGenericSubtype
 testDataclassGenericInheritance
