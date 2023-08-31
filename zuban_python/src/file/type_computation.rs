@@ -204,6 +204,7 @@ enum TypeContent<'db, 'a> {
         class_link: PointLink,
         generics: ClassGenerics,
     },
+    Dataclass(Rc<Dataclass>),
     TypeAlias(&'db TypeAlias),
     DbType(DbType),
     SpecialType(SpecialType),
@@ -477,15 +478,15 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::ParamSpec(_) | TypeContent::InvalidVariable(_) => {
                 CalculatedBaseClass::Invalid
             }
-            TypeContent::DbType(t @ DbType::Dataclass(_)) => CalculatedBaseClass::DbType(t),
             TypeContent::DbType(DbType::Enum(e)) => CalculatedBaseClass::InvalidEnum(e),
             _ => {
                 let db_type =
                     self.as_db_type(calculated, NodeRef::new(self.inference.file, expr.index()));
                 match db_type {
-                    DbType::Class(..) | DbType::Tuple(_) | DbType::Callable(_) => {
-                        CalculatedBaseClass::DbType(db_type)
-                    }
+                    DbType::Class(..)
+                    | DbType::Tuple(_)
+                    | DbType::Callable(_)
+                    | DbType::Dataclass(_) => CalculatedBaseClass::DbType(db_type),
                     DbType::Type(t) if matches!(t.as_ref(), DbType::Any) => {
                         CalculatedBaseClass::DbType(DbType::new_class(
                             self.inference
@@ -683,6 +684,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 ..
             } => Some(DbType::new_class(class_link, generics)),
             TypeContent::DbType(d) => Some(d),
+            TypeContent::Dataclass(d) => Some(DbType::Dataclass(d)),
             TypeContent::Module(file) => {
                 self.add_module_issue(node_ref, &Module::new(file).qualified_name(db));
                 None
@@ -965,6 +967,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             Some(primary),
                         )
                     }
+                    TypeContent::Dataclass(d) => {
+                        todo!()
+                    }
                     TypeContent::SimpleGeneric {
                         class_link,
                         generics,
@@ -1117,6 +1122,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 let cls = Class::with_undefined_generics(node_ref);
                 self.check_attribute_on_class(cls, primary, name)
             }
+            TypeContent::Dataclass(_) => todo!(),
             TypeContent::SimpleGeneric {
                 class_link,
                 generics,
@@ -2156,7 +2162,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeNameLookup::NewType(n) => TypeContent::DbType(DbType::NewType(n)),
             TypeNameLookup::NamedTupleDefinition(t) => TypeContent::DbType(t),
             TypeNameLookup::Enum(t) => TypeContent::DbType(DbType::Enum(t)),
-            TypeNameLookup::Dataclass(t) => TypeContent::DbType(DbType::Dataclass(t)),
+            TypeNameLookup::Dataclass(d) => TypeContent::Dataclass(d),
             TypeNameLookup::InvalidVariable(t) => TypeContent::InvalidVariable(t),
             TypeNameLookup::Unknown => TypeContent::Unknown,
             TypeNameLookup::SpecialType(special) => TypeContent::SpecialType(special),
