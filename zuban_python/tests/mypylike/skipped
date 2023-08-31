@@ -625,7 +625,7 @@ testDataclassesOverridingWithDefaults
 testDataclassMultipleInheritance
 # "Cannot inherit non-frozen dataclass from a frozen one"
 testDataclassesInconsistentFreezing
-# normal class inheritcs from dataclass
+# normal class inherits from dataclass
 testDataclassOrdering
 # dataclass classmethod
 testDataclassesClassmethods
@@ -636,9 +636,6 @@ testDataclassGenericsClassmethod
 testTypeAliasInDataclassDoesNotCrash
 # dataclass random
 testDataclassMultiGenericInheritance
-testDataclassUpdate8
-testDataclassesDeepInheritance
-testDataclassesOverriding
 testDataclassesForwardRefs
 testDataclassesInitVars
 testDataclassesInitVarsAndDefer
@@ -652,16 +649,13 @@ testNoComplainFieldNoneStrict
 testDeferredDataclassInitSignature
 testDeferredDataclassInitSignatureSubclass
 testDataclassesDefaultsMroOtherFile
-testDataclassesInheritingDuplicateField
 testDataclassHasAttributeWithFields
 testDataclassFieldDoesNotFailOnKwargsUnpacking
 testDataclassFieldWithPositionalArguments
 testDataclassFieldWithTypedDictUnpacking
 testDataclassesAnyInherit
 testDataclassesCallableFrozen
-testDataclassGenericInheritance2
 testDataclassGenericInheritanceSpecialCase1
-testDataclassGenericInheritanceSpecialCase2
 testDataclassGenericWithBound
 testNoCrashOnSelfWithForwardRefGenericDataclass
 testDataclassInitVarCannotBeSet
@@ -2317,6 +2311,7 @@ testErrorCodeAlreadyDefined
 testNewAnalyzerEnumRedefinition
 testNewSyntaxBasics
 testDecoratedClassLine
+testDataclassesInheritingDuplicateField
 # redefinition overload
 testRedefinedOverloadedFunction
 testFakeOverloadCrash

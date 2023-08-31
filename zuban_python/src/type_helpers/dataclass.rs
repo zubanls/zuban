@@ -180,6 +180,15 @@ pub fn calculate_init_of_dataclass(
 
     let mut params: Vec<CallableParam> = vec![];
 
+    let mut add_param = |params: &mut Vec<CallableParam>, new_param: CallableParam| {
+        if !params
+            .iter()
+            .any(|p| p.name.unwrap().as_str(i_s.db) == new_param.name.unwrap().as_str(i_s.db))
+        {
+            params.push(new_param)
+        }
+    };
+
     for (_, c) in cls.mro(i_s.db).rev() {
         if let TypeOrClass::Type(t) = c {
             if let DbType::Dataclass(dataclass) = t.as_ref() {
@@ -194,7 +203,7 @@ pub fn calculate_init_of_dataclass(
                         _ => unreachable!(),
                     };
                     *t = replace_class_type_vars(i_s.db, t, &cls, &|| todo!());
-                    params.push(new_param);
+                    add_param(&mut params, new_param);
                 }
             }
         }
@@ -263,19 +272,18 @@ pub fn calculate_init_of_dataclass(
                             .add_issue(i_s, IssueType::DataclassNoDefaultAfterDefault);
                     }
                 }
-                if field_infos.init
-                    && !params
-                        .iter()
-                        .any(|p| p.name.unwrap().as_str(i_s.db) == name.as_str(i_s.db))
-                {
-                    params.push(CallableParam {
-                        param_specific: match kw_only {
-                            false => ParamSpecific::PositionalOrKeyword(t),
-                            true => ParamSpecific::KeywordOnly(t),
+                if field_infos.init {
+                    add_param(
+                        &mut params,
+                        CallableParam {
+                            param_specific: match kw_only {
+                                false => ParamSpecific::PositionalOrKeyword(t),
+                                true => ParamSpecific::KeywordOnly(t),
+                            },
+                            name: Some(name),
+                            has_default: field_infos.has_default,
                         },
-                        name: Some(name),
-                        has_default: field_infos.has_default,
-                    });
+                    );
                 }
             }
         }
