@@ -1306,7 +1306,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         if !type_var_likes.is_empty() {
             // First check if we can make a SimpleGeneric. This happens if all generics are
             // SimpleGeneric or classes.
-            if let Some(result) = self.maybe_generic_class_without_type_var(
+            if let Some((node_ref, generics)) = self.maybe_generic_class_without_type_var(
                 class,
                 slice_type,
                 &mut generics,
@@ -1314,7 +1314,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 type_var_likes,
                 primary,
             ) {
-                return result;
+                return TypeContent::SimpleGeneric {
+                    node_ref,
+                    class_link: class.node_ref.as_link(),
+                    generics,
+                };
             }
             if generics.is_empty() {
                 // If some generics are given we just continue the iterator, otherwise we start
@@ -1369,7 +1373,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         iterator: &mut impl Iterator<Item = SliceOrSimple<'x>>,
         tvs: &TypeVarLikes,
         primary: Option<Primary>,
-    ) -> Option<TypeContent<'db, 'db>> {
+    ) -> Option<(NodeRef<'db>, ClassGenerics)> {
         if primary.is_none() || self.origin != TypeComputationOrigin::ParamTypeCommentOrAnnotation {
             return None;
         }
@@ -1411,10 +1415,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 Specific::SimpleGeneric,
                 Locality::Todo,
             ));
-            Some(TypeContent::SimpleGeneric {
+            Some((
                 node_ref,
-                class_link: class.node_ref.as_link(),
-                generics: match slice_type.ast_node {
+                match slice_type.ast_node {
                     ASTSliceType::NamedExpression(n) => ClassGenerics::ExpressionWithClassType(
                         PointLink::new(node_ref.file_index(), n.expression().index()),
                     ),
@@ -1423,7 +1426,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     ),
                     ASTSliceType::Slice(_) => unreachable!(),
                 },
-            })
+            ))
         } else {
             None
         }
