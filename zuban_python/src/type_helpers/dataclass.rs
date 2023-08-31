@@ -16,8 +16,8 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{
-        calculate_callable_type_vars_and_return, LookupKind, LookupResult, OnTypeError,
-        ResultContext, Type,
+        calculate_callable_type_vars_and_return, replace_class_type_vars, LookupKind, LookupResult,
+        OnTypeError, ResultContext, Type,
     },
     node_ref::NodeRef,
     type_helpers::Callable,
@@ -186,8 +186,15 @@ pub fn calculate_init_of_dataclass(
                 let CallableParams::Simple(init_params) = &dataclass.__init__.params else {
                     unreachable!();
                 };
+                let cls = dataclass.class(i_s.db);
                 for param in init_params.iter() {
-                    params.push(param.clone());
+                    let mut new_param = param.clone();
+                    let t = match &mut new_param.param_specific {
+                        ParamSpecific::PositionalOrKeyword(t) | ParamSpecific::KeywordOnly(t) => t,
+                        _ => unreachable!(),
+                    };
+                    *t = replace_class_type_vars(i_s.db, t, &cls, &|| todo!());
+                    params.push(new_param);
                 }
             }
         }

@@ -2380,12 +2380,19 @@ impl<'a> Type<'a> {
         result.unwrap_or_else(|| todo!())
     }
 
-    pub fn lookup_symbol(&self, i_s: &InferenceState, name: &str) -> LookupResult {
+    pub fn lookup_symbol<'db: 'a>(
+        &'a self,
+        i_s: &InferenceState<'db, '_>,
+        name: &str,
+    ) -> (Option<Class<'a>>, LookupResult) {
         match self.as_ref() {
             DbType::Class(c) => todo!(),
-            DbType::Dataclass(d) => d.class(i_s.db).lookup_symbol(i_s, name),
-            DbType::Tuple(t) => LookupResult::None, // TODO this probably omits index/count
-            DbType::NamedTuple(nt) => NamedTupleValue::new(i_s.db, nt).lookup(i_s, name),
+            DbType::Dataclass(d) => {
+                let class = d.class(i_s.db);
+                (Some(class), class.lookup_symbol(i_s, name))
+            }
+            DbType::Tuple(t) => (None, LookupResult::None), // TODO this probably omits index/count
+            DbType::NamedTuple(nt) => (None, NamedTupleValue::new(i_s.db, nt).lookup(i_s, name)),
             DbType::Callable(t) => todo!(),
             _ => todo!("{name:?} {self:?}"),
         }

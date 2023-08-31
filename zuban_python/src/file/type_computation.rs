@@ -684,7 +684,18 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 ..
             } => Some(DbType::new_class(class_link, generics)),
             TypeContent::DbType(d) => Some(d),
-            TypeContent::Dataclass(d) => Some(DbType::Dataclass(d)),
+            TypeContent::Dataclass(d) => Some(DbType::Dataclass({
+                let class = Class::from_generic_class(db, &d.class);
+                if class.use_cached_type_vars(db).is_empty() {
+                    d
+                } else {
+                    Rc::new(Dataclass {
+                        class: class.as_generic_class(db), // We need to make all the generics Any
+                        __init__: d.__init__.clone(),
+                        options: d.options,
+                    })
+                }
+            })),
             TypeContent::Module(file) => {
                 self.add_module_issue(node_ref, &Module::new(file).qualified_name(db));
                 None

@@ -877,11 +877,9 @@ impl<'db: 'a, 'a> Class<'a> {
 
     pub fn has_customized_enum_new(&self, i_s: &InferenceState) -> bool {
         for (_, c) in self.mro_maybe_without_object(i_s.db, true) {
-            if c.lookup_symbol(i_s, "__new__")
-                .into_maybe_inferred()
-                .is_some()
-            {
-                let TypeOrClass::Class(class) = c else {
+            let (c, lookup) = c.lookup_symbol(i_s, "__new__");
+            if lookup.into_maybe_inferred().is_some() {
+                let Some(class) = c else {
                     unreachable!()
                 };
                 return class.node_ref.file.file_index()
@@ -918,7 +916,7 @@ impl<'db: 'a, 'a> Class<'a> {
             .mro_maybe_without_object(i_s.db, self.incomplete_mro(i_s.db))
             .skip(ignore_self as usize)
         {
-            let result = c.lookup_symbol(i_s, name);
+            let (_, result) = c.lookup_symbol(i_s, name);
             if !matches!(result, LookupResult::None) {
                 if let TypeOrClass::Class(c) = c {
                     return (result, Some(c), mro_index);
@@ -958,7 +956,7 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn lookup_with_or_without_descriptors_internal(
-        &self,
+        &'a self,
         i_s: &InferenceState<'db, '_>,
         node_ref: NodeRef,
         name: &str,
@@ -1610,9 +1608,13 @@ pub enum TypeOrClass<'a> {
 }
 
 impl<'a> TypeOrClass<'a> {
-    pub fn lookup_symbol(&self, i_s: &InferenceState, name: &str) -> LookupResult {
+    pub fn lookup_symbol<'db: 'a>(
+        &'a self,
+        i_s: &InferenceState<'db, '_>,
+        name: &str,
+    ) -> (Option<Class<'a>>, LookupResult) {
         match self {
-            Self::Class(class) => class.lookup_symbol(i_s, name),
+            Self::Class(class) => (Some(*class), class.lookup_symbol(i_s, name)),
             Self::Type(t) => t.lookup_symbol(i_s, name),
         }
     }

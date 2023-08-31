@@ -234,9 +234,10 @@ impl<'a> Instance<'a> {
         as_self_instance: impl Fn() -> DbType,
     ) -> (TypeOrClass, LookupResult) {
         for (mro_index, class) in self.class.mro(i_s.db).skip(super_count) {
+            let (class_of_lookup, lookup) = class.lookup_symbol(i_s, name);
             // First check class infos
-            let result = class.lookup_symbol(i_s, name).and_then(|inf| {
-                if let TypeOrClass::Class(c) = class {
+            let result = lookup.and_then(|inf| {
+                if let Some(c) = class_of_lookup {
                     let i_s = i_s.with_class_context(&self.class);
                     inf.bind_instance_descriptors(&i_s, as_self_instance(), c, node_ref, mro_index)
                 } else {

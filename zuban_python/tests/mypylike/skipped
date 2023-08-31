@@ -635,7 +635,6 @@ testDataclassGenericsClassmethod
 # : TypeAlias in dataclasses
 testTypeAliasInDataclassDoesNotCrash
 # dataclass random
-testDataclassUntypedGenericInheritance
 testDataclassGenericSubtype
 testDataclassGenericInheritance
 testDataclassMultiGenericInheritance

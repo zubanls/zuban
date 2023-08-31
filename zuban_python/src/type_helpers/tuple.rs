@@ -8,7 +8,6 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{IteratorContent, LookupResult, ResultContext};
 use crate::node_ref::NodeRef;
-use crate::type_helpers::class::TypeOrClass;
 use crate::type_helpers::Instance;
 
 #[derive(Debug, Clone, Copy)]
@@ -41,8 +40,9 @@ impl<'a> Tuple<'a> {
         let tuple_cls = i_s.db.python_state.tuple_class(i_s.db, self.content);
         let tuple_instance = Instance::new(tuple_cls, None);
         for (mro_index, class_or_type) in tuple_cls.mro(i_s.db) {
-            let result = class_or_type.lookup_symbol(i_s, name).and_then(|inf| {
-                let TypeOrClass::Class(cls) = class_or_type else {
+            let (cls, lookup) = class_or_type.lookup_symbol(i_s, name);
+            let result = lookup.and_then(|inf| {
+                let Some(cls) = cls else {
                     unreachable!();
                 };
                 inf.bind_instance_descriptors(
