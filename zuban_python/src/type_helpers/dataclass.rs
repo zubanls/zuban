@@ -142,6 +142,9 @@ impl DataclassHelper<'_> {
 
     pub fn lookup(&self, i_s: &InferenceState, from: NodeRef, name: &str) -> LookupResult {
         if matches!(name, "__lt__" | "__gt__" | "__le__" | "__ge__") {
+            if !self.0.options.order {
+                todo!()
+            }
             return LookupResult::UnknownName(Inferred::from_type(DbType::Callable(Rc::new(
                 CallableContent {
                     name: None,
@@ -160,12 +163,17 @@ impl DataclassHelper<'_> {
                 },
             ))));
         }
-        Instance::new(Class::from_generic_class(i_s.db, &self.0.class), None).lookup(
-            i_s,
-            from,
-            name,
-            LookupKind::Normal,
-        )
+        Instance::new(Class::from_generic_class(i_s.db, &self.0.class), None)
+            .lookup(i_s, from, name, LookupKind::Normal)
+            .and_then(|inf| match inf.as_type(i_s).as_ref() {
+                // Init vars are not actually available on the class. They are just passed to __init__
+                // and are not class members.
+                DbType::Class(c) if c.link == i_s.db.python_state.dataclasses_init_var_link() => {
+                    None
+                }
+                _ => Some(inf),
+            })
+            .unwrap_or(LookupResult::None)
     }
 }
 pub fn calculate_init_of_dataclass(

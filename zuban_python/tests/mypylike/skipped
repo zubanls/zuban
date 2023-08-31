@@ -636,9 +636,6 @@ testDataclassGenericsClassmethod
 testTypeAliasInDataclassDoesNotCrash
 # dataclass random
 testDataclassMultiGenericInheritance
-testDataclassesInitVars
-testDataclassesInitVarsAndDefer
-testDataclassesNoInitInitVarInheritance
 testDataclassesInitVarOverride
 testDataclassesInitVarNoOverride
 testDataclassesInitVarPostInitOverride
@@ -2148,6 +2145,7 @@ testExceptionVariableReuseInDeferredNode4
 testExceptionVariableReuseInDeferredNode5
 testExceptionVariableReuseInDeferredNode6
 testSerializeNamedTuple
+testDataclassesInitVars
 # narrowing with dict keys
 testNarrowTypeForDictKeys
 
