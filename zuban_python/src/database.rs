@@ -991,6 +991,10 @@ impl DbType {
                 generics: ClassGenerics::List(generics),
                 ..
             }) => generics,
+            Self::Dataclass(d) => match &d.class.generics {
+                ClassGenerics::List(generics) => generics,
+                _ => unreachable!(),
+            },
             _ => unreachable!(),
         }
     }

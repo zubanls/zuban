@@ -1502,15 +1502,20 @@ fn linearize_mro(i_s: &InferenceState, class: &Class, bases: Vec<DbType>) -> Box
     let mut base_iterators: Vec<_> = bases
         .iter()
         .map(|t| {
-            let slice = if let DbType::Class(c) = &t {
-                let class = Class::from_generic_class(i_s.db, c);
+            let generic_class = match &t {
+                DbType::Class(c) => Some(c),
+                DbType::Dataclass(d) => Some(&d.class),
+                _ => None,
+            };
+            let super_classes = if let Some(generic_class) = generic_class {
+                let class = Class::from_generic_class(i_s.db, generic_class);
                 let cached_class_infos = class.use_cached_class_infos(i_s.db);
                 cached_class_infos.mro.as_ref()
             } else {
                 &[]
             };
             std::iter::once(t)
-                .chain(slice.iter().map(|base| &base.type_))
+                .chain(super_classes.iter().map(|base| &base.type_))
                 .enumerate()
                 .peekable()
         })
