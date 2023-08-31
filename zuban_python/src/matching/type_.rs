@@ -349,7 +349,11 @@ impl<'a> Type<'a> {
                 _ => Match::new_false(),
             },
             DbType::Dataclass(d1) => match value_type.as_ref() {
-                DbType::Dataclass(d2) => (d1.class == d2.class).into(),
+                DbType::Dataclass(d2) => {
+                    let c1 = Class::from_generic_class(i_s.db, &d1.class);
+                    let c2 = Class::from_generic_class(i_s.db, &d2.class);
+                    Self::matches_class(i_s, matcher, &c1, &c2, Variance::Covariant)
+                }
                 _ => Match::new_false(),
             },
             DbType::DataclassBuilder(_) => todo!(),

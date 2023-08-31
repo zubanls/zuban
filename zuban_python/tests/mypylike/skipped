@@ -636,7 +636,6 @@ testDataclassGenericsClassmethod
 testTypeAliasInDataclassDoesNotCrash
 # dataclass random
 testDataclassMultiGenericInheritance
-testDataclassesForwardRefs
 testDataclassesInitVars
 testDataclassesInitVarsAndDefer
 testDataclassesNoInitInitVarInheritance
