@@ -219,6 +219,15 @@ enum TypeContent<'db, 'a> {
     Unknown,
 }
 
+enum ClassGetItemResult<'db> {
+    GenericClass(GenericClass),
+    SimpleGeneric {
+        node_ref: NodeRef<'db>,
+        class_link: PointLink,
+        generics: ClassGenerics,
+    },
+}
+
 #[derive(Debug)]
 pub(super) enum TypeNameLookup<'db, 'a> {
     Module(&'db PythonFile),
@@ -979,7 +988,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         )
                     }
                     TypeContent::Dataclass(d) => {
-                        todo!()
+                        self.compute_type_get_item_on_dataclass(&d, s, Some(primary))
                     }
                     TypeContent::SimpleGeneric {
                         class_link,
@@ -1288,12 +1297,59 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         }
     }
 
+    fn compute_type_get_item_on_dataclass(
+        &mut self,
+        dataclass: &Dataclass,
+        slice_type: SliceType,
+        primary: Option<Primary>,
+    ) -> TypeContent<'db, 'db> {
+        let db = self.inference.i_s.db;
+        let c = match self.compute_type_get_item_on_class_inner(
+            Class::with_undefined_generics(NodeRef::from_link(db, dataclass.class.link)),
+            slice_type,
+            primary,
+        ) {
+            ClassGetItemResult::GenericClass(c) => c,
+            ClassGetItemResult::SimpleGeneric {
+                node_ref, generics, ..
+            } => GenericClass {
+                link: node_ref.as_link(),
+                generics,
+            },
+        };
+        TypeContent::DbType(DbType::Dataclass(Rc::new(Dataclass {
+            class: c,
+            __init__: dataclass.__init__.clone(),
+            options: dataclass.options,
+        })))
+    }
+
     fn compute_type_get_item_on_class(
         &mut self,
         class: Class,
         slice_type: SliceType,
         primary: Option<Primary>,
     ) -> TypeContent<'db, 'db> {
+        match self.compute_type_get_item_on_class_inner(class, slice_type, primary) {
+            ClassGetItemResult::GenericClass(c) => TypeContent::DbType(DbType::Class(c)),
+            ClassGetItemResult::SimpleGeneric {
+                node_ref,
+                class_link,
+                generics,
+            } => TypeContent::SimpleGeneric {
+                node_ref,
+                class_link,
+                generics,
+            },
+        }
+    }
+
+    fn compute_type_get_item_on_class_inner(
+        &mut self,
+        class: Class,
+        slice_type: SliceType,
+        primary: Option<Primary>,
+    ) -> ClassGetItemResult<'db> {
         if !matches!(class.generics(), Generics::None | Generics::NotDefinedYet) {
             todo!();
             //return TypeContent::InvalidVariable(InvalidVariableType::Other);
@@ -1314,7 +1370,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 type_var_likes,
                 primary,
             ) {
-                return TypeContent::SimpleGeneric {
+                return ClassGetItemResult::SimpleGeneric {
                     node_ref,
                     class_link: class.node_ref.as_link(),
                     generics,
@@ -1344,23 +1400,24 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 );
             },
         );
-        TypeContent::DbType(match type_var_likes.is_empty() {
-            true => DbType::new_class(class.node_ref.as_link(), ClassGenerics::None),
-            false => {
-                // Need to fill the generics, because we might have been in a
-                // SimpleGeneric case where the generic count is wrong.
-                if generics.is_empty() {
-                    for missing_type_var in type_var_likes.iter().skip(generics.len()) {
-                        generics.push(missing_type_var.as_any_generic_item())
+        ClassGetItemResult::GenericClass(GenericClass {
+            link: class.node_ref.as_link(),
+            generics: match type_var_likes.is_empty() {
+                true => ClassGenerics::None,
+                false => {
+                    // Need to fill the generics, because we might have been in a
+                    // SimpleGeneric case where the generic count is wrong.
+                    if generics.is_empty() {
+                        for missing_type_var in type_var_likes.iter().skip(generics.len()) {
+                            generics.push(missing_type_var.as_any_generic_item())
+                        }
+                        let expected_count = type_var_likes.len();
+                        generics.truncate(expected_count);
                     }
-                    let expected_count = type_var_likes.len();
-                    generics.truncate(expected_count);
+
+                    ClassGenerics::List(GenericsList::generics_from_vec(generics))
                 }
-                DbType::new_class(
-                    class.node_ref.as_link(),
-                    ClassGenerics::List(GenericsList::generics_from_vec(generics)),
-                )
-            }
+            },
         })
     }
 
@@ -2407,6 +2464,20 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             slice_type,
             from_alias_definition,
             compute_type_get_item_on_class(class, slice_type, None)
+        )
+    }
+
+    pub fn compute_type_application_on_dataclass(
+        &mut self,
+        dataclass: &Dataclass,
+        slice_type: SliceType,
+        from_alias_definition: bool,
+    ) -> Inferred {
+        compute_type_application!(
+            self,
+            slice_type,
+            from_alias_definition,
+            compute_type_get_item_on_dataclass(dataclass, slice_type, None)
         )
     }
 

@@ -2431,6 +2431,10 @@ impl<'a> Type<'a> {
                 DbType::Class(c) => {
                     Class::from_generic_class(i_s.db, c).get_item(i_s, slice_type, result_context)
                 }
+                DbType::Dataclass(d) => slice_type
+                    .file
+                    .inference(i_s)
+                    .compute_type_application_on_dataclass(d, *slice_type, false),
                 t @ DbType::Enum(_) => {
                     let enum_index = slice_type.infer(i_s);
                     if !enum_index
