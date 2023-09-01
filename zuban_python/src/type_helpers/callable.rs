@@ -130,11 +130,14 @@ pub fn format_pretty_callable(format_data: &FormatData, callable: &CallableConte
                 &format!("*{spec}.args, **{spec}.kwargs"),
             )
         }
-        CallableParams::Any => format!(
-            "def {name}(*Any, **Any) -> {}",
-            callable.result_type.format(format_data)
-        )
-        .into(),
+        CallableParams::Any => {
+            let mut s = format!("def {name}(*Any, **Any)");
+            if callable.result_type != DbType::None {
+                s += " -> ";
+                s += &callable.result_type.format(format_data);
+            }
+            s.into()
+        }
     }
 }
 
