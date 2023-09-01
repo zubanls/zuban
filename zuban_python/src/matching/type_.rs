@@ -1951,7 +1951,14 @@ impl<'a> Type<'a> {
             }
             DbType::ParamSpecArgs(usage) => todo!(),
             DbType::ParamSpecKwargs(usage) => todo!(),
-            DbType::Dataclass(_) => todo!(),
+            DbType::Dataclass(d) => DbType::Dataclass(Rc::new(Dataclass {
+                class: GenericClass {
+                    link: d.class.link,
+                    generics: d.class.generics.map_list(rewrite_generics),
+                },
+                __init__: d.__init__.clone(),
+                options: d.options,
+            })),
             DbType::DataclassBuilder(_) => todo!(),
             DbType::NamedTuple(_) => todo!(),
             DbType::Enum(_) => todo!(),

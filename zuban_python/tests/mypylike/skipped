@@ -634,6 +634,8 @@ testDataclassesInitVarNoOverride
 # __dataclass_fields__
 testDataclassHasAttributeWithFields
 testDataclassFieldsProtocol
+testDataclassCheckTypeVarBounds
+testDataclassCheckTypeVarBoundsInReprocess
 # overrides
 testDataclassesOverridingWithDefaults
 # inheritance access
@@ -652,6 +654,8 @@ testDataclassGenericsClassmethod
 testDataclassGenericInheritanceSpecialCase1
 testDataclassGenericWithBound
 testNoCrashOnSelfWithForwardRefGenericDataclass
+testDeferredDataclassInitSignature
+testDeferredDataclassInitSignatureSubclass
 # : TypeAlias in dataclasses
 testTypeAliasInDataclassDoesNotCrash
 # : Final in dataclasses
@@ -665,18 +669,17 @@ testDataclassUpdate6
 testDataclassesAnyInherit
 # Generic lookups
 testDataclassMultiGenericInheritance
-# dataclass random
-testDataclassCheckTypeVarBounds
 testNoCrashOnNestedGenericCallable
-testDataclassCheckTypeVarBoundsInReprocess
+# InitVar set default
+testDataclassInitVarCannotBeSet
+# context with optional
 testNoComplainFieldNone
 testNoComplainFieldNoneStrict
-testDeferredDataclassInitSignature
-testDeferredDataclassInitSignatureSubclass
+# multi inheritance "Attributes without a default cannot follow attributes with one"
 testDataclassesDefaultsMroOtherFile
-testDataclassFieldWithPositionalArguments
-testDataclassesOrderingKwOnlyWithSentinelAndFieldOverride
 testDataclassesOrderingKwOnlyWithSentinelAndSubclass
+# kw_only=false
+testDataclassesOrderingKwOnlyWithSentinelAndFieldOverride
 # dataclasses.replace
 testReplaceUnion
 testReplaceUnionOfTypeVar
@@ -1036,6 +1039,7 @@ testOverloadedMethodsInProtocols
 testProtocolIncompatibilityWithManyOverloads
 testMatchProtocolAgainstOverloadWithAmbiguity
 testProtocolClassObjectInstanceMethodOverloaded
+testDataclassFieldWithPositionalArguments
 # param order ignored
 testProtocolClassObjectInstanceMethod
 testProtocolClassObjectInstanceMethodArg
