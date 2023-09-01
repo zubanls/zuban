@@ -82,6 +82,7 @@ pub fn execute_dataclass<'db>(
                 "frozen" => assign_option(&mut options.frozen, arg),
                 "order" => assign_option(&mut options.order, arg),
                 "eq" => assign_option(&mut options.eq, arg),
+                "init" => assign_option(&mut options.init, arg),
                 _ => todo!("{key}"),
             }
         } else {

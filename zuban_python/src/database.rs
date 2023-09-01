@@ -1083,6 +1083,7 @@ impl DbType {
             | Self::Super { .. }
             | Self::Enum(_)
             | Self::EnumMember(_)
+            | Self::DataclassBuilder(_)
             | Self::NewType(_) => (),
             Self::RecursiveAlias(rec) => {
                 if let Some(generics) = rec.generics.as_ref() {
@@ -1091,8 +1092,10 @@ impl DbType {
             }
             Self::ParamSpecArgs(usage) => todo!(),
             Self::ParamSpecKwargs(usage) => todo!(),
-            Self::Dataclass(_) => todo!(),
-            Self::DataclassBuilder(_) => todo!(),
+            Self::Dataclass(d) => match &d.class.generics {
+                ClassGenerics::List(generics) => search_in_generics(found_type_var, generics),
+                _ => (),
+            },
             Self::NamedTuple(_) => {
                 debug!("TODO do we need to support namedtuple searching for type vars?");
             }
