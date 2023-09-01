@@ -976,7 +976,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     let i_s = i_s.with_class_context(&in_class);
                     inf.bind_class_descriptors(&i_s, self, in_class, node_ref, use_descriptors)
                 } else {
-                    todo!()
+                    Some(inf)
                 }
             });
             (result, in_class)

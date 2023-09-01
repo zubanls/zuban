@@ -655,7 +655,6 @@ testFinalInDataclass
 testDataclassSelfType
 # dataclass random
 testDataclassUpdate6
-testIncrementalDataclassesSubclassingCached
 testIncrementalDataclassesDunder
 testIncrementalDataclassesThreeFiles
 testDataclassesAnyInherit
