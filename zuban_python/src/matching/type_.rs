@@ -134,6 +134,25 @@ impl<'a> Type<'a> {
                     let cls = Class::from_generic_class(i_s.db, c);
                     return cls.find_relevant_constructor(i_s).maybe_callable(i_s, cls);
                 }
+                DbType::Dataclass(d) => {
+                    let cls = Class::from_generic_class(i_s.db, &d.class);
+                    if d.options.init {
+                        let mut init = d.__init__.clone();
+                        if d.class.generics != ClassGenerics::NotDefinedYet
+                            || cls.use_cached_type_vars(i_s.db).is_empty()
+                        {
+                            init.result_type = t.as_ref().clone();
+                        } else {
+                            let mut type_var_dataclass = (**d).clone();
+                            type_var_dataclass.class =
+                                Class::with_self_generics(i_s.db, cls.node_ref)
+                                    .as_generic_class(i_s.db);
+                            init.result_type = DbType::Dataclass(Rc::new(type_var_dataclass));
+                        }
+                        return Some(CallableLike::Callable(Rc::new(init)));
+                    }
+                    return cls.find_relevant_constructor(i_s).maybe_callable(i_s, cls);
+                }
                 _ => {
                     /*
                     if matches!(&c1.params, CallableParams::Any) {
@@ -2911,4 +2930,13 @@ impl RecursiveAlias {
 pub enum CallableLike {
     Callable(Rc<CallableContent>),
     Overload(Rc<FunctionOverload>),
+}
+
+impl CallableLike {
+    pub fn format(self, format_data: &FormatData) -> String {
+        match self {
+            Self::Callable(c) => c.format(format_data),
+            Self::Overload(overload) => todo!(),
+        }
+    }
 }

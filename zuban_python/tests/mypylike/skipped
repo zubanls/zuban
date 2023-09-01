@@ -618,7 +618,6 @@ testSelfTypeProperSupertypeAttributeTuple
 testNewAnalyzerIncrementalMethodNamedTuple
 
 # dataclass init=False
-testDataclassesDeepInitVarInheritance
 testDataclassesInitVarNoOverride
 testDataclassesInitVarPostInitOverride
 # __post_init__

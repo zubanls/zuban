@@ -108,6 +108,7 @@ impl DataclassHelper<'_> {
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         let class = self.0.class(i_s.db);
+        dbg!(self.0.options.init || class.lookup_symbol(i_s, "__init__").is_some());
         let class_generics =
             if !self.0.options.init || class.lookup_symbol(i_s, "__init__").is_some() {
                 // If the class has an __init__ method defined, the class itself wins.
@@ -187,7 +188,7 @@ pub fn calculate_init_of_dataclass(
 
     let mut params: Vec<CallableParam> = vec![];
 
-    let mut add_param = |params: &mut Vec<CallableParam>, new_param: CallableParam| {
+    let add_param = |params: &mut Vec<CallableParam>, new_param: CallableParam| {
         if !params
             .iter()
             .any(|p| p.name.unwrap().as_str(i_s.db) == new_param.name.unwrap().as_str(i_s.db))

@@ -206,17 +206,14 @@ impl RevealTypeFunction {
 
 fn reveal_type_info(i_s: &InferenceState, t: Type) -> Box<str> {
     let format_data = FormatData::with_style(i_s.db, FormatStyle::MypyRevealType);
-    if let DbType::Type(t) = t.as_ref() {
-        if let DbType::Dataclass(d) = t.as_ref() {
-            // For whatever reason Mypy formats dataclasses and types as a callable.
-            return format!(
-                "{}{}",
-                // Remove the Any part and replace it with the result
-                d.__init__.format(&format_data).trim_end_matches("Any"),
-                Class::with_self_generics(i_s.db, NodeRef::from_link(i_s.db, d.class.link))
-                    .format(&format_data)
-            )
-            .into();
+    if let DbType::Type(type_) = t.as_ref() {
+        if let DbType::Dataclass(d) = type_.as_ref() {
+            let class = d.class(i_s.db);
+            return t
+                .maybe_callable(i_s)
+                .unwrap_or_else(|| todo!())
+                .format(&format_data)
+                .into();
         }
     }
     t.format(&format_data)
