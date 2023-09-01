@@ -638,6 +638,7 @@ testDataclassFieldsProtocol
 testDataclassesOverridingWithDefaults
 # inheritance access
 testDataclassMultipleInheritance
+testIncrementalDataclassesThreeFiles
 # "Cannot inherit non-frozen dataclass from a frozen one"
 testDataclassesInconsistentFreezing
 # normal class inherits from dataclass
@@ -647,22 +648,24 @@ testDataclassesClassmethods
 testDataclassesOverloadsAndClassmethods
 testClassmethodShadowingFieldDoesNotCrash
 testDataclassGenericsClassmethod
+# dataclass circular inheritance
+testDataclassGenericInheritanceSpecialCase1
+testDataclassGenericWithBound
+testNoCrashOnSelfWithForwardRefGenericDataclass
 # : TypeAlias in dataclasses
 testTypeAliasInDataclassDoesNotCrash
 # : Final in dataclasses
 testFinalInDataclass
 # dataclass self type
 testDataclassSelfType
-# dataclass random
-testDataclassUpdate6
+# dataclass order
 testIncrementalDataclassesDunder
-testIncrementalDataclassesThreeFiles
+testDataclassUpdate6
+# any base class
 testDataclassesAnyInherit
-testDataclassGenericInheritanceSpecialCase1
+# Generic lookups
 testDataclassMultiGenericInheritance
-testDataclassGenericWithBound
-testNoCrashOnSelfWithForwardRefGenericDataclass
-testDataclassInitVarCannotBeSet
+# dataclass random
 testDataclassCheckTypeVarBounds
 testNoCrashOnNestedGenericCallable
 testDataclassCheckTypeVarBoundsInReprocess
