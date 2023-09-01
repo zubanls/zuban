@@ -619,7 +619,6 @@ testNewAnalyzerIncrementalMethodNamedTuple
 
 # dataclass init=False
 testDataclassesDeepInitVarInheritance
-testDataclassesInitVarOverride
 testDataclassesInitVarNoOverride
 testDataclassesInitVarPostInitOverride
 # __post_init__
@@ -658,7 +657,6 @@ testFinalInDataclass
 # dataclass self type
 testDataclassSelfType
 # dataclass random
-testIncrementalDataclassesArguments
 testDataclassUpdate6
 testIncrementalDataclassesSubclassingCached
 testIncrementalDataclassesDunder

@@ -108,21 +108,22 @@ impl DataclassHelper<'_> {
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         let class = self.0.class(i_s.db);
-        let class_generics = if class.lookup_symbol(i_s, "__init__").is_some() {
-            // If the class has an __init__ method defined, the class itself wins.
-            class.execute(i_s, args, result_context, on_type_error);
-            return Inferred::from_type(DbType::Dataclass(self.0.clone()));
-        } else {
-            calculate_callable_type_vars_and_return(
-                i_s,
-                Callable::new(&self.0.__init__, Some(class)),
-                args.iter(),
-                &|| args.as_node_ref(),
-                false,
-                result_context,
-                Some(on_type_error),
-            )
-        };
+        let class_generics =
+            if !self.0.options.init || class.lookup_symbol(i_s, "__init__").is_some() {
+                // If the class has an __init__ method defined, the class itself wins.
+                class.execute(i_s, args, result_context, on_type_error);
+                return Inferred::from_type(DbType::Dataclass(self.0.clone()));
+            } else {
+                calculate_callable_type_vars_and_return(
+                    i_s,
+                    Callable::new(&self.0.__init__, Some(class)),
+                    args.iter(),
+                    &|| args.as_node_ref(),
+                    false,
+                    result_context,
+                    Some(on_type_error),
+                )
+            };
         let __init__ = Type::replace_type_var_likes_and_self_for_callable(
             &self.0.__init__,
             i_s.db,
@@ -142,10 +143,7 @@ impl DataclassHelper<'_> {
     }
 
     pub fn lookup(&self, i_s: &InferenceState, from: NodeRef, name: &str) -> LookupResult {
-        if matches!(name, "__lt__" | "__gt__" | "__le__" | "__ge__") {
-            if !self.0.options.order {
-                todo!()
-            }
+        if self.0.options.order && matches!(name, "__lt__" | "__gt__" | "__le__" | "__ge__") {
             return LookupResult::UnknownName(Inferred::from_type(DbType::Callable(Rc::new(
                 CallableContent {
                     name: None,
