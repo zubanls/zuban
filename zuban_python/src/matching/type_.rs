@@ -2410,10 +2410,7 @@ impl<'a> Type<'a> {
     ) -> (Option<Class<'a>>, LookupResult) {
         match self.as_ref() {
             DbType::Class(c) => todo!(),
-            DbType::Dataclass(d) => {
-                let class = d.class(i_s.db);
-                (Some(class), class.lookup_symbol(i_s, name))
-            }
+            DbType::Dataclass(d) => DataclassHelper(d).lookup_symbol(i_s, name),
             DbType::Tuple(t) => (None, LookupResult::None), // TODO this probably omits index/count
             DbType::NamedTuple(nt) => (None, NamedTupleValue::new(i_s.db, nt).lookup(i_s, name)),
             DbType::Callable(t) => todo!(),

@@ -99,7 +99,7 @@ pub fn execute_dataclass<'db>(
 
 pub struct DataclassHelper<'a>(pub &'a Rc<Dataclass>);
 
-impl DataclassHelper<'_> {
+impl<'a> DataclassHelper<'a> {
     pub fn initialize<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
@@ -108,7 +108,6 @@ impl DataclassHelper<'_> {
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         let class = self.0.class(i_s.db);
-        dbg!(self.0.options.init || class.lookup_symbol(i_s, "__init__").is_some());
         let class_generics =
             if !self.0.options.init || class.lookup_symbol(i_s, "__init__").is_some() {
                 // If the class has an __init__ method defined, the class itself wins.
@@ -175,7 +174,25 @@ impl DataclassHelper<'_> {
             })
             .unwrap_or(LookupResult::None)
     }
+
+    pub fn lookup_symbol<'db: 'a>(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        name: &str,
+    ) -> (Option<Class<'a>>, LookupResult) {
+        if self.0.options.init && name == "__init__" {
+            return (
+                None,
+                LookupResult::UnknownName(Inferred::from_type(DbType::Callable(Rc::new(
+                    self.0.__init__.clone(),
+                )))),
+            );
+        }
+        let class = self.0.class(i_s.db);
+        (Some(class), class.lookup_symbol(i_s, name))
+    }
 }
+
 pub fn calculate_init_of_dataclass(
     i_s: &InferenceState,
     cls: Class,

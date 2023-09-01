@@ -229,10 +229,13 @@ impl<'db: 'slf, 'slf> Inferred {
             .unwrap()
             .1;
         // Mro classes are never owned, because they are saved on classes.
-        let TypeOrClass::Class(class) = class_t else {
-            unreachable!()
-        };
-        class
+        match class_t {
+            TypeOrClass::Class(class) => class,
+            TypeOrClass::Type(t) => match t.expect_borrowed_db_type() {
+                DbType::Dataclass(d) => Class::from_generic_class(i_s.db, &d.class),
+                _ => unreachable!(),
+            },
+        }
     }
     pub fn maybe_type_var_like(&self, i_s: &InferenceState<'db, '_>) -> Option<TypeVarLike> {
         if let InferredState::Saved(definition) = self.state {

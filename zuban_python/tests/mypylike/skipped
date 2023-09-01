@@ -617,9 +617,6 @@ testSelfTypeProperSupertypeAttributeTuple
 # Formatting qualified names like tuple[int, fallback=b.C.Hidden@5]
 testNewAnalyzerIncrementalMethodNamedTuple
 
-# dataclass init=False
-testDataclassesInitVarNoOverride
-testDataclassesInitVarPostInitOverride
 # __post_init__
 testDataclassesInitVarIncremental
 testPostInitCorrectSignature
@@ -633,6 +630,7 @@ testPostInitDecoratedMethodError
 testPostInitIsNotAFunction
 testPostInitClassMethod
 testPostInitStaticMethod
+testDataclassesInitVarNoOverride
 # __dataclass_fields__
 testDataclassHasAttributeWithFields
 testDataclassFieldsProtocol
