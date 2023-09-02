@@ -1521,13 +1521,17 @@ impl<'a> Type<'a> {
             DbType::ParamSpecArgs(usage) => todo!(),
             DbType::ParamSpecKwargs(usage) => todo!(),
             DbType::Dataclass(d) => DbType::Dataclass({
-                Dataclass::new(
-                    GenericClass {
-                        link: d.class.link,
-                        generics: d.class.generics.map_list(remap_generics),
-                    },
-                    d.options,
-                )
+                if matches!(d.class.generics, ClassGenerics::List(_)) {
+                    Dataclass::new(
+                        GenericClass {
+                            link: d.class.link,
+                            generics: d.class.generics.map_list(remap_generics),
+                        },
+                        d.options,
+                    )
+                } else {
+                    d.clone()
+                }
             }),
             DbType::DataclassBuilder(_) => todo!(),
             DbType::NamedTuple(nt) => {
