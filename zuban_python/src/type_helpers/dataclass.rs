@@ -63,6 +63,13 @@ pub fn execute_dataclass<'db>(
     if options.is_some() {
         todo!()
     }
+    todo!()
+}
+
+pub fn check_dataclass_options<'db>(
+    i_s: &InferenceState<'db, '_>,
+    args: &SimpleArguments<'db, '_>,
+) -> DataclassOptions {
     let mut options = DataclassOptions::default();
     let assign_option = |target: &mut _, arg: Argument<'db, '_>| {
         let result = arg.infer(i_s, &mut ResultContext::ExpectLiteral);
@@ -91,7 +98,7 @@ pub fn execute_dataclass<'db>(
         args.as_node_ref()
             .add_issue(i_s, IssueType::DataclassOrderEnabledButNotEq);
     }
-    Inferred::from_type(DbType::DataclassBuilder(options))
+    options
 }
 
 pub struct DataclassHelper<'a>(pub &'a Rc<Dataclass>);

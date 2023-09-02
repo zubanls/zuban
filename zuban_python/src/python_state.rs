@@ -275,6 +275,14 @@ impl PythonState {
         s.mypy_extensions_kw_arg_func =
             set_mypy_extension_specific(mypy_extensions, "KwArg", Specific::MypyExtensionsKwArg);
 
+        db.python_state.dataclasses_dataclass_index = db
+            .python_state
+            .dataclasses_file()
+            .symbol_table
+            .lookup_symbol("dataclass")
+            .unwrap()
+            - NAME_TO_FUNCTION_DIFF;
+
         // Set class indexes and calculate the base types.
         // This needs to be done before it gets accessed, because we expect the MRO etc. to be
         // calculated when a class is accessed. Normally this happens on access, but here we access
@@ -355,13 +363,6 @@ impl PythonState {
         cache_index!(abc_abstractproperty_index, db, abc, "abstractproperty");
         cache_index!(dataclasses_kw_only_index, db, dataclasses_file, "KW_ONLY");
         cache_index!(dataclasses_init_var_index, db, dataclasses_file, "InitVar");
-        db.python_state.dataclasses_dataclass_index = db
-            .python_state
-            .dataclasses_file()
-            .symbol_table
-            .lookup_symbol("dataclass")
-            .unwrap()
-            - NAME_TO_FUNCTION_DIFF;
         db.python_state.dataclasses_field_index = db
             .python_state
             .dataclasses_file()
@@ -671,6 +672,14 @@ impl PythonState {
         PointLink::new(self.typing().file_index(), self.typing_async_iterable_index)
     }
 
+    pub fn dataclasses_dataclass(&self) -> PointLink {
+        debug_assert!(self.dataclasses_dataclass_index != 0);
+        PointLink::new(
+            self.dataclasses_file().file_index(),
+            self.dataclasses_dataclass_index,
+        )
+    }
+
     pub fn dataclasses_kw_only_link(&self) -> PointLink {
         debug_assert!(self.dataclasses_kw_only_index != 0);
         PointLink::new(
@@ -789,7 +798,6 @@ fn typing_changes(
     set_typing_inference(typing, "cast", Specific::TypingCast);
 
     set_typing_inference(collections, "namedtuple", Specific::CollectionsNamedTuple);
-    set_typing_inference(dataclasses, "dataclass", Specific::DataclassesDataclass);
 
     setup_type_alias(typing, "Tuple", builtins, "tuple");
     setup_type_alias(typing, "List", builtins, "list");
@@ -844,7 +852,6 @@ fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
         "Self",
         "reveal_type",
         "assert_type",
-        "dataclass",
         "dataclass_transform",
         "super",
     ]

@@ -4,19 +4,20 @@ use std::rc::Rc;
 
 use parsa_python_ast::{
     Argument, AssignmentContent, AsyncStmtContent, BlockContent, ClassDef, Decoratee,
-    SimpleStmtContent, SimpleStmts, StmtContent, StmtOrError, Target,
+    ExpressionContent, ExpressionPart, PrimaryContent, SimpleStmtContent, SimpleStmts, StmtContent,
+    StmtOrError, Target,
 };
 
 use super::enum_::execute_functional_enum;
 use super::function::OverloadResult;
 use super::{Callable, Instance, Module, NamedTupleValue};
-use crate::arguments::{Arguments, KnownArguments, NoArguments};
+use crate::arguments::{Arguments, KnownArguments, NoArguments, SimpleArguments};
 use crate::database::{
     BaseClass, CallableContent, CallableParam, CallableParams, ClassGenerics, ClassInfos,
-    ClassStorage, ClassType, ComplexPoint, Database, DbType, Enum, EnumMemberDefinition,
-    FormatStyle, FunctionKind, GenericClass, GenericsList, Locality, MetaclassState, MroIndex,
-    NamedTuple, ParamSpecific, ParentScope, Point, PointLink, PointType, StringSlice, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes, Variance,
+    ClassStorage, ClassType, ComplexPoint, Database, Dataclass, DataclassOptions, DbType, Enum,
+    EnumMemberDefinition, FormatStyle, FunctionKind, GenericClass, GenericsList, Locality,
+    MetaclassState, MroIndex, NamedTuple, ParamSpecific, ParentScope, Point, PointLink, PointType,
+    StringSlice, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -36,6 +37,7 @@ use crate::matching::{
 };
 use crate::node_ref::NodeRef;
 use crate::python_state::NAME_TO_FUNCTION_DIFF;
+use crate::type_helpers::dataclass::check_dataclass_options;
 use crate::type_helpers::enum_::infer_value_on_member;
 use crate::type_helpers::format_pretty_callable;
 
@@ -296,10 +298,54 @@ impl<'db: 'a, 'a> Class<'a> {
         }
 
         debug_assert!(!name_def.point().calculated());
+        let mut was_dataclass = None;
         let maybe_decorated = self.node().maybe_decorated();
-        if maybe_decorated.is_some() {
+        if let Some(decorated) = maybe_decorated {
             name_def.set_point(Point::new_calculating());
-        } else {
+            let mut inference = self.node_ref.file.inference(i_s);
+
+            let mut dataclass_options = None;
+            let dataclass_link = i_s.db.python_state.dataclasses_dataclass();
+            for decorator in decorated.decorators().iter() {
+                let expr = decorator.named_expression().expression();
+                if let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) =
+                    expr.unpack()
+                {
+                    if inference
+                        .infer_primary_or_atom(primary.first())
+                        .maybe_saved_link()
+                        == Some(dataclass_link)
+                    {
+                        if let PrimaryContent::Execution(exec) = primary.second() {
+                            let args = SimpleArguments::new(
+                                *i_s,
+                                self.node_ref.file,
+                                primary.index(),
+                                exec,
+                            );
+                            dataclass_options = Some(check_dataclass_options(i_s, &args));
+                            continue;
+                        }
+                    }
+                }
+                if inference.infer_expression(expr).maybe_saved_link() == Some(dataclass_link) {
+                    dataclass_options = Some(DataclassOptions::default());
+                }
+            }
+            if let Some(dataclass_options) = dataclass_options {
+                let dataclass = Dataclass::new(
+                    GenericClass {
+                        link: self.node_ref.as_link(),
+                        generics: ClassGenerics::NotDefinedYet,
+                    },
+                    dataclass_options,
+                );
+                was_dataclass = Some(dataclass.clone());
+                let new_t = DbType::Type(Rc::new(DbType::Dataclass(dataclass)));
+                Inferred::from_type(new_t).save_redirect(i_s, name_def.file, name_def.node_index);
+            }
+        }
+        if was_dataclass.is_none() {
             // TODO it is questionable that we are just marking this as OK, because it could be an
             // Enum.
             name_def.set_point(Point::new_redirect(
@@ -362,12 +408,12 @@ impl<'db: 'a, 'a> Class<'a> {
                     ),
                 );
             }
-            let saved = inferred.save_redirect(i_s, name_def.file, name_def.node_index);
-            if let DbType::Type(t) = saved.as_type(i_s).as_ref() {
-                if let DbType::Dataclass(d) = t.as_ref() {
-                    d.__init__(i_s.db);
-                }
-            }
+            // TODO for now don't save classdecorators, becaues they are really not used in mypy.
+            // let saved = inferred.save_redirect(i_s, name_def.file, name_def.node_index);
+        }
+
+        if let Some(dataclass) = was_dataclass {
+            dataclass.__init__(i_s.db);
         }
 
         if let Some(enum_) = was_enum {
