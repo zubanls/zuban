@@ -698,11 +698,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 if class.use_cached_type_vars(db).is_empty() {
                     d
                 } else {
-                    Rc::new(Dataclass {
-                        class: class.as_generic_class(db), // We need to make all the generics Any
-                        __init__: d.__init__.clone(),
-                        options: d.options,
-                    })
+                    Dataclass::new(
+                        class.as_generic_class(db), // We need to make all the generics Any
+                        d.options,
+                    )
                 }
             })),
             TypeContent::Module(file) => {
@@ -1317,11 +1316,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 generics,
             },
         };
-        TypeContent::DbType(DbType::Dataclass(Rc::new(Dataclass {
-            class: c,
-            __init__: dataclass.__init__.clone(),
-            options: dataclass.options,
-        })))
+        TypeContent::DbType(DbType::Dataclass(Dataclass::new(c, dataclass.options)))
     }
 
     fn compute_type_get_item_on_class(

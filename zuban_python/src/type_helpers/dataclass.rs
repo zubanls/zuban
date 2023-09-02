@@ -8,8 +8,8 @@ use parsa_python_ast::{
 use crate::{
     arguments::{Argument, ArgumentKind, Arguments, SimpleArguments},
     database::{
-        CallableContent, CallableParam, CallableParams, ClassGenerics, Dataclass, DataclassOptions,
-        DbType, FunctionKind, GenericClass, ParamSpecific, Specific, StringSlice,
+        CallableContent, CallableParam, CallableParams, ClassGenerics, Database, Dataclass,
+        DataclassOptions, DbType, FunctionKind, GenericClass, ParamSpecific, Specific, StringSlice,
     },
     diagnostics::IssueType,
     file::PythonFile,
@@ -46,18 +46,15 @@ pub fn execute_dataclass<'db>(
                 .maybe_type_of_class(i_s.db)
             {
                 let options = options.unwrap_or(Default::default());
-                let __init__ = calculate_init_of_dataclass(i_s, cls, options);
-                return Inferred::from_type(DbType::Type(Rc::new(DbType::Dataclass(Rc::new(
-                    Dataclass {
-                        class: GenericClass {
+                return Inferred::from_type(DbType::Type(Rc::new(DbType::Dataclass(
+                    Dataclass::new(
+                        GenericClass {
                             link: cls.node_ref.as_link(),
                             generics: ClassGenerics::NotDefinedYet,
                         },
                         options,
-                        // TODO this is quite obviously wrong.
-                        __init__,
-                    },
-                )))));
+                    ),
+                ))));
             } else {
                 todo!()
             }
@@ -108,6 +105,7 @@ impl<'a> DataclassHelper<'a> {
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         let class = self.0.class(i_s.db);
+        let __init__ = self.0.__init__(i_s.db);
         let class_generics =
             if !self.0.options.init || class.lookup_symbol(i_s, "__init__").is_some() {
                 // If the class has an __init__ method defined, the class itself wins.
@@ -116,7 +114,7 @@ impl<'a> DataclassHelper<'a> {
             } else {
                 calculate_callable_type_vars_and_return(
                     i_s,
-                    Callable::new(&self.0.__init__, Some(class)),
+                    Callable::new(__init__, Some(class)),
                     args.iter(),
                     &|| args.as_node_ref(),
                     false,
@@ -125,21 +123,20 @@ impl<'a> DataclassHelper<'a> {
                 )
             };
         let __init__ = Type::replace_type_var_likes_and_self_for_callable(
-            &self.0.__init__,
+            __init__,
             i_s.db,
             &mut |usage| class_generics.lookup_type_var_usage(i_s, usage),
             &|| todo!(),
         );
-        Inferred::from_type(DbType::Dataclass(Rc::new({
-            Dataclass {
-                class: GenericClass {
+        Inferred::from_type(DbType::Dataclass({
+            Dataclass::new(
+                GenericClass {
                     link: self.0.class.link,
                     generics: class_generics.type_arguments_into_class_generics(),
                 },
-                __init__,
-                options: self.0.options,
-            }
-        })))
+                self.0.options,
+            )
+        }))
     }
 
     pub fn lookup(&self, i_s: &InferenceState, from: NodeRef, name: &str) -> LookupResult {
@@ -184,7 +181,7 @@ impl<'a> DataclassHelper<'a> {
             return (
                 None,
                 LookupResult::UnknownName(Inferred::from_type(DbType::Callable(Rc::new(
-                    self.0.__init__.clone(),
+                    self.0.__init__(i_s.db).clone(),
                 )))),
             );
         }
@@ -193,13 +190,11 @@ impl<'a> DataclassHelper<'a> {
     }
 }
 
-pub fn calculate_init_of_dataclass(
-    i_s: &InferenceState,
-    cls: Class,
-    options: DataclassOptions,
-) -> CallableContent {
+pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Dataclass) -> CallableContent {
+    let cls = dataclass.class(db);
     let mut with_indexes = vec![];
-    let cls_i_s = i_s.with_class_context(&cls);
+    let i_s = &InferenceState::new(db);
+    let cls_i_s = &i_s.with_class_context(&cls);
     let file = cls.node_ref.file;
     let mut inference = file.inference(&cls_i_s);
 
@@ -208,26 +203,26 @@ pub fn calculate_init_of_dataclass(
     let add_param = |params: &mut Vec<CallableParam>, new_param: CallableParam| {
         if !params
             .iter()
-            .any(|p| p.name.unwrap().as_str(i_s.db) == new_param.name.unwrap().as_str(i_s.db))
+            .any(|p| p.name.unwrap().as_str(db) == new_param.name.unwrap().as_str(db))
         {
             params.push(new_param)
         }
     };
 
-    for (_, c) in cls.mro(i_s.db).rev() {
+    for (_, c) in cls.mro(db).rev() {
         if let TypeOrClass::Type(t) = c {
             if let DbType::Dataclass(dataclass) = t.as_ref() {
-                let CallableParams::Simple(init_params) = &dataclass.__init__.params else {
+                let CallableParams::Simple(init_params) = &dataclass.__init__(db).params else {
                     unreachable!();
                 };
-                let cls = dataclass.class(i_s.db);
+                let cls = dataclass.class(db);
                 for param in init_params.iter() {
                     let mut new_param = param.clone();
                     let t = match &mut new_param.param_specific {
                         ParamSpecific::PositionalOrKeyword(t) | ParamSpecific::KeywordOnly(t) => t,
                         _ => unreachable!(),
                     };
-                    *t = replace_class_type_vars(i_s.db, t, &cls, &|| todo!());
+                    *t = replace_class_type_vars(db, t, &cls, &|| todo!());
                     add_param(&mut params, new_param);
                 }
             }
@@ -255,8 +250,8 @@ pub fn calculate_init_of_dataclass(
                     .use_cached_annotation_type(annotation)
                     .into_db_type();
                 if let DbType::Class(c) = &t {
-                    if c.link == i_s.db.python_state.dataclasses_init_var_link() {
-                        t = Class::from_generic_class(i_s.db, c).nth_type_argument(i_s.db, 0);
+                    if c.link == db.python_state.dataclasses_init_var_link() {
+                        t = Class::from_generic_class(db, c).nth_type_argument(db, 0);
                     }
                 }
                 with_indexes.push((
@@ -276,7 +271,7 @@ pub fn calculate_init_of_dataclass(
     let mut had_kw_only_marker = false;
     for (node_index, t, name, field_infos) in with_indexes.into_iter() {
         match t {
-            DbType::Class(c) if c.link == i_s.db.python_state.dataclasses_kw_only_link() => {
+            DbType::Class(c) if c.link == db.python_state.dataclasses_kw_only_link() => {
                 if had_kw_only_marker {
                     NodeRef::new(file, node_index)
                         .add_issue(i_s, IssueType::DataclassMultipleKwOnly);
@@ -285,8 +280,9 @@ pub fn calculate_init_of_dataclass(
                 }
             }
             _ => {
-                let kw_only =
-                    options.kw_only || had_kw_only_marker || field_infos.kw_only.unwrap_or(false);
+                let kw_only = dataclass.options.kw_only
+                    || had_kw_only_marker
+                    || field_infos.kw_only.unwrap_or(false);
                 if let Some(last) = params.last() {
                     if !kw_only && last.has_default && !field_infos.has_default {
                         // Just reset the other params so that we have a valid signature again.
@@ -313,7 +309,7 @@ pub fn calculate_init_of_dataclass(
             }
         }
     }
-    if options.order {
+    if dataclass.options.order {
         for method_name in ["__lt__", "__gt__", "__le__", "__ge__"] {
             if let Some(node_index) = cls
                 .class_storage
@@ -332,7 +328,7 @@ pub fn calculate_init_of_dataclass(
         class_name: None,
         defined_at: cls.node_ref.as_link(),
         kind: FunctionKind::Function,
-        type_vars: cls.use_cached_type_vars(i_s.db).clone(),
+        type_vars: cls.use_cached_type_vars(db).clone(),
         params: CallableParams::Simple(params.into()),
         result_type: DbType::Any,
     }

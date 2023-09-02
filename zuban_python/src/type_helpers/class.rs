@@ -362,7 +362,12 @@ impl<'db: 'a, 'a> Class<'a> {
                     ),
                 );
             }
-            inferred.save_redirect(i_s, name_def.file, name_def.node_index);
+            let saved = inferred.save_redirect(i_s, name_def.file, name_def.node_index);
+            if let DbType::Type(t) = saved.as_type(i_s).as_ref() {
+                if let DbType::Dataclass(d) = t.as_ref() {
+                    d.__init__(i_s.db);
+                }
+            }
         }
 
         if let Some(enum_) = was_enum {

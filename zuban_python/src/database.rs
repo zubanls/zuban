@@ -24,6 +24,7 @@ use crate::matching::Generics;
 use crate::matching::{common_base_type, FormatData, Generic, ParamsStyle};
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
+use crate::type_helpers::calculate_init_of_dataclass;
 use crate::type_helpers::dotted_path_from_dir;
 use crate::type_helpers::{format_pretty_callable, Class, Module};
 use crate::utils::{bytes_repr, str_repr, InsertOnlyVec, SymbolTable};
@@ -2616,13 +2617,26 @@ impl Default for DataclassOptions {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Dataclass {
     pub class: GenericClass,
-    pub __init__: CallableContent,
+    __init__: OnceCell<CallableContent>,
     pub options: DataclassOptions,
 }
 
 impl Dataclass {
+    pub fn new(class: GenericClass, options: DataclassOptions) -> Rc<Self> {
+        Rc::new(Self {
+            class,
+            __init__: OnceCell::new(),
+            options,
+        })
+    }
+
     pub fn class<'a>(&'a self, db: &'a Database) -> Class<'a> {
         Class::from_generic_class(db, &self.class)
+    }
+
+    pub fn __init__(&self, db: &Database) -> &CallableContent {
+        self.__init__
+            .get_or_init(|| calculate_init_of_dataclass(db, self))
     }
 }
 

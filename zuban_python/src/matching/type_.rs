@@ -137,7 +137,7 @@ impl<'a> Type<'a> {
                 DbType::Dataclass(d) => {
                     let cls = Class::from_generic_class(i_s.db, &d.class);
                     if d.options.init {
-                        let mut init = d.__init__.clone();
+                        let mut init = d.__init__(i_s.db).clone();
                         if d.class.generics != ClassGenerics::NotDefinedYet
                             || cls.use_cached_type_vars(i_s.db).is_empty()
                         {
@@ -1520,21 +1520,15 @@ impl<'a> Type<'a> {
             DbType::Self_ => replace_self(),
             DbType::ParamSpecArgs(usage) => todo!(),
             DbType::ParamSpecKwargs(usage) => todo!(),
-            DbType::Dataclass(d) => DbType::Dataclass(Rc::new({
-                Dataclass {
-                    class: GenericClass {
+            DbType::Dataclass(d) => DbType::Dataclass({
+                Dataclass::new(
+                    GenericClass {
                         link: d.class.link,
                         generics: d.class.generics.map_list(remap_generics),
                     },
-                    __init__: Self::replace_type_var_likes_and_self_for_callable(
-                        &d.__init__,
-                        db,
-                        callable,
-                        replace_self,
-                    ),
-                    options: d.options,
-                }
-            })),
+                    d.options,
+                )
+            }),
             DbType::DataclassBuilder(_) => todo!(),
             DbType::NamedTuple(nt) => {
                 let mut constructor = nt.__new__.as_ref().clone();
@@ -1951,14 +1945,13 @@ impl<'a> Type<'a> {
             }
             DbType::ParamSpecArgs(usage) => todo!(),
             DbType::ParamSpecKwargs(usage) => todo!(),
-            DbType::Dataclass(d) => DbType::Dataclass(Rc::new(Dataclass {
-                class: GenericClass {
+            DbType::Dataclass(d) => DbType::Dataclass(Dataclass::new(
+                GenericClass {
                     link: d.class.link,
                     generics: d.class.generics.map_list(rewrite_generics),
                 },
-                __init__: d.__init__.clone(),
-                options: d.options,
-            })),
+                d.options,
+            )),
             DbType::DataclassBuilder(_) => todo!(),
             DbType::NamedTuple(_) => todo!(),
             DbType::Enum(_) => todo!(),
