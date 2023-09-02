@@ -17,7 +17,7 @@ use crate::{
     inferred::Inferred,
     matching::{
         calculate_callable_type_vars_and_return, replace_class_type_vars, LookupKind, LookupResult,
-        OnTypeError, ResultContext, Type,
+        OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
     type_helpers::Callable,
@@ -122,13 +122,9 @@ impl<'a> DataclassHelper<'a> {
                     Some(on_type_error),
                 )
             };
-        let __init__ = Type::replace_type_var_likes_and_self_for_callable(
-            __init__,
-            i_s.db,
-            &mut |usage| class_generics.lookup_type_var_usage(i_s, usage),
-            &|| todo!(),
-        );
-        Inferred::from_type(DbType::Dataclass({
+        Inferred::from_type(DbType::Dataclass(if self.0.has_defined_generics() {
+            self.0.clone()
+        } else {
             Dataclass::new(
                 GenericClass {
                     link: self.0.class.link,
@@ -254,6 +250,12 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Dataclass) -> Call
                         t = Class::from_generic_class(db, c).nth_type_argument(db, 0);
                     }
                 }
+                /*
+                TODO?
+                if !matches!(dataclass.class.generics, ClassGenerics::NotDefinedYet | ClassGenerics::None) {
+                    t = replace_class_type_vars(db, &t, &cls, &|| todo!());
+                }
+                */
                 with_indexes.push((
                     *name_index,
                     t,
@@ -328,7 +330,10 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Dataclass) -> Call
         class_name: None,
         defined_at: cls.node_ref.as_link(),
         kind: FunctionKind::Function,
-        type_vars: cls.use_cached_type_vars(db).clone(),
+        type_vars: match &dataclass.class.generics {
+            ClassGenerics::NotDefinedYet => cls.use_cached_type_vars(db).clone(),
+            _ => i_s.db.python_state.empty_type_var_likes.clone(),
+        },
         params: CallableParams::Simple(params.into()),
         result_type: DbType::Any,
     }

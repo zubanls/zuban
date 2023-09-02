@@ -656,9 +656,6 @@ testDataclassGenericWithBound
 testNoCrashOnSelfWithForwardRefGenericDataclass
 testDeferredDataclassInitSignature
 testDeferredDataclassInitSignatureSubclass
-# generics
-testDataclassGenericSubtype
-testDataclassGenericInheritance2
 # : TypeAlias in dataclasses
 testTypeAliasInDataclassDoesNotCrash
 # : Final in dataclasses

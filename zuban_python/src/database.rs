@@ -2634,6 +2634,10 @@ impl Dataclass {
         Class::from_generic_class(db, &self.class)
     }
 
+    pub fn has_defined_generics(&self) -> bool {
+        !matches!(self.class.generics, ClassGenerics::NotDefinedYet)
+    }
+
     pub fn __init__(&self, db: &Database) -> &CallableContent {
         self.__init__
             .get_or_init(|| calculate_init_of_dataclass(db, self))
