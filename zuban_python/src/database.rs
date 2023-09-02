@@ -462,7 +462,6 @@ pub enum Specific {
     TypingAny,
     TypingDataclassTransform,
     TypedDict,
-    DataclassesDataclass,
     RevealTypeFunction,
     AssertTypeFunction,
     TypingNamedTuple,      // typing.NamedTuple
@@ -793,7 +792,6 @@ pub enum DbType {
     ParamSpecKwargs(ParamSpecUsage),
     Literal(Literal),
     Dataclass(Rc<Dataclass>),
-    DataclassBuilder(DataclassOptions),
     NamedTuple(Rc<NamedTuple>),
     Enum(Rc<Enum>),
     EnumMember(EnumMember),
@@ -957,7 +955,6 @@ impl DbType {
             Self::Dataclass(d) => {
                 Class::from_generic_class(format_data.db, &d.class).format(format_data)
             }
-            Self::DataclassBuilder(_) => format!("TODO dataclassbuilder format").into(),
             Self::NamedTuple(nt) => {
                 use crate::type_helpers::NamedTupleValue;
                 match format_data.style {
@@ -1084,7 +1081,6 @@ impl DbType {
             | Self::Super { .. }
             | Self::Enum(_)
             | Self::EnumMember(_)
-            | Self::DataclassBuilder(_)
             | Self::NewType(_) => (),
             Self::RecursiveAlias(rec) => {
                 if let Some(generics) = rec.generics.as_ref() {
@@ -1185,7 +1181,6 @@ impl DbType {
             Self::ParamSpecArgs(_)
             | Self::ParamSpecKwargs(_)
             | Self::Module(_)
-            | Self::DataclassBuilder(_)
             | Self::Enum(_)
             | Self::Namespace(_) => false,
             Self::Dataclass(_) => todo!(),
@@ -1237,7 +1232,6 @@ impl DbType {
             | Self::RecursiveAlias(_)
             | Self::Module(_)
             | Self::Namespace(_)
-            | Self::DataclassBuilder(_)
             | Self::TypeVar(_) => false,
             Self::Super { .. } => todo!(),
         }

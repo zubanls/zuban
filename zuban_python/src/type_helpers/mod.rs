@@ -13,7 +13,7 @@ mod typing;
 pub use bound_method::{BoundMethod, BoundMethodFunction};
 pub use callable::{format_pretty_callable, merge_class_type_vars_into_callable, Callable};
 pub use class::{start_namedtuple_params, Class, MroIterator, TypeOrClass};
-pub use dataclass::{calculate_init_of_dataclass, execute_dataclass, DataclassHelper};
+pub use dataclass::{calculate_init_of_dataclass, DataclassHelper};
 pub use enum_::{lookup_on_enum_class, lookup_on_enum_instance, lookup_on_enum_member_instance};
 pub use function::{
     is_private, FirstParamKind, FirstParamProperties, Function, GeneratorType, InferrableParam,

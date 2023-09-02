@@ -24,9 +24,9 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
-    execute_dataclass, lookup_in_namespace, lookup_on_enum_instance,
-    lookup_on_enum_member_instance, Callable, Class, DataclassHelper, Instance, Module,
-    MroIterator, NamedTupleValue, OverloadedFunction, Tuple, TypeOrClass, TypingType,
+    lookup_in_namespace, lookup_on_enum_instance, lookup_on_enum_member_instance, Callable, Class,
+    DataclassHelper, Instance, Module, MroIterator, NamedTupleValue, OverloadedFunction, Tuple,
+    TypeOrClass, TypingType,
 };
 use crate::utils::rc_unwrap_or_clone;
 
@@ -262,7 +262,6 @@ impl<'a> Type<'a> {
             DbType::Module(file_index) => todo!(),
             DbType::Namespace(file_index) => todo!(),
             DbType::Dataclass(_) => todo!(),
-            DbType::DataclassBuilder(_) => todo!(),
             DbType::NamedTuple(_) => todo!(),
             DbType::Enum(_) => todo!(),
             DbType::EnumMember(_) => todo!(),
@@ -375,7 +374,6 @@ impl<'a> Type<'a> {
                 }
                 _ => Match::new_false(),
             },
-            DbType::DataclassBuilder(_) => todo!(),
             DbType::NamedTuple(nt1) => match value_type.as_ref() {
                 DbType::NamedTuple(nt2) => {
                     let c1 = &nt1.__new__;
@@ -1533,7 +1531,6 @@ impl<'a> Type<'a> {
                     d.clone()
                 }
             }),
-            DbType::DataclassBuilder(_) => todo!(),
             DbType::NamedTuple(nt) => {
                 let mut constructor = nt.__new__.as_ref().clone();
                 let CallableParams::Simple(params) = &constructor.params else {
@@ -1956,7 +1953,6 @@ impl<'a> Type<'a> {
                 },
                 d.options,
             )),
-            DbType::DataclassBuilder(_) => todo!(),
             DbType::NamedTuple(_) => todo!(),
             DbType::Enum(_) => todo!(),
             DbType::EnumMember(_) => todo!(),
@@ -2004,9 +2000,6 @@ impl<'a> Type<'a> {
             DbType::Any | DbType::Never => {
                 args.iter().calculate_diagnostics(i_s);
                 Inferred::new_unknown()
-            }
-            DbType::DataclassBuilder(options) => {
-                execute_dataclass(i_s, Some(*options), args, on_type_error)
             }
             _ => {
                 let t = self.format_short(i_s.db);

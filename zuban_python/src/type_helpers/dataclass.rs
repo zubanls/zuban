@@ -25,47 +25,6 @@ use crate::{
 
 use super::{Class, Function, Instance, TypeOrClass};
 
-pub fn execute_dataclass<'db>(
-    i_s: &InferenceState<'db, '_>,
-    options: Option<DataclassOptions>,
-    args: &dyn Arguments<'db>,
-    on_type_error: OnTypeError,
-) -> Inferred {
-    let mut iterator = args.iter();
-    if let Some(first) = iterator.next() {
-        if matches!(
-            first.kind,
-            ArgumentKind::Positional { .. } | ArgumentKind::Inferred { .. }
-        ) {
-            if let Some(x) = iterator.next() {
-                todo!()
-            }
-            if let Some(cls) = first
-                .infer(i_s, &mut ResultContext::Unknown)
-                .as_type(i_s)
-                .maybe_type_of_class(i_s.db)
-            {
-                let options = options.unwrap_or(Default::default());
-                return Inferred::from_type(DbType::Type(Rc::new(DbType::Dataclass(
-                    Dataclass::new(
-                        GenericClass {
-                            link: cls.node_ref.as_link(),
-                            generics: ClassGenerics::NotDefinedYet,
-                        },
-                        options,
-                    ),
-                ))));
-            } else {
-                todo!()
-            }
-        }
-    }
-    if options.is_some() {
-        todo!()
-    }
-    todo!()
-}
-
 pub fn check_dataclass_options<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &SimpleArguments<'db, '_>,
