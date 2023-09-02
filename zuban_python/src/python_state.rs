@@ -113,6 +113,7 @@ pub struct PythonState {
     mypy_extensions_default_named_arg_func: NodeIndex,
     mypy_extensions_kw_arg_func: NodeIndex,
     mypy_extensions_var_arg_func: NodeIndex,
+    dataclasses_dataclass_index: NodeIndex,
     dataclasses_kw_only_index: NodeIndex,
     dataclasses_init_var_index: NodeIndex,
     dataclasses_field_index: NodeIndex,
@@ -192,6 +193,7 @@ impl PythonState {
             mypy_extensions_default_named_arg_func: 0,
             mypy_extensions_kw_arg_func: 0,
             mypy_extensions_var_arg_func: 0,
+            dataclasses_dataclass_index: 0,
             dataclasses_kw_only_index: 0,
             dataclasses_init_var_index: 0,
             dataclasses_field_index: 0,
@@ -353,6 +355,13 @@ impl PythonState {
         cache_index!(abc_abstractproperty_index, db, abc, "abstractproperty");
         cache_index!(dataclasses_kw_only_index, db, dataclasses_file, "KW_ONLY");
         cache_index!(dataclasses_init_var_index, db, dataclasses_file, "InitVar");
+        db.python_state.dataclasses_dataclass_index = db
+            .python_state
+            .dataclasses_file()
+            .symbol_table
+            .lookup_symbol("dataclass")
+            .unwrap()
+            - NAME_TO_FUNCTION_DIFF;
         db.python_state.dataclasses_field_index = db
             .python_state
             .dataclasses_file()
