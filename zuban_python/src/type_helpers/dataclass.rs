@@ -163,12 +163,13 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
     let mut params: Vec<CallableParam> = vec![];
 
     let add_param = |params: &mut Vec<CallableParam>, new_param: CallableParam| {
-        if !params
-            .iter()
-            .any(|p| p.name.unwrap().as_str(db) == new_param.name.unwrap().as_str(db))
-        {
-            params.push(new_param)
+        for param in params.iter_mut() {
+            if param.name.unwrap().as_str(db) == new_param.name.unwrap().as_str(db) {
+                *param = new_param;
+                return;
+            }
         }
+        params.push(new_param)
     };
 
     for (_, c) in cls.mro(db).rev() {

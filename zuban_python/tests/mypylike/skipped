@@ -641,8 +641,6 @@ testDataclassCheckTypeVarBounds
 testDataclassCheckTypeVarBoundsInReprocess
 # overrides
 testDataclassesOverridingWithDefaults
-# inheritance access
-testIncrementalDataclassesThreeFiles
 # "Cannot inherit non-frozen dataclass from a frozen one"
 testDataclassesInconsistentFreezing
 # normal class inherits from dataclass
