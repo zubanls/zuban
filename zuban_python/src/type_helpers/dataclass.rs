@@ -101,6 +101,21 @@ impl<'a> DataclassHelper<'a> {
         }))
     }
 
+    pub fn lookup_on_type(
+        &self,
+        i_s: &InferenceState,
+        from: NodeRef,
+        name: &str,
+        kind: LookupKind,
+    ) -> LookupResult {
+        if name == "__dataclass_fields__" && kind == LookupKind::Normal {
+            return LookupResult::UnknownName(Inferred::from_type(
+                i_s.db.python_state.dataclass_fields_type.clone(),
+            ));
+        }
+        self.0.class(i_s.db).lookup(i_s, from, name, kind)
+    }
+
     pub fn lookup(&self, i_s: &InferenceState, from: NodeRef, name: &str) -> LookupResult {
         if self.0.options.order && matches!(name, "__lt__" | "__gt__" | "__le__" | "__ge__") {
             return LookupResult::UnknownName(Inferred::from_type(DbType::Callable(Rc::new(

@@ -634,11 +634,6 @@ testPostInitIsNotAFunction
 testPostInitClassMethod
 testPostInitStaticMethod
 testDataclassesInitVarNoOverride
-# __dataclass_fields__
-testDataclassHasAttributeWithFields
-testDataclassFieldsProtocol
-testDataclassCheckTypeVarBounds
-testDataclassCheckTypeVarBoundsInReprocess
 # "Cannot inherit non-frozen dataclass from a frozen one"
 testDataclassesInconsistentFreezing
 # normal class inherits from dataclass
@@ -993,6 +988,8 @@ testModuleAsProtocolImplementationClassVar
 testProtocolClassVarSelfType
 testProtocolTypeTypeAttribute
 testProtocolClassObjectAttributeAndCall
+testDataclassCheckTypeVarBounds
+testDataclassCheckTypeVarBoundsInReprocess
 # small protocol formatting issues
 testGenericSubProtocolsExtensionCovariant
 # Protocol Override inheritance

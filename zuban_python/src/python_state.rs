@@ -117,6 +117,7 @@ pub struct PythonState {
     dataclasses_kw_only_index: NodeIndex,
     dataclasses_init_var_index: NodeIndex,
     dataclasses_field_index: NodeIndex,
+    dataclasses_capital_field_index: NodeIndex,
     pub type_of_object: DbType,
     pub type_of_any: DbType,
     pub type_of_self: DbType,
@@ -125,6 +126,7 @@ pub struct PythonState {
     pub generator_with_any_generics: DbType,
     pub async_generator_with_any_generics: DbType,
     pub empty_type_var_likes: TypeVarLikes,
+    pub dataclass_fields_type: DbType,
 }
 
 impl PythonState {
@@ -197,6 +199,7 @@ impl PythonState {
             dataclasses_kw_only_index: 0,
             dataclasses_init_var_index: 0,
             dataclasses_field_index: 0,
+            dataclasses_capital_field_index: 0,
             type_of_object: DbType::Any, // Will be set later
             type_of_any: DbType::Type(Rc::new(DbType::Any)),
             type_of_self: DbType::Type(Rc::new(DbType::Self_)),
@@ -207,6 +210,7 @@ impl PythonState {
             generator_with_any_generics: DbType::Any, // Will be set later
             async_generator_with_any_generics: DbType::Any, // Will be set later
             empty_type_var_likes,
+            dataclass_fields_type: DbType::Any, // Will be set later
         }
     }
 
@@ -363,6 +367,12 @@ impl PythonState {
         cache_index!(abc_abstractproperty_index, db, abc, "abstractproperty");
         cache_index!(dataclasses_kw_only_index, db, dataclasses_file, "KW_ONLY");
         cache_index!(dataclasses_init_var_index, db, dataclasses_file, "InitVar");
+        cache_index!(
+            dataclasses_capital_field_index,
+            db,
+            dataclasses_file,
+            "Field"
+        );
         db.python_state.dataclasses_field_index = db
             .python_state
             .dataclasses_file()
@@ -428,6 +438,12 @@ impl PythonState {
             .class_storage
             .promote_to
             .set(Some(s.bytes_node_ref().as_link()));
+
+        s.dataclass_fields_type = new_class!(
+            s.dict_node_ref().as_link(),
+            s.str_db_type(),
+            new_class!(s.dataclasses_capital_field_link(), DbType::Any,),
+        );
     }
 
     #[inline]
@@ -701,6 +717,14 @@ impl PythonState {
         PointLink::new(
             self.dataclasses_file().file_index(),
             self.dataclasses_field_index,
+        )
+    }
+
+    fn dataclasses_capital_field_link(&self) -> PointLink {
+        debug_assert!(self.dataclasses_capital_field_index != 0);
+        PointLink::new(
+            self.dataclasses_file().file_index(),
+            self.dataclasses_capital_field_index,
         )
     }
 
