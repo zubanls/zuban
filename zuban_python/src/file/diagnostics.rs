@@ -334,12 +334,13 @@ impl<'db> Inference<'db, '_, '_> {
         let hack = name_def;
         self.cache_class(name_def, class);
         let class_node_ref = NodeRef::new(self.file, class.index());
-        let c = Class::with_self_generics(self.i_s.db, class_node_ref);
+        let db = self.i_s.db;
+        let c = Class::with_self_generics(db, class_node_ref);
         let i_s = self.i_s.with_diagnostic_class_context(&c);
         let mut inference = self.file.inference(&i_s);
         inference.calc_block_diagnostics(block, Some(c), None);
 
-        for (i, base1) in c.bases(self.i_s.db).enumerate() {
+        for (i, base1) in c.bases(db).enumerate() {
             let instance1 = match base1 {
                 TypeOrClass::Class(c) => Instance::new(c, None),
                 TypeOrClass::Type(t) => {
@@ -347,7 +348,7 @@ impl<'db> Inference<'db, '_, '_> {
                     continue;
                 }
             };
-            for base2 in c.bases(self.i_s.db).skip(i + 1) {
+            for base2 in c.bases(db).skip(i + 1) {
                 let instance2 = match base2 {
                     TypeOrClass::Class(c) => Instance::new(c, None),
                     TypeOrClass::Type(t) => continue,
@@ -380,8 +381,8 @@ impl<'db> Inference<'db, '_, '_> {
                                 self.i_s,
                                 IssueType::MultipleInheritanceIncompatibility {
                                     name: name.into(),
-                                    class1: base1.name().into(),
-                                    class2: base2.name().into(),
+                                    class1: base1.name(db).into(),
+                                    class2: base2.name(db).into(),
                                 },
                             );
                         }
@@ -442,14 +443,14 @@ impl<'db> Inference<'db, '_, '_> {
 
                                 IssueType::SignatureIncompatibleWithSupertype {
                                     name: name.into(),
-                                    base_class: defined_in.name().into(),
+                                    base_class: defined_in.name(db).into(),
                                     notes: notes.into(),
                                 }
                             } else {
                                 IssueType::IncompatibleAssignmentInSubclass {
-                                    got: got.format_short(self.i_s.db),
-                                    expected: expected.format_short(self.i_s.db),
-                                    base_class: defined_in.name().into(),
+                                    got: got.format_short(db),
+                                    expected: expected.format_short(db),
+                                    base_class: defined_in.name(db).into(),
                                 }
                             },
                         )

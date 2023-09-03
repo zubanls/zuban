@@ -243,6 +243,9 @@ testOrOperationInferredFromContext
 testJoinUnionWithUnionAndAny
 testNoComplainInferredNoneStrict
 
+# Callable matching
+testNoCrashOnNestedGenericCallable
+
 # cycle for self.a = self.f(self.a) where f(T) -> T
 testGenericTypeBody1
 # import cycle
@@ -639,7 +642,6 @@ testDataclassCheckTypeVarBoundsInReprocess
 # overrides
 testDataclassesOverridingWithDefaults
 # inheritance access
-testDataclassMultipleInheritance
 testIncrementalDataclassesThreeFiles
 # "Cannot inherit non-frozen dataclass from a frozen one"
 testDataclassesInconsistentFreezing
@@ -665,9 +667,6 @@ testIncrementalDataclassesDunder
 testDataclassUpdate6
 # any base class
 testDataclassesAnyInherit
-# Generic lookups
-testDataclassMultiGenericInheritance
-testNoCrashOnNestedGenericCallable
 # InitVar set default
 testDataclassInitVarCannotBeSet
 # context with optional

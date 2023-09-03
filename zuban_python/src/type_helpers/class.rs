@@ -1682,10 +1682,13 @@ impl<'a> TypeOrClass<'a> {
         }
     }
 
-    pub fn name(&self) -> &str {
+    pub fn name<'db: 'a>(&self, db: &'a Database) -> &str {
         match self {
             Self::Class(class) => class.name(),
-            Self::Type(t) => todo!(),
+            Self::Type(t) => match t.as_ref() {
+                DbType::Dataclass(d) => d.class(db).name(),
+                _ => todo!(),
+            },
         }
     }
 }
