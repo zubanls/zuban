@@ -663,8 +663,6 @@ testDataclassInitVarCannotBeSet
 # context with optional
 testNoComplainFieldNone
 testNoComplainFieldNoneStrict
-# multi inheritance "Attributes without a default cannot follow attributes with one"
-testDataclassesDefaultsMroOtherFile
 # dataclasses.replace
 testReplaceUnion
 testReplaceUnionOfTypeVar

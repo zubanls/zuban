@@ -12,7 +12,7 @@ use crate::{
         DataclassOptions, DbType, FunctionKind, GenericClass, ParamSpecific, Specific, StringSlice,
     },
     diagnostics::{Issue, IssueType},
-    file::PythonFile,
+    file::{File, PythonFile},
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{
@@ -302,14 +302,19 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
             && prev_param.has_default
             && !next_param.has_default
         {
+            if latest_default_issue.is_none() {
+                let name = next_param.name.unwrap();
+                let issue_type = IssueType::DataclassNoDefaultAfterDefault;
+                if name.file_index == file.file_index() {
+                    file.add_issue(i_s, Issue::from_string_slice(name, issue_type));
+                } else {
+                    // The class arguments are always set, because we are working with params from
+                    // a different file, which means inheritance.
+                    let arguments = cls.node().arguments().unwrap();
+                    NodeRef::new(file, arguments.index()).add_issue(i_s, issue_type);
+                }
+            }
             latest_default_issue = Some(i);
-            file.add_issue(
-                i_s,
-                Issue::from_string_slice(
-                    next_param.name.unwrap(),
-                    IssueType::DataclassNoDefaultAfterDefault,
-                ),
-            );
         }
     }
     if let Some(issue_index) = latest_default_issue {
