@@ -654,7 +654,6 @@ testDataclassGenericsClassmethod
 testDataclassGenericWithBound
 testNoCrashOnSelfWithForwardRefGenericDataclass
 testDeferredDataclassInitSignature
-testDeferredDataclassInitSignatureSubclass
 # : TypeAlias in dataclasses
 testTypeAliasInDataclassDoesNotCrash
 # : Final in dataclasses

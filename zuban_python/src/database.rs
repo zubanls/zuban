@@ -2637,8 +2637,14 @@ impl Dataclass {
     }
 
     pub fn __init__(&self, db: &Database) -> &CallableContent {
-        self.__init__
-            .get_or_init(|| calculate_init_of_dataclass(db, self))
+        if self.__init__.get().is_none() {
+            // Cannot use get_or_init, because this might cycle ones for some reasons (see for
+            // example the test testDeferredDataclassInitSignatureSubclass)
+            self.__init__
+                .set(calculate_init_of_dataclass(db, self))
+                .ok();
+        }
+        self.__init__.get().unwrap()
     }
 }
 

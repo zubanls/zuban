@@ -347,7 +347,11 @@ impl<'db: 'a, 'a> Class<'a> {
                 let dataclass = Dataclass::new(
                     GenericClass {
                         link: self.node_ref.as_link(),
-                        generics: ClassGenerics::NotDefinedYet,
+                        generics: if type_vars.is_empty() {
+                            ClassGenerics::None
+                        } else {
+                            ClassGenerics::NotDefinedYet
+                        },
                     },
                     dataclass_options,
                 );
