@@ -71,7 +71,7 @@ impl<'a> DataclassHelper<'a> {
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         let class = self.0.class(i_s.db);
-        let __init__ = self.0.__init__(i_s.db);
+        let __init__ = Dataclass::__init__(self.0, i_s.db);
         let class_generics =
             if !self.0.options.init || class.lookup_symbol(i_s, "__init__").is_some() {
                 // If the class has an __init__ method defined, the class itself wins.
@@ -143,7 +143,7 @@ impl<'a> DataclassHelper<'a> {
             return (
                 None,
                 LookupResult::UnknownName(Inferred::from_type(DbType::Callable(Rc::new(
-                    self.0.__init__(i_s.db).clone(),
+                    Dataclass::__init__(self.0, i_s.db).clone(),
                 )))),
             );
         }
@@ -152,7 +152,7 @@ impl<'a> DataclassHelper<'a> {
     }
 }
 
-pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Dataclass) -> CallableContent {
+pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> CallableContent {
     let cls = dataclass.class(db);
     let mut with_indexes = vec![];
     let i_s = &InferenceState::new(db);
@@ -174,7 +174,7 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Dataclass) -> Call
     for (_, c) in cls.mro(db).rev() {
         if let TypeOrClass::Type(t) = c {
             if let DbType::Dataclass(dataclass) = t.as_ref() {
-                let CallableParams::Simple(init_params) = &dataclass.__init__(db).params else {
+                let CallableParams::Simple(init_params) = &Dataclass::__init__(dataclass, db).params else {
                     unreachable!();
                 };
                 let cls = dataclass.class(db);
@@ -184,7 +184,9 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Dataclass) -> Call
                         ParamSpecific::PositionalOrKeyword(t) | ParamSpecific::KeywordOnly(t) => t,
                         _ => unreachable!(),
                     };
-                    *t = replace_class_type_vars(db, t, &cls, &|| todo!());
+                    *t = replace_class_type_vars(db, t, &cls, &|| {
+                        DbType::Dataclass(dataclass.clone())
+                    });
                     add_param(&mut params, new_param);
                 }
             }

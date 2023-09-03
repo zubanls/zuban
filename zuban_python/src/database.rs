@@ -2636,15 +2636,16 @@ impl Dataclass {
         !matches!(self.class.generics, ClassGenerics::NotDefinedYet)
     }
 
-    pub fn __init__(&self, db: &Database) -> &CallableContent {
-        if self.__init__.get().is_none() {
+    pub fn __init__<'a>(self_: &'a Rc<Self>, db: &Database) -> &'a CallableContent {
+        if self_.__init__.get().is_none() {
             // Cannot use get_or_init, because this might cycle ones for some reasons (see for
             // example the test testDeferredDataclassInitSignatureSubclass)
-            self.__init__
-                .set(calculate_init_of_dataclass(db, self))
+            self_
+                .__init__
+                .set(calculate_init_of_dataclass(db, self_))
                 .ok();
         }
-        self.__init__.get().unwrap()
+        self_.__init__.get().unwrap()
     }
 }
 

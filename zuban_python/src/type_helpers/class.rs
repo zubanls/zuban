@@ -417,7 +417,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
 
         if let Some(dataclass) = was_dataclass {
-            dataclass.__init__(i_s.db);
+            Dataclass::__init__(&dataclass, i_s.db);
         }
 
         if let Some(enum_) = was_enum {

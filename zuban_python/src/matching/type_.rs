@@ -137,7 +137,7 @@ impl<'a> Type<'a> {
                 DbType::Dataclass(d) => {
                     let cls = Class::from_generic_class(i_s.db, &d.class);
                     if d.options.init {
-                        let mut init = d.__init__(i_s.db).clone();
+                        let mut init = Dataclass::__init__(d, i_s.db).clone();
                         if d.class.generics != ClassGenerics::NotDefinedYet
                             || cls.use_cached_type_vars(i_s.db).is_empty()
                         {
