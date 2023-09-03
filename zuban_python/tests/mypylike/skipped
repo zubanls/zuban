@@ -665,9 +665,6 @@ testNoComplainFieldNone
 testNoComplainFieldNoneStrict
 # multi inheritance "Attributes without a default cannot follow attributes with one"
 testDataclassesDefaultsMroOtherFile
-testDataclassesOrderingKwOnlyWithSentinelAndSubclass
-# kw_only=false
-testDataclassesOrderingKwOnlyWithSentinelAndFieldOverride
 # dataclasses.replace
 testReplaceUnion
 testReplaceUnionOfTypeVar

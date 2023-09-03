@@ -178,13 +178,24 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
     let mut params: Vec<CallableParam> = vec![];
 
     let add_param = |params: &mut Vec<CallableParam>, new_param: CallableParam| {
-        for param in params.iter_mut() {
+        let mut first_kwarg = None;
+        for (i, param) in params.iter_mut().enumerate() {
+            if first_kwarg.is_none()
+                && param.param_specific.param_kind() == ParamKind::KeywordOnly
+                && new_param.param_specific.param_kind() == ParamKind::PositionalOrKeyword
+            {
+                first_kwarg = Some(i);
+            }
             if param.name.unwrap().as_str(db) == new_param.name.unwrap().as_str(db) {
                 *param = new_param;
                 return;
             }
         }
-        params.push(new_param)
+        if let Some(index) = first_kwarg {
+            params.insert(index, new_param);
+        } else {
+            params.push(new_param)
+        }
     };
 
     for (_, c) in cls.mro(db).rev() {
@@ -266,9 +277,9 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
                 }
             }
             _ => {
-                let kw_only = dataclass.options.kw_only
-                    || had_kw_only_marker
-                    || field_infos.kw_only.unwrap_or(false);
+                let kw_only = field_infos
+                    .kw_only
+                    .unwrap_or_else(|| dataclass.options.kw_only || had_kw_only_marker);
                 if field_infos.init {
                     add_param(
                         &mut params,
