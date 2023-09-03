@@ -639,8 +639,6 @@ testDataclassHasAttributeWithFields
 testDataclassFieldsProtocol
 testDataclassCheckTypeVarBounds
 testDataclassCheckTypeVarBoundsInReprocess
-# overrides
-testDataclassesOverridingWithDefaults
 # "Cannot inherit non-frozen dataclass from a frozen one"
 testDataclassesInconsistentFreezing
 # normal class inherits from dataclass

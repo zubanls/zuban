@@ -1,8 +1,8 @@
 use std::rc::Rc;
 
 use parsa_python_ast::{
-    AssignmentContent, AssignmentRightSide, ExpressionContent, ExpressionPart, PrimaryContent,
-    StarExpressionContent,
+    AssignmentContent, AssignmentRightSide, ExpressionContent, ExpressionPart, ParamKind,
+    PrimaryContent, StarExpressionContent,
 };
 
 use crate::{
@@ -11,7 +11,7 @@ use crate::{
         CallableContent, CallableParam, CallableParams, ClassGenerics, Database, Dataclass,
         DataclassOptions, DbType, FunctionKind, GenericClass, ParamSpecific, Specific, StringSlice,
     },
-    diagnostics::IssueType,
+    diagnostics::{Issue, IssueType},
     file::PythonFile,
     inference_state::InferenceState,
     inferred::Inferred,
@@ -254,16 +254,6 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
                 let kw_only = dataclass.options.kw_only
                     || had_kw_only_marker
                     || field_infos.kw_only.unwrap_or(false);
-                if let Some(last) = params.last() {
-                    if !kw_only && last.has_default && !field_infos.has_default {
-                        // Just reset the other params so that we have a valid signature again.
-                        for param in params.iter_mut() {
-                            param.has_default = false;
-                        }
-                        NodeRef::new(file, node_index)
-                            .add_issue(i_s, IssueType::DataclassNoDefaultAfterDefault);
-                    }
-                }
                 if field_infos.init {
                     add_param(
                         &mut params,
@@ -278,6 +268,28 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
                     );
                 }
             }
+        }
+    }
+    let mut latest_default_issue = None;
+    for (prev_param, (i, next_param)) in params.iter().zip(params.iter().enumerate().skip(1)) {
+        if next_param.param_specific.param_kind() == ParamKind::PositionalOrKeyword
+            && prev_param.has_default
+            && !next_param.has_default
+        {
+            latest_default_issue = Some(i);
+            file.add_issue(
+                i_s,
+                Issue::from_string_slice(
+                    next_param.name.unwrap(),
+                    IssueType::DataclassNoDefaultAfterDefault,
+                ),
+            );
+        }
+    }
+    if let Some(issue_index) = latest_default_issue {
+        // Just reset the other params so that we have a valid signature again.
+        for param in params[..issue_index].iter_mut() {
+            param.has_default = false;
         }
     }
     if dataclass.options.order {

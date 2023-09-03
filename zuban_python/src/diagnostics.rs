@@ -1,6 +1,6 @@
 use parsa_python_ast::{CodeIndex, NodeIndex, Tree};
 
-use crate::database::{Database, FunctionKind, TypeVarLike};
+use crate::database::{Database, FunctionKind, StringSlice, TypeVarLike};
 use crate::file::File;
 use crate::file::PythonFile;
 use crate::name::TreePosition;
@@ -276,6 +276,14 @@ impl Issue {
             type_,
             start_position: tree.node_start_position(node_index),
             end_position: tree.node_end_position(node_index),
+        }
+    }
+
+    pub(crate) fn from_string_slice(s: StringSlice, type_: IssueType) -> Self {
+        Self {
+            type_,
+            start_position: s.start,
+            end_position: s.end,
         }
     }
 }
