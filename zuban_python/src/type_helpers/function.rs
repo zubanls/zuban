@@ -2004,7 +2004,7 @@ pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
     return_type: Option<Type>,
 ) -> Box<str> {
     let db = format_data.db;
-    let not_reveal_type = format_data.style != FormatStyle::MypyRevealType;
+    let is_reveal_type = format_data.style == FormatStyle::MypyRevealType;
 
     let mut previous_kind = None;
     let mut had_kwargs_separator = false;
@@ -2045,7 +2045,7 @@ pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
                 };
                 if previous_kind == Some(ParamKind::PositionalOnly)
                     && current_kind != ParamKind::PositionalOnly
-                    && not_reveal_type
+                    && !is_reveal_type
                 {
                     out = format!("/, {out}")
                 }
@@ -2057,10 +2057,10 @@ pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
             }
             had_kwargs_separator |= matches!(specific, WrappedParamSpecific::Starred(_));
             if p.has_default() {
-                if not_reveal_type {
-                    out += " = ...";
-                } else {
+                if is_reveal_type {
                     out += " =";
+                } else {
+                    out += " = ...";
                 }
             }
             previous_kind = Some(current_kind);
@@ -2068,7 +2068,7 @@ pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
         })
         .collect::<Vec<_>>()
         .join(", ");
-    if previous_kind == Some(ParamKind::PositionalOnly) && not_reveal_type {
+    if previous_kind == Some(ParamKind::PositionalOnly) && !is_reveal_type {
         args += ", /";
     }
     format_pretty_function_with_params(format_data, class, type_vars, return_type, name, &args)
