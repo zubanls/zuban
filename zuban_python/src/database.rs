@@ -1183,7 +1183,11 @@ impl DbType {
             | Self::Module(_)
             | Self::Enum(_)
             | Self::Namespace(_) => false,
-            Self::Dataclass(_) => todo!(),
+            Self::Dataclass(d) => match &d.class.generics {
+                ClassGenerics::List(generics) => search_in_generics(generics, already_checked),
+                ClassGenerics::NotDefinedYet => todo!(),
+                _ => false,
+            },
             Self::NamedTuple(nt) => nt.__new__.has_any_internal(i_s, already_checked),
             Self::EnumMember(_) => todo!(),
             Self::Super { .. } => todo!(),

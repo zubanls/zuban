@@ -298,10 +298,21 @@ impl<'db: 'a, 'a> Class<'a> {
         }
 
         debug_assert!(!name_def.point().calculated());
+
+        node_ref.set_point(Point::new_calculating());
+        // TODO it is questionable that we are just marking this as OK, because it could be an
+        // Enum / dataclass.
+        name_def.set_point(Point::new_redirect(
+            self.node_ref.file_index(),
+            self.node_ref.node_index,
+            Locality::Todo,
+        ));
+
+        let type_vars = self.type_vars(i_s);
+
         let mut was_dataclass = None;
         let maybe_decorated = self.node().maybe_decorated();
         if let Some(decorated) = maybe_decorated {
-            name_def.set_point(Point::new_calculating());
             let mut inference = self.node_ref.file.inference(i_s);
 
             let mut dataclass_options = None;
@@ -345,19 +356,8 @@ impl<'db: 'a, 'a> Class<'a> {
                 Inferred::from_type(new_t).save_redirect(i_s, name_def.file, name_def.node_index);
             }
         }
-        if was_dataclass.is_none() {
-            // TODO it is questionable that we are just marking this as OK, because it could be an
-            // Enum.
-            name_def.set_point(Point::new_redirect(
-                self.node_ref.file_index(),
-                self.node_ref.node_index,
-                Locality::Todo,
-            ));
-        }
 
-        let node_ref = self.class_info_node_ref();
-        node_ref.set_point(Point::new_calculating());
-        let mut class_infos = self.calculate_class_infos(i_s);
+        let mut class_infos = self.calculate_class_infos(i_s, type_vars);
         let mut was_enum = None;
         let mut was_enum_base = false;
         if let MetaclassState::Some(link) = class_infos.metaclass {
@@ -521,11 +521,14 @@ impl<'db: 'a, 'a> Class<'a> {
             })
     }
 
-    fn calculate_class_infos(&self, i_s: &InferenceState<'db, '_>) -> Box<ClassInfos> {
+    fn calculate_class_infos(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        type_vars: &TypeVarLikes,
+    ) -> Box<ClassInfos> {
         debug!("Calculate class infos for {}", self.name());
         // Calculate all type vars beforehand
         let db = i_s.db;
-        let type_vars = self.type_vars(i_s);
 
         let mut bases: Vec<DbType> = vec![];
         let mut incomplete_mro = false;
