@@ -57,6 +57,7 @@ pub(super) enum SpecialType {
     Generic,
     GenericWithGenerics,
     TypingNamedTuple,
+    TypingTypedDict,
     CollectionsNamedTuple,
     Callable,
     Type,
@@ -250,6 +251,7 @@ pub enum CalculatedBaseClass {
     DbType(DbType),
     Protocol,
     NamedTuple(Rc<NamedTuple>),
+    TypedDict,
     NewNamedTuple,
     Generic,
     Invalid,
@@ -468,6 +470,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             TypeContent::SpecialType(SpecialType::TypingNamedTuple) => {
                 CalculatedBaseClass::NewNamedTuple
+            }
+            TypeContent::SpecialType(SpecialType::TypingTypedDict) => {
+                CalculatedBaseClass::TypedDict
             }
             TypeContent::SpecialType(SpecialType::Type) => {
                 CalculatedBaseClass::DbType(DbType::new_class(
@@ -1028,6 +1033,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         SpecialType::TypingNamedTuple | SpecialType::CollectionsNamedTuple => {
                             todo!()
                         }
+                        SpecialType::TypingTypedDict => todo!(),
                         SpecialType::Callable => self.compute_type_get_item_on_callable(s),
                         SpecialType::MypyExtensionsParamType(_) => todo!(),
                         SpecialType::CallableParam(_) => todo!(),
@@ -3069,6 +3075,7 @@ fn check_special_type(point: Point) -> Option<SpecialType> {
             Specific::TypingSelf => SpecialType::Self_,
             Specific::TypingAnnotated => SpecialType::Annotated,
             Specific::TypingTuple => SpecialType::Tuple,
+            Specific::TypingTypedDict => SpecialType::TypingTypedDict,
             Specific::TypingClassVar => SpecialType::ClassVar,
             Specific::MypyExtensionsArg
             | Specific::MypyExtensionsDefaultArg

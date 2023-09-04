@@ -461,7 +461,7 @@ pub enum Specific {
     // TODO maybe NoReturn?
     TypingAny,
     TypingDataclassTransform,
-    TypedDict,
+    TypingTypedDict,
     RevealTypeFunction,
     AssertTypeFunction,
     TypingNamedTuple, // typing.NamedTuple
@@ -3274,6 +3274,7 @@ pub enum ClassType {
     Normal,
     Protocol,
     Enum,
+    TypedDict,
     NamedTuple(Rc<NamedTuple>),
 }
 

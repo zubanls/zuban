@@ -677,6 +677,9 @@ impl<'db: 'a, 'a> Class<'a> {
                                 bases.push(DbType::NamedTuple(named_tuple.clone()));
                                 class_type = ClassType::NamedTuple(named_tuple);
                             }
+                            CalculatedBaseClass::TypedDict => {
+                                class_type = ClassType::TypedDict;
+                            }
                             CalculatedBaseClass::Generic => (),
                             CalculatedBaseClass::Unknown => {
                                 incomplete_mro = true;
@@ -1343,34 +1346,39 @@ impl<'db: 'a, 'a> Class<'a> {
         };
         let on_type_error = on_type_error.with_custom_generate_diagnostic_string(&d);
 
-        if self.use_cached_class_infos(i_s.db).class_type == ClassType::Enum
-            // For whatever reason, auto is special, because it is somehow defined as an enum as
-            // well, which is very weird.
-            && self.node_ref.as_link() != i_s.db.python_state.enum_auto_link()
-        {
-            let metaclass = Instance::new(
-                Class::from_non_generic_link(i_s.db, i_s.db.python_state.enum_meta_link()),
-                None,
-            );
-            let call = metaclass
-                .type_lookup(i_s, args.as_node_ref(), "__call__")
-                .into_inferred();
-            let DbType::FunctionOverload(o) = call.as_db_type(i_s) else {
-                todo!()
-            };
-            // Enum currently has multiple signatures that are not all relevant. Just pick the one
-            // that's relevant, because otherwise we would have very very ugly error messages with
-            // overload outputs.
-            let significant_call =
-                Callable::new(o.iter_functions().nth(1).unwrap(), Some(metaclass.class));
-            significant_call.execute(i_s, args, on_type_error, result_context);
-            if had_type_error.get() {
-                return ClassExecutionResult::Inferred(Inferred::new_any());
+        match self.use_cached_class_infos(i_s.db).class_type {
+            ClassType::Enum if self.node_ref.as_link() != i_s.db.python_state.enum_auto_link() => {
+                // For whatever reason, auto is special, because it is somehow defined as an enum as
+                // well, which is very weird.
+                let metaclass = Instance::new(
+                    Class::from_non_generic_link(i_s.db, i_s.db.python_state.enum_meta_link()),
+                    None,
+                );
+                let call = metaclass
+                    .type_lookup(i_s, args.as_node_ref(), "__call__")
+                    .into_inferred();
+                let DbType::FunctionOverload(o) = call.as_db_type(i_s) else {
+                    todo!()
+                };
+                // Enum currently has multiple signatures that are not all relevant. Just pick the one
+                // that's relevant, because otherwise we would have very very ugly error messages with
+                // overload outputs.
+                let significant_call =
+                    Callable::new(o.iter_functions().nth(1).unwrap(), Some(metaclass.class));
+                significant_call.execute(i_s, args, on_type_error, result_context);
+                if had_type_error.get() {
+                    return ClassExecutionResult::Inferred(Inferred::new_any());
+                }
+                return ClassExecutionResult::Inferred(
+                    execute_functional_enum(original_i_s, *self, args, result_context)
+                        .unwrap_or_else(Inferred::new_any),
+                );
             }
-            return ClassExecutionResult::Inferred(
-                execute_functional_enum(original_i_s, *self, args, result_context)
-                    .unwrap_or_else(Inferred::new_any),
-            );
+            ClassType::TypedDict => {
+                // TODO this is wrong
+                return ClassExecutionResult::Inferred(Inferred::from_type(self.as_db_type(i_s.db)));
+            }
+            _ => (),
         }
 
         let constructor = self.find_relevant_constructor(i_s);

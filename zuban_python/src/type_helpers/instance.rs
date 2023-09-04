@@ -327,15 +327,19 @@ impl<'a> Instance<'a> {
         slice_type: &SliceType,
         result_context: &mut ResultContext,
     ) -> Inferred {
-        if let ClassType::NamedTuple(named_tuple) =
-            &self.class.use_cached_class_infos(i_s.db).class_type
-        {
-            // TODO this doesn't take care of the mro and could not be the first __getitem__
-            return NamedTupleValue::new(i_s.db, named_tuple).get_item(
-                i_s,
-                slice_type,
-                result_context,
-            );
+        match &self.class.use_cached_class_infos(i_s.db).class_type {
+            ClassType::NamedTuple(named_tuple) => {
+                // TODO this doesn't take care of the mro and could not be the first __getitem__
+                return NamedTupleValue::new(i_s.db, named_tuple).get_item(
+                    i_s,
+                    slice_type,
+                    result_context,
+                );
+            }
+            ClassType::TypedDict => {
+                todo!()
+            }
+            _ => (),
         }
         let mro_iterator = self.class.mro(i_s.db);
         let node_ref = slice_type.as_node_ref();

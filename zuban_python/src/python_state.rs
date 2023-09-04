@@ -255,7 +255,7 @@ impl PythonState {
         set_specific(
             mypy_extensions,
             mypy_ext_typed_dict_index,
-            Specific::TypedDict,
+            Specific::TypingTypedDict,
         );
         s.mypy_extensions_arg_func =
             set_mypy_extension_specific(mypy_extensions, "Arg", Specific::MypyExtensionsArg);
@@ -801,7 +801,7 @@ fn typing_changes(
     set_typing_inference(typing, "LiteralString", Specific::TypingLiteralString);
     set_typing_inference(typing, "Literal", Specific::TypingLiteral);
     set_typing_inference(typing, "Final", Specific::TypingFinal);
-    set_typing_inference(typing, "TypedDict", Specific::TypedDict);
+    set_typing_inference(typing, "TypedDict", Specific::TypingTypedDict);
     set_typing_inference(typing, "NamedTuple", Specific::TypingNamedTuple);
     set_typing_inference(typing, "Unpack", Specific::TypingUnpack);
     set_typing_inference(typing, "TypeAlias", Specific::TypingTypeAlias);
@@ -842,7 +842,7 @@ fn typing_changes(
     set_typing_inference(t, "LiteralString", Specific::TypingLiteralString);
     set_typing_inference(t, "Literal", Specific::TypingLiteral);
     set_typing_inference(t, "Final", Specific::TypingFinal);
-    set_typing_inference(t, "TypedDict", Specific::TypedDict);
+    set_typing_inference(t, "TypedDict", Specific::TypingTypedDict);
     set_typing_inference(t, "Unpack", Specific::TypingUnpack);
     set_typing_inference(t, "ParamSpec", Specific::TypingParamSpecClass);
     set_typing_inference(t, "TypeVar", Specific::TypingTypeVarClass);
