@@ -644,8 +644,6 @@ testDeferredDataclassInitSignature
 testTypeAliasInDataclassDoesNotCrash
 # : Final in dataclasses
 testFinalInDataclass
-# dataclass self type
-testDataclassSelfType
 # dataclass order
 testIncrementalDataclassesDunder
 testDataclassUpdate6

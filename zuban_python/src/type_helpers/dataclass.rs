@@ -240,7 +240,7 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
                         _ => unreachable!(),
                     };
                     *t = replace_class_type_vars(db, t, &cls, &|| {
-                        DbType::Dataclass(super_dataclass.clone())
+                        DbType::Dataclass(dataclass.clone())
                     });
                     add_param(&mut params, new_param);
                 }
