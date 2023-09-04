@@ -2358,7 +2358,7 @@ fn get_generator_return_type(db: &Database, t: &DbType) -> DbType {
     }
 }
 
-fn first_defined_name(file: &PythonFile, name_index: NodeIndex) -> Option<NodeIndex> {
+pub fn first_defined_name(file: &PythonFile, name_index: NodeIndex) -> Option<NodeIndex> {
     let point = file.points.get(name_index);
     if !point.calculated() {
         return None;

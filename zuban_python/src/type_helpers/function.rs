@@ -21,8 +21,8 @@ use crate::database::{
 };
 use crate::diagnostics::{Issue, IssueType};
 use crate::file::{
-    use_cached_annotation_type, PythonFile, TypeComputation, TypeComputationOrigin,
-    TypeVarCallbackReturn,
+    first_defined_name, use_cached_annotation_type, PythonFile, TypeComputation,
+    TypeComputationOrigin, TypeVarCallbackReturn,
 };
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -37,6 +37,7 @@ use crate::matching::{
     ResultContext, SignatureMatch, Type,
 };
 use crate::node_ref::NodeRef;
+use crate::python_state::NAME_TO_FUNCTION_DIFF;
 use crate::type_helpers::Class;
 use crate::utils::rc_unwrap_or_clone;
 use crate::{debug, new_class};
@@ -432,7 +433,16 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             // Ensure it's cached
             let inf = self.decorated(i_s);
             if inf.maybe_saved_specific(i_s.db) == Some(Specific::OverloadUnreachable) {
-                return FunctionKind::Function;
+                let first =
+                    first_defined_name(self.node_ref.file, self.node().name().index()).unwrap();
+                let original_func = NodeRef::new(self.node_ref.file, first - NAME_TO_FUNCTION_DIFF);
+                let point = original_func.point();
+                if point.calculated() && point.maybe_specific() == Some(Specific::DecoratedFunction)
+                {
+                    return Function::new(original_func, self.class).kind(i_s);
+                } else {
+                    todo!("does this ever really happen?")
+                }
             }
             match self.decorator_ref().complex() {
                 Some(ComplexPoint::FunctionOverload(o)) => o.kind(),

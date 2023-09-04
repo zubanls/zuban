@@ -621,7 +621,6 @@ testSelfTypeProperSupertypeAttributeTuple
 testNewAnalyzerIncrementalMethodNamedTuple
 
 # __post_init__
-testDataclassesInitVarIncremental
 testPostInitCorrectSignature
 testPostInitSubclassing
 testPostInitNotADataclassCheck
@@ -636,9 +635,7 @@ testPostInitStaticMethod
 testDataclassesInitVarNoOverride
 # dataclass classmethod
 testDataclassesClassmethods
-testDataclassesOverloadsAndClassmethods
 testClassmethodShadowingFieldDoesNotCrash
-testDataclassGenericsClassmethod
 # dataclass circular inheritance
 testDataclassGenericWithBound
 testNoCrashOnSelfWithForwardRefGenericDataclass

@@ -11,8 +11,8 @@ pub use file_state::{
     File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, Leaf, PythonFileLoader,
     Vfs,
 };
-pub use inference::ComprehensionKind;
 use inference::Inference;
+pub use inference::{first_defined_name, ComprehensionKind};
 pub use python_file::{ComplexValues, PythonFile};
 pub use type_computation::{
     new_collections_named_tuple, new_typing_named_tuple, use_cached_annotation_or_type_comment,
