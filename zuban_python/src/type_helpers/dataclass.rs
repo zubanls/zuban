@@ -46,7 +46,10 @@ pub fn check_dataclass_options<'db>(
                 "order" => assign_option(&mut options.order, arg),
                 "eq" => assign_option(&mut options.eq, arg),
                 "init" => assign_option(&mut options.init, arg),
-                _ => todo!("{key}"),
+                "match_args" => assign_option(&mut options.match_args, arg),
+                "slots" => assign_option(&mut options.slots, arg),
+                "unsafe_hash" => assign_option(&mut options.unsafe_hash, arg),
+                _ => (),
             }
         } else {
             todo!("{:?}", arg)
@@ -135,6 +138,12 @@ impl<'a> DataclassHelper<'a> {
                     result_type: i_s.db.python_state.bool_db_type(),
                 },
             ))));
+        }
+        if self.0.options.match_args {
+            todo!()
+        }
+        if self.0.options.slots {
+            todo!()
         }
         Instance::new(Class::from_generic_class(i_s.db, &self.0.class), None)
             .lookup(i_s, from, name, LookupKind::Normal)

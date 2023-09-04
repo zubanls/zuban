@@ -2605,7 +2605,7 @@ impl Default for DataclassOptions {
             order: false,
             unsafe_hash: false,
             frozen: false,
-            match_args: true,
+            match_args: false,
             kw_only: false,
             slots: false,
         }

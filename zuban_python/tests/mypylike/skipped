@@ -675,8 +675,6 @@ testDataclassReplace
 testReplace
 # __match_args__
 testDataclassWithMatchArgs
-testDataclassWithoutMatchArgs
-testDataclassWithMatchArgsOldVersion
 # dataclass transform
 updateDataclassTransformParameterViaDecorator
 updateDataclassTransformParameterViaParentClass
@@ -3160,6 +3158,8 @@ testGenericCollectionsWarning
 testNoSubcriptionOfStdlibCollections
 # Won't support: Python 3.8 specialties
 testTupleWithDifferentArgsPy38
+# Won't support Pyhton 3.9 specialities
+testDataclassWithMatchArgsOldVersion
 
 # Won't support list/dict/tuple "is not subscriptable" (python <3.10)
 testNoSubscriptionOfBuiltinAliases
