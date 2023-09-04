@@ -153,6 +153,7 @@ impl<'a> Type<'a> {
                     }
                     return cls.find_relevant_constructor(i_s).maybe_callable(i_s, cls);
                 }
+                DbType::TypedDict(_) => todo!(),
                 _ => {
                     /*
                     if matches!(&c1.params, CallableParams::Any) {
@@ -262,6 +263,7 @@ impl<'a> Type<'a> {
             DbType::Module(file_index) => todo!(),
             DbType::Namespace(file_index) => todo!(),
             DbType::Dataclass(_) => todo!(),
+            DbType::TypedDict(_) => todo!(),
             DbType::NamedTuple(_) => todo!(),
             DbType::Enum(_) => todo!(),
             DbType::EnumMember(_) => todo!(),
@@ -374,6 +376,7 @@ impl<'a> Type<'a> {
                 }
                 _ => Match::new_false(),
             },
+            DbType::TypedDict(_) => todo!(),
             DbType::NamedTuple(nt1) => match value_type.as_ref() {
                 DbType::NamedTuple(nt2) => {
                     let c1 = &nt1.__new__;
@@ -1531,6 +1534,7 @@ impl<'a> Type<'a> {
                     d.clone()
                 }
             }),
+            DbType::TypedDict(_) => todo!(),
             DbType::NamedTuple(nt) => {
                 let mut constructor = nt.__new__.as_ref().clone();
                 let CallableParams::Simple(params) = &constructor.params else {
@@ -1953,6 +1957,7 @@ impl<'a> Type<'a> {
                 },
                 d.options,
             )),
+            DbType::TypedDict(_) => todo!(),
             DbType::NamedTuple(_) => todo!(),
             DbType::Enum(_) => todo!(),
             DbType::EnumMember(_) => todo!(),
@@ -2331,6 +2336,7 @@ impl<'a> Type<'a> {
                 callable(self, result)
             }
             DbType::Dataclass(d) => callable(self, DataclassHelper(d).lookup(i_s, from, name)),
+            DbType::TypedDict(_) => todo!(),
             DbType::NamedTuple(nt) => {
                 callable(self, NamedTupleValue::new(i_s.db, nt).lookup(i_s, name))
             }
@@ -2408,6 +2414,7 @@ impl<'a> Type<'a> {
         match self.as_ref() {
             DbType::Class(c) => todo!(),
             DbType::Dataclass(d) => DataclassHelper(d).lookup_symbol(i_s, name),
+            DbType::TypedDict(_) => todo!(),
             DbType::Tuple(t) => (None, LookupResult::None), // TODO this probably omits index/count
             DbType::NamedTuple(nt) => (None, NamedTupleValue::new(i_s.db, nt).lookup(i_s, name)),
             DbType::Callable(t) => todo!(),
@@ -2468,6 +2475,7 @@ impl<'a> Type<'a> {
                     }
                     Inferred::from_type(t.clone())
                 }
+                DbType::TypedDict(_) => todo!(),
                 _ => {
                     slice_type
                         .as_node_ref()
@@ -2784,6 +2792,7 @@ pub fn execute_type_of_type<'db>(
         DbType::Dataclass(d) => {
             DataclassHelper(d).initialize(i_s, args, result_context, on_type_error)
         }
+        DbType::TypedDict(_) => todo!(),
         DbType::NamedTuple(nt) => {
             let calculated_type_vars = calculate_callable_type_vars_and_return(
                 i_s,

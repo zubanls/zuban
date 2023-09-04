@@ -628,6 +628,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                     DbType::Tuple(content) => None,
                                     DbType::Callable(content) => None,
                                     DbType::Dataclass(d) => Some(d.class(db)),
+                                    DbType::TypedDict(d) => todo!("?"),
                                     _ => unreachable!(),
                                 };
                                 if let Some(class) = class {
@@ -1510,6 +1511,7 @@ enum BaseKind {
     Class(PointLink),
     Dataclass(PointLink),
     NamedTuple,
+    TypedDict,
     Tuple,
     Type,
     Enum,
@@ -1522,6 +1524,7 @@ fn to_base_kind(t: &DbType) -> BaseKind {
         DbType::Type(_) => BaseKind::Type,
         DbType::Tuple(_) => BaseKind::Tuple,
         DbType::Dataclass(d) => BaseKind::Dataclass(d.class.link),
+        DbType::TypedDict(d) => BaseKind::TypedDict,
         DbType::NamedTuple(_) => BaseKind::NamedTuple,
         DbType::Enum(_) => BaseKind::Enum,
         DbType::Callable(_) => BaseKind::Callable,

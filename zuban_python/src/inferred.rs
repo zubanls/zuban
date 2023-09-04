@@ -233,6 +233,7 @@ impl<'db: 'slf, 'slf> Inferred {
             TypeOrClass::Class(class) => class,
             TypeOrClass::Type(t) => match t.expect_borrowed_db_type() {
                 DbType::Dataclass(d) => Class::from_generic_class(i_s.db, &d.class),
+                DbType::TypedDict(d) => todo!("is this even necessary?"),
                 _ => unreachable!(),
             },
         }

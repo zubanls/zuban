@@ -793,6 +793,7 @@ pub enum DbType {
     ParamSpecKwargs(ParamSpecUsage),
     Literal(Literal),
     Dataclass(Rc<Dataclass>),
+    TypedDict(Rc<TypedDict>),
     NamedTuple(Rc<NamedTuple>),
     Enum(Rc<Enum>),
     EnumMember(EnumMember),
@@ -956,6 +957,7 @@ impl DbType {
             Self::Dataclass(d) => {
                 Class::from_generic_class(format_data.db, &d.class).format(format_data)
             }
+            Self::TypedDict(d) => todo!(),
             Self::NamedTuple(nt) => {
                 use crate::type_helpers::NamedTupleValue;
                 match format_data.style {
@@ -994,6 +996,7 @@ impl DbType {
                 ClassGenerics::List(generics) => generics,
                 _ => unreachable!(),
             },
+            Self::TypedDict(d) => todo!("Maybe this should be implemented?"),
             _ => unreachable!(),
         }
     }
@@ -1094,6 +1097,7 @@ impl DbType {
                 ClassGenerics::List(generics) => search_in_generics(found_type_var, generics),
                 _ => (),
             },
+            Self::TypedDict(d) => todo!(),
             Self::NamedTuple(_) => {
                 debug!("TODO do we need to support namedtuple searching for type vars?");
             }
@@ -1189,6 +1193,7 @@ impl DbType {
                 ClassGenerics::NotDefinedYet => todo!(),
                 _ => false,
             },
+            Self::TypedDict(d) => todo!(),
             Self::NamedTuple(nt) => nt.__new__.has_any_internal(i_s, already_checked),
             Self::EnumMember(_) => todo!(),
             Self::Super { .. } => todo!(),
@@ -1220,6 +1225,7 @@ impl DbType {
             Self::Callable(content) => content.has_self_type(),
             Self::Self_ => true,
             Self::Dataclass(_) => todo!(),
+            Self::TypedDict(d) => todo!(),
             Self::NamedTuple(_) => {
                 debug!("TODO namedtuple has_self_type");
                 false
@@ -2646,6 +2652,11 @@ impl Dataclass {
         }
         self_.__init__.get().unwrap()
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TypedDict {
+    pub name: StringSlice,
 }
 
 #[derive(Debug, PartialEq, Clone)]
