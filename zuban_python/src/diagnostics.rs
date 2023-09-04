@@ -196,6 +196,8 @@ pub(crate) enum IssueType {
     DataclassNoDefaultAfterDefault,
     DataclassOrderEnabledButNotEq,
     DataclassCustomOrderMethodNotAllowed { method_name: &'static str },
+    DataclassCannotInheritNonFrozenFromFrozen,
+    DataclassCannotInheritFrozenFromNonFrozen,
 
     // From --disallow-untyped-defs
     FunctionIsDynamic,
@@ -552,6 +554,10 @@ impl<'db> Diagnostic<'db> {
             DataclassCustomOrderMethodNotAllowed { method_name } => format!(
                 r#"You may not have a custom "{method_name}" method when "order" is True"#
             ),
+            DataclassCannotInheritNonFrozenFromFrozen =>
+                "Cannot inherit non-frozen dataclass from a frozen one".to_string(),
+            DataclassCannotInheritFrozenFromNonFrozen =>
+                "Cannot inherit frozen dataclass from a non-frozen one".to_string(),
 
             FunctionIsDynamic => "Function is missing a type annotation".to_string(),
             FunctionMissingReturnAnnotation =>

@@ -634,10 +634,6 @@ testPostInitIsNotAFunction
 testPostInitClassMethod
 testPostInitStaticMethod
 testDataclassesInitVarNoOverride
-# "Cannot inherit non-frozen dataclass from a frozen one"
-testDataclassesInconsistentFreezing
-# normal class inherits from dataclass
-testDataclassOrdering
 # dataclass classmethod
 testDataclassesClassmethods
 testDataclassesOverloadsAndClassmethods
