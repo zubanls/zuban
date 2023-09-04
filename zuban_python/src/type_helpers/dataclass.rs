@@ -48,7 +48,6 @@ pub fn check_dataclass_options<'db>(
                 "init" => assign_option(&mut options.init, arg),
                 "match_args" => assign_option(&mut options.match_args, arg),
                 "slots" => assign_option(&mut options.slots, arg),
-                "unsafe_hash" => assign_option(&mut options.unsafe_hash, arg),
                 _ => (),
             }
         } else {
