@@ -821,6 +821,7 @@ fn typing_changes(
 
     set_typing_inference(typing, "cast", Specific::TypingCast);
 
+    set_typing_inference(dataclasses, "replace", Specific::DataclassesReplace);
     set_typing_inference(collections, "namedtuple", Specific::CollectionsNamedTuple);
 
     setup_type_alias(typing, "Tuple", builtins, "tuple");
@@ -878,6 +879,7 @@ fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
         "assert_type",
         "dataclass_transform",
         "super",
+        "replace",
     ]
     .contains(&name)
     {

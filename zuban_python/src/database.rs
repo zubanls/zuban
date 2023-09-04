@@ -464,7 +464,8 @@ pub enum Specific {
     TypedDict,
     RevealTypeFunction,
     AssertTypeFunction,
-    TypingNamedTuple,      // typing.NamedTuple
+    TypingNamedTuple, // typing.NamedTuple
+    DataclassesReplace,
     CollectionsNamedTuple, // collections.namedtuple
 
     MypyExtensionsArg,
