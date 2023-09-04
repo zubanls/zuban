@@ -25,6 +25,8 @@ use crate::{
 
 use super::{Class, Function, Instance, TypeOrClass};
 
+const ORDER_METHOD_NAMES: [&'static str; 4] = ["__lt__", "__gt__", "__le__", "__ge__"];
+
 pub fn check_dataclass_options<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &SimpleArguments<'db, '_>,
@@ -115,28 +117,16 @@ impl<'a> DataclassHelper<'a> {
                 i_s.db.python_state.dataclass_fields_type.clone(),
             ));
         }
+        if self.0.options.order && ORDER_METHOD_NAMES.contains(&name) && kind == LookupKind::Normal
+        {
+            return self.order_func(i_s, true);
+        }
         self.0.class(i_s.db).lookup(i_s, from, name, kind)
     }
 
     pub fn lookup(&self, i_s: &InferenceState, from: NodeRef, name: &str) -> LookupResult {
-        if self.0.options.order && matches!(name, "__lt__" | "__gt__" | "__le__" | "__ge__") {
-            return LookupResult::UnknownName(Inferred::from_type(DbType::Callable(Rc::new(
-                CallableContent {
-                    name: None,
-                    class_name: None,
-                    defined_at: self.0.class.link,
-                    kind: FunctionKind::Function,
-                    type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
-                    params: CallableParams::Simple(Rc::new([CallableParam {
-                        param_specific: ParamSpecific::PositionalOnly(DbType::Dataclass(
-                            self.0.clone(),
-                        )),
-                        name: None,
-                        has_default: false,
-                    }])),
-                    result_type: i_s.db.python_state.bool_db_type(),
-                },
-            ))));
+        if self.0.options.order && ORDER_METHOD_NAMES.contains(&name) {
+            return self.order_func(i_s, false);
         }
         if self.0.options.match_args {
             todo!()
@@ -172,6 +162,26 @@ impl<'a> DataclassHelper<'a> {
         }
         let class = self.0.class(i_s.db);
         (Some(class), class.lookup_symbol(i_s, name))
+    }
+
+    fn order_func(&self, i_s: &InferenceState, from_type: bool) -> LookupResult {
+        return LookupResult::UnknownName(Inferred::from_type(DbType::Callable(Rc::new(
+            CallableContent {
+                name: None,
+                class_name: None,
+                defined_at: self.0.class.link,
+                kind: FunctionKind::Function,
+                type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
+                params: CallableParams::Simple(Rc::new([CallableParam {
+                    param_specific: ParamSpecific::PositionalOnly(DbType::Dataclass(
+                        self.0.clone(),
+                    )),
+                    name: None,
+                    has_default: false,
+                }])),
+                result_type: i_s.db.python_state.bool_db_type(),
+            },
+        ))));
     }
 }
 
@@ -342,7 +352,7 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
         }
     }
     if dataclass.options.order {
-        for method_name in ["__lt__", "__gt__", "__le__", "__ge__"] {
+        for method_name in ORDER_METHOD_NAMES {
             if let Some(node_index) = cls
                 .class_storage
                 .class_symbol_table
