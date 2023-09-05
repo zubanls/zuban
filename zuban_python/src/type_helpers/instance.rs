@@ -3,7 +3,7 @@ use std::rc::Rc;
 use parsa_python_ast::Name;
 
 use super::class::TypeOrClass;
-use super::{Class, MroIterator, NamedTupleValue, Tuple};
+use super::{Class, MroIterator, NamedTupleValue, Tuple, TypedDictHelper};
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments, NoArguments};
 use crate::database::{
     ClassType, DbType, FunctionKind, GenericClass, PointLink, Specific, TypeVarKind,
@@ -337,7 +337,7 @@ impl<'a> Instance<'a> {
                 );
             }
             ClassType::TypedDict => {
-                todo!()
+                return TypedDictHelper(*self).get_item(i_s, slice_type, result_context);
             }
             _ => (),
         }

@@ -20,4 +20,4 @@ pub use type_computation::{
     TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn,
 };
 pub use type_var_finder::TypeVarFinder;
-pub use utils::{infer_index, on_argument_type_error};
+pub use utils::{infer_index, infer_string_index, on_argument_type_error};

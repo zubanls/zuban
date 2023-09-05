@@ -1376,7 +1376,9 @@ impl<'db: 'a, 'a> Class<'a> {
             }
             ClassType::TypedDict => {
                 // TODO this is wrong
-                return ClassExecutionResult::Inferred(Inferred::from_type(self.as_db_type(i_s.db)));
+                return ClassExecutionResult::Inferred(Inferred::from_type(
+                    self.as_db_type(i_s.db),
+                ));
             }
             _ => (),
         }

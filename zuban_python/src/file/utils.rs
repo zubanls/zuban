@@ -271,3 +271,42 @@ pub fn infer_index(
     }
     .unwrap_or_else(Inferred::new_unknown)
 }
+
+pub fn infer_string_index(
+    i_s: &InferenceState,
+    simple: Simple,
+    callable: impl Fn(&str) -> Option<Inferred>,
+) -> Inferred {
+    let infer = |i_s: &InferenceState, literal: Literal| {
+        if !matches!(literal.kind, LiteralKind::String(_)) {
+            return None;
+        }
+        let LiteralValue::String(s) = literal.value(i_s.db) else {
+            unreachable!();
+        };
+        callable(s)
+    };
+    match simple
+        .infer(i_s, &mut ResultContext::ExpectLiteral)
+        .maybe_literal(i_s.db)
+    {
+        UnionValue::Single(literal) => infer(i_s, literal),
+        UnionValue::Multiple(mut literals) => {
+            literals
+                .next()
+                .and_then(|l| infer(i_s, l))
+                .and_then(|mut inferred| {
+                    for literal in literals {
+                        if let Some(new_inf) = infer(i_s, literal) {
+                            inferred = inferred.union(i_s, new_inf);
+                        } else {
+                            return None;
+                        }
+                    }
+                    Some(inferred)
+                })
+        }
+        UnionValue::Any => todo!(),
+    }
+    .unwrap_or_else(Inferred::new_unknown)
+}

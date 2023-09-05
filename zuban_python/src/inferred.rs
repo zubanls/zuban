@@ -396,11 +396,26 @@ impl<'db: 'slf, 'slf> Inferred {
     ) -> UnionValue<DbLiteral, impl Iterator<Item = DbLiteral> + 'slf> {
         if let InferredState::Saved(link) = self.state {
             let node_ref = NodeRef::from_link(db, link);
-            if let Some(Specific::IntLiteral) = node_ref.point().maybe_specific() {
-                return UnionValue::Single(DbLiteral {
-                    kind: LiteralKind::Int(node_ref.expect_int().parse().unwrap()),
-                    implicit: true,
-                });
+            match node_ref.point().maybe_specific() {
+                Some(Specific::IntLiteral) => {
+                    return UnionValue::Single(DbLiteral {
+                        kind: LiteralKind::Int(node_ref.expect_int().parse().unwrap()),
+                        implicit: true,
+                    });
+                }
+                Some(Specific::StringLiteral) => {
+                    return UnionValue::Single(DbLiteral {
+                        kind: LiteralKind::String(
+                            DbString::from_python_string(
+                                node_ref.file_index(),
+                                node_ref.maybe_str().unwrap().as_python_string(),
+                            )
+                            .unwrap(),
+                        ),
+                        implicit: true,
+                    });
+                }
+                _ => (),
             }
         }
         if let Some(ComplexPoint::TypeInstance(t)) = self.maybe_complex_point(db) {

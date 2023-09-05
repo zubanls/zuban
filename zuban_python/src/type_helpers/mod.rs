@@ -8,6 +8,7 @@ mod instance;
 mod module;
 mod named_tuple;
 mod tuple;
+mod typed_dict;
 mod typing;
 
 pub use bound_method::{BoundMethod, BoundMethodFunction};
@@ -25,6 +26,7 @@ pub use named_tuple::{
     execute_collections_named_tuple, execute_typing_named_tuple, NamedTupleValue,
 };
 pub use tuple::Tuple;
+pub use typed_dict::TypedDictHelper;
 pub use typing::{
     execute_assert_type, execute_type, NewTypeClass, ParamSpecClass, RevealTypeFunction,
     TypeVarClass, TypeVarTupleClass, TypingCast, TypingType,
