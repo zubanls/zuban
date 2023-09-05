@@ -17,7 +17,7 @@ use crate::database::{
     ClassStorage, ClassType, ComplexPoint, Database, Dataclass, DataclassOptions, DbType, Enum,
     EnumMemberDefinition, FormatStyle, FunctionKind, GenericClass, GenericsList, Locality,
     MetaclassState, MroIndex, NamedTuple, ParamSpecific, ParentScope, Point, PointLink, PointType,
-    StringSlice, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, Variance,
+    StringSlice, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -678,7 +678,18 @@ impl<'db: 'a, 'a> Class<'a> {
                                 class_type = ClassType::NamedTuple(named_tuple);
                             }
                             CalculatedBaseClass::TypedDict => {
-                                class_type = ClassType::TypedDict;
+                                class_type = ClassType::TypedDict(Rc::new(TypedDict {
+                                    name: self.name_string_slice(),
+                                    __new__: Rc::new(CallableContent {
+                                        params: CallableParams::Any,
+                                        name: Some(self.name_string_slice()),
+                                        class_name: None,
+                                        defined_at: self.node_ref.as_link(),
+                                        kind: FunctionKind::Function,
+                                        type_vars: self.type_vars(i_s).clone(),
+                                        result_type: DbType::Any,
+                                    }),
+                                }));
                             }
                             CalculatedBaseClass::Generic => (),
                             CalculatedBaseClass::Unknown => {
@@ -1145,7 +1156,11 @@ impl<'db: 'a, 'a> Class<'a> {
         match &class_infos.class_type {
             ClassType::NamedTuple(named_tuple) => NamedTupleValue::new(format_data.db, named_tuple)
                 .format_with_name(format_data, &result, self.generics),
-            ClassType::TypedDict => format!("TypedDict('{result}', {{}})").into(),
+            ClassType::TypedDict(t) => {
+                //let params = t.__new__.expect_simple_params().iter().map(|p| format!("{}: {}", p.name.unwrap().as_str(format_data.db), p.param_specific.expect_positional_db_type_as_ref().format_short(format_data.db))).collect::<Vec<_>>().join(",");
+                let params = "";
+                format!("TypedDict('{result}', {{{params}}})").into()
+            }
             _ => result.into(),
         }
     }
@@ -1375,7 +1390,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         .unwrap_or_else(Inferred::new_any),
                 );
             }
-            ClassType::TypedDict => {
+            ClassType::TypedDict(_) => {
                 // TODO this is wrong
                 return ClassExecutionResult::Inferred(Inferred::from_type(
                     self.as_db_type(i_s.db),

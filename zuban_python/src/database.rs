@@ -1636,6 +1636,13 @@ impl CallableContent {
         Self::new_any_internal(defined_at, db.python_state.empty_type_var_likes.clone())
     }
 
+    pub fn expect_simple_params(&self) -> &[CallableParam] {
+        let CallableParams::Simple(params) = &self.params else {
+            unreachable!()
+        };
+        params
+    }
+
     pub fn remove_first_param(&self) -> Option<Self> {
         let mut c = self.clone();
         c.params = match &self.params {
@@ -3286,7 +3293,7 @@ pub enum ClassType {
     Normal,
     Protocol,
     Enum,
-    TypedDict,
+    TypedDict(Rc<TypedDict>),
     NamedTuple(Rc<NamedTuple>),
 }
 
