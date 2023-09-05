@@ -1145,6 +1145,7 @@ impl<'db: 'a, 'a> Class<'a> {
         match &class_infos.class_type {
             ClassType::NamedTuple(named_tuple) => NamedTupleValue::new(format_data.db, named_tuple)
                 .format_with_name(format_data, &result, self.generics),
+            ClassType::TypedDict => format!("TypedDict('{result}', {{}})").into(),
             _ => result.into(),
         }
     }
