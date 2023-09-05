@@ -240,6 +240,7 @@ pub(super) enum TypeNameLookup<'db, 'a> {
     SpecialType(SpecialType),
     InvalidVariable(InvalidVariableType<'a>),
     NamedTupleDefinition(DbType),
+    TypedDictDefinition(DbType),
     Enum(Rc<Enum>),
     Dataclass(Rc<Dataclass>),
     RecursiveAlias(PointLink),
@@ -526,6 +527,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
             }
         }
+    }
+
+    pub fn compute_typed_dict_entry(&mut self, expr: Expression) -> DbType {
+        let calculated = self.compute_type(expr);
+        self.as_db_type(calculated, NodeRef::new(self.inference.file, expr.index()))
     }
 
     pub fn cache_annotation(&mut self, annotation: Annotation, is_implicit_optional: bool) {
@@ -2233,6 +2239,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeNameLookup::TypeAlias(alias) => TypeContent::TypeAlias(alias),
             TypeNameLookup::NewType(n) => TypeContent::DbType(DbType::NewType(n)),
             TypeNameLookup::NamedTupleDefinition(t) => TypeContent::DbType(t),
+            TypeNameLookup::TypedDictDefinition(t) => TypeContent::DbType(t),
             TypeNameLookup::Enum(t) => TypeContent::DbType(DbType::Enum(t)),
             TypeNameLookup::Dataclass(d) => TypeContent::Dataclass(d),
             TypeNameLookup::InvalidVariable(t) => TypeContent::InvalidVariable(t),
@@ -2726,6 +2733,8 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 TypeNameLookup::NewType(n)
             } else if let Some(t) = inferred.maybe_named_tuple_definition(self.i_s) {
                 TypeNameLookup::NamedTupleDefinition(t)
+            } else if let Some(t) = inferred.maybe_typed_dict_definition(self.i_s) {
+                TypeNameLookup::TypedDictDefinition(t)
             } else if let Some(t) = inferred.maybe_enum_definition(self.i_s) {
                 TypeNameLookup::Enum(t)
             } else {

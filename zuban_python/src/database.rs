@@ -539,6 +539,8 @@ pub enum ComplexPoint {
     NewTypeDefinition(Rc<NewType>),
     // e.g. X = NamedTuple('X', []), does not include classes.
     NamedTupleDefinition(Rc<DbType>),
+    // e.g. X = TypedDict('X', {'x': int}), does not include classes.
+    TypedDictDefinition(Rc<DbType>),
 
     // Relevant for types only (not inference)
     TypeVarLike(TypeVarLike),
@@ -2654,11 +2656,6 @@ impl Dataclass {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct TypedDict {
-    pub name: StringSlice,
-}
-
 #[derive(Debug, PartialEq, Clone)]
 pub struct NamedTuple {
     pub name: StringSlice,
@@ -2713,6 +2710,21 @@ impl NamedTuple {
                     .collect(),
             ))
         })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TypedDict {
+    pub name: StringSlice,
+    pub __new__: Rc<CallableContent>,
+}
+
+impl TypedDict {
+    pub fn new(name: StringSlice, __new__: CallableContent) -> Self {
+        Self {
+            name,
+            __new__: Rc::new(__new__),
+        }
     }
 }
 

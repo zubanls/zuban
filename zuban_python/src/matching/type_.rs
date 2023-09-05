@@ -26,7 +26,7 @@ use crate::node_ref::NodeRef;
 use crate::type_helpers::{
     lookup_in_namespace, lookup_on_enum_instance, lookup_on_enum_member_instance, Callable, Class,
     DataclassHelper, Instance, Module, MroIterator, NamedTupleValue, OverloadedFunction, Tuple,
-    TypeOrClass, TypingType,
+    TypeOrClass, TypedDictHelper2, TypingType,
 };
 use crate::utils::rc_unwrap_or_clone;
 
@@ -2492,6 +2492,7 @@ impl<'a> Type<'a> {
                 slice_type,
                 result_context,
             ),
+            DbType::TypedDict(d) => TypedDictHelper2(d).get_item(i_s, slice_type, result_context),
             DbType::Callable(_) => {
                 slice_type
                     .as_node_ref()
@@ -2792,7 +2793,7 @@ pub fn execute_type_of_type<'db>(
         DbType::Dataclass(d) => {
             DataclassHelper(d).initialize(i_s, args, result_context, on_type_error)
         }
-        DbType::TypedDict(_) => todo!(),
+        DbType::TypedDict(td) => Inferred::from_type(DbType::TypedDict(td.clone())),
         DbType::NamedTuple(nt) => {
             let calculated_type_vars = calculate_callable_type_vars_and_return(
                 i_s,

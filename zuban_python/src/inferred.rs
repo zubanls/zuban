@@ -25,7 +25,7 @@ use crate::matching::{
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
     execute_assert_type, execute_collections_named_tuple, execute_super, execute_type,
-    execute_typing_named_tuple, merge_class_type_vars_into_callable, BoundMethod,
+    execute_typing_named_tuple, merge_class_type_vars_into_callable, new_typed_dict, BoundMethod,
     BoundMethodFunction, Class, FirstParamProperties, Function, Instance, NewTypeClass,
     OverloadedFunction, ParamSpecClass, RevealTypeFunction, TypeOrClass, TypeVarClass,
     TypeVarTupleClass, TypingCast,
@@ -262,6 +262,16 @@ impl<'db: 'slf, 'slf> Inferred {
         if let InferredState::Saved(definition) = self.state {
             let node_ref = NodeRef::from_link(i_s.db, definition);
             if let Some(ComplexPoint::NamedTupleDefinition(n)) = node_ref.complex() {
+                return Some(n.as_ref().clone());
+            }
+        }
+        None
+    }
+
+    pub fn maybe_typed_dict_definition(&self, i_s: &InferenceState) -> Option<DbType> {
+        if let InferredState::Saved(definition) = self.state {
+            let node_ref = NodeRef::from_link(i_s.db, definition);
+            if let Some(ComplexPoint::TypedDictDefinition(n)) = node_ref.complex() {
                 return Some(n.as_ref().clone());
             }
         }
@@ -1509,6 +1519,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             Specific::TypingNamedTuple => {
                                 return execute_typing_named_tuple(i_s, args)
                             }
+                            Specific::TypingTypedDict => return new_typed_dict(i_s, args),
                             Specific::CollectionsNamedTuple => {
                                 return execute_collections_named_tuple(
                                     i_s,
@@ -2039,6 +2050,7 @@ fn type_of_complex<'db: 'x, 'x>(
             Type::owned(DbType::Type(Rc::new(DbType::NewType(n.clone()))))
         }
         ComplexPoint::NamedTupleDefinition(n) => Type::owned(DbType::Type(n.clone())),
+        ComplexPoint::TypedDictDefinition(t) => Type::owned(DbType::Type(t.clone())),
         _ => {
             unreachable!("Classes are handled earlier {complex:?}")
         }
@@ -2103,6 +2115,7 @@ fn saved_as_type<'db>(i_s: &InferenceState<'db, '_>, definition: PointLink) -> T
                 | Specific::TypingLiteral
                 | Specific::TypingAnnotated
                 | Specific::TypingNamedTuple
+                | Specific::TypingTypedDict
                 | Specific::TypingCallable => todo!(),
                 Specific::TypingCast => todo!(),
                 Specific::TypingClassVar => todo!(),
