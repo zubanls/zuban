@@ -98,6 +98,7 @@ pub struct PythonState {
     typing_async_iterable_index: NodeIndex,
     typing_overload_index: NodeIndex,
     typing_override_index: NodeIndex,
+    typing_typed_dict: NodeIndex,
     types_module_type_index: NodeIndex,
     types_none_type_index: NodeIndex,
     collections_namedtuple_index: NodeIndex,
@@ -175,6 +176,7 @@ impl PythonState {
             typing_type_var: 0,
             typing_overload_index: 0,
             typing_override_index: 0,
+            typing_typed_dict: 0,
             typing_coroutine_index: 0,
             typing_iterator_index: 0,
             typing_iterable_index: 0,
@@ -363,6 +365,7 @@ impl PythonState {
         cache_index!(typing_async_generator_index, db, typing, "AsyncGenerator");
         cache_index!(typing_async_iterator_index, db, typing, "AsyncIterator");
         cache_index!(typing_async_iterable_index, db, typing, "AsyncIterable");
+        cache_index!(typing_typed_dict, db, typing, "_TypedDict");
         cache_index!(types_none_type_index, db, types, "NoneType");
         cache_index!(abc_abstractproperty_index, db, abc, "abstractproperty");
         cache_index!(dataclasses_kw_only_index, db, dataclasses_file, "KW_ONLY");
