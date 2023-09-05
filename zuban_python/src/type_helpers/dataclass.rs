@@ -229,11 +229,11 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
                         },
                     );
                 }
-                let CallableParams::Simple(init_params) = &Dataclass::__init__(super_dataclass, db).params else {
-                    unreachable!();
-                };
                 let cls = super_dataclass.class(db);
-                for param in init_params.iter() {
+                for param in Dataclass::__init__(super_dataclass, db)
+                    .expect_simple_params()
+                    .iter()
+                {
                     let mut new_param = param.clone();
                     let t = match &mut new_param.param_specific {
                         ParamSpecific::PositionalOrKeyword(t) | ParamSpecific::KeywordOnly(t) => t,

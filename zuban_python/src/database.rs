@@ -2688,11 +2688,8 @@ impl NamedTuple {
     }
 
     pub fn params(&self) -> &[CallableParam] {
-        let CallableParams::Simple(params) = &self.__new__.params else {
-            unreachable!();
-        };
         // Namedtuple callables contain a first param `Type[Self]` that we should skip.
-        &params[1..]
+        &self.__new__.expect_simple_params()[1..]
     }
 
     pub fn name<'a>(&self, db: &'a Database) -> &'a str {

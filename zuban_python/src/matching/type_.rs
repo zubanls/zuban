@@ -1537,11 +1537,9 @@ impl<'a> Type<'a> {
             DbType::TypedDict(_) => todo!(),
             DbType::NamedTuple(nt) => {
                 let mut constructor = nt.__new__.as_ref().clone();
-                let CallableParams::Simple(params) = &constructor.params else {
-                    unreachable!();
-                };
                 constructor.params = CallableParams::Simple(
-                    params
+                    constructor
+                        .expect_simple_params()
                         .iter()
                         .map(|param| {
                             let ParamSpecific::PositionalOrKeyword(t) = &param.param_specific else {

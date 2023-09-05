@@ -148,10 +148,7 @@ pub fn merge_class_type_vars_into_callable(
     callable: &CallableContent,
 ) -> CallableContent {
     let mut needs_self_type_variable = Type::new(&callable.result_type).has_explicit_self_type(db);
-    let CallableParams::Simple(params) = &callable.params else {
-        unreachable!()
-    };
-    for param in params.iter() {
+    for param in callable.expect_simple_params().iter() {
         if let Some(t) = param.param_specific.maybe_db_type() {
             needs_self_type_variable |= Type::new(t).has_explicit_self_type(db);
         }
