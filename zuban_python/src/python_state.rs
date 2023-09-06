@@ -247,18 +247,10 @@ impl PythonState {
             s.collections(),
             s.dataclasses_file(),
             s.typing_extensions(),
+            s.mypy_extensions(),
         );
 
         let mypy_extensions = unsafe { &*s.mypy_extensions };
-        let mypy_ext_typed_dict_index = mypy_extensions
-            .symbol_table
-            .lookup_symbol("TypedDict")
-            .unwrap();
-        set_specific(
-            mypy_extensions,
-            mypy_ext_typed_dict_index,
-            Specific::TypingTypedDict,
-        );
         s.mypy_extensions_arg_func =
             set_mypy_extension_specific(mypy_extensions, "Arg", Specific::MypyExtensionsArg);
         s.mypy_extensions_default_arg_func = set_mypy_extension_specific(
@@ -786,6 +778,7 @@ fn typing_changes(
     collections: &PythonFile,
     dataclasses: &PythonFile,
     typing_extensions: &PythonFile,
+    mypy_extensions: &PythonFile,
 ) {
     set_typing_inference(typing, "Protocol", Specific::TypingProtocol);
     set_typing_inference(typing, "Generic", Specific::TypingGeneric);
@@ -859,6 +852,8 @@ fn typing_changes(
     set_typing_inference(t, "NamedTuple", Specific::TypingNamedTuple);
     set_typing_inference(t, "Protocol", Specific::TypingProtocol);
     set_typing_inference(t, "dataclass_transform", Specific::TypingDataclassTransform);
+
+    set_typing_inference(mypy_extensions, "TypedDict", Specific::TypingTypedDict);
 }
 
 fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
@@ -872,6 +867,7 @@ fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
         "TypeVarTuple",
         "NamedTuple",
         "namedtuple",
+        "TypedDict",
         "LiteralString",
         "Concatenate",
         "ParamSpec",
