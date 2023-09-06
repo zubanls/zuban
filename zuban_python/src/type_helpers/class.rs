@@ -647,15 +647,38 @@ impl<'db: 'a, 'a> Class<'a> {
                                             &mut metaclass,
                                             cached_class_infos.metaclass,
                                         );
-                                        if let ClassType::NamedTuple(named_tuple) =
-                                            &cached_class_infos.class_type
-                                        {
-                                            if matches!(class_type, ClassType::Normal) {
-                                                class_type =
-                                                    ClassType::NamedTuple(named_tuple.clone());
-                                            } else {
-                                                todo!()
+                                        match &cached_class_infos.class_type {
+                                            ClassType::NamedTuple(named_tuple) => {
+                                                if matches!(class_type, ClassType::Normal) {
+                                                    class_type =
+                                                        ClassType::NamedTuple(named_tuple.clone());
+                                                } else {
+                                                    todo!()
+                                                }
                                             }
+                                            ClassType::TypedDict(typed_dict) => {
+                                                if matches!(class_type, ClassType::Normal) {
+                                                    let mut callable =
+                                                        (**typed_dict.__new__()).clone();
+                                                    let mut params: Vec<_> =
+                                                        callable.expect_simple_params().into();
+                                                    self.initialize_typed_dict_members(
+                                                        &i_s.with_class_context(self),
+                                                        &mut params,
+                                                    );
+                                                    callable.params =
+                                                        CallableParams::Simple(Rc::from(params));
+                                                    class_type = ClassType::TypedDict(Rc::new(
+                                                        TypedDict::new(
+                                                            self.name_string_slice(),
+                                                            callable,
+                                                        ),
+                                                    ));
+                                                } else {
+                                                    todo!()
+                                                }
+                                            }
+                                            _ => (),
                                         }
                                     }
                                 }
@@ -678,14 +701,15 @@ impl<'db: 'a, 'a> Class<'a> {
                                 class_type = ClassType::NamedTuple(named_tuple);
                             }
                             CalculatedBaseClass::TypedDict => {
+                                let mut params = vec![];
+                                self.initialize_typed_dict_members(
+                                    &i_s.with_class_context(self),
+                                    &mut params,
+                                );
                                 class_type = ClassType::TypedDict(Rc::new(TypedDict::new(
                                     self.name_string_slice(),
                                     CallableContent {
-                                        params: CallableParams::Simple(
-                                            self.initialize_typed_dict_members(
-                                                &i_s.with_class_context(self),
-                                            ),
-                                        ),
+                                        params: CallableParams::Simple(Rc::from(params)),
                                         name: Some(self.name_string_slice()),
                                         class_name: None,
                                         defined_at: self.node_ref.as_link(),
@@ -1175,7 +1199,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         )
                     })
                     .collect::<Vec<_>>()
-                    .join(",");
+                    .join(", ");
                 format!("TypedDict('{result}', {{{params}}})").into()
             }
             _ => result.into(),
@@ -1263,8 +1287,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    fn initialize_typed_dict_members(&self, i_s: &InferenceState) -> Rc<[CallableParam]> {
-        let mut vec = vec![];
+    fn initialize_typed_dict_members(&self, i_s: &InferenceState, vec: &mut Vec<CallableParam>) {
         let file = self.node_ref.file;
         match self.node().block().unpack() {
             BlockContent::Indented(stmts) => {
@@ -1274,7 +1297,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     };
                     match stmt.unpack() {
                         StmtContent::SimpleStmts(simple) => {
-                            find_stmt_typed_dict_types(i_s, file, &mut vec, simple)
+                            find_stmt_typed_dict_types(i_s, file, vec, simple)
                         }
                         _ => NodeRef::new(file, stmt.index())
                             .add_issue(i_s, IssueType::Note("TODO typeddict".into())),
@@ -1284,7 +1307,6 @@ impl<'db: 'a, 'a> Class<'a> {
             BlockContent::OneLine(simple) => todo!(), //find_stmt_typed_dict_types(i_s, file, &mut vec, simple),
         }
         let tvls = self.use_cached_type_vars(i_s.db);
-        Rc::from(vec)
     }
 
     fn enum_members(&self, i_s: &InferenceState) -> Box<[EnumMemberDefinition]> {

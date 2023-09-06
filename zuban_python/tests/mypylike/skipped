@@ -707,8 +707,9 @@ testEnumAreStillFinalAfterCache
 testBasicRecursiveTypedDictClass
 testBasicRecursiveTypedDictExtending
 testRecursiveGenericTypedDictExtending
-# TypedDict
+# "Incompatible types (expression has type "int", TypedDict item "x" has type "str")"
 testNewAnalyzerTypedDictClassInheritance
+# TypedDict
 testNewAnalyzerMemberNameMatchesTypedDict
 testTypeVarWithTypedDictValueInIndexExpression
 testUnpackWithoutTypedDict
