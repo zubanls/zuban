@@ -3050,7 +3050,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             }
             t => {
                 let t = comp.as_db_type(t, node_ref);
-                if !t.is_subclassable() {
+                if !t.is_subclassable(self.i_s.db) {
                     node_ref.add_issue(
                         self.i_s,
                         IssueType::NewTypeMustBeSubclassable {

@@ -714,6 +714,7 @@ testRecursiveTypedDictSubtyping
 testRecursiveTypedDictJoin
 testBasicRecursiveGenericTypedDict
 testCorrectJoinOfSelfRecursiveTypedDicts
+testCrashOnSelfRecursiveTypedDictVar
 # Recursive type dict calls
 testBasicRecursiveTypedDictCall
 testRecursiveTypedDictWithList
@@ -767,12 +768,6 @@ testLiteralIntelligentIndexingMultiTypedDict
 testSerializeTypedDictInMethod
 testSerializeTypedDict
 testTypedDictMappingMethods
-# from mypy_extensions import TypedDict
-testCrashOnSelfRecursiveTypedDictVar
-testNewAnalyzerTypeArgBoundCheckDifferentNodes
-testForwardRefsInWithStatement
-# Can be a NewType
-testNewTypeFromForwardTypedDict
 # TypedDict .get() special case
 testLiteralIntelligentIndexingUsingFinal
 # TypedDict total=false
@@ -3001,6 +2996,8 @@ testWithStmtTypeComment
 testWithStmtTupleTypeComment
 testWithStmtComplexTypeComment
 testAsyncWithTypeComments
+testNewAnalyzerTypeArgBoundCheckDifferentNodes
+testForwardRefsInWithStatement
 
 # Type Vars qualified names
 testQualifiedTypeVariableName

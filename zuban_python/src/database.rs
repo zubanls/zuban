@@ -1250,11 +1250,17 @@ impl DbType {
         }
     }
 
-    pub fn is_subclassable(&self) -> bool {
-        matches!(
-            self,
-            Self::Class(..) | Self::Tuple(..) | Self::NewType(..) | Self::NamedTuple(_)
-        )
+    pub fn is_subclassable(&self, db: &Database) -> bool {
+        match self {
+            Self::Class(c) => !matches!(
+                &Class::from_generic_class(db, c)
+                    .use_cached_class_infos(db)
+                    .class_type,
+                ClassType::TypedDict(_)
+            ),
+            Self::Tuple(..) | Self::NewType(..) | Self::NamedTuple(_) => true,
+            _ => false,
+        }
     }
 }
 
