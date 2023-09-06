@@ -416,17 +416,6 @@ impl<'db: 'a, 'a> Class<'a> {
             // let saved = inferred.save_redirect(i_s, name_def.file, name_def.node_index);
         }
 
-        if let ClassType::TypedDict(d) = &self.use_cached_class_infos(i_s.db).class_type {
-            d.set_uncomputed_constructor(CallableContent {
-                params: CallableParams::Any,
-                name: Some(self.name_string_slice()),
-                class_name: None,
-                defined_at: self.node_ref.as_link(),
-                kind: FunctionKind::Function,
-                type_vars: self.type_vars(i_s).clone(),
-                result_type: DbType::Any,
-            });
-        }
         if let Some(dataclass) = was_dataclass {
             Dataclass::__init__(&dataclass, i_s.db);
         }
@@ -689,8 +678,21 @@ impl<'db: 'a, 'a> Class<'a> {
                                 class_type = ClassType::NamedTuple(named_tuple);
                             }
                             CalculatedBaseClass::TypedDict => {
-                                class_type = ClassType::TypedDict(Rc::new(TypedDict::from_class(
+                                class_type = ClassType::TypedDict(Rc::new(TypedDict::new(
                                     self.name_string_slice(),
+                                    CallableContent {
+                                        params: CallableParams::Simple(
+                                            self.initialize_typed_dict_members(
+                                                &i_s.with_class_context(self),
+                                            ),
+                                        ),
+                                        name: Some(self.name_string_slice()),
+                                        class_name: None,
+                                        defined_at: self.node_ref.as_link(),
+                                        kind: FunctionKind::Function,
+                                        type_vars: self.type_vars(i_s).clone(),
+                                        result_type: DbType::Any,
+                                    },
                                 )));
                             }
                             CalculatedBaseClass::Generic => (),
@@ -1248,6 +1250,30 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
+    fn initialize_typed_dict_members(&self, i_s: &InferenceState) -> Rc<[CallableParam]> {
+        let mut vec = start_namedtuple_params(i_s.db);
+        let file = self.node_ref.file;
+        match self.node().block().unpack() {
+            BlockContent::Indented(stmts) => {
+                for stmt in stmts {
+                    let StmtOrError::Stmt(stmt) = stmt else {
+                        continue
+                    };
+                    match stmt.unpack() {
+                        StmtContent::SimpleStmts(simple) => {
+                            find_stmt_typed_dict_types(i_s, file, &mut vec, simple)
+                        }
+                        _ => NodeRef::new(file, stmt.index())
+                            .add_issue(i_s, IssueType::Note("TODO typeddict".into())),
+                    }
+                }
+            }
+            BlockContent::OneLine(simple) => todo!(), //find_stmt_typed_dict_types(i_s, file, &mut vec, simple),
+        }
+        let tvls = self.use_cached_type_vars(i_s.db);
+        Rc::from(vec)
+    }
+
     fn enum_members(&self, i_s: &InferenceState) -> Box<[EnumMemberDefinition]> {
         let mut members = vec![];
         let mut name_indexes = vec![];
@@ -1803,6 +1829,37 @@ fn apply_generics_to_base_class<'a>(
 }
 
 fn find_stmt_named_tuple_types(
+    i_s: &InferenceState,
+    file: &PythonFile,
+    vec: &mut Vec<CallableParam>,
+    simple_stmts: SimpleStmts,
+) {
+    for simple in simple_stmts.iter() {
+        match simple.unpack() {
+            SimpleStmtContent::Assignment(assignment) => match assignment.unpack() {
+                AssignmentContent::WithAnnotation(Target::Name(name), annot, default) => {
+                    if default.is_none() && vec.last().is_some_and(|last| last.has_default) {
+                        NodeRef::new(file, assignment.index())
+                            .add_issue(i_s, IssueType::NamedTupleNonDefaultFieldFollowsDefault);
+                        continue;
+                    }
+                    file.inference(i_s).ensure_cached_annotation(annot);
+                    let t = use_cached_annotation_type(i_s.db, file, annot).into_db_type();
+                    vec.push(CallableParam {
+                        param_specific: ParamSpecific::PositionalOrKeyword(t),
+                        has_default: default.is_some(),
+                        name: Some(StringSlice::from_name(file.file_index(), name.name())),
+                    })
+                }
+                _ => NodeRef::new(file, assignment.index())
+                    .add_issue(i_s, IssueType::InvalidStmtInNamedTuple),
+            },
+            _ => (),
+        }
+    }
+}
+
+fn find_stmt_typed_dict_types(
     i_s: &InferenceState,
     file: &PythonFile,
     vec: &mut Vec<CallableParam>,

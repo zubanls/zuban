@@ -2731,19 +2731,8 @@ impl TypedDict {
         }
     }
 
-    pub fn from_class(name: StringSlice) -> Self {
-        Self {
-            name,
-            __new__: OnceCell::new(),
-        }
-    }
-
     pub fn __new__(&self) -> &Rc<CallableContent> {
         self.__new__.get().unwrap()
-    }
-
-    pub fn set_uncomputed_constructor(&self, c: CallableContent) {
-        self.__new__.set(Rc::new(c)).unwrap()
     }
 }
 
