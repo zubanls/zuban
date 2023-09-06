@@ -266,6 +266,7 @@ testListAssignmentUnequalAmountToUnpack
 testSelfReferentialSubscriptExpression
 testNewAnalyzerMemberNameMatchesNamedTuple
 testVariableTypeWithQualifiedName
+testNewAnalyzerMemberNameMatchesTypedDict
 
 # Module attributes
 testModuleImplicitAttributes
@@ -707,65 +708,75 @@ testEnumAreStillFinalAfterCache
 testBasicRecursiveTypedDictClass
 testBasicRecursiveTypedDictExtending
 testRecursiveGenericTypedDictExtending
-# "Incompatible types (expression has type "int", TypedDict item "x" has type "str")"
-testNewAnalyzerTypedDictClassInheritance
-# TypedDict
-testNewAnalyzerMemberNameMatchesTypedDict
-testTypeVarWithTypedDictValueInIndexExpression
-testUnpackWithoutTypedDict
-testUnpackTypedDictTotality
-testUnpackKeywordTypesTypedDict
-testUnpackKwargsOverridesTypedDict
-testUnpackGenericTypedDictImplicitAnyDisabled
-testOverloadKwargsSelectionWithTypedDict
-testOverloadTypedDictDifferentRequiredKeysMeansDictsAreDisjoint
-testOverloadedTypedDictPartiallyOverlappingRequiredKeys
-testOverloadedTypedDictFullyNonTotalDictsAreAlwaysPartiallyOverlapping
-testOverloadedTotalAndNonTotalTypedDictsCanPartiallyOverlap
-testBasicRecursiveTypedDictCall
 testRecursiveTypedDictCreation
 testRecursiveTypedDictMethods
 testRecursiveTypedDictSubtyping
 testRecursiveTypedDictJoin
 testBasicRecursiveGenericTypedDict
+testCorrectJoinOfSelfRecursiveTypedDicts
+# Recursive type dict calls
+testBasicRecursiveTypedDictCall
+testRecursiveTypedDictWithList
+# TypedDict recursion with imports
+testNewImportCycleTypedDict
+# "Incompatible types (expression has type "int", TypedDict item "x" has type "str")"
+testNewAnalyzerTypedDictClassInheritance
+testColumnTypedDict
+# "Unpack item in ** argument must be a TypedDict"
+testUnpackWithoutTypedDict
+# "Missing named argument "radius" for "foo""
+testUnpackTypedDictTotality
+testErrorCodeTypedDict
+# "TypedDict "a.Dict[TValue]" has no key "x""
+testGenericTypedDictWithError
+testErrorCodeTypedDictNoteIgnore
+testErrorCodeTypedDictSubCodeIgnore
+# "First argument "Bar" to TypedDict() does not match variable name "Foo"  [name-match]"
+testTypedDictNameMismatch
+# "Invalid statement in TypedDict definition; expected "field_name: field_type""
+testTypedDictNestedClassRecheck
+# Unpack
+testUnpackKeywordTypesTypedDict
+testUnpackKwargsNonIdentifier
+testUnpackKwargsSerialize
+testDataclassFieldWithTypedDictUnpacking
+# structural matching
+testUnpackKwargsOverridesTypedDict
+testOverloadTypedDictDifferentRequiredKeysMeansDictsAreDisjoint
+testOverloadedTypedDictPartiallyOverlappingRequiredKeys
+testDistinctTypes
+testForwardRefsInWithStatementImplicit
+# Lookups
+testOverloadKwargsSelectionWithTypedDict
+testCachedBadProtocolNote
+testErrorCodeSpecialArgTypeErrors
+testTypedDictGet
+testCanConvertTypedDictToAnySuperclassOfMapping
+# typed_dict.rs:45
+testOverloadedTypedDictFullyNonTotalDictsAreAlwaysPartiallyOverlapping
+testOverloadedTotalAndNonTotalTypedDictsCanPartiallyOverlap
+testSerializeNonTotalTypedDict
+# Typed dict generics in getitem
 testTypedDictUpdateGeneric
+testGenericTypedDictSerialization
+#? utils.rs:309
 testLiteralIntelligentIndexingTypedDict
 testLiteralIntelligentIndexingTypedDictUnions
 testLiteralIntelligentIndexingMultiTypedDict
-testUnpackKwargsNonIdentifier
-testTypedDictNestedClassRecheck
-testLiteralIntelligentIndexingUsingFinal
-testCrashOnSelfRecursiveTypedDictVar
-testCorrectJoinOfSelfRecursiveTypedDicts
-testNewTypeFromForwardTypedDict
-testCrashInvalidArgsSyntheticClassSyntaxReveals
-testRecursiveTypedDictWithList
-testNewAnalyzerTypeArgBoundCheckDifferentNodes
-testDistinctTypes
-testForwardRefsInWithStatementImplicit
-testForwardRefsInWithStatement
-testErrorCodeTypedDict
-testErrorCodeTypedDictNoteIgnore
-testErrorCodeTypedDictSubCodeIgnore
-testErrorCodeSpecialArgTypeErrors
-testTypedDictNameMismatch
-testColumnTypedDict
+# database.rs:962
 testSerializeTypedDictInMethod
-testSerializeNonTotalTypedDict
-testNewImportCycleTypedDict
 testSerializeTypedDict
-testCachedBadProtocolNote
-testRecursiveNamedTupleTypedDict-skip
-testGenericTypedDictSerialization
-testUnpackKwargsSerialize
-testNoCrashDoubleReexportTypedDictEmpty
-testGenericTypedDictWithError
-testTypedDictGet
 testTypedDictMappingMethods
-testCanConvertTypedDictToAnySuperclassOfMapping
+# from mypy_extensions import TypedDict
+testCrashOnSelfRecursiveTypedDictVar
+testNewAnalyzerTypeArgBoundCheckDifferentNodes
+testForwardRefsInWithStatement
+# Can be a NewType
+testNewTypeFromForwardTypedDict
+# TypedDict .get() special case
+testLiteralIntelligentIndexingUsingFinal
+# TypedDict total=false
 testTypedDictUnionGetFull
-testNewAnalyzerTypedDictInStub_newsemanal
-testDataclassFieldWithTypedDictUnpacking
 
 # NoReturn
 testNoReturnTypeAlias
@@ -1126,6 +1137,7 @@ testNoCrashDoubleReexportBaseEmpty
 testNoCrashDoubleReexportMetaEmpty
 testNoCrashDoubleReexportTupleEmpty
 testNoCrashDoubleReexportOverloadEmpty
+testNoCrashDoubleReexportTypedDictEmpty
 
 # Module __all__
 testNewAnalyzerExportedValuesInImportAll
@@ -1811,6 +1823,7 @@ testInnerFunctionWithTypevarValues
 testInnerFunctionMutualRecursionWithTypevarValues
 testNestedDecoratedCoroutineAndTypeVarValues
 testAnyStr
+testTypeVarWithTypedDictValueInIndexExpression
 
 # Callable[..., int] | Callable[..., str] lambda inference may conflict
 testOptionalLambdaInference
@@ -2726,6 +2739,7 @@ testDisallowAnyExprIncremental
 testErrorReportingNewAnalyzer
 testErrorCodeMissingTypeArg
 testColumnMissingTypeParameters
+testUnpackGenericTypedDictImplicitAnyDisabled
 
 # --disallow-any-unimported
 testErrorCodeAnyFromUnfollowedImport
@@ -3179,3 +3193,4 @@ testSubtypingWithTypeImplementingGenericABCViaInheritance2-skip
 testOverloadInferringArgumentsUsingContext2-skip
 testUnionTwoPassInference-skip
 testLiteralErrorsWhenInvoked-skip
+testRecursiveNamedTupleTypedDict-skip
