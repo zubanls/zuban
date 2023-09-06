@@ -959,7 +959,7 @@ impl DbType {
             Self::Dataclass(d) => {
                 Class::from_generic_class(format_data.db, &d.class).format(format_data)
             }
-            Self::TypedDict(d) => todo!(),
+            Self::TypedDict(d) => d.format(format_data).into(),
             Self::NamedTuple(nt) => {
                 use crate::type_helpers::NamedTupleValue;
                 match format_data.style {
@@ -2739,6 +2739,40 @@ impl TypedDict {
 
     pub fn __new__(&self) -> &Rc<CallableContent> {
         self.__new__.get().unwrap()
+    }
+
+    fn qualified_name(&self, db: &Database) -> String {
+        let module = Module::from_file_index(db, self.name.file_index).qualified_name(db);
+        format!("{module}.{}", self.name.as_str(db))
+    }
+
+    pub fn format(&self, format_data: &FormatData) -> String {
+        match format_data.style {
+            FormatStyle::MypyRevealType => {
+                self.format_reveal_type(format_data, &self.qualified_name(format_data.db))
+            }
+            FormatStyle::Qualified => self.qualified_name(format_data.db),
+            FormatStyle::Short => self.name.as_str(format_data.db).into(),
+        }
+    }
+
+    pub fn format_reveal_type(&self, format_data: &FormatData, name: &str) -> String {
+        let params = self
+            .__new__()
+            .expect_simple_params()
+            .iter()
+            .map(|p| {
+                format!(
+                    "'{}': {}",
+                    p.name.unwrap().as_str(format_data.db),
+                    p.param_specific
+                        .expect_positional_db_type_as_ref()
+                        .format(format_data)
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        format!("TypedDict('{name}', {{{params}}})").into()
     }
 }
 

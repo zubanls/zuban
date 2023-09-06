@@ -753,6 +753,7 @@ testCachedBadProtocolNote
 testErrorCodeSpecialArgTypeErrors
 testTypedDictGet
 testCanConvertTypedDictToAnySuperclassOfMapping
+testTypedDictMappingMethods
 # typed_dict.rs:45
 testOverloadedTypedDictFullyNonTotalDictsAreAlwaysPartiallyOverlapping
 testOverloadedTotalAndNonTotalTypedDictsCanPartiallyOverlap
@@ -764,10 +765,8 @@ testGenericTypedDictSerialization
 testLiteralIntelligentIndexingTypedDict
 testLiteralIntelligentIndexingTypedDictUnions
 testLiteralIntelligentIndexingMultiTypedDict
-# database.rs:962
+# Nested typed dict formatting
 testSerializeTypedDictInMethod
-testSerializeTypedDict
-testTypedDictMappingMethods
 # TypedDict .get() special case
 testLiteralIntelligentIndexingUsingFinal
 # TypedDict total=false
