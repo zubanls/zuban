@@ -26,7 +26,7 @@ use crate::node_ref::NodeRef;
 use crate::type_helpers::{
     lookup_in_namespace, lookup_on_enum_instance, lookup_on_enum_member_instance, Callable, Class,
     DataclassHelper, Instance, Module, MroIterator, NamedTupleValue, OverloadedFunction, Tuple,
-    TypeOrClass, TypedDictHelper2, TypingType,
+    TypeOrClass, TypedDictHelper, TypingType,
 };
 use crate::utils::rc_unwrap_or_clone;
 
@@ -2490,7 +2490,7 @@ impl<'a> Type<'a> {
                 slice_type,
                 result_context,
             ),
-            DbType::TypedDict(d) => TypedDictHelper2(d).get_item(i_s, slice_type, result_context),
+            DbType::TypedDict(d) => TypedDictHelper(d).get_item(i_s, slice_type, result_context),
             DbType::Callable(_) => {
                 slice_type
                     .as_node_ref()

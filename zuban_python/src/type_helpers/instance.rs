@@ -336,8 +336,8 @@ impl<'a> Instance<'a> {
                     result_context,
                 );
             }
-            ClassType::TypedDict(_) => {
-                return TypedDictHelper(*self).get_item(i_s, slice_type, result_context);
+            ClassType::TypedDict(d) => {
+                return TypedDictHelper(d).get_item(i_s, slice_type, result_context);
             }
             _ => (),
         }
