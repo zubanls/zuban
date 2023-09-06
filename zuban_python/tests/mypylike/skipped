@@ -703,11 +703,11 @@ testEnumFinalSpecialProps
 testEnumNotFinalWithMethodsAndUninitializedValues
 testEnumAreStillFinalAfterCache
 
-# TypedDict
+# TypedDict recursive formatting results in stack overflow
 testBasicRecursiveTypedDictClass
 testBasicRecursiveTypedDictExtending
 testRecursiveGenericTypedDictExtending
-testNewAnalyzerTypedDictClass
+# TypedDict
 testNewAnalyzerTypedDictClassInheritance
 testNewAnalyzerMemberNameMatchesTypedDict
 testTypeVarWithTypedDictValueInIndexExpression

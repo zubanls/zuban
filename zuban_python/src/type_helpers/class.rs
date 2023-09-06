@@ -1161,8 +1161,21 @@ impl<'db: 'a, 'a> Class<'a> {
             ClassType::NamedTuple(named_tuple) => NamedTupleValue::new(format_data.db, named_tuple)
                 .format_with_name(format_data, &result, self.generics),
             ClassType::TypedDict(t) => {
-                //let params = t.__new__.expect_simple_params().iter().map(|p| format!("{}: {}", p.name.unwrap().as_str(format_data.db), p.param_specific.expect_positional_db_type_as_ref().format_short(format_data.db))).collect::<Vec<_>>().join(",");
-                let params = "";
+                let params = t
+                    .__new__()
+                    .expect_simple_params()
+                    .iter()
+                    .map(|p| {
+                        format!(
+                            "'{}': {}",
+                            p.name.unwrap().as_str(format_data.db),
+                            p.param_specific
+                                .expect_positional_db_type_as_ref()
+                                .format(format_data)
+                        )
+                    })
+                    .collect::<Vec<_>>()
+                    .join(",");
                 format!("TypedDict('{result}', {{{params}}})").into()
             }
             _ => result.into(),
@@ -1251,7 +1264,7 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     fn initialize_typed_dict_members(&self, i_s: &InferenceState) -> Rc<[CallableParam]> {
-        let mut vec = start_namedtuple_params(i_s.db);
+        let mut vec = vec![];
         let file = self.node_ref.file;
         match self.node().block().unpack() {
             BlockContent::Indented(stmts) => {
