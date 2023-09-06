@@ -2763,8 +2763,12 @@ impl TypedDict {
             .iter()
             .map(|p| {
                 format!(
-                    "'{}': {}",
+                    "'{}'{}: {}",
                     p.name.unwrap().as_str(format_data.db),
+                    match p.has_default {
+                        false => "",
+                        true => "?",
+                    },
                     p.param_specific
                         .expect_positional_db_type_as_ref()
                         .format(format_data)

@@ -41,11 +41,14 @@ impl<'a> TypedDictHelper<'a> {
     }
 }
 
-pub fn new_typed_dict(i_s: &InferenceState, args: &dyn Arguments) -> Inferred {
+pub fn new_typed_dict<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Arguments<'db>) -> Inferred {
     new_typed_dict_internal(i_s, args).unwrap_or_else(|| todo!())
 }
 
-fn new_typed_dict_internal(i_s: &InferenceState, args: &dyn Arguments) -> Option<Inferred> {
+fn new_typed_dict_internal<'db>(
+    i_s: &InferenceState<'db, '_>,
+    args: &dyn Arguments<'db>,
+) -> Option<Inferred> {
     let mut iterator = args.iter();
     let Some(first_arg) = iterator.next() else {
         todo!()
@@ -72,6 +75,18 @@ fn new_typed_dict_internal(i_s: &InferenceState, args: &dyn Arguments) -> Option
     let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) = second_node_ref.as_named_expression().expression().unpack() else {
         todo!()
     };
+    let mut total = true;
+    if let Some(next) = iterator.next() {
+        if let ArgumentKind::Keyword { key: "total", .. } = &next.kind {
+            total = next
+                .infer(i_s, &mut ResultContext::ExpectLiteral)
+                .maybe_bool_literal(i_s)
+                .unwrap_or_else(|| todo!());
+            // TODO
+        } else {
+            todo!()
+        }
+    }
     if iterator.next().is_some() {
         args.as_node_ref().add_issue(
             i_s,
@@ -105,7 +120,7 @@ fn new_typed_dict_internal(i_s: &InferenceState, args: &dyn Arguments) -> Option
         let t = comp.compute_typed_dict_entry(key_value.value());
         params.push(CallableParam {
             param_specific: ParamSpecific::PositionalOrKeyword(t),
-            has_default: false,
+            has_default: !total,
             name: Some(param_name),
         });
         key_value.key();
