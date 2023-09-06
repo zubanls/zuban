@@ -28,7 +28,7 @@ impl<'a> TypedDictHelper2<'a> {
     ) -> Inferred {
         match slice_type.unpack() {
             SliceTypeContent::Simple(simple) => infer_string_index(i_s, simple, |name| {
-                for param in self.0.__new__.expect_simple_params().iter() {
+                for param in self.0.__new__().expect_simple_params().iter() {
                     if param.name.unwrap().as_str(i_s.db) == name {
                         return Some(Inferred::from_type(
                             param.param_specific.clone().expect_positional_db_type(),

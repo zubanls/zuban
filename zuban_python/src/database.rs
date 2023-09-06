@@ -2720,15 +2720,30 @@ impl NamedTuple {
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypedDict {
     pub name: StringSlice,
-    pub __new__: Rc<CallableContent>,
+    __new__: OnceCell<Rc<CallableContent>>,
 }
 
 impl TypedDict {
     pub fn new(name: StringSlice, __new__: CallableContent) -> Self {
         Self {
             name,
-            __new__: Rc::new(__new__),
+            __new__: OnceCell::from(Rc::new(__new__)),
         }
+    }
+
+    pub fn from_class(name: StringSlice) -> Self {
+        Self {
+            name,
+            __new__: OnceCell::new(),
+        }
+    }
+
+    pub fn __new__(&self) -> &Rc<CallableContent> {
+        self.__new__.get().unwrap()
+    }
+
+    pub fn set_uncomputed_constructor(&self, c: CallableContent) {
+        self.__new__.set(Rc::new(c)).unwrap()
     }
 }
 

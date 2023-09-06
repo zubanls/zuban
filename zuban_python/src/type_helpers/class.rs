@@ -416,6 +416,17 @@ impl<'db: 'a, 'a> Class<'a> {
             // let saved = inferred.save_redirect(i_s, name_def.file, name_def.node_index);
         }
 
+        if let ClassType::TypedDict(d) = &self.use_cached_class_infos(i_s.db).class_type {
+            d.set_uncomputed_constructor(CallableContent {
+                params: CallableParams::Any,
+                name: Some(self.name_string_slice()),
+                class_name: None,
+                defined_at: self.node_ref.as_link(),
+                kind: FunctionKind::Function,
+                type_vars: self.type_vars(i_s).clone(),
+                result_type: DbType::Any,
+            });
+        }
         if let Some(dataclass) = was_dataclass {
             Dataclass::__init__(&dataclass, i_s.db);
         }
@@ -678,18 +689,9 @@ impl<'db: 'a, 'a> Class<'a> {
                                 class_type = ClassType::NamedTuple(named_tuple);
                             }
                             CalculatedBaseClass::TypedDict => {
-                                class_type = ClassType::TypedDict(Rc::new(TypedDict {
-                                    name: self.name_string_slice(),
-                                    __new__: Rc::new(CallableContent {
-                                        params: CallableParams::Any,
-                                        name: Some(self.name_string_slice()),
-                                        class_name: None,
-                                        defined_at: self.node_ref.as_link(),
-                                        kind: FunctionKind::Function,
-                                        type_vars: self.type_vars(i_s).clone(),
-                                        result_type: DbType::Any,
-                                    }),
-                                }));
+                                class_type = ClassType::TypedDict(Rc::new(TypedDict::from_class(
+                                    self.name_string_slice(),
+                                )));
                             }
                             CalculatedBaseClass::Generic => (),
                             CalculatedBaseClass::Unknown => {
