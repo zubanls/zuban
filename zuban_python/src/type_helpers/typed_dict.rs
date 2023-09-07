@@ -55,7 +55,8 @@ fn new_typed_dict_internal<'db>(
         todo!()
     };
     let ArgumentKind::Positional { node_ref, .. } = first_arg.kind else {
-        first_arg.as_node_ref().add_issue(i_s, IssueType::UnexpectedArgumentsTo { name: "namedtuple" });
+        args.as_node_ref()
+            .add_issue(i_s, IssueType::UnexpectedArgumentsToTypedDict);
         return None
     };
     let expr = node_ref.as_named_expression().expression();
@@ -83,7 +84,6 @@ fn new_typed_dict_internal<'db>(
                 .infer(i_s, &mut ResultContext::ExpectLiteral)
                 .maybe_bool_literal(i_s)
                 .unwrap_or_else(|| todo!());
-            // TODO
         } else {
             args.as_node_ref()
                 .add_issue(i_s, IssueType::UnexpectedArgumentsToTypedDict);
