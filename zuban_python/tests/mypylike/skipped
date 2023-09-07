@@ -729,6 +729,7 @@ testUnpackTypedDictTotality
 testErrorCodeTypedDict
 # "TypedDict "a.Dict[TValue]" has no key "x""
 testGenericTypedDictWithError
+# context inference of typed dicts
 testErrorCodeTypedDictNoteIgnore
 testErrorCodeTypedDictSubCodeIgnore
 # "First argument "Bar" to TypedDict() does not match variable name "Foo"  [name-match]"

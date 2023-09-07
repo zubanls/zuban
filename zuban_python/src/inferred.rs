@@ -469,6 +469,18 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
+    pub fn maybe_string_literal(&self, i_s: &InferenceState) -> Option<DbString> {
+        if let DbType::Literal(DbLiteral {
+            kind: LiteralKind::String(b),
+            ..
+        }) = self.as_type(i_s).as_ref()
+        {
+            Some(b.clone())
+        } else {
+            None
+        }
+    }
+
     pub fn save_redirect(self, i_s: &InferenceState, file: &PythonFile, index: NodeIndex) -> Self {
         self.maybe_save_redirect(i_s, file, index, false)
     }

@@ -1689,11 +1689,15 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 return self.infer_comprehension(comp.unpack(), ComprehensionKind::List)
             }
             Dict(dict) => {
-                let generics = self.create_dict_generics(dict, result_context);
-                return Inferred::from_type(DbType::new_class(
-                    self.i_s.db.python_state.dict_node_ref().as_link(),
-                    ClassGenerics::List(generics),
-                ));
+                if let Some(result) = self.infer_dict_literal_from_context(dict, result_context) {
+                    return result.save_redirect(self.i_s, self.file, atom.index());
+                } else {
+                    let generics = self.create_dict_generics(dict);
+                    return Inferred::from_type(DbType::new_class(
+                        self.i_s.db.python_state.dict_node_ref().as_link(),
+                        ClassGenerics::List(generics),
+                    ));
+                }
             }
             DictComprehension(comp) => {
                 return self.infer_comprehension(comp.unpack(), ComprehensionKind::SetOrDict)

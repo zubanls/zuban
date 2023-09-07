@@ -6,7 +6,7 @@ use parsa_python_ast::{
 
 use crate::arguments::Argument;
 use crate::database::{
-    ClassGenerics, DbType, GenericItem, GenericsList, Literal, LiteralKind, LiteralValue,
+    ClassGenerics, DbType, GenericItem, GenericsList, Literal, LiteralKind, LiteralValue, TypedDict,
 };
 use crate::diagnostics::IssueType;
 use crate::file::{Inference, PythonFile};
@@ -85,11 +85,92 @@ impl<'db> Inference<'db, '_, '_> {
             .flatten()
     }
 
-    pub fn create_dict_generics(
+    pub fn infer_dict_literal_from_context(
         &mut self,
         dict: Dict,
         result_context: &mut ResultContext,
-    ) -> GenericsList {
+    ) -> Option<Inferred> {
+        result_context
+            .with_type_if_exists(self.i_s, |i_s: &InferenceState<'db, '_>, type_, matcher| {
+                let mut found = None;
+                type_.on_any_typed_dict(i_s, matcher, &mut |i_s, matcher, td| {
+                    found = self.check_typed_dict_with_context(matcher, td, dict);
+                    found.is_some()
+                });
+                // `found` might still be empty, because we matched Any.
+                found.map(Inferred::from_type)
+            })
+            .flatten()
+    }
+
+    pub fn check_typed_dict_with_context(
+        &mut self,
+        matcher: &mut Matcher,
+        typed_dict: Rc<TypedDict>,
+        dict: Dict,
+    ) -> Option<DbType> {
+        let i_s = self.i_s;
+        let params = typed_dict.__new__().expect_simple_params();
+        for element in dict.iter_elements() {
+            match element {
+                DictElement::KeyValue(key_value) => {
+                    let inf = self.infer_expression_with_context(
+                        key_value.key(),
+                        &mut ResultContext::ExpectLiteral,
+                    );
+                    match inf.maybe_string_literal(i_s) {
+                        Some(literal) => {
+                            let key = literal.as_str(i_s.db);
+                            if let Some(param) = params
+                                .iter()
+                                .find(|param| param.name.unwrap().as_str(i_s.db) == key)
+                            {
+                                let expected = Type::new(
+                                    param.param_specific.expect_positional_db_type_as_ref(),
+                                );
+                                let inferred = self.infer_expression_with_context(
+                                    key_value.value(),
+                                    &mut ResultContext::Known(&expected),
+                                );
+                                expected.error_if_not_matches_with_matcher(
+                                    i_s,
+                                    matcher,
+                                    &inferred,
+                                    Some(
+                                        |i_s: &InferenceState<'db, '_>, got, expected, _: &MismatchReason| {
+                                            let node_ref = NodeRef::new(self.file, key_value.index()).to_db_lifetime(i_s.db);
+                                            node_ref.add_issue(
+                                                i_s,
+                                                IssueType::TypedDictIncompatibleType {
+                                                    key: key.into(),
+                                                    got,
+                                                    expected,
+                                                },
+                                            );
+                                            node_ref
+                                        },
+                                    ),
+                                );
+                            } else {
+                                NodeRef::new(self.file, key_value.index()).add_issue(
+                                    i_s,
+                                    IssueType::TypedDictExtraKey {
+                                        key: key.into(),
+                                        typed_dict: typed_dict.name.as_str(i_s.db).into(),
+                                    },
+                                );
+                            }
+                        }
+                        None => todo!(),
+                    }
+                }
+                DictElement::DictStarred(_) => todo!(),
+            }
+        }
+        Some(DbType::TypedDict(typed_dict))
+    }
+
+    pub fn create_dict_generics(&mut self, dict: Dict) -> GenericsList {
         let mut keys: Option<DbType> = None;
         let mut values: Option<DbType> = None;
         for child in dict.iter_elements() {

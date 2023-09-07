@@ -157,6 +157,9 @@ pub(crate) enum IssueType {
     NamedTupleNamesCannotStartWithUnderscore { name: &'static str, field_names: Box<str> },
     NamedTupleInvalidFieldName,
 
+    TypedDictIncompatibleType { got: Box<str>, key: Box<str>, expected: Box<str> },
+    TypedDictExtraKey { key: Box<str>, typed_dict: Box<str> },
+
     OverloadMismatch { name: Box<str>, args: Box<[Box<str>]>, variants: Box<[Box<str>]> },
     OverloadImplementationNotLast,
     OverloadImplementationNeeded,
@@ -260,6 +263,9 @@ impl IssueType {
             AnnotationInUntypedFunction => "annotation-unchecked",
             AwaitOutsideFunction => "top-level-await",
             AwaitOutsideCoroutine => "await-not-async",
+
+            TypedDictIncompatibleType { .. } => "typeddict-item",
+            TypedDictExtraKey { .. } => "typeddict-unknown-key",
             _ => "misc",
         })
     }
@@ -767,6 +773,13 @@ impl<'db> Diagnostic<'db> {
             NamedTupleNamesCannotStartWithUnderscore{name, field_names} => format!(
                 "\"{name}()\" field names cannot start with an underscore: {field_names}"),
             NamedTupleInvalidFieldName => "Invalid \"NamedTuple()\" field name".to_string(),
+
+            TypedDictIncompatibleType {got, key, expected} => format!(
+                r#"Incompatible types (expression has type "{got}", TypedDict item "{key}" has type "{expected}")"#
+            ),
+            TypedDictExtraKey { key, typed_dict } => format!(
+                r#"Extra key "{key}" for TypedDict "{typed_dict}""#
+            ),
 
             OverloadImplementationNotLast =>
                 "The implementation for an overloaded function must come last".to_string(),

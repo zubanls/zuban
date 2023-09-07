@@ -9,13 +9,13 @@ use super::{
 };
 use crate::arguments::Arguments;
 use crate::database::{
-    CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database,
-    Dataclass, DbType, DoubleStarredParamSpecific, EnumMember, FunctionOverload, GenericClass,
-    GenericItem, GenericsList, MetaclassState, NamedTuple, ParamSpecArgument, ParamSpecTypeVars,
-    ParamSpecUsage, ParamSpecific, PointLink, RecursiveAlias, StarredParamSpecific, TupleContent,
-    TupleTypeArguments, TypeAlias, TypeArguments, TypeOrTypeVarTuple, TypeVarKind, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, UnionEntry,
-    UnionType, Variance,
+    CallableContent, CallableParam, CallableParams, ClassGenerics, ClassType, ComplexPoint,
+    Database, Dataclass, DbType, DoubleStarredParamSpecific, EnumMember, FunctionOverload,
+    GenericClass, GenericItem, GenericsList, MetaclassState, NamedTuple, ParamSpecArgument,
+    ParamSpecTypeVars, ParamSpecUsage, ParamSpecific, PointLink, RecursiveAlias,
+    StarredParamSpecific, TupleContent, TupleTypeArguments, TypeAlias, TypeArguments,
+    TypeOrTypeVarTuple, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
+    TypeVarTupleUsage, TypeVarUsage, TypedDict, UnionEntry, UnionType, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -2078,6 +2078,37 @@ impl<'a> Type<'a> {
                 if matcher.might_have_defined_type_vars() {
                     Type::owned(matcher.replace_type_var_likes_for_nested_context(i_s.db, db_type))
                         .on_any_class(i_s, matcher, callable)
+                } else {
+                    false
+                }
+            }
+            _ => false,
+        }
+    }
+
+    pub fn on_any_typed_dict(
+        &self,
+        i_s: &InferenceState,
+        matcher: &mut Matcher,
+        callable: &mut impl FnMut(&InferenceState, &mut Matcher, Rc<TypedDict>) -> bool,
+    ) -> bool {
+        match self.as_ref() {
+            DbType::Class(c) => {
+                let class = Class::from_generic_class(i_s.db, c);
+                if let ClassType::TypedDict(d) = &class.use_cached_class_infos(i_s.db).class_type {
+                    callable(i_s, matcher, d.clone())
+                } else {
+                    false
+                }
+            }
+            DbType::TypedDict(td) => callable(i_s, matcher, td.clone()),
+            DbType::Union(union_type) => union_type
+                .iter()
+                .any(|t| Type::new(t).on_any_typed_dict(i_s, matcher, callable)),
+            db_type @ DbType::TypeVar(_) => {
+                if matcher.might_have_defined_type_vars() {
+                    Type::owned(matcher.replace_type_var_likes_for_nested_context(i_s.db, db_type))
+                        .on_any_typed_dict(i_s, matcher, callable)
                 } else {
                     false
                 }
