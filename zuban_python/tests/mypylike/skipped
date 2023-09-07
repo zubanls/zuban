@@ -736,9 +736,7 @@ testTypedDictImportCycle
 testTypedDictSubtypingWithTotalFalse
 testNonTotalTypedDictCanBeEmpty
 # invalid creation
-testCannotCreateTypedDictTypeWithInvalidItemName
 testCannotCreateTypedDictTypeWithInvalidItemType
-testCannotCreateTypedDictTypeWithInvalidName2
 # "TypedDict type as attribute is not supported"
 testAssignTypedDictAsAttribute
 # "Unpack item in ** argument must be a TypedDict"

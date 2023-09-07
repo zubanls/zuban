@@ -163,6 +163,7 @@ pub(crate) enum IssueType {
     TypedDictFirstArgMustBeString,
     TypedDictSecondArgMustBeDict,
     TypedDictInvalidFieldName,
+    TypedDictNameMismatch { string_name: Box<str>, variable_name: Box<str> },
 
     OverloadMismatch { name: Box<str>, args: Box<[Box<str>]>, variants: Box<[Box<str>]> },
     OverloadImplementationNotLast,
@@ -790,6 +791,9 @@ impl<'db> Diagnostic<'db> {
             TypedDictSecondArgMustBeDict =>
                 "TypedDict() expects a dictionary literal as the second argument".to_string(),
             TypedDictInvalidFieldName => "Invalid TypedDict() field name".to_string(),
+            TypedDictNameMismatch { string_name, variable_name } => format!(
+                r#"First argument "{string_name}" to TypedDict() does not match variable name "{variable_name}""#
+            ),
 
             OverloadImplementationNotLast =>
                 "The implementation for an overloaded function must come last".to_string(),

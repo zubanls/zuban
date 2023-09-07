@@ -60,13 +60,30 @@ fn new_typed_dict_internal<'db>(
         return None
     };
     let expr = node_ref.as_named_expression().expression();
-    let first = expr
-        .maybe_single_string_literal()
-        .map(|py_string| (node_ref, py_string));
     let Some(name) = StringSlice::from_string_in_expression(node_ref.file_index(), expr) else {
         node_ref.add_issue(i_s, IssueType::TypedDictFirstArgMustBeString);
         return None
     };
+
+    if let Some(definition_name) = expr
+        .maybe_single_string_literal()
+        .unwrap()
+        .in_simple_assignment()
+    {
+        let name = name.as_str(i_s.db);
+        if name != definition_name.as_code() {
+            node_ref.add_issue(
+                i_s,
+                IssueType::TypedDictNameMismatch {
+                    string_name: Box::from(name),
+                    variable_name: Box::from(definition_name.as_code()),
+                },
+            );
+        }
+    } else {
+        todo!()
+    }
+
     let Some(second_arg) = iterator.next() else {
         args.as_node_ref().add_issue(i_s, IssueType::TooFewArguments(" for TypedDict()".into()));
         return None
