@@ -42,7 +42,7 @@ impl<'a> TypedDictHelper<'a> {
 }
 
 pub fn new_typed_dict<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Arguments<'db>) -> Inferred {
-    new_typed_dict_internal(i_s, args).unwrap_or_else(|| todo!())
+    new_typed_dict_internal(i_s, args).unwrap_or_else(|| Inferred::new_any())
 }
 
 fn new_typed_dict_internal<'db>(
@@ -65,8 +65,7 @@ fn new_typed_dict_internal<'db>(
         todo!()
     };
     let Some(second_arg) = iterator.next() else {
-        // TODO this is only done for namedtuple and not NamedTuple
-        // Detected by execution of namedtuple
+        args.as_node_ref().add_issue(i_s, IssueType::TooFewArguments(" for TypedDict()".into()));
         return None
     };
     let ArgumentKind::Positional { node_ref: second_node_ref, .. } = second_arg.kind else {
