@@ -2757,8 +2757,13 @@ impl TypedDict {
     }
 
     pub fn format_reveal_type(&self, format_data: &FormatData, name: &str) -> String {
-        let params = self
-            .__new__()
+        let __new__ = self.__new__();
+        let rec = RecursiveAlias::new(__new__.defined_at, None);
+        if format_data.has_already_seen_recursive_alias(&rec) {
+            return "...".to_string();
+        }
+        let format_data = &format_data.with_seen_recursive_alias(&rec);
+        let params = __new__
             .expect_simple_params()
             .iter()
             .map(|p| {

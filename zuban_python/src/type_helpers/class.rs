@@ -1185,22 +1185,7 @@ impl<'db: 'a, 'a> Class<'a> {
             ClassType::NamedTuple(named_tuple) => NamedTupleValue::new(format_data.db, named_tuple)
                 .format_with_name(format_data, &result, self.generics),
             ClassType::TypedDict(t) if format_data.style == FormatStyle::MypyRevealType => {
-                let params = t
-                    .__new__()
-                    .expect_simple_params()
-                    .iter()
-                    .map(|p| {
-                        format!(
-                            "'{}': {}",
-                            p.name.unwrap().as_str(format_data.db),
-                            p.param_specific
-                                .expect_positional_db_type_as_ref()
-                                .format(format_data)
-                        )
-                    })
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                format!("TypedDict('{result}', {{{params}}})").into()
+                t.format_reveal_type(format_data, &result).into()
             }
             _ => result.into(),
         }

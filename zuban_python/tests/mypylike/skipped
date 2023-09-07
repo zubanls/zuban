@@ -704,8 +704,7 @@ testEnumFinalSpecialProps
 testEnumNotFinalWithMethodsAndUninitializedValues
 testEnumAreStillFinalAfterCache
 
-# TypedDict recursive formatting results in stack overflow
-testBasicRecursiveTypedDictClass
+# TypedDict recursions
 testBasicRecursiveTypedDictExtending
 testRecursiveGenericTypedDictExtending
 testRecursiveTypedDictCreation
@@ -745,8 +744,8 @@ testUnpackKwargsOverridesTypedDict
 # structural matching
 # Lookups
 testOverloadKwargsSelectionWithTypedDict
+testCachedBadProtocolNote
 testErrorCodeSpecialArgTypeErrors
-testTypedDictGet
 testCanConvertTypedDictToAnySuperclassOfMapping
 testTypedDictMappingMethods
 # Typed dict generics in getitem
@@ -759,6 +758,7 @@ testLiteralIntelligentIndexingUsingFinal
 testLiteralIntelligentIndexingTypedDict
 testLiteralIntelligentIndexingTypedDictUnions
 testLiteralIntelligentIndexingMultiTypedDict
+testTypedDictGet
 # TypedDict total=false
 testTypedDictUnionGetFull
 
