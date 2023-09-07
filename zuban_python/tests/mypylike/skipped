@@ -741,12 +741,10 @@ testUnpackKeywordTypesTypedDict
 testUnpackKwargsNonIdentifier
 testUnpackKwargsSerialize
 testDataclassFieldWithTypedDictUnpacking
-# structural matching
 testUnpackKwargsOverridesTypedDict
-testDistinctTypes
+# structural matching
 # Lookups
 testOverloadKwargsSelectionWithTypedDict
-testCachedBadProtocolNote
 testErrorCodeSpecialArgTypeErrors
 testTypedDictGet
 testCanConvertTypedDictToAnySuperclassOfMapping
@@ -2457,6 +2455,8 @@ testReusingInferredForIndex2
 testErrorCodeNeedTypeAnnotation
 testColumnNeedTypeAnnotation
 
+# Formatting better verbosity
+testDistinctTypes
 # Separate formatting for ambigous names???
 testIncompatibleAssignmentAmbiguousShortnames
 

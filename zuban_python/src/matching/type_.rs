@@ -2340,7 +2340,7 @@ impl<'a> Type<'a> {
                 callable(self, result)
             }
             DbType::Dataclass(d) => callable(self, DataclassHelper(d).lookup(i_s, from, name)),
-            DbType::TypedDict(_) => todo!(),
+            DbType::TypedDict(_) => todo!("{name}"),
             DbType::NamedTuple(nt) => {
                 callable(self, NamedTupleValue::new(i_s.db, nt).lookup(i_s, name))
             }

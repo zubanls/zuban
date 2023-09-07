@@ -2751,8 +2751,8 @@ impl TypedDict {
             FormatStyle::MypyRevealType => {
                 self.format_reveal_type(format_data, &self.qualified_name(format_data.db))
             }
-            FormatStyle::Qualified => self.qualified_name(format_data.db),
-            FormatStyle::Short => self.name.as_str(format_data.db).into(),
+            FormatStyle::Short if !format_data.verbose => self.name.as_str(format_data.db).into(),
+            _ => self.qualified_name(format_data.db),
         }
     }
 
