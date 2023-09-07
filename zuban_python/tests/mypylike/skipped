@@ -2584,6 +2584,9 @@ testEmptyBodyProhibitedPropertyNonAbstract
 testEmptyBodyNoteABCMeta
 testAsyncDefMissingReturn
 testUnreachableWithStdlibContextManagers
+testNoReturn
+testNoReturnWhile
+testNoReturnExcept
 # "Use "-> None" if function does not return a value"
 testDecoratedFunctionLine
 
@@ -2796,6 +2799,8 @@ testIgnoreScopeUnused1
 testIgnoreScopeUnused2
 testIgnoreScopeUnused3
 testUnusedIgnoreVersionCheck
+testUnusedTypeIgnore
+testUnusedTypeIgnoreImport
 # --warn-unused-ignores whole module
 testIgnoreWholeModule1
 testImportUnusedIgnore2
@@ -2880,6 +2885,8 @@ testFlexibleAlias3
 # "Redundant cast to "int""
 testErrorCodeRedundantCast
 testColumnRedundantCast
+testRedundantCast
+testRedundantCastWithIsinstance
 
 # enable-error-code="redundant-self"
 # "Redundant "Self" annotation for the first method argument"
@@ -2950,6 +2957,10 @@ testErrorCodeAnyFromUnfollowedImport
 
 # --warn-return-any
 testErrorCodeReturnAny
+testReturnAnyFromTypedFunction
+testReturnAnyForNotImplementedInBinaryMagicMethods
+testReturnAnyForNotImplementedInNormalMethods
+testReturnAnyFromTypedFunctionWithSpecificFormatting
 
 # --follow-imports=error
 testImportSuppressedWhileAlmostSilent

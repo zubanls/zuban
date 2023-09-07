@@ -10,7 +10,7 @@ use regex::{Captures, Regex, Replacer};
 
 use zuban_python::{DiagnosticConfig, Project, ProjectOptions};
 
-const USE_MYPY_TEST_FILES: [&str; 95] = [
+const USE_MYPY_TEST_FILES: [&str; 96] = [
     // Type checking tests
     "check-generics.test",
     "check-generic-alias.test",
@@ -70,7 +70,6 @@ const USE_MYPY_TEST_FILES: [&str; 95] = [
     // Python special features
     //"check-slots.test",
     //"check-formatting.test",
-    //"check-warnings.test",
     "check-lowercase.test",
     "check-union-error-syntax.test",
     "check-enum.test",
@@ -105,6 +104,7 @@ const USE_MYPY_TEST_FILES: [&str; 95] = [
     // Mypy flag checking
     "check-columns.test",
     "check-errorcodes.test",
+    "check-warnings.test",
     //"check-flags.test",
     "pythoneval.test",
     "pythoneval-asyncio.test",
@@ -112,7 +112,6 @@ const USE_MYPY_TEST_FILES: [&str; 95] = [
     //"cmdline.pyproject.test",
     "envvars.test",
     "pep561.test",
-    //"check-reports.test",
     //"check-inline-config.test",
     // Semanal tests
     "semanal-abstractclasses.test",
@@ -138,6 +137,9 @@ const USE_MYPY_TEST_FILES: [&str; 95] = [
     "parse.test",
     "parse-errors.test",
     "parse-python310.test",
+    // Maybe some day
+    //"check-reports.test",
+    //
     // Unfortunately probably not possible
     //"check-custom-plugin.test",
     // Probably not relevant, because additional almost unrelated mypy features
