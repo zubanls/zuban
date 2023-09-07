@@ -99,7 +99,8 @@ fn new_typed_dict_internal<'db>(
     let dct_iterator = match atom.unpack() {
         AtomContent::Dict(dct) => dct.iter_elements(),
         _ => {
-            todo!("{atom:?}")
+            second_node_ref.add_issue(i_s, IssueType::TypedDictSecondArgMustBeDict);
+            return None;
         }
     };
     let args_node_ref = args.as_node_ref();
