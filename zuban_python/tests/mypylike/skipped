@@ -720,15 +720,63 @@ testRecursiveTypedDictWithList
 # TypedDict recursion with imports
 testNewImportCycleTypedDict
 # "Incompatible types (expression has type "int", TypedDict item "x" has type "str")"
+testCannotCreateTypedDictInstanceWithIncompatibleItemType
 testNewAnalyzerTypedDictClassInheritance
 testColumnTypedDict
+testTypedDictDoesNotAcceptsFloatForInt
+testTypedDictImportCycle
+# Incompatible types in assignment (expression has type "__main__.A", variable has type "A")
+testTypedDictSubtypingWithTotalFalse
+testNonTotalTypedDictCanBeEmpty
+# invalid creation
+testCannotCreateTypedDictTypeWithTooFewArguments
+testCannotCreateTypedDictTypeWithTooManyArguments
+testCannotCreateTypedDictTypeWithInvalidName
+testCannotCreateTypedDictTypeWithInvalidItems
+testCannotCreateTypedDictTypeWithKwargs
+testCannotCreateTypedDictTypeWithBytes
+testCannotCreateTypedDictTypeWithNonpositionalArgs
+testCannotCreateTypedDictTypeWithInvalidItemName
+testCannotCreateTypedDictTypeWithInvalidItemType
+testCannotCreateTypedDictTypeWithInvalidName2
+# "TypedDict type as attribute is not supported"
+testAssignTypedDictAsAttribute
 # "Unpack item in ** argument must be a TypedDict"
 testUnpackWithoutTypedDict
+# ""total" argument must be a True or False literal"
+testTypedDictWithInvalidTotalArgument
+testTypedDictClassWithInvalidTotalArgument
+testTypedDictClassInheritanceWithTotalArgument
+testNonTotalTypedDictInErrorMessages
 # "Missing named argument "radius" for "foo""
 testUnpackTypedDictTotality
 testErrorCodeTypedDict
+# "Missing key "y" for TypedDict "Point"
+testCannotCreateTypedDictInstanceWithMissingItems
+testTypedDictDictLiterals
+testTypedDictExplicitTypes
+testTypedDictUppercaseKey
+testDoesRecognizeRequiredInTypedDictWithClass
+testDoesRecognizeRequiredInTypedDictWithAssignment
 # "TypedDict "a.Dict[TValue]" has no key "x""
+testTypedDictMissingEmptyKey
 testGenericTypedDictWithError
+# "Extra key "z" for TypedDict "Point""
+testCannotCreateTypedDictInstanceWithExtraItems
+testTypedDictConstructorWithTotalFalse
+testTypedDictUnpackMissingOrExtraKey
+# "Expected TypedDict key "x" but found keys ("x", "z")"
+testCannotCreateAnonymousTypedDictInstanceUsingDictLiteralWithExtraItems
+testCannotCreateAnonymousTypedDictInstanceUsingDictLiteralWithMissingItems
+# "Expected TypedDict key to be string literal"
+testCannotCreateTypedDictInstanceNonLiteralItemName
+testCannotGetItemOfTypedDictWithNonLiteralKey
+testTypedDictLiteralTypeKeyInCreation
+testTypedDictBytesKey
+# "Expected keyword arguments, {...}, or dict(...) in TypedDict constructor"
+testCannotCreateTypedDictInstanceWithUnknownArgumentPattern
+# "Inline TypedDict types not supported; use assignment to define TypedDict"
+testCannotCreateTypedDictInstanceWithInlineTypedDict
 # context inference of typed dicts
 testErrorCodeTypedDictNoteIgnore
 testErrorCodeTypedDictSubCodeIgnore
@@ -736,22 +784,107 @@ testErrorCodeTypedDictSubCodeIgnore
 testTypedDictNameMismatch
 # "Invalid statement in TypedDict definition; expected "field_name: field_type""
 testTypedDictNestedClassRecheck
+# class:678
+testCanCreateTypedDictWithSubclass2
+# database:1198
+testTypedDictUnionSimplification
+testTypedDictUnionSimplification2
+# database:1102
+testTypedDictUnionUnambiguousCase
+testTypedDictUnionAmbiguousCaseBothMatch
+testTypedDictUnionAmbiguousCaseNoMatch
+# typed dict as base class
+testCanCreateTypedDictWithClassOldVersion
+testCannotCreateTypedDictWithClassOtherBases
+testCannotCreateTypedDictWithDuplicateBases
+# "Overwriting TypedDict field "x" while merging"
+testCanCreateTypedDictWithClassOverwriting
+# "Overwriting TypedDict field "x" while extending"
+testCanCreateTypedDictWithClassOverwriting2
+# Invalid NamedTuple
+testCannotCreateTypedDictWithClassWithOtherStuff
+testCannotCreateTypedDictWithClassWithFunctionUsedToCrash
+testCannotCreateTypedDictWithDecoratedFunction
+testTypedDictWithClassmethodAlternativeConstructorDoesNotCrash
+# "Duplicate TypedDict key "x""
+testCannotCreateTypedDictWithDuplicateKey1
+testCannotCreateTypedDictWithDuplicateKey2
+# dict() initializations
+testTypedDictCreatedWithEmptyDict
 # Unpack
 testUnpackKeywordTypesTypedDict
 testUnpackKwargsNonIdentifier
 testUnpackKwargsSerialize
 testDataclassFieldWithTypedDictUnpacking
 testUnpackKwargsOverridesTypedDict
+# dict unpacking
+testTypedDictUnpackMultiple
+testTypedDictUnpackNested
+testTypedDictUnpackNestedError
+testTypedDictUnpackOverrideRequired
+testTypedDictUnpackUntypedDict
+testTypedDictUnpackIntoUnion
+testTypedDictUnpackFromUnion
+testTypedDictUnpackUnionRequiredMissing
+testTypedDictUnpackInference
+testTypedDictUnpackStrictMode
+testTypedDictUnpackAny
 # structural matching
+testCanConvertTypedDictToEquivalentTypedDict
+testCanConvertTypedDictToNarrowerTypedDict
+testTypedDictWithSimpleProtocol
+testTypedDictWithSimpleProtocolInference
+testTypedDictOverloading4
+testTypedDictOverloading5
+# matching mapping
+testCanConvertTypedDictToCompatibleMapping
+testForwardReferenceInTypedDict
+testForwardReferenceInClassTypedDict
 # Lookups
 testOverloadKwargsSelectionWithTypedDict
 testCachedBadProtocolNote
 testErrorCodeSpecialArgTypeErrors
 testCanConvertTypedDictToAnySuperclassOfMapping
 testTypedDictMappingMethods
+testCanCreateTypedDictInstanceWithKeywordArguments
+testCanCreateTypedDictInstanceWithDictCall
+testCanCreateTypedDictInstanceWithDictLiteral
+testCanCreateTypedDictInstanceWithNoArguments
+testTypedDictConstraintsAgainstIterable
+testTypedDictMissingMethod
+testTypedDictOverloading
+testTypedDictOverloading2
+testTypedDictAsStarStarArg
+testTypedDictAsStarStarArgConstraints
+testTypedDictAsStarStarArgCalleeKwargs
+testTypedDictAsStarStarTwice
+testTypedDictAsStarStarAndDictAsStarStar
+testTypedDictUnionGetItem
+testTypedDictUnionDelItem
+testTypedDictAttributeOnClassObject
+# __setitem__
+testCanSetItemOfTypedDictWithValidStringLiteralKeyAndCompatibleValueType
+testCannotSetItemOfTypedDictWithIncompatibleValueType
+testCannotSetItemOfTypedDictWithInvalidStringLiteralKey
+testCannotSetItemOfTypedDictWithNonLiteralKey
+testTypedDictUnionSetItem
+# "TypedDict "XXX" has no key "xxx" "
+testCannotGetItemOfTypedDictWithInvalidStringLiteralKey
+testCannotGetItemOfAnonymousTypedDictWithInvalidStringLiteralKey
+testTypedDictTypeVarUnionSetItem
 # Typed dict generics in getitem
 testTypedDictUpdateGeneric
+# generics
 testGenericTypedDictSerialization
+testGenericTypedDictCreation
+testGenericTypedDictInference
+testGenericTypedDictExtending
+testGenericTypedDictExtendingErrors
+testGenericTypedDictAlias
+testGenericTypedDictMultipleGenerics
+testGenericTypedDictCallSyntax
+# Self type cannot be used in TypedDict item type
+testTypedDictSelfItemNotAllowed
 # Nested typed dict formatting
 testSerializeTypedDictInMethod
 # TypedDict .get() special case
@@ -760,8 +893,77 @@ testLiteralIntelligentIndexingTypedDict
 testLiteralIntelligentIndexingTypedDictUnions
 testLiteralIntelligentIndexingMultiTypedDict
 testTypedDictGet
+testTypedDictGetMethod
+testTypedDictGetMethodTypeContext
+testTypedDictGetMethodInvalidArgs
+testTypedDictChainedGetMethodWithDictFallback
+testTypedDictGetDefaultParameterStillTypeChecked
+testTypedDictChainedGetWithEmptyDictDefault
+testTypedDictIndexingWithNonRequiredKey
+testPluginUnionsOfTypedDicts
+testPluginUnionsOfTypedDictsNonTotal
+# Further special cases
+testTypedDictPopMethod
+testTypedDictDel
+testTypedDictNonMappingMethods
+testTypedDictOptionalUpdate
+testUnionOfEquivalentTypedDictsInferred
+testTypedDictFlexibleUpdate
+testTypedDictFlexibleUpdateUnion
+testTypedDictFlexibleUpdateUnionExtra
+# --extra-checks
+testTypedDictStrictUpdate
+testTypedDictFlexibleUpdateUnionStrict
+testTypedDictUnpackSame
+testTypedDictUnpackCompatible
+testTypedDictUnpackIncompatible
+testTypedDictUnpackMultiple
 # TypedDict total=false
 testTypedDictUnionGetFull
+testTypedDictClassWithTotalArgument
+# Anonymous TypedDicts for join
+testAnonymousTypedDictInErrorMessages
+testJoinOfTypedDictHasOnlyCommonKeysAndNewFallback
+testJoinOfTypedDictRemovesNonequivalentKeys
+testJoinOfDisjointTypedDictsIsEmptyTypedDict
+testJoinOfTypedDictWithCompatibleMappingIsMapping
+testJoinOfTypedDictWithCompatibleMappingSupertypeIsSupertype
+testJoinOfTypedDictWithIncompatibleTypeIsObject
+# join
+testTypedDictJoinWithTotalFalse
+# meet
+testMeetOfTypedDictsWithCompatibleCommonKeysHasAllKeysAndNewFallback
+testMeetOfTypedDictsWithIncompatibleCommonKeysIsUninhabited
+testMeetOfTypedDictsWithNoCommonKeysHasAllKeysAndNewFallback
+testMeetOfTypedDictWithCompatibleMappingIsUninhabitedForNow
+testMeetOfTypedDictWithIncompatibleMappingIsUninhabited
+testMeetOfTypedDictWithCompatibleMappingSuperclassIsUninhabitedForNow
+testMeetOfTypedDictsWithNonTotal
+testMeetOfTypedDictsWithNonTotalAndTotal
+testMeetOfTypedDictsWithIncompatibleNonTotalAndTotal
+# unions
+testUnionOfEquivalentTypedDictsDeclared
+testUnionOfEquivalentTypedDictsEmpty
+testUnionOfEquivalentTypedDictsDistinct
+testUnionOfEquivalentTypedDictsNested
+# "Required[] can be only used in a TypedDict definition"
+testDoesDisallowRequiredOutsideOfTypedDict
+testDoesOnlyAllowRequiredInsideTypedDictAtTopLevel
+testDoesDisallowRequiredInsideRequired
+testDoesDisallowNotRequiredOutsideOfTypedDict
+testDoesOnlyAllowNotRequiredInsideTypedDictAtTopLevel
+testDoesDisallowNotRequiredInsideNotRequired
+# "Required[] must have exactly one type argument"
+testRequiredOnlyAllowsOneItem
+testNotRequiredOnlyAllowsOneItem
+# Required/ NotRequired
+testRequiredExplicitAny
+testNotRequiredExplicitAny
+testDoesRecognizeNotRequiredInTypedDictWithClass
+testDoesRecognizeNotRequiredInTypedDictWithAssignment
+testTypedDictUnpackNotRequiredKeyIncompatible
+testTypedDictUnpackNotRequiredKeyExtra
+testTypedDictUnpackRequiredKeyMissing
 
 # NoReturn
 testNoReturnTypeAlias
@@ -1845,6 +2047,8 @@ testFinalClassWithAbstractAttributes
 testFinalClassWithoutABCMeta
 testFinalClassInheritedAbstractAttributes
 testEnumExplicitlyAndImplicitlyFinal
+testCannotSubclassFinalTypedDict
+testCannotSubclassFinalTypedDictWithForwardDeclarations
 # Final: "Cannot assign to final name "x""
 testNewAnalyzerFinalReassignModuleReexport
 testNewAnalyzerFinalOverrideInSubclass
@@ -1949,11 +2153,15 @@ testNarrowSelfType
 testRuntimeIterableProtocolCheck
 testColumnsSimpleIsinstance
 testTypeshedRecursiveTypesExample
+testTypedDictIsInstance
+testTypedDictIsInstanceABCs
 # issubclass narrowing
 testIsInstanceTypeIsSubclass
 testIsInstanceTypeTypeVar
 testIsInstanceTypeSubclass
 testIsSubClassNarrowDownTypesOfTypeVariables
+# "Cannot use isinstance() with TypedDict type"
+testTypedDictWithIsInstanceAndIsSubclass
 # isinstance & union
 testUnion1
 testUnion2
@@ -2021,6 +2229,7 @@ testNarrowedVariableInNestedFunctionMore2
 testAliasRecursiveUnpackMultiple
 testNarrowOnSelfInGeneric
 testNarrowedVariableInNestedModifiedInWalrus
+testTypedDictTypeNarrowingWithFinalKey
 # narrowing if is
 testEnumReachabilityChecksBasic
 testEnumReachabilityChecksWithOrdering
@@ -2074,6 +2283,11 @@ testIsInstanceAdHocIntersectionIncrementalUnreachaableToIntersection
 testGenericPatterns
 testGenericMatch
 testTypedDictUpdate3
+# narrowing with in
+testOperatorContainsNarrowsTypedDicts_unionWithList
+testOperatorContainsNarrowsTypedDicts_total
+testOperatorContainsNarrowsTypedDicts_partialThroughTotalFalse
+testOperatorContainsNarrowsTypedDicts_partialThroughNotRequired
 # General assert
 testFastParseMalformedAssert
 testFastParseAssertMessage
@@ -2694,6 +2908,9 @@ testColumnNonOverlappingEqualityCheck
 testStrictEqualityAndEnumWithCustomEq
 testStrictEqualityAllowlist
 testStrictEqualitywithParamSpec
+testTypedDictOverlapWithDictNonOverlapping
+testTypedDictOverlapWithDictNonTotalNonOverlapping
+testTypedDictOverlapWithDictEmpty
 
 # --show-column-numbers and tuple targets
 testColumnsAssignment
@@ -2769,6 +2986,9 @@ testDoNotFollowImportToNonStubFile
 
 # --disallow-subclassing-any
 testMetaclassAsAnyWithAFlag
+
+# --warn-unreachable
+testOperatorContainsNarrowsTypedDicts_final
 
 # --no-namespace-packages
 testClassicNotPackage
@@ -3151,6 +3371,8 @@ testSelfRefNT4
 testSelfRefNT5
 testRecursiveNamedTupleInBases
 testSubclassOfRecursiveNamedTuple
+testSelfRecursiveTypedDictInheriting
+testSubclassOfRecursiveTypedDict
 
 # Won't support --force-union-syntax
 testOptionalErrorSyntax
