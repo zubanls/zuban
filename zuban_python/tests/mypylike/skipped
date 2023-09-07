@@ -740,7 +740,6 @@ testAssignTypedDictAsAttribute
 # "Unpack item in ** argument must be a TypedDict"
 testUnpackWithoutTypedDict
 # ""total" argument must be a True or False literal"
-testTypedDictWithInvalidTotalArgument
 testTypedDictClassWithInvalidTotalArgument
 testTypedDictClassInheritanceWithTotalArgument
 testNonTotalTypedDictInErrorMessages

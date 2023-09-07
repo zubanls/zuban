@@ -96,16 +96,30 @@ fn new_typed_dict_internal<'db>(
     };
     let mut total = true;
     if let Some(next) = iterator.next() {
-        if let ArgumentKind::Keyword { key: "total", .. } = &next.kind {
-            total = next
-                .infer(i_s, &mut ResultContext::ExpectLiteral)
-                .maybe_bool_literal(i_s)
-                .unwrap_or_else(|| todo!());
-        } else {
-            args.as_node_ref()
-                .add_issue(i_s, IssueType::UnexpectedArgumentsToTypedDict);
-            return None;
-        }
+        match &next.kind {
+            ArgumentKind::Keyword { key: "total", .. } => {
+                if let Some(b) = next
+                    .infer(i_s, &mut ResultContext::ExpectLiteral)
+                    .maybe_bool_literal(i_s)
+                {
+                    total = b;
+                } else {
+                    next.as_node_ref()
+                        .add_issue(i_s, IssueType::TypedDictTotalMustBeTrueOrFalse);
+                    return None;
+                }
+            }
+            ArgumentKind::Keyword { key, node_ref, .. } => {
+                let s = format!(r#"Unexpected keyword argument "{key}" for "TypedDict""#);
+                node_ref.add_issue(i_s, IssueType::ArgumentIssue(s.into()));
+                return None;
+            }
+            _ => {
+                args.as_node_ref()
+                    .add_issue(i_s, IssueType::UnexpectedArgumentsToTypedDict);
+                return None;
+            }
+        };
     }
     if iterator.next().is_some() {
         args.as_node_ref().add_issue(
