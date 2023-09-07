@@ -62,7 +62,8 @@ fn new_typed_dict_internal<'db>(
         .maybe_single_string_literal()
         .map(|py_string| (node_ref, py_string));
     let Some(name) = StringSlice::from_string_in_expression(node_ref.file_index(), expr) else {
-        todo!()
+        node_ref.add_issue(i_s, IssueType::TypedDictFirstArgMustBeString);
+        return None
     };
     let Some(second_arg) = iterator.next() else {
         args.as_node_ref().add_issue(i_s, IssueType::TooFewArguments(" for TypedDict()".into()));
