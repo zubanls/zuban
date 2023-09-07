@@ -376,7 +376,10 @@ impl<'a> Type<'a> {
                 }
                 _ => Match::new_false(),
             },
-            DbType::TypedDict(_) => todo!(),
+            DbType::TypedDict(d1) => match value_type.as_ref() {
+                DbType::TypedDict(d2) => (d1 == d2).into(),
+                _ => Match::new_false(),
+            },
             DbType::NamedTuple(nt1) => match value_type.as_ref() {
                 DbType::NamedTuple(nt2) => {
                     let c1 = &nt1.__new__;
@@ -1534,7 +1537,10 @@ impl<'a> Type<'a> {
                     d.clone()
                 }
             }),
-            DbType::TypedDict(_) => todo!(),
+            DbType::TypedDict(d) => {
+                debug!("TODO typed dict replace type vars");
+                return DbType::TypedDict(d.clone());
+            }
             DbType::NamedTuple(nt) => {
                 let mut constructor = nt.__new__.as_ref().clone();
                 constructor.params = CallableParams::Simple(
