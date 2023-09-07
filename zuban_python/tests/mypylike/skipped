@@ -982,6 +982,7 @@ testLiteralCheckSubtypingStrictOptional
 testLiteralCheckSubtypingNoStrictOptional
 testNewAndInitNoReturn
 testOverloadedNewAndInitNoReturn
+testNoReturnImportFromTyping
 
 # typing.no_type_check
 testNoTypeCheckDecoratorOnMethod1
@@ -1257,6 +1258,7 @@ testVariadicAliasVariadicTupleArgGeneric
 testVariadicAliasVariadicTupleArgSplit
 testTypeVarTuplePep646ArrayExampleInfer
 testTypeVarTupleTypingExtensions
+testTypeVarTupleDisabled_no_incomplete
 # typing_extensions.Unpack
 testRuntimeProtoTwoBases
 testUnpackKwargsReveal
@@ -2113,6 +2115,7 @@ testIncompatibleConditionalMethodDefinition
 testIfTypeCheckingUnreachableClass
 # --always-true TRUTH
 testIfConditionsInDefinition
+testAlwaysTrueAlwaysFalseFlags
 
 # if sys.version
 testNewAnalyzerVersionCheck
@@ -2614,6 +2617,9 @@ testNoReturnWhile
 testNoReturnExcept
 # "Use "-> None" if function does not return a value"
 testDecoratedFunctionLine
+testUntypedDef
+testUnannotatedReturnWithOnlySelfArgument
+testUntypedAsyncDef
 
 # "Cannot call function of unknown type"
 testUnknownFunctionNotCallable
@@ -2808,6 +2814,11 @@ testUncheckedAnnotationSuppressed
 testMethodAssignmentSuppressed
 testMethodAssignCoveredByAssignmentFlag
 testIncrementalInvalidNamedTupleInUnannotatedFunction
+testDisableErrorCode
+testDisableMultipleErrorCode
+# --enable-error-code
+testEnableDifferentErrorCode
+testEnableMultipleErrorCode
 # --warn-unused-ignores
 # "Unused "type: ignore" comment"
 testErrorCodeWarnUnusedIgnores1
@@ -2856,6 +2867,20 @@ testClassicPackageInsideNamespacePackageCasePyProjectTOML
 testIncrementalFollowImportsVariablePyProjectTOML
 testNamespacePackageWithMypyPathPyProjectTOML
 testNamespacePackagePickFirstOnMypyPathCasePyProjectTOML
+testPerFileIncompleteDefsBasicPyProjectTOML
+testPerFileStrictOptionalBasicPyProjectTOML
+testPerFileStrictOptionalBasicImportStandardPyProjectTOML
+testPerFileStrictOptionalBasicImportOptionalPyProjectTOML
+testPerFileStrictOptionalListItemImportOptionalPyProjectTOML
+testPerFileStrictOptionalNoneArgumentsPyProjectTOML
+testAlwaysTrueAlwaysFalseConfigFilePyProjectTOML
+testDisableErrorCodeConfigFilePyProjectTOML
+testStrictInConfigAnyGenericPyProjectTOML
+testStrictFalseInConfigAnyGenericPyProjectTOML
+testStrictEqualityPerFilePyProjectTOML
+testNoImplicitReexportPyProjectTOML
+testDisallowSubclassingAnyPyProjectTOML
+testNoImplicitOptionalPerModulePyProjectTOML
 
 # mypy.ini
 testRefreshIgnoreErrors1
@@ -2877,6 +2902,24 @@ testNamespacePackageInsideClassicPackage
 testNamespacePackagePickFirstOnMypyPathCase
 testTypedPkgNoSitePkgsIgnoredImports
 testTypedPkg_config_nositepackages
+testPerFileIncompleteDefsBasic
+testPerFileStrictOptionalBasic
+testPerFileStrictOptionalBasicImportStandard
+testPerFileStrictOptionalBasicImportOptional
+testPerFileStrictOptionalListItemImportOptional
+testPerFileStrictOptionalNoneArguments
+testAlwaysTrueAlwaysFalseConfigFile
+testDisableErrorCodeConfigFile
+testStrictInConfigAnyGeneric
+testStrictFalseInConfigAnyGeneric
+testStrictEqualityPerFile
+testNoImplicitReexportMypyIni
+testDisallowSubclassingAny
+testNoImplicitOptionalPerModule
+testDisallowUntypedCallsAllowListConfig
+testPerModuleErrorCodes
+testPerModuleErrorCodesOverride
+testNoCrashFollowImportsForStubs
 # Uses an environment variable in mypy.ini files=$MYPY_CONFIG_FILE_DIR/good.py
 testEnvvar_MYPY_CONFIG_FILE_DIR
 
@@ -2943,6 +2986,7 @@ testStrictEqualitywithParamSpec
 testTypedDictOverlapWithDictNonOverlapping
 testTypedDictOverlapWithDictNonTotalNonOverlapping
 testTypedDictOverlapWithDictEmpty
+testStrictAndStrictEquality
 
 # --show-column-numbers and tuple targets
 testColumnsAssignment
@@ -2956,6 +3000,12 @@ testRecommendErrorCode2
 
 # --show-error-context
 testNewAnalyzerTypeArgBoundCheckWithContext
+testShowErrorContextFunction
+testShowErrorContextClass
+testShowErrorContextMember
+testShowErrorContextModule
+testShowErrorContextTopLevel
+testShowErrorContextFromHere
 
 # --allow-untyped-globals
 testPermissiveAttributeOverride1
@@ -2970,15 +3020,98 @@ testCannotRenameExternalVarWithinClass
 testDoNotLimitErrorVolumeIfNotImportErrors
 testUnlimitedStubErrorVolume
 testDisallowAnyExprIncremental
+testDisallowAnyExprSimple
+testDisallowAnyExprExplicitAnyParam
+testDisallowAnyExprAllowsAnyInCast
+testDisallowAnyExprAllowsAnyInVariableAssignmentWithExplicitTypeAnnotation
+testDisallowAnyExprGeneric
 
 # --disallow-any-generics
 testErrorReportingNewAnalyzer
 testErrorCodeMissingTypeArg
 testColumnMissingTypeParameters
 testUnpackGenericTypedDictImplicitAnyDisabled
+testCheckDisallowAnyGenericsNamedTuple
+testCheckDisallowAnyGenericsTypedDict
+testCheckDisallowAnyGenericsStubOnly
+testCheckDisallowAnyGenericsAnyGeneric
+testStrictAnyGeneric
+testImplicitAnyOKForNoArgs
+testDisallowAnyGenericsTupleNoTypeParams
+testDisallowAnyGenericsTupleWithNoTypeParamsGeneric
+testDisallowAnyGenericsTypeType
+testDisallowAnyGenericsAliasGenericType
+testDisallowAnyGenericsGenericAlias
+testDisallowAnyGenericsPlainList
+testDisallowAnyGenericsCustomGenericClass
+testDisallowAnyGenericsForAliasesInRuntimeContext
 
 # --disallow-any-unimported
 testErrorCodeAnyFromUnfollowedImport
+testDisallowImplicitTypesIgnoreMissingTypes
+testDisallowImplicitTypes
+testDisallowImplicitAnyVariableDefinition
+testDisallowImplicitAnyGeneric
+testDisallowImplicitAnyInherit
+testDisallowImplicitAnyAlias
+testDisallowImplicitAnyCast
+testDisallowImplicitAnyNamedTuple
+testDisallowImplicitAnyTypeVarConstraints
+testDisallowImplicitAnyNewType
+testDisallowImplicitAnyCallableAndTuple
+testDisallowImplicitAnySubclassingExplicitAny
+testDisallowImplicitAnyVarDeclaration
+testDisallowUnimportedAnyTypedDictSimple
+testDisallowUnimportedAnyTypedDictGeneric
+
+# --disallow-any-decorated
+testDisallowAnyDecoratedUnannotatedDecorator
+testDisallowAnyDecoratedErrorIsReportedOnlyOnce
+testDisallowAnyDecoratedReturnAny
+testDisallowAnyDecoratedReturnCallable
+testDisallowAnyDecoratedNonexistentDecorator
+testDisallowAnyDecoratedPartlyTypedCallable
+testDisallowAnyDecoratedTwoDecorators
+# --disallow-untyped-decorators
+testDisallowUntypedDefsUntypedDecorator
+testDisallowUntypedDecoratorsUnresolvedDecorator
+testDisallowUntypedDecoratorsPartialFunction
+testDisallowUntypedDecoratorsMultipleDecorators
+testDisallowUntypedDecoratorsCallableInstance
+testDisallowUntypedDecoratorsCallableInstanceDecoratedCall
+
+# --disallow-untyped-calls
+testDisallowUntypedCallsArgType
+# --untyped-calls-exclude=bar.A
+testDisallowUntypedCallsAllowListFlags
+
+# --disallow-subclassing-any
+testMetaclassAsAnyWithAFlag
+testSubclassingAny
+testSubclassingAnyMultipleBaseClasses
+testSubclassingAnySilentImports
+testSubclassingAnySilentImports2
+
+# --disallow-any-explicit
+testDisallowAnyExplicitDefSignature
+testDisallowAnyExplicitVarDeclaration
+testDisallowAnyExplicitGenericVarDeclaration
+testDisallowAnyExplicitInheritance
+testDisallowAnyExplicitAlias
+testDisallowAnyExplicitGenericAlias
+testDisallowAnyExplicitCast
+testDisallowAnyExplicitNamedTuple
+testDisallowAnyExplicitTypeVarConstraint
+testDisallowAnyExplicitNewType
+testDisallowAnyExplicitTypedDictSimple
+testDisallowAnyExplicitTypedDictGeneric
+
+# --disallow-incomplete-defs
+testDisallowIncompleteDefs
+testDisallowIncompleteDefsPartiallyAnnotatedParams
+testDisallowIncompleteDefsAttrsNoAnnotations
+testDisallowIncompleteDefsAttrsWithAnnotations
+testDisallowIncompleteDefsAttrsPartialAnnotations
 
 # --warn-return-any
 testErrorCodeReturnAny
@@ -2986,6 +3119,15 @@ testReturnAnyFromTypedFunction
 testReturnAnyForNotImplementedInBinaryMagicMethods
 testReturnAnyForNotImplementedInNormalMethods
 testReturnAnyFromTypedFunctionWithSpecificFormatting
+testReturnAnyLambda
+# --warn-no-return
+testNoReturnDisallowsReturn
+testNoReturnDisallowsImplicitReturn
+testNoReturnImplicitReturnCheckInDeferredNode
+testNoReturnInExpr
+testNoReturnAsync
+# --no-warn-no-return
+testNoWarnNoReturn
 
 # --follow-imports=error
 testImportSuppressedWhileAlmostSilent
@@ -2995,9 +3137,11 @@ testErrorButDontIgnore2
 testErrorButDontIgnore3-skip
 testErrorButDontIgnore4
 testIncrementalFollowImportsError
+testFollowImportsError
 # --follow-imports=silent
 testIncrementalFollowImportsSilent
 testIncrementalWithSilentImports
+testFollowImportsSilent
 # --follow-imports=skip
 testIncrementalUnsilencingModule
 testIncrementalWithSilentImportsAndIgnore
@@ -3019,9 +3163,13 @@ testFileAddedAndImported
 testFileAddedAndImported2
 testDeleteFileWithErrors
 testDoNotFollowImportToNonStubFile
+testFollowImportsSkip
 
-# --disallow-subclassing-any
-testMetaclassAsAnyWithAFlag
+# --no-implicit-reexport
+testNoImplicitReexport
+testNoImplicitReexportRespectsAll
+testNoImplicitReexportGetAttr
+textNoImplicitReexportSuggestions
 
 # --warn-unreachable
 testOperatorContainsNarrowsTypedDicts_final
@@ -3060,6 +3208,11 @@ testTruthyFunctions
 testTruthyIterable
 # flags: --disable-error-code truthy-bool
 testDisableEnableErrorCodesIncremental
+
+# --disable-bytearray-promotion
+testDisableBytearrayPromotion
+# --disable-memoryview-promotion
+testDisableMemoryviewPromotion
 
 # Not all modules are checked in mypy: `# cmd: mypy -m m`
 testTypeCheckNamedModule4
@@ -3272,6 +3425,9 @@ generic_method_on_class_access_overload
 
 # Weird native types of mypy like `from mypy_extensions import i64, i32`
 testNativeIntTypes
+
+# Won't support for now --show-error-code-links
+testShowErrorCodeLinks
 
 # Won't support for now: "t" is a type variable and only valid in type context
 testExpressionRefersToTypeVariable

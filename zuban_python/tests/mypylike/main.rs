@@ -10,7 +10,7 @@ use regex::{Captures, Regex, Replacer};
 
 use zuban_python::{DiagnosticConfig, Project, ProjectOptions};
 
-const USE_MYPY_TEST_FILES: [&str; 98] = [
+const USE_MYPY_TEST_FILES: [&str; 99] = [
     // Type checking tests
     "check-generics.test",
     "check-generic-alias.test",
@@ -105,7 +105,7 @@ const USE_MYPY_TEST_FILES: [&str; 98] = [
     "check-columns.test",
     "check-errorcodes.test",
     "check-warnings.test",
-    //"check-flags.test",
+    "check-flags.test",
     "pythoneval.test",
     "pythoneval-asyncio.test",
     //"cmdline.test",
