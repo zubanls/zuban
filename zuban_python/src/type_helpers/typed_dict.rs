@@ -118,7 +118,9 @@ fn new_typed_dict_internal<'db>(
         match element {
             DictElement::KeyValue(key_value) => {
                 let Some(param_name) = StringSlice::from_string_in_expression(args_node_ref.file_index(), key_value.key()) else {
-                    todo!()
+                    NodeRef::new(args_node_ref.file, key_value.key().index())
+                        .add_issue(i_s, IssueType::TypedDictInvalidFieldName);
+                    return None
                 };
                 let t = comp.compute_typed_dict_entry(key_value.value());
                 params.push(CallableParam {
