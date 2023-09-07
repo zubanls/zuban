@@ -159,6 +159,7 @@ pub(crate) enum IssueType {
 
     TypedDictIncompatibleType { got: Box<str>, key: Box<str>, expected: Box<str> },
     TypedDictExtraKey { key: Box<str>, typed_dict: Box<str> },
+    UnexpectedArgumentsToTypedDict,
 
     OverloadMismatch { name: Box<str>, args: Box<[Box<str>]>, variants: Box<[Box<str>]> },
     OverloadImplementationNotLast,
@@ -780,6 +781,7 @@ impl<'db> Diagnostic<'db> {
             TypedDictExtraKey { key, typed_dict } => format!(
                 r#"Extra key "{key}" for TypedDict "{typed_dict}""#
             ),
+            UnexpectedArgumentsToTypedDict => "Unexpected arguments to TypedDict()".to_string(),
 
             OverloadImplementationNotLast =>
                 "The implementation for an overloaded function must come last".to_string(),

@@ -83,7 +83,9 @@ fn new_typed_dict_internal<'db>(
                 .unwrap_or_else(|| todo!());
             // TODO
         } else {
-            todo!()
+            args.as_node_ref()
+                .add_issue(i_s, IssueType::UnexpectedArgumentsToTypedDict);
+            return None;
         }
     }
     if iterator.next().is_some() {
