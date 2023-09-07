@@ -10,161 +10,58 @@ use regex::{Captures, Regex, Replacer};
 
 use zuban_python::{DiagnosticConfig, Project, ProjectOptions};
 
-const USE_MYPY_TEST_FILES: [&str; 99] = [
-    // Type checking tests
-    "check-generics.test",
-    "check-generic-alias.test",
-    "check-typevar-unbound.test",
-    "check-basic.test",
-    "check-type-aliases.test",
-    "check-typevar-values.test",
-    "check-bound.test",
-    "check-modules.test",
-    "check-modules-case.test",
-    "check-modules-fast.test",
-    "check-functions.test",
-    "check-varargs.test",
-    "check-kwargs.test",
-    "check-generic-subtyping.test",
-    "check-classes.test",
-    "check-super.test",
-    "check-multiple-inheritance.test",
-    "check-classvar.test",
-    "check-overloading.test",
-    "check-literal.test",
-    "check-unions.test",
-    "check-union-or-syntax.test",
-    "check-protocols.test",
-    "check-parameter-specification.test",
-    "check-typevar-tuple.test",
-    //"check-typevar-defaults.test",
-    "check-expressions.test",
-    "check-statements.test",
-    "check-type-checks.test",
-    "check-type-promotion.test",
-    "check-inference.test",
-    "check-inference-context.test",
-    //"check-final.test",
-    "check-ignore.test",
-    "check-underscores.test",
-    "check-dynamic-typing.test",
-    "check-selftype.test",
-    "check-recursive-types.test",
-    "check-annotated.test",
-    "check-tuples.test",
-    "check-lists.test",
-    "check-namedtuple.test",
-    "check-class-namedtuple.test",
-    "check-newtype.test",
-    "check-unsupported.test",
-    "check-optional.test",
+const SKIP_MYPY_TEST_FILES: [&str; 40] = [
+    "check-typevar-defaults.test",
+    "check-final.test",
     // Narrowing tests
-    //"check-narrowing.test",
-    //"check-isinstance.test",
-    //"check-redefine.test",
-    //"check-typeguard.test",
-    //"check-unreachable-code.test",
-    //"check-possibly-undefined.test",
-    //"check-callable.test",
-    //"check-assert-type-fail.test",
+    "check-narrowing.test",
+    "check-isinstance.test",
+    "check-redefine.test",
+    "check-typeguard.test",
+    "check-unreachable-code.test",
+    "check-possibly-undefined.test",
+    "check-callable.test",
+    "check-assert-type-fail.test",
     // Python special features
-    "check-slots.test",
-    //"check-formatting.test",
-    "check-lowercase.test",
-    "check-union-error-syntax.test",
-    "check-enum.test",
-    "check-typeddict.test",
-    //"check-dataclass-transform.test",
-    "check-dataclasses.test",
-    //"check-plugin-attrs.test",
-    "check-abstract.test",
-    "check-functools.test",
-    //"check-singledispatch.test",
-    //"check-ctypes.test",
+    "check-formatting.test",
+    "check-dataclass-transform.test",
+    "check-plugin-attrs.test",
+    "check-singledispatch.test",
+    "check-ctypes.test",
     // Python syntax
-    "check-async-await.test",
-    "check-newsyntax.test",
-    "check-python38.test",
-    "check-python39.test",
-    //"check-python310.test",
-    "check-python311.test",
-    // Incremental type checking (multi pass per test)
-    "check-fastparse.test",
-    "check-serialize.test",
-    "check-incremental.test",
-    "fine-grained.test",
-    "fine-grained-modules.test",
-    "fine-grained-follow-imports.test",
-    "fine-grained-blockers.test",
-    "fine-grained-cache-incremental.test",
-    "fine-grained-cycles.test",
-    "fine-grained-attr.test",
-    "fine-grained-dataclass.test",
-    "fine-grained-dataclass-transform.test",
+    "check-python310.test",
     // Mypy flag checking
-    "check-columns.test",
-    "check-errorcodes.test",
-    "check-warnings.test",
-    "check-flags.test",
-    "pythoneval.test",
-    "pythoneval-asyncio.test",
-    //"cmdline.test",
-    //"cmdline.pyproject.test",
-    "envvars.test",
-    "pep561.test",
-    //"check-inline-config.test",
-    // Semanal tests
-    "semanal-abstractclasses.test",
-    "semanal-basic.test",
-    "semanal-classes.test",
-    "semanal-classvar.test",
-    "semanal-errors-python310.test",
-    "semanal-errors.test",
-    "semanal-expressions.test",
-    "semanal-lambda.test",
-    "semanal-literal.test",
-    "semanal-modules.test",
-    "semanal-namedtuple.test",
-    "semanal-python310.test",
-    "semanal-statements.test",
-    "semanal-typealiases.test",
-    "semanal-typeddict.test",
-    "semanal-typeinfo.test",
-    "semanal-types.test",
-    "check-semanal-error.test",
-    "check-newsemanal.test",
-    // parse tests
-    "parse.test",
-    "parse-errors.test",
-    "parse-python310.test",
+    "cmdline.test",
+    "cmdline.pyproject.test",
+    "check-inline-config.test",
     // Maybe some day
-    //"check-reports.test",
-    //
+    "check-reports.test",
+    "reports.test",
     // Unfortunately probably not possible
-    //"check-custom-plugin.test",
+    "check-custom-plugin.test",
     // Probably not relevant, because additional almost unrelated mypy features
-    //"stubgen.test",
-    //"typeexport-basic.test",
+    "stubgen.test",
+    "typexport-basic.test",
     // dmypy suggest feature,
     // see https://mypy.readthedocs.io/en/stable/mypy_daemon.html#static-inference-of-annotations
-    //"fine-grained-suggest.test",
+    "fine-grained-suggest.test",
     // Inspect feature, see https://mypy.readthedocs.io/en/stable/mypy_daemon.html#static-inference-of-annotations
-    //"fine-grained-inspect.test",
+    "fine-grained-inspect.test",
     // Won't do, because they test mypy internals
-    //"check-incomplete-fixture.test",
-    //"check-native-int.test",
-    //"semanal-symtable.test",
-    //"daemon.test",
-    //"deps-classes.test",
-    //"deps-expressions.test",
-    //"deps-generics.test",
-    //"deps-statements.test",
-    //"deps.test",
-    //"deps-types.test",
-    //"diff.test",
-    //"errorstream.test",
-    //"merge.test",
-    //"ref-info.test",
+    "check-incomplete-fixture.test",
+    "check-native-int.test",
+    "semanal-symtable.test",
+    "daemon.test",
+    "deps-classes.test",
+    "deps-expressions.test",
+    "deps-generics.test",
+    "deps-statements.test",
+    "deps.test",
+    "deps-types.test",
+    "diff.test",
+    "errorstream.test",
+    "merge.test",
+    "ref-info.test",
 ];
 
 const BASE_PATH: &str = "/mypylike/";
@@ -849,10 +746,16 @@ fn find_mypy_style_files() -> Vec<(bool, PathBuf)> {
 
     our_own_tests.sort();
 
+    let mut mypy_test_path = base;
+    mypy_test_path.extend(["mypy", "test-data", "unit"]);
     // Include mypy tests
-    for name in USE_MYPY_TEST_FILES {
-        let mut path = base.clone();
-        path.extend(["mypy", "test-data", "unit", name]);
+    for res in read_dir(mypy_test_path.clone()).unwrap() {
+        let name = res.unwrap().file_name().into_string().unwrap();
+        if !name.ends_with(".test") || SKIP_MYPY_TEST_FILES.contains(&name.as_str()) {
+            continue;
+        }
+        let mut path = mypy_test_path.clone();
+        path.extend([name]);
         entries.push((true, path));
     }
 
