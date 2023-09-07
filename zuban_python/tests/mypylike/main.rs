@@ -733,7 +733,6 @@ fn get_base() -> PathBuf {
 
 fn find_mypy_style_files() -> Vec<(bool, PathBuf)> {
     let base = get_base();
-    let mut entries = vec![];
 
     // Include local tests
     let mut path = base.clone();
@@ -749,15 +748,18 @@ fn find_mypy_style_files() -> Vec<(bool, PathBuf)> {
     let mut mypy_test_path = base;
     mypy_test_path.extend(["mypy", "test-data", "unit"]);
     // Include mypy tests
-    for res in read_dir(mypy_test_path.clone()).unwrap() {
-        let name = res.unwrap().file_name().into_string().unwrap();
-        if !name.ends_with(".test") || SKIP_MYPY_TEST_FILES.contains(&name.as_str()) {
-            continue;
-        }
-        let mut path = mypy_test_path.clone();
-        path.extend([name]);
-        entries.push((true, path));
-    }
+    let mut entries: Vec<_> = read_dir(mypy_test_path)
+        .unwrap()
+        .filter_map(|res| {
+            let entry = res.unwrap();
+            let name = entry.file_name().into_string().unwrap();
+            if !name.ends_with(".test") || SKIP_MYPY_TEST_FILES.contains(&name.as_str()) {
+                None
+            } else {
+                Some((true, entry.path()))
+            }
+        })
+        .collect();
 
     entries.extend(our_own_tests);
     entries
