@@ -14,6 +14,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     matching::ResultContext,
+    node_ref::NodeRef,
 };
 
 pub struct TypedDictHelper<'a>(pub &'a Rc<TypedDict>);
@@ -114,19 +115,25 @@ fn new_typed_dict_internal<'db>(
     );
     let mut params = vec![];
     for element in dct_iterator {
-        let DictElement::KeyValue(key_value) = element else {
-            todo!()
+        match element {
+            DictElement::KeyValue(key_value) => {
+                let Some(param_name) = StringSlice::from_string_in_expression(args_node_ref.file_index(), key_value.key()) else {
+                    todo!()
+                };
+                let t = comp.compute_typed_dict_entry(key_value.value());
+                params.push(CallableParam {
+                    param_specific: ParamSpecific::PositionalOrKeyword(t),
+                    has_default: !total,
+                    name: Some(param_name),
+                });
+                key_value.key();
+            }
+            DictElement::DictStarred(d) => {
+                NodeRef::new(args_node_ref.file, d.index())
+                    .add_issue(i_s, IssueType::TypedDictInvalidFieldName);
+                return None;
+            }
         };
-        let Some(param_name) = StringSlice::from_string_in_expression(args_node_ref.file_index(), key_value.key()) else {
-            todo!()
-        };
-        let t = comp.compute_typed_dict_entry(key_value.value());
-        params.push(CallableParam {
-            param_specific: ParamSpecific::PositionalOrKeyword(t),
-            has_default: !total,
-            name: Some(param_name),
-        });
-        key_value.key();
     }
 
     let type_var_likes = comp.into_type_vars(|_, _| ());
