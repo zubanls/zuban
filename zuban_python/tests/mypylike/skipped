@@ -1,4 +1,5 @@
 # Next up
+testCachedProperty
 
 # 3.7 tests
 testNamedTupleDefaults
@@ -191,6 +192,12 @@ testOverlappingOperatorMethods
 testReverseOperatorMethodForwardIsAny3
 # Formatting?
 testMiscBinaryOperators
+# functools.total_ordering
+testTotalOrderingEqLt
+testTotalOrderingLambda
+testTotalOrderingReturnNotBool
+testTotalOrderingAllowsAny
+testTotalOrderingWithForwardReference
 
 # Overloaded function implementation does not accept all possible arguments with type vars
 testOverloadAndClassTypes
