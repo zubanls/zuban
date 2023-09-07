@@ -735,8 +735,6 @@ testTypedDictImportCycle
 # Incompatible types in assignment (expression has type "__main__.A", variable has type "A")
 testTypedDictSubtypingWithTotalFalse
 testNonTotalTypedDictCanBeEmpty
-# invalid creation
-testCannotCreateTypedDictTypeWithInvalidItemType
 # "TypedDict type as attribute is not supported"
 testAssignTypedDictAsAttribute
 # "Unpack item in ** argument must be a TypedDict"
