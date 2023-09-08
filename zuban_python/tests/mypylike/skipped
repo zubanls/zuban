@@ -740,9 +740,7 @@ testAssignTypedDictAsAttribute
 # "Unpack item in ** argument must be a TypedDict"
 testUnpackWithoutTypedDict
 # ""total" argument must be a True or False literal"
-testTypedDictClassWithInvalidTotalArgument
 testTypedDictClassInheritanceWithTotalArgument
-testNonTotalTypedDictInErrorMessages
 # "Missing named argument "radius" for "foo""
 testUnpackTypedDictTotality
 testErrorCodeTypedDict
@@ -917,6 +915,7 @@ testTypedDictUnpackMultiple
 testTypedDictUnionGetFull
 testTypedDictClassWithTotalArgument
 # Anonymous TypedDicts for join
+testNonTotalTypedDictInErrorMessages
 testAnonymousTypedDictInErrorMessages
 testJoinOfTypedDictHasOnlyCommonKeysAndNewFallback
 testJoinOfTypedDictRemovesNonequivalentKeys

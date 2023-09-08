@@ -98,16 +98,11 @@ fn new_typed_dict_internal<'db>(
     if let Some(next) = iterator.next() {
         match &next.kind {
             ArgumentKind::Keyword { key: "total", .. } => {
-                if let Some(b) = next
-                    .infer(i_s, &mut ResultContext::ExpectLiteral)
-                    .maybe_bool_literal(i_s)
-                {
-                    total = b;
-                } else {
-                    next.as_node_ref()
-                        .add_issue(i_s, IssueType::TypedDictTotalMustBeTrueOrFalse);
-                    return None;
-                }
+                total = infer_typed_dict_total_argument(
+                    i_s,
+                    next.infer(i_s, &mut ResultContext::ExpectLiteral),
+                    next.as_node_ref(),
+                )?;
             }
             ArgumentKind::Keyword { key, node_ref, .. } => {
                 let s = format!(r#"Unexpected keyword argument "{key}" for "TypedDict""#);
@@ -184,4 +179,17 @@ fn new_typed_dict_internal<'db>(
             name, callable,
         ))))),
     ))
+}
+
+pub fn infer_typed_dict_total_argument(
+    i_s: &InferenceState,
+    inf: Inferred,
+    node_ref: NodeRef,
+) -> Option<bool> {
+    if let Some(total) = inf.maybe_bool_literal(i_s) {
+        Some(total)
+    } else {
+        node_ref.add_issue(i_s, IssueType::TypedDictTotalMustBeTrueOrFalse);
+        None
+    }
 }

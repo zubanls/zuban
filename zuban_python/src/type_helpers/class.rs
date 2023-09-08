@@ -39,7 +39,7 @@ use crate::node_ref::NodeRef;
 use crate::python_state::NAME_TO_FUNCTION_DIFF;
 use crate::type_helpers::dataclass::check_dataclass_options;
 use crate::type_helpers::enum_::infer_value_on_member;
-use crate::type_helpers::format_pretty_callable;
+use crate::type_helpers::{format_pretty_callable, infer_typed_dict_total_argument};
 
 #[derive(Clone, Copy)]
 pub struct Class<'a> {
@@ -665,6 +665,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                                     self.initialize_typed_dict_members(
                                                         &i_s.with_class_context(self),
                                                         &mut params,
+                                                        true, // TODO this is wrong
                                                     );
                                                     callable.params =
                                                         CallableParams::Simple(Rc::from(params));
@@ -702,9 +703,28 @@ impl<'db: 'a, 'a> Class<'a> {
                             }
                             CalculatedBaseClass::TypedDict => {
                                 let mut params = vec![];
+                                let mut total = true;
+                                for argument in arguments.iter() {
+                                    if let Argument::Keyword(kwarg) = argument {
+                                        let (name, expr) = kwarg.unpack();
+                                        if name.as_code() == "total" {
+                                            let inf = inference.infer_expression_with_context(
+                                                expr,
+                                                &mut ResultContext::ExpectLiteral,
+                                            );
+                                            total = infer_typed_dict_total_argument(
+                                                i_s,
+                                                inf,
+                                                NodeRef::new(self.node_ref.file, expr.index()),
+                                            )
+                                            .unwrap_or(true);
+                                        }
+                                    }
+                                }
                                 self.initialize_typed_dict_members(
                                     &i_s.with_class_context(self),
                                     &mut params,
+                                    total,
                                 );
                                 class_type = ClassType::TypedDict(Rc::new(TypedDict::new(
                                     self.name_string_slice(),
@@ -1272,7 +1292,12 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    fn initialize_typed_dict_members(&self, i_s: &InferenceState, vec: &mut Vec<CallableParam>) {
+    fn initialize_typed_dict_members(
+        &self,
+        i_s: &InferenceState,
+        vec: &mut Vec<CallableParam>,
+        total: bool,
+    ) {
         let file = self.node_ref.file;
         match self.node().block().unpack() {
             BlockContent::Indented(stmts) => {
@@ -1282,7 +1307,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     };
                     match stmt.unpack() {
                         StmtContent::SimpleStmts(simple) => {
-                            find_stmt_typed_dict_types(i_s, file, vec, simple)
+                            find_stmt_typed_dict_types(i_s, file, vec, simple, total)
                         }
                         _ => NodeRef::new(file, stmt.index())
                             .add_issue(i_s, IssueType::Note("TODO typeddict".into())),
@@ -1884,21 +1909,17 @@ fn find_stmt_typed_dict_types(
     file: &PythonFile,
     vec: &mut Vec<CallableParam>,
     simple_stmts: SimpleStmts,
+    total: bool,
 ) {
     for simple in simple_stmts.iter() {
         match simple.unpack() {
             SimpleStmtContent::Assignment(assignment) => match assignment.unpack() {
                 AssignmentContent::WithAnnotation(Target::Name(name), annot, default) => {
-                    if default.is_none() && vec.last().is_some_and(|last| last.has_default) {
-                        NodeRef::new(file, assignment.index())
-                            .add_issue(i_s, IssueType::NamedTupleNonDefaultFieldFollowsDefault);
-                        continue;
-                    }
                     file.inference(i_s).ensure_cached_annotation(annot);
                     let t = use_cached_annotation_type(i_s.db, file, annot).into_db_type();
                     vec.push(CallableParam {
                         param_specific: ParamSpecific::PositionalOrKeyword(t),
-                        has_default: default.is_some(),
+                        has_default: !total,
                         name: Some(StringSlice::from_name(file.file_index(), name.name())),
                     })
                 }

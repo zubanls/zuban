@@ -1099,7 +1099,11 @@ impl DbType {
                 ClassGenerics::List(generics) => search_in_generics(found_type_var, generics),
                 _ => (),
             },
-            Self::TypedDict(d) => todo!(),
+            Self::TypedDict(d) => {
+                let __new__ = d.__new__();
+                search_params(found_type_var, &__new__.params);
+                __new__.result_type.search_type_vars(found_type_var)
+            }
             Self::NamedTuple(_) => {
                 debug!("TODO do we need to support namedtuple searching for type vars?");
             }
