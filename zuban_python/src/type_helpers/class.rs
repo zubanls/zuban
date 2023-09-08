@@ -3,9 +3,9 @@ use std::fmt;
 use std::rc::Rc;
 
 use parsa_python_ast::{
-    Argument, AssignmentContent, AsyncStmtContent, BlockContent, ClassDef, Decoratee,
-    ExpressionContent, ExpressionPart, PrimaryContent, SimpleStmtContent, SimpleStmts, StmtContent,
-    StmtOrError, Target,
+    Argument, Arguments as ASTArguments, AssignmentContent, AsyncStmtContent, BlockContent,
+    ClassDef, Decoratee, ExpressionContent, ExpressionPart, PrimaryContent, SimpleStmtContent,
+    SimpleStmts, StmtContent, StmtOrError, Target,
 };
 
 use super::enum_::execute_functional_enum;
@@ -657,7 +657,10 @@ impl<'db: 'a, 'a> Class<'a> {
                                                 }
                                             }
                                             ClassType::TypedDict(typed_dict) => {
-                                                if matches!(class_type, ClassType::Normal) {
+                                                if matches!(
+                                                    class_type,
+                                                    ClassType::Normal | ClassType::TypedDict(_)
+                                                ) {
                                                     let mut callable =
                                                         (**typed_dict.__new__()).clone();
                                                     let mut params: Vec<_> =
@@ -665,7 +668,9 @@ impl<'db: 'a, 'a> Class<'a> {
                                                     self.initialize_typed_dict_members(
                                                         &i_s.with_class_context(self),
                                                         &mut params,
-                                                        true, // TODO this is wrong
+                                                        self.check_total_typed_dict_argument(
+                                                            i_s, arguments,
+                                                        ),
                                                     );
                                                     callable.params =
                                                         CallableParams::Simple(Rc::from(params));
@@ -703,28 +708,11 @@ impl<'db: 'a, 'a> Class<'a> {
                             }
                             CalculatedBaseClass::TypedDict => {
                                 let mut params = vec![];
-                                let mut total = true;
-                                for argument in arguments.iter() {
-                                    if let Argument::Keyword(kwarg) = argument {
-                                        let (name, expr) = kwarg.unpack();
-                                        if name.as_code() == "total" {
-                                            let inf = inference.infer_expression_with_context(
-                                                expr,
-                                                &mut ResultContext::ExpectLiteral,
-                                            );
-                                            total = infer_typed_dict_total_argument(
-                                                i_s,
-                                                inf,
-                                                NodeRef::new(self.node_ref.file, expr.index()),
-                                            )
-                                            .unwrap_or(true);
-                                        }
-                                    }
-                                }
+
                                 self.initialize_typed_dict_members(
                                     &i_s.with_class_context(self),
                                     &mut params,
-                                    total,
+                                    self.check_total_typed_dict_argument(i_s, arguments),
                                 );
                                 class_type = ClassType::TypedDict(Rc::new(TypedDict::new(
                                     self.name_string_slice(),
@@ -820,6 +808,27 @@ impl<'db: 'a, 'a> Class<'a> {
                 _ => *current = new,
             },
         }
+    }
+
+    fn check_total_typed_dict_argument(&self, i_s: &InferenceState, args: ASTArguments) -> bool {
+        let mut total = true;
+        let mut inference = self.node_ref.file.inference(i_s);
+        for argument in args.iter() {
+            if let Argument::Keyword(kwarg) = argument {
+                let (name, expr) = kwarg.unpack();
+                if name.as_code() == "total" {
+                    let inf = inference
+                        .infer_expression_with_context(expr, &mut ResultContext::ExpectLiteral);
+                    total = infer_typed_dict_total_argument(
+                        i_s,
+                        inf,
+                        NodeRef::new(self.node_ref.file, expr.index()),
+                    )
+                    .unwrap_or(true);
+                }
+            }
+        }
+        total
     }
 
     pub fn is_metaclass(&self, db: &Database) -> bool {

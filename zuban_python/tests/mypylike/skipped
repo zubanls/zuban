@@ -739,8 +739,6 @@ testNonTotalTypedDictCanBeEmpty
 testAssignTypedDictAsAttribute
 # "Unpack item in ** argument must be a TypedDict"
 testUnpackWithoutTypedDict
-# ""total" argument must be a True or False literal"
-testTypedDictClassInheritanceWithTotalArgument
 # "Missing named argument "radius" for "foo""
 testUnpackTypedDictTotality
 testErrorCodeTypedDict
