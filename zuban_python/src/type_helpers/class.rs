@@ -1444,7 +1444,7 @@ impl<'db: 'a, 'a> Class<'a> {
         };
         let on_type_error = on_type_error.with_custom_generate_diagnostic_string(&d);
 
-        match self.use_cached_class_infos(i_s.db).class_type {
+        match &self.use_cached_class_infos(i_s.db).class_type {
             ClassType::Enum if self.node_ref.as_link() != i_s.db.python_state.enum_auto_link() => {
                 // For whatever reason, auto is special, because it is somehow defined as an enum as
                 // well, which is very weird.
@@ -1472,8 +1472,13 @@ impl<'db: 'a, 'a> Class<'a> {
                         .unwrap_or_else(Inferred::new_any),
                 );
             }
-            ClassType::TypedDict(_) => {
-                // TODO this is wrong
+            ClassType::TypedDict(d) => {
+                Callable::new(d.__new__(), Some(*self)).execute(
+                    original_i_s,
+                    args,
+                    on_type_error,
+                    result_context,
+                );
                 return ClassExecutionResult::Inferred(Inferred::from_type(
                     self.as_db_type(i_s.db),
                 ));

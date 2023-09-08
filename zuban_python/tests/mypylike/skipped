@@ -702,8 +702,6 @@ testFinalWithMethodAssignment
 testEnumValueUnionSimplification
 # Generic Enums
 testGenericEnum
-# "Enum type as attribute is not supported"
-testAssignEnumAsAttribute
 # "Cannot assign to final attribute "gold""
 testEnumFinalValues
 testEnumFinalSpecialProps
@@ -711,6 +709,14 @@ testEnumFinalSpecialProps
 testEnumNotFinalWithMethodsAndUninitializedValues
 testEnumAreStillFinalAfterCache
 
+# "Enum type as attribute is not supported"
+testAssignEnumAsAttribute
+# "TypedDict type as attribute is not supported"
+testAssignTypedDictAsAttribute
+
+testTypedDictUpdate2
+testCrashInvalidArgsSyntheticClassSyntax
+testCrashInvalidArgsSyntheticClassSyntaxReveals
 # TypedDict recursions
 testBasicRecursiveTypedDictExtending
 testRecursiveGenericTypedDictExtending
@@ -735,8 +741,6 @@ testTypedDictImportCycle
 # Incompatible types in assignment (expression has type "__main__.A", variable has type "A")
 testTypedDictSubtypingWithTotalFalse
 testNonTotalTypedDictCanBeEmpty
-# "TypedDict type as attribute is not supported"
-testAssignTypedDictAsAttribute
 # "Unpack item in ** argument must be a TypedDict"
 testUnpackWithoutTypedDict
 # "Missing named argument "radius" for "foo""
