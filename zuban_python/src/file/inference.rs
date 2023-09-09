@@ -480,9 +480,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
             AssignmentContent::AugAssign(target, aug_assign, right_side) => Some(right_side),
         };
-        let on_type_error = |i_s: &InferenceState, got, expected| -> NodeRef {
+        let on_type_error = |got, expected| -> NodeRef {
             // In cases of stubs when an ellipsis is given, it's not an error.
-            if self.file.is_stub(i_s.db) {
+            if self.file.is_stub(self.i_s.db) {
                 // Right side always exists, because it was compared and there was an error because
                 // of it.
                 if let AssignmentRightSide::StarExpressions(star_exprs) = right_side.unwrap() {
@@ -494,7 +494,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
             }
             let node_ref = NodeRef::new(node_ref.file, right_side.unwrap().index());
-            node_ref.add_issue(i_s, IssueType::IncompatibleAssignment { got, expected });
+            node_ref.add_issue(
+                self.i_s,
+                IssueType::IncompatibleAssignment { got, expected },
+            );
             node_ref
         };
         match assignment.unpack() {
@@ -672,7 +675,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let inf = self.infer_star_expressions(s, &mut ResultContext::Unknown);
                 Inferred::from_type(generator.yield_type)
                     .as_type(i_s)
-                    .error_if_not_matches(i_s, &inf, |i_s, got, expected| {
+                    .error_if_not_matches(i_s, &inf, |got, expected| {
                         from.add_issue(
                             i_s,
                             IssueType::IncompatibleTypes {
@@ -714,7 +717,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 Type::owned(generator.yield_type).error_if_not_matches(
                     i_s,
                     &yields,
-                    |i_s, got, expected| {
+                    |got, expected| {
                         from.add_issue(
                             i_s,
                             IssueType::IncompatibleTypes {
@@ -795,12 +798,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         inferred.as_type(self.i_s).error_if_not_matches(
                             self.i_s,
                             value,
-                            |i_s, got, expected| {
+                            |got, expected| {
                                 from.add_issue(
-                                    i_s,
+                                    self.i_s,
                                     IssueType::IncompatibleAssignment { got, expected },
                                 );
-                                from.to_db_lifetime(i_s.db)
+                                from.to_db_lifetime(self.i_s.db)
                             },
                         );
                     }
@@ -879,7 +882,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 .into_inferred()
                             });
                         inf.as_type(i_s)
-                            .error_if_not_matches(i_s, value, |i_s, got, expected| {
+                            .error_if_not_matches(i_s, value, |got, expected| {
                                 from.add_issue(
                                     i_s,
                                     IssueType::IncompatibleAssignment { got, expected },
@@ -1230,14 +1233,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                 .error_if_not_matches(
                                                     self.i_s,
                                                     &first,
-                                                    |i_s, got, _| {
+                                                    |got, _| {
                                                         let t = IssueType::UnsupportedOperand {
                                                             operand: Box::from("in"),
                                                             left: got,
-                                                            right: r_type.format_short(i_s.db),
+                                                            right: r_type.format_short(self.i_s.db),
                                                         };
-                                                        from.add_issue(i_s, t);
-                                                        from.to_db_lifetime(i_s.db)
+                                                        from.add_issue(self.i_s, t);
+                                                        from.to_db_lifetime(self.i_s.db)
                                                     },
                                                 );
                                         }

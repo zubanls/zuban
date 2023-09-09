@@ -486,7 +486,7 @@ pub fn match_arguments_against_params<
                     matcher,
                     &value,
                     on_type_error.as_ref().map(|on_type_error| {
-                        |i_s: &InferenceState<'db, '_>, mut t1, t2, reason: &MismatchReason| {
+                        |mut t1, t2, reason: &MismatchReason| {
                             let node_ref = argument.as_node_ref().to_db_lifetime(i_s.db);
                             if let Some(starred) = node_ref.maybe_starred_expression() {
                                 t1 = format!(

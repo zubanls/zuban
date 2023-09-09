@@ -1629,28 +1629,21 @@ impl<'db: 'slf, 'slf> Inferred {
                                 if let Some(first_arg) = iterator.next() {
                                     let t = Type::new(new_type.type_(i_s));
                                     let inf = first_arg.infer(i_s, &mut ResultContext::Known(&t));
-                                    t.error_if_not_matches(
-                                        i_s,
-                                        &inf,
-                                        |i_s: &InferenceState<'db, '_>, t1, t2| {
-                                            (on_type_error.callback)(
-                                                i_s,
-                                                &|_| {
-                                                    Some(
-                                                        format!(
-                                                            " to \"{}\"",
-                                                            new_type.name(i_s.db)
-                                                        )
+                                    t.error_if_not_matches(i_s, &inf, |t1, t2| {
+                                        (on_type_error.callback)(
+                                            i_s,
+                                            &|_| {
+                                                Some(
+                                                    format!(" to \"{}\"", new_type.name(i_s.db))
                                                         .into(),
-                                                    )
-                                                },
-                                                &first_arg,
-                                                t1,
-                                                t2,
-                                            );
-                                            args.as_node_ref().to_db_lifetime(i_s.db)
-                                        },
-                                    );
+                                                )
+                                            },
+                                            &first_arg,
+                                            t1,
+                                            t2,
+                                        );
+                                        args.as_node_ref().to_db_lifetime(i_s.db)
+                                    });
                                 } else {
                                     args.as_node_ref().add_issue(
                                         i_s,
@@ -1793,22 +1786,18 @@ impl<'db: 'slf, 'slf> Inferred {
                 let key = literal.as_str(i_s.db);
                 if let Some(param) = typed_dict.find_param(i_s.db, key) {
                     Type::new(param.param_specific.expect_positional_db_type_as_ref())
-                        .error_if_not_matches(
-                            i_s,
-                            &value,
-                            |i_s: &InferenceState<'db, '_>, got, expected| {
-                                let node_ref = slice_type.as_node_ref();
-                                node_ref.add_issue(
-                                    i_s,
-                                    IssueType::TypedDictKeySetItemIncompatibleType {
-                                        key: key.into(),
-                                        got,
-                                        expected,
-                                    },
-                                );
-                                node_ref.to_db_lifetime(i_s.db)
-                            },
-                        );
+                        .error_if_not_matches(i_s, &value, |got, expected| {
+                            let node_ref = slice_type.as_node_ref();
+                            node_ref.add_issue(
+                                i_s,
+                                IssueType::TypedDictKeySetItemIncompatibleType {
+                                    key: key.into(),
+                                    got,
+                                    expected,
+                                },
+                            );
+                            node_ref.to_db_lifetime(i_s.db)
+                        });
                 } else {
                     todo!()
                 }

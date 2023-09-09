@@ -136,20 +136,19 @@ impl<'db> Inference<'db, '_, '_> {
                                     i_s,
                                     matcher,
                                     &inferred,
-                                    Some(
-                                        |i_s: &InferenceState<'db, '_>, got, expected, _: &MismatchReason| {
-                                            let node_ref = NodeRef::new(self.file, key_value.index()).to_db_lifetime(i_s.db);
-                                            node_ref.add_issue(
-                                                i_s,
-                                                IssueType::TypedDictIncompatibleType {
-                                                    key: key.into(),
-                                                    got,
-                                                    expected,
-                                                },
-                                            );
-                                            node_ref
-                                        },
-                                    ),
+                                    Some(|got, expected, _: &MismatchReason| {
+                                        let node_ref = NodeRef::new(self.file, key_value.index())
+                                            .to_db_lifetime(i_s.db);
+                                        node_ref.add_issue(
+                                            i_s,
+                                            IssueType::TypedDictIncompatibleType {
+                                                key: key.into(),
+                                                got,
+                                                expected,
+                                            },
+                                        );
+                                        node_ref
+                                    }),
                                 );
                             } else {
                                 NodeRef::new(self.file, key_value.index()).add_issue(
@@ -242,20 +241,18 @@ fn check_list_with_context<'db>(
                 i_s,
                 matcher,
                 &inferred,
-                Some(
-                    |i_s: &InferenceState<'db, '_>, got, expected, _: &MismatchReason| {
-                        let node_ref = NodeRef::new(file, index).to_db_lifetime(i_s.db);
-                        node_ref.add_issue(
-                            i_s,
-                            IssueType::ListItemMismatch {
-                                item,
-                                got,
-                                expected,
-                            },
-                        );
-                        node_ref
-                    },
-                ),
+                Some(|got, expected, _: &MismatchReason| {
+                    let node_ref = NodeRef::new(file, index).to_db_lifetime(i_s.db);
+                    node_ref.add_issue(
+                        i_s,
+                        IssueType::ListItemMismatch {
+                            item,
+                            got,
+                            expected,
+                        },
+                    );
+                    node_ref
+                }),
             );
             if m.bool() {
                 let resembling = inferred

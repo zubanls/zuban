@@ -519,9 +519,9 @@ impl<'db> Inference<'db, '_, '_> {
                     if let Some(default) = param.default() {
                         let inf = self.infer_expression(default);
                         self.use_cached_annotation_type(annotation)
-                            .error_if_not_matches(self.i_s, &inf, |i_s, got, expected| {
-                                let node_ref =
-                                    NodeRef::new(self.file, default.index()).to_db_lifetime(i_s.db);
+                            .error_if_not_matches(self.i_s, &inf, |got, expected| {
+                                let node_ref = NodeRef::new(self.file, default.index())
+                                    .to_db_lifetime(self.i_s.db);
                                 if self.file.is_stub_or_in_protocol(self.i_s)
                                     && default.is_ellipsis_literal()
                                 {
@@ -530,7 +530,7 @@ impl<'db> Inference<'db, '_, '_> {
                                     return node_ref;
                                 }
                                 node_ref.add_issue(
-                                    i_s,
+                                    self.i_s,
                                     IssueType::IncompatibleDefaultArgument {
                                         argument_name: Box::from(param.name_definition().as_code()),
                                         got,
@@ -698,10 +698,11 @@ impl<'db> Inference<'db, '_, '_> {
                     }
                     let inf = self
                         .infer_star_expressions(star_expressions, &mut ResultContext::Known(&t));
-                    t.error_if_not_matches(self.i_s, &inf, |i_s, got, expected| {
+                    t.error_if_not_matches(self.i_s, &inf, |got, expected| {
                         let node_ref = NodeRef::new(self.file, star_expressions.index());
-                        node_ref.add_issue(i_s, IssueType::IncompatibleReturn { got, expected });
-                        node_ref.to_db_lifetime(i_s.db)
+                        node_ref
+                            .add_issue(self.i_s, IssueType::IncompatibleReturn { got, expected });
+                        node_ref.to_db_lifetime(self.i_s.db)
                     });
                 } else {
                     debug!("TODO what about an implicit None?");

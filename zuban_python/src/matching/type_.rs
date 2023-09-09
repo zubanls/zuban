@@ -1033,17 +1033,13 @@ impl<'a> Type<'a> {
         &self,
         i_s: &InferenceState<'db, '_>,
         value: &Inferred,
-        callback: impl FnOnce(&InferenceState<'db, '_>, Box<str>, Box<str>) -> NodeRef<'db>,
+        callback: impl FnOnce(Box<str>, Box<str>) -> NodeRef<'db>,
     ) {
         self.error_if_not_matches_with_matcher(
             i_s,
             &mut Matcher::default(),
             value,
-            Some(
-                |i_s: &InferenceState<'db, '_>, t1, t2, reason: &MismatchReason| {
-                    callback(i_s, t1, t2)
-                },
-            ),
+            Some(|t1, t2, reason: &MismatchReason| callback(t1, t2)),
         );
     }
 
@@ -1052,9 +1048,7 @@ impl<'a> Type<'a> {
         i_s: &InferenceState<'db, '_>,
         matcher: &mut Matcher,
         value: &Inferred,
-        callback: Option<
-            impl FnOnce(&InferenceState<'db, '_>, Box<str>, Box<str>, &MismatchReason) -> NodeRef<'db>,
-        >,
+        callback: Option<impl FnOnce(Box<str>, Box<str>, &MismatchReason) -> NodeRef<'db>>,
     ) -> Match {
         let value_type = value.as_type(i_s);
         let matches = self.is_super_type_of(i_s, matcher, &value_type);
@@ -1074,7 +1068,7 @@ impl<'a> Type<'a> {
                 &matches
             );
             if let Some(callback) = callback {
-                let node_ref = callback(i_s, input, wanted, reason);
+                let node_ref = callback(input, wanted, reason);
                 match reason {
                     MismatchReason::SequenceInsteadOfListNeeded => {
                         node_ref.add_issue(
@@ -2799,14 +2793,10 @@ pub fn execute_type_of_type<'db>(
             if args_iterator.next().is_some() {
                 todo!()
             }
-            Type::new(tuple).error_if_not_matches(
-                i_s,
-                &inferred_tup,
-                |i_s: &InferenceState<'db, '_>, t1, t2| {
-                    (on_type_error.callback)(i_s, &|_| todo!(), &arg, t1, t2);
-                    args.as_node_ref().to_db_lifetime(i_s.db)
-                },
-            );
+            Type::new(tuple).error_if_not_matches(i_s, &inferred_tup, |t1, t2| {
+                (on_type_error.callback)(i_s, &|_| todo!(), &arg, t1, t2);
+                args.as_node_ref().to_db_lifetime(i_s.db)
+            });
             Inferred::from_type(tuple.clone())
         }
         DbType::Class(c) => {
