@@ -1862,42 +1862,6 @@ fn load_bound_method<'db: 'a, 'a, 'b>(
     }
 }
 
-fn resolve_specific(i_s: &InferenceState, specific: Specific) -> Type<'static> {
-    // TODO this should be using python_state.str_node_ref etc.
-    load_builtin_type_from_str(
-        i_s,
-        match specific {
-            Specific::String | Specific::StringLiteral => "str",
-            Specific::IntLiteral | Specific::Int => "int",
-            Specific::Float => "float",
-            Specific::BoolLiteral | Specific::Bool => {
-                return Type::owned(i_s.db.python_state.bool_db_type())
-            }
-            Specific::BytesLiteral | Specific::Bytes => "bytes",
-            Specific::Complex => "complex",
-            Specific::Ellipsis => return Type::owned(i_s.db.python_state.ellipsis_db_type()),
-            actual => unreachable!("{actual:?}"),
-        },
-    )
-}
-
-fn load_builtin_type_from_str(i_s: &InferenceState, name: &'static str) -> Type<'static> {
-    let builtins = i_s.db.python_state.builtins();
-    let node_index = builtins.lookup_global(name).unwrap().node_index - 1;
-    // TODO this is slow and ugly, please make sure to do this different
-    builtins
-        .inference(i_s)
-        .infer_name_definition(NodeRef::new(builtins, node_index).as_name_def());
-
-    let v = builtins.points.get(node_index);
-    debug_assert_eq!(v.type_(), PointType::Redirect);
-    debug_assert_eq!(v.file_index(), builtins.file_index());
-    Type::owned(DbType::new_class(
-        PointLink::new(builtins.file_index(), v.node_index()),
-        ClassGenerics::None,
-    ))
-}
-
 fn use_instance_with_ref<'a>(
     class_reference: NodeRef<'a>,
     generics: Generics<'a>,
@@ -2159,6 +2123,13 @@ fn saved_as_type<'db>(i_s: &InferenceState<'db, '_>, definition: PointLink) -> T
                     kind: LiteralKind::Bytes(definition.as_link()),
                     implicit: true,
                 })),
+                Specific::String => Type::owned(i_s.db.python_state.str_db_type()),
+                Specific::Int => Type::owned(i_s.db.python_state.int_db_type()),
+                Specific::Float => Type::owned(i_s.db.python_state.float_db_type()),
+                Specific::Bool => Type::owned(i_s.db.python_state.bool_db_type()),
+                Specific::Bytes => Type::owned(i_s.db.python_state.bytes_db_type()),
+                Specific::Complex => Type::owned(i_s.db.python_state.complex_db_type()),
+                Specific::Ellipsis => Type::owned(i_s.db.python_state.ellipsis_db_type()),
                 Specific::Function => {
                     Function::new(definition, i_s.current_class().copied()).as_type(i_s)
                 }
@@ -2207,7 +2178,7 @@ fn saved_as_type<'db>(i_s: &InferenceState<'db, '_>, definition: PointLink) -> T
                         .as_type(i_s);
                     todo!()
                 }
-                _ => resolve_specific(i_s, specific),
+                actual => unreachable!("{actual:?}"),
             }
         }
         PointType::Complex => {

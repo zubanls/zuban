@@ -550,8 +550,11 @@ impl PythonState {
     node_ref_to_db_type_class_without_generic!(pub object_db_type, object_node_ref);
     node_ref_to_db_type_class_without_generic!(pub slice_db_type, slice_node_ref);
     node_ref_to_db_type_class_without_generic!(pub str_db_type, str_node_ref);
+    node_ref_to_db_type_class_without_generic!(pub bytes_db_type, bytes_node_ref);
     node_ref_to_db_type_class_without_generic!(pub int_db_type, int_node_ref);
     node_ref_to_db_type_class_without_generic!(pub bool_db_type, bool_node_ref);
+    node_ref_to_db_type_class_without_generic!(pub float_db_type, float_node_ref);
+    node_ref_to_db_type_class_without_generic!(pub complex_db_type, complex_node_ref);
     node_ref_to_db_type_class_without_generic!(pub module_db_type, module_node_ref);
     node_ref_to_db_type_class_without_generic!(pub property_db_type, property_node_ref);
     node_ref_to_db_type_class_without_generic!(pub function_db_type, function_node_ref);
