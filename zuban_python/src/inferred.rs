@@ -1785,7 +1785,22 @@ impl<'db: 'slf, 'slf> Inferred {
         value: &Inferred,
     ) {
         debug!("Set Item on {}", self.format_short(i_s));
-        if let Some(t) = self.as_type(i_s).maybe_typed_dict(i_s.db) {}
+        if let Some(typed_dict) = self.as_type(i_s).maybe_typed_dict(i_s.db) {
+            if let Some(literal) = slice_type
+                .infer_with_context(i_s, &mut ResultContext::ExpectLiteral)
+                .maybe_string_literal(i_s)
+            {
+                if let Some(param) = typed_dict.find_param(i_s.db, literal.as_str(i_s.db)) {
+                    Type::new(param.param_specific.expect_positional_db_type_as_ref())
+                        .error_if_not_matches(i_s, &value, |i_s: &InferenceState, t1, t2| todo!());
+                } else {
+                    todo!()
+                }
+            } else {
+                todo!()
+            }
+            return;
+        }
         let args = slice_type.as_args(*i_s);
         self.type_lookup_and_execute_with_details(
             i_s,

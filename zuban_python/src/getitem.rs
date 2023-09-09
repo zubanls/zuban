@@ -79,8 +79,16 @@ impl<'db, 'file> SliceType<'file> {
     }
 
     pub(crate) fn infer(&self, i_s: &InferenceState) -> Inferred {
+        self.infer_with_context(i_s, &mut ResultContext::Unknown)
+    }
+
+    pub(crate) fn infer_with_context(
+        &self,
+        i_s: &InferenceState,
+        result_context: &mut ResultContext,
+    ) -> Inferred {
         match self.unpack() {
-            SliceTypeContent::Simple(s) => s.infer(i_s, &mut ResultContext::Unknown),
+            SliceTypeContent::Simple(s) => s.infer(i_s, result_context),
             SliceTypeContent::Slice(s) => s.infer(i_s.db),
             SliceTypeContent::Slices(s) => s.infer(i_s),
         }
