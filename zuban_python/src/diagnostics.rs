@@ -166,7 +166,7 @@ pub(crate) enum IssueType {
     TypedDictNameMismatch { string_name: Box<str>, variable_name: Box<str> },
     TypedDictTotalMustBeTrueOrFalse,
     TypedDictKeysMustBeStringLiteral,
-    TypedDictKeyGetItemMustBeStringLiteral { keys: Box<str> },
+    TypedDictAccessKeyMustBeStringLiteral { keys: Box<str> },
     TypedDictKeySetItemIncompatibleType { key: Box<str>, got: Box<str>, expected: Box<str> },
     TypedDictHasNoKey { typed_dict: Box<str>, key: Box<str> },
 
@@ -803,7 +803,7 @@ impl<'db> Diagnostic<'db> {
                 r#""total" argument must be a True or False literal"#.to_string(),
             TypedDictKeysMustBeStringLiteral =>
                 "Expected TypedDict key to be string literal".to_string(),
-            TypedDictKeyGetItemMustBeStringLiteral { keys } => format!(
+            TypedDictAccessKeyMustBeStringLiteral { keys } => format!(
                 "TypedDict key must be a string literal; expected one of ({keys})"
             ),
             TypedDictKeySetItemIncompatibleType { key, got, expected } => format!(

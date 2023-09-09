@@ -28,7 +28,7 @@ use crate::type_helpers::{
     execute_typing_named_tuple, merge_class_type_vars_into_callable, new_typed_dict, BoundMethod,
     BoundMethodFunction, Class, FirstParamProperties, Function, Instance, NewTypeClass,
     OverloadedFunction, ParamSpecClass, RevealTypeFunction, TypeOrClass, TypeVarClass,
-    TypeVarTupleClass, TypingCast,
+    TypeVarTupleClass, TypedDictHelper, TypingCast,
 };
 
 #[derive(Debug)]
@@ -1808,7 +1808,8 @@ impl<'db: 'slf, 'slf> Inferred {
                     );
                 }
             } else {
-                todo!()
+                TypedDictHelper(&typed_dict)
+                    .add_access_key_must_be_string_literal_issue(i_s, slice_type.as_node_ref())
             }
             return;
         }

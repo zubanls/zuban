@@ -61,26 +61,32 @@ impl<'a> TypedDictHelper<'a> {
                     }
                     Some(Inferred::new_any())
                 },
-                || {
-                    slice_type.as_node_ref().add_issue(
-                        i_s,
-                        IssueType::TypedDictKeyGetItemMustBeStringLiteral {
-                            keys: self
-                                .0
-                                .__new__()
-                                .expect_simple_params()
-                                .iter()
-                                .map(|p| format!("\"{}\"", p.name.unwrap().as_str(i_s.db)))
-                                .collect::<Vec<String>>()
-                                .join(", ")
-                                .into(),
-                        },
-                    )
-                },
+                || self.add_access_key_must_be_string_literal_issue(i_s, slice_type.as_node_ref()),
             ),
             SliceTypeContent::Slice(_) => todo!(),
             SliceTypeContent::Slices(_) => todo!(),
         }
+    }
+
+    pub fn add_access_key_must_be_string_literal_issue(
+        &self,
+        i_s: &InferenceState,
+        node_ref: NodeRef,
+    ) {
+        node_ref.add_issue(
+            i_s,
+            IssueType::TypedDictAccessKeyMustBeStringLiteral {
+                keys: self
+                    .0
+                    .__new__()
+                    .expect_simple_params()
+                    .iter()
+                    .map(|p| format!("\"{}\"", p.name.unwrap().as_str(i_s.db)))
+                    .collect::<Vec<String>>()
+                    .join(", ")
+                    .into(),
+            },
+        )
     }
 }
 
