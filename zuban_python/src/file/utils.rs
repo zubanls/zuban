@@ -364,6 +364,7 @@ pub fn infer_string_index(
 ) -> Inferred {
     let infer = |i_s: &InferenceState, literal: Literal| {
         if !matches!(literal.kind, LiteralKind::String(_)) {
+            on_non_literal();
             return None;
         }
         let LiteralValue::String(s) = literal.value(i_s.db) else {
