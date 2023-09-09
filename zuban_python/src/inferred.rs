@@ -1779,7 +1779,7 @@ impl<'db: 'slf, 'slf> Inferred {
 
     pub fn type_check_set_item(
         &self,
-        i_s: &InferenceState,
+        i_s: &InferenceState<'db, '_>,
         slice_type: SliceType,
         from: NodeRef,
         value: &Inferred,
@@ -1790,9 +1790,25 @@ impl<'db: 'slf, 'slf> Inferred {
                 .infer_with_context(i_s, &mut ResultContext::ExpectLiteral)
                 .maybe_string_literal(i_s)
             {
-                if let Some(param) = typed_dict.find_param(i_s.db, literal.as_str(i_s.db)) {
+                let key = literal.as_str(i_s.db);
+                if let Some(param) = typed_dict.find_param(i_s.db, key) {
                     Type::new(param.param_specific.expect_positional_db_type_as_ref())
-                        .error_if_not_matches(i_s, &value, |i_s: &InferenceState, t1, t2| todo!());
+                        .error_if_not_matches(
+                            i_s,
+                            &value,
+                            |i_s: &InferenceState<'db, '_>, got, expected| {
+                                let node_ref = slice_type.as_node_ref();
+                                node_ref.add_issue(
+                                    i_s,
+                                    IssueType::TypedDictKeySetItemIncompatibleType {
+                                        key: key.into(),
+                                        got,
+                                        expected,
+                                    },
+                                );
+                                node_ref.to_db_lifetime(i_s.db)
+                            },
+                        );
                 } else {
                     todo!()
                 }

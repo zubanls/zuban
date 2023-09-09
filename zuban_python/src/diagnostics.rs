@@ -167,6 +167,7 @@ pub(crate) enum IssueType {
     TypedDictTotalMustBeTrueOrFalse,
     TypedDictKeysMustBeStringLiteral,
     TypedDictKeyGetItemMustBeStringLiteral { keys: Box<str> },
+    TypedDictKeySetItemIncompatibleType { key: Box<str>, got: Box<str>, expected: Box<str> },
 
     OverloadMismatch { name: Box<str>, args: Box<[Box<str>]>, variants: Box<[Box<str>]> },
     OverloadImplementationNotLast,
@@ -803,6 +804,9 @@ impl<'db> Diagnostic<'db> {
                 "Expected TypedDict key to be string literal".to_string(),
             TypedDictKeyGetItemMustBeStringLiteral { keys } => format!(
                 "TypedDict key must be a string literal; expected one of ({keys})"
+            ),
+            TypedDictKeySetItemIncompatibleType { key, got, expected } => format!(
+                r#"Value of "{key}" has incompatible type "{got}"; expected "{expected}""#
             ),
 
             OverloadImplementationNotLast =>
