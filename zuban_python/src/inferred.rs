@@ -1799,7 +1799,13 @@ impl<'db: 'slf, 'slf> Inferred {
                             node_ref.to_db_lifetime(i_s.db)
                         });
                 } else {
-                    todo!()
+                    slice_type.as_node_ref().add_issue(
+                        i_s,
+                        IssueType::TypedDictHasNoKey {
+                            typed_dict: self.format_short(i_s),
+                            key: key.into(),
+                        },
+                    );
                 }
             } else {
                 todo!()

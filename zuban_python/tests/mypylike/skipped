@@ -856,7 +856,6 @@ testTypedDictUnionGetItem
 testTypedDictUnionDelItem
 testTypedDictAttributeOnClassObject
 # __setitem__
-testCannotSetItemOfTypedDictWithInvalidStringLiteralKey
 testCannotSetItemOfTypedDictWithNonLiteralKey
 testTypedDictUnionSetItem
 # "TypedDict "XXX" has no key "xxx" "
