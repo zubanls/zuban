@@ -48,16 +48,36 @@ impl<'a> TypedDictHelper<'a> {
         result_context: &mut ResultContext,
     ) -> Inferred {
         match slice_type.unpack() {
-            SliceTypeContent::Simple(simple) => infer_string_index(i_s, simple, |name| {
-                for param in self.0.__new__().expect_simple_params().iter() {
-                    if param.name.unwrap().as_str(i_s.db) == name {
-                        return Some(Inferred::from_type(
-                            param.param_specific.clone().expect_positional_db_type(),
-                        ));
+            SliceTypeContent::Simple(simple) => infer_string_index(
+                i_s,
+                simple,
+                |name| {
+                    for param in self.0.__new__().expect_simple_params().iter() {
+                        if param.name.unwrap().as_str(i_s.db) == name {
+                            return Some(Inferred::from_type(
+                                param.param_specific.clone().expect_positional_db_type(),
+                            ));
+                        }
                     }
-                }
-                Some(Inferred::new_any())
-            }),
+                    Some(Inferred::new_any())
+                },
+                || {
+                    slice_type.as_node_ref().add_issue(
+                        i_s,
+                        IssueType::TypedDictKeyGetItemMustBeStringLiteral {
+                            keys: self
+                                .0
+                                .__new__()
+                                .expect_simple_params()
+                                .iter()
+                                .map(|p| format!("\"{}\"", p.name.unwrap().as_str(i_s.db)))
+                                .collect::<Vec<String>>()
+                                .join(", ")
+                                .into(),
+                        },
+                    )
+                },
+            ),
             SliceTypeContent::Slice(_) => todo!(),
             SliceTypeContent::Slices(_) => todo!(),
         }

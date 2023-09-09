@@ -764,7 +764,6 @@ testTypedDictUnpackMissingOrExtraKey
 testCannotCreateAnonymousTypedDictInstanceUsingDictLiteralWithExtraItems
 testCannotCreateAnonymousTypedDictInstanceUsingDictLiteralWithMissingItems
 # "Expected TypedDict key to be string literal"
-testCannotGetItemOfTypedDictWithNonLiteralKey
 testTypedDictLiteralTypeKeyInCreation
 testTypedDictBytesKey
 # "Expected keyword arguments, {...}, or dict(...) in TypedDict constructor"

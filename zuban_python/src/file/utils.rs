@@ -163,7 +163,7 @@ impl<'db> Inference<'db, '_, '_> {
                         }
                         None => {
                             NodeRef::new(self.file, key_value.index())
-                                .add_issue(i_s, IssueType::TypedDictKeysMustBeStringLiterals);
+                                .add_issue(i_s, IssueType::TypedDictKeysMustBeStringLiteral);
                         }
                     }
                 }
@@ -360,6 +360,7 @@ pub fn infer_string_index(
     i_s: &InferenceState,
     simple: Simple,
     callable: impl Fn(&str) -> Option<Inferred>,
+    on_non_literal: impl Fn(),
 ) -> Inferred {
     let infer = |i_s: &InferenceState, literal: Literal| {
         if !matches!(literal.kind, LiteralKind::String(_)) {
@@ -390,7 +391,10 @@ pub fn infer_string_index(
                     Some(inferred)
                 })
         }
-        UnionValue::Any => todo!(),
+        UnionValue::Any => {
+            on_non_literal();
+            None
+        }
     }
     .unwrap_or_else(Inferred::new_unknown)
 }

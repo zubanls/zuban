@@ -165,7 +165,8 @@ pub(crate) enum IssueType {
     TypedDictInvalidFieldName,
     TypedDictNameMismatch { string_name: Box<str>, variable_name: Box<str> },
     TypedDictTotalMustBeTrueOrFalse,
-    TypedDictKeysMustBeStringLiterals,
+    TypedDictKeysMustBeStringLiteral,
+    TypedDictKeyGetItemMustBeStringLiteral { keys: Box<str> },
 
     OverloadMismatch { name: Box<str>, args: Box<[Box<str>]>, variants: Box<[Box<str>]> },
     OverloadImplementationNotLast,
@@ -798,8 +799,11 @@ impl<'db> Diagnostic<'db> {
             ),
             TypedDictTotalMustBeTrueOrFalse =>
                 r#""total" argument must be a True or False literal"#.to_string(),
-            TypedDictKeysMustBeStringLiterals =>
+            TypedDictKeysMustBeStringLiteral =>
                 "Expected TypedDict key to be string literal".to_string(),
+            TypedDictKeyGetItemMustBeStringLiteral { keys } => format!(
+                "TypedDict key must be a string literal; expected one of ({keys})"
+            ),
 
             OverloadImplementationNotLast =>
                 "The implementation for an overloaded function must come last".to_string(),
