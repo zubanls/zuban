@@ -2828,7 +2828,9 @@ pub fn execute_type_of_type<'db>(
         DbType::Dataclass(d) => {
             DataclassHelper(d).initialize(i_s, args, result_context, on_type_error)
         }
-        DbType::TypedDict(td) => Inferred::from_type(DbType::TypedDict(td.clone())),
+        DbType::TypedDict(td) => {
+            TypedDictHelper(td).initialize(i_s, args, result_context, on_type_error)
+        }
         DbType::NamedTuple(nt) => {
             let calculated_type_vars = calculate_callable_type_vars_and_return(
                 i_s,

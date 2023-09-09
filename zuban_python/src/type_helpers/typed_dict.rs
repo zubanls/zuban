@@ -13,12 +13,34 @@ use crate::{
     getitem::{SliceType, SliceTypeContent},
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::ResultContext,
+    matching::{OnTypeError, ResultContext, Type},
     node_ref::NodeRef,
 };
 
+use super::Callable;
+
 pub struct TypedDictHelper<'a>(pub &'a Rc<TypedDict>);
 impl<'a> TypedDictHelper<'a> {
+    pub fn initialize<'db>(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
+        result_context: &mut ResultContext,
+        on_type_error: OnTypeError<'db, '_>,
+    ) -> Inferred {
+        let mut iterator = args.iter();
+        if let Some(first_arg) = iterator.next().filter(|arg| !arg.is_keyword_argument()) {
+            if iterator.next().is_some() {
+                todo!()
+            }
+            let t = Type::owned(DbType::TypedDict(self.0.clone()));
+            first_arg.infer(i_s, &mut ResultContext::Known(&t));
+        } else {
+            Callable::new(self.0.__new__(), None).execute(i_s, args, on_type_error, result_context);
+        }
+        Inferred::from_type(DbType::TypedDict(self.0.clone()))
+    }
+
     pub fn get_item(
         &self,
         i_s: &InferenceState,

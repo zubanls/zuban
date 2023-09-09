@@ -161,7 +161,10 @@ impl<'db> Inference<'db, '_, '_> {
                                 );
                             }
                         }
-                        None => todo!(),
+                        None => {
+                            NodeRef::new(self.file, key_value.index())
+                                .add_issue(i_s, IssueType::TypedDictKeysMustBeStringLiterals);
+                        }
                     }
                 }
                 DictElement::DictStarred(_) => todo!(),

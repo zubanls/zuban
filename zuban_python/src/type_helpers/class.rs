@@ -1473,12 +1473,6 @@ impl<'db: 'a, 'a> Class<'a> {
                 );
             }
             ClassType::TypedDict(d) => {
-                Callable::new(d.__new__(), Some(*self)).execute(
-                    original_i_s,
-                    args,
-                    on_type_error,
-                    result_context,
-                );
                 return ClassExecutionResult::Inferred(Inferred::from_type(
                     self.as_db_type(i_s.db),
                 ));
