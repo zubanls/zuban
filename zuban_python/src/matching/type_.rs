@@ -101,6 +101,20 @@ impl<'a> Type<'a> {
         None
     }
 
+    pub fn maybe_typed_dict(&self, db: &'a Database) -> Option<Rc<TypedDict>> {
+        match self.as_ref() {
+            DbType::Class(c) => match &Class::from_generic_class(db, c)
+                .use_cached_class_infos(db)
+                .class_type
+            {
+                ClassType::TypedDict(td) => Some(td.clone()),
+                _ => None,
+            },
+            DbType::TypedDict(td) => Some(td.clone()),
+            _ => None,
+        }
+    }
+
     #[inline]
     pub fn expect_borrowed_class(&self, db: &'a Database) -> Class<'a> {
         match self.0 {

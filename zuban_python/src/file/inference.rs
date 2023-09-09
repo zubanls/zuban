@@ -5,7 +5,7 @@ use parsa_python_ast::*;
 
 use super::diagnostics::await_aiter_and_next;
 use super::{on_argument_type_error, File, PythonFile};
-use crate::arguments::{CombinedArguments, KnownArguments, NoArguments, SimpleArguments};
+use crate::arguments::{KnownArguments, NoArguments, SimpleArguments};
 use crate::database::{
     CallableContent, CallableParams, ClassGenerics, ComplexPoint, Database, DbType, FileIndex,
     FunctionKind, GenericItem, GenericsList, Literal, LiteralKind, Locality, Namespace,
@@ -900,31 +900,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let PrimaryContent::GetItem(slice_type) = primary_target.second() else {
                     unreachable!();
                 };
-                let node_ref = NodeRef::new(self.file, primary_target.index());
-                let slice = SliceType::new(self.file, primary_target.index(), slice_type);
-                let args = slice.as_args(*self.i_s);
-                debug!("Set Item on {}", base.format_short(self.i_s));
-                base.type_lookup_and_execute_with_details(
+                base.type_check_set_item(
                     self.i_s,
-                    node_ref,
-                    "__setitem__",
-                    &CombinedArguments::new(&args, &KnownArguments::new(value, node_ref)),
-                    &|_| {
-                        debug!("TODO __setitem__ not found");
-                    },
-                    OnTypeError::new(&|i_s, function, arg, got, expected| {
-                        let type_ = if arg.index == 1 {
-                            IssueType::InvalidGetItem {
-                                actual: got,
-                                type_: base.format_short(i_s),
-                                expected,
-                            }
-                        } else {
-                            IssueType::InvalidSetItemTarget { got, expected }
-                        };
-                        arg.as_node_ref().add_issue(i_s, type_)
-                    }),
-                );
+                    SliceType::new(self.file, primary_target.index(), slice_type),
+                    NodeRef::new(self.file, primary_target.index()),
+                    value,
+                )
             }
             Target::Tuple(_) | Target::Starred(_) => unreachable!(),
         }

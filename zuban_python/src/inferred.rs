@@ -1777,6 +1777,39 @@ impl<'db: 'slf, 'slf> Inferred {
             .get_item(i_s, Some(self), slice_type, result_context)
     }
 
+    pub fn type_check_set_item(
+        &self,
+        i_s: &InferenceState,
+        slice_type: SliceType,
+        from: NodeRef,
+        value: &Inferred,
+    ) {
+        debug!("Set Item on {}", self.format_short(i_s));
+        if let Some(t) = self.as_type(i_s).maybe_typed_dict(i_s.db) {}
+        let args = slice_type.as_args(*i_s);
+        self.type_lookup_and_execute_with_details(
+            i_s,
+            from,
+            "__setitem__",
+            &CombinedArguments::new(&args, &KnownArguments::new(value, from)),
+            &|_| {
+                debug!("TODO __setitem__ not found");
+            },
+            OnTypeError::new(&|i_s, function, arg, got, expected| {
+                let type_ = if arg.index == 1 {
+                    IssueType::InvalidGetItem {
+                        actual: got,
+                        type_: self.format_short(i_s),
+                        expected,
+                    }
+                } else {
+                    IssueType::InvalidSetItemTarget { got, expected }
+                };
+                arg.as_node_ref().add_issue(i_s, type_)
+            }),
+        );
+    }
+
     pub fn iter(self, i_s: &InferenceState<'db, '_>, from: NodeRef) -> IteratorContent {
         self.as_type(i_s).iter(i_s, from)
     }
