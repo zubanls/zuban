@@ -2921,7 +2921,6 @@ impl Enum {
 pub enum CustomBehaviorKind {
     Function,
     Method { bound: Option<Rc<DbType>> },
-    ClassAttribute,
 }
 
 #[derive(Debug, PartialEq, Clone)]

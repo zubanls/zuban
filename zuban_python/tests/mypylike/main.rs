@@ -10,7 +10,7 @@ use regex::{Captures, Regex, Replacer};
 
 use zuban_python::{DiagnosticConfig, Project, ProjectOptions};
 
-const SKIP_MYPY_TEST_FILES: [&str; 39] = [
+const SKIP_MYPY_TEST_FILES: [&str; 38] = [
     "check-typevar-defaults.test",
     "check-final.test",
     // Narrowing tests
@@ -26,7 +26,6 @@ const SKIP_MYPY_TEST_FILES: [&str; 39] = [
     "check-formatting.test",
     "check-dataclass-transform.test",
     "check-plugin-attrs.test",
-    "check-singledispatch.test",
     // Python syntax
     "check-python310.test",
     // Mypy flag checking
