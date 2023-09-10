@@ -14,13 +14,17 @@ use parsa_python_ast::PythonString;
 use parsa_python_ast::{CodeIndex, NodeIndex, ParamKind};
 use std::cell::OnceCell;
 
+use crate::arguments::Arguments;
 use crate::debug;
 use crate::file::PythonFile;
 use crate::file::{
     File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, PythonFileLoader, Vfs,
 };
 use crate::inference_state::InferenceState;
+use crate::inferred::Inferred;
 use crate::matching::Generics;
+use crate::matching::OnTypeError;
+use crate::matching::ResultContext;
 use crate::matching::{common_base_type, FormatData, Generic, ParamsStyle};
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
@@ -805,6 +809,7 @@ pub enum DbType {
         class: Rc<GenericClass>,
         mro_index: usize,
     },
+    CustomBehavior(CustomBehavior),
     Self_,
     None,
     Any,
@@ -985,6 +990,7 @@ impl DbType {
                 .format(format_data),
             Self::Namespace(_) => "object".into(),
             Self::Super { .. } => "TODO super".into(),
+            Self::CustomBehavior(_) => todo!(),
         }
     }
 
@@ -1085,6 +1091,7 @@ impl DbType {
             | Self::Self_
             | Self::Namespace(_)
             | Self::Super { .. }
+            | Self::CustomBehavior(_)
             | Self::Enum(_)
             | Self::EnumMember(_)
             | Self::NewType(_) => (),
@@ -1193,6 +1200,7 @@ impl DbType {
             | Self::ParamSpecKwargs(_)
             | Self::Module(_)
             | Self::Enum(_)
+            | Self::CustomBehavior(_)
             | Self::Namespace(_) => false,
             Self::Dataclass(d) => match &d.class.generics {
                 ClassGenerics::List(generics) => search_in_generics(generics, already_checked),
@@ -1249,6 +1257,7 @@ impl DbType {
             | Self::RecursiveAlias(_)
             | Self::Module(_)
             | Self::Namespace(_)
+            | Self::CustomBehavior(_)
             | Self::TypeVar(_) => false,
             Self::Super { .. } => todo!(),
         }
@@ -2906,6 +2915,24 @@ impl Enum {
             ),
         }
     }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum CustomBehaviorKind {
+    Function,
+    Method { bound: Option<Rc<DbType>> },
+    ClassAttribute,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct CustomBehavior {
+    execute: for<'db> fn(
+        &InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
+        result_context: &mut ResultContext,
+        on_type_error: OnTypeError<'db, '_>,
+    ) -> Inferred,
+    kind: CustomBehaviorKind,
 }
 
 #[derive(Debug, PartialEq, Clone)]

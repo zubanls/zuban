@@ -282,6 +282,7 @@ impl<'a> Type<'a> {
             DbType::Enum(_) => todo!(),
             DbType::EnumMember(_) => todo!(),
             DbType::Super { .. } => todo!(),
+            DbType::CustomBehavior(_) => false,
         }
     }
 
@@ -418,6 +419,7 @@ impl<'a> Type<'a> {
             DbType::Module(file_index) => Match::new_false(),
             DbType::Namespace(file_index) => todo!(),
             DbType::Super { .. } => todo!(),
+            DbType::CustomBehavior(_) => todo!(),
         }
     }
 
@@ -1577,6 +1579,7 @@ impl<'a> Type<'a> {
             }
             t @ (DbType::Enum(_) | DbType::EnumMember(_)) => t.clone(),
             DbType::Super { .. } => todo!(),
+            DbType::CustomBehavior(_) => todo!(),
         }
     }
 
@@ -1974,7 +1977,10 @@ impl<'a> Type<'a> {
             DbType::Enum(_) => todo!(),
             DbType::EnumMember(_) => todo!(),
             DbType::Super { .. } => todo!(),
-            t @ (DbType::Module(_) | DbType::Namespace(_) | DbType::Self_) => t.clone(),
+            t @ (DbType::Module(_)
+            | DbType::Namespace(_)
+            | DbType::Self_
+            | DbType::CustomBehavior(_)) => t.clone(),
         }
     }
 
