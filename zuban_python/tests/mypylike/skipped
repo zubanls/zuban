@@ -1310,6 +1310,17 @@ testIgnoreInsideClassDoesntAffectWhole
 # import of typeshed stubs
 testErrorFromGoogleCloud
 
+# ctypes
+testCtypesArrayStandardElementType
+testCtypesArrayCustomElementType
+testCtypesArrayUnionElementType
+testCtypesCharArrayAttrs
+testCtypesWcharArrayAttrs
+testCtypesCharUnionArrayAttrs
+testCtypesAnyUnionArrayAttrs
+testCtypesOtherUnionArrayAttrs
+testCtypesOtherArrayAttrs
+
 # Override import cached files like typing types builtins etc.
 testNoCrashDoubleReexportFunctionEmpty
 testNoCrashDoubleReexportBaseEmpty
