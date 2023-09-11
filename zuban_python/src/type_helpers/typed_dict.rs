@@ -52,14 +52,15 @@ impl<'a> TypedDictHelper<'a> {
                 i_s,
                 simple,
                 |name| {
-                    for param in self.0.__new__().expect_simple_params().iter() {
-                        if param.name.unwrap().as_str(i_s.db) == name {
-                            return Some(Inferred::from_type(
+                    Some({
+                        if let Some(param) = self.0.find_param(i_s.db, name) {
+                            Inferred::from_type(
                                 param.param_specific.clone().expect_positional_db_type(),
-                            ));
+                            )
+                        } else {
+                            Inferred::new_any()
                         }
-                    }
-                    Some(Inferred::new_any())
+                    })
                 },
                 || self.add_access_key_must_be_string_literal_issue(i_s, slice_type.as_node_ref()),
             ),
@@ -265,24 +266,8 @@ pub fn typed_dict_get<'db>(
     on_type_error: OnTypeError<'db, '_>,
     bound: Option<&DbType>,
 ) -> Inferred {
-    if let Some(bound) = bound {
-        let t = Type::new(bound);
-        let class = t
-            .mro(i_s.db)
-            .unwrap()
-            .find_map(|(_, type_or_class)| match type_or_class {
-                TypeOrClass::Class(c) if c.node_ref == i_s.db.python_state.mapping_node_ref() => {
-                    Some(c)
-                }
-                _ => None,
-            })
-            .unwrap();
-        i_s.db
-            .python_state
-            .mapping_get_function(class)
-            .decorated(i_s)
-            .execute_with_details(i_s, args, result_context, on_type_error)
-    } else {
-        todo!()
-    }
+    let DbType::TypedDict(td) = bound.unwrap() else {
+        unreachable!();
+    };
+    todo!();
 }
