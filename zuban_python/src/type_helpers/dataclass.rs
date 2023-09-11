@@ -489,6 +489,11 @@ pub fn dataclasses_replace<'db>(
                     for param in params.iter_mut() {
                         let t = param.param_specific.maybe_db_type().unwrap();
                         param.param_specific = ParamSpecific::KeywordOnly(t.clone());
+                        // All normal dataclass arguments are optional, because they can be
+                        // overridden or just be left in place. However this is different for
+                        // InitVars, which always need to be there. To check if something is an
+                        // InitVar, we use this hack and check if the attribute exists on the
+                        // dataclass. If not, it's an InitVar.
                         if DataclassHelper(dataclass)
                             .lookup(i_s, args.as_node_ref(), param.name.unwrap().as_str(i_s.db))
                             .is_some()

@@ -667,7 +667,6 @@ testReplaceUnion
 testReplaceUnionOfTypeVar
 testReplaceTypeVarBoundNotDataclass
 testReplaceTypeVarBound
-testDataclassReplace
 testReplace
 # __match_args__
 testDataclassWithMatchArgs
