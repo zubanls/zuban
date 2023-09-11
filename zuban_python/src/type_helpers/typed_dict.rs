@@ -269,5 +269,51 @@ pub fn typed_dict_get<'db>(
     let DbType::TypedDict(td) = bound.unwrap() else {
         unreachable!();
     };
-    todo!();
+    typed_dict_get_internal(i_s, td, args).unwrap_or_else(|| todo!())
+}
+
+pub fn typed_dict_get_internal<'db>(
+    i_s: &InferenceState<'db, '_>,
+    td: &TypedDict,
+    args: &dyn Arguments<'db>,
+) -> Option<Inferred> {
+    let mut iterator = args.iter();
+    let first_arg = iterator.next()?;
+    let second_arg = iterator.next();
+    if iterator.next().is_some() {
+        return None;
+    }
+    if let ArgumentKind::Positional { .. } = &first_arg.kind {
+        let default = match second_arg {
+            Some(second) => match &second.kind {
+                ArgumentKind::Positional { .. } | ArgumentKind::Keyword { key: "default", .. } => {
+                    second
+                        .infer(i_s, &mut ResultContext::Unknown)
+                        .as_db_type(i_s)
+                }
+                _ => return None,
+            },
+            None => DbType::None,
+        };
+        if let Some(name) = first_arg
+            .infer(i_s, &mut ResultContext::ExpectLiteral)
+            .maybe_string_literal(i_s)
+        {
+            if let Some(param) = td.find_param(i_s.db, name.as_str(i_s.db)) {
+                return Some(Inferred::from_type(
+                    param
+                        .param_specific
+                        .maybe_db_type()
+                        .unwrap()
+                        .clone()
+                        .union(i_s.db, default),
+                ));
+            } else {
+                todo!()
+            }
+        } else {
+            todo!()
+        }
+    }
+    None
 }
