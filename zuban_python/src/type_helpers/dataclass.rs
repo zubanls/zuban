@@ -551,6 +551,7 @@ fn run_on_dataclass(
             callback(d);
             true
         }
+        DbType::Union(u) => u.iter().all(|t| run_on_dataclass(i_s, from, t, callback)),
         DbType::Any => true,
         _ => {
             from.add_issue(

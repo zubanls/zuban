@@ -663,7 +663,6 @@ testDataclassInitVarCannotBeSet
 testNoComplainFieldNone
 testNoComplainFieldNoneStrict
 # dataclasses.replace
-testReplaceUnion
 testReplaceUnionOfTypeVar
 testReplaceTypeVarBoundNotDataclass
 testReplaceTypeVarBound
