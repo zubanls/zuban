@@ -468,5 +468,22 @@ pub fn dataclasses_replace<'db>(
     on_type_error: OnTypeError<'db, '_>,
     bound: Option<&DbType>,
 ) -> Inferred {
-    todo!()
+    let mut arg_iterator = args.iter();
+    if let Some(first) = arg_iterator.next() {
+        if let DbType::Dataclass(d) = first
+            .infer(i_s, &mut ResultContext::Unknown)
+            .as_type(i_s)
+            .as_ref()
+        {
+            // All other cases are checked by the type checker, because typeshed stubs are still
+            // checked.
+        }
+    }
+    // Execute the original function (in typeshed).
+    return i_s.db.python_state.dataclasses_replace().execute(
+        i_s,
+        args,
+        result_context,
+        on_type_error,
+    );
 }

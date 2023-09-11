@@ -120,6 +120,7 @@ pub struct PythonState {
     dataclasses_init_var_index: NodeIndex,
     dataclasses_field_index: NodeIndex,
     dataclasses_capital_field_index: NodeIndex,
+    dataclasses_replace_index: NodeIndex,
     pub type_of_object: DbType,
     pub type_of_any: DbType,
     pub type_of_self: DbType,
@@ -203,6 +204,7 @@ impl PythonState {
             dataclasses_init_var_index: 0,
             dataclasses_field_index: 0,
             dataclasses_capital_field_index: 0,
+            dataclasses_replace_index: 0,
             type_of_object: DbType::Any, // Will be set later
             type_of_any: DbType::Type(Rc::new(DbType::Any)),
             type_of_self: DbType::Type(Rc::new(DbType::Self_)),
@@ -374,6 +376,13 @@ impl PythonState {
             .dataclasses_file()
             .symbol_table
             .lookup_symbol("field")
+            .unwrap()
+            - NAME_TO_FUNCTION_DIFF;
+        db.python_state.dataclasses_replace_index = db
+            .python_state
+            .dataclasses_file()
+            .symbol_table
+            .lookup_symbol("replace")
             .unwrap()
             - NAME_TO_FUNCTION_DIFF;
 
@@ -724,6 +733,14 @@ impl PythonState {
         PointLink::new(
             self.dataclasses_file().file_index(),
             self.dataclasses_capital_field_index,
+        )
+    }
+
+    pub fn dataclasses_replace(&self) -> Function {
+        debug_assert!(self.dataclasses_replace_index != 0);
+        Function::new(
+            NodeRef::new(self.dataclasses_file(), self.dataclasses_replace_index),
+            None,
         )
     }
 
