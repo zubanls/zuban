@@ -125,6 +125,11 @@ impl<'a> DataclassHelper<'a> {
     }
 
     pub fn lookup(&self, i_s: &InferenceState, from: NodeRef, name: &str) -> LookupResult {
+        if name == "__dataclass_fields__" {
+            return LookupResult::UnknownName(Inferred::from_type(
+                i_s.db.python_state.dataclass_fields_type.clone(),
+            ));
+        }
         if self.0.options.order && ORDER_METHOD_NAMES.contains(&name) {
             return self.order_func(i_s, false);
         }
@@ -468,6 +473,8 @@ pub fn dataclasses_replace<'db>(
     on_type_error: OnTypeError<'db, '_>,
     bound: Option<&DbType>,
 ) -> Inferred {
+    debug_assert!(bound.is_none());
+
     let mut arg_iterator = args.iter();
     if let Some(first) = arg_iterator.next() {
         if let DbType::Dataclass(d) = first
@@ -475,6 +482,36 @@ pub fn dataclasses_replace<'db>(
             .as_type(i_s)
             .as_ref()
         {
+            let mut replace_func = Dataclass::__init__(d, i_s.db).clone();
+            let mut params: Vec<_> = replace_func.expect_simple_params().into();
+            for param in params.iter_mut() {
+                let t = param.param_specific.maybe_db_type().unwrap();
+                param.param_specific = ParamSpecific::KeywordOnly(t.clone());
+                if DataclassHelper(d)
+                    .lookup(i_s, args.as_node_ref(), param.name.unwrap().as_str(i_s.db))
+                    .is_some()
+                {
+                    param.has_default = true;
+                }
+            }
+            params.insert(
+                0,
+                CallableParam {
+                    param_specific: ParamSpecific::PositionalOnly(DbType::Any),
+                    name: None,
+                    has_default: false,
+                },
+            );
+            replace_func.params = CallableParams::Simple(params.into());
+            Callable::new(&replace_func, None).execute_internal(
+                i_s,
+                args,
+                false,
+                on_type_error.with_custom_generate_diagnostic_string(&|_, _| {
+                    Some(format!(r#""replace" of "{}""#, d.class(i_s.db).name()))
+                }),
+                result_context,
+            );
             // All other cases are checked by the type checker, because typeshed stubs are still
             // checked.
         }
