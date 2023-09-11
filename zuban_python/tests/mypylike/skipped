@@ -663,8 +663,6 @@ testDataclassInitVarCannotBeSet
 testNoComplainFieldNone
 testNoComplainFieldNoneStrict
 # dataclasses.replace
-testReplaceUnionOfTypeVar
-testReplaceTypeVarBoundNotDataclass
 testReplaceTypeVarBound
 testReplace
 # __match_args__

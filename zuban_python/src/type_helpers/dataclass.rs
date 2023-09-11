@@ -10,6 +10,7 @@ use crate::{
     database::{
         CallableContent, CallableParam, CallableParams, ClassGenerics, Database, Dataclass,
         DataclassOptions, DbType, FunctionKind, GenericClass, ParamSpecific, Specific, StringSlice,
+        TypeVar, TypeVarKind,
     },
     diagnostics::{Issue, IssueType},
     file::{File, PythonFile},
@@ -481,7 +482,7 @@ pub fn dataclasses_replace<'db>(
             let inferred = first.infer(i_s, &mut ResultContext::Unknown);
             if run_on_dataclass(
                 i_s,
-                *node_ref,
+                Some(*node_ref),
                 inferred.as_type(i_s).as_ref(),
                 &mut |dataclass| {
                     let mut replace_func = Dataclass::__init__(dataclass, i_s.db).clone();
@@ -542,10 +543,22 @@ pub fn dataclasses_replace<'db>(
 
 fn run_on_dataclass(
     i_s: &InferenceState,
-    from: NodeRef,
+    from: Option<NodeRef>,
     t: &DbType,
     callback: &mut impl FnMut(&Rc<Dataclass>),
 ) -> bool {
+    // Result type signals if we were successful
+    let type_var_error = |tv: &TypeVar| {
+        if let Some(from) = from {
+            from.add_issue(
+                i_s,
+                IssueType::DataclassReplaceExpectedDataclassInTypeVarBound {
+                    got: tv.name(i_s.db).into(),
+                },
+            );
+        }
+        false
+    };
     match t {
         DbType::Dataclass(d) => {
             callback(d);
@@ -553,13 +566,26 @@ fn run_on_dataclass(
         }
         DbType::Union(u) => u.iter().all(|t| run_on_dataclass(i_s, from, t, callback)),
         DbType::Any => true,
+        DbType::TypeVar(tv) => match &tv.type_var.kind {
+            TypeVarKind::Bound(bound) => {
+                let result = run_on_dataclass(i_s, None, bound, callback);
+                if !result {
+                    type_var_error(&tv.type_var);
+                }
+                result
+            }
+            TypeVarKind::Constraints(_) => todo!(),
+            TypeVarKind::Unrestricted => type_var_error(&tv.type_var),
+        },
         _ => {
-            from.add_issue(
-                i_s,
-                IssueType::DataclassReplaceExpectedDataclass {
-                    got: t.format_short(i_s.db),
-                },
-            );
+            if let Some(from) = from {
+                from.add_issue(
+                    i_s,
+                    IssueType::DataclassReplaceExpectedDataclass {
+                        got: t.format_short(i_s.db),
+                    },
+                );
+            }
             false
         }
     }

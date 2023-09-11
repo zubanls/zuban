@@ -212,6 +212,7 @@ pub(crate) enum IssueType {
     DataclassCannotInheritNonFrozenFromFrozen,
     DataclassCannotInheritFrozenFromNonFrozen,
     DataclassReplaceExpectedDataclass { got: Box<str> },
+    DataclassReplaceExpectedDataclassInTypeVarBound { got: Box<str> },
 
     // From --disallow-untyped-defs
     FunctionIsDynamic,
@@ -577,6 +578,9 @@ impl<'db> Diagnostic<'db> {
                 "Cannot inherit frozen dataclass from a non-frozen one".to_string(),
             DataclassReplaceExpectedDataclass { got } => format!(
                 r#"Argument 1 to "replace" has incompatible type "{got}"; expected a dataclass"#,
+            ),
+            DataclassReplaceExpectedDataclassInTypeVarBound { got } => format!(
+                r#"Argument 1 to "replace" has a variable type "{got}" not bound to a dataclass"#,
             ),
 
             FunctionIsDynamic => "Function is missing a type annotation".to_string(),
