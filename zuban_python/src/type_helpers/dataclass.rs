@@ -9,8 +9,9 @@ use crate::{
     arguments::{Argument, ArgumentKind, Arguments, SimpleArguments},
     database::{
         CallableContent, CallableParam, CallableParams, ClassGenerics, Database, Dataclass,
-        DataclassOptions, DbType, FunctionKind, GenericClass, ParamSpecific, Specific, StringSlice,
-        TypeVar, TypeVarKind,
+        DataclassOptions, DbString, DbType, FunctionKind, GenericClass, Literal, LiteralKind,
+        ParamSpecific, Specific, StringSlice, TupleContent, TypeOrTypeVarTuple, TypeVar,
+        TypeVarKind,
     },
     diagnostics::{Issue, IssueType},
     file::{File, PythonFile},
@@ -130,12 +131,24 @@ impl<'a> DataclassHelper<'a> {
             return LookupResult::UnknownName(Inferred::from_type(
                 i_s.db.python_state.dataclass_fields_type.clone(),
             ));
+        } else if name == "__match_args__" && self.0.options.match_args {
+            let __init__ = Dataclass::__init__(self.0, i_s.db);
+            let tup = Rc::new(TupleContent::new_fixed_length(
+                __init__
+                    .expect_simple_params()
+                    .iter()
+                    .take_while(|p| p.param_specific.maybe_positional_db_type().is_some())
+                    .map(|p| {
+                        TypeOrTypeVarTuple::Type(DbType::Literal(Literal::new(
+                            LiteralKind::String(DbString::StringSlice(p.name.unwrap())),
+                        )))
+                    })
+                    .collect(),
+            ));
+            return LookupResult::UnknownName(Inferred::from_type(DbType::Tuple(tup)));
         }
         if self.0.options.order && ORDER_METHOD_NAMES.contains(&name) {
             return self.order_func(i_s, false);
-        }
-        if self.0.options.match_args {
-            todo!()
         }
         if self.0.options.slots {
             todo!()

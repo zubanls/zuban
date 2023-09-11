@@ -665,8 +665,6 @@ testReplace
 # context with optional
 testNoComplainFieldNone
 testNoComplainFieldNoneStrict
-# __match_args__
-testDataclassWithMatchArgs
 # dataclass transform
 updateDataclassTransformParameterViaDecorator
 updateDataclassTransformParameterViaParentClass

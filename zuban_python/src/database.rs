@@ -2637,7 +2637,7 @@ impl Default for DataclassOptions {
             eq: true,
             order: false,
             frozen: false,
-            match_args: false,
+            match_args: true,
             kw_only: false,
             slots: false,
         }
