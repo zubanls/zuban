@@ -211,6 +211,7 @@ pub(crate) enum IssueType {
     DataclassCustomOrderMethodNotAllowed { method_name: &'static str },
     DataclassCannotInheritNonFrozenFromFrozen,
     DataclassCannotInheritFrozenFromNonFrozen,
+    DataclassReplaceExpectedDataclass { got: Box<str> },
 
     // From --disallow-untyped-defs
     FunctionIsDynamic,
@@ -574,6 +575,9 @@ impl<'db> Diagnostic<'db> {
                 "Cannot inherit non-frozen dataclass from a frozen one".to_string(),
             DataclassCannotInheritFrozenFromNonFrozen =>
                 "Cannot inherit frozen dataclass from a non-frozen one".to_string(),
+            DataclassReplaceExpectedDataclass { got } => format!(
+                r#"Argument 1 to "replace" has incompatible type "{got}"; expected a dataclass"#,
+            ),
 
             FunctionIsDynamic => "Function is missing a type annotation".to_string(),
             FunctionMissingReturnAnnotation =>

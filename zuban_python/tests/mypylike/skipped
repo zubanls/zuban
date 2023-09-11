@@ -667,7 +667,6 @@ testReplaceUnion
 testReplaceUnionOfTypeVar
 testReplaceTypeVarBoundNotDataclass
 testReplaceTypeVarBound
-testReplaceNotDataclass
 testReplaceGeneric
 testDataclassReplace
 testReplace

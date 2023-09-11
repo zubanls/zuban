@@ -477,43 +477,53 @@ pub fn dataclasses_replace<'db>(
 
     let mut arg_iterator = args.iter();
     if let Some(first) = arg_iterator.next() {
-        if let DbType::Dataclass(d) = first
-            .infer(i_s, &mut ResultContext::Unknown)
-            .as_type(i_s)
-            .as_ref()
-        {
-            let mut replace_func = Dataclass::__init__(d, i_s.db).clone();
-            let mut params: Vec<_> = replace_func.expect_simple_params().into();
-            for param in params.iter_mut() {
-                let t = param.param_specific.maybe_db_type().unwrap();
-                param.param_specific = ParamSpecific::KeywordOnly(t.clone());
-                if DataclassHelper(d)
-                    .lookup(i_s, args.as_node_ref(), param.name.unwrap().as_str(i_s.db))
-                    .is_some()
-                {
-                    param.has_default = true;
-                }
-            }
-            params.insert(
-                0,
-                CallableParam {
-                    param_specific: ParamSpecific::PositionalOnly(DbType::Any),
-                    name: None,
-                    has_default: false,
-                },
-            );
-            replace_func.params = CallableParams::Simple(params.into());
-            Callable::new(&replace_func, None).execute_internal(
+        if let ArgumentKind::Positional { node_ref, .. } = &first.kind {
+            let inferred = first.infer(i_s, &mut ResultContext::Unknown);
+            if run_on_dataclass(
                 i_s,
-                args,
-                false,
-                on_type_error.with_custom_generate_diagnostic_string(&|_, _| {
-                    Some(format!(r#""replace" of "{}""#, d.class(i_s.db).name()))
-                }),
-                result_context,
-            );
-            // All other cases are checked by the type checker, because typeshed stubs are still
-            // checked.
+                *node_ref,
+                inferred.as_type(i_s).as_ref(),
+                &mut |dataclass| {
+                    let mut replace_func = Dataclass::__init__(dataclass, i_s.db).clone();
+                    let mut params: Vec<_> = replace_func.expect_simple_params().into();
+                    for param in params.iter_mut() {
+                        let t = param.param_specific.maybe_db_type().unwrap();
+                        param.param_specific = ParamSpecific::KeywordOnly(t.clone());
+                        if DataclassHelper(dataclass)
+                            .lookup(i_s, args.as_node_ref(), param.name.unwrap().as_str(i_s.db))
+                            .is_some()
+                        {
+                            param.has_default = true;
+                        }
+                    }
+                    params.insert(
+                        0,
+                        CallableParam {
+                            param_specific: ParamSpecific::PositionalOnly(DbType::Any),
+                            name: None,
+                            has_default: false,
+                        },
+                    );
+                    replace_func.params = CallableParams::Simple(params.into());
+                    Callable::new(&replace_func, None).execute_internal(
+                        i_s,
+                        args,
+                        false,
+                        on_type_error.with_custom_generate_diagnostic_string(&|_, _| {
+                            Some(format!(
+                                r#""replace" of "{}""#,
+                                dataclass.class(i_s.db).name()
+                            ))
+                        }),
+                        result_context,
+                    );
+                },
+            ) {
+                return inferred;
+            } else {
+                return Inferred::new_any();
+            }
+            // All other cases are checked by the type checker that uses the typeshed stubs.
         }
     }
     // Execute the original function (in typeshed).
@@ -523,4 +533,28 @@ pub fn dataclasses_replace<'db>(
         result_context,
         on_type_error,
     );
+}
+
+fn run_on_dataclass(
+    i_s: &InferenceState,
+    from: NodeRef,
+    t: &DbType,
+    callback: &mut impl FnMut(&Rc<Dataclass>),
+) -> bool {
+    match t {
+        DbType::Dataclass(d) => {
+            callback(d);
+            true
+        }
+        DbType::Any => true,
+        _ => {
+            from.add_issue(
+                i_s,
+                IssueType::DataclassReplaceExpectedDataclass {
+                    got: t.format_short(i_s.db),
+                },
+            );
+            false
+        }
+    }
 }
