@@ -628,6 +628,8 @@ testSelfTypeProperSupertypeAttributeTuple
 # Formatting qualified names like tuple[int, fallback=b.C.Hidden@5]
 testNewAnalyzerIncrementalMethodNamedTuple
 
+# dataclass issue with structure
+testReplaceTypeVarBound
 # __post_init__
 testPostInitCorrectSignature
 testPostInitSubclassing
@@ -659,12 +661,10 @@ testDataclassUpdate6
 testDataclassesAnyInherit
 # InitVar set default
 testDataclassInitVarCannotBeSet
+testReplace
 # context with optional
 testNoComplainFieldNone
 testNoComplainFieldNoneStrict
-# dataclasses.replace
-testReplaceTypeVarBound
-testReplace
 # __match_args__
 testDataclassWithMatchArgs
 # dataclass transform

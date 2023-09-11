@@ -704,6 +704,7 @@ impl<'a> Type<'a> {
                     false,
                 )
             }),
+            // TODO? DbType::Dataclass(d) => Some(d.class(db).mro(db)),
             DbType::Enum(e) | DbType::EnumMember(EnumMember { enum_: e, .. }) => Some({
                 let class = e.class(db);
                 MroIterator::new(
