@@ -2951,6 +2951,18 @@ impl CustomBehavior {
         }
     }
 
+    pub fn bind(&self, bound: Rc<DbType>) -> Self {
+        Self {
+            callback: self.callback,
+            kind: match self.kind {
+                CustomBehaviorKind::Method { bound: None } => {
+                    CustomBehaviorKind::Method { bound: Some(bound) }
+                }
+                _ => self.kind.clone(),
+            },
+        }
+    }
+
     pub fn execute<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,

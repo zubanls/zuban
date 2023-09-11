@@ -13,11 +13,11 @@ use crate::{
     getitem::{SliceType, SliceTypeContent},
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{OnTypeError, ResultContext, Type},
+    matching::{LookupKind, LookupResult, OnTypeError, ResultContext, Type},
     node_ref::NodeRef,
 };
 
-use super::Callable;
+use super::{Callable, Instance, TypeOrClass};
 
 pub struct TypedDictHelper<'a>(pub &'a Rc<TypedDict>);
 impl<'a> TypedDictHelper<'a> {
@@ -66,6 +66,16 @@ impl<'a> TypedDictHelper<'a> {
             SliceTypeContent::Slice(_) => todo!(),
             SliceTypeContent::Slices(_) => todo!(),
         }
+    }
+
+    pub fn lookup(
+        &self,
+        i_s: &InferenceState,
+        from: NodeRef,
+        name: &str,
+        kind: LookupKind,
+    ) -> LookupResult {
+        Instance::new(i_s.db.python_state.typed_dict_class(), None).lookup(i_s, from, name, kind)
     }
 
     pub fn add_access_key_must_be_string_literal_issue(
@@ -249,5 +259,24 @@ pub fn typed_dict_get<'db>(
     on_type_error: OnTypeError<'db, '_>,
     bound: Option<&DbType>,
 ) -> Inferred {
-    todo!()
+    if let Some(bound) = bound {
+        let t = Type::new(bound);
+        let class = t
+            .mro(i_s.db)
+            .unwrap()
+            .find_map(|(_, type_or_class)| match type_or_class {
+                TypeOrClass::Class(c) if c.node_ref == i_s.db.python_state.mapping_node_ref() => {
+                    Some(c)
+                }
+                _ => None,
+            })
+            .unwrap();
+        i_s.db
+            .python_state
+            .mapping_get_function(class)
+            .decorated(i_s)
+            .execute_with_details(i_s, args, result_context, on_type_error)
+    } else {
+        todo!()
+    }
 }

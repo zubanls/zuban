@@ -64,10 +64,14 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     // - "function_def_parameters" to save calculated type vars
     // - "(" for decorator caching
     pub fn new(node_ref: NodeRef<'a>, class: Option<Class<'class>>) -> Self {
-        debug_assert!(matches!(
-            node_ref.point().maybe_specific(),
-            Some(Specific::Function | Specific::DecoratedFunction)
-        ));
+        debug_assert!(
+            matches!(
+                node_ref.point().maybe_specific(),
+                Some(Specific::Function | Specific::DecoratedFunction),
+            ),
+            "{:?}",
+            node_ref.point()
+        );
         Self { node_ref, class }
     }
 

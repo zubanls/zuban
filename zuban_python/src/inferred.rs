@@ -919,8 +919,8 @@ impl<'db: 'slf, 'slf> Inferred {
         apply_descriptors_kind: ApplyDescriptorsKind,
     ) -> Option<Option<Self>> {
         let mut t = t; // Weird lifetime issue
-        if let DbType::Callable(c) = t {
-            match c.kind {
+        match t {
+            DbType::Callable(c) => match c.kind {
                 FunctionKind::Function
                     if !matches!(apply_descriptors_kind, ApplyDescriptorsKind::NoBoundMethod) =>
                 {
@@ -981,7 +981,13 @@ impl<'db: 'slf, 'slf> Inferred {
                 }
                 // Static methods can be passed out without any remapping.
                 FunctionKind::Staticmethod => (),
+            },
+            DbType::CustomBehavior(custom) => {
+                return Some(Some(Inferred::from_type(DbType::CustomBehavior(
+                    custom.bind(Rc::new(instance)),
+                ))))
             }
+            _ => (),
         }
 
         let mut new = None;
