@@ -505,17 +505,17 @@ pub fn dataclasses_replace<'db>(
                         },
                     );
                     replace_func.params = CallableParams::Simple(params.into());
-                    Callable::new(&replace_func, None).execute_internal(
+                    Callable::new(&replace_func, Some(dataclass.class(i_s.db))).execute_internal(
                         i_s,
                         args,
                         false,
                         on_type_error.with_custom_generate_diagnostic_string(&|_, _| {
                             Some(format!(
                                 r#""replace" of "{}""#,
-                                dataclass.class(i_s.db).name()
+                                dataclass.class(i_s.db).format_short(i_s.db)
                             ))
                         }),
-                        result_context,
+                        &mut ResultContext::Unknown,
                     );
                 },
             ) {
