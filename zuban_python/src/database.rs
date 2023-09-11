@@ -2944,10 +2944,10 @@ impl CustomBehavior {
         }
     }
 
-    pub fn new_method(callback: CustomBehaviorCallback) -> Self {
+    pub fn new_method(callback: CustomBehaviorCallback, bound: Option<Rc<DbType>>) -> Self {
         Self {
             callback,
-            kind: CustomBehaviorKind::Method { bound: None },
+            kind: CustomBehaviorKind::Method { bound },
         }
     }
 

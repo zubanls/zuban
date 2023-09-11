@@ -5,8 +5,8 @@ use parsa_python_ast::{AtomContent, DictElement, ExpressionContent, ExpressionPa
 use crate::{
     arguments::{ArgumentKind, Arguments},
     database::{
-        CallableContent, CallableParam, CallableParams, ComplexPoint, DbType, FunctionKind,
-        ParamSpecific, StringSlice, TypedDict,
+        CallableContent, CallableParam, CallableParams, ComplexPoint, CustomBehavior, DbType,
+        FunctionKind, ParamSpecific, StringSlice, TypedDict,
     },
     diagnostics::IssueType,
     file::{infer_string_index, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn},
@@ -75,6 +75,12 @@ impl<'a> TypedDictHelper<'a> {
         name: &str,
         kind: LookupKind,
     ) -> LookupResult {
+        if name == "get" {
+            let bound = Rc::new(DbType::TypedDict(self.0.clone()));
+            return LookupResult::UnknownName(Inferred::from_type(DbType::CustomBehavior(
+                CustomBehavior::new_method(typed_dict_get, Some(bound)),
+            )));
+        }
         Instance::new(i_s.db.python_state.typed_dict_class(), None).lookup(i_s, from, name, kind)
     }
 

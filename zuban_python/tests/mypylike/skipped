@@ -704,9 +704,6 @@ testAssignEnumAsAttribute
 # "TypedDict type as attribute is not supported"
 testAssignTypedDictAsAttribute
 
-testTypedDictUpdate2
-testCrashInvalidArgsSyntheticClassSyntax
-testCrashInvalidArgsSyntheticClassSyntaxReveals
 # TypedDict recursions
 testBasicRecursiveTypedDictExtending
 testRecursiveGenericTypedDictExtending
@@ -767,14 +764,11 @@ testErrorCodeTypedDictSubCodeIgnore
 testTypedDictNameMismatch
 # "Invalid statement in TypedDict definition; expected "field_name: field_type""
 testTypedDictNestedClassRecheck
-# class:678
-testCanCreateTypedDictWithSubclass2
 # database:1198
 testTypedDictUnionSimplification
 testTypedDictUnionSimplification2
 # database:1102
 testTypedDictUnionUnambiguousCase
-testTypedDictUnionAmbiguousCaseBothMatch
 testTypedDictUnionAmbiguousCaseNoMatch
 # typed dict as base class
 testCanCreateTypedDictWithClassOldVersion
@@ -820,8 +814,6 @@ testTypedDictWithSimpleProtocolInference
 testTypedDictOverloading4
 testTypedDictOverloading5
 # matching mapping
-testCanConvertTypedDictToCompatibleMapping
-testForwardReferenceInTypedDict
 testForwardReferenceInClassTypedDict
 # Lookups
 testOverloadKwargsSelectionWithTypedDict

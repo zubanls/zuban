@@ -3,16 +3,16 @@ use std::ptr::null;
 use std::rc::Rc;
 
 use crate::database::{
-    CallableContent, ClassGenerics, ComplexPoint, CustomBehavior, Database, DbType, GenericItem,
-    GenericsList, LiteralKind, Locality, Point, PointLink, PointType, Specific, TupleContent,
-    TypeVarLikes,
+    BaseClass, CallableContent, ClassGenerics, ComplexPoint, CustomBehavior, Database, DbType,
+    GenericItem, GenericsList, LiteralKind, Locality, Point, PointLink, PointType, Specific,
+    TupleContent, TypeVarLikes,
 };
 use crate::file::File;
 use crate::file::PythonFile;
 use crate::inferred::Inferred;
 use crate::matching::{Generics, Type};
 use crate::node_ref::NodeRef;
-use crate::type_helpers::{dataclasses_replace, typed_dict_get, Class, Function, Instance};
+use crate::type_helpers::{dataclasses_replace, Class, Function, Instance};
 use crate::{new_class, InferenceState, PythonProject};
 
 // This is a bit hacky, but I'm sure the tests will fail somewhere if this constant is
@@ -102,6 +102,7 @@ pub struct PythonState {
     typing_typed_dict_index: NodeIndex,
     typing_mapping_index: NodeIndex,
     typing_mapping_get_index: NodeIndex,
+    pub typing_typed_dict_bases: Box<[BaseClass]>,
     types_module_type_index: NodeIndex,
     types_none_type_index: NodeIndex,
     collections_namedtuple_index: NodeIndex,
@@ -190,6 +191,7 @@ impl PythonState {
             typing_async_generator_index: 0,
             typing_async_iterator_index: 0,
             typing_async_iterable_index: 0,
+            typing_typed_dict_bases: Box::new([]), // Will be set later
             collections_namedtuple_index: 0,
             abc_abc_meta_index: 0,
             abc_abstractmethod_index: 0,
@@ -432,6 +434,19 @@ impl PythonState {
             .unwrap()
             - NAME_TO_FUNCTION_DIFF;
 
+        let typed_dict_class = db.python_state.typed_dict_class();
+        let mut typed_dict_mro = Vec::from(typed_dict_class.use_cached_class_infos(db).mro.clone());
+        for base in typed_dict_mro.iter_mut() {
+            base.is_direct_base = false;
+        }
+        typed_dict_mro.insert(
+            0,
+            BaseClass {
+                type_: typed_dict_class.as_db_type(db),
+                is_direct_base: true,
+            },
+        );
+
         let s = &mut db.python_state;
         let object_db_type = s.object_db_type();
         s.type_of_object = DbType::Type(Rc::new(object_db_type));
@@ -463,6 +478,9 @@ impl PythonState {
             s.str_db_type(),
             new_class!(s.dataclasses_capital_field_link(), DbType::Any,),
         );
+
+        // Cache
+        s.typing_typed_dict_bases = typed_dict_mro.into_boxed_slice();
     }
 
     #[inline]
@@ -917,12 +935,6 @@ fn typing_changes(
     for module in [typing, mypy_extensions, typing_extensions] {
         set_typing_inference(module, "TypedDict", Specific::TypingTypedDict);
     }
-    set_custom_behavior_method(
-        typing,
-        "Mapping",
-        "get",
-        CustomBehavior::new_method(typed_dict_get),
-    )
 }
 
 fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {

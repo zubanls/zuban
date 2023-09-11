@@ -705,6 +705,13 @@ impl<'a> Type<'a> {
                 )
             }),
             // TODO? DbType::Dataclass(d) => Some(d.class(db).mro(db)),
+            DbType::TypedDict(td) => Some(MroIterator::new(
+                db,
+                TypeOrClass::Type(self.clone()),
+                Generics::None,
+                db.python_state.typing_typed_dict_bases.iter(),
+                false,
+            )),
             DbType::Enum(e) | DbType::EnumMember(EnumMember { enum_: e, .. }) => Some({
                 let class = e.class(db);
                 MroIterator::new(
