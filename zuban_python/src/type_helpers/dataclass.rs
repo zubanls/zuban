@@ -460,3 +460,13 @@ fn field_options_from_args<'db>(
     }
     options
 }
+
+pub fn dataclasses_replace<'db>(
+    i_s: &InferenceState<'db, '_>,
+    args: &dyn Arguments<'db>,
+    result_context: &mut ResultContext,
+    on_type_error: OnTypeError<'db, '_>,
+    bound: Option<&DbType>,
+) -> Inferred {
+    todo!()
+}

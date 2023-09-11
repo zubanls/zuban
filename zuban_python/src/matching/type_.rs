@@ -2022,7 +2022,10 @@ impl<'a> Type<'a> {
             },
             DbType::Any | DbType::Never => {
                 args.iter().calculate_diagnostics(i_s);
-                Inferred::new_unknown()
+                Inferred::new_any()
+            }
+            DbType::CustomBehavior(custom) => {
+                custom.execute(i_s, args, result_context, on_type_error)
             }
             _ => {
                 let t = self.format_short(i_s.db);

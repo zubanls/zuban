@@ -3,15 +3,16 @@ use std::ptr::null;
 use std::rc::Rc;
 
 use crate::database::{
-    CallableContent, ClassGenerics, Database, DbType, GenericItem, GenericsList, LiteralKind,
-    Locality, Point, PointLink, PointType, Specific, TupleContent, TypeVarLikes,
+    CallableContent, ClassGenerics, ComplexPoint, CustomBehavior, Database, DbType, GenericItem,
+    GenericsList, LiteralKind, Locality, Point, PointLink, PointType, Specific, TupleContent,
+    TypeVarLikes,
 };
 use crate::file::File;
 use crate::file::PythonFile;
 use crate::inferred::Inferred;
 use crate::matching::{Generics, Type};
 use crate::node_ref::NodeRef;
-use crate::type_helpers::{Class, Function, Instance};
+use crate::type_helpers::{dataclasses_replace, Class, Function, Instance};
 use crate::{new_class, InferenceState, PythonProject};
 
 // This is a bit hacky, but I'm sure the tests will fail somewhere if this constant is
@@ -820,7 +821,12 @@ fn typing_changes(
 
     set_typing_inference(typing, "cast", Specific::TypingCast);
 
-    set_typing_inference(dataclasses, "replace", Specific::DataclassesReplace);
+    //set_typing_inference(dataclasses, "replace", Specific::DataclassesReplace);
+    set_custom_behavior(
+        dataclasses,
+        "replace",
+        CustomBehavior::new_function(dataclasses_replace),
+    );
     set_typing_inference(collections, "namedtuple", Specific::CollectionsNamedTuple);
 
     setup_type_alias(typing, "Tuple", builtins, "tuple");
@@ -896,6 +902,14 @@ fn set_specific(file: &PythonFile, node_index: NodeIndex, specific: Specific) {
     file.points.set(
         node_index,
         Point::new_simple_specific(specific, Locality::Stmt),
+    );
+}
+
+fn set_custom_behavior(file: &PythonFile, name: &str, custom: CustomBehavior) {
+    let node_index = file.symbol_table.lookup_symbol(name).unwrap();
+    NodeRef::new(file, node_index).insert_complex(
+        ComplexPoint::TypeInstance(DbType::CustomBehavior(custom)),
+        Locality::Stmt,
     );
 }
 

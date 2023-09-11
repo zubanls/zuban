@@ -468,8 +468,7 @@ pub enum Specific {
     TypingTypedDict,
     RevealTypeFunction,
     AssertTypeFunction,
-    TypingNamedTuple, // typing.NamedTuple
-    DataclassesReplace,
+    TypingNamedTuple,      // typing.NamedTuple
     CollectionsNamedTuple, // collections.namedtuple
 
     MypyExtensionsArg,
@@ -990,7 +989,7 @@ impl DbType {
                 .format(format_data),
             Self::Namespace(_) => "object".into(),
             Self::Super { .. } => "TODO super".into(),
-            Self::CustomBehavior(_) => todo!(),
+            Self::CustomBehavior(_) => "TODO custombehavior".into(),
         }
     }
 
@@ -2925,13 +2924,45 @@ pub enum CustomBehaviorKind {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct CustomBehavior {
-    execute: for<'db> fn(
-        &InferenceState<'db, '_>,
+    callback: for<'db> fn(
+        i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
+        bound: Option<&DbType>,
     ) -> Inferred,
     kind: CustomBehaviorKind,
+}
+
+impl CustomBehavior {
+    pub fn new_function(
+        callback: for<'db> fn(
+            i_s: &InferenceState<'db, '_>,
+            args: &dyn Arguments<'db>,
+            result_context: &mut ResultContext,
+            on_type_error: OnTypeError<'db, '_>,
+            bound: Option<&DbType>,
+        ) -> Inferred,
+    ) -> Self {
+        Self {
+            callback,
+            kind: CustomBehaviorKind::Function,
+        }
+    }
+
+    pub fn execute<'db>(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
+        result_context: &mut ResultContext,
+        on_type_error: OnTypeError<'db, '_>,
+    ) -> Inferred {
+        let bound = match &self.kind {
+            CustomBehaviorKind::Function => None,
+            CustomBehaviorKind::Method { bound } => bound.as_deref(),
+        };
+        (self.callback)(i_s, args, result_context, on_type_error, bound)
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
