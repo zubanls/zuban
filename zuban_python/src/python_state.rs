@@ -12,7 +12,7 @@ use crate::file::PythonFile;
 use crate::inferred::Inferred;
 use crate::matching::{Generics, Type};
 use crate::node_ref::NodeRef;
-use crate::type_helpers::{dataclasses_replace, Class, Function, Instance};
+use crate::type_helpers::{dataclasses_replace, typed_dict_get, Class, Function, Instance};
 use crate::{new_class, InferenceState, PythonProject};
 
 // This is a bit hacky, but I'm sure the tests will fail somewhere if this constant is
@@ -818,7 +818,6 @@ fn typing_changes(
     set_typing_inference(typing, "LiteralString", Specific::TypingLiteralString);
     set_typing_inference(typing, "Literal", Specific::TypingLiteral);
     set_typing_inference(typing, "Final", Specific::TypingFinal);
-    set_typing_inference(typing, "TypedDict", Specific::TypingTypedDict);
     set_typing_inference(typing, "NamedTuple", Specific::TypingNamedTuple);
     set_typing_inference(typing, "Unpack", Specific::TypingUnpack);
     set_typing_inference(typing, "TypeAlias", Specific::TypingTypeAlias);
@@ -864,7 +863,6 @@ fn typing_changes(
     set_typing_inference(t, "LiteralString", Specific::TypingLiteralString);
     set_typing_inference(t, "Literal", Specific::TypingLiteral);
     set_typing_inference(t, "Final", Specific::TypingFinal);
-    set_typing_inference(t, "TypedDict", Specific::TypingTypedDict);
     set_typing_inference(t, "Unpack", Specific::TypingUnpack);
     set_typing_inference(t, "ParamSpec", Specific::TypingParamSpecClass);
     set_typing_inference(t, "TypeVar", Specific::TypingTypeVarClass);
@@ -879,7 +877,15 @@ fn typing_changes(
     set_typing_inference(t, "Protocol", Specific::TypingProtocol);
     set_typing_inference(t, "dataclass_transform", Specific::TypingDataclassTransform);
 
-    set_typing_inference(mypy_extensions, "TypedDict", Specific::TypingTypedDict);
+    for module in [typing, mypy_extensions, typing_extensions] {
+        set_typing_inference(module, "TypedDict", Specific::TypingTypedDict);
+    }
+    set_custom_behavior_method(
+        typing,
+        "Mapping",
+        "get",
+        CustomBehavior::new_method(typed_dict_get),
+    )
 }
 
 fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
@@ -924,6 +930,25 @@ fn set_specific(file: &PythonFile, node_index: NodeIndex, specific: Specific) {
 
 fn set_custom_behavior(file: &PythonFile, name: &str, custom: CustomBehavior) {
     let node_index = file.symbol_table.lookup_symbol(name).unwrap();
+    NodeRef::new(file, node_index).insert_complex(
+        ComplexPoint::TypeInstance(DbType::CustomBehavior(custom)),
+        Locality::Stmt,
+    );
+}
+
+fn set_custom_behavior_method(
+    file: &PythonFile,
+    class_name: &str,
+    name: &str,
+    custom: CustomBehavior,
+) {
+    let module_node_index = file.symbol_table.lookup_symbol(class_name).unwrap();
+    let class_storage =
+        NodeRef::new(file, module_node_index - NAME_TO_CLASS_DIFF).expect_class_storage();
+    let node_index = class_storage
+        .class_symbol_table
+        .lookup_symbol(name)
+        .unwrap();
     NodeRef::new(file, node_index).insert_complex(
         ComplexPoint::TypeInstance(DbType::CustomBehavior(custom)),
         Locality::Stmt,

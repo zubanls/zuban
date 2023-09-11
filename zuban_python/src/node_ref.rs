@@ -7,7 +7,7 @@ use parsa_python_ast::{
 };
 
 use crate::database::{
-    ComplexPoint, Database, DbType, FileIndex, Locality, Point, PointLink, PointType,
+    ClassStorage, ComplexPoint, Database, DbType, FileIndex, Locality, Point, PointLink, PointType,
 };
 use crate::diagnostics::{Issue, IssueType};
 use crate::file::File;
@@ -184,6 +184,16 @@ impl<'file> NodeRef<'file> {
 
     pub fn expect_import_from(&self) -> ImportFrom<'file> {
         ImportFrom::by_index(&self.file.tree, self.node_index)
+    }
+
+    pub fn expect_class_storage(&self) -> &'file ClassStorage {
+        let complex = self
+            .complex()
+            .unwrap_or_else(|| panic!("Node {:?} is not a complex class", self.as_code()));
+        match complex {
+            ComplexPoint::Class(c) => c,
+            _ => unreachable!("Probably an issue with indexing: {complex:?}"),
+        }
     }
 
     pub fn debug_info(&self, db: &Database) -> String {

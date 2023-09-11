@@ -241,3 +241,13 @@ pub fn infer_typed_dict_total_argument(
         None
     }
 }
+
+pub fn typed_dict_get<'db>(
+    i_s: &InferenceState<'db, '_>,
+    args: &dyn Arguments<'db>,
+    result_context: &mut ResultContext,
+    on_type_error: OnTypeError<'db, '_>,
+    bound: Option<&DbType>,
+) -> Inferred {
+    todo!()
+}

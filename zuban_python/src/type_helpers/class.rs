@@ -91,11 +91,12 @@ impl<'db: 'a, 'a> Class<'a> {
         generics: Generics<'a>,
         type_var_remap: Option<&'a GenericsList>,
     ) -> Self {
-        let complex = node_ref.complex().unwrap();
-        match complex {
-            ComplexPoint::Class(c) => Self::new(node_ref, c, generics, type_var_remap),
-            _ => unreachable!("Probably an issue with indexing: {complex:?}"),
-        }
+        Self::new(
+            node_ref,
+            node_ref.expect_class_storage(),
+            generics,
+            type_var_remap,
+        )
     }
 
     #[inline]
