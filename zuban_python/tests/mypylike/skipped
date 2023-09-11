@@ -331,6 +331,8 @@ testNoCrashOnGenericUnionUnpacking
 testTupleBaseClass
 # union context inference
 testCrashOnComplexCheckWithNamedTupleNext
+testNoComplainFieldNone
+testNoComplainFieldNoneStrict
 
 # Not able to infer context with unions and literals
 testLiteralAndGenericWithUnion
@@ -662,9 +664,6 @@ testDataclassesAnyInherit
 # InitVar set default
 testDataclassInitVarCannotBeSet
 testReplace
-# context with optional
-testNoComplainFieldNone
-testNoComplainFieldNoneStrict
 # dataclass transform
 updateDataclassTransformParameterViaDecorator
 updateDataclassTransformParameterViaParentClass
