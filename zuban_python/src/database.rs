@@ -2916,6 +2916,14 @@ impl Enum {
     }
 }
 
+type CustomBehaviorCallback = for<'db> fn(
+    i_s: &InferenceState<'db, '_>,
+    args: &dyn Arguments<'db>,
+    result_context: &mut ResultContext,
+    on_type_error: OnTypeError<'db, '_>,
+    bound: Option<&DbType>,
+) -> Inferred;
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum CustomBehaviorKind {
     Function,
@@ -2924,29 +2932,22 @@ pub enum CustomBehaviorKind {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct CustomBehavior {
-    callback: for<'db> fn(
-        i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-        result_context: &mut ResultContext,
-        on_type_error: OnTypeError<'db, '_>,
-        bound: Option<&DbType>,
-    ) -> Inferred,
+    callback: CustomBehaviorCallback,
     kind: CustomBehaviorKind,
 }
 
 impl CustomBehavior {
-    pub fn new_function(
-        callback: for<'db> fn(
-            i_s: &InferenceState<'db, '_>,
-            args: &dyn Arguments<'db>,
-            result_context: &mut ResultContext,
-            on_type_error: OnTypeError<'db, '_>,
-            bound: Option<&DbType>,
-        ) -> Inferred,
-    ) -> Self {
+    pub fn new_function(callback: CustomBehaviorCallback) -> Self {
         Self {
             callback,
             kind: CustomBehaviorKind::Function,
+        }
+    }
+
+    pub fn new_method(callback: CustomBehaviorCallback) -> Self {
+        Self {
+            callback,
+            kind: CustomBehaviorKind::Method { bound: None },
         }
     }
 
