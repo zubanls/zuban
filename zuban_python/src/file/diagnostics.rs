@@ -14,8 +14,8 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{infer_class_method, Inferred};
 use crate::matching::params::has_overlapping_params;
 use crate::matching::{
-    matches_params, FormatData, Generics, LookupKind, LookupResult, Match, Matcher, ResultContext,
-    Type,
+    matches_params, FormatData, Generics, LookupKind, LookupResult, Match, Matcher, OnTypeError,
+    ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
@@ -24,6 +24,7 @@ use crate::type_helpers::{
 };
 
 use super::inference::await_;
+use super::on_argument_type_error;
 
 impl<'db> Inference<'db, '_, '_> {
     pub fn calculate_diagnostics(&mut self) {
@@ -844,7 +845,12 @@ impl<'db> Inference<'db, '_, '_> {
                 let node_ref = slice_type.as_node_ref();
                 base.lookup(self.i_s, node_ref, "__delitem__", LookupKind::OnlyType)
                     .into_inferred()
-                    .execute(self.i_s, &slice_type.as_args(*self.i_s));
+                    .execute_with_details(
+                        self.i_s,
+                        &slice_type.as_args(*self.i_s),
+                        &mut ResultContext::ExpectUnused,
+                        OnTypeError::new(&on_argument_type_error),
+                    );
             }
             Target::Tuple(targets) => {
                 for target in targets {
