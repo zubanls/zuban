@@ -588,6 +588,7 @@ impl PythonState {
     node_ref_to_class!(bytearray, bytearray_node_ref);
     node_ref_to_class!(pub function_class, function_node_ref);
     node_ref_to_class!(pub bare_type_class, bare_type_node_ref);
+    node_ref_to_class!(pub typed_dict_class, typed_dict_node_ref);
 
     node_ref_to_db_type_class_without_generic!(pub object_db_type, object_node_ref);
     node_ref_to_db_type_class_without_generic!(pub slice_db_type, slice_node_ref);
@@ -602,6 +603,7 @@ impl PythonState {
     node_ref_to_db_type_class_without_generic!(pub function_db_type, function_node_ref);
     node_ref_to_db_type_class_without_generic!(pub bare_type_db_type, bare_type_node_ref);
     node_ref_to_db_type_class_without_generic!(pub ellipsis_db_type, ellipsis_node_ref);
+    node_ref_to_db_type_class_without_generic!(pub typed_dict_db_type, typed_dict_node_ref);
 
     #[inline]
     fn none_type_node_ref(&self) -> NodeRef {
@@ -731,10 +733,6 @@ impl PythonState {
     fn typed_dict_node_ref(&self) -> NodeRef {
         debug_assert!(self.typing_typed_dict_index != 0);
         NodeRef::new(self.typing(), self.typing_typed_dict_index)
-    }
-
-    pub fn typed_dict_class(&self) -> Class {
-        Class::from_non_generic_node_ref(self.typed_dict_node_ref())
     }
 
     pub fn mapping_node_ref(&self) -> NodeRef {

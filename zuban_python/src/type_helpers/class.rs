@@ -538,6 +538,7 @@ impl<'db: 'a, 'a> Class<'a> {
         let mut bases: Vec<DbType> = vec![];
         let mut incomplete_mro = false;
         let mut class_type = ClassType::Normal;
+        let mut is_new_typed_dict = false;
         let mut metaclass = MetaclassState::None;
         if let Some(arguments) = self.node().arguments() {
             // Check metaclass before checking all the arguments, because it has a preference over
@@ -708,6 +709,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                 class_type = ClassType::NamedTuple(named_tuple);
                             }
                             CalculatedBaseClass::TypedDict => {
+                                is_new_typed_dict = true;
                                 let mut params = vec![];
 
                                 self.initialize_typed_dict_members(
@@ -766,6 +768,11 @@ impl<'db: 'a, 'a> Class<'a> {
                     }
                 }
             }
+        }
+        if is_new_typed_dict {
+            // For some reason the mro calculation has problems if we don't do this here. No idea
+            // why this doesn't cause issues in real Python.
+            bases.push(i_s.db.python_state.typed_dict_db_type());
         }
         Box::new(ClassInfos {
             mro: linearize_mro(i_s, self, bases),
