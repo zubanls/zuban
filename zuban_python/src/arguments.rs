@@ -56,6 +56,19 @@ pub trait Arguments<'db>: std::fmt::Debug {
         }
         Some((node_ref1.to_db_lifetime(db), node_ref2.to_db_lifetime(db)))
     }
+
+    fn maybe_single_positional_arg(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        context: &mut ResultContext,
+    ) -> Option<Inferred> {
+        let mut iterator = self.iter();
+        let first = iterator.next()?;
+        if iterator.next().is_some() {
+            return None;
+        }
+        first.maybe_positional_arg(i_s, context)
+    }
 }
 
 #[derive(Debug)]
@@ -376,13 +389,26 @@ impl<'db, 'a> Argument<'db, 'a> {
     }
 
     pub fn maybe_positional_arg(
-        &self,
+        self,
         i_s: &InferenceState<'db, '_>,
         context: &mut ResultContext,
     ) -> Option<Inferred> {
-        match &self.kind {
-            ArgumentKind::Positional { .. } => Some(self.infer(i_s, context)),
-            _ => None,
+        match self.kind {
+            ArgumentKind::Positional { .. }
+            | ArgumentKind::SlicesTuple { .. }
+            | ArgumentKind::Comprehension { .. } => Some(self.infer(i_s, context)),
+            ArgumentKind::Inferred {
+                inferred,
+                in_args_or_kwargs_and_arbitrary_len: false,
+                is_keyword: false,
+                ..
+            } => Some(inferred),
+            ArgumentKind::ParamSpec { .. } => todo!(),
+            ArgumentKind::Overridden { original, inferred } => original
+                .clone()
+                .maybe_positional_arg(i_s, context)
+                .map(|_| inferred),
+            ArgumentKind::Keyword { .. } | ArgumentKind::Inferred { .. } => None,
         }
     }
 }
