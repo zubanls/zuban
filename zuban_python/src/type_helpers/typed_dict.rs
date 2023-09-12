@@ -76,22 +76,24 @@ impl<'a> TypedDictHelper<'a> {
         name: &str,
         kind: LookupKind,
     ) -> LookupResult {
-        match name {
+        LookupResult::UnknownName(Inferred::from_type(DbType::CustomBehavior(match name {
             "get" | "pop" => {
                 let bound = Rc::new(DbType::TypedDict(self.0.clone()));
-                return LookupResult::UnknownName(Inferred::from_type(DbType::CustomBehavior(
-                    CustomBehavior::new_method(typed_dict_get, Some(bound)),
-                )));
+                CustomBehavior::new_method(typed_dict_get, Some(bound))
             }
             "__delitem__" => {
                 let bound = Rc::new(DbType::TypedDict(self.0.clone()));
-                return LookupResult::UnknownName(Inferred::from_type(DbType::CustomBehavior(
-                    CustomBehavior::new_method(typed_dict_delitem, Some(bound)),
-                )));
+                CustomBehavior::new_method(typed_dict_delitem, Some(bound))
             }
-            _ => Instance::new(i_s.db.python_state.typed_dict_class(), None)
-                .lookup(i_s, from, name, kind),
-        }
+            "update" => {
+                let bound = Rc::new(DbType::TypedDict(self.0.clone()));
+                CustomBehavior::new_method(typed_dict_update, Some(bound))
+            }
+            _ => {
+                return Instance::new(i_s.db.python_state.typed_dict_class(), None)
+                    .lookup(i_s, from, name, kind)
+            }
+        })))
     }
 
     pub fn add_access_key_must_be_string_literal_issue(
@@ -402,4 +404,33 @@ fn typed_dict_delitem_internal<'db>(
             .add_issue(i_s, IssueType::TypedDictKeysMustBeStringLiteral);
     }
     Some(Inferred::from_type(DbType::None))
+}
+
+pub fn typed_dict_update<'db>(
+    i_s: &InferenceState<'db, '_>,
+    args: &dyn Arguments<'db>,
+    result_context: &mut ResultContext,
+    on_type_error: OnTypeError<'db, '_>,
+    bound: Option<&DbType>,
+) -> Inferred {
+    let DbType::TypedDict(td) = bound.unwrap() else {
+        unreachable!();
+    };
+    method_with_fallback(
+        i_s,
+        args,
+        result_context,
+        on_type_error,
+        td,
+        "update",
+        typed_dict_update_internal,
+    )
+}
+
+fn typed_dict_update_internal<'db>(
+    i_s: &InferenceState<'db, '_>,
+    td: &TypedDict,
+    args: &dyn Arguments<'db>,
+) -> Option<Inferred> {
+    todo!()
 }
