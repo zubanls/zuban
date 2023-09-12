@@ -2760,6 +2760,10 @@ impl TypedDict {
             .find(|p| p.name.unwrap().as_str(db) == name)
     }
 
+    pub fn attributes(&self) -> &[CallableParam] {
+        self.__new__().expect_simple_params()
+    }
+
     fn qualified_name(&self, db: &Database) -> String {
         let module = Module::from_file_index(db, self.name.file_index).qualified_name(db);
         format!("{module}.{}", self.name.as_str(db))

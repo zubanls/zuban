@@ -1,6 +1,7 @@
 use std::mem;
+use std::rc::Rc;
 
-use crate::database::{Database, DbType, GenericItem, ParamSpecUsage, Variance};
+use crate::database::{Database, DbType, GenericItem, ParamSpecUsage, TypedDict, Variance};
 use crate::diagnostics::IssueType;
 use crate::file::PythonFile;
 use crate::getitem::{SliceType, SliceTypeContent, Slices};
@@ -623,10 +624,21 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                 }
                             };
                             return Some(BaseArgumentReturn::ArgsKwargs(
-                                ArgsKwargsIterator::Kwargs {
-                                    inferred_value: Inferred::from_type(value_type),
-                                    node_ref,
-                                    position: i + 1,
+                                if let Some(typed_dict) =
+                                    Type::new(&value_type).maybe_typed_dict(i_s.db)
+                                {
+                                    ArgsKwargsIterator::TypedDict {
+                                        typed_dict,
+                                        iterator_index: 0,
+                                        node_ref,
+                                        position: i + 1,
+                                    }
+                                } else {
+                                    ArgsKwargsIterator::Kwargs {
+                                        inferred_value: Inferred::from_type(value_type),
+                                        node_ref,
+                                        position: i + 1,
+                                    }
                                 },
                             ));
                         }
@@ -829,6 +841,37 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
                     index,
                 })
             }
+            ArgsKwargsIterator::TypedDict {
+                node_ref,
+                position,
+                typed_dict,
+                iterator_index,
+            } => {
+                let index = self.counter;
+                self.counter += 1;
+                let entry = typed_dict.attributes().get(iterator_index).map(|param| {
+                    (
+                        param.name.unwrap(),
+                        param.param_specific.maybe_db_type().unwrap().clone(),
+                    )
+                });
+                self.args_kwargs_iterator = ArgsKwargsIterator::TypedDict {
+                    node_ref,
+                    position,
+                    typed_dict,
+                    iterator_index: iterator_index + 1,
+                };
+                entry.map(|(name, t)| Argument {
+                    kind: ArgumentKind::Inferred {
+                        inferred: Inferred::from_type(t),
+                        position,
+                        node_ref,
+                        in_args_or_kwargs_and_arbitrary_len: false,
+                        is_keyword: true,
+                    },
+                    index,
+                })
+            }
         }
     }
 }
@@ -842,6 +885,12 @@ enum ArgsKwargsIterator<'a> {
     },
     Kwargs {
         inferred_value: Inferred,
+        position: usize,
+        node_ref: NodeRef<'a>,
+    },
+    TypedDict {
+        typed_dict: Rc<TypedDict>,
+        iterator_index: usize,
         position: usize,
         node_ref: NodeRef<'a>,
     },

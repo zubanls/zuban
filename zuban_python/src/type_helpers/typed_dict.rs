@@ -3,7 +3,7 @@ use std::rc::Rc;
 use parsa_python_ast::{AtomContent, DictElement, ExpressionContent, ExpressionPart};
 
 use crate::{
-    arguments::{Argument, ArgumentKind, Arguments},
+    arguments::{ArgumentKind, Arguments},
     database::{
         CallableContent, CallableParam, CallableParams, ComplexPoint, CustomBehavior, DbType,
         FunctionKind, ParamSpecific, StringSlice, TypedDict,
