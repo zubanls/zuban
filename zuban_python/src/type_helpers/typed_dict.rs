@@ -309,17 +309,6 @@ pub fn typed_dict_get<'db>(
     )
 }
 
-fn maybe_positional_arg<'db>(
-    i_s: &InferenceState<'db, '_>,
-    arg: Argument<'db, '_>,
-    context: &mut ResultContext,
-) -> Option<Inferred> {
-    match &arg.kind {
-        ArgumentKind::Positional { .. } => Some(arg.infer(i_s, context)),
-        _ => None,
-    }
-}
-
 fn typed_dict_get_internal<'db>(
     i_s: &InferenceState<'db, '_>,
     td: &TypedDict,
@@ -341,7 +330,7 @@ fn typed_dict_get_internal<'db>(
         None => Some(DbType::None),
     };
 
-    let inferred_name = maybe_positional_arg(i_s, first_arg, &mut ResultContext::ExpectLiteral)?;
+    let inferred_name = first_arg.maybe_positional_arg(i_s, &mut ResultContext::ExpectLiteral)?;
     Some(Inferred::from_type(
         if let Some(name) = inferred_name.maybe_string_literal(i_s) {
             if let Some(param) = td.find_param(i_s.db, name.as_str(i_s.db)) {

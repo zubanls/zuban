@@ -374,6 +374,17 @@ impl<'db, 'a> Argument<'db, 'a> {
                 }
         )
     }
+
+    pub fn maybe_positional_arg(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        context: &mut ResultContext,
+    ) -> Option<Inferred> {
+        match &self.kind {
+            ArgumentKind::Positional { .. } => Some(self.infer(i_s, context)),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
