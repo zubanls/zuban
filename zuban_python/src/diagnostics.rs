@@ -169,6 +169,7 @@ pub(crate) enum IssueType {
     TypedDictAccessKeyMustBeStringLiteral { keys: Box<str> },
     TypedDictKeySetItemIncompatibleType { key: Box<str>, got: Box<str>, expected: Box<str> },
     TypedDictHasNoKey { typed_dict: Box<str>, key: Box<str> },
+    TypedDictKeyCannotBeDeleted { typed_dict: Box<str>, key: Box<str> },
 
     OverloadMismatch { name: Box<str>, args: Box<[Box<str>]>, variants: Box<[Box<str>]> },
     OverloadImplementationNotLast,
@@ -819,6 +820,9 @@ impl<'db> Diagnostic<'db> {
             ),
             TypedDictHasNoKey { typed_dict, key } => format!(
                 r#"TypedDict "{typed_dict}" has no key "{key}""#
+            ),
+            TypedDictKeyCannotBeDeleted { typed_dict, key } => format!(
+                r#"Key "{key}" of TypedDict "{typed_dict}" cannot be deleted"#
             ),
 
             OverloadImplementationNotLast =>

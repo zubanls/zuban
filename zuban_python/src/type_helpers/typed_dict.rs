@@ -13,7 +13,7 @@ use crate::{
     getitem::{SliceType, SliceTypeContent},
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{LookupKind, LookupResult, OnTypeError, ResultContext, Type},
+    matching::{FormatData, LookupKind, LookupResult, OnTypeError, ResultContext, Type},
     node_ref::NodeRef,
 };
 
@@ -336,7 +336,7 @@ fn typed_dict_get_internal<'db>(
             if let Some(param) = td.find_param(i_s.db, name.as_str(i_s.db)) {
                 let t = param.param_specific.maybe_db_type().unwrap();
                 let default = infer_default(&mut ResultContext::Known(&Type::new(&t)))?;
-                return Some(Inferred::from_type(t.clone().union(i_s.db, default)));
+                t.clone().union(i_s.db, default)
             } else {
                 infer_default(&mut ResultContext::Unknown)?;
                 i_s.db.python_state.object_db_type()
@@ -374,5 +374,32 @@ fn typed_dict_delitem_internal<'db>(
     td: &TypedDict,
     args: &dyn Arguments<'db>,
 ) -> Option<Inferred> {
-    todo!()
+    let inf_key = args.maybe_single_positional_arg(i_s, &mut ResultContext::ExpectLiteral)?;
+
+    if let Some(key) = inf_key.maybe_string_literal(i_s) {
+        let key = key.as_str(i_s.db);
+        if let Some(param) = td.find_param(i_s.db, key) {
+            if !param.has_default {
+                args.as_node_ref().add_issue(
+                    i_s,
+                    IssueType::TypedDictKeyCannotBeDeleted {
+                        typed_dict: td.format(&FormatData::new_short(i_s.db)).into(),
+                        key: key.into(),
+                    },
+                );
+            }
+        } else {
+            args.as_node_ref().add_issue(
+                i_s,
+                IssueType::TypedDictHasNoKey {
+                    typed_dict: td.format(&FormatData::new_short(i_s.db)).into(),
+                    key: key.into(),
+                },
+            );
+        }
+    } else {
+        args.as_node_ref()
+            .add_issue(i_s, IssueType::TypedDictKeysMustBeStringLiteral);
+    }
+    Some(Inferred::from_type(DbType::None))
 }

@@ -864,7 +864,6 @@ testLiteralIntelligentIndexingTypedDictUnions
 testLiteralIntelligentIndexingMultiTypedDict
 # Further special cases
 testTypedDictPopMethod
-testTypedDictDel
 testTypedDictNonMappingMethods
 testTypedDictOptionalUpdate
 testUnionOfEquivalentTypedDictsInferred
