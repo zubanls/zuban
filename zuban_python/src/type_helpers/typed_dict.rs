@@ -3,7 +3,7 @@ use std::rc::Rc;
 use parsa_python_ast::{AtomContent, DictElement, ExpressionContent, ExpressionPart};
 
 use crate::{
-    arguments::{ArgumentKind, Arguments},
+    arguments::{Argument, ArgumentKind, Arguments},
     database::{
         CallableContent, CallableParam, CallableParams, ComplexPoint, CustomBehavior, DbType,
         FunctionKind, ParamSpecific, StringSlice, TypedDict,
@@ -309,6 +309,17 @@ pub fn typed_dict_get<'db>(
     )
 }
 
+fn maybe_positional_arg<'db>(
+    i_s: &InferenceState<'db, '_>,
+    arg: Argument<'db, '_>,
+    context: &mut ResultContext,
+) -> Option<Inferred> {
+    match &arg.kind {
+        ArgumentKind::Positional { .. } => Some(arg.infer(i_s, context)),
+        _ => None,
+    }
+}
+
 fn typed_dict_get_internal<'db>(
     i_s: &InferenceState<'db, '_>,
     td: &TypedDict,
@@ -329,27 +340,23 @@ fn typed_dict_get_internal<'db>(
         },
         None => Some(DbType::None),
     };
-    if let ArgumentKind::Positional { .. } = &first_arg.kind {
-        return Some(Inferred::from_type(
-            if let Some(name) = first_arg
-                .infer(i_s, &mut ResultContext::ExpectLiteral)
-                .maybe_string_literal(i_s)
-            {
-                if let Some(param) = td.find_param(i_s.db, name.as_str(i_s.db)) {
-                    let t = param.param_specific.maybe_db_type().unwrap();
-                    let default = infer_default(&mut ResultContext::Known(&Type::new(&t)))?;
-                    return Some(Inferred::from_type(t.clone().union(i_s.db, default)));
-                } else {
-                    infer_default(&mut ResultContext::Unknown)?;
-                    i_s.db.python_state.object_db_type()
-                }
+
+    let inferred_name = maybe_positional_arg(i_s, first_arg, &mut ResultContext::ExpectLiteral)?;
+    Some(Inferred::from_type(
+        if let Some(name) = inferred_name.maybe_string_literal(i_s) {
+            if let Some(param) = td.find_param(i_s.db, name.as_str(i_s.db)) {
+                let t = param.param_specific.maybe_db_type().unwrap();
+                let default = infer_default(&mut ResultContext::Known(&Type::new(&t)))?;
+                return Some(Inferred::from_type(t.clone().union(i_s.db, default)));
             } else {
                 infer_default(&mut ResultContext::Unknown)?;
                 i_s.db.python_state.object_db_type()
-            },
-        ));
-    }
-    None
+            }
+        } else {
+            infer_default(&mut ResultContext::Unknown)?;
+            i_s.db.python_state.object_db_type()
+        },
+    ))
 }
 
 pub fn typed_dict_delitem<'db>(
