@@ -366,17 +366,21 @@ impl<'db, 'a> Argument<'db, 'a> {
         }
     }
 
-    pub fn human_readable_index(&self) -> String {
+    pub fn human_readable_index(&self, db: &Database) -> String {
         match &self.kind {
+            ArgumentKind::Inferred {
+                is_keyword: Some(Some(s)),
+                ..
+            } => format!("\"{}\"", s.as_str(db)),
             ArgumentKind::Positional { position, .. }
             | ArgumentKind::Inferred { position, .. }
             | ArgumentKind::ParamSpec { position, .. } => {
                 format!("{position}")
             }
             ArgumentKind::Comprehension { .. } => "0".to_owned(),
-            ArgumentKind::Keyword { key, .. } => format!("{key:?}"),
+            ArgumentKind::Keyword { key, .. } => format!("\"{key}\""),
             ArgumentKind::SlicesTuple { .. } => todo!(),
-            ArgumentKind::Overridden { original, .. } => original.human_readable_index(),
+            ArgumentKind::Overridden { original, .. } => original.human_readable_index(db),
         }
     }
 
