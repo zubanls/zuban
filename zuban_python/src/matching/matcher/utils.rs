@@ -576,13 +576,22 @@ pub fn match_arguments_against_params<
     let add_keyword_argument_issue = |reference: NodeRef, name: &str| {
         let s = match func_or_callable.has_keyword_param_with_name(i_s.db, name) {
             true => format!(
-                "{} gets multiple values for keyword argument {name:?}",
+                "{} gets multiple values for keyword argument \"{name}\"",
                 diagnostic_string("").as_deref().unwrap_or("function"),
             ),
-            false => format!(
-                "Unexpected keyword argument {name:?}{}",
-                diagnostic_string(" for ").as_deref().unwrap_or(""),
-            ),
+            false => {
+                if reference.maybe_double_starred_expression().is_some() {
+                    format!(
+                        "Extra argument \"{name}\" from **args{}",
+                        diagnostic_string(" for ").as_deref().unwrap_or(""),
+                    )
+                } else {
+                    format!(
+                        "Unexpected keyword argument \"{name}\"{}",
+                        diagnostic_string(" for ").as_deref().unwrap_or(""),
+                    )
+                }
+            }
         };
         reference.add_issue(i_s, IssueType::ArgumentIssue(s.into()));
     };
