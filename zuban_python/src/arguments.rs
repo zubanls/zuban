@@ -395,6 +395,17 @@ impl<'db, 'a> Argument<'db, 'a> {
         )
     }
 
+    pub fn keyword_name(&self, db: &'db Database) -> Option<&str> {
+        match self.kind {
+            ArgumentKind::Keyword { key, .. } => Some(key),
+            ArgumentKind::Inferred {
+                is_keyword: Some(Some(key)),
+                ..
+            } => Some(key.as_str(db)),
+            _ => None,
+        }
+    }
+
     pub fn maybe_positional_arg(
         self,
         i_s: &InferenceState<'db, '_>,

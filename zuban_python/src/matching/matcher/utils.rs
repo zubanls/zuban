@@ -573,7 +573,7 @@ pub fn match_arguments_against_params<
             ParamArgument::None => (),
         }
     }
-    let add_keyword_argument_issue = |reference: NodeRef, name| {
+    let add_keyword_argument_issue = |reference: NodeRef, name: &str| {
         let s = match func_or_callable.has_keyword_param_with_name(i_s.db, name) {
             true => format!(
                 "{} gets multiple values for keyword argument {name:?}",
@@ -602,14 +602,11 @@ pub fn match_arguments_against_params<
         if should_generate_errors {
             let mut too_many = false;
             while let Some(arg) = args_with_params.next_arg() {
-                match arg.kind {
-                    ArgumentKind::Keyword { key, node_ref, .. } => {
-                        add_keyword_argument_issue(node_ref, key)
-                    }
-                    _ => {
-                        too_many = true;
-                        break;
-                    }
+                if let Some(key) = arg.keyword_name(i_s.db) {
+                    add_keyword_argument_issue(arg.as_node_ref(), key)
+                } else {
+                    too_many = true;
+                    break;
                 }
             }
             if too_many {
@@ -621,11 +618,10 @@ pub fn match_arguments_against_params<
         }
     } else if args_with_params.has_unused_keyword_arguments() && should_generate_errors {
         for unused in &args_with_params.unused_keyword_arguments {
-            match unused.kind {
-                ArgumentKind::Keyword { key, node_ref, .. } => {
-                    add_keyword_argument_issue(node_ref, key)
-                }
-                _ => unreachable!(),
+            if let Some(key) = unused.keyword_name(i_s.db) {
+                add_keyword_argument_issue(unused.as_node_ref(), key)
+            } else {
+                unreachable!();
             }
         }
     } else if should_generate_errors {
