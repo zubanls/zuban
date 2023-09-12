@@ -43,8 +43,8 @@ pub fn check_dataclass_options<'db>(
         }
     };
     for arg in args.iter() {
-        if let ArgumentKind::Keyword { key, .. } = &arg.kind {
-            match *key {
+        if let Some(key) = arg.keyword_name(i_s.db) {
+            match key {
                 "kw_only" => assign_option(&mut options.kw_only, arg),
                 "frozen" => assign_option(&mut options.frozen, arg),
                 "order" => assign_option(&mut options.order, arg),
@@ -451,11 +451,8 @@ fn field_options_from_args<'db>(
         init: true,
     };
     for arg in args.iter() {
-        if let ArgumentKind::Keyword {
-            key, expression, ..
-        } = &arg.kind
-        {
-            match *key {
+        if let Some(key) = arg.keyword_name(i_s.db) {
+            match key {
                 "default" | "default_factory" => options.has_default = true,
                 "kw_only" => {
                     let result = arg.infer(i_s, &mut ResultContext::ExpectLiteral);

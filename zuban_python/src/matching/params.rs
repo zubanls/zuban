@@ -618,18 +618,12 @@ where
         }
         let check_unused = |self_: &mut Self, param: P| {
             for (i, unused) in self_.unused_keyword_arguments.iter().enumerate() {
-                match &unused.kind {
-                    ArgumentKind::Keyword { key, .. } => {
-                        if Some(*key) == param.name(self_.db) {
-                            return Some(InferrableParam2 {
-                                param,
-                                argument: ParamArgument::Argument(
-                                    self_.unused_keyword_arguments.remove(i),
-                                ),
-                            });
-                        }
-                    }
-                    _ => unreachable!(),
+                let key = unused.keyword_name(self.db).unwrap();
+                if Some(key) == param.name(self_.db) {
+                    return Some(InferrableParam2 {
+                        param,
+                        argument: ParamArgument::Argument(self_.unused_keyword_arguments.remove(i)),
+                    });
                 }
             }
             None
@@ -639,19 +633,16 @@ where
             match param.kind(self.db) {
                 ParamKind::PositionalOrKeyword => {
                     while let Some(arg) = self.next_arg() {
-                        match arg.kind {
-                            ArgumentKind::Keyword { key, .. } => {
-                                if Some(key) == param.name(self.db) {
-                                    argument_with_index = Some(arg);
-                                    break;
-                                } else {
-                                    self.unused_keyword_arguments.push(arg);
-                                }
-                            }
-                            _ => {
+                        if let Some(key) = arg.keyword_name(self.db) {
+                            if Some(key) == param.name(self.db) {
                                 argument_with_index = Some(arg);
                                 break;
+                            } else {
+                                self.unused_keyword_arguments.push(arg);
                             }
+                        } else {
+                            argument_with_index = Some(arg);
+                            break;
                         }
                     }
                     if argument_with_index.is_none() {
@@ -663,33 +654,23 @@ where
                 ParamKind::KeywordOnly => {
                     while let Some(arg) = self.next_arg() {
                         match arg.kind {
-                            ArgumentKind::Keyword { key, .. } => {
-                                if Some(key) == param.name(self.db) {
-                                    argument_with_index = Some(arg);
-                                    break;
-                                } else {
-                                    self.unused_keyword_arguments.push(arg);
-                                }
-                            }
                             ArgumentKind::Inferred {
-                                is_keyword: Some(name),
+                                is_keyword: Some(None),
                                 in_args_or_kwargs_and_arbitrary_len: true,
                                 ..
                             } => {
-                                if let Some(name) = name {
-                                    if Some(name.as_str(self.db)) == param.name(self.db) {
+                                argument_with_index = Some(arg);
+                                break;
+                            }
+                            _ => {
+                                if let Some(key) = arg.keyword_name(self.db) {
+                                    if Some(key) == param.name(self.db) {
                                         argument_with_index = Some(arg);
                                         break;
                                     } else {
                                         self.unused_keyword_arguments.push(arg);
                                     }
-                                } else {
-                                    argument_with_index = Some(arg);
-                                    break;
-                                }
-                            }
-                            _ => {
-                                if arg.in_args_or_kwargs_and_arbitrary_len() {
+                                } else if arg.in_args_or_kwargs_and_arbitrary_len() {
                                     self.current_arg = None;
                                 } else {
                                     self.too_many_positional_arguments = true;
@@ -711,8 +692,10 @@ where
                                 is_keyword: None, ..
                             }
                             | ArgumentKind::Comprehension { .. } => argument_with_index = Some(arg),
-                            ArgumentKind::Keyword { .. } => {
-                                self.unused_keyword_arguments.push(arg);
+                            _ => {
+                                if arg.keyword_name(self.db).is_some() {
+                                    self.unused_keyword_arguments.push(arg);
+                                }
                             }
                             _ => (),
                         }
