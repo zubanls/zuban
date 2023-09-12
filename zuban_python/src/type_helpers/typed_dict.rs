@@ -269,7 +269,12 @@ pub fn typed_dict_get<'db>(
     let DbType::TypedDict(td) = bound.unwrap() else {
         unreachable!();
     };
-    typed_dict_get_internal(i_s, td, args).unwrap_or_else(|| todo!())
+    typed_dict_get_internal(i_s, td, args).unwrap_or_else(|| {
+        let inst = Instance::new(i_s.db.python_state.typed_dict_class(), None);
+        inst.lookup(i_s, args.as_node_ref(), "get", LookupKind::OnlyType)
+            .into_inferred()
+            .execute_with_details(i_s, args, result_context, on_type_error)
+    })
 }
 
 pub fn typed_dict_get_internal<'db>(
@@ -295,25 +300,27 @@ pub fn typed_dict_get_internal<'db>(
             },
             None => DbType::None,
         };
-        if let Some(name) = first_arg
-            .infer(i_s, &mut ResultContext::ExpectLiteral)
-            .maybe_string_literal(i_s)
-        {
-            if let Some(param) = td.find_param(i_s.db, name.as_str(i_s.db)) {
-                return Some(Inferred::from_type(
-                    param
-                        .param_specific
-                        .maybe_db_type()
-                        .unwrap()
-                        .clone()
-                        .union(i_s.db, default),
-                ));
+        return Some(Inferred::from_type(
+            if let Some(name) = first_arg
+                .infer(i_s, &mut ResultContext::ExpectLiteral)
+                .maybe_string_literal(i_s)
+            {
+                if let Some(param) = td.find_param(i_s.db, name.as_str(i_s.db)) {
+                    return Some(Inferred::from_type(
+                        param
+                            .param_specific
+                            .maybe_db_type()
+                            .unwrap()
+                            .clone()
+                            .union(i_s.db, default),
+                    ));
+                } else {
+                    i_s.db.python_state.object_db_type()
+                }
             } else {
-                todo!()
-            }
-        } else {
-            todo!()
-        }
+                i_s.db.python_state.object_db_type()
+            },
+        ));
     }
     None
 }
