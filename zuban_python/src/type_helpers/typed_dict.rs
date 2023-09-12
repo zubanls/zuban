@@ -268,6 +268,26 @@ pub fn infer_typed_dict_total_argument(
     }
 }
 
+fn method_with_fallback<'db>(
+    i_s: &InferenceState<'db, '_>,
+    args: &dyn Arguments<'db>,
+    result_context: &mut ResultContext,
+    on_type_error: OnTypeError<'db, '_>,
+    td: &TypedDict,
+    name: &str,
+    handler: fn(
+        i_s: &InferenceState<'db, '_>,
+        td: &TypedDict,
+        args: &dyn Arguments<'db>,
+    ) -> Option<Inferred>,
+) -> Inferred {
+    handler(i_s, td, args).unwrap_or_else(|| {
+        let inst = Instance::new(i_s.db.python_state.typed_dict_class(), None);
+        inst.lookup(i_s, args.as_node_ref(), name, LookupKind::OnlyType)
+            .into_inferred()
+            .execute_with_details(i_s, args, result_context, on_type_error)
+    })
+}
 pub fn typed_dict_get<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Arguments<'db>,
@@ -278,15 +298,18 @@ pub fn typed_dict_get<'db>(
     let DbType::TypedDict(td) = bound.unwrap() else {
         unreachable!();
     };
-    typed_dict_get_internal(i_s, td, args).unwrap_or_else(|| {
-        let inst = Instance::new(i_s.db.python_state.typed_dict_class(), None);
-        inst.lookup(i_s, args.as_node_ref(), "get", LookupKind::OnlyType)
-            .into_inferred()
-            .execute_with_details(i_s, args, result_context, on_type_error)
-    })
+    method_with_fallback(
+        i_s,
+        args,
+        result_context,
+        on_type_error,
+        td,
+        "get",
+        typed_dict_get_internal,
+    )
 }
 
-pub fn typed_dict_get_internal<'db>(
+fn typed_dict_get_internal<'db>(
     i_s: &InferenceState<'db, '_>,
     td: &TypedDict,
     args: &dyn Arguments<'db>,
@@ -339,5 +362,21 @@ pub fn typed_dict_delitem<'db>(
     let DbType::TypedDict(td) = bound.unwrap() else {
         unreachable!();
     };
+    method_with_fallback(
+        i_s,
+        args,
+        result_context,
+        on_type_error,
+        td,
+        "__delitem__",
+        typed_dict_delitem_internal,
+    )
+}
+
+fn typed_dict_delitem_internal<'db>(
+    i_s: &InferenceState<'db, '_>,
+    td: &TypedDict,
+    args: &dyn Arguments<'db>,
+) -> Option<Inferred> {
     todo!()
 }
