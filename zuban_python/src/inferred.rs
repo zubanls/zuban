@@ -12,7 +12,8 @@ use crate::database::{
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::{
-    on_argument_type_error, use_cached_annotation_or_type_comment, File, PythonFile,
+    maybe_saved_annotation, on_argument_type_error, use_cached_annotation_or_type_comment, File,
+    PythonFile,
 };
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
@@ -404,6 +405,17 @@ impl<'db: 'slf, 'slf> Inferred {
         &'slf self,
         db: &'db Database,
     ) -> UnionValue<DbLiteral, impl Iterator<Item = DbLiteral> + 'slf> {
+        let from_type = |t: &'slf DbType| match t {
+            DbType::Union(t) => match t.iter().next() {
+                Some(DbType::Literal(_)) => UnionValue::Multiple(t.iter().map_while(|t| match t {
+                    DbType::Literal(literal) => Some(literal.clone()),
+                    _ => None,
+                })),
+                _ => UnionValue::Any,
+            },
+            DbType::Literal(literal) => UnionValue::Single(literal.clone()),
+            _ => UnionValue::Any,
+        };
         if let InferredState::Saved(link) = self.state {
             let node_ref = NodeRef::from_link(db, link);
             match node_ref.point().maybe_specific() {
@@ -427,21 +439,12 @@ impl<'db: 'slf, 'slf> Inferred {
                 }
                 _ => (),
             }
+            if let Some(t) = maybe_saved_annotation(node_ref) {
+                return from_type(t);
+            }
         }
         if let Some(ComplexPoint::TypeInstance(t)) = self.maybe_complex_point(db) {
-            match t {
-                DbType::Union(t) => match t.iter().next() {
-                    Some(DbType::Literal(_)) => {
-                        UnionValue::Multiple(t.iter().map_while(|t| match t {
-                            DbType::Literal(literal) => Some(literal.clone()),
-                            _ => None,
-                        }))
-                    }
-                    _ => UnionValue::Any,
-                },
-                DbType::Literal(literal) => UnionValue::Single(literal.clone()),
-                _ => UnionValue::Any,
-            }
+            from_type(t)
         } else {
             UnionValue::Any
         }

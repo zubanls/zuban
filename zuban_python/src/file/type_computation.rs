@@ -3390,6 +3390,25 @@ pub fn use_cached_annotation_or_type_comment<'db: 'file, 'file>(
         )
 }
 
+pub fn maybe_saved_annotation(node_ref: NodeRef) -> Option<&DbType> {
+    if matches!(
+        node_ref.point().maybe_specific(),
+        Some(
+            Specific::AnnotationOrTypeCommentWithTypeVars
+                | Specific::AnnotationOrTypeCommentWithoutTypeVars
+                | Specific::AnnotationOrTypeCommentClassVar
+        )
+    ) {
+        let Some(ComplexPoint::TypeInstance(t)) = node_ref
+            .add_to_node_index(ANNOTATION_TO_EXPR_DIFFERENCE as i64)
+            .complex() else {
+            unreachable!()
+        };
+        return Some(t);
+    }
+    None
+}
+
 fn check_named_tuple_name<'x, 'y>(
     i_s: &InferenceState,
     executable_name: &'static str,

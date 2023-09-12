@@ -17,7 +17,7 @@ use crate::{
     node_ref::NodeRef,
 };
 
-use super::{Callable, Instance, TypeOrClass};
+use super::{Callable, Instance};
 
 pub struct TypedDictHelper<'a>(pub &'a Rc<TypedDict>);
 impl<'a> TypedDictHelper<'a> {

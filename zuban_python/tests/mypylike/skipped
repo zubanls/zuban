@@ -862,8 +862,6 @@ testLiteralIntelligentIndexingUsingFinal
 testLiteralIntelligentIndexingTypedDict
 testLiteralIntelligentIndexingTypedDictUnions
 testLiteralIntelligentIndexingMultiTypedDict
-testPluginUnionsOfTypedDicts
-testPluginUnionsOfTypedDictsNonTotal
 # Further special cases
 testTypedDictPopMethod
 testTypedDictDel
@@ -910,6 +908,8 @@ testUnionOfEquivalentTypedDictsEmpty
 testUnionOfEquivalentTypedDictsDistinct
 testUnionOfEquivalentTypedDictsNested
 testTypedDictChainedGetWithEmptyDictDefault
+testPluginUnionsOfTypedDicts
+testPluginUnionsOfTypedDictsNonTotal
 # "Required[] can be only used in a TypedDict definition"
 testDoesDisallowRequiredOutsideOfTypedDict
 testDoesOnlyAllowRequiredInsideTypedDictAtTopLevel
