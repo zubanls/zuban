@@ -1,7 +1,9 @@
 use std::mem;
 use std::rc::Rc;
 
-use crate::database::{Database, DbType, GenericItem, ParamSpecUsage, TypedDict, Variance};
+use crate::database::{
+    Database, DbType, GenericItem, ParamSpecUsage, StringSlice, TypedDict, Variance,
+};
 use crate::diagnostics::IssueType;
 use crate::file::PythonFile;
 use crate::getitem::{SliceType, SliceTypeContent, Slices};
@@ -233,7 +235,7 @@ pub enum ArgumentKind<'db, 'a> {
         position: usize, // The position as a 1-based index
         node_ref: NodeRef<'a>,
         in_args_or_kwargs_and_arbitrary_len: bool,
-        is_keyword: bool,
+        is_keyword: Option<Option<StringSlice>>,
     },
     Positional {
         i_s: InferenceState<'db, 'a>,
@@ -383,7 +385,7 @@ impl<'db, 'a> Argument<'db, 'a> {
             self.kind,
             ArgumentKind::Keyword { .. }
                 | ArgumentKind::Inferred {
-                    is_keyword: true,
+                    is_keyword: Some(_),
                     ..
                 }
         )
@@ -401,7 +403,7 @@ impl<'db, 'a> Argument<'db, 'a> {
             ArgumentKind::Inferred {
                 inferred,
                 in_args_or_kwargs_and_arbitrary_len: false,
-                is_keyword: false,
+                is_keyword: None,
                 ..
             } => Some(inferred),
             ArgumentKind::ParamSpec { .. } => todo!(),
@@ -504,7 +506,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                         position: 1,
                         node_ref,
                         in_args_or_kwargs_and_arbitrary_len: false,
-                        is_keyword: false,
+                        is_keyword: None,
                     }))
                 } else {
                     unreachable!()
@@ -570,6 +572,16 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                 .infer_expression(double_starred_expr.expression());
                             let type_ = inf.as_type(i_s);
                             let node_ref = NodeRef::new(file, double_starred_expr.index());
+                            if let Some(typed_dict) = type_.maybe_typed_dict(i_s.db) {
+                                return Some(BaseArgumentReturn::ArgsKwargs(
+                                    ArgsKwargsIterator::TypedDict {
+                                        typed_dict,
+                                        iterator_index: 0,
+                                        node_ref,
+                                        position: i + 1,
+                                    },
+                                ));
+                            }
                             let wanted_cls =
                                 i_s.db.python_state.supports_keys_and_get_item_class(i_s.db);
                             let mut matcher = Matcher::new_class_matcher(i_s, wanted_cls);
@@ -624,21 +636,10 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                 }
                             };
                             return Some(BaseArgumentReturn::ArgsKwargs(
-                                if let Some(typed_dict) =
-                                    Type::new(&value_type).maybe_typed_dict(i_s.db)
-                                {
-                                    ArgsKwargsIterator::TypedDict {
-                                        typed_dict,
-                                        iterator_index: 0,
-                                        node_ref,
-                                        position: i + 1,
-                                    }
-                                } else {
-                                    ArgsKwargsIterator::Kwargs {
-                                        inferred_value: Inferred::from_type(value_type),
-                                        node_ref,
-                                        position: i + 1,
-                                    }
+                                ArgsKwargsIterator::Kwargs {
+                                    inferred_value: Inferred::from_type(value_type),
+                                    node_ref,
+                                    position: i + 1,
                                 },
                             ));
                         }
@@ -698,7 +699,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                             position: 1,
                             node_ref: slice.as_node_ref(),
                             in_args_or_kwargs_and_arbitrary_len: false,
-                            is_keyword: false,
+                            is_keyword: None,
                         }))
                     }
                 }
@@ -815,7 +816,7 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
                             position,
                             node_ref,
                             in_args_or_kwargs_and_arbitrary_len,
-                            is_keyword: false,
+                            is_keyword: None,
                         },
                         index,
                     })
@@ -836,7 +837,7 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
                         position,
                         node_ref,
                         in_args_or_kwargs_and_arbitrary_len: true,
-                        is_keyword: true,
+                        is_keyword: Some(None),
                     },
                     index,
                 })
@@ -855,19 +856,21 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
                         param.param_specific.maybe_db_type().unwrap().clone(),
                     )
                 });
-                self.args_kwargs_iterator = ArgsKwargsIterator::TypedDict {
-                    node_ref,
-                    position,
-                    typed_dict,
-                    iterator_index: iterator_index + 1,
-                };
+                if entry.is_some() {
+                    self.args_kwargs_iterator = ArgsKwargsIterator::TypedDict {
+                        node_ref,
+                        position,
+                        typed_dict,
+                        iterator_index: iterator_index + 1,
+                    };
+                }
                 entry.map(|(name, t)| Argument {
                     kind: ArgumentKind::Inferred {
                         inferred: Inferred::from_type(t),
                         position,
                         node_ref,
                         in_args_or_kwargs_and_arbitrary_len: false,
-                        is_keyword: true,
+                        is_keyword: Some(Some(name)),
                     },
                     index,
                 })

@@ -501,15 +501,25 @@ pub fn match_arguments_against_params<
                             } else if let Some(double_starred) =
                                 node_ref.maybe_double_starred_expression()
                             {
-                                t1 = format!(
-                                    "**{}",
-                                    node_ref
-                                        .file
-                                        .inference(i_s)
-                                        .infer_expression(double_starred.expression())
-                                        .format_short(i_s)
-                                )
-                                .into()
+                                // If we have a defined kwargs name, that's from a TypedDict and
+                                // shouldn't be formatted.
+                                if !matches!(
+                                    &argument.kind,
+                                    ArgumentKind::Inferred {
+                                        is_keyword: Some(Some(_)),
+                                        ..
+                                    }
+                                ) {
+                                    t1 = format!(
+                                        "**{}",
+                                        node_ref
+                                            .file
+                                            .inference(i_s)
+                                            .infer_expression(double_starred.expression())
+                                            .format_short(i_s)
+                                    )
+                                    .into()
+                                }
                             }
                             match reason {
                                 MismatchReason::ConstraintMismatch { expected, type_var } => {

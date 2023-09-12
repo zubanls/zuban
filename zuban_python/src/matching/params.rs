@@ -672,12 +672,21 @@ where
                                 }
                             }
                             ArgumentKind::Inferred {
-                                is_keyword: true,
+                                is_keyword: Some(name),
                                 in_args_or_kwargs_and_arbitrary_len: true,
                                 ..
                             } => {
-                                argument_with_index = Some(arg);
-                                break;
+                                if let Some(name) = name {
+                                    if Some(name.as_str(self.db)) == param.name(self.db) {
+                                        argument_with_index = Some(arg);
+                                        break;
+                                    } else {
+                                        self.unused_keyword_arguments.push(arg);
+                                    }
+                                } else {
+                                    argument_with_index = Some(arg);
+                                    break;
+                                }
                             }
                             _ => {
                                 if arg.in_args_or_kwargs_and_arbitrary_len() {
@@ -699,7 +708,7 @@ where
                         match arg.kind {
                             ArgumentKind::Positional { .. }
                             | ArgumentKind::Inferred {
-                                is_keyword: false, ..
+                                is_keyword: None, ..
                             }
                             | ArgumentKind::Comprehension { .. } => argument_with_index = Some(arg),
                             ArgumentKind::Keyword { .. } => {
