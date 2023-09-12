@@ -444,8 +444,8 @@ fn replace_unions(line: &mut String) {
         let mut end = 0;
         for (i, chr) in line[index..].char_indices() {
             match chr {
-                '[' => brackets += 1,
-                ']' => {
+                '[' | '(' | '{' => brackets += 1,
+                ']' | ')' | '}' => {
                     brackets -= 1;
                     if brackets == 0 {
                         end = i;

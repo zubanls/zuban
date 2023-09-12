@@ -1,5 +1,6 @@
 # Next up
 testCachedProperty
+testTypedDictGetMethodInvalidArgs
 
 # 3.7 tests
 testNamedTupleDefaults
@@ -861,9 +862,6 @@ testLiteralIntelligentIndexingUsingFinal
 testLiteralIntelligentIndexingTypedDict
 testLiteralIntelligentIndexingTypedDictUnions
 testLiteralIntelligentIndexingMultiTypedDict
-testTypedDictGetMethodInvalidArgs
-testTypedDictChainedGetMethodWithDictFallback
-testTypedDictChainedGetWithEmptyDictDefault
 testPluginUnionsOfTypedDicts
 testPluginUnionsOfTypedDictsNonTotal
 # Further special cases
@@ -911,6 +909,7 @@ testUnionOfEquivalentTypedDictsDeclared
 testUnionOfEquivalentTypedDictsEmpty
 testUnionOfEquivalentTypedDictsDistinct
 testUnionOfEquivalentTypedDictsNested
+testTypedDictChainedGetWithEmptyDictDefault
 # "Required[] can be only used in a TypedDict definition"
 testDoesDisallowRequiredOutsideOfTypedDict
 testDoesOnlyAllowRequiredInsideTypedDictAtTopLevel
