@@ -865,21 +865,21 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
             } => {
                 let index = self.counter;
                 self.counter += 1;
-                let entry = typed_dict.attributes().get(iterator_index).map(|param| {
+                let Some((name, t)) = typed_dict.attributes().get(iterator_index).map(|param| {
                     (
                         param.name.unwrap(),
                         param.param_specific.maybe_db_type().unwrap().clone(),
                     )
-                });
-                if entry.is_some() {
-                    self.args_kwargs_iterator = ArgsKwargsIterator::TypedDict {
-                        node_ref,
-                        position,
-                        typed_dict,
-                        iterator_index: iterator_index + 1,
-                    };
-                }
-                entry.map(|(name, t)| Argument {
+                }) else {
+                    return self.next()
+                };
+                self.args_kwargs_iterator = ArgsKwargsIterator::TypedDict {
+                    node_ref,
+                    position,
+                    typed_dict,
+                    iterator_index: iterator_index + 1,
+                };
+                Some(Argument {
                     kind: ArgumentKind::Inferred {
                         inferred: Inferred::from_type(t),
                         position,
