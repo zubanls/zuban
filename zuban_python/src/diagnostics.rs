@@ -836,7 +836,7 @@ impl<'db> Diagnostic<'db> {
             TypedDictMissingKeys { typed_dict, keys } => match keys.as_ref() {
                 [key] => format!(r#"Missing key "{key}" for TypedDict "{typed_dict}""#),
                 _ => format!(
-                    r#""Missing keys ({}) for TypedDict "{typed_dict}""#,
+                    r#"Missing keys ({}) for TypedDict "{typed_dict}""#,
                     keys.iter()
                         .map(|key| format!("\"{key}\""))
                         .collect::<Vec<String>>()

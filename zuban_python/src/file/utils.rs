@@ -216,10 +216,18 @@ impl<'db> Inference<'db, '_, '_> {
                     .iter()
                     .any(|arg| arg.keyword_name(i_s.db) == Some(expected_name))
                 {
-                    todo!()
-                    //missing_keys.push(expected_name.into())
+                    missing_keys.push(expected_name.into())
                 }
             }
+        }
+        if !missing_keys.is_empty() {
+            args.as_node_ref().add_issue(
+                i_s,
+                IssueType::TypedDictMissingKeys {
+                    typed_dict: typed_dict.name.as_str(i_s.db).into(),
+                    keys: missing_keys.into(),
+                },
+            )
         }
         Some(DbType::TypedDict(typed_dict))
     }

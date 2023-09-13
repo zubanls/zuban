@@ -735,10 +735,7 @@ testUnpackTypedDictTotality
 testErrorCodeTypedDict
 # "Missing key "y" for TypedDict "Point"
 testCannotCreateTypedDictInstanceWithMissingItems
-testTypedDictExplicitTypes
-testTypedDictUppercaseKey
 testDoesRecognizeRequiredInTypedDictWithClass
-testDoesRecognizeRequiredInTypedDictWithAssignment
 # "TypedDict "a.Dict[TValue]" has no key "x""
 testTypedDictMissingEmptyKey
 testGenericTypedDictWithError
@@ -901,6 +898,7 @@ testDoesRecognizeNotRequiredInTypedDictWithAssignment
 testTypedDictUnpackNotRequiredKeyIncompatible
 testTypedDictUnpackNotRequiredKeyExtra
 testTypedDictUnpackRequiredKeyMissing
+testDoesRecognizeRequiredInTypedDictWithAssignment
 
 # NoReturn
 testNoReturnTypeAlias
