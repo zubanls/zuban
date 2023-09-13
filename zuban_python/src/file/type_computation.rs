@@ -534,9 +534,16 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         }
     }
 
-    pub fn compute_typed_dict_entry(&mut self, expr: Expression) -> DbType {
+    pub fn compute_typed_dict_entry(&mut self, expr: Expression, total: bool) -> (DbType, bool) {
         let calculated = self.compute_type(expr);
-        self.as_db_type(calculated, NodeRef::new(self.inference.file, expr.index()))
+        match calculated {
+            TypeContent::Required(t) => (t, false),
+            TypeContent::NotRequired(t) => (t, true),
+            _ => (
+                self.as_db_type(calculated, NodeRef::new(self.inference.file, expr.index())),
+                !total,
+            ),
+        }
     }
 
     pub fn cache_annotation(&mut self, annotation: Annotation, is_implicit_optional: bool) {
@@ -3052,7 +3059,11 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         Ok(Inferred::from_type(db_type))
     }
 
-    pub fn compute_class_typed_dict_member(&mut self, annotation: Annotation) -> DbType {
+    pub fn compute_class_typed_dict_member(
+        &mut self,
+        annotation: Annotation,
+        total: bool,
+    ) -> (DbType, bool) {
         let mut x = type_computation_for_variable_annotation;
         let mut comp = TypeComputation::new(
             self,
@@ -3061,12 +3072,13 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             TypeComputationOrigin::AssignmentTypeCommentOrAnnotation,
         );
 
-        let mut db_type = comp.compute_typed_dict_entry(annotation.expression());
+        let (mut db_type, has_default) =
+            comp.compute_typed_dict_entry(annotation.expression(), total);
         let type_vars = comp.into_type_vars(|inf, recalculate_type_vars| {
             db_type = recalculate_type_vars(&db_type);
         });
         debug_assert!(type_vars.is_empty());
-        db_type
+        (db_type, has_default)
     }
 
     pub fn compute_type_var_constraint(&mut self, expr: Expression) -> Option<DbType> {

@@ -730,8 +730,6 @@ testUnpackWithoutTypedDict
 # "Missing named argument "radius" for "foo""
 testUnpackTypedDictTotality
 testErrorCodeTypedDict
-# "Missing key "y" for TypedDict "Point"
-testDoesRecognizeRequiredInTypedDictWithClass
 # "TypedDict "a.Dict[TValue]" has no key "x""
 testTypedDictMissingEmptyKey
 testGenericTypedDictWithError
@@ -785,6 +783,9 @@ testTypedDictUnpackUnionRequiredMissing
 testTypedDictUnpackInference
 testTypedDictUnpackStrictMode
 testTypedDictUnpackAny
+testTypedDictUnpackNotRequiredKeyIncompatible
+testTypedDictUnpackNotRequiredKeyExtra
+testTypedDictUnpackRequiredKeyMissing
 # structural matching
 testCanConvertTypedDictToEquivalentTypedDict
 testCanConvertTypedDictToNarrowerTypedDict
@@ -873,18 +874,6 @@ testUnionOfEquivalentTypedDictsNested
 testTypedDictChainedGetWithEmptyDictDefault
 testPluginUnionsOfTypedDicts
 testPluginUnionsOfTypedDictsNonTotal
-# "Required[] can be only used in a TypedDict definition"
-testDoesDisallowRequiredInsideRequired
-testDoesDisallowNotRequiredInsideNotRequired
-# Required/ NotRequired
-testRequiredExplicitAny
-testNotRequiredExplicitAny
-testDoesRecognizeNotRequiredInTypedDictWithClass
-testDoesRecognizeNotRequiredInTypedDictWithAssignment
-testTypedDictUnpackNotRequiredKeyIncompatible
-testTypedDictUnpackNotRequiredKeyExtra
-testTypedDictUnpackRequiredKeyMissing
-testDoesRecognizeRequiredInTypedDictWithAssignment
 
 # NoReturn
 testNoReturnTypeAlias

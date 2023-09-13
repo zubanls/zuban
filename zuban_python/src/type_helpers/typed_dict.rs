@@ -227,10 +227,10 @@ fn new_typed_dict_internal<'db>(
                         .add_issue(i_s, IssueType::TypedDictInvalidFieldName);
                     return None
                 };
-                let t = comp.compute_typed_dict_entry(key_value.value());
+                let (t, has_default) = comp.compute_typed_dict_entry(key_value.value(), total);
                 params.push(CallableParam {
                     param_specific: ParamSpecific::PositionalOrKeyword(t),
-                    has_default: !total,
+                    has_default,
                     name: Some(param_name),
                 });
                 key_value.key();

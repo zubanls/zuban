@@ -1941,10 +1941,12 @@ fn find_stmt_typed_dict_types(
         match simple.unpack() {
             SimpleStmtContent::Assignment(assignment) => match assignment.unpack() {
                 AssignmentContent::WithAnnotation(Target::Name(name), annot, default) => {
-                    let t = file.inference(i_s).compute_class_typed_dict_member(annot);
+                    let (t, has_default) = file
+                        .inference(i_s)
+                        .compute_class_typed_dict_member(annot, total);
                     vec.push(CallableParam {
                         param_specific: ParamSpecific::PositionalOrKeyword(t),
-                        has_default: !total,
+                        has_default,
                         name: Some(StringSlice::from_name(file.file_index(), name.name())),
                     })
                 }
