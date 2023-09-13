@@ -3052,6 +3052,23 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         Ok(Inferred::from_type(db_type))
     }
 
+    pub fn compute_class_typed_dict_member(&mut self, annotation: Annotation) -> DbType {
+        let mut x = type_computation_for_variable_annotation;
+        let mut comp = TypeComputation::new(
+            self,
+            NodeRef::new(self.file, annotation.index()).as_link(),
+            &mut x,
+            TypeComputationOrigin::AssignmentTypeCommentOrAnnotation,
+        );
+
+        let mut db_type = comp.compute_typed_dict_entry(annotation.expression());
+        let type_vars = comp.into_type_vars(|inf, recalculate_type_vars| {
+            db_type = recalculate_type_vars(&db_type);
+        });
+        debug_assert!(type_vars.is_empty());
+        db_type
+    }
+
     pub fn compute_type_var_constraint(&mut self, expr: Expression) -> Option<DbType> {
         let mut on_type_var =
             |i_s: &InferenceState, _: &_, type_var_like: TypeVarLike, current_callable| {

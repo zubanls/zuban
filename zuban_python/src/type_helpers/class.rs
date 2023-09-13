@@ -1941,8 +1941,7 @@ fn find_stmt_typed_dict_types(
         match simple.unpack() {
             SimpleStmtContent::Assignment(assignment) => match assignment.unpack() {
                 AssignmentContent::WithAnnotation(Target::Name(name), annot, default) => {
-                    file.inference(i_s).ensure_cached_annotation(annot);
-                    let t = use_cached_annotation_type(i_s.db, file, annot).into_db_type();
+                    let t = file.inference(i_s).compute_class_typed_dict_member(annot);
                     vec.push(CallableParam {
                         param_specific: ParamSpecific::PositionalOrKeyword(t),
                         has_default: !total,

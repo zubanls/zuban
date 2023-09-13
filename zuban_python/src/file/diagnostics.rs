@@ -2,7 +2,7 @@ use parsa_python_ast::*;
 
 use crate::arguments::{CombinedArguments, KnownArguments, NoArguments};
 use crate::database::{
-    CallableContent, ComplexPoint, Database, DbType, FunctionKind, Locality,
+    CallableContent, ClassType, ComplexPoint, Database, DbType, FunctionKind, Locality,
     OverloadImplementation, Point, PointType, Specific, TupleTypeArguments, TypeOrTypeVarTuple,
     Variance,
 };
@@ -337,6 +337,14 @@ impl<'db> Inference<'db, '_, '_> {
         let class_node_ref = NodeRef::new(self.file, class.index());
         let db = self.i_s.db;
         let c = Class::with_self_generics(db, class_node_ref);
+        if matches!(
+            c.use_cached_class_infos(db).class_type,
+            ClassType::TypedDict(_)
+        ) {
+            // TypedDicts are special, because they really only contain annotations and no methods.
+            // We skip all of this logic, because there's custom logic for TypedDicts.
+            return;
+        }
         let i_s = self.i_s.with_diagnostic_class_context(&c);
         let mut inference = self.file.inference(&i_s);
         inference.calc_block_diagnostics(block, Some(c), None);
