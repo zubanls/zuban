@@ -118,6 +118,8 @@ impl<'db> Inference<'db, '_, '_> {
                         key_value.key(),
                         &mut ResultContext::ExpectLiteral,
                     );
+                    let node_ref =
+                        NodeRef::new(self.file, key_value.index()).to_db_lifetime(i_s.db);
                     match inf.maybe_string_literal(i_s) {
                         Some(literal) => {
                             let key = literal.as_str(i_s.db);
@@ -137,8 +139,6 @@ impl<'db> Inference<'db, '_, '_> {
                                     matcher,
                                     &inferred,
                                     Some(|got, expected, _: &MismatchReason| {
-                                        let node_ref = NodeRef::new(self.file, key_value.index())
-                                            .to_db_lifetime(i_s.db);
                                         node_ref.add_issue(
                                             i_s,
                                             IssueType::TypedDictIncompatibleType {
@@ -151,7 +151,7 @@ impl<'db> Inference<'db, '_, '_> {
                                     }),
                                 );
                             } else {
-                                NodeRef::new(self.file, key_value.index()).add_issue(
+                                node_ref.add_issue(
                                     i_s,
                                     IssueType::TypedDictExtraKey {
                                         key: key.into(),
@@ -161,8 +161,7 @@ impl<'db> Inference<'db, '_, '_> {
                             }
                         }
                         None => {
-                            NodeRef::new(self.file, key_value.index())
-                                .add_issue(i_s, IssueType::TypedDictKeysMustBeStringLiteral);
+                            node_ref.add_issue(i_s, IssueType::TypedDictKeysMustBeStringLiteral);
                         }
                     }
                 }
