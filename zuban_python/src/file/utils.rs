@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use parsa_python_ast::{
-    Dict, DictElement, Int, List, StarLikeExpression, StarLikeExpressionIterator,
+    Dict, DictElement, Expression, Int, List, StarLikeExpression, StarLikeExpressionIterator,
 };
 
 use crate::arguments::Argument;
@@ -110,7 +110,6 @@ impl<'db> Inference<'db, '_, '_> {
         dict: Dict,
     ) -> Option<DbType> {
         let i_s = self.i_s;
-        let params = typed_dict.__new__().expect_simple_params();
         for element in dict.iter_elements() {
             match element {
                 DictElement::KeyValue(key_value) => {
@@ -123,42 +122,13 @@ impl<'db> Inference<'db, '_, '_> {
                     match inf.maybe_string_literal(i_s) {
                         Some(literal) => {
                             let key = literal.as_str(i_s.db);
-                            if let Some(param) = params
-                                .iter()
-                                .find(|param| param.name.unwrap().as_str(i_s.db) == key)
-                            {
-                                let expected = Type::new(
-                                    param.param_specific.expect_positional_db_type_as_ref(),
-                                );
-                                let inferred = self.infer_expression_with_context(
-                                    key_value.value(),
-                                    &mut ResultContext::Known(&expected),
-                                );
-                                expected.error_if_not_matches_with_matcher(
-                                    i_s,
-                                    matcher,
-                                    &inferred,
-                                    Some(|got, expected, _: &MismatchReason| {
-                                        node_ref.add_issue(
-                                            i_s,
-                                            IssueType::TypedDictIncompatibleType {
-                                                key: key.into(),
-                                                got,
-                                                expected,
-                                            },
-                                        );
-                                        node_ref
-                                    }),
-                                );
-                            } else {
-                                node_ref.add_issue(
-                                    i_s,
-                                    IssueType::TypedDictExtraKey {
-                                        key: key.into(),
-                                        typed_dict: typed_dict.name.as_str(i_s.db).into(),
-                                    },
-                                );
-                            }
+                            self.infer_typed_dict_item(
+                                &typed_dict,
+                                matcher,
+                                node_ref,
+                                key,
+                                key_value.value(),
+                            );
                         }
                         None => {
                             node_ref.add_issue(i_s, IssueType::TypedDictKeysMustBeStringLiteral);
@@ -169,6 +139,51 @@ impl<'db> Inference<'db, '_, '_> {
             }
         }
         Some(DbType::TypedDict(typed_dict))
+    }
+
+    fn infer_typed_dict_item(
+        &mut self,
+        typed_dict: &TypedDict,
+        matcher: &mut Matcher,
+        node_ref: NodeRef<'db>,
+        key: &str,
+        expr: Expression,
+    ) {
+        let i_s = self.i_s;
+        if let Some(param) = typed_dict
+            .__new__()
+            .expect_simple_params()
+            .iter()
+            .find(|param| param.name.unwrap().as_str(i_s.db) == key)
+        {
+            let expected = Type::new(param.param_specific.expect_positional_db_type_as_ref());
+            let inferred =
+                self.infer_expression_with_context(expr, &mut ResultContext::Known(&expected));
+            expected.error_if_not_matches_with_matcher(
+                i_s,
+                matcher,
+                &inferred,
+                Some(|got, expected, _: &MismatchReason| {
+                    node_ref.add_issue(
+                        i_s,
+                        IssueType::TypedDictIncompatibleType {
+                            key: key.into(),
+                            got,
+                            expected,
+                        },
+                    );
+                    node_ref
+                }),
+            );
+        } else {
+            node_ref.add_issue(
+                i_s,
+                IssueType::TypedDictExtraKey {
+                    key: key.into(),
+                    typed_dict: typed_dict.name.as_str(i_s.db).into(),
+                },
+            );
+        }
     }
 
     pub fn create_dict_generics(&mut self, dict: Dict) -> GenericsList {
