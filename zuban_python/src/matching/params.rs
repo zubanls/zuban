@@ -697,7 +697,6 @@ where
                                     self.unused_keyword_arguments.push(arg);
                                 }
                             }
-                            _ => (),
                         }
                     }
                 }

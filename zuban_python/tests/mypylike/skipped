@@ -778,8 +778,6 @@ testTypedDictWithClassmethodAlternativeConstructorDoesNotCrash
 # "Duplicate TypedDict key "x""
 testCannotCreateTypedDictWithDuplicateKey1
 testCannotCreateTypedDictWithDuplicateKey2
-# dict() initializations
-testTypedDictCreatedWithEmptyDict
 # Unpack
 testUnpackKeywordTypesTypedDict
 testUnpackKwargsNonIdentifier

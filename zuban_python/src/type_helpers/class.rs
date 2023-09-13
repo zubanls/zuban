@@ -1427,6 +1427,18 @@ impl<'db: 'a, 'a> Class<'a> {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
+        if self.node_ref == original_i_s.db.python_state.dict_node_ref() {
+            // This is a special case where we intercept the call to dict(..) when used with
+            // TypedDict.
+            if let Some(inf) = args
+                .as_node_ref()
+                .file
+                .inference(original_i_s)
+                .infer_dict_call_from_context(args, result_context)
+            {
+                return inf;
+            }
+        }
         match self.execute_and_return_generics(original_i_s, args, result_context, on_type_error) {
             ClassExecutionResult::ClassGenerics(generics) => {
                 let result = Inferred::from_type(DbType::Class(GenericClass {

@@ -1,10 +1,10 @@
 use std::rc::Rc;
 
 use parsa_python_ast::{
-    Dict, DictElement, Expression, Int, List, StarLikeExpression, StarLikeExpressionIterator,
+    Dict, DictElement, Int, List, StarLikeExpression, StarLikeExpressionIterator,
 };
 
-use crate::arguments::Argument;
+use crate::arguments::{Argument, Arguments};
 use crate::database::{
     ClassGenerics, DbType, GenericItem, GenericsList, Literal, LiteralKind, LiteralValue, TypedDict,
 };
@@ -85,6 +85,7 @@ impl<'db> Inference<'db, '_, '_> {
             .flatten()
     }
 
+    // For {..}
     pub fn infer_dict_literal_from_context(
         &mut self,
         dict: Dict,
@@ -94,7 +95,7 @@ impl<'db> Inference<'db, '_, '_> {
             .with_type_if_exists(self.i_s, |i_s: &InferenceState<'db, '_>, type_, matcher| {
                 let mut found = None;
                 type_.on_any_typed_dict(i_s, matcher, &mut |i_s, matcher, td| {
-                    found = self.check_typed_dict_with_context(matcher, td, dict);
+                    found = self.check_typed_dict_literal_with_context(matcher, td, dict);
                     found.is_some()
                 });
                 // `found` might still be empty, because we matched Any.
@@ -103,7 +104,7 @@ impl<'db> Inference<'db, '_, '_> {
             .flatten()
     }
 
-    pub fn check_typed_dict_with_context(
+    fn check_typed_dict_literal_with_context(
         &mut self,
         matcher: &mut Matcher,
         typed_dict: Rc<TypedDict>,
@@ -122,12 +123,15 @@ impl<'db> Inference<'db, '_, '_> {
                     match inf.maybe_string_literal(i_s) {
                         Some(literal) => {
                             let key = literal.as_str(i_s.db);
-                            self.infer_typed_dict_item(
+                            infer_typed_dict_item(
+                                self.i_s,
                                 &typed_dict,
                                 matcher,
                                 node_ref,
                                 key,
-                                key_value.value(),
+                                |context| {
+                                    self.infer_expression_with_context(key_value.value(), context)
+                                },
                             );
                         }
                         None => {
@@ -141,49 +145,47 @@ impl<'db> Inference<'db, '_, '_> {
         Some(DbType::TypedDict(typed_dict))
     }
 
-    fn infer_typed_dict_item(
+    // For dict(..)
+    pub fn infer_dict_call_from_context(
         &mut self,
-        typed_dict: &TypedDict,
+        args: &dyn Arguments<'db>,
+        result_context: &mut ResultContext,
+    ) -> Option<Inferred> {
+        result_context
+            .with_type_if_exists(self.i_s, |i_s: &InferenceState<'db, '_>, type_, matcher| {
+                let mut found = None;
+                type_.on_any_typed_dict(i_s, matcher, &mut |i_s, matcher, td| {
+                    found = self.check_typed_dict_call_with_context(matcher, td, args);
+                    found.is_some()
+                });
+                // `found` might still be empty, because we matched Any.
+                found.map(Inferred::from_type)
+            })
+            .flatten()
+    }
+
+    fn check_typed_dict_call_with_context(
+        &mut self,
         matcher: &mut Matcher,
-        node_ref: NodeRef<'db>,
-        key: &str,
-        expr: Expression,
-    ) {
+        typed_dict: Rc<TypedDict>,
+        args: &dyn Arguments<'db>,
+    ) -> Option<DbType> {
         let i_s = self.i_s;
-        if let Some(param) = typed_dict
-            .__new__()
-            .expect_simple_params()
-            .iter()
-            .find(|param| param.name.unwrap().as_str(i_s.db) == key)
-        {
-            let expected = Type::new(param.param_specific.expect_positional_db_type_as_ref());
-            let inferred =
-                self.infer_expression_with_context(expr, &mut ResultContext::Known(&expected));
-            expected.error_if_not_matches_with_matcher(
-                i_s,
-                matcher,
-                &inferred,
-                Some(|got, expected, _: &MismatchReason| {
-                    node_ref.add_issue(
-                        i_s,
-                        IssueType::TypedDictIncompatibleType {
-                            key: key.into(),
-                            got,
-                            expected,
-                        },
-                    );
-                    node_ref
-                }),
-            );
-        } else {
-            node_ref.add_issue(
-                i_s,
-                IssueType::TypedDictExtraKey {
-                    key: key.into(),
-                    typed_dict: typed_dict.name.as_str(i_s.db).into(),
-                },
-            );
+        for arg in args.iter() {
+            if let Some(key) = arg.keyword_name(i_s.db) {
+                infer_typed_dict_item(
+                    self.i_s,
+                    &typed_dict,
+                    matcher,
+                    arg.as_node_ref().to_db_lifetime(i_s.db),
+                    key,
+                    |context| arg.infer(i_s, context),
+                );
+            } else {
+                todo!()
+            }
         }
+        Some(DbType::TypedDict(typed_dict))
     }
 
     pub fn create_dict_generics(&mut self, dict: Dict) -> GenericsList {
@@ -409,4 +411,48 @@ pub fn infer_string_index(
         }
     }
     .unwrap_or_else(Inferred::new_unknown)
+}
+
+fn infer_typed_dict_item<'db>(
+    i_s: &InferenceState<'db, '_>,
+    typed_dict: &TypedDict,
+    matcher: &mut Matcher,
+    node_ref: NodeRef<'db>,
+    key: &str,
+    infer: impl FnOnce(&mut ResultContext) -> Inferred,
+) {
+    if let Some(param) = typed_dict
+        .__new__()
+        .expect_simple_params()
+        .iter()
+        .find(|param| param.name.unwrap().as_str(i_s.db) == key)
+    {
+        let expected = Type::new(param.param_specific.expect_positional_db_type_as_ref());
+        let inferred = infer(&mut ResultContext::Known(&expected));
+
+        expected.error_if_not_matches_with_matcher(
+            i_s,
+            matcher,
+            &inferred,
+            Some(|got, expected, _: &MismatchReason| {
+                node_ref.add_issue(
+                    i_s,
+                    IssueType::TypedDictIncompatibleType {
+                        key: key.into(),
+                        got,
+                        expected,
+                    },
+                );
+                node_ref
+            }),
+        );
+    } else {
+        node_ref.add_issue(
+            i_s,
+            IssueType::TypedDictExtraKey {
+                key: key.into(),
+                typed_dict: typed_dict.name.as_str(i_s.db).into(),
+            },
+        );
+    }
 }
