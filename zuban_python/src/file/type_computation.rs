@@ -58,6 +58,8 @@ pub(super) enum SpecialType {
     GenericWithGenerics,
     TypingNamedTuple,
     TypingTypedDict,
+    Required,
+    NotRequired,
     CollectionsNamedTuple,
     Callable,
     Type,
@@ -217,6 +219,8 @@ enum TypeContent<'db, 'a> {
     Concatenate(CallableParams),
     ClassVar(DbType),
     EnumMember(EnumMember),
+    Required(DbType),
+    NotRequired(DbType),
     Unknown,
 }
 
@@ -859,6 +863,24 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 );
                 None
             }
+            TypeContent::Required(_) => {
+                self.add_issue(
+                    node_ref,
+                    IssueType::InvalidType(
+                        "Required[] can be only used in a TypedDict definition".into(),
+                    ),
+                );
+                None
+            }
+            TypeContent::NotRequired(_) => {
+                self.add_issue(
+                    node_ref,
+                    IssueType::InvalidType(
+                        "NotRequired[] can be only used in a TypedDict definition".into(),
+                    ),
+                );
+                None
+            }
         }
     }
 
@@ -1041,6 +1063,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             todo!()
                         }
                         SpecialType::TypingTypedDict => todo!(),
+                        SpecialType::Required => {
+                            TypeContent::Required(self.compute_type_get_item_on_required_like(s))
+                        }
+                        SpecialType::NotRequired => {
+                            TypeContent::NotRequired(self.compute_type_get_item_on_required_like(s))
+                        }
                         SpecialType::Callable => self.compute_type_get_item_on_callable(s),
                         SpecialType::MypyExtensionsParamType(_) => todo!(),
                         SpecialType::CallableParam(_) => todo!(),
@@ -1087,6 +1115,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     TypeContent::Concatenate(_) => todo!(),
                     TypeContent::ClassVar(_) => todo!(),
                     TypeContent::EnumMember(_) => todo!(),
+                    TypeContent::Required(_) => todo!(),
+                    TypeContent::NotRequired(_) => todo!(),
                     TypeContent::Unknown => TypeContent::Unknown,
                 }
             }
@@ -1190,6 +1220,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::InvalidVariable(t) => TypeContent::InvalidVariable(t),
             TypeContent::ClassVar(_) => todo!(),
             TypeContent::EnumMember(_) => todo!(),
+            TypeContent::Required(_) => todo!(),
+            TypeContent::NotRequired(_) => todo!(),
             TypeContent::Unknown => TypeContent::Unknown,
         }
     }
@@ -2112,6 +2144,16 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             } else {
                 TypeContent::ClassVar(self.compute_slice_db_type(first))
             }
+        }
+    }
+
+    fn compute_type_get_item_on_required_like(&mut self, slice_type: SliceType) -> DbType {
+        let mut iterator = slice_type.iter();
+        let first = iterator.next().unwrap();
+        if iterator.next().is_some() {
+            todo!()
+        } else {
+            self.compute_slice_db_type(first)
         }
     }
 
@@ -3086,6 +3128,8 @@ fn check_special_type(point: Point) -> Option<SpecialType> {
             Specific::TypingAnnotated => SpecialType::Annotated,
             Specific::TypingTuple => SpecialType::Tuple,
             Specific::TypingTypedDict => SpecialType::TypingTypedDict,
+            Specific::TypingRequired => SpecialType::Required,
+            Specific::TypingNotRequired => SpecialType::NotRequired,
             Specific::TypingClassVar => SpecialType::ClassVar,
             Specific::MypyExtensionsArg
             | Specific::MypyExtensionsDefaultArg

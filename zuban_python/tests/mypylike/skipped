@@ -874,11 +874,7 @@ testTypedDictChainedGetWithEmptyDictDefault
 testPluginUnionsOfTypedDicts
 testPluginUnionsOfTypedDictsNonTotal
 # "Required[] can be only used in a TypedDict definition"
-testDoesDisallowRequiredOutsideOfTypedDict
-testDoesOnlyAllowRequiredInsideTypedDictAtTopLevel
 testDoesDisallowRequiredInsideRequired
-testDoesDisallowNotRequiredOutsideOfTypedDict
-testDoesOnlyAllowNotRequiredInsideTypedDictAtTopLevel
 testDoesDisallowNotRequiredInsideNotRequired
 # "Required[] must have exactly one type argument"
 testRequiredOnlyAllowsOneItem
