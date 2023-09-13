@@ -1064,10 +1064,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         }
                         SpecialType::TypingTypedDict => todo!(),
                         SpecialType::Required => {
-                            TypeContent::Required(self.compute_type_get_item_on_required_like(s))
+                            self.compute_type_get_item_on_required_like(s, "Required")
                         }
                         SpecialType::NotRequired => {
-                            TypeContent::NotRequired(self.compute_type_get_item_on_required_like(s))
+                            self.compute_type_get_item_on_required_like(s, "NotRequired")
                         }
                         SpecialType::Callable => self.compute_type_get_item_on_callable(s),
                         SpecialType::MypyExtensionsParamType(_) => todo!(),
@@ -2147,13 +2147,28 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         }
     }
 
-    fn compute_type_get_item_on_required_like(&mut self, slice_type: SliceType) -> DbType {
+    fn compute_type_get_item_on_required_like(
+        &mut self,
+        slice_type: SliceType,
+        case: &str,
+    ) -> TypeContent<'static, 'static> {
         let mut iterator = slice_type.iter();
         let first = iterator.next().unwrap();
-        if iterator.next().is_some() {
-            todo!()
+        if let Some(next) = iterator.next() {
+            self.add_issue(
+                next.as_node_ref(),
+                IssueType::InvalidType(
+                    format!("{case}[] must have exactly one type argument").into(),
+                ),
+            );
+            TypeContent::Unknown
         } else {
-            self.compute_slice_db_type(first)
+            let t = self.compute_slice_db_type(first);
+            if case == "Required" {
+                TypeContent::Required(t)
+            } else {
+                TypeContent::NotRequired(t)
+            }
         }
     }
 

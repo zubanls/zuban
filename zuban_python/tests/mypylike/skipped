@@ -876,9 +876,6 @@ testPluginUnionsOfTypedDictsNonTotal
 # "Required[] can be only used in a TypedDict definition"
 testDoesDisallowRequiredInsideRequired
 testDoesDisallowNotRequiredInsideNotRequired
-# "Required[] must have exactly one type argument"
-testRequiredOnlyAllowsOneItem
-testNotRequiredOnlyAllowsOneItem
 # Required/ NotRequired
 testRequiredExplicitAny
 testNotRequiredExplicitAny
