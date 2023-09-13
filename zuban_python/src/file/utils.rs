@@ -184,7 +184,7 @@ impl<'db> Inference<'db, '_, '_> {
             .flatten()
     }
 
-    fn check_typed_dict_call_with_context(
+    pub fn check_typed_dict_call_with_context(
         &mut self,
         matcher: &mut Matcher,
         typed_dict: Rc<TypedDict>,

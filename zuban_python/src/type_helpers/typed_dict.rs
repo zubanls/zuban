@@ -13,11 +13,11 @@ use crate::{
     getitem::{SliceType, SliceTypeContent},
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{FormatData, LookupKind, LookupResult, OnTypeError, ResultContext, Type},
+    matching::{FormatData, LookupKind, LookupResult, Matcher, OnTypeError, ResultContext, Type},
     node_ref::NodeRef,
 };
 
-use super::{Callable, Instance};
+use super::Instance;
 
 pub struct TypedDictHelper<'a>(pub &'a Rc<TypedDict>);
 impl<'a> TypedDictHelper<'a> {
@@ -36,7 +36,10 @@ impl<'a> TypedDictHelper<'a> {
             let t = Type::owned(DbType::TypedDict(self.0.clone()));
             first_arg.infer(i_s, &mut ResultContext::Known(&t));
         } else {
-            Callable::new(self.0.__new__(), None).execute(i_s, args, on_type_error, result_context);
+            args.as_node_ref()
+                .file
+                .inference(i_s)
+                .check_typed_dict_call_with_context(&mut Matcher::default(), self.0.clone(), args);
         }
         Inferred::from_type(DbType::TypedDict(self.0.clone()))
     }

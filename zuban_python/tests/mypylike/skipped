@@ -722,9 +722,6 @@ testRecursiveTypedDictWithList
 # TypedDict recursion with imports
 testNewImportCycleTypedDict
 # "Incompatible types (expression has type "int", TypedDict item "x" has type "str")"
-testCannotCreateTypedDictInstanceWithIncompatibleItemType
-testNewAnalyzerTypedDictClassInheritance
-testTypedDictDoesNotAcceptsFloatForInt
 testTypedDictImportCycle
 # Incompatible types in assignment (expression has type "__main__.A", variable has type "A")
 testTypedDictSubtypingWithTotalFalse
@@ -734,20 +731,16 @@ testUnpackWithoutTypedDict
 testUnpackTypedDictTotality
 testErrorCodeTypedDict
 # "Missing key "y" for TypedDict "Point"
-testCannotCreateTypedDictInstanceWithMissingItems
 testDoesRecognizeRequiredInTypedDictWithClass
 # "TypedDict "a.Dict[TValue]" has no key "x""
 testTypedDictMissingEmptyKey
 testGenericTypedDictWithError
 # "Extra key "z" for TypedDict "Point""
-testCannotCreateTypedDictInstanceWithExtraItems
-testTypedDictConstructorWithTotalFalse
 testTypedDictUnpackMissingOrExtraKey
 # "Expected TypedDict key "x" but found keys ("x", "z")"
 testCannotCreateAnonymousTypedDictInstanceUsingDictLiteralWithExtraItems
 testCannotCreateAnonymousTypedDictInstanceUsingDictLiteralWithMissingItems
 # "Expected TypedDict key to be string literal"
-testTypedDictLiteralTypeKeyInCreation
 testTypedDictBytesKey
 # "Expected keyword arguments, {...}, or dict(...) in TypedDict constructor"
 testCannotCreateTypedDictInstanceWithUnknownArgumentPattern
