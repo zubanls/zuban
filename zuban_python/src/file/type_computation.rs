@@ -501,6 +501,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     DbType::Class(..)
                     | DbType::Tuple(_)
                     | DbType::Callable(_)
+                    | DbType::TypedDict(_)
                     | DbType::Dataclass(_) => CalculatedBaseClass::DbType(db_type),
                     DbType::Type(t) if matches!(t.as_ref(), DbType::Any) => {
                         CalculatedBaseClass::DbType(DbType::new_class(
@@ -3204,15 +3205,19 @@ fn check_type_name<'db: 'file, 'file>(
                 new_name.name_definition().unwrap().index(),
             );
             name_def.file.inference(i_s).cache_class(name_def, c);
-            if let Some(ComplexPoint::TypeInstance(DbType::Type(t))) = name_def.complex() {
-                match t.as_ref() {
+            match name_def.complex() {
+                Some(ComplexPoint::TypeInstance(DbType::Type(t))) => match t.as_ref() {
                     DbType::Dataclass(d) => return TypeNameLookup::Dataclass(d.clone()),
+                    DbType::Enum(e) => return TypeNameLookup::Enum(e.clone()),
+                    _ => (),
+                },
+                Some(ComplexPoint::TypedDictDefinition(t)) => match t.as_ref() {
                     DbType::TypedDict(td) => {
                         return TypeNameLookup::TypedDictDefinition((**t).clone())
                     }
-                    DbType::Enum(e) => return TypeNameLookup::Enum(e.clone()),
-                    _ => (),
-                }
+                    _ => unreachable!(),
+                },
+                _ => (),
             }
             // Classes can be defined recursive, so use the NamedTuple stuff here.
             TypeNameLookup::Class {

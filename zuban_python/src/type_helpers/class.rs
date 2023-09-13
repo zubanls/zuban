@@ -636,7 +636,32 @@ impl<'db: 'a, 'a> Class<'a> {
                                     DbType::Tuple(content) => None,
                                     DbType::Callable(content) => None,
                                     DbType::Dataclass(d) => Some(d.class(db)),
-                                    DbType::TypedDict(d) => todo!("?"),
+                                    DbType::TypedDict(typed_dict) => {
+                                        if matches!(
+                                            class_type,
+                                            ClassType::Normal | ClassType::TypedDict(_)
+                                        ) {
+                                            let mut callable = (**typed_dict.__new__()).clone();
+                                            let mut params: Vec<_> =
+                                                callable.expect_simple_params().into();
+                                            self.initialize_typed_dict_members(
+                                                &i_s.with_class_context(self),
+                                                &mut params,
+                                                self.check_total_typed_dict_argument(
+                                                    i_s, arguments,
+                                                ),
+                                            );
+                                            callable.params =
+                                                CallableParams::Simple(Rc::from(params));
+                                            class_type = ClassType::TypedDict(Rc::new(
+                                                TypedDict::new(self.name_string_slice(), callable),
+                                            ));
+                                        } else {
+                                            todo!()
+                                        }
+                                        bases.pop();
+                                        continue;
+                                    }
                                     _ => unreachable!(),
                                 };
                                 if let Some(class) = class {
@@ -665,32 +690,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                                 }
                                             }
                                             ClassType::TypedDict(typed_dict) => {
-                                                if matches!(
-                                                    class_type,
-                                                    ClassType::Normal | ClassType::TypedDict(_)
-                                                ) {
-                                                    let mut callable =
-                                                        (**typed_dict.__new__()).clone();
-                                                    let mut params: Vec<_> =
-                                                        callable.expect_simple_params().into();
-                                                    self.initialize_typed_dict_members(
-                                                        &i_s.with_class_context(self),
-                                                        &mut params,
-                                                        self.check_total_typed_dict_argument(
-                                                            i_s, arguments,
-                                                        ),
-                                                    );
-                                                    callable.params =
-                                                        CallableParams::Simple(Rc::from(params));
-                                                    class_type = ClassType::TypedDict(Rc::new(
-                                                        TypedDict::new(
-                                                            self.name_string_slice(),
-                                                            callable,
-                                                        ),
-                                                    ));
-                                                } else {
-                                                    todo!()
-                                                }
+                                                unreachable!()
                                             }
                                             _ => (),
                                         }
@@ -1227,9 +1227,6 @@ impl<'db: 'a, 'a> Class<'a> {
         match &class_infos.class_type {
             ClassType::NamedTuple(named_tuple) => NamedTupleValue::new(format_data.db, named_tuple)
                 .format_with_name(format_data, &result, self.generics),
-            ClassType::TypedDict(t) if format_data.style == FormatStyle::MypyRevealType => {
-                t.format_reveal_type(format_data, &result).into()
-            }
             _ => result.into(),
         }
     }
@@ -1485,11 +1482,6 @@ impl<'db: 'a, 'a> Class<'a> {
                     execute_functional_enum(original_i_s, *self, args, result_context)
                         .unwrap_or_else(Inferred::new_any),
                 );
-            }
-            ClassType::TypedDict(d) => {
-                return ClassExecutionResult::Inferred(Inferred::from_type(
-                    self.as_db_type(i_s.db),
-                ));
             }
             _ => (),
         }

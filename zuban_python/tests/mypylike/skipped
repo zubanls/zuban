@@ -706,6 +706,7 @@ testAssignEnumAsAttribute
 testAssignTypedDictAsAttribute
 
 # TypedDict recursions
+testBasicRecursiveTypedDictClass
 testBasicRecursiveTypedDictExtending
 testRecursiveGenericTypedDictExtending
 testRecursiveTypedDictCreation
