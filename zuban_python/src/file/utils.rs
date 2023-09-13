@@ -196,6 +196,19 @@ impl<'db> Inference<'db, '_, '_> {
             }
         }
         maybe_add_extra_keys_issue(i_s, &typed_dict, args.as_node_ref(), extra_keys);
+        let mut missing_keys: Vec<Box<str>> = vec![];
+        for param in typed_dict.attributes() {
+            if !param.has_default {
+                let expected_name = param.name.unwrap().as_str(i_s.db);
+                if !args
+                    .iter()
+                    .any(|arg| arg.keyword_name(i_s.db) == Some(expected_name))
+                {
+                    todo!()
+                    //missing_keys.push(expected_name.into())
+                }
+            }
+        }
         Some(DbType::TypedDict(typed_dict))
     }
 

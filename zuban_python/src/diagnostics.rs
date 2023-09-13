@@ -171,6 +171,7 @@ pub(crate) enum IssueType {
     TypedDictHasNoKey { typed_dict: Box<str>, key: Box<str> },
     TypedDictKeyCannotBeDeleted { typed_dict: Box<str>, key: Box<str> },
     TypedDictInvalidMember,
+    TypedDictMissingKeys { typed_dict: Box<str>, keys: Box<[Box<str>]> },
 
     OverloadMismatch { name: Box<str>, args: Box<[Box<str>]>, variants: Box<[Box<str>]> },
     OverloadImplementationNotLast,
@@ -832,6 +833,16 @@ impl<'db> Diagnostic<'db> {
             ),
             TypedDictInvalidMember =>
                 "Invalid statement in TypedDict definition; expected \"field_name: field_type\"".to_string(),
+            TypedDictMissingKeys { typed_dict, keys } => match keys.as_ref() {
+                [key] => format!(r#""Missing key "{key}" for TypedDict "{typed_dict}""#),
+                _ => format!(
+                    r#""Missing keys ({}) for TypedDict "{typed_dict}""#,
+                    keys.iter()
+                        .map(|key| format!("\"{key}\""))
+                        .collect::<Vec<String>>()
+                        .join(", ")
+                ),
+            },
 
             OverloadImplementationNotLast =>
                 "The implementation for an overloaded function must come last".to_string(),
