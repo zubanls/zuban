@@ -103,13 +103,6 @@ impl<'a> Type<'a> {
 
     pub fn maybe_typed_dict(&self, db: &'a Database) -> Option<Rc<TypedDict>> {
         match self.as_ref() {
-            DbType::Class(c) => match &Class::from_generic_class(db, c)
-                .use_cached_class_infos(db)
-                .class_type
-            {
-                ClassType::TypedDict(td) => Some(td.clone()),
-                _ => None,
-            },
             DbType::TypedDict(td) => Some(td.clone()),
             _ => None,
         }
