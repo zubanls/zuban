@@ -799,7 +799,11 @@ impl<'db> Diagnostic<'db> {
                 r#"Incompatible types (expression has type "{got}", TypedDict item "{key}" has type "{expected}")"#
             ),
             TypedDictExtraKey { key, typed_dict } => format!(
-                r#"Extra key "{key}" for TypedDict "{typed_dict}""#
+                r#"Extra key{} {key} for TypedDict "{typed_dict}""#,
+                match key.as_bytes()[0] {
+                    b'(' => "s",
+                    _ => "",
+                },
             ),
             UnexpectedArgumentsToTypedDict => "Unexpected arguments to TypedDict()".to_string(),
             TypedDictFirstArgMustBeString =>

@@ -111,6 +111,7 @@ impl<'db> Inference<'db, '_, '_> {
         dict: Dict,
     ) -> Option<DbType> {
         let i_s = self.i_s;
+        let mut extra_keys = vec![];
         for element in dict.iter_elements() {
             match element {
                 DictElement::KeyValue(key_value) => {
@@ -129,6 +130,7 @@ impl<'db> Inference<'db, '_, '_> {
                                 matcher,
                                 node_ref,
                                 key,
+                                &mut extra_keys,
                                 |context| {
                                     self.infer_expression_with_context(key_value.value(), context)
                                 },
@@ -142,6 +144,12 @@ impl<'db> Inference<'db, '_, '_> {
                 DictElement::DictStarred(_) => todo!(),
             }
         }
+        maybe_add_extra_keys_issue(
+            i_s,
+            &typed_dict,
+            NodeRef::new(self.file, dict.index()),
+            extra_keys,
+        );
         Some(DbType::TypedDict(typed_dict))
     }
 
@@ -171,6 +179,7 @@ impl<'db> Inference<'db, '_, '_> {
         args: &dyn Arguments<'db>,
     ) -> Option<DbType> {
         let i_s = self.i_s;
+        let mut extra_keys = vec![];
         for arg in args.iter() {
             if let Some(key) = arg.keyword_name(i_s.db) {
                 infer_typed_dict_item(
@@ -179,12 +188,14 @@ impl<'db> Inference<'db, '_, '_> {
                     matcher,
                     arg.as_node_ref().to_db_lifetime(i_s.db),
                     key,
+                    &mut extra_keys,
                     |context| arg.infer(i_s, context),
                 );
             } else {
                 todo!()
             }
         }
+        maybe_add_extra_keys_issue(i_s, &typed_dict, args.as_node_ref(), extra_keys);
         Some(DbType::TypedDict(typed_dict))
     }
 
@@ -419,6 +430,7 @@ fn infer_typed_dict_item<'db>(
     matcher: &mut Matcher,
     node_ref: NodeRef<'db>,
     key: &str,
+    extra_keys: &mut Vec<String>,
     infer: impl FnOnce(&mut ResultContext) -> Inferred,
 ) {
     if let Some(param) = typed_dict
@@ -447,12 +459,33 @@ fn infer_typed_dict_item<'db>(
             }),
         );
     } else {
-        node_ref.add_issue(
-            i_s,
-            IssueType::TypedDictExtraKey {
-                key: key.into(),
-                typed_dict: typed_dict.name.as_str(i_s.db).into(),
-            },
-        );
+        extra_keys.push(key.into())
     }
+}
+
+fn maybe_add_extra_keys_issue(
+    i_s: &InferenceState,
+    typed_dict: &TypedDict,
+    node_ref: NodeRef,
+    mut extra_keys: Vec<String>,
+) {
+    node_ref.add_issue(
+        i_s,
+        IssueType::TypedDictExtraKey {
+            key: match extra_keys.len() {
+                0 => return,
+                1 => format!("\"{}\"", extra_keys.remove(0)).into(),
+                _ => format!(
+                    "({})",
+                    extra_keys
+                        .iter()
+                        .map(|key| format!("\"{key}\""))
+                        .collect::<Vec<String>>()
+                        .join(", ")
+                )
+                .into(),
+            },
+            typed_dict: typed_dict.name.as_str(i_s.db).into(),
+        },
+    )
 }
