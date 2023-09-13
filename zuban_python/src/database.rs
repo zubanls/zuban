@@ -466,6 +466,8 @@ pub enum Specific {
     TypingAny,
     TypingDataclassTransform,
     TypingTypedDict,
+    TypingRequired,
+    TypingNotRequired,
     RevealTypeFunction,
     AssertTypeFunction,
     TypingNamedTuple,      // typing.NamedTuple

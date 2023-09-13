@@ -876,6 +876,8 @@ fn typing_changes(
     set_typing_inference(typing, "TypeAlias", Specific::TypingTypeAlias);
     set_typing_inference(typing, "Self", Specific::TypingSelf);
     set_typing_inference(typing, "Annotated", Specific::TypingAnnotated);
+    set_typing_inference(typing, "Required", Specific::TypingRequired);
+    set_typing_inference(typing, "NotRequired", Specific::TypingNotRequired);
     set_typing_inference(typing, "reveal_type", Specific::RevealTypeFunction);
     set_typing_inference(typing, "assert_type", Specific::AssertTypeFunction);
     set_typing_inference(
@@ -928,6 +930,8 @@ fn typing_changes(
     set_typing_inference(t, "assert_type", Specific::AssertTypeFunction);
     set_typing_inference(t, "NamedTuple", Specific::TypingNamedTuple);
     set_typing_inference(t, "Protocol", Specific::TypingProtocol);
+    set_typing_inference(t, "Required", Specific::TypingRequired);
+    set_typing_inference(t, "NotRequired", Specific::TypingNotRequired);
     set_typing_inference(t, "dataclass_transform", Specific::TypingDataclassTransform);
 
     for module in [typing, mypy_extensions, typing_extensions] {
@@ -947,6 +951,8 @@ fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
         "NamedTuple",
         "namedtuple",
         "TypedDict",
+        "Required",
+        "NotRequired",
         "LiteralString",
         "Concatenate",
         "ParamSpec",
