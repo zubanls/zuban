@@ -834,7 +834,7 @@ impl<'db> Diagnostic<'db> {
             TypedDictInvalidMember =>
                 "Invalid statement in TypedDict definition; expected \"field_name: field_type\"".to_string(),
             TypedDictMissingKeys { typed_dict, keys } => match keys.as_ref() {
-                [key] => format!(r#""Missing key "{key}" for TypedDict "{typed_dict}""#),
+                [key] => format!(r#"Missing key "{key}" for TypedDict "{typed_dict}""#),
                 _ => format!(
                     r#""Missing keys ({}) for TypedDict "{typed_dict}""#,
                     keys.iter()

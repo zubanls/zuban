@@ -112,6 +112,11 @@ impl<'db> Inference<'db, '_, '_> {
     ) -> Option<DbType> {
         let i_s = self.i_s;
         let mut extra_keys = vec![];
+        let mut missing_keys: Vec<_> = typed_dict
+            .attributes()
+            .iter()
+            .filter_map(|p| (!p.has_default).then(|| p.name.unwrap().as_str(i_s.db)))
+            .collect();
         for element in dict.iter_elements() {
             match element {
                 DictElement::KeyValue(key_value) => {
@@ -124,6 +129,7 @@ impl<'db> Inference<'db, '_, '_> {
                     match inf.maybe_string_literal(i_s) {
                         Some(literal) => {
                             let key = literal.as_str(i_s.db);
+                            missing_keys.retain(|k| *k != key);
                             infer_typed_dict_item(
                                 self.i_s,
                                 &typed_dict,
@@ -137,6 +143,7 @@ impl<'db> Inference<'db, '_, '_> {
                             );
                         }
                         None => {
+                            missing_keys.clear(); // We do not want an error message anymore.
                             node_ref.add_issue(i_s, IssueType::TypedDictKeysMustBeStringLiteral);
                         }
                     }
@@ -144,12 +151,17 @@ impl<'db> Inference<'db, '_, '_> {
                 DictElement::DictStarred(_) => todo!(),
             }
         }
-        maybe_add_extra_keys_issue(
-            i_s,
-            &typed_dict,
-            NodeRef::new(self.file, dict.index()),
-            extra_keys,
-        );
+        let dict_node_ref = NodeRef::new(self.file, dict.index());
+        maybe_add_extra_keys_issue(i_s, &typed_dict, dict_node_ref, extra_keys);
+        if !missing_keys.is_empty() {
+            dict_node_ref.add_issue(
+                i_s,
+                IssueType::TypedDictMissingKeys {
+                    typed_dict: typed_dict.name.as_str(i_s.db).into(),
+                    keys: missing_keys.iter().map(|k| Box::from(*k)).collect(),
+                },
+            )
+        }
         Some(DbType::TypedDict(typed_dict))
     }
 

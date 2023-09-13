@@ -735,7 +735,6 @@ testUnpackTypedDictTotality
 testErrorCodeTypedDict
 # "Missing key "y" for TypedDict "Point"
 testCannotCreateTypedDictInstanceWithMissingItems
-testTypedDictDictLiterals
 testTypedDictExplicitTypes
 testTypedDictUppercaseKey
 testDoesRecognizeRequiredInTypedDictWithClass
