@@ -365,6 +365,12 @@ impl<'db: 'a, 'a> Class<'a> {
         let mut class_infos = self.calculate_class_infos(i_s, type_vars);
         let mut was_enum = None;
         let mut was_enum_base = false;
+        if let ClassType::TypedDict(td) = &class_infos.class_type {
+            name_def.insert_complex(
+                ComplexPoint::TypedDictDefinition(Rc::new(DbType::TypedDict(td.clone()))),
+                Locality::ImplicitExtern,
+            );
+        }
         if let MetaclassState::Some(link) = class_infos.metaclass {
             if link == i_s.db.python_state.enum_meta_link() {
                 was_enum_base = true;

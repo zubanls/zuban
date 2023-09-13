@@ -1206,7 +1206,15 @@ impl DbType {
                 ClassGenerics::NotDefinedYet => todo!(),
                 _ => false,
             },
-            Self::TypedDict(d) => todo!(),
+            Self::TypedDict(d) => {
+                debug!("TODO this should not be ");
+                d.attributes().iter().any(|p| {
+                    p.param_specific
+                        .maybe_db_type()
+                        .unwrap()
+                        .has_any_internal(i_s, already_checked)
+                })
+            }
             Self::NamedTuple(nt) => nt.__new__.has_any_internal(i_s, already_checked),
             Self::EnumMember(_) => todo!(),
             Self::Super { .. } => todo!(),

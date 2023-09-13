@@ -3206,8 +3206,11 @@ fn check_type_name<'db: 'file, 'file>(
             name_def.file.inference(i_s).cache_class(name_def, c);
             if let Some(ComplexPoint::TypeInstance(DbType::Type(t))) = name_def.complex() {
                 match t.as_ref() {
-                    DbType::Enum(e) => return TypeNameLookup::Enum(e.clone()),
                     DbType::Dataclass(d) => return TypeNameLookup::Dataclass(d.clone()),
+                    DbType::TypedDict(td) => {
+                        return TypeNameLookup::TypedDictDefinition((**t).clone())
+                    }
+                    DbType::Enum(e) => return TypeNameLookup::Enum(e.clone()),
                     _ => (),
                 }
             }
