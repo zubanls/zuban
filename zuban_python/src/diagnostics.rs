@@ -170,6 +170,7 @@ pub(crate) enum IssueType {
     TypedDictKeySetItemIncompatibleType { key: Box<str>, got: Box<str>, expected: Box<str> },
     TypedDictHasNoKey { typed_dict: Box<str>, key: Box<str> },
     TypedDictKeyCannotBeDeleted { typed_dict: Box<str>, key: Box<str> },
+    TypedDictInvalidMember,
 
     OverloadMismatch { name: Box<str>, args: Box<[Box<str>]>, variants: Box<[Box<str>]> },
     OverloadImplementationNotLast,
@@ -825,6 +826,8 @@ impl<'db> Diagnostic<'db> {
             TypedDictKeyCannotBeDeleted { typed_dict, key } => format!(
                 r#"Key "{key}" of TypedDict "{typed_dict}" cannot be deleted"#
             ),
+            TypedDictInvalidMember =>
+                "Invalid statement in TypedDict definition; expected \"field_name: field_type\"".to_string(),
 
             OverloadImplementationNotLast =>
                 "The implementation for an overloaded function must come last".to_string(),

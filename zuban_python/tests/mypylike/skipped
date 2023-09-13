@@ -760,8 +760,6 @@ testCannotCreateTypedDictInstanceWithInlineTypedDict
 # context inference of typed dicts
 testErrorCodeTypedDictNoteIgnore
 testErrorCodeTypedDictSubCodeIgnore
-# "Invalid statement in TypedDict definition; expected "field_name: field_type""
-testTypedDictNestedClassRecheck
 # database:1198
 testTypedDictUnionSimplification
 # "Type of TypedDict is ambiguous, none of ("A", "B") matches cleanly"

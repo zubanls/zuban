@@ -1330,7 +1330,7 @@ impl<'db: 'a, 'a> Class<'a> {
                             find_stmt_typed_dict_types(i_s, file, vec, simple, total)
                         }
                         _ => NodeRef::new(file, stmt.index())
-                            .add_issue(i_s, IssueType::Note("TODO typeddict".into())),
+                            .add_issue(i_s, IssueType::TypedDictInvalidMember),
                     }
                 }
             }
