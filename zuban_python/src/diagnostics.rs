@@ -277,6 +277,7 @@ impl IssueType {
             AwaitOutsideFunction => "top-level-await",
             AwaitOutsideCoroutine => "await-not-async",
 
+            TypedDictNameMismatch { .. } => "name-match",
             TypedDictIncompatibleType { .. } => "typeddict-item",
             TypedDictExtraKey { .. } => "typeddict-unknown-key",
             _ => "misc",

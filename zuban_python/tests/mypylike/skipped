@@ -724,12 +724,10 @@ testNewImportCycleTypedDict
 # "Incompatible types (expression has type "int", TypedDict item "x" has type "str")"
 testCannotCreateTypedDictInstanceWithIncompatibleItemType
 testNewAnalyzerTypedDictClassInheritance
-testColumnTypedDict
 testTypedDictDoesNotAcceptsFloatForInt
 testTypedDictImportCycle
 # Incompatible types in assignment (expression has type "__main__.A", variable has type "A")
 testTypedDictSubtypingWithTotalFalse
-testNonTotalTypedDictCanBeEmpty
 # "Unpack item in ** argument must be a TypedDict"
 testUnpackWithoutTypedDict
 # "Missing named argument "radius" for "foo""
@@ -762,15 +760,11 @@ testCannotCreateTypedDictInstanceWithInlineTypedDict
 # context inference of typed dicts
 testErrorCodeTypedDictNoteIgnore
 testErrorCodeTypedDictSubCodeIgnore
-# "First argument "Bar" to TypedDict() does not match variable name "Foo"  [name-match]"
-testTypedDictNameMismatch
 # "Invalid statement in TypedDict definition; expected "field_name: field_type""
 testTypedDictNestedClassRecheck
 # database:1198
 testTypedDictUnionSimplification
-testTypedDictUnionSimplification2
-# database:1102
-testTypedDictUnionUnambiguousCase
+# "Type of TypedDict is ambiguous, none of ("A", "B") matches cleanly"
 testTypedDictUnionAmbiguousCaseNoMatch
 # typed dict as base class
 testCanCreateTypedDictWithClassOldVersion
@@ -815,10 +809,7 @@ testTypedDictWithSimpleProtocol
 testTypedDictWithSimpleProtocolInference
 testTypedDictOverloading4
 testTypedDictOverloading5
-# matching mapping
-testForwardReferenceInClassTypedDict
 # Lookups
-testOverloadKwargsSelectionWithTypedDict
 testCachedBadProtocolNote
 testErrorCodeSpecialArgTypeErrors
 testCanConvertTypedDictToAnySuperclassOfMapping
@@ -869,9 +860,6 @@ testTypedDictUnpackSame
 testTypedDictUnpackCompatible
 testTypedDictUnpackIncompatible
 testTypedDictUnpackMultiple
-# TypedDict total=false
-testTypedDictUnionGetFull
-testTypedDictClassWithTotalArgument
 # Anonymous TypedDicts for join
 testNonTotalTypedDictInErrorMessages
 testAnonymousTypedDictInErrorMessages
