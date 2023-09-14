@@ -544,7 +544,8 @@ impl<'db: 'a, 'a> Class<'a> {
         let mut bases: Vec<DbType> = vec![];
         let mut incomplete_mro = false;
         let mut class_type = ClassType::Normal;
-        let mut maybe_typed_dict_members = None;
+        let mut typed_dict_members = vec![];
+        let mut typed_dict_total = None;
         let mut metaclass = MetaclassState::None;
         if let Some(arguments) = self.node().arguments() {
             // Check metaclass before checking all the arguments, because it has a preference over
@@ -641,17 +642,15 @@ impl<'db: 'a, 'a> Class<'a> {
                                             class_type,
                                             ClassType::Normal | ClassType::TypedDict
                                         ) {
-                                            let mut members: Vec<_> =
-                                                typed_dict.members.clone().into();
-                                            self.initialize_typed_dict_members(
-                                                &i_s.with_class_context(self),
-                                                &mut members,
-                                                self.check_total_typed_dict_argument(
-                                                    i_s, arguments,
-                                                ),
-                                            );
+                                            if typed_dict_total.is_none() {
+                                                typed_dict_total =
+                                                    Some(self.check_total_typed_dict_argument(
+                                                        i_s, arguments,
+                                                    ))
+                                            }
+                                            typed_dict_members
+                                                .extend_from_slice(&typed_dict.members);
                                             class_type = ClassType::TypedDict;
-                                            maybe_typed_dict_members = Some(members);
                                         } else {
                                             todo!()
                                         }
@@ -711,15 +710,11 @@ impl<'db: 'a, 'a> Class<'a> {
                                 class_type = ClassType::NamedTuple(named_tuple);
                             }
                             CalculatedBaseClass::TypedDict => {
-                                let mut members = vec![];
-
-                                self.initialize_typed_dict_members(
-                                    &i_s.with_class_context(self),
-                                    &mut members,
-                                    self.check_total_typed_dict_argument(i_s, arguments),
-                                );
                                 class_type = ClassType::TypedDict;
-                                maybe_typed_dict_members = Some(members);
+                                if typed_dict_total.is_none() {
+                                    typed_dict_total =
+                                        Some(self.check_total_typed_dict_argument(i_s, arguments))
+                                }
                             }
                             CalculatedBaseClass::Generic => (),
                             CalculatedBaseClass::Unknown => {
@@ -760,6 +755,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 }
             }
         }
+        let is_typed_dict = class_type == ClassType::TypedDict;
         (
             Box::new(ClassInfos {
                 mro: linearize_mro(i_s, self, bases),
@@ -767,10 +763,15 @@ impl<'db: 'a, 'a> Class<'a> {
                 incomplete_mro,
                 class_type,
             }),
-            maybe_typed_dict_members.map(|members| {
+            is_typed_dict.then(|| {
+                self.initialize_typed_dict_members(
+                    &i_s.with_class_context(self),
+                    &mut typed_dict_members,
+                    typed_dict_total.unwrap(),
+                );
                 Rc::new(TypedDict {
                     name: self.name_string_slice(),
-                    members: members.into(),
+                    members: typed_dict_members.into(),
                     defined_at: self.node_ref.as_link(),
                     type_var_likes: self.type_vars(i_s).clone(),
                 })

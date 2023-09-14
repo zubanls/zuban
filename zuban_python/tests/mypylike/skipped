@@ -746,7 +746,6 @@ testErrorCodeTypedDictSubCodeIgnore
 # "Type of TypedDict is ambiguous, none of ("A", "B") matches cleanly"
 testTypedDictUnionAmbiguousCaseNoMatch
 # typed dict as base class
-testCanCreateTypedDictWithClassOldVersion
 testCannotCreateTypedDictWithClassOtherBases
 testCannotCreateTypedDictWithDuplicateBases
 # "Overwriting TypedDict field "x" while merging"
