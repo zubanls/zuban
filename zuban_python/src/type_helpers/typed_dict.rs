@@ -34,8 +34,22 @@ impl TypedDictMemberGatherer {
         }
     }
 
-    pub fn extend_from_slice(&mut self, slice: &[TypedDictMember]) {
-        self.members.extend_from_slice(slice)
+    pub fn merge(&mut self, i_s: &InferenceState, node_ref: NodeRef, slice: &[TypedDictMember]) {
+        for to_add in slice.iter() {
+            let key = to_add.name.as_str(i_s.db);
+            if self
+                .members
+                .iter_mut()
+                .any(|m| m.name.as_str(i_s.db) == key)
+            {
+                node_ref.add_issue(
+                    i_s,
+                    IssueType::TypedDictOverwritingKeyWhileMerging { key: key.into() },
+                );
+            } else {
+                self.members.push(to_add.clone());
+            }
+        }
     }
 
     pub fn into_boxed_slice(self) -> Box<[TypedDictMember]> {

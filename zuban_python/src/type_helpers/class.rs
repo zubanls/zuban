@@ -649,8 +649,11 @@ impl<'db: 'a, 'a> Class<'a> {
                                                         i_s, arguments,
                                                     ))
                                             }
-                                            typed_dict_members
-                                                .extend_from_slice(&typed_dict.members);
+                                            typed_dict_members.merge(
+                                                i_s,
+                                                NodeRef::new(self.node_ref.file, n.index()),
+                                                &typed_dict.members,
+                                            );
                                             class_type = ClassType::TypedDict;
                                         } else {
                                             todo!()
