@@ -865,10 +865,10 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
             } => {
                 let index = self.counter;
                 self.counter += 1;
-                let Some((name, t)) = typed_dict.attributes().get(iterator_index).map(|param| {
+                let Some((name, t)) = typed_dict.members.get(iterator_index).map(|member| {
                     (
-                        param.name.unwrap(),
-                        param.param_specific.maybe_db_type().unwrap().clone(),
+                        member.name,
+                        member.type_.clone(),
                     )
                 }) else {
                     return self.next()

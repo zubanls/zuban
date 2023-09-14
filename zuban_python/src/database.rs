@@ -1108,9 +1108,9 @@ impl DbType {
                 _ => (),
             },
             Self::TypedDict(d) => {
-                let __new__ = d.__new__();
-                search_params(found_type_var, &__new__.params);
-                __new__.result_type.search_type_vars(found_type_var)
+                for member in d.members.iter() {
+                    member.type_.search_type_vars(found_type_var);
+                }
             }
             Self::NamedTuple(_) => {
                 debug!("TODO do we need to support namedtuple searching for type vars?");
@@ -1210,12 +1210,9 @@ impl DbType {
             },
             Self::TypedDict(d) => {
                 debug!("TODO this should not be ");
-                d.attributes().iter().any(|p| {
-                    p.param_specific
-                        .maybe_db_type()
-                        .unwrap()
-                        .has_any_internal(i_s, already_checked)
-                })
+                d.members
+                    .iter()
+                    .any(|m| m.type_.has_any_internal(i_s, already_checked))
             }
             Self::NamedTuple(nt) => nt.__new__.has_any_internal(i_s, already_checked),
             Self::EnumMember(_) => todo!(),
@@ -2746,32 +2743,23 @@ impl NamedTuple {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct TypedDictMember {
+    pub name: StringSlice,
+    pub type_: DbType,
+    pub required: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct TypedDict {
     pub name: StringSlice,
-    __new__: OnceCell<Rc<CallableContent>>,
+    pub members: Box<[TypedDictMember]>,
+    pub defined_at: PointLink,
+    pub type_var_likes: TypeVarLikes,
 }
 
 impl TypedDict {
-    pub fn new(name: StringSlice, __new__: CallableContent) -> Self {
-        Self {
-            name,
-            __new__: OnceCell::from(Rc::new(__new__)),
-        }
-    }
-
-    pub fn __new__(&self) -> &Rc<CallableContent> {
-        self.__new__.get().unwrap()
-    }
-
-    pub fn find_param(&self, db: &Database, name: &str) -> Option<&CallableParam> {
-        self.__new__()
-            .expect_simple_params()
-            .iter()
-            .find(|p| p.name.unwrap().as_str(db) == name)
-    }
-
-    pub fn attributes(&self) -> &[CallableParam] {
-        self.__new__().expect_simple_params()
+    pub fn find_member(&self, db: &Database, name: &str) -> Option<&TypedDictMember> {
+        self.members.iter().find(|p| p.name.as_str(db) == name)
     }
 
     fn qualified_name(&self, db: &Database) -> String {
@@ -2790,26 +2778,23 @@ impl TypedDict {
     }
 
     pub fn format_reveal_type(&self, format_data: &FormatData, name: &str) -> String {
-        let __new__ = self.__new__();
-        let rec = RecursiveAlias::new(__new__.defined_at, None);
+        let rec = RecursiveAlias::new(self.defined_at, None);
         if format_data.has_already_seen_recursive_alias(&rec) {
             return "...".to_string();
         }
         let format_data = &format_data.with_seen_recursive_alias(&rec);
-        let params = __new__
-            .expect_simple_params()
+        let params = self
+            .members
             .iter()
             .map(|p| {
                 format!(
                     "'{}'{}: {}",
-                    p.name.unwrap().as_str(format_data.db),
-                    match p.has_default {
-                        false => "",
-                        true => "?",
+                    p.name.as_str(format_data.db),
+                    match p.required {
+                        true => "",
+                        false => "?",
                     },
-                    p.param_specific
-                        .expect_positional_db_type_as_ref()
-                        .format(format_data)
+                    p.type_.format(format_data)
                 )
             })
             .collect::<Vec<_>>()

@@ -113,9 +113,9 @@ impl<'db> Inference<'db, '_, '_> {
         let i_s = self.i_s;
         let mut extra_keys = vec![];
         let mut missing_keys: Vec<_> = typed_dict
-            .attributes()
+            .members
             .iter()
-            .filter_map(|p| (!p.has_default).then(|| p.name.unwrap().as_str(i_s.db)))
+            .filter_map(|m| m.required.then(|| m.name.as_str(i_s.db)))
             .collect();
         for element in dict.iter_elements() {
             match element {
@@ -218,9 +218,9 @@ impl<'db> Inference<'db, '_, '_> {
         }
         maybe_add_extra_keys_issue(i_s, &typed_dict, args.as_node_ref(), extra_keys);
         let mut missing_keys: Vec<Box<str>> = vec![];
-        for param in typed_dict.attributes() {
-            if !param.has_default {
-                let expected_name = param.name.unwrap().as_str(i_s.db);
+        for member in typed_dict.members.iter() {
+            if member.required {
+                let expected_name = member.name.as_str(i_s.db);
                 if !args
                     .iter()
                     .any(|arg| arg.keyword_name(i_s.db) == Some(expected_name))
@@ -475,13 +475,8 @@ fn infer_typed_dict_item<'db>(
     extra_keys: &mut Vec<String>,
     infer: impl FnOnce(&mut ResultContext) -> Inferred,
 ) {
-    if let Some(param) = typed_dict
-        .__new__()
-        .expect_simple_params()
-        .iter()
-        .find(|param| param.name.unwrap().as_str(i_s.db) == key)
-    {
-        let expected = Type::new(param.param_specific.expect_positional_db_type_as_ref());
+    if let Some(member) = typed_dict.find_member(i_s.db, key) {
+        let expected = Type::new(&member.type_);
         let inferred = infer(&mut ResultContext::Known(&expected));
 
         expected.error_if_not_matches_with_matcher(

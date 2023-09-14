@@ -1793,20 +1793,19 @@ impl<'db: 'slf, 'slf> Inferred {
                 .maybe_string_literal(i_s)
             {
                 let key = literal.as_str(i_s.db);
-                if let Some(param) = typed_dict.find_param(i_s.db, key) {
-                    Type::new(param.param_specific.expect_positional_db_type_as_ref())
-                        .error_if_not_matches(i_s, &value, |got, expected| {
-                            let node_ref = slice_type.as_node_ref();
-                            node_ref.add_issue(
-                                i_s,
-                                IssueType::TypedDictKeySetItemIncompatibleType {
-                                    key: key.into(),
-                                    got,
-                                    expected,
-                                },
-                            );
-                            node_ref.to_db_lifetime(i_s.db)
-                        });
+                if let Some(member) = typed_dict.find_member(i_s.db, key) {
+                    Type::new(&member.type_).error_if_not_matches(i_s, &value, |got, expected| {
+                        let node_ref = slice_type.as_node_ref();
+                        node_ref.add_issue(
+                            i_s,
+                            IssueType::TypedDictKeySetItemIncompatibleType {
+                                key: key.into(),
+                                got,
+                                expected,
+                            },
+                        );
+                        node_ref.to_db_lifetime(i_s.db)
+                    });
                 } else {
                     slice_type.as_node_ref().add_issue(
                         i_s,

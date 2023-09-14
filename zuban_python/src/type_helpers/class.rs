@@ -17,7 +17,7 @@ use crate::database::{
     ClassStorage, ClassType, ComplexPoint, Database, Dataclass, DataclassOptions, DbType, Enum,
     EnumMemberDefinition, FormatStyle, FunctionKind, GenericClass, GenericsList, Locality,
     MetaclassState, MroIndex, NamedTuple, ParamSpecific, ParentScope, Point, PointLink, PointType,
-    StringSlice, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict, Variance,
+    StringSlice, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -641,21 +641,21 @@ impl<'db: 'a, 'a> Class<'a> {
                                             class_type,
                                             ClassType::Normal | ClassType::TypedDict(_)
                                         ) {
-                                            let mut callable = (**typed_dict.__new__()).clone();
-                                            let mut params: Vec<_> =
-                                                callable.expect_simple_params().into();
+                                            let mut members: Vec<_> =
+                                                typed_dict.members.clone().into();
                                             self.initialize_typed_dict_members(
                                                 &i_s.with_class_context(self),
-                                                &mut params,
+                                                &mut members,
                                                 self.check_total_typed_dict_argument(
                                                     i_s, arguments,
                                                 ),
                                             );
-                                            callable.params =
-                                                CallableParams::Simple(Rc::from(params));
-                                            class_type = ClassType::TypedDict(Rc::new(
-                                                TypedDict::new(self.name_string_slice(), callable),
-                                            ));
+                                            class_type = ClassType::TypedDict(Rc::new(TypedDict {
+                                                name: self.name_string_slice(),
+                                                type_var_likes: self.type_vars(i_s).clone(),
+                                                defined_at: self.node_ref.as_link(),
+                                                members: members.into(),
+                                            }));
                                         } else {
                                             todo!()
                                         }
@@ -716,25 +716,19 @@ impl<'db: 'a, 'a> Class<'a> {
                             }
                             CalculatedBaseClass::TypedDict => {
                                 is_new_typed_dict = true;
-                                let mut params = vec![];
+                                let mut members = vec![];
 
                                 self.initialize_typed_dict_members(
                                     &i_s.with_class_context(self),
-                                    &mut params,
+                                    &mut members,
                                     self.check_total_typed_dict_argument(i_s, arguments),
                                 );
-                                class_type = ClassType::TypedDict(Rc::new(TypedDict::new(
-                                    self.name_string_slice(),
-                                    CallableContent {
-                                        params: CallableParams::Simple(Rc::from(params)),
-                                        name: Some(self.name_string_slice()),
-                                        class_name: None,
-                                        defined_at: self.node_ref.as_link(),
-                                        kind: FunctionKind::Function,
-                                        type_vars: self.type_vars(i_s).clone(),
-                                        result_type: DbType::Any,
-                                    },
-                                )));
+                                class_type = ClassType::TypedDict(Rc::new(TypedDict {
+                                    name: self.name_string_slice(),
+                                    members: members.into(),
+                                    defined_at: self.node_ref.as_link(),
+                                    type_var_likes: self.type_vars(i_s).clone(),
+                                }));
                             }
                             CalculatedBaseClass::Generic => (),
                             CalculatedBaseClass::Unknown => {
@@ -1315,7 +1309,7 @@ impl<'db: 'a, 'a> Class<'a> {
     fn initialize_typed_dict_members(
         &self,
         i_s: &InferenceState,
-        vec: &mut Vec<CallableParam>,
+        vec: &mut Vec<TypedDictMember>,
         total: bool,
     ) {
         let file = self.node_ref.file;
@@ -1933,7 +1927,7 @@ fn find_stmt_named_tuple_types(
 fn find_stmt_typed_dict_types(
     i_s: &InferenceState,
     file: &PythonFile,
-    vec: &mut Vec<CallableParam>,
+    vec: &mut Vec<TypedDictMember>,
     simple_stmts: SimpleStmts,
     total: bool,
 ) {
@@ -1941,13 +1935,13 @@ fn find_stmt_typed_dict_types(
         match simple.unpack() {
             SimpleStmtContent::Assignment(assignment) => match assignment.unpack() {
                 AssignmentContent::WithAnnotation(Target::Name(name), annot, default) => {
-                    let (t, has_default) = file
+                    let (type_, has_default) = file
                         .inference(i_s)
                         .compute_class_typed_dict_member(annot, total);
-                    vec.push(CallableParam {
-                        param_specific: ParamSpecific::PositionalOrKeyword(t),
-                        has_default,
-                        name: Some(StringSlice::from_name(file.file_index(), name.name())),
+                    vec.push(TypedDictMember {
+                        type_,
+                        required: !has_default,
+                        name: StringSlice::from_name(file.file_index(), name.name()),
                     })
                 }
                 _ => NodeRef::new(file, assignment.index())

@@ -4,10 +4,7 @@ use parsa_python_ast::{AtomContent, DictElement, ExpressionContent, ExpressionPa
 
 use crate::{
     arguments::{ArgumentKind, Arguments},
-    database::{
-        CallableContent, CallableParam, CallableParams, ComplexPoint, CustomBehavior, DbType,
-        FunctionKind, ParamSpecific, StringSlice, TypedDict,
-    },
+    database::{ComplexPoint, CustomBehavior, DbType, StringSlice, TypedDict, TypedDictMember},
     diagnostics::IssueType,
     file::{infer_string_index, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn},
     getitem::{SliceType, SliceTypeContent},
@@ -56,10 +53,8 @@ impl<'a> TypedDictHelper<'a> {
                 simple,
                 |name| {
                     Some({
-                        if let Some(param) = self.0.find_param(i_s.db, name) {
-                            Inferred::from_type(
-                                param.param_specific.clone().expect_positional_db_type(),
-                            )
+                        if let Some(member) = self.0.find_member(i_s.db, name) {
+                            Inferred::from_type(member.type_.clone())
                         } else {
                             Inferred::new_any()
                         }
@@ -109,10 +104,9 @@ impl<'a> TypedDictHelper<'a> {
             IssueType::TypedDictAccessKeyMustBeStringLiteral {
                 keys: self
                     .0
-                    .__new__()
-                    .expect_simple_params()
+                    .members
                     .iter()
-                    .map(|p| format!("\"{}\"", p.name.unwrap().as_str(i_s.db)))
+                    .map(|member| format!("\"{}\"", member.name.as_str(i_s.db)))
                     .collect::<Vec<String>>()
                     .join(", ")
                     .into(),
@@ -218,20 +212,20 @@ fn new_typed_dict_internal<'db>(
         on_type_var,
         TypeComputationOrigin::Constraint,
     );
-    let mut params = vec![];
+    let mut members = vec![];
     for element in dct_iterator {
         match element {
             DictElement::KeyValue(key_value) => {
-                let Some(param_name) = StringSlice::from_string_in_expression(args_node_ref.file_index(), key_value.key()) else {
+                let Some(name) = StringSlice::from_string_in_expression(args_node_ref.file_index(), key_value.key()) else {
                     NodeRef::new(args_node_ref.file, key_value.key().index())
                         .add_issue(i_s, IssueType::TypedDictInvalidFieldName);
                     return None
                 };
-                let (t, has_default) = comp.compute_typed_dict_entry(key_value.value(), total);
-                params.push(CallableParam {
-                    param_specific: ParamSpecific::PositionalOrKeyword(t),
-                    has_default,
-                    name: Some(param_name),
+                let (type_, has_default) = comp.compute_typed_dict_entry(key_value.value(), total);
+                members.push(TypedDictMember {
+                    type_,
+                    required: !has_default,
+                    name,
                 });
                 key_value.key();
             }
@@ -244,19 +238,13 @@ fn new_typed_dict_internal<'db>(
     }
 
     let type_var_likes = comp.into_type_vars(|_, _| ());
-    let callable = CallableContent {
-        name: Some(name),
-        class_name: None,
-        defined_at: args_node_ref.as_link(),
-        kind: FunctionKind::Function,
-        type_vars: type_var_likes,
-        params: CallableParams::Simple(Rc::from(params)),
-        result_type: DbType::Self_,
-    };
     Some(Inferred::new_unsaved_complex(
-        ComplexPoint::TypedDictDefinition(Rc::new(DbType::TypedDict(Rc::new(TypedDict::new(
-            name, callable,
-        ))))),
+        ComplexPoint::TypedDictDefinition(Rc::new(DbType::TypedDict(Rc::new(TypedDict {
+            name,
+            defined_at: args_node_ref.as_link(),
+            type_var_likes,
+            members: members.into(),
+        })))),
     ))
 }
 
@@ -338,8 +326,8 @@ fn typed_dict_get_internal<'db>(
     let inferred_name = first_arg.maybe_positional_arg(i_s, &mut ResultContext::ExpectLiteral)?;
     Some(Inferred::from_type(
         if let Some(name) = inferred_name.maybe_string_literal(i_s) {
-            if let Some(param) = td.find_param(i_s.db, name.as_str(i_s.db)) {
-                let t = param.param_specific.maybe_db_type().unwrap();
+            if let Some(member) = td.find_member(i_s.db, name.as_str(i_s.db)) {
+                let t = &member.type_;
                 let default = infer_default(&mut ResultContext::Known(&Type::new(&t)))?;
                 t.clone().union(i_s.db, default)
             } else {
@@ -383,8 +371,8 @@ fn typed_dict_delitem_internal<'db>(
 
     if let Some(key) = inf_key.maybe_string_literal(i_s) {
         let key = key.as_str(i_s.db);
-        if let Some(param) = td.find_param(i_s.db, key) {
-            if !param.has_default {
+        if let Some(member) = td.find_member(i_s.db, key) {
+            if member.required {
                 args.as_node_ref().add_issue(
                     i_s,
                     IssueType::TypedDictKeyCannotBeDeleted {
