@@ -362,10 +362,10 @@ impl<'db: 'a, 'a> Class<'a> {
             }
         }
 
-        let mut class_infos = self.calculate_class_infos(i_s, type_vars);
+        let (mut class_infos, was_typed_dict) = self.calculate_class_infos(i_s, type_vars);
         let mut was_enum = None;
         let mut was_enum_base = false;
-        if let ClassType::TypedDict(td) = &class_infos.class_type {
+        if let Some(td) = was_typed_dict {
             name_def.insert_complex(
                 ComplexPoint::TypedDictDefinition(Rc::new(DbType::TypedDict(td.clone()))),
                 Locality::ImplicitExtern,
@@ -536,7 +536,7 @@ impl<'db: 'a, 'a> Class<'a> {
         &self,
         i_s: &InferenceState<'db, '_>,
         type_vars: &TypeVarLikes,
-    ) -> Box<ClassInfos> {
+    ) -> (Box<ClassInfos>, Option<Rc<TypedDict>>) {
         debug!("Calculate class infos for {}", self.name());
         // Calculate all type vars beforehand
         let db = i_s.db;
@@ -544,6 +544,7 @@ impl<'db: 'a, 'a> Class<'a> {
         let mut bases: Vec<DbType> = vec![];
         let mut incomplete_mro = false;
         let mut class_type = ClassType::Normal;
+        let mut maybe_typed_dict_members = None;
         let mut is_new_typed_dict = false;
         let mut metaclass = MetaclassState::None;
         if let Some(arguments) = self.node().arguments() {
@@ -639,7 +640,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                     DbType::TypedDict(typed_dict) => {
                                         if matches!(
                                             class_type,
-                                            ClassType::Normal | ClassType::TypedDict(_)
+                                            ClassType::Normal | ClassType::TypedDict
                                         ) {
                                             let mut members: Vec<_> =
                                                 typed_dict.members.clone().into();
@@ -650,12 +651,8 @@ impl<'db: 'a, 'a> Class<'a> {
                                                     i_s, arguments,
                                                 ),
                                             );
-                                            class_type = ClassType::TypedDict(Rc::new(TypedDict {
-                                                name: self.name_string_slice(),
-                                                type_var_likes: self.type_vars(i_s).clone(),
-                                                defined_at: self.node_ref.as_link(),
-                                                members: members.into(),
-                                            }));
+                                            class_type = ClassType::TypedDict;
+                                            maybe_typed_dict_members = Some(members);
                                         } else {
                                             todo!()
                                         }
@@ -689,7 +686,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                                     todo!()
                                                 }
                                             }
-                                            ClassType::TypedDict(typed_dict) => {
+                                            ClassType::TypedDict => {
                                                 unreachable!()
                                             }
                                             _ => (),
@@ -723,12 +720,8 @@ impl<'db: 'a, 'a> Class<'a> {
                                     &mut members,
                                     self.check_total_typed_dict_argument(i_s, arguments),
                                 );
-                                class_type = ClassType::TypedDict(Rc::new(TypedDict {
-                                    name: self.name_string_slice(),
-                                    members: members.into(),
-                                    defined_at: self.node_ref.as_link(),
-                                    type_var_likes: self.type_vars(i_s).clone(),
-                                }));
+                                class_type = ClassType::TypedDict;
+                                maybe_typed_dict_members = Some(members);
                             }
                             CalculatedBaseClass::Generic => (),
                             CalculatedBaseClass::Unknown => {
@@ -774,12 +767,22 @@ impl<'db: 'a, 'a> Class<'a> {
             // why this doesn't cause issues in real Python.
             bases.push(i_s.db.python_state.typed_dict_db_type());
         }
-        Box::new(ClassInfos {
-            mro: linearize_mro(i_s, self, bases),
-            metaclass,
-            incomplete_mro,
-            class_type,
-        })
+        (
+            Box::new(ClassInfos {
+                mro: linearize_mro(i_s, self, bases),
+                metaclass,
+                incomplete_mro,
+                class_type,
+            }),
+            maybe_typed_dict_members.map(|members| {
+                Rc::new(TypedDict {
+                    name: self.name_string_slice(),
+                    members: members.into(),
+                    defined_at: self.node_ref.as_link(),
+                    type_var_likes: self.type_vars(i_s).clone(),
+                })
+            }),
+        )
     }
 
     fn update_metaclass(

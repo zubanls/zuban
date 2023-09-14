@@ -1271,12 +1271,7 @@ impl DbType {
 
     pub fn is_subclassable(&self, db: &Database) -> bool {
         match self {
-            Self::Class(c) => !matches!(
-                &Class::from_generic_class(db, c)
-                    .use_cached_class_infos(db)
-                    .class_type,
-                ClassType::TypedDict(_)
-            ),
+            Self::Class(c) => true,
             Self::Tuple(..) | Self::NewType(..) | Self::NamedTuple(_) => true,
             _ => false,
         }
@@ -3423,7 +3418,7 @@ pub enum ClassType {
     Normal,
     Protocol,
     Enum,
-    TypedDict(Rc<TypedDict>),
+    TypedDict,
     NamedTuple(Rc<NamedTuple>),
 }
 

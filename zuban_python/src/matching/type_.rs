@@ -9,13 +9,13 @@ use super::{
 };
 use crate::arguments::Arguments;
 use crate::database::{
-    CallableContent, CallableParam, CallableParams, ClassGenerics, ClassType, ComplexPoint,
-    Database, Dataclass, DbType, DoubleStarredParamSpecific, EnumMember, FunctionOverload,
-    GenericClass, GenericItem, GenericsList, MetaclassState, NamedTuple, ParamSpecArgument,
-    ParamSpecTypeVars, ParamSpecUsage, ParamSpecific, PointLink, RecursiveAlias,
-    StarredParamSpecific, TupleContent, TupleTypeArguments, TypeAlias, TypeArguments,
-    TypeOrTypeVarTuple, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
-    TypeVarTupleUsage, TypeVarUsage, TypedDict, UnionEntry, UnionType, Variance,
+    CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database,
+    Dataclass, DbType, DoubleStarredParamSpecific, EnumMember, FunctionOverload, GenericClass,
+    GenericItem, GenericsList, MetaclassState, NamedTuple, ParamSpecArgument, ParamSpecTypeVars,
+    ParamSpecUsage, ParamSpecific, PointLink, RecursiveAlias, StarredParamSpecific, TupleContent,
+    TupleTypeArguments, TypeAlias, TypeArguments, TypeOrTypeVarTuple, TypeVarKind, TypeVarLike,
+    TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, TypedDict,
+    UnionEntry, UnionType, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
