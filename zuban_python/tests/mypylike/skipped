@@ -738,8 +738,6 @@ testCannotCreateAnonymousTypedDictInstanceUsingDictLiteralWithExtraItems
 testCannotCreateAnonymousTypedDictInstanceUsingDictLiteralWithMissingItems
 # "Expected TypedDict key to be string literal"
 testTypedDictBytesKey
-# "Expected keyword arguments, {...}, or dict(...) in TypedDict constructor"
-testCannotCreateTypedDictInstanceWithUnknownArgumentPattern
 # context inference of typed dicts
 testErrorCodeTypedDictNoteIgnore
 testErrorCodeTypedDictSubCodeIgnore

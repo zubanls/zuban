@@ -80,8 +80,11 @@ impl<'a> TypedDictHelper<'a> {
     ) -> Inferred {
         let mut iterator = args.iter();
         if let Some(first_arg) = iterator.next().filter(|arg| !arg.is_keyword_argument()) {
-            if iterator.next().is_some() {
-                todo!()
+            if let Some(next_arg) = iterator.next() {
+                next_arg
+                    .as_node_ref()
+                    .add_issue(i_s, IssueType::TypedDictWrongArgumentsInConstructor);
+                return Inferred::new_any();
             }
             let t = Type::owned(DbType::TypedDict(self.0.clone()));
             first_arg.infer(i_s, &mut ResultContext::Known(&t));
