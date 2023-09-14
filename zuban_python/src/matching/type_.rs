@@ -2111,14 +2111,6 @@ impl<'a> Type<'a> {
         callable: &mut impl FnMut(&InferenceState, &mut Matcher, Rc<TypedDict>) -> bool,
     ) -> bool {
         match self.as_ref() {
-            DbType::Class(c) => {
-                let class = Class::from_generic_class(i_s.db, c);
-                if let ClassType::TypedDict(d) = &class.use_cached_class_infos(i_s.db).class_type {
-                    callable(i_s, matcher, d.clone())
-                } else {
-                    false
-                }
-            }
             DbType::TypedDict(td) => callable(i_s, matcher, td.clone()),
             DbType::Union(union_type) => union_type
                 .iter()
