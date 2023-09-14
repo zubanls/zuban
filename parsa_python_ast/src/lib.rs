@@ -709,6 +709,12 @@ impl<'db> DictKeyValue<'db> {
     }
 }
 
+impl<'db> DictStarred<'db> {
+    pub fn expression_part(&self) -> ExpressionPart<'db> {
+        ExpressionPart::new(self.node.nth_child(1))
+    }
+}
+
 impl<'db> Expression<'db> {
     pub fn unpack(self) -> ExpressionContent<'db> {
         let mut iter = self.node.iter_children();

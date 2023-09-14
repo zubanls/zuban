@@ -148,7 +148,16 @@ impl<'db> Inference<'db, '_, '_> {
                         }
                     }
                 }
-                DictElement::DictStarred(_) => todo!(),
+                DictElement::DictStarred(dict_starred) => {
+                    let inf = self.infer_expression_part(
+                        dict_starred.expression_part(),
+                        &mut ResultContext::Unknown,
+                    );
+                    if let Some(td) = inf.as_type(i_s).maybe_typed_dict(i_s.db) {
+                    } else {
+                        todo!()
+                    }
+                }
             }
         }
         let dict_node_ref = NodeRef::new(self.file, dict.index());
