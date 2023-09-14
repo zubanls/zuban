@@ -769,27 +769,31 @@ impl<'db: 'a, 'a> Class<'a> {
                 }
             }
         }
-        let is_typed_dict = class_type == ClassType::TypedDict;
+        let was_typed_dict = (class_type == ClassType::TypedDict).then(|| {
+            if bases.iter().any(|t| !matches!(t, DbType::TypedDict(_))) {
+                NodeRef::new(self.node_ref.file, self.node().arguments().unwrap().index())
+                    .add_issue(i_s, IssueType::TypedDictBasesMustBeTypedKeys);
+            }
+            self.initialize_typed_dict_members(
+                &i_s.with_class_context(self),
+                &mut typed_dict_members,
+                typed_dict_total.unwrap(),
+            );
+            Rc::new(TypedDict {
+                name: self.name_string_slice(),
+                members: typed_dict_members.into_boxed_slice(),
+                defined_at: self.node_ref.as_link(),
+                type_var_likes: self.type_vars(i_s).clone(),
+            })
+        });
         (
             Box::new(ClassInfos {
-                mro: linearize_mro(i_s, self, bases),
+                mro: linearize_mro(i_s, self, &bases),
                 metaclass,
                 incomplete_mro,
                 class_type,
             }),
-            is_typed_dict.then(|| {
-                self.initialize_typed_dict_members(
-                    &i_s.with_class_context(self),
-                    &mut typed_dict_members,
-                    typed_dict_total.unwrap(),
-                );
-                Rc::new(TypedDict {
-                    name: self.name_string_slice(),
-                    members: typed_dict_members.into_boxed_slice(),
-                    defined_at: self.node_ref.as_link(),
-                    type_var_likes: self.type_vars(i_s).clone(),
-                })
-            }),
+            was_typed_dict,
         )
     }
 
@@ -1662,7 +1666,7 @@ fn to_base_kind(t: &DbType) -> BaseKind {
     }
 }
 
-fn linearize_mro(i_s: &InferenceState, class: &Class, bases: Vec<DbType>) -> Box<[BaseClass]> {
+fn linearize_mro(i_s: &InferenceState, class: &Class, bases: &[DbType]) -> Box<[BaseClass]> {
     let mut mro = vec![];
 
     let object = i_s.db.python_state.object_db_type();

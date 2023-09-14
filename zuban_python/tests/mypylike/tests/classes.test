@@ -373,3 +373,14 @@ class D2(A2, B2): pass  # This is fine
 # int() supports __and__, but int should not.
 int & int  # E: Unsupported left operand type for & ("Type[int]")
 int() & int()
+
+[case typed_dict_with_normal_bases]
+# Adapted from testCannotCreateTypedDictWithClassOtherBases to test an additional case
+from typing import TypedDict
+
+class A: pass
+
+class X(TypedDict, A): # E: All bases of a new TypedDict must be TypedDict types
+    x: int
+class Y(A, TypedDict): # E: All bases of a new TypedDict must be TypedDict types
+    x: int

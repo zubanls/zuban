@@ -172,6 +172,7 @@ pub(crate) enum IssueType {
     TypedDictKeyCannotBeDeleted { typed_dict: Box<str>, key: Box<str> },
     TypedDictInvalidMember,
     TypedDictInvalidMemberRightSide,
+    TypedDictBasesMustBeTypedKeys,
     TypedDictDuplicateKey { key: Box<str> },
     TypedDictOverwritingKeyWhileExtending { key: Box<str> },
     TypedDictOverwritingKeyWhileMerging { key: Box<str> },
@@ -840,6 +841,8 @@ impl<'db> Diagnostic<'db> {
                 "Invalid statement in TypedDict definition; expected \"field_name: field_type\"".to_string(),
             TypedDictInvalidMemberRightSide =>
                 "Right hand side values are not supported in TypedDict".to_string(),
+            TypedDictBasesMustBeTypedKeys =>
+                "All bases of a new TypedDict must be TypedDict types".to_string(),
             TypedDictDuplicateKey { key } => format!(
                 r#"Duplicate TypedDict key "{key}""#
             ),

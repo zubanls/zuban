@@ -745,8 +745,6 @@ testErrorCodeTypedDictNoteIgnore
 testErrorCodeTypedDictSubCodeIgnore
 # "Type of TypedDict is ambiguous, none of ("A", "B") matches cleanly"
 testTypedDictUnionAmbiguousCaseNoMatch
-# typed dict as base class
-testCannotCreateTypedDictWithClassOtherBases
 # Unpack
 testUnpackKeywordTypesTypedDict
 testUnpackKwargsNonIdentifier
