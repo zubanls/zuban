@@ -771,10 +771,11 @@ testUnpackKwargsOverridesTypedDict
 testTypedDictUnpackUntypedDict
 testTypedDictUnpackFromUnion
 testTypedDictUnpackUnionRequiredMissing
-testTypedDictUnpackInference
 testTypedDictUnpackStrictMode
 testTypedDictUnpackAny
 testTypedDictUnpackRequiredKeyMissing
+# Foo(**bar)
+testTypedDictUnpackInference
 # structural matching
 testCanConvertTypedDictToEquivalentTypedDict
 testCanConvertTypedDictToNarrowerTypedDict
