@@ -28,6 +28,7 @@ pub use named_tuple::{
 pub use tuple::Tuple;
 pub use typed_dict::{
     infer_typed_dict_total_argument, new_typed_dict, typed_dict_get, TypedDictHelper,
+    TypedDictMemberGatherer,
 };
 pub use typing::{
     execute_assert_type, execute_type, NewTypeClass, ParamSpecClass, RevealTypeFunction,

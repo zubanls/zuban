@@ -4,7 +4,9 @@ use parsa_python_ast::{AtomContent, DictElement, ExpressionContent, ExpressionPa
 
 use crate::{
     arguments::{ArgumentKind, Arguments},
-    database::{ComplexPoint, CustomBehavior, DbType, StringSlice, TypedDict},
+    database::{
+        ComplexPoint, CustomBehavior, Database, DbType, StringSlice, TypedDict, TypedDictMember,
+    },
     diagnostics::IssueType,
     file::{infer_string_index, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn},
     getitem::{SliceType, SliceTypeContent},
@@ -15,6 +17,31 @@ use crate::{
 };
 
 use super::Instance;
+
+#[derive(Default)]
+pub struct TypedDictMemberGatherer {
+    members: Vec<TypedDictMember>,
+}
+
+impl TypedDictMemberGatherer {
+    pub(crate) fn add(&mut self, db: &Database, member: TypedDictMember) -> Result<(), IssueType> {
+        let key = member.name.as_str(db);
+        if self.members.iter().any(|m| m.name.as_str(db) == key) {
+            Err(IssueType::TypedDictDuplicateKey { key: key.into() })
+        } else {
+            self.members.push(member);
+            Ok(())
+        }
+    }
+
+    pub fn extend_from_slice(&mut self, slice: &[TypedDictMember]) {
+        self.members.extend_from_slice(slice)
+    }
+
+    pub fn into_boxed_slice(self) -> Box<[TypedDictMember]> {
+        self.members.into_boxed_slice()
+    }
+}
 
 pub struct TypedDictHelper<'a>(pub &'a Rc<TypedDict>);
 impl<'a> TypedDictHelper<'a> {
@@ -210,7 +237,7 @@ fn new_typed_dict_internal<'db>(
         on_type_var,
         TypeComputationOrigin::Constraint,
     );
-    let mut members = vec![];
+    let mut members = TypedDictMemberGatherer::default();
     for element in dct_iterator {
         match element {
             DictElement::KeyValue(key_value) => {
@@ -219,7 +246,12 @@ fn new_typed_dict_internal<'db>(
                         .add_issue(i_s, IssueType::TypedDictInvalidFieldName);
                     return None
                 };
-                members.push(comp.compute_typed_dict_member(name, key_value.value(), total));
+                if let Err(issue) = members.add(
+                    i_s.db,
+                    comp.compute_typed_dict_member(name, key_value.value(), total),
+                ) {
+                    NodeRef::new(args_node_ref.file, key_value.key().index()).add_issue(i_s, issue);
+                }
                 key_value.key();
             }
             DictElement::DictStarred(d) => {
@@ -236,7 +268,7 @@ fn new_typed_dict_internal<'db>(
             name,
             defined_at: args_node_ref.as_link(),
             type_var_likes,
-            members: members.into(),
+            members: members.into_boxed_slice(),
         })))),
     ))
 }

@@ -10,7 +10,7 @@ use parsa_python_ast::{
 
 use super::enum_::execute_functional_enum;
 use super::function::OverloadResult;
-use super::{Callable, Instance, Module, NamedTupleValue};
+use super::{Callable, Instance, Module, NamedTupleValue, TypedDictMemberGatherer};
 use crate::arguments::{Arguments, KnownArguments, NoArguments, SimpleArguments};
 use crate::database::{
     BaseClass, CallableContent, CallableParam, CallableParams, ClassGenerics, ClassInfos,
@@ -544,7 +544,7 @@ impl<'db: 'a, 'a> Class<'a> {
         let mut bases: Vec<DbType> = vec![];
         let mut incomplete_mro = false;
         let mut class_type = ClassType::Normal;
-        let mut typed_dict_members = vec![];
+        let mut typed_dict_members = TypedDictMemberGatherer::default();
         let mut typed_dict_total = None;
         let mut had_new_typed_dict = false;
         let mut metaclass = MetaclassState::None;
@@ -782,7 +782,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 );
                 Rc::new(TypedDict {
                     name: self.name_string_slice(),
-                    members: typed_dict_members.into(),
+                    members: typed_dict_members.into_boxed_slice(),
                     defined_at: self.node_ref.as_link(),
                     type_var_likes: self.type_vars(i_s).clone(),
                 })
@@ -1317,7 +1317,7 @@ impl<'db: 'a, 'a> Class<'a> {
     fn initialize_typed_dict_members(
         &self,
         i_s: &InferenceState,
-        vec: &mut Vec<TypedDictMember>,
+        vec: &mut TypedDictMemberGatherer,
         total: bool,
     ) {
         let file = self.node_ref.file;
@@ -1935,7 +1935,7 @@ fn find_stmt_named_tuple_types(
 fn find_stmt_typed_dict_types(
     i_s: &InferenceState,
     file: &PythonFile,
-    vec: &mut Vec<TypedDictMember>,
+    vec: &mut TypedDictMemberGatherer,
     simple_stmts: SimpleStmts,
     total: bool,
 ) {
@@ -1947,11 +1947,16 @@ fn find_stmt_typed_dict_types(
                         NodeRef::new(file, assignment.index())
                             .add_issue(i_s, IssueType::TypedDictInvalidMemberRightSide);
                     }
-                    vec.push(file.inference(i_s).compute_class_typed_dict_member(
-                        StringSlice::from_name(file.file_index(), name_def.name()),
-                        annot,
-                        total,
-                    ))
+                    if let Err(issue) = vec.add(
+                        i_s.db,
+                        file.inference(i_s).compute_class_typed_dict_member(
+                            StringSlice::from_name(file.file_index(), name_def.name()),
+                            annot,
+                            total,
+                        ),
+                    ) {
+                        NodeRef::new(file, assignment.index()).add_issue(i_s, issue);
+                    }
                 }
                 AssignmentContent::Normal(targets, _) => {
                     NodeRef::new(file, assignment.index())
@@ -1959,11 +1964,18 @@ fn find_stmt_typed_dict_types(
                     for target in targets {
                         if let Target::Name(name_def) = target {
                             // Add those names regardless, because an error was already added.
-                            vec.push(TypedDictMember {
-                                type_: DbType::Any,
-                                required: true,
-                                name: StringSlice::from_name(file.file_index(), name_def.name()),
-                            });
+                            vec.add(
+                                i_s.db,
+                                TypedDictMember {
+                                    type_: DbType::Any,
+                                    required: true,
+                                    name: StringSlice::from_name(
+                                        file.file_index(),
+                                        name_def.name(),
+                                    ),
+                                },
+                            )
+                            .ok();
                         }
                     }
                 }
