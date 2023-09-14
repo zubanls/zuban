@@ -91,6 +91,7 @@ pub(super) enum InvalidVariableType<'a> {
     Ellipsis,
     Other,
     Slice,
+    InlineTypedDict,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -177,6 +178,9 @@ impl InvalidVariableType<'_> {
             Self::Execution { .. } | Self::Other => {
                 IssueType::InvalidType(Box::from("Invalid type comment or annotation"))
             }
+            Self::InlineTypedDict => IssueType::InvalidType(Box::from(
+                "Inline TypedDict types not supported; use assignment to define TypedDict",
+            )),
             Self::Slice => {
                 add_issue(IssueType::InvalidType(Box::from(
                     "Invalid type comment or annotation",
@@ -1004,6 +1008,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             None => DbType::Any,
                         },
                     )
+                }
+                TypeContent::SpecialType(SpecialType::TypingTypedDict) => {
+                    TypeContent::InvalidVariable(InvalidVariableType::InlineTypedDict)
                 }
                 TypeContent::Unknown => TypeContent::Unknown,
                 _ => {

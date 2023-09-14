@@ -742,8 +742,6 @@ testCannotCreateAnonymousTypedDictInstanceUsingDictLiteralWithMissingItems
 testTypedDictBytesKey
 # "Expected keyword arguments, {...}, or dict(...) in TypedDict constructor"
 testCannotCreateTypedDictInstanceWithUnknownArgumentPattern
-# "Inline TypedDict types not supported; use assignment to define TypedDict"
-testCannotCreateTypedDictInstanceWithInlineTypedDict
 # context inference of typed dicts
 testErrorCodeTypedDictNoteIgnore
 testErrorCodeTypedDictSubCodeIgnore
