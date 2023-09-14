@@ -546,6 +546,7 @@ impl<'db: 'a, 'a> Class<'a> {
         let mut class_type = ClassType::Normal;
         let mut typed_dict_members = vec![];
         let mut typed_dict_total = None;
+        let mut had_new_typed_dict = false;
         let mut metaclass = MetaclassState::None;
         if let Some(arguments) = self.node().arguments() {
             // Check metaclass before checking all the arguments, because it has a preference over
@@ -654,7 +655,6 @@ impl<'db: 'a, 'a> Class<'a> {
                                         } else {
                                             todo!()
                                         }
-                                        bases.pop();
                                         continue;
                                     }
                                     _ => unreachable!(),
@@ -710,10 +710,21 @@ impl<'db: 'a, 'a> Class<'a> {
                                 class_type = ClassType::NamedTuple(named_tuple);
                             }
                             CalculatedBaseClass::TypedDict => {
-                                class_type = ClassType::TypedDict;
-                                if typed_dict_total.is_none() {
-                                    typed_dict_total =
-                                        Some(self.check_total_typed_dict_argument(i_s, arguments))
+                                if had_new_typed_dict {
+                                    NodeRef::new(self.node_ref.file, n.index()).add_issue(
+                                        i_s,
+                                        IssueType::DuplicateBaseClass {
+                                            name: "TypedDict".into(),
+                                        },
+                                    );
+                                } else {
+                                    had_new_typed_dict = true;
+                                    class_type = ClassType::TypedDict;
+                                    if typed_dict_total.is_none() {
+                                        typed_dict_total = Some(
+                                            self.check_total_typed_dict_argument(i_s, arguments),
+                                        )
+                                    }
                                 }
                             }
                             CalculatedBaseClass::Generic => (),

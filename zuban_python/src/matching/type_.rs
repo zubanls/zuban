@@ -2190,6 +2190,11 @@ impl<'a> Type<'a> {
             (DbType::Type(_), DbType::Type(_)) => Some(Box::from("type")),
             (DbType::Tuple(_), DbType::Tuple(_)) => Some(Box::from("tuple")),
             (DbType::Callable(_), DbType::Callable(_)) => Some(Box::from("callable")),
+            (DbType::TypedDict(td1), DbType::TypedDict(td2))
+                if td1.defined_at == td2.defined_at =>
+            {
+                Some(Box::from(td1.name.as_str(db)))
+            }
             _ => None,
         }
     }
