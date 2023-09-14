@@ -171,6 +171,7 @@ pub(crate) enum IssueType {
     TypedDictHasNoKey { typed_dict: Box<str>, key: Box<str> },
     TypedDictKeyCannotBeDeleted { typed_dict: Box<str>, key: Box<str> },
     TypedDictInvalidMember,
+    TypedDictInvalidMemberRightSide,
     TypedDictMissingKeys { typed_dict: Box<str>, keys: Box<[Box<str>]> },
     TypedDictNonRequired { key: Box<str> },
 
@@ -834,6 +835,8 @@ impl<'db> Diagnostic<'db> {
             ),
             TypedDictInvalidMember =>
                 "Invalid statement in TypedDict definition; expected \"field_name: field_type\"".to_string(),
+            TypedDictInvalidMemberRightSide =>
+                "Right hand side values are not supported in TypedDict".to_string(),
             TypedDictMissingKeys { typed_dict, keys } => match keys.as_ref() {
                 [key] => format!(r#"Missing key "{key}" for TypedDict "{typed_dict}""#),
                 _ => format!(

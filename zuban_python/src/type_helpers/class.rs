@@ -1942,18 +1942,36 @@ fn find_stmt_typed_dict_types(
     for simple in simple_stmts.iter() {
         match simple.unpack() {
             SimpleStmtContent::Assignment(assignment) => match assignment.unpack() {
-                AssignmentContent::WithAnnotation(Target::Name(name), annot, default) => {
+                AssignmentContent::WithAnnotation(Target::Name(name_def), annot, right_side) => {
+                    if right_side.is_some() {
+                        NodeRef::new(file, assignment.index())
+                            .add_issue(i_s, IssueType::TypedDictInvalidMemberRightSide);
+                    }
                     let (type_, has_default) = file
                         .inference(i_s)
                         .compute_class_typed_dict_member(annot, total);
                     vec.push(TypedDictMember {
                         type_,
                         required: !has_default,
-                        name: StringSlice::from_name(file.file_index(), name.name()),
+                        name: StringSlice::from_name(file.file_index(), name_def.name()),
                     })
                 }
+                AssignmentContent::Normal(targets, _) => {
+                    NodeRef::new(file, assignment.index())
+                        .add_issue(i_s, IssueType::TypedDictInvalidMember);
+                    for target in targets {
+                        if let Target::Name(name_def) = target {
+                            // Add those names regardless, because an error was already added.
+                            vec.push(TypedDictMember {
+                                type_: DbType::Any,
+                                required: true,
+                                name: StringSlice::from_name(file.file_index(), name_def.name()),
+                            });
+                        }
+                    }
+                }
                 _ => NodeRef::new(file, assignment.index())
-                    .add_issue(i_s, IssueType::InvalidStmtInNamedTuple),
+                    .add_issue(i_s, IssueType::TypedDictInvalidMember),
             },
             _ => (),
         }

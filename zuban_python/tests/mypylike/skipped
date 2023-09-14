@@ -751,8 +751,6 @@ testCannotCreateTypedDictWithClassOtherBases
 testCanCreateTypedDictWithClassOverwriting
 # "Overwriting TypedDict field "x" while extending"
 testCanCreateTypedDictWithClassOverwriting2
-# Invalid NamedTuple
-testCannotCreateTypedDictWithClassWithOtherStuff
 # "Duplicate TypedDict key "x""
 testCannotCreateTypedDictWithDuplicateKey1
 testCannotCreateTypedDictWithDuplicateKey2

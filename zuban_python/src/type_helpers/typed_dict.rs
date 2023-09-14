@@ -190,10 +190,8 @@ fn new_typed_dict_internal<'db>(
         };
     }
     if iterator.next().is_some() {
-        args.as_node_ref().add_issue(
-            i_s,
-            IssueType::TooManyArguments(" for \"NamedTuple()\"".into()),
-        );
+        args.as_node_ref()
+            .add_issue(i_s, IssueType::TooManyArguments(" for \"TODO()\"".into()));
         return None;
     }
     let dct_iterator = match atom.unpack() {
