@@ -4,7 +4,7 @@ use parsa_python_ast::{AtomContent, DictElement, ExpressionContent, ExpressionPa
 
 use crate::{
     arguments::{ArgumentKind, Arguments},
-    database::{ComplexPoint, CustomBehavior, DbType, StringSlice, TypedDict, TypedDictMember},
+    database::{ComplexPoint, CustomBehavior, DbType, StringSlice, TypedDict},
     diagnostics::IssueType,
     file::{infer_string_index, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn},
     getitem::{SliceType, SliceTypeContent},
@@ -219,12 +219,7 @@ fn new_typed_dict_internal<'db>(
                         .add_issue(i_s, IssueType::TypedDictInvalidFieldName);
                     return None
                 };
-                let (type_, has_default) = comp.compute_typed_dict_entry(key_value.value(), total);
-                members.push(TypedDictMember {
-                    type_,
-                    required: !has_default,
-                    name,
-                });
+                members.push(comp.compute_typed_dict_member(name, key_value.value(), total));
                 key_value.key();
             }
             DictElement::DictStarred(d) => {

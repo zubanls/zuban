@@ -1947,14 +1947,11 @@ fn find_stmt_typed_dict_types(
                         NodeRef::new(file, assignment.index())
                             .add_issue(i_s, IssueType::TypedDictInvalidMemberRightSide);
                     }
-                    let (type_, has_default) = file
-                        .inference(i_s)
-                        .compute_class_typed_dict_member(annot, total);
-                    vec.push(TypedDictMember {
-                        type_,
-                        required: !has_default,
-                        name: StringSlice::from_name(file.file_index(), name_def.name()),
-                    })
+                    vec.push(file.inference(i_s).compute_class_typed_dict_member(
+                        StringSlice::from_name(file.file_index(), name_def.name()),
+                        annot,
+                        total,
+                    ))
                 }
                 AssignmentContent::Normal(targets, _) => {
                     NodeRef::new(file, assignment.index())

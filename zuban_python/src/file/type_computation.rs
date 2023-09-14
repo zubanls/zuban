@@ -12,8 +12,8 @@ use crate::database::{
     Locality, NamedTuple, Namespace, NewType, ParamSpecArgument, ParamSpecUsage, ParamSpecific,
     Point, PointLink, PointType, RecursiveAlias, Specific, StarredParamSpecific, StringSlice,
     TupleContent, TypeAlias, TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarKind, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, UnionEntry,
-    UnionType,
+    TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage,
+    TypedDictMember, UnionEntry, UnionType,
 };
 use crate::diagnostics::{Issue, IssueType};
 use crate::file::File;
@@ -538,15 +538,25 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         }
     }
 
-    pub fn compute_typed_dict_entry(&mut self, expr: Expression, total: bool) -> (DbType, bool) {
+    pub fn compute_typed_dict_member(
+        &mut self,
+        name: StringSlice,
+        expr: Expression,
+        total: bool,
+    ) -> TypedDictMember {
         let calculated = self.compute_type(expr);
-        match calculated {
-            TypeContent::Required(t) => (t, false),
-            TypeContent::NotRequired(t) => (t, true),
+        let (type_, required) = match calculated {
+            TypeContent::Required(t) => (t, true),
+            TypeContent::NotRequired(t) => (t, false),
             _ => (
                 self.as_db_type(calculated, NodeRef::new(self.inference.file, expr.index())),
-                !total,
+                total,
             ),
+        };
+        TypedDictMember {
+            name,
+            type_,
+            required,
         }
     }
 
@@ -3068,9 +3078,10 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
 
     pub fn compute_class_typed_dict_member(
         &mut self,
+        name: StringSlice,
         annotation: Annotation,
         total: bool,
-    ) -> (DbType, bool) {
+    ) -> TypedDictMember {
         let mut x = type_computation_for_variable_annotation;
         let mut comp = TypeComputation::new(
             self,
@@ -3079,13 +3090,12 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             TypeComputationOrigin::AssignmentTypeCommentOrAnnotation,
         );
 
-        let (mut db_type, has_default) =
-            comp.compute_typed_dict_entry(annotation.expression(), total);
+        let mut member = comp.compute_typed_dict_member(name, annotation.expression(), total);
         let type_vars = comp.into_type_vars(|inf, recalculate_type_vars| {
-            db_type = recalculate_type_vars(&db_type);
+            member.type_ = recalculate_type_vars(&member.type_);
         });
         debug_assert!(type_vars.is_empty());
-        (db_type, has_default)
+        member
     }
 
     pub fn compute_type_var_constraint(&mut self, expr: Expression) -> Option<DbType> {
