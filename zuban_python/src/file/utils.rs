@@ -153,7 +153,22 @@ impl<'db> Inference<'db, '_, '_> {
                         dict_starred.expression_part(),
                         &mut ResultContext::Unknown,
                     );
+                    let node_ref =
+                        NodeRef::new(self.file, dict_starred.index()).to_db_lifetime(i_s.db);
                     if let Some(td) = inf.as_type(i_s).maybe_typed_dict(i_s.db) {
+                        for member in td.members.iter() {
+                            let key = member.name.as_str(i_s.db);
+                            missing_keys.retain(|k| *k != key);
+                            infer_typed_dict_item(
+                                self.i_s,
+                                &typed_dict,
+                                matcher,
+                                node_ref,
+                                key,
+                                &mut extra_keys,
+                                |_| Inferred::from_type(member.type_.clone()),
+                            );
+                        }
                     } else {
                         todo!()
                     }

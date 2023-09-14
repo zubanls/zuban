@@ -733,8 +733,6 @@ testErrorCodeTypedDict
 # "TypedDict "a.Dict[TValue]" has no key "x""
 testTypedDictMissingEmptyKey
 testGenericTypedDictWithError
-# "Extra key "z" for TypedDict "Point""
-testTypedDictUnpackMissingOrExtraKey
 # "Expected TypedDict key "x" but found keys ("x", "z")"
 testCannotCreateAnonymousTypedDictInstanceUsingDictLiteralWithExtraItems
 testCannotCreateAnonymousTypedDictInstanceUsingDictLiteralWithMissingItems
@@ -770,19 +768,12 @@ testUnpackKwargsSerialize
 testDataclassFieldWithTypedDictUnpacking
 testUnpackKwargsOverridesTypedDict
 # dict unpacking
-testTypedDictUnpackMultiple
-testTypedDictUnpackNested
-testTypedDictUnpackNestedError
-testTypedDictUnpackOverrideRequired
 testTypedDictUnpackUntypedDict
-testTypedDictUnpackIntoUnion
 testTypedDictUnpackFromUnion
 testTypedDictUnpackUnionRequiredMissing
 testTypedDictUnpackInference
 testTypedDictUnpackStrictMode
 testTypedDictUnpackAny
-testTypedDictUnpackNotRequiredKeyIncompatible
-testTypedDictUnpackNotRequiredKeyExtra
 testTypedDictUnpackRequiredKeyMissing
 # structural matching
 testCanConvertTypedDictToEquivalentTypedDict
@@ -841,7 +832,6 @@ testTypedDictFlexibleUpdateUnionStrict
 testTypedDictUnpackSame
 testTypedDictUnpackCompatible
 testTypedDictUnpackIncompatible
-testTypedDictUnpackMultiple
 # Anonymous TypedDicts for join
 testNonTotalTypedDictInErrorMessages
 testAnonymousTypedDictInErrorMessages
