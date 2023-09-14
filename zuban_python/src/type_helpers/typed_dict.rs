@@ -21,13 +21,24 @@ use super::Instance;
 #[derive(Default)]
 pub struct TypedDictMemberGatherer {
     members: Vec<TypedDictMember>,
+    first_after_merge_index: usize,
 }
 
 impl TypedDictMemberGatherer {
     pub(crate) fn add(&mut self, db: &Database, member: TypedDictMember) -> Result<(), IssueType> {
         let key = member.name.as_str(db);
-        if self.members.iter().any(|m| m.name.as_str(db) == key) {
-            Err(IssueType::TypedDictDuplicateKey { key: key.into() })
+        if let Some((i, m)) = self
+            .members
+            .iter_mut()
+            .enumerate()
+            .find(|(_, m)| m.name.as_str(db) == key)
+        {
+            if i >= self.first_after_merge_index {
+                Err(IssueType::TypedDictDuplicateKey { key: key.into() })
+            } else {
+                *m = member;
+                Err(IssueType::TypedDictOverwritingKeyWhileExtending { key: key.into() })
+            }
         } else {
             self.members.push(member);
             Ok(())
@@ -50,6 +61,7 @@ impl TypedDictMemberGatherer {
                 self.members.push(to_add.clone());
             }
         }
+        self.first_after_merge_index = self.members.len();
     }
 
     pub fn into_boxed_slice(self) -> Box<[TypedDictMember]> {

@@ -173,6 +173,7 @@ pub(crate) enum IssueType {
     TypedDictInvalidMember,
     TypedDictInvalidMemberRightSide,
     TypedDictDuplicateKey { key: Box<str> },
+    TypedDictOverwritingKeyWhileExtending { key: Box<str> },
     TypedDictOverwritingKeyWhileMerging { key: Box<str> },
     TypedDictMissingKeys { typed_dict: Box<str>, keys: Box<[Box<str>]> },
     TypedDictNonRequired { key: Box<str> },
@@ -841,6 +842,9 @@ impl<'db> Diagnostic<'db> {
                 "Right hand side values are not supported in TypedDict".to_string(),
             TypedDictDuplicateKey { key } => format!(
                 r#"Duplicate TypedDict key "{key}""#
+            ),
+            TypedDictOverwritingKeyWhileExtending { key } => format!(
+                r#"Overwriting TypedDict field "{key}" while extending"#
             ),
             TypedDictOverwritingKeyWhileMerging { key } => format!(
                 r#"Overwriting TypedDict field "{key}" while merging"#

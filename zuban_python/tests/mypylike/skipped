@@ -747,8 +747,6 @@ testErrorCodeTypedDictSubCodeIgnore
 testTypedDictUnionAmbiguousCaseNoMatch
 # typed dict as base class
 testCannotCreateTypedDictWithClassOtherBases
-# "Overwriting TypedDict field "x" while extending"
-testCanCreateTypedDictWithClassOverwriting2
 # Unpack
 testUnpackKeywordTypesTypedDict
 testUnpackKwargsNonIdentifier
