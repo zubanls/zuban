@@ -73,6 +73,7 @@ fn main() {
         disallow_untyped_defs: false,
         disallow_untyped_calls: false,
         mypy_compatible: false,
+        extra_checks: false,
     });
 
     let files = python_files();

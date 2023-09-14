@@ -172,6 +172,7 @@ pub(crate) enum IssueType {
     TypedDictKeyCannotBeDeleted { typed_dict: Box<str>, key: Box<str> },
     TypedDictInvalidMember,
     TypedDictMissingKeys { typed_dict: Box<str>, keys: Box<[Box<str>]> },
+    TypedDictNonRequired { key: Box<str> },
 
     OverloadMismatch { name: Box<str>, args: Box<[Box<str>]>, variants: Box<[Box<str>]> },
     OverloadImplementationNotLast,
@@ -843,6 +844,9 @@ impl<'db> Diagnostic<'db> {
                         .join(", ")
                 ),
             },
+            TypedDictNonRequired { key } => format!(
+                r#"Non-required key "{key}" not explicitly found in any ** item"#
+            ),
 
             OverloadImplementationNotLast =>
                 "The implementation for an overloaded function must come last".to_string(),

@@ -40,6 +40,7 @@ pub struct ProjectOptions {
     pub check_untyped_defs: bool,
     pub disallow_untyped_defs: bool,
     pub disallow_untyped_calls: bool,
+    pub extra_checks: bool,
     pub mypy_compatible: bool,
 }
 
@@ -67,6 +68,7 @@ impl Project {
                 check_untyped_defs: options.check_untyped_defs,
                 disallow_untyped_defs: options.disallow_untyped_defs,
                 disallow_untyped_calls: options.disallow_untyped_calls,
+                extra_checks: options.extra_checks,
                 mypy_compatible: options.mypy_compatible,
             },
         );
@@ -128,6 +130,7 @@ pub struct PythonProject {
     check_untyped_defs: bool,
     disallow_untyped_defs: bool,
     disallow_untyped_calls: bool,
+    extra_checks: bool,
     // is_django: bool,  // TODO maybe add?
 }
 

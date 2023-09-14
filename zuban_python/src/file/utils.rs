@@ -160,6 +160,9 @@ impl<'db> Inference<'db, '_, '_> {
                             for member in td.members.iter() {
                                 let key = member.name.as_str(i_s.db);
                                 missing_keys.retain(|k| *k != key);
+                                if i_s.db.python_state.project.extra_checks {
+                                    debug!("TODO need to implement --extra-checks");
+                                }
                                 infer_typed_dict_item(
                                     self.i_s,
                                     &typed_dict,
