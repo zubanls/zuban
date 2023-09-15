@@ -721,17 +721,9 @@ testBasicRecursiveTypedDictCall
 testRecursiveTypedDictWithList
 # TypedDict recursion with imports
 testNewImportCycleTypedDict
-# "Unpack item in ** argument must be a TypedDict"
-testUnpackWithoutTypedDict
 # "Missing named argument "radius" for "foo""
 testUnpackTypedDictTotality
 testErrorCodeTypedDict
-# "TypedDict "a.Dict[TValue]" has no key "x""
-testTypedDictMissingEmptyKey
-testGenericTypedDictWithError
-# "Expected TypedDict key "x" but found keys ("x", "z")"
-testCannotCreateAnonymousTypedDictInstanceUsingDictLiteralWithExtraItems
-testCannotCreateAnonymousTypedDictInstanceUsingDictLiteralWithMissingItems
 # "Expected TypedDict key to be string literal"
 testTypedDictBytesKey
 # context inference of typed dicts
@@ -745,6 +737,8 @@ testUnpackKwargsNonIdentifier
 testUnpackKwargsSerialize
 testDataclassFieldWithTypedDictUnpacking
 testUnpackKwargsOverridesTypedDict
+# "Unpack item in ** argument must be a TypedDict"
+testUnpackWithoutTypedDict
 # dict unpacking
 testTypedDictUnpackUntypedDict
 testTypedDictUnpackFromUnion
@@ -787,6 +781,7 @@ testGenericTypedDictExtendingErrors
 testGenericTypedDictAlias
 testGenericTypedDictMultipleGenerics
 testGenericTypedDictCallSyntax
+testGenericTypedDictWithError
 # Self type cannot be used in TypedDict item type
 testTypedDictSelfItemNotAllowed
 # Nested typed dict formatting
@@ -817,6 +812,9 @@ testJoinOfDisjointTypedDictsIsEmptyTypedDict
 testJoinOfTypedDictWithCompatibleMappingIsMapping
 testJoinOfTypedDictWithCompatibleMappingSupertypeIsSupertype
 testJoinOfTypedDictWithIncompatibleTypeIsObject
+# "Expected TypedDict key "x" but found keys ("x", "z")"
+testCannotCreateAnonymousTypedDictInstanceUsingDictLiteralWithExtraItems
+testCannotCreateAnonymousTypedDictInstanceUsingDictLiteralWithMissingItems
 # join
 testTypedDictJoinWithTotalFalse
 # meet

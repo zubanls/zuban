@@ -107,11 +107,21 @@ impl<'a> TypedDictHelper<'a> {
             SliceTypeContent::Simple(simple) => infer_string_index(
                 i_s,
                 simple,
-                |name| {
+                |key| {
                     Some({
-                        if let Some(member) = self.0.find_member(i_s.db, name) {
+                        if let Some(member) = self.0.find_member(i_s.db, key) {
                             Inferred::from_type(member.type_.clone())
                         } else {
+                            simple.as_node_ref().add_issue(
+                                i_s,
+                                IssueType::TypedDictHasNoKey {
+                                    typed_dict: self
+                                        .0
+                                        .format(&FormatData::new_short(i_s.db))
+                                        .into(),
+                                    key: key.into(),
+                                },
+                            );
                             Inferred::new_any()
                         }
                     })
