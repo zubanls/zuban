@@ -29,7 +29,7 @@ use crate::type_helpers::{
     execute_typing_named_tuple, merge_class_type_vars_into_callable, new_typed_dict, BoundMethod,
     BoundMethodFunction, Class, FirstParamProperties, Function, Instance, NewTypeClass,
     OverloadedFunction, ParamSpecClass, RevealTypeFunction, TypeOrClass, TypeVarClass,
-    TypeVarTupleClass, TypedDictHelper, TypingCast,
+    TypeVarTupleClass, TypingCast,
 };
 
 #[derive(Debug)]

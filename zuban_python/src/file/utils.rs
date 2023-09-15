@@ -6,7 +6,8 @@ use parsa_python_ast::{
 
 use crate::arguments::{Argument, Arguments};
 use crate::database::{
-    ClassGenerics, DbType, GenericItem, GenericsList, Literal, LiteralKind, LiteralValue, TypedDict,
+    ClassGenerics, Database, DbType, GenericClass, GenericItem, GenericsList, Literal, LiteralKind,
+    LiteralValue, TypedDict,
 };
 use crate::diagnostics::IssueType;
 use crate::file::{Inference, PythonFile};
@@ -174,7 +175,7 @@ impl<'db> Inference<'db, '_, '_> {
                                 );
                             }
                         }
-                        DbType::Any => todo!(),
+                        t if is_any_dict(i_s.db, t) => (),
                         t => node_ref.add_issue(
                             i_s,
                             IssueType::TypedDictUnsupportedTypeInStarStar {
@@ -314,6 +315,17 @@ impl<'db> Inference<'db, '_, '_> {
         } else {
             None
         }
+    }
+}
+
+fn is_any_dict(db: &Database, t: &DbType) -> bool {
+    match t {
+        DbType::Any => true,
+        DbType::Class(c) => {
+            c.link == db.python_state.dict_node_ref().as_link() && c.generics.all_any()
+        }
+        DbType::Union(u) => u.iter().all(|t| is_any_dict(db, t)),
+        _ => false,
     }
 }
 

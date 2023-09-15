@@ -584,6 +584,16 @@ pub enum GenericItem {
     ParamSpecArgument(ParamSpecArgument),
 }
 
+impl GenericItem {
+    fn is_any(&self) -> bool {
+        match self {
+            Self::TypeArgument(t) => matches!(t, DbType::Any),
+            Self::TypeArguments(ts) => ts.args.is_any(),
+            Self::ParamSpecArgument(_) => false,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum ClassGenerics {
     List(GenericsList),
@@ -600,6 +610,14 @@ impl ClassGenerics {
         match self {
             Self::List(list) => Self::List(callable(list)),
             _ => self.clone(),
+        }
+    }
+
+    pub fn all_any(&self) -> bool {
+        match self {
+            Self::List(list) => list.iter().all(|g| g.is_any()),
+            Self::NotDefinedYet => true,
+            _ => false,
         }
     }
 }
@@ -1352,6 +1370,13 @@ impl TupleTypeArguments {
                 .any(|t| matches!(t, TypeOrTypeVarTuple::TypeVarTuple(_)))
                 .then(|| ts.as_ref()),
             _ => None,
+        }
+    }
+
+    pub fn is_any(&self) -> bool {
+        match self {
+            Self::ArbitraryLength(t) => matches!(t.as_ref(), DbType::Any),
+            Self::FixedLength(_) => false,
         }
     }
 
