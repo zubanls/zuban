@@ -181,6 +181,7 @@ pub(crate) enum IssueType {
     TypedDictOverwritingKeyWhileMerging { key: Box<str> },
     TypedDictMissingKeys { typed_dict: Box<str>, keys: Box<[Box<str>]> },
     TypedDictNonRequired { key: Box<str> },
+    TypedDictUnsupportedTypeInStarStar { type_: Box<str> },
 
     OverloadMismatch { name: Box<str>, args: Box<[Box<str>]>, variants: Box<[Box<str>]> },
     OverloadImplementationNotLast,
@@ -883,6 +884,9 @@ impl<'db> Diagnostic<'db> {
             },
             TypedDictNonRequired { key } => format!(
                 r#"Non-required key "{key}" not explicitly found in any ** item"#
+            ),
+            TypedDictUnsupportedTypeInStarStar { type_ } => format!(
+                r#"Unsupported type "{type_}" for ** expansion in TypedDict"#
             ),
 
             OverloadImplementationNotLast =>

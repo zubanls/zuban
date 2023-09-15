@@ -148,7 +148,9 @@ impl<'a> TypedDictHelper<'a> {
     ) -> LookupResult {
         let bound = || Rc::new(DbType::TypedDict(self.0.clone()));
         LookupResult::UnknownName(Inferred::from_type(DbType::CustomBehavior(match name {
-            "get" | "pop" => CustomBehavior::new_method(typed_dict_get, Some(bound())),
+            "get" | "pop" | "setdefault" => {
+                CustomBehavior::new_method(typed_dict_get, Some(bound()))
+            }
             "__setitem__" => CustomBehavior::new_method(typed_dict_setitem, Some(bound())),
             "__delitem__" => CustomBehavior::new_method(typed_dict_delitem, Some(bound())),
             "update" => CustomBehavior::new_method(typed_dict_update, Some(bound())),

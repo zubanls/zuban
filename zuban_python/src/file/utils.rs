@@ -175,7 +175,12 @@ impl<'db> Inference<'db, '_, '_> {
                             }
                         }
                         DbType::Any => todo!(),
-                        _ => todo!(),
+                        t => node_ref.add_issue(
+                            i_s,
+                            IssueType::TypedDictUnsupportedTypeInStarStar {
+                                type_: t.format_short(i_s.db),
+                            },
+                        ),
                     }
                 }
             }
