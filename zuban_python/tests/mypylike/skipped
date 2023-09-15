@@ -737,7 +737,6 @@ testUnpackWithoutTypedDict
 # dict unpacking
 testTypedDictUnpackFromUnion
 testTypedDictUnpackUnionRequiredMissing
-testTypedDictUnpackRequiredKeyMissing
 testTypedDictUnpackIncompatible
 # Foo(**bar)
 testTypedDictUnpackInference
