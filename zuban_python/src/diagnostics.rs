@@ -288,12 +288,22 @@ impl IssueType {
             AwaitOutsideCoroutine => "await-not-async",
 
             TypedDictNameMismatch { .. } => "name-match",
-            TypedDictExtraKey { .. }
+            TypedDictMissingKeys { .. }
             | TypedDictIncompatibleType { .. }
+            | TypedDictKeySetItemIncompatibleType { .. }
             | TypedDictHasNoKeyForGet { .. } => "typeddict-item",
-            TypedDictHasNoKey { .. } => "typeddict-unknown-key",
+            TypedDictExtraKey { .. } | TypedDictHasNoKey { .. } => "typeddict-unknown-key",
             _ => "misc",
         })
+    }
+
+    fn mypy_error_supercode(&self) -> Option<&'static str> {
+        // See also https://mypy.readthedocs.io/en/stable/error_codes.html#subcodes-of-error-codes
+        use IssueType::*;
+        match &self {
+            TypedDictExtraKey { .. } | TypedDictHasNoKey { .. } => Some("typeddict-item"),
+            _ => None,
+        }
     }
 }
 
@@ -1008,10 +1018,12 @@ impl Diagnostics {
             if let Some(specific) = specific {
                 // It's possible to write # type: ignore   [ xyz , name-defined ]
                 let e = issue.type_.mypy_error_code();
-                if specific
-                    .split(',')
-                    .any(|specific| e == Some(specific.trim_matches(' ')) || e.is_none())
-                {
+                let super_ = issue.type_.mypy_error_supercode();
+                if specific.split(',').any(|specific| {
+                    let code = specific.trim_matches(' ');
+                    dbg!(super_, code);
+                    e == Some(code) || super_ == Some(code) || e.is_none()
+                }) {
                     return Err(issue);
                 } else if e.is_some() {
                     add_not_covered_note = e;
