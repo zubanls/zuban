@@ -549,5 +549,19 @@ fn typed_dict_update_internal<'db>(
     td: &TypedDict,
     args: &dyn Arguments<'db>,
 ) -> Option<Inferred> {
-    todo!()
+    let mut members = td.members.clone().into_vec();
+    for member in members.iter_mut() {
+        member.required = false;
+    }
+    let expected = Rc::new(TypedDict {
+        name: td.name,
+        members: members.into_boxed_slice(),
+        defined_at: td.defined_at,
+        type_var_likes: td.type_var_likes.clone(),
+    });
+    let inf_key = args.maybe_single_positional_arg(
+        i_s,
+        &mut ResultContext::Known(&Type::new(&DbType::TypedDict(expected))),
+    )?;
+    Some(Inferred::new_none())
 }
