@@ -721,8 +721,6 @@ testBasicRecursiveTypedDictCall
 testRecursiveTypedDictWithList
 # TypedDict recursion with imports
 testNewImportCycleTypedDict
-# Incompatible types in assignment (expression has type "__main__.A", variable has type "A")
-testTypedDictSubtypingWithTotalFalse
 # "Unpack item in ** argument must be a TypedDict"
 testUnpackWithoutTypedDict
 # "Missing named argument "radius" for "foo""
@@ -758,8 +756,6 @@ testTypedDictUnpackIncompatible
 testTypedDictUnpackInference
 testTypedDictUnpackSame
 # structural matching
-testCanConvertTypedDictToEquivalentTypedDict
-testCanConvertTypedDictToNarrowerTypedDict
 testTypedDictWithSimpleProtocol
 testTypedDictWithSimpleProtocolInference
 testTypedDictOverloading4
