@@ -749,7 +749,6 @@ testCachedBadProtocolNote
 testErrorCodeSpecialArgTypeErrors
 testCanConvertTypedDictToAnySuperclassOfMapping
 testTypedDictMappingMethods
-testTypedDictAttributeOnClassObject
 testTypedDictAsStarStarArgCalleeKwargs
 testTypedDictAsStarStarAndDictAsStarStar
 # Typed dict generics in getitem

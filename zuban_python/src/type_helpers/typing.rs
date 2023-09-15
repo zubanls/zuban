@@ -81,7 +81,11 @@ impl<'a> TypingType<'a> {
             DbType::Any => LookupResult::any(),
             t @ DbType::Enum(e) => lookup_on_enum_class(i_s, node_ref, e, name, result_context),
             DbType::Dataclass(d) => DataclassHelper(d).lookup_on_type(i_s, node_ref, name, kind),
-            DbType::TypedDict(d) => todo!(),
+            DbType::TypedDict(d) => i_s
+                .db
+                .python_state
+                .typed_dict_class()
+                .lookup(i_s, node_ref, name, kind),
             DbType::NamedTuple(nt) => match name {
                 "__new__" => LookupResult::UnknownName(Inferred::from_type(DbType::Callable(
                     nt.__new__.clone(),
