@@ -114,7 +114,7 @@ impl<'a> TypedDictHelper<'a> {
                         } else {
                             simple.as_node_ref().add_issue(
                                 i_s,
-                                IssueType::TypedDictHasNoKey {
+                                IssueType::TypedDictHasNoKeyForGet {
                                     typed_dict: self
                                         .0
                                         .format(&FormatData::new_short(i_s.db))

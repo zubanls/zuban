@@ -170,6 +170,7 @@ pub(crate) enum IssueType {
     TypedDictAccessKeyMustBeStringLiteral { keys: Box<str> },
     TypedDictKeySetItemIncompatibleType { key: Box<str>, got: Box<str>, expected: Box<str> },
     TypedDictHasNoKey { typed_dict: Box<str>, key: Box<str> },
+    TypedDictHasNoKeyForGet { typed_dict: Box<str>, key: Box<str> },
     TypedDictKeyCannotBeDeleted { typed_dict: Box<str>, key: Box<str> },
     TypedDictInvalidMember,
     TypedDictInvalidMemberRightSide,
@@ -287,8 +288,8 @@ impl IssueType {
             AwaitOutsideCoroutine => "await-not-async",
 
             TypedDictNameMismatch { .. } => "name-match",
-            TypedDictIncompatibleType { .. } => "typeddict-item",
-            TypedDictExtraKey { .. } => "typeddict-unknown-key",
+            TypedDictIncompatibleType { .. } | TypedDictHasNoKeyForGet { .. } => "typeddict-item",
+            TypedDictExtraKey { .. } | TypedDictHasNoKey { .. } => "typeddict-unknown-key",
             _ => "misc",
         })
     }
@@ -834,9 +835,10 @@ impl<'db> Diagnostic<'db> {
             TypedDictKeySetItemIncompatibleType { key, got, expected } => format!(
                 r#"Value of "{key}" has incompatible type "{got}"; expected "{expected}""#
             ),
-            TypedDictHasNoKey { typed_dict, key } => format!(
+            TypedDictHasNoKey { typed_dict, key } | TypedDictHasNoKeyForGet { typed_dict, key } => format!(
                 r#"TypedDict "{typed_dict}" has no key "{key}""#
             ),
+
             TypedDictKeyCannotBeDeleted { typed_dict, key } => format!(
                 r#"Key "{key}" of TypedDict "{typed_dict}" cannot be deleted"#
             ),

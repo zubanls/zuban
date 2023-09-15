@@ -725,7 +725,6 @@ testNewImportCycleTypedDict
 testUnpackTypedDictTotality
 testErrorCodeTypedDict
 # context inference of typed dicts
-testErrorCodeTypedDictNoteIgnore
 testErrorCodeTypedDictSubCodeIgnore
 # "Type of TypedDict is ambiguous, none of ("A", "B") matches cleanly"
 testTypedDictUnionAmbiguousCaseNoMatch
