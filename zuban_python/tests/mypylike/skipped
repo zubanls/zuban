@@ -757,9 +757,6 @@ testTypedDictAsStarStarAndDictAsStarStar
 testTypedDictUnionGetItem
 testTypedDictUnionDelItem
 testTypedDictAttributeOnClassObject
-# "TypedDict "XXX" has no key "xxx" "
-testCannotGetItemOfTypedDictWithInvalidStringLiteralKey
-testCannotGetItemOfAnonymousTypedDictWithInvalidStringLiteralKey
 # Typed dict generics in getitem
 testTypedDictUpdateGeneric
 # generics
@@ -802,6 +799,7 @@ testJoinOfDisjointTypedDictsIsEmptyTypedDict
 testJoinOfTypedDictWithCompatibleMappingIsMapping
 testJoinOfTypedDictWithCompatibleMappingSupertypeIsSupertype
 testJoinOfTypedDictWithIncompatibleTypeIsObject
+testCannotGetItemOfAnonymousTypedDictWithInvalidStringLiteralKey
 # "Expected TypedDict key "x" but found keys ("x", "z")"
 testCannotCreateAnonymousTypedDictInstanceUsingDictLiteralWithExtraItems
 testCannotCreateAnonymousTypedDictInstanceUsingDictLiteralWithMissingItems
@@ -1243,6 +1241,8 @@ testAsyncWithError
 testKeywordMisspelling
 testMultipleKeywordsForMisspelling
 testKeywordMisspelling*
+# "TypedDict "XXX" has no key "xxx" note: Did you mean "type"?"
+testCannotGetItemOfTypedDictWithInvalidStringLiteralKey
 
 # Import submodules
 testNewAnalyzerImportStarSpecialCase
