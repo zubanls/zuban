@@ -272,7 +272,7 @@ fn new_typed_dict_internal<'db>(
         &mut inference,
         args.as_node_ref().as_link(),
         on_type_var,
-        TypeComputationOrigin::Constraint,
+        TypeComputationOrigin::TypedDictMember,
     );
     let mut members = TypedDictMemberGatherer::default();
     for element in dct_iterator {

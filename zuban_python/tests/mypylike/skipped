@@ -769,8 +769,6 @@ testGenericTypedDictAlias
 testGenericTypedDictMultipleGenerics
 testGenericTypedDictCallSyntax
 testGenericTypedDictWithError
-# Self type cannot be used in TypedDict item type
-testTypedDictSelfItemNotAllowed
 # Nested typed dict formatting
 testSerializeTypedDictInMethod
 # TypedDict .get() special case

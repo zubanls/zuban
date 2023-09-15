@@ -98,6 +98,7 @@ pub(super) enum InvalidVariableType<'a> {
 pub enum TypeComputationOrigin {
     AssignmentTypeCommentOrAnnotation,
     ParamTypeCommentOrAnnotation,
+    TypedDictMember,
     TypeApplication,
     TypeAlias,
     CastTarget,
@@ -775,6 +776,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             "Literal[...] must have at least one parameter",
                         )),
                     );
+                    None
+                }
+                SpecialType::Self_ if self.origin == TypeComputationOrigin::TypedDictMember => {
+                    self.add_issue(node_ref, IssueType::TypedDictSelfNotAllowed);
                     None
                 }
                 SpecialType::Self_
@@ -3087,7 +3092,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             self,
             NodeRef::new(self.file, annotation.index()).as_link(),
             &mut x,
-            TypeComputationOrigin::AssignmentTypeCommentOrAnnotation,
+            TypeComputationOrigin::TypedDictMember,
         );
 
         let mut member = comp.compute_typed_dict_member(name, annotation.expression(), total);

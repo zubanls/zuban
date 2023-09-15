@@ -163,6 +163,7 @@ pub(crate) enum IssueType {
     TypedDictFirstArgMustBeString,
     TypedDictSecondArgMustBeDict,
     TypedDictInvalidFieldName,
+    TypedDictSelfNotAllowed,
     TypedDictNameMismatch { string_name: Box<str>, variable_name: Box<str> },
     TypedDictTotalMustBeTrueOrFalse,
     TypedDictWrongArgumentsInConstructor,
@@ -832,6 +833,7 @@ impl<'db> Diagnostic<'db> {
             TypedDictSecondArgMustBeDict =>
                 "TypedDict() expects a dictionary literal as the second argument".to_string(),
             TypedDictInvalidFieldName => "Invalid TypedDict() field name".to_string(),
+            TypedDictSelfNotAllowed => "Self type cannot be used in TypedDict item type".to_string(),
             TypedDictNameMismatch { string_name, variable_name } => format!(
                 r#"First argument "{string_name}" to TypedDict() does not match variable name "{variable_name}""#
             ),
