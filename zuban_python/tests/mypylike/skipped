@@ -760,7 +760,6 @@ testTypedDictAttributeOnClassObject
 # "TypedDict "XXX" has no key "xxx" "
 testCannotGetItemOfTypedDictWithInvalidStringLiteralKey
 testCannotGetItemOfAnonymousTypedDictWithInvalidStringLiteralKey
-testTypedDictTypeVarUnionSetItem
 # Typed dict generics in getitem
 testTypedDictUpdateGeneric
 # generics
