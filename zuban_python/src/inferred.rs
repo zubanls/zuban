@@ -1787,40 +1787,6 @@ impl<'db: 'slf, 'slf> Inferred {
         value: &Inferred,
     ) {
         debug!("Set Item on {}", self.format_short(i_s));
-        if let Some(typed_dict) = self.as_type(i_s).maybe_typed_dict(i_s.db) {
-            if let Some(literal) = slice_type
-                .infer_with_context(i_s, &mut ResultContext::ExpectLiteral)
-                .maybe_string_literal(i_s)
-            {
-                let key = literal.as_str(i_s.db);
-                if let Some(member) = typed_dict.find_member(i_s.db, key) {
-                    Type::new(&member.type_).error_if_not_matches(i_s, &value, |got, expected| {
-                        let node_ref = slice_type.as_node_ref();
-                        node_ref.add_issue(
-                            i_s,
-                            IssueType::TypedDictKeySetItemIncompatibleType {
-                                key: key.into(),
-                                got,
-                                expected,
-                            },
-                        );
-                        node_ref.to_db_lifetime(i_s.db)
-                    });
-                } else {
-                    slice_type.as_node_ref().add_issue(
-                        i_s,
-                        IssueType::TypedDictHasNoKey {
-                            typed_dict: self.format_short(i_s),
-                            key: key.into(),
-                        },
-                    );
-                }
-            } else {
-                TypedDictHelper(&typed_dict)
-                    .add_access_key_must_be_string_literal_issue(i_s, slice_type.as_node_ref())
-            }
-            return;
-        }
         let args = slice_type.as_args(*i_s);
         self.type_lookup_and_execute_with_details(
             i_s,

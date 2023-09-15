@@ -126,7 +126,13 @@ impl<'a> TypedDictHelper<'a> {
                         }
                     })
                 },
-                || self.add_access_key_must_be_string_literal_issue(i_s, slice_type.as_node_ref()),
+                || {
+                    add_access_key_must_be_string_literal_issue(
+                        i_s,
+                        self.0,
+                        slice_type.as_node_ref(),
+                    )
+                },
             ),
             SliceTypeContent::Slice(_) => todo!(),
             SliceTypeContent::Slices(_) => todo!(),
@@ -140,45 +146,37 @@ impl<'a> TypedDictHelper<'a> {
         name: &str,
         kind: LookupKind,
     ) -> LookupResult {
+        let bound = || Rc::new(DbType::TypedDict(self.0.clone()));
         LookupResult::UnknownName(Inferred::from_type(DbType::CustomBehavior(match name {
-            "get" | "pop" => {
-                let bound = Rc::new(DbType::TypedDict(self.0.clone()));
-                CustomBehavior::new_method(typed_dict_get, Some(bound))
-            }
-            "__delitem__" => {
-                let bound = Rc::new(DbType::TypedDict(self.0.clone()));
-                CustomBehavior::new_method(typed_dict_delitem, Some(bound))
-            }
-            "update" => {
-                let bound = Rc::new(DbType::TypedDict(self.0.clone()));
-                CustomBehavior::new_method(typed_dict_update, Some(bound))
-            }
+            "get" | "pop" => CustomBehavior::new_method(typed_dict_get, Some(bound())),
+            "__setitem__" => CustomBehavior::new_method(typed_dict_setitem, Some(bound())),
+            "__delitem__" => CustomBehavior::new_method(typed_dict_delitem, Some(bound())),
+            "update" => CustomBehavior::new_method(typed_dict_update, Some(bound())),
             _ => {
                 return Instance::new(i_s.db.python_state.typed_dict_class(), None)
                     .lookup(i_s, from, name, kind)
             }
         })))
     }
+}
 
-    pub fn add_access_key_must_be_string_literal_issue(
-        &self,
-        i_s: &InferenceState,
-        node_ref: NodeRef,
-    ) {
-        node_ref.add_issue(
-            i_s,
-            IssueType::TypedDictAccessKeyMustBeStringLiteral {
-                keys: self
-                    .0
-                    .members
-                    .iter()
-                    .map(|member| format!("\"{}\"", member.name.as_str(i_s.db)))
-                    .collect::<Vec<String>>()
-                    .join(", ")
-                    .into(),
-            },
-        )
-    }
+fn add_access_key_must_be_string_literal_issue(
+    i_s: &InferenceState,
+    td: &TypedDict,
+    node_ref: NodeRef,
+) {
+    node_ref.add_issue(
+        i_s,
+        IssueType::TypedDictAccessKeyMustBeStringLiteral {
+            keys: td
+                .members
+                .iter()
+                .map(|member| format!("\"{}\"", member.name.as_str(i_s.db)))
+                .collect::<Vec<String>>()
+                .join(", ")
+                .into(),
+        },
+    )
 }
 
 pub fn new_typed_dict<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Arguments<'db>) -> Inferred {
@@ -405,7 +403,71 @@ fn typed_dict_get_internal<'db>(
     ))
 }
 
-pub fn typed_dict_delitem<'db>(
+fn typed_dict_setitem<'db>(
+    i_s: &InferenceState<'db, '_>,
+    args: &dyn Arguments<'db>,
+    result_context: &mut ResultContext,
+    on_type_error: OnTypeError<'db, '_>,
+    bound: Option<&DbType>,
+) -> Inferred {
+    let DbType::TypedDict(td) = bound.unwrap() else {
+        unreachable!();
+    };
+    method_with_fallback(
+        i_s,
+        args,
+        result_context,
+        on_type_error,
+        td,
+        "__setitem__",
+        typed_dict_setitem_internal,
+    )
+}
+
+fn typed_dict_setitem_internal<'db>(
+    i_s: &InferenceState<'db, '_>,
+    td: &TypedDict,
+    args: &dyn Arguments<'db>,
+) -> Option<Inferred> {
+    let mut iterator = args.iter();
+    let first_arg = iterator.next()?;
+    let second_arg = iterator.next()?;
+    if iterator.next().is_some() {
+        return None;
+    }
+    let inf_key = first_arg.maybe_positional_arg(i_s, &mut ResultContext::ExpectLiteral)?;
+    let value = second_arg.maybe_positional_arg(i_s, &mut ResultContext::Unknown)?;
+    if let Some(literal) = inf_key.maybe_string_literal(i_s) {
+        let key = literal.as_str(i_s.db);
+        if let Some(member) = td.find_member(i_s.db, key) {
+            Type::new(&member.type_).error_if_not_matches(i_s, &value, |got, expected| {
+                let node_ref = args.as_node_ref();
+                node_ref.add_issue(
+                    i_s,
+                    IssueType::TypedDictKeySetItemIncompatibleType {
+                        key: key.into(),
+                        got,
+                        expected,
+                    },
+                );
+                node_ref.to_db_lifetime(i_s.db)
+            });
+        } else {
+            args.as_node_ref().add_issue(
+                i_s,
+                IssueType::TypedDictHasNoKey {
+                    typed_dict: td.format(&FormatData::new_short(i_s.db)).into(),
+                    key: key.into(),
+                },
+            );
+        }
+    } else {
+        add_access_key_must_be_string_literal_issue(i_s, td, args.as_node_ref())
+    }
+    Some(Inferred::new_none())
+}
+
+fn typed_dict_delitem<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Arguments<'db>,
     result_context: &mut ResultContext,
@@ -461,7 +523,7 @@ fn typed_dict_delitem_internal<'db>(
     Some(Inferred::from_type(DbType::None))
 }
 
-pub fn typed_dict_update<'db>(
+fn typed_dict_update<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Arguments<'db>,
     result_context: &mut ResultContext,

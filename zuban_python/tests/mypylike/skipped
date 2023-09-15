@@ -724,8 +724,6 @@ testNewImportCycleTypedDict
 # "Missing named argument "radius" for "foo""
 testUnpackTypedDictTotality
 testErrorCodeTypedDict
-# "Expected TypedDict key to be string literal"
-testTypedDictBytesKey
 # context inference of typed dicts
 testErrorCodeTypedDictNoteIgnore
 testErrorCodeTypedDictSubCodeIgnore
@@ -764,8 +762,6 @@ testTypedDictAsStarStarAndDictAsStarStar
 testTypedDictUnionGetItem
 testTypedDictUnionDelItem
 testTypedDictAttributeOnClassObject
-# __setitem__
-testTypedDictUnionSetItem
 # "TypedDict "XXX" has no key "xxx" "
 testCannotGetItemOfTypedDictWithInvalidStringLiteralKey
 testCannotGetItemOfAnonymousTypedDictWithInvalidStringLiteralKey
