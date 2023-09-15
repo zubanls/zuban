@@ -288,8 +288,10 @@ impl IssueType {
             AwaitOutsideCoroutine => "await-not-async",
 
             TypedDictNameMismatch { .. } => "name-match",
-            TypedDictIncompatibleType { .. } | TypedDictHasNoKeyForGet { .. } => "typeddict-item",
-            TypedDictExtraKey { .. } | TypedDictHasNoKey { .. } => "typeddict-unknown-key",
+            TypedDictExtraKey { .. }
+            | TypedDictIncompatibleType { .. }
+            | TypedDictHasNoKeyForGet { .. } => "typeddict-item",
+            TypedDictHasNoKey { .. } => "typeddict-unknown-key",
             _ => "misc",
         })
     }

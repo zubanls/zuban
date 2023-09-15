@@ -724,8 +724,6 @@ testNewImportCycleTypedDict
 # "Missing named argument "radius" for "foo""
 testUnpackTypedDictTotality
 testErrorCodeTypedDict
-# context inference of typed dicts
-testErrorCodeTypedDictSubCodeIgnore
 # "Type of TypedDict is ambiguous, none of ("A", "B") matches cleanly"
 testTypedDictUnionAmbiguousCaseNoMatch
 # Unpack
