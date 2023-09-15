@@ -747,8 +747,6 @@ testTypedDictUnpackSame
 # structural matching
 testTypedDictWithSimpleProtocol
 testTypedDictWithSimpleProtocolInference
-testTypedDictOverloading4
-testTypedDictOverloading5
 # Lookups
 testCachedBadProtocolNote
 testErrorCodeSpecialArgTypeErrors

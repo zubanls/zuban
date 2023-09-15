@@ -1021,7 +1021,6 @@ impl Diagnostics {
                 let super_ = issue.type_.mypy_error_supercode();
                 if specific.split(',').any(|specific| {
                     let code = specific.trim_matches(' ');
-                    dbg!(super_, code);
                     e == Some(code) || super_ == Some(code) || e.is_none()
                 }) {
                     return Err(issue);

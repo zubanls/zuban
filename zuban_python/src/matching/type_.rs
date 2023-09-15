@@ -390,7 +390,7 @@ impl<'a> Type<'a> {
                     for m1 in d1.members.iter() {
                         if let Some(m2) = d2.find_member(i_s.db, m1.name.as_str(i_s.db)) {
                             if m1.required != m2.required {
-                                return Match::new_false();
+                                return Match::new_false().similar_if_false();
                             }
                             matches = Type::new(&m1.type_).is_same_type(
                                 i_s,
@@ -398,12 +398,12 @@ impl<'a> Type<'a> {
                                 &Type::new(&m2.type_),
                             );
                         } else {
-                            return Match::new_false();
+                            return Match::new_false().similar_if_false();
                         }
                     }
                     matches
                 }
-                _ => Match::new_false(),
+                _ => Match::new_false().similar_if_false(),
             },
             DbType::NamedTuple(nt1) => match value_type.as_ref() {
                 DbType::NamedTuple(nt2) => {
