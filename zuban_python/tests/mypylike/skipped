@@ -741,11 +741,12 @@ testTypedDictUnpackIncompatible
 # Foo(**bar)
 testTypedDictUnpackInference
 testTypedDictUnpackSame
-# structural matching
+# __getitem__ as a protocol
 testTypedDictWithSimpleProtocol
 testTypedDictWithSimpleProtocolInference
-# Lookups
+# __iter__ protocol mismatches
 testCachedBadProtocolNote
+# Lookups
 testErrorCodeSpecialArgTypeErrors
 testCanConvertTypedDictToAnySuperclassOfMapping
 testTypedDictMappingMethods
