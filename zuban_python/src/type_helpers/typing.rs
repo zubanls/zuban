@@ -208,13 +208,38 @@ impl RevealTypeFunction {
 fn reveal_type_info(i_s: &InferenceState, t: Type) -> Box<str> {
     let format_data = FormatData::with_style(i_s.db, FormatStyle::MypyRevealType);
     if let DbType::Type(type_) = t.as_ref() {
-        if let DbType::Dataclass(d) = type_.as_ref() {
-            let class = d.class(i_s.db);
-            return t
-                .maybe_callable(i_s)
-                .unwrap_or_else(|| todo!())
-                .format(&format_data)
-                .into();
+        match type_.as_ref() {
+            DbType::Dataclass(d) => {
+                let class = d.class(i_s.db);
+                return t
+                    .maybe_callable(i_s)
+                    .unwrap_or_else(|| todo!())
+                    .format(&format_data)
+                    .into();
+            }
+            DbType::TypedDict(td) => {
+                return format!(
+                    "def (*, {}) -> {}",
+                    td.members
+                        .iter()
+                        .map(|member| {
+                            let mut s = format!(
+                                "{}: {}",
+                                member.name.as_str(i_s.db),
+                                member.type_.format(&format_data)
+                            );
+                            if !member.required {
+                                s += " = ...";
+                            }
+                            s
+                        })
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                    type_.format(&format_data)
+                )
+                .into()
+            }
+            _ => (),
         }
     }
     t.format(&format_data)

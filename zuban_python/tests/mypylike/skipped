@@ -721,8 +721,6 @@ testBasicRecursiveTypedDictCall
 testRecursiveTypedDictWithList
 # TypedDict recursion with imports
 testNewImportCycleTypedDict
-# "Incompatible types (expression has type "int", TypedDict item "x" has type "str")"
-testTypedDictImportCycle
 # Incompatible types in assignment (expression has type "__main__.A", variable has type "A")
 testTypedDictSubtypingWithTotalFalse
 # "Unpack item in ** argument must be a TypedDict"
