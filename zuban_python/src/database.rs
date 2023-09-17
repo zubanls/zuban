@@ -2770,14 +2770,54 @@ pub struct TypedDictMember {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum TypedDictGenerics {
+    None,
+    NotDefinedYet(TypeVarLikes),
+    Generics(GenericsList),
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct TypedDict {
     pub name: StringSlice,
     pub members: Box<[TypedDictMember]>,
     pub defined_at: PointLink,
-    pub type_var_likes: TypeVarLikes,
+    pub generics: TypedDictGenerics,
 }
 
 impl TypedDict {
+    pub fn new(
+        name: StringSlice,
+        members: Box<[TypedDictMember]>,
+        defined_at: PointLink,
+        generics: TypedDictGenerics,
+    ) -> Rc<Self> {
+        Rc::new(Self {
+            name,
+            members,
+            defined_at,
+            generics,
+        })
+    }
+
+    pub fn new_definition(
+        name: StringSlice,
+        members: Box<[TypedDictMember]>,
+        defined_at: PointLink,
+        type_var_likes: TypeVarLikes,
+    ) -> Rc<Self> {
+        let generics = if type_var_likes.is_empty() {
+            TypedDictGenerics::None
+        } else {
+            TypedDictGenerics::NotDefinedYet(type_var_likes)
+        };
+        Rc::new(Self {
+            name,
+            members,
+            defined_at,
+            generics,
+        })
+    }
+
     pub fn find_member(&self, db: &Database, name: &str) -> Option<&TypedDictMember> {
         self.members.iter().find(|p| p.name.as_str(db) == name)
     }

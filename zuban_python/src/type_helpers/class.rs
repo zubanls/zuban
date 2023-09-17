@@ -779,12 +779,12 @@ impl<'db: 'a, 'a> Class<'a> {
                 &mut typed_dict_members,
                 typed_dict_total.unwrap(),
             );
-            Rc::new(TypedDict {
-                name: self.name_string_slice(),
-                members: typed_dict_members.into_boxed_slice(),
-                defined_at: self.node_ref.as_link(),
-                type_var_likes: self.type_vars(i_s).clone(),
-            })
+            TypedDict::new_definition(
+                self.name_string_slice(),
+                typed_dict_members.into_boxed_slice(),
+                self.node_ref.as_link(),
+                self.type_vars(i_s).clone(),
+            )
         });
         (
             Box::new(ClassInfos {

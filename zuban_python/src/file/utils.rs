@@ -6,8 +6,8 @@ use parsa_python_ast::{
 
 use crate::arguments::{Argument, Arguments};
 use crate::database::{
-    ClassGenerics, Database, DbType, GenericClass, GenericItem, GenericsList, Literal, LiteralKind,
-    LiteralValue, TypedDict,
+    ClassGenerics, Database, DbType, GenericItem, GenericsList, Literal, LiteralKind, LiteralValue,
+    TypedDict,
 };
 use crate::diagnostics::IssueType;
 use crate::file::{Inference, PythonFile};

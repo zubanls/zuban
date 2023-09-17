@@ -303,12 +303,12 @@ fn new_typed_dict_internal<'db>(
 
     let type_var_likes = comp.into_type_vars(|_, _| ());
     Some(Inferred::new_unsaved_complex(
-        ComplexPoint::TypedDictDefinition(Rc::new(DbType::TypedDict(Rc::new(TypedDict {
+        ComplexPoint::TypedDictDefinition(Rc::new(DbType::TypedDict(TypedDict::new_definition(
             name,
-            defined_at: args_node_ref.as_link(),
+            members.into_boxed_slice(),
+            args_node_ref.as_link(),
             type_var_likes,
-            members: members.into_boxed_slice(),
-        })))),
+        )))),
     ))
 }
 
@@ -555,12 +555,12 @@ fn typed_dict_update_internal<'db>(
     for member in members.iter_mut() {
         member.required = false;
     }
-    let expected = Rc::new(TypedDict {
-        name: td.name,
-        members: members.into_boxed_slice(),
-        defined_at: td.defined_at,
-        type_var_likes: td.type_var_likes.clone(),
-    });
+    let expected = TypedDict::new(
+        td.name,
+        members.into_boxed_slice(),
+        td.defined_at,
+        td.generics.clone(),
+    );
     let inf_key = args.maybe_single_positional_arg(
         i_s,
         &mut ResultContext::Known(&Type::new(&DbType::TypedDict(expected))),
