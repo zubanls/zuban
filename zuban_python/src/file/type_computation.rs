@@ -1278,7 +1278,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         type_var_likes: &TypeVarLikes,
     ) -> GenericsList {
         let mut generics = vec![];
-        let mut mismatch = false;
         self.calculate_type_arguments(
             slice_type,
             &mut generics,
@@ -1286,7 +1285,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             type_var_likes,
             &|| Box::from("TODO alias name"),
             |slf: &mut Self, given_count, expected_count| {
-                mismatch = true;
                 slf.add_issue(
                     slice_type.as_node_ref(),
                     IssueType::TypeAliasArgumentIssue {
@@ -1296,15 +1294,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 );
             },
         );
-        // TODO merge this with class stuff
-        if mismatch {
-            generics.clear();
-            if !type_var_likes.is_empty() {
-                for missing_type_var in type_var_likes.iter().skip(generics.len()) {
-                    generics.push(missing_type_var.as_any_generic_item())
-                }
-            }
-        }
         GenericsList::generics_from_vec(generics)
     }
 
@@ -1473,19 +1462,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             link: class.node_ref.as_link(),
             generics: match type_var_likes.is_empty() {
                 true => ClassGenerics::None,
-                false => {
-                    // Need to fill the generics, because we might have been in a
-                    // SimpleGeneric case where the generic count is wrong.
-                    if generics.is_empty() {
-                        for missing_type_var in type_var_likes.iter().skip(generics.len()) {
-                            generics.push(missing_type_var.as_any_generic_item())
-                        }
-                        let expected_count = type_var_likes.len();
-                        generics.truncate(expected_count);
-                    }
-
-                    ClassGenerics::List(GenericsList::generics_from_vec(generics))
-                }
+                false => ClassGenerics::List(GenericsList::generics_from_vec(generics)),
             },
         })
     }
@@ -1626,6 +1603,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         if given_count != expected_count {
             on_count_mismatch(self, given_count, expected_count);
             generics.clear();
+            for missing_type_var in type_var_likes.iter() {
+                generics.push(missing_type_var.as_any_generic_item())
+            }
         }
     }
 
