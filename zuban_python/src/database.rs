@@ -3157,8 +3157,12 @@ impl TypeAlias {
         self.name.map(|name| NodeRef::from_link(db, name).as_code())
     }
 
-    pub fn is_class(&self) -> bool {
-        !self.is_invalid() && matches!(self.db_type_if_valid(), DbType::Class(..))
+    pub fn application_allowed(&self) -> bool {
+        !self.is_invalid()
+            && matches!(
+                self.db_type_if_valid(),
+                DbType::Class(..) | DbType::TypedDict(..)
+            )
     }
 }
 
