@@ -2829,7 +2829,7 @@ pub enum TypedDictGenerics {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypedDict {
-    pub name: StringSlice,
+    pub name: Option<StringSlice>,
     pub members: Box<[TypedDictMember]>,
     pub defined_at: PointLink,
     pub generics: TypedDictGenerics,
@@ -2837,7 +2837,7 @@ pub struct TypedDict {
 
 impl TypedDict {
     pub fn new(
-        name: StringSlice,
+        name: Option<StringSlice>,
         members: Box<[TypedDictMember]>,
         defined_at: PointLink,
         generics: TypedDictGenerics,
@@ -2862,7 +2862,7 @@ impl TypedDict {
             TypedDictGenerics::NotDefinedYet(type_var_likes)
         };
         Rc::new(Self {
-            name,
+            name: Some(name),
             members,
             defined_at,
             generics,
@@ -2892,16 +2892,19 @@ impl TypedDict {
         self.members.iter().find(|p| p.name.as_str(db) == name)
     }
 
-    fn qualified_name(&self, db: &Database) -> String {
-        let module = Module::from_file_index(db, self.name.file_index).qualified_name(db);
-        format!("{module}.{}", self.name.as_str(db))
+    fn qualified_name(&self, db: &Database) -> Option<String> {
+        let Some(name) = self.name else {
+            return None
+        };
+        let module = Module::from_file_index(db, name.file_index).qualified_name(db);
+        Some(format!("{module}.{}", name.as_str(db)))
     }
 
     pub fn disjunction(&self, db: &Database, other: &Self) -> Rc<TypedDict> {
         let mut members = self.members.clone().into_vec();
         members.extend_from_slice(&other.members);
         Self::new(
-            self.name,
+            None,
             members.into_boxed_slice(),
             self.defined_at,
             TypedDictGenerics::None,
@@ -2911,14 +2914,20 @@ impl TypedDict {
     pub fn format(&self, format_data: &FormatData) -> String {
         match format_data.style {
             FormatStyle::MypyRevealType => {
-                self.format_reveal_type(format_data, &self.qualified_name(format_data.db))
+                self.format_reveal_type(format_data, self.qualified_name(format_data.db).as_deref())
             }
-            FormatStyle::Short if !format_data.verbose => self.name.as_str(format_data.db).into(),
-            _ => self.qualified_name(format_data.db),
+            FormatStyle::Short if !format_data.verbose => self
+                .name
+                .map(|n| n.as_str(format_data.db))
+                .unwrap_or_else(|| "TODO format anonymous TypedDict")
+                .into(),
+            _ => self
+                .qualified_name(format_data.db)
+                .unwrap_or_else(|| todo!()),
         }
     }
 
-    pub fn format_reveal_type(&self, format_data: &FormatData, name: &str) -> String {
+    pub fn format_reveal_type(&self, format_data: &FormatData, name: Option<&str>) -> String {
         let rec = RecursiveAlias::new(self.defined_at, None);
         if format_data.has_already_seen_recursive_alias(&rec) {
             return "...".to_string();
@@ -2940,7 +2949,11 @@ impl TypedDict {
             })
             .collect::<Vec<_>>()
             .join(", ");
-        format!("TypedDict('{name}', {{{params}}})").into()
+        if let Some(name) = name {
+            format!("TypedDict('{name}', {{{params}}})").into()
+        } else {
+            format!("TypedDict({{{params}}})").into()
+        }
     }
 }
 

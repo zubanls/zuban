@@ -194,7 +194,7 @@ impl<'db> Inference<'db, '_, '_> {
             dict_node_ref.add_issue(
                 i_s,
                 IssueType::TypedDictMissingKeys {
-                    typed_dict: typed_dict.name.as_str(i_s.db).into(),
+                    typed_dict: typed_dict.name.unwrap().as_str(i_s.db).into(),
                     keys: missing_keys.iter().map(|k| Box::from(*k)).collect(),
                 },
             )
@@ -261,7 +261,7 @@ impl<'db> Inference<'db, '_, '_> {
             args.as_node_ref().add_issue(
                 i_s,
                 IssueType::TypedDictMissingKeys {
-                    typed_dict: typed_dict.name.as_str(i_s.db).into(),
+                    typed_dict: typed_dict.name.unwrap().as_str(i_s.db).into(),
                     keys: missing_keys.into(),
                 },
             )
@@ -561,7 +561,7 @@ fn maybe_add_extra_keys_issue(
                 )
                 .into(),
             },
-            typed_dict: typed_dict.name.as_str(i_s.db).into(),
+            typed_dict: typed_dict.name.unwrap().as_str(i_s.db).into(),
         },
     )
 }
