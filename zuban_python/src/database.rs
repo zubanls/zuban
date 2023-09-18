@@ -2902,7 +2902,14 @@ impl TypedDict {
 
     pub fn disjunction(&self, db: &Database, other: &Self) -> Rc<TypedDict> {
         let mut members = self.members.clone().into_vec();
-        members.extend_from_slice(&other.members);
+        'outer: for m2 in other.members.iter() {
+            for m1 in members.iter() {
+                if m1.name.as_str(db) == m2.name.as_str(db) {
+                    continue 'outer;
+                }
+            }
+            members.push(m2.clone());
+        }
         Self::new(
             None,
             members.into_boxed_slice(),
