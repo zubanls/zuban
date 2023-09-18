@@ -1927,8 +1927,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let t = self.compute_slice_db_type(first);
         let format_as_optional = !Type::new(&t).is_union();
         let mut t = t.union_with_details(self.inference.i_s.db, DbType::None, format_as_optional);
-        let DbType::Union(union_type) = &mut t else {unreachable!()};
-        union_type.sort_for_priority();
+        if let DbType::Union(union_type) = &mut t {
+            union_type.sort_for_priority();
+        };
         TypeContent::DbType(t)
     }
 

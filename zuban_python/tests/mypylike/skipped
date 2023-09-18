@@ -792,7 +792,6 @@ testMeetOfTypedDictsWithIncompatibleNonTotalAndTotal
 # unions
 testUnionOfEquivalentTypedDictsEmpty
 testTypedDictChainedGetWithEmptyDictDefault
-testPluginUnionsOfTypedDicts
 testPluginUnionsOfTypedDictsNonTotal
 testErrorCodeTypedDict
 # "Type of TypedDict is ambiguous, none of ("A", "B") matches cleanly"
