@@ -25,6 +25,7 @@ use crate::inferred::Inferred;
 use crate::matching::Generics;
 use crate::matching::OnTypeError;
 use crate::matching::ResultContext;
+use crate::matching::Type;
 use crate::matching::{common_base_type, FormatData, Generic, ParamsStyle};
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
@@ -2816,6 +2817,25 @@ impl TypedDict {
             defined_at,
             generics,
         })
+    }
+
+    pub fn replace_type_var_likes(&self, db: &Database, generics: GenericsList) -> Rc<Self> {
+        let members = self
+            .members
+            .iter()
+            .map(|m| TypedDictMember {
+                name: m.name,
+                type_: Type::new(&m.type_)
+                    .replace_type_var_likes(db, &mut |usage| generics[usage.index()].clone()),
+                required: m.required,
+            })
+            .collect::<Box<[_]>>();
+        TypedDict::new(
+            self.name,
+            members,
+            self.defined_at,
+            TypedDictGenerics::Generics(generics),
+        )
     }
 
     pub fn find_member(&self, db: &Database, name: &str) -> Option<&TypedDictMember> {

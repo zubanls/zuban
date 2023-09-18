@@ -1419,22 +1419,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 },
             );
             let generics = GenericsList::generics_from_vec(generics);
-            let members = typed_dict
-                .members
-                .iter()
-                .map(|m| TypedDictMember {
-                    name: m.name,
-                    type_: Type::new(&m.type_)
-                        .replace_type_var_likes(db, &mut |usage| generics[usage.index()].clone()),
-                    required: m.required,
-                })
-                .collect::<Box<[_]>>();
-            let new_td = TypedDict::new(
-                typed_dict.name,
-                members,
-                typed_dict.defined_at,
-                TypedDictGenerics::Generics(generics),
-            );
+            let new_td = typed_dict.replace_type_var_likes(db, generics);
             TypeContent::DbType(DbType::TypedDict(new_td))
         } else {
             todo!()

@@ -389,15 +389,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
             }
         },
     };
-    let type_arguments = matcher.type_var_matcher.map(|m| {
-        GenericsList::new_generics(
-            m.calculated_type_vars
-                .into_iter()
-                .zip(type_vars.iter())
-                .map(|(c, type_var_like)| c.into_generic_item(i_s.db, type_var_like))
-                .collect(),
-        )
-    });
+    let type_arguments = matcher.into_generics_list(i_s.db, type_vars);
     if cfg!(feature = "zuban_debug") {
         if let Some(type_arguments) = &type_arguments {
             let callable_description: String;

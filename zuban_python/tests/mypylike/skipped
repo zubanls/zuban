@@ -756,8 +756,6 @@ testTypedDictAsStarStarAndDictAsStarStar
 # Typed dict generics in getitem
 testTypedDictUpdateGeneric
 # generics
-testGenericTypedDictSerialization
-testGenericTypedDictCreation
 testGenericTypedDictInference
 testGenericTypedDictExtendingErrors
 testGenericTypedDictAlias

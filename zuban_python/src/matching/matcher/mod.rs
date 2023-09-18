@@ -16,10 +16,10 @@ use super::params::{matches_simple_params, InferrableParamIterator2};
 use super::{FormatData, Match, OnTypeError, ParamsStyle, SignatureMatch, Type};
 use crate::arguments::{Argument, ArgumentKind};
 use crate::database::{
-    CallableContent, CallableParam, CallableParams, Database, DbType, GenericItem,
+    CallableContent, CallableParam, CallableParams, Database, DbType, GenericItem, GenericsList,
     ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamSpecific, PointLink,
     StarredParamSpecific, TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple, TypeVarLikeUsage,
-    TypeVarLikes, TypeVarUsage, Variance,
+    TypeVarLikes, TypeVarUsage, TypedDict, TypedDictGenerics, Variance,
 };
 use crate::debug;
 use crate::inference_state::InferenceState;
@@ -97,6 +97,21 @@ impl<'a> Matcher<'a> {
         Self {
             type_var_matcher,
             func_or_callable: Some(FunctionOrCallable::Function(function)),
+            ..Self::default()
+        }
+    }
+
+    pub fn new_typed_dict_matcher(typed_dict: &TypedDict) -> Self {
+        let type_var_matcher = match &typed_dict.generics {
+            TypedDictGenerics::NotDefinedYet(type_var_likes) => Some(TypeVarMatcher::new(
+                typed_dict.defined_at,
+                type_var_likes.len(),
+            )),
+            TypedDictGenerics::None => None,
+            TypedDictGenerics::Generics(_) => None,
+        };
+        Self {
+            type_var_matcher,
             ..Self::default()
         }
     }
@@ -635,5 +650,22 @@ impl<'a> Matcher<'a> {
 
     pub fn unwrap_calculated_type_args(self) -> Vec<CalculatedTypeVarLike> {
         self.type_var_matcher.unwrap().calculated_type_vars
+    }
+
+    pub fn into_generics_list(
+        self,
+        db: &Database,
+        type_var_likes: &TypeVarLikes,
+    ) -> Option<GenericsList> {
+        //self.type_var_matcher.map(|t| t.calculated_type_vars.)
+        self.type_var_matcher.map(|m| {
+            GenericsList::new_generics(
+                m.calculated_type_vars
+                    .into_iter()
+                    .zip(type_var_likes.iter())
+                    .map(|(c, type_var_like)| c.into_generic_item(db, type_var_like))
+                    .collect(),
+            )
+        })
     }
 }

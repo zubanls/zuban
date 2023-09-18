@@ -5,7 +5,8 @@ use parsa_python_ast::{AtomContent, DictElement, ExpressionContent, ExpressionPa
 use crate::{
     arguments::{ArgumentKind, Arguments},
     database::{
-        ComplexPoint, CustomBehavior, Database, DbType, StringSlice, TypedDict, TypedDictMember,
+        ComplexPoint, CustomBehavior, Database, DbType, StringSlice, TypedDict, TypedDictGenerics,
+        TypedDictMember,
     },
     diagnostics::IssueType,
     file::{infer_string_index, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn},
@@ -79,7 +80,7 @@ impl<'a> TypedDictHelper<'a> {
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         let mut iterator = args.iter();
-        if let Some(first_arg) = iterator.next().filter(|arg| !arg.is_keyword_argument()) {
+        let td = if let Some(first_arg) = iterator.next().filter(|arg| !arg.is_keyword_argument()) {
             if let Some(next_arg) = iterator.next() {
                 next_arg
                     .as_node_ref()
@@ -88,13 +89,24 @@ impl<'a> TypedDictHelper<'a> {
             }
             let t = Type::owned(DbType::TypedDict(self.0.clone()));
             first_arg.infer(i_s, &mut ResultContext::Known(&t));
+            self.0.clone()
         } else {
+            let mut matcher = Matcher::new_typed_dict_matcher(self.0);
             args.as_node_ref()
                 .file
                 .inference(i_s)
-                .check_typed_dict_call_with_context(&mut Matcher::default(), self.0.clone(), args);
-        }
-        Inferred::from_type(DbType::TypedDict(self.0.clone()))
+                .check_typed_dict_call_with_context(&mut matcher, self.0.clone(), args);
+            if matcher.has_type_var_matcher() {
+                let TypedDictGenerics::NotDefinedYet(type_var_likes) = &self.0.generics else {
+                    unreachable!();
+                };
+                let generics = matcher.into_generics_list(i_s.db, type_var_likes).unwrap();
+                self.0.replace_type_var_likes(i_s.db, generics)
+            } else {
+                self.0.clone()
+            }
+        };
+        Inferred::from_type(DbType::TypedDict(td))
     }
 
     pub fn get_item(
