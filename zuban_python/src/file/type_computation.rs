@@ -12,8 +12,8 @@ use crate::database::{
     Locality, NamedTuple, Namespace, NewType, ParamSpecArgument, ParamSpecUsage, ParamSpecific,
     Point, PointLink, PointType, RecursiveAlias, Specific, StarredParamSpecific, StringSlice,
     TupleContent, TypeAlias, TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarKind, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage,
-    TypedDictMember, UnionEntry, UnionType,
+    TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, TypedDict,
+    TypedDictGenerics, TypedDictMember, UnionEntry, UnionType,
 };
 use crate::diagnostics::{Issue, IssueType};
 use crate::file::File;
@@ -213,6 +213,7 @@ enum TypeContent<'db, 'a> {
         generics: ClassGenerics,
     },
     Dataclass(Rc<Dataclass>),
+    TypedDictDefinition(Rc<TypedDict>),
     TypeAlias(&'db TypeAlias),
     DbType(DbType),
     SpecialType(SpecialType),
@@ -249,7 +250,7 @@ pub(super) enum TypeNameLookup<'db, 'a> {
     SpecialType(SpecialType),
     InvalidVariable(InvalidVariableType<'a>),
     NamedTupleDefinition(DbType),
-    TypedDictDefinition(DbType),
+    TypedDictDefinition(Rc<TypedDict>),
     Enum(Rc<Enum>),
     Dataclass(Rc<Dataclass>),
     RecursiveAlias(PointLink),
@@ -742,6 +743,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     )
                 }
             })),
+            TypeContent::TypedDictDefinition(td) => match &td.generics {
+                TypedDictGenerics::None => Some(DbType::TypedDict(td)),
+                TypedDictGenerics::NotDefinedYet(type_var_likes) => todo!(),
+                TypedDictGenerics::Generics(_) => unreachable!(),
+            },
             TypeContent::Module(file) => {
                 self.add_module_issue(node_ref, &Module::new(file).qualified_name(db));
                 None
@@ -1052,6 +1058,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     TypeContent::Dataclass(d) => {
                         self.compute_type_get_item_on_dataclass(&d, s, Some(primary))
                     }
+                    TypeContent::TypedDictDefinition(td) => {
+                        self.compute_type_get_item_on_typed_dict(&td, s, Some(primary))
+                    }
                     TypeContent::SimpleGeneric {
                         class_link,
                         generics,
@@ -1214,6 +1223,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 self.check_attribute_on_class(cls, primary, name)
             }
             TypeContent::Dataclass(_) => todo!(),
+            TypeContent::TypedDictDefinition(_) => todo!(),
             TypeContent::SimpleGeneric {
                 class_link,
                 generics,
@@ -1380,6 +1390,55 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             },
         };
         TypeContent::DbType(DbType::Dataclass(Dataclass::new(c, dataclass.options)))
+    }
+
+    fn compute_type_get_item_on_typed_dict(
+        &mut self,
+        typed_dict: &TypedDict,
+        slice_type: SliceType,
+        primary: Option<Primary>,
+    ) -> TypeContent<'db, 'db> {
+        let db = self.inference.i_s.db;
+        let mut generics = vec![];
+        if let TypedDictGenerics::NotDefinedYet(type_var_likes) = &typed_dict.generics {
+            self.calculate_type_arguments(
+                slice_type,
+                &mut generics,
+                slice_type.iter(),
+                type_var_likes,
+                &|| todo!(), //Box::from("TODO type name"),
+                |slf: &mut Self, given_count, expected_count| {
+                    slf.add_issue(
+                        slice_type.as_node_ref(),
+                        IssueType::TypeArgumentIssue {
+                            class: Box::from(typed_dict.name.as_str(db)),
+                            given_count,
+                            expected_count,
+                        },
+                    );
+                },
+            );
+            let generics = GenericsList::generics_from_vec(generics);
+            let members = typed_dict
+                .members
+                .iter()
+                .map(|m| TypedDictMember {
+                    name: m.name,
+                    type_: Type::new(&m.type_)
+                        .replace_type_var_likes(db, &mut |usage| generics[usage.index()].clone()),
+                    required: m.required,
+                })
+                .collect::<Box<[_]>>();
+            let new_td = TypedDict::new(
+                typed_dict.name,
+                members,
+                typed_dict.defined_at,
+                TypedDictGenerics::Generics(generics),
+            );
+            TypeContent::DbType(DbType::TypedDict(new_td))
+        } else {
+            todo!()
+        }
     }
 
     fn compute_type_get_item_on_class(
@@ -2306,7 +2365,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeNameLookup::TypeAlias(alias) => TypeContent::TypeAlias(alias),
             TypeNameLookup::NewType(n) => TypeContent::DbType(DbType::NewType(n)),
             TypeNameLookup::NamedTupleDefinition(t) => TypeContent::DbType(t),
-            TypeNameLookup::TypedDictDefinition(t) => TypeContent::DbType(t),
+            TypeNameLookup::TypedDictDefinition(t) => TypeContent::TypedDictDefinition(t),
             TypeNameLookup::Enum(t) => TypeContent::DbType(DbType::Enum(t)),
             TypeNameLookup::Dataclass(d) => TypeContent::Dataclass(d),
             TypeNameLookup::InvalidVariable(t) => TypeContent::InvalidVariable(t),
@@ -2553,6 +2612,20 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             slice_type,
             from_alias_definition,
             compute_type_get_item_on_dataclass(dataclass, slice_type, None)
+        )
+    }
+
+    pub fn compute_type_application_on_typed_dict(
+        &mut self,
+        typed_dict: &TypedDict,
+        slice_type: SliceType,
+        from_alias_definition: bool,
+    ) -> Inferred {
+        compute_type_application!(
+            self,
+            slice_type,
+            from_alias_definition,
+            compute_type_get_item_on_typed_dict(typed_dict, slice_type, None)
         )
     }
 
@@ -3301,12 +3374,9 @@ fn check_type_name<'db: 'file, 'file>(
                     DbType::Enum(e) => return TypeNameLookup::Enum(e.clone()),
                     _ => (),
                 },
-                Some(ComplexPoint::TypedDictDefinition(t)) => match t.as_ref() {
-                    DbType::TypedDict(td) => {
-                        return TypeNameLookup::TypedDictDefinition((**t).clone())
-                    }
-                    _ => unreachable!(),
-                },
+                Some(ComplexPoint::TypedDictDefinition(td)) => {
+                    return TypeNameLookup::TypedDictDefinition(td.clone())
+                }
                 _ => (),
             }
             // Classes can be defined recursive, so use the NamedTuple stuff here.

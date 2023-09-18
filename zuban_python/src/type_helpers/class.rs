@@ -367,7 +367,7 @@ impl<'db: 'a, 'a> Class<'a> {
         let mut was_enum_base = false;
         if let Some(td) = was_typed_dict {
             name_def.insert_complex(
-                ComplexPoint::TypedDictDefinition(Rc::new(DbType::TypedDict(td.clone()))),
+                ComplexPoint::TypedDictDefinition(td.clone()),
                 Locality::ImplicitExtern,
             );
         }

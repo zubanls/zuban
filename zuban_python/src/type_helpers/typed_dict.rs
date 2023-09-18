@@ -303,12 +303,12 @@ fn new_typed_dict_internal<'db>(
 
     let type_var_likes = comp.into_type_vars(|_, _| ());
     Some(Inferred::new_unsaved_complex(
-        ComplexPoint::TypedDictDefinition(Rc::new(DbType::TypedDict(TypedDict::new_definition(
+        ComplexPoint::TypedDictDefinition(TypedDict::new_definition(
             name,
             members.into_boxed_slice(),
             args_node_ref.as_link(),
             type_var_likes,
-        )))),
+        )),
     ))
 }
 

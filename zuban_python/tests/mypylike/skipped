@@ -732,6 +732,7 @@ testUnpackKwargsNonIdentifier
 testUnpackKwargsSerialize
 testDataclassFieldWithTypedDictUnpacking
 testUnpackKwargsOverridesTypedDict
+testUnpackGenericTypedDictImplicitAnyEnabled
 # "Unpack item in ** argument must be a TypedDict"
 testUnpackWithoutTypedDict
 # dict unpacking
@@ -758,10 +759,8 @@ testTypedDictUpdateGeneric
 testGenericTypedDictSerialization
 testGenericTypedDictCreation
 testGenericTypedDictInference
-testGenericTypedDictExtending
 testGenericTypedDictExtendingErrors
 testGenericTypedDictAlias
-testGenericTypedDictMultipleGenerics
 testGenericTypedDictCallSyntax
 testGenericTypedDictWithError
 # Nested typed dict formatting

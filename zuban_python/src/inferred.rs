@@ -7,7 +7,7 @@ use crate::database::{
     CallableContent, CallableParams, ClassGenerics, ComplexPoint, Database, DbString, DbType, Enum,
     FileIndex, FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList,
     Literal as DbLiteral, LiteralKind, Locality, MroIndex, NewType, OverloadDefinition, Point,
-    PointLink, PointType, Specific, TypeVarKind, TypeVarLike, TypeVarLikes,
+    PointLink, PointType, Specific, TypeVarKind, TypeVarLike, TypeVarLikes, TypedDict,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -269,11 +269,11 @@ impl<'db: 'slf, 'slf> Inferred {
         None
     }
 
-    pub fn maybe_typed_dict_definition(&self, i_s: &InferenceState) -> Option<DbType> {
+    pub fn maybe_typed_dict_definition(&self, i_s: &InferenceState) -> Option<Rc<TypedDict>> {
         if let InferredState::Saved(definition) = self.state {
             let node_ref = NodeRef::from_link(i_s.db, definition);
-            if let Some(ComplexPoint::TypedDictDefinition(n)) = node_ref.complex() {
-                return Some(n.as_ref().clone());
+            if let Some(ComplexPoint::TypedDictDefinition(td)) = node_ref.complex() {
+                return Some(td.clone());
             }
         }
         None
@@ -2060,7 +2060,9 @@ fn type_of_complex<'db: 'x, 'x>(
             Type::owned(DbType::Type(Rc::new(DbType::NewType(n.clone()))))
         }
         ComplexPoint::NamedTupleDefinition(n) => Type::owned(DbType::Type(n.clone())),
-        ComplexPoint::TypedDictDefinition(t) => Type::owned(DbType::Type(t.clone())),
+        ComplexPoint::TypedDictDefinition(t) => {
+            Type::owned(DbType::Type(Rc::new(DbType::TypedDict(t.clone()))))
+        }
         _ => {
             unreachable!("Classes are handled earlier {complex:?}")
         }

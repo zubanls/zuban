@@ -2544,7 +2544,10 @@ impl<'a> Type<'a> {
                     }
                     Inferred::from_type(t.clone())
                 }
-                DbType::TypedDict(_) => todo!(),
+                DbType::TypedDict(td) => slice_type
+                    .file
+                    .inference(i_s)
+                    .compute_type_application_on_typed_dict(td, *slice_type, false),
                 _ => {
                     slice_type
                         .as_node_ref()
