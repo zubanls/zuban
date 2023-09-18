@@ -3374,9 +3374,12 @@ fn check_type_name<'db: 'file, 'file>(
                     DbType::Enum(e) => return TypeNameLookup::Enum(e.clone()),
                     _ => (),
                 },
-                Some(ComplexPoint::TypedDictDefinition(td)) => {
-                    return TypeNameLookup::TypedDictDefinition(td.clone())
-                }
+                Some(ComplexPoint::TypedDictDefinition(t)) => match t.as_ref() {
+                    DbType::TypedDict(td) => {
+                        return TypeNameLookup::TypedDictDefinition(td.clone())
+                    }
+                    _ => unreachable!(),
+                },
                 _ => (),
             }
             // Classes can be defined recursive, so use the NamedTuple stuff here.

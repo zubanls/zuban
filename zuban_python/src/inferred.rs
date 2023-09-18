@@ -272,7 +272,10 @@ impl<'db: 'slf, 'slf> Inferred {
     pub fn maybe_typed_dict_definition(&self, i_s: &InferenceState) -> Option<Rc<TypedDict>> {
         if let InferredState::Saved(definition) = self.state {
             let node_ref = NodeRef::from_link(i_s.db, definition);
-            if let Some(ComplexPoint::TypedDictDefinition(td)) = node_ref.complex() {
+            if let Some(ComplexPoint::TypedDictDefinition(t)) = node_ref.complex() {
+                let DbType::TypedDict(td) = t.as_ref() else {
+                    unreachable!();
+                };
                 return Some(td.clone());
             }
         }
@@ -2060,9 +2063,7 @@ fn type_of_complex<'db: 'x, 'x>(
             Type::owned(DbType::Type(Rc::new(DbType::NewType(n.clone()))))
         }
         ComplexPoint::NamedTupleDefinition(n) => Type::owned(DbType::Type(n.clone())),
-        ComplexPoint::TypedDictDefinition(t) => {
-            Type::owned(DbType::Type(Rc::new(DbType::TypedDict(t.clone()))))
-        }
+        ComplexPoint::TypedDictDefinition(t) => Type::owned(DbType::Type(t.clone())),
         _ => {
             unreachable!("Classes are handled earlier {complex:?}")
         }
