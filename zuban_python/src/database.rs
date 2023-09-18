@@ -2223,6 +2223,40 @@ impl TypeVarLikes {
     pub fn iter(&self) -> std::slice::Iter<TypeVarLike> {
         self.0.iter()
     }
+
+    pub fn format(&self, format_data: &FormatData) -> String {
+        debug_assert!(!self.is_empty());
+        format!(
+            "[{}] ",
+            self.iter()
+                .map(|t| match t {
+                    TypeVarLike::TypeVar(t) => {
+                        let mut s = t.name(format_data.db).to_owned();
+                        match &t.kind {
+                            TypeVarKind::Unrestricted => (),
+                            TypeVarKind::Bound(bound) => {
+                                s += &format!(" <: {}", Type::new(bound).format(format_data));
+                            }
+                            TypeVarKind::Constraints(constraints) => {
+                                s += &format!(
+                                    " in ({})",
+                                    constraints
+                                        .iter()
+                                        .map(|t| Type::new(t).format(format_data))
+                                        .collect::<Vec<_>>()
+                                        .join(", ")
+                                );
+                            }
+                        }
+                        s
+                    }
+                    TypeVarLike::TypeVarTuple(t) => todo!(),
+                    TypeVarLike::ParamSpec(s) => s.name(format_data.db).into(),
+                })
+                .collect::<Vec<_>>()
+                .join(", "),
+        )
+    }
 }
 
 impl std::ops::Index<usize> for TypeVarLikes {

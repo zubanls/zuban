@@ -5,7 +5,7 @@ use super::{lookup_on_enum_class, Class, DataclassHelper};
 use crate::arguments::{ArgumentKind, Arguments};
 use crate::database::{
     ComplexPoint, Database, DbType, FormatStyle, NewType, ParamSpec, PointLink, TypeVar,
-    TypeVarKind, TypeVarLike, TypeVarName, TypeVarTuple, Variance,
+    TypeVarKind, TypeVarLike, TypeVarName, TypeVarTuple, TypedDictGenerics, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -222,8 +222,13 @@ fn reveal_type_info(i_s: &InferenceState, t: Type) -> Box<str> {
                     .into();
             }
             DbType::TypedDict(td) => {
+                let tvs = match &td.generics {
+                    TypedDictGenerics::NotDefinedYet(tvs) => Some(tvs.format(&format_data)),
+                    _ => None,
+                };
                 return format!(
-                    "def (*, {}) -> {}",
+                    "def {}(*, {}) -> {}",
+                    tvs.as_deref().unwrap_or(""),
                     td.members
                         .iter()
                         .map(|member| {
@@ -241,7 +246,7 @@ fn reveal_type_info(i_s: &InferenceState, t: Type) -> Box<str> {
                         .join(", "),
                     type_.format(&format_data)
                 )
-                .into()
+                .into();
             }
             _ => (),
         }

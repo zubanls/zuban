@@ -2096,39 +2096,7 @@ pub fn format_pretty_function_with_params(
     name: &str,
     params: &str,
 ) -> Box<str> {
-    let type_var_string = (!type_vars.is_empty()).then(|| {
-        format!(
-            "[{}] ",
-            type_vars
-                .iter()
-                .map(|t| match t {
-                    TypeVarLike::TypeVar(t) => {
-                        let mut s = t.name(format_data.db).to_owned();
-                        match &t.kind {
-                            TypeVarKind::Unrestricted => (),
-                            TypeVarKind::Bound(bound) => {
-                                s += &format!(" <: {}", Type::new(bound).format(format_data));
-                            }
-                            TypeVarKind::Constraints(constraints) => {
-                                s += &format!(
-                                    " in ({})",
-                                    constraints
-                                        .iter()
-                                        .map(|t| Type::new(t).format(format_data))
-                                        .collect::<Vec<_>>()
-                                        .join(", ")
-                                );
-                            }
-                        }
-                        s
-                    }
-                    TypeVarLike::TypeVarTuple(t) => todo!(),
-                    TypeVarLike::ParamSpec(s) => s.name(format_data.db).into(),
-                })
-                .collect::<Vec<_>>()
-                .join(", "),
-        )
-    });
+    let type_var_string = (!type_vars.is_empty()).then(|| type_vars.format(format_data));
     let type_var_str = type_var_string.as_deref().unwrap_or("");
     let result_string = return_type
         .as_ref()

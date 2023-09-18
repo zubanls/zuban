@@ -757,7 +757,6 @@ testTypedDictAsStarStarAndDictAsStarStar
 testTypedDictUpdateGeneric
 # generics
 testGenericTypedDictInference
-testGenericTypedDictCallSyntax
 testGenericTypedDictWithError
 # Nested typed dict formatting
 testSerializeTypedDictInMethod
