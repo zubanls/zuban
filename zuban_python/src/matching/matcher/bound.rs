@@ -104,21 +104,22 @@ impl TypeVarBound {
             // contravariant, it can still be valid.
             match variance {
                 Variance::Invariant => (),
-                Variance::Covariant => {
-                    if let Self::Invariant(ref t)
-                    | Self::Upper(ref t)
-                    | Self::LowerAndUpper(_, ref t) = self
-                    {
-                        let m = Type::new(t).is_simple_super_type_of(i_s, other);
+                Variance::Covariant => match self {
+                    Self::Invariant(t) | Self::LowerAndUpper(_, t) => {
+                        return Type::new(t).is_simple_super_type_of(i_s, other)
+                    }
+                    Self::Upper(t) => {
                         // TODO shouldn't this also do a limited common base type search in the
                         // case of LowerAndUpper?
-                        if !m.bool() && matches!(self, Self::Upper(_)) {
-                            *self = Self::Upper(Type::new(t).common_base_type(i_s, other));
+                        let m = Type::new(t).is_simple_super_type_of(i_s, other);
+                        if !m.bool() {
+                            *t = Type::new(t).common_base_type(i_s, other);
                             return Match::new_true();
                         }
                         return m;
                     }
-                }
+                    Self::Lower(t) => {}
+                },
                 Variance::Contravariant => {
                     if let Self::Invariant(t) | Self::Lower(t) | Self::LowerAndUpper(t, _) = self {
                         return Type::new(t).is_simple_sub_type_of(i_s, other);
