@@ -721,11 +721,6 @@ testBasicRecursiveTypedDictCall
 testRecursiveTypedDictWithList
 # TypedDict recursion with imports
 testNewImportCycleTypedDict
-# "Missing named argument "radius" for "foo""
-testUnpackTypedDictTotality
-testErrorCodeTypedDict
-# "Type of TypedDict is ambiguous, none of ("A", "B") matches cleanly"
-testTypedDictUnionAmbiguousCaseNoMatch
 # Unpack
 testUnpackKeywordTypesTypedDict
 testUnpackKwargsNonIdentifier
@@ -733,6 +728,7 @@ testUnpackKwargsSerialize
 testDataclassFieldWithTypedDictUnpacking
 testUnpackKwargsOverridesTypedDict
 testUnpackGenericTypedDictImplicitAnyEnabled
+testUnpackTypedDictTotality
 # "Unpack item in ** argument must be a TypedDict"
 testUnpackWithoutTypedDict
 # dict unpacking
@@ -753,21 +749,17 @@ testCanConvertTypedDictToAnySuperclassOfMapping
 testTypedDictMappingMethods
 testTypedDictAsStarStarArgCalleeKwargs
 testTypedDictAsStarStarAndDictAsStarStar
-# Typed dict generics in getitem
-testTypedDictUpdateGeneric
-# generics
-testGenericTypedDictInference
-testGenericTypedDictWithError
-# Nested typed dict formatting
-testSerializeTypedDictInMethod
+testTypedDictPopMethod
+testTypedDictNonMappingMethods
 # TypedDict .get() special case
 testLiteralIntelligentIndexingUsingFinal
 testLiteralIntelligentIndexingTypedDict
 testLiteralIntelligentIndexingTypedDictUnions
 testLiteralIntelligentIndexingMultiTypedDict
-# Further special cases
-testTypedDictPopMethod
-testTypedDictNonMappingMethods
+# generics
+testGenericTypedDictInference
+# Nested typed dict formatting
+testSerializeTypedDictInMethod
 # --extra-checks
 testTypedDictUnpackStrictMode
 testTypedDictStrictUpdate
@@ -798,14 +790,15 @@ testMeetOfTypedDictsWithNonTotal
 testMeetOfTypedDictsWithNonTotalAndTotal
 testMeetOfTypedDictsWithIncompatibleNonTotalAndTotal
 # unions
-testTypedDictUnionSimplification
-testUnionOfEquivalentTypedDictsDeclared
 testUnionOfEquivalentTypedDictsEmpty
-testUnionOfEquivalentTypedDictsDistinct
-testUnionOfEquivalentTypedDictsNested
 testTypedDictChainedGetWithEmptyDictDefault
 testPluginUnionsOfTypedDicts
 testPluginUnionsOfTypedDictsNonTotal
+testErrorCodeTypedDict
+# "Type of TypedDict is ambiguous, none of ("A", "B") matches cleanly"
+testUnionOfEquivalentTypedDictsDistinct
+testUnionOfEquivalentTypedDictsNested
+testTypedDictUnionAmbiguousCaseNoMatch
 
 # NoReturn
 testNoReturnTypeAlias
@@ -2629,6 +2622,8 @@ testAnonymousFunctionalEnum
 testNewTypeInMultipleFiles
 # qualified name for Enum for different module
 testLiteralWithEnumsSimilarDefinitions
+# qualified name for TypedDict for different module
+testGenericTypedDictWithError
 # NewType formatting instead of internal type
 testNewTypeDependencies3
 
