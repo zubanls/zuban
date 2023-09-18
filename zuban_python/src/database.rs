@@ -2770,6 +2770,16 @@ pub struct TypedDictMember {
     pub required: bool,
 }
 
+impl TypedDictMember {
+    pub fn replace_type(&self, callable: impl FnOnce(&DbType) -> DbType) -> Self {
+        Self {
+            name: self.name,
+            type_: callable(&self.type_),
+            required: self.required,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum TypedDictGenerics {
     None,
@@ -2823,11 +2833,11 @@ impl TypedDict {
         let members = self
             .members
             .iter()
-            .map(|m| TypedDictMember {
-                name: m.name,
-                type_: Type::new(&m.type_)
-                    .replace_type_var_likes(db, &mut |usage| generics[usage.index()].clone()),
-                required: m.required,
+            .map(|m| {
+                m.replace_type(|t| {
+                    Type::new(&m.type_)
+                        .replace_type_var_likes(db, &mut |usage| generics[usage.index()].clone())
+                })
             })
             .collect::<Box<[_]>>();
         TypedDict::new(

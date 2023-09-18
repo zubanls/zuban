@@ -318,7 +318,7 @@ macro_rules! compute_type_application {
         let t = tcomp.$method $args;
         match t {
             TypeContent::Class{node_ref, ..} => {
-                todo!()
+                todo!("Type application issue")
             }
             TypeContent::SimpleGeneric{class_link, generics, ..} => {
                 Inferred::from_type(DbType::Type(Rc::new(DbType::new_class(class_link, generics))))

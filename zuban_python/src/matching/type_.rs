@@ -15,7 +15,7 @@ use crate::database::{
     ParamSpecUsage, ParamSpecific, PointLink, RecursiveAlias, StarredParamSpecific, TupleContent,
     TupleTypeArguments, TypeAlias, TypeArguments, TypeOrTypeVarTuple, TypeVarKind, TypeVarLike,
     TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, TypedDict,
-    UnionEntry, UnionType, Variance,
+    TypedDictGenerics, UnionEntry, UnionType, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -1367,7 +1367,7 @@ impl<'a> Type<'a> {
                 }
             }
         };
-        let remap_generics = |generics: &GenericsList| {
+        let mut remap_generics = |generics: &GenericsList| {
             GenericsList::new_generics(
                 generics
                     .iter()
@@ -1565,9 +1565,33 @@ impl<'a> Type<'a> {
                     d.clone()
                 }
             }),
-            DbType::TypedDict(d) => {
-                debug!("TODO typed dict replace type vars");
-                return DbType::TypedDict(d.clone());
+            DbType::TypedDict(td) => {
+                let generics = match &td.generics {
+                    TypedDictGenerics::None => TypedDictGenerics::None,
+                    TypedDictGenerics::NotDefinedYet(tvs) => {
+                        TypedDictGenerics::NotDefinedYet(tvs.clone())
+                    }
+                    TypedDictGenerics::Generics(generics) => {
+                        TypedDictGenerics::Generics(remap_generics(generics))
+                    }
+                };
+                DbType::TypedDict(TypedDict::new(
+                    td.name,
+                    td.members
+                        .iter()
+                        .map(|m| {
+                            m.replace_type(|t| {
+                                Type::new(t).replace_type_var_likes_and_self(
+                                    db,
+                                    callable,
+                                    replace_self,
+                                )
+                            })
+                        })
+                        .collect(),
+                    td.defined_at,
+                    generics,
+                ))
             }
             DbType::NamedTuple(nt) => {
                 let mut constructor = nt.__new__.as_ref().clone();
@@ -2547,7 +2571,11 @@ impl<'a> Type<'a> {
                 DbType::TypedDict(td) => slice_type
                     .file
                     .inference(i_s)
-                    .compute_type_application_on_typed_dict(td, *slice_type, false),
+                    .compute_type_application_on_typed_dict(
+                        td,
+                        *slice_type,
+                        matches!(result_context, ResultContext::AssignmentNewDefinition),
+                    ),
                 _ => {
                     slice_type
                         .as_node_ref()

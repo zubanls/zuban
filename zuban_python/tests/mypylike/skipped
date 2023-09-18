@@ -758,7 +758,6 @@ testTypedDictUpdateGeneric
 # generics
 testGenericTypedDictInference
 testGenericTypedDictExtendingErrors
-testGenericTypedDictAlias
 testGenericTypedDictCallSyntax
 testGenericTypedDictWithError
 # Nested typed dict formatting
@@ -2911,6 +2910,7 @@ testDisallowAnyGenericsGenericAlias
 testDisallowAnyGenericsPlainList
 testDisallowAnyGenericsCustomGenericClass
 testDisallowAnyGenericsForAliasesInRuntimeContext
+testGenericTypedDictAlias
 
 # --disallow-any-unimported
 testErrorCodeAnyFromUnfollowedImport
