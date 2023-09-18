@@ -105,9 +105,6 @@ impl TypeVarBound {
             match variance {
                 Variance::Invariant => (),
                 Variance::Covariant => match self {
-                    Self::Invariant(t) | Self::LowerAndUpper(_, t) => {
-                        return Type::new(t).is_simple_super_type_of(i_s, other)
-                    }
                     Self::Upper(t) => {
                         // TODO shouldn't this also do a limited common base type search in the
                         // case of LowerAndUpper?
@@ -118,13 +115,28 @@ impl TypeVarBound {
                         }
                         return m;
                     }
+                    Self::Invariant(t) | Self::LowerAndUpper(_, t) => {
+                        return Type::new(t).is_simple_super_type_of(i_s, other)
+                    }
                     Self::Lower(t) => {}
                 },
-                Variance::Contravariant => {
-                    if let Self::Invariant(t) | Self::Lower(t) | Self::LowerAndUpper(t, _) = self {
+                Variance::Contravariant => match self {
+                    Self::Lower(t) => {
+                        // TODO shouldn't we also tcheck LowerAndUpper like this?
+                        let m = Type::new(t).is_simple_sub_type_of(i_s, other);
+                        if !m.bool() {
+                            if let Some(new) = Type::new(t).common_sub_type(i_s, other) {
+                                *t = new;
+                            }
+                            return Match::new_true();
+                        }
+                        return m;
+                    }
+                    Self::Invariant(t) | Self::LowerAndUpper(t, _) => {
                         return Type::new(t).is_simple_sub_type_of(i_s, other);
                     }
-                }
+                    Self::Upper(_) => {}
+                },
             };
         }
         matches

@@ -2897,6 +2897,17 @@ impl TypedDict {
         format!("{module}.{}", self.name.as_str(db))
     }
 
+    pub fn disjunction(&self, db: &Database, other: &Self) -> Rc<TypedDict> {
+        let mut members = self.members.clone().into_vec();
+        members.extend_from_slice(&other.members);
+        Self::new(
+            self.name,
+            members.into_boxed_slice(),
+            self.defined_at,
+            TypedDictGenerics::None,
+        )
+    }
+
     pub fn format(&self, format_data: &FormatData) -> String {
         match format_data.style {
             FormatStyle::MypyRevealType => {
