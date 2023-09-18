@@ -177,7 +177,11 @@ impl InvalidVariableType<'_> {
                 IssueType::Note(Box::from("Suggestion: use Foo[...] instead of Foo(...)"))
             }
             Self::Execution { .. } | Self::Other => {
-                IssueType::InvalidType(Box::from("Invalid type comment or annotation"))
+                IssueType::InvalidType(Box::from(if origin == TypeComputationOrigin::BaseClass {
+                    "Type expected within [...]"
+                } else {
+                    "Invalid type comment or annotation"
+                }))
             }
             Self::InlineTypedDict => IssueType::InvalidType(Box::from(
                 "Inline TypedDict types not supported; use assignment to define TypedDict",
@@ -745,7 +749,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             })),
             TypeContent::TypedDictDefinition(td) => match &td.generics {
                 TypedDictGenerics::None => Some(DbType::TypedDict(td)),
-                TypedDictGenerics::NotDefinedYet(type_var_likes) => todo!(),
+                TypedDictGenerics::NotDefinedYet(_) => Some(
+                    Type::owned(DbType::TypedDict(td)).replace_type_var_likes(db, &mut |usage| {
+                        usage.as_type_var_like().as_any_generic_item()
+                    }),
+                ),
                 TypedDictGenerics::Generics(_) => unreachable!(),
             },
             TypeContent::Module(file) => {
