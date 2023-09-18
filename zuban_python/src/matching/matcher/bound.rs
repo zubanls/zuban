@@ -110,6 +110,8 @@ impl TypeVarBound {
                     | Self::LowerAndUpper(_, ref t) = self
                     {
                         let m = Type::new(t).is_simple_super_type_of(i_s, other);
+                        // TODO shouldn't this also do a limited common base type search in the
+                        // case of LowerAndUpper?
                         if !m.bool() && matches!(self, Self::Upper(_)) {
                             *self = Self::Upper(Type::new(t).common_base_type(i_s, other));
                             return Match::new_true();
