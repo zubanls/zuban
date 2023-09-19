@@ -769,9 +769,6 @@ testJoinOfTypedDictWithCompatibleMappingIsMapping
 testJoinOfTypedDictWithCompatibleMappingSupertypeIsSupertype
 testJoinOfTypedDictWithIncompatibleTypeIsObject
 testCannotGetItemOfAnonymousTypedDictWithInvalidStringLiteralKey
-# "Expected TypedDict key "x" but found keys ("x", "z")"
-testCannotCreateAnonymousTypedDictInstanceUsingDictLiteralWithExtraItems
-testCannotCreateAnonymousTypedDictInstanceUsingDictLiteralWithMissingItems
 # Match mapping
 testMeetOfTypedDictWithCompatibleMappingIsUninhabitedForNow
 testMeetOfTypedDictWithIncompatibleMappingIsUninhabited
@@ -779,7 +776,6 @@ testMeetOfTypedDictWithIncompatibleMappingIsUninhabited
 testUnionOfEquivalentTypedDictsEmpty
 testTypedDictChainedGetWithEmptyDictDefault
 testPluginUnionsOfTypedDictsNonTotal
-testErrorCodeTypedDict
 # "Type of TypedDict is ambiguous, none of ("A", "B") matches cleanly"
 testUnionOfEquivalentTypedDictsDistinct
 testUnionOfEquivalentTypedDictsNested
