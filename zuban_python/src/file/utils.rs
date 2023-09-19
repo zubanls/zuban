@@ -20,7 +20,7 @@ use crate::{debug, new_class, Inferred};
 
 impl<'db> Inference<'db, '_, '_> {
     pub fn create_list_or_set_generics(&mut self, elements: StarLikeExpressionIterator) -> DbType {
-        let mut result = DbType::Never;
+        let mut result = None;
         for child in elements {
             let mut t = match child {
                 StarLikeExpression::NamedExpression(named_expr) => {
@@ -39,9 +39,13 @@ impl<'db> Inference<'db, '_, '_> {
             if let DbType::Literal(l) = t {
                 t = self.i_s.db.python_state.literal_db_type(&l.kind);
             }
-            mypy_join(self.i_s, &mut result, t);
+            if let Some(r) = result.take() {
+                result = Some(Type::owned(r).common_base_type(self.i_s, &Type::owned(t)));
+            } else {
+                result = Some(t)
+            }
         }
-        result
+        result.unwrap_or(DbType::Never)
     }
 
     pub fn infer_list_literal_from_context(
