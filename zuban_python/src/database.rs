@@ -2925,23 +2925,45 @@ impl TypedDict {
         ))
     }
 
+    pub fn intersection(&self, i_s: &InferenceState, other: &Self) -> Rc<TypedDict> {
+        let mut new_members = vec![];
+        for m1 in self.members.iter() {
+            for m2 in other.members.iter() {
+                if m1.name.as_str(i_s.db) == m2.name.as_str(i_s.db) {
+                    if m1.required == m2.required
+                        && Type::new(&m1.type_)
+                            .is_simple_same_type(i_s, &Type::new(&m2.type_))
+                            .bool()
+                    {
+                        new_members.push(m1.clone());
+                    }
+                }
+            }
+        }
+        Self::new(
+            None,
+            new_members.into_boxed_slice(),
+            self.defined_at,
+            TypedDictGenerics::None,
+        )
+    }
+
     pub fn format(&self, format_data: &FormatData) -> String {
         match format_data.style {
             FormatStyle::MypyRevealType => {
-                self.format_reveal_type(format_data, self.qualified_name(format_data.db).as_deref())
+                self.format_full(format_data, self.qualified_name(format_data.db).as_deref())
             }
             FormatStyle::Short if !format_data.verbose => self
                 .name
-                .map(|n| n.as_str(format_data.db))
-                .unwrap_or_else(|| "TODO format anonymous TypedDict")
-                .into(),
+                .map(|n| n.as_str(format_data.db).into())
+                .unwrap_or_else(|| self.format_full(format_data, None)),
             _ => self
                 .qualified_name(format_data.db)
                 .unwrap_or_else(|| todo!()),
         }
     }
 
-    pub fn format_reveal_type(&self, format_data: &FormatData, name: Option<&str>) -> String {
+    pub fn format_full(&self, format_data: &FormatData, name: Option<&str>) -> String {
         let rec = RecursiveAlias::new(self.defined_at, None);
         if format_data.has_already_seen_recursive_alias(&rec) {
             return "...".to_string();

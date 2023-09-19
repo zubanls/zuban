@@ -39,7 +39,7 @@ impl<'db> Inference<'db, '_, '_> {
             if let DbType::Literal(l) = t {
                 t = self.i_s.db.python_state.literal_db_type(&l.kind);
             }
-            result.union_in_place(self.i_s.db, t);
+            mypy_join(self.i_s, &mut result, t);
         }
         result
     }
@@ -367,14 +367,14 @@ fn check_list_with_context<'db>(
                     .as_type(i_s)
                     .try_to_resemble_context(i_s, matcher, &generic_t);
                 if let Some(found) = &mut found {
-                    mypy_join(i_s.db, found, resembling)
+                    found.union_in_place(i_s.db, resembling)
                 } else {
                     found = Some(resembling);
                 }
             } else if i_s.is_checking_overload() {
                 let t = inferred.as_type(i_s).into_db_type();
                 if let Some(found) = &mut found {
-                    mypy_join(i_s.db, found, t)
+                    found.union_in_place(i_s.db, t)
                 } else {
                     found = Some(t);
                 }
@@ -397,9 +397,15 @@ fn check_list_with_context<'db>(
     found.map(|inner| new_class!(i_s.db.python_state.list_node_ref().as_link(), inner,))
 }
 
-fn mypy_join(db: &Database, t: &mut DbType, other: DbType) {
+fn mypy_join(i_s: &InferenceState, t: &mut DbType, other: DbType) {
+    if let DbType::TypedDict(td1) = t {
+        if let DbType::TypedDict(td2) = &other {
+            *td1 = td1.intersection(i_s, td2);
+            return;
+        }
+    }
     // Mypy has a special way to infer unions for list types.
-    t.union_in_place(db, other)
+    t.union_in_place(i_s.db, other)
 }
 
 pub fn on_argument_type_error(
