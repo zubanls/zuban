@@ -2,14 +2,15 @@ use std::rc::Rc;
 
 use parsa_python_ast::ParamKind;
 
-use super::super::{common_base_type, Generic, Match, MismatchReason, Type};
+use super::super::{Generic, Match, MismatchReason, Type};
 use super::bound::TypeVarBound;
 use crate::database::{
     CallableParams, Database, DbType, GenericItem, ParamSpecArgument, ParamSpecific, PointLink,
-    TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarKind, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
+    TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage,
+    TypeVarLikes, TypeVarUsage, Variance,
 };
 use crate::inference_state::InferenceState;
+use crate::matching::type_::common_base_type_of_type_var_tuple_with_items;
 use crate::matching::Param;
 use crate::type_helpers::{Callable, Class, Function};
 
@@ -109,43 +110,15 @@ impl CalculatedTypeVarLike {
     pub fn merge_fixed_length_type_var_tuple<'x, I: Iterator<Item = &'x TypeOrTypeVarTuple>>(
         &mut self,
         i_s: &InferenceState,
-        fetch: usize,
+        length: usize,
         items: I,
     ) {
         match &mut self.type_ {
-            BoundKind::TypeVarTuple(ts) => match &mut ts.args {
-                TupleTypeArguments::FixedLength(calc_ts) => {
-                    if fetch == calc_ts.len() {
-                        let mut new = vec![];
-                        for (t1, t2) in calc_ts.iter().zip(items) {
-                            match (t1, t2) {
-                                (TypeOrTypeVarTuple::Type(t1), TypeOrTypeVarTuple::Type(t2)) => {
-                                    new.push(TypeOrTypeVarTuple::Type(
-                                        Type::new(t1).common_base_type(i_s, &Type::new(t2)),
-                                    ));
-                                }
-                                _ => todo!(),
-                            }
-                        }
-                        *calc_ts = new.into();
-                    } else {
-                        // We use map to make an iterator with covariant lifetimes.
-                        #[allow(clippy::map_identity)]
-                        let t = common_base_type(i_s, calc_ts.iter().chain(items.map(|x| x)));
-                        ts.args = TupleTypeArguments::ArbitraryLength(Box::new(t));
-                    }
-                }
-                TupleTypeArguments::ArbitraryLength(calc_t) => {
-                    let base = common_base_type(i_s, items);
-                    //self.merge_arbitrary_length_type_var_tuple(i_s, &base)
-                }
-            },
+            BoundKind::TypeVarTuple(ts) => {
+                common_base_type_of_type_var_tuple_with_items(&mut ts.args, i_s, length, items)
+            }
             _ => unreachable!(),
         }
-    }
-
-    pub fn merge_arbitrary_length_type_var_tuple(&mut self, i_s: &InferenceState, item: &DbType) {
-        todo!()
     }
 
     pub fn into_generic_item(self, db: &Database, type_var_like: &TypeVarLike) -> GenericItem {

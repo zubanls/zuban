@@ -2204,6 +2204,11 @@ impl<'a> Type<'a> {
                             return i_s.db.python_state.function_db_type();
                         }
                     }
+                    DbType::Tuple(tup1) => {
+                        if let DbType::Tuple(tup2) = other.as_ref() {
+                            return DbType::Tuple(Rc::new(common_base_for_tuples(i_s, tup1, tup2)));
+                        }
+                    }
                     DbType::TypedDict(td1) => {
                         if let DbType::TypedDict(td2) = &other.as_ref() {
                             return DbType::TypedDict(td1.intersection(i_s, td2));
@@ -2850,6 +2855,65 @@ pub fn common_base_type<'x, I: Iterator<Item = &'x TypeOrTypeVarTuple>>(
         result.into_owned()
     } else {
         DbType::Never
+    }
+}
+
+pub fn common_base_for_tuples(
+    i_s: &InferenceState,
+    tup1: &TupleContent,
+    tup2: &TupleContent,
+) -> TupleContent {
+    let Some(tup1_args) = &tup1.args else {
+        todo!()
+    };
+    let Some(tup2_args) = &tup2.args else {
+        todo!()
+    };
+    let mut new_args = tup1_args.clone();
+    match tup2_args {
+        TupleTypeArguments::FixedLength(ts2) => {
+            common_base_type_of_type_var_tuple_with_items(&mut new_args, i_s, ts2.len(), ts2.iter())
+        }
+        TupleTypeArguments::ArbitraryLength(t) => todo!(),
+    };
+    TupleContent::new(new_args)
+}
+
+pub fn common_base_type_of_type_var_tuple_with_items<
+    'x,
+    I: Iterator<Item = &'x TypeOrTypeVarTuple>,
+>(
+    args: &mut TupleTypeArguments,
+    i_s: &InferenceState,
+    length: usize,
+    items: I,
+) {
+    match args {
+        TupleTypeArguments::FixedLength(calc_ts) => {
+            if length == calc_ts.len() {
+                let mut new = vec![];
+                for (t1, t2) in calc_ts.iter().zip(items) {
+                    match (t1, t2) {
+                        (TypeOrTypeVarTuple::Type(t1), TypeOrTypeVarTuple::Type(t2)) => {
+                            new.push(TypeOrTypeVarTuple::Type(
+                                Type::new(t1).common_base_type(i_s, &Type::new(t2)),
+                            ));
+                        }
+                        _ => todo!(),
+                    }
+                }
+                *calc_ts = new.into();
+            } else {
+                // We use map to make an iterator with covariant lifetimes.
+                #[allow(clippy::map_identity)]
+                let t = common_base_type(i_s, calc_ts.iter().chain(items.map(|x| x)));
+                *args = TupleTypeArguments::ArbitraryLength(Box::new(t));
+            }
+        }
+        TupleTypeArguments::ArbitraryLength(calc_t) => {
+            let base = common_base_type(i_s, items);
+            debug!("TODO Type var tuple merging");
+        }
     }
 }
 
