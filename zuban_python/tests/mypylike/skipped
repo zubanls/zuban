@@ -772,8 +772,6 @@ testCannotGetItemOfAnonymousTypedDictWithInvalidStringLiteralKey
 # "Expected TypedDict key "x" but found keys ("x", "z")"
 testCannotCreateAnonymousTypedDictInstanceUsingDictLiteralWithExtraItems
 testCannotCreateAnonymousTypedDictInstanceUsingDictLiteralWithMissingItems
-# join
-testTypedDictJoinWithTotalFalse
 # Match mapping
 testMeetOfTypedDictWithCompatibleMappingIsUninhabitedForNow
 testMeetOfTypedDictWithIncompatibleMappingIsUninhabited

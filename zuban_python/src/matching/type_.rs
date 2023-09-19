@@ -2198,10 +2198,18 @@ impl<'a> Type<'a> {
             (None, None) => {
                 // TODO this should also be done for function/callable and callable/function and
                 // not only callable/callable
-                if let DbType::Callable(c1) = self.as_ref() {
-                    if let DbType::Callable(c2) = other.as_ref() {
-                        return i_s.db.python_state.function_db_type();
+                match self.as_ref() {
+                    DbType::Callable(c1) => {
+                        if let DbType::Callable(c2) = other.as_ref() {
+                            return i_s.db.python_state.function_db_type();
+                        }
                     }
+                    DbType::TypedDict(td1) => {
+                        if let DbType::TypedDict(td2) = &other.as_ref() {
+                            return DbType::TypedDict(td1.intersection(i_s, td2));
+                        }
+                    }
+                    _ => (),
                 }
             }
             _ => (),
