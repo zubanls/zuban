@@ -2900,12 +2900,16 @@ impl TypedDict {
         Some(format!("{module}.{}", name.as_str(db)))
     }
 
-    pub fn disjunction(&self, db: &Database, other: &Self) -> DbType {
+    pub fn disjunction(&self, i_s: &InferenceState, other: &Self) -> DbType {
         let mut members = self.members.clone().into_vec();
         'outer: for m2 in other.members.iter() {
             for m1 in members.iter() {
-                if m1.name.as_str(db) == m2.name.as_str(db) {
-                    if m1.required != m2.required {
+                if m1.name.as_str(i_s.db) == m2.name.as_str(i_s.db) {
+                    if m1.required != m2.required
+                        || !Type::new(&m1.type_)
+                            .is_simple_same_type(i_s, &Type::new(&m2.type_))
+                            .bool()
+                    {
                         return DbType::Never;
                     }
                     continue 'outer;
