@@ -2226,7 +2226,7 @@ impl<'a> Type<'a> {
     pub fn common_sub_type(&self, i_s: &InferenceState, other: &Self) -> Option<DbType> {
         if let Some(td1) = self.maybe_typed_dict(i_s.db) {
             if let Some(td2) = other.maybe_typed_dict(i_s.db) {
-                return Some(DbType::TypedDict(td1.disjunction(i_s.db, &td2)));
+                return Some(td1.disjunction(i_s.db, &td2));
             }
         }
         None
