@@ -779,7 +779,7 @@ testCannotCreateAnonymousTypedDictInstanceUsingDictLiteralWithExtraItems
 testCannotCreateAnonymousTypedDictInstanceUsingDictLiteralWithMissingItems
 # join
 testTypedDictJoinWithTotalFalse
-# meet
+# Match mapping
 testMeetOfTypedDictWithCompatibleMappingIsUninhabitedForNow
 testMeetOfTypedDictWithIncompatibleMappingIsUninhabited
 # unions

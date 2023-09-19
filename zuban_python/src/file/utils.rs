@@ -367,14 +367,14 @@ fn check_list_with_context<'db>(
                     .as_type(i_s)
                     .try_to_resemble_context(i_s, matcher, &generic_t);
                 if let Some(found) = &mut found {
-                    found.union_in_place(i_s.db, resembling)
+                    mypy_join(i_s.db, found, resembling)
                 } else {
                     found = Some(resembling);
                 }
             } else if i_s.is_checking_overload() {
                 let t = inferred.as_type(i_s).into_db_type();
                 if let Some(found) = &mut found {
-                    found.union_in_place(i_s.db, t)
+                    mypy_join(i_s.db, found, t)
                 } else {
                     found = Some(t);
                 }
@@ -395,6 +395,11 @@ fn check_list_with_context<'db>(
         };
     }
     found.map(|inner| new_class!(i_s.db.python_state.list_node_ref().as_link(), inner,))
+}
+
+fn mypy_join(db: &Database, t: &mut DbType, other: DbType) {
+    // Mypy has a special way to infer unions for list types.
+    t.union_in_place(db, other)
 }
 
 pub fn on_argument_type_error(
