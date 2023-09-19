@@ -1779,7 +1779,6 @@ testExtremeForwardReferencing
 
 testFuncBasedEnumPropagation2
 testUnpackInExpression2-only_when_nocache
-testListWithNone
 testRecursiveAliasGenericInferenceNested
 testRecursiveAliasTopUnion
 testLiteralWithEnumsDeclaredUsingCallSyntax

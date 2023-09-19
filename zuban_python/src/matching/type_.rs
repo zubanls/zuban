@@ -2214,21 +2214,32 @@ impl<'a> Type<'a> {
             }
             _ => (),
         }
-        if let DbType::Literal(l) = self.as_ref() {
-            return i_s
+        match self.as_ref() {
+            DbType::Literal(l) => {
+                return i_s
+                    .db
+                    .python_state
+                    .literal_type(&l.kind)
+                    .common_base_type(i_s, other);
+            }
+            DbType::Union(u) if u.iter().any(|t| matches!(t, DbType::None)) => {
+                return self.clone().union(i_s.db, other.clone()).into_db_type()
+            }
+            DbType::None => return self.clone().union(i_s.db, other.clone()).into_db_type(),
+            _ => (),
+        }
+        match other.as_ref() {
+            DbType::Literal(l) => i_s
                 .db
                 .python_state
                 .literal_type(&l.kind)
-                .common_base_type(i_s, other);
+                .common_base_type(i_s, self),
+            DbType::None => self.clone().union(i_s.db, other.clone()).into_db_type(),
+            DbType::Union(u) if u.iter().any(|t| matches!(t, DbType::None)) => {
+                return self.clone().union(i_s.db, other.clone()).into_db_type()
+            }
+            _ => i_s.db.python_state.object_db_type(),
         }
-        if let DbType::Literal(l) = other.as_ref() {
-            return i_s
-                .db
-                .python_state
-                .literal_type(&l.kind)
-                .common_base_type(i_s, self);
-        }
-        i_s.db.python_state.object_db_type()
     }
 
     pub fn common_sub_type(&self, i_s: &InferenceState, other: &Self) -> Option<DbType> {
