@@ -2900,7 +2900,7 @@ impl TypedDict {
         Some(format!("{module}.{}", name.as_str(db)))
     }
 
-    pub fn disjunction(&self, i_s: &InferenceState, other: &Self) -> DbType {
+    pub fn union(&self, i_s: &InferenceState, other: &Self) -> DbType {
         let mut members = self.members.clone().into_vec();
         'outer: for m2 in other.members.iter() {
             for m1 in members.iter() {
