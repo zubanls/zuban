@@ -2251,7 +2251,7 @@ impl<'a> Type<'a> {
             (DbType::TypedDict(td1), DbType::TypedDict(td2))
                 if td1.defined_at == td2.defined_at =>
             {
-                Some(Box::from(td1.name.unwrap().as_str(db)))
+                Some(td1.name_or_fallback(&FormatData::new_short(db)).into())
             }
             _ => None,
         }

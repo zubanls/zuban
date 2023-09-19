@@ -2948,15 +2948,20 @@ impl TypedDict {
         )
     }
 
+    pub fn name_or_fallback(&self, format_data: &FormatData) -> String {
+        if let Some(name) = self.name {
+            name.as_str(format_data.db).into()
+        } else {
+            self.format_full(format_data, None)
+        }
+    }
+
     pub fn format(&self, format_data: &FormatData) -> String {
         match format_data.style {
             FormatStyle::MypyRevealType => {
                 self.format_full(format_data, self.qualified_name(format_data.db).as_deref())
             }
-            FormatStyle::Short if !format_data.verbose => self
-                .name
-                .map(|n| n.as_str(format_data.db).into())
-                .unwrap_or_else(|| self.format_full(format_data, None)),
+            FormatStyle::Short if !format_data.verbose => self.name_or_fallback(format_data),
             _ => self
                 .qualified_name(format_data.db)
                 .unwrap_or_else(|| todo!()),

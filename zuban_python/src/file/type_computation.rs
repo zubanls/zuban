@@ -1419,7 +1419,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     slf.add_issue(
                         slice_type.as_node_ref(),
                         IssueType::TypeArgumentIssue {
-                            class: Box::from(typed_dict.name.unwrap().as_str(db)),
+                            class: typed_dict
+                                .name_or_fallback(&FormatData::new_short(db))
+                                .into(),
                             given_count,
                             expected_count,
                         },
