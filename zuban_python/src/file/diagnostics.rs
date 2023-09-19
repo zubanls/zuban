@@ -526,28 +526,29 @@ impl<'db> Inference<'db, '_, '_> {
             for param in params.iter() {
                 if let Some(annotation) = param.annotation() {
                     if let Some(default) = param.default() {
-                        let inf = self.infer_expression(default);
-                        self.use_cached_annotation_type(annotation)
-                            .error_if_not_matches(self.i_s, &inf, |got, expected| {
-                                let node_ref = NodeRef::new(self.file, default.index())
-                                    .to_db_lifetime(self.i_s.db);
-                                if self.file.is_stub_or_in_protocol(self.i_s)
-                                    && default.is_ellipsis_literal()
-                                {
-                                    // In stubs it is allowed to do stuff like:
-                                    // def foo(x: int = ...) -> int: ...
-                                    return node_ref;
-                                }
-                                node_ref.add_issue(
-                                    self.i_s,
-                                    IssueType::IncompatibleDefaultArgument {
-                                        argument_name: Box::from(param.name_definition().as_code()),
-                                        got,
-                                        expected,
-                                    },
-                                );
-                                node_ref
-                            });
+                        let t = self.use_cached_annotation_type(annotation);
+                        let inf = self
+                            .infer_expression_with_context(default, &mut ResultContext::Known(&t));
+                        t.error_if_not_matches(self.i_s, &inf, |got, expected| {
+                            let node_ref = NodeRef::new(self.file, default.index())
+                                .to_db_lifetime(self.i_s.db);
+                            if self.file.is_stub_or_in_protocol(self.i_s)
+                                && default.is_ellipsis_literal()
+                            {
+                                // In stubs it is allowed to do stuff like:
+                                // def foo(x: int = ...) -> int: ...
+                                return node_ref;
+                            }
+                            node_ref.add_issue(
+                                self.i_s,
+                                IssueType::IncompatibleDefaultArgument {
+                                    argument_name: Box::from(param.name_definition().as_code()),
+                                    got,
+                                    expected,
+                                },
+                            );
+                            node_ref
+                        });
                     }
                 }
             }
