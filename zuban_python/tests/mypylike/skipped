@@ -1783,8 +1783,6 @@ testParamSpecJoin
 testUnpackInExpression2-only_when_nocache
 # union creation / vs. object / vs. any from ternary
 testConditionalExpressionUnionWithAny
-# join callables
-testCallableMeetAndJoin
 # join sub and super classes
 testOverloadInferUnionWithDifferingLengths
 testForLoopOverTupleAndSubtyping

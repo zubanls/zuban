@@ -2213,12 +2213,23 @@ impl<'a> Type<'a> {
     }
 
     pub fn common_sub_type(&self, i_s: &InferenceState, other: &Self) -> Option<DbType> {
-        if let Some(td1) = self.maybe_typed_dict(i_s.db) {
-            if let Some(td2) = other.maybe_typed_dict(i_s.db) {
-                return Some(td1.union(i_s, &td2));
+        if let Some(_) = self.maybe_class(i_s.db) {
+            if let Some(_) = other.maybe_class(i_s.db) {
+                if self.is_simple_sub_type_of(i_s, other).bool() {
+                    return Some(self.as_db_type());
+                }
+                if other.is_simple_sub_type_of(i_s, self).bool() {
+                    return Some(other.as_db_type());
+                }
             }
         }
-        None
+        match (self.as_ref(), other.as_ref()) {
+            (DbType::TypedDict(td1), DbType::TypedDict(td2)) => Some(td1.union(i_s, &td2)),
+            (DbType::Callable(c1), DbType::Callable(c2)) => {
+                Some(DbType::Callable(common_sub_type_for_callables(i_s, c1, c2)))
+            }
+            _ => None,
+        }
     }
 
     pub fn check_duplicate_base_class(&self, db: &Database, other: &Self) -> Option<Box<str>> {
@@ -2823,7 +2834,7 @@ pub fn common_base_type<'x, I: Iterator<Item = &'x TypeOrTypeVarTuple>>(
     }
 }
 
-pub fn common_base_type_for_non_class(
+fn common_base_type_for_non_class(
     i_s: &InferenceState,
     t1: &DbType,
     t2: &DbType,
@@ -2860,7 +2871,7 @@ pub fn common_base_type_for_non_class(
     None
 }
 
-pub fn common_base_for_callables(
+fn common_base_for_callables(
     i_s: &InferenceState,
     c1: &CallableContent,
     c2: &CallableContent,
@@ -2935,7 +2946,7 @@ fn common_params(
     }
 }
 
-pub fn common_base_for_tuples(
+fn common_base_for_tuples(
     i_s: &InferenceState,
     tup1: &TupleContent,
     tup2: &TupleContent,
@@ -2991,6 +3002,84 @@ pub fn common_base_type_of_type_var_tuple_with_items<
             let base = common_base_type(i_s, items);
             debug!("TODO Type var tuple merging");
         }
+    }
+}
+
+fn common_sub_type_for_callables(
+    i_s: &InferenceState,
+    c1: &CallableContent,
+    c2: &CallableContent,
+) -> Rc<CallableContent> {
+    if c1.kind != c2.kind {
+        todo!()
+    }
+    match &c1.params {
+        CallableParams::Simple(params1) => match &c2.params {
+            CallableParams::Simple(params2) => {
+                if let Some(params) = common_sub_type_params(i_s, &params1, &params2) {
+                    if let Some(result_type) =
+                        Type::new(&c1.result_type).common_sub_type(i_s, &Type::new(&c2.result_type))
+                    {
+                        return Rc::new(CallableContent {
+                            name: None,
+                            class_name: None,
+                            defined_at: c1.defined_at,
+                            kind: c1.kind,
+                            type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
+                            params,
+                            result_type,
+                        });
+                    }
+                }
+            }
+            CallableParams::WithParamSpec(_, _) => todo!(),
+            CallableParams::Any => todo!(),
+        },
+        CallableParams::WithParamSpec(_, _) => todo!(),
+        CallableParams::Any => todo!(),
+    }
+    Rc::new(CallableContent::new_any(
+        i_s.db.python_state.empty_type_var_likes.clone(),
+    ))
+    //return i_s.db.python_state.function_db_type();
+}
+
+fn common_sub_type_params(
+    i_s: &InferenceState,
+    params1: &[CallableParam],
+    params2: &[CallableParam],
+) -> Option<CallableParams> {
+    if params1.len() == params2.len() {
+        let mut new_params = vec![];
+        for (p1, p2) in params1.iter().zip(params2.iter()) {
+            if p1.name != p2.name || p1.has_default != p2.has_default {
+                return None;
+            }
+            if p1.param_specific.param_kind() != p2.param_specific.param_kind() {
+                return None;
+            }
+            let t1 = p1.param_specific.maybe_positional_db_type()?;
+            let t2 = p2.param_specific.maybe_positional_db_type()?;
+            let new_t = Type::new(t1).common_base_type(i_s, &Type::new(t2));
+            new_params.push(CallableParam {
+                param_specific: match &p1.param_specific.param_kind() {
+                    ParamKind::PositionalOnly => ParamSpecific::PositionalOnly(new_t),
+                    ParamKind::PositionalOrKeyword => ParamSpecific::PositionalOrKeyword(new_t),
+                    ParamKind::KeywordOnly => ParamSpecific::KeywordOnly(new_t),
+                    ParamKind::Starred => {
+                        ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(new_t))
+                    }
+                    ParamKind::DoubleStarred => {
+                        ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ValueType(new_t))
+                    }
+                },
+                name: p1.name,
+                has_default: p1.has_default,
+            });
+        }
+        Some(CallableParams::Simple(new_params.into()))
+    } else {
+        todo!()
     }
 }
 
