@@ -1779,6 +1779,13 @@ testRecursiveAliasTopUnion
 
 testParamSpecJoin
 
+testMeetOfTypedDictsWithCompatibleCommonKeysHasAllKeysAndNewFallback
+testMeetOfTypedDictsWithIncompatibleCommonKeysIsUninhabited
+testMeetOfTypedDictsWithNoCommonKeysHasAllKeysAndNewFallback
+testMeetOfTypedDictWithCompatibleMappingSuperclassIsUninhabitedForNow
+testMeetOfTypedDictsWithNonTotal
+testMeetOfTypedDictsWithNonTotalAndTotal
+testMeetOfTypedDictsWithIncompatibleNonTotalAndTotal
 # join of {1, *some_str_tuple} leads to int | str???
 testUnpackInExpression2-only_when_nocache
 # union creation / vs. object / vs. any from ternary

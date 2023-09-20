@@ -462,43 +462,37 @@ impl<'a> Type<'a> {
         value_type: &Self,
     ) -> Match {
         // 1. Check if the type is part of the mro.
-        let m = match value_type.mro(i_s.db) {
-            Some(mro) => {
-                for (_, t2) in mro {
-                    let m = match t2 {
-                        TypeOrClass::Class(c2) => match self.maybe_class(i_s.db) {
-                            Some(c1) => {
-                                Self::matches_class(i_s, matcher, &c1, &c2, Variance::Covariant)
-                            }
-                            None => {
-                                // TODO performance: This might be slow, because it always
-                                // allocates when e.g.  Foo is passed to def x(f: Foo | None): ...
-                                // This is a bit unfortunate, especially because it loops over the
-                                // mro and allocates every time.
-                                let t2 = Type::owned(c2.as_db_type(i_s.db));
-                                self.matches_internal(i_s, matcher, &t2, Variance::Covariant)
-                            }
-                        },
-                        TypeOrClass::Type(t2) => {
+        let m = {
+            for (_, t2) in value_type.mro(i_s.db) {
+                let m = match t2 {
+                    TypeOrClass::Class(c2) => match self.maybe_class(i_s.db) {
+                        Some(c1) => {
+                            Self::matches_class(i_s, matcher, &c1, &c2, Variance::Covariant)
+                        }
+                        None => {
+                            // TODO performance: This might be slow, because it always
+                            // allocates when e.g.  Foo is passed to def x(f: Foo | None): ...
+                            // This is a bit unfortunate, especially because it loops over the
+                            // mro and allocates every time.
+                            let t2 = Type::owned(c2.as_db_type(i_s.db));
                             self.matches_internal(i_s, matcher, &t2, Variance::Covariant)
                         }
-                    };
-                    if !matches!(
-                        m,
-                        Match::False {
-                            reason: MismatchReason::None,
-                            similar: false
-                        }
-                    ) {
-                        return m;
+                    },
+                    TypeOrClass::Type(t2) => {
+                        self.matches_internal(i_s, matcher, &t2, Variance::Covariant)
                     }
+                };
+                if !matches!(
+                    m,
+                    Match::False {
+                        reason: MismatchReason::None,
+                        similar: false
+                    }
+                ) {
+                    return m;
                 }
-                Match::new_false()
             }
-            None => {
-                let m = self.matches_internal(i_s, matcher, value_type, Variance::Covariant);
-                m.or(|| self.matches_object_class(i_s.db, value_type))
-            }
+            Match::new_false()
         };
         let result = m
             .or(|| {
@@ -706,10 +700,10 @@ impl<'a> Type<'a> {
         m
     }
 
-    pub fn mro<'db: 'x, 'x>(&'x self, db: &'db Database) -> Option<MroIterator<'db, '_>> {
+    fn mro<'db: 'x, 'x>(&'x self, db: &'db Database) -> MroIterator<'db, '_> {
         match self.as_ref() {
-            DbType::Class(c) => Some(Class::from_generic_class(db, c).mro(db)),
-            DbType::Tuple(tup) => Some({
+            DbType::Class(c) => Class::from_generic_class(db, c).mro(db),
+            DbType::Tuple(tup) => {
                 let tuple_class = db.python_state.tuple_class(db, tup);
                 MroIterator::new(
                     db,
@@ -718,16 +712,16 @@ impl<'a> Type<'a> {
                     tuple_class.use_cached_class_infos(db).mro.iter(),
                     false,
                 )
-            }),
+            }
             // TODO? DbType::Dataclass(d) => Some(d.class(db).mro(db)),
-            DbType::TypedDict(td) => Some(MroIterator::new(
+            DbType::TypedDict(td) => MroIterator::new(
                 db,
                 TypeOrClass::Type(self.clone()),
                 Generics::None,
                 db.python_state.typing_typed_dict_bases.iter(),
                 false,
-            )),
-            DbType::Enum(e) | DbType::EnumMember(EnumMember { enum_: e, .. }) => Some({
+            ),
+            DbType::Enum(e) | DbType::EnumMember(EnumMember { enum_: e, .. }) => {
                 let class = e.class(db);
                 MroIterator::new(
                     db,
@@ -736,22 +730,15 @@ impl<'a> Type<'a> {
                     class.use_cached_class_infos(db).mro.iter(),
                     false,
                 )
-            }),
-            _ => None,
+            }
+            _ => MroIterator::new(
+                db,
+                TypeOrClass::Type(self.clone()),
+                Generics::None,
+                [].iter(),
+                false,
+            ),
         }
-    }
-
-    fn matches_object_class(&self, db: &Database, value_type: &Type) -> Match {
-        self.maybe_class(db)
-            .map(|c| {
-                let m = c.is_object_class(db);
-                if m.bool() && matches!(value_type.as_ref(), DbType::Any) {
-                    Match::True { with_any: true }
-                } else {
-                    m
-                }
-            })
-            .unwrap_or_else(Match::new_false)
     }
 
     fn matches_union(
@@ -1135,41 +1122,35 @@ impl<'a> Type<'a> {
         match t.as_ref() {
             DbType::Class(c) => {
                 let class = Class::from_generic_class(i_s.db, c);
-                if let Some(mro) = self.mro(i_s.db) {
-                    for (_, type_or_class) in mro {
-                        match type_or_class {
-                            TypeOrClass::Class(value_class) => {
-                                if Self::matches_class(
-                                    i_s,
-                                    &mut Matcher::default(),
-                                    &class,
-                                    &value_class,
-                                    Variance::Covariant,
-                                )
-                                .bool()
-                                {
-                                    return value_class.as_db_type(i_s.db);
-                                }
+                for (_, type_or_class) in self.mro(i_s.db) {
+                    match type_or_class {
+                        TypeOrClass::Class(value_class) => {
+                            if Self::matches_class(
+                                i_s,
+                                &mut Matcher::default(),
+                                &class,
+                                &value_class,
+                                Variance::Covariant,
+                            )
+                            .bool()
+                            {
+                                return value_class.as_db_type(i_s.db);
                             }
-                            TypeOrClass::Type(value_type) => {
-                                if Self::matches_class_against_type(
-                                    i_s,
-                                    &mut Matcher::default(),
-                                    &class,
-                                    &value_type,
-                                    Variance::Covariant,
-                                )
-                                .bool()
-                                {
-                                    return value_type.into_db_type();
-                                }
+                        }
+                        TypeOrClass::Type(value_type) => {
+                            if Self::matches_class_against_type(
+                                i_s,
+                                &mut Matcher::default(),
+                                &class,
+                                &value_type,
+                                Variance::Covariant,
+                            )
+                            .bool()
+                            {
+                                return value_type.into_db_type();
                             }
                         }
                     }
-                }
-                // Everything can be an object.
-                if class.node_ref == i_s.db.python_state.object_node_ref() {
-                    return t.as_db_type();
                 }
             }
             DbType::Tuple(t1) => {
