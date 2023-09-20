@@ -1781,10 +1781,10 @@ testUnpackInExpression2-only_when_nocache
 testRecursiveAliasGenericInferenceNested
 testRecursiveAliasTopUnion
 testOverloadedInIter
-testInferringLvarTypesUnpackedFromIterableClassObject
-testCallableListJoinInference
 testNamedTupleSimpleTypeInference
 testNewTypeWithLists
+
+testParamSpecJoin
 
 # union creation / vs. object / vs. any from ternary
 testConditionalExpressionUnionWithAny

@@ -2201,7 +2201,10 @@ impl<'a> Type<'a> {
                 match self.as_ref() {
                     DbType::Callable(c1) => {
                         if let DbType::Callable(c2) = other.as_ref() {
-                            return i_s.db.python_state.function_db_type();
+                            return DbType::Callable(Rc::new(CallableContent::new_any(
+                                i_s.db.python_state.empty_type_var_likes.clone(),
+                            )));
+                            //return i_s.db.python_state.function_db_type();
                         }
                     }
                     DbType::Tuple(tup1) => {
@@ -2227,10 +2230,14 @@ impl<'a> Type<'a> {
                     .literal_type(&l.kind)
                     .common_base_type(i_s, other);
             }
+            /*
             DbType::Union(u) if u.iter().any(|t| matches!(t, DbType::None)) => {
                 return self.clone().union(i_s.db, other.clone()).into_db_type()
             }
-            DbType::None => return self.clone().union(i_s.db, other.clone()).into_db_type(),
+            */
+            DbType::None | DbType::Union(_) => {
+                return self.clone().union(i_s.db, other.clone()).into_db_type()
+            }
             _ => (),
         }
         match other.as_ref() {
@@ -2239,9 +2246,13 @@ impl<'a> Type<'a> {
                 .python_state
                 .literal_type(&l.kind)
                 .common_base_type(i_s, self),
-            DbType::None => self.clone().union(i_s.db, other.clone()).into_db_type(),
+            /*
             DbType::Union(u) if u.iter().any(|t| matches!(t, DbType::None)) => {
                 return self.clone().union(i_s.db, other.clone()).into_db_type()
+            }
+            */
+            DbType::None | DbType::Union(_) => {
+                self.clone().union(i_s.db, other.clone()).into_db_type()
             }
             _ => i_s.db.python_state.object_db_type(),
         }
