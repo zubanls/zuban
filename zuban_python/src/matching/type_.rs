@@ -408,7 +408,7 @@ impl<'a> Type<'a> {
                     }
                     matches
                 }
-                _ => Match::new_false().similar_if_false(),
+                _ => Match::new_false(),
             },
             DbType::NamedTuple(nt1) => match value_type.as_ref() {
                 DbType::NamedTuple(nt2) => {
