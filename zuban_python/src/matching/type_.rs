@@ -1,6 +1,8 @@
 use std::borrow::Cow;
 use std::rc::Rc;
 
+use parsa_python_ast::ParamKind;
+
 use super::params::has_overlapping_params;
 use super::{
     calculate_callable_type_vars_and_return, matches_params, maybe_class_usage,
@@ -2207,10 +2209,7 @@ impl<'a> Type<'a> {
                 match self.as_ref() {
                     DbType::Callable(c1) => {
                         if let DbType::Callable(c2) = other.as_ref() {
-                            return DbType::Callable(Rc::new(CallableContent::new_any(
-                                i_s.db.python_state.empty_type_var_likes.clone(),
-                            )));
-                            //return i_s.db.python_state.function_db_type();
+                            return DbType::Callable(common_base_for_callables(i_s, c1, c2));
                         }
                     }
                     DbType::Tuple(tup1) => {
@@ -2877,6 +2876,81 @@ pub fn common_base_type<'x, I: Iterator<Item = &'x TypeOrTypeVarTuple>>(
         result.into_owned()
     } else {
         DbType::Never
+    }
+}
+
+pub fn common_base_for_callables(
+    i_s: &InferenceState,
+    c1: &CallableContent,
+    c2: &CallableContent,
+) -> Rc<CallableContent> {
+    if c1.kind != c2.kind {
+        todo!()
+    }
+    match &c1.params {
+        CallableParams::Simple(params1) => match &c2.params {
+            CallableParams::Simple(params2) => {
+                if let Some(params) = common_params(i_s, &params1, &params2) {
+                    return Rc::new(CallableContent {
+                        name: None,
+                        class_name: None,
+                        defined_at: c1.defined_at,
+                        kind: c1.kind,
+                        type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
+                        params,
+                        result_type: Type::new(&c1.result_type)
+                            .common_base_type(i_s, &Type::new(&c2.result_type)),
+                    });
+                }
+            }
+            CallableParams::WithParamSpec(_, _) => todo!(),
+            CallableParams::Any => todo!(),
+        },
+        CallableParams::WithParamSpec(_, _) => todo!(),
+        CallableParams::Any => todo!(),
+    }
+    Rc::new(CallableContent::new_any(
+        i_s.db.python_state.empty_type_var_likes.clone(),
+    ))
+    //return i_s.db.python_state.function_db_type();
+}
+
+fn common_params(
+    i_s: &InferenceState,
+    params1: &[CallableParam],
+    params2: &[CallableParam],
+) -> Option<CallableParams> {
+    if params1.len() == params2.len() {
+        let mut new_params = vec![];
+        for (p1, p2) in params1.iter().zip(params2.iter()) {
+            if p1.name != p2.name || p1.has_default != p2.has_default {
+                return None;
+            }
+            if p1.param_specific.param_kind() != p2.param_specific.param_kind() {
+                return None;
+            }
+            let t1 = p1.param_specific.maybe_positional_db_type()?;
+            let t2 = p2.param_specific.maybe_positional_db_type()?;
+            let new_t = Type::new(t1).common_sub_type(i_s, &Type::new(t2))?;
+            new_params.push(CallableParam {
+                param_specific: match &p1.param_specific.param_kind() {
+                    ParamKind::PositionalOnly => ParamSpecific::PositionalOnly(new_t),
+                    ParamKind::PositionalOrKeyword => ParamSpecific::PositionalOrKeyword(new_t),
+                    ParamKind::KeywordOnly => ParamSpecific::KeywordOnly(new_t),
+                    ParamKind::Starred => {
+                        ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(new_t))
+                    }
+                    ParamKind::DoubleStarred => {
+                        ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ValueType(new_t))
+                    }
+                },
+                name: p1.name,
+                has_default: p1.has_default,
+            });
+        }
+        Some(CallableParams::Simple(new_params.into()))
+    } else {
+        todo!()
     }
 }
 

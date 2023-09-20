@@ -1774,12 +1774,13 @@ testGenericJoinRecursiveTypes
 testGenericJoinNestedInvariantAny
 testTypeEquivalentTypeAny2
 
-testUnpackInExpression2-only_when_nocache
 testRecursiveAliasGenericInferenceNested
 testRecursiveAliasTopUnion
 
 testParamSpecJoin
 
+# join of {1, *some_str_tuple} leads to int | str???
+testUnpackInExpression2-only_when_nocache
 # union creation / vs. object / vs. any from ternary
 testConditionalExpressionUnionWithAny
 # join callables
