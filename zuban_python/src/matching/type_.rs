@@ -2154,95 +2154,62 @@ impl<'a> Type<'a> {
     }
 
     pub fn common_base_type(&self, i_s: &InferenceState, other: &Self) -> DbType {
-        match (self.maybe_class(i_s.db), other.maybe_class(i_s.db)) {
-            (Some(c1), Some(c2)) => {
-                for (_, c1) in c1.mro(i_s.db) {
-                    match c1 {
-                        TypeOrClass::Type(c1) => (),
-                        TypeOrClass::Class(c1) => {
-                            for (_, c2) in c2.mro(i_s.db) {
-                                let TypeOrClass::Class(c2) = c2 else {
-                                    continue
-                                };
-                                let m = Self::matches_class(
-                                    i_s,
-                                    &mut Matcher::default(),
-                                    &c1,
-                                    &c2,
-                                    Variance::Invariant,
-                                );
-                                if m.bool() {
-                                    return c1.as_db_type(i_s.db);
-                                }
-                            }
-                        }
-                    }
-                }
-                unreachable!("object is always a common base class")
-            }
-            (None, None) => {
-                // TODO this should also be done for function/callable and callable/function and
-                // not only callable/callable
-                match self.as_ref() {
-                    DbType::Callable(c1) => {
-                        if let DbType::Callable(c2) = other.as_ref() {
-                            return DbType::Callable(common_base_for_callables(i_s, c1, c2));
-                        }
-                    }
-                    DbType::Tuple(tup1) => {
-                        if let DbType::Tuple(tup2) = other.as_ref() {
-                            return DbType::Tuple(Rc::new(common_base_for_tuples(i_s, tup1, tup2)));
-                        }
-                    }
-                    DbType::TypedDict(td1) => {
-                        if let DbType::TypedDict(td2) = &other.as_ref() {
-                            return DbType::TypedDict(td1.intersection(i_s, td2));
-                        }
-                    }
-                    _ => (),
-                }
-            }
-            _ => (),
-        }
-        match self.as_ref() {
-            DbType::Literal(l) => {
-                return i_s
-                    .db
+        let check_both_sides = |t1: &_, t2: &DbType| match t1 {
+            DbType::Literal(l) => Some(
+                i_s.db
                     .python_state
                     .literal_type(&l.kind)
-                    .common_base_type(i_s, other);
-            }
+                    .common_base_type(i_s, &Type::new(t2)),
+            ),
             /*
             DbType::Union(u) if u.iter().any(|t| matches!(t, DbType::None)) => {
                 return self.clone().union(i_s.db, other.clone()).into_db_type()
             }
             */
             DbType::None | DbType::Union(_) => {
-                return self.clone().union(i_s.db, other.clone()).into_db_type()
+                return Some(self.clone().union(i_s.db, other.clone()).into_db_type())
             }
-            _ => (),
+            _ => None,
+        };
+
+        if let Some(new) = check_both_sides(self.as_ref(), other.as_ref()) {
+            return new;
         }
-        match other.as_ref() {
-            DbType::Literal(l) => i_s
-                .db
-                .python_state
-                .literal_type(&l.kind)
-                .common_base_type(i_s, self),
-            /*
-            DbType::Union(u) if u.iter().any(|t| matches!(t, DbType::None)) => {
-                return self.clone().union(i_s.db, other.clone()).into_db_type()
-            }
-            */
-            DbType::None | DbType::Union(_) => {
-                self.clone().union(i_s.db, other.clone()).into_db_type()
-            }
-            _ => {
-                if self.is_simple_same_type(i_s, &other).bool() {
-                    return self.as_db_type();
+        if let Some(new) = check_both_sides(other.as_ref(), self.as_ref()) {
+            return new;
+        }
+        for (_, c1) in self.mro(i_s.db) {
+            for (_, c2) in other.mro(i_s.db) {
+                match &c1 {
+                    TypeOrClass::Type(t1) => {
+                        let TypeOrClass::Type(t2) = c2 else {
+                            continue
+                        };
+                        if let Some(base) =
+                            common_base_type_for_non_class(i_s, t1.as_ref(), t2.as_ref())
+                        {
+                            return base;
+                        }
+                    }
+                    TypeOrClass::Class(c1) => {
+                        let TypeOrClass::Class(c2) = c2 else {
+                            continue
+                        };
+                        let m = Self::matches_class(
+                            i_s,
+                            &mut Matcher::default(),
+                            &c1,
+                            &c2,
+                            Variance::Invariant,
+                        );
+                        if m.bool() {
+                            return c1.as_db_type(i_s.db);
+                        }
+                    }
                 }
-                i_s.db.python_state.object_db_type()
             }
         }
+        unreachable!("object is always a common base class")
     }
 
     pub fn common_sub_type(&self, i_s: &InferenceState, other: &Self) -> Option<DbType> {
@@ -2854,6 +2821,43 @@ pub fn common_base_type<'x, I: Iterator<Item = &'x TypeOrTypeVarTuple>>(
     } else {
         DbType::Never
     }
+}
+
+pub fn common_base_type_for_non_class(
+    i_s: &InferenceState,
+    t1: &DbType,
+    t2: &DbType,
+) -> Option<DbType> {
+    match t1 {
+        DbType::Callable(c1) => {
+            // TODO this should also be done for function/callable and callable/function and
+            // not only callable/callable
+            if let DbType::Callable(c2) = t2 {
+                return Some(DbType::Callable(common_base_for_callables(i_s, c1, c2)));
+            }
+        }
+        DbType::Tuple(tup1) => {
+            if let DbType::Tuple(tup2) = t2 {
+                return Some(DbType::Tuple(Rc::new(common_base_for_tuples(
+                    i_s, tup1, tup2,
+                ))));
+            }
+        }
+        DbType::TypedDict(td1) => {
+            if let DbType::TypedDict(td2) = &t2 {
+                return Some(DbType::TypedDict(td1.intersection(i_s, td2)));
+            }
+        }
+        _ => {
+            if Type::new(t1)
+                .is_simple_same_type(i_s, &Type::new(t2))
+                .bool()
+            {
+                return Some(t1.clone());
+            }
+        }
+    }
+    None
 }
 
 pub fn common_base_for_callables(
