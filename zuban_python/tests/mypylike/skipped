@@ -1770,38 +1770,30 @@ testInferredTypeIsObjectMismatch
 testNestedListExpressions
 testLiteralInferredInListContext
 testGenericJoinCovariant
-testGenericJoinContravariant
 testGenericJoinRecursiveTypes
-testGenericJoinRecursiveInvariant
 testGenericJoinNestedInvariantAny
 testTypeEquivalentTypeAny2
-testExtremeForwardReferencing
 
 testUnpackInExpression2-only_when_nocache
 testRecursiveAliasGenericInferenceNested
 testRecursiveAliasTopUnion
 testOverloadedInIter
-testNamedTupleSimpleTypeInference
-testNewTypeWithLists
 
 testParamSpecJoin
 
 # union creation / vs. object / vs. any from ternary
 testConditionalExpressionUnionWithAny
-testJoinWithAnyFallback
 # join callables
 testCallableMeetAndJoin
 # join sub and super classes
 testOverloadInferUnionWithDifferingLengths
 testForLoopOverTupleAndSubtyping
 # join tuple iter
-testMutuallyRecursiveNamedTuplesJoin
 testCallerTupleVarArgsAndGenericCalleeVarArg
 # tuple joins
 testFixedTupleJoinVarTuple
 testFixedTupleJoinList
 testEmptyTupleJoin
-testTupleJoinIrregular
 testTupleSubclassJoinIrregular
 # namedtuple joins
 testNamedTupleJoinNamedTuple

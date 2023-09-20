@@ -2254,7 +2254,12 @@ impl<'a> Type<'a> {
             DbType::None | DbType::Union(_) => {
                 self.clone().union(i_s.db, other.clone()).into_db_type()
             }
-            _ => i_s.db.python_state.object_db_type(),
+            _ => {
+                if self.as_ref() == other.as_ref() {
+                    return self.as_db_type();
+                }
+                i_s.db.python_state.object_db_type()
+            }
         }
     }
 
