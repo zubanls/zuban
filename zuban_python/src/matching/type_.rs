@@ -462,38 +462,34 @@ impl<'a> Type<'a> {
         value_type: &Self,
     ) -> Match {
         // 1. Check if the type is part of the mro.
-        let m = {
-            for (_, t2) in value_type.mro(i_s.db) {
-                let m = match t2 {
-                    TypeOrClass::Class(c2) => match self.maybe_class(i_s.db) {
-                        Some(c1) => {
-                            Self::matches_class(i_s, matcher, &c1, &c2, Variance::Covariant)
-                        }
-                        None => {
-                            // TODO performance: This might be slow, because it always
-                            // allocates when e.g.  Foo is passed to def x(f: Foo | None): ...
-                            // This is a bit unfortunate, especially because it loops over the
-                            // mro and allocates every time.
-                            let t2 = Type::owned(c2.as_db_type(i_s.db));
-                            self.matches_internal(i_s, matcher, &t2, Variance::Covariant)
-                        }
-                    },
-                    TypeOrClass::Type(t2) => {
+        let mut m = Match::new_false();
+        for (_, t2) in value_type.mro(i_s.db) {
+            m = match t2 {
+                TypeOrClass::Class(c2) => match self.maybe_class(i_s.db) {
+                    Some(c1) => Self::matches_class(i_s, matcher, &c1, &c2, Variance::Covariant),
+                    None => {
+                        // TODO performance: This might be slow, because it always
+                        // allocates when e.g.  Foo is passed to def x(f: Foo | None): ...
+                        // This is a bit unfortunate, especially because it loops over the
+                        // mro and allocates every time.
+                        let t2 = Type::owned(c2.as_db_type(i_s.db));
                         self.matches_internal(i_s, matcher, &t2, Variance::Covariant)
                     }
-                };
-                if !matches!(
-                    m,
-                    Match::False {
-                        reason: MismatchReason::None,
-                        similar: false
-                    }
-                ) {
-                    return m;
+                },
+                TypeOrClass::Type(t2) => {
+                    self.matches_internal(i_s, matcher, &t2, Variance::Covariant)
                 }
+            };
+            if !matches!(
+                m,
+                Match::False {
+                    reason: MismatchReason::None,
+                    similar: false
+                }
+            ) {
+                return m;
             }
-            Match::new_false()
-        };
+        }
         let result = m
             .or(|| {
                 self.check_protocol_and_other_side(i_s, matcher, value_type, Variance::Covariant)
