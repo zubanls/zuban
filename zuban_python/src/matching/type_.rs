@@ -397,7 +397,7 @@ impl<'a> Type<'a> {
                             if m1.required != m2.required {
                                 return Match::new_false().similar_if_false();
                             }
-                            matches = Type::new(&m1.type_).is_same_type(
+                            matches &= Type::new(&m1.type_).is_same_type(
                                 i_s,
                                 matcher,
                                 &Type::new(&m2.type_),
@@ -406,7 +406,7 @@ impl<'a> Type<'a> {
                             return Match::new_false().similar_if_false();
                         }
                     }
-                    matches
+                    matches.similar_if_false()
                 }
                 _ => Match::new_false(),
             },
