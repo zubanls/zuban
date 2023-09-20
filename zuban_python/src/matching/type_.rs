@@ -331,6 +331,9 @@ impl<'a> Type<'a> {
             DbType::Union(union_type1) => {
                 self.matches_union(i_s, matcher, union_type1, value_type, variance)
             }
+            DbType::FunctionOverload(overload) if variance == Variance::Invariant => self
+                .matches_internal(i_s, matcher, value_type, Variance::Covariant)
+                .or(|| value_type.matches_internal(i_s, matcher, self, Variance::Covariant)),
             DbType::FunctionOverload(overload) => Match::all(overload.iter_functions(), |c1| {
                 Self::matches_callable_against_arbitrary(i_s, matcher, c1, value_type, variance)
             }),
@@ -2133,6 +2136,9 @@ impl<'a> Type<'a> {
             DbType::Union(union_type) => union_type
                 .iter()
                 .any(|t| Type::new(t).on_any_class(i_s, matcher, callable)),
+            DbType::RecursiveAlias(r) => {
+                Type::new(r.calculated_db_type(i_s.db)).on_any_class(i_s, matcher, callable)
+            }
             db_type @ DbType::TypeVar(_) => {
                 if matcher.might_have_defined_type_vars() {
                     Type::owned(matcher.replace_type_var_likes_for_nested_context(i_s.db, db_type))
@@ -2255,7 +2261,7 @@ impl<'a> Type<'a> {
                 self.clone().union(i_s.db, other.clone()).into_db_type()
             }
             _ => {
-                if self.as_ref() == other.as_ref() {
+                if self.is_simple_same_type(i_s, &other).bool() {
                     return self.as_db_type();
                 }
                 i_s.db.python_state.object_db_type()

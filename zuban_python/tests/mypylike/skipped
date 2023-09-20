@@ -1777,7 +1777,6 @@ testTypeEquivalentTypeAny2
 testUnpackInExpression2-only_when_nocache
 testRecursiveAliasGenericInferenceNested
 testRecursiveAliasTopUnion
-testOverloadedInIter
 
 testParamSpecJoin
 
