@@ -2217,7 +2217,7 @@ fn instantiate_except(i_s: &InferenceState, t: &DbType) -> DbType {
             _ => todo!(),
         },
         DbType::Any => DbType::Any,
-        DbType::Tuple(content) => Inferred::gather_types_union(|add| match &content.args {
+        DbType::Tuple(content) => Inferred::gather_simplified_union(|add| match &content.args {
             Some(TupleTypeArguments::FixedLength(ts)) => {
                 for t in ts.iter() {
                     match t {

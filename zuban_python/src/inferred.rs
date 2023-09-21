@@ -613,14 +613,14 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     #[inline]
-    pub fn gather_types_union(
+    pub fn gather_simplified_union(
         callable: impl FnOnce(&mut dyn FnMut(&InferenceState<'db, '_>, Self)),
     ) -> Self {
         let mut result: Option<Self> = None;
         let r = &mut result;
         callable(&mut |i_s, inferred| {
             *r = Some(match r.take() {
-                Some(i) => i.types_union(i_s, inferred, &mut ResultContext::Unknown),
+                Some(i) => i.simplified_union(i_s, inferred),
                 None => inferred,
             });
         });
@@ -644,19 +644,11 @@ impl<'db: 'slf, 'slf> Inferred {
         result.unwrap_or_else(|| todo!())
     }
 
-    pub fn types_union(
-        self,
-        i_s: &InferenceState<'db, '_>,
-        other: Self,
-        result_context: &mut ResultContext,
-    ) -> Self {
-        if result_context.expects_union(i_s) || self.is_union(i_s) || other.is_union(i_s) {
-            self.union(i_s, other)
-        } else {
-            let second = other.as_type(i_s);
-            let t = self.as_type(i_s).common_base_type(i_s, &second);
-            Inferred::from_type(t)
-        }
+    pub fn simplified_union(self, i_s: &InferenceState<'db, '_>, other: Self) -> Self {
+        Inferred::from_type(
+            self.as_type(i_s)
+                .simplified_union(i_s.db, other.as_type(i_s)),
+        )
     }
 
     pub fn union(self, i_s: &InferenceState, other: Self) -> Self {

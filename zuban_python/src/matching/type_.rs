@@ -69,10 +69,6 @@ impl<'a> Type<'a> {
         Self(Cow::Owned(t))
     }
 
-    pub fn union(self, db: &Database, other: Self) -> Self {
-        Self::owned(self.into_db_type().union(db, other.into_db_type()))
-    }
-
     pub fn into_db_type(self) -> DbType {
         self.0.into_owned()
     }
@@ -83,6 +79,25 @@ impl<'a> Type<'a> {
 
     pub fn as_ref(&self) -> &DbType {
         self.0.as_ref()
+    }
+
+    pub fn union(self, db: &Database, other: Self) -> Self {
+        Self::owned(self.into_db_type().union(db, other.into_db_type()))
+    }
+
+    pub fn simplified_union(self, db: &Database, other: Self) -> DbType {
+        // See also https://github.com/python/mypy/blob/ff81a1c7abc91d9984fc73b9f2b9eab198001c8e/mypy/typeops.py#L413-L486
+        let other = other.into_db_type();
+        match self.into_db_type() {
+            /*
+            DbType::Class(t) => {
+                items.push(t);
+            }
+            DbType::Union(union) => {
+            }
+            */
+            t => t.union(db, other),
+        }
     }
 
     #[inline]
