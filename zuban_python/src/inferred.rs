@@ -649,18 +649,6 @@ impl<'db: 'slf, 'slf> Inferred {
         Inferred::from_type(self.as_type(i_s).simplified_union(i_s, other.as_type(i_s)))
     }
 
-    pub fn union(self, i_s: &InferenceState, other: Self) -> Self {
-        if self.state == other.state {
-            self
-        } else {
-            Inferred::from_type(
-                self.as_type(i_s)
-                    .union(i_s.db, other.as_type(i_s))
-                    .into_db_type(),
-            )
-        }
-    }
-
     pub fn bind_instance_descriptors(
         self,
         i_s: &InferenceState<'db, '_>,

@@ -81,10 +81,6 @@ impl<'a> Type<'a> {
         self.0.as_ref()
     }
 
-    pub fn union(self, db: &Database, other: Self) -> Self {
-        Self::owned(self.into_db_type().union(db, other.into_db_type()))
-    }
-
     pub fn simplified_union(self, i_s: &InferenceState, other: Self) -> DbType {
         // Check out how mypy does it:
         // https://github.com/python/mypy/blob/ff81a1c7abc91d9984fc73b9f2b9eab198001c8e/mypy/typeops.py#L413-L486
@@ -454,7 +450,7 @@ impl<'a> Type<'a> {
             DbType::Module(file_index) => Match::new_false(),
             DbType::Namespace(file_index) => todo!(),
             DbType::Super { .. } => todo!(),
-            DbType::CustomBehavior(_) => todo!(),
+            DbType::CustomBehavior(_) => Match::new_false(),
         }
     }
 
@@ -2519,7 +2515,8 @@ impl<'a> Type<'a> {
                 }
                 result = Some(if let Some(l) = result.take() {
                     LookupResult::UnknownName(
-                        l.into_inferred().union(i_s, lookup_result.into_inferred()),
+                        l.into_inferred()
+                            .simplified_union(i_s, lookup_result.into_inferred()),
                     )
                 } else {
                     lookup_result
