@@ -1416,7 +1416,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let node_ref = NodeRef::new(self.file, op.index);
         let mut had_error = false;
         let i_s = self.i_s;
-        let result = Inferred::gather_union(i_s, |add_to_union| {
+        let result = Inferred::gather_simplified_union(i_s, |add_to_union| {
             left.run_after_lookup_on_each_union_member(
                 i_s,
                 node_ref,

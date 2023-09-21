@@ -164,7 +164,7 @@ impl IteratorContent {
             }
             Self::Union(iterators) => {
                 let mut had_next = false;
-                let result = Inferred::gather_union(i_s, |add| {
+                let result = Inferred::gather_simplified_union(i_s, |add| {
                     for iterator in iterators {
                         if let Some(inf) = iterator.next(i_s) {
                             had_next = true;

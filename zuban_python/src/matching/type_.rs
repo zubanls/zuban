@@ -3160,7 +3160,11 @@ fn merge_simplified_union_type(
                 continue;
             }
             if Type::new(&additional)
-                .is_simple_super_type_of(i_s, &Type::new(current))
+                .is_super_type_of(
+                    i_s,
+                    &mut Matcher::with_ignored_promotions(),
+                    &Type::new(current),
+                )
                 .bool()
             {
                 new_types[i] = additional;
@@ -3168,7 +3172,11 @@ fn merge_simplified_union_type(
                 continue 'outer;
             }
             if Type::new(current)
-                .is_simple_super_type_of(i_s, &Type::new(&additional))
+                .is_super_type_of(
+                    i_s,
+                    &mut Matcher::with_ignored_promotions(),
+                    &Type::new(&additional),
+                )
                 .bool()
             {
                 finished = false;
