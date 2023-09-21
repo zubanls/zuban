@@ -1100,12 +1100,19 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             ExpressionContent::Ternary(t) => {
                 let (if_, condition, else_) = t.unpack();
                 self.infer_expression_part(condition, &mut ResultContext::Unknown);
+                let if_inf = self.infer_expression_part(if_, result_context);
                 let else_inf = self.infer_expression_with_context(else_, result_context);
-                self.infer_expression_part(if_, result_context).types_union(
-                    self.i_s,
-                    else_inf,
-                    result_context,
-                )
+
+                // Mypy has a weird way of doing this:
+                // https://github.com/python/mypy/blob/ff81a1c7abc91d9984fc73b9f2b9eab198001c8e/mypy/checkexpr.py#L5310-L5317
+                if result_context.expects_union(self.i_s) {
+                    // Mypy somehow
+                    if_inf.union(self.i_s, else_inf)
+                } else {
+                    let second = else_inf.as_type(self.i_s);
+                    let t = if_inf.as_type(self.i_s).common_base_type(self.i_s, &second);
+                    Inferred::from_type(t)
+                }
             }
         };
         // We only save the result if nothing is there, yet. It could be that we pass this function
