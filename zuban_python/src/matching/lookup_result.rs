@@ -40,7 +40,7 @@ impl LookupResult {
     pub fn union(self, i_s: &InferenceState, other: Self) -> Self {
         match self.into_maybe_inferred() {
             Some(self_) => match other.into_maybe_inferred() {
-                Some(other) => LookupResult::UnknownName(self_.union(i_s, other)),
+                Some(other) => LookupResult::UnknownName(self_.simplified_union(i_s, other)),
                 None => LookupResult::UnknownName(self_),
             },
             None => other,

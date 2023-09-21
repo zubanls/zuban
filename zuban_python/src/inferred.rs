@@ -661,19 +661,6 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
-    #[inline]
-    pub fn gather_union(i_s: &InferenceState, callable: impl FnOnce(&mut dyn FnMut(Self))) -> Self {
-        let mut result: Option<Self> = None;
-        let r = &mut result;
-        callable(&mut |inferred| {
-            *r = Some(match r.take() {
-                Some(i) => i.union(i_s, inferred),
-                None => inferred,
-            });
-        });
-        result.unwrap_or_else(|| todo!())
-    }
-
     pub fn bind_instance_descriptors(
         self,
         i_s: &InferenceState<'db, '_>,
@@ -1474,7 +1461,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     on_type_error,
                 );
                 result = if let Some(r) = result.take() {
-                    Some(r.union(i_s, inf))
+                    Some(r.simplified_union(i_s, inf))
                 } else {
                     Some(inf)
                 }

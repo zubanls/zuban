@@ -1106,8 +1106,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 // Mypy has a weird way of doing this:
                 // https://github.com/python/mypy/blob/ff81a1c7abc91d9984fc73b9f2b9eab198001c8e/mypy/checkexpr.py#L5310-L5317
                 if result_context.expects_union(self.i_s) {
-                    // Mypy somehow
-                    if_inf.union(self.i_s, else_inf)
+                    if_inf.simplified_union(self.i_s, else_inf)
                 } else {
                     let second = else_inf.as_type(self.i_s);
                     let t = if_inf.as_type(self.i_s).common_base_type(self.i_s, &second);

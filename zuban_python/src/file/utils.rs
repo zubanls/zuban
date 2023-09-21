@@ -467,7 +467,7 @@ pub fn infer_index(
                 .and_then(|mut inferred| {
                     for literal in literals {
                         if let Some(new_inf) = infer(i_s, literal) {
-                            inferred = inferred.union(i_s, new_inf);
+                            inferred = inferred.simplified_union(i_s, new_inf);
                         } else {
                             return None;
                         }
@@ -508,7 +508,7 @@ pub fn infer_string_index(
                 .and_then(|mut inferred| {
                     for literal in literals {
                         if let Some(new_inf) = infer(i_s, literal) {
-                            inferred = inferred.union(i_s, new_inf);
+                            inferred = inferred.simplified_union(i_s, new_inf);
                         } else {
                             return None;
                         }
