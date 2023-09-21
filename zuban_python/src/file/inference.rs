@@ -1147,7 +1147,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 Inferred::from_type(self.i_s.db.python_state.bool_db_type())
             }
             ExpressionPart::Comparisons(cmps) => {
-                Inferred::gather_types_union(|gather| {
+                Inferred::gather_base_types(|gather| {
                     for cmp in cmps.iter() {
                         let result = match cmp {
                             ComparisonContent::Equals(first, op, second)

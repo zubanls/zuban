@@ -627,6 +627,23 @@ impl<'db: 'slf, 'slf> Inferred {
         result.unwrap_or_else(|| todo!())
     }
 
+    #[inline]
+    pub fn gather_base_types(
+        callable: impl FnOnce(&mut dyn FnMut(&InferenceState<'db, '_>, Self)),
+    ) -> Self {
+        let mut result: Option<Self> = None;
+        let r = &mut result;
+        callable(&mut |i_s, inferred| {
+            *r = Some(match r.take() {
+                Some(i) => Inferred::from_type(
+                    i.as_type(i_s).common_base_type(i_s, &inferred.as_type(i_s)),
+                ),
+                None => inferred,
+            });
+        });
+        result.unwrap_or_else(|| todo!())
+    }
+
     pub fn types_union(
         self,
         i_s: &InferenceState<'db, '_>,
