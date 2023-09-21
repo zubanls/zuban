@@ -1773,9 +1773,6 @@ testGenericJoinCovariant
 testGenericJoinRecursiveTypes
 testGenericJoinNestedInvariantAny
 testTypeEquivalentTypeAny2
-# recursive limits missing for joins
-testRecursiveAliasGenericInferenceNested
-testRecursiveAliasTopUnion
 # Callable join
 testParamSpecJoin
 # join of {1, *some_str_tuple} leads to int | str???
@@ -1785,6 +1782,9 @@ testOverloadInferUnionWithDifferingLengths
 testForLoopOverTupleAndSubtyping
 # tuple joins
 testFixedTupleJoinList
+# recursive limits missing for joins
+testRecursiveAliasGenericInferenceNested
+testRecursiveAliasTopUnion
 # namedtuple recursive joins
 testMutuallyRecursiveNamedTuplesJoin
 testCrashInJoinOfSelfRecursiveNamedTuples

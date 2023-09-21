@@ -614,11 +614,12 @@ impl<'db: 'slf, 'slf> Inferred {
 
     #[inline]
     pub fn gather_simplified_union(
-        callable: impl FnOnce(&mut dyn FnMut(&InferenceState<'db, '_>, Self)),
+        i_s: &InferenceState<'db, '_>,
+        callable: impl FnOnce(&mut dyn FnMut(Self)),
     ) -> Self {
         let mut result: Option<Self> = None;
         let r = &mut result;
-        callable(&mut |i_s, inferred| {
+        callable(&mut |inferred| {
             *r = Some(match r.take() {
                 Some(i) => i.simplified_union(i_s, inferred),
                 None => inferred,

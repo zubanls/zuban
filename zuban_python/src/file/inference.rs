@@ -2217,24 +2217,26 @@ fn instantiate_except(i_s: &InferenceState, t: &DbType) -> DbType {
             _ => todo!(),
         },
         DbType::Any => DbType::Any,
-        DbType::Tuple(content) => Inferred::gather_simplified_union(|add| match &content.args {
-            Some(TupleTypeArguments::FixedLength(ts)) => {
-                for t in ts.iter() {
-                    match t {
-                        TypeOrTypeVarTuple::Type(t) => {
-                            add(i_s, Inferred::from_type(instantiate_except(i_s, t)))
+        DbType::Tuple(content) => {
+            Inferred::gather_simplified_union(i_s, |add| match &content.args {
+                Some(TupleTypeArguments::FixedLength(ts)) => {
+                    for t in ts.iter() {
+                        match t {
+                            TypeOrTypeVarTuple::Type(t) => {
+                                add(Inferred::from_type(instantiate_except(i_s, t)))
+                            }
+                            TypeOrTypeVarTuple::TypeVarTuple(_) => todo!(),
                         }
-                        TypeOrTypeVarTuple::TypeVarTuple(_) => todo!(),
                     }
                 }
-            }
-            Some(TupleTypeArguments::ArbitraryLength(t)) => {
-                add(i_s, Inferred::from_type(instantiate_except(i_s, t)))
-            }
-            _ => todo!(),
-        })
-        .as_type(i_s)
-        .into_db_type(),
+                Some(TupleTypeArguments::ArbitraryLength(t)) => {
+                    add(Inferred::from_type(instantiate_except(i_s, t)))
+                }
+                _ => todo!(),
+            })
+            .as_type(i_s)
+            .into_db_type()
+        }
         DbType::Union(union) => DbType::Union(UnionType::new(
             union
                 .entries
