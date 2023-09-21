@@ -2193,6 +2193,7 @@ impl<'a> Type<'a> {
             DbType::None | DbType::Union(_) => {
                 return Some(self.clone().union(i_s.db, other.clone()).into_db_type())
             }
+            DbType::Any => return Some(DbType::Any),
             _ => None,
         };
 

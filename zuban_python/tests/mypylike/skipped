@@ -1773,16 +1773,13 @@ testGenericJoinCovariant
 testGenericJoinRecursiveTypes
 testGenericJoinNestedInvariantAny
 testTypeEquivalentTypeAny2
-
+# recursive limits missing for joins
 testRecursiveAliasGenericInferenceNested
 testRecursiveAliasTopUnion
-
+# Callable join
 testParamSpecJoin
-
 # join of {1, *some_str_tuple} leads to int | str???
 testUnpackInExpression2-only_when_nocache
-# union creation / vs. object / vs. any from ternary
-testConditionalExpressionUnionWithAny
 # join sub and super classes
 testOverloadInferUnionWithDifferingLengths
 testForLoopOverTupleAndSubtyping
