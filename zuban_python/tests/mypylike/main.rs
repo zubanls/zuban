@@ -767,6 +767,7 @@ fn find_mypy_style_files() -> Vec<(bool, PathBuf)> {
         })
         .collect();
 
+    entries.sort();
     entries.extend(our_own_tests);
     entries
 }
