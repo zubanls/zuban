@@ -2231,6 +2231,24 @@ impl<'a> Type<'a> {
 
     pub fn common_sub_type(&self, i_s: &InferenceState, other: &Self) -> Option<DbType> {
         match (self.as_ref(), other.as_ref()) {
+            (DbType::Union(union), _) => {
+                for t in union.iter() {
+                    // TODO what about multiple items?
+                    if let Some(found) = Type::new(t).common_sub_type(i_s, other) {
+                        return Some(found);
+                    }
+                }
+                None
+            }
+            (_, DbType::Union(union)) => {
+                for t in union.iter() {
+                    // TODO what about multiple items?
+                    if let Some(found) = Type::new(t).common_sub_type(i_s, self) {
+                        return Some(found);
+                    }
+                }
+                None
+            }
             (DbType::TypedDict(td1), DbType::TypedDict(td2)) => Some(td1.union(i_s, &td2)),
             (DbType::Callable(c1), DbType::Callable(c2)) => {
                 Some(DbType::Callable(common_sub_type_for_callables(i_s, c1, c2)))
