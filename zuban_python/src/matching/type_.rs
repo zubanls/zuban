@@ -2935,17 +2935,28 @@ fn common_params(
     if params1.len() == params2.len() {
         let mut new_params = vec![];
         for (p1, p2) in params1.iter().zip(params2.iter()) {
-            if p1.name != p2.name || p1.has_default != p2.has_default {
-                return None;
-            }
-            if p1.param_specific.param_kind() != p2.param_specific.param_kind() {
-                return None;
+            let mut kind = p1.param_specific.param_kind();
+            let p2_kind = p2.param_specific.param_kind();
+            let p1_name = p1.name.map(|n| n.as_str(i_s.db));
+            let p2_name = p2.name.map(|n| n.as_str(i_s.db));
+            if p1_name != p2_name {
+                if matches!(
+                    kind,
+                    ParamKind::PositionalOnly | ParamKind::PositionalOrKeyword
+                ) && matches!(
+                    p2_kind,
+                    ParamKind::PositionalOnly | ParamKind::PositionalOrKeyword
+                ) {
+                    kind = ParamKind::PositionalOnly;
+                } else {
+                    return None;
+                }
             }
             let t1 = p1.param_specific.maybe_positional_db_type()?;
             let t2 = p2.param_specific.maybe_positional_db_type()?;
             let new_t = Type::new(t1).common_sub_type(i_s, &Type::new(t2))?;
             new_params.push(CallableParam {
-                param_specific: match &p1.param_specific.param_kind() {
+                param_specific: match &kind {
                     ParamKind::PositionalOnly => ParamSpecific::PositionalOnly(new_t),
                     ParamKind::PositionalOrKeyword => ParamSpecific::PositionalOrKeyword(new_t),
                     ParamKind::KeywordOnly => ParamSpecific::KeywordOnly(new_t),
@@ -2956,8 +2967,8 @@ fn common_params(
                         ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ValueType(new_t))
                     }
                 },
-                name: p1.name,
-                has_default: p1.has_default,
+                name: (p1_name == p2_name).then(|| p1.name).flatten(),
+                has_default: p1.has_default & p2.has_default,
             });
         }
         Some(CallableParams::Simple(new_params.into()))

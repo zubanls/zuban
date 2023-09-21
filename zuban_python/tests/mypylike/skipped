@@ -1761,7 +1761,6 @@ testListWithStarExpr
 testOverloadVarargsSelection
 
 # List inference unions are special (list meets)
-testListLiteralWithFunctionsErasesNames
 testListLiteralWithSimilarFunctionsErasesName
 testListLiteralWithNameOnlyArgsDoesNotEraseNames
 testLiteralMeets
