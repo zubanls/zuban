@@ -405,7 +405,7 @@ fn typed_dict_get_internal<'db>(
             if let Some(member) = td.find_member(i_s.db, name.as_str(i_s.db)) {
                 let t = &member.type_;
                 let default = infer_default(&mut ResultContext::Known(&Type::new(&t)))?;
-                t.clone().union(i_s.db, default)
+                Type::new(t).simplified_union(i_s, Type::owned(default))
             } else {
                 infer_default(&mut ResultContext::Unknown)?;
                 i_s.db.python_state.object_db_type()

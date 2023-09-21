@@ -86,10 +86,6 @@ impl<'a> Type<'a> {
     }
 
     pub fn simplified_union(self, i_s: &InferenceState, other: Self) -> DbType {
-        if self.as_ref() == other.as_ref() {
-            // Do an extremely simple comparison to avoid a lot more complicated code.
-            return self.into_db_type();
-        }
         // Check out how mypy does it:
         // https://github.com/python/mypy/blob/ff81a1c7abc91d9984fc73b9f2b9eab198001c8e/mypy/typeops.py#L413-L486
         //
@@ -2048,7 +2044,7 @@ impl<'a> Type<'a> {
             DbType::Type(cls) => {
                 execute_type_of_type(i_s, args, result_context, on_type_error, cls.as_ref())
             }
-            DbType::Union(union) => Inferred::gather_union(i_s, |gather| {
+            DbType::Union(union) => Inferred::gather_simplified_union(i_s, |gather| {
                 for entry in union.iter() {
                     gather(Type::new(entry).execute(i_s, None, args, result_context, on_type_error))
                 }
@@ -2566,7 +2562,7 @@ impl<'a> Type<'a> {
             DbType::NamedTuple(nt) => {
                 NamedTupleValue::new(i_s.db, nt).get_item(i_s, slice_type, result_context)
             }
-            DbType::Union(union) => Inferred::gather_union(i_s, |callable| {
+            DbType::Union(union) => Inferred::gather_simplified_union(i_s, |callable| {
                 for t in union.iter() {
                     callable(Type::new(t).get_item(i_s, None, slice_type, result_context))
                 }

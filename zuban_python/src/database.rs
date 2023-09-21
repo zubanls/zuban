@@ -903,12 +903,6 @@ impl DbType {
         other: DbType,
         mut format_as_optional: bool,
     ) -> Self {
-        if db.python_state.project.mypy_compatible {
-            let object = db.python_state.object_db_type();
-            if self == object || other == object {
-                return object;
-            }
-        }
         let entries = match self {
             Self::Union(u1) => {
                 let mut vec = u1.entries.into_vec();
