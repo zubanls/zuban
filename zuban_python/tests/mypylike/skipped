@@ -1786,8 +1786,6 @@ testConditionalExpressionUnionWithAny
 # join sub and super classes
 testOverloadInferUnionWithDifferingLengths
 testForLoopOverTupleAndSubtyping
-# join tuple iter
-testCallerTupleVarArgsAndGenericCalleeVarArg
 # tuple joins
 testFixedTupleJoinList
 # namedtuple recursive joins
