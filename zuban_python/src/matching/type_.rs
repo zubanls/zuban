@@ -2847,12 +2847,9 @@ fn common_base_type_for_non_class(
                 return Some(DbType::Callable(common_base_for_callables(i_s, c1, c2)));
             }
         }
-        DbType::Tuple(tup1) => {
-            if let DbType::Tuple(tup2) = t2 {
-                return Some(DbType::Tuple(Rc::new(common_base_for_tuples(
-                    i_s, tup1, tup2,
-                ))));
-            }
+        DbType::Tuple(tup1) => return common_base_for_tuple_against_db_type(i_s, tup1, t2),
+        DbType::NamedTuple(nt1) => {
+            return common_base_for_tuple_against_db_type(i_s, nt1.as_tuple(), t2)
         }
         DbType::TypedDict(td1) => {
             if let DbType::TypedDict(td2) = &t2 {
@@ -2944,6 +2941,20 @@ fn common_params(
     } else {
         todo!()
     }
+}
+
+fn common_base_for_tuple_against_db_type(
+    i_s: &InferenceState,
+    tup1: &TupleContent,
+    t2: &DbType,
+) -> Option<DbType> {
+    Some(match t2 {
+        DbType::Tuple(tup2) => DbType::Tuple(Rc::new(common_base_for_tuples(i_s, tup1, tup2))),
+        DbType::NamedTuple(nt2) => {
+            DbType::Tuple(Rc::new(common_base_for_tuples(i_s, tup1, nt2.as_tuple())))
+        }
+        _ => return None,
+    })
 }
 
 fn common_base_for_tuples(

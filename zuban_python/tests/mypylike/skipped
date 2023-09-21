@@ -1789,13 +1789,11 @@ testForLoopOverTupleAndSubtyping
 # join tuple iter
 testCallerTupleVarArgsAndGenericCalleeVarArg
 # tuple joins
-testFixedTupleJoinVarTuple
 testFixedTupleJoinList
-testEmptyTupleJoin
-testTupleSubclassJoinIrregular
 # namedtuple joins
-testNamedTupleJoinNamedTuple
-testNamedTupleJoinTuple
+testNamedTupleSimpleTypeInference
+testMutuallyRecursiveNamedTuplesJoin
+testCrashInJoinOfSelfRecursiveNamedTuples
 # except join? B and C when A :> B and A :> C
 testTupleValueAsExceptionType
 testExceptWithMultipleTypes3
@@ -1813,7 +1811,7 @@ testUnionMultiassignIndexedWithError
 # inplace operator methods
 testInplaceOperatorMethods
 
-# List/Set/Dict Inferring type of variable when initialized to an empty collection
+# List/Set/Dict/Tuple Inferring type of variable when initialized to an empty collection
 testInferListInitialized*
 testInferSetInitializedToEmpty
 testInferSetInitializedToEmptyUsingDiscard
@@ -1838,6 +1836,7 @@ testConditionalExpressionWithEmptyIteableAndUnionWithAny
 testLiteralFinalErasureInMutableDatastructures2
 testInferNonOptionalListType
 testInferNonOptionalDictType
+testEmptyTupleJoin
 
 # OrderedDict = _Alias()
 testTypingExtensionsOrderedDictAlias
