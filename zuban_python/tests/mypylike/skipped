@@ -1788,8 +1788,6 @@ testRecursiveAliasTopUnion
 # namedtuple recursive joins
 testMutuallyRecursiveNamedTuplesJoin
 testCrashInJoinOfSelfRecursiveNamedTuples
-# Enum join of int | Literal[3] should lead to int
-testEnumValueSomeAuto
 
 # __setitem__
 testInferOptionalDictKeyValueTypes

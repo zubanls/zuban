@@ -46,11 +46,13 @@ pub fn lookup_on_enum_instance(
     result_context: &mut ResultContext,
 ) -> LookupResult {
     match name {
-        "value" | "_value_" => LookupResult::UnknownName(Inferred::gather_union(i_s, |add| {
-            for member in enum_.members.iter() {
-                add(infer_value_on_member(i_s, enum_, member.value))
-            }
-        })),
+        "value" | "_value_" => {
+            LookupResult::UnknownName(Inferred::gather_simplified_union(i_s, |add| {
+                for member in enum_.members.iter() {
+                    add(infer_value_on_member(i_s, enum_, member.value))
+                }
+            }))
+        }
         "_ignore_" => LookupResult::None,
         _ => lookup_members_on_enum(i_s, enum_, name, result_context).or_else(|| {
             Instance::new(enum_.class(i_s.db), None).lookup(i_s, from, name, LookupKind::Normal)
