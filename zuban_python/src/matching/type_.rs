@@ -2230,20 +2230,19 @@ impl<'a> Type<'a> {
     }
 
     pub fn common_sub_type(&self, i_s: &InferenceState, other: &Self) -> Option<DbType> {
-        if let Some(_) = self.maybe_class(i_s.db) {
-            if let Some(_) = other.maybe_class(i_s.db) {
-                if self.is_simple_sub_type_of(i_s, other).bool() {
-                    return Some(self.as_db_type());
-                }
-                if other.is_simple_sub_type_of(i_s, self).bool() {
-                    return Some(other.as_db_type());
-                }
-            }
-        }
         match (self.as_ref(), other.as_ref()) {
             (DbType::TypedDict(td1), DbType::TypedDict(td2)) => Some(td1.union(i_s, &td2)),
             (DbType::Callable(c1), DbType::Callable(c2)) => {
                 Some(DbType::Callable(common_sub_type_for_callables(i_s, c1, c2)))
+            }
+            (DbType::Class(_), DbType::Class(_)) => {
+                if self.is_simple_sub_type_of(i_s, other).bool() {
+                    Some(self.as_db_type())
+                } else if other.is_simple_sub_type_of(i_s, self).bool() {
+                    Some(other.as_db_type())
+                } else {
+                    None
+                }
             }
             _ => None,
         }
