@@ -1794,9 +1794,6 @@ testCrashInJoinOfSelfRecursiveNamedTuples
 # Enum join of int | Literal[3] should lead to int
 testEnumValueSomeAuto
 
-# except join? B and C when A :> B and A :> C
-testExceptWithAnyTypes
-
 # __setitem__
 testInferOptionalDictKeyValueTypes
 testIndexingAsLvalue
@@ -1961,6 +1958,7 @@ testSerializeDummyType
 
 # Except Foo as bar where bar is bound over its existence as a variable
 testTryStarMultiple
+testExceptWithAnyTypes
 # with scoping is special
 testWithStmtScopeBasics
 testWithStmtScopeNestedWith1

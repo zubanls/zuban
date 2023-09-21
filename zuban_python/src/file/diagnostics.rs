@@ -912,6 +912,7 @@ fn except_type(i_s: &InferenceState, t: &DbType, allow_tuple: bool) -> ExceptTyp
             }
             ExceptType::Invalid
         }
+        DbType::Any => ExceptType::ContainsOnlyBaseExceptions,
         DbType::Tuple(content) if allow_tuple => match &content.args {
             Some(TupleTypeArguments::FixedLength(ts)) => {
                 let mut result = ExceptType::ContainsOnlyBaseExceptions;

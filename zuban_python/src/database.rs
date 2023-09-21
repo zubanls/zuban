@@ -1223,9 +1223,7 @@ impl DbType {
             Self::Class(GenericClass {
                 generics: ClassGenerics::NotDefinedYet,
                 ..
-            }) => {
-                todo!()
-            }
+            }) => false,
             Self::Union(u) => u.iter().any(|t| t.has_any_internal(i_s, already_checked)),
             Self::FunctionOverload(intersection) => intersection
                 .iter_functions()

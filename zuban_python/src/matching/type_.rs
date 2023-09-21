@@ -3152,7 +3152,16 @@ fn merge_simplified_union_type(
     let mut new_types = vec![];
     let mut finished = true;
     'outer: for additional in types {
+        if additional.has_any(i_s) {
+            if !new_types.contains(&additional) {
+                new_types.push(additional)
+            }
+            continue;
+        }
         for (i, current) in new_types.iter().enumerate() {
+            if current.has_any(i_s) {
+                continue;
+            }
             if Type::new(&additional)
                 .is_simple_super_type_of(i_s, &Type::new(current))
                 .bool()
