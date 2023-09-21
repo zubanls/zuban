@@ -1789,7 +1789,8 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     }
                     match r {
                         UnionMathResult::Match { result, .. } if !mismatch => {
-                            unioned.union_in_place(i_s.db, result);
+                            unioned =
+                                Type::owned(unioned).simplified_union(i_s, Type::owned(result));
                         }
                         _ => mismatch = true,
                     };
