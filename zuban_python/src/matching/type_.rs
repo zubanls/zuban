@@ -2849,7 +2849,12 @@ fn common_base_type_for_non_class(
         }
         DbType::Tuple(tup1) => return common_base_for_tuple_against_db_type(i_s, tup1, t2),
         DbType::NamedTuple(nt1) => {
-            return common_base_for_tuple_against_db_type(i_s, nt1.as_tuple(), t2)
+            if let DbType::NamedTuple(nt2) = t2 {
+                if nt1.__new__.defined_at == nt2.__new__.defined_at {
+                    return Some(DbType::NamedTuple(nt1.clone()));
+                }
+            }
+            return common_base_for_tuple_against_db_type(i_s, nt1.as_tuple(), t2);
         }
         DbType::TypedDict(td1) => {
             if let DbType::TypedDict(td2) = &t2 {

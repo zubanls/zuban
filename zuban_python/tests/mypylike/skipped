@@ -1790,8 +1790,7 @@ testForLoopOverTupleAndSubtyping
 testCallerTupleVarArgsAndGenericCalleeVarArg
 # tuple joins
 testFixedTupleJoinList
-# namedtuple joins
-testNamedTupleSimpleTypeInference
+# namedtuple recursive joins
 testMutuallyRecursiveNamedTuplesJoin
 testCrashInJoinOfSelfRecursiveNamedTuples
 # except join? B and C when A :> B and A :> C
