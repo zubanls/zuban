@@ -628,25 +628,28 @@ impl<'db: 'slf, 'slf> Inferred {
         result.unwrap_or_else(|| todo!())
     }
 
+    pub fn simplified_union(self, i_s: &InferenceState<'db, '_>, other: Self) -> Self {
+        Inferred::from_type(self.as_type(i_s).simplified_union(i_s, other.as_type(i_s)))
+    }
+
     #[inline]
     pub fn gather_base_types(
-        callable: impl FnOnce(&mut dyn FnMut(&InferenceState<'db, '_>, Self)),
+        i_s: &InferenceState,
+        callable: impl FnOnce(&mut dyn FnMut(Self)),
     ) -> Self {
         let mut result: Option<Self> = None;
         let r = &mut result;
-        callable(&mut |i_s, inferred| {
+        callable(&mut |inferred| {
             *r = Some(match r.take() {
-                Some(i) => Inferred::from_type(
-                    i.as_type(i_s).common_base_type(i_s, &inferred.as_type(i_s)),
-                ),
+                Some(i) => i.common_base_type(i_s, &inferred),
                 None => inferred,
             });
         });
         result.unwrap_or_else(|| todo!())
     }
 
-    pub fn simplified_union(self, i_s: &InferenceState<'db, '_>, other: Self) -> Self {
-        Inferred::from_type(self.as_type(i_s).simplified_union(i_s, other.as_type(i_s)))
+    fn common_base_type(&self, i_s: &InferenceState, other: &Self) -> Self {
+        Self::from_type(self.as_type(i_s).common_base_type(i_s, &other.as_type(i_s)))
     }
 
     pub fn bind_instance_descriptors(

@@ -1,7 +1,8 @@
 use std::rc::Rc;
 
 use parsa_python_ast::{
-    Dict, DictElement, Int, List, StarLikeExpression, StarLikeExpressionIterator,
+    Dict, DictElement, DictElementIterator, Int, List, StarLikeExpression,
+    StarLikeExpressionIterator,
 };
 
 use crate::arguments::{Argument, Arguments};
@@ -278,39 +279,42 @@ impl<'db> Inference<'db, '_, '_> {
     }
 
     pub fn create_dict_generics(&mut self, dict: Dict) -> GenericsList {
-        let mut keys: Option<DbType> = None;
+        let dict_elements = dict.iter_elements();
+        if matches!(dict_elements, DictElementIterator::Empty) {
+            return GenericsList::new_generics(Rc::new([
+                GenericItem::TypeArgument(DbType::Any),
+                GenericItem::TypeArgument(DbType::Any),
+            ]));
+        }
         let mut values: Option<DbType> = None;
-        for child in dict.iter_elements() {
-            match child {
-                DictElement::KeyValue(key_value) => {
-                    let key_t = self.infer_expression(key_value.key()).as_db_type(self.i_s);
-                    match keys.as_mut() {
-                        Some(keys) => keys.union_in_place(self.i_s.db, key_t),
-                        None => keys = Some(key_t),
-                    };
-                    let value_t = self
-                        .infer_expression(key_value.value())
-                        .as_db_type(self.i_s);
-                    match values.as_mut() {
-                        Some(values) => values.union_in_place(self.i_s.db, value_t),
-                        None => values = Some(value_t),
-                    };
-                }
-                DictElement::DictStarred(_) => {
-                    todo!()
+        let keys = Inferred::gather_base_types(self.i_s, |gather| {
+            for child in dict_elements {
+                match child {
+                    DictElement::KeyValue(key_value) => {
+                        gather(self.infer_expression(key_value.key()));
+                        let value_t = self
+                            .infer_expression(key_value.value())
+                            .as_db_type(self.i_s);
+                        match values.as_mut() {
+                            Some(values) => values.union_in_place(self.i_s.db, value_t),
+                            None => values = Some(value_t),
+                        };
+                    }
+                    DictElement::DictStarred(_) => {
+                        todo!()
+                    }
                 }
             }
-        }
-        let keys = keys.unwrap_or(DbType::Any);
+        });
         let values = values.unwrap_or(DbType::Any);
         debug!(
             "Calculated generics for {}: dict[{}, {}]",
             dict.short_debug(),
-            keys.format_short(self.i_s.db),
+            keys.as_db_type(self.i_s).format_short(self.i_s.db),
             values.format_short(self.i_s.db),
         );
         GenericsList::new_generics(Rc::new([
-            GenericItem::TypeArgument(keys),
+            GenericItem::TypeArgument(keys.as_db_type(self.i_s)),
             GenericItem::TypeArgument(values),
         ]))
     }
