@@ -2957,14 +2957,31 @@ fn common_base_for_tuples(
     let Some(tup2_args) = &tup2.args else {
         todo!()
     };
-    let mut new_args = tup1_args.clone();
-    match tup2_args {
+    TupleContent::new(match tup2_args {
         TupleTypeArguments::FixedLength(ts2) => {
-            common_base_type_of_type_var_tuple_with_items(&mut new_args, i_s, ts2.len(), ts2.iter())
+            let mut new_args = tup1_args.clone();
+            common_base_type_of_type_var_tuple_with_items(
+                &mut new_args,
+                i_s,
+                ts2.len(),
+                ts2.iter(),
+            );
+            new_args
         }
-        TupleTypeArguments::ArbitraryLength(t) => todo!(),
-    };
-    TupleContent::new(new_args)
+        TupleTypeArguments::ArbitraryLength(t2) => match tup1_args {
+            TupleTypeArguments::FixedLength(ts1) => {
+                let mut new_args = tup2_args.clone();
+                common_base_type_of_type_var_tuple_with_items(
+                    &mut new_args,
+                    i_s,
+                    ts1.len(),
+                    ts1.iter(),
+                );
+                new_args
+            }
+            TupleTypeArguments::ArbitraryLength(t1) => todo!(),
+        },
+    })
 }
 
 pub fn common_base_type_of_type_var_tuple_with_items<
