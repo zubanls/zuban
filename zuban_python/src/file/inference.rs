@@ -951,7 +951,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             return;
                         } else if let Some(len) = value_iterator.len() {
                             let fetch = len - normal;
-                            let union = Inferred::gather_union(self.i_s, |callable| {
+                            let union = Inferred::gather_simplified_union(self.i_s, |callable| {
                                 for _ in 0..(len - normal) {
                                     callable(value_iterator.next(self.i_s).unwrap());
                                 }
@@ -2299,24 +2299,26 @@ fn gather_except_star(i_s: &InferenceState, t: &DbType) -> DbType {
             _ => todo!(),
         },
         DbType::Any => DbType::Any,
-        DbType::Tuple(content) => Inferred::gather_union(i_s, |add| match &content.args {
-            Some(TupleTypeArguments::FixedLength(ts)) => {
-                for t in ts.iter() {
-                    match t {
-                        TypeOrTypeVarTuple::Type(t) => {
-                            add(Inferred::from_type(gather_except_star(i_s, t)))
+        DbType::Tuple(content) => {
+            Inferred::gather_simplified_union(i_s, |add| match &content.args {
+                Some(TupleTypeArguments::FixedLength(ts)) => {
+                    for t in ts.iter() {
+                        match t {
+                            TypeOrTypeVarTuple::Type(t) => {
+                                add(Inferred::from_type(gather_except_star(i_s, t)))
+                            }
+                            TypeOrTypeVarTuple::TypeVarTuple(_) => todo!(),
                         }
-                        TypeOrTypeVarTuple::TypeVarTuple(_) => todo!(),
                     }
                 }
-            }
-            Some(TupleTypeArguments::ArbitraryLength(t)) => {
-                add(Inferred::from_type(gather_except_star(i_s, t)))
-            }
-            _ => todo!(),
-        })
-        .as_type(i_s)
-        .into_db_type(),
+                Some(TupleTypeArguments::ArbitraryLength(t)) => {
+                    add(Inferred::from_type(gather_except_star(i_s, t)))
+                }
+                _ => todo!(),
+            })
+            .as_type(i_s)
+            .into_db_type()
+        }
         DbType::Union(union) => DbType::Union(UnionType::new(
             union
                 .entries

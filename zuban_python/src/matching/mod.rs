@@ -128,7 +128,7 @@ impl IteratorContent {
             Self::FixedLengthTupleGenerics {
                 entries,
                 current_index,
-            } => Inferred::gather_union(i_s, |add| {
+            } => Inferred::gather_simplified_union(i_s, |add| {
                 for entry in entries.iter().skip(current_index) {
                     match entry {
                         TypeOrTypeVarTuple::Type(b) => add(Inferred::from_type(b.clone())),
@@ -136,7 +136,7 @@ impl IteratorContent {
                     }
                 }
             }),
-            Self::Union(iterators) => Inferred::gather_union(i_s, |add| {
+            Self::Union(iterators) => Inferred::gather_simplified_union(i_s, |add| {
                 for iterator in iterators {
                     add(iterator.infer_all(i_s))
                 }
