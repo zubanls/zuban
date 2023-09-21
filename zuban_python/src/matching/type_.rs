@@ -85,18 +85,27 @@ impl<'a> Type<'a> {
         Self::owned(self.into_db_type().union(db, other.into_db_type()))
     }
 
-    pub fn simplified_union(self, db: &Database, other: Self) -> DbType {
-        // See also https://github.com/python/mypy/blob/ff81a1c7abc91d9984fc73b9f2b9eab198001c8e/mypy/typeops.py#L413-L486
-        let other = other.into_db_type();
-        match self.into_db_type() {
-            /*
-            DbType::Class(t) => {
-                items.push(t);
+    pub fn simplified_union(self, i_s: &InferenceState, other: Self) -> DbType {
+        if self.as_ref() == other.as_ref() {
+            // Do an extremely simple comparison to avoid a lot more complicated code.
+            return self.into_db_type();
+        }
+        // Check out how mypy does it:
+        // https://github.com/python/mypy/blob/ff81a1c7abc91d9984fc73b9f2b9eab198001c8e/mypy/typeops.py#L413-L486
+        //
+        let mut result = merge_simplified_union_type(
+            i_s,
+            self.into_db_type()
+                .into_iter_with_unpacked_unions()
+                .chain(other.into_db_type().into_iter_with_unpacked_unions()),
+        );
+        loop {
+            match result {
+                MergeSimplifiedUnionResult::Done(t) => return t,
+                MergeSimplifiedUnionResult::NotDone(items) => {
+                    result = merge_simplified_union_type(i_s, items.into_iter())
+                }
             }
-            DbType::Union(union) => {
-            }
-            */
-            t => t.union(db, other),
         }
     }
 
@@ -3131,6 +3140,47 @@ fn common_sub_type_params(
     }
 }
 
+enum MergeSimplifiedUnionResult {
+    NotDone(Vec<DbType>),
+    Done(DbType),
+}
+
+fn merge_simplified_union_type(
+    i_s: &InferenceState,
+    types: impl Iterator<Item = DbType>,
+) -> MergeSimplifiedUnionResult {
+    let mut new_types = vec![];
+    let mut finished = true;
+    'outer: for additional in types {
+        for (i, current) in new_types.iter().enumerate() {
+            if Type::new(&additional)
+                .is_simple_super_type_of(i_s, &Type::new(current))
+                .bool()
+            {
+                new_types[i] = additional;
+                finished = false;
+                continue 'outer;
+            }
+            if Type::new(current)
+                .is_simple_super_type_of(i_s, &Type::new(&additional))
+                .bool()
+            {
+                finished = false;
+                continue 'outer;
+            }
+        }
+        new_types.push(additional);
+    }
+    if finished {
+        MergeSimplifiedUnionResult::Done(match new_types.len() {
+            0 => DbType::Never,
+            1 => new_types.into_iter().next().unwrap(),
+            _ => DbType::Union(UnionType::from_types(new_types)),
+        })
+    } else {
+        MergeSimplifiedUnionResult::NotDone(new_types)
+    }
+}
 pub fn execute_type_of_type<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Arguments<'db>,

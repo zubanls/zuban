@@ -682,8 +682,25 @@ impl UnionType {
         }
     }
 
+    pub fn from_types(types: Vec<DbType>) -> Self {
+        Self::new(
+            types
+                .into_iter()
+                .enumerate()
+                .map(|(format_index, type_)| UnionEntry {
+                    format_index,
+                    type_,
+                })
+                .collect(),
+        )
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = &DbType> {
         self.entries.iter().map(|u| &u.type_)
+    }
+
+    pub fn into_iter(self) -> impl Iterator<Item = DbType> {
+        self.entries.into_vec().into_iter().map(|u| u.type_)
     }
 
     pub fn sort_for_priority(&mut self) {
@@ -802,6 +819,29 @@ pub struct GenericClass {
     pub generics: ClassGenerics,
 }
 
+enum DbTypeIterator<T, Iter> {
+    Single(T),
+    Union(Iter),
+    Finished,
+}
+
+impl<T, Iter: Iterator<Item = T>> Iterator for DbTypeIterator<T, Iter> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::Single(_) => {
+                let Self::Single(t) = std::mem::replace(self, Self::Finished) else {
+                    unreachable!();
+                };
+                Some(t)
+            }
+            Self::Union(items) => items.next(),
+            Self::Finished => None,
+        }
+    }
+}
+
 // PartialEq is only here for optimizations, it is not a reliable way to check if a type matches
 // with another type.
 #[derive(Debug, Clone, PartialEq)]
@@ -839,6 +879,14 @@ pub enum DbType {
 impl DbType {
     pub fn new_class(link: PointLink, generics: ClassGenerics) -> Self {
         Self::Class(GenericClass { link, generics })
+    }
+
+    pub fn into_iter_with_unpacked_unions(self) -> impl Iterator<Item = DbType> {
+        match self {
+            DbType::Union(items) => DbTypeIterator::Union(items.into_iter()),
+            DbType::Never => DbTypeIterator::Finished,
+            t => DbTypeIterator::Single(t),
+        }
     }
 
     pub fn union(self, db: &Database, other: DbType) -> Self {

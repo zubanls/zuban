@@ -45,7 +45,7 @@ def foo() -> str:
 try:
     1
 except (AttributeError, (NotImplementedError, NameError)) as e:  # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
-    reveal_type(e)  # N: Revealed type is "Exception"
+    reveal_type(e)  # N: Revealed type is "AttributeError | NotImplementedError | NameError"
 
 [case tuple_generic_class_type_comment]
 from typing import Generic, TypeVar, Any

@@ -1794,13 +1794,7 @@ testCrashInJoinOfSelfRecursiveNamedTuples
 # Enum join of int | Literal[3] should lead to int
 testEnumValueSomeAuto
 
-# simplified unions
-testExceptWithMultipleTypes2
-except_nested_tuple
 # except join? B and C when A :> B and A :> C
-testTupleValueAsExceptionType
-testExceptWithMultipleTypes3
-testExceptWithMultipleTypes4
 testExceptWithAnyTypes
 
 # __setitem__
