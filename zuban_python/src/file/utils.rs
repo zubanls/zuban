@@ -286,36 +286,31 @@ impl<'db> Inference<'db, '_, '_> {
                 GenericItem::TypeArgument(DbType::Any),
             ]));
         }
-        let mut values: Option<DbType> = None;
-        let keys = Inferred::gather_base_types(self.i_s, |gather| {
-            for child in dict_elements {
-                match child {
-                    DictElement::KeyValue(key_value) => {
-                        gather(self.infer_expression(key_value.key()));
-                        let value_t = self
-                            .infer_expression(key_value.value())
-                            .as_db_type(self.i_s);
-                        match values.as_mut() {
-                            Some(values) => values.union_in_place(self.i_s.db, value_t),
-                            None => values = Some(value_t),
-                        };
-                    }
-                    DictElement::DictStarred(_) => {
-                        todo!()
+        let mut values = Inferred::new_any();
+        let keys = Inferred::gather_base_types(self.i_s, |gather_keys| {
+            values = Inferred::gather_base_types(self.i_s, |gather_values| {
+                for child in dict_elements {
+                    match child {
+                        DictElement::KeyValue(key_value) => {
+                            gather_keys(self.infer_expression(key_value.key()));
+                            gather_values(self.infer_expression(key_value.value()));
+                        }
+                        DictElement::DictStarred(_) => {
+                            todo!()
+                        }
                     }
                 }
-            }
+            });
         });
-        let values = values.unwrap_or(DbType::Any);
         debug!(
             "Calculated generics for {}: dict[{}, {}]",
             dict.short_debug(),
             keys.as_db_type(self.i_s).format_short(self.i_s.db),
-            values.format_short(self.i_s.db),
+            values.as_db_type(self.i_s).format_short(self.i_s.db),
         );
         GenericsList::new_generics(Rc::new([
             GenericItem::TypeArgument(keys.as_db_type(self.i_s)),
-            GenericItem::TypeArgument(values),
+            GenericItem::TypeArgument(values.as_db_type(self.i_s)),
         ]))
     }
 
