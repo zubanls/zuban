@@ -405,17 +405,6 @@ fn check_list_with_context<'db>(
     found.map(|inner| new_class!(i_s.db.python_state.list_node_ref().as_link(), inner,))
 }
 
-fn mypy_join(i_s: &InferenceState, t: &mut DbType, other: DbType) {
-    if let DbType::TypedDict(td1) = t {
-        if let DbType::TypedDict(td2) = &other {
-            *td1 = td1.intersection(i_s, td2);
-            return;
-        }
-    }
-    // Mypy has a special way to infer unions for list types.
-    t.union_in_place(i_s.db, other)
-}
-
 pub fn on_argument_type_error(
     i_s: &InferenceState,
     error_text: &dyn Fn(&str) -> Option<Box<str>>,
