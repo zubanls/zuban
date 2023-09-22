@@ -290,8 +290,6 @@ testWideOuterContextEmptyError
 # Value of type variable "P" of "new_pro" cannot be "U"
 testTypeUsingTypeCTwoTypeVars
 testOverloadedCallWithVariableTypes
-# Bound formatting on errors
-testBoundMethodUsage
 
 # Tuple type var context
 testTupleContextFromIterable
