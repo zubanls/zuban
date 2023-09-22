@@ -217,7 +217,7 @@ impl TypeVarMatcher {
         }
         debug_assert!(!current.calculated(), "{current:?}");
         // Before setting the type var, we need to check if the constraints match.
-        match check_constraints(i_s, type_var_usage, value_type, variance) {
+        match check_constraints(i_s, &type_var_usage.type_var, value_type, variance) {
             Ok(bound) => {
                 current.type_ = BoundKind::TypeVar(bound);
                 if value_type.is_any() {
@@ -233,12 +233,12 @@ impl TypeVarMatcher {
 
 pub fn check_constraints(
     i_s: &InferenceState,
-    type_var_usage: &TypeVarUsage,
+    type_var: &Rc<TypeVar>,
     value_type: &Type,
     variance: Variance,
 ) -> Result<TypeVarBound, Match> {
     let mut mismatch_constraints = false;
-    match &type_var_usage.type_var.kind {
+    match &type_var.kind {
         TypeVarKind::Unrestricted => (),
         TypeVarKind::Bound(bound) => {
             mismatch_constraints |= !Type::new(bound)
@@ -286,7 +286,7 @@ pub fn check_constraints(
         Err(Match::False {
             reason: MismatchReason::ConstraintMismatch {
                 expected: value_type.as_db_type(),
-                type_var: type_var_usage.type_var.clone(),
+                type_var: type_var.clone(),
             },
             similar: false,
         })
