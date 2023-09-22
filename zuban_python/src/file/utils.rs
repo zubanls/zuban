@@ -109,7 +109,14 @@ impl<'db> Inference<'db, '_, '_> {
                 if found.is_none() {
                     type_.on_any_class(i_s, matcher, &mut |i_s, matcher, cls| {
                         if cls.node_ref == i_s.db.python_state.dict_node_ref() {
-                            found = self.check_dict_literal_with_context(matcher, cls, dict);
+                            let key_t =
+                                cls.generics()
+                                    .nth_type_argument(i_s.db, &cls.type_vars(i_s)[0], 0);
+                            let value_t =
+                                cls.generics()
+                                    .nth_type_argument(i_s.db, &cls.type_vars(i_s)[1], 1);
+                            found =
+                                self.check_dict_literal_with_context(matcher, key_t, value_t, dict);
                         }
                         found.is_some()
                     });
@@ -222,7 +229,8 @@ impl<'db> Inference<'db, '_, '_> {
     fn check_dict_literal_with_context(
         &mut self,
         matcher: &mut Matcher,
-        typed_dict: &Class,
+        key_t: Type,
+        value_t: Type,
         dict: Dict,
     ) -> Option<DbType> {
         None

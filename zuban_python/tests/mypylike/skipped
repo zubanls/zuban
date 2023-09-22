@@ -318,6 +318,11 @@ testLiteralInferredInDictContext
 testErrorCodeListOrDictItem
 testColumnListOrDictItemHasIncompatibleType
 testDictWithKeywordArgs
+testAliasFineGenericMod
+testAliasFineGenericFunc
+testAliasFineNestedMod
+testAliasFineNestedFunc
+testAliasFineNestedFuncDirect
 
 # context inference from class statement
 testSetDescriptorOnClass
