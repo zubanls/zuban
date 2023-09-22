@@ -293,7 +293,7 @@ impl<'db> Inference<'db, '_, '_> {
                                 expected_pair: format!(
                                     r#""{}": "{}""#,
                                     key_t.format_short(i_s.db),
-                                    key_t.format_short(i_s.db)
+                                    value_t.format_short(i_s.db)
                                 )
                                 .into(),
                             },

@@ -311,10 +311,6 @@ testCallerVarargsAndComplexTypeInference
 testStarUnpackNestedUnderscore
 # bottom up inference list multiply
 testListMultiplyInContext
-# "Dict entry 0 has incompatible type "int": "str"; expected "int": "int""
-testDictWithKeywordArgs
-testInferMultipleAnyUnionDifferentVariance
-testImportStarAliasSimpleGeneric
 
 # context inference from class statement
 testSetDescriptorOnClass
@@ -325,12 +321,32 @@ testNestedProtocolGenericUnions
 testNestedProtocolGenericUnionsDeep
 # union dict context inference
 testNoCrashOnGenericUnionUnpacking
+testInferMultipleAnyUnionDifferentVariance
 # Tuple iter fixes
 testTupleBaseClass
 # union context inference
 testCrashOnComplexCheckWithNamedTupleNext
 testNoComplainFieldNone
 testNoComplainFieldNoneStrict
+# dict specialities
+testDictWithKeywordArgsOnly
+testDictWithoutKeywordArgs
+testDictFromList
+testDictFromIterableAndKeywordArg
+testDictFromIterableAndKeywordArg2
+testDictFromIterableAndStarStarArgs
+testDictFromIterableAndStarStarArgs2
+testSpecialSignatureForSubclassOfDict
+testSpecialSignatureForSubclassOfDict2
+testDictWithStarStarExpr
+testDictIncompatibleTypeErrorMessage
+testDictIncompatibleKeyVerbosity
+testDictIncompatibleValueVerbosity
+testDictExpressionErrorLocations
+testDictWithKeywordArgs
+# star star in dict literal
+testDictStarInference
+testDictStarAnyKeyJoinValue
 
 # Not able to infer context with unions and literals
 testLiteralAndGenericWithUnion
@@ -443,25 +459,6 @@ testRefMethodWithDecorator
 testSelfTypeNonsensical
 testSelfTypeNew
 testSelfTypeNew_explicit
-
-# dict specialities
-testDictWithKeywordArgsOnly
-testDictWithoutKeywordArgs
-testDictFromList
-testDictFromIterableAndKeywordArg
-testDictFromIterableAndKeywordArg2
-testDictFromIterableAndStarStarArgs
-testDictFromIterableAndStarStarArgs2
-testSpecialSignatureForSubclassOfDict
-testSpecialSignatureForSubclassOfDict2
-testDictWithStarStarExpr
-testDictIncompatibleTypeErrorMessage
-testDictIncompatibleKeyVerbosity
-testDictIncompatibleValueVerbosity
-testDictExpressionErrorLocations
-# star star in dict literal
-testDictStarInference
-testDictStarAnyKeyJoinValue
 
 # tuple() / tuple([1])
 testTupleAsSubtypeOfSequence
