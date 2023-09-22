@@ -214,17 +214,10 @@ impl TypeVarMatcher {
             } else {
                 return m;
             }
-        } else {
-            debug_assert!(!current.calculated(), "{current:?}");
         }
+        debug_assert!(!current.calculated(), "{current:?}");
         // Before setting the type var, we need to check if the constraints match.
-        match check_constraints(
-            i_s,
-            type_var_usage,
-            value_type,
-            variance,
-            current.calculated(),
-        ) {
+        match check_constraints(i_s, type_var_usage, value_type, variance) {
             Ok(bound) => {
                 current.type_ = BoundKind::TypeVar(bound);
                 if value_type.is_any() {
@@ -243,10 +236,8 @@ pub fn check_constraints(
     type_var_usage: &TypeVarUsage,
     value_type: &Type,
     variance: Variance,
-    is_already_calculated: bool,
 ) -> Result<TypeVarBound, Match> {
     let mut mismatch_constraints = false;
-    let mut matched_constraint = None;
     match &type_var_usage.type_var.kind {
         TypeVarKind::Unrestricted => (),
         TypeVarKind::Bound(bound) => {
@@ -257,9 +248,7 @@ pub fn check_constraints(
         TypeVarKind::Constraints(constraints) => {
             if let DbType::TypeVar(t2) = value_type.as_ref() {
                 if let TypeVarKind::Constraints(constraints2) = &t2.type_var.kind {
-                    if is_already_calculated {
-                        todo!()
-                    } else if constraints2.iter().all(|r2| {
+                    if constraints2.iter().all(|r2| {
                         constraints.iter().any(|r1| {
                             Type::new(r1)
                                 .is_simple_super_type_of(i_s, &Type::new(r2))
@@ -273,10 +262,11 @@ pub fn check_constraints(
                 }
             }
             if !mismatch_constraints {
+                let mut matched_constraint = None;
                 for constraint in constraints.iter() {
                     let m = Type::new(constraint).simple_matches(i_s, value_type, variance);
                     if m.bool() {
-                        if is_already_calculated || matched_constraint.is_some() {
+                        if matched_constraint.is_some() {
                             // This means that any is involved and multiple constraints
                             // are matching. Therefore just return Any.
                             return Ok(TypeVarBound::Invariant(DbType::Any));
@@ -301,10 +291,6 @@ pub fn check_constraints(
             similar: false,
         })
     } else {
-        if let Some(constraint) = matched_constraint {
-            Ok(TypeVarBound::Invariant(constraint.clone()))
-        } else {
-            Ok(TypeVarBound::new(value_type.as_db_type(), variance))
-        }
+        Ok(TypeVarBound::new(value_type.as_db_type(), variance))
     }
 }
