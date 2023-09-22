@@ -199,7 +199,6 @@ impl TypeVarMatcher {
         value_type: &Type,
         variance: Variance,
     ) -> Match {
-        let type_var_like = &type_var_usage.type_var;
         let current = &mut self.calculated_type_vars[type_var_usage.index.as_usize()];
         if let BoundKind::TypeVar(current_type) = &mut current.type_ {
             let m = current_type.merge_or_mismatch(i_s, value_type, variance);
@@ -219,71 +218,93 @@ impl TypeVarMatcher {
             debug_assert!(!current.calculated(), "{current:?}");
         }
         // Before setting the type var, we need to check if the constraints match.
-        let mut mismatch_constraints = false;
-        match &type_var.kind {
-            TypeVarKind::Unrestricted => (),
-            TypeVarKind::Bound(bound) => {
-                mismatch_constraints |= !Type::new(bound)
-                    .is_simple_super_type_of(i_s, value_type)
-                    .bool();
+        match check_constraints(
+            i_s,
+            type_var_usage,
+            value_type,
+            variance,
+            current.calculated(),
+        ) {
+            Ok(bound) => {
+                current.type_ = BoundKind::TypeVar(bound);
+                if value_type.is_any() {
+                    Match::True { with_any: true }
+                } else {
+                    Match::new_true()
+                }
             }
-            TypeVarKind::Constraints(constraints) => {
-                if let DbType::TypeVar(t2) = value_type.as_ref() {
-                    if let TypeVarKind::Constraints(constraints2) = &t2.type_var.kind {
-                        if current.calculated() {
-                            todo!()
-                        } else if constraints2.iter().all(|r2| {
-                            constraints.iter().any(|r1| {
-                                Type::new(r1)
-                                    .is_simple_super_type_of(i_s, &Type::new(r2))
-                                    .bool()
-                            })
-                        }) {
-                            current.type_ = BoundKind::TypeVar(TypeVarBound::Invariant(
-                                value_type.as_db_type(),
-                            ));
-                            return Match::new_true();
+            Err(m) => return m,
+        }
+    }
+}
+
+pub fn check_constraints(
+    i_s: &InferenceState,
+    type_var_usage: &TypeVarUsage,
+    value_type: &Type,
+    variance: Variance,
+    is_already_calculated: bool,
+) -> Result<TypeVarBound, Match> {
+    let mut mismatch_constraints = false;
+    let mut matched_constraint = None;
+    match &type_var_usage.type_var.kind {
+        TypeVarKind::Unrestricted => (),
+        TypeVarKind::Bound(bound) => {
+            mismatch_constraints |= !Type::new(bound)
+                .is_simple_super_type_of(i_s, value_type)
+                .bool();
+        }
+        TypeVarKind::Constraints(constraints) => {
+            if let DbType::TypeVar(t2) = value_type.as_ref() {
+                if let TypeVarKind::Constraints(constraints2) = &t2.type_var.kind {
+                    if is_already_calculated {
+                        todo!()
+                    } else if constraints2.iter().all(|r2| {
+                        constraints.iter().any(|r1| {
+                            Type::new(r1)
+                                .is_simple_super_type_of(i_s, &Type::new(r2))
+                                .bool()
+                        })
+                    }) {
+                        return Ok(TypeVarBound::Invariant(value_type.as_db_type()));
+                    } else {
+                        mismatch_constraints = true;
+                    }
+                }
+            }
+            if !mismatch_constraints {
+                for constraint in constraints.iter() {
+                    let m = Type::new(constraint).simple_matches(i_s, value_type, variance);
+                    if m.bool() {
+                        if is_already_calculated || matched_constraint.is_some() {
+                            // This means that any is involved and multiple constraints
+                            // are matching. Therefore just return Any.
+                            return Ok(TypeVarBound::Invariant(DbType::Any));
+                        }
+                        if value_type.has_any(i_s) {
+                            matched_constraint = Some(constraint);
                         } else {
-                            mismatch_constraints = true;
+                            return Ok(TypeVarBound::Invariant(constraint.clone()));
                         }
                     }
                 }
-                if !mismatch_constraints {
-                    for constraint in constraints.iter() {
-                        let m = Type::new(constraint).simple_matches(i_s, value_type, variance);
-                        if m.bool() {
-                            if current.calculated() {
-                                // This means that any is involved and multiple constraints
-                                // are matching. Therefore just return Any.
-                                current.type_ =
-                                    BoundKind::TypeVar(TypeVarBound::Invariant(DbType::Any));
-                                return m;
-                            }
-                            current.type_ =
-                                BoundKind::TypeVar(TypeVarBound::Invariant(constraint.clone()));
-                            if !value_type.has_any(i_s) {
-                                return m;
-                            }
-                        }
-                    }
-                    mismatch_constraints = true;
-                }
+                mismatch_constraints = true;
             }
         }
-        if mismatch_constraints {
-            return Match::False {
-                reason: MismatchReason::ConstraintMismatch {
-                    expected: value_type.as_db_type(),
-                    type_var: type_var_usage.type_var.clone(),
-                },
-                similar: false,
-            };
-        }
-        current.type_ = BoundKind::TypeVar(TypeVarBound::new(value_type.as_db_type(), variance));
-        if value_type.is_any() {
-            Match::True { with_any: true }
+    }
+    if mismatch_constraints {
+        Err(Match::False {
+            reason: MismatchReason::ConstraintMismatch {
+                expected: value_type.as_db_type(),
+                type_var: type_var_usage.type_var.clone(),
+            },
+            similar: false,
+        })
+    } else {
+        if let Some(constraint) = matched_constraint {
+            Ok(TypeVarBound::Invariant(constraint.clone()))
         } else {
-            Match::new_true()
+            Ok(TypeVarBound::new(value_type.as_db_type(), variance))
         }
     }
 }
