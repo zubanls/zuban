@@ -278,13 +278,14 @@ impl<'db> Inference<'db, '_, '_> {
         Some(DbType::TypedDict(typed_dict))
     }
 
-    pub fn create_dict_generics(&mut self, dict: Dict) -> GenericsList {
+    pub fn dict_literal_without_context(&mut self, dict: Dict) -> Inferred {
         let dict_elements = dict.iter_elements();
         if matches!(dict_elements, DictElementIterator::Empty) {
-            return GenericsList::new_generics(Rc::new([
-                GenericItem::TypeArgument(DbType::Any),
-                GenericItem::TypeArgument(DbType::Any),
-            ]));
+            return Inferred::from_type(new_class!(
+                self.i_s.db.python_state.dict_node_ref().as_link(),
+                DbType::Any,
+                DbType::Any,
+            ));
         }
         let mut values = Inferred::new_any();
         let keys = Inferred::gather_base_types(self.i_s, |gather_keys| {
@@ -308,10 +309,11 @@ impl<'db> Inference<'db, '_, '_> {
             keys.as_db_type(self.i_s).format_short(self.i_s.db),
             values.as_db_type(self.i_s).format_short(self.i_s.db),
         );
-        GenericsList::new_generics(Rc::new([
-            GenericItem::TypeArgument(keys.as_db_type(self.i_s)),
-            GenericItem::TypeArgument(values.as_db_type(self.i_s)),
-        ]))
+        Inferred::from_type(new_class!(
+            self.i_s.db.python_state.dict_node_ref().as_link(),
+            keys.as_db_type(self.i_s),
+            values.as_db_type(self.i_s),
+        ))
     }
 
     pub fn parse_int(&mut self, int: Int, result_context: &mut ResultContext) -> Option<i64> {

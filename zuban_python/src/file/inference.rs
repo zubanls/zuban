@@ -1682,11 +1682,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 if let Some(result) = self.infer_dict_literal_from_context(dict, result_context) {
                     return result.save_redirect(self.i_s, self.file, atom.index());
                 } else {
-                    let generics = self.create_dict_generics(dict);
-                    return Inferred::from_type(DbType::new_class(
-                        self.i_s.db.python_state.dict_node_ref().as_link(),
-                        ClassGenerics::List(generics),
-                    ));
+                    return self.dict_literal_without_context(dict);
                 }
             }
             DictComprehension(comp) => {
