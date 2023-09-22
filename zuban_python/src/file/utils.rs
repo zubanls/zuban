@@ -17,6 +17,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::UnionValue;
 use crate::matching::{FormatData, Matcher, MismatchReason, ResultContext, Type};
 use crate::node_ref::NodeRef;
+use crate::type_helpers::Class;
 use crate::{debug, new_class, Inferred};
 
 impl<'db> Inference<'db, '_, '_> {
@@ -61,10 +62,11 @@ impl<'db> Inference<'db, '_, '_> {
                 let mut fallback = None;
                 type_.on_any_class(i_s, matcher, &mut |i_s, matcher, list_cls| {
                     if list_cls.node_ref == i_s.db.python_state.list_node_ref() {
-                        let generic_t = list_cls
-                            .generics()
-                            .nth(i_s.db, &list_cls.type_vars(i_s)[0], 0)
-                            .expect_type_argument();
+                        let generic_t = list_cls.generics().nth_type_argument(
+                            i_s.db,
+                            &list_cls.type_vars(i_s)[0],
+                            0,
+                        );
                         found = check_list_with_context(i_s, matcher, generic_t, file, list);
                         if found.is_none() {
                             // As a fallback if there were only errors or no items at all, just use
@@ -104,6 +106,14 @@ impl<'db> Inference<'db, '_, '_> {
                     found = self.check_typed_dict_literal_with_context(matcher, td, dict);
                     found.is_some()
                 });
+                if found.is_none() {
+                    type_.on_any_class(i_s, matcher, &mut |i_s, matcher, cls| {
+                        if cls.node_ref == i_s.db.python_state.dict_node_ref() {
+                            found = self.check_dict_literal_with_context(matcher, cls, dict);
+                        }
+                        found.is_some()
+                    });
+                }
                 // `found` might still be empty, because we matched Any.
                 found.map(Inferred::from_type)
             })
@@ -207,6 +217,15 @@ impl<'db> Inference<'db, '_, '_> {
             )
         }
         Some(DbType::TypedDict(typed_dict))
+    }
+
+    fn check_dict_literal_with_context(
+        &mut self,
+        matcher: &mut Matcher,
+        typed_dict: &Class,
+        dict: Dict,
+    ) -> Option<DbType> {
+        None
     }
 
     // For dict(..)
