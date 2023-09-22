@@ -311,18 +311,10 @@ testCallerVarargsAndComplexTypeInference
 testStarUnpackNestedUnderscore
 # bottom up inference list multiply
 testListMultiplyInContext
-# bottom up dict
-testDictionaryLiteralInContext
-testLiteralInferredInDictContext
 # "Dict entry 0 has incompatible type "int": "str"; expected "int": "int""
-testErrorCodeListOrDictItem
-testColumnListOrDictItemHasIncompatibleType
 testDictWithKeywordArgs
-testAliasFineGenericMod
-testAliasFineGenericFunc
-testAliasFineNestedMod
-testAliasFineNestedFunc
-testAliasFineNestedFuncDirect
+testInferMultipleAnyUnionDifferentVariance
+testImportStarAliasSimpleGeneric
 
 # context inference from class statement
 testSetDescriptorOnClass

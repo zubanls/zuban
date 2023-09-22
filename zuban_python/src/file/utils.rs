@@ -102,6 +102,7 @@ impl<'db> Inference<'db, '_, '_> {
         result_context
             .with_type_if_exists(self.i_s, |i_s: &InferenceState<'db, '_>, type_, matcher| {
                 let mut found = None;
+                let mut fallback = None;
                 type_.on_any_typed_dict(i_s, matcher, &mut |i_s, matcher, td| {
                     found = self.check_typed_dict_literal_with_context(matcher, td, dict);
                     found.is_some()
@@ -117,12 +118,24 @@ impl<'db> Inference<'db, '_, '_> {
                                     .nth_type_argument(i_s.db, &cls.type_vars(i_s)[1], 1);
                             found =
                                 self.check_dict_literal_with_context(matcher, key_t, value_t, dict);
+                            if found.is_none() {
+                                // As a fallback if there were only errors or no items at all, just use
+                                // the given and expected result context as a type.
+                                fallback = Some(
+                                    Type::owned(cls.as_db_type(i_s.db))
+                                        .replace_type_var_likes(self.i_s.db, &mut |tv| {
+                                            tv.as_type_var_like().as_any_generic_item()
+                                        }),
+                                );
+                                // TODO we need something like this for testUnpackingUnionOfListsInFunction
+                                //self.file.reset_non_name_cache_between(list.node_index_range());
+                            }
                         }
                         found.is_some()
                     });
                 }
                 // `found` might still be empty, because we matched Any.
-                found.map(Inferred::from_type)
+                found.or(fallback).map(Inferred::from_type)
             })
             .flatten()
     }
@@ -233,7 +246,70 @@ impl<'db> Inference<'db, '_, '_> {
         value_t: Type,
         dict: Dict,
     ) -> Option<DbType> {
-        None
+        let mut new_key_context = ResultContext::Known(&key_t);
+        let mut new_value_context = ResultContext::Known(&value_t);
+
+        // Since it's a list, now check all the entries if they match the given
+        // result generic;
+        let mut found_keys: Option<DbType> = None;
+        let mut found_values: Option<DbType> = None;
+        let i_s = self.i_s;
+        let mut inference = self.file.inference(i_s);
+        for (i, key_value) in dict.iter_elements().enumerate() {
+            match key_value {
+                DictElement::KeyValue(key_value) => {
+                    let key_inf = inference
+                        .infer_expression_with_context(key_value.key(), &mut new_key_context);
+                    let value_inf = inference
+                        .infer_expression_with_context(key_value.value(), &mut new_value_context);
+                    let key_type = key_inf.as_type(i_s);
+                    let value_type = value_inf.as_type(i_s);
+                    let key_match = key_t.is_super_type_of(i_s, matcher, &key_type);
+                    let value_match = value_t.is_super_type_of(i_s, matcher, &value_type);
+                    if key_match.bool() && value_match.bool() {
+                        if let Some(found) = &mut found_keys {
+                            found.union_in_place(i_s.db, key_type.into_db_type())
+                        } else {
+                            found_keys = Some(key_type.into_db_type());
+                        }
+                        if let Some(found) = &mut found_values {
+                            found.union_in_place(i_s.db, value_type.into_db_type())
+                        } else {
+                            found_values = Some(value_type.into_db_type());
+                        }
+                    } else {
+                        NodeRef::new(self.file, key_value.index()).add_issue(
+                            i_s,
+                            IssueType::DictMemberMismatch {
+                                item: i,
+                                got_pair: format!(
+                                    r#""{}": "{}""#,
+                                    key_inf.format_short(i_s),
+                                    value_inf.format_short(i_s)
+                                )
+                                .into(),
+                                expected_pair: format!(
+                                    r#""{}": "{}""#,
+                                    key_t.format_short(i_s.db),
+                                    key_t.format_short(i_s.db)
+                                )
+                                .into(),
+                            },
+                        );
+                    }
+                }
+                DictElement::DictStarred(dict_starred) => {
+                    todo!()
+                }
+            }
+        }
+        found_keys.map(|keys| {
+            new_class!(
+                self.i_s.db.python_state.dict_node_ref().as_link(),
+                keys,
+                found_values.unwrap(),
+            )
+        })
     }
 
     // For dict(..)

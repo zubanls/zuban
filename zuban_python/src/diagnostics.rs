@@ -38,6 +38,7 @@ pub(crate) enum IssueType {
     IncompatibleAssignment { got: Box<str>, expected: Box<str> },
     CannotAssignToClassVarViaInstance { name: Box<str> },
     ListItemMismatch { item: usize, got: Box<str>, expected: Box<str> },
+    DictMemberMismatch { item: usize, got_pair: Box<str>, expected_pair: Box<str> },
     Redefinition { line: usize },
     ModuleNotFound { module_name: Box<str> },
     NoParentModule,
@@ -274,6 +275,7 @@ impl IssueType {
             TypeArgumentIssue { .. } => "type-arg",
             ModuleNotFound { .. } => "import",
             ListItemMismatch { .. } => "list-item",
+            DictMemberMismatch { .. } => "dict-item",
             NewTypeMustBeSubclassable { .. } => "valid-newtype",
             OverloadImplementationNeeded { .. } => "no-overload-impl",
             OverloadMismatch { .. } => "call-overload",
@@ -461,6 +463,9 @@ impl<'db> Diagnostic<'db> {
             ),
             ListItemMismatch{item, got, expected} => format!(
                 "List item {item} has incompatible type \"{got}\"; expected \"{expected}\"",
+            ),
+            DictMemberMismatch{item, got_pair, expected_pair} => format!(
+                "Dict entry {item} has incompatible type {got_pair}; expected {expected_pair}",
             ),
             Redefinition{line} => {
                 format!("Name {:?} already defined line {line}", self.code_under_issue())
