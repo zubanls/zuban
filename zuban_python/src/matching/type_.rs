@@ -803,23 +803,23 @@ impl<'a> Type<'a> {
         }
         let type_vars = class1.type_vars(i_s);
         if !type_vars.is_empty() {
-            let c1_generics = class1.generics();
-            let c2_generics = class2.generics();
-            let result = c1_generics
-                .matches(i_s, matcher, c2_generics, type_vars, variance)
+            let result = class1
+                .generics()
+                .matches(i_s, matcher, class2.generics(), type_vars, variance)
                 .similar_if_false();
             if !result.bool() {
                 let mut check = |i_s: &InferenceState, n| {
-                    let type_var_like = &type_vars[n];
-                    let t1 = c1_generics.nth_type_argument(i_s.db, type_var_like, n);
-                    if t1.is_any() {
+                    let t1 = class1.nth_type_argument(i_s.db, n);
+                    if matches!(t1, DbType::Any) {
                         return false;
                     }
-                    let t2 = c2_generics.nth_type_argument(i_s.db, type_var_like, n);
-                    if t2.is_any() {
+                    let t2 = class2.nth_type_argument(i_s.db, n);
+                    if matches!(t2, DbType::Any) {
                         return false;
                     }
-                    t1.matches(i_s, matcher, &t2, variance).bool()
+                    Type::owned(t1)
+                        .matches(i_s, matcher, &Type::owned(t2), variance)
+                        .bool()
                 };
                 if class1.node_ref == i_s.db.python_state.list_node_ref() && check(i_s, 0) {
                     return Match::False {

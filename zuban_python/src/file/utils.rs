@@ -62,12 +62,14 @@ impl<'db> Inference<'db, '_, '_> {
                 let mut fallback = None;
                 type_.on_any_class(i_s, matcher, &mut |i_s, matcher, list_cls| {
                     if list_cls.node_ref == i_s.db.python_state.list_node_ref() {
-                        let generic_t = list_cls.generics().nth_type_argument(
-                            i_s.db,
-                            &list_cls.type_vars(i_s)[0],
-                            0,
+                        let generic_t = list_cls.nth_type_argument(i_s.db, 0);
+                        found = check_list_with_context(
+                            i_s,
+                            matcher,
+                            Type::owned(generic_t),
+                            file,
+                            list,
                         );
-                        found = check_list_with_context(i_s, matcher, generic_t, file, list);
                         if found.is_none() {
                             // As a fallback if there were only errors or no items at all, just use
                             // the given and expected result context as a type.
@@ -110,14 +112,14 @@ impl<'db> Inference<'db, '_, '_> {
                 if found.is_none() {
                     type_.on_any_class(i_s, matcher, &mut |i_s, matcher, cls| {
                         if cls.node_ref == i_s.db.python_state.dict_node_ref() {
-                            let key_t =
-                                cls.generics()
-                                    .nth_type_argument(i_s.db, &cls.type_vars(i_s)[0], 0);
-                            let value_t =
-                                cls.generics()
-                                    .nth_type_argument(i_s.db, &cls.type_vars(i_s)[1], 1);
-                            found =
-                                self.check_dict_literal_with_context(matcher, key_t, value_t, dict);
+                            let key_t = cls.nth_type_argument(i_s.db, 0);
+                            let value_t = cls.nth_type_argument(i_s.db, 1);
+                            found = self.check_dict_literal_with_context(
+                                matcher,
+                                Type::owned(key_t),
+                                Type::owned(value_t),
+                                dict,
+                            );
                             if found.is_none() {
                                 // As a fallback if there were only errors or no items at all, just use
                                 // the given and expected result context as a type.
