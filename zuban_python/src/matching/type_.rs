@@ -60,6 +60,14 @@ impl From<DbType> for Type<'static> {
     }
 }
 
+impl std::ops::Deref for Type<'_> {
+    type Target = DbType;
+
+    fn deref(&self) -> &Self::Target {
+        self.0.as_ref()
+    }
+}
+
 impl<'a> Type<'a> {
     pub fn new(t: &'a DbType) -> Self {
         Self(Cow::Borrowed(t))
@@ -78,7 +86,7 @@ impl<'a> Type<'a> {
     }
 
     pub fn as_ref(&self) -> &DbType {
-        self.0.as_ref()
+        self
     }
 
     pub fn simplified_union(self, i_s: &InferenceState, other: Self) -> DbType {
