@@ -101,7 +101,7 @@ impl<'a> ResultContext<'a, '_> {
             match type_.as_ref() {
                 DbType::Tuple(tup) => tup.args.as_ref().map(|args| match args {
                     TupleTypeArguments::FixedLength(ts) => {
-                        callable(TupleContextIterator::FixedLength(&ts))
+                        callable(TupleContextIterator::FixedLength(ts.iter()))
                     }
                     TupleTypeArguments::ArbitraryLength(t) => {
                         callable(TupleContextIterator::ArbitraryLength(Type::new(&t)))
@@ -140,7 +140,7 @@ impl fmt::Debug for ResultContext<'_, '_> {
 
 pub enum TupleContextIterator<'a> {
     ArbitraryLength(Type<'a>),
-    FixedLength(&'a [TypeOrTypeVarTuple]),
+    FixedLength(std::slice::Iter<'a, TypeOrTypeVarTuple>),
     ExpectLiterals,
     Unknown,
 }
@@ -151,7 +151,18 @@ impl<'a> Iterator for TupleContextIterator<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         Some(match self {
             Self::ArbitraryLength(t) => ResultContext::Unknown,
-            Self::FixedLength(items) => ResultContext::Unknown,
+            Self::FixedLength(items) => {
+                match items.next() {
+                    Some(TypeOrTypeVarTuple::Type(t)) => ResultContext::Known(t),
+                    Some(TypeOrTypeVarTuple::TypeVarTuple(_)) => {
+                        // Clear the remaining items, because the order of the following items is
+                        // unclear.
+                        *items = [].iter();
+                        todo!("Probably return ResultContext::Unknown here")
+                    }
+                    None => ResultContext::Unknown,
+                }
+            }
             Self::ExpectLiterals => ResultContext::ExpectLiteral,
             Self::Unknown => ResultContext::Unknown,
         })
