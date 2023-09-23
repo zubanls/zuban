@@ -49,3 +49,13 @@ reveal_type(y.index(0)) # N: Revealed type is "int"
 y: tuple
 reveal_type(y.__getitem__(0)) # N: Revealed type is "Any"
 reveal_type(y.index(0)) # N: Revealed type is "int"
+
+[case tuple_inference]
+from typing import TypeVar, Generic
+
+T = TypeVar("T")
+
+class A(Generic[T]): ...
+
+x: tuple[A[int], ...] = (A(), A())
+y: tuple[A[int], ...] = (A(), 1)  # E: Incompatible types in assignment (expression has type "tuple[A[int], int]", variable has type "tuple[A[int], ...]")
