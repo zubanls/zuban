@@ -628,10 +628,9 @@ fn infer_typed_dict_item<'db>(
     infer: impl FnOnce(&mut ResultContext) -> Inferred,
 ) {
     if let Some(member) = typed_dict.find_member(i_s.db, key) {
-        let expected = Type::new(&member.type_);
-        let inferred = infer(&mut ResultContext::Known(&expected));
+        let inferred = infer(&mut ResultContext::Known(&member.type_));
 
-        expected.error_if_not_matches_with_matcher(
+        Type::new(&member.type_).error_if_not_matches_with_matcher(
             i_s,
             matcher,
             &inferred,

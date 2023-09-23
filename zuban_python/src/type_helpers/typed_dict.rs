@@ -87,8 +87,10 @@ impl<'a> TypedDictHelper<'a> {
                     .add_issue(i_s, IssueType::TypedDictWrongArgumentsInConstructor);
                 return Inferred::new_any();
             }
-            let t = Type::owned(DbType::TypedDict(self.0.clone()));
-            first_arg.infer(i_s, &mut ResultContext::Known(&t));
+            first_arg.infer(
+                i_s,
+                &mut ResultContext::Known(&DbType::TypedDict(self.0.clone())),
+            );
             self.0.clone()
         } else {
             let mut matcher = Matcher::new_typed_dict_matcher(self.0);
@@ -404,7 +406,7 @@ fn typed_dict_get_internal<'db>(
         if let Some(name) = inferred_name.maybe_string_literal(i_s) {
             if let Some(member) = td.find_member(i_s.db, name.as_str(i_s.db)) {
                 let t = &member.type_;
-                let default = infer_default(&mut ResultContext::Known(&Type::new(&t)))?;
+                let default = infer_default(&mut ResultContext::Known(&t))?;
                 Type::new(t).simplified_union(i_s, Type::owned(default))
             } else {
                 infer_default(&mut ResultContext::Unknown)?;
@@ -575,7 +577,7 @@ fn typed_dict_update_internal<'db>(
     );
     let inf_key = args.maybe_single_positional_arg(
         i_s,
-        &mut ResultContext::Known(&Type::new(&DbType::TypedDict(expected))),
+        &mut ResultContext::Known(&DbType::TypedDict(expected)),
     )?;
     Some(Inferred::new_none())
 }

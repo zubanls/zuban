@@ -1363,11 +1363,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     if let DbType::Callable(c) = type_.as_ref() {
                         let i_s = i_s.with_lambda_callable(c);
                         let (params, expr) = lambda.unpack();
-                        let rt = Type::new(&c.result_type);
-                        let result = self
-                            .file
-                            .inference(&i_s)
-                            .infer_expression_without_cache(expr, &mut ResultContext::Known(&rt));
+                        let result = self.file.inference(&i_s).infer_expression_without_cache(
+                            expr,
+                            &mut ResultContext::Known(&c.result_type),
+                        );
                         let mut c = (**c).clone();
                         c.result_type = result.as_type(&i_s).into_db_type();
                         Inferred::from_type(DbType::Callable(Rc::new(c)))

@@ -315,7 +315,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
             } else {
                 let result_type = func_or_callable.result_type(i_s);
                 // Fill the type var arguments from context
-                result_type.is_sub_type_of(i_s, &mut matcher, type_);
+                result_type.is_sub_type_of(i_s, &mut matcher, &type_);
                 for calculated in matcher.iter_calculated_type_vars() {
                     let has_any = match &calculated.type_ {
                         BoundKind::TypeVar(
@@ -444,7 +444,7 @@ pub fn match_arguments_against_params<
         match p.argument {
             ParamArgument::Argument(argument) => {
                 let specific = p.param.specific(i_s.db);
-                let annotation_type = match &specific {
+                let annotation_type = match specific {
                     WrappedParamSpecific::PositionalOnly(t)
                     | WrappedParamSpecific::PositionalOrKeyword(t)
                     | WrappedParamSpecific::KeywordOnly(t)
@@ -466,12 +466,12 @@ pub fn match_arguments_against_params<
                     argument.infer(
                         i_s,
                         &mut ResultContext::WithMatcher {
-                            type_: annotation_type,
+                            type_: &annotation_type,
                             matcher,
                         },
                     )
                 } else {
-                    argument.infer(i_s, &mut ResultContext::Known(annotation_type))
+                    argument.infer(i_s, &mut ResultContext::Known(&annotation_type))
                 };
                 let m = annotation_type.error_if_not_matches_with_matcher(
                     i_s,

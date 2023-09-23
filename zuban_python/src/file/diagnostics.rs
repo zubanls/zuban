@@ -527,8 +527,10 @@ impl<'db> Inference<'db, '_, '_> {
                 if let Some(annotation) = param.annotation() {
                     if let Some(default) = param.default() {
                         let t = self.use_cached_annotation_type(annotation);
-                        let inf = self
-                            .infer_expression_with_context(default, &mut ResultContext::Known(&t));
+                        let inf = self.infer_expression_with_context(
+                            default,
+                            &mut ResultContext::Known(t.as_ref()),
+                        );
                         t.error_if_not_matches(self.i_s, &inf, |got, expected| {
                             let node_ref = NodeRef::new(self.file, default.index())
                                 .to_db_lifetime(self.i_s.db);

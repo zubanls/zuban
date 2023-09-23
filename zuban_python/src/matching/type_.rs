@@ -3244,7 +3244,7 @@ pub fn execute_type_of_type<'db>(
             // TODO reenable this
             let mut args_iterator = args.iter();
             let (arg, inferred_tup) = if let Some(arg) = args_iterator.next() {
-                let inf = arg.infer(i_s, &mut ResultContext::Known(&Type::new(tuple)));
+                let inf = arg.infer(i_s, &mut ResultContext::Known(tuple));
                 (arg, inf)
             } else {
                 debug!("TODO this does not check the arguments");

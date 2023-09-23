@@ -1624,9 +1624,9 @@ impl<'db: 'slf, 'slf> Inferred {
                             ComplexPoint::NewTypeDefinition(new_type) => {
                                 let mut iterator = args.iter();
                                 if let Some(first_arg) = iterator.next() {
-                                    let t = Type::new(new_type.type_(i_s));
-                                    let inf = first_arg.infer(i_s, &mut ResultContext::Known(&t));
-                                    t.error_if_not_matches(i_s, &inf, |t1, t2| {
+                                    let t = new_type.type_(i_s);
+                                    let inf = first_arg.infer(i_s, &mut ResultContext::Known(t));
+                                    Type::new(t).error_if_not_matches(i_s, &inf, |t1, t2| {
                                         (on_type_error.callback)(
                                             i_s,
                                             &|_| {
