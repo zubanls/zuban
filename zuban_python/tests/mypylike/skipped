@@ -292,7 +292,6 @@ testTypeUsingTypeCTwoTypeVars
 testOverloadedCallWithVariableTypes
 
 # Tuple type var context
-testTupleContextFromIterable
 testInferenceWithTypeVariableTwiceInReturnType
 testInferenceWithTypeVariableTwiceInReturnTypeAndMultipleVariables
 # bottom up inference for tuple with *args

@@ -104,12 +104,17 @@ impl<'a> ResultContext<'a, '_> {
                         callable(TupleContextIterator::FixedLength(ts.iter()))
                     }
                     TupleTypeArguments::ArbitraryLength(t) => {
-                        callable(TupleContextIterator::ArbitraryLength(Type::new(&t)))
+                        callable(TupleContextIterator::ArbitraryLength(t))
                     }
                 }),
                 DbType::Union(items) => {
                     debug!("TODO union tuple inference context ignored");
                     None
+                }
+                // Case x: Iterable[int] = (1, 1)
+                DbType::Class(c) if c.link == i_s.db.python_state.iterable_link() => {
+                    let t = c.class(i_s.db).nth_type_argument(i_s.db, 0);
+                    Some(callable(TupleContextIterator::ArbitraryLength(&t)))
                 }
                 _ => None,
             }
@@ -139,7 +144,7 @@ impl fmt::Debug for ResultContext<'_, '_> {
 }
 
 pub enum TupleContextIterator<'a> {
-    ArbitraryLength(Type<'a>),
+    ArbitraryLength(&'a DbType),
     FixedLength(std::slice::Iter<'a, TypeOrTypeVarTuple>),
     ExpectLiterals,
     Unknown,
@@ -150,7 +155,7 @@ impl<'a> Iterator for TupleContextIterator<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         Some(match self {
-            Self::ArbitraryLength(t) => ResultContext::Unknown,
+            Self::ArbitraryLength(t) => ResultContext::Known(t),
             Self::FixedLength(items) => {
                 match items.next() {
                     Some(TypeOrTypeVarTuple::Type(t)) => ResultContext::Known(t),
