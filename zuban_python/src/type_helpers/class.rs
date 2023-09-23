@@ -64,10 +64,6 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    pub fn from_generic_class(db: &'db Database, c: &'a GenericClass) -> Self {
-        Self::from_generic_class_components(db, c.link, &c.generics)
-    }
-
     pub fn from_generic_class_components(
         db: &'db Database,
         link: PointLink,
@@ -634,7 +630,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                 }
                                 bases.push(t);
                                 let class = match &bases.last().unwrap() {
-                                    DbType::Class(c) => Some(Class::from_generic_class(db, c)),
+                                    DbType::Class(c) => Some(c.class(db)),
                                     DbType::Tuple(content) => None,
                                     DbType::Callable(content) => None,
                                     DbType::Dataclass(d) => Some(d.class(db)),
@@ -1702,9 +1698,8 @@ fn linearize_mro(i_s: &InferenceState, class: &Class, bases: &[DbType]) -> Box<[
                 DbType::Dataclass(d) => Some(&d.class),
                 _ => None,
             };
-            let super_classes = if let Some(generic_class) = generic_class {
-                let class = Class::from_generic_class(i_s.db, generic_class);
-                let cached_class_infos = class.use_cached_class_infos(i_s.db);
+            let super_classes = if let Some(c) = generic_class {
+                let cached_class_infos = c.class(i_s.db).use_cached_class_infos(i_s.db);
                 cached_class_infos.mro.as_ref()
             } else {
                 &[]

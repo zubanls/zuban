@@ -153,7 +153,7 @@ impl<'a> DataclassHelper<'a> {
         if self.0.options.slots {
             todo!()
         }
-        Instance::new(Class::from_generic_class(i_s.db, &self.0.class), None)
+        Instance::new(self.0.class(i_s.db), None)
             .lookup(i_s, from, name, LookupKind::Normal)
             .and_then(|inf| match inf.as_type(i_s).as_ref() {
                 // Init vars are not actually available on the class. They are just passed to __init__
@@ -289,7 +289,7 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
                     .into_db_type();
                 if let DbType::Class(c) = &t {
                     if c.link == db.python_state.dataclasses_init_var_link() {
-                        t = Class::from_generic_class(db, c).nth_type_argument(db, 0);
+                        t = c.class(db).nth_type_argument(db, 0);
                     }
                 }
                 /*

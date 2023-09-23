@@ -2223,15 +2223,14 @@ impl GeneratorType {
                     || c.link == db.python_state.async_iterator_link()
                     || c.link == db.python_state.async_iterable_link() =>
             {
-                let cls = Class::from_generic_class(db, c);
                 Some(GeneratorType {
-                    yield_type: cls.nth_type_argument(db, 0),
+                    yield_type: c.class(db).nth_type_argument(db, 0),
                     send_type: None,
                     return_type: None,
                 })
             }
             DbType::Class(c) if c.link == db.python_state.generator_link() => {
-                let cls = Class::from_generic_class(db, c);
+                let cls = c.class(db);
                 Some(GeneratorType {
                     yield_type: cls.nth_type_argument(db, 0),
                     send_type: Some(cls.nth_type_argument(db, 1)),
@@ -2239,7 +2238,7 @@ impl GeneratorType {
                 })
             }
             DbType::Class(c) if c.link == db.python_state.async_generator_link() => {
-                let cls = Class::from_generic_class(db, c);
+                let cls = c.class(db);
                 Some(GeneratorType {
                     yield_type: cls.nth_type_argument(db, 0),
                     send_type: Some(cls.nth_type_argument(db, 1)),

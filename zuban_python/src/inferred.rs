@@ -214,12 +214,12 @@ impl<'db: 'slf, 'slf> Inferred {
         mro_index: MroIndex,
     ) -> Class<'slf> {
         let instance_class = match instance {
-            DbType::Class(c) => Class::from_generic_class(i_s.db, c),
+            DbType::Class(c) => c.class(i_s.db),
             DbType::Type(t) => match t.as_ref() {
-                DbType::Class(c) => {
-                    let c = Class::from_generic_class(i_s.db, c);
-                    c.use_cached_class_infos(i_s.db).metaclass(i_s.db)
-                }
+                DbType::Class(c) => c
+                    .class(i_s.db)
+                    .use_cached_class_infos(i_s.db)
+                    .metaclass(i_s.db),
                 _ => unreachable!(),
             },
             _ => unreachable!(),
@@ -233,7 +233,7 @@ impl<'db: 'slf, 'slf> Inferred {
         match class_t {
             TypeOrClass::Class(class) => class,
             TypeOrClass::Type(t) => match t.expect_borrowed_db_type() {
-                DbType::Dataclass(d) => Class::from_generic_class(i_s.db, &d.class),
+                DbType::Dataclass(d) => d.class(i_s.db),
                 DbType::TypedDict(d) => todo!("is this even necessary?"),
                 _ => unreachable!(),
             },
@@ -956,7 +956,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     let DbType::Class(instance_cls) = &instance else {
                         todo!("Is this always the case?")
                     };
-                    let instance_cls = Class::from_generic_class(i_s.db, instance_cls);
+                    let instance_cls = instance_cls.class(i_s.db);
                     let result = infer_class_method(i_s, instance_cls, attribute_class, c);
                     if result.is_none() {
                         let func = prepare_func(i_s, c.defined_at, attribute_class);

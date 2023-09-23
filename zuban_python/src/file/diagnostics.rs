@@ -2,9 +2,9 @@ use parsa_python_ast::*;
 
 use crate::arguments::{CombinedArguments, KnownArguments, NoArguments};
 use crate::database::{
-    CallableContent, ClassType, ComplexPoint, Database, DbType, FunctionKind, Locality,
-    OverloadImplementation, Point, PointType, Specific, TupleTypeArguments, TypeOrTypeVarTuple,
-    Variance,
+    CallableContent, ClassType, ComplexPoint, Database, DbType, FunctionKind, GenericClass,
+    Locality, OverloadImplementation, Point, PointType, Specific, TupleTypeArguments,
+    TypeOrTypeVarTuple, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -874,8 +874,8 @@ impl<'db> Inference<'db, '_, '_> {
 }
 
 fn valid_raise_type(db: &Database, t: Type, allow_none: bool) -> bool {
-    let check = |generic_class| {
-        let cls = Class::from_generic_class(db, generic_class);
+    let check = |generic_class: &GenericClass| {
+        let cls = generic_class.class(db);
         cls.incomplete_mro(db)
             || cls.class_link_in_mro(db, db.python_state.base_exception_node_ref().as_link())
     };

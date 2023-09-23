@@ -819,6 +819,12 @@ pub struct GenericClass {
     pub generics: ClassGenerics,
 }
 
+impl GenericClass {
+    pub fn class<'a>(&'a self, db: &'a Database) -> Class<'a> {
+        Class::from_generic_class_components(db, self.link, &self.generics)
+    }
+}
+
 enum DbTypeIterator<T, Iter> {
     Single(T),
     Union(Iter),
@@ -979,7 +985,7 @@ impl DbType {
     }
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
         match self {
-            Self::Class(c) => Class::from_generic_class(format_data.db, c).format(format_data),
+            Self::Class(c) => c.class(format_data.db).format(format_data),
             Self::Union(union) => union.format(format_data),
             Self::FunctionOverload(callables) => match format_data.style {
                 FormatStyle::MypyRevealType => format!(
@@ -1029,9 +1035,7 @@ impl DbType {
             Self::ParamSpecKwargs(usage) => {
                 format!("{}.kwargs", usage.param_spec.name(format_data.db)).into()
             }
-            Self::Dataclass(d) => {
-                Class::from_generic_class(format_data.db, &d.class).format(format_data)
-            }
+            Self::Dataclass(d) => d.class(format_data.db).format(format_data),
             Self::TypedDict(d) => d.format(format_data).into(),
             Self::NamedTuple(nt) => {
                 use crate::type_helpers::NamedTupleValue;
@@ -2769,7 +2773,7 @@ impl Dataclass {
     }
 
     pub fn class<'a>(&'a self, db: &'a Database) -> Class<'a> {
-        Class::from_generic_class(db, &self.class)
+        self.class.class(db)
     }
 
     pub fn has_defined_generics(&self) -> bool {

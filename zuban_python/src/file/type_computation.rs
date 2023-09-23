@@ -737,7 +737,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             } => Some(DbType::new_class(class_link, generics)),
             TypeContent::DbType(d) => Some(d),
             TypeContent::Dataclass(d) => Some(DbType::Dataclass({
-                let class = Class::from_generic_class(db, &d.class);
+                let class = d.class(db);
                 if class.use_cached_type_vars(db).is_empty() {
                     d
                 } else {

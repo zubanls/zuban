@@ -80,7 +80,7 @@ impl<'a> Instance<'a> {
         inf.as_type(i_s).run_on_each_union_type(&mut |t| {
             match t.as_ref() {
                 DbType::Class(c) => {
-                    let descriptor = Class::from_generic_class(i_s.db, c);
+                    let descriptor = c.class(i_s.db);
                     if let Some(__set__) = Instance::new(descriptor, None)
                         .type_lookup(i_s, from, "__set__")
                         .into_maybe_inferred()
@@ -480,7 +480,7 @@ fn execute_super_internal<'db>(
         })
     };
     let success = |c: GenericClass, mro_index| {
-        if Class::from_generic_class(i_s.db, &c).incomplete_mro(i_s.db) {
+        if c.class(i_s.db).incomplete_mro(i_s.db) {
             debug!("super() with incomplete base class leads to any");
             return Ok(Inferred::new_any());
         }

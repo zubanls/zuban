@@ -112,7 +112,7 @@ impl<'a> Type<'a> {
     #[inline]
     pub fn maybe_class(&self, db: &'a Database) -> Option<Class<'_>> {
         match self.as_ref() {
-            DbType::Class(c) => Some(Class::from_generic_class(db, c)),
+            DbType::Class(c) => Some(c.class(db)),
             _ => None,
         }
     }
@@ -121,7 +121,7 @@ impl<'a> Type<'a> {
     pub fn maybe_type_of_class(&self, db: &'a Database) -> Option<Class<'_>> {
         if let DbType::Type(t) = self.as_ref() {
             if let DbType::Class(c) = t.as_ref() {
-                return Some(Class::from_generic_class(db, c));
+                return Some(c.class(db));
             }
         }
         None
@@ -141,7 +141,7 @@ impl<'a> Type<'a> {
                 let DbType::Class(c) = t else {
                     unreachable!();
                 };
-                Class::from_generic_class(db, c)
+                c.class(db)
             }
             Cow::Owned(DbType::Class(ref c)) => Class::from_position(
                 NodeRef::from_link(db, c.link),
@@ -164,11 +164,11 @@ impl<'a> Type<'a> {
             DbType::Callable(c) => Some(CallableLike::Callable(c.clone())),
             DbType::Type(t) => match t.as_ref() {
                 DbType::Class(c) => {
-                    let cls = Class::from_generic_class(i_s.db, c);
+                    let cls = c.class(i_s.db);
                     return cls.find_relevant_constructor(i_s).maybe_callable(i_s, cls);
                 }
                 DbType::Dataclass(d) => {
-                    let cls = Class::from_generic_class(i_s.db, &d.class);
+                    let cls = d.class(i_s.db);
                     if d.options.init {
                         let mut init = Dataclass::__init__(d, i_s.db).clone();
                         if d.class.generics != ClassGenerics::NotDefinedYet
@@ -206,7 +206,7 @@ impl<'a> Type<'a> {
                 i_s.db.python_state.any_callable.clone(),
             )),
             DbType::Class(c) => {
-                let cls = Class::from_generic_class(i_s.db, c);
+                let cls = c.class(i_s.db);
                 debug!("TODO this from is completely wrong and should never be used.");
                 let hack = cls.node_ref;
                 Instance::new(cls, None)
@@ -245,15 +245,10 @@ impl<'a> Type<'a> {
         }
 
         match self.as_ref() {
-            DbType::Class(c) => {
-                let class1 = Class::from_generic_class(i_s.db, c);
-                match other.as_ref() {
-                    DbType::Class(c) => {
-                        Self::overlaps_class(i_s, class1, Class::from_generic_class(i_s.db, c))
-                    }
-                    _ => false,
-                }
-            }
+            DbType::Class(c) => match other.as_ref() {
+                DbType::Class(c) => Self::overlaps_class(i_s, c.class(i_s.db), c.class(i_s.db)),
+                _ => false,
+            },
             DbType::Type(t1) => match other.as_ref() {
                 DbType::Type(t2) => Type::new(t1).overlaps(i_s, &Type::new(t2)),
                 _ => false,
@@ -316,7 +311,7 @@ impl<'a> Type<'a> {
             DbType::Class(c) => Self::matches_class_against_type(
                 i_s,
                 matcher,
-                &Class::from_generic_class(i_s.db, c),
+                &c.class(i_s.db),
                 value_type,
                 variance,
             ),
@@ -407,8 +402,8 @@ impl<'a> Type<'a> {
             },
             DbType::Dataclass(d1) => match value_type.as_ref() {
                 DbType::Dataclass(d2) => {
-                    let c1 = Class::from_generic_class(i_s.db, &d1.class);
-                    let c2 = Class::from_generic_class(i_s.db, &d2.class);
+                    let c1 = d1.class(i_s.db);
+                    let c2 = d2.class(i_s.db);
                     Self::matches_class(i_s, matcher, &c1, &c2, Variance::Covariant)
                 }
                 _ => Match::new_false(),
@@ -722,7 +717,7 @@ impl<'a> Type<'a> {
 
     fn mro<'db: 'x, 'x>(&'x self, db: &'db Database) -> MroIterator<'db, '_> {
         match self.as_ref() {
-            DbType::Class(c) => Class::from_generic_class(db, c).mro(db),
+            DbType::Class(c) => c.class(db).mro(db),
             DbType::Tuple(tup) => {
                 let tuple_class = db.python_state.tuple_class(db, tup);
                 MroIterator::new(
@@ -854,14 +849,12 @@ impl<'a> Type<'a> {
         variance: Variance,
     ) -> Match {
         match value_type.as_ref() {
-            DbType::Class(c) => {
-                let class2 = Class::from_generic_class(i_s.db, c);
-                Self::matches_class(i_s, matcher, class1, &class2, variance)
+            DbType::Class(c2) => {
+                Self::matches_class(i_s, matcher, class1, &c2.class(i_s.db), variance)
             }
             DbType::Type(t2) => {
-                if let DbType::Class(c) = t2.as_ref() {
-                    let class2 = Class::from_generic_class(i_s.db, c);
-                    match class2.use_cached_class_infos(i_s.db).metaclass {
+                if let DbType::Class(c2) = t2.as_ref() {
+                    match c2.class(i_s.db).use_cached_class_infos(i_s.db).metaclass {
                         MetaclassState::Some(link) => {
                             return Type::owned(class1.as_db_type(i_s.db)).matches(
                                 i_s,
@@ -1141,7 +1134,7 @@ impl<'a> Type<'a> {
         use TupleTypeArguments::*;
         match t.as_ref() {
             DbType::Class(c) => {
-                let class = Class::from_generic_class(i_s.db, c);
+                let class = c.class(i_s.db);
                 for (_, type_or_class) in self.mro(i_s.db) {
                     match type_or_class {
                         TypeOrClass::Class(value_class) => {
@@ -2042,7 +2035,7 @@ impl<'a> Type<'a> {
     ) -> Inferred {
         match self.as_ref() {
             DbType::Class(c) => {
-                let cls = Class::from_generic_class(i_s.db, c);
+                let cls = c.class(i_s.db);
                 Instance::new(cls, inferred_from).execute(i_s, args, result_context, on_type_error)
             }
             DbType::Type(cls) => {
@@ -2100,9 +2093,7 @@ impl<'a> Type<'a> {
             IteratorContent::Any
         };
         match self.as_ref() {
-            DbType::Class(c) => {
-                Instance::new(Class::from_generic_class(i_s.db, c), None).iter(i_s, from)
-            }
+            DbType::Class(c) => Instance::new(c.class(i_s.db), None).iter(i_s, from),
             DbType::Tuple(content) => Tuple::new(content).iter(i_s, from),
             DbType::NamedTuple(nt) => NamedTupleValue::new(i_s.db, nt).iter(i_s, from),
             DbType::Any | DbType::Never => IteratorContent::Any,
@@ -2132,10 +2123,7 @@ impl<'a> Type<'a> {
         callable: &mut impl FnMut(&InferenceState, &mut Matcher, &Class) -> bool,
     ) -> bool {
         match self.as_ref() {
-            DbType::Class(c) => {
-                let class = Class::from_generic_class(i_s.db, c);
-                callable(i_s, matcher, &class)
-            }
+            DbType::Class(c) => callable(i_s, matcher, &c.class(i_s.db)),
             DbType::Union(union_type) => union_type
                 .iter()
                 .any(|t| Type::new(t).on_any_class(i_s, matcher, callable)),
@@ -2277,7 +2265,7 @@ impl<'a> Type<'a> {
     pub fn check_duplicate_base_class(&self, db: &Database, other: &Self) -> Option<Box<str>> {
         match (self.as_ref(), other.as_ref()) {
             (DbType::Class(c1), DbType::Class(c2)) => {
-                (c1.link == c2.link).then(|| Box::from(Class::from_generic_class(db, c1).name()))
+                (c1.link == c2.link).then(|| Box::from(c1.class(db).name()))
             }
             (DbType::Type(_), DbType::Type(_)) => Some(Box::from("type")),
             (DbType::Tuple(_), DbType::Tuple(_)) => Some(Box::from("tuple")),
@@ -2332,13 +2320,10 @@ impl<'a> Type<'a> {
         callable: &mut impl FnMut(&Type, LookupResult),
     ) {
         match self.as_ref() {
-            DbType::Class(c) => {
-                let cls = Class::from_generic_class(i_s.db, c);
-                callable(
-                    self,
-                    Instance::new(cls, from_inferred).lookup(i_s, from, name, kind),
-                )
-            }
+            DbType::Class(c) => callable(
+                self,
+                Instance::new(c.class(i_s.db), from_inferred).lookup(i_s, from, name, kind),
+            ),
             DbType::Any => callable(self, LookupResult::any()),
             DbType::None => callable(
                 self,
@@ -2460,7 +2445,7 @@ impl<'a> Type<'a> {
                 )
             }
             DbType::Super { class, mro_index } => {
-                let instance = Instance::new(Class::from_generic_class(i_s.db, class), None);
+                let instance = Instance::new(class.class(i_s.db), None);
                 let result = instance
                     .lookup_and_maybe_ignore_super_count(
                         i_s,
@@ -2575,10 +2560,11 @@ impl<'a> Type<'a> {
         result_context: &mut ResultContext,
     ) -> Inferred {
         match self.as_ref() {
-            DbType::Class(c) => {
-                let cls = Class::from_generic_class(i_s.db, c);
-                Instance::new(cls, from_inferred).get_item(i_s, slice_type, result_context)
-            }
+            DbType::Class(c) => Instance::new(c.class(i_s.db), from_inferred).get_item(
+                i_s,
+                slice_type,
+                result_context,
+            ),
             DbType::Any => Inferred::new_any(),
             DbType::Tuple(tup) => Tuple::new(tup).get_item(i_s, slice_type, result_context),
             DbType::NamedTuple(nt) => {
@@ -2597,9 +2583,7 @@ impl<'a> Type<'a> {
                 TypeVarKind::Unrestricted => todo!(),
             },
             DbType::Type(t) => match t.as_ref() {
-                DbType::Class(c) => {
-                    Class::from_generic_class(i_s.db, c).get_item(i_s, slice_type, result_context)
-                }
+                DbType::Class(c) => c.class(i_s.db).get_item(i_s, slice_type, result_context),
                 DbType::Dataclass(d) => slice_type
                     .file
                     .inference(i_s)
@@ -2833,7 +2817,7 @@ fn iter_on_type(
 ) -> IteratorContent {
     match t {
         DbType::Class(c) => {
-            if let Some(result) = Class::from_generic_class(i_s.db, c).iter(i_s, from) {
+            if let Some(result) = c.class(i_s.db).iter(i_s, from) {
                 return result;
             }
         }
@@ -3259,9 +3243,9 @@ pub fn execute_type_of_type<'db>(
             });
             Inferred::from_type(tuple.clone())
         }
-        DbType::Class(c) => {
-            Class::from_generic_class(i_s.db, c).execute(i_s, args, result_context, on_type_error)
-        }
+        DbType::Class(c) => c
+            .class(i_s.db)
+            .execute(i_s, args, result_context, on_type_error),
         DbType::TypeVar(t) => match &t.type_var.kind {
             TypeVarKind::Bound(bound) => {
                 execute_type_of_type(i_s, args, result_context, on_type_error, bound);

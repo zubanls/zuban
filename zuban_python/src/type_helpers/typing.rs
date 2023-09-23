@@ -1,7 +1,7 @@
 use std::fmt;
 use std::rc::Rc;
 
-use super::{lookup_on_enum_class, Class, DataclassHelper};
+use super::{lookup_on_enum_class, DataclassHelper};
 use crate::arguments::{ArgumentKind, Arguments};
 use crate::database::{
     ComplexPoint, Database, DbType, FormatStyle, NewType, ParamSpec, PointLink, TypeVar,
@@ -64,9 +64,7 @@ impl<'a> TypingType<'a> {
                 TypeVarKind::Constraints(_) => todo!(),
                 TypeVarKind::Unrestricted => todo!(),
             },
-            DbType::Class(g) => {
-                Class::from_generic_class(i_s.db, g).lookup(i_s, node_ref, name, kind)
-            }
+            DbType::Class(g) => g.class(i_s.db).lookup(i_s, node_ref, name, kind),
             DbType::Literal(l) => i_s
                 .db
                 .python_state

@@ -2273,10 +2273,7 @@ fn instantiate_except_star(i_s: &InferenceState, t: &DbType) -> DbType {
 
 fn has_base_exception(db: &Database, t: &DbType) -> bool {
     match t {
-        DbType::Class(c) => {
-            let cls = Class::from_generic_class(db, c);
-            !cls.is_exception(db)
-        }
+        DbType::Class(c) => !c.class(db).is_exception(db),
         DbType::Union(u) => u.iter().any(|t| has_base_exception(db, t)),
         DbType::Any => false,
         // Gathering the exceptions already makes sure we do not end up with arbitrary types here.
@@ -2288,7 +2285,7 @@ fn gather_except_star(i_s: &InferenceState, t: &DbType) -> DbType {
     match t {
         DbType::Type(t) => match t.as_ref() {
             inner @ DbType::Class(c) => {
-                let cls = Class::from_generic_class(i_s.db, c);
+                let cls = c.class(i_s.db);
                 if cls.is_base_exception_group(i_s.db) {
                     // Diagnostics are calculated when calculating diagnostics, not here.
                     DbType::Any
@@ -2339,7 +2336,7 @@ fn get_generator_return_type(db: &Database, t: &DbType) -> DbType {
     match t {
         DbType::Class(c) => {
             if c.link == db.python_state.generator_link() {
-                Class::from_generic_class(db, c).nth_type_argument(db, 2)
+                c.class(db).nth_type_argument(db, 2)
             } else {
                 todo!("{t:?}")
             }
