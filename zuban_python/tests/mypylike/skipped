@@ -315,8 +315,6 @@ testNoCrashOnGenericUnionUnpacking
 testInferMultipleAnyUnionDifferentVariance
 # union tuple context inference
 testLiteralAndInstanceSubtyping
-# Tuple iter fixes
-testTupleBaseClass
 # union context inference
 testCrashOnComplexCheckWithNamedTupleNext
 testNoComplainFieldNone
