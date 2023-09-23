@@ -17,7 +17,6 @@ use crate::inference_state::InferenceState;
 use crate::inferred::UnionValue;
 use crate::matching::{FormatData, Matcher, MismatchReason, ResultContext, Type};
 use crate::node_ref::NodeRef;
-use crate::type_helpers::Class;
 use crate::{debug, new_class, Inferred};
 
 impl<'db> Inference<'db, '_, '_> {

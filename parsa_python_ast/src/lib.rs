@@ -614,6 +614,11 @@ impl<'db> Tuple<'db> {
     }
 }
 
+pub trait ClonableTupleIterator<'x>: Iterator<Item = StarLikeExpression<'x>> + Clone {}
+
+impl<'db> ClonableTupleIterator<'db> for StarLikeExpressionIterator<'db> {}
+impl<'db> ClonableTupleIterator<'db> for StarExpressionsIterator<'db> {}
+
 #[derive(Debug, Clone)]
 pub enum StarLikeExpressionIterator<'db> {
     Elements(StepBy<SiblingIterator<'db>>),
@@ -646,6 +651,7 @@ impl<'db> StarExpressionsTuple<'db> {
     }
 }
 
+#[derive(Clone)]
 pub struct StarExpressionsIterator<'db>(StepBy<SiblingIterator<'db>>);
 
 impl<'db> Iterator for StarExpressionsIterator<'db> {

@@ -1,8 +1,8 @@
 use std::fmt;
 
 use super::{Matcher, Type};
-use crate::database::DbType;
-use crate::InferenceState;
+use crate::database::{DbType, TupleTypeArguments, TypeOrTypeVarTuple};
+use crate::{debug, InferenceState};
 
 pub enum ResultContext<'a, 'b> {
     Known(&'a Type<'a>),
@@ -92,6 +92,37 @@ impl<'a> ResultContext<'a, '_> {
         })
         .unwrap_or_else(|| !matches!(self, Self::ExpectUnused | Self::RevealType))
     }
+
+    pub fn with_tuple_context_iterator<T>(
+        &mut self,
+        i_s: &InferenceState,
+        mut callable: impl FnMut(TupleContextIterator) -> T,
+    ) -> T {
+        self.with_type_if_exists_and_replace_type_var_likes(i_s, |i_s: &InferenceState, type_| {
+            match type_.as_ref() {
+                DbType::Tuple(tup) => tup.args.as_ref().map(|args| match args {
+                    TupleTypeArguments::FixedLength(ts) => {
+                        callable(TupleContextIterator::FixedLength(&ts))
+                    }
+                    TupleTypeArguments::ArbitraryLength(t) => {
+                        callable(TupleContextIterator::ArbitraryLength(Type::new(&t)))
+                    }
+                }),
+                DbType::Union(items) => {
+                    debug!("TODO union tuple inference context ignored");
+                    None
+                }
+                _ => None,
+            }
+        })
+        .flatten()
+        .unwrap_or_else(|| {
+            callable(match self {
+                Self::ExpectLiteral | Self::RevealType => TupleContextIterator::ExpectLiterals,
+                _ => TupleContextIterator::Unknown,
+            })
+        })
+    }
 }
 
 impl fmt::Debug for ResultContext<'_, '_> {
@@ -105,5 +136,25 @@ impl fmt::Debug for ResultContext<'_, '_> {
             Self::RevealType => write!(f, "RevealType"),
             Self::AssignmentNewDefinition => write!(f, "AssignmentNewDefinition"),
         }
+    }
+}
+
+pub enum TupleContextIterator<'a> {
+    ArbitraryLength(Type<'a>),
+    FixedLength(&'a [TypeOrTypeVarTuple]),
+    ExpectLiterals,
+    Unknown,
+}
+
+impl<'a> Iterator for TupleContextIterator<'a> {
+    type Item = ResultContext<'a, 'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        Some(match self {
+            Self::ArbitraryLength(t) => ResultContext::Unknown,
+            Self::FixedLength(items) => ResultContext::Unknown,
+            Self::ExpectLiterals => ResultContext::ExpectLiteral,
+            Self::Unknown => ResultContext::Unknown,
+        })
     }
 }

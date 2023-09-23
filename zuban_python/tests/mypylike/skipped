@@ -296,10 +296,6 @@ testTupleContextFromIterable
 testComplexTypeInferenceWithTuple
 testInferenceWithTypeVariableTwiceInReturnType
 testInferenceWithTypeVariableTwiceInReturnTypeAndMultipleVariables
-testLiteralFinalErasureInMutableDatastructures1
-testLiteralFinalGoesOnlyOneLevelDown
-testLiteralAndInstanceSubtyping
-class_generics_recursion
 # bottom up tuple inference
 testLiteralInferredInTupleContext
 # bottom up inference for tuple with *args
@@ -320,6 +316,8 @@ testNestedProtocolGenericUnionsDeep
 # union dict context inference
 testNoCrashOnGenericUnionUnpacking
 testInferMultipleAnyUnionDifferentVariance
+# union tuple context inference
+testLiteralAndInstanceSubtyping
 # Tuple iter fixes
 testTupleBaseClass
 # union context inference

@@ -1057,7 +1057,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 Inferred::new_any()
             }
             StarExpressionContent::Tuple(tuple) => self
-                .infer_tuple_iterator(tuple.iter())
+                .infer_tuple_iterator(tuple.iter(), result_context)
                 .save_redirect(self.i_s, self.file, tuple.index()),
         }
     }
@@ -1703,11 +1703,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 return self.infer_comprehension(comp.unpack(), ComprehensionKind::SetOrDict)
             }
             Tuple(tuple) => {
-                return self.infer_tuple_iterator(tuple.iter()).save_redirect(
-                    self.i_s,
-                    self.file,
-                    atom.index(),
-                )
+                return self
+                    .infer_tuple_iterator(tuple.iter(), result_context)
+                    .save_redirect(self.i_s, self.file, atom.index())
             }
             GeneratorComprehension(comp) => {
                 return self.infer_comprehension(comp.unpack(), ComprehensionKind::Generator)
@@ -1723,34 +1721,44 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
     fn infer_tuple_iterator<'x>(
         &mut self,
-        iterator: impl Iterator<Item = StarLikeExpression<'x>>,
+        iterator: impl ClonableTupleIterator<'x>,
+        result_context: &mut ResultContext,
     ) -> Inferred {
         let mut generics = vec![];
-        for e in iterator {
-            match e {
-                StarLikeExpression::NamedExpression(e) => generics.push(TypeOrTypeVarTuple::Type(
-                    self.infer_named_expression(e).as_db_type(self.i_s),
-                )),
-                StarLikeExpression::Expression(e) => generics.push(TypeOrTypeVarTuple::Type(
-                    self.infer_expression(e).as_db_type(self.i_s),
-                )),
-                StarLikeExpression::StarNamedExpression(e) => {
-                    let inferred = self
-                        .infer_expression_part(e.expression_part(), &mut ResultContext::Unknown);
-                    let mut iterator = inferred.iter(self.i_s, NodeRef::new(self.file, e.index()));
-                    if iterator.len().is_some() {
-                        while let Some(inf) = iterator.next(self.i_s) {
-                            generics.push(TypeOrTypeVarTuple::Type(inf.as_db_type(self.i_s)))
+        result_context.with_tuple_context_iterator(self.i_s, |tuple_context_iterator| {
+            for (e, mut result_context) in iterator.clone().zip(tuple_context_iterator) {
+                match e {
+                    StarLikeExpression::NamedExpression(e) => {
+                        generics.push(TypeOrTypeVarTuple::Type(
+                            self.infer_named_expression_with_context(e, &mut result_context)
+                                .as_db_type(self.i_s),
+                        ))
+                    }
+                    StarLikeExpression::Expression(e) => generics.push(TypeOrTypeVarTuple::Type(
+                        self.infer_expression_with_context(e, &mut result_context)
+                            .as_db_type(self.i_s),
+                    )),
+                    StarLikeExpression::StarNamedExpression(e) => {
+                        let inferred = self.infer_expression_part(
+                            e.expression_part(),
+                            &mut ResultContext::Unknown,
+                        );
+                        let mut iterator =
+                            inferred.iter(self.i_s, NodeRef::new(self.file, e.index()));
+                        if iterator.len().is_some() {
+                            while let Some(inf) = iterator.next(self.i_s) {
+                                generics.push(TypeOrTypeVarTuple::Type(inf.as_db_type(self.i_s)))
+                            }
+                        } else {
+                            todo!()
                         }
-                    } else {
+                    }
+                    StarLikeExpression::StarExpression(e) => {
                         todo!()
                     }
                 }
-                StarLikeExpression::StarExpression(e) => {
-                    todo!()
-                }
             }
-        }
+        });
         let content = TupleContent::new_fixed_length(generics.into());
         debug!(
             "Inferred: {}",
