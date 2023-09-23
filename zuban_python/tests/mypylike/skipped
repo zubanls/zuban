@@ -1,4 +1,5 @@
 # Next up
+testUnionOrSyntaxWithTypeAliasWorking
 testCachedProperty
 testTypedDictGetMethodInvalidArgs
 
@@ -135,9 +136,6 @@ testRecursiveAliasImported
 testRecursiveDoubleUnionNoCrash
 testNoRecursiveExpandInstanceUnionCrashGeneric
 testNoRecursiveExpandInstanceUnionCrashInference
-
-# Implement bitwise or
-testUnionOrSyntaxWithTypeAliasWorking
 
 # Callable formatting varargs
 testUnionOfSimilarCallablesCrash
@@ -301,9 +299,6 @@ testCallerVarargsAndComplexTypeInference
 testStarUnpackNestedUnderscore
 # bottom up inference list multiply
 testListMultiplyInContext
-
-# context inference from class statement
-testSetDescriptorOnClass
 
 # union list context inference
 testUnpackingUnionOfListsInFunction
@@ -1375,7 +1370,7 @@ testUseSupertypeAsInferenceContextConflict
 testLiteralSubtypeContext
 testLiteralSubtypeContextNested
 testLiteralSubtypeContextGeneric
-# Liskov context inference for list
+testSetDescriptorOnClass
 testListObject
 
 # keyword params do not matter, only order
