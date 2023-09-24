@@ -284,7 +284,6 @@ testMetaclassMemberAccessViaType3
 
 # Bound not respected
 testLiteralAndGenericsRespectsUpperBound
-testWideOuterContextEmptyError
 # Value of type variable "P" of "new_pro" cannot be "U"
 testTypeUsingTypeCTwoTypeVars
 testOverloadedCallWithVariableTypes

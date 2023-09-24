@@ -451,12 +451,20 @@ fn check_list_with_context<'db>(
     file: &PythonFile,
     list: List,
 ) -> Option<DbType> {
+    let iterator = list.unpack();
+    if matches!(iterator, StarLikeExpressionIterator::Empty) {
+        return Some(new_class!(
+            i_s.db.python_state.list_node_ref().as_link(),
+            matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, &generic_t),
+        ));
+    }
+
     let mut new_result_context = ResultContext::Known(&generic_t);
 
     // Since it's a list, now check all the entries if they match the given
     // result generic;
     let mut found: Option<DbType> = None;
-    for (item, element) in list.unpack().enumerate() {
+    for (item, element) in iterator.enumerate() {
         let mut check_item = |i_s: &InferenceState<'db, '_>, inferred: Inferred, index| {
             let m = generic_t.error_if_not_matches_with_matcher(
                 i_s,

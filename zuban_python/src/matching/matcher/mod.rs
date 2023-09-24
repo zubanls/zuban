@@ -564,6 +564,18 @@ impl<'a> Matcher<'a> {
     }
 
     pub fn replace_type_var_likes_for_nested_context(&self, db: &Database, t: &DbType) -> DbType {
+        self.replace_type_var_likes(db, t, false)
+    }
+
+    pub fn replace_type_var_likes_for_unknown_type_vars(
+        &self,
+        db: &Database,
+        t: &DbType,
+    ) -> DbType {
+        self.replace_type_var_likes(db, t, true)
+    }
+
+    fn replace_type_var_likes(&self, db: &Database, t: &DbType, never_for_unbound: bool) -> DbType {
         Type::new(t).replace_type_var_likes(db, &mut |type_var_like_usage| {
             if let Some(type_var_matcher) = self.type_var_matcher.as_ref() {
                 if type_var_like_usage.in_definition() == type_var_matcher.match_in_definition {
@@ -579,7 +591,13 @@ impl<'a> Matcher<'a> {
                         }
                         // Any is just ignored by the context later.
                         BoundKind::Uncalculated => {
-                            type_var_like_usage.as_type_var_like().as_any_generic_item()
+                            if never_for_unbound {
+                                type_var_like_usage
+                                    .as_type_var_like()
+                                    .as_never_generic_item()
+                            } else {
+                                type_var_like_usage.as_type_var_like().as_any_generic_item()
+                            }
                         }
                     };
                 }

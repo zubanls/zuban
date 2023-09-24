@@ -2370,6 +2370,16 @@ impl TypeVarLike {
             }
         }
     }
+
+    pub fn as_never_generic_item(&self) -> GenericItem {
+        match self {
+            TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(DbType::Never),
+            TypeVarLike::TypeVarTuple(_) => {
+                GenericItem::TypeArguments(TypeArguments::new_arbitrary_length(DbType::Never))
+            }
+            TypeVarLike::ParamSpec(_) => todo!(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
