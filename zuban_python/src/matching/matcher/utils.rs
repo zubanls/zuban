@@ -250,7 +250,8 @@ fn add_generics_from_result_context_class(
                     let TypeVarLike::TypeVar(type_var) = type_var_like else {
                         unreachable!();
                     };
-                    let bound = TypeVarBound::new(g.as_db_type(), type_var.variance.invert());
+                    let bound =
+                        TypeVarBound::new(g.as_db_type(), type_var.variance.invert(), type_var);
                     calculated.type_ = BoundKind::TypeVar(bound);
                     calculated.defined_by_result_context = true;
                 }

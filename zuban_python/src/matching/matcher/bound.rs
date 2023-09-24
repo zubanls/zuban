@@ -1,5 +1,5 @@
 use super::super::{FormatData, Match, Type};
-use crate::database::{Database, DbType, FormatStyle, Variance};
+use crate::database::{Database, DbType, FormatStyle, TypeVar, TypeVarKind, Variance};
 use crate::inference_state::InferenceState;
 
 #[derive(Debug, Clone)]
@@ -11,10 +11,13 @@ pub enum TypeVarBound {
 }
 
 impl TypeVarBound {
-    pub fn new(t: DbType, variance: Variance) -> Self {
+    pub fn new(t: DbType, variance: Variance, type_var: &TypeVar) -> Self {
         match variance {
             Variance::Invariant => Self::Invariant(t),
-            Variance::Covariant => Self::Upper(t),
+            Variance::Covariant => match &type_var.kind {
+                TypeVarKind::Bound(bound) => Self::LowerAndUpper(bound.clone(), t),
+                _ => Self::Upper(t),
+            },
             Variance::Contravariant => Self::Lower(t),
         }
     }

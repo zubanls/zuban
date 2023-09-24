@@ -291,6 +291,10 @@ pub fn check_constraints(
             similar: false,
         })
     } else {
-        Ok(TypeVarBound::new(value_type.as_db_type(), variance))
+        Ok(TypeVarBound::new(
+            value_type.as_db_type(),
+            variance,
+            type_var,
+        ))
     }
 }
