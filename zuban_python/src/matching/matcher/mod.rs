@@ -18,8 +18,9 @@ use crate::arguments::{Argument, ArgumentKind};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, Database, DbType, GenericItem, GenericsList,
     ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamSpecific, PointLink,
-    StarredParamSpecific, TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple, TypeVarLikeUsage,
-    TypeVarLikes, TypeVarUsage, TypedDict, TypedDictGenerics, Variance,
+    StarredParamSpecific, TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple, TypeVarKind,
+    TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, TypedDict, TypedDictGenerics,
+    Variance,
 };
 use crate::debug;
 use crate::inference_state::InferenceState;
@@ -596,6 +597,13 @@ impl<'a> Matcher<'a> {
                                     .as_type_var_like()
                                     .as_never_generic_item()
                             } else {
+                                if let TypeVarLike::TypeVar(tv) =
+                                    type_var_like_usage.as_type_var_like()
+                                {
+                                    if let TypeVarKind::Bound(bound) = &tv.kind {
+                                        return GenericItem::TypeArgument(bound.clone());
+                                    }
+                                }
                                 type_var_like_usage.as_type_var_like().as_any_generic_item()
                             }
                         }
