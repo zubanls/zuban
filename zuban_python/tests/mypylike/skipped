@@ -282,8 +282,6 @@ testOverlappingClassCallables
 testTypeEquivalentTypeAnyEdgeCase
 testMetaclassMemberAccessViaType3
 
-# Bound not respected
-testLiteralAndGenericsRespectsUpperBound
 # Value of type variable "P" of "new_pro" cannot be "U"
 testTypeUsingTypeCTwoTypeVars
 testOverloadedCallWithVariableTypes

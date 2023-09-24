@@ -340,7 +340,7 @@ impl<'a> Matcher<'a> {
             let calc = &mut tv_matcher.calculated_type_vars[p1.index.as_usize()];
             match &mut calc.type_ {
                 BoundKind::ParamSpecArgument(p) => match_params(i_s, matches, p, p2_pre_iterator),
-                BoundKind::Uncalculated => {
+                BoundKind::Uncalculated { .. } => {
                     calc.type_ = BoundKind::ParamSpecArgument(ParamSpecArgument::new(
                         CallableParams::WithParamSpec(
                             p2_pre_iterator.cloned().collect(),
@@ -417,7 +417,7 @@ impl<'a> Matcher<'a> {
                 BoundKind::ParamSpecArgument(p) => {
                     match_params(i_s, matches, &p.params, params2_iterator)
                 }
-                BoundKind::Uncalculated => {
+                BoundKind::Uncalculated { .. } => {
                     calc.type_ = BoundKind::ParamSpecArgument(ParamSpecArgument::new(
                         CallableParams::Simple(params2_iterator.cloned().collect()),
                         type_vars2.map(|type_vars| ParamSpecTypeVars {
@@ -449,7 +449,7 @@ impl<'a> Matcher<'a> {
                 match &type_var_matcher.calculated_type_vars[usage.index.as_usize()].type_ {
                     BoundKind::ParamSpecArgument(p) => Cow::Borrowed(p),
                     // This means that an Any came along.
-                    BoundKind::Uncalculated => return SignatureMatch::new_true(),
+                    BoundKind::Uncalculated { .. } => return SignatureMatch::new_true(),
                     BoundKind::TypeVar(_) | BoundKind::TypeVarTuple(_) => unreachable!(),
                 }
             } else {
@@ -533,7 +533,7 @@ impl<'a> Matcher<'a> {
                     BoundKind::TypeVar(bound) => bound.format(format_data.db, format_data.style),
                     BoundKind::TypeVarTuple(ts) => ts.format(format_data),
                     BoundKind::ParamSpecArgument(p) => p.params.format(format_data, params_style),
-                    BoundKind::Uncalculated => DbType::Never.format(format_data),
+                    BoundKind::Uncalculated { .. } => DbType::Never.format(format_data),
                 };
             }
         }
@@ -591,7 +591,7 @@ impl<'a> Matcher<'a> {
                             GenericItem::ParamSpecArgument(param_spec.clone())
                         }
                         // Any is just ignored by the context later.
-                        BoundKind::Uncalculated => {
+                        BoundKind::Uncalculated { .. } => {
                             if never_for_unbound {
                                 type_var_like_usage
                                     .as_type_var_like()

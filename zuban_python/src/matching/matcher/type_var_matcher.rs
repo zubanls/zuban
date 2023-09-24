@@ -87,12 +87,12 @@ pub enum BoundKind {
     TypeVar(TypeVarBound),
     TypeVarTuple(TypeArguments),
     ParamSpecArgument(ParamSpecArgument),
-    Uncalculated,
+    Uncalculated { fallback: Option<DbType> },
 }
 
 impl Default for BoundKind {
     fn default() -> Self {
-        Self::Uncalculated
+        Self::Uncalculated { fallback: None }
     }
 }
 
@@ -104,7 +104,7 @@ pub struct CalculatedTypeVarLike {
 
 impl CalculatedTypeVarLike {
     pub fn calculated(&self) -> bool {
-        !matches!(self.type_, BoundKind::Uncalculated)
+        !matches!(self.type_, BoundKind::Uncalculated { .. })
     }
 
     pub fn merge_fixed_length_type_var_tuple<'x, I: Iterator<Item = &'x TypeOrTypeVarTuple>>(
@@ -126,22 +126,28 @@ impl CalculatedTypeVarLike {
             BoundKind::TypeVar(t) => GenericItem::TypeArgument(t.into_db_type(db)),
             BoundKind::TypeVarTuple(ts) => GenericItem::TypeArguments(ts),
             BoundKind::ParamSpecArgument(params) => GenericItem::ParamSpecArgument(params),
-            BoundKind::Uncalculated => match type_var_like {
-                TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(DbType::Never),
-                // TODO TypeVarTuple: this feels wrong, should maybe be never?
-                TypeVarLike::TypeVarTuple(_) => {
-                    GenericItem::TypeArguments(TypeArguments::new_fixed_length(Rc::new([])))
+            BoundKind::Uncalculated { fallback } => {
+                if let Some(fallback) = fallback {
+                    GenericItem::TypeArgument(fallback)
+                } else {
+                    match type_var_like {
+                        TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(DbType::Never),
+                        // TODO TypeVarTuple: this feels wrong, should maybe be never?
+                        TypeVarLike::TypeVarTuple(_) => {
+                            GenericItem::TypeArguments(TypeArguments::new_fixed_length(Rc::new([])))
+                        }
+                        // TODO ParamSpec: this feels wrong, should maybe be never?
+                        TypeVarLike::ParamSpec(_) => {
+                            GenericItem::ParamSpecArgument(ParamSpecArgument::new_any())
+                        }
+                    }
                 }
-                // TODO ParamSpec: this feels wrong, should maybe be never?
-                TypeVarLike::ParamSpec(_) => {
-                    GenericItem::ParamSpecArgument(ParamSpecArgument::new_any())
-                }
-            },
+            }
         }
     }
 
     pub fn update_uncalculated_with_generic_invariant(&mut self, db: &Database, g: Generic) {
-        debug_assert!(matches!(self.type_, BoundKind::Uncalculated));
+        debug_assert!(matches!(self.type_, BoundKind::Uncalculated { .. }));
         self.type_ = match g {
             Generic::TypeArgument(t) => {
                 BoundKind::TypeVar(TypeVarBound::Invariant(t.into_db_type()))
@@ -210,7 +216,7 @@ impl TypeVarMatcher {
                 current.defined_by_result_context = false;
                 // TODO add a test where this would fail, because there's a result context that was
                 // also already used by a non-result context.
-                current.type_ = BoundKind::Uncalculated;
+                current.type_ = BoundKind::Uncalculated { fallback: None };
             } else {
                 return m;
             }
@@ -226,7 +232,12 @@ impl TypeVarMatcher {
                     Match::new_true()
                 }
             }
-            Err(m) => return m,
+            Err(m) => {
+                current.type_ = BoundKind::Uncalculated {
+                    fallback: Some(value_type.as_db_type()),
+                };
+                m
+            }
         }
     }
 }

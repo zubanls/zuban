@@ -331,10 +331,14 @@ fn calculate_type_vars<'db: 'a, 'a>(
                             }
                             CallableParams::Any => true,
                         },
-                        BoundKind::Uncalculated => continue,
+                        BoundKind::Uncalculated { .. } => {
+                            // Make sure that the fallback is never used from a context.
+                            calculated.type_ = BoundKind::Uncalculated { fallback: None };
+                            continue;
+                        }
                     };
                     if has_any {
-                        calculated.type_ = BoundKind::Uncalculated
+                        calculated.type_ = BoundKind::Uncalculated { fallback: None }
                     } else {
                         calculated.defined_by_result_context = true;
                     }
