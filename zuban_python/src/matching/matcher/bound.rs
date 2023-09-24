@@ -36,7 +36,7 @@ impl TypeVarBound {
             {
                 db.python_state.literal_db_type(&l.kind)
             }
-            Self::Invariant(t) | Self::Lower(t) | Self::Upper(t) | Self::LowerAndUpper(t, _) => t,
+            Self::Invariant(t) | Self::Lower(t) | Self::Upper(t) | Self::LowerAndUpper(_, t) => t,
         }
     }
 

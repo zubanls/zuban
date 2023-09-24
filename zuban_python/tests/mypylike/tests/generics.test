@@ -327,8 +327,8 @@ reveal_type(f(b_contra, a_contra)) # N: Revealed type is "builtins.list[__main__
 reveal_type(f(a_co, a_contra)) # N: Revealed type is "builtins.list[__main__.A]"
 reveal_type(f(a_co, b_contra)) # N: Revealed type is "builtins.list[__main__.A]" \
                                # E: Argument 2 to "f" has incompatible type "Contra[B]"; expected "Co[A] | Contra[A] | Invariant[A]"
-reveal_type(f(b_co, a_contra)) # N: Revealed type is "builtins.list[__main__.A]"
-reveal_type(f(a_contra, b_co)) # N: Revealed type is "builtins.list[__main__.A]"
+reveal_type(f(b_co, a_contra)) # N: Revealed type is "builtins.list[__main__.B]"
+reveal_type(f(a_contra, b_co)) # N: Revealed type is "builtins.list[__main__.B]"
 reveal_type(f(b_contra, a_co)) # N: Revealed type is "builtins.list[__main__.B]" \
                                # E: Argument 2 to "f" has incompatible type "Co[A]"; expected "Co[B] | Contra[B] | Invariant[B]"
 reveal_type(f(a_co, b_contra)) # N: Revealed type is "builtins.list[__main__.A]" \
