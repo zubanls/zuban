@@ -592,22 +592,22 @@ impl<'a> Matcher<'a> {
                         .into_generic_item(db);
                 }
             }
-            let func_class = self.func_or_callable.as_ref().unwrap().class().unwrap();
-            if type_var_like_usage.in_definition() == func_class.node_ref.as_link() {
-                let g = func_class
-                    .generics()
-                    .nth_usage(db, &type_var_like_usage)
-                    .into_generic_item(db);
-                match g {
-                    GenericItem::TypeArgument(t) => GenericItem::TypeArgument(
-                        self.replace_type_var_likes_for_nested_context(db, &t),
-                    ),
-                    GenericItem::TypeArguments(_) => todo!(),
-                    GenericItem::ParamSpecArgument(_) => todo!(),
+            if let Some(func_class) = self.func_or_callable.as_ref().and_then(|f| f.class()) {
+                if type_var_like_usage.in_definition() == func_class.node_ref.as_link() {
+                    let g = func_class
+                        .generics()
+                        .nth_usage(db, &type_var_like_usage)
+                        .into_generic_item(db);
+                    return match g {
+                        GenericItem::TypeArgument(t) => GenericItem::TypeArgument(
+                            self.replace_type_var_likes_for_nested_context(db, &t),
+                        ),
+                        GenericItem::TypeArguments(_) => todo!(),
+                        GenericItem::ParamSpecArgument(_) => todo!(),
+                    };
                 }
-            } else {
-                type_var_like_usage.into_generic_item()
             }
+            type_var_like_usage.into_generic_item()
         })
     }
 
