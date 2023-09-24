@@ -247,14 +247,10 @@ fn add_generics_from_result_context_class(
         match g {
             Generic::TypeArgument(g) => {
                 if !g.is_any() {
-                    let mut bound = TypeVarBound::new(
-                        g.as_db_type(),
-                        match type_var_like {
-                            TypeVarLike::TypeVar(t) => t.variance,
-                            _ => unreachable!(),
-                        },
-                    );
-                    bound.invert_bounds();
+                    let TypeVarLike::TypeVar(type_var) = type_var_like else {
+                        unreachable!();
+                    };
+                    let bound = TypeVarBound::new(g.as_db_type(), type_var.variance.invert());
                     calculated.type_ = BoundKind::TypeVar(bound);
                     calculated.defined_by_result_context = true;
                 }

@@ -19,15 +19,6 @@ impl TypeVarBound {
         }
     }
 
-    pub fn invert_bounds(&mut self) {
-        match std::mem::replace(self, Self::Invariant(DbType::Any)) {
-            Self::Invariant(t) => *self = Self::Invariant(t),
-            Self::Upper(t) => *self = Self::Lower(t),
-            Self::Lower(t) => *self = Self::Upper(t),
-            Self::LowerAndUpper(_, _) => unreachable!(),
-        }
-    }
-
     pub fn format(&self, db: &Database, style: FormatStyle) -> Box<str> {
         match self {
             Self::Invariant(t) | Self::Lower(t) | Self::Upper(t) | Self::LowerAndUpper(t, _) => {
