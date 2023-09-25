@@ -338,7 +338,6 @@ testGenericTypeAliasesWrongAliases
 # Type variable "__main__.T" is unbound
 # (Hint: Use "Generic[T]" or "Protocol[T]" base class to bind "T" inside a class)
 # (Hint: Use "T" in function signature to bind "T" inside a function)
-testGenericTypeAliasesRuntimeExpressionsInstance
 testNestedGenericFunctionTypeApplication
 # An unbound ParamSpec in type application
 testParamSpecAliasNested

@@ -328,15 +328,22 @@ macro_rules! compute_type_application {
                 Inferred::from_type(DbType::Type(Rc::new(DbType::new_class(class_link, generics))))
             }
             TypeContent::DbType(mut db_type) => {
-                let type_vars = tcomp.into_type_vars(|inf, recalculate_type_vars| {
+                let type_var_likes = tcomp.into_type_vars(|inf, recalculate_type_vars| {
                     db_type = recalculate_type_vars(&db_type);
                 });
-                if type_vars.len() > 0 {
+                if type_var_likes.len() > 0 {
                     if !$from_alias_definition {
-                        todo!("{type_vars:?}")
+                        for type_var_like in type_var_likes.iter() {
+                            $slice_type.as_node_ref().add_issue(
+                                $self.i_s,
+                                IssueType::UnboundTypeVarLike {
+                                    type_var_like: type_var_like.clone(),
+                                },
+                            );
+                        }
                     }
                     Inferred::new_unsaved_complex(ComplexPoint::TypeAlias(Box::new(TypeAlias::new_valid(
-                        type_vars,
+                        type_var_likes,
                         $slice_type.as_node_ref().as_link(),
                         None,
                         Rc::new(db_type),
