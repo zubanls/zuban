@@ -365,8 +365,6 @@ testParamSpecInvalidCalls
 # ParamSpec is not unbound if working like a T in Callable?
 testTrivialParametersHandledCorrectly
 
-# Callable type alias definition
-testGenericTypeAliasesRuntimeExpressionsOther
 # "Self type cannot be used in type alias target"
 testTypingSelfNonAnnotationUses
 # Weird alias applications

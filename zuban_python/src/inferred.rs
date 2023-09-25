@@ -1608,7 +1608,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     .execute(i_s, args, result_context, on_type_error)
                             }
                             ComplexPoint::TypeAlias(alias) => {
-                                if alias.application_allowed() {
+                                if alias.application_allowed(false) {
                                     return Inferred::from_type(
                                         alias.as_db_type_and_set_type_vars_any(i_s.db),
                                     );

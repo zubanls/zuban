@@ -2641,7 +2641,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         slice_type: SliceType,
         from_alias_definition: bool,
     ) -> Inferred {
-        if !alias.application_allowed() {
+        if !alias.application_allowed(from_alias_definition) {
             slice_type
                 .as_node_ref()
                 .add_issue(self.i_s, IssueType::OnlyClassTypeApplication);
