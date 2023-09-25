@@ -146,8 +146,6 @@ testAcceptContravariantArgument
 # Union of empty lists dicts sets with used ones
 testUnificationEmptyListLeft
 testUnificationEmptyListRight
-testUnificationEmptyListLeftInContext
-testUnificationEmptyListRightInContext
 testUnificationEmptySetLeft
 testUnificationEmptyDictLeft
 testUnificationEmptyDictRight
