@@ -90,24 +90,14 @@ testReverseOperatorOrderingCase7
 testReverseOperatorWithOverloads2
 testFlattenTypeAliasWhenAliasedAsUnion
 testOperatorDoubleUnionStandardSubtyping
-# "Signatures of "__radd__" of "Fraction" and "__add__" of "T" are unsafely overlapping"
-testReverseOperatorOrderingCase3
-testReverseOperatorWithOverloads1
-testDivReverseOperator
-testReverseOperatorTypeVar1
-testReverseOperatorTypeVar2a
-testReverseOperatorTypeVar2b
-testReverseOperatorTypeVar3
-testReverseOperatorTypeType
-testUnsafeOverlappingWithOperatorMethodsAndOverloading2
-testUnsafeOverlappingWithLineNo
-testReverseComparisonOperator
-testUnsafeOverlappingNamedTuple
-testOverlappingOperatorMethods
 # "Forward operator "__add__" is not callable"
 testReverseOperatorMethodForwardIsAny3
 # Formatting?
 testMiscBinaryOperators
+# __setitem__/__iadd__: b[0] += 1
+testInplaceSetitem
+# inplace operator methods
+testInplaceOperatorMethods
 # functools.total_ordering
 testTotalOrderingEqLt
 testTotalOrderingLambda
@@ -1461,6 +1451,20 @@ testGenericOperatorMethodOverlapping
 testGenericOperatorMethodOverlapping2
 testOverlappingNormalAndInplaceOperatorMethod
 testOverloadedNormalAndInplaceOperatorMethod
+# "Signatures of "__radd__" of "Fraction" and "__add__" of "T" are unsafely overlapping"
+testReverseOperatorOrderingCase3
+testReverseOperatorWithOverloads1
+testDivReverseOperator
+testReverseOperatorTypeVar1
+testReverseOperatorTypeVar2a
+testReverseOperatorTypeVar2b
+testReverseOperatorTypeVar3
+testReverseOperatorTypeType
+testUnsafeOverlappingWithOperatorMethodsAndOverloading2
+testUnsafeOverlappingWithLineNo
+testReverseComparisonOperator
+testUnsafeOverlappingNamedTuple
+testOverlappingOperatorMethods
 #  Incompatible types in assignment (expression has type "int", base class "BaseS" defined the type as "str")
 testTypingSelfOverrideVarMulti
 testOverrideMethodWithAttribute
@@ -1700,14 +1704,6 @@ testRecursiveAliasTopUnion
 # namedtuple recursive joins
 testMutuallyRecursiveNamedTuplesJoin
 testCrashInJoinOfSelfRecursiveNamedTuples
-
-# __setitem__
-testMisguidedSetItem
-# b[0] += 1
-testInplaceSetitem
-
-# inplace operator methods
-testInplaceOperatorMethods
 
 # List/Set/Dict/Tuple Inferring type of variable when initialized to an empty collection
 testInferListInitialized*
