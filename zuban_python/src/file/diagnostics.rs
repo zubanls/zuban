@@ -96,7 +96,8 @@ impl<'db> Inference<'db, '_, '_> {
 
     fn check_valid_raise_type(&mut self, expr: Expression, allow_none: bool) {
         if !valid_raise_type(
-            self.i_s.db,
+            self.i_s,
+            NodeRef::new(self.file, expr.index()),
             self.infer_expression(expr).as_type(self.i_s),
             allow_none,
         ) {
@@ -873,23 +874,36 @@ impl<'db> Inference<'db, '_, '_> {
     }
 }
 
-fn valid_raise_type(db: &Database, t: Type, allow_none: bool) -> bool {
-    let check = |generic_class: &GenericClass| {
-        let cls = generic_class.class(db);
+fn valid_raise_type(i_s: &InferenceState, from: NodeRef, t: Type, allow_none: bool) -> bool {
+    let db = i_s.db;
+    let check = |cls: Class| {
         cls.incomplete_mro(db)
             || cls.class_link_in_mro(db, db.python_state.base_exception_node_ref().as_link())
     };
     match t.into_db_type() {
-        DbType::Class(c) => check(&c),
+        DbType::Class(c) => check(c.class(db)),
         DbType::Type(t) => match t.as_ref() {
-            DbType::Class(c) => check(c),
+            DbType::Class(c) => {
+                let cls = c.class(db);
+                cls.execute(
+                    i_s,
+                    &NoArguments::new(from),
+                    &mut ResultContext::Unknown,
+                    OnTypeError::new(&|_, _, _, _, _| {
+                        unreachable!(
+                            "Type errors should not be possible, because there are no params"
+                        )
+                    }),
+                );
+                check(cls)
+            }
             _ => false,
         },
         DbType::Any => true,
         DbType::Never => todo!(),
         DbType::Union(union) => union
             .iter()
-            .all(|t| valid_raise_type(db, Type::new(t), allow_none)),
+            .all(|t| valid_raise_type(i_s, from, Type::new(t), allow_none)),
         DbType::None if allow_none => true,
         _ => false,
     }

@@ -106,9 +106,6 @@ testUnionSimplificationSpecialCases2
 # "Invalid type argument value for "C""
 testErrorCodeInvalidTypeArg
 
-# raise with brackets and no parentheses
-testRaiseClassObjectCustomInit
-
 # Flakey in --release
 testReturnInIterator
 
