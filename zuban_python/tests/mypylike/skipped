@@ -83,43 +83,6 @@ testSelfTypeRestrictedMethodOverloadInitBadTypeNoCrash
 testAsyncForComprehensionErrors
 # TODO ^ also clean up dataclass field calculation
 
-# typing.List used in inference
-testTypeApplicationWithQualifiedTypeAlias
-# typing.Union used in type alias
-testUnionTypeAliasWithQualifiedUnion
-# Type alias inference should be typing._SpecialForm
-testTypeAliasWithNewStyleUnion
-
-# Type var constraints not enforced in type alias
-testValidTypeAliasValues
-testValidTypeAliasValuesMoreRestrictive
-
-# Type var finder recursion is not handled, because imports are involved.
-testRecursiveAliasImported
-
-# No recursion tests
-testRecursiveDoubleUnionNoCrash
-testNoRecursiveExpandInstanceUnionCrashGeneric
-testNoRecursiveExpandInstanceUnionCrashInference
-
-# Details around Never?
-testStar2Context
-
-# Invalid recursive aliases --enable-recursive-aliases
-testRecursiveAliasesProhibitBadAliases
-# Recursive Alias wrong type var inference --enable-recursive-aliases
-testRecursiveAliasesJoins
-# Recursive alias union type var inference --enable-recursive-aliases
-testRecursiveAliasWithRecursiveInstanceInference
-# Recursive alias class type aliases --enable-recursive-aliases
-testRecursiveClassLevelAlias
-
-# func type var in __init__
-testInvalidNumberOfTypeArgs
-testInheritedConstructor2
-testMapStr
-testVarArgsFunctionSubtyping
-
 # In A + B, if B is a subclass of A, __radd__ on B is called first
 testReverseOperatorOrderingCase4
 testReverseOperatorOrderingCase6
@@ -170,10 +133,6 @@ testGenericClassAlternativeConstructorPreciseOverloaded
 testOverloaded__new__
 testIOTypes
 
-# Class function Foo.bar something like a BoundFunction
-testParamSpecConstraintOnOtherParamSpec
-testExpandNonBareParamSpecAgainstCallable
-
 # Cannot use a covariant type variable as a parameter
 testRejectCovariantArgument
 testRejectCovariantArgumentSplitLine
@@ -199,6 +158,22 @@ testOperatorWithEmptyListAndSum
 testOrOperationWithGenericOperands
 testOrOperationInferredFromContext
 
+# No recursion tests
+testRecursiveDoubleUnionNoCrash
+testNoRecursiveExpandInstanceUnionCrashGeneric
+testNoRecursiveExpandInstanceUnionCrashInference
+
+# Invalid recursive aliases --enable-recursive-aliases
+testRecursiveAliasesProhibitBadAliases
+# Recursive Alias wrong type var inference --enable-recursive-aliases
+testRecursiveAliasesJoins
+# Recursive alias union type var inference --enable-recursive-aliases
+testRecursiveAliasWithRecursiveInstanceInference
+# Recursive alias class type aliases --enable-recursive-aliases
+testRecursiveClassLevelAlias
+
+# Type var finder recursion is not handled, because imports are involved.
+testRecursiveAliasImported
 # cycle for self.a = self.f(self.a) where f(T) -> T
 testGenericTypeBody1
 # import cycle
@@ -225,6 +200,10 @@ testNewAnalyzerMemberNameMatchesTypedDict
 testModuleImplicitAttributes
 # type.__init__ where self is implicitly Any
 testTypeEquivalentTypeAnyEdgeCase
+
+# Type var constraints not enforced in type alias
+testValidTypeAliasValues
+testValidTypeAliasValuesMoreRestrictive
 
 # Tuple type var context
 testInferenceWithTypeVariableTwiceInReturnType
@@ -317,6 +296,11 @@ testGenericInferenceWithItertools
 testUnionInference
 unite_type_vars_mypy_issue_5874
 multiple_lambda_mypy_issue_4226
+# func type var in __init__
+testInvalidNumberOfTypeArgs
+testInheritedConstructor2
+testMapStr
+testVarArgsFunctionSubtyping
 
 # Nested type vars
 testFunctionInGenericInnerClassTypeVariable-skip
@@ -337,6 +321,9 @@ testParamSpecArgsAndKwargsMissmatch
 testParamSpecInvalidCalls
 # ParamSpec is not unbound if working like a T in Callable?
 testTrivialParametersHandledCorrectly
+# Class function Foo.bar something like a BoundFunction
+testParamSpecConstraintOnOtherParamSpec
+testExpandNonBareParamSpecAgainstCallable
 
 # Are generics in self types always bound to the function?
 # https://github.com/python/typing/discussions/1340
@@ -2534,6 +2521,9 @@ testCallableKindsOrdering
 testDistinctTypes
 # Separate formatting for ambigous names???
 testIncompatibleAssignmentAmbiguousShortnames
+
+# Type alias inference should be typing._SpecialForm
+testTypeAliasWithNewStyleUnion
 
 # tuple type expected for multiple variables
 testVariableDeclWithInvalidType
