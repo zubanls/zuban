@@ -282,9 +282,6 @@ testOverlappingClassCallables
 testTypeEquivalentTypeAnyEdgeCase
 testMetaclassMemberAccessViaType3
 
-# Value of type variable "P" of "new_pro" cannot be "U"
-testTypeUsingTypeCTwoTypeVars
-
 # Tuple type var context
 testInferenceWithTypeVariableTwiceInReturnType
 testInferenceWithTypeVariableTwiceInReturnTypeAndMultipleVariables
