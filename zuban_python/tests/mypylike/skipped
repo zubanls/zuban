@@ -49,34 +49,6 @@ testSerializeReadOnlyProperty
 testSerializeReadWriteProperty
 testNewAnalyzerProperty
 
-# Self in bound method shouldn't probably be there
-testFunctionAssignedAsCallback
-testErrorSettingCallbackWithDifferentFutureType
-
-# EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
-testStrEnumCreation
-testRegression12258
-
-# --new-type-inference
-testInferenceAgainstGenericCallable
-testInferenceAgainstGenericCallableNoLeak
-testInferenceAgainstGenericCallableChain
-testInferenceAgainstGenericCallableGeneric
-testInferenceAgainstGenericCallableGenericReverse
-testInferenceAgainstGenericCallableGenericArg
-testInferenceAgainstGenericCallableGenericChain
-testInferenceAgainstGenericCallableGenericNonLinear
-testInferenceAgainstGenericCurry
-testInferenceAgainstGenericCallableGenericAlias
-testInferenceAgainstGenericCallableGenericProtocol
-testInferenceAgainstGenericSplitOrder
-testInferenceAgainstGenericSplitOrderGeneric
-testInferenceAgainstGenericCallableNewVariable
-testInferenceAgainstGenericBoundsAndValues
-testDefaultDict
-testGenericInferenceWithDataclass
-testGenericInferenceWithItertools
-
 # super with Type[...]
 testSuperWithAny
 testSuperInClassMethod
@@ -99,12 +71,6 @@ testMixinProtocolSuper
 testSuperWithNew
 testSuperNew
 testMetaclassAndSuper
-
-# Any base class now matches everything for union simplification
-testUnionSimplificationSpecialCases2
-
-# "Invalid type argument value for "C""
-testErrorCodeInvalidTypeArg
 
 # Flakey in --release
 testReturnInIterator
@@ -135,14 +101,6 @@ testRecursiveAliasImported
 testRecursiveDoubleUnionNoCrash
 testNoRecursiveExpandInstanceUnionCrashGeneric
 testNoRecursiveExpandInstanceUnionCrashInference
-
-# Callable formatting varargs
-testUnionOfSimilarCallablesCrash
-# Nicer Callable Errors
-testCallableParsingFromExpr
-testCallableParsing
-testCallableTooManyVarArg
-testCallableKindsOrdering
 
 # Details around Never?
 testStar2Context
@@ -322,11 +280,38 @@ testJoinUnionWithUnionAndAny
 # Callable matching
 testNoCrashOnNestedGenericCallable
 
+# Any base class now matches everything for union simplification
+testUnionSimplificationSpecialCases2
+
 # Type variable "C.T" cannot be used as an expression
 testClassMemberTypeVarInFunctionBody
 # Type variable "__main__.Ts" is invalid as target for type alias
 testTypeVarTupleIsNotValidAliasTarget
 testGenericTypeAliasesWrongAliases
+
+# EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
+testStrEnumCreation
+testRegression12258
+
+# --new-type-inference
+testInferenceAgainstGenericCallable
+testInferenceAgainstGenericCallableNoLeak
+testInferenceAgainstGenericCallableChain
+testInferenceAgainstGenericCallableGeneric
+testInferenceAgainstGenericCallableGenericReverse
+testInferenceAgainstGenericCallableGenericArg
+testInferenceAgainstGenericCallableGenericChain
+testInferenceAgainstGenericCallableGenericNonLinear
+testInferenceAgainstGenericCurry
+testInferenceAgainstGenericCallableGenericAlias
+testInferenceAgainstGenericCallableGenericProtocol
+testInferenceAgainstGenericSplitOrder
+testInferenceAgainstGenericSplitOrderGeneric
+testInferenceAgainstGenericCallableNewVariable
+testInferenceAgainstGenericBoundsAndValues
+testDefaultDict
+testGenericInferenceWithDataclass
+testGenericInferenceWithItertools
 
 # type var backtracking
 testUnionInference
@@ -358,6 +343,10 @@ testTrivialParametersHandledCorrectly
 # https://github.com/python/mypy/issues/14729
 testSelfTypeBadTypeIgnoredInConstructorGeneric
 testSelfTypeRestrictedMethodOverloadInit
+
+# Self in bound method shouldn't probably be there
+testFunctionAssignedAsCallback
+testErrorSettingCallbackWithDifferentFutureType
 
 # NewType in function "A@6" as qualified name
 testNewTypeInLocalScope
@@ -1773,6 +1762,7 @@ testEmptyTupleJoin
 testTypingExtensionsOrderedDictAlias
 
 # Type Var Value in func
+testErrorCodeInvalidTypeArg
 testCheckGenericFunctionBodyWithTypeVarValues
 testCheckGenericFunctionBodyWithTypeVarValues2
 testTypeInferenceAndTypeVarValues
@@ -1803,6 +1793,7 @@ testInnerFunctionMutualRecursionWithTypevarValues
 testNestedDecoratedCoroutineAndTypeVarValues
 testAnyStr
 testTypeVarWithTypedDictValueInIndexExpression
+
 
 # Callable[..., int] | Callable[..., str] lambda inference may conflict
 testOptionalLambdaInference
@@ -2470,11 +2461,6 @@ testReusingInferredForIndex2
 testErrorCodeNeedTypeAnnotation
 testColumnNeedTypeAnnotation
 
-# Formatting better verbosity
-testDistinctTypes
-# Separate formatting for ambigous names???
-testIncompatibleAssignmentAmbiguousShortnames
-
 # "Perhaps you need a type annotation for "x"? Suggestion: "List[str | int]""
 testInferredTypeSubTypeOfReturnType
 
@@ -2525,7 +2511,6 @@ testAliasToTupleAndCallable
 testInvalidOperationsOnModules
 testConditionalImportAndAssignInvalidToModule
 testModuleAliasRepeatedWithAnnotation
-
 # qualified name in function contains class path: __main__.Cls.FooEnum@4
 testAnonymousFunctionalEnum
 # qualified name for NewType for different module
@@ -2536,9 +2521,19 @@ testLiteralWithEnumsSimilarDefinitions
 testGenericTypedDictWithError
 # NewType formatting instead of internal type
 testNewTypeDependencies3
-
 # Formatting C.__init__() call as "C" instead of "__init__" of "C"
 testInitMethodUnbound
+# Callable formatting varargs
+testUnionOfSimilarCallablesCrash
+# Nicer Callable Errors
+testCallableParsingFromExpr
+testCallableParsing
+testCallableTooManyVarArg
+testCallableKindsOrdering
+# Formatting better verbosity
+testDistinctTypes
+# Separate formatting for ambigous names???
+testIncompatibleAssignmentAmbiguousShortnames
 
 # tuple type expected for multiple variables
 testVariableDeclWithInvalidType
