@@ -3315,11 +3315,10 @@ impl TypeAlias {
         self.name.map(|name| NodeRef::from_link(db, name).as_code())
     }
 
-    pub fn application_allowed(&self, from_alias_definition: bool) -> bool {
+    pub fn application_allowed(&self) -> bool {
         !self.is_invalid()
             && match self.db_type_if_valid() {
                 DbType::Class(_) | DbType::TypedDict(_) => true,
-                DbType::Callable(_) => from_alias_definition,
                 _ => false,
             }
     }
