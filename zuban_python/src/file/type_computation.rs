@@ -321,7 +321,10 @@ macro_rules! compute_type_application {
             $self,
             $slice_type.as_node_ref().as_link(),
             &mut on_type_var,
-            TypeComputationOrigin::TypeApplication
+            match $from_alias_definition {
+                false => TypeComputationOrigin::TypeApplication,
+                true => TypeComputationOrigin::TypeAlias,
+            }
         );
         let t = tcomp.$method $args;
         match t {
