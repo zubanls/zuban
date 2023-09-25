@@ -906,7 +906,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 base.type_check_set_item(
                     self.i_s,
                     SliceType::new(self.file, primary_target.index(), slice_type),
-                    NodeRef::new(self.file, primary_target.index()),
                     value,
                 )
             }

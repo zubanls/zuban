@@ -339,12 +339,12 @@ impl<'a> Instance<'a> {
             _ => (),
         }
         let mro_iterator = self.class.mro(i_s.db);
-        let node_ref = slice_type.as_node_ref();
+        let from = slice_type.as_node_ref();
         let finder = ClassMroFinder {
             i_s,
             instance: self,
             mro_iterator,
-            from: slice_type.as_node_ref(),
+            from,
             name: "__getitem__",
         };
         for found_on_class in finder {
@@ -375,7 +375,7 @@ impl<'a> Instance<'a> {
                 },
             }
         }
-        node_ref.add_issue(
+        from.add_issue(
             i_s,
             IssueType::NotIndexable {
                 type_: self.class.format_short(i_s.db),

@@ -44,6 +44,10 @@ impl<'db, 'file> SliceType<'file> {
         NodeRef::new(self.file, self.node_index)
     }
 
+    pub fn as_argument_node_ref(&self) -> NodeRef<'file> {
+        NodeRef::new(self.file, self.ast_node.index())
+    }
+
     pub fn as_args<'x>(&'x self, i_s: InferenceState<'db, 'x>) -> SliceArguments<'db, 'x> {
         SliceArguments {
             slice_type: self,
@@ -245,7 +249,7 @@ impl<'db> Arguments<'db> for SliceArguments<'db, '_> {
     }
 
     fn as_node_ref(&self) -> NodeRef {
-        self.slice_type.as_node_ref()
+        self.slice_type.as_argument_node_ref()
     }
 
     fn reset_cache(&self) {

@@ -2786,6 +2786,16 @@ pub enum SliceType<'db> {
     NamedExpression(NamedExpression<'db>),
 }
 
+impl<'db> SliceType<'db> {
+    pub fn index(&self) -> NodeIndex {
+        match self {
+            Self::Slices(s) => s.index(),
+            Self::Slice(s) => s.index(),
+            Self::NamedExpression(n) => n.index(),
+        }
+    }
+}
+
 impl<'db> Slices<'db> {
     pub fn iter(&self) -> SliceIterator<'db> {
         SliceIterator(self.node.iter_children())

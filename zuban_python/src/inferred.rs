@@ -1771,9 +1771,9 @@ impl<'db: 'slf, 'slf> Inferred {
         &self,
         i_s: &InferenceState<'db, '_>,
         slice_type: SliceType,
-        from: NodeRef,
         value: &Inferred,
     ) {
+        let from = slice_type.as_node_ref();
         debug!("Set Item on {}", self.format_short(i_s));
         let args = slice_type.as_args(*i_s);
         self.type_lookup_and_execute_with_details(
@@ -1797,7 +1797,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 } else {
                     IssueType::InvalidSetItemTarget { got, expected }
                 };
-                arg.as_node_ref().add_issue(i_s, type_)
+                from.add_issue(i_s, type_)
             }),
         );
     }
