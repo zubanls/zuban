@@ -112,6 +112,8 @@ testRaiseClassObjectCustomInit
 # Flakey in --release
 testReturnInIterator
 
+# Uses function context but is in fact in module context
+testFunctionForwardRefAlias
 # Remove Mode from inference_state
 testSelfTypeRestrictedMethodOverloadInitBadTypeNoCrash
 # Class is still set in InferenceState
@@ -162,9 +164,6 @@ testInvalidNumberOfTypeArgs
 testInheritedConstructor2
 testMapStr
 testVarArgsFunctionSubtyping
-
-# Uses function context but is in fact in module context
-testFunctionForwardRefAlias
 
 # In A + B, if B is a subclass of A, __radd__ on B is called first
 testReverseOperatorOrderingCase4
@@ -245,13 +244,6 @@ testOperatorWithEmptyListAndSum
 testOrOperationWithGenericOperands
 testOrOperationInferredFromContext
 
-# Union not matching type vars (None | Any and int | None leads to None | Any)
-testJoinUnionWithUnionAndAny
-testNoComplainInferredNoneStrict
-
-# Callable matching
-testNoCrashOnNestedGenericCallable
-
 # cycle for self.a = self.f(self.a) where f(T) -> T
 testGenericTypeBody1
 # import cycle
@@ -326,6 +318,12 @@ testDictStarAnyKeyJoinValue
 # Not able to infer context with unions and literals
 testLiteralAndGenericWithUnion
 testLiteralAndGenericsNoMatch
+testNoComplainInferredNoneStrict
+# Union not matching type vars (None | Any and int | None leads to None | Any)
+testJoinUnionWithUnionAndAny
+
+# Callable matching
+testNoCrashOnNestedGenericCallable
 
 # Type variable "C.T" cannot be used as an expression
 testClassMemberTypeVarInFunctionBody
