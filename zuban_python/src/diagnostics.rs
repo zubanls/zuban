@@ -56,6 +56,7 @@ pub(crate) enum IssueType {
     UnsupportedIn { right: Box<str> },
     UnsupportedOperandForUnary { operand: &'static str, got: Box<str>},
     InvalidGetItem { actual: Box<str>, type_: Box<str>, expected: Box<str> },
+    UnsupportedSetItemTarget(Box<str>),
     InvalidSetItemTarget { got: Box<str>, expected: Box<str> },
     NotIndexable { type_: Box<str> },
     TooFewValuesToUnpack { actual: usize, expected: usize },
@@ -547,6 +548,9 @@ impl<'db> Diagnostic<'db> {
             InvalidSetItemTarget{got, expected} => format!(
                 "Incompatible types in assignment (expression has type \
                  \"{got}\", target has type \"{expected}\")",
+            ),
+            UnsupportedSetItemTarget(t) => format!(
+                r#"Unsupported target for indexed assignment ("{t}")"#
             ),
             NotIndexable{type_} => format!("Value of type {type_:?} is not indexable"),
 

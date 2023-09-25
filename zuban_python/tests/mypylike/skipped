@@ -151,7 +151,6 @@ testUnificationEmptyDictLeft
 testUnificationEmptyDictRight
 testUnificationDictWithEmptyListLeft
 testUnificationDictWithEmptyListRight
-testMisguidedSetItem
 testOperatorWithEmptyListAndSum
 testOrOperationWithGenericOperands
 testOrOperationInferredFromContext
@@ -406,10 +405,8 @@ testUnionOfVariableLengthTupleUnpacking
 # Union IteratorContent len() call
 testUnionUnpackingChainedList2
 # "Unsupported target for indexed assignment ("tuple[A, B]")"
-testAssigningToTupleItems
 testErrorCodeIndexing
 testColumnInvalidIndexing
-testNewSyntaxSpecialAssign
 # star unpacking for tuples
 testAssignmentToStarAnnotation
 testAssignmentToStarCount1
@@ -1708,8 +1705,7 @@ testMutuallyRecursiveNamedTuplesJoin
 testCrashInJoinOfSelfRecursiveNamedTuples
 
 # __setitem__
-testInferOptionalDictKeyValueTypes
-testIndexingAsLvalue
+testMisguidedSetItem
 testInplaceSetitem
 testUnionMultiassignIndexedWithError
 

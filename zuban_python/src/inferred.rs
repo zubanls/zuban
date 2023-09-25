@@ -1782,7 +1782,10 @@ impl<'db: 'slf, 'slf> Inferred {
             "__setitem__",
             &CombinedArguments::new(&args, &KnownArguments::new(value, from)),
             &|_| {
-                debug!("TODO __setitem__ not found");
+                slice_type.as_node_ref().add_issue(
+                    i_s,
+                    IssueType::UnsupportedSetItemTarget(self.format_short(i_s)),
+                )
             },
             OnTypeError::new(&|i_s, function, arg, got, expected| {
                 let type_ = if arg.index == 1 {
