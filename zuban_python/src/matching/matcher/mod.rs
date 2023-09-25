@@ -533,7 +533,14 @@ impl<'a> Matcher<'a> {
                     BoundKind::TypeVar(bound) => bound.format(format_data.db, format_data.style),
                     BoundKind::TypeVarTuple(ts) => ts.format(format_data),
                     BoundKind::ParamSpecArgument(p) => p.params.format(format_data, params_style),
-                    BoundKind::Uncalculated { .. } => DbType::Never.format(format_data),
+                    BoundKind::Uncalculated { fallback } => {
+                        if let TypeVarLike::TypeVar(type_var) = usage.as_type_var_like() {
+                            if let TypeVarKind::Bound(bound) = &type_var.kind {
+                                return bound.format(format_data);
+                            }
+                        }
+                        DbType::Never.format(format_data)
+                    }
                 };
             }
         }

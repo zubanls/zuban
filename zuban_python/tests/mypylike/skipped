@@ -284,7 +284,6 @@ testMetaclassMemberAccessViaType3
 
 # Value of type variable "P" of "new_pro" cannot be "U"
 testTypeUsingTypeCTwoTypeVars
-testOverloadedCallWithVariableTypes
 
 # Tuple type var context
 testInferenceWithTypeVariableTwiceInReturnType
