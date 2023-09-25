@@ -276,11 +276,8 @@ testNewAnalyzerMemberNameMatchesTypedDict
 
 # Module attributes
 testModuleImplicitAttributes
-# Function attributes
-testOverlappingClassCallables
-# type attributes
+# type.__init__ where self is implicitly Any
 testTypeEquivalentTypeAnyEdgeCase
-testMetaclassMemberAccessViaType3
 
 # Tuple type var context
 testInferenceWithTypeVariableTwiceInReturnType
