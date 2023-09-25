@@ -405,7 +405,6 @@ testUnionOfVariableLengthTupleUnpacking
 # Union IteratorContent len() call
 testUnionUnpackingChainedList2
 # "Unsupported target for indexed assignment ("tuple[A, B]")"
-testErrorCodeIndexing
 testColumnInvalidIndexing
 # star unpacking for tuples
 testAssignmentToStarAnnotation

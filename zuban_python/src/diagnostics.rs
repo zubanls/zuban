@@ -265,7 +265,7 @@ impl IssueType {
             IncompatibleDefaultArgument { .. }
             | IncompatibleAssignment { .. }
             | InvalidSetItemTarget { .. } => "assignment",
-            InvalidGetItem { .. } | NotIndexable { .. } => "index",
+            InvalidGetItem { .. } | NotIndexable { .. } | UnsupportedSetItemTarget(_) => "index",
             TypeVarInReturnButNotArgument
             | InvalidTypeVarValue { .. }
             | TypeVarBoundViolation { .. } => "type-var",
