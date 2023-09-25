@@ -799,6 +799,15 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     None
                 }
                 SpecialType::Self_
+                    if matches!(
+                        self.origin,
+                        TypeComputationOrigin::TypeApplication | TypeComputationOrigin::TypeAlias
+                    ) =>
+                {
+                    self.add_issue(node_ref, IssueType::SelfTypeInTypeAliasTarget);
+                    None
+                }
+                SpecialType::Self_
                     if !matches!(
                         self.origin,
                         TypeComputationOrigin::Constraint | TypeComputationOrigin::BaseClass
@@ -808,6 +817,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         self.add_issue(node_ref, IssueType::SelfTypeInMetaclass);
                         None
                     } else {
+                        dbg!(self.origin);
                         self.has_type_vars_or_self = true;
                         Some(DbType::Self_)
                     }

@@ -117,6 +117,7 @@ pub(crate) enum IssueType {
     NestedConcatenate,
     InvalidSelfArgument { argument_type: Box<str>, function_name: Box<str>, callable: Box<str> },
     SelfTypeInMetaclass,
+    SelfTypeInTypeAliasTarget,
     InvalidClassMethodFirstArgument { argument_type: Box<str>, function_name: Box<str>, callable: Box<str> },
     InvalidClassmethodAndStaticmethod,
     UsedWithANonMethod { name: &'static str },
@@ -742,6 +743,7 @@ impl<'db> Diagnostic<'db> {
                 "Invalid self argument \"{argument_type}\" to attribute function \"{function_name}\" with type \"{callable}\""
             ),
             SelfTypeInMetaclass => "Self type cannot be used in a metaclass".to_string(),
+            SelfTypeInTypeAliasTarget => "Self type cannot be used in type alias target".to_string(),
             InvalidClassMethodFirstArgument{argument_type, function_name, callable} => format!(
                 "Invalid self argument \"{argument_type}\" to class attribute function \"{function_name}\" with type \"{callable}\""
             ),
