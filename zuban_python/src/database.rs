@@ -1340,8 +1340,7 @@ impl DbType {
 
     pub fn is_subclassable(&self, db: &Database) -> bool {
         match self {
-            Self::Class(c) => true,
-            Self::Tuple(..) | Self::NewType(..) | Self::NamedTuple(_) => true,
+            Self::Class(_) | Self::Tuple(_) | Self::NewType(_) | Self::NamedTuple(_) => true,
             _ => false,
         }
     }
@@ -3320,7 +3319,7 @@ impl TypeAlias {
         !self.is_invalid()
             && matches!(
                 self.db_type_if_valid(),
-                DbType::Class(..) | DbType::TypedDict(..)
+                DbType::Class(_) | DbType::TypedDict(_) | DbType::Callable(_)
             )
     }
 }

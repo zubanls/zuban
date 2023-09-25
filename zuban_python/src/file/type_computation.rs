@@ -2332,9 +2332,17 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     TypeVarCallbackReturn::NotFound => None,
                 }
                 .unwrap_or_else(|| {
-                    let index = self
-                        .type_var_manager
-                        .add(type_var_like.clone(), self.current_callable);
+                    let index = self.type_var_manager.add(
+                        type_var_like.clone(),
+                        self.current_callable.filter(|_| {
+                            matches!(
+                                self.origin,
+                                TypeComputationOrigin::ParamTypeCommentOrAnnotation
+                                    | TypeComputationOrigin::AssignmentTypeCommentOrAnnotation
+                                    | TypeComputationOrigin::CastTarget
+                            )
+                        }),
+                    );
                     match type_var_like {
                         TypeVarLike::TypeVar(type_var) => {
                             TypeContent::DbType(DbType::TypeVar(TypeVarUsage {
