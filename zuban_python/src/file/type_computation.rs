@@ -311,7 +311,11 @@ macro_rules! compute_type_application {
                     }
                 }
             }
-            TypeVarCallbackReturn::NotFound
+            if $from_alias_definition {
+                TypeVarCallbackReturn::NotFound
+            } else {
+                TypeVarCallbackReturn::UnboundTypeVar
+            }
         };
         let mut tcomp = TypeComputation::new(
             $self,
@@ -332,16 +336,7 @@ macro_rules! compute_type_application {
                     db_type = recalculate_type_vars(&db_type);
                 });
                 if type_var_likes.len() > 0 {
-                    if !$from_alias_definition {
-                        for type_var_like in type_var_likes.iter() {
-                            $slice_type.as_node_ref().add_issue(
-                                $self.i_s,
-                                IssueType::UnboundTypeVarLike {
-                                    type_var_like: type_var_like.clone(),
-                                },
-                            );
-                        }
-                    }
+                    debug_assert!($from_alias_definition);
                     Inferred::new_unsaved_complex(ComplexPoint::TypeAlias(Box::new(TypeAlias::new_valid(
                         type_var_likes,
                         $slice_type.as_node_ref().as_link(),

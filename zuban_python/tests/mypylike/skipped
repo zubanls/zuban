@@ -335,8 +335,6 @@ testClassMemberTypeVarInFunctionBody
 # Type variable "__main__.Ts" is invalid as target for type alias
 testTypeVarTupleIsNotValidAliasTarget
 testGenericTypeAliasesWrongAliases
-# An unbound ParamSpec in type application
-testParamSpecAliasNested
 
 # ParamSpec is not unbound if working like a T in Callable?
 testTrivialParametersHandledCorrectly
