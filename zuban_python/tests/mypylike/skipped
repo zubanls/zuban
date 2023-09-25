@@ -335,10 +335,6 @@ testClassMemberTypeVarInFunctionBody
 # Type variable "__main__.Ts" is invalid as target for type alias
 testTypeVarTupleIsNotValidAliasTarget
 testGenericTypeAliasesWrongAliases
-# Type variable "__main__.T" is unbound
-# (Hint: Use "Generic[T]" or "Protocol[T]" base class to bind "T" inside a class)
-# (Hint: Use "T" in function signature to bind "T" inside a function)
-testNestedGenericFunctionTypeApplication
 # An unbound ParamSpec in type application
 testParamSpecAliasNested
 
@@ -361,6 +357,7 @@ testParamSpecTestPropAccess
 testTupleAndDictOperationsOnParamSpecArgsAndKwargs
 testUnpackingParamsSpecArgsAndKwargs
 testParamSpecConcatenateFromPep
+testNestedGenericFunctionTypeApplication
 param_spec_with_identity_mypy_issue_12278
 
 # Param spec invalid definitions
