@@ -1315,9 +1315,9 @@ impl<'a> Type<'a> {
         callable: ReplaceTypeVarLike,
         replace_self: ReplaceSelf,
     ) -> DbType {
-        let remap_tuple_likes = |args: &TupleTypeArguments,
-                                 callable: ReplaceTypeVarLike,
-                                 replace_self: ReplaceSelf| {
+        let replace_tuple_likes = |args: &TupleTypeArguments,
+                                   callable: ReplaceTypeVarLike,
+                                   replace_self: ReplaceSelf| {
             match args {
                 TupleTypeArguments::FixedLength(ts) => {
                     let mut new_args = vec![];
@@ -1366,7 +1366,7 @@ impl<'a> Type<'a> {
                 }
             }
         };
-        let mut remap_generics = |generics: &GenericsList| {
+        let mut replace_generics = |generics: &GenericsList| {
             GenericsList::new_generics(
                 generics
                     .iter()
@@ -1380,13 +1380,13 @@ impl<'a> Type<'a> {
                         }
                         GenericItem::TypeArguments(ts) => {
                             GenericItem::TypeArguments(TypeArguments {
-                                args: remap_tuple_likes(&ts.args, callable, replace_self),
+                                args: replace_tuple_likes(&ts.args, callable, replace_self),
                             })
                         }
                         GenericItem::ParamSpecArgument(p) => {
                             let mut type_vars = p.type_vars.clone().map(|t| t.type_vars.as_vec());
                             GenericItem::ParamSpecArgument(ParamSpecArgument::new(
-                                Self::remap_callable_params(
+                                Self::replace_callable_param_type_var_likes_and_self(
                                     db,
                                     &p.params,
                                     &mut type_vars,
@@ -1409,7 +1409,7 @@ impl<'a> Type<'a> {
             DbType::Any => DbType::Any,
             DbType::None => DbType::None,
             DbType::Never => DbType::Never,
-            DbType::Class(c) => DbType::new_class(c.link, c.generics.map_list(remap_generics)),
+            DbType::Class(c) => DbType::new_class(c.link, c.generics.map_list(replace_generics)),
             DbType::FunctionOverload(overload) => {
                 DbType::FunctionOverload(overload.map_functions(|functions| {
                     functions
@@ -1525,7 +1525,7 @@ impl<'a> Type<'a> {
                 replace_self,
             ))),
             DbType::Tuple(content) => DbType::Tuple(match &content.args {
-                Some(args) => Rc::new(TupleContent::new(remap_tuple_likes(
+                Some(args) => Rc::new(TupleContent::new(replace_tuple_likes(
                     args,
                     callable,
                     replace_self,
@@ -1544,7 +1544,7 @@ impl<'a> Type<'a> {
             DbType::NewType(t) => DbType::NewType(t.clone()),
             DbType::RecursiveAlias(rec) => DbType::RecursiveAlias(Rc::new(RecursiveAlias::new(
                 rec.link,
-                rec.generics.as_ref().map(remap_generics),
+                rec.generics.as_ref().map(replace_generics),
             ))),
             DbType::Module(file_index) => DbType::Module(*file_index),
             DbType::Namespace(namespace) => DbType::Namespace(namespace.clone()),
@@ -1556,7 +1556,7 @@ impl<'a> Type<'a> {
                     Dataclass::new(
                         GenericClass {
                             link: d.class.link,
-                            generics: d.class.generics.map_list(remap_generics),
+                            generics: d.class.generics.map_list(replace_generics),
                         },
                         d.options,
                     )
@@ -1571,7 +1571,7 @@ impl<'a> Type<'a> {
                         TypedDictGenerics::NotDefinedYet(tvs.clone())
                     }
                     TypedDictGenerics::Generics(generics) => {
-                        TypedDictGenerics::Generics(remap_generics(generics))
+                        TypedDictGenerics::Generics(replace_generics(generics))
                     }
                 };
                 DbType::TypedDict(TypedDict::new(
@@ -1632,7 +1632,7 @@ impl<'a> Type<'a> {
     ) -> CallableContent {
         let has_type_vars = !c.type_vars.is_empty();
         let mut type_vars = has_type_vars.then(|| c.type_vars.clone().as_vec());
-        let (params, remap_data) = Self::remap_callable_params(
+        let (params, remap_data) = Self::replace_callable_param_type_var_likes_and_self(
             db,
             &c.params,
             &mut type_vars,
@@ -1645,7 +1645,13 @@ impl<'a> Type<'a> {
         if let Some(remap_data) = remap_data {
             result_type = Type::new(&result_type).replace_type_var_likes_and_self(
                 db,
-                &mut |usage| Self::remap_param_spec_inner(usage, c.defined_at, remap_data),
+                &mut |usage| {
+                    Self::replace_param_spec_inner_type_var_likes_and_self(
+                        usage,
+                        c.defined_at,
+                        remap_data,
+                    )
+                },
                 replace_self,
             );
         }
@@ -1734,7 +1740,7 @@ impl<'a> Type<'a> {
         }
     }
 
-    fn remap_callable_params(
+    fn replace_callable_param_type_var_likes_and_self(
         db: &Database,
         params: &CallableParams,
         type_vars: &mut Option<Vec<TypeVarLike>>,
@@ -1742,7 +1748,7 @@ impl<'a> Type<'a> {
         callable: ReplaceTypeVarLike,
         replace_self: ReplaceSelf,
     ) -> (CallableParams, Option<(PointLink, usize)>) {
-        let mut remap_data = None;
+        let mut replace_data = None;
         let new_params = match params {
             CallableParams::Simple(params) => CallableParams::Simple(
                 params
@@ -1815,17 +1821,17 @@ impl<'a> Type<'a> {
                 if let Some(new_spec_type_vars) = new.type_vars {
                     if let Some(in_definition) = in_definition {
                         let type_var_len = type_vars.as_ref().map(|t| t.len()).unwrap_or(0);
-                        remap_data = Some((new_spec_type_vars.in_definition, type_var_len));
-                        let new_params = Type::remap_callable_params(
+                        replace_data = Some((new_spec_type_vars.in_definition, type_var_len));
+                        let new_params = Type::replace_callable_param_type_var_likes_and_self(
                             db,
                             &new.params,
                             &mut None,
                             None,
                             &mut |usage| {
-                                Type::remap_param_spec_inner(
+                                Type::replace_param_spec_inner_type_var_likes_and_self(
                                     usage,
                                     in_definition,
-                                    remap_data.unwrap(),
+                                    replace_data.unwrap(),
                                 )
                             },
                             replace_self,
@@ -1885,18 +1891,18 @@ impl<'a> Type<'a> {
                 }
             }
         };
-        (new_params, remap_data)
+        (new_params, replace_data)
     }
 
-    fn remap_param_spec_inner(
+    fn replace_param_spec_inner_type_var_likes_and_self(
         mut usage: TypeVarLikeUsage,
         in_definition: PointLink,
-        remap_data: (PointLink, usize),
+        replace_data: (PointLink, usize),
     ) -> GenericItem {
-        if usage.in_definition() == remap_data.0 {
+        if usage.in_definition() == replace_data.0 {
             usage.update_in_definition_and_index(
                 in_definition,
-                (usage.index().as_usize() + remap_data.1).into(),
+                (usage.index().as_usize() + replace_data.1).into(),
             );
         }
         usage.into_generic_item()
