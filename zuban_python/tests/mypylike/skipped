@@ -1703,8 +1703,8 @@ testCrashInJoinOfSelfRecursiveNamedTuples
 
 # __setitem__
 testMisguidedSetItem
+# b[0] += 1
 testInplaceSetitem
-testUnionMultiassignIndexedWithError
 
 # inplace operator methods
 testInplaceOperatorMethods
