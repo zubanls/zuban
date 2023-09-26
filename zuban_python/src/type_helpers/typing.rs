@@ -4,8 +4,8 @@ use std::rc::Rc;
 use super::{lookup_on_enum_class, DataclassHelper};
 use crate::arguments::{ArgumentKind, Arguments};
 use crate::database::{
-    ComplexPoint, Database, DbType, FormatStyle, NewType, ParamSpec, PointLink, TypeVar,
-    TypeVarKind, TypeVarLike, TypeVarName, TypeVarTuple, TypedDictGenerics, Variance,
+    ClassGenerics, ComplexPoint, Database, DbType, FormatStyle, NewType, ParamSpec, PointLink,
+    TypeVar, TypeVarKind, TypeVarLike, TypeVarName, TypeVarTuple, TypedDictGenerics, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -211,6 +211,13 @@ fn reveal_type_info(i_s: &InferenceState, t: Type) -> Box<str> {
     let format_data = FormatData::with_style(i_s.db, FormatStyle::MypyRevealType);
     if let DbType::Type(type_) = t.as_ref() {
         match type_.as_ref() {
+            DbType::Class(c) if c.generics == ClassGenerics::NotDefinedYet => {
+                let cls = c.class(i_s.db);
+                if let Some(callable) = cls.find_relevant_constructor(i_s).maybe_callable(i_s, cls)
+                {
+                    return callable.format(&format_data).into();
+                }
+            }
             DbType::Dataclass(d) => {
                 let class = d.class(i_s.db);
                 return t
