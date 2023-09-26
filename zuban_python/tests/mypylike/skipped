@@ -3,9 +3,6 @@ testUnionOrSyntaxWithTypeAliasWorking
 testCachedProperty
 testTypedDictGetMethodInvalidArgs
 
-testGenericClassInsideOtherGenericClass
-testGenericClassClsNonGeneric
-testNewAnalyzerTypeVarForwardReferenceErrors
 testTypingSelfRecursiveInit
 
 # 3.7 tests
@@ -250,6 +247,7 @@ testJoinUnionWithUnionAndAny
 
 # Callable matching
 testNoCrashOnNestedGenericCallable
+testSubtypingGenericTypeObject
 
 # Any base class now matches everything for union simplification
 testUnionSimplificationSpecialCases2

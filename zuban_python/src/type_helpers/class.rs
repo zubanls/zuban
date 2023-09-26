@@ -2054,6 +2054,11 @@ impl NewOrInitConstructor<'_> {
                     None => */callable_like, /*}*/
             )
         } else {
+            let cls = if matches!(cls.generics(), Generics::NotDefinedYet) {
+                Class::with_self_generics(i_s.db, cls.node_ref)
+            } else {
+                cls
+            };
             let callable = if let Some(c) = self.init_class {
                 let i_s = &i_s.with_class_context(&c);
                 inf.as_type(i_s).maybe_callable(i_s)
@@ -2068,6 +2073,7 @@ impl NewOrInitConstructor<'_> {
                 }
                 c.remove_first_param().map(|mut c| {
                     c.result_type = cls.as_db_type(i_s.db);
+                    c.type_vars = cls.type_vars(i_s).clone();
                     c
                 })
             };
