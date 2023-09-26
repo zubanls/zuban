@@ -699,10 +699,6 @@ impl UnionType {
         self.entries.iter().map(|u| &u.type_)
     }
 
-    pub fn into_iter(self) -> impl Iterator<Item = DbType> {
-        self.entries.into_vec().into_iter().map(|u| u.type_)
-    }
-
     pub fn sort_for_priority(&mut self) {
         self.entries.sort_by_key(|t| match t.type_ {
             DbType::Literal(_) | DbType::EnumMember(_) => -1,
@@ -825,22 +821,25 @@ impl GenericClass {
     }
 }
 
-enum DbTypeIterator<T, Iter> {
-    Single(T),
+enum DbTypeIterator<Iter> {
+    Single(DbType),
     Union(Iter),
     Finished,
 }
 
-impl<T, Iter: Iterator<Item = T>> Iterator for DbTypeIterator<T, Iter> {
-    type Item = T;
+impl<Iter: Iterator<Item = UnionEntry>> Iterator for DbTypeIterator<Iter> {
+    type Item = UnionEntry;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
             Self::Single(_) => {
-                let Self::Single(t) = std::mem::replace(self, Self::Finished) else {
+                let Self::Single(type_) = std::mem::replace(self, Self::Finished) else {
                     unreachable!();
                 };
-                Some(t)
+                Some(UnionEntry {
+                    format_index: 0,
+                    type_,
+                })
             }
             Self::Union(items) => items.next(),
             Self::Finished => None,
@@ -887,11 +886,19 @@ impl DbType {
         Self::Class(GenericClass { link, generics })
     }
 
-    pub fn into_iter_with_unpacked_unions(self) -> impl Iterator<Item = DbType> {
+    pub fn into_iter_with_unpacked_unions(self) -> impl Iterator<Item = UnionEntry> {
         match self {
-            DbType::Union(items) => DbTypeIterator::Union(items.into_iter()),
+            DbType::Union(items) => DbTypeIterator::Union(items.entries.into_vec().into_iter()),
             DbType::Never => DbTypeIterator::Finished,
             t => DbTypeIterator::Single(t),
+        }
+    }
+
+    pub fn highest_union_format_index(&self) -> usize {
+        match self {
+            DbType::Union(items) => items.entries.iter().map(|e| e.format_index).max().unwrap(),
+            DbType::Never => 0,
+            _ => 1,
         }
     }
 

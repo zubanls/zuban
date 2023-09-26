@@ -90,9 +90,17 @@ impl<'a> Type<'a> {
     }
 
     pub fn simplified_union(self, i_s: &InferenceState, other: Self) -> DbType {
+        dbg!(self.format_short(i_s.db));
+        dbg!(other.format_short(i_s.db));
+        // Check out how mypy does it:
+        // https://github.com/python/mypy/blob/ff81a1c7abc91d9984fc73b9f2b9eab198001c8e/mypy/typeops.py#L413-L486
+        let highest_union_format_index = self
+            .highest_union_format_index()
+            .max(other.highest_union_format_index());
         simplified_union_from_iterators(
             i_s,
-            [self.into_db_type(), other.into_db_type()].into_iter(),
+            [(0, self.into_db_type()), (1, other.into_db_type())].into_iter(),
+            highest_union_format_index,
         )
     }
 
@@ -3149,16 +3157,20 @@ fn common_sub_type_params(
 
 pub fn simplified_union_from_iterators(
     i_s: &InferenceState,
-    types: impl Iterator<Item = DbType>,
+    types: impl Iterator<Item = (usize, DbType)>,
+    // We need this to make sure that the unions within the iterator can be properly ordered.
+    highest_union_format_index: usize,
 ) -> DbType {
-    // Check out how mypy does it:
-    // https://github.com/python/mypy/blob/ff81a1c7abc91d9984fc73b9f2b9eab198001c8e/mypy/typeops.py#L413-L486
-    //
+    let multiply = highest_union_format_index + 1;
     let mut result = merge_simplified_union_type(
         i_s,
-        types
-            .into_iter()
-            .flat_map(|t| t.into_iter_with_unpacked_unions()),
+        types.into_iter().flat_map(|(format_index, t)| {
+            t.into_iter_with_unpacked_unions()
+                .map(move |entry| UnionEntry {
+                    format_index: dbg!(format_index) * multiply + dbg!(entry.format_index),
+                    type_: entry.type_,
+                })
+        }),
     );
     loop {
         match result {
@@ -3171,44 +3183,47 @@ pub fn simplified_union_from_iterators(
 }
 
 enum MergeSimplifiedUnionResult {
-    NotDone(Vec<DbType>),
+    NotDone(Vec<UnionEntry>),
     Done(DbType),
 }
 
 fn merge_simplified_union_type(
     i_s: &InferenceState,
-    types: impl Iterator<Item = DbType>,
+    types: impl Iterator<Item = UnionEntry>,
 ) -> MergeSimplifiedUnionResult {
-    let mut new_types = vec![];
+    let mut new_types: Vec<UnionEntry> = vec![];
     let mut finished = true;
     'outer: for additional in types {
-        if additional.has_any(i_s) {
-            if !new_types.contains(&additional) {
+        if additional.type_.has_any(i_s) {
+            if !new_types
+                .iter()
+                .any(|entry| entry.type_ == additional.type_)
+            {
                 new_types.push(additional)
             }
             continue;
         }
         for (i, current) in new_types.iter().enumerate() {
-            if current.has_any(i_s) {
+            if current.type_.has_any(i_s) {
                 continue;
             }
-            if Type::new(&additional)
+            if Type::new(&additional.type_)
                 .is_super_type_of(
                     i_s,
                     &mut Matcher::with_ignored_promotions(),
-                    &Type::new(current),
+                    &Type::new(&current.type_),
                 )
                 .bool()
             {
-                new_types[i] = additional;
+                new_types[i].type_ = additional.type_;
                 finished = false;
                 continue 'outer;
             }
-            if Type::new(current)
+            if Type::new(&current.type_)
                 .is_super_type_of(
                     i_s,
                     &mut Matcher::with_ignored_promotions(),
-                    &Type::new(&additional),
+                    &Type::new(&additional.type_),
                 )
                 .bool()
             {
@@ -3221,8 +3236,8 @@ fn merge_simplified_union_type(
     if finished {
         MergeSimplifiedUnionResult::Done(match new_types.len() {
             0 => DbType::Never,
-            1 => new_types.into_iter().next().unwrap(),
-            _ => DbType::Union(UnionType::from_types(new_types)),
+            1 => new_types.into_iter().next().unwrap().type_,
+            _ => DbType::Union(UnionType::new(new_types)),
         })
     } else {
         MergeSimplifiedUnionResult::NotDone(new_types)
