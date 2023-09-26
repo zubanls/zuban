@@ -90,23 +90,10 @@ impl<'a> Type<'a> {
     }
 
     pub fn simplified_union(self, i_s: &InferenceState, other: Self) -> DbType {
-        // Check out how mypy does it:
-        // https://github.com/python/mypy/blob/ff81a1c7abc91d9984fc73b9f2b9eab198001c8e/mypy/typeops.py#L413-L486
-        //
-        let mut result = merge_simplified_union_type(
+        simplified_union_from_iterators(
             i_s,
-            self.into_db_type()
-                .into_iter_with_unpacked_unions()
-                .chain(other.into_db_type().into_iter_with_unpacked_unions()),
-        );
-        loop {
-            match result {
-                MergeSimplifiedUnionResult::Done(t) => return t,
-                MergeSimplifiedUnionResult::NotDone(items) => {
-                    result = merge_simplified_union_type(i_s, items.into_iter())
-                }
-            }
-        }
+            [self.into_db_type(), other.into_db_type()].into_iter(),
+        )
     }
 
     #[inline]
@@ -3157,6 +3144,29 @@ fn common_sub_type_params(
         Some(CallableParams::Simple(new_params.into()))
     } else {
         todo!()
+    }
+}
+
+pub fn simplified_union_from_iterators(
+    i_s: &InferenceState,
+    types: impl Iterator<Item = DbType>,
+) -> DbType {
+    // Check out how mypy does it:
+    // https://github.com/python/mypy/blob/ff81a1c7abc91d9984fc73b9f2b9eab198001c8e/mypy/typeops.py#L413-L486
+    //
+    let mut result = merge_simplified_union_type(
+        i_s,
+        types
+            .into_iter()
+            .flat_map(|t| t.into_iter_with_unpacked_unions()),
+    );
+    loop {
+        match result {
+            MergeSimplifiedUnionResult::Done(t) => return t,
+            MergeSimplifiedUnionResult::NotDone(items) => {
+                result = merge_simplified_union_type(i_s, items.into_iter())
+            }
+        }
     }
 }
 

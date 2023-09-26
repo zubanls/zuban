@@ -2,9 +2,9 @@ use parsa_python_ast::*;
 
 use crate::arguments::{CombinedArguments, KnownArguments, NoArguments};
 use crate::database::{
-    CallableContent, ClassType, ComplexPoint, Database, DbType, FunctionKind, GenericClass,
-    Locality, OverloadImplementation, Point, PointType, Specific, TupleTypeArguments,
-    TypeOrTypeVarTuple, Variance,
+    CallableContent, ClassType, ComplexPoint, DbType, FunctionKind, Locality,
+    OverloadImplementation, Point, PointType, Specific, TupleTypeArguments, TypeOrTypeVarTuple,
+    Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
