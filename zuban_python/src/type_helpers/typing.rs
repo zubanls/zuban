@@ -212,14 +212,6 @@ fn reveal_type_info(i_s: &InferenceState, t: Type) -> Box<str> {
     if let DbType::Type(type_) = t.as_ref() {
         match type_.as_ref() {
             DbType::Class(c) if c.generics != ClassGenerics::NotDefinedYet => (),
-            DbType::Dataclass(d) => {
-                let class = d.class(i_s.db);
-                return t
-                    .maybe_callable(i_s)
-                    .unwrap_or_else(|| todo!())
-                    .format(&format_data)
-                    .into();
-            }
             DbType::TypedDict(td) => {
                 let tvs = match &td.generics {
                     TypedDictGenerics::NotDefinedYet(tvs) => Some(tvs.format(&format_data)),

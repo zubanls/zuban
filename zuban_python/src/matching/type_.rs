@@ -180,7 +180,9 @@ impl<'a> Type<'a> {
                     }
                     return cls.find_relevant_constructor(i_s).maybe_callable(i_s, cls);
                 }
-                DbType::TypedDict(_) => todo!(),
+                DbType::TypedDict(_) => {
+                    todo!("Once this is implemented remove the reveal_type formatting")
+                }
                 DbType::NamedTuple(nt) => {
                     let mut callable = nt.__new__.remove_first_param().unwrap();
                     callable.result_type = (**t).clone();
