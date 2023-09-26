@@ -211,13 +211,7 @@ fn reveal_type_info(i_s: &InferenceState, t: Type) -> Box<str> {
     let format_data = FormatData::with_style(i_s.db, FormatStyle::MypyRevealType);
     if let DbType::Type(type_) = t.as_ref() {
         match type_.as_ref() {
-            DbType::Class(c) if c.generics == ClassGenerics::NotDefinedYet => {
-                let cls = c.class(i_s.db);
-                if let Some(callable) = cls.find_relevant_constructor(i_s).maybe_callable(i_s, cls)
-                {
-                    return callable.format(&format_data).into();
-                }
-            }
+            DbType::Class(c) if c.generics != ClassGenerics::NotDefinedYet => (),
             DbType::Dataclass(d) => {
                 let class = d.class(i_s.db);
                 return t
@@ -261,7 +255,11 @@ fn reveal_type_info(i_s: &InferenceState, t: Type) -> Box<str> {
                     .format(&format_data)
                     .into()
             }
-            _ => (),
+            _ => {
+                if let Some(callable) = t.maybe_callable(i_s) {
+                    return callable.format(&format_data).into();
+                }
+            }
         }
     }
     t.format(&format_data)
