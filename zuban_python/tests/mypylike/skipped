@@ -190,8 +190,6 @@ testCallerVarArgsListWithTypeInference
 testCallerVarArgsTupleWithTypeInference
 testCallerVarargsAndComplexTypeInference
 testStarUnpackNestedUnderscore
-# bottom up inference list multiply
-testListMultiplyInContext
 
 # union list context inference
 testUnpackingUnionOfListsInFunction

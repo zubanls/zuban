@@ -1128,7 +1128,29 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             ExpressionPart::Atom(atom) => self.infer_atom(atom, result_context),
             ExpressionPart::Primary(primary) => self.infer_primary(primary, result_context),
             ExpressionPart::Sum(sum) => self.infer_operation(sum.as_operation()),
-            ExpressionPart::Term(term) => self.infer_operation(term.as_operation()),
+            ExpressionPart::Term(term) => {
+                let op = term.as_operation();
+                // Mypy special cases the case [...] * n where n is an int (see check_list_multiply
+                // in mypy)
+                if op.operand == "*" {
+                    if let ExpressionPart::Atom(atom) = op.left {
+                        if matches!(atom.unpack(), AtomContent::List(_)) {
+                            if self
+                                .infer_expression_part(op.right, &mut ResultContext::Unknown)
+                                .as_type(self.i_s)
+                                .is_simple_sub_type_of(
+                                    self.i_s,
+                                    &Type::owned(self.i_s.db.python_state.int_db_type()),
+                                )
+                                .bool()
+                            {
+                                return self.infer_atom(atom, result_context);
+                            }
+                        }
+                    }
+                }
+                self.infer_operation(op)
+            }
             ExpressionPart::Power(power) => self.infer_operation(power.as_operation()),
             ExpressionPart::ShiftExpr(shift) => self.infer_operation(shift.as_operation()),
             ExpressionPart::BitwiseOr(or) => self.infer_operation(or.as_operation()),
