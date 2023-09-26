@@ -9,3 +9,23 @@ reveal_type(A(1).__new__)  # N: Revealed type is "?"
 
 reveal_type(A.__new__(A, 1))  # N: Revealed type is "A"
 reveal_type(A(1).__new__(A, 1))  # N: Revealed type is "A"
+
+[case namedtuple_type_used_as_callable]
+from typing import NamedTuple, Generic, Callable, ParamSpec, TypeVar
+
+P = ParamSpec("P")
+T = TypeVar("T")
+
+class Foo(NamedTuple):
+    a: int = 1
+class Bar(NamedTuple, Generic[T]):
+    a: T
+
+Baz = NamedTuple("Baz", [('x', int)])
+
+def identity(x: Callable[P, T]) -> Callable[P, T]:
+    return x
+
+reveal_type(identity(Foo)) # N: Revealed type is "def (a: builtins.int =) -> tuple[builtins.int, fallback=__main__.Foo]"
+reveal_type(identity(Bar)) # N: Revealed type is "def [T] (a: T) -> tuple[T, fallback=__main__.Bar[T]]"
+reveal_type(identity(Baz)) # N: Revealed type is "def (x: builtins.int) -> tuple[builtins.int, fallback=__main__.Baz]"

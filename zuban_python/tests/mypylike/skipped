@@ -9,9 +9,6 @@ testNewAnalyzerTypeVarForwardReferenceErrors
 testTypingSelfRecursiveInit
 # Overload
 testSelfTypeBadTypeIgnoredInConstructorOverload
-# named tuple
-testNamedTupleImportCycle
-testEmptyNamedTupleTypeRepr
 
 # 3.7 tests
 testNamedTupleDefaults

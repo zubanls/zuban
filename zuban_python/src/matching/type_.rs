@@ -181,6 +181,11 @@ impl<'a> Type<'a> {
                     return cls.find_relevant_constructor(i_s).maybe_callable(i_s, cls);
                 }
                 DbType::TypedDict(_) => todo!(),
+                DbType::NamedTuple(nt) => {
+                    let mut callable = nt.__new__.remove_first_param().unwrap();
+                    callable.result_type = (**t).clone();
+                    return Some(CallableLike::Callable(Rc::new(callable)));
+                }
                 _ => {
                     /*
                     if matches!(&c1.params, CallableParams::Any) {

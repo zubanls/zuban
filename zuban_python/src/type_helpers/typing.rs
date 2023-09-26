@@ -247,14 +247,6 @@ fn reveal_type_info(i_s: &InferenceState, t: Type) -> Box<str> {
                 )
                 .into();
             }
-            DbType::NamedTuple(nt) => {
-                return nt
-                    .__new__
-                    .remove_first_param()
-                    .unwrap()
-                    .format(&format_data)
-                    .into()
-            }
             _ => {
                 if let Some(callable) = t.maybe_callable(i_s) {
                     return callable.format(&format_data).into();
