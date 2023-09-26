@@ -15,9 +15,10 @@ use crate::arguments::{Arguments, KnownArguments, NoArguments, SimpleArguments};
 use crate::database::{
     BaseClass, CallableContent, CallableParam, CallableParams, ClassGenerics, ClassInfos,
     ClassStorage, ClassType, ComplexPoint, Database, Dataclass, DataclassOptions, DbType, Enum,
-    EnumMemberDefinition, FormatStyle, FunctionKind, GenericClass, GenericsList, Locality,
-    MetaclassState, MroIndex, NamedTuple, ParamSpecific, ParentScope, Point, PointLink, PointType,
-    StringSlice, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember, Variance,
+    EnumMemberDefinition, FormatStyle, FunctionKind, FunctionOverload, GenericClass, GenericsList,
+    Locality, MetaclassState, MroIndex, NamedTuple, ParamSpecific, ParentScope, Point, PointLink,
+    PointType, StringSlice, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict,
+    TypedDictMember, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -2059,19 +2060,31 @@ impl NewOrInitConstructor<'_> {
             } else {
                 inf.as_type(i_s).maybe_callable(i_s)
             };
+            let to_callable = |c: &CallableContent| {
+                // Since __init__ does not have a return, We need to check the params
+                // of the __init__ functions and the class as a return type separately.
+                if !c.type_vars.is_empty() {
+                    todo!()
+                }
+                c.remove_first_param().map(|mut c| {
+                    c.result_type = cls.as_db_type(i_s.db);
+                    c
+                })
+            };
             callable.and_then(|callable_like| match callable_like {
                 CallableLike::Callable(c) => {
-                    // Since __init__ does not have a return, We need to check the params
-                    // of the __init__ functions and the class as a return type separately.
-                    if !c.type_vars.is_empty() {
-                        todo!()
-                    }
-                    c.remove_first_param().map(|mut c| {
-                        c.result_type = cls.as_db_type(i_s.db);
-                        CallableLike::Callable(Rc::new(c))
-                    })
+                    to_callable(&c).map(|c| CallableLike::Callable(Rc::new(c)))
                 }
-                CallableLike::Overload(_) => todo!(),
+                CallableLike::Overload(callables) => {
+                    let funcs: Box<_> = callables
+                        .iter_functions()
+                        .filter_map(|c| to_callable(c))
+                        .collect();
+                    match funcs.len() {
+                        0 | 1 => todo!(),
+                        _ => Some(CallableLike::Overload(FunctionOverload::new(funcs))),
+                    }
+                }
             })
         }
     }

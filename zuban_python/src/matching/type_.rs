@@ -3434,7 +3434,14 @@ impl CallableLike {
     pub fn format(self, format_data: &FormatData) -> String {
         match self {
             Self::Callable(c) => c.format(format_data),
-            Self::Overload(overload) => todo!(),
+            Self::Overload(overload) => format!(
+                "Overload({})",
+                overload
+                    .iter_functions()
+                    .map(|c| c.format(format_data))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
         }
     }
 }

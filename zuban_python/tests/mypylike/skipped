@@ -7,8 +7,6 @@ testGenericClassInsideOtherGenericClass
 testGenericClassClsNonGeneric
 testNewAnalyzerTypeVarForwardReferenceErrors
 testTypingSelfRecursiveInit
-# Overload
-testSelfTypeBadTypeIgnoredInConstructorOverload
 
 # 3.7 tests
 testNamedTupleDefaults
