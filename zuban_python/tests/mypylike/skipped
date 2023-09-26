@@ -123,12 +123,6 @@ testGenericClassAlternativeConstructorPreciseOverloaded
 testOverloaded__new__
 testIOTypes
 
-# Cannot use a covariant type variable as a parameter
-testRejectCovariantArgument
-testRejectCovariantArgumentSplitLine
-testRejectCovariantArgumentInLambda
-testBadVarianceInProtocols
-
 # Union of empty lists dicts sets with used ones
 testUnificationEmptyListLeft
 testUnificationEmptyListRight
@@ -754,6 +748,7 @@ testMapWithLambdaSpecialCase
 testSortedNoError
 testReModuleBytes
 testReModuleString
+testRejectCovariantArgumentInLambda
 # lambda: Name "UNDEFINED" is not defined
 testLambdaInheritsCheckedContextFromTypedFunc
 testLambdaInheritsCheckedContextFromTypedFuncForced
@@ -1850,6 +1845,7 @@ testNewAnalyzerVersionCheck2
 testPromoteMemoryviewToBytes
 testDataclassesBadInit
 testDataclassFieldDoesNotFailOnKwargsUnpacking
+testOverloadSpecialCase
 # NamedTuple magic attribute __match_args__ in py >= 3.10
 testNamedTupleHasMatchArgs
 

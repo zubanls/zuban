@@ -521,7 +521,7 @@ impl<'db> Inference<'db, '_, '_> {
 
         // Make sure the type vars are properly pre-calculated
         function.type_vars(self.i_s);
-        let (_, params, return_annotation, block) = f.unpack();
+        let (name, params, return_annotation, block) = f.unpack();
         if !is_overload_member {
             // Check defaults here.
             for param in params.iter() {
@@ -552,6 +552,22 @@ impl<'db> Inference<'db, '_, '_> {
                             );
                             node_ref
                         });
+                    }
+                }
+            }
+        }
+
+        for param in params
+            .iter()
+            .skip((function.kind(self.i_s) != FunctionKind::Staticmethod).into())
+        {
+            if let Some(annotation) = param.annotation() {
+                let t = self.use_cached_annotation_type(annotation);
+                if matches!(t.as_ref(), DbType::TypeVar(tv) if tv.type_var.variance == Variance::Covariant)
+                {
+                    if !["__init__", "__new__", "__post_init__"].contains(&name.as_code()) {
+                        NodeRef::new(self.file, annotation.index())
+                            .add_issue(self.i_s, IssueType::TypeVarCovariantInParamType);
                     }
                 }
             }
