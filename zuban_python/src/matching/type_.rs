@@ -90,8 +90,6 @@ impl<'a> Type<'a> {
     }
 
     pub fn simplified_union(self, i_s: &InferenceState, other: Self) -> DbType {
-        dbg!(self.format_short(i_s.db));
-        dbg!(other.format_short(i_s.db));
         // Check out how mypy does it:
         // https://github.com/python/mypy/blob/ff81a1c7abc91d9984fc73b9f2b9eab198001c8e/mypy/typeops.py#L413-L486
         let highest_union_format_index = self
@@ -101,6 +99,7 @@ impl<'a> Type<'a> {
             i_s,
             [(0, self.into_db_type()), (1, other.into_db_type())].into_iter(),
             highest_union_format_index,
+            false,
         )
     }
 
@@ -1421,104 +1420,32 @@ impl<'a> Type<'a> {
                 }))
             }
             DbType::Union(u) => {
-                let mut entries: Vec<UnionEntry> = Vec::with_capacity(u.entries.len());
-                let mut add = |type_, format_index| {
-                    if matches!(type_, DbType::None) && !db.python_state.project.strict_optional {
-                        return;
-                    }
-                    // Simplify duplicates & subclass removal
-                    let i_s = InferenceState::new(db);
-                    let mut matcher = Matcher::with_ignored_promotions();
-                    match &type_ {
-                        DbType::RecursiveAlias(r1) if r1.generics.is_some() => {
-                            // Recursive aliases need special handling, because the normal subtype
-                            // checking will call this function again if generics are available to
-                            // cache the type. In that case we just avoid complex matching and use
-                            // a simple heuristic. This won't affect correctness, it might just
-                            // display a bigger union than necessary.
-                            for entry in entries.iter() {
-                                if let DbType::RecursiveAlias(r2) = &entry.type_ {
-                                    if r1 == r2 {
-                                        return;
-                                    }
-                                }
-                            }
-                        }
-                        _ => {
-                            let t = Type::new(&type_);
-                            for entry in entries.iter_mut() {
-                                let current = Type::new(&entry.type_);
-                                if entry.type_.has_any(&i_s) || type_.has_any(&i_s) {
-                                    if entry.type_ == type_ {
-                                        return;
-                                    }
-                                } else {
-                                    match &entry.type_ {
-                                        DbType::RecursiveAlias(r) if r.generics.is_some() => (),
-                                        _ => {
-                                            if current
-                                                .is_super_type_of(&i_s, &mut matcher, &t)
-                                                .bool()
-                                            {
-                                                return; // Type is already in the union
-                                            }
-                                            if current.is_sub_type_of(&i_s, &mut matcher, &t).bool()
-                                            {
-                                                // The new type is more general and therefore needs to be used.
-                                                entry.type_ = type_;
-                                                return;
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    entries.push(UnionEntry {
-                        type_,
-                        format_index,
+                let new_entries = u
+                    .entries
+                    .iter()
+                    .map(|u| {
+                        (
+                            u.format_index,
+                            Type::new(&u.type_).replace_type_var_likes_and_self(
+                                db,
+                                callable,
+                                replace_self,
+                            ),
+                        )
                     })
-                };
-                for entry in u.entries.iter() {
-                    match Type::new(&entry.type_).replace_type_var_likes_and_self(
-                        db,
-                        callable,
-                        replace_self,
-                    ) {
-                        DbType::Union(inner) => {
-                            for inner_entry in inner.entries.into_vec().into_iter() {
-                                match inner_entry.type_ {
-                                    DbType::Union(_) => unreachable!(),
-                                    type_ => add(type_, entry.format_index),
-                                }
-                            }
-                        }
-                        type_ => add(type_, entry.format_index),
-                    }
-                }
-                /*
+                    .collect::<Vec<_>>();
                 let i_s = InferenceState::new(db);
-                simplified_union_from_iterators(u.entries.iter().map(|u| (
-                    u.format_index(),
-                    Type::new(&entry.type_).replace_type_var_likes_and_self(
-                        db,
-                        callable,
-                        replace_self,
-                    )
-                )))
-                */
-                match entries.len() {
-                    0 => DbType::None,
-                    1 => entries.into_iter().next().unwrap().type_,
-                    _ => {
-                        let mut union = UnionType {
-                            entries: entries.into_boxed_slice(),
-                            format_as_optional: u.format_as_optional,
-                        };
-                        union.sort_for_priority();
-                        DbType::Union(union)
-                    }
-                }
+                let highest_union_format_index = new_entries
+                    .iter()
+                    .map(|e| e.1.highest_union_format_index())
+                    .max()
+                    .unwrap();
+                simplified_union_from_iterators(
+                    &i_s,
+                    new_entries.into_iter(),
+                    highest_union_format_index,
+                    u.format_as_optional,
+                )
             }
             DbType::TypeVar(t) => match callable(TypeVarLikeUsage::TypeVar(Cow::Borrowed(t))) {
                 GenericItem::TypeArgument(t) => t,
@@ -3171,6 +3098,7 @@ pub fn simplified_union_from_iterators(
     types: impl Iterator<Item = (usize, DbType)>,
     // We need this to make sure that the unions within the iterator can be properly ordered.
     highest_union_format_index: usize,
+    format_as_optional: bool,
 ) -> DbType {
     let multiply = highest_union_format_index + 1;
     let mut result = merge_simplified_union_type(
@@ -3178,16 +3106,17 @@ pub fn simplified_union_from_iterators(
         types.into_iter().flat_map(|(format_index, t)| {
             t.into_iter_with_unpacked_unions()
                 .map(move |entry| UnionEntry {
-                    format_index: dbg!(format_index) * multiply + dbg!(entry.format_index),
+                    format_index: format_index * multiply + entry.format_index,
                     type_: entry.type_,
                 })
         }),
+        format_as_optional,
     );
     loop {
         match result {
             MergeSimplifiedUnionResult::Done(t) => return t,
             MergeSimplifiedUnionResult::NotDone(items) => {
-                result = merge_simplified_union_type(i_s, items.into_iter())
+                result = merge_simplified_union_type(i_s, items.into_iter(), format_as_optional)
             }
         }
     }
@@ -3201,6 +3130,7 @@ enum MergeSimplifiedUnionResult {
 fn merge_simplified_union_type(
     i_s: &InferenceState,
     types: impl Iterator<Item = UnionEntry>,
+    format_as_optional: bool,
 ) -> MergeSimplifiedUnionResult {
     let mut new_types: Vec<UnionEntry> = vec![];
     let mut finished = true;
@@ -3214,32 +3144,55 @@ fn merge_simplified_union_type(
             }
             continue;
         }
-        for (i, current) in new_types.iter().enumerate() {
-            if current.type_.has_any(i_s) {
-                continue;
+        match &additional.type_ {
+            DbType::RecursiveAlias(r1) if r1.generics.is_some() => {
+                // Recursive aliases need special handling, because the normal subtype
+                // checking will call this function again if generics are available to
+                // cache the type. In that case we just avoid complex matching and use
+                // a simple heuristic. This won't affect correctness, it might just
+                // display a bigger union than necessary.
+                for entry in new_types.iter() {
+                    if let DbType::RecursiveAlias(r2) = &entry.type_ {
+                        if r1 == r2 {
+                            continue 'outer;
+                        }
+                    }
+                }
             }
-            if Type::new(&additional.type_)
-                .is_super_type_of(
-                    i_s,
-                    &mut Matcher::with_ignored_promotions(),
-                    &Type::new(&current.type_),
-                )
-                .bool()
-            {
-                new_types[i].type_ = additional.type_;
-                finished = false;
-                continue 'outer;
-            }
-            if Type::new(&current.type_)
-                .is_super_type_of(
-                    i_s,
-                    &mut Matcher::with_ignored_promotions(),
-                    &Type::new(&additional.type_),
-                )
-                .bool()
-            {
-                finished = false;
-                continue 'outer;
+            _ => {
+                for (i, current) in new_types.iter().enumerate() {
+                    if current.type_.has_any(i_s) {
+                        continue;
+                    }
+                    match &current.type_ {
+                        DbType::RecursiveAlias(r) if r.generics.is_some() => (),
+                        t => {
+                            if Type::new(&additional.type_)
+                                .is_super_type_of(
+                                    i_s,
+                                    &mut Matcher::with_ignored_promotions(),
+                                    &Type::new(t),
+                                )
+                                .bool()
+                            {
+                                new_types[i].type_ = additional.type_;
+                                finished = false;
+                                continue 'outer;
+                            }
+                            if Type::new(t)
+                                .is_super_type_of(
+                                    i_s,
+                                    &mut Matcher::with_ignored_promotions(),
+                                    &Type::new(&additional.type_),
+                                )
+                                .bool()
+                            {
+                                finished = false;
+                                continue 'outer;
+                            }
+                        }
+                    }
+                }
             }
         }
         new_types.push(additional);
@@ -3249,7 +3202,10 @@ fn merge_simplified_union_type(
             0 => DbType::Never,
             1 => new_types.into_iter().next().unwrap().type_,
             _ => {
-                let mut union = UnionType::new(new_types);
+                let mut union = UnionType {
+                    format_as_optional,
+                    entries: new_types.into(),
+                };
                 union.sort_for_priority();
                 DbType::Union(union)
             }
