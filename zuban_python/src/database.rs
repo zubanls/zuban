@@ -1814,7 +1814,7 @@ impl CallableContent {
             || self.params.has_any_internal(i_s, already_checked)
     }
 
-    fn has_self_type(&self) -> bool {
+    pub fn has_self_type(&self) -> bool {
         self.result_type.has_self_type() || match &self.params {
             CallableParams::Simple(params) => {
                 params.iter().any(|param| match &param.param_specific {

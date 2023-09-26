@@ -3,8 +3,6 @@ testUnionOrSyntaxWithTypeAliasWorking
 testCachedProperty
 testTypedDictGetMethodInvalidArgs
 
-testTypingSelfRecursiveInit
-
 # 3.7 tests
 testNamedTupleDefaults
 testAsyncForOutsideCoroutine

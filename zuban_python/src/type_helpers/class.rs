@@ -2072,7 +2072,16 @@ impl NewOrInitConstructor<'_> {
                     todo!()
                 }
                 c.remove_first_param().map(|mut c| {
-                    c.result_type = cls.as_db_type(i_s.db);
+                    let self_ = cls.as_db_type(i_s.db);
+                    if c.has_self_type() {
+                        c = Type::replace_type_var_likes_and_self_for_callable(
+                            &c,
+                            i_s.db,
+                            &mut |usage| usage.into_generic_item(),
+                            &|| self_.clone(),
+                        )
+                    }
+                    c.result_type = self_;
                     c.type_vars = cls.type_vars(i_s).clone();
                     c
                 })
