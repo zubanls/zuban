@@ -1496,6 +1496,17 @@ impl<'a> Type<'a> {
                         type_ => add(type_, entry.format_index),
                     }
                 }
+                /*
+                let i_s = InferenceState::new(db);
+                simplified_union_from_iterators(u.entries.iter().map(|u| (
+                    u.format_index(),
+                    Type::new(&entry.type_).replace_type_var_likes_and_self(
+                        db,
+                        callable,
+                        replace_self,
+                    )
+                )))
+                */
                 match entries.len() {
                     0 => DbType::None,
                     1 => entries.into_iter().next().unwrap().type_,
@@ -3237,7 +3248,11 @@ fn merge_simplified_union_type(
         MergeSimplifiedUnionResult::Done(match new_types.len() {
             0 => DbType::Never,
             1 => new_types.into_iter().next().unwrap().type_,
-            _ => DbType::Union(UnionType::new(new_types)),
+            _ => {
+                let mut union = UnionType::new(new_types);
+                union.sort_for_priority();
+                DbType::Union(union)
+            }
         })
     } else {
         MergeSimplifiedUnionResult::NotDone(new_types)
