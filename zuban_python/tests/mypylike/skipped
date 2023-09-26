@@ -128,10 +128,6 @@ testRejectCovariantArgument
 testRejectCovariantArgumentSplitLine
 testRejectCovariantArgumentInLambda
 testBadVarianceInProtocols
-# Cannot use a contravariant type variable as return type
-testRejectContravariantReturnType
-testAcceptCovariantReturnType
-testAcceptContravariantArgument
 
 # Union of empty lists dicts sets with used ones
 testUnificationEmptyListLeft

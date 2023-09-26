@@ -110,6 +110,8 @@ pub(crate) enum IssueType {
         variable_name: Box<str>
     },
     TypeVarInReturnButNotArgument,
+    TypeVarCovariantInReturnType,
+    TypeVarContravariantInReturnType,
     UnexpectedTypeForTypeVar,
     TypeVarTupleTooManyArguments,
     ParamSpecTooManyKeywordArguments,
@@ -267,6 +269,8 @@ impl IssueType {
             | InvalidSetItemTarget { .. } => "assignment",
             InvalidGetItem { .. } | NotIndexable { .. } | UnsupportedSetItemTarget(_) => "index",
             TypeVarInReturnButNotArgument
+            | TypeVarCovariantInReturnType
+            | TypeVarContravariantInReturnType
             | InvalidTypeVarValue { .. }
             | TypeVarBoundViolation { .. } => "type-var",
             UnsupportedOperand { .. }
@@ -731,6 +735,10 @@ impl<'db> Diagnostic<'db> {
             ),
             TypeVarInReturnButNotArgument =>
                 "A function returning TypeVar should receive at least one argument containing the same Typevar".to_string(),
+            TypeVarCovariantInReturnType =>
+                "Cannot use a covariant type variable as a parameter".to_string(),
+            TypeVarContravariantInReturnType =>
+                "Cannot use a contravariant type variable as return type".to_string(),
             UnexpectedTypeForTypeVar =>
                 "Cannot declare the type of a TypeVar or similar construct".to_string(),
             TypeVarTupleTooManyArguments =>

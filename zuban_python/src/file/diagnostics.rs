@@ -558,14 +558,19 @@ impl<'db> Inference<'db, '_, '_> {
         }
 
         if let Some(return_annotation) = return_annotation {
+            let t = self.use_cached_return_annotation_type(return_annotation);
+            if matches!(t.as_ref(), DbType::TypeVar(tv) if tv.type_var.variance == Variance::Contravariant)
+            {
+                NodeRef::new(self.file, return_annotation.index())
+                    .add_issue(self.i_s, IssueType::TypeVarContravariantInReturnType);
+            }
             if function.is_generator() {
                 let expected = if function.is_async() {
                     &self.i_s.db.python_state.async_generator_with_any_generics
                 } else {
                     &self.i_s.db.python_state.generator_with_any_generics
                 };
-                if !self
-                    .use_cached_return_annotation_type(return_annotation)
+                if !t
                     .is_simple_super_type_of(self.i_s, &Type::new(&expected))
                     .bool()
                 {
