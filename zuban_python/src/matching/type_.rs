@@ -2324,27 +2324,9 @@ impl<'a> Type<'a> {
                     )
                 }
             }
-            DbType::Type(t) => match t.as_ref() {
-                DbType::Union(union) => {
-                    debug_assert!(!union.entries.is_empty());
-                    for t in union.iter() {
-                        callable(
-                            &Type::owned(DbType::Type(Rc::new(t.clone()))),
-                            TypingType::new(i_s.db, t).lookup(
-                                i_s,
-                                from,
-                                name,
-                                kind,
-                                result_context,
-                            ),
-                        )
-                    }
-                }
-                _ => callable(
-                    self,
-                    TypingType::new(i_s.db, t).lookup(i_s, from, name, kind, result_context),
-                ),
-            },
+            DbType::Type(t) => {
+                attribute_access(i_s, from, name, kind, result_context, callable, t.clone())
+            }
             DbType::Callable(_) | DbType::FunctionOverload(_) => callable(
                 self,
                 Instance::new(i_s.db.python_state.function_class(), None)
@@ -3204,6 +3186,38 @@ fn merge_simplified_union_type(
         MergeSimplifiedUnionResult::NotDone(new_types)
     }
 }
+
+pub fn attribute_access(
+    i_s: &InferenceState,
+    from: NodeRef,
+    name: &str,
+    kind: LookupKind,
+    result_context: &mut ResultContext,
+    callable: &mut impl FnMut(&Type, LookupResult),
+    in_type: Rc<DbType>,
+) {
+    match in_type.as_ref() {
+        DbType::Union(union) => {
+            debug_assert!(union.entries.len() > 1);
+            for t in union.iter() {
+                attribute_access(
+                    i_s,
+                    from,
+                    name,
+                    kind,
+                    result_context,
+                    callable,
+                    Rc::new(t.clone()),
+                )
+            }
+        }
+        t => callable(
+            &Type::owned(DbType::Type(in_type.clone())),
+            TypingType::new(i_s.db, t).lookup(i_s, from, name, kind, result_context),
+        ),
+    }
+}
+
 pub fn execute_type_of_type<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Arguments<'db>,
