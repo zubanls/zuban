@@ -886,8 +886,12 @@ impl DbType {
         Self::Class(GenericClass { link, generics })
     }
 
-    pub fn is_union(&self) -> bool {
-        matches!(self, DbType::Union(_))
+    pub fn is_union_like(&self) -> bool {
+        match self {
+            DbType::Union(_) => true,
+            DbType::Type(t) if t.as_ref().is_union_like() => true,
+            _ => false,
+        }
     }
 
     pub fn is_any(&self) -> bool {

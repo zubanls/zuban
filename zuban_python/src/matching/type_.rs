@@ -669,7 +669,7 @@ impl<'a> Type<'a> {
             DbType::Union(u2)
                 if variance == Variance::Covariant
                 // Union matching was already done.
-                && !self.is_union() =>
+                && !self.is_union_like() =>
             {
                 if matcher.is_matching_reverse() {
                     debug!("TODO matching reverse?");
@@ -1227,7 +1227,7 @@ impl<'a> Type<'a> {
             }
             DbType::Type(t1) => todo!(),
             DbType::Union(union) => {
-                if self.is_union() {
+                if self.is_union_like() {
                     debug!("TODO we should try to resemble unions");
                 } else {
                     let mut same_index = None;
@@ -2329,7 +2329,7 @@ impl<'a> Type<'a> {
                     debug_assert!(!union.entries.is_empty());
                     for t in union.iter() {
                         callable(
-                            self,
+                            &Type::owned(DbType::Type(Rc::new(t.clone()))),
                             TypingType::new(i_s.db, t).lookup(
                                 i_s,
                                 from,

@@ -15,7 +15,6 @@ testObfuscatedTypeConstructorReturnsTypeType
 testOtherTypeConstructorsSucceed
 # `class type` access on class
 testTypeUsingTypeCTypeAnyMemberFallback
-testTypeUsingTypeCClassMethodUnion
 testTypeUsingTypeCClassMethodFromTypeVarUnionBound
 testTypeUsingTypeCErrorUnsupportedType
 testTypeUsingTypeCOverloadedClass
