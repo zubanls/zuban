@@ -8,9 +8,6 @@ testChangeBaseClassAttributeType
 testCheckUntypedDefsSelf2
 # slice type checking
 testNonIntSliceBounds
-# __get__/__set__ not callable
-testDescriptorUncallableDunderGet
-testDescriptorUncallableDunderSet
 # The type "Type[type]" is not generic and not indexable
 testTypeApplicationCrash
 # Invalid type comment or annotation, because of weird annotations
