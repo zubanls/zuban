@@ -411,33 +411,19 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    fn original_definition(&mut self, assignment: Assignment) -> Option<Inferred> {
-        // TODO shouldn't this be merged/using infer_single_target
-
-        // TODO it's weird that we unpack assignments here again.
-        if let AssignmentContent::Normal(targets, _) = assignment.unpack() {
-            for target in targets {
-                match target {
-                    Target::Name(name_def) => {
-                        if let Some(first_index) =
-                            first_defined_name(self.file, name_def.name_index())
-                        {
-                            let inferred = self.infer_name_by_index(first_index);
-                            return Some(inferred);
-                        }
+    fn inferred_context_for_simple_assignment(
+        &mut self,
+        targets: AssignmentTargetIterator,
+    ) -> Option<Inferred> {
+        for target in targets {
+            match target {
+                Target::Tuple(_) | Target::Starred(_) => (),
+                Target::IndexExpression(t) => debug!("TODO enable context for index expr"),
+                Target::NameExpression(..) => debug!("TODO enable context for named expr"),
+                _ => {
+                    if let Some(inferred) = self.infer_single_target(target) {
+                        return Some(inferred);
                     }
-                    Target::NameExpression(primary_target, name_def_node) => {
-                        /*
-                        if let PrimaryTargetOrAtom::Atom(atom) = primary_target.first() {
-                            // TODO this is completely wrong!!!
-                            if atom.as_code() == "self" {
-                                continue;
-                            }
-                        }
-                        return Some(self.infer_primary_target(primary_target));
-                        */
-                    }
-                    _ => (),
                 }
             }
         }
@@ -518,8 +504,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                     r
                 } else {
-                    let original_def = self.original_definition(assignment);
-                    let result_type = original_def.as_ref().map(|inf| inf.as_type(self.i_s));
+                    let inf = self.inferred_context_for_simple_assignment(targets.clone());
+                    let result_type = inf.as_ref().map(|inf| inf.as_type(self.i_s));
                     let mut result_context = match &result_type {
                         Some(t) => ResultContext::Known(t),
                         None => ResultContext::AssignmentNewDefinition,
@@ -588,7 +574,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let (inplace, normal, reverse) = aug_assign.magic_methods();
                 let right =
                     self.infer_assignment_right_side(right_side, &mut ResultContext::Unknown);
-                let left = self.infer_single_target(target);
+                let Some(left) = self.infer_single_target(target) else {
+                    todo!()
+                };
                 let had_error = Cell::new(false);
                 let result = left.type_lookup_and_execute_with_details(
                     self.i_s,
@@ -763,20 +751,15 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    fn infer_single_target(&mut self, target: Target) -> Inferred {
+    fn infer_single_target(&mut self, target: Target) -> Option<Inferred> {
         match target {
             // TODO it's a bit weird that we cannot just call self.infer_name_definition here
-            Target::Name(name_def) => {
-                if let Some(first_index) = first_defined_name(self.file, name_def.name().index()) {
-                    self.infer_name_by_index(first_index)
-                } else {
-                    todo!()
-                }
-            }
+            Target::Name(name_def) => first_defined_name(self.file, name_def.name().index())
+                .map(|i| self.infer_name_by_index(i)),
             Target::NameExpression(primary_target, name_def_node) => {
                 todo!()
             }
-            Target::IndexExpression(t) => self.infer_primary_target(t),
+            Target::IndexExpression(t) => Some(self.infer_primary_target(t)),
             Target::Tuple(_) | Target::Starred(_) => unreachable!(),
         }
     }

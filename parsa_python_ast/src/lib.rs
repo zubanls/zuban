@@ -2171,6 +2171,7 @@ impl<'db> Iterator for StarTargetsIterator<'db> {
     }
 }
 
+#[derive(Clone)]
 pub struct AssignmentTargetIterator<'db>(StepBy<SiblingIterator<'db>>);
 
 impl<'db> Iterator for AssignmentTargetIterator<'db> {
