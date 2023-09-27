@@ -3305,6 +3305,17 @@ pub fn execute_type_of_type<'db>(
             debug!("TODO did not check arguments in execution of enum");
             Inferred::from_type(type_.clone())
         }
+        DbType::Union(union) => Inferred::gather_base_types(i_s, |gather| {
+            for t in union.iter() {
+                gather(execute_type_of_type(
+                    i_s,
+                    args,
+                    result_context,
+                    on_type_error,
+                    t,
+                ))
+            }
+        }),
         _ => todo!("{:?}", type_),
     }
 }
