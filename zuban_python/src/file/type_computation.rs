@@ -729,24 +729,20 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             .unwrap_or(DbType::Any)
     }
 
-    fn as_db_type_or_error<'tc1, 'tc2>(
-        &mut self,
-        type_: TypeContent<'tc1, 'tc2>,
-        node_ref: NodeRef,
-    ) -> Result<DbType, TypeContent<'tc1, 'tc2>> {
+    fn as_db_type_or_error(&mut self, type_: TypeContent, node_ref: NodeRef) -> Option<DbType> {
         let db = self.inference.i_s.db;
         match type_ {
             TypeContent::Class { node_ref, .. } => {
-                return Ok(Class::with_undefined_generics(node_ref).as_db_type(db))
+                return Some(Class::with_undefined_generics(node_ref).as_db_type(db))
             }
             TypeContent::SimpleGeneric {
                 class_link,
                 generics,
                 ..
-            } => return Ok(DbType::new_class(class_link, generics)),
-            TypeContent::DbType(d) => return Ok(d),
+            } => return Some(DbType::new_class(class_link, generics)),
+            TypeContent::DbType(d) => return Some(d),
             TypeContent::Dataclass(d) => {
-                return Ok(DbType::Dataclass({
+                return Some(DbType::Dataclass({
                     let class = d.class(db);
                     if class.use_cached_type_vars(db).is_empty() {
                         d
@@ -756,42 +752,44 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             d.options,
                         )
                     }
-                }));
+                }))
             }
             TypeContent::TypedDictDefinition(td) => {
                 return match &td.generics {
-                    TypedDictGenerics::None => Ok(DbType::TypedDict(td)),
-                    TypedDictGenerics::NotDefinedYet(_) => Ok(Type::owned(DbType::TypedDict(td))
-                        .replace_type_var_likes(db, &mut |usage| {
-                            usage.as_type_var_like().as_any_generic_item()
-                        })),
+                    TypedDictGenerics::None => Some(DbType::TypedDict(td)),
+                    TypedDictGenerics::NotDefinedYet(_) => Some(
+                        Type::owned(DbType::TypedDict(td))
+                            .replace_type_var_likes(db, &mut |usage| {
+                                usage.as_type_var_like().as_any_generic_item()
+                            }),
+                    ),
                     TypedDictGenerics::Generics(_) => unreachable!(),
                 }
             }
             TypeContent::Module(file) => {
                 self.add_module_issue(node_ref, &Module::new(file).qualified_name(db));
             }
-            TypeContent::Namespace(ref n) => {
+            TypeContent::Namespace(n) => {
                 self.add_module_issue(node_ref, &n.qualified_name());
             }
             TypeContent::TypeAlias(a) => {
                 self.is_recursive_alias |= a.is_recursive();
-                return Ok(a.as_db_type_and_set_type_vars_any(db));
+                return Some(a.as_db_type_and_set_type_vars_any(db));
             }
-            TypeContent::SpecialType(ref m) => match m {
+            TypeContent::SpecialType(m) => match m {
                 SpecialType::Callable => {
-                    return Ok(DbType::Callable(
+                    return Some(DbType::Callable(
                         self.inference.i_s.db.python_state.any_callable.clone(),
                     ))
                 }
-                SpecialType::Any => return Ok(DbType::Any),
-                SpecialType::Type => return Ok(db.python_state.type_of_any.clone()),
-                SpecialType::Tuple => return Ok(DbType::Tuple(TupleContent::new_empty())),
+                SpecialType::Any => return Some(DbType::Any),
+                SpecialType::Type => return Some(db.python_state.type_of_any.clone()),
+                SpecialType::Tuple => return Some(DbType::Tuple(TupleContent::new_empty())),
                 SpecialType::ClassVar => {
                     self.add_issue(node_ref, IssueType::ClassVarNestedInsideOtherType);
                 }
                 SpecialType::LiteralString => {
-                    return Ok(DbType::new_class(
+                    return Some(DbType::new_class(
                         db.python_state.str_node_ref().as_link(),
                         ClassGenerics::None,
                     ))
@@ -825,7 +823,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         self.add_issue(node_ref, IssueType::SelfTypeInMetaclass);
                     } else {
                         self.has_type_vars_or_self = true;
-                        return Ok(DbType::Self_);
+                        return Some(DbType::Self_);
                     }
                 }
                 SpecialType::Self_ => {
@@ -852,7 +850,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
             },
             TypeContent::TypeVarTuple(t) => todo!(),
-            TypeContent::ParamSpec(ref p) => {
+            TypeContent::ParamSpec(p) => {
                 self.add_issue(
                     node_ref,
                     IssueType::InvalidType(
@@ -868,7 +866,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     IssueType::Note(Box::from("You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'"))
                 );
             }
-            TypeContent::Unpacked(ref t) => debug!("TODO Unpacked Should probably raise an error?"),
+            TypeContent::Unpacked(t) => debug!("TODO Unpacked Should probably raise an error?"),
             TypeContent::Concatenate(_) => {
                 self.add_issue(
                     node_ref,
@@ -884,15 +882,15 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             // TODO here we would need to check if the generics are actually valid.
             TypeContent::RecursiveAlias(link) => {
                 self.is_recursive_alias = true;
-                return Ok(DbType::RecursiveAlias(Rc::new(RecursiveAlias::new(
+                return Some(DbType::RecursiveAlias(Rc::new(RecursiveAlias::new(
                     link, None,
                 ))));
             }
             TypeContent::Unknown => (),
-            TypeContent::ClassVar(_) => {
+            TypeContent::ClassVar(t) => {
                 self.add_issue(node_ref, IssueType::ClassVarNestedInsideOtherType);
             }
-            TypeContent::EnumMember(ref m) => {
+            TypeContent::EnumMember(m) => {
                 let format_data = FormatData::new_short(self.inference.i_s.db);
                 self.add_issue(
                     node_ref,
@@ -905,7 +903,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     ),
                 );
             }
-            TypeContent::InvalidVariable(ref t) => {
+            TypeContent::InvalidVariable(t) => {
                 t.add_issue(
                     self.inference.i_s.db,
                     |t| self.add_issue(node_ref, t),
@@ -929,7 +927,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 );
             }
         }
-        Err(type_)
+        None
     }
 
     fn compute_named_expr_db_type(&mut self, named_expr: NamedExpression) -> DbType {
@@ -3136,7 +3134,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         );
 
         let t = comp.compute_type(named_expr.expression());
-        let Ok(mut db_type) = comp.as_db_type_or_error(t, node_ref) else {
+        let Some(mut db_type) = comp.as_db_type_or_error(t, node_ref) else {
             return Err(())
         };
         let type_vars = comp.into_type_vars(|inf, recalculate_type_vars| {
