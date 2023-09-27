@@ -26,9 +26,9 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
-    lookup_in_namespace, lookup_on_enum_instance, lookup_on_enum_member_instance, Callable, Class,
-    DataclassHelper, Instance, Module, MroIterator, NamedTupleValue, OverloadedFunction, Tuple,
-    TypeOrClass, TypedDictHelper, TypingType,
+    lookup_in_namespace, lookup_on_enum_class, lookup_on_enum_instance,
+    lookup_on_enum_member_instance, Callable, Class, DataclassHelper, Instance, Module,
+    MroIterator, NamedTupleValue, OverloadedFunction, Tuple, TypeOrClass, TypedDictHelper,
 };
 use crate::utils::rc_unwrap_or_clone;
 
@@ -3196,7 +3196,7 @@ pub fn attribute_access_of_type(
     callable: &mut impl FnMut(&Type, LookupResult),
     in_type: Rc<DbType>,
 ) {
-    match in_type.as_ref() {
+    let lookup_result = match in_type.as_ref() {
         DbType::Union(union) => {
             debug_assert!(union.entries.len() > 1);
             for t in union.iter() {
@@ -3210,25 +3210,66 @@ pub fn attribute_access_of_type(
                     Rc::new(t.clone()),
                 )
             }
+            return;
         }
-        DbType::TypeVar(t) => match &t.type_var.kind {
-            TypeVarKind::Bound(bound) => attribute_access_of_type(
-                i_s,
-                from,
-                name,
-                kind,
-                result_context,
-                callable,
-                Rc::new(bound.clone()),
-            ),
-            TypeVarKind::Constraints(_) => todo!(),
-            TypeVarKind::Unrestricted => todo!(),
+        DbType::TypeVar(t) => {
+            match &t.type_var.kind {
+                TypeVarKind::Bound(bound) => attribute_access_of_type(
+                    i_s,
+                    from,
+                    name,
+                    kind,
+                    result_context,
+                    callable,
+                    Rc::new(bound.clone()),
+                ),
+                TypeVarKind::Constraints(_) => todo!(),
+                TypeVarKind::Unrestricted => todo!(),
+            }
+            return;
+        }
+        DbType::Class(g) => g.class(i_s.db).lookup(i_s, from, name, kind),
+        DbType::Literal(l) => i_s
+            .db
+            .python_state
+            .literal_instance(&l.kind)
+            .class
+            .lookup(i_s, from, name, kind),
+        DbType::Callable(_) => LookupResult::None,
+        DbType::Self_ => i_s.current_class().unwrap().lookup(i_s, from, name, kind),
+        DbType::Any => i_s
+            .db
+            .python_state
+            .bare_type_class()
+            .instance()
+            .lookup(i_s, from, name, kind)
+            .or_else(|| LookupResult::any()),
+        t @ DbType::Enum(e) => lookup_on_enum_class(i_s, from, e, name, result_context),
+        DbType::Dataclass(d) => DataclassHelper(d).lookup_on_type(i_s, from, name, kind),
+        DbType::TypedDict(d) => i_s
+            .db
+            .python_state
+            .typed_dict_class()
+            .lookup(i_s, from, name, kind),
+        DbType::NamedTuple(nt) => match name {
+            "__new__" => {
+                LookupResult::UnknownName(Inferred::from_type(DbType::Callable(nt.__new__.clone())))
+            }
+            _ => todo!(),
         },
-        t => callable(
-            &Type::owned(DbType::Type(in_type.clone())),
-            TypingType::new(i_s.db, t).lookup(i_s, from, name, kind, result_context),
-        ),
-    }
+        DbType::Tuple(tup) => i_s
+            .db
+            .python_state
+            .tuple_class(i_s.db, tup)
+            .lookup(i_s, from, name, kind),
+        DbType::Type(_) => i_s
+            .db
+            .python_state
+            .bare_type_class()
+            .lookup(i_s, from, name, kind),
+        t => todo!("{name} on {t:?}"),
+    };
+    callable(&Type::owned(DbType::Type(in_type.clone())), lookup_result)
 }
 
 pub fn execute_type_of_type<'db>(

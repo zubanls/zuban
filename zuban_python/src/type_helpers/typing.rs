@@ -1,17 +1,15 @@
-use std::fmt;
 use std::rc::Rc;
 
-use super::{lookup_on_enum_class, DataclassHelper};
 use crate::arguments::{ArgumentKind, Arguments};
 use crate::database::{
-    ClassGenerics, ComplexPoint, Database, DbType, FormatStyle, NewType, ParamSpec, PointLink,
-    TypeVar, TypeVarKind, TypeVarLike, TypeVarName, TypeVarTuple, TypedDictGenerics, Variance,
+    ClassGenerics, ComplexPoint, DbType, FormatStyle, NewType, ParamSpec, PointLink, TypeVar,
+    TypeVarKind, TypeVarLike, TypeVarName, TypeVarTuple, TypedDictGenerics, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{FormatData, LookupKind, LookupResult, OnTypeError, ResultContext, Type};
+use crate::matching::{FormatData, OnTypeError, ResultContext, Type};
 use crate::node_ref::NodeRef;
 
 pub fn execute_type<'db>(
@@ -31,80 +29,6 @@ pub fn execute_type<'db>(
         )))
     } else {
         todo!()
-    }
-}
-
-pub struct TypingType<'a> {
-    db: &'a Database,
-    pub db_type: &'a DbType,
-}
-
-impl<'a> TypingType<'a> {
-    pub fn new(db: &'a Database, db_type: &'a DbType) -> Self {
-        Self { db, db_type }
-    }
-
-    pub fn lookup(
-        &self,
-        i_s: &InferenceState,
-        node_ref: NodeRef,
-        name: &str,
-        kind: LookupKind,
-        result_context: &mut ResultContext,
-    ) -> LookupResult {
-        match self.db_type {
-            DbType::Class(g) => g.class(i_s.db).lookup(i_s, node_ref, name, kind),
-            DbType::Literal(l) => i_s
-                .db
-                .python_state
-                .literal_instance(&l.kind)
-                .class
-                .lookup(i_s, node_ref, name, kind),
-            DbType::Callable(_) => LookupResult::None,
-            DbType::Self_ => i_s
-                .current_class()
-                .unwrap()
-                .lookup(i_s, node_ref, name, kind),
-            DbType::Any => i_s
-                .db
-                .python_state
-                .bare_type_class()
-                .instance()
-                .lookup(i_s, node_ref, name, kind)
-                .or_else(|| LookupResult::any()),
-            t @ DbType::Enum(e) => lookup_on_enum_class(i_s, node_ref, e, name, result_context),
-            DbType::Dataclass(d) => DataclassHelper(d).lookup_on_type(i_s, node_ref, name, kind),
-            DbType::TypedDict(d) => i_s
-                .db
-                .python_state
-                .typed_dict_class()
-                .lookup(i_s, node_ref, name, kind),
-            DbType::NamedTuple(nt) => match name {
-                "__new__" => LookupResult::UnknownName(Inferred::from_type(DbType::Callable(
-                    nt.__new__.clone(),
-                ))),
-                _ => todo!(),
-            },
-            DbType::Tuple(tup) => i_s
-                .db
-                .python_state
-                .tuple_class(i_s.db, tup)
-                .lookup(i_s, node_ref, name, kind),
-            DbType::Type(_) => i_s
-                .db
-                .python_state
-                .bare_type_class()
-                .lookup(i_s, node_ref, name, kind),
-            _ => todo!("{name} on {:?}", self.db_type),
-        }
-    }
-}
-
-impl fmt::Debug for TypingType<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("TypingType")
-            .field("db_type", &Type::new(self.db_type).format_short(self.db))
-            .finish()
     }
 }
 

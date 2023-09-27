@@ -32,5 +32,5 @@ pub use typed_dict::{
 };
 pub use typing::{
     execute_assert_type, execute_type, NewTypeClass, ParamSpecClass, RevealTypeFunction,
-    TypeVarClass, TypeVarTupleClass, TypingCast, TypingType,
+    TypeVarClass, TypeVarTupleClass, TypingCast,
 };
