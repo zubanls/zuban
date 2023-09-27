@@ -1002,6 +1002,7 @@ impl DbType {
     pub fn format_short(&self, db: &Database) -> Box<str> {
         self.format(&FormatData::new_short(db))
     }
+
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
         match self {
             Self::Class(c) => c.class(format_data.db).format(format_data),

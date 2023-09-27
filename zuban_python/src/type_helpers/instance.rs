@@ -519,7 +519,7 @@ fn execute_super_internal<'db>(
         Some(result) => result?,
         None => return Err(IssueType::SuperWithSingleArgumentNotSupported),
     };
-    let cls = match get_relevant_type_for_super(instance.as_type(i_s).as_ref()) {
+    let cls = match get_relevant_type_for_super(&instance.as_type(i_s)) {
         DbType::Self_ => i_s.current_class().unwrap().as_generic_class(i_s.db),
         DbType::Class(g) => g,
         DbType::Any => return Ok(Inferred::new_any()),

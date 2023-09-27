@@ -528,10 +528,8 @@ impl<'db> Inference<'db, '_, '_> {
                 if let Some(annotation) = param.annotation() {
                     if let Some(default) = param.default() {
                         let t = self.use_cached_annotation_type(annotation);
-                        let inf = self.infer_expression_with_context(
-                            default,
-                            &mut ResultContext::Known(t.as_ref()),
-                        );
+                        let inf = self
+                            .infer_expression_with_context(default, &mut ResultContext::Known(&t));
                         t.error_if_not_matches(self.i_s, &inf, |got, expected| {
                             let node_ref = NodeRef::new(self.file, default.index())
                                 .to_db_lifetime(self.i_s.db);
@@ -802,7 +800,7 @@ impl<'db> Inference<'db, '_, '_> {
                         let expression = except_expression.expression();
                         let inf = self.infer_expression(expression);
                         if !matches!(
-                            except_type(self.i_s, inf.as_type(self.i_s).as_ref(), true),
+                            except_type(self.i_s, &inf.as_type(self.i_s), true),
                             ExceptType::ContainsOnlyBaseExceptions
                         ) {
                             NodeRef::new(self.file, expression.index())
@@ -815,7 +813,7 @@ impl<'db> Inference<'db, '_, '_> {
                     let (except_expression, block) = except_star.unpack();
                     let expression = except_expression.expression();
                     let inf = self.infer_expression(expression);
-                    match except_type(self.i_s, inf.as_type(self.i_s).as_ref(), true) {
+                    match except_type(self.i_s, &inf.as_type(self.i_s), true) {
                         ExceptType::ContainsOnlyBaseExceptions => (),
                         ExceptType::HasExceptionGroup => {
                             NodeRef::new(self.file, expression.index()).add_issue(

@@ -2802,13 +2802,10 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             Specific::AnnotationOrTypeCommentWithTypeVars
                 | Specific::AnnotationOrTypeCommentClassVar
         ) {
-            let new_t = recalculate(
-                use_cached_annotation_or_type_comment(
-                    self.i_s,
-                    NodeRef::new(self.file, node_index),
-                )
-                .as_ref(),
-            );
+            let new_t = recalculate(&use_cached_annotation_or_type_comment(
+                self.i_s,
+                NodeRef::new(self.file, node_index),
+            ));
             self.file.complex_points.insert(
                 &self.file.points,
                 node_index + ANNOTATION_TO_EXPR_DIFFERENCE,

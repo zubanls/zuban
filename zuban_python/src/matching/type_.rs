@@ -622,7 +622,7 @@ impl<'a> Type<'a> {
         if let Some(class1) = self.maybe_class(i_s.db) {
             // TODO this should probably be checked before normal mro checking?!
             if class1.is_protocol(i_s.db) {
-                m = matcher.avoid_recursion(self.as_ref(), value_type.as_ref(), |matcher| {
+                m = matcher.avoid_recursion(self, value_type, |matcher| {
                     class1.check_protocol_match(i_s, matcher, value_type, variance)
                 });
                 if m.bool() {
@@ -635,7 +635,7 @@ impl<'a> Type<'a> {
         match value_type.as_ref() {
             DbType::Any if matcher.is_matching_reverse() => return Match::new_true(),
             DbType::Any => {
-                matcher.set_all_contained_type_vars_to_any(i_s, self.as_ref());
+                matcher.set_all_contained_type_vars_to_any(i_s, self);
                 return Match::True { with_any: true };
             }
             DbType::None if !i_s.db.python_state.project.strict_optional => {
@@ -723,7 +723,7 @@ impl<'a> Type<'a> {
                 let tuple_class = db.python_state.tuple_class(db, tup);
                 MroIterator::new(
                     db,
-                    TypeOrClass::Type(Type::new(self.as_ref())),
+                    TypeOrClass::Type(Type::new(self)),
                     tuple_class.generics,
                     tuple_class.use_cached_class_infos(db).mro.iter(),
                     false,
@@ -997,10 +997,10 @@ impl<'a> Type<'a> {
                 overlaps
             }
             (Some(ArbitraryLength(t1)), Some(ArbitraryLength(t2))) => {
-                Type::new(t1.as_ref()).overlaps(i_s, &Type::new(t2.as_ref()))
+                Type::new(t1).overlaps(i_s, &Type::new(t2))
             }
             (Some(ArbitraryLength(t1)), Some(FixedLength(ts2))) => {
-                let t1 = Type::new(t1.as_ref());
+                let t1 = Type::new(t1);
                 ts2.iter().all(|t2| match t2 {
                     TypeOrTypeVarTuple::Type(t2) => t1.overlaps(i_s, &Type::new(t2)),
                     TypeOrTypeVarTuple::TypeVarTuple(t2) => {
@@ -1009,7 +1009,7 @@ impl<'a> Type<'a> {
                 })
             }
             (Some(FixedLength(ts1)), Some(ArbitraryLength(t2))) => {
-                let t2 = Type::new(t2.as_ref());
+                let t2 = Type::new(t2);
                 ts1.iter().all(|t1| match t1 {
                     TypeOrTypeVarTuple::Type(t1) => Type::new(t1).overlaps(i_s, &t2),
                     TypeOrTypeVarTuple::TypeVarTuple(t1) => {
@@ -1192,11 +1192,7 @@ impl<'a> Type<'a> {
                         }
                         (Some(ArbitraryLength(t1)), Some(ArbitraryLength(t2))) => {
                             return DbType::Tuple(Rc::new(TupleContent::new_arbitrary_length(
-                                Type::new(t1.as_ref()).try_to_resemble_context(
-                                    i_s,
-                                    matcher,
-                                    &Type::new(t2.as_ref()),
-                                ),
+                                Type::new(t1).try_to_resemble_context(i_s, matcher, &Type::new(t2)),
                             )))
                         }
                         (Some(ArbitraryLength(t1)), Some(FixedLength(ts2))) => {
@@ -1219,9 +1215,8 @@ impl<'a> Type<'a> {
             }
             DbType::TypeVar(_) => {
                 if matcher.might_have_defined_type_vars() {
-                    let t = Type::owned(
-                        matcher.replace_type_var_likes_for_nested_context(i_s.db, t.as_ref()),
-                    );
+                    let t =
+                        Type::owned(matcher.replace_type_var_likes_for_nested_context(i_s.db, t));
                     return self.try_to_resemble_context(i_s, &mut Matcher::default(), &t);
                 }
             }
@@ -2053,12 +2048,12 @@ impl<'a> Type<'a> {
             DbType::TypeVar(tv) => match &tv.type_var.kind {
                 TypeVarKind::Bound(bound) => Type::new(bound).iter(i_s, from),
                 TypeVarKind::Constraints(_) => todo!(),
-                TypeVarKind::Unrestricted => on_error(self.as_ref()),
+                TypeVarKind::Unrestricted => on_error(self),
             },
             DbType::NewType(n) => Type::new(n.type_(i_s)).iter(i_s, from),
             DbType::Self_ => Instance::new(*i_s.current_class().unwrap(), None).iter(i_s, from),
             DbType::Type(t) => iter_on_type(i_s, t, from, &on_error),
-            _ => on_error(self.as_ref()),
+            _ => on_error(self),
         }
     }
 
@@ -2131,10 +2126,10 @@ impl<'a> Type<'a> {
             _ => None,
         };
 
-        if let Some(new) = check_both_sides(self.as_ref(), other.as_ref()) {
+        if let Some(new) = check_both_sides(self, other) {
             return new;
         }
-        if let Some(new) = check_both_sides(other.as_ref(), self.as_ref()) {
+        if let Some(new) = check_both_sides(other, self) {
             return new;
         }
         if let DbType::Type(t1) = self.as_ref() {
@@ -2149,9 +2144,7 @@ impl<'a> Type<'a> {
                         let TypeOrClass::Type(t2) = c2 else {
                             continue
                         };
-                        if let Some(base) =
-                            common_base_type_for_non_class(i_s, t1.as_ref(), t2.as_ref())
-                        {
+                        if let Some(base) = common_base_type_for_non_class(i_s, t1, t2.as_ref()) {
                             return base;
                         }
                     }
@@ -2650,14 +2643,6 @@ impl<'a> Type<'a> {
             },
             _ => DbType::Any,
         })
-    }
-
-    pub fn format(&self, format_data: &FormatData) -> Box<str> {
-        self.as_ref().format(format_data)
-    }
-
-    pub fn format_short(&self, db: &Database) -> Box<str> {
-        self.format(&FormatData::new_short(db))
     }
 }
 

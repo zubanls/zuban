@@ -342,10 +342,9 @@ impl<'db: 'slf, 'slf> Inferred {
                     }
                     Specific::AnnotationOrTypeCommentWithTypeVars => {
                         let t = use_cached_annotation_or_type_comment(i_s, definition);
-                        let d =
-                            replace_class_type_vars(i_s.db, t.as_ref(), attribute_class, &|| {
-                                class.as_db_type(i_s.db)
-                            });
+                        let d = replace_class_type_vars(i_s.db, &t, attribute_class, &|| {
+                            class.as_db_type(i_s.db)
+                        });
                         return Inferred::from_type(d);
                     }
                     _ => (),
@@ -701,7 +700,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     },
                                     &instance,
                                     &attribute_class,
-                                    first_type.as_ref(),
+                                    &first_type,
                                 ) {
                                     Some(Self::new_unsaved_complex(ComplexPoint::TypeInstance(
                                         DbType::Callable(Rc::new(t)),
@@ -736,12 +735,9 @@ impl<'db: 'slf, 'slf> Inferred {
                             if !attribute_class.has_simple_self_generics() =>
                         {
                             let t = use_cached_annotation_or_type_comment(i_s, node_ref);
-                            let t = replace_class_type_vars(
-                                i_s.db,
-                                t.as_ref(),
-                                &attribute_class,
-                                &|| instance.clone(),
-                            );
+                            let t = replace_class_type_vars(i_s.db, &t, &attribute_class, &|| {
+                                instance.clone()
+                            });
                             return Inferred::from_type(t).bind_instance_descriptors_internal(
                                 i_s,
                                 instance,
@@ -763,7 +759,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 from,
                                 mro_index,
                                 None,
-                                t.as_ref(),
+                                &t,
                                 if specific == Specific::AnnotationOrTypeCommentClassVar {
                                     ApplyDescriptorsKind::All
                                 } else {
@@ -1056,7 +1052,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             if has_explicit_self {
                                 t = Type::owned(replace_class_type_vars(
                                     i_s.db,
-                                    t.as_ref(),
+                                    &t,
                                     &attribute_class,
                                     &|| class.as_db_type(i_s.db),
                                 ));
@@ -1068,7 +1064,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 from,
                                 apply_descriptor,
                                 *definition,
-                                t.as_ref(),
+                                &t,
                             ) {
                                 return r;
                             }

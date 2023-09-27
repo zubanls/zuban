@@ -493,7 +493,7 @@ pub fn dataclasses_replace<'db>(
             if run_on_dataclass(
                 i_s,
                 Some(*node_ref),
-                inferred.as_type(i_s).as_ref(),
+                &inferred.as_type(i_s),
                 &mut |dataclass| {
                     let mut replace_func = Dataclass::__init__(dataclass, i_s.db).clone();
                     let mut params: Vec<_> = replace_func.expect_simple_params().into();

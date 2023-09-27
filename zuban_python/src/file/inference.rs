@@ -129,7 +129,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     let inf = self.infer_expression(expr);
                                     Inferred::from_type(instantiate_except(
                                         self.i_s,
-                                        inf.as_type(self.i_s).as_ref(),
+                                        &inf.as_type(self.i_s),
                                     ))
                                     .maybe_save_redirect(
                                         self.i_s,
@@ -147,7 +147,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 let inf = self.infer_expression(expr);
                                 Inferred::from_type(instantiate_except_star(
                                     self.i_s,
-                                    inf.as_type(self.i_s).as_ref(),
+                                    &inf.as_type(self.i_s),
                                 ))
                                 .maybe_save_redirect(
                                     self.i_s,
