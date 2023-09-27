@@ -1,24 +1,18 @@
 # Next up
 testCachedProperty
 testTypedDictGetMethodInvalidArgs
-# function type mismatch when untyped
-testSubtypingFunctionsImplicitNames
-# untyped (inferred?) instance attributes
-testChangeBaseClassAttributeType
-testCheckUntypedDefsSelf2
 # slice type checking
 testNonIntSliceBounds
+# "Variance of TypeVar "T_contra" incompatible with variance in parent type"
+testIncompatibleVariance
+
 # The type "Type[type]" is not generic and not indexable
 testTypeApplicationCrash
 # `class type` stuff
 testObfuscatedTypeConstructorReturnsTypeType
 testOtherTypeConstructorsSucceed
-# "Variance of TypeVar "T_contra" incompatible with variance in parent type"
-testIncompatibleVariance
 # Type[Any] is object
 testSimplifyingUnionWithTypeTypes2
-# Dynamic functions are ignored in classes and the super class is used?
-testInferringTypesFromIterable
 
 # 3.7 tests
 testNamedTupleDefaults
@@ -1539,6 +1533,7 @@ testGenericOverrideGeneric
 testNamedTupleFallback
 testMultipleInheritance_NestedVariableOverriddenWithIncompatibleType1
 testErrorCodeAssignment
+testChangeBaseClassAttributeType
 # List item 0 has incompatible type "str"; expected "int"
 testVariableTypeVarList
 testInWithInvalidArgs
@@ -1570,6 +1565,8 @@ testTypingSelfClashInBodies
 
 # subclass preferred over class for types
 testAddBaseClassAttributeCausingErrorInSubclass
+# Dynamic functions are ignored in classes and the super class is used?
+testInferringTypesFromIterable
 
 # __init_subclass__
 testOverride__init_subclass__WithDifferentSignature
@@ -2048,6 +2045,7 @@ testInheritedAttributeNoStrictOptional
 testIncompatibleInheritedAttributeNoStrictOptional
 testInheritedAttributeStrictOptional
 testIgnoreTypeInferenceError2
+testCheckUntypedDefsSelf2
 
 # Weird Name binder type definitions (overwritten?)
 testLiteralBinderLastValueErased
@@ -2327,6 +2325,8 @@ testDecoratedProperty
 # typing.assert_type in untyped functions
 testAssertTypeUncheckedFunction
 testAssertTypeUncheckedFunctionWithUntypedCheck
+# function type mismatch when untyped
+testSubtypingFunctionsImplicitNames
 
 # Global
 testAssignToFuncDefViaGlobalDecl2
