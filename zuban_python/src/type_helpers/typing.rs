@@ -53,17 +53,6 @@ impl<'a> TypingType<'a> {
         result_context: &mut ResultContext,
     ) -> LookupResult {
         match self.db_type {
-            DbType::TypeVar(t) => match &t.type_var.kind {
-                TypeVarKind::Bound(bound) => TypingType::new(self.db, bound).lookup(
-                    i_s,
-                    node_ref,
-                    name,
-                    kind,
-                    result_context,
-                ),
-                TypeVarKind::Constraints(_) => todo!(),
-                TypeVarKind::Unrestricted => todo!(),
-            },
             DbType::Class(g) => g.class(i_s.db).lookup(i_s, node_ref, name, kind),
             DbType::Literal(l) => i_s
                 .db

@@ -2325,7 +2325,7 @@ impl<'a> Type<'a> {
                 }
             }
             DbType::Type(t) => {
-                attribute_access(i_s, from, name, kind, result_context, callable, t.clone())
+                attribute_access_of_type(i_s, from, name, kind, result_context, callable, t.clone())
             }
             DbType::Callable(_) | DbType::FunctionOverload(_) => callable(
                 self,
@@ -3187,7 +3187,7 @@ fn merge_simplified_union_type(
     }
 }
 
-pub fn attribute_access(
+pub fn attribute_access_of_type(
     i_s: &InferenceState,
     from: NodeRef,
     name: &str,
@@ -3200,7 +3200,7 @@ pub fn attribute_access(
         DbType::Union(union) => {
             debug_assert!(union.entries.len() > 1);
             for t in union.iter() {
-                attribute_access(
+                attribute_access_of_type(
                     i_s,
                     from,
                     name,
@@ -3211,6 +3211,19 @@ pub fn attribute_access(
                 )
             }
         }
+        DbType::TypeVar(t) => match &t.type_var.kind {
+            TypeVarKind::Bound(bound) => attribute_access_of_type(
+                i_s,
+                from,
+                name,
+                kind,
+                result_context,
+                callable,
+                Rc::new(bound.clone()),
+            ),
+            TypeVarKind::Constraints(_) => todo!(),
+            TypeVarKind::Unrestricted => todo!(),
+        },
         t => callable(
             &Type::owned(DbType::Type(in_type.clone())),
             TypingType::new(i_s.db, t).lookup(i_s, from, name, kind, result_context),
