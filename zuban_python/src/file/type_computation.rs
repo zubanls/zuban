@@ -733,61 +733,67 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let db = self.inference.i_s.db;
         match type_ {
             TypeContent::Class { node_ref, .. } => {
-                Some(Class::with_undefined_generics(node_ref).as_db_type(db))
+                return Some(Class::with_undefined_generics(node_ref).as_db_type(db))
             }
             TypeContent::SimpleGeneric {
                 class_link,
                 generics,
                 ..
-            } => Some(DbType::new_class(class_link, generics)),
-            TypeContent::DbType(d) => Some(d),
-            TypeContent::Dataclass(d) => Some(DbType::Dataclass({
-                let class = d.class(db);
-                if class.use_cached_type_vars(db).is_empty() {
-                    d
-                } else {
-                    Dataclass::new(
-                        class.as_generic_class(db), // We need to make all the generics Any
-                        d.options,
-                    )
+            } => return Some(DbType::new_class(class_link, generics)),
+            TypeContent::DbType(d) => return Some(d),
+            TypeContent::Dataclass(d) => {
+                return Some(DbType::Dataclass({
+                    let class = d.class(db);
+                    if class.use_cached_type_vars(db).is_empty() {
+                        d
+                    } else {
+                        Dataclass::new(
+                            class.as_generic_class(db), // We need to make all the generics Any
+                            d.options,
+                        )
+                    }
+                }))
+            }
+            TypeContent::TypedDictDefinition(td) => {
+                return match &td.generics {
+                    TypedDictGenerics::None => Some(DbType::TypedDict(td)),
+                    TypedDictGenerics::NotDefinedYet(_) => Some(
+                        Type::owned(DbType::TypedDict(td))
+                            .replace_type_var_likes(db, &mut |usage| {
+                                usage.as_type_var_like().as_any_generic_item()
+                            }),
+                    ),
+                    TypedDictGenerics::Generics(_) => unreachable!(),
                 }
-            })),
-            TypeContent::TypedDictDefinition(td) => match &td.generics {
-                TypedDictGenerics::None => Some(DbType::TypedDict(td)),
-                TypedDictGenerics::NotDefinedYet(_) => Some(
-                    Type::owned(DbType::TypedDict(td)).replace_type_var_likes(db, &mut |usage| {
-                        usage.as_type_var_like().as_any_generic_item()
-                    }),
-                ),
-                TypedDictGenerics::Generics(_) => unreachable!(),
-            },
+            }
             TypeContent::Module(file) => {
                 self.add_module_issue(node_ref, &Module::new(file).qualified_name(db));
-                None
             }
             TypeContent::Namespace(n) => {
                 self.add_module_issue(node_ref, &n.qualified_name());
-                None
             }
             TypeContent::TypeAlias(a) => {
                 self.is_recursive_alias |= a.is_recursive();
-                Some(a.as_db_type_and_set_type_vars_any(db))
+                return Some(a.as_db_type_and_set_type_vars_any(db));
             }
             TypeContent::SpecialType(m) => match m {
-                SpecialType::Callable => Some(DbType::Callable(
-                    self.inference.i_s.db.python_state.any_callable.clone(),
-                )),
-                SpecialType::Any => Some(DbType::Any),
-                SpecialType::Type => Some(db.python_state.type_of_any.clone()),
-                SpecialType::Tuple => Some(DbType::Tuple(TupleContent::new_empty())),
+                SpecialType::Callable => {
+                    return Some(DbType::Callable(
+                        self.inference.i_s.db.python_state.any_callable.clone(),
+                    ))
+                }
+                SpecialType::Any => return Some(DbType::Any),
+                SpecialType::Type => return Some(db.python_state.type_of_any.clone()),
+                SpecialType::Tuple => return Some(DbType::Tuple(TupleContent::new_empty())),
                 SpecialType::ClassVar => {
                     self.add_issue(node_ref, IssueType::ClassVarNestedInsideOtherType);
-                    None
                 }
-                SpecialType::LiteralString => Some(DbType::new_class(
-                    db.python_state.str_node_ref().as_link(),
-                    ClassGenerics::None,
-                )),
+                SpecialType::LiteralString => {
+                    return Some(DbType::new_class(
+                        db.python_state.str_node_ref().as_link(),
+                        ClassGenerics::None,
+                    ))
+                }
                 SpecialType::Literal => {
                     self.add_issue(
                         node_ref,
@@ -795,11 +801,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             "Literal[...] must have at least one parameter",
                         )),
                     );
-                    None
                 }
                 SpecialType::Self_ if self.origin == TypeComputationOrigin::TypedDictMember => {
                     self.add_issue(node_ref, IssueType::TypedDictSelfNotAllowed);
-                    None
                 }
                 SpecialType::Self_
                     if matches!(
@@ -808,7 +812,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     ) =>
                 {
                     self.add_issue(node_ref, IssueType::SelfTypeInTypeAliasTarget);
-                    None
                 }
                 SpecialType::Self_
                     if !matches!(
@@ -818,11 +821,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 {
                     if self.inference.i_s.current_class().unwrap().is_metaclass(db) {
                         self.add_issue(node_ref, IssueType::SelfTypeInMetaclass);
-                        None
                     } else {
-                        dbg!(self.origin);
                         self.has_type_vars_or_self = true;
-                        Some(DbType::Self_)
+                        return Some(DbType::Self_);
                     }
                 }
                 SpecialType::Self_ => {
@@ -832,7 +833,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             "Self type is only allowed in annotations within class definition",
                         )),
                     );
-                    None
                 }
                 SpecialType::Annotated => {
                     self.add_issue(
@@ -841,15 +841,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             "Annotated[...] must have exactly one type argument and at least one annotation",
                         )),
                     );
-                    None
                 }
                 SpecialType::Optional => {
                     self.add_issue(node_ref, IssueType::OptionalMustHaveOneArgument);
-                    None
                 }
                 _ => {
                     self.add_issue(node_ref, IssueType::InvalidType(Box::from("Invalid type")));
-                    None
                 }
             },
             TypeContent::TypeVarTuple(t) => todo!(),
@@ -868,9 +865,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     node_ref,
                     IssueType::Note(Box::from("You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'"))
                 );
-                None
             }
-            TypeContent::Unpacked(t) => None, // TODO Should probably raise an error?
+            TypeContent::Unpacked(t) => debug!("TODO Unpacked Should probably raise an error?"),
             TypeContent::Concatenate(_) => {
                 self.add_issue(
                     node_ref,
@@ -882,19 +878,17 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         "You can use Concatenate as the first argument to Callable",
                     )),
                 );
-                None
             }
             // TODO here we would need to check if the generics are actually valid.
             TypeContent::RecursiveAlias(link) => {
                 self.is_recursive_alias = true;
-                Some(DbType::RecursiveAlias(Rc::new(RecursiveAlias::new(
+                return Some(DbType::RecursiveAlias(Rc::new(RecursiveAlias::new(
                     link, None,
-                ))))
+                ))));
             }
-            TypeContent::Unknown => None,
+            TypeContent::Unknown => (),
             TypeContent::ClassVar(t) => {
                 self.add_issue(node_ref, IssueType::ClassVarNestedInsideOtherType);
-                None
             }
             TypeContent::EnumMember(m) => {
                 let format_data = FormatData::new_short(self.inference.i_s.db);
@@ -908,7 +902,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         .into(),
                     ),
                 );
-                None
             }
             TypeContent::InvalidVariable(t) => {
                 t.add_issue(
@@ -916,7 +909,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     |t| self.add_issue(node_ref, t),
                     self.origin,
                 );
-                None
             }
             TypeContent::Required(_) => {
                 self.add_issue(
@@ -925,7 +917,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         "Required[] can be only used in a TypedDict definition".into(),
                     ),
                 );
-                None
             }
             TypeContent::NotRequired(_) => {
                 self.add_issue(
@@ -934,9 +925,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         "NotRequired[] can be only used in a TypedDict definition".into(),
                     ),
                 );
-                None
             }
         }
+        None
     }
 
     fn compute_named_expr_db_type(&mut self, named_expr: NamedExpression) -> DbType {
