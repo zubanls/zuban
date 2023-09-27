@@ -182,9 +182,6 @@ testTypeEquivalentTypeAnyEdgeCase
 testValidTypeAliasValues
 testValidTypeAliasValuesMoreRestrictive
 
-# Tuple type var context
-testInferenceWithTypeVariableTwiceInReturnType
-testInferenceWithTypeVariableTwiceInReturnTypeAndMultipleVariables
 # bottom up inference for tuple with *args
 testCallerVarArgsListWithTypeInference
 testCallerVarArgsTupleWithTypeInference

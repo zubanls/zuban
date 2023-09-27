@@ -417,10 +417,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     ) -> Option<Inferred> {
         for target in targets {
             match target {
-                Target::Tuple(tup) => (),
-                Target::Starred(_) => (),
                 Target::IndexExpression(t) => debug!("TODO enable context for index expr"),
-                Target::NameExpression(..) => debug!("TODO enable context for named expr"),
                 _ => {
                     if let Some(inferred) = self.infer_target(target) {
                         return Some(inferred);
@@ -758,10 +755,27 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             Target::Name(name_def) => first_defined_name(self.file, name_def.name().index())
                 .map(|i| self.infer_name_by_index(i)),
             Target::NameExpression(primary_target, name_def_node) => {
-                todo!()
+                debug!("TODO enable context for named expr");
+                None
             }
             Target::IndexExpression(t) => Some(self.infer_primary_target(t)),
-            Target::Tuple(_) | Target::Starred(_) => unreachable!(),
+            Target::Tuple(targets) => targets
+                .clone()
+                .any(|target| self.infer_target(target).is_some())
+                .then(|| {
+                    Inferred::from_type(DbType::Tuple(Rc::new(TupleContent::new_fixed_length(
+                        targets
+                            .map(|target| {
+                                TypeOrTypeVarTuple::Type(
+                                    self.infer_target(target)
+                                        .map(|i| i.as_db_type(self.i_s))
+                                        .unwrap_or(DbType::Any),
+                                )
+                            })
+                            .collect(),
+                    ))))
+                }),
+            Target::Starred(_) => None,
         }
     }
 
