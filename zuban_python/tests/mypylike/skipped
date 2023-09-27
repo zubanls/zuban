@@ -1,7 +1,56 @@
 # Next up
-testUnionOrSyntaxWithTypeAliasWorking
 testCachedProperty
 testTypedDictGetMethodInvalidArgs
+# function type mismatch when untyped
+testSubtypingFunctionsImplicitNames
+# untyped (inferred?) instance attributes
+testChangeBaseClassAttributeType
+testCheckUntypedDefsSelf2
+# slice type checking
+testNonIntSliceBounds
+# __get__/__set__ not callable
+testDescriptorUncallableDunderGet
+testDescriptorUncallableDunderSet
+# "bool" is not a valid base class
+testTestExtendPrimitives
+# The type "Type[type]" is not generic and not indexable
+testTypeApplicationCrash
+# Invalid type comment or annotation, because of weird annotations
+testFastParseTypeCommentSyntaxError
+testFastParseFunctionAnnotationSyntaxError
+testFastParseFunctionAnnotationSyntaxErrorSpaces
+testFastParseInvalidFunctionAnnotation
+# Invalid signature "Callable[[B], A]"
+testReverseOperatorMethodInvalid
+# base class: callable
+testInvalidBaseClass
+# class base Any in combination with overload
+testOverloadWithDerivedFromAny
+# `class type` stuff
+testObfuscatedTypeConstructorReturnsTypeType
+testOtherTypeConstructorsSucceed
+testTypeTypeComparisonWorks
+# type vs type[object]
+testNonTypeDoesNotMatchOverloadedFunctions
+testTypeConstructorLookalikeFails
+# `class type` access on class
+testTypeUsingTypeCTypeAnyMemberFallback
+testTypeUsingTypeCClassMethod
+testTypeUsingTypeCClassMethodUnion
+testTypeUsingTypeCClassMethodFromTypeVar
+testTypeUsingTypeCClassMethodFromTypeVarUnionBound
+testTypeUsingTypeCErrorUnsupportedType
+testTypeUsingTypeCOverloadedClass
+testTypeUsingTypeCTuple
+testTypeUsingTypeCJoin
+# Self type variable type
+param_spec_with_generic_class
+# "Variance of TypeVar "T_contra" incompatible with variance in parent type"
+testIncompatibleVariance
+# Type[Any] is object
+testSimplifyingUnionWithTypeTypes2
+# Dynamic functions are ignored in classes and the super class is used?
+testInferringTypesFromIterable
 
 # 3.7 tests
 testNamedTupleDefaults
@@ -220,6 +269,16 @@ testDictWithKeywordArgs
 # star star in dict literal
 testDictStarInference
 testDictStarAnyKeyJoinValue
+# {**kwargs}
+testSubtypingMappingUnpacking1
+testSubtypingMappingUnpacking2
+testSubtypingMappingUnpacking3
+testNotDirectIterableAndMappingSubtyping
+testUnpackInExpression3-only_when_nocache
+functional_enum_starred_dict_literal_errors
+testDictWithStarStarSpecialCase
+# Implicit any param
+testKwargsArgumentInFunctionBodyWithImplicitAny
 
 # Not able to infer context with unions and literals
 testLiteralAndGenericWithUnion
@@ -227,6 +286,52 @@ testLiteralAndGenericsNoMatch
 testNoComplainInferredNoneStrict
 # Union not matching type vars (None | Any and int | None leads to None | Any)
 testJoinUnionWithUnionAndAny
+
+# Unpacking a string is disallowed
+testStringDisallowedUnpacking
+testUnionOfNonIterableUnpacking
+# List unpacking
+testMultipleAssignmentWithLists
+testMultipleAssignmentWithListsInInitialization
+testMultipleAssignmentWithListAndIndexing
+testMultipleAssignmentAndGenericSubtyping
+testInferringLvarTypesInNestedListAssignment
+testInferringMultipleLvarDefinitionWithListRvalue
+testInferMultipleLocalVariableTypesWithArrayRvalueAndNesting
+testUnpackInExpression1-only_when_nocache
+testNestedListAssignment
+testNestedListAssignmentToTuple
+testListAssignmentFromTuple
+testListWithStarExpr
+# list[<nothing>] against *args or never
+testOverloadVarargsSelection
+
+# List inference unions are special (list meets)
+testListLiteralWithNameOnlyArgsDoesNotEraseNames
+testLiteralMeets
+testLiteralMeetsWithStrictOptional
+testInferredTypeIsObjectMismatch
+testNestedListExpressions
+testLiteralInferredInListContext
+testGenericJoinCovariant
+testGenericJoinRecursiveTypes
+testGenericJoinNestedInvariantAny
+testTypeEquivalentTypeAny2
+# Callable join
+testParamSpecJoin
+# join of {1, *some_str_tuple} leads to int | str???
+testUnpackInExpression2-only_when_nocache
+# join sub and super classes
+testOverloadInferUnionWithDifferingLengths
+testForLoopOverTupleAndSubtyping
+# tuple joins
+testFixedTupleJoinList
+# recursive limits missing for joins
+testRecursiveAliasGenericInferenceNested
+testRecursiveAliasTopUnion
+# namedtuple recursive joins
+testMutuallyRecursiveNamedTuplesJoin
+testCrashInJoinOfSelfRecursiveNamedTuples
 
 # Callable matching
 testNoCrashOnNestedGenericCallable
@@ -274,6 +379,18 @@ testInvalidNumberOfTypeArgs
 testInheritedConstructor2
 testMapStr
 testVarArgsFunctionSubtyping
+
+# Type alias issues where it's unclear if something is an alias or not
+testUnionOrSyntaxWithTypeAliasWorking
+# TypeAlias normal string interpreted as a forward reference
+testTypeAliasWithNewStyleUnionChangedToVariable
+# x: typing_extensions.TypeAlias = int
+testClassLevelTypeAliasesInUnusualContexts
+testMalformedTypeAliasRuntimeReassignments
+# Aliases in Mypy define generics as X = Foo as Foo[Any, Any]
+testAliasToTupleAndCallable
+# Type alias inference should be typing._SpecialForm
+testTypeAliasWithNewStyleUnion
 
 # Nested type vars
 testFunctionInGenericInnerClassTypeVariable-skip
@@ -328,6 +445,9 @@ testOverloadedToGeneric
 testSerializeNamedTupleInMethod4
 testForwardBoundFunctionScopeWorks
 testIncrementalNestedTypeAlias
+testNewAnalyzerAnnotationConflictsWithAttributeSinglePass
+testNewAnalyzerAnnotationConflictsWithAttributeTwoPasses
+testNewAnalyzerNameConflictsAndMultiLineDefinition
 
 # object.__new__(cls) -> Self where object.__new__(int) leads to Never
 testOverride__new__AndCallObject
@@ -416,6 +536,10 @@ testTupleWithOversizedContext
 testAssignEmptyBogus
 # tuple assignment tuple[Any, ...] to tuple[A, A]
 testSubtypingWithNamedTupleType
+# tuple type expected for multiple variables
+testVariableDeclWithInvalidType
+testVariableDeclWithInvalidNumberOfTypesNested3
+testVariableDeclWithInvalidNumberOfTypesNested5
 
 # Tuple Super Class
 testGenericTupleTypeCreation
@@ -689,9 +813,6 @@ testCallingNoTypeCheckFunction
 testCallingNoTypeCheckFunction2
 testNoTypeCheckDecoratorSemanticError
 
-# Dynamic functions are ignored in classes and the super class is used?
-testInferringTypesFromIterable
-
 # Comprehensions
 testNewAnalyzerListComprehension
 testNewAnalyzerDictionaryComprehension
@@ -771,6 +892,8 @@ testParamSpecLiteralsTypeApplication
 testParamSpecInferredFromLambda
 # Generator in lambda
 testNoCrashOnLambdaGenerator
+# Callable[..., int] | Callable[..., str] lambda inference may conflict
+testOptionalLambdaInference
 
 # Random protocol issues
 testEnumIterable
@@ -981,16 +1104,6 @@ testInvalidUnpackTypes
 # Unpack item in ** argument must be a TypedDict
 testTypeVarTuple
 
-# Visibility of imports in pyi
-testNewSemanticAnalyzerModulePrivateRefInMiddleOfQualified
-
-# x: typing_extensions.TypeAlias = int
-testClassLevelTypeAliasesInUnusualContexts
-testMalformedTypeAliasRuntimeReassignments
-
-# TypeAlias normal string interpreted as a forward reference
-testTypeAliasWithNewStyleUnionChangedToVariable
-
 # __builtins__ object
 testBuiltinsUsingModule
 # future imports (future is not part of stubs)
@@ -1092,7 +1205,6 @@ testCannotGetItemOfTypedDictWithInvalidStringLiteralKey
 
 # Import submodules
 testNewAnalyzerImportStarSpecialCase
-
 # import a.b.c issues
 testMissingSubmoduleImportedWithIgnoreMissingImportsStub
 testMissingSubmoduleOfInstalledStubPackage
@@ -1102,7 +1214,6 @@ testGenericAliasCollectionsABCReveal
 testFineAddedMissingStubsIgnorePackagePartial
 # imports have different error codes, see https://github.com/python/mypy/commit/78339b97dc911c8c6841184eaddbbc30d0e406da
 testErrorCodeMissingModule
-
 # Complex Star import
 testImportWithinMethod
 testNoCrashOnImportFromStarNested
@@ -1110,11 +1221,6 @@ testSerializeStarImport
 testImportStarWithinFunction
 # Star import override
 testAssignToFuncDefViaImport
-
-# Module type does not contain module info
-testMultiModuleAlias
-testModuleAliasWithExplicitAnnotation
-
 # Import itself / Extremely weird import orders
 testNewAnalyzerImportCycleWithIgnoreMissingImports
 testNewAnalyzerImportFromTopLevelFunction
@@ -1123,6 +1229,10 @@ testNewAnalyzerImportAmbiguousWithTopLevelFunction
 testImportCycleSpecialCase
 testPackagePath
 testIncrementalNestedBrokenCascade
+
+# Module type does not contain module info
+testMultiModuleAlias
+testModuleAliasWithExplicitAnnotation
 
 # Stub Reexport
 testNoReExportFromStubs
@@ -1142,11 +1252,9 @@ testUnimportedHintAnyLower
 testFromImportAsInStub
 testImportAsInStub
 testReExportChildStubs3
+testNewSemanticAnalyzerModulePrivateRefInMiddleOfQualified
 # underscore names are not exported in an import with stubs
 testInternalBuiltinDefinition
-
-# "mypy: "tmp/typing.py" shadows library module "typing""
-testShadowTypingModule
 
 # Metaclass descriptor
 metaclass_descriptor
@@ -1164,9 +1272,6 @@ testMetaclassMemberAccessViaType
 # Foo = type(...) used as `x: Foo` (type execution)
 testNoneAlias
 testNoneAliasStrict
-
-# Type[Any] is object
-testSimplifyingUnionWithTypeTypes2
 
 # "Invalid assignment target"
 testSuperWithReadWriteAbstractProperty
@@ -1227,9 +1332,6 @@ testEmptyBodyVariationsImplicitlyAbstractProtocol
 testEmptyBodyNoneCompatibleProtocol
 testEmptyBodyWithFinal
 
-# class types defined in super class
-testInheritanceFromGenericWithImplicitDynamic
-
 # "Invalid self argument "A[C]" to attribute function "f" with type "Callable[[A[B]], None]""
 testInvalidMethodAsDataAttributeInGenericClass
 # "Attribute function "f" with type "Callable[[], None]" does not accept self argument"
@@ -1248,14 +1350,6 @@ testProtocolClassObjectClassVarRejected
 testClassVarWithoutArguments
 testIncrementalClassVar
 
-# "Variance of TypeVar "T_contra" incompatible with variance in parent type"
-testIncompatibleVariance
-
-# Self type variable type
-testDecoratorUpdateNestedClass
-testDecoratorUpdateClassInFunction
-param_spec_with_generic_class
-
 # Self tests
 testTypingSelfAttrOldVsNewStyle
 # "Method cannot have explicit self annotation and Self type"
@@ -1268,7 +1362,6 @@ testSelfTypeNotSelfType
 testErrorOneLessFutureInReturnType
 
 # None as a default for class variables, even if not optional?
-testNoneClassVariable
 testNoneClassVariableInInit
 testMultipleAssignmentNoneClassVariableInInit
 
@@ -1284,6 +1377,7 @@ testLiteralSubtypeContextNested
 testLiteralSubtypeContextGeneric
 testSetDescriptorOnClass
 testListObject
+testInheritanceFromGenericWithImplicitDynamic
 
 # keyword params do not matter, only order
 testSuperOutsideClass
@@ -1495,7 +1589,6 @@ testOverrideClassVarManyBases
 
 # setting class attributes on self
 self_instance_variable1
-
 # verify class definitions when setting self
 testInferAttributeTypeAndAssignInInit
 testTypingSelfInternalSafe
@@ -1503,29 +1596,6 @@ testTypingSelfClashInBodies
 
 # subclass preferred over class for types
 testAddBaseClassAttributeCausingErrorInSubclass
-
-# base class: callable
-testInvalidBaseClass
-# class base Any in combination with overload
-testOverloadWithDerivedFromAny
-
-# `class type` stuff
-testObfuscatedTypeConstructorReturnsTypeType
-testOtherTypeConstructorsSucceed
-testTypeTypeComparisonWorks
-# type vs type[object]
-testNonTypeDoesNotMatchOverloadedFunctions
-testTypeConstructorLookalikeFails
-# `class type` access on class
-testTypeUsingTypeCTypeAnyMemberFallback
-testTypeUsingTypeCClassMethod
-testTypeUsingTypeCClassMethodUnion
-testTypeUsingTypeCClassMethodFromTypeVar
-testTypeUsingTypeCClassMethodFromTypeVarUnionBound
-testTypeUsingTypeCErrorUnsupportedType
-testTypeUsingTypeCOverloadedClass
-testTypeUsingTypeCTuple
-testTypeUsingTypeCJoin
 
 # __init_subclass__
 testOverride__init_subclass__WithDifferentSignature
@@ -1605,10 +1675,8 @@ testConstructorWithAnyReturnValueType
 testDecoratedConstructorWithAnyReturnValueType
 testOverloadedConstructorWithAnyReturnValueType
 testErrorCodeUnclassifiedError
-
 # "Accessing "__init__" on an instance is unsound, since instance.__init__ could be from an incompatible subclass"
 testAccessingInit
-
 # Decorated constructors
 testDecoratedConstructors
 # "Unsupported decorated constructor type"
@@ -1626,9 +1694,6 @@ testNewAnalyzerNoCrashOnCustomProperty
 # "Cannot assign to a type"
 testAssignToNestedClassViaClass
 
-# Invalid signature "Callable[[B], A]"
-testReverseOperatorMethodInvalid
-
 # Unsupported class scoped import
 testClassScopeImports
 testClassScopeImportModule
@@ -1645,52 +1710,6 @@ testOverrideByBadVarClass
 testOverrideByBadVarClassAlias
 testIncrementalSilentImportsAndImportsInClass
 testImportStarAddMissingDependencyWithinClass
-
-# Unpacking a string is disallowed
-testStringDisallowedUnpacking
-testUnionOfNonIterableUnpacking
-# List unpacking
-testMultipleAssignmentWithLists
-testMultipleAssignmentWithListsInInitialization
-testMultipleAssignmentWithListAndIndexing
-testMultipleAssignmentAndGenericSubtyping
-testInferringLvarTypesInNestedListAssignment
-testInferringMultipleLvarDefinitionWithListRvalue
-testInferMultipleLocalVariableTypesWithArrayRvalueAndNesting
-testUnpackInExpression1-only_when_nocache
-testNestedListAssignment
-testNestedListAssignmentToTuple
-testListAssignmentFromTuple
-testListWithStarExpr
-# list[<nothing>] against *args or never
-testOverloadVarargsSelection
-
-# List inference unions are special (list meets)
-testListLiteralWithNameOnlyArgsDoesNotEraseNames
-testLiteralMeets
-testLiteralMeetsWithStrictOptional
-testInferredTypeIsObjectMismatch
-testNestedListExpressions
-testLiteralInferredInListContext
-testGenericJoinCovariant
-testGenericJoinRecursiveTypes
-testGenericJoinNestedInvariantAny
-testTypeEquivalentTypeAny2
-# Callable join
-testParamSpecJoin
-# join of {1, *some_str_tuple} leads to int | str???
-testUnpackInExpression2-only_when_nocache
-# join sub and super classes
-testOverloadInferUnionWithDifferingLengths
-testForLoopOverTupleAndSubtyping
-# tuple joins
-testFixedTupleJoinList
-# recursive limits missing for joins
-testRecursiveAliasGenericInferenceNested
-testRecursiveAliasTopUnion
-# namedtuple recursive joins
-testMutuallyRecursiveNamedTuplesJoin
-testCrashInJoinOfSelfRecursiveNamedTuples
 
 # List/Set/Dict/Tuple Inferring type of variable when initialized to an empty collection
 testInferListInitialized*
@@ -1755,13 +1774,6 @@ testNestedDecoratedCoroutineAndTypeVarValues
 testAnyStr
 testTypeVarWithTypedDictValueInIndexExpression
 
-
-# Callable[..., int] | Callable[..., str] lambda inference may conflict
-testOptionalLambdaInference
-
-# Overload needs type var matcher probably (and maybe also overlapping)
-overload_class_type_var_implementation_match_and_mismatch
-
 # - Overload does not consistently use the "@classmethod" decorator on all function signatures
 # - Overload does not consistently use the "@staticmethod" decorator on all function signatures
 testOverloadWithInconsistentStaticMethods
@@ -1777,6 +1789,8 @@ testInconsistentOverload2
 testNonconsecutiveOverloads
 testNonconsecutiveOverloadsMissingFirstOverload
 testNonconsecutiveOverloadsMissingLaterOverload
+# Overload needs type var matcher probably (and maybe also overlapping)
+overload_class_type_var_implementation_match_and_mismatch
 
 # @final
 testFinalAddFinalMethodOverrideFine
@@ -1811,39 +1825,6 @@ testEnumCreatedFromFinalValue
 # "Cannot inherit from final class "bool""
 testCannotExtendBoolUnlessIgnored
 
-# Conditional definitions
-testNewAnalyzerConditionalFunc
-testNewAnalyzerConditionalFuncDefer
-testNewAnalyzerConditionallyDefineFuncOverVar
-testRedefineFunctionDefinedAsVariableInitializedToNone
-testRedefineNestedFunctionDefinedAsVariableInitializedToNone
-testConditionalFunctionDefinitionUsingDecorator2
-testConditionalFunctionDefinitionUnreachable
-
-# All conditional function variants must have identical signatures
-testIncompatibleConditionalFunctionDefinition
-testIncompatibleConditionalFunctionDefinition2
-testIncompatibleConditionalFunctionDefinition3
-testConditionalRedefinitionOfAnUnconditionalFunctionDefinition1
-testConditionalRedefinitionOfAnUnconditionalFunctionDefinition2
-testIncompatibleConditionalMethodDefinition
-
-# TYPE_CHECKING
-testIfTypeCheckingUnreachableClass
-# --always-true TRUTH
-testIfConditionsInDefinition
-testAlwaysTrueAlwaysFalseFlags
-
-# if sys.version
-testNewAnalyzerVersionCheck
-testNewAnalyzerVersionCheck2
-testPromoteMemoryviewToBytes
-testDataclassesBadInit
-testDataclassFieldDoesNotFailOnKwargsUnpacking
-testOverloadSpecialCase
-# NamedTuple magic attribute __match_args__ in py >= 3.10
-testNamedTupleHasMatchArgs
-
 # callable()
 testFineGrainedCallable
 testSerializeDummyType
@@ -1851,6 +1832,9 @@ testSerializeDummyType
 # Except Foo as bar where bar is bound over its existence as a variable
 testTryStarMultiple
 testExceptWithAnyTypes
+testExceptionVariableReuseInDeferredNode1
+testExceptionVariableReuseInDeferredNode2
+testExceptionVariableReuseInDeferredNode3
 # with scoping is special
 testWithStmtScopeBasics
 testWithStmtScopeNestedWith1
@@ -1902,6 +1886,13 @@ testColumnsSimpleIsinstance
 testTypeshedRecursiveTypesExample
 testTypedDictIsInstance
 testTypedDictIsInstanceABCs
+# isinstance Intersection types
+testIsInstanceAdHocIntersectionFineGrainedIncrementalNoChange
+testIsInstanceAdHocIntersectionFineGrainedIncrementalIsInstanceChange
+testIsInstanceAdHocIntersectionFineGrainedIncrementalUnderlyingObjChang
+testIsInstanceAdHocIntersectionFineGrainedIncrementalIntersectionToUnreachable
+testIsInstanceAdHocIntersectionFineGrainedIncrementalUnreachaableToIntersection
+testIsInstanceAdHocIntersectionWithStrAndBytes
 # issubclass narrowing
 testIsInstanceTypeIsSubclass
 testIsInstanceTypeTypeVar
@@ -2121,10 +2112,9 @@ testNonStandardNameForSelfAndInit
 # All conditional function variants must have identical signatures (flow analysis)
 testUnionOrderEquivalence
 
-# flow graph
+# "Incompatible import of "y" (imported name has type "str", local name has type "int")"
 testAssignAndConditionalImport
 testAssignAndConditionalStarImport
-testRedefineImportedFunctionViaImport
 testImportedVariableViaImport
 
 # Multi definition ifs
@@ -2140,16 +2130,39 @@ testOverrideByIdemAliasGeneric
 testOverrideByIdemAliasImported
 testConditionalExceptionAliasOverride
 
-# Multiple arguments missing
-testMissingPositionalArguments
+# Conditional definitions
+testNewAnalyzerConditionalFunc
+testNewAnalyzerConditionalFuncDefer
+testNewAnalyzerConditionallyDefineFuncOverVar
+testRedefineFunctionDefinedAsVariableInitializedToNone
+testRedefineNestedFunctionDefinedAsVariableInitializedToNone
+testConditionalFunctionDefinitionUsingDecorator2
+testConditionalFunctionDefinitionUnreachable
 
-# Intersection types
-testIsInstanceAdHocIntersectionFineGrainedIncrementalNoChange
-testIsInstanceAdHocIntersectionFineGrainedIncrementalIsInstanceChange
-testIsInstanceAdHocIntersectionFineGrainedIncrementalUnderlyingObjChang
-testIsInstanceAdHocIntersectionFineGrainedIncrementalIntersectionToUnreachable
-testIsInstanceAdHocIntersectionFineGrainedIncrementalUnreachaableToIntersection
-testIsInstanceAdHocIntersectionWithStrAndBytes
+# "All conditional function variants must have identical signatures"
+testIncompatibleConditionalFunctionDefinition
+testIncompatibleConditionalFunctionDefinition2
+testIncompatibleConditionalFunctionDefinition3
+testConditionalRedefinitionOfAnUnconditionalFunctionDefinition1
+testConditionalRedefinitionOfAnUnconditionalFunctionDefinition2
+testIncompatibleConditionalMethodDefinition
+testRedefineImportedFunctionViaImport
+
+# TYPE_CHECKING
+testIfTypeCheckingUnreachableClass
+# --always-true TRUTH
+testIfConditionsInDefinition
+testAlwaysTrueAlwaysFalseFlags
+
+# if sys.version
+testNewAnalyzerVersionCheck
+testNewAnalyzerVersionCheck2
+testPromoteMemoryviewToBytes
+testDataclassesBadInit
+testDataclassFieldDoesNotFailOnKwargsUnpacking
+testOverloadSpecialCase
+# NamedTuple magic attribute __match_args__ in py >= 3.10
+testNamedTupleHasMatchArgs
 
 # "Name "C" is used before definition"
 testNewAnalyzerNewTypeForwardClassAliasReversed
@@ -2244,17 +2257,6 @@ testRedefineFunctionDefinedAsVariableInitializedToEmptyList
 testNewAnalyzerNewTypeRedefinition
 testNewTypeRedefiningVariablesFails
 
-# except redefinition
-testExceptionVariableReuseInDeferredNode1
-testExceptionVariableReuseInDeferredNode2
-testExceptionVariableReuseInDeferredNode3
-
-# Invalid type comment or annotation, because of weird annotations
-testFastParseTypeCommentSyntaxError
-testFastParseFunctionAnnotationSyntaxError
-testFastParseFunctionAnnotationSyntaxErrorSpaces
-testFastParseInvalidFunctionAnnotation
-
 # "Value of type "A" must be used"
 # "Value of type "Coroutine[Any, Any, None]" must be used"
 # "Are you missing an await?"
@@ -2309,15 +2311,6 @@ testColumnCannotDetermineType
 # "Cannot determine type of "X" in base class"
 testCannotDetermineTypeInMultipleInheritance
 
-# {**kwargs}
-testSubtypingMappingUnpacking1
-testSubtypingMappingUnpacking2
-testSubtypingMappingUnpacking3
-testNotDirectIterableAndMappingSubtyping
-testUnpackInExpression3-only_when_nocache
-functional_enum_starred_dict_literal_errors
-testDictWithStarStarSpecialCase
-
 # "Missing return statement"
 testWarnNoReturnWorksWithStrictOptional
 testAssertCurrentFrameIsNotUnreachable
@@ -2354,20 +2347,12 @@ testAsyncDefReturnWithoutValue
 testNonEmptyReturnInNoneTypedGenerator
 testErrorCodeReturnValueNotExpected
 
-# Implicit any param
-testKwargsArgumentInFunctionBodyWithImplicitAny
-
 # "Decorators on top of @property are not supported"
 testDecoratedProperty
 
-# function type mismatch when untyped
-testSubtypingFunctionsImplicitNames
 # typing.assert_type in untyped functions
 testAssertTypeUncheckedFunction
 testAssertTypeUncheckedFunctionWithUntypedCheck
-# untyped (inferred?) instance attributes
-testChangeBaseClassAttributeType
-testCheckUntypedDefsSelf2
 
 # Global
 testAssignToFuncDefViaGlobalDecl2
@@ -2384,9 +2369,6 @@ testNonlocalAndGlobalDecl
 testNewAnalyzerRedefinedNonlocal
 testTypeOfOuterMostNonlocalUsed
 testTypeOfNonlocalUsed
-
-# slice type checking
-testNonIntSliceBounds
 
 # __init__ None needed
 testInitReturnTypeError
@@ -2422,7 +2404,6 @@ testTupleWithoutContext
 testReusingInferredForIndex2
 testErrorCodeNeedTypeAnnotation
 testColumnNeedTypeAnnotation
-
 # "Perhaps you need a type annotation for "x"? Suggestion: "List[str | int]""
 testInferredTypeSubTypeOfReturnType
 
@@ -2437,10 +2418,6 @@ testGetAttrDescriptor
 testIncrementalNodeCreatedFromGetattr
 testAddedMissingStubsPackagePartialGetAttr
 testFineAddedMissingStubsPackagePartialGetAttr
-
-# __get__/__set__ not callable
-testDescriptorUncallableDunderGet
-testDescriptorUncallableDunderSet
 
 # attrs
 testAttrs*
@@ -2460,14 +2437,8 @@ testUnusedTargetForLoop
 testUnusedTargetWithClause
 testUnusedTargetNotExceptClause
 
-# weird files
-testScriptsAreNotModules
-
 # __doc__ definitions
 testNewNamedTupleDocString
-
-# Aliases in Mypy define generics as X = Foo as Foo[Any, Any]
-testAliasToTupleAndCallable
 
 # Formatting Module as types ("ModuleType" instead of Module)
 testInvalidOperationsOnModules
@@ -2497,14 +2468,6 @@ testDistinctTypes
 # Separate formatting for ambigous names???
 testIncompatibleAssignmentAmbiguousShortnames
 
-# Type alias inference should be typing._SpecialForm
-testTypeAliasWithNewStyleUnion
-
-# tuple type expected for multiple variables
-testVariableDeclWithInvalidType
-testVariableDeclWithInvalidNumberOfTypesNested3
-testVariableDeclWithInvalidNumberOfTypesNested5
-
 # Assignment like ac[b] += c with both __getitem__ and __setitem__ has same error twice
 testOperatorAssignmentWithIndexLvalue1
 
@@ -2516,12 +2479,6 @@ testEllipsisDefaultArgValueInNonStubsMethods
 
 # NotImplemented
 testOperatorMethodAgainstSameType
-
-# The type "Type[type]" is not generic and not indexable
-testTypeApplicationCrash
-
-# "bool" is not a valid base class
-testTestExtendPrimitives
 
 # Probably fixed eventually by updating mypy or typeshed
 testDecoratorTypeAfterReprocessing
@@ -2580,10 +2537,11 @@ testErrorCodeSyntaxErrorIgnoreNote
 # mypy: ignore-errors=True
 testAsyncIteratorWithIgnoredErrorsAndYieldFrom
 
-# Very weird annotation resolution order
-testNewAnalyzerAnnotationConflictsWithAttributeSinglePass
-testNewAnalyzerAnnotationConflictsWithAttributeTwoPasses
-testNewAnalyzerNameConflictsAndMultiLineDefinition
+# "mypy: "tmp/typing.py" shadows library module "typing""
+testShadowTypingModule
+
+# weird files
+testScriptsAreNotModules
 
 # pyproject.toml
 testMultipleModulesInOverridePyProjectTOML
