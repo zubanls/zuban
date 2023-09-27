@@ -11,8 +11,6 @@ testNonIntSliceBounds
 # __get__/__set__ not callable
 testDescriptorUncallableDunderGet
 testDescriptorUncallableDunderSet
-# "bool" is not a valid base class
-testTestExtendPrimitives
 # The type "Type[type]" is not generic and not indexable
 testTypeApplicationCrash
 # Invalid type comment or annotation, because of weird annotations
@@ -35,9 +33,7 @@ testNonTypeDoesNotMatchOverloadedFunctions
 testTypeConstructorLookalikeFails
 # `class type` access on class
 testTypeUsingTypeCTypeAnyMemberFallback
-testTypeUsingTypeCClassMethod
 testTypeUsingTypeCClassMethodUnion
-testTypeUsingTypeCClassMethodFromTypeVar
 testTypeUsingTypeCClassMethodFromTypeVarUnionBound
 testTypeUsingTypeCErrorUnsupportedType
 testTypeUsingTypeCOverloadedClass
