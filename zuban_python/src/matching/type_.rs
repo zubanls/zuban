@@ -2225,22 +2225,6 @@ impl<'a> Type<'a> {
         }
     }
 
-    pub fn is_union(&self) -> bool {
-        matches!(self.as_ref(), DbType::Union(_))
-    }
-
-    pub fn is_any(&self) -> bool {
-        matches!(self.as_ref(), DbType::Any)
-    }
-
-    pub fn has_any(&self, i_s: &InferenceState) -> bool {
-        self.0.has_any(i_s)
-    }
-
-    pub fn has_explicit_self_type(&self, db: &Database) -> bool {
-        self.as_ref().has_self_type()
-    }
-
     #[inline]
     pub fn run_on_each_union_type(&self, callable: &mut impl FnMut(&Type)) {
         match self.as_ref() {

@@ -1052,7 +1052,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 i_s,
                                 NodeRef::from_link(i_s.db, *definition),
                             );
-                            let has_explicit_self = t.has_explicit_self_type(i_s.db);
+                            let has_explicit_self = t.has_self_type();
                             if has_explicit_self {
                                 t = Type::owned(replace_class_type_vars(
                                     i_s.db,

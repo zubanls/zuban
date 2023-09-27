@@ -886,6 +886,14 @@ impl DbType {
         Self::Class(GenericClass { link, generics })
     }
 
+    pub fn is_union(&self) -> bool {
+        matches!(self, DbType::Union(_))
+    }
+
+    pub fn is_any(&self) -> bool {
+        matches!(self, DbType::Any)
+    }
+
     pub fn into_iter_with_unpacked_unions(self) -> impl Iterator<Item = UnionEntry> {
         match self {
             DbType::Union(items) => DbTypeIterator::Union(items.entries.into_vec().into_iter()),

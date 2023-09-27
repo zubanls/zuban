@@ -859,11 +859,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut type_vars = self.type_vars(i_s).as_vec();
         match first {
             FirstParamProperties::MethodAccessedOnClass => {
-                let mut needs_self_type_variable =
-                    self.result_type(i_s).has_explicit_self_type(i_s.db);
+                let mut needs_self_type_variable = self.result_type(i_s).has_self_type();
                 for param in self.iter_params().skip(1) {
                     if let Some(t) = param.annotation(i_s) {
-                        needs_self_type_variable |= t.has_explicit_self_type(i_s.db);
+                        needs_self_type_variable |= t.has_self_type();
                     }
                 }
                 if needs_self_type_variable {
