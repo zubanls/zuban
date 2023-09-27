@@ -10,10 +10,6 @@ testCheckUntypedDefsSelf2
 testNonIntSliceBounds
 # The type "Type[type]" is not generic and not indexable
 testTypeApplicationCrash
-# Invalid signature "Callable[[B], A]"
-testReverseOperatorMethodInvalid
-# base class: callable
-testInvalidBaseClass
 # class base Any in combination with overload
 testOverloadWithDerivedFromAny
 # `class type` stuff
@@ -1534,6 +1530,8 @@ testUnsafeOverlappingWithLineNo
 testReverseComparisonOperator
 testUnsafeOverlappingNamedTuple
 testOverlappingOperatorMethods
+# __rmul__ etc. Invalid signature "Callable[[B], A]"
+testReverseOperatorMethodInvalid
 #  Incompatible types in assignment (expression has type "int", base class "BaseS" defined the type as "str")
 testTypingSelfOverrideVarMulti
 testOverrideMethodWithAttribute

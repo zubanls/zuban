@@ -519,7 +519,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 match db_type {
                     DbType::Class(..)
                     | DbType::Tuple(_)
-                    | DbType::Callable(_)
                     | DbType::TypedDict(_)
                     | DbType::Dataclass(_) => CalculatedBaseClass::DbType(db_type),
                     DbType::Type(t) if matches!(t.as_ref(), DbType::Any) => {

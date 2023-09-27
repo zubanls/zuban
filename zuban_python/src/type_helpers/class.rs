@@ -633,7 +633,6 @@ impl<'db: 'a, 'a> Class<'a> {
                                 let class = match &bases.last().unwrap() {
                                     DbType::Class(c) => Some(c.class(db)),
                                     DbType::Tuple(content) => None,
-                                    DbType::Callable(content) => None,
                                     DbType::Dataclass(d) => Some(d.class(db)),
                                     DbType::TypedDict(typed_dict) => {
                                         if matches!(
@@ -1646,7 +1645,6 @@ enum BaseKind {
     Tuple,
     Type,
     Enum,
-    Callable,
 }
 
 fn to_base_kind(t: &DbType) -> BaseKind {
@@ -1658,7 +1656,6 @@ fn to_base_kind(t: &DbType) -> BaseKind {
         DbType::TypedDict(d) => BaseKind::TypedDict,
         DbType::NamedTuple(_) => BaseKind::NamedTuple,
         DbType::Enum(_) => BaseKind::Enum,
-        DbType::Callable(_) => BaseKind::Callable,
         _ => unreachable!("{t:?}"),
     }
 }
