@@ -13,10 +13,6 @@ testTypeApplicationCrash
 # `class type` stuff
 testObfuscatedTypeConstructorReturnsTypeType
 testOtherTypeConstructorsSucceed
-# `class type` access on class
-testTypeUsingTypeCErrorUnsupportedType
-testTypeUsingTypeCTuple
-testTypeUsingTypeCJoin
 # "Variance of TypeVar "T_contra" incompatible with variance in parent type"
 testIncompatibleVariance
 # Type[Any] is object
@@ -2912,6 +2908,10 @@ testAddFileWhichImportsLibModuleWithErrors
 
 # "Incompatible types in string interpolation (expression has type "str", placeholder has type "int")"
 testErrorCodeFormatCall
+
+# tuple type is not initializable (though it probably should)
+testTypeUsingTypeCErrorUnsupportedType
+testTypeUsingTypeCTuple
 
 # syntax not yet supported
 # ""break" outside loop"

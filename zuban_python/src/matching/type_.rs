@@ -2137,6 +2137,11 @@ impl<'a> Type<'a> {
         if let Some(new) = check_both_sides(other.as_ref(), self.as_ref()) {
             return new;
         }
+        if let DbType::Type(t1) = self.as_ref() {
+            if let DbType::Type(t2) = other.as_ref() {
+                return DbType::Type(Rc::new(Type::new(t1).common_base_type(i_s, &Type::new(t2))));
+            }
+        }
         for (_, c1) in self.mro(i_s.db) {
             for (_, c2) in other.mro(i_s.db) {
                 match &c1 {
