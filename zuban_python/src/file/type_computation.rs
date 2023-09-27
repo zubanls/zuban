@@ -752,7 +752,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             d.options,
                         )
                     }
-                }))
+                }));
             }
             TypeContent::TypedDictDefinition(td) => {
                 return match &td.generics {
@@ -3052,7 +3052,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                     start_position: start,
                     end_position: start + s.len() as CodeIndex,
                     type_: IssueType::InvalidSyntaxInTypeComment {
-                        type_comment: s.into(),
+                        type_comment: s.trim().into(),
                     },
                 },
             );

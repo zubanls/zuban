@@ -10,11 +10,6 @@ testCheckUntypedDefsSelf2
 testNonIntSliceBounds
 # The type "Type[type]" is not generic and not indexable
 testTypeApplicationCrash
-# Invalid type comment or annotation, because of weird annotations
-testFastParseTypeCommentSyntaxError
-testFastParseFunctionAnnotationSyntaxError
-testFastParseFunctionAnnotationSyntaxErrorSpaces
-testFastParseInvalidFunctionAnnotation
 # Invalid signature "Callable[[B], A]"
 testReverseOperatorMethodInvalid
 # base class: callable
@@ -3172,6 +3167,9 @@ testTooFewTypes
 testCommentFunctionAnnotationVarArgMispatch-skip
 testCommentFunctionAnnotationVarArgMispatch2-skip
 testErrorCodeSyntaxError2
+testFastParseFunctionAnnotationSyntaxError
+testFastParseFunctionAnnotationSyntaxErrorSpaces
+testFastParseInvalidFunctionAnnotation
 
 # --scripts-are-modules
 testScriptsAreModules
