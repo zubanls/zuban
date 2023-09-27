@@ -3,8 +3,6 @@ testCachedProperty
 testTypedDictGetMethodInvalidArgs
 # slice type checking
 testNonIntSliceBounds
-# "Variance of TypeVar "T_contra" incompatible with variance in parent type"
-testIncompatibleVariance
 
 # The type "Type[type]" is not generic and not indexable
 testTypeApplicationCrash

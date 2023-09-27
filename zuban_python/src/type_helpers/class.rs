@@ -47,7 +47,7 @@ pub struct Class<'a> {
     pub node_ref: NodeRef<'a>,
     pub class_storage: &'a ClassStorage,
     pub generics: Generics<'a>,
-    type_var_remap: Option<&'a GenericsList>,
+    pub type_var_remap: Option<&'a GenericsList>,
 }
 
 impl<'db: 'a, 'a> Class<'a> {

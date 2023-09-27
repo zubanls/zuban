@@ -2,9 +2,9 @@ use parsa_python_ast::*;
 
 use crate::arguments::{CombinedArguments, KnownArguments, NoArguments};
 use crate::database::{
-    CallableContent, ClassType, ComplexPoint, DbType, FunctionKind, Locality,
+    CallableContent, ClassType, ComplexPoint, DbType, FunctionKind, GenericItem, Locality,
     OverloadImplementation, Point, PointType, Specific, TupleTypeArguments, TypeOrTypeVarTuple,
-    Variance,
+    TypeVarLike, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -330,7 +330,7 @@ impl<'db> Inference<'db, '_, '_> {
     }
 
     fn calc_class_diagnostics(&mut self, class: ClassDef) {
-        let (_, block) = class.unpack();
+        let (arguments, block) = class.unpack();
         let name_def = NodeRef::new(self.file, class.name_definition().index());
         debug!("TODO this from is completely wrong and should never be used.");
         let hack = name_def;
@@ -351,13 +351,34 @@ impl<'db> Inference<'db, '_, '_> {
         inference.calc_block_diagnostics(block, Some(c), None);
 
         for (i, base1) in c.bases(db).enumerate() {
-            let instance1 = match base1 {
-                TypeOrClass::Class(c) => Instance::new(c, None),
+            let cls1 = match base1 {
+                TypeOrClass::Class(c) => c,
                 TypeOrClass::Type(t) => {
                     debug!("TODO check complex base types");
                     continue;
                 }
             };
+            for (type_var_like, arg) in cls1
+                .use_cached_type_vars(i_s.db)
+                .iter()
+                .zip(cls1.type_var_remap.map(|g| g.iter()).unwrap_or([].iter()))
+            {
+                if let GenericItem::TypeArgument(DbType::TypeVar(tv)) = arg {
+                    if let TypeVarLike::TypeVar(tv_def) = type_var_like {
+                        if tv.type_var.variance != Variance::Invariant
+                            && tv.type_var.variance != tv_def.variance
+                        {
+                            NodeRef::new(self.file, arguments.unwrap().index()).add_issue(
+                                &i_s,
+                                IssueType::TypeVarVarianceIncompatibleWithParentType {
+                                    type_var_name: tv.type_var.name(i_s.db).into(),
+                                },
+                            );
+                        }
+                    }
+                }
+            }
+            let instance1 = Instance::new(cls1, None);
             for base2 in c.bases(db).skip(i + 1) {
                 let instance2 = match base2 {
                     TypeOrClass::Class(c) => Instance::new(c, None),

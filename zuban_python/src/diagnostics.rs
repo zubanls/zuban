@@ -112,6 +112,7 @@ pub(crate) enum IssueType {
     TypeVarInReturnButNotArgument,
     TypeVarCovariantInParamType,
     TypeVarContravariantInReturnType,
+    TypeVarVarianceIncompatibleWithParentType { type_var_name: Box<str> },
     UnexpectedTypeForTypeVar,
     TypeVarTupleTooManyArguments,
     ParamSpecTooManyKeywordArguments,
@@ -271,6 +272,7 @@ impl IssueType {
             TypeVarInReturnButNotArgument
             | TypeVarCovariantInParamType
             | TypeVarContravariantInReturnType
+            | TypeVarVarianceIncompatibleWithParentType { .. }
             | InvalidTypeVarValue { .. }
             | TypeVarBoundViolation { .. } => "type-var",
             UnsupportedOperand { .. }
@@ -739,6 +741,9 @@ impl<'db> Diagnostic<'db> {
                 "Cannot use a covariant type variable as a parameter".to_string(),
             TypeVarContravariantInReturnType =>
                 "Cannot use a contravariant type variable as return type".to_string(),
+            TypeVarVarianceIncompatibleWithParentType{ type_var_name } => format!(
+                r#"Variance of TypeVar "{type_var_name}" incompatible with variance in parent type"#
+            ),
             UnexpectedTypeForTypeVar =>
                 "Cannot declare the type of a TypeVar or similar construct".to_string(),
             TypeVarTupleTooManyArguments =>
