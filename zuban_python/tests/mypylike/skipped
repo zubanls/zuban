@@ -14,7 +14,6 @@ testTypeApplicationCrash
 testObfuscatedTypeConstructorReturnsTypeType
 testOtherTypeConstructorsSucceed
 # `class type` access on class
-testTypeUsingTypeCTypeAnyMemberFallback
 testTypeUsingTypeCClassMethodFromTypeVarUnionBound
 testTypeUsingTypeCErrorUnsupportedType
 testTypeUsingTypeCOverloadedClass

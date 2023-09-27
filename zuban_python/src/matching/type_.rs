@@ -2340,7 +2340,6 @@ impl<'a> Type<'a> {
                         )
                     }
                 }
-                DbType::Any => callable(self, LookupResult::any()),
                 _ => callable(
                     self,
                     TypingType::new(i_s.db, t).lookup(i_s, from, name, kind, result_context),

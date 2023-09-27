@@ -112,6 +112,10 @@ impl<'db: 'a, 'a> Class<'a> {
         )
     }
 
+    pub fn instance(self) -> Instance<'a> {
+        Instance::new(self, None)
+    }
+
     fn type_check_init_func(
         &self,
         i_s: &InferenceState<'db, '_>,

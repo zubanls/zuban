@@ -76,7 +76,13 @@ impl<'a> TypingType<'a> {
                 .current_class()
                 .unwrap()
                 .lookup(i_s, node_ref, name, kind),
-            DbType::Any => LookupResult::any(),
+            DbType::Any => i_s
+                .db
+                .python_state
+                .bare_type_class()
+                .instance()
+                .lookup(i_s, node_ref, name, kind)
+                .or_else(|| LookupResult::any()),
             t @ DbType::Enum(e) => lookup_on_enum_class(i_s, node_ref, e, name, result_context),
             DbType::Dataclass(d) => DataclassHelper(d).lookup_on_type(i_s, node_ref, name, kind),
             DbType::TypedDict(d) => i_s
