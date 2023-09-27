@@ -10,15 +10,10 @@ testCheckUntypedDefsSelf2
 testNonIntSliceBounds
 # The type "Type[type]" is not generic and not indexable
 testTypeApplicationCrash
-# class base Any in combination with overload
-testOverloadWithDerivedFromAny
 # `class type` stuff
 testObfuscatedTypeConstructorReturnsTypeType
 testOtherTypeConstructorsSucceed
 testTypeTypeComparisonWorks
-# type vs type[object]
-testNonTypeDoesNotMatchOverloadedFunctions
-testTypeConstructorLookalikeFails
 # `class type` access on class
 testTypeUsingTypeCTypeAnyMemberFallback
 testTypeUsingTypeCClassMethodUnion
@@ -27,8 +22,6 @@ testTypeUsingTypeCErrorUnsupportedType
 testTypeUsingTypeCOverloadedClass
 testTypeUsingTypeCTuple
 testTypeUsingTypeCJoin
-# Self type variable type
-param_spec_with_generic_class
 # "Variance of TypeVar "T_contra" incompatible with variance in parent type"
 testIncompatibleVariance
 # Type[Any] is object
@@ -321,6 +314,9 @@ testCrashInJoinOfSelfRecursiveNamedTuples
 testNoCrashOnNestedGenericCallable
 testSubtypingGenericTypeObject
 
+# Self is confused. matcher needs to know Self from both sides.
+testOverloadWithDerivedFromAny
+
 # Any base class now matches everything for union simplification
 testUnionSimplificationSpecialCases2
 
@@ -353,6 +349,7 @@ testInferenceAgainstGenericBoundsAndValues
 testDefaultDict
 testGenericInferenceWithDataclass
 testGenericInferenceWithItertools
+param_spec_with_generic_class
 
 # type var backtracking
 testUnionInference
