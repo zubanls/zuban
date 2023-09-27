@@ -13,7 +13,6 @@ testTypeApplicationCrash
 # `class type` stuff
 testObfuscatedTypeConstructorReturnsTypeType
 testOtherTypeConstructorsSucceed
-testTypeTypeComparisonWorks
 # `class type` access on class
 testTypeUsingTypeCTypeAnyMemberFallback
 testTypeUsingTypeCClassMethodUnion

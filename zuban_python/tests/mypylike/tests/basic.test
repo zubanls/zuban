@@ -30,7 +30,7 @@ foo(**dct)
 def foo(x, /) -> None: ...
 
 dct: dict[str, int]
-foo(**dct) # E: Missing positional argument "x" in call to "foo"
+foo(**dct) # E: Too few arguments for "foo"
 
 [case strict_optional_none_return]
 def foo() -> str:

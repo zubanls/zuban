@@ -629,8 +629,12 @@ pub fn match_arguments_against_params<
     } else if should_generate_errors {
         let mut missing_positional = vec![];
         for param in &missing_params {
-            if let Some(param_name) = param.name(i_s.db) {
-                if param.kind(i_s.db) == ParamKind::KeywordOnly {
+            let param_kind = param.kind(i_s.db);
+            if let Some(param_name) = param
+                .name(i_s.db)
+                .filter(|_| param_kind != ParamKind::PositionalOnly)
+            {
+                if param_kind == ParamKind::KeywordOnly {
                     let mut s = format!("Missing named argument {:?}", param_name);
                     s += diagnostic_string(" for ").as_deref().unwrap_or("");
                     args_node_ref().add_issue(i_s, IssueType::ArgumentIssue(s.into()));
@@ -640,6 +644,7 @@ pub fn match_arguments_against_params<
             } else {
                 let s = diagnostic_string(" for ").unwrap_or_else(|| Box::from(""));
                 args_node_ref().add_issue(i_s, IssueType::TooFewArguments(s));
+                break;
             }
         }
         if let Some(mut s) = match &missing_positional[..] {
