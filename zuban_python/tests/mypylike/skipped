@@ -15,7 +15,6 @@ testObfuscatedTypeConstructorReturnsTypeType
 testOtherTypeConstructorsSucceed
 # `class type` access on class
 testTypeUsingTypeCErrorUnsupportedType
-testTypeUsingTypeCOverloadedClass
 testTypeUsingTypeCTuple
 testTypeUsingTypeCJoin
 # "Variance of TypeVar "T_contra" incompatible with variance in parent type"
