@@ -417,11 +417,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     ) -> Option<Inferred> {
         for target in targets {
             match target {
-                Target::Tuple(_) | Target::Starred(_) => (),
+                Target::Tuple(tup) => (),
+                Target::Starred(_) => (),
                 Target::IndexExpression(t) => debug!("TODO enable context for index expr"),
                 Target::NameExpression(..) => debug!("TODO enable context for named expr"),
                 _ => {
-                    if let Some(inferred) = self.infer_single_target(target) {
+                    if let Some(inferred) = self.infer_target(target) {
                         return Some(inferred);
                     }
                 }
@@ -574,7 +575,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let (inplace, normal, reverse) = aug_assign.magic_methods();
                 let right =
                     self.infer_assignment_right_side(right_side, &mut ResultContext::Unknown);
-                let Some(left) = self.infer_single_target(target) else {
+                let Some(left) = self.infer_target(target) else {
                     todo!()
                 };
                 let had_error = Cell::new(false);
@@ -751,7 +752,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    fn infer_single_target(&mut self, target: Target) -> Option<Inferred> {
+    fn infer_target(&mut self, target: Target) -> Option<Inferred> {
         match target {
             // TODO it's a bit weird that we cannot just call self.infer_name_definition here
             Target::Name(name_def) => first_defined_name(self.file, name_def.name().index())
