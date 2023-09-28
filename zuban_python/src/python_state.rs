@@ -21,12 +21,12 @@ use crate::{new_class, InferenceState, PythonProject};
 const NAME_TO_CLASS_DIFF: u32 = 3;
 pub const NAME_TO_FUNCTION_DIFF: u32 = 3;
 
-macro_rules! builtins_attribute_node_ref {
-    ($name:ident, $attr:ident) => {
+macro_rules! attribute_node_ref {
+    ($module_name:ident, $name:ident, $attr:ident) => {
         #[inline]
         pub fn $name(&self) -> NodeRef {
             debug_assert!(self.$attr != 0);
-            NodeRef::new(self.builtins(), self.$attr)
+            NodeRef::new(self.$module_name(), self.$attr)
         }
     };
 }
@@ -97,6 +97,7 @@ pub struct PythonState {
     typing_async_generator_index: NodeIndex,
     typing_async_iterator_index: NodeIndex,
     typing_async_iterable_index: NodeIndex,
+    typing_supports_index_index: NodeIndex,
     typing_overload_index: NodeIndex,
     typing_override_index: NodeIndex,
     typing_typed_dict_index: NodeIndex,
@@ -191,6 +192,7 @@ impl PythonState {
             typing_async_generator_index: 0,
             typing_async_iterator_index: 0,
             typing_async_iterable_index: 0,
+            typing_supports_index_index: 0,
             typing_typed_dict_bases: Box::new([]), // Will be set later
             collections_namedtuple_index: 0,
             abc_abc_meta_index: 0,
@@ -366,6 +368,7 @@ impl PythonState {
         cache_index!(typing_async_generator_index, db, typing, "AsyncGenerator");
         cache_index!(typing_async_iterator_index, db, typing, "AsyncIterator");
         cache_index!(typing_async_iterable_index, db, typing, "AsyncIterable");
+        cache_index!(typing_supports_index_index, db, typing, "SupportsIndex");
         cache_index!(typing_typed_dict_index, db, typing, "_TypedDict");
         cache_index!(typing_mapping_index, db, typing, "Mapping");
         cache_index!(types_none_type_index, db, types, "NoneType");
@@ -553,33 +556,43 @@ impl PythonState {
         Class::from_position(self.tuple_node_ref(), Generics::List(generics, None), None)
     }
 
-    builtins_attribute_node_ref!(object_node_ref, builtins_object_index);
-    builtins_attribute_node_ref!(bare_type_node_ref, builtins_type_index);
-    builtins_attribute_node_ref!(list_node_ref, builtins_list_index);
-    builtins_attribute_node_ref!(tuple_node_ref, builtins_tuple_index);
-    builtins_attribute_node_ref!(dict_node_ref, builtins_dict_index);
-    builtins_attribute_node_ref!(set_node_ref, builtins_set_index);
-    builtins_attribute_node_ref!(bool_node_ref, builtins_bool_index);
-    builtins_attribute_node_ref!(int_node_ref, builtins_int_index);
-    builtins_attribute_node_ref!(float_node_ref, builtins_float_index);
-    builtins_attribute_node_ref!(complex_node_ref, builtins_complex_index);
-    builtins_attribute_node_ref!(str_node_ref, builtins_str_index);
-    builtins_attribute_node_ref!(bytes_node_ref, builtins_bytes_index);
-    builtins_attribute_node_ref!(bytearray_node_ref, builtins_bytearray_index);
-    builtins_attribute_node_ref!(memoryview_node_ref, builtins_memoryview_index);
-    builtins_attribute_node_ref!(slice_node_ref, builtins_slice_index);
-    builtins_attribute_node_ref!(classmethod_node_ref, builtins_classmethod_index);
-    builtins_attribute_node_ref!(staticmethod_node_ref, builtins_staticmethod_index);
-    builtins_attribute_node_ref!(property_node_ref, builtins_property_index);
-    builtins_attribute_node_ref!(ellipsis_node_ref, builtins_ellipsis_index);
-    builtins_attribute_node_ref!(function_node_ref, builtins_function_index);
-    builtins_attribute_node_ref!(base_exception_node_ref, builtins_base_exception_index);
-    builtins_attribute_node_ref!(exception_node_ref, builtins_exception_index);
-    builtins_attribute_node_ref!(
+    attribute_node_ref!(builtins, object_node_ref, builtins_object_index);
+    attribute_node_ref!(builtins, bare_type_node_ref, builtins_type_index);
+    attribute_node_ref!(builtins, list_node_ref, builtins_list_index);
+    attribute_node_ref!(builtins, tuple_node_ref, builtins_tuple_index);
+    attribute_node_ref!(builtins, dict_node_ref, builtins_dict_index);
+    attribute_node_ref!(builtins, set_node_ref, builtins_set_index);
+    attribute_node_ref!(builtins, bool_node_ref, builtins_bool_index);
+    attribute_node_ref!(builtins, int_node_ref, builtins_int_index);
+    attribute_node_ref!(builtins, float_node_ref, builtins_float_index);
+    attribute_node_ref!(builtins, complex_node_ref, builtins_complex_index);
+    attribute_node_ref!(builtins, str_node_ref, builtins_str_index);
+    attribute_node_ref!(builtins, bytes_node_ref, builtins_bytes_index);
+    attribute_node_ref!(builtins, bytearray_node_ref, builtins_bytearray_index);
+    attribute_node_ref!(builtins, memoryview_node_ref, builtins_memoryview_index);
+    attribute_node_ref!(builtins, slice_node_ref, builtins_slice_index);
+    attribute_node_ref!(builtins, classmethod_node_ref, builtins_classmethod_index);
+    attribute_node_ref!(builtins, staticmethod_node_ref, builtins_staticmethod_index);
+    attribute_node_ref!(builtins, property_node_ref, builtins_property_index);
+    attribute_node_ref!(builtins, ellipsis_node_ref, builtins_ellipsis_index);
+    attribute_node_ref!(builtins, function_node_ref, builtins_function_index);
+    attribute_node_ref!(
+        builtins,
+        base_exception_node_ref,
+        builtins_base_exception_index
+    );
+    attribute_node_ref!(builtins, exception_node_ref, builtins_exception_index);
+    attribute_node_ref!(
+        builtins,
         base_exception_group_node_ref,
         builtins_base_exception_group_index
     );
-    builtins_attribute_node_ref!(exception_group_node_ref, builtins_exception_group_index);
+    attribute_node_ref!(
+        builtins,
+        exception_group_node_ref,
+        builtins_exception_group_index
+    );
+    attribute_node_ref!(typing, supports_index_node_ref, typing_supports_index_index);
 
     node_ref_to_class!(pub object_class, object_node_ref);
     node_ref_to_class!(int, int_node_ref);
@@ -604,6 +617,8 @@ impl PythonState {
     node_ref_to_db_type_class_without_generic!(pub bare_type_db_type, bare_type_node_ref);
     node_ref_to_db_type_class_without_generic!(pub ellipsis_db_type, ellipsis_node_ref);
     node_ref_to_db_type_class_without_generic!(pub typed_dict_db_type, typed_dict_node_ref);
+
+    node_ref_to_db_type_class_without_generic!(pub supports_index_db_type, supports_index_node_ref);
 
     #[inline]
     fn none_type_node_ref(&self) -> NodeRef {
