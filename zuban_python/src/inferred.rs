@@ -1147,9 +1147,13 @@ impl<'db: 'slf, 'slf> Inferred {
             match c.kind {
                 FunctionKind::Function => (),
                 FunctionKind::Property { .. } => {
-                    return Some(Some(Inferred::from_type(
-                        i_s.db.python_state.property_db_type(),
-                    )))
+                    return if apply_descriptor {
+                        Some(Some(Inferred::from_type(
+                            i_s.db.python_state.property_db_type(),
+                        )))
+                    } else {
+                        None
+                    }
                 }
                 FunctionKind::Classmethod => {
                     let result = infer_class_method(i_s, *class, attribute_class, c);

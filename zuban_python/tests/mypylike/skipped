@@ -30,22 +30,6 @@ testOverloadPositionalOnlyErrorMessageClassMethod
 testUnpackWithDuplicateNamePositionalOnly
 testPossiblyUndefinedWithAssignmentExpr
 
-# "Property "f" defined in "A" is read-only"
-testAssigningToReadOnlyProperty
-testAssigningToInheritedReadOnlyProperty
-testDynamicallyTypedProperty
-testPropertyWithSetter
-testPropertyWithDeleterButNoSetter
-testReadOnlyAbstractProperty
-testReadOnlyAbstractPropertyForwardRef
-testReadWriteAbstractProperty
-testDynamicallyTypedReadOnlyAbstractProperty
-testDynamicallyTypedReadOnlyAbstractPropertyForwardRef
-testDynamicallyTypedReadWriteAbstractProperty
-testSerializeReadOnlyProperty
-testSerializeReadWriteProperty
-testNewAnalyzerProperty
-
 # super with Type[...]
 testSuperWithAny
 testSuperInClassMethod
@@ -429,6 +413,12 @@ testBuiltinStaticMethod
 testRefMethodWithDecorator
 # Property check writable type
 testCachedProperty
+# "Property "f" defined in "A" is read-only"
+testPropertyWithSetter
+testReadWriteAbstractProperty
+testDynamicallyTypedReadWriteAbstractProperty
+testSerializeReadWriteProperty
+testNewAnalyzerProperty
 
 # "The erased type of self "Type[__main__.A]" is not a supertype of its class "Type[__main__.B]""
 testSelfTypeNonsensical
@@ -1345,6 +1335,7 @@ testOverloadedOperatorMethodOverrideWithSwitchedItemOrder
 testVariableMethod
 testSelfTypeOverrideCompatibilityTypeVar
 testImplementAbstractPropertyViaPropertyInvalidType
+testOverridePropertyMethod
 # With overload
 testSelfTypeOverrideCompatibility
 testSubtypeOverloadWithOverlappingArgumentsButWrongReturnType

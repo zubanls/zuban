@@ -114,7 +114,8 @@ impl<'a> Instance<'a> {
                                         class_name: class.name().into(),
                                         property_name: name.as_str().into(),
                                     },
-                                )
+                                );
+                                return;
                             } else {
                                 todo!()
                             }
