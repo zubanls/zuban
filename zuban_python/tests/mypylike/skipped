@@ -1,8 +1,6 @@
 # Next up
 testCachedProperty
 testTypedDictGetMethodInvalidArgs
-# slice type checking
-testNonIntSliceBounds
 
 # The type "Type[type]" is not generic and not indexable
 testTypeApplicationCrash

@@ -6,12 +6,13 @@ use parsa_python_ast::{
 };
 
 use crate::arguments::{ArgumentIterator, Arguments, ArgumentsType};
-use crate::database::{Database, DbType, TupleContent, TypeOrTypeVarTuple};
+use crate::database::{DbType, TupleContent, TypeOrTypeVarTuple};
 use crate::debug;
+use crate::diagnostics::IssueType;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::ResultContext;
+use crate::matching::{ResultContext, Type};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Copy, Clone)]
@@ -93,7 +94,7 @@ impl<'db, 'file> SliceType<'file> {
     ) -> Inferred {
         match self.unpack() {
             SliceTypeContent::Simple(s) => s.infer(i_s, result_context),
-            SliceTypeContent::Slice(s) => s.infer(i_s.db),
+            SliceTypeContent::Slice(s) => s.infer(i_s),
             SliceTypeContent::Slices(s) => s.infer(i_s),
         }
     }
@@ -128,8 +129,30 @@ impl<'file> Slice<'file> {
         NodeRef::new(self.file, self.slice.index())
     }
 
-    pub fn infer(&self, db: &Database) -> Inferred {
-        Inferred::from_type(db.python_state.slice_db_type())
+    pub fn infer(&self, i_s: &InferenceState) -> Inferred {
+        let check = |maybe_expr| {
+            if let Some(expr) = maybe_expr {
+                let inf = self.file.inference(i_s).infer_expression(expr);
+                let t = inf.as_type(i_s);
+                let supports_index = i_s.db.python_state.supports_index_db_type();
+                if !t
+                    .is_simple_sub_type_of(i_s, &Type::owned(supports_index))
+                    .bool()
+                    && !t
+                        .is_simple_sub_type_of(i_s, &Type::new(&DbType::None))
+                        .bool()
+                {
+                    NodeRef::new(self.file, expr.index())
+                        .add_issue(i_s, IssueType::InvalidSliceIndex);
+                }
+            }
+        };
+
+        let (first, second, third) = self.slice.unpack();
+        check(first);
+        check(second);
+        check(third);
+        Inferred::from_type(i_s.db.python_state.slice_db_type())
     }
 }
 
@@ -171,7 +194,7 @@ impl<'file> SliceOrSimple<'file> {
     pub fn infer(&self, i_s: &InferenceState, result_context: &mut ResultContext) -> Inferred {
         match self {
             Self::Simple(simple) => simple.infer(i_s, result_context),
-            Self::Slice(slice) => todo!(),
+            Self::Slice(slice) => slice.infer(i_s),
         }
     }
 

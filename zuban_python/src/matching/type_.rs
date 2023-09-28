@@ -2468,7 +2468,7 @@ impl<'a> Type<'a> {
         slice_type: &SliceType,
         result_context: &mut ResultContext,
     ) -> Inferred {
-        match self.as_ref() {
+        let inf = match self.as_ref() {
             DbType::Class(c) => Instance::new(c.class(i_s.db), from_inferred).get_item(
                 i_s,
                 slice_type,
@@ -2555,7 +2555,10 @@ impl<'a> Type<'a> {
                 Inferred::new_any()
             }
             _ => todo!("get_item not implemented for {self:?}"),
-        }
+        };
+        // Make sure the slices are inferred
+        slice_type.infer(i_s);
+        inf
     }
 
     pub fn merge_matching_parts(self, db: &Database, other: Self) -> Self {

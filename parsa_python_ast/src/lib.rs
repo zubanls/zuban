@@ -2803,6 +2803,41 @@ impl<'db> Slices<'db> {
     }
 }
 
+impl<'db> Slice<'db> {
+    pub fn unpack(
+        &self,
+    ) -> (
+        Option<Expression<'db>>,
+        Option<Expression<'db>>,
+        Option<Expression<'db>>,
+    ) {
+        let mut iterator = self.node.iter_children();
+        let first = iterator
+            .next()
+            .filter(|y| y.is_type(Nonterminal(expression)));
+        if first.is_some() {
+            if let Some(next) = iterator.next() {
+                debug_assert_eq!(next.as_code(), ":");
+            }
+        };
+        let second = iterator
+            .next()
+            .filter(|y| y.is_type(Nonterminal(expression)));
+        if second.is_some() {
+            if let Some(next) = iterator.next() {
+                debug_assert_eq!(next.as_code(), ":");
+            }
+        };
+        let third = iterator.next();
+        debug_assert!(iterator.next().is_none());
+        (
+            first.map(Expression::new),
+            second.map(Expression::new),
+            third.map(Expression::new),
+        )
+    }
+}
+
 #[derive(Clone, Copy)]
 pub enum SliceContent<'db> {
     Slice(Slice<'db>),

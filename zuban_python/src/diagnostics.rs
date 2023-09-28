@@ -59,6 +59,7 @@ pub(crate) enum IssueType {
     UnsupportedSetItemTarget(Box<str>),
     InvalidSetItemTarget { got: Box<str>, expected: Box<str> },
     NotIndexable { type_: Box<str> },
+    InvalidSliceIndex,
     TooFewValuesToUnpack { actual: usize, expected: usize },
     StarredExpressionOnlyNoTarget,
     StmtOutsideFunction { keyword: &'static str },
@@ -559,6 +560,7 @@ impl<'db> Diagnostic<'db> {
                 r#"Unsupported target for indexed assignment ("{t}")"#
             ),
             NotIndexable{type_} => format!("Value of type {type_:?} is not indexable"),
+            InvalidSliceIndex => "Slice index must be an integer, SupportsIndex or None".to_string(),
 
             MethodWithoutArguments => {
                 "Method must have at least one argument. Did you forget the \"self\" argument?".to_string()

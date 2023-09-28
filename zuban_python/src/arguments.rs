@@ -710,7 +710,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                     }
                     SliceTypeContent::Slice(slice) => {
                         Some(BaseArgumentReturn::Argument(ArgumentKind::Inferred {
-                            inferred: slice.infer(i_s.db),
+                            inferred: slice.infer(&i_s),
                             position: 1,
                             node_ref: slice.as_node_ref(),
                             in_args_or_kwargs_and_arbitrary_len: false,
