@@ -411,14 +411,6 @@ testTypingSelfClassMethod
 # staticmethod
 testBuiltinStaticMethod
 testRefMethodWithDecorator
-# Property check writable type
-testCachedProperty
-# "Property "f" defined in "A" is read-only"
-testPropertyWithSetter
-testReadWriteAbstractProperty
-testDynamicallyTypedReadWriteAbstractProperty
-testSerializeReadWriteProperty
-testNewAnalyzerProperty
 
 # "The erased type of self "Type[__main__.A]" is not a supertype of its class "Type[__main__.B]""
 testSelfTypeNonsensical

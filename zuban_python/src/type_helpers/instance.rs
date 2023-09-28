@@ -115,14 +115,16 @@ impl<'a> Instance<'a> {
                                         property_name: name.as_str().into(),
                                     },
                                 );
-                                return;
                             } else {
                                 todo!()
                             }
                         }
-                        FunctionKind::Property { writable: true } => {}
+                        FunctionKind::Property { writable: true } => {
+                            check_compatible(&Type::new(&c.result_type), value);
+                        }
                         _ => unreachable!(),
                     }
+                    return;
                 }
                 _ => {}
             }
