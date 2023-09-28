@@ -1,13 +1,4 @@
 # Next up
-testTypedDictGetMethodInvalidArgs
-
-# The type "Type[type]" is not generic and not indexable
-testTypeApplicationCrash
-# `class type` stuff
-testObfuscatedTypeConstructorReturnsTypeType
-testOtherTypeConstructorsSucceed
-# Type[Any] is object
-testSimplifyingUnionWithTypeTypes2
 
 # 3.7 tests
 testNamedTupleDefaults
@@ -756,6 +747,8 @@ testPluginUnionsOfTypedDictsNonTotal
 testUnionOfEquivalentTypedDictsDistinct
 testUnionOfEquivalentTypedDictsNested
 testTypedDictUnionAmbiguousCaseNoMatch
+# slightly different TypedDict.get signature than in mypy Is this relevant?
+testTypedDictGetMethodInvalidArgs
 
 # NoReturn
 testNoReturnTypeAlias
@@ -2318,6 +2311,14 @@ testErrorCodeReturnValueNotExpected
 
 # "Decorators on top of @property are not supported"
 testDecoratedProperty
+
+# The type "Type[type]" is not generic and not indexable
+testTypeApplicationCrash
+# `class type` stuff
+testObfuscatedTypeConstructorReturnsTypeType
+testOtherTypeConstructorsSucceed
+# Type[Any] is object
+testSimplifyingUnionWithTypeTypes2
 
 # typing.assert_type in untyped functions
 testAssertTypeUncheckedFunction
