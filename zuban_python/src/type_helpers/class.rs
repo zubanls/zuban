@@ -635,7 +635,23 @@ impl<'db: 'a, 'a> Class<'a> {
                                 }
                                 bases.push(t);
                                 let class = match &bases.last().unwrap() {
-                                    DbType::Class(c) => Some(c.class(db)),
+                                    DbType::Class(c) => {
+                                        if let Some(cached) =
+                                            c.class(i_s.db).maybe_cached_class_infos(i_s.db)
+                                        {
+                                            if cached.class_type != ClassType::Normal {
+                                                if class_type == ClassType::Normal {
+                                                    if !matches!(
+                                                        cached.class_type,
+                                                        ClassType::Protocol
+                                                    ) {
+                                                        class_type = cached.class_type.clone();
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        Some(c.class(db))
+                                    }
                                     DbType::Tuple(content) => {
                                         if class_type == ClassType::Normal {
                                             class_type = ClassType::Tuple;
@@ -687,7 +703,10 @@ impl<'db: 'a, 'a> Class<'a> {
                                         );
                                         match &cached_class_infos.class_type {
                                             ClassType::NamedTuple(named_tuple) => {
-                                                if matches!(class_type, ClassType::Normal) {
+                                                if matches!(
+                                                    class_type,
+                                                    ClassType::Normal | ClassType::NamedTuple(_)
+                                                ) {
                                                     class_type =
                                                         ClassType::NamedTuple(named_tuple.clone());
                                                 } else {
@@ -1247,8 +1266,10 @@ impl<'db: 'a, 'a> Class<'a> {
                 for (_, type_or_class) in self.mro(format_data.db) {
                     if let TypeOrClass::Type(t) = type_or_class {
                         if let DbType::Tuple(tup) = t.as_ref() {
-                            return tup
-                                .format_with_fallback(format_data, &format!(", fallback={result}"));
+                            return tup.format_with_fallback(
+                                format_data,
+                                &format!(", fallback={result}"),
+                            );
                         }
                     }
                 }
