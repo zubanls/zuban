@@ -592,7 +592,19 @@ impl PythonState {
         pub exception_group_node_ref,
         builtins_exception_group_index
     );
+
     attribute_node_ref!(typing, supports_index_node_ref, typing_supports_index_index);
+    attribute_node_ref!(typing, typed_dict_node_ref, typing_typed_dict_index);
+    attribute_node_ref!(typing, mapping_node_ref, typing_mapping_index);
+    attribute_node_ref!(typing, mapping_get_node_ref, typing_mapping_get_index);
+    attribute_node_ref!(types, none_type_node_ref, types_none_type_index);
+    attribute_node_ref!(types, module_node_ref, types_module_type_index);
+    attribute_node_ref!(
+        typeshed,
+        supports_keys_and_get_item_node_ref,
+        typeshed_supports_keys_and_get_item_index
+    );
+    attribute_node_ref!(enum_file, pub enum_node_ref, enum_enum_index);
 
     node_ref_to_class!(pub object_class, object_node_ref);
     node_ref_to_class!(int, int_node_ref);
@@ -620,29 +632,10 @@ impl PythonState {
 
     node_ref_to_db_type_class_without_generic!(pub supports_index_db_type, supports_index_node_ref);
 
-    #[inline]
-    fn none_type_node_ref(&self) -> NodeRef {
-        debug_assert!(self.types_none_type_index != 0);
-        NodeRef::new(self.types(), self.types_none_type_index)
-    }
-
     pub fn none_instance(&self) -> Instance {
         Instance::new(
             Class::from_non_generic_node_ref(self.none_type_node_ref()),
             None,
-        )
-    }
-
-    #[inline]
-    fn module_node_ref(&self) -> NodeRef {
-        debug_assert!(self.types_module_type_index != 0);
-        NodeRef::new(self.types(), self.types_module_type_index)
-    }
-
-    fn supports_keys_and_get_item_node_ref(&self) -> NodeRef {
-        NodeRef::new(
-            self.typeshed(),
-            self.typeshed_supports_keys_and_get_item_index,
         )
     }
 
@@ -692,11 +685,6 @@ impl PythonState {
         PointLink::new(self.enum_file().file_index(), self.enum_enum_meta_index)
     }
 
-    pub fn enum_node_ref(&self) -> NodeRef {
-        debug_assert!(self.enum_enum_index != 0);
-        NodeRef::new(self.enum_file(), self.enum_enum_index)
-    }
-
     pub fn enum_auto_link(&self) -> PointLink {
         debug_assert!(self.enum_auto_index != 0);
         PointLink::new(self.enum_file().file_index(), self.enum_auto_index)
@@ -743,21 +731,6 @@ impl PythonState {
     pub fn async_iterable_link(&self) -> PointLink {
         debug_assert!(self.typing_async_iterable_index != 0);
         PointLink::new(self.typing().file_index(), self.typing_async_iterable_index)
-    }
-
-    fn typed_dict_node_ref(&self) -> NodeRef {
-        debug_assert!(self.typing_typed_dict_index != 0);
-        NodeRef::new(self.typing(), self.typing_typed_dict_index)
-    }
-
-    pub fn mapping_node_ref(&self) -> NodeRef {
-        debug_assert!(self.typing_mapping_index != 0);
-        NodeRef::new(self.typing(), self.typing_mapping_index)
-    }
-
-    pub fn mapping_get_node_ref(&self) -> NodeRef {
-        debug_assert!(self.typing_mapping_get_index != 0);
-        NodeRef::new(self.typing(), self.typing_mapping_get_index)
     }
 
     pub fn mapping_get_function<'class>(&self, class: Class<'class>) -> Function<'_, 'class> {
