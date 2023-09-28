@@ -60,6 +60,9 @@ pub fn global_import<'a>(
     if name == "abc" {
         return Some(ImportResult::File(db.python_state.abc().file_index()));
     }
+    if name == "functools" {
+        return Some(ImportResult::File(db.python_state.functools().file_index()));
+    }
     if name == "enum" {
         return Some(ImportResult::File(db.python_state.enum_file().file_index()));
     }

@@ -3618,6 +3618,8 @@ impl Database {
             as *const _;
         let types = self.py_load_tmp(&stdlib_dir, "../typeshed/stdlib/types.pyi") as *const _;
         let abc = self.py_load_tmp(&stdlib_dir, "../typeshed/stdlib/abc.pyi") as *const _;
+        let functools =
+            self.py_load_tmp(&stdlib_dir, "../typeshed/stdlib/functools.pyi") as *const _;
         let enum_file = self.py_load_tmp(&stdlib_dir, "../typeshed/stdlib/enum.pyi") as *const _;
         let dataclasses_file =
             self.py_load_tmp(&stdlib_dir, "../typeshed/stdlib/dataclasses.pyi") as *const _;
@@ -3641,6 +3643,7 @@ impl Database {
             collections,
             types,
             abc,
+            functools,
             enum_file,
             dataclasses_file,
             typing_extensions,

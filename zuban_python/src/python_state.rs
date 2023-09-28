@@ -58,6 +58,7 @@ pub struct PythonState {
     collections: *const PythonFile,
     types: *const PythonFile,
     abc: *const PythonFile,
+    functools: *const PythonFile,
     enum_file: *const PythonFile,
     dataclasses_file: *const PythonFile,
     mypy_extensions: *const PythonFile,
@@ -147,6 +148,7 @@ impl PythonState {
             collections: null(),
             types: null(),
             abc: null(),
+            functools: null(),
             enum_file: null(),
             dataclasses_file: null(),
             mypy_extensions: null(),
@@ -235,6 +237,7 @@ impl PythonState {
         collections: *const PythonFile,
         types: *const PythonFile,
         abc: *const PythonFile,
+        functools: *const PythonFile,
         enum_file: *const PythonFile,
         dataclasses_file: *const PythonFile,
         typing_extensions: *const PythonFile,
@@ -247,6 +250,7 @@ impl PythonState {
         s.collections = collections;
         s.types = types;
         s.abc = abc;
+        s.functools = functools;
         s.enum_file = enum_file;
         s.dataclasses_file = dataclasses_file;
         s.typing_extensions = typing_extensions;
@@ -520,6 +524,11 @@ impl PythonState {
     pub fn abc(&self) -> &PythonFile {
         debug_assert!(!self.abc.is_null());
         unsafe { &*self.abc }
+    }
+
+    pub fn functools(&self) -> &PythonFile {
+        debug_assert!(!self.functools.is_null());
+        unsafe { &*self.functools }
     }
 
     #[inline]
