@@ -22,9 +22,9 @@ const NAME_TO_CLASS_DIFF: u32 = 3;
 pub const NAME_TO_FUNCTION_DIFF: u32 = 3;
 
 macro_rules! attribute_node_ref {
-    ($module_name:ident, $name:ident, $attr:ident) => {
+    ($module_name:ident, $vis:vis $name:ident, $attr:ident) => {
         #[inline]
-        pub fn $name(&self) -> NodeRef {
+        $vis fn $name(&self) -> NodeRef {
             debug_assert!(self.$attr != 0);
             NodeRef::new(self.$module_name(), self.$attr)
         }
@@ -556,40 +556,40 @@ impl PythonState {
         Class::from_position(self.tuple_node_ref(), Generics::List(generics, None), None)
     }
 
-    attribute_node_ref!(builtins, object_node_ref, builtins_object_index);
-    attribute_node_ref!(builtins, bare_type_node_ref, builtins_type_index);
-    attribute_node_ref!(builtins, list_node_ref, builtins_list_index);
+    attribute_node_ref!(builtins, pub object_node_ref, builtins_object_index);
+    attribute_node_ref!(builtins, pub bare_type_node_ref, builtins_type_index);
+    attribute_node_ref!(builtins, pub list_node_ref, builtins_list_index);
     attribute_node_ref!(builtins, tuple_node_ref, builtins_tuple_index);
-    attribute_node_ref!(builtins, dict_node_ref, builtins_dict_index);
-    attribute_node_ref!(builtins, set_node_ref, builtins_set_index);
+    attribute_node_ref!(builtins, pub dict_node_ref, builtins_dict_index);
+    attribute_node_ref!(builtins, pub set_node_ref, builtins_set_index);
     attribute_node_ref!(builtins, bool_node_ref, builtins_bool_index);
     attribute_node_ref!(builtins, int_node_ref, builtins_int_index);
     attribute_node_ref!(builtins, float_node_ref, builtins_float_index);
     attribute_node_ref!(builtins, complex_node_ref, builtins_complex_index);
-    attribute_node_ref!(builtins, str_node_ref, builtins_str_index);
+    attribute_node_ref!(builtins, pub str_node_ref, builtins_str_index);
     attribute_node_ref!(builtins, bytes_node_ref, builtins_bytes_index);
     attribute_node_ref!(builtins, bytearray_node_ref, builtins_bytearray_index);
     attribute_node_ref!(builtins, memoryview_node_ref, builtins_memoryview_index);
     attribute_node_ref!(builtins, slice_node_ref, builtins_slice_index);
-    attribute_node_ref!(builtins, classmethod_node_ref, builtins_classmethod_index);
-    attribute_node_ref!(builtins, staticmethod_node_ref, builtins_staticmethod_index);
-    attribute_node_ref!(builtins, property_node_ref, builtins_property_index);
+    attribute_node_ref!(builtins, pub classmethod_node_ref, builtins_classmethod_index);
+    attribute_node_ref!(builtins, pub staticmethod_node_ref, builtins_staticmethod_index);
+    attribute_node_ref!(builtins, pub property_node_ref, builtins_property_index);
     attribute_node_ref!(builtins, ellipsis_node_ref, builtins_ellipsis_index);
     attribute_node_ref!(builtins, function_node_ref, builtins_function_index);
     attribute_node_ref!(
         builtins,
-        base_exception_node_ref,
+        pub base_exception_node_ref,
         builtins_base_exception_index
     );
-    attribute_node_ref!(builtins, exception_node_ref, builtins_exception_index);
+    attribute_node_ref!(builtins, pub exception_node_ref, builtins_exception_index);
     attribute_node_ref!(
         builtins,
-        base_exception_group_node_ref,
+        pub base_exception_group_node_ref,
         builtins_base_exception_group_index
     );
     attribute_node_ref!(
         builtins,
-        exception_group_node_ref,
+        pub exception_group_node_ref,
         builtins_exception_group_index
     );
     attribute_node_ref!(typing, supports_index_node_ref, typing_supports_index_index);
