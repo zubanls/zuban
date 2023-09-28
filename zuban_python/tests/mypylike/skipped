@@ -478,7 +478,6 @@ testVariableDeclWithInvalidNumberOfTypesNested3
 testVariableDeclWithInvalidNumberOfTypesNested5
 
 # Tuple Super Class
-testTypeAliasesToNamedTuple
 testNewAnalyzerTupleIteration
 testValidTupleBaseClass2
 testTupleSubclassJoin
