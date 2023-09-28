@@ -1527,14 +1527,18 @@ impl TupleContent {
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
+        self.format_with_fallback(format_data, "")
+    }
+
+    pub fn format_with_fallback(&self, format_data: &FormatData, fallback: &str) -> Box<str> {
         let base = match format_data.style {
             FormatStyle::Short => "tuple",
             FormatStyle::Qualified | FormatStyle::MypyRevealType => "builtins.tuple",
         };
         if let Some(args) = self.args.as_ref() {
-            format!("{base}[{}]", args.format(format_data)).into()
+            format!("{base}[{}{fallback}]", args.format(format_data)).into()
         } else {
-            format!("{base}[Any, ...]").into()
+            format!("{base}[Any, ...{fallback}]").into()
         }
     }
 }
@@ -3699,6 +3703,7 @@ pub enum ClassType {
     Protocol,
     Enum,
     TypedDict,
+    Tuple,
     NamedTuple(Rc<NamedTuple>),
 }
 

@@ -636,7 +636,14 @@ impl<'db: 'a, 'a> Class<'a> {
                                 bases.push(t);
                                 let class = match &bases.last().unwrap() {
                                     DbType::Class(c) => Some(c.class(db)),
-                                    DbType::Tuple(content) => None,
+                                    DbType::Tuple(content) => {
+                                        if class_type == ClassType::Normal {
+                                            class_type = ClassType::Tuple;
+                                        } else {
+                                            todo!()
+                                        }
+                                        None
+                                    }
                                     DbType::Dataclass(d) => Some(d.class(db)),
                                     DbType::TypedDict(typed_dict) => {
                                         if matches!(
@@ -1236,6 +1243,17 @@ impl<'db: 'a, 'a> Class<'a> {
         match &class_infos.class_type {
             ClassType::NamedTuple(named_tuple) => NamedTupleValue::new(format_data.db, named_tuple)
                 .format_with_name(format_data, &result, self.generics),
+            ClassType::Tuple if format_data.style == FormatStyle::MypyRevealType => {
+                for (_, type_or_class) in self.mro(format_data.db) {
+                    if let TypeOrClass::Type(t) = type_or_class {
+                        if let DbType::Tuple(tup) = t.as_ref() {
+                            return tup
+                                .format_with_fallback(format_data, &format!(", fallback={result}"));
+                        }
+                    }
+                }
+                unreachable!()
+            }
             _ => result.into(),
         }
     }

@@ -687,3 +687,7 @@ fn maybe_add_extra_keys_issue(
         },
     )
 }
+
+fn join_with_commas(input: Vec<String>) -> String {
+    input.join(", ")
+}
