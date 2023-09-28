@@ -1,5 +1,4 @@
 # Next up
-testCachedProperty
 testTypedDictGetMethodInvalidArgs
 
 # The type "Type[type]" is not generic and not indexable
@@ -437,6 +436,8 @@ testTypingSelfClassMethod
 # staticmethod
 testBuiltinStaticMethod
 testRefMethodWithDecorator
+# Property check writable type
+testCachedProperty
 
 # "The erased type of self "Type[__main__.A]" is not a supertype of its class "Type[__main__.B]""
 testSelfTypeNonsensical

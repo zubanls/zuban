@@ -2177,6 +2177,9 @@ fn infer_decorator(
             {
                 return InferredDecorator::FunctionKind(FunctionKind::Property { writable: false });
             }
+            if class.class_link_in_mro(i_s.db, i_s.db.python_state.cached_property_link()) {
+                return InferredDecorator::FunctionKind(FunctionKind::Property { writable: true });
+            }
         }
     }
     InferredDecorator::Inferred(redirect)

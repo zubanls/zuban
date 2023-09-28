@@ -111,6 +111,7 @@ pub struct PythonState {
     abc_abc_meta_index: NodeIndex,
     abc_abstractmethod_index: NodeIndex,
     abc_abstractproperty_index: NodeIndex,
+    functools_cached_property_index: NodeIndex,
     enum_enum_meta_index: NodeIndex,
     enum_enum_index: NodeIndex,
     enum_auto_index: NodeIndex,
@@ -200,6 +201,7 @@ impl PythonState {
             abc_abc_meta_index: 0,
             abc_abstractmethod_index: 0,
             abc_abstractproperty_index: 0,
+            functools_cached_property_index: 0,
             enum_enum_meta_index: 0,
             enum_enum_index: 0,
             enum_auto_index: 0,
@@ -377,6 +379,12 @@ impl PythonState {
         cache_index!(typing_mapping_index, db, typing, "Mapping");
         cache_index!(types_none_type_index, db, types, "NoneType");
         cache_index!(abc_abstractproperty_index, db, abc, "abstractproperty");
+        cache_index!(
+            functools_cached_property_index,
+            db,
+            functools,
+            "cached_property"
+        );
         cache_index!(dataclasses_kw_only_index, db, dataclasses_file, "KW_ONLY");
         cache_index!(dataclasses_init_var_index, db, dataclasses_file, "InitVar");
         cache_index!(
@@ -687,6 +695,14 @@ impl PythonState {
     pub fn abstractproperty_link(&self) -> PointLink {
         debug_assert!(self.abc_abstractproperty_index != 0);
         PointLink::new(self.abc().file_index(), self.abc_abstractproperty_index)
+    }
+
+    pub fn cached_property_link(&self) -> PointLink {
+        debug_assert!(self.functools_cached_property_index != 0);
+        PointLink::new(
+            self.functools().file_index(),
+            self.functools_cached_property_index,
+        )
     }
 
     pub fn enum_meta_link(&self) -> PointLink {
