@@ -482,11 +482,7 @@ testNewAnalyzerTupleIteration
 testRecursiveRegularTupleClass
 testRecursiveTupleClassesNewType
 # Tuple indexing (including slices)
-testLiteralIntelligentIndexingTuples
-testLiteralIntelligentIndexingTupleUnions
-testMutuallyRecursiveNamedTuplesClasses
 testNonliteralTupleSlice
-testIndexingWithDynamic
 testIndexingTuples
 testIndexingTuplesWithNegativeIntegers
 testMultipleAssignmentWithIndexedLvalues
@@ -1907,6 +1903,7 @@ testAliasRecursiveUnpackMultiple
 testNarrowOnSelfInGeneric
 testNarrowedVariableInNestedModifiedInWalrus
 testTypedDictTypeNarrowingWithFinalKey
+testLiteralIntelligentIndexingTuples
 # narrowing if is
 testEnumReachabilityChecksBasic
 testEnumReachabilityChecksWithOrdering

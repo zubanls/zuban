@@ -102,7 +102,16 @@ impl<'a> Tuple<'a> {
                 SliceTypeContent::Slice(slice) => slice
                     .callback_on_tuple_indexes(i_s, ts, |start, end, step| {
                         Inferred::from_type(DbType::Tuple(Rc::new(TupleContent::new_fixed_length(
-                            if step < 0 { todo!() } else { ts.clone() },
+                            match step {
+                                1 => ts[start..end].into(),
+                                n if n > 1 => {
+                                    ts[start..end].iter().step_by(n as usize).cloned().collect()
+                                }
+                                n if n < 0 => {
+                                    todo!()
+                                }
+                                _ => unreachable!(),
+                            },
                         ))))
                     })
                     .unwrap_or_else(|| todo!()),
