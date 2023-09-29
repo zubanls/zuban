@@ -115,6 +115,7 @@ impl<'a> NamedTupleValue<'a> {
                         None
                     }
                 })
+                .unwrap_or_else(Inferred::new_any)
             }
             SliceTypeContent::Slice(_) => todo!(),
             SliceTypeContent::Slices(_) => todo!(),

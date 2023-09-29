@@ -547,7 +547,7 @@ pub fn infer_index(
     file: &PythonFile,
     expr: Expression,
     callable: impl Fn(isize) -> Option<Inferred>,
-) -> Inferred {
+) -> Option<Inferred> {
     let infer = |i_s: &InferenceState, literal: Literal| {
         if !matches!(literal.kind, LiteralKind::Int(_)) {
             return None;
@@ -581,7 +581,6 @@ pub fn infer_index(
         }
         UnionValue::Any => todo!(),
     }
-    .unwrap_or_else(Inferred::new_unknown)
 }
 
 pub fn infer_string_index(

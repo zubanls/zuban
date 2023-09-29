@@ -1,15 +1,15 @@
 use std::rc::Rc;
 
 use parsa_python_ast::{
-    NamedExpression, NodeIndex, Slice as ASTSlice, SliceContent, SliceIterator as ASTSliceIterator,
-    SliceType as ASTSliceType, Slices as ASTSlices,
+    Expression, NamedExpression, NodeIndex, Slice as ASTSlice, SliceContent,
+    SliceIterator as ASTSliceIterator, SliceType as ASTSliceType, Slices as ASTSlices,
 };
 
 use crate::arguments::{ArgumentIterator, Arguments, ArgumentsType};
 use crate::database::{DbType, TupleContent, TypeOrTypeVarTuple};
 use crate::debug;
 use crate::diagnostics::IssueType;
-use crate::file::PythonFile;
+use crate::file::{infer_index, PythonFile};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{ResultContext, Type};
@@ -153,6 +153,53 @@ impl<'file> Slice<'file> {
         check(second);
         check(third);
         Inferred::from_type(i_s.db.python_state.slice_db_type())
+    }
+
+    pub fn callback_on_tuple_indexes(
+        &self,
+        i_s: &InferenceState,
+        tuple_entries: &[TypeOrTypeVarTuple],
+        callback: impl Fn(usize, usize, isize) -> Inferred,
+    ) -> Option<Inferred> {
+        let infer = |maybe_expr: Option<_>| {
+            maybe_expr.map(|expr| self.file.inference(i_s).infer_expression(expr))
+        };
+        let (first, second, third) = self.slice.unpack();
+        let infer_third = |start_index, end_index| {
+            if let Some(third) = third {
+                infer_index(i_s, self.file, third, |step_index| {
+                    Some(callback(start_index, end_index, step_index))
+                })
+            } else {
+                // 1 is the default step size
+                Some(callback(start_index, end_index, 1))
+            }
+        };
+        let infer_second = |start_index| {
+            if let Some(second) = second {
+                infer_index(i_s, self.file, second, |index| {
+                    let end_index = if index < 0 {
+                        (tuple_entries.len() as isize + index).max(0)
+                    } else {
+                        index
+                    };
+                    infer_third(start_index, end_index as usize)
+                })
+            } else {
+                infer_third(start_index, tuple_entries.len())
+            }
+        };
+        if let Some(first) = first {
+            infer_index(i_s, self.file, first, |index| {
+                infer_second(if index < 0 {
+                    (tuple_entries.len() as isize + index).max(0)
+                } else {
+                    index
+                } as usize)
+            })
+        } else {
+            infer_second(0)
+        }
     }
 }
 

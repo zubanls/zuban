@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::database::{TupleContent, TupleTypeArguments, TypeOrTypeVarTuple};
+use crate::database::{DbType, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple};
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::infer_index;
@@ -70,15 +70,16 @@ impl<'a> Tuple<'a> {
         slice_type: &SliceType,
         result_context: &mut ResultContext,
     ) -> Inferred {
-        match slice_type.unpack() {
-            SliceTypeContent::Simple(simple) => match &self.content.args {
-                Some(args @ TupleTypeArguments::FixedLength(ts)) => {
+        match &self.content.args {
+            Some(args @ TupleTypeArguments::FixedLength(ts)) => match slice_type.unpack() {
+                SliceTypeContent::Simple(simple) => {
                     if args.has_type_var_tuple().is_some() {
                         todo!()
                     }
                     infer_index(i_s, simple.file, simple.named_expr.expression(), |index| {
                         let index = if index < 0 {
-                            ts.len() - (-index as usize)
+                            let index = ts.len() as isize + index;
+                            index.try_into().map_err(|_| todo!()).ok()?
                         } else {
                             index as usize
                         };
@@ -99,18 +100,23 @@ impl<'a> Tuple<'a> {
                                 }),
                         )
                     })
+                    .unwrap_or_else(Inferred::new_any)
                 }
-                Some(TupleTypeArguments::ArbitraryLength(t)) => {
-                    Inferred::execute_db_type(i_s, t.as_ref().clone())
+                SliceTypeContent::Slice(slice) => slice
+                    .callback_on_tuple_indexes(i_s, ts, |start, end, step| {
+                        Inferred::from_type(DbType::Tuple(Rc::new(TupleContent::new_fixed_length(
+                            if step < 0 { todo!() } else { ts.clone() },
+                        ))))
+                    })
+                    .unwrap_or_else(|| todo!()),
+                SliceTypeContent::Slices(slices) => {
+                    todo!()
                 }
-                _ => Inferred::new_unknown(),
             },
-            SliceTypeContent::Slice(slice) => {
-                todo!()
+            Some(TupleTypeArguments::ArbitraryLength(t)) => {
+                Inferred::execute_db_type(i_s, t.as_ref().clone())
             }
-            SliceTypeContent::Slices(slices) => {
-                todo!()
-            }
+            _ => Inferred::new_unknown(),
         }
     }
 }
