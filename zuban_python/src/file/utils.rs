@@ -545,7 +545,7 @@ pub fn on_argument_type_error(
 pub fn infer_index(
     i_s: &InferenceState,
     simple: Simple,
-    callable: impl Fn(usize) -> Option<Inferred>,
+    callable: impl Fn(isize) -> Option<Inferred>,
 ) -> Inferred {
     let infer = |i_s: &InferenceState, literal: Literal| {
         if !matches!(literal.kind, LiteralKind::Int(_)) {
@@ -554,7 +554,7 @@ pub fn infer_index(
         let LiteralValue::Int(i) = literal.value(i_s.db) else {
             unreachable!();
         };
-        let index = usize::try_from(i).ok().unwrap_or_else(|| todo!());
+        let index = isize::try_from(i).ok().unwrap_or_else(|| todo!());
         callable(index)
     };
     match simple

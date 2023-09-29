@@ -40,7 +40,7 @@ use crate::node_ref::NodeRef;
 use crate::python_state::NAME_TO_FUNCTION_DIFF;
 use crate::type_helpers::dataclass::check_dataclass_options;
 use crate::type_helpers::enum_::infer_value_on_member;
-use crate::type_helpers::{format_pretty_callable, infer_typed_dict_total_argument, Tuple};
+use crate::type_helpers::{format_pretty_callable, infer_typed_dict_total_argument};
 
 #[derive(Clone, Copy)]
 pub struct Class<'a> {

@@ -102,6 +102,7 @@ impl<'a> NamedTupleValue<'a> {
     ) -> Inferred {
         match slice_type.unpack() {
             SliceTypeContent::Simple(simple) => infer_index(i_s, simple, |index| {
+                let index = if index < 0 { todo!() } else { index as usize };
                 if let Some(p) = self.nt.params().get(index) {
                     Some(Inferred::from_type(
                         p.param_specific.expect_positional_db_type_as_ref().clone(),

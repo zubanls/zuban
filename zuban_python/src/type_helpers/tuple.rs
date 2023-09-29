@@ -77,6 +77,11 @@ impl<'a> Tuple<'a> {
                         todo!()
                     }
                     infer_index(i_s, simple, |index| {
+                        let index = if index < 0 {
+                            ts.len() - (-index as usize)
+                        } else {
+                            index as usize
+                        };
                         Some(
                             ts.as_ref()
                                 .get(index)
@@ -100,10 +105,10 @@ impl<'a> Tuple<'a> {
                 }
                 _ => Inferred::new_unknown(),
             },
-            SliceTypeContent::Slice(simple) => {
+            SliceTypeContent::Slice(slice) => {
                 todo!()
             }
-            SliceTypeContent::Slices(simple) => {
+            SliceTypeContent::Slices(slices) => {
                 todo!()
             }
         }
