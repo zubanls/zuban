@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use crate::database::{TupleContent, TupleTypeArguments, TypeOrTypeVarTuple};
 use crate::debug;
+use crate::diagnostics::IssueType;
 use crate::file::infer_index;
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
@@ -76,12 +77,22 @@ impl<'a> Tuple<'a> {
                         todo!()
                     }
                     infer_index(i_s, simple, |index| {
-                        ts.as_ref().get(index).map(|t| match t {
-                            TypeOrTypeVarTuple::Type(t) => {
-                                Inferred::execute_db_type(i_s, t.clone())
-                            }
-                            TypeOrTypeVarTuple::TypeVarTuple(t) => unreachable!(),
-                        })
+                        Some(
+                            ts.as_ref()
+                                .get(index)
+                                .map(|t| match t {
+                                    TypeOrTypeVarTuple::Type(t) => {
+                                        Inferred::execute_db_type(i_s, t.clone())
+                                    }
+                                    TypeOrTypeVarTuple::TypeVarTuple(t) => unreachable!(),
+                                })
+                                .unwrap_or_else(|| {
+                                    slice_type
+                                        .as_argument_node_ref()
+                                        .add_issue(i_s, IssueType::TupleIndexOutOfRange);
+                                    Inferred::new_any()
+                                }),
+                        )
                     })
                 }
                 Some(TupleTypeArguments::ArbitraryLength(t)) => {
