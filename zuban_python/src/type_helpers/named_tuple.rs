@@ -101,19 +101,21 @@ impl<'a> NamedTupleValue<'a> {
         result_context: &mut ResultContext,
     ) -> Inferred {
         match slice_type.unpack() {
-            SliceTypeContent::Simple(simple) => infer_index(i_s, simple, |index| {
-                let index = if index < 0 { todo!() } else { index as usize };
-                if let Some(p) = self.nt.params().get(index) {
-                    Some(Inferred::from_type(
-                        p.param_specific.expect_positional_db_type_as_ref().clone(),
-                    ))
-                } else {
-                    slice_type
-                        .as_node_ref()
-                        .add_issue(i_s, IssueType::TupleIndexOutOfRange);
-                    None
-                }
-            }),
+            SliceTypeContent::Simple(simple) => {
+                infer_index(i_s, simple.file, simple.named_expr.expression(), |index| {
+                    let index = if index < 0 { todo!() } else { index as usize };
+                    if let Some(p) = self.nt.params().get(index) {
+                        Some(Inferred::from_type(
+                            p.param_specific.expect_positional_db_type_as_ref().clone(),
+                        ))
+                    } else {
+                        slice_type
+                            .as_node_ref()
+                            .add_issue(i_s, IssueType::TupleIndexOutOfRange);
+                        None
+                    }
+                })
+            }
             SliceTypeContent::Slice(_) => todo!(),
             SliceTypeContent::Slices(_) => todo!(),
         }

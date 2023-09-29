@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use parsa_python_ast::{
-    Dict, DictElement, DictElementIterator, Int, List, StarLikeExpression,
+    Dict, DictElement, DictElementIterator, Expression, Int, List, StarLikeExpression,
     StarLikeExpressionIterator,
 };
 
@@ -544,7 +544,8 @@ pub fn on_argument_type_error(
 
 pub fn infer_index(
     i_s: &InferenceState,
-    simple: Simple,
+    file: &PythonFile,
+    expr: Expression,
     callable: impl Fn(isize) -> Option<Inferred>,
 ) -> Inferred {
     let infer = |i_s: &InferenceState, literal: Literal| {
@@ -557,8 +558,9 @@ pub fn infer_index(
         let index = isize::try_from(i).ok().unwrap_or_else(|| todo!());
         callable(index)
     };
-    match simple
-        .infer(i_s, &mut ResultContext::ExpectLiteral)
+    match file
+        .inference(i_s)
+        .infer_expression_with_context(expr, &mut ResultContext::ExpectLiteral)
         .maybe_literal(i_s.db)
     {
         UnionValue::Single(literal) => infer(i_s, literal),
@@ -598,6 +600,7 @@ pub fn infer_string_index(
         };
         callable(s)
     };
+
     match simple
         .infer(i_s, &mut ResultContext::ExpectLiteral)
         .maybe_literal(i_s.db)

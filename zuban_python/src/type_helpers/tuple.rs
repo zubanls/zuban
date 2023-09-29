@@ -76,7 +76,7 @@ impl<'a> Tuple<'a> {
                     if args.has_type_var_tuple().is_some() {
                         todo!()
                     }
-                    infer_index(i_s, simple, |index| {
+                    infer_index(i_s, simple.file, simple.named_expr.expression(), |index| {
                         let index = if index < 0 {
                             ts.len() - (-index as usize)
                         } else {
