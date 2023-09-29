@@ -2867,19 +2867,21 @@ impl NamedTuple {
         format!("{module}.{}", self.name(db))
     }
 
-    pub fn as_tuple(&self) -> &TupleContent {
-        self.tuple.get_or_init(|| {
-            Rc::new(TupleContent::new_fixed_length(
-                self.params()
-                    .iter()
-                    .map(|t| {
-                        TypeOrTypeVarTuple::Type(
-                            t.param_specific.expect_positional_db_type_as_ref().clone(),
-                        )
-                    })
-                    .collect(),
-            ))
-        })
+    pub fn as_tuple(&self) -> Rc<TupleContent> {
+        self.tuple
+            .get_or_init(|| {
+                Rc::new(TupleContent::new_fixed_length(
+                    self.params()
+                        .iter()
+                        .map(|t| {
+                            TypeOrTypeVarTuple::Type(
+                                t.param_specific.expect_positional_db_type_as_ref().clone(),
+                            )
+                        })
+                        .collect(),
+                ))
+            })
+            .clone()
     }
 }
 

@@ -1,19 +1,18 @@
 use std::rc::Rc;
 
 use crate::arguments::Arguments;
-use crate::database::{
-    ComplexPoint, DbType, FormatStyle, NamedTuple, RecursiveAlias, TupleTypeArguments,
-};
+use crate::database::{ComplexPoint, DbType, FormatStyle, NamedTuple, RecursiveAlias};
 use crate::debug;
-use crate::diagnostics::IssueType;
-use crate::file::{infer_index, new_collections_named_tuple, new_typing_named_tuple};
-use crate::getitem::{SliceType, SliceTypeContent};
+use crate::file::{new_collections_named_tuple, new_typing_named_tuple};
+use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{
     FormatData, Generics, IteratorContent, LookupResult, OnTypeError, ResultContext, Type,
 };
 use crate::{database::Database, node_ref::NodeRef};
+
+use super::Tuple;
 
 #[derive(Debug)]
 pub struct NamedTupleValue<'a> {
@@ -71,10 +70,7 @@ impl<'a> NamedTupleValue<'a> {
     }
 
     pub fn iter(&self, i_s: &InferenceState, from: NodeRef) -> IteratorContent {
-        let TupleTypeArguments::FixedLength(t) = self.nt.as_tuple().args.as_ref().unwrap() else {
-            unreachable!()
-        };
-        IteratorContent::new_tuple(t.clone())
+        Tuple::new(&self.nt.as_tuple()).iter(i_s, from)
     }
 
     pub fn lookup(&self, i_s: &InferenceState, name: &str) -> LookupResult {
@@ -100,26 +96,7 @@ impl<'a> NamedTupleValue<'a> {
         slice_type: &SliceType,
         result_context: &mut ResultContext,
     ) -> Inferred {
-        match slice_type.unpack() {
-            SliceTypeContent::Simple(simple) => {
-                infer_index(i_s, simple.file, simple.named_expr.expression(), |index| {
-                    let index = if index < 0 { todo!() } else { index as usize };
-                    if let Some(p) = self.nt.params().get(index) {
-                        Some(Inferred::from_type(
-                            p.param_specific.expect_positional_db_type_as_ref().clone(),
-                        ))
-                    } else {
-                        slice_type
-                            .as_node_ref()
-                            .add_issue(i_s, IssueType::TupleIndexOutOfRange);
-                        None
-                    }
-                })
-                .unwrap_or_else(Inferred::new_any)
-            }
-            SliceTypeContent::Slice(_) => todo!(),
-            SliceTypeContent::Slices(_) => todo!(),
-        }
+        Tuple::new(&self.nt.as_tuple()).get_item(i_s, slice_type, result_context)
     }
 }
 

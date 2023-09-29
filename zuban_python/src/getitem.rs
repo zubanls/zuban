@@ -1,8 +1,8 @@
 use std::rc::Rc;
 
 use parsa_python_ast::{
-    Expression, NamedExpression, NodeIndex, Slice as ASTSlice, SliceContent,
-    SliceIterator as ASTSliceIterator, SliceType as ASTSliceType, Slices as ASTSlices,
+    NamedExpression, NodeIndex, Slice as ASTSlice, SliceContent, SliceIterator as ASTSliceIterator,
+    SliceType as ASTSliceType, Slices as ASTSlices,
 };
 
 use crate::arguments::{ArgumentIterator, Arguments, ArgumentsType};

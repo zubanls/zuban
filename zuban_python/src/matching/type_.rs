@@ -345,7 +345,7 @@ impl<'a> Type<'a> {
                     Self::matches_tuple(i_s, matcher, t1, t2, variance).similar_if_false()
                 }
                 DbType::NamedTuple(t2) => {
-                    Self::matches_tuple(i_s, matcher, t1, t2.as_tuple(), variance)
+                    Self::matches_tuple(i_s, matcher, t1, &t2.as_tuple(), variance)
                         .similar_if_false()
                 }
                 _ => Match::new_false(),
@@ -2785,7 +2785,7 @@ fn common_base_type_for_non_class(
                     return Some(DbType::NamedTuple(nt1.clone()));
                 }
             }
-            return common_base_for_tuple_against_db_type(i_s, nt1.as_tuple(), t2);
+            return common_base_for_tuple_against_db_type(i_s, &nt1.as_tuple(), t2);
         }
         DbType::TypedDict(td1) => {
             if let DbType::TypedDict(td2) = &t2 {
@@ -2898,7 +2898,7 @@ fn common_base_for_tuple_against_db_type(
     Some(match t2 {
         DbType::Tuple(tup2) => DbType::Tuple(Rc::new(common_base_for_tuples(i_s, tup1, tup2))),
         DbType::NamedTuple(nt2) => {
-            DbType::Tuple(Rc::new(common_base_for_tuples(i_s, tup1, nt2.as_tuple())))
+            DbType::Tuple(Rc::new(common_base_for_tuples(i_s, tup1, &nt2.as_tuple())))
         }
         _ => return None,
     })
