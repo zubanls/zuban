@@ -83,22 +83,19 @@ impl<'a> Tuple<'a> {
                         } else {
                             index as usize
                         };
-                        Some(
-                            ts.as_ref()
-                                .get(index)
-                                .map(|t| match t {
-                                    TypeOrTypeVarTuple::Type(t) => {
-                                        Inferred::execute_db_type(i_s, t.clone())
-                                    }
-                                    TypeOrTypeVarTuple::TypeVarTuple(t) => unreachable!(),
-                                })
-                                .unwrap_or_else(|| {
-                                    slice_type
-                                        .as_argument_node_ref()
-                                        .add_issue(i_s, IssueType::TupleIndexOutOfRange);
-                                    Inferred::new_any()
-                                }),
-                        )
+                        if let Some(t) = ts.as_ref().get(index) {
+                            Some(match t {
+                                TypeOrTypeVarTuple::Type(t) => {
+                                    Inferred::execute_db_type(i_s, t.clone())
+                                }
+                                TypeOrTypeVarTuple::TypeVarTuple(t) => unreachable!(),
+                            })
+                        } else {
+                            slice_type
+                                .as_node_ref()
+                                .add_issue(i_s, IssueType::TupleIndexOutOfRange);
+                            None
+                        }
                     })
                     .unwrap_or_else(Inferred::new_any)
                 }
