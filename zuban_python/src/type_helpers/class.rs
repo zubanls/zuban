@@ -40,7 +40,7 @@ use crate::node_ref::NodeRef;
 use crate::python_state::NAME_TO_FUNCTION_DIFF;
 use crate::type_helpers::dataclass::check_dataclass_options;
 use crate::type_helpers::enum_::infer_value_on_member;
-use crate::type_helpers::{format_pretty_callable, infer_typed_dict_total_argument};
+use crate::type_helpers::{format_pretty_callable, infer_typed_dict_total_argument, Tuple};
 
 #[derive(Clone, Copy)]
 pub struct Class<'a> {
@@ -1735,12 +1735,13 @@ fn linearize_mro(i_s: &InferenceState, class: &Class, bases: &[DbType]) -> Box<[
         .iter()
         .map(|t| {
             let generic_class = match &t {
-                DbType::Class(c) => Some(c),
-                DbType::Dataclass(d) => Some(&d.class),
+                DbType::Class(c) => Some(c.class(i_s.db)),
+                DbType::Dataclass(d) => Some(d.class.class(i_s.db)),
+                DbType::Tuple(content) => Some(i_s.db.python_state.tuple_class(i_s.db, content)),
                 _ => None,
             };
-            let super_classes = if let Some(c) = generic_class {
-                let cached_class_infos = c.class(i_s.db).use_cached_class_infos(i_s.db);
+            let super_classes = if let Some(cls) = generic_class {
+                let cached_class_infos = cls.use_cached_class_infos(i_s.db);
                 cached_class_infos.mro.as_ref()
             } else {
                 &[]

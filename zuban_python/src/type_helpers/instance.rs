@@ -179,11 +179,25 @@ impl<'a> Instance<'a> {
     }
 
     pub fn iter(&self, i_s: &InferenceState, from: NodeRef) -> IteratorContent {
-        if let ClassType::NamedTuple(ref named_tuple) =
-            self.class.use_cached_class_infos(i_s.db).class_type
-        {
-            // TODO this doesn't take care of the mro and could not be the first __iter__
-            return NamedTupleValue::new(i_s.db, named_tuple).iter(i_s, from);
+        match &self.class.use_cached_class_infos(i_s.db).class_type {
+            ClassType::NamedTuple(named_tuple) => {
+                // TODO this doesn't take care of the mro and could not be the first __iter__
+                return NamedTupleValue::new(i_s.db, named_tuple).iter(i_s, from);
+            }
+            ClassType::Tuple => {
+                /*
+                 * TODO enable?
+                for (_, type_or_class) in self.class.mro(i_s.db) {
+                    if let TypeOrClass::Type(t) = type_or_class {
+                        if let DbType::Tuple(tup) = t.as_ref() {
+                            return Tuple::new(tup).iter(i_s, from)
+                        }
+                    }
+                }
+                unreachable!()
+                */
+            }
+            _ => (),
         }
         let mro_iterator = self.class.mro(i_s.db);
         let finder = ClassMroFinder {

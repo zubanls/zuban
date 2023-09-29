@@ -480,8 +480,7 @@ testVariableDeclWithInvalidNumberOfTypesNested5
 # Tuple Super Class
 testNewAnalyzerTupleIteration
 testValidTupleBaseClass2
-testTupleSubclassJoin
-testTypeTupleCall
+testRecursiveRegularTupleClass
 testRecursiveTupleClassesNewType
 # Tuple indexing (including slices)
 testLiteralIntelligentIndexingTuples

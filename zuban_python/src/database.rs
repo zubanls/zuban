@@ -1097,6 +1097,9 @@ impl DbType {
                 _ => unreachable!(),
             },
             Self::TypedDict(d) => todo!("Maybe this should be implemented?"),
+            // If we expect class generics and tuples are involved, the tuple was already
+            // calculated.
+            Self::Tuple(t) => t.tuple_class_generics.get().unwrap(),
             _ => unreachable!(),
         }
     }

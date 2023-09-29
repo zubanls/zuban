@@ -2454,7 +2454,7 @@ impl<'a> Type<'a> {
             DbType::Class(c) => todo!(),
             DbType::Dataclass(d) => DataclassHelper(d).lookup_symbol(i_s, name),
             DbType::TypedDict(_) => todo!(),
-            DbType::Tuple(t) => (None, LookupResult::None), // TODO this probably omits index/count
+            DbType::Tuple(t) => (None, LookupResult::None),
             DbType::NamedTuple(nt) => (None, NamedTupleValue::new(i_s.db, nt).lookup(i_s, name)),
             DbType::Callable(t) => todo!(),
             _ => todo!("{name:?} {self:?}"),
