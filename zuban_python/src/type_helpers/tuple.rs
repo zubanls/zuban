@@ -7,7 +7,9 @@ use crate::file::infer_index;
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{IteratorContent, LookupResult, ResultContext};
+use crate::matching::{
+    simplified_union_from_iterators, IteratorContent, LookupResult, ResultContext,
+};
 use crate::node_ref::NodeRef;
 use crate::type_helpers::Instance;
 
@@ -97,7 +99,9 @@ impl<'a> Tuple<'a> {
                             None
                         }
                     })
-                    .unwrap_or_else(Inferred::new_any)
+                    .unwrap_or_else(|| {
+                        Inferred::from_type(simplified_union_of_tuple_entries(i_s, ts))
+                    })
                 }
                 SliceTypeContent::Slice(slice) => slice
                     .callback_on_tuple_indexes(i_s, ts, |start, end, step| {
@@ -114,7 +118,13 @@ impl<'a> Tuple<'a> {
                             },
                         ))))
                     })
-                    .unwrap_or_else(|| todo!()),
+                    .unwrap_or_else(|| {
+                        Inferred::from_type(DbType::Tuple(Rc::new(
+                            TupleContent::new_arbitrary_length(simplified_union_of_tuple_entries(
+                                i_s, ts,
+                            )),
+                        )))
+                    }),
                 SliceTypeContent::Slices(slices) => {
                     todo!()
                 }
@@ -125,4 +135,26 @@ impl<'a> Tuple<'a> {
             _ => Inferred::new_unknown(),
         }
     }
+}
+
+fn simplified_union_of_tuple_entries(
+    i_s: &InferenceState,
+    entries: &[TypeOrTypeVarTuple],
+) -> DbType {
+    let iter = || {
+        entries.iter().map(|t_or| match t_or {
+            TypeOrTypeVarTuple::Type(t) => t,
+            TypeOrTypeVarTuple::TypeVarTuple(_) => unreachable!(),
+        })
+    };
+    let highest_union_format_index = iter()
+        .map(|t| t.highest_union_format_index())
+        .max()
+        .unwrap_or(0);
+    simplified_union_from_iterators(
+        i_s,
+        iter().cloned().enumerate(),
+        highest_union_format_index,
+        false,
+    )
 }

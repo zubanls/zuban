@@ -579,7 +579,7 @@ pub fn infer_index(
                     Some(inferred)
                 })
         }
-        UnionValue::Any => todo!(),
+        UnionValue::Any => None,
     }
 }
 
