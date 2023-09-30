@@ -482,7 +482,6 @@ testNewAnalyzerTupleIteration
 testRecursiveRegularTupleClass
 testRecursiveTupleClassesNewType
 # Tuple indexing (including slices)
-testIndexingTuplesWithNegativeIntegers
 testMultipleAssignmentWithIndexedLvalues
 testTupleMeetTupleVariable
 testNonliteralTupleIndex

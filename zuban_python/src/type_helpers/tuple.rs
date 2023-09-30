@@ -81,7 +81,15 @@ impl<'a> Tuple<'a> {
                     infer_index(i_s, simple.file, simple.named_expr.expression(), |index| {
                         let index = if index < 0 {
                             let index = ts.len() as isize + index;
-                            index.try_into().map_err(|_| todo!()).ok()?
+                            index
+                                .try_into()
+                                .map_err(|_| {
+                                    slice_type
+                                        .as_argument_node_ref()
+                                        .add_issue(i_s, IssueType::TupleIndexOutOfRange);
+                                    ()
+                                })
+                                .ok()?
                         } else {
                             index as usize
                         };
@@ -94,7 +102,7 @@ impl<'a> Tuple<'a> {
                             })
                         } else {
                             slice_type
-                                .as_node_ref()
+                                .as_argument_node_ref()
                                 .add_issue(i_s, IssueType::TupleIndexOutOfRange);
                             None
                         }
