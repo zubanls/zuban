@@ -2696,12 +2696,12 @@ pub fn match_tuple_type_arguments(
         (ArbitraryLength(t1), FixedLength(ts2), Variance::Invariant) => {
             todo!()
         }
-        (ArbitraryLength(t1), FixedLength(ts2), Variance::Covariant) => {
+        (ArbitraryLength(t1), FixedLength(ts2), _) => {
             let t1 = Type::new(t1);
             ts2.iter()
                 .all(|g2| match g2 {
                     TypeOrTypeVarTuple::Type(t2) => {
-                        t1.is_super_type_of(i_s, matcher, &Type::new(t2)).bool()
+                        t1.matches(i_s, matcher, &Type::new(t2), variance).bool()
                     }
                     TypeOrTypeVarTuple::TypeVarTuple(_) => {
                         todo!()
@@ -2709,7 +2709,6 @@ pub fn match_tuple_type_arguments(
                 })
                 .into()
         }
-        (_, _, _) => unreachable!(),
     }
 }
 
