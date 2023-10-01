@@ -220,8 +220,6 @@ testMultipleAssignmentWithListsInInitialization
 testInferringLvarTypesInNestedListAssignment
 testNestedListAssignment
 testNestedListAssignmentToTuple
-# __setitem__ error a bit too complicated
-testMultipleAssignmentWithListAndIndexing
 # List unpacking
 testUnpackInExpression1-only_when_nocache
 testListWithStarExpr
