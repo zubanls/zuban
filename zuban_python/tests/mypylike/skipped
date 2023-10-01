@@ -203,8 +203,6 @@ testNotDirectIterableAndMappingSubtyping
 testUnpackInExpression3-only_when_nocache
 functional_enum_starred_dict_literal_errors
 testDictWithStarStarSpecialCase
-# Implicit any param
-testKwargsArgumentInFunctionBodyWithImplicitAny
 
 # Not able to infer context with unions and literals
 testLiteralAndGenericWithUnion

@@ -1996,9 +1996,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         // Performance: This could be improved by not needing to lookup all the
                         // parents all the time.
                         match name_def.function_or_lambda_ancestor().unwrap() {
-                            FunctionOrLambda::Function(func) => {
+                            FunctionOrLambda::Function(func_node) => {
                                 let func = Function::new(
-                                    NodeRef::new(self.file, func.index()),
+                                    NodeRef::new(self.file, func_node.index()),
                                     self.i_s.current_class().copied(),
                                 );
                                 func.type_vars(self.i_s);
@@ -2018,7 +2018,26 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                             FirstParamKind::InStaticmethod => todo!(),
                                         }
                                     } else {
-                                        function.infer_param(self.i_s, node_index, args)
+                                        for param in func_node.params().iter() {
+                                            if param.name_definition().index() == name_def.index() {
+                                                return match param.type_() {
+                                                    ParamKind::Starred => todo!(),
+                                                    ParamKind::DoubleStarred => {
+                                                        Inferred::from_type(new_class!(
+                                                            self.i_s
+                                                                .db
+                                                                .python_state
+                                                                .dict_node_ref()
+                                                                .as_link(),
+                                                            self.i_s.db.python_state.str_db_type(),
+                                                            DbType::Any,
+                                                        ))
+                                                    }
+                                                    _ => Inferred::new_any(),
+                                                };
+                                            }
+                                        }
+                                        unreachable!()
                                     }
                                 } else if specific == Specific::MaybeSelfParam {
                                     Inferred::new_saved(self.file, node_index)
