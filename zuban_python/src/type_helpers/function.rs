@@ -1,7 +1,7 @@
 use parsa_python_ast::{
     Decorated, Decorator, ExpressionContent, ExpressionPart, FunctionDef, FunctionParent,
-    NodeIndex, Param as ASTParam, ParamIterator as ASTParamIterator, ParamKind, PrimaryContent,
-    PrimaryOrAtom, ReturnAnnotation, ReturnOrYield,
+    NodeIndex, Param as ASTParam, ParamKind, PrimaryContent, PrimaryOrAtom, ReturnAnnotation,
+    ReturnOrYield,
 };
 use std::borrow::Cow;
 use std::cell::Cell;
@@ -15,9 +15,8 @@ use crate::database::{
     DoubleStarredParamSpecific, FormatStyle, FunctionKind, FunctionOverload, GenericClass,
     GenericItem, GenericsList, Locality, OverloadDefinition, OverloadImplementation,
     ParamSpecUsage, ParamSpecific, Point, PointType, Specific, StarredParamSpecific, StringSlice,
-    TupleContent, TupleTypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarKind, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarName, TypeVarUsage, Variance,
-    WrongPositionalCount,
+    TupleTypeArguments, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
+    TypeVarManager, TypeVarName, TypeVarUsage, Variance, WrongPositionalCount,
 };
 use crate::diagnostics::{Issue, IssueType};
 use crate::file::{
@@ -119,22 +118,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         iterator.any(|p| p.annotation().is_none())
     }
 
-    pub fn iter_inferrable_params<'b>(
-        &self,
-        db: &'db Database,
-        args: &'b dyn Arguments<'db>,
-        skip_first_param: bool,
-    ) -> InferrableParamIterator<'db, 'b>
-    where
-        'a: 'b,
-    {
-        let mut params = self.node().params().iter();
-        if skip_first_param {
-            params.next();
-        }
-        InferrableParamIterator::new(db, self.node_ref.file, params, args.iter())
-    }
-
     pub fn iter_args_with_params<'b, AI: Iterator<Item = Argument<'db, 'b>>>(
         &self,
         db: &'db Database,
@@ -155,30 +138,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             params.next();
         }
         InferrableParamIterator2::new(db, params, args)
-    }
-
-    pub fn infer_param(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        param_name_def_index: NodeIndex,
-        args: &dyn Arguments<'db>,
-    ) -> Inferred {
-        let func_node =
-            FunctionDef::from_param_name_def_index(&self.node_ref.file.tree, param_name_def_index);
-        //let temporary_args;
-        //let temporary_func;
-        let (check_args, func) = if func_node.index() == self.node_ref.node_index {
-            (args, self)
-        } else {
-            debug!("TODO untyped param");
-            return Inferred::new_unknown();
-        };
-        for param in func.iter_inferrable_params(i_s.db, check_args, false) {
-            if param.is_at(param_name_def_index) {
-                return param.infer(i_s).unwrap_or_else(Inferred::new_unknown);
-            }
-        }
-        unreachable!("{param_name_def_index:?}");
     }
 
     fn execute_without_annotation(
@@ -1376,152 +1335,6 @@ impl<'x> Param<'x> for FunctionParam<'x> {
 
 pub fn is_private(name: &str) -> bool {
     name.starts_with("__") && !name.ends_with("__")
-}
-
-pub struct InferrableParamIterator<'db, 'a> {
-    db: &'db Database,
-    arguments: ArgumentIterator<'db, 'a>,
-    params: ASTParamIterator<'a>,
-    file: &'a PythonFile,
-    unused_keyword_arguments: Vec<Argument<'db, 'a>>,
-}
-
-impl<'db, 'a> InferrableParamIterator<'db, 'a> {
-    fn new(
-        db: &'db Database,
-        file: &'a PythonFile,
-        params: ASTParamIterator<'a>,
-        arguments: ArgumentIterator<'db, 'a>,
-    ) -> Self {
-        Self {
-            db,
-            arguments,
-            file,
-            params,
-            unused_keyword_arguments: vec![],
-        }
-    }
-
-    fn next_argument(&mut self, param: &FunctionParam<'a>) -> ParamInput<'db, 'a> {
-        for (i, unused) in self.unused_keyword_arguments.iter().enumerate() {
-            match &unused.kind {
-                ArgumentKind::Keyword { key, .. } => {
-                    if *key == param.name(self.db).unwrap() {
-                        return ParamInput::Argument(self.unused_keyword_arguments.remove(i));
-                    }
-                }
-                _ => unreachable!(),
-            }
-        }
-        match param.kind(self.db) {
-            ParamKind::PositionalOrKeyword => {
-                for argument in &mut self.arguments {
-                    match argument.kind {
-                        ArgumentKind::Keyword { key, .. } => {
-                            if key == param.name(self.db).unwrap() {
-                                return ParamInput::Argument(argument);
-                            } else {
-                                self.unused_keyword_arguments.push(argument);
-                            }
-                        }
-                        _ => return ParamInput::Argument(argument),
-                    }
-                }
-            }
-            ParamKind::KeywordOnly => {
-                for argument in &mut self.arguments {
-                    match argument.kind {
-                        ArgumentKind::Keyword { key, .. } => {
-                            if key == param.name(self.db).unwrap() {
-                                return ParamInput::Argument(argument);
-                            } else {
-                                self.unused_keyword_arguments.push(argument);
-                            }
-                        }
-                        _ => todo!(),
-                    }
-                }
-            }
-            ParamKind::PositionalOnly => todo!(),
-            ParamKind::Starred => {
-                let mut args = vec![];
-                for argument in &mut self.arguments {
-                    if argument.is_keyword_argument() {
-                        self.unused_keyword_arguments.push(argument);
-                        break;
-                    }
-                    args.push(argument)
-                }
-                return ParamInput::Tuple(args.into_boxed_slice());
-            }
-            ParamKind::DoubleStarred => todo!(),
-        }
-        for argument in &mut self.arguments {
-            // TODO check param type here and make sure that it makes sense.
-        }
-        ParamInput::None
-    }
-}
-
-impl<'db, 'a> Iterator for InferrableParamIterator<'db, 'a> {
-    type Item = InferrableParam<'db, 'a>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.params.next().map(|param| {
-            let param = FunctionParam {
-                file: self.file,
-                param,
-            };
-            let argument = self.next_argument(&param);
-            InferrableParam { param, argument }
-        })
-    }
-}
-
-#[derive(Debug)]
-enum ParamInput<'db, 'a> {
-    Argument(Argument<'db, 'a>),
-    Tuple(Box<[Argument<'db, 'a>]>),
-    None,
-}
-
-#[derive(Debug)]
-pub struct InferrableParam<'db, 'a> {
-    pub param: FunctionParam<'a>,
-    argument: ParamInput<'db, 'a>,
-}
-
-impl<'db> InferrableParam<'db, '_> {
-    fn is_at(&self, index: NodeIndex) -> bool {
-        self.param.param.name_definition().index() == index
-    }
-
-    pub fn has_argument(&self) -> bool {
-        !matches!(self.argument, ParamInput::None)
-    }
-
-    pub fn infer(&self, i_s: &InferenceState<'db, '_>) -> Option<Inferred> {
-        if !matches!(&self.argument, ParamInput::None) {
-            debug!("Infer param {:?}", self.param.name(i_s.db));
-        }
-        match &self.argument {
-            ParamInput::Argument(arg) => Some(arg.infer(i_s, &mut ResultContext::Unknown)),
-            ParamInput::Tuple(args) => {
-                let mut list = vec![];
-                for arg in args.iter() {
-                    if arg.in_args_or_kwargs_and_arbitrary_len() {
-                        todo!()
-                    }
-                    list.push(TypeOrTypeVarTuple::Type(
-                        arg.infer(i_s, &mut ResultContext::Unknown).as_db_type(i_s),
-                    ))
-                }
-                let t = TupleContent::new_fixed_length(list.into());
-                Some(Inferred::from_type(DbType::Tuple(Rc::new(t))))
-            }
-            ParamInput::None => None,
-        }
-    }
 }
 
 #[derive(Debug)]
