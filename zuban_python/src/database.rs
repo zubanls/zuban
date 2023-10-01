@@ -32,6 +32,7 @@ use crate::python_state::PythonState;
 use crate::type_helpers::calculate_init_of_dataclass;
 use crate::type_helpers::dotted_path_from_dir;
 use crate::type_helpers::{format_pretty_callable, Class, Module};
+use crate::utils::join_with_commas;
 use crate::utils::{bytes_repr, str_repr, InsertOnlyVec, SymbolTable};
 use crate::workspaces::{
     Directory, DirectoryEntry, FileEntry, Invalidations, WorkspaceFileIndex, Workspaces,
@@ -644,12 +645,12 @@ impl GenericsList {
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
-        self.0
-            .iter()
-            .map(|g| Generic::new(g).format(format_data))
-            .collect::<Vec<_>>()
-            .join(", ")
-            .into()
+        join_with_commas(
+            self.0
+                .iter()
+                .map(|g| Generic::new(g).format(format_data).into()),
+        )
+        .into()
     }
 }
 
@@ -1010,11 +1011,7 @@ impl DbType {
             Self::FunctionOverload(callables) => match format_data.style {
                 FormatStyle::MypyRevealType => format!(
                     "Overload({})",
-                    callables
-                        .iter_functions()
-                        .map(|t| t.format(format_data))
-                        .collect::<Vec<_>>()
-                        .join(", ")
+                    join_with_commas(callables.iter_functions().map(|t| t.format(format_data)))
                 )
                 .into(),
                 _ => Box::from("overloaded function"),
@@ -1481,12 +1478,9 @@ impl TupleTypeArguments {
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
         match self {
             Self::FixedLength(ts) if ts.is_empty() => Box::from("()"),
-            Self::FixedLength(ts) => ts
-                .iter()
-                .map(|g| g.format(format_data))
-                .collect::<Vec<_>>()
-                .join(", ")
-                .into(),
+            Self::FixedLength(ts) => {
+                join_with_commas(ts.iter().map(|g| g.format(format_data).into())).into()
+            }
             Self::ArbitraryLength(t) => format!("{}, ...", t.format(format_data)).into(),
         }
     }
@@ -2304,33 +2298,30 @@ impl TypeVarLikes {
         debug_assert!(!self.is_empty());
         format!(
             "[{}] ",
-            self.iter()
-                .map(|t| match t {
-                    TypeVarLike::TypeVar(t) => {
-                        let mut s = t.name(format_data.db).to_owned();
-                        match &t.kind {
-                            TypeVarKind::Unrestricted => (),
-                            TypeVarKind::Bound(bound) => {
-                                s += &format!(" <: {}", Type::new(bound).format(format_data));
-                            }
-                            TypeVarKind::Constraints(constraints) => {
-                                s += &format!(
-                                    " in ({})",
+            join_with_commas(self.iter().map(|t| match t {
+                TypeVarLike::TypeVar(t) => {
+                    let mut s = t.name(format_data.db).to_owned();
+                    match &t.kind {
+                        TypeVarKind::Unrestricted => (),
+                        TypeVarKind::Bound(bound) => {
+                            s += &format!(" <: {}", Type::new(bound).format(format_data));
+                        }
+                        TypeVarKind::Constraints(constraints) => {
+                            s += &format!(
+                                " in ({})",
+                                join_with_commas(
                                     constraints
                                         .iter()
-                                        .map(|t| Type::new(t).format(format_data))
-                                        .collect::<Vec<_>>()
-                                        .join(", ")
-                                );
-                            }
+                                        .map(|t| Type::new(t).format(format_data).into())
+                                )
+                            );
                         }
-                        s
                     }
-                    TypeVarLike::TypeVarTuple(t) => todo!(),
-                    TypeVarLike::ParamSpec(s) => s.name(format_data.db).into(),
-                })
-                .collect::<Vec<_>>()
-                .join(", "),
+                    s
+                }
+                TypeVarLike::TypeVarTuple(t) => todo!(),
+                TypeVarLike::ParamSpec(s) => s.name(format_data.db).into(),
+            }))
         )
     }
 }
@@ -3056,22 +3047,17 @@ impl TypedDict {
             return "...".to_string();
         }
         let format_data = &format_data.with_seen_recursive_alias(&rec);
-        let params = self
-            .members
-            .iter()
-            .map(|p| {
-                format!(
-                    "'{}'{}: {}",
-                    p.name.as_str(format_data.db),
-                    match p.required {
-                        true => "",
-                        false => "?",
-                    },
-                    p.type_.format(format_data)
-                )
-            })
-            .collect::<Vec<_>>()
-            .join(", ");
+        let params = join_with_commas(self.members.iter().map(|p| {
+            format!(
+                "'{}'{}: {}",
+                p.name.as_str(format_data.db),
+                match p.required {
+                    true => "",
+                    false => "?",
+                },
+                p.type_.format(format_data)
+            )
+        }));
         if let Some(name) = name {
             format!("TypedDict('{name}', {{{params}}})").into()
         } else {

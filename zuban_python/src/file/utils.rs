@@ -17,6 +17,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::UnionValue;
 use crate::matching::{FormatData, Matcher, MismatchReason, ResultContext, Type};
 use crate::node_ref::NodeRef;
+use crate::utils::join_with_commas;
 use crate::{debug, new_class, Inferred};
 
 impl<'db> Inference<'db, '_, '_> {
@@ -675,11 +676,7 @@ fn maybe_add_extra_keys_issue(
                 1 => format!("\"{}\"", extra_keys.remove(0)).into(),
                 _ => format!(
                     "({})",
-                    extra_keys
-                        .iter()
-                        .map(|key| format!("\"{key}\""))
-                        .collect::<Vec<String>>()
-                        .join(", ")
+                    join_with_commas(extra_keys.iter().map(|key| format!("\"{key}\"")))
                 )
                 .into(),
             },
@@ -688,8 +685,4 @@ fn maybe_add_extra_keys_issue(
                 .into(),
         },
     )
-}
-
-fn join_with_commas(input: Vec<String>) -> String {
-    input.join(", ")
 }

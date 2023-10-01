@@ -4,7 +4,7 @@ use crate::database::{Database, FunctionKind, StringSlice, TypeVarLike};
 use crate::file::File;
 use crate::file::PythonFile;
 use crate::name::TreePosition;
-use crate::utils::InsertOnlyVec;
+use crate::utils::{join_with_commas, InsertOnlyVec};
 
 #[derive(Debug)]
 #[allow(dead_code)]  // TODO remove this
@@ -902,10 +902,7 @@ impl<'db> Diagnostic<'db> {
                 [key] => format!(r#"Missing key "{key}" for TypedDict "{typed_dict}""#),
                 _ => format!(
                     r#"Missing keys ({}) for TypedDict "{typed_dict}""#,
-                    keys.iter()
-                        .map(|key| format!("\"{key}\""))
-                        .collect::<Vec<String>>()
-                        .join(", ")
+                    join_with_commas(keys.iter().map(|key| format!("\"{key}\"")))
                 ),
             },
             TypedDictNonRequired { key } => format!(

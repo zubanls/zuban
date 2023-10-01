@@ -38,7 +38,7 @@ use crate::matching::{
 use crate::node_ref::NodeRef;
 use crate::python_state::NAME_TO_FUNCTION_DIFF;
 use crate::type_helpers::Class;
-use crate::utils::rc_unwrap_or_clone;
+use crate::utils::{join_with_commas, rc_unwrap_or_clone};
 use crate::{debug, new_class};
 
 #[derive(Clone, Copy)]
@@ -1836,66 +1836,62 @@ pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
 
     let mut previous_kind = None;
     let mut had_kwargs_separator = false;
-    let mut args = params
-        .enumerate()
-        .map(|(i, p)| {
-            let specific = p.specific(db);
-            let annotation_str = match &specific {
-                WrappedParamSpecific::PositionalOnly(t)
-                | WrappedParamSpecific::PositionalOrKeyword(t)
-                | WrappedParamSpecific::KeywordOnly(t)
-                | WrappedParamSpecific::Starred(WrappedStarred::ArbitraryLength(t))
-                | WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t)) => t
-                    .as_ref()
-                    .map(|t| format_function_type(format_data, t, class)),
-                WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u)) => todo!(),
-                WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(u)) => {
-                    todo!()
-                }
-            };
-            let current_kind = p.kind(db);
-            let stars = match current_kind {
-                ParamKind::Starred => "*",
-                ParamKind::DoubleStarred => "**",
-                _ => "",
-            };
-            let mut out = if i == 0 && avoid_self_annotation && stars.is_empty() {
-                p.name(db).unwrap().to_owned()
+    let mut args = join_with_commas(params.enumerate().map(|(i, p)| {
+        let specific = p.specific(db);
+        let annotation_str = match &specific {
+            WrappedParamSpecific::PositionalOnly(t)
+            | WrappedParamSpecific::PositionalOrKeyword(t)
+            | WrappedParamSpecific::KeywordOnly(t)
+            | WrappedParamSpecific::Starred(WrappedStarred::ArbitraryLength(t))
+            | WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t)) => t
+                .as_ref()
+                .map(|t| format_function_type(format_data, t, class)),
+            WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u)) => todo!(),
+            WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(u)) => {
+                todo!()
+            }
+        };
+        let current_kind = p.kind(db);
+        let stars = match current_kind {
+            ParamKind::Starred => "*",
+            ParamKind::DoubleStarred => "**",
+            _ => "",
+        };
+        let mut out = if i == 0 && avoid_self_annotation && stars.is_empty() {
+            p.name(db).unwrap().to_owned()
+        } else {
+            let mut out = if current_kind == ParamKind::PositionalOnly {
+                annotation_str.unwrap_or_else(|| Box::from("Any")).into()
             } else {
-                let mut out = if current_kind == ParamKind::PositionalOnly {
-                    annotation_str.unwrap_or_else(|| Box::from("Any")).into()
-                } else {
-                    format!(
-                        "{stars}{}: {}",
-                        p.name(db).unwrap(),
-                        annotation_str.as_deref().unwrap_or("Any")
-                    )
-                };
-                if previous_kind == Some(ParamKind::PositionalOnly)
-                    && current_kind != ParamKind::PositionalOnly
-                    && !is_reveal_type
-                {
-                    out = format!("/, {out}")
-                }
-                out
+                format!(
+                    "{stars}{}: {}",
+                    p.name(db).unwrap(),
+                    annotation_str.as_deref().unwrap_or("Any")
+                )
             };
-            if matches!(&specific, WrappedParamSpecific::KeywordOnly(_)) && !had_kwargs_separator {
-                had_kwargs_separator = true;
-                out = format!("*, {out}");
+            if previous_kind == Some(ParamKind::PositionalOnly)
+                && current_kind != ParamKind::PositionalOnly
+                && !is_reveal_type
+            {
+                out = format!("/, {out}")
             }
-            had_kwargs_separator |= matches!(specific, WrappedParamSpecific::Starred(_));
-            if p.has_default() {
-                if is_reveal_type {
-                    out += " =";
-                } else {
-                    out += " = ...";
-                }
-            }
-            previous_kind = Some(current_kind);
             out
-        })
-        .collect::<Vec<_>>()
-        .join(", ");
+        };
+        if matches!(&specific, WrappedParamSpecific::KeywordOnly(_)) && !had_kwargs_separator {
+            had_kwargs_separator = true;
+            out = format!("*, {out}");
+        }
+        had_kwargs_separator |= matches!(specific, WrappedParamSpecific::Starred(_));
+        if p.has_default() {
+            if is_reveal_type {
+                out += " =";
+            } else {
+                out += " = ...";
+            }
+        }
+        previous_kind = Some(current_kind);
+        out
+    }));
     if previous_kind == Some(ParamKind::PositionalOnly) && !is_reveal_type {
         args += ", /";
     }

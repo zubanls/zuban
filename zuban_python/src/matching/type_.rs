@@ -30,7 +30,7 @@ use crate::type_helpers::{
     lookup_on_enum_member_instance, Callable, Class, DataclassHelper, Instance, Module,
     MroIterator, NamedTupleValue, OverloadedFunction, Tuple, TypeOrClass, TypedDictHelper,
 };
-use crate::utils::rc_unwrap_or_clone;
+use crate::utils::{join_with_commas, rc_unwrap_or_clone};
 
 pub type ReplaceTypeVarLike<'x> = &'x mut dyn FnMut(TypeVarLikeUsage) -> GenericItem;
 pub type ReplaceSelf<'x> = &'x dyn Fn() -> DbType;
@@ -3490,11 +3490,7 @@ impl CallableLike {
             Self::Callable(c) => c.format(format_data),
             Self::Overload(overload) => format!(
                 "Overload({})",
-                overload
-                    .iter_functions()
-                    .map(|c| c.format(format_data))
-                    .collect::<Vec<_>>()
-                    .join(", ")
+                join_with_commas(overload.iter_functions().map(|c| c.format(format_data)))
             ),
         }
     }

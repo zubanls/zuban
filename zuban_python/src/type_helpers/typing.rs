@@ -11,6 +11,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{FormatData, OnTypeError, ResultContext, Type};
 use crate::node_ref::NodeRef;
+use crate::utils::join_with_commas;
 
 pub fn execute_type<'db>(
     i_s: &InferenceState<'db, '_>,
@@ -139,21 +140,17 @@ fn reveal_type_info(i_s: &InferenceState, t: Type) -> Box<str> {
                 return format!(
                     "def {}(*, {}) -> {}",
                     tvs.as_deref().unwrap_or(""),
-                    td.members
-                        .iter()
-                        .map(|member| {
-                            let mut s = format!(
-                                "{}: {}",
-                                member.name.as_str(i_s.db),
-                                member.type_.format(&format_data)
-                            );
-                            if !member.required {
-                                s += " = ...";
-                            }
-                            s
-                        })
-                        .collect::<Vec<_>>()
-                        .join(", "),
+                    join_with_commas(td.members.iter().map(|member| {
+                        let mut s = format!(
+                            "{}: {}",
+                            member.name.as_str(i_s.db),
+                            member.type_.format(&format_data)
+                        );
+                        if !member.required {
+                            s += " = ...";
+                        }
+                        s
+                    })),
                     type_.format(&format_data)
                 )
                 .into();

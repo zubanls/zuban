@@ -15,6 +15,7 @@ use crate::{
     inferred::Inferred,
     matching::{FormatData, LookupKind, LookupResult, Matcher, OnTypeError, ResultContext, Type},
     node_ref::NodeRef,
+    utils::join_with_commas,
 };
 
 use super::Instance;
@@ -184,13 +185,12 @@ fn add_access_key_must_be_string_literal_issue(
     node_ref.add_issue(
         i_s,
         IssueType::TypedDictAccessKeyMustBeStringLiteral {
-            keys: td
-                .members
-                .iter()
-                .map(|member| format!("\"{}\"", member.name.as_str(i_s.db)))
-                .collect::<Vec<String>>()
-                .join(", ")
-                .into(),
+            keys: join_with_commas(
+                td.members
+                    .iter()
+                    .map(|member| format!("\"{}\"", member.name.as_str(i_s.db))),
+            )
+            .into(),
         },
     )
 }
