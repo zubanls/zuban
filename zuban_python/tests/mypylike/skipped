@@ -163,12 +163,6 @@ testTypeEquivalentTypeAnyEdgeCase
 testValidTypeAliasValues
 testValidTypeAliasValuesMoreRestrictive
 
-# bottom up inference for tuple with *args
-testCallerVarArgsListWithTypeInference
-testCallerVarArgsTupleWithTypeInference
-testCallerVarargsAndComplexTypeInference
-testStarUnpackNestedUnderscore
-
 # union list context inference
 testUnpackingUnionOfListsInFunction
 testNestedProtocolGenericUnions
@@ -264,6 +258,9 @@ testRecursiveAliasTopUnion
 # namedtuple recursive joins
 testMutuallyRecursiveNamedTuplesJoin
 testCrashInJoinOfSelfRecursiveNamedTuples
+
+# slightly different argument errors
+testCallerVarArgsListWithTypeInference
 
 # Callable matching
 testNoCrashOnNestedGenericCallable

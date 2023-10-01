@@ -948,7 +948,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             return;
                         } else if let Some(len) = value_iterator.len() {
                             let fetch = len - normal;
-                            let union = Inferred::gather_simplified_union(self.i_s, |callable| {
+                            let union = Inferred::gather_base_types(self.i_s, |callable| {
                                 for _ in 0..(len - normal) {
                                     callable(value_iterator.next(self.i_s).unwrap());
                                 }
