@@ -214,18 +214,19 @@ testJoinUnionWithUnionAndAny
 # Unpacking a string is disallowed
 testStringDisallowedUnpacking
 testUnionOfNonIterableUnpacking
-# List unpacking
+# Tuple type definitions with list assignment
 testMultipleAssignmentWithListsInInitialization
-testMultipleAssignmentWithListAndIndexing
-testMultipleAssignmentAndGenericSubtyping
+# List literal inference that works like a tuple?
 testInferringLvarTypesInNestedListAssignment
-testInferringMultipleLvarDefinitionWithListRvalue
-testInferMultipleLocalVariableTypesWithArrayRvalueAndNesting
-testUnpackInExpression1-only_when_nocache
 testNestedListAssignment
 testNestedListAssignmentToTuple
-testListAssignmentFromTuple
+# __setitem__ error a bit too complicated
+testMultipleAssignmentWithListAndIndexing
+# List unpacking
+testUnpackInExpression1-only_when_nocache
 testListWithStarExpr
+# [x, y] = (1, 2)
+testListAssignmentFromTuple
 # list[<nothing>] against *args or never
 testOverloadVarargsSelection
 
@@ -1522,6 +1523,7 @@ testTypingSelfClashInBodies
 testAddBaseClassAttributeCausingErrorInSubclass
 # Dynamic functions are ignored in classes and the super class is used?
 testInferringTypesFromIterable
+testMultipleAssignmentAndGenericSubtyping
 
 # __init_subclass__
 testOverride__init_subclass__WithDifferentSignature
