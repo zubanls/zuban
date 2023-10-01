@@ -12,7 +12,7 @@ pub use utils::{
 use std::borrow::Cow;
 use std::rc::Rc;
 
-use super::params::{matches_simple_params, InferrableParamIterator2};
+use super::params::{matches_simple_params, InferrableParamIterator};
 use super::{FormatData, Match, OnTypeError, ParamsStyle, SignatureMatch, Type};
 use crate::arguments::{Argument, ArgumentKind};
 use crate::database::{
@@ -462,7 +462,7 @@ impl<'a> Matcher<'a> {
         };
         match &param_spec_arg.params {
             CallableParams::Simple(params) => {
-                let iter = InferrableParamIterator2::new(
+                let iter = InferrableParamIterator::new(
                     i_s.db,
                     params.as_ref().iter(),
                     args.into_vec().into_iter(),

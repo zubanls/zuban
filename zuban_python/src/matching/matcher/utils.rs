@@ -1,7 +1,7 @@
 use parsa_python_ast::ParamKind;
 
 use super::super::params::{
-    InferrableParamIterator2, Param, ParamArgument, WrappedDoubleStarred, WrappedParamSpecific,
+    InferrableParamIterator, Param, ParamArgument, WrappedDoubleStarred, WrappedParamSpecific,
     WrappedStarred,
 };
 use super::super::{
@@ -362,7 +362,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
                 func_or_callable,
                 args_node_ref,
                 on_type_error,
-                InferrableParamIterator2::new(
+                InferrableParamIterator::new(
                     i_s.db,
                     params.iter().skip(skip_first_param as usize),
                     args,
@@ -423,7 +423,7 @@ pub fn match_arguments_against_params<
     func_or_callable: FunctionOrCallable,
     args_node_ref: &impl Fn() -> NodeRef<'c>,
     on_type_error: Option<OnTypeError<'db, '_>>,
-    mut args_with_params: InferrableParamIterator2<'db, 'x, impl Iterator<Item = P>, P, AI>,
+    mut args_with_params: InferrableParamIterator<'db, 'x, impl Iterator<Item = P>, P, AI>,
 ) -> SignatureMatch {
     let diagnostic_string = |prefix: &str| {
         (on_type_error.unwrap().generate_diagnostic_string)(&func_or_callable, i_s.db)
@@ -685,7 +685,7 @@ fn calculate_type_vars_for_params<
     func_or_callable: FunctionOrCallable,
     args_node_ref: &impl Fn() -> NodeRef<'c>,
     on_type_error: Option<OnTypeError<'db, '_>>,
-    args_with_params: InferrableParamIterator2<'db, 'x, impl Iterator<Item = P>, P, AI>,
+    args_with_params: InferrableParamIterator<'db, 'x, impl Iterator<Item = P>, P, AI>,
 ) -> SignatureMatch {
     match_arguments_against_params(
         i_s,

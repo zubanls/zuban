@@ -26,7 +26,7 @@ use crate::file::{
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::params::{
-    InferrableParamIterator2, Param, WrappedDoubleStarred, WrappedParamSpecific, WrappedStarred,
+    InferrableParamIterator, Param, WrappedDoubleStarred, WrappedParamSpecific, WrappedStarred,
 };
 use crate::matching::{
     calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
@@ -123,7 +123,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         db: &'db Database,
         args: AI,
         skip_first_param: bool,
-    ) -> InferrableParamIterator2<
+    ) -> InferrableParamIterator<
         'db,
         'b,
         impl Iterator<Item = FunctionParam<'b>>,
@@ -137,7 +137,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         if skip_first_param {
             params.next();
         }
-        InferrableParamIterator2::new(db, params, args)
+        InferrableParamIterator::new(db, params, args)
     }
 
     fn execute_without_annotation(

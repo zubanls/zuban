@@ -508,7 +508,7 @@ impl<'x> Param<'x> for &'x CallableParam {
     }
 }
 
-pub struct InferrableParamIterator2<'db, 'a, I, P, AI: Iterator> {
+pub struct InferrableParamIterator<'db, 'a, I, P, AI: Iterator> {
     db: &'db Database,
     arguments: AI,
     current_arg: Option<Argument<'db, 'a>>,
@@ -521,7 +521,7 @@ pub struct InferrableParamIterator2<'db, 'a, I, P, AI: Iterator> {
 }
 
 impl<'db, 'a, I, P, AI: Iterator<Item = Argument<'db, 'a>>>
-    InferrableParamIterator2<'db, 'a, I, P, AI>
+    InferrableParamIterator<'db, 'a, I, P, AI>
 {
     pub fn new(db: &'db Database, params: I, arguments: AI) -> Self {
         Self {
@@ -584,18 +584,18 @@ impl<'db, 'a, I, P, AI: Iterator<Item = Argument<'db, 'a>>>
     }
 }
 
-impl<'db: 'x, 'a, 'x, I, P, AI> Iterator for InferrableParamIterator2<'db, 'a, I, P, AI>
+impl<'db: 'x, 'a, 'x, I, P, AI> Iterator for InferrableParamIterator<'db, 'a, I, P, AI>
 where
     I: Iterator<Item = P>,
     P: Param<'x>,
     AI: Iterator<Item = Argument<'db, 'a>>,
 {
-    type Item = InferrableParam2<'db, 'a, P>;
+    type Item = InferrableParam<'db, 'a, P>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(param) = self.current_starred_param {
             if let Some(argument) = self.maybe_exact_multi_arg(false) {
-                return Some(InferrableParam2 {
+                return Some(InferrableParam {
                     param,
                     argument: ParamArgument::Argument(argument),
                 });
@@ -608,7 +608,7 @@ where
                 .maybe_exact_multi_arg(true)
                 .or_else(|| self.unused_keyword_arguments.pop())
             {
-                return Some(InferrableParam2 {
+                return Some(InferrableParam {
                     param,
                     argument: ParamArgument::Argument(argument),
                 });
@@ -620,7 +620,7 @@ where
             for (i, unused) in self_.unused_keyword_arguments.iter().enumerate() {
                 let key = unused.keyword_name(self.db).unwrap();
                 if Some(key) == param.name(self_.db) {
-                    return Some(InferrableParam2 {
+                    return Some(InferrableParam {
                         param,
                         argument: ParamArgument::Argument(self_.unused_keyword_arguments.remove(i)),
                     });
@@ -708,7 +708,7 @@ where
                                 WrappedDoubleStarred::ParamSpecKwargs(u)
                             ),
                         ));
-                        return Some(InferrableParam2 {
+                        return Some(InferrableParam {
                             param,
                             argument: ParamArgument::ParamSpecArgs(
                                 u.clone(),
@@ -728,11 +728,11 @@ where
             }
             Some(
                 argument_with_index
-                    .map(|a| InferrableParam2 {
+                    .map(|a| InferrableParam {
                         param,
                         argument: ParamArgument::Argument(a),
                     })
-                    .unwrap_or_else(|| InferrableParam2 {
+                    .unwrap_or_else(|| InferrableParam {
                         param,
                         argument: ParamArgument::None,
                     }),
@@ -749,7 +749,7 @@ pub enum ParamArgument<'db, 'a> {
 }
 
 #[derive(Debug)]
-pub struct InferrableParam2<'db, 'a, P> {
+pub struct InferrableParam<'db, 'a, P> {
     pub param: P,
     pub argument: ParamArgument<'db, 'a>,
 }
