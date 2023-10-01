@@ -509,8 +509,15 @@ fn check_list_with_context<'db>(
                     inference.infer_named_expression_with_context(e, &mut new_result_context);
                 check_item(i_s, inferred, e.index())
             }
-            StarLikeExpression::StarNamedExpression(e) => {
-                todo!("{e:?}")
+            StarLikeExpression::StarNamedExpression(starred) => {
+                let inferred = inference
+                    .infer_expression_part(starred.expression_part(), &mut ResultContext::Unknown);
+                let from = NodeRef::new(file, starred.index());
+                check_item(
+                    i_s,
+                    inferred.iter(i_s, from).infer_all(i_s),
+                    starred.index(),
+                )
             }
             StarLikeExpression::Expression(e) => unreachable!(),
             StarLikeExpression::StarExpression(e) => unreachable!(),

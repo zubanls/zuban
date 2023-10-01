@@ -220,9 +220,6 @@ testMultipleAssignmentWithListsInInitialization
 testInferringLvarTypesInNestedListAssignment
 testNestedListAssignment
 testNestedListAssignmentToTuple
-# List unpacking
-testUnpackInExpression1-only_when_nocache
-testListWithStarExpr
 # [x, y] = (1, 2)
 testListAssignmentFromTuple
 # list[<nothing>] against *args or never
