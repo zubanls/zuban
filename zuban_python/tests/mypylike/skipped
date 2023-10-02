@@ -217,7 +217,7 @@ testRecursiveAliasTopUnion
 testCrashInJoinOfSelfRecursiveNamedTuples
 testGenericJoinRecursiveTypes
 
-# WTF why is this base type not object?
+# WTF why is this base type not object/function?
 testListLiteralWithNameOnlyArgsDoesNotEraseNames
 # join of {1, *some_str_tuple} leads to int | str???
 testUnpackInExpression2-only_when_nocache

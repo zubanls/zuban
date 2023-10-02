@@ -24,7 +24,7 @@ impl<'db> Inference<'db, '_, '_> {
     pub fn create_list_or_set_generics(&mut self, elements: StarLikeExpressionIterator) -> DbType {
         let mut result = None;
         for child in elements {
-            let mut t = match child {
+            let t = match child {
                 StarLikeExpression::NamedExpression(named_expr) => {
                     self.infer_named_expression(named_expr).as_db_type(self.i_s)
                 }
@@ -37,20 +37,20 @@ impl<'db> Inference<'db, '_, '_> {
                     unreachable!()
                 }
             };
-            // Just because we defined a final int somewhere, we should probably not infer that.
-            match t {
-                DbType::Literal(l) if l.implicit => {
-                    t = self.i_s.db.python_state.literal_db_type(&l.kind);
-                }
-                _ => (),
-            }
             if let Some(r) = result.take() {
                 result = Some(Type::owned(r).common_base_type(self.i_s, &Type::owned(t)));
             } else {
                 result = Some(t)
             }
         }
-        result.unwrap_or(DbType::Never)
+        let result = result.unwrap_or(DbType::Never);
+        // Just because we defined a final int somewhere, we should probably not infer that.
+        if let DbType::Literal(l) = &result {
+            if l.implicit {
+                return self.i_s.db.python_state.literal_db_type(&l.kind);
+            }
+        }
+        result
     }
 
     pub fn infer_list_literal_from_context(
