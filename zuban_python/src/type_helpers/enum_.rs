@@ -363,7 +363,10 @@ fn gather_functional_enum_members(
         AtomContent::Dict(d) => {
             for element in d.iter_elements() {
                 let DictElement::KeyValue(kv) = element else {
-                    todo!("In test functional_enum_starred_dict_literal_errors")
+                    node_ref.add_issue(i_s, IssueType::EnumWithDictRequiresStringLiterals {
+                        name: class.name().into(),
+                    });
+                    return None
                 };
                 let key = kv.key();
                 let Some(name) = StringSlice::from_string_in_expression(

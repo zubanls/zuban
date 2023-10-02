@@ -194,8 +194,6 @@ testDictIncompatibleKeyVerbosity
 testDictIncompatibleValueVerbosity
 testDictExpressionErrorLocations
 testDictWithKeywordArgs
-# {**kwargs}
-functional_enum_starred_dict_literal_errors
 
 # Not able to infer context with unions
 testNoComplainInferredNoneStrict
