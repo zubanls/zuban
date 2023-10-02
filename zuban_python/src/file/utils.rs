@@ -258,7 +258,7 @@ impl<'db> Inference<'db, '_, '_> {
         let mut found_values: Option<DbType> = None;
         let i_s = self.i_s;
         let mut inference = self.file.inference(i_s);
-        for (i, key_value) in dict.iter_elements().enumerate() {
+        'outer: for (i, key_value) in dict.iter_elements().enumerate() {
             match key_value {
                 DictElement::KeyValue(key_value) => {
                     let key_inf = inference
@@ -301,8 +301,52 @@ impl<'db> Inference<'db, '_, '_> {
                         );
                     }
                 }
-                DictElement::DictStarred(dict_starred) => {
-                    todo!()
+                DictElement::DictStarred(starred) => {
+                    let mapping = self.infer_expression_part(
+                        starred.expression_part(),
+                        &mut ResultContext::Unknown,
+                    );
+                    for (_, type_or_class) in mapping.as_type(i_s).mro(i_s.db) {
+                        let TypeOrClass::Class(c) = type_or_class else {
+                            continue
+                        };
+                        if c.node_ref.as_link() == i_s.db.python_state.mapping_node_ref().as_link()
+                        {
+                            let key = c.nth_type_argument(i_s.db, 0);
+                            let value = c.nth_type_argument(i_s.db, 1);
+                            let key_match = key_t.is_super_type_of(i_s, matcher, &Type::new(&key));
+                            let value_match =
+                                value_t.is_super_type_of(i_s, matcher, &Type::new(&value));
+                            if key_match.bool() && value_match.bool() {
+                                if let Some(found) = &mut found_keys {
+                                    found.union_in_place(i_s.db, key)
+                                } else {
+                                    found_keys = Some(key);
+                                }
+                                if let Some(found) = &mut found_values {
+                                    found.union_in_place(i_s.db, value)
+                                } else {
+                                    found_values = Some(value);
+                                }
+                            } else {
+                                NodeRef::new(self.file, starred.index()).add_issue(
+                                    i_s,
+                                    IssueType::UnpackedDictMemberMismatch {
+                                        item: i,
+                                        got: mapping.format_short(i_s),
+                                        expected: format!(
+                                            "SupportsKeysAndGetItem[{}, {}]",
+                                            key_t.format_short(i_s.db),
+                                            value_t.format_short(i_s.db)
+                                        )
+                                        .into(),
+                                    },
+                                )
+                            }
+                            continue 'outer;
+                        }
+                    }
+                    todo!("inferred did not match")
                 }
             }
         }

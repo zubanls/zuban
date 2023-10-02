@@ -196,9 +196,7 @@ testDictExpressionErrorLocations
 testDictWithKeywordArgs
 # {**kwargs}
 testDictStarAnyKeyJoinValue
-testUnpackInExpression3-only_when_nocache
 functional_enum_starred_dict_literal_errors
-testDictWithStarStarSpecialCase
 
 # Not able to infer context with unions
 testNoComplainInferredNoneStrict
