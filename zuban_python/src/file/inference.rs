@@ -2273,7 +2273,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
             }
             CommonComprehensionExpression::DictKeyValue(key_value) => new_class!(
-                self.i_s.db.python_state.list_node_ref().as_link(),
+                self.i_s.db.python_state.dict_node_ref().as_link(),
                 self.infer_expression(key_value.key()).as_db_type(self.i_s),
                 self.infer_expression(key_value.value())
                     .as_db_type(self.i_s),

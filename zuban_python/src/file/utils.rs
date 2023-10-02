@@ -17,7 +17,6 @@ use crate::inference_state::InferenceState;
 use crate::inferred::UnionValue;
 use crate::matching::{FormatData, Matcher, MismatchReason, ResultContext, Type};
 use crate::node_ref::NodeRef;
-use crate::type_helpers::TypeOrClass;
 use crate::utils::join_with_commas;
 use crate::{debug, new_class, Inferred};
 

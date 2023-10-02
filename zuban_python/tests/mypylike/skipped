@@ -195,7 +195,6 @@ testDictIncompatibleValueVerbosity
 testDictExpressionErrorLocations
 testDictWithKeywordArgs
 # {**kwargs}
-testDictStarAnyKeyJoinValue
 functional_enum_starred_dict_literal_errors
 
 # Not able to infer context with unions
@@ -736,7 +735,6 @@ testIterableProtocolOnClass
 testIterableProtocolOnMetaclass
 testTwoStarExpressionsInGeneratorExpr
 testYieldOutsideFunction
-testDictUpdateInference
 # comprehensions Scoping
 testListComprehensionSpecialScoping
 # "Assignment expression within a comprehension cannot be used in a class body"
