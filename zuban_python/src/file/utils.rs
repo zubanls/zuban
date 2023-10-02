@@ -433,7 +433,7 @@ impl<'db> Inference<'db, '_, '_> {
         let mut values = Inferred::new_any();
         let keys = Inferred::gather_base_types(i_s, |gather_keys| {
             values = Inferred::gather_base_types(i_s, |gather_values| {
-                'outer: for child in dict_elements {
+                for child in dict_elements {
                     match child {
                         DictElement::KeyValue(key_value) => {
                             gather_keys(self.infer_expression(key_value.key()));
@@ -444,23 +444,13 @@ impl<'db> Inference<'db, '_, '_> {
                                 starred.expression_part(),
                                 &mut ResultContext::Unknown,
                             );
-                            for (_, type_or_class) in mapping.as_type(i_s).mro(i_s.db) {
-                                let TypeOrClass::Class(c) = type_or_class else {
-                                    continue
-                                };
-                                if c.node_ref.as_link()
-                                    == i_s.db.python_state.mapping_node_ref().as_link()
-                                {
-                                    gather_keys(Inferred::from_type(
-                                        c.nth_type_argument(i_s.db, 0),
-                                    ));
-                                    gather_values(Inferred::from_type(
-                                        c.nth_type_argument(i_s.db, 1),
-                                    ));
-                                    continue 'outer;
-                                }
+                            if let Some((key, value)) = unpack_star_star(i_s, &mapping.as_type(i_s))
+                            {
+                                gather_keys(Inferred::from_type(key));
+                                gather_values(Inferred::from_type(value));
+                            } else {
+                                todo!("inferred did not match")
                             }
-                            todo!("inferred did not match")
                         }
                     }
                 }

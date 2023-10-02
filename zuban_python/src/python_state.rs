@@ -612,7 +612,7 @@ impl PythonState {
 
     attribute_node_ref!(typing, supports_index_node_ref, typing_supports_index_index);
     attribute_node_ref!(typing, typed_dict_node_ref, typing_typed_dict_index);
-    attribute_node_ref!(typing, pub mapping_node_ref, typing_mapping_index);
+    attribute_node_ref!(typing, mapping_node_ref, typing_mapping_index);
     attribute_node_ref!(typing, mapping_get_node_ref, typing_mapping_get_index);
     attribute_node_ref!(types, none_type_node_ref, types_none_type_index);
     attribute_node_ref!(types, module_node_ref, types_module_type_index);
