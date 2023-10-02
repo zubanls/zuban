@@ -217,8 +217,6 @@ testLiteralInferredInListContext
 testGenericJoinCovariant
 testGenericJoinRecursiveTypes
 testGenericJoinNestedInvariantAny
-# Callable join
-testParamSpecJoin
 # join of {1, *some_str_tuple} leads to int | str???
 testUnpackInExpression2-only_when_nocache
 # recursive limits missing for joins

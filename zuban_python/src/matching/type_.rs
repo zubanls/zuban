@@ -2785,7 +2785,7 @@ fn common_base_type_for_non_class(
             // TODO this should also be done for function/callable and callable/function and
             // not only callable/callable
             if let DbType::Callable(c2) = t2 {
-                return Some(DbType::Callable(common_base_for_callables(i_s, c1, c2)));
+                return Some(common_base_for_callables(i_s, c1, c2));
             }
         }
         DbType::Tuple(tup1) => return common_base_for_tuple_against_db_type(i_s, tup1, t2),
@@ -2818,7 +2818,7 @@ fn common_base_for_callables(
     i_s: &InferenceState,
     c1: &CallableContent,
     c2: &CallableContent,
-) -> Rc<CallableContent> {
+) -> DbType {
     if c1.kind != c2.kind {
         todo!()
     }
@@ -2826,7 +2826,7 @@ fn common_base_for_callables(
         CallableParams::Simple(params1) => match &c2.params {
             CallableParams::Simple(params2) => {
                 if let Some(params) = common_params(i_s, &params1, &params2) {
-                    return Rc::new(CallableContent {
+                    return DbType::Callable(Rc::new(CallableContent {
                         name: None,
                         class_name: None,
                         defined_at: c1.defined_at,
@@ -2835,19 +2835,16 @@ fn common_base_for_callables(
                         params,
                         result_type: Type::new(&c1.result_type)
                             .common_base_type(i_s, &Type::new(&c2.result_type)),
-                    });
+                    }));
                 }
             }
-            CallableParams::WithParamSpec(_, _) => todo!(),
+            CallableParams::WithParamSpec(_, _) => (),
             CallableParams::Any => todo!(),
         },
-        CallableParams::WithParamSpec(_, _) => todo!(),
+        CallableParams::WithParamSpec(_, _) => (),
         CallableParams::Any => todo!(),
     }
-    Rc::new(CallableContent::new_any(
-        i_s.db.python_state.empty_type_var_likes.clone(),
-    ))
-    //return i_s.db.python_state.function_db_type();
+    i_s.db.python_state.function_db_type()
 }
 
 fn common_params(
