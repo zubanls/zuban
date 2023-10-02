@@ -103,6 +103,8 @@ testOverloadClassmethodDisappears
 testGenericClassAlternativeConstructorPreciseOverloaded
 testOverloaded__new__
 testIOTypes
+# overload *args should be used if a list of never/any is given?
+testOverloadVarargsSelection
 
 # Union of empty lists dicts sets with used ones
 testUnificationEmptyListLeft
@@ -204,24 +206,22 @@ testUnpackInExpression3-only_when_nocache
 functional_enum_starred_dict_literal_errors
 testDictWithStarStarSpecialCase
 
-# Not able to infer context with unions and literals
+# Not able to infer context with unions
+testNoComplainInferredNoneStrict
 testLiteralAndGenericWithUnion
 testLiteralAndGenericsNoMatch
-testNoComplainInferredNoneStrict
 # Union not matching type vars (None | Any and int | None leads to None | Any)
 testJoinUnionWithUnionAndAny
 
 # Unpacking a string is disallowed
 testStringDisallowedUnpacking
 testUnionOfNonIterableUnpacking
-# Tuple type definitions with list assignment
+# Tuple type comment definitions with list assignment
 testMultipleAssignmentWithListsInInitialization
 # List literal inference that works like a tuple?
 testInferringLvarTypesInNestedListAssignment
 testNestedListAssignment
 testNestedListAssignmentToTuple
-# list[<nothing>] against *args or never
-testOverloadVarargsSelection
 
 # List inference unions are special (list meets)
 testListLiteralWithNameOnlyArgsDoesNotEraseNames
