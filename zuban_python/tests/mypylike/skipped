@@ -215,13 +215,11 @@ testListLiteralWithNameOnlyArgsDoesNotEraseNames
 testNestedListExpressions
 testLiteralInferredInListContext
 testGenericJoinNestedInvariantAny
-testMutuallyRecursiveNamedTuplesJoin
-testGenericJoinRecursiveTypes
-testGenericJoinRecursiveInvariant
 # recursive limits missing for joins
 testRecursiveAliasGenericInferenceNested
 testRecursiveAliasTopUnion
 testCrashInJoinOfSelfRecursiveNamedTuples
+testGenericJoinRecursiveTypes
 
 # join of {1, *some_str_tuple} leads to int | str???
 testUnpackInExpression2-only_when_nocache

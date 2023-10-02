@@ -2759,8 +2759,8 @@ fn common_base_class(i_s: &InferenceState, c1: Class, c2: Class) -> Option<DbTyp
     for ((type_var_like, generic1), generic2) in c1
         .type_vars(i_s)
         .iter()
-        .zip(c1.generics.iter(i_s.db))
-        .zip(c2.generics.iter(i_s.db))
+        .zip(c1.generics().iter(i_s.db))
+        .zip(c2.generics().iter(i_s.db))
     {
         match type_var_like {
             TypeVarLike::TypeVar(type_var) => {
