@@ -167,8 +167,6 @@ testValidTypeAliasValuesMoreRestrictive
 
 # union list context inference
 testUnpackingUnionOfListsInFunction
-testNestedProtocolGenericUnions
-testNestedProtocolGenericUnionsDeep
 testNestedListExpressions
 # union dict context inference
 testNoCrashOnGenericUnionUnpacking
@@ -177,10 +175,13 @@ testInferMultipleAnyUnionDifferentVariance
 testLiteralAndInstanceSubtyping
 # union context inference
 testCrashOnComplexCheckWithNamedTupleNext
-testNoComplainFieldNone
-testNoComplainFieldNoneStrict
 # type vars against unions
 testLiteralMeets
+# Not able to infer context with unions
+testLiteralAndGenericWithUnion
+testLiteralAndGenericsNoMatch
+# Union not matching type vars (None | Any and int | None leads to None | Any)
+testJoinUnionWithUnionAndAny
 # dict specialities
 testDictWithKeywordArgsOnly
 testDictWithoutKeywordArgs
@@ -197,13 +198,6 @@ testDictIncompatibleKeyVerbosity
 testDictIncompatibleValueVerbosity
 testDictExpressionErrorLocations
 testDictWithKeywordArgs
-
-# Not able to infer context with unions
-testNoComplainInferredNoneStrict
-testLiteralAndGenericWithUnion
-testLiteralAndGenericsNoMatch
-# Union not matching type vars (None | Any and int | None leads to None | Any)
-testJoinUnionWithUnionAndAny
 
 # Tuple type comment definitions with list assignment
 testMultipleAssignmentWithListsInInitialization

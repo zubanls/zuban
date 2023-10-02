@@ -766,6 +766,9 @@ impl<'a> Type<'a> {
         variance: Variance,
     ) -> Match {
         match value_type.as_ref() {
+            DbType::TypeVar(type_var2) if matcher.is_matching_reverse() => {
+                matcher.match_or_add_type_var(i_s, type_var2, self, variance.invert())
+            }
             DbType::Union(u2) => match variance {
                 Variance::Covariant => {
                     let mut matches = Match::new_true();
