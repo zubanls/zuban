@@ -49,6 +49,7 @@ pub(crate) enum IssueType {
     TypeArgumentIssue { class: Box<str>, expected_count: usize, given_count: usize },
     TypeAliasArgumentIssue { expected_count: usize, given_count: usize },
     NotCallable { type_: Box<str> },
+    UnknownFunctionNotCallable,
     AnyNotCallable,
     NotIterable { type_: Box<str> },
     AsyncNotIterable { type_: Box<str> },
@@ -284,7 +285,8 @@ impl IssueType {
             | UnsupportedLeftOperand { .. }
             | UnsupportedIn { .. }
             | UnsupportedOperandForUnary { .. }
-            | NotCallable { .. } => "operator",
+            | NotCallable { .. }
+            | UnknownFunctionNotCallable => "operator",
             TypeArgumentIssue { .. } => "type-arg",
             ModuleNotFound { .. } => "import",
             ListItemMismatch { .. } => "list-item",
@@ -536,6 +538,7 @@ impl<'db> Diagnostic<'db> {
             ),
             NoParentModule => "No parent module -- cannot perform relative import".to_string(),
             NotCallable{type_} => format!("{type_} not callable"),
+            UnknownFunctionNotCallable => "Cannot call function of unknown type".to_string(),
             AnyNotCallable => "Any(...) is no longer supported. Use cast(Any, ...) instead".to_string(),
             NotIterable{type_} => format!("{type_} object is not iterable"),
             AsyncNotIterable{type_} => format!(

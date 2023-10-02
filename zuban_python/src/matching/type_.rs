@@ -2204,7 +2204,7 @@ impl<'a> Type<'a> {
             (DbType::Callable(c1), DbType::Callable(c2)) => {
                 Some(DbType::Callable(common_sub_type_for_callables(i_s, c1, c2)))
             }
-            (DbType::Class(_), DbType::Class(_)) => {
+            _ => {
                 if self.is_simple_sub_type_of(i_s, other).bool() {
                     Some(self.as_db_type())
                 } else if other.is_simple_sub_type_of(i_s, self).bool() {
@@ -2213,7 +2213,6 @@ impl<'a> Type<'a> {
                     None
                 }
             }
-            _ => None,
         }
     }
 

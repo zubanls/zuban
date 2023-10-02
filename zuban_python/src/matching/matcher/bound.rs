@@ -121,8 +121,10 @@ impl TypeVarBound {
                         if !m.bool() {
                             if let Some(new) = Type::new(t).common_sub_type(i_s, other) {
                                 *t = new;
-                                return Match::new_true();
+                            } else {
+                                *t = DbType::Never;
                             }
+                            return Match::new_true();
                         }
                         return m;
                     }

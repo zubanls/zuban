@@ -592,7 +592,7 @@ impl PythonState {
     attribute_node_ref!(builtins, pub staticmethod_node_ref, builtins_staticmethod_index);
     attribute_node_ref!(builtins, pub property_node_ref, builtins_property_index);
     attribute_node_ref!(builtins, ellipsis_node_ref, builtins_ellipsis_index);
-    attribute_node_ref!(builtins, function_node_ref, builtins_function_index);
+    attribute_node_ref!(builtins, pub function_node_ref, builtins_function_index);
     attribute_node_ref!(
         builtins,
         pub base_exception_node_ref,

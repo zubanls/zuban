@@ -170,8 +170,12 @@ impl<'a> Instance<'a> {
             let t = self.class.format_short(i_s.db);
             node_ref.add_issue(
                 i_s,
-                IssueType::NotCallable {
-                    type_: format!("{:?}", t).into(),
+                if self.class.node_ref == i_s.db.python_state.function_node_ref() {
+                    IssueType::UnknownFunctionNotCallable
+                } else {
+                    IssueType::NotCallable {
+                        type_: format!("{:?}", t).into(),
+                    }
                 },
             );
             Inferred::new_unknown()
