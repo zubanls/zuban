@@ -597,33 +597,10 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                     },
                                 ));
                             }
-                            let wanted_cls =
-                                i_s.db.python_state.supports_keys_and_get_item_class(i_s.db);
-                            let mut matcher = Matcher::new_class_matcher(i_s, wanted_cls);
-                            let matches = wanted_cls
-                                .check_protocol_match(
-                                    i_s,
-                                    &mut matcher,
-                                    &type_,
-                                    Variance::Covariant,
-                                )
-                                .bool();
-                            let mut iter = matcher
-                                .unwrap_calculated_type_args()
-                                .into_iter()
-                                .zip(wanted_cls.type_vars(i_s).iter())
-                                .map(|(c, type_var_like)| {
-                                    let GenericItem::TypeArgument(t) = c.into_generic_item(
-                                        i_s.db,
-                                        type_var_like
-                                    ) else {
-                                        unreachable!();
-                                    };
-                                    t
-                                });
+                            let unpacked = unpack_star_star(i_s, &type_);
                             let s = Type::owned(i_s.db.python_state.str_db_type());
-                            if matches {
-                                let t = Type::owned(iter.next().unwrap());
+                            let value = if let Some((key, value)) = unpacked {
+                                let t = Type::owned(key);
                                 if !t.is_simple_same_type(i_s, &s).bool() {
                                     debug!("Keyword is type {}", t.format_short(i_s.db));
                                     node_ref.add_issue(
@@ -633,26 +610,23 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                         )),
                                     );
                                 }
-                            }
-                            let value_type = match matches {
-                                true => iter.next().unwrap(),
-                                false => {
-                                    node_ref.add_issue(
-                                        i_s,
-                                        IssueType::ArgumentIssue(
-                                            format!(
-                                                "Argument after ** must be a mapping, not \"{}\"",
-                                                type_.format_short(i_s.db),
-                                            )
-                                            .into(),
-                                        ),
-                                    );
-                                    DbType::Any
-                                }
+                                value
+                            } else {
+                                node_ref.add_issue(
+                                    i_s,
+                                    IssueType::ArgumentIssue(
+                                        format!(
+                                            "Argument after ** must be a mapping, not \"{}\"",
+                                            type_.format_short(i_s.db),
+                                        )
+                                        .into(),
+                                    ),
+                                );
+                                DbType::Any
                             };
                             return Some(BaseArgumentReturn::ArgsKwargs(
                                 ArgsKwargsIterator::Kwargs {
-                                    inferred_value: Inferred::from_type(value_type),
+                                    inferred_value: Inferred::from_type(value),
                                     node_ref,
                                     position: i + 1,
                                 },
@@ -913,6 +887,30 @@ enum ArgsKwargsIterator<'a> {
         node_ref: NodeRef<'a>,
     },
     None,
+}
+
+pub fn unpack_star_star(i_s: &InferenceState, t: &Type) -> Option<(DbType, DbType)> {
+    let wanted_cls = i_s.db.python_state.supports_keys_and_get_item_class(i_s.db);
+    let mut matcher = Matcher::new_class_matcher(i_s, wanted_cls);
+    let matches = wanted_cls
+        .check_protocol_match(i_s, &mut matcher, &t, Variance::Covariant)
+        .bool();
+    matches.then(|| {
+        let mut iter = matcher
+            .unwrap_calculated_type_args()
+            .into_iter()
+            .zip(wanted_cls.type_vars(i_s).iter())
+            .map(|(c, type_var_like)| {
+                let GenericItem::TypeArgument(t) = c.into_generic_item(
+                    i_s.db,
+                    type_var_like
+                ) else {
+                    unreachable!();
+                };
+                t
+            });
+        (iter.next().unwrap(), iter.next().unwrap())
+    })
 }
 
 #[derive(Debug)]
