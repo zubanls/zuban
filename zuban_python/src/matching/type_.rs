@@ -2147,26 +2147,8 @@ impl<'a> Type<'a> {
                         let TypeOrClass::Class(c2) = c2 else {
                             continue
                         };
-                        let m = Self::matches_class(
-                            i_s,
-                            &mut Matcher::default(),
-                            &c1,
-                            &c2,
-                            Variance::Covariant,
-                        );
-                        if m.bool() {
-                            return c1.as_db_type(i_s.db);
-                        }
-
-                        let m = Self::matches_class(
-                            i_s,
-                            &mut Matcher::default(),
-                            &c2,
-                            &c1,
-                            Variance::Covariant,
-                        );
-                        if m.bool() {
-                            return c2.as_db_type(i_s.db);
+                        if let Some(t) = common_base_class(i_s, *c1, c2) {
+                            return t;
                         }
                     }
                 }
@@ -2769,6 +2751,21 @@ pub fn common_base_type<'x, I: Iterator<Item = &'x TypeOrTypeVarTuple>>(
     }
 }
 
+fn common_base_class(i_s: &InferenceState, c1: Class, c2: Class) -> Option<DbType> {
+    if c1.node_ref != c2.node_ref {
+        return None;
+    }
+    let m = Type::matches_class(i_s, &mut Matcher::default(), &c1, &c2, Variance::Covariant);
+    if m.bool() {
+        return Some(c1.as_db_type(i_s.db));
+    }
+
+    let m = Type::matches_class(i_s, &mut Matcher::default(), &c2, &c1, Variance::Covariant);
+    if m.bool() {
+        return Some(c2.as_db_type(i_s.db));
+    }
+    None
+}
 fn common_base_type_for_non_class(
     i_s: &InferenceState,
     t1: &DbType,
