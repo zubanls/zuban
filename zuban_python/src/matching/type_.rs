@@ -2768,10 +2768,17 @@ fn common_base_class(i_s: &InferenceState, c1: Class, c2: Class) -> Option<DbTyp
                 let inner_t2 = generic2.expect_type_argument();
                 match type_var.variance {
                     Variance::Invariant => {
-                        if inner_t1.is_simple_same_type(i_s, &inner_t2).bool() {
-                            generics.push(GenericItem::TypeArgument(inner_t1.into_db_type()));
-                        } else {
-                            return None;
+                        let matches = inner_t1.is_simple_same_type(i_s, &inner_t2);
+                        // TODO this with_any check is not very precise and a structure
+                        // like T[Any, int] & T[int, Any] should become T[Any, Any]
+                        match matches {
+                            Match::True { with_any: false } => {
+                                generics.push(GenericItem::TypeArgument(inner_t1.into_db_type()));
+                            }
+                            Match::True { with_any: true } => {
+                                generics.push(GenericItem::TypeArgument(inner_t2.into_db_type()));
+                            }
+                            _ => return None,
                         }
                     }
                     Variance::Covariant => {
