@@ -920,6 +920,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     ) {
         match target {
             Target::Tuple(mut targets) => {
+                if value
+                    .as_type(self.i_s)
+                    .contains_specific_type(&self.i_s.db.python_state.str_db_type())
+                {
+                    value_node_ref.add_issue(self.i_s, IssueType::UnpackingAStringIsDisallowed)
+                }
                 let mut value_iterator = value.iter(self.i_s, value_node_ref);
                 let mut counter = 0;
                 if let Some(actual) = value_iterator.len() {

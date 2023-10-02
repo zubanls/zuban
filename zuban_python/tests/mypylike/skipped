@@ -213,9 +213,6 @@ testLiteralAndGenericsNoMatch
 # Union not matching type vars (None | Any and int | None leads to None | Any)
 testJoinUnionWithUnionAndAny
 
-# Unpacking a string is disallowed
-testStringDisallowedUnpacking
-testUnionOfNonIterableUnpacking
 # Tuple type comment definitions with list assignment
 testMultipleAssignmentWithListsInInitialization
 # List literal inference that works like a tuple?
@@ -2231,6 +2228,7 @@ testClassObjectsNotUnpackableWithoutIterableMetaclass
 testErrorCodeCannotDetermineType
 testCannotDetermineTypeFromOtherModule
 testColumnCannotDetermineType
+testUnionOfNonIterableUnpacking
 # "Cannot determine type of "X" in base class"
 testCannotDetermineTypeInMultipleInheritance
 

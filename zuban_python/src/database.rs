@@ -915,6 +915,13 @@ impl DbType {
         }
     }
 
+    pub fn contains_specific_type(&self, t: &DbType) -> bool {
+        match self {
+            DbType::Union(entries) => entries.iter().any(|other| other == t),
+            _ => self == t,
+        }
+    }
+
     pub fn union(self, db: &Database, other: DbType) -> Self {
         self.union_with_details(db, other, false)
     }
