@@ -217,35 +217,30 @@ testLiteralInferredInListContext
 testGenericJoinCovariant
 testGenericJoinRecursiveTypes
 testGenericJoinNestedInvariantAny
-# join of {1, *some_str_tuple} leads to int | str???
-testUnpackInExpression2-only_when_nocache
 # recursive limits missing for joins
 testRecursiveAliasGenericInferenceNested
 testRecursiveAliasTopUnion
 testCrashInJoinOfSelfRecursiveNamedTuples
 
+# join of {1, *some_str_tuple} leads to int | str???
+testUnpackInExpression2-only_when_nocache
 # slightly different argument errors
 testCallerVarArgsListWithTypeInference
-
+# Self is confused. matcher needs to know Self from both sides.
+testOverloadWithDerivedFromAny
+# Any base class now matches everything for union simplification
+testUnionSimplificationSpecialCases2
+# EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
+testStrEnumCreation
+testRegression12258
 # Callable matching
 testNoCrashOnNestedGenericCallable
 testSubtypingGenericTypeObject
-
-# Self is confused. matcher needs to know Self from both sides.
-testOverloadWithDerivedFromAny
-
-# Any base class now matches everything for union simplification
-testUnionSimplificationSpecialCases2
-
 # Type variable "C.T" cannot be used as an expression
 testClassMemberTypeVarInFunctionBody
 # Type variable "__main__.Ts" is invalid as target for type alias
 testTypeVarTupleIsNotValidAliasTarget
 testGenericTypeAliasesWrongAliases
-
-# EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
-testStrEnumCreation
-testRegression12258
 
 # --new-type-inference
 testInferenceAgainstGenericCallable
@@ -267,7 +262,6 @@ testDefaultDict
 testGenericInferenceWithDataclass
 testGenericInferenceWithItertools
 param_spec_with_generic_class
-
 # type var backtracking
 testUnionInference
 unite_type_vars_mypy_issue_5874
