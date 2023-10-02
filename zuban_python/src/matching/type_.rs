@@ -2755,17 +2755,48 @@ fn common_base_class(i_s: &InferenceState, c1: Class, c2: Class) -> Option<DbTyp
     if c1.node_ref != c2.node_ref {
         return None;
     }
-    let m = Type::matches_class(i_s, &mut Matcher::default(), &c1, &c2, Variance::Covariant);
-    if m.bool() {
-        return Some(c1.as_db_type(i_s.db));
+    let mut generics = vec![];
+    for ((type_var_like, generic1), generic2) in c1
+        .type_vars(i_s)
+        .iter()
+        .zip(c1.generics.iter(i_s.db))
+        .zip(c2.generics.iter(i_s.db))
+    {
+        match type_var_like {
+            TypeVarLike::TypeVar(type_var) => {
+                let inner_t1 = generic1.expect_type_argument();
+                let inner_t2 = generic2.expect_type_argument();
+                match type_var.variance {
+                    Variance::Invariant => {
+                        if inner_t1.is_simple_same_type(i_s, &inner_t2).bool() {
+                            generics.push(GenericItem::TypeArgument(inner_t1.into_db_type()));
+                        } else {
+                            return None;
+                        }
+                    }
+                    Variance::Covariant => {
+                        generics.push(GenericItem::TypeArgument(
+                            inner_t1.common_base_type(i_s, &inner_t2),
+                        ));
+                    }
+                    Variance::Contravariant => {
+                        if let Some(t) = inner_t1.common_sub_type(i_s, &inner_t2) {
+                            generics.push(GenericItem::TypeArgument(t));
+                        } else {
+                            return None;
+                        }
+                    }
+                }
+            }
+            _ => todo!(),
+        }
     }
-
-    let m = Type::matches_class(i_s, &mut Matcher::default(), &c2, &c1, Variance::Covariant);
-    if m.bool() {
-        return Some(c2.as_db_type(i_s.db));
-    }
-    None
+    Some(DbType::new_class(
+        c1.node_ref.as_link(),
+        ClassGenerics::List(GenericsList::generics_from_vec(generics)),
+    ))
 }
+
 fn common_base_type_for_non_class(
     i_s: &InferenceState,
     t1: &DbType,
