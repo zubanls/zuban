@@ -187,13 +187,10 @@ impl IteratorContent {
                 current_index,
             } => Some(entries.as_ref().len() - current_index),
             Self::Union(iterators) => {
-                if iterators
-                    .iter()
-                    .filter(|i| i.len().is_some())
-                    .next()
-                    .is_none()
-                {
-                    None
+                let mut iterator = iterators.iter().filter_map(|i| i.len());
+                let first_len = iterator.next()?;
+                if iterator.all(|len| len == first_len) {
+                    Some(first_len)
                 } else {
                     todo!()
                 }

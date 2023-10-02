@@ -220,19 +220,6 @@ testMultipleAssignmentWithListsInInitialization
 testInferringLvarTypesInNestedListAssignment
 testNestedListAssignment
 testNestedListAssignmentToTuple
-# union multi assign
-testUnionMultiassignSingle
-testUnionMultiassignDouble
-testUnionMultiassignGeneric
-testUnionMultiassignAny
-testUnionMultiassignIndexed
-testUnionMultiassignIndexedWithError
-testUnionUnpackingChainedTuple
-testUnionUnpackingChainedTuple2
-testUnionUnpackingChainedTuple3
-testUnionUnpackingInForList
-testUnionUnpackingFromNestedTuples
-testNestedUnionUnpackingFromNestedTuples
 # list[<nothing>] against *args or never
 testOverloadVarargsSelection
 
