@@ -178,6 +178,8 @@ testLiteralAndInstanceSubtyping
 testCrashOnComplexCheckWithNamedTupleNext
 testNoComplainFieldNone
 testNoComplainFieldNoneStrict
+# type vars against unions
+testLiteralMeets
 # dict specialities
 testDictWithKeywordArgsOnly
 testDictWithoutKeywordArgs
@@ -210,8 +212,6 @@ testNestedListAssignment
 testNestedListAssignmentToTuple
 # List inference unions are special (list meets)
 testListLiteralWithNameOnlyArgsDoesNotEraseNames
-testLiteralMeets
-testLiteralMeetsWithStrictOptional
 testNestedListExpressions
 testLiteralInferredInListContext
 testGenericJoinCovariant
