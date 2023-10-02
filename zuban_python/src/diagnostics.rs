@@ -61,6 +61,7 @@ pub(crate) enum IssueType {
     NotIndexable { type_: Box<str> },
     InvalidSliceIndex,
     TooFewValuesToUnpack { actual: usize, expected: usize },
+    TooManyValuesToUnpack { actual: usize, expected: usize},
     StarredExpressionOnlyNoTarget,
     StmtOutsideFunction { keyword: &'static str },
     AwaitOutsideFunction,
@@ -643,6 +644,8 @@ impl<'db> Diagnostic<'db> {
                 1 => format!("Need more than {actual} value to unpack ({expected} expected)"),
                 _ => format!("Need more than {actual} values to unpack ({expected} expected)"),
             },
+            TooManyValuesToUnpack{actual, expected} =>
+                format!("Too many values to unpack ({expected} expected, {actual} provided)"),
             StarredExpressionOnlyNoTarget =>
                 "Can use starred expression only as assignment target".to_string(),
             StmtOutsideFunction{keyword} => format!("{keyword:?} outside function"),

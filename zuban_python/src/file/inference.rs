@@ -922,6 +922,33 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             Target::Tuple(mut targets) => {
                 let mut value_iterator = value.iter(self.i_s, value_node_ref);
                 let mut counter = 0;
+                if let Some(actual) = value_iterator.len() {
+                    let expected = targets.clone().count();
+                    if !targets
+                        .clone()
+                        .any(|target| matches!(target, Target::Starred(_)))
+                        && actual != expected
+                    {
+                        for target in targets {
+                            counter += 1;
+                            self.assign_targets(
+                                target,
+                                Inferred::new_any(),
+                                value_node_ref,
+                                is_definition,
+                            );
+                        }
+                        value_node_ref.add_issue(
+                            self.i_s,
+                            if actual < expected {
+                                IssueType::TooFewValuesToUnpack { actual, expected }
+                            } else {
+                                IssueType::TooManyValuesToUnpack { actual, expected }
+                            },
+                        );
+                        return;
+                    }
+                }
                 while let Some(target) = targets.next() {
                     counter += 1;
                     if let Target::Starred(star_target) = target {

@@ -186,7 +186,18 @@ impl IteratorContent {
                 entries,
                 current_index,
             } => Some(entries.as_ref().len() - current_index),
-            Self::Union(iterators) => todo!(),
+            Self::Union(iterators) => {
+                if iterators
+                    .iter()
+                    .filter(|i| i.len().is_some())
+                    .next()
+                    .is_none()
+                {
+                    None
+                } else {
+                    todo!()
+                }
+            }
             Self::Empty => todo!(),
         }
     }
