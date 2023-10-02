@@ -169,6 +169,7 @@ testValidTypeAliasValuesMoreRestrictive
 testUnpackingUnionOfListsInFunction
 testNestedProtocolGenericUnions
 testNestedProtocolGenericUnionsDeep
+testNestedListExpressions
 # union dict context inference
 testNoCrashOnGenericUnionUnpacking
 testInferMultipleAnyUnionDifferentVariance
@@ -210,16 +211,14 @@ testMultipleAssignmentWithListsInInitialization
 testInferringLvarTypesInNestedListAssignment
 testNestedListAssignment
 testNestedListAssignmentToTuple
-# List inference unions are special (list meets)
-testListLiteralWithNameOnlyArgsDoesNotEraseNames
-testNestedListExpressions
-testLiteralInferredInListContext
 # recursive limits missing for joins
 testRecursiveAliasGenericInferenceNested
 testRecursiveAliasTopUnion
 testCrashInJoinOfSelfRecursiveNamedTuples
 testGenericJoinRecursiveTypes
 
+# WTF why is this base type not object?
+testListLiteralWithNameOnlyArgsDoesNotEraseNames
 # join of {1, *some_str_tuple} leads to int | str???
 testUnpackInExpression2-only_when_nocache
 # slightly different argument errors

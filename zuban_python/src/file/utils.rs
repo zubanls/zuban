@@ -37,9 +37,12 @@ impl<'db> Inference<'db, '_, '_> {
                     unreachable!()
                 }
             };
-            // Just because we defined a literal somewhere, we should probably not infer that.
-            if let DbType::Literal(l) = t {
-                t = self.i_s.db.python_state.literal_db_type(&l.kind);
+            // Just because we defined a final int somewhere, we should probably not infer that.
+            match t {
+                DbType::Literal(l) if l.implicit => {
+                    t = self.i_s.db.python_state.literal_db_type(&l.kind);
+                }
+                _ => (),
             }
             if let Some(r) = result.take() {
                 result = Some(Type::owned(r).common_base_type(self.i_s, &Type::owned(t)));

@@ -13,11 +13,11 @@ use crate::arguments::Arguments;
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database,
     Dataclass, DbType, DoubleStarredParamSpecific, EnumMember, FunctionOverload, GenericClass,
-    GenericItem, GenericsList, MetaclassState, NamedTuple, ParamSpecArgument, ParamSpecTypeVars,
-    ParamSpecUsage, ParamSpecific, PointLink, RecursiveAlias, StarredParamSpecific, TupleContent,
-    TupleTypeArguments, TypeAlias, TypeArguments, TypeOrTypeVarTuple, TypeVarKind, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, TypedDict,
-    TypedDictGenerics, UnionEntry, UnionType, Variance,
+    GenericItem, GenericsList, Literal, MetaclassState, NamedTuple, ParamSpecArgument,
+    ParamSpecTypeVars, ParamSpecUsage, ParamSpecific, PointLink, RecursiveAlias,
+    StarredParamSpecific, TupleContent, TupleTypeArguments, TypeAlias, TypeArguments,
+    TypeOrTypeVarTuple, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
+    TypeVarTupleUsage, TypeVarUsage, TypedDict, TypedDictGenerics, UnionEntry, UnionType, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -2107,8 +2107,12 @@ impl<'a> Type<'a> {
     }
 
     pub fn common_base_type(&self, i_s: &InferenceState, other: &Self) -> DbType {
+        let is_same_literal = |literal1: &Literal, t: &_| match t {
+            DbType::Literal(literal2) => literal1.value(i_s.db) == literal2.value(i_s.db),
+            _ => false,
+        };
         let check_both_sides = |t1: &_, t2: &DbType| match t1 {
-            DbType::Literal(l) => Some(
+            DbType::Literal(l) if l.implicit || !is_same_literal(l, t2) => Some(
                 i_s.db
                     .python_state
                     .literal_type(&l.kind)
