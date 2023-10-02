@@ -2157,10 +2157,21 @@ impl<'a> Type<'a> {
                             &mut Matcher::default(),
                             &c1,
                             &c2,
-                            Variance::Invariant,
+                            Variance::Covariant,
                         );
                         if m.bool() {
                             return c1.as_db_type(i_s.db);
+                        }
+
+                        let m = Self::matches_class(
+                            i_s,
+                            &mut Matcher::default(),
+                            &c2,
+                            &c1,
+                            Variance::Covariant,
+                        );
+                        if m.bool() {
+                            return c2.as_db_type(i_s.db);
                         }
                     }
                 }

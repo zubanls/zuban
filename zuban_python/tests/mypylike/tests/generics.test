@@ -683,8 +683,8 @@ def foo(x: T, y: T) -> T: ...
 x: list[Sequence[int]]
 y: list[Sequence[object]]
 
-reveal_type(foo(x, y)) # N: Revealed type is "object"
-reveal_type(foo(y, x)) # N: Revealed type is "object"
+reveal_type(foo(x, y)) # N: Revealed type is "typing.Sequence[typing.Sequence[object]]"
+reveal_type(foo(y, x)) # N: Revealed type is "typing.Sequence[typing.Sequence[object]]"
 
 [case class_attribute_inheritance_access]
 from typing import TypeVar, Generic

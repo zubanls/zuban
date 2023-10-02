@@ -212,27 +212,18 @@ testNestedListAssignmentToTuple
 testListLiteralWithNameOnlyArgsDoesNotEraseNames
 testLiteralMeets
 testLiteralMeetsWithStrictOptional
-testInferredTypeIsObjectMismatch
 testNestedListExpressions
 testLiteralInferredInListContext
 testGenericJoinCovariant
 testGenericJoinRecursiveTypes
 testGenericJoinNestedInvariantAny
-testTypeEquivalentTypeAny2
 # Callable join
 testParamSpecJoin
 # join of {1, *some_str_tuple} leads to int | str???
 testUnpackInExpression2-only_when_nocache
-# join sub and super classes
-testOverloadInferUnionWithDifferingLengths
-testForLoopOverTupleAndSubtyping
-# tuple joins
-testFixedTupleJoinList
 # recursive limits missing for joins
 testRecursiveAliasGenericInferenceNested
 testRecursiveAliasTopUnion
-# namedtuple recursive joins
-testMutuallyRecursiveNamedTuplesJoin
 testCrashInJoinOfSelfRecursiveNamedTuples
 
 # slightly different argument errors
@@ -2263,6 +2254,7 @@ testTypeApplicationCrash
 # `class type` stuff
 testObfuscatedTypeConstructorReturnsTypeType
 testOtherTypeConstructorsSucceed
+testTypeEquivalentTypeAny2
 # Type[Any] is object
 testSimplifyingUnionWithTypeTypes2
 
