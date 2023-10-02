@@ -716,7 +716,7 @@ impl<'a> Type<'a> {
         m
     }
 
-    fn mro<'db: 'x, 'x>(&'x self, db: &'db Database) -> MroIterator<'db, '_> {
+    pub fn mro<'db: 'x, 'x>(&'x self, db: &'db Database) -> MroIterator<'db, '_> {
         match self.as_ref() {
             DbType::Class(c) => c.class(db).mro(db),
             DbType::Tuple(tup) => {

@@ -17,6 +17,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::UnionValue;
 use crate::matching::{FormatData, Matcher, MismatchReason, ResultContext, Type};
 use crate::node_ref::NodeRef;
+use crate::type_helpers::TypeOrClass;
 use crate::utils::join_with_commas;
 use crate::{debug, new_class, Inferred};
 
@@ -385,24 +386,45 @@ impl<'db> Inference<'db, '_, '_> {
 
     pub fn dict_literal_without_context(&mut self, dict: Dict) -> Inferred {
         let dict_elements = dict.iter_elements();
+        let i_s = self.i_s;
         if matches!(dict_elements, DictElementIterator::Empty) {
             return Inferred::from_type(new_class!(
-                self.i_s.db.python_state.dict_node_ref().as_link(),
+                i_s.db.python_state.dict_node_ref().as_link(),
                 DbType::Any,
                 DbType::Any,
             ));
         }
         let mut values = Inferred::new_any();
-        let keys = Inferred::gather_base_types(self.i_s, |gather_keys| {
-            values = Inferred::gather_base_types(self.i_s, |gather_values| {
-                for child in dict_elements {
+        let keys = Inferred::gather_base_types(i_s, |gather_keys| {
+            values = Inferred::gather_base_types(i_s, |gather_values| {
+                'outer: for child in dict_elements {
                     match child {
                         DictElement::KeyValue(key_value) => {
                             gather_keys(self.infer_expression(key_value.key()));
                             gather_values(self.infer_expression(key_value.value()));
                         }
-                        DictElement::DictStarred(_) => {
-                            todo!()
+                        DictElement::DictStarred(starred) => {
+                            let mapping = self.infer_expression_part(
+                                starred.expression_part(),
+                                &mut ResultContext::Unknown,
+                            );
+                            for (_, type_or_class) in mapping.as_type(i_s).mro(i_s.db) {
+                                let TypeOrClass::Class(c) = type_or_class else {
+                                    continue
+                                };
+                                if c.node_ref.as_link()
+                                    == i_s.db.python_state.mapping_node_ref().as_link()
+                                {
+                                    gather_keys(Inferred::from_type(
+                                        c.nth_type_argument(i_s.db, 0),
+                                    ));
+                                    gather_values(Inferred::from_type(
+                                        c.nth_type_argument(i_s.db, 1),
+                                    ));
+                                    continue 'outer;
+                                }
+                            }
+                            todo!("inferred did not match")
                         }
                     }
                 }
@@ -411,13 +433,13 @@ impl<'db> Inference<'db, '_, '_> {
         debug!(
             "Calculated generics for {}: dict[{}, {}]",
             dict.short_debug(),
-            keys.as_db_type(self.i_s).format_short(self.i_s.db),
-            values.as_db_type(self.i_s).format_short(self.i_s.db),
+            keys.as_db_type(i_s).format_short(i_s.db),
+            values.as_db_type(i_s).format_short(i_s.db),
         );
         Inferred::from_type(new_class!(
-            self.i_s.db.python_state.dict_node_ref().as_link(),
-            keys.as_db_type(self.i_s),
-            values.as_db_type(self.i_s),
+            i_s.db.python_state.dict_node_ref().as_link(),
+            keys.as_db_type(i_s),
+            values.as_db_type(i_s),
         ))
     }
 

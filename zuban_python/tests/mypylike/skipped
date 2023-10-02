@@ -194,14 +194,8 @@ testDictIncompatibleKeyVerbosity
 testDictIncompatibleValueVerbosity
 testDictExpressionErrorLocations
 testDictWithKeywordArgs
-# star star in dict literal
-testDictStarInference
-testDictStarAnyKeyJoinValue
 # {**kwargs}
-testSubtypingMappingUnpacking1
-testSubtypingMappingUnpacking2
-testSubtypingMappingUnpacking3
-testNotDirectIterableAndMappingSubtyping
+testDictStarAnyKeyJoinValue
 testUnpackInExpression3-only_when_nocache
 functional_enum_starred_dict_literal_errors
 testDictWithStarStarSpecialCase
@@ -219,7 +213,6 @@ testMultipleAssignmentWithListsInInitialization
 testInferringLvarTypesInNestedListAssignment
 testNestedListAssignment
 testNestedListAssignmentToTuple
-
 # List inference unions are special (list meets)
 testListLiteralWithNameOnlyArgsDoesNotEraseNames
 testLiteralMeets
