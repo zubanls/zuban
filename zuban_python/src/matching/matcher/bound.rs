@@ -5,9 +5,9 @@ use crate::inference_state::InferenceState;
 #[derive(Debug, Clone)]
 pub enum TypeVarBound {
     Invariant(DbType),
-    Lower(DbType),
-    LowerAndUpper(DbType, DbType),
     Upper(DbType),
+    UpperAndLower(DbType, DbType),
+    Lower(DbType),
 }
 
 impl TypeVarBound {
@@ -15,16 +15,16 @@ impl TypeVarBound {
         match variance {
             Variance::Invariant => Self::Invariant(t),
             Variance::Covariant => match &type_var.kind {
-                TypeVarKind::Bound(bound) => Self::LowerAndUpper(bound.clone(), t),
-                _ => Self::Upper(t),
+                TypeVarKind::Bound(bound) => Self::UpperAndLower(bound.clone(), t),
+                _ => Self::Lower(t),
             },
-            Variance::Contravariant => Self::Lower(t),
+            Variance::Contravariant => Self::Upper(t),
         }
     }
 
     pub fn format(&self, db: &Database, style: FormatStyle) -> Box<str> {
         match self {
-            Self::Invariant(t) | Self::Lower(t) | Self::Upper(t) | Self::LowerAndUpper(t, _) => {
+            Self::Invariant(t) | Self::Upper(t) | Self::Lower(t) | Self::UpperAndLower(t, _) => {
                 t.format(&FormatData::with_style(db, style))
             }
         }
@@ -32,22 +32,22 @@ impl TypeVarBound {
 
     pub fn into_db_type(self, db: &Database) -> DbType {
         match self {
-            // If the lower bound is a literal, we do not want to lower the bound.
-            Self::LowerAndUpper(t @ DbType::Literal(_), _) => t,
-            Self::Upper(DbType::Literal(l)) | Self::LowerAndUpper(_, DbType::Literal(l))
+            // If the upper bound is a literal, we do not want to use the lower bound.
+            Self::UpperAndLower(t @ DbType::Literal(_), _) => t,
+            Self::Lower(DbType::Literal(l)) | Self::UpperAndLower(_, DbType::Literal(l))
                 if l.implicit =>
             {
                 db.python_state.literal_db_type(&l.kind)
             }
-            Self::Invariant(t) | Self::Lower(t) | Self::Upper(t) | Self::LowerAndUpper(_, t) => t,
+            Self::Invariant(t) | Self::Upper(t) | Self::Lower(t) | Self::UpperAndLower(_, t) => t,
         }
     }
 
     fn update_lower_bound(&mut self, lower: DbType) {
         match self {
-            Self::Lower(_) => *self = Self::Lower(lower),
-            Self::Upper(upper) | Self::LowerAndUpper(_, upper) => {
-                *self = Self::LowerAndUpper(lower, upper.clone())
+            Self::Upper(_) => *self = Self::Upper(lower),
+            Self::Lower(upper) | Self::UpperAndLower(_, upper) => {
+                *self = Self::UpperAndLower(lower, upper.clone())
             }
             Self::Invariant(_) => unreachable!(),
         }
@@ -55,9 +55,9 @@ impl TypeVarBound {
 
     fn update_upper_bound(&mut self, upper: DbType) {
         match self {
-            Self::Upper(_) => *self = Self::Upper(upper),
-            Self::Lower(lower) | Self::LowerAndUpper(lower, _) => {
-                *self = Self::LowerAndUpper(lower.clone(), upper)
+            Self::Lower(_) => *self = Self::Lower(upper),
+            Self::Upper(lower) | Self::UpperAndLower(lower, _) => {
+                *self = Self::UpperAndLower(lower.clone(), upper)
             }
             Self::Invariant(_) => unreachable!(),
         }
@@ -78,9 +78,9 @@ impl TypeVarBound {
                 }
                 m
             }
-            Self::Lower(lower) => Type::new(lower).is_simple_super_type_of(i_s, other),
-            Self::Upper(upper) => Type::new(upper).is_simple_sub_type_of(i_s, other),
-            Self::LowerAndUpper(lower, upper) => {
+            Self::Upper(lower) => Type::new(lower).is_simple_super_type_of(i_s, other),
+            Self::Lower(upper) => Type::new(upper).is_simple_sub_type_of(i_s, other),
+            Self::UpperAndLower(lower, upper) => {
                 Type::new(lower).is_simple_super_type_of(i_s, other)
                     & Type::new(upper).is_simple_sub_type_of(i_s, other)
             }
@@ -99,7 +99,7 @@ impl TypeVarBound {
             match variance {
                 Variance::Invariant => (),
                 Variance::Covariant => match self {
-                    Self::Upper(t) => {
+                    Self::Lower(t) => {
                         // TODO shouldn't this also do a limited common base type search in the
                         // case of LowerAndUpper?
                         let m = Type::new(t).is_simple_super_type_of(i_s, other);
@@ -109,13 +109,13 @@ impl TypeVarBound {
                         }
                         return m;
                     }
-                    Self::Invariant(t) | Self::LowerAndUpper(_, t) => {
+                    Self::Invariant(t) | Self::UpperAndLower(_, t) => {
                         return Type::new(t).is_simple_super_type_of(i_s, other)
                     }
-                    Self::Lower(t) => {}
+                    Self::Upper(t) => {}
                 },
                 Variance::Contravariant => match self {
-                    Self::Lower(t) => {
+                    Self::Upper(t) => {
                         // TODO shouldn't we also check LowerAndUpper like this?
                         let m = Type::new(t).is_simple_sub_type_of(i_s, other);
                         if !m.bool() {
@@ -128,10 +128,10 @@ impl TypeVarBound {
                         }
                         return m;
                     }
-                    Self::Invariant(t) | Self::LowerAndUpper(t, _) => {
+                    Self::Invariant(t) | Self::UpperAndLower(t, _) => {
                         return Type::new(t).is_simple_sub_type_of(i_s, other);
                     }
-                    Self::Upper(_) => {}
+                    Self::Lower(_) => {}
                 },
             };
         }

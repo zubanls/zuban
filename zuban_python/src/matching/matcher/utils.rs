@@ -313,10 +313,10 @@ fn calculate_type_vars<'db: 'a, 'a>(
                     let has_any = match &calculated.type_ {
                         BoundKind::TypeVar(
                             TypeVarBound::Invariant(t)
-                            | TypeVarBound::Lower(t)
-                            | TypeVarBound::Upper(t),
+                            | TypeVarBound::Upper(t)
+                            | TypeVarBound::Lower(t),
                         ) => t.has_any(i_s),
-                        BoundKind::TypeVar(TypeVarBound::LowerAndUpper(t1, t2)) => {
+                        BoundKind::TypeVar(TypeVarBound::UpperAndLower(t1, t2)) => {
                             t1.has_any(i_s) | t2.has_any(i_s)
                         }
                         BoundKind::TypeVarTuple(ts) => ts.args.has_any(i_s),

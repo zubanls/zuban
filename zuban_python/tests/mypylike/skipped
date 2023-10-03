@@ -167,7 +167,6 @@ testValidTypeAliasValuesMoreRestrictive
 
 # union list context inference
 testUnpackingUnionOfListsInFunction
-testNestedListExpressions
 # union dict context inference
 testNoCrashOnGenericUnionUnpacking
 testInferMultipleAnyUnionDifferentVariance
@@ -2754,6 +2753,9 @@ textNoImplicitReexportSuggestions
 
 # --warn-unreachable
 testOperatorContainsNarrowsTypedDicts_final
+
+# --no-strict-optional details
+testNestedListExpressions
 
 # --no-namespace-packages
 testClassicNotPackage
