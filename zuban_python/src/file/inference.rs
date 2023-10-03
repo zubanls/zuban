@@ -759,22 +759,19 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 None
             }
             Target::IndexExpression(t) => Some(self.infer_primary_target(t)),
-            Target::Tuple(targets) => targets
-                .clone()
-                .any(|target| self.infer_target(target).is_some())
-                .then(|| {
-                    Inferred::from_type(DbType::Tuple(Rc::new(TupleContent::new_fixed_length(
-                        targets
-                            .map(|target| {
-                                TypeOrTypeVarTuple::Type(
-                                    self.infer_target(target)
-                                        .map(|i| i.as_db_type(self.i_s))
-                                        .unwrap_or(DbType::Any),
-                                )
-                            })
-                            .collect(),
-                    ))))
-                }),
+            Target::Tuple(targets) => Some(Inferred::from_type(DbType::Tuple(Rc::new(
+                TupleContent::new_fixed_length(
+                    targets
+                        .map(|target| {
+                            TypeOrTypeVarTuple::Type(
+                                self.infer_target(target)
+                                    .map(|i| i.as_db_type(self.i_s))
+                                    .unwrap_or(DbType::Any),
+                            )
+                        })
+                        .collect(),
+                ),
+            )))),
             Target::Starred(_) => None,
         }
     }
