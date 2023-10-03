@@ -2090,24 +2090,10 @@ impl<'a> Type<'a> {
         matcher: &mut Matcher,
         callable: &mut impl FnMut(&mut Matcher, &Class) -> bool,
     ) -> bool {
-        match self.as_ref() {
+        self.on_any_resolved_context_type(i_s, matcher, &mut |matcher, t| match t {
             DbType::Class(c) => callable(matcher, &c.class(i_s.db)),
-            DbType::Union(union_type) => union_type
-                .iter()
-                .any(|t| Type::new(t).on_any_class(i_s, matcher, callable)),
-            DbType::RecursiveAlias(r) => {
-                Type::new(r.calculated_db_type(i_s.db)).on_any_class(i_s, matcher, callable)
-            }
-            db_type @ DbType::TypeVar(_) => {
-                if matcher.might_have_defined_type_vars() {
-                    Type::owned(matcher.replace_type_var_likes_for_nested_context(i_s.db, db_type))
-                        .on_any_class(i_s, matcher, callable)
-                } else {
-                    false
-                }
-            }
             _ => false,
-        }
+        })
     }
 
     pub fn on_any_typed_dict(
@@ -2116,21 +2102,10 @@ impl<'a> Type<'a> {
         matcher: &mut Matcher,
         callable: &mut impl FnMut(&mut Matcher, Rc<TypedDict>) -> bool,
     ) -> bool {
-        match self.as_ref() {
+        self.on_any_resolved_context_type(i_s, matcher, &mut |matcher, t| match t {
             DbType::TypedDict(td) => callable(matcher, td.clone()),
-            DbType::Union(union_type) => union_type
-                .iter()
-                .any(|t| Type::new(t).on_any_typed_dict(i_s, matcher, callable)),
-            db_type @ DbType::TypeVar(_) => {
-                if matcher.might_have_defined_type_vars() {
-                    Type::owned(matcher.replace_type_var_likes_for_nested_context(i_s.db, db_type))
-                        .on_any_typed_dict(i_s, matcher, callable)
-                } else {
-                    false
-                }
-            }
             _ => false,
-        }
+        })
     }
 
     pub fn common_base_type(&self, i_s: &InferenceState, other: &Self) -> DbType {
