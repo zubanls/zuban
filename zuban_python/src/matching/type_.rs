@@ -2060,6 +2060,30 @@ impl<'a> Type<'a> {
         }
     }
 
+    pub fn on_any_resolved_context_type(
+        &self,
+        i_s: &InferenceState,
+        matcher: &mut Matcher,
+        callable: &mut impl FnMut(&mut Matcher, &DbType) -> bool,
+    ) -> bool {
+        match self.as_ref() {
+            DbType::Union(union_type) => union_type
+                .iter()
+                .any(|t| Type::new(t).on_any_resolved_context_type(i_s, matcher, callable)),
+            DbType::RecursiveAlias(r) => Type::new(r.calculated_db_type(i_s.db))
+                .on_any_resolved_context_type(i_s, matcher, callable),
+            db_type @ DbType::TypeVar(_) => {
+                if matcher.might_have_defined_type_vars() {
+                    Type::owned(matcher.replace_type_var_likes_for_nested_context(i_s.db, db_type))
+                        .on_any_resolved_context_type(i_s, matcher, callable)
+                } else {
+                    false
+                }
+            }
+            t => callable(matcher, t),
+        }
+    }
+
     pub fn on_any_class(
         &self,
         i_s: &InferenceState,
