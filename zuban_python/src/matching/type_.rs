@@ -2088,10 +2088,10 @@ impl<'a> Type<'a> {
         &self,
         i_s: &InferenceState,
         matcher: &mut Matcher,
-        callable: &mut impl FnMut(&InferenceState, &mut Matcher, &Class) -> bool,
+        callable: &mut impl FnMut(&mut Matcher, &Class) -> bool,
     ) -> bool {
         match self.as_ref() {
-            DbType::Class(c) => callable(i_s, matcher, &c.class(i_s.db)),
+            DbType::Class(c) => callable(matcher, &c.class(i_s.db)),
             DbType::Union(union_type) => union_type
                 .iter()
                 .any(|t| Type::new(t).on_any_class(i_s, matcher, callable)),
@@ -2114,10 +2114,10 @@ impl<'a> Type<'a> {
         &self,
         i_s: &InferenceState,
         matcher: &mut Matcher,
-        callable: &mut impl FnMut(&InferenceState, &mut Matcher, Rc<TypedDict>) -> bool,
+        callable: &mut impl FnMut(&mut Matcher, Rc<TypedDict>) -> bool,
     ) -> bool {
         match self.as_ref() {
-            DbType::TypedDict(td) => callable(i_s, matcher, td.clone()),
+            DbType::TypedDict(td) => callable(matcher, td.clone()),
             DbType::Union(union_type) => union_type
                 .iter()
                 .any(|t| Type::new(t).on_any_typed_dict(i_s, matcher, callable)),

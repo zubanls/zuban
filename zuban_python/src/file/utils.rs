@@ -112,12 +112,12 @@ impl<'db> Inference<'db, '_, '_> {
             .with_type_if_exists(self.i_s, |i_s: &InferenceState<'db, '_>, type_, matcher| {
                 let mut found = None;
                 let mut fallback = None;
-                type_.on_any_typed_dict(i_s, matcher, &mut |i_s, matcher, td| {
+                type_.on_any_typed_dict(i_s, matcher, &mut |matcher, td| {
                     found = self.check_typed_dict_literal_with_context(matcher, td, dict);
                     found.is_some()
                 });
                 if found.is_none() {
-                    type_.on_any_class(i_s, matcher, &mut |i_s, matcher, cls| {
+                    type_.on_any_class(i_s, matcher, &mut |matcher, cls| {
                         if cls.node_ref == i_s.db.python_state.dict_node_ref() {
                             let key_t = cls.nth_type_argument(i_s.db, 0);
                             let value_t = cls.nth_type_argument(i_s.db, 1);
@@ -366,7 +366,7 @@ impl<'db> Inference<'db, '_, '_> {
         result_context
             .with_type_if_exists(self.i_s, |i_s: &InferenceState<'db, '_>, type_, matcher| {
                 let mut found = None;
-                type_.on_any_typed_dict(i_s, matcher, &mut |i_s, matcher, td| {
+                type_.on_any_typed_dict(i_s, matcher, &mut |matcher, td| {
                     found = self.check_typed_dict_call_with_context(matcher, td, args);
                     found.is_some()
                 });
