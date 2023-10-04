@@ -120,10 +120,6 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         (result, had_error.get())
     }
 
-    pub fn is_checking_overload(&self) -> bool {
-        matches!(self.mode, Mode::OverloadCheck { .. })
-    }
-
     pub fn is_calculating_enum_members(&self) -> bool {
         matches!(self.mode, Mode::EnumMemberCalculation)
     }

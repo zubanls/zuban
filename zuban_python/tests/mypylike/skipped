@@ -1,4 +1,7 @@
 # Next up
+testDataclassesDefaultFactoryTypeChecking
+testOverloadingInferUnionReturnWithFunctionTypevarReturn
+union_context_class_matching_with_overload
 
 # 3.7 tests
 testNamedTupleDefaults

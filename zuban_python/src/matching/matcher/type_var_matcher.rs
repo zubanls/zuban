@@ -208,18 +208,7 @@ impl TypeVarMatcher {
         let current = &mut self.calculated_type_vars[type_var_usage.index.as_usize()];
         if let BoundKind::TypeVar(current_type) = &mut current.type_ {
             let m = current_type.merge_or_mismatch(i_s, value_type, variance);
-            if !m.bool() && current.defined_by_result_context && i_s.is_checking_overload() {
-                // In case generics are defined by the result context, we need to be careful when
-                // dealing with overloads that we are currently testing. It is possible that the
-                // current overload provides a context that another would not provide. In that case
-                // just reject the result context generics and go on.
-                current.defined_by_result_context = false;
-                // TODO add a test where this would fail, because there's a result context that was
-                // also already used by a non-result context.
-                current.type_ = BoundKind::Uncalculated { fallback: None };
-            } else {
-                return m;
-            }
+            return m;
         }
         debug_assert!(!current.calculated(), "{current:?}");
         // Before setting the type var, we need to check if the constraints match.
