@@ -1413,7 +1413,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             match calculated_type_args.matches {
                 SignatureMatch::True {
                     arbitrary_length_handled,
-                } => {
+                } if !had_error => {
                     if multi_any_match.is_some() {
                         // This means that there was an explicit any in a param.
                         return OverloadResult::NotFound;
@@ -1433,7 +1433,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         return OverloadResult::Single(callable);
                     }
                 }
-                SignatureMatch::TrueWithAny { argument_indices } => {
+                SignatureMatch::TrueWithAny { argument_indices } if !had_error => {
                     // TODO there could be three matches or more?
                     // TODO maybe merge list[any] and list[int]
                     if let Some((_, _, ref old_indices)) = multi_any_match {
@@ -1469,7 +1469,9 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         ))
                     }
                 }
-                SignatureMatch::False { similar: true } => {
+                SignatureMatch::False { similar: true }
+                | SignatureMatch::TrueWithAny { .. }
+                | SignatureMatch::True { .. } => {
                     if first_similar.is_none() {
                         first_similar = Some(callable)
                     }
