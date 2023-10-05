@@ -1192,34 +1192,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             .unwrap_or_else(|| Type::new(&DbType::Any))
     }
 
-    pub fn format_overload_variant(&self, i_s: &InferenceState, is_init: bool) -> Box<str> {
-        // Make sure annotations/type vars are calculated
-        self.type_vars(i_s);
-
-        let node = self.node();
-        let ret = match node.return_annotation() {
-            Some(annotation) => self
-                .node_ref
-                .file
-                .inference(i_s)
-                .use_cached_return_annotation_type(annotation),
-            None => Type::new(&DbType::Any),
-        };
-        format_pretty_function_like(
-            &FormatData::new_short(i_s.db),
-            self.class,
-            self.class.is_some()
-                && self
-                    .iter_params()
-                    .next()
-                    .is_some_and(|t| t.annotation(i_s).is_none()),
-            self.name(),
-            self.type_vars(i_s),
-            self.iter_params(),
-            (!is_init).then_some(ret),
-        )
-    }
-
     pub fn execute(
         &self,
         i_s: &InferenceState<'db, '_>,

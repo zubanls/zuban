@@ -15,7 +15,7 @@ use crate::{
     node_ref::NodeRef,
 };
 
-use super::{Callable, Class, Function};
+use super::{format_pretty_callable, Callable, Class, Function};
 
 #[derive(Debug)]
 pub struct OverloadedFunction<'a> {
@@ -401,12 +401,21 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
     }
 
     fn variants(&self, i_s: &InferenceState<'db, '_>, is_init: bool) -> Box<[Box<str>]> {
+        let format_data = &FormatData::new_short(i_s.db);
         self.overload
             .iter_functions()
             .map(|callable| {
-                let func =
-                    Function::new(NodeRef::from_link(i_s.db, callable.defined_at), self.class);
-                func.format_overload_variant(i_s, is_init)
+                if let Some(class) = self.class {
+                    let callable = replace_class_type_vars_in_callable(
+                        i_s.db,
+                        callable,
+                        Some(&class),
+                        &|| DbType::Self_,
+                    );
+                    format_pretty_callable(format_data, &callable)
+                } else {
+                    format_pretty_callable(format_data, callable)
+                }
             })
             .collect()
     }
