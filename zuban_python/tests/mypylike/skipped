@@ -93,12 +93,10 @@ testUnpackIterableClassWithOverloadedIter2
 overload_union_math_on_class_init_constrained
 # union math for None vs. TypeVar
 testOverloadDetectsPossibleMatchesWithGenerics
-# __new__ formatting
-testGenericClassInGenericFunctionOverloadedConstructor-skip
 # overload classmethod variants formatting cls type should be Class not any
 testOverloadClassmethodDisappears
-testGenericClassAlternativeConstructorPreciseOverloaded
 testOverloaded__new__
+testGenericClassInGenericFunctionOverloadedConstructor-skip
 testIOTypes
 # overload *args should be used if a list of never/any is given?
 testOverloadVarargsSelection
@@ -228,6 +226,8 @@ testClassMemberTypeVarInFunctionBody
 # Type variable "__main__.Ts" is invalid as target for type alias
 testTypeVarTupleIsNotValidAliasTarget
 testGenericTypeAliasesWrongAliases
+# Type var used in bound, defined in class body, bound to that class
+testGenericClassAlternativeConstructorPreciseOverloaded
 
 # --new-type-inference
 testInferenceAgainstGenericCallable
