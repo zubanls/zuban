@@ -1398,6 +1398,38 @@ impl FunctionKind {
             _ => false,
         }
     }
+
+    pub fn had_first_self_or_class_annotation(self) -> bool {
+        match self {
+            Self::Function {
+                had_first_annotation,
+            }
+            | Self::Property {
+                had_first_annotation,
+                ..
+            }
+            | Self::Classmethod {
+                had_first_annotation,
+            } => had_first_annotation,
+            Self::Staticmethod => true,
+        }
+    }
+
+    pub fn update_had_first_self_or_class_annotation(&mut self, new_value: bool) {
+        match self {
+            Self::Function {
+                had_first_annotation,
+            }
+            | Self::Property {
+                had_first_annotation,
+                ..
+            }
+            | Self::Classmethod {
+                had_first_annotation,
+            } => *had_first_annotation = new_value,
+            Self::Staticmethod => (),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -100,16 +100,11 @@ pub fn format_pretty_callable(format_data: &FormatData, callable: &CallableConte
         .unwrap_or("");
     match &callable.params {
         CallableParams::Simple(params) => {
-            let first_param = params
-                .iter()
-                .next()
-                .and_then(|p| p.param_specific.maybe_positional_db_type())
-                .map(|t| t.format(format_data));
+            let avoid_self_annotation = !callable.kind.had_first_self_or_class_annotation();
             format_pretty_function_like(
                 format_data,
                 None,
-                callable.class_name.map(|c| c.as_str(db)) == first_param.as_deref()
-                    && not_reveal_type,
+                avoid_self_annotation && not_reveal_type,
                 name,
                 &callable.type_vars,
                 params.iter(),

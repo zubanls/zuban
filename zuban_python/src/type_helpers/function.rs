@@ -392,12 +392,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     pub fn kind(&self, i_s: &InferenceState<'db, '_>) -> FunctionKind {
-        let had_first_annotation = self
-            .node()
-            .params()
-            .iter()
-            .next()
-            .is_some_and(|p| p.annotation().is_some());
+        let had_first_annotation = self.class.is_none()
+            || self
+                .node()
+                .params()
+                .iter()
+                .next()
+                .is_some_and(|p| p.annotation().is_some());
         if self.node_ref.point().specific() == Specific::DecoratedFunction {
             // Ensure it's cached
             let inf = self.decorated(i_s);
@@ -498,12 +499,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         };
 
         let mut inferred = Inferred::from_type(self.as_db_type(i_s, FirstParamProperties::None));
-        let had_first_annotation = self
-            .node()
-            .params()
-            .iter()
-            .next()
-            .is_some_and(|p| p.annotation().is_some());
+        let had_first_annotation = self.class.is_none()
+            || self
+                .node()
+                .params()
+                .iter()
+                .next()
+                .is_some_and(|p| p.annotation().is_some());
         let mut kind = FunctionKind::Function {
             had_first_annotation,
         };
@@ -941,7 +943,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         mut as_db_type: impl FnMut(&InferenceState, Type) -> DbType,
     ) -> CallableContent {
         let mut params = params.peekable();
-        let had_first_annotation = params.peek().is_some_and(|p| p.annotation(i_s).is_some());
+        let had_first_annotation =
+            self.class.is_none() || params.peek().is_some_and(|p| p.annotation(i_s).is_some());
         let kind = match self.node_ref.point().specific() {
             Specific::DecoratedFunction => kind_of_decorators(
                 i_s,

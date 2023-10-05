@@ -2012,6 +2012,11 @@ fn proper_classmethod_callable(
     );
     let type_vars = type_vars.into_inner();
     new_callable.type_vars = TypeVarLikes::from_vec(type_vars);
+    // We just skipped the first param, so from now on every param has an annotation, even if it's
+    // an implicit DbType::Any.
+    new_callable
+        .kind
+        .update_had_first_self_or_class_annotation(true);
     Some(new_callable)
 }
 
