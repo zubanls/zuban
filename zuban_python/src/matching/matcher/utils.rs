@@ -614,12 +614,15 @@ pub fn match_arguments_against_params<
         } else {
             debug!("Too many arguments found");
         }
-    } else if args_with_params.has_unused_keyword_arguments() && should_generate_errors {
-        for unused in &args_with_params.unused_keyword_arguments {
-            if let Some(key) = unused.keyword_name(i_s.db) {
-                add_keyword_argument_issue(unused.as_node_ref(), key)
-            } else {
-                unreachable!();
+    } else if args_with_params.has_unused_keyword_arguments() {
+        matches = Match::new_false();
+        if should_generate_errors {
+            for unused in &args_with_params.unused_keyword_arguments {
+                if let Some(key) = unused.keyword_name(i_s.db) {
+                    add_keyword_argument_issue(unused.as_node_ref(), key)
+                } else {
+                    unreachable!();
+                }
             }
         }
     } else if should_generate_errors {
