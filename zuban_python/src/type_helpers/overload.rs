@@ -229,7 +229,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     .unwrap_or_else(|| todo!())
                     .into(),
                 args: args.iter().into_argument_types(i_s),
-                variants: self.variants(i_s, search_init),
+                variants: self.variants(i_s, class.filter(|_| search_init)),
             };
             args.as_node_ref().add_issue(i_s, t);
         }
@@ -400,18 +400,21 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         }
     }
 
-    fn variants(&self, i_s: &InferenceState<'db, '_>, is_init: bool) -> Box<[Box<str>]> {
+    fn variants(&self, i_s: &InferenceState<'db, '_>, init_cls: Option<&Class>) -> Box<[Box<str>]> {
         let format_data = &FormatData::new_short(i_s.db);
         self.overload
             .iter_functions()
             .map(|callable| {
                 if let Some(class) = self.class {
-                    let callable = replace_class_type_vars_in_callable(
+                    let mut callable = replace_class_type_vars_in_callable(
                         i_s.db,
                         callable,
                         Some(&class),
                         &|| DbType::Self_,
                     );
+                    if let Some(init_cls) = init_cls {
+                        callable.result_type = init_cls.as_db_type(i_s.db)
+                    }
                     format_pretty_callable(format_data, &callable)
                 } else {
                     format_pretty_callable(format_data, callable)

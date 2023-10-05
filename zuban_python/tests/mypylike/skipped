@@ -93,11 +93,6 @@ testUnpackIterableClassWithOverloadedIter2
 overload_union_math_on_class_init_constrained
 # union math for None vs. TypeVar
 testOverloadDetectsPossibleMatchesWithGenerics
-# Overload __init__ formatting shows a return type
-testOverloadedInitSupertype
-testSerializeOverloaded__init__
-testTypeUsingTypeCOverloadedClass
-testOverloadedInit
 # __new__ formatting
 testGenericClassInGenericFunctionOverloadedConstructor-skip
 # overload classmethod variants formatting cls type should be Class not any
