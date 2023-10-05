@@ -352,7 +352,6 @@ testOverloadWithSwappedDecorators2
 # "Static methods cannot use Self type"
 testTypingSelfClassMethod
 # staticmethod
-testBuiltinStaticMethod
 testRefMethodWithDecorator
 
 # "The erased type of self "Type[__main__.A]" is not a supertype of its class "Type[__main__.B]""
