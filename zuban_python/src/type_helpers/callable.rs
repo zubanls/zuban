@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
-use super::function::{format_pretty_function_like, format_pretty_function_with_params};
+use parsa_python_ast::ParamKind;
+
 use super::Class;
 use crate::arguments::Arguments;
 use crate::database::{
@@ -10,10 +11,12 @@ use crate::database::{
 use crate::diagnostics::IssueType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
+use crate::matching::params::{WrappedDoubleStarred, WrappedParamSpecific, WrappedStarred};
 use crate::matching::{
-    calculate_callable_type_vars_and_return, maybe_class_usage, FormatData, OnTypeError,
+    calculate_callable_type_vars_and_return, maybe_class_usage, FormatData, OnTypeError, Param,
     ResultContext, Type,
 };
+use crate::utils::join_with_commas;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Callable<'a> {
@@ -204,4 +207,120 @@ pub fn merge_class_type_vars_into_callable(
     );
     callable.type_vars = type_vars;
     callable
+}
+
+fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
+    format_data: &FormatData<'db, '_, '_, '_>,
+    class: Option<Class>,
+    avoid_self_annotation: bool,
+    name: &str,
+    type_vars: &TypeVarLikes,
+    params: impl Iterator<Item = P>,
+    return_type: Option<Type>,
+) -> Box<str> {
+    let db = format_data.db;
+    let is_reveal_type = format_data.style == FormatStyle::MypyRevealType;
+
+    let mut previous_kind = None;
+    let mut had_kwargs_separator = false;
+    let mut args = join_with_commas(params.enumerate().map(|(i, p)| {
+        let specific = p.specific(db);
+        let annotation_str = match &specific {
+            WrappedParamSpecific::PositionalOnly(t)
+            | WrappedParamSpecific::PositionalOrKeyword(t)
+            | WrappedParamSpecific::KeywordOnly(t)
+            | WrappedParamSpecific::Starred(WrappedStarred::ArbitraryLength(t))
+            | WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t)) => t
+                .as_ref()
+                .map(|t| format_function_type(format_data, t, class)),
+            WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u)) => todo!(),
+            WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(u)) => {
+                todo!()
+            }
+        };
+        let current_kind = p.kind(db);
+        let stars = match current_kind {
+            ParamKind::Starred => "*",
+            ParamKind::DoubleStarred => "**",
+            _ => "",
+        };
+        let mut out = if i == 0 && avoid_self_annotation && stars.is_empty() {
+            p.name(db).unwrap().to_owned()
+        } else {
+            let mut out = if current_kind == ParamKind::PositionalOnly {
+                annotation_str.unwrap_or_else(|| Box::from("Any")).into()
+            } else {
+                format!(
+                    "{stars}{}: {}",
+                    p.name(db).unwrap(),
+                    annotation_str.as_deref().unwrap_or("Any")
+                )
+            };
+            if previous_kind == Some(ParamKind::PositionalOnly)
+                && current_kind != ParamKind::PositionalOnly
+                && !is_reveal_type
+            {
+                out = format!("/, {out}")
+            }
+            out
+        };
+        if matches!(&specific, WrappedParamSpecific::KeywordOnly(_)) && !had_kwargs_separator {
+            had_kwargs_separator = true;
+            out = format!("*, {out}");
+        }
+        had_kwargs_separator |= matches!(specific, WrappedParamSpecific::Starred(_));
+        if p.has_default() {
+            if is_reveal_type {
+                out += " =";
+            } else {
+                out += " = ...";
+            }
+        }
+        previous_kind = Some(current_kind);
+        out
+    }));
+    if previous_kind == Some(ParamKind::PositionalOnly) && !is_reveal_type {
+        args += ", /";
+    }
+    format_pretty_function_with_params(format_data, class, type_vars, return_type, name, &args)
+}
+
+fn format_pretty_function_with_params(
+    format_data: &FormatData,
+    class: Option<Class>,
+    type_vars: &TypeVarLikes,
+    return_type: Option<Type>,
+    name: &str,
+    params: &str,
+) -> Box<str> {
+    let type_var_string = (!type_vars.is_empty()).then(|| type_vars.format(format_data));
+    let type_var_str = type_var_string.as_deref().unwrap_or("");
+    let result_string = return_type
+        .as_ref()
+        .filter(|t| {
+            format_data.style != FormatStyle::MypyRevealType || !matches!(t.as_ref(), DbType::None)
+        })
+        .map(|t| format_function_type(format_data, t, class));
+
+    if let Some(result_string) = result_string {
+        format!("def {type_var_str}{name}({params}) -> {result_string}").into()
+    } else {
+        format!("def {type_var_str}{name}({params})").into()
+    }
+}
+
+fn format_function_type(format_data: &FormatData, t: &Type, class: Option<Class>) -> Box<str> {
+    if let Some(func_class) = class {
+        let t = t.replace_type_var_likes_and_self(
+            format_data.db,
+            &mut |usage| {
+                maybe_class_usage(format_data.db, &func_class, &usage)
+                    .unwrap_or_else(|| usage.into_generic_item())
+            },
+            &|| todo!(),
+        );
+        t.format(format_data)
+    } else {
+        t.format(format_data)
+    }
 }

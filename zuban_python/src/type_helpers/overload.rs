@@ -15,7 +15,7 @@ use crate::{
     node_ref::NodeRef,
 };
 
-use super::{format_pretty_callable, Callable, Class, Function};
+use super::{format_pretty_callable, Callable, Class};
 
 #[derive(Debug)]
 pub struct OverloadedFunction<'a> {
