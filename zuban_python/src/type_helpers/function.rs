@@ -1514,14 +1514,12 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 UnionMathResult::NoMatch => (),
             }
         }
-        if let Some(callable) = first_similar {
-            // In case of similar params, we simply use the first similar overload and calculate
-            // its diagnostics and return its types.
-            // This is also how mypy does it. See `check_overload_call` (9943444c7)
-            let calculated_type_args = match_signature(i_s, result_context, callable);
-            return OverloadResult::Single(callable);
-        }
         if result_context.has_explicit_type() {
+            // In case the context causes issues where an overload cannot be resolved, we just try
+            // to run it without it. Note that we know at this point that the overload failed, it's
+            // just a matter of what to display in case of failure. It's also a bit weird that we
+            // run everything again, but in normal code overloads almost always do not fail, so
+            // it shouldn't impact performance, really.
             return self.find_matching_function(
                 i_s,
                 args,
@@ -1531,6 +1529,13 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 &mut ResultContext::Unknown,
                 on_type_error,
             );
+        }
+        if let Some(callable) = first_similar {
+            // In case of similar params, we simply use the first similar overload and calculate
+            // its diagnostics and return its types.
+            // This is also how mypy does it. See `check_overload_call` (9943444c7)
+            let calculated_type_args = match_signature(i_s, result_context, callable);
+            return OverloadResult::Single(callable);
         }
         if let Some(on_overload_mismatch) = on_type_error.on_overload_mismatch {
             on_overload_mismatch(i_s, class)

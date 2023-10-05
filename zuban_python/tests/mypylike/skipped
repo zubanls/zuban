@@ -1,5 +1,4 @@
 # Next up
-testOverloadingInferUnionReturnWithFunctionTypevarReturn
 
 # 3.7 tests
 testNamedTupleDefaults
