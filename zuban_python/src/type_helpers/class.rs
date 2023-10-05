@@ -1456,7 +1456,7 @@ impl<'db: 'a, 'a> Class<'a> {
         // This is just a weird heuristic Mypy uses, because the type system itself is very unclear
         // what to do if both __new__ and __init__ are present. So just only use __new__ if it's in
         // a lower MRO than an __init__.
-        let is_new = !matches!(__new__, LookupResult::None) && new_mro_index < init_mro_index;
+        let is_new = new_mro_index < init_mro_index;
         NewOrInitConstructor {
             is_new,
             // TODO this should not be bound if is_new = false
