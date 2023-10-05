@@ -86,8 +86,6 @@ testTotalOrderingReturnNotBool
 testTotalOrderingAllowsAny
 testTotalOrderingWithForwardReference
 
-# Overloaded function implementation does not accept all possible arguments with type vars
-testOverloadAndClassTypes
 # Overload class self variable matching (__init__ against __init__)
 testUnpackIterableClassWithOverloadedIter
 testUnpackIterableClassWithOverloadedIter2
