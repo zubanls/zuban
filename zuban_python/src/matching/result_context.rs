@@ -53,6 +53,10 @@ impl<'a> ResultContext<'a, '_> {
         }
     }
 
+    pub fn has_explicit_type(&self) -> bool {
+        matches!(self, Self::Known(_) | Self::WithMatcher { .. })
+    }
+
     pub fn is_literal_context<'db>(&self, i_s: &InferenceState<'db, '_>) -> bool {
         if matches!(self, Self::ExpectLiteral | Self::RevealType)
             || i_s.is_calculating_enum_members()

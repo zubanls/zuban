@@ -1520,7 +1520,19 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             // This is also how mypy does it. See `check_overload_call` (9943444c7)
             let calculated_type_args = match_signature(i_s, result_context, callable);
             return OverloadResult::Single(callable);
-        } else if let Some(on_overload_mismatch) = on_type_error.on_overload_mismatch {
+        }
+        if result_context.has_explicit_type() {
+            return self.find_matching_function(
+                i_s,
+                args,
+                skip_first_argument,
+                class,
+                search_init,
+                &mut ResultContext::Unknown,
+                on_type_error,
+            );
+        }
+        if let Some(on_overload_mismatch) = on_type_error.on_overload_mismatch {
             on_overload_mismatch(i_s, class)
         } else {
             let f_or_c = FunctionOrCallable::Callable(Callable::new(
