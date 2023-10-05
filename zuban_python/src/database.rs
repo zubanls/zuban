@@ -1376,14 +1376,14 @@ impl DbType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FunctionKind {
     Function {
-        had_first_annotation: bool,
+        had_first_self_or_class_annotation: bool,
     },
     Property {
-        had_first_annotation: bool,
+        had_first_self_or_class_annotation: bool,
         writable: bool,
     },
     Classmethod {
-        had_first_annotation: bool,
+        had_first_self_or_class_annotation: bool,
     },
     Staticmethod,
 }
@@ -1402,15 +1402,15 @@ impl FunctionKind {
     pub fn had_first_self_or_class_annotation(self) -> bool {
         match self {
             Self::Function {
-                had_first_annotation,
+                had_first_self_or_class_annotation,
             }
             | Self::Property {
-                had_first_annotation,
+                had_first_self_or_class_annotation,
                 ..
             }
             | Self::Classmethod {
-                had_first_annotation,
-            } => had_first_annotation,
+                had_first_self_or_class_annotation,
+            } => had_first_self_or_class_annotation,
             Self::Staticmethod => true,
         }
     }
@@ -1418,15 +1418,15 @@ impl FunctionKind {
     pub fn update_had_first_self_or_class_annotation(&mut self, new_value: bool) {
         match self {
             Self::Function {
-                had_first_annotation,
+                had_first_self_or_class_annotation,
             }
             | Self::Property {
-                had_first_annotation,
+                had_first_self_or_class_annotation,
                 ..
             }
             | Self::Classmethod {
-                had_first_annotation,
-            } => *had_first_annotation = new_value,
+                had_first_self_or_class_annotation,
+            } => *had_first_self_or_class_annotation = new_value,
             Self::Staticmethod => (),
         }
     }
@@ -1801,7 +1801,7 @@ impl CallableContent {
             class_name: None,
             defined_at,
             kind: FunctionKind::Function {
-                had_first_annotation: false,
+                had_first_self_or_class_annotation: false,
             },
             type_vars,
             params: CallableParams::Any,

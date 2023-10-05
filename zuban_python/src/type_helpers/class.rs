@@ -1354,7 +1354,7 @@ impl<'db: 'a, 'a> Class<'a> {
             class_name: None,
             defined_at: self.node_ref.as_link(),
             kind: FunctionKind::Function {
-                had_first_annotation: true,
+                had_first_self_or_class_annotation: true,
             },
             type_vars: self.use_cached_type_vars(i_s.db).clone(),
             params: CallableParams::Simple(Rc::from(vec)),

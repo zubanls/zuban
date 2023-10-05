@@ -1877,7 +1877,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 class_name: None,
                 defined_at,
                 kind: FunctionKind::Function {
-                    had_first_annotation: true,
+                    had_first_self_or_class_annotation: true,
                 },
                 type_vars: self
                     .inference
@@ -3665,7 +3665,7 @@ pub fn new_typing_named_tuple(
             class_name: None,
             defined_at: args_node_ref.as_link(),
             kind: FunctionKind::Function {
-                had_first_annotation: true,
+                had_first_self_or_class_annotation: true,
             },
             type_vars: type_var_likes,
             params: CallableParams::Simple(Rc::from(params)),
@@ -3743,7 +3743,7 @@ pub fn new_collections_named_tuple(
         class_name: None,
         defined_at: args_node_ref.as_link(),
         kind: FunctionKind::Function {
-            had_first_annotation: true,
+            had_first_self_or_class_annotation: true,
         },
         type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
         params: CallableParams::Simple(Rc::from(params)),

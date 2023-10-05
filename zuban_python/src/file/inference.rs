@@ -1434,7 +1434,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         class_name: None,
                         defined_at: PointLink::new(self.file.file_index(), lambda.index()),
                         kind: FunctionKind::Function {
-                            had_first_annotation: true,
+                            had_first_self_or_class_annotation: true,
                         },
                         type_vars: self.i_s.db.python_state.empty_type_var_likes.clone(),
                         params: CallableParams::Simple(Rc::new([])),
