@@ -9,7 +9,7 @@ use parsa_python_ast::{
 };
 
 use super::enum_::execute_functional_enum;
-use super::function::OverloadResult;
+use super::overload::OverloadResult;
 use super::{Callable, Instance, Module, NamedTupleValue, TypedDictMemberGatherer};
 use crate::arguments::{Arguments, KnownArguments, NoArguments, SimpleArguments};
 use crate::database::{
