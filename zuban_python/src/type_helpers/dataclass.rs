@@ -189,7 +189,9 @@ impl<'a> DataclassHelper<'a> {
                 name: None,
                 class_name: None,
                 defined_at: self.0.class.link,
-                kind: FunctionKind::Function,
+                kind: FunctionKind::Function {
+                    had_first_annotation: false,
+                },
                 type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
                 params: CallableParams::Simple(Rc::new([CallableParam {
                     param_specific: ParamSpecific::PositionalOnly(DbType::Dataclass(
@@ -388,7 +390,9 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
         name: Some(cls.name_string_slice()),
         class_name: None,
         defined_at: cls.node_ref.as_link(),
-        kind: FunctionKind::Function,
+        kind: FunctionKind::Function {
+            had_first_annotation: true,
+        },
         type_vars: match &dataclass.class.generics {
             ClassGenerics::NotDefinedYet => cls.use_cached_type_vars(db).clone(),
             _ => i_s.db.python_state.empty_type_var_likes.clone(),

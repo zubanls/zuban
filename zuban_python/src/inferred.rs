@@ -908,10 +908,10 @@ impl<'db: 'slf, 'slf> Inferred {
         let mut t = t; // Weird lifetime issue
         match t {
             DbType::Callable(c) => match c.kind {
-                FunctionKind::Function
+                FunctionKind::Function { .. }
                     if !matches!(apply_descriptors_kind, ApplyDescriptorsKind::NoBoundMethod) =>
                 {
-                    debug_assert_eq!(c.kind, FunctionKind::Function);
+                    debug_assert!(matches!(c.kind, FunctionKind::Function { .. }));
                     if let Some(f) = c.first_positional_type() {
                         return Some(
                             create_signature_without_self_for_callable(
@@ -927,7 +927,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         todo!()
                     }
                 }
-                FunctionKind::Function => (),
+                FunctionKind::Function { .. } => (),
                 FunctionKind::Property { .. } => {
                     let first = c.first_positional_type();
                     return Some(Some(
@@ -948,7 +948,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         },
                     ));
                 }
-                FunctionKind::Classmethod => {
+                FunctionKind::Classmethod { .. } => {
                     let DbType::Class(instance_cls) = &instance else {
                         todo!("Is this always the case?")
                     };
@@ -1078,7 +1078,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         let file = i_s.db.loaded_python_file(definition.file);
                         match file.complex_points.get(point.complex_index()) {
                             ComplexPoint::FunctionOverload(o) => match o.kind() {
-                                FunctionKind::Function => {
+                                FunctionKind::Function { .. } => {
                                     return Some(Inferred::from_type(DbType::FunctionOverload(
                                         FunctionOverload::new(
                                             o.iter_functions()
@@ -1095,7 +1095,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     )))
                                 }
                                 FunctionKind::Property { .. } => unreachable!(),
-                                FunctionKind::Classmethod => {
+                                FunctionKind::Classmethod { .. } => {
                                     return Some(infer_overloaded_class_method(
                                         i_s,
                                         *class,
@@ -1145,7 +1145,7 @@ impl<'db: 'slf, 'slf> Inferred {
         let mut t = t;
         if let DbType::Callable(c) = t {
             match c.kind {
-                FunctionKind::Function => (),
+                FunctionKind::Function { .. } => (),
                 FunctionKind::Property { .. } => {
                     return if apply_descriptor {
                         Some(Some(Inferred::from_type(
@@ -1155,7 +1155,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         None
                     }
                 }
-                FunctionKind::Classmethod => {
+                FunctionKind::Classmethod { .. } => {
                     let result = infer_class_method(i_s, *class, attribute_class, c);
                     if result.is_none() {
                         let func = prepare_func(i_s, c.defined_at, attribute_class);

@@ -385,13 +385,19 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             return FirstParamKind::ClassOfSelf;
         }
         match self.kind(i_s) {
-            FunctionKind::Function | FunctionKind::Property { .. } => FirstParamKind::Self_,
-            FunctionKind::Classmethod => FirstParamKind::ClassOfSelf,
+            FunctionKind::Function { .. } | FunctionKind::Property { .. } => FirstParamKind::Self_,
+            FunctionKind::Classmethod { .. } => FirstParamKind::ClassOfSelf,
             FunctionKind::Staticmethod => FirstParamKind::InStaticmethod,
         }
     }
 
     pub fn kind(&self, i_s: &InferenceState<'db, '_>) -> FunctionKind {
+        let had_first_annotation = self
+            .node()
+            .params()
+            .iter()
+            .next()
+            .is_some_and(|p| p.annotation().is_some());
         if self.node_ref.point().specific() == Specific::DecoratedFunction {
             // Ensure it's cached
             let inf = self.decorated(i_s);
@@ -410,10 +416,14 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             match self.decorator_ref().complex() {
                 Some(ComplexPoint::FunctionOverload(o)) => o.kind(),
                 Some(ComplexPoint::TypeInstance(DbType::Callable(c))) => c.kind,
-                _ => FunctionKind::Function,
+                _ => FunctionKind::Function {
+                    had_first_annotation,
+                },
             }
         } else {
-            FunctionKind::Function
+            FunctionKind::Function {
+                had_first_annotation,
+            }
         }
     }
 
@@ -436,27 +446,35 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 Inferred::new_any()
             };
         }
-        if matches!(details.kind, FunctionKind::Property { .. }) {
-            let DbType::Callable(mut callable) = details.inferred.as_type(i_s).into_db_type() else {
-                unreachable!()
-            };
-            if let Some(wrong) = callable.has_exactly_one_positional_parameter() {
-                match wrong {
-                    WrongPositionalCount::TooMany => {
-                        NodeRef::new(file, self.expect_decorated_node().index())
-                            .add_issue(i_s, IssueType::TooManyArguments(" for property".into()))
+        match details.kind {
+            FunctionKind::Property {
+                had_first_annotation,
+                ..
+            } => {
+                let DbType::Callable(mut callable) = details.inferred.as_type(i_s).into_db_type() else {
+                    unreachable!()
+                };
+                if let Some(wrong) = callable.has_exactly_one_positional_parameter() {
+                    match wrong {
+                        WrongPositionalCount::TooMany => {
+                            NodeRef::new(file, self.expect_decorated_node().index())
+                                .add_issue(i_s, IssueType::TooManyArguments(" for property".into()))
+                        }
+                        // IssueType::MethodWithoutArguments will be checked and added later.
+                        WrongPositionalCount::TooFew => (),
                     }
-                    // IssueType::MethodWithoutArguments will be checked and added later.
-                    WrongPositionalCount::TooFew => (),
+                    return Inferred::new_any();
                 }
-                return Inferred::new_any();
+                // Make sure the old Rc count is decreased, so we can use it mutable without cloning.
+                drop(details);
+                self.calculate_property_setter_and_deleter(
+                    i_s,
+                    Rc::make_mut(&mut callable),
+                    had_first_annotation,
+                );
+                Inferred::from_type(DbType::Callable(callable))
             }
-            // Make sure the old Rc count is decreased, so we can use it mutable without cloning.
-            drop(details);
-            self.calculate_property_setter_and_deleter(i_s, Rc::make_mut(&mut callable));
-            Inferred::from_type(DbType::Callable(callable))
-        } else {
-            details.inferred
+            _ => details.inferred,
         }
     }
 
@@ -480,7 +498,15 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         };
 
         let mut inferred = Inferred::from_type(self.as_db_type(i_s, FirstParamProperties::None));
-        let mut kind = FunctionKind::Function;
+        let had_first_annotation = self
+            .node()
+            .params()
+            .iter()
+            .next()
+            .is_some_and(|p| p.annotation().is_some());
+        let mut kind = FunctionKind::Function {
+            had_first_annotation,
+        };
         let mut is_overload = false;
         for decorator in decorated.decorators().iter_reverse() {
             if matches!(kind, FunctionKind::Property { .. }) {
@@ -489,7 +515,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 break;
             }
 
-            match infer_decorator(i_s, self.node_ref.file, decorator) {
+            match infer_decorator(i_s, self.node_ref.file, decorator, had_first_annotation) {
                 InferredDecorator::FunctionKind(k) => {
                     match k {
                         FunctionKind::Property { .. } => {
@@ -503,7 +529,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                                 return None;
                             }
                         }
-                        FunctionKind::Classmethod => {
+                        FunctionKind::Classmethod { .. } => {
                             if kind == FunctionKind::Staticmethod {
                                 NodeRef::new(self.node_ref.file, decorated.index())
                                     .add_issue(i_s, IssueType::InvalidClassmethodAndStaticmethod);
@@ -515,7 +541,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                             }
                         }
                         FunctionKind::Staticmethod => {
-                            if kind == FunctionKind::Classmethod {
+                            if matches!(kind, FunctionKind::Classmethod { .. }) {
                                 NodeRef::new(self.node_ref.file, decorated.index())
                                     .add_issue(i_s, IssueType::InvalidClassmethodAndStaticmethod)
                             }
@@ -525,7 +551,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                             }
                         }
                         // A decorator has no way to specify its a normal function.
-                        FunctionKind::Function => unreachable!(),
+                        FunctionKind::Function { .. } => unreachable!(),
                     }
                     kind = k
                 }
@@ -550,7 +576,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             callable_content.class_name = self.class.map(|c| c.name_string_slice());
             callable_content.kind = kind;
             inferred = Inferred::from_type(DbType::Callable(Rc::new(callable_content)));
-        } else if !matches!(kind, FunctionKind::Function | FunctionKind::Staticmethod) {
+        } else if !matches!(
+            kind,
+            FunctionKind::Function { .. } | FunctionKind::Staticmethod
+        ) {
             todo!("{kind:?}")
         }
         Some(FunctionDetails {
@@ -565,6 +594,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         &self,
         i_s: &InferenceState,
         callable: &mut CallableContent,
+        had_first_annotation: bool,
     ) {
         let is_property_modifier = |decorator: Decorator| {
             let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) = decorator.named_expression().expression().unpack() else {
@@ -634,7 +664,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     );
                 }
                 PropertyModifier::Setter => {
-                    callable.kind = FunctionKind::Property { writable: true };
+                    callable.kind = FunctionKind::Property {
+                        had_first_annotation,
+                        writable: true,
+                    };
                     continue;
                 }
                 PropertyModifier::Deleter => continue,
@@ -695,18 +728,24 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     inferred: Inferred::from_type(
                         next_func.as_db_type(i_s, FirstParamProperties::None),
                     ),
-                    kind: FunctionKind::Function,
+                    kind: FunctionKind::Function {
+                        had_first_annotation: self
+                            .node()
+                            .params()
+                            .iter()
+                            .next()
+                            .is_some_and(|p| p.annotation().is_some()),
+                    },
                     is_overload: false,
                     has_decorator: false,
                 },
                 _ => unreachable!(),
             };
-            if details.kind != next_details.kind {
-                if details.kind != FunctionKind::Function {
-                    inconsistent_function_kind = Some(details.kind);
-                }
-                if next_details.kind != FunctionKind::Function {
-                    inconsistent_function_kind = Some(next_details.kind);
+            if !details.kind.is_same_base_kind(next_details.kind) {
+                if matches!(details.kind, FunctionKind::Function { .. }) {
+                    inconsistent_function_kind = Some(next_details.kind)
+                } else {
+                    inconsistent_function_kind = Some(details.kind)
                 }
             }
             if next_details.has_decorator {
@@ -901,13 +940,19 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         has_self_type_var_usage: bool,
         mut as_db_type: impl FnMut(&InferenceState, Type) -> DbType,
     ) -> CallableContent {
-        let kind = match self.node_ref.point().specific() {
-            Specific::DecoratedFunction => {
-                kind_of_decorators(i_s, self.node_ref.file, self.expect_decorated_node())
-            }
-            _ => FunctionKind::Function,
-        };
         let mut params = params.peekable();
+        let had_first_annotation = params.peek().is_some_and(|p| p.annotation(i_s).is_some());
+        let kind = match self.node_ref.point().specific() {
+            Specific::DecoratedFunction => kind_of_decorators(
+                i_s,
+                self.node_ref.file,
+                self.expect_decorated_node(),
+                had_first_annotation,
+            ),
+            _ => FunctionKind::Function {
+                had_first_annotation,
+            },
+        };
         let result_type = self.result_type(i_s);
         let mut result_type = as_db_type(i_s, result_type);
         if self.is_async() && !self.is_generator() {
@@ -924,7 +969,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             class_name: self.class.map(|c| c.name_string_slice()),
             defined_at: self.node_ref.as_link(),
             // The actual kind is set by using the decorated() function.
-            kind: FunctionKind::Function,
+            kind: FunctionKind::Function {
+                had_first_annotation,
+            },
             params,
             type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
             result_type,
@@ -950,10 +997,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                             DbType::Self_
                         } else {
                             match kind {
-                                FunctionKind::Function | FunctionKind::Property { .. } => {
+                                FunctionKind::Function { .. } | FunctionKind::Property { .. } => {
                                     self.class.unwrap().as_db_type(i_s.db)
                                 }
-                                FunctionKind::Classmethod => DbType::Any,
+                                FunctionKind::Classmethod { .. } => DbType::Any,
                                 FunctionKind::Staticmethod => DbType::Any,
                             }
                         }
@@ -1961,19 +2008,25 @@ fn kind_of_decorators(
     i_s: &InferenceState,
     file: &PythonFile,
     decorated: Decorated,
+    had_first_annotation: bool,
 ) -> FunctionKind {
     for decorator in decorated.decorators().iter() {
-        if let InferredDecorator::FunctionKind(kind) = infer_decorator(i_s, file, decorator) {
+        if let InferredDecorator::FunctionKind(kind) =
+            infer_decorator(i_s, file, decorator, had_first_annotation)
+        {
             return kind;
         }
     }
-    FunctionKind::Function
+    FunctionKind::Function {
+        had_first_annotation: false,
+    }
 }
 
 fn infer_decorator(
     i_s: &InferenceState,
     file: &PythonFile,
     decorator: Decorator,
+    had_first_annotation: bool,
 ) -> InferredDecorator {
     let node_ref = NodeRef::new(file, decorator.index());
     let mut inference = file.inference(i_s);
@@ -1991,7 +2044,9 @@ fn infer_decorator(
         // All these cases are classes.
         if let Some(class_def) = node_ref.maybe_class() {
             if saved_link == i_s.db.python_state.classmethod_node_ref().as_link() {
-                return InferredDecorator::FunctionKind(FunctionKind::Classmethod);
+                return InferredDecorator::FunctionKind(FunctionKind::Classmethod {
+                    had_first_annotation,
+                });
             }
             if saved_link == i_s.db.python_state.staticmethod_node_ref().as_link() {
                 return InferredDecorator::FunctionKind(FunctionKind::Staticmethod);
@@ -2003,10 +2058,16 @@ fn infer_decorator(
             if class.class_link_in_mro(i_s.db, i_s.db.python_state.property_node_ref().as_link())
                 || saved_link == i_s.db.python_state.abstractproperty_link()
             {
-                return InferredDecorator::FunctionKind(FunctionKind::Property { writable: false });
+                return InferredDecorator::FunctionKind(FunctionKind::Property {
+                    had_first_annotation,
+                    writable: false,
+                });
             }
             if class.class_link_in_mro(i_s.db, i_s.db.python_state.cached_property_link()) {
-                return InferredDecorator::FunctionKind(FunctionKind::Property { writable: true });
+                return InferredDecorator::FunctionKind(FunctionKind::Property {
+                    had_first_annotation,
+                    writable: true,
+                });
             }
         }
     }

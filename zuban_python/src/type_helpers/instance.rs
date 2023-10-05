@@ -106,7 +106,9 @@ impl<'a> Instance<'a> {
                 }
                 DbType::Callable(c) if matches!(c.kind, FunctionKind::Property { .. }) => {
                     match c.kind {
-                        FunctionKind::Property { writable: false } => {
+                        FunctionKind::Property {
+                            writable: false, ..
+                        } => {
                             if let Some(class) = class {
                                 from.add_issue(
                                     i_s,
@@ -119,7 +121,7 @@ impl<'a> Instance<'a> {
                                 todo!()
                             }
                         }
-                        FunctionKind::Property { writable: true } => {
+                        FunctionKind::Property { writable: true, .. } => {
                             check_compatible(&Type::new(&c.result_type), value);
                         }
                         _ => unreachable!(),

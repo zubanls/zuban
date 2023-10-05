@@ -1375,10 +1375,29 @@ impl DbType {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FunctionKind {
-    Function,
-    Property { writable: bool },
-    Classmethod,
+    Function {
+        had_first_annotation: bool,
+    },
+    Property {
+        had_first_annotation: bool,
+        writable: bool,
+    },
+    Classmethod {
+        had_first_annotation: bool,
+    },
     Staticmethod,
+}
+
+impl FunctionKind {
+    pub fn is_same_base_kind(self, other: Self) -> bool {
+        match (self, other) {
+            (Self::Function { .. }, Self::Function { .. })
+            | (Self::Property { .. }, Self::Property { .. })
+            | (Self::Classmethod { .. }, Self::Classmethod { .. })
+            | (Self::Staticmethod, Self::Staticmethod) => true,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -1749,7 +1768,9 @@ impl CallableContent {
             name: None,
             class_name: None,
             defined_at,
-            kind: FunctionKind::Function,
+            kind: FunctionKind::Function {
+                had_first_annotation: false,
+            },
             type_vars,
             params: CallableParams::Any,
             result_type: DbType::Any,
