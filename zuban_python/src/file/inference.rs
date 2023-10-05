@@ -979,12 +979,19 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         } else if let Some(len) = value_iterator.len() {
                             let fetch = len - normal;
                             let union = Inferred::gather_base_types(self.i_s, |callable| {
-                                for _ in 0..(len - normal) {
+                                for _ in 0..fetch {
                                     callable(value_iterator.next(self.i_s).unwrap());
                                 }
                             });
+                            let mut generic = union.as_db_type(self.i_s);
+                            if fetch == 0 {
+                                if let Some(t) = self.infer_target(star_target.as_target()) {
+                                    // The type is already defined, just use any here, because the
+                                    // list really can be anything.
+                                    generic = DbType::Any
+                                }
+                            }
 
-                            let generic = union.as_db_type(self.i_s);
                             let list = Inferred::from_type(new_class!(
                                 self.i_s.db.python_state.list_node_ref().as_link(),
                                 generic,
@@ -1021,13 +1028,26 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             is_definition,
                         );
                         for target in targets {
-                            counter += 1;
-                            self.assign_targets(
-                                target,
-                                Inferred::new_any(),
-                                value_node_ref,
-                                is_definition,
-                            );
+                            match target {
+                                Target::Starred(starred) => {
+                                    self.assign_targets(
+                                        starred.as_target(),
+                                        // TODO this should not be Any
+                                        Inferred::new_any(),
+                                        value_node_ref,
+                                        is_definition,
+                                    );
+                                }
+                                _ => {
+                                    counter += 1;
+                                    self.assign_targets(
+                                        target,
+                                        Inferred::new_any(),
+                                        value_node_ref,
+                                        is_definition,
+                                    );
+                                }
+                            }
                         }
                         value_node_ref.add_issue(
                             self.i_s,

@@ -317,6 +317,7 @@ testClassWithinFunction
 testDeclareVariableWithNestedClassType
 # function types in class body
 testMethodRefInClassBody
+testRefMethodWithDecorator
 # Class argument and __init__ as overloaded DbType
 testOverloadedToGeneric
 
@@ -351,8 +352,6 @@ testClassmethodAndNonMethod
 testOverloadWithSwappedDecorators2
 # "Static methods cannot use Self type"
 testTypingSelfClassMethod
-# staticmethod
-testRefMethodWithDecorator
 
 # "The erased type of self "Type[__main__.A]" is not a supertype of its class "Type[__main__.B]""
 testSelfTypeNonsensical
@@ -380,8 +379,6 @@ testUnionOfVariableLengthTupleUnpacking
 testUnionUnpackingChainedList2
 # star unpacking for tuples
 testAssignmentToStarAnnotation
-testAssignmentToStarCount1
-testAssignmentToStarCount2
 testAssignmentToStarFromAny
 testAssignmentToComplexStar
 testAssignmentToStarFromTupleType
