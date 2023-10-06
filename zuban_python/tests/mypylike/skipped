@@ -195,6 +195,7 @@ testDictWithKeywordArgs
 
 # Tuple type comment definitions with list assignment
 testMultipleAssignmentWithListsInInitialization
+testAssignmentToStarAnnotation
 # List literal inference that works like a tuple?
 testInferringLvarTypesInNestedListAssignment
 testNestedListAssignment
@@ -378,15 +379,11 @@ testUnionOfVariableLengthTupleUnpacking
 # Union IteratorContent len() call
 testUnionUnpackingChainedList2
 # star unpacking for tuples
-testAssignmentToStarAnnotation
-testAssignmentToStarFromAny
 testAssignmentToComplexStar
 testAssignmentToStarFromTupleType
 testStarredExpressionsInForLoop
 testStarExpression
 testStarExpressionInFor
-testTwoStarExpressions
-testTwoStarExpressionsInForStmt
 # star input for tuple
 testTupleWithStarExpr2
 testTupleWithStarExpr3

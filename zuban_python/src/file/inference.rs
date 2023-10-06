@@ -962,14 +962,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 IssueType::MultipleStarredExpressionsInAssignment,
                             );
                             self.assign_targets(
-                                target,
+                                star_target.as_target(),
                                 Inferred::new_any(),
                                 value_node_ref,
                                 is_definition,
                             );
                             for target in targets {
                                 self.assign_targets(
-                                    star_target.as_target(),
+                                    target,
                                     Inferred::new_any(),
                                     value_node_ref,
                                     is_definition,
@@ -1028,26 +1028,15 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             is_definition,
                         );
                         for target in targets {
-                            match target {
-                                Target::Starred(starred) => {
-                                    self.assign_targets(
-                                        starred.as_target(),
-                                        // TODO this should not be Any
-                                        Inferred::new_any(),
-                                        value_node_ref,
-                                        is_definition,
-                                    );
-                                }
-                                _ => {
-                                    counter += 1;
-                                    self.assign_targets(
-                                        target,
-                                        Inferred::new_any(),
-                                        value_node_ref,
-                                        is_definition,
-                                    );
-                                }
+                            if !matches!(target, Target::Starred(_)) {
+                                counter += 1;
                             }
+                            self.assign_targets(
+                                target,
+                                Inferred::new_any(),
+                                value_node_ref,
+                                is_definition,
+                            );
                         }
                         value_node_ref.add_issue(
                             self.i_s,
@@ -1060,8 +1049,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                 }
             }
-            Target::Starred(n) => {
-                todo!("Star tuple unpack");
+            Target::Starred(starred) => {
+                // This is always invalid, just set it to Any. Issues were added before.
+                self.assign_targets(
+                    starred.as_target(),
+                    Inferred::new_any(),
+                    value_node_ref,
+                    is_definition,
+                );
             }
             _ => self.assign_single_target(
                 target,
