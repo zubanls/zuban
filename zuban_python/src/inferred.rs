@@ -6,8 +6,9 @@ use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
 use crate::database::{
     CallableContent, CallableParams, ClassGenerics, ComplexPoint, Database, DbString, DbType, Enum,
     FileIndex, FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList,
-    Literal as DbLiteral, LiteralKind, Locality, MroIndex, NewType, OverloadDefinition, Point,
-    PointLink, PointType, Specific, TypeVarKind, TypeVarLike, TypeVarLikes, TypedDict,
+    Literal as DbLiteral, LiteralKind, LiteralValue, Locality, MroIndex, NewType,
+    OverloadDefinition, Point, PointLink, PointType, Specific, TypeVarKind, TypeVarLike,
+    TypeVarLikes, TypedDict,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -449,6 +450,40 @@ impl<'db: 'slf, 'slf> Inferred {
             from_type(t)
         } else {
             UnionValue::Any
+        }
+    }
+
+    pub fn run_on_int_literals(
+        &self,
+        i_s: &InferenceState,
+        callable: impl Fn(isize) -> Option<Inferred>,
+    ) -> Option<Inferred> {
+        let infer = |i_s: &InferenceState, literal: DbLiteral| {
+            if !matches!(literal.kind, LiteralKind::Int(_)) {
+                return None;
+            }
+            let LiteralValue::Int(i) = literal.value(i_s.db) else {
+                unreachable!();
+            };
+            let index = isize::try_from(i).ok().unwrap_or_else(|| todo!());
+            callable(index)
+        };
+        match self.maybe_literal(i_s.db) {
+            UnionValue::Single(literal) => infer(i_s, literal),
+            UnionValue::Multiple(mut literals) => literals
+                .next()
+                .and_then(|l| infer(i_s, l))
+                .and_then(|mut inferred| {
+                    for literal in literals {
+                        if let Some(new_inf) = infer(i_s, literal) {
+                            inferred = inferred.simplified_union(i_s, new_inf);
+                        } else {
+                            return None;
+                        }
+                    }
+                    Some(inferred)
+                }),
+            UnionValue::Any => None,
         }
     }
 

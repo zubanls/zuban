@@ -606,39 +606,9 @@ pub fn infer_index(
     expr: Expression,
     callable: impl Fn(isize) -> Option<Inferred>,
 ) -> Option<Inferred> {
-    let infer = |i_s: &InferenceState, literal: Literal| {
-        if !matches!(literal.kind, LiteralKind::Int(_)) {
-            return None;
-        }
-        let LiteralValue::Int(i) = literal.value(i_s.db) else {
-            unreachable!();
-        };
-        let index = isize::try_from(i).ok().unwrap_or_else(|| todo!());
-        callable(index)
-    };
-    match file
-        .inference(i_s)
+    file.inference(i_s)
         .infer_expression_with_context(expr, &mut ResultContext::ExpectLiteral)
-        .maybe_literal(i_s.db)
-    {
-        UnionValue::Single(literal) => infer(i_s, literal),
-        UnionValue::Multiple(mut literals) => {
-            literals
-                .next()
-                .and_then(|l| infer(i_s, l))
-                .and_then(|mut inferred| {
-                    for literal in literals {
-                        if let Some(new_inf) = infer(i_s, literal) {
-                            inferred = inferred.simplified_union(i_s, new_inf);
-                        } else {
-                            return None;
-                        }
-                    }
-                    Some(inferred)
-                })
-        }
-        UnionValue::Any => None,
-    }
+        .run_on_int_literals(i_s, callable)
 }
 
 pub fn infer_string_index(
