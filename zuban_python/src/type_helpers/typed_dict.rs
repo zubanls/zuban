@@ -18,7 +18,7 @@ use crate::{
     utils::join_with_commas,
 };
 
-use super::Instance;
+use super::{utils::method_with_fallback, Instance};
 
 #[derive(Default)]
 pub struct TypedDictMemberGatherer {
@@ -339,26 +339,6 @@ pub fn infer_typed_dict_total_argument(
     }
 }
 
-fn method_with_fallback<'db>(
-    i_s: &InferenceState<'db, '_>,
-    args: &dyn Arguments<'db>,
-    result_context: &mut ResultContext,
-    on_type_error: OnTypeError<'db, '_>,
-    td: &TypedDict,
-    name: &str,
-    handler: fn(
-        i_s: &InferenceState<'db, '_>,
-        td: &TypedDict,
-        args: &dyn Arguments<'db>,
-    ) -> Option<Inferred>,
-) -> Inferred {
-    handler(i_s, td, args).unwrap_or_else(|| {
-        let inst = Instance::new(i_s.db.python_state.typed_dict_class(), None);
-        inst.lookup(i_s, args.as_node_ref(), name, LookupKind::OnlyType)
-            .into_inferred()
-            .execute_with_details(i_s, args, result_context, on_type_error)
-    })
-}
 pub fn typed_dict_get<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Arguments<'db>,
@@ -369,7 +349,7 @@ pub fn typed_dict_get<'db>(
     let DbType::TypedDict(td) = bound.unwrap() else {
         unreachable!();
     };
-    method_with_fallback(
+    typed_dict_method_with_fallback(
         i_s,
         args,
         result_context,
@@ -419,6 +399,31 @@ fn typed_dict_get_internal<'db>(
     ))
 }
 
+fn typed_dict_method_with_fallback<'db>(
+    i_s: &InferenceState<'db, '_>,
+    args: &dyn Arguments<'db>,
+    result_context: &mut ResultContext,
+    on_type_error: OnTypeError<'db, '_>,
+    td: &TypedDict,
+    name: &str,
+    handler: fn(
+        i_s: &InferenceState<'db, '_>,
+        td: &TypedDict,
+        args: &dyn Arguments<'db>,
+    ) -> Option<Inferred>,
+) -> Inferred {
+    method_with_fallback(
+        i_s,
+        args,
+        result_context,
+        on_type_error,
+        td,
+        name,
+        handler,
+        || Instance::new(i_s.db.python_state.typed_dict_class(), None),
+    )
+}
+
 fn typed_dict_setitem<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Arguments<'db>,
@@ -429,7 +434,7 @@ fn typed_dict_setitem<'db>(
     let DbType::TypedDict(td) = bound.unwrap() else {
         unreachable!();
     };
-    method_with_fallback(
+    typed_dict_method_with_fallback(
         i_s,
         args,
         result_context,
@@ -493,7 +498,7 @@ fn typed_dict_delitem<'db>(
     let DbType::TypedDict(td) = bound.unwrap() else {
         unreachable!();
     };
-    method_with_fallback(
+    typed_dict_method_with_fallback(
         i_s,
         args,
         result_context,
@@ -549,7 +554,7 @@ fn typed_dict_update<'db>(
     let DbType::TypedDict(td) = bound.unwrap() else {
         unreachable!();
     };
-    method_with_fallback(
+    typed_dict_method_with_fallback(
         i_s,
         args,
         result_context,

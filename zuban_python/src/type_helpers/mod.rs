@@ -11,6 +11,7 @@ mod overload;
 mod tuple;
 mod typed_dict;
 mod typing;
+mod utils;
 
 pub use bound_method::{BoundMethod, BoundMethodFunction};
 pub use callable::{format_pretty_callable, merge_class_type_vars_into_callable, Callable};
