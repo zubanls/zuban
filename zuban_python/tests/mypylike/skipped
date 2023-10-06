@@ -385,11 +385,7 @@ testStarredExpressionsInForLoop
 testStarExpression
 testStarExpressionInFor
 # star input for tuple
-testTupleWithStarExpr2
-testTupleWithStarExpr3
 testTupleWithStarExpr
-# "Can use starred expression only as assignment target"
-testUnpackSyntaxError
 # union tuple index
 testUnionOfTupleIndex
 testUnionOfTupleIndexMixed
@@ -402,10 +398,6 @@ testMultiplyTupleByIntegerLiteralReverse
 testAssigningWithLongTupleInitializer
 # Tuple operator in
 testTupleMethods
-# tuple maybe ok error messages?
-testTupleWithUndersizedContext
-testTupleWithOversizedContext
-testAssignEmptyBogus
 # tuple assignment tuple[Any, ...] to tuple[A, A]
 testSubtypingWithNamedTupleType
 # tuple type expected for multiple variables

@@ -1559,6 +1559,12 @@ pub enum StarExpressionContent<'db> {
     Tuple(StarExpressionsTuple<'db>),
 }
 
+impl<'db> StarExpression<'db> {
+    pub fn expression_part(&self) -> ExpressionPart<'db> {
+        ExpressionPart::new(self.node.nth_child(1))
+    }
+}
+
 impl<'db> StarNamedExpression<'db> {
     pub fn expression_part(&self) -> ExpressionPart<'db> {
         ExpressionPart::new(self.node.nth_child(1))

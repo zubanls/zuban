@@ -21,7 +21,10 @@ use crate::utils::join_with_commas;
 use crate::{debug, new_class, Inferred};
 
 impl<'db> Inference<'db, '_, '_> {
-    pub fn create_list_or_set_generics(&mut self, elements: StarLikeExpressionIterator) -> DbType {
+    pub fn create_list_or_set_generics<'x>(
+        &mut self,
+        elements: impl Iterator<Item = StarLikeExpression<'x>>,
+    ) -> DbType {
         let mut result = None;
         for child in elements {
             let t = match child {

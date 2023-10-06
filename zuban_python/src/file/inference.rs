@@ -1790,6 +1790,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         result_context: &mut ResultContext,
     ) -> Inferred {
         let mut generics = vec![];
+        let mut is_arbitrary_length = false;
         result_context.with_tuple_context_iterator(self.i_s, |tuple_context_iterator| {
             for (e, mut result_context) in iterator.clone().zip(tuple_context_iterator) {
                 match e {
@@ -1815,16 +1816,26 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 generics.push(TypeOrTypeVarTuple::Type(inf.as_db_type(self.i_s)))
                             }
                         } else {
-                            todo!()
+                            is_arbitrary_length = true;
+                            return;
                         }
                     }
                     StarLikeExpression::StarExpression(e) => {
+                        let inferred = self.infer_expression_part(
+                            e.expression_part(),
+                            &mut ResultContext::Unknown,
+                        );
                         todo!()
                     }
                 }
             }
         });
-        let content = TupleContent::new_fixed_length(generics.into());
+        let content = if is_arbitrary_length {
+            let generic = self.create_list_or_set_generics(iterator);
+            TupleContent::new_arbitrary_length(generic)
+        } else {
+            TupleContent::new_fixed_length(generics.into())
+        };
         debug!(
             "Inferred: {}",
             content.format(&FormatData::new_short(self.i_s.db))
