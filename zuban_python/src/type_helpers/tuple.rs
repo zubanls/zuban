@@ -1,6 +1,9 @@
 use std::rc::Rc;
 
-use crate::database::{DbType, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple};
+use crate::arguments::Arguments;
+use crate::database::{
+    CustomBehavior, DbType, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple,
+};
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::infer_index;
@@ -8,10 +11,12 @@ use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{
-    simplified_union_from_iterators, IteratorContent, LookupResult, ResultContext,
+    simplified_union_from_iterators, IteratorContent, LookupResult, OnTypeError, ResultContext,
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::Instance;
+
+use super::utils::method_with_fallback;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Tuple<'a> {
@@ -40,6 +45,14 @@ impl<'a> Tuple<'a> {
     }
 
     pub fn lookup(&self, i_s: &InferenceState, node_ref: NodeRef, name: &str) -> LookupResult {
+        if name == "__mul__" {
+            return LookupResult::UnknownName(Inferred::from_type(DbType::CustomBehavior(
+                CustomBehavior::new_method(
+                    tuple_mul,
+                    Some(Rc::new(DbType::Tuple(self.content.clone()))),
+                ),
+            )));
+        }
         let tuple_cls = i_s.db.python_state.tuple_class(i_s.db, self.content);
         let tuple_instance = Instance::new(tuple_cls, None);
         for (mro_index, class_or_type) in tuple_cls.mro(i_s.db) {
@@ -165,4 +178,47 @@ fn simplified_union_of_tuple_entries(
         highest_union_format_index,
         false,
     )
+}
+
+fn tuple_mul<'db>(
+    i_s: &InferenceState<'db, '_>,
+    args: &dyn Arguments<'db>,
+    result_context: &mut ResultContext,
+    on_type_error: OnTypeError<'db, '_>,
+    bound: Option<&DbType>,
+) -> Inferred {
+    let DbType::Tuple(tuple) = bound.unwrap() else {
+        unreachable!();
+    };
+    method_with_fallback(
+        i_s,
+        args,
+        result_context,
+        on_type_error,
+        tuple.clone(),
+        "__mul__",
+        tuple_mul_internal,
+        || Instance::new(i_s.db.python_state.tuple_class(i_s.db, tuple), None),
+    )
+}
+
+fn tuple_mul_internal<'db>(
+    i_s: &InferenceState<'db, '_>,
+    tuple: Rc<TupleContent>,
+    args: &dyn Arguments<'db>,
+) -> Option<Inferred> {
+    let first = args.maybe_single_positional_arg(i_s, &mut ResultContext::ExpectLiteral)?;
+    if let Some(TupleTypeArguments::FixedLength(ts)) = &tuple.args {
+        first.run_on_int_literals(i_s, |int| {
+            let int = int.max(0);
+            if int > 10 {
+                todo!("Do we really want extremely large tuples?")
+            }
+            Some(Inferred::from_type(DbType::Tuple(Rc::new(
+                TupleContent::new_fixed_length(ts.iter().cloned().collect()),
+            ))))
+        })
+    } else {
+        Some(Inferred::from_type(DbType::Tuple(tuple)))
+    }
 }
