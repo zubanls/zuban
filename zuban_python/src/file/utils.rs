@@ -164,10 +164,7 @@ impl<'db> Inference<'db, '_, '_> {
         for element in dict.iter_elements() {
             match element {
                 DictElement::KeyValue(key_value) => {
-                    let inf = self.infer_expression_with_context(
-                        key_value.key(),
-                        &mut ResultContext::ExpectLiteral,
-                    );
+                    let inf = self.infer_expression(key_value.key());
                     let node_ref =
                         NodeRef::new(self.file, key_value.index()).to_db_lifetime(i_s.db);
                     match inf.maybe_string_literal(i_s) {
@@ -605,7 +602,7 @@ pub fn infer_index(
     callable: impl Fn(isize) -> Option<Inferred>,
 ) -> Option<Inferred> {
     file.inference(i_s)
-        .infer_expression_with_context(expr, &mut ResultContext::ExpectLiteral)
+        .infer_expression(expr)
         .run_on_int_literals(i_s, callable)
 }
 
@@ -627,7 +624,7 @@ pub fn infer_string_index(
     };
 
     match simple
-        .infer(i_s, &mut ResultContext::ExpectLiteral)
+        .infer(i_s, &mut ResultContext::Unknown)
         .maybe_literal(i_s.db)
     {
         UnionValue::Single(literal) => infer(i_s, literal),

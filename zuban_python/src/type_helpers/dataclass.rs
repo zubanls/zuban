@@ -35,7 +35,7 @@ pub fn check_dataclass_options<'db>(
 ) -> DataclassOptions {
     let mut options = DataclassOptions::default();
     let assign_option = |target: &mut _, arg: Argument<'db, '_>| {
-        let result = arg.infer(i_s, &mut ResultContext::ExpectLiteral);
+        let result = arg.infer(i_s, &mut ResultContext::Unknown);
         if let Some(bool_) = result.maybe_bool_literal(i_s) {
             *target = bool_;
         } else {
@@ -459,7 +459,7 @@ fn field_options_from_args<'db>(
             match key {
                 "default" | "default_factory" => options.has_default = true,
                 "kw_only" => {
-                    let result = arg.infer(i_s, &mut ResultContext::ExpectLiteral);
+                    let result = arg.infer(i_s, &mut ResultContext::Unknown);
                     if let Some(bool_) = result.maybe_bool_literal(i_s) {
                         options.kw_only = Some(bool_);
                     } else {
@@ -467,7 +467,7 @@ fn field_options_from_args<'db>(
                     }
                 }
                 "init" => {
-                    let result = arg.infer(i_s, &mut ResultContext::ExpectLiteral);
+                    let result = arg.infer(i_s, &mut ResultContext::Unknown);
                     if let Some(bool_) = result.maybe_bool_literal(i_s) {
                         options.init = bool_
                     } else {

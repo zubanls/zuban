@@ -207,7 +207,7 @@ fn tuple_mul_internal<'db>(
     tuple: Rc<TupleContent>,
     args: &dyn Arguments<'db>,
 ) -> Option<Inferred> {
-    let first = args.maybe_single_positional_arg(i_s, &mut ResultContext::ExpectLiteral)?;
+    let first = args.maybe_single_positional_arg(i_s, &mut ResultContext::Unknown)?;
     if let Some(TupleTypeArguments::FixedLength(ts)) = &tuple.args {
         first.run_on_int_literals(i_s, |int| {
             let int = int.max(0);

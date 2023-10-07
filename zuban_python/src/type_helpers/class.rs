@@ -866,8 +866,7 @@ impl<'db: 'a, 'a> Class<'a> {
             if let Argument::Keyword(kwarg) = argument {
                 let (name, expr) = kwarg.unpack();
                 if name.as_code() == "total" {
-                    let inf = inference
-                        .infer_expression_with_context(expr, &mut ResultContext::ExpectLiteral);
+                    let inf = inference.infer_expression(expr);
                     total = infer_typed_dict_total_argument(
                         i_s,
                         inf,

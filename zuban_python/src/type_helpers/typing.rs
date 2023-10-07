@@ -199,7 +199,7 @@ pub fn execute_assert_type<'db>(
         return error_non_positional()
     };
     let first = if matches!(result_context, ResultContext::ExpectUnused) {
-        first.infer(i_s, &mut ResultContext::ExpectLiteral)
+        first.infer(i_s, &mut ResultContext::Unknown)
     } else {
         first.infer(i_s, result_context)
     };

@@ -526,7 +526,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         if let Some(right_side) = right_side {
                             let right = self.infer_assignment_right_side(
                                 right_side,
-                                &mut ResultContext::ExpectLiteral,
+                                &mut ResultContext::Unknown,
                             );
                             self.assign_single_target(
                                 target,
@@ -1670,7 +1670,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     pub fn infer_primary_or_atom(&mut self, p: PrimaryOrAtom) -> Inferred {
         match p {
             PrimaryOrAtom::Primary(primary) => {
-                self.infer_primary(primary, &mut ResultContext::ExpectLiteral)
+                self.infer_primary(primary, &mut ResultContext::Unknown)
             }
             PrimaryOrAtom::Atom(atom) => self.infer_atom(atom, &mut ResultContext::Unknown),
         }

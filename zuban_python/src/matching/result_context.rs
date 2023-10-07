@@ -12,7 +12,6 @@ pub enum ResultContext<'a, 'b> {
     },
     AssignmentNewDefinition,
     Unknown,
-    ExpectLiteral,
     ExpectUnused,
     RevealType,
 }
@@ -31,7 +30,6 @@ impl<'a> ResultContext<'a, '_> {
             }
             Self::Unknown
             | Self::AssignmentNewDefinition
-            | Self::ExpectLiteral
             | Self::ExpectUnused
             | Self::RevealType => None,
         }
@@ -47,7 +45,6 @@ impl<'a> ResultContext<'a, '_> {
             Self::WithMatcher { matcher, type_ } => Some(callable(i_s, Type::new(type_), matcher)),
             Self::Unknown
             | Self::AssignmentNewDefinition
-            | Self::ExpectLiteral
             | Self::ExpectUnused
             | Self::RevealType => None,
         }
@@ -80,7 +77,6 @@ impl<'a> ResultContext<'a, '_> {
                 matches!(type_, DbType::Union(_))
             }
             Self::Unknown
-            | Self::ExpectLiteral
             | Self::ExpectUnused
             | Self::RevealType
             | Self::AssignmentNewDefinition => false,
@@ -124,7 +120,6 @@ impl<'a> ResultContext<'a, '_> {
         .flatten()
         .unwrap_or_else(|| {
             callable(match self {
-                Self::ExpectLiteral | Self::RevealType => TupleContextIterator::ExpectLiterals,
                 _ => TupleContextIterator::Unknown,
             })
         })
@@ -137,7 +132,6 @@ impl fmt::Debug for ResultContext<'_, '_> {
             Self::Known(t) => write!(f, "Known({t:?})"),
             Self::WithMatcher { type_, .. } => write!(f, "WithMatcher(_, {type_:?})"),
             Self::Unknown => write!(f, "Unknown"),
-            Self::ExpectLiteral => write!(f, "ExpectLiteral"),
             Self::ExpectUnused => write!(f, "ExpectUnused"),
             Self::RevealType => write!(f, "RevealType"),
             Self::AssignmentNewDefinition => write!(f, "AssignmentNewDefinition"),
@@ -148,7 +142,6 @@ impl fmt::Debug for ResultContext<'_, '_> {
 pub enum TupleContextIterator<'a> {
     ArbitraryLength(&'a DbType),
     FixedLength(std::slice::Iter<'a, TypeOrTypeVarTuple>),
-    ExpectLiterals,
     Unknown,
 }
 
@@ -170,7 +163,6 @@ impl<'a> Iterator for TupleContextIterator<'a> {
                     None => ResultContext::Unknown,
                 }
             }
-            Self::ExpectLiterals => ResultContext::ExpectLiteral,
             Self::Unknown => ResultContext::Unknown,
         })
     }

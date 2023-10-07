@@ -253,7 +253,7 @@ fn new_typed_dict_internal<'db>(
             ArgumentKind::Keyword { key: "total", .. } => {
                 total = infer_typed_dict_total_argument(
                     i_s,
-                    next.infer(i_s, &mut ResultContext::ExpectLiteral),
+                    next.infer(i_s, &mut ResultContext::Unknown),
                     next.as_node_ref(),
                 )?;
             }
@@ -381,7 +381,7 @@ fn typed_dict_get_internal<'db>(
         None => Some(DbType::None),
     };
 
-    let inferred_name = first_arg.maybe_positional_arg(i_s, &mut ResultContext::ExpectLiteral)?;
+    let inferred_name = first_arg.maybe_positional_arg(i_s, &mut ResultContext::Unknown)?;
     Some(Inferred::from_type(
         if let Some(name) = inferred_name.maybe_string_literal(i_s) {
             if let Some(member) = td.find_member(i_s.db, name.as_str(i_s.db)) {
@@ -456,7 +456,7 @@ fn typed_dict_setitem_internal<'db>(
     if iterator.next().is_some() {
         return None;
     }
-    let inf_key = first_arg.maybe_positional_arg(i_s, &mut ResultContext::ExpectLiteral)?;
+    let inf_key = first_arg.maybe_positional_arg(i_s, &mut ResultContext::Unknown)?;
     let value = second_arg.maybe_positional_arg(i_s, &mut ResultContext::Unknown)?;
     if let Some(literal) = inf_key.maybe_string_literal(i_s) {
         let key = literal.as_str(i_s.db);
@@ -514,7 +514,7 @@ fn typed_dict_delitem_internal<'db>(
     td: &TypedDict,
     args: &dyn Arguments<'db>,
 ) -> Option<Inferred> {
-    let inf_key = args.maybe_single_positional_arg(i_s, &mut ResultContext::ExpectLiteral)?;
+    let inf_key = args.maybe_single_positional_arg(i_s, &mut ResultContext::Unknown)?;
 
     if let Some(key) = inf_key.maybe_string_literal(i_s) {
         let key = key.as_str(i_s.db);

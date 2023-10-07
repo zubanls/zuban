@@ -77,10 +77,7 @@ pub fn infer_value_on_member(
                     .infer_name(name)
             } else {
                 let expr = node_ref.as_expression();
-                node_ref
-                    .file
-                    .inference(i_s)
-                    .infer_expression_with_context(expr, &mut ResultContext::ExpectLiteral)
+                node_ref.file.inference(i_s).infer_expression(expr)
             };
             match inferred.as_type(i_s).as_ref() {
                 DbType::Class(c) if c.link == i_s.db.python_state.enum_auto_link() => {
