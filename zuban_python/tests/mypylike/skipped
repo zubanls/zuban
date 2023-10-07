@@ -23,6 +23,7 @@ testComplexArithmetic
 testsFloatOperations
 testInvalidTypeAnnotation
 functional_enum_attempt_to_reuse_keys
+testNoneReturnTypeWithExpressions2
 # operation context
 testTrailingCommaParsing
 testColumnsMultipleStatementsPerLine
