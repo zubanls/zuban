@@ -54,7 +54,7 @@ impl<'a> ResultContext<'a, '_> {
         matches!(self, Self::Known(_) | Self::WithMatcher { .. })
     }
 
-    pub fn can_be_an_implicit_literal<'db>(&self, i_s: &InferenceState<'db, '_>) -> bool {
+    pub fn can_be_a_literal<'db>(&self, i_s: &InferenceState<'db, '_>) -> bool {
         if matches!(self, Self::AssignmentNewDefinition) && !i_s.is_calculating_enum_members() {
             return false;
         }

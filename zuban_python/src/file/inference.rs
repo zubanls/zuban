@@ -1349,7 +1349,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     _ => unreachable!(),
                 };
                 let inf = self.infer_expression_part(right, result_context);
-                if operand.as_code() == "-" && result_context.can_be_an_implicit_literal(self.i_s) {
+                if operand.as_code() == "-" && result_context.can_be_a_literal(self.i_s) {
                     match inf.maybe_literal(self.i_s.db) {
                         UnionValue::Single(literal) => {
                             if let LiteralKind::Int(i) = &literal.kind {
@@ -1679,7 +1679,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     check_point_cache_with!(pub infer_atom, Self::_infer_atom, Atom, result_context);
     fn _infer_atom(&mut self, atom: Atom, result_context: &mut ResultContext) -> Inferred {
         let check_literal = |i_s, index, non_literal: Specific, literal| {
-            let specific = if result_context.can_be_an_implicit_literal(i_s) {
+            let specific = if result_context.can_be_a_literal(i_s) {
                 literal
             } else {
                 non_literal
