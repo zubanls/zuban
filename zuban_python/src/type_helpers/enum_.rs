@@ -160,7 +160,7 @@ fn lookup_members_on_enum(
 ) -> LookupResult {
     match Enum::lookup(enum_, i_s.db, name) {
         Some(m) => LookupResult::UnknownName(Inferred::from_type(
-            match result_context.is_literal_context(i_s) {
+            match result_context.can_be_an_implicit_literal(i_s) {
                 true => DbType::EnumMember(m),
                 false => DbType::Enum(enum_.clone()),
             },

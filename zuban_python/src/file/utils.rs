@@ -477,7 +477,7 @@ impl<'db> Inference<'db, '_, '_> {
     }
 
     pub fn parse_int(&mut self, int: Int, result_context: &mut ResultContext) -> Option<i64> {
-        if result_context.is_literal_context(self.i_s) {
+        if result_context.can_be_an_implicit_literal(self.i_s) {
             let result = int.parse();
             if result.is_none() {
                 todo!("Add diagnostic");
