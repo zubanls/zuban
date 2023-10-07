@@ -18,7 +18,8 @@ use crate::imports::{find_ancestor, global_import, python_import, ImportResult};
 use crate::inference_state::InferenceState;
 use crate::inferred::{add_attribute_error, Inferred, UnionValue};
 use crate::matching::{
-    FormatData, Generics, LookupKind, LookupResult, OnTypeError, ResultContext, Type,
+    CouldBeALiteral, FormatData, Generics, LookupKind, LookupResult, OnTypeError, ResultContext,
+    Type,
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
@@ -1679,10 +1680,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     check_point_cache_with!(pub infer_atom, Self::_infer_atom, Atom, result_context);
     fn _infer_atom(&mut self, atom: Atom, result_context: &mut ResultContext) -> Inferred {
         let check_literal = |i_s, index, non_literal: Specific, literal| {
-            let specific = if result_context.can_be_a_literal(i_s) {
-                literal
-            } else {
-                non_literal
+            let specific = match result_context.could_be_a_literal(i_s) {
+                CouldBeALiteral::Yes { implicit: true } => literal,
+                CouldBeALiteral::Yes { implicit: false } => literal,
+                CouldBeALiteral::No => non_literal,
             };
             let point = Point::new_simple_specific(specific, Locality::Todo);
             Inferred::new_and_save(self.file, index, point)

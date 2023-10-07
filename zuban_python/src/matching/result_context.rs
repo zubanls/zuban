@@ -62,19 +62,19 @@ impl<'a> ResultContext<'a, '_> {
             i_s,
             |i_s: &InferenceState<'db, '_>, type_| match type_.as_ref() {
                 DbType::Literal(_) | DbType::EnumMember(_) => {
-                    CouldBeALiteral::Yes { implicit: true }
+                    CouldBeALiteral::Yes { implicit: false }
                 }
                 DbType::Union(items)
                     if items
                         .iter()
                         .any(|i| matches!(i, DbType::Literal(_) | DbType::EnumMember(_))) =>
                 {
-                    CouldBeALiteral::Yes { implicit: true }
+                    CouldBeALiteral::Yes { implicit: false }
                 }
                 _ => CouldBeALiteral::No,
             },
         )
-        .unwrap_or(CouldBeALiteral::Yes { implicit: false })
+        .unwrap_or(CouldBeALiteral::Yes { implicit: true })
     }
 
     pub fn can_be_a_literal<'db>(&self, i_s: &InferenceState<'db, '_>) -> bool {
