@@ -1705,9 +1705,20 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let specific = match atom.unpack() {
             Name(n) => return self.infer_name_reference(n),
             Int(i) => match self.parse_int(i, result_context) {
-                Some(_) => {
-                    let point = Point::new_simple_specific(Specific::IntLiteral, Locality::Todo);
-                    return Inferred::new_and_save(self.file, i.index(), point);
+                Some(parsed) => {
+                    let CouldBeALiteral::Yes { implicit } = result_context.could_be_a_literal(self.i_s) else {
+                        unreachable!()
+                    };
+                    if implicit {
+                        let point =
+                            Point::new_simple_specific(Specific::IntLiteral, Locality::Todo);
+                        return Inferred::new_and_save(self.file, i.index(), point);
+                    } else {
+                        return Inferred::from_type(DbType::Literal(Literal {
+                            kind: LiteralKind::Int(parsed),
+                            implicit,
+                        }));
+                    }
                 }
                 None => Specific::Int,
             },
