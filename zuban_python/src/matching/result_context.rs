@@ -54,21 +54,34 @@ impl<'a> ResultContext<'a, '_> {
         matches!(self, Self::Known(_) | Self::WithMatcher { .. })
     }
 
-    pub fn can_be_a_literal<'db>(&self, i_s: &InferenceState<'db, '_>) -> bool {
+    pub fn could_be_a_literal<'db>(&self, i_s: &InferenceState<'db, '_>) -> CouldBeALiteral {
         if matches!(self, Self::AssignmentNewDefinition) && !i_s.is_calculating_enum_members() {
-            return false;
+            return CouldBeALiteral::No;
         }
         self.with_type_if_exists_and_replace_type_var_likes(
             i_s,
             |i_s: &InferenceState<'db, '_>, type_| match type_.as_ref() {
-                DbType::Literal(_) | DbType::EnumMember(_) => true,
-                DbType::Union(items) => items
-                    .iter()
-                    .any(|i| matches!(i, DbType::Literal(_) | DbType::EnumMember(_))),
-                _ => false,
+                DbType::Literal(_) | DbType::EnumMember(_) => {
+                    CouldBeALiteral::Yes { implicit: true }
+                }
+                DbType::Union(items)
+                    if items
+                        .iter()
+                        .any(|i| matches!(i, DbType::Literal(_) | DbType::EnumMember(_))) =>
+                {
+                    CouldBeALiteral::Yes { implicit: true }
+                }
+                _ => CouldBeALiteral::No,
             },
         )
-        .unwrap_or(true)
+        .unwrap_or(CouldBeALiteral::Yes { implicit: false })
+    }
+
+    pub fn can_be_a_literal<'db>(&self, i_s: &InferenceState<'db, '_>) -> bool {
+        match self.could_be_a_literal(i_s) {
+            CouldBeALiteral::Yes { .. } => true,
+            CouldBeALiteral::No => false,
+        }
     }
 
     pub fn expects_union(&self, i_s: &InferenceState) -> bool {
@@ -166,4 +179,9 @@ impl<'a> Iterator for TupleContextIterator<'a> {
             Self::Unknown => ResultContext::Unknown,
         })
     }
+}
+
+pub enum CouldBeALiteral {
+    Yes { implicit: bool },
+    No,
 }

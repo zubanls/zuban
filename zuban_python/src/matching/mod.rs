@@ -22,7 +22,7 @@ pub use matcher::{
     CalculatedTypeArguments, FunctionOrCallable, Matcher,
 };
 pub use params::{matches_params, matches_simple_params, Param};
-pub use result_context::ResultContext;
+pub use result_context::{CouldBeALiteral, ResultContext};
 pub use type_::{
     common_base_type, execute_type_of_type, match_tuple_type_arguments,
     simplified_union_from_iterators, CallableLike, LookupKind, ReplaceSelf, Type,
