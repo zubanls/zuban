@@ -1371,6 +1371,13 @@ impl DbType {
             _ => false,
         }
     }
+
+    pub fn avoid_implicit_literal(self, db: &Database) -> Self {
+        match self {
+            DbType::Literal(l) if l.implicit => db.python_state.literal_db_type(&l.kind),
+            _ => self,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

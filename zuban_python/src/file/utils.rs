@@ -46,14 +46,10 @@ impl<'db> Inference<'db, '_, '_> {
                 result = Some(t)
             }
         }
-        let result = result.unwrap_or(DbType::Never);
         // Just because we defined a final int somewhere, we should probably not infer that.
-        if let DbType::Literal(l) = &result {
-            if l.implicit {
-                return self.i_s.db.python_state.literal_db_type(&l.kind);
-            }
-        }
         result
+            .unwrap_or(DbType::Never)
+            .avoid_implicit_literal(self.i_s.db)
     }
 
     pub fn infer_list_literal_from_context(
