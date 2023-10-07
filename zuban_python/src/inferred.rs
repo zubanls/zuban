@@ -2102,96 +2102,99 @@ fn saved_as_type<'db>(i_s: &InferenceState<'db, '_>, definition: PointLink) -> T
     let definition = NodeRef::from_link(i_s.db, definition);
     let point = definition.point();
     match point.type_() {
-        PointType::Specific => {
-            let specific = point.specific();
-            match specific {
-                Specific::Any | Specific::Cycle => Type::new(&DbType::Any),
-                Specific::IntLiteral => Type::owned(DbType::Literal(DbLiteral {
-                    kind: LiteralKind::Int(definition.expect_int().parse().unwrap()),
-                    implicit: true,
-                })),
-                Specific::StringLiteral => Type::owned(DbType::Literal(DbLiteral {
-                    kind: LiteralKind::String(
-                        DbString::from_python_string(
-                            definition.file_index(),
-                            definition.maybe_str().unwrap().as_python_string(),
-                        )
-                        .unwrap(),
-                    ),
-                    implicit: true,
-                })),
-                Specific::BoolLiteral => Type::owned(DbType::Literal(DbLiteral {
-                    kind: LiteralKind::Bool(definition.as_code() == "True"),
-                    implicit: true,
-                })),
-                Specific::BytesLiteral => Type::owned(DbType::Literal(DbLiteral {
-                    kind: LiteralKind::Bytes(definition.as_link()),
-                    implicit: true,
-                })),
-                Specific::String => Type::owned(i_s.db.python_state.str_db_type()),
-                Specific::Int => Type::owned(i_s.db.python_state.int_db_type()),
-                Specific::Float => Type::owned(i_s.db.python_state.float_db_type()),
-                Specific::Bool => Type::owned(i_s.db.python_state.bool_db_type()),
-                Specific::Bytes => Type::owned(i_s.db.python_state.bytes_db_type()),
-                Specific::Complex => Type::owned(i_s.db.python_state.complex_db_type()),
-                Specific::Ellipsis => Type::owned(i_s.db.python_state.ellipsis_db_type()),
-                Specific::Function => {
-                    Function::new(definition, i_s.current_class().copied()).as_type(i_s)
-                }
-                Specific::DecoratedFunction => {
-                    let func = Function::new(definition, i_s.current_class().copied());
-                    // Caches the decorated inference properly
-                    saved_as_type(i_s, func.decorated(i_s).maybe_saved_link().unwrap())
-                }
-                Specific::AnnotationOrTypeCommentSimpleClassInstance
-                | Specific::AnnotationOrTypeCommentWithoutTypeVars
-                | Specific::AnnotationOrTypeCommentWithTypeVars
-                | Specific::AnnotationOrTypeCommentClassVar => {
-                    use_cached_annotation_or_type_comment(i_s, definition)
-                }
-                Specific::MaybeSelfParam => Type::new(&DbType::Self_),
-                Specific::TypingTypeVarClass => todo!(),
-                Specific::TypingTypeVarTupleClass => todo!(),
-                Specific::TypingParamSpecClass => todo!(),
-                Specific::TypingType => Type::new(&i_s.db.python_state.type_of_any),
-                Specific::TypingTuple => Type::new(&i_s.db.python_state.type_of_arbitrary_tuple),
-                Specific::CollectionsNamedTuple => todo!(),
-                Specific::TypingProtocol
-                | Specific::TypingGeneric
-                | Specific::TypingUnion
-                | Specific::TypingOptional
-                | Specific::TypingLiteral
-                | Specific::TypingAnnotated
-                | Specific::TypingNamedTuple
-                | Specific::TypingTypedDict
-                | Specific::TypingCallable => todo!(),
-                Specific::TypingCast => todo!(),
-                Specific::TypingClassVar => todo!(),
-                Specific::RevealTypeFunction => todo!(),
-                Specific::None => Type::new(&DbType::None),
-                Specific::TypingNewType => todo!(),
-                Specific::TypingAny => todo!(),
-                Specific::MypyExtensionsArg
-                | Specific::MypyExtensionsDefaultArg
-                | Specific::MypyExtensionsNamedArg
-                | Specific::MypyExtensionsDefaultNamedArg
-                | Specific::MypyExtensionsVarArg
-                | Specific::MypyExtensionsKwArg => {
-                    i_s.db
-                        .python_state
-                        .mypy_extensions_arg_func(i_s.db, specific)
-                        .as_type(i_s);
-                    todo!()
-                }
-                actual => unreachable!("{actual:?}"),
-            }
-        }
+        PointType::Specific => specific_to_type(i_s, definition, point.specific()),
         PointType::Complex => {
             let complex = definition.file.complex_points.get(point.complex_index());
             type_of_complex(i_s, complex, Some(definition))
         }
         PointType::FileReference => Type::owned(DbType::Module(point.file_index())),
         x => unreachable!("{x:?}"),
+    }
+}
+
+pub fn specific_to_type<'db>(
+    i_s: &InferenceState<'db, '_>,
+    definition: NodeRef<'db>,
+    specific: Specific,
+) -> Type<'db> {
+    match specific {
+        Specific::Any | Specific::Cycle => Type::new(&DbType::Any),
+        Specific::IntLiteral => Type::owned(DbType::Literal(DbLiteral {
+            kind: LiteralKind::Int(definition.expect_int().parse().unwrap()),
+            implicit: true,
+        })),
+        Specific::StringLiteral => Type::owned(DbType::Literal(DbLiteral {
+            kind: LiteralKind::String(
+                DbString::from_python_string(
+                    definition.file_index(),
+                    definition.maybe_str().unwrap().as_python_string(),
+                )
+                .unwrap(),
+            ),
+            implicit: true,
+        })),
+        Specific::BoolLiteral => Type::owned(DbType::Literal(DbLiteral {
+            kind: LiteralKind::Bool(definition.as_code() == "True"),
+            implicit: true,
+        })),
+        Specific::BytesLiteral => Type::owned(DbType::Literal(DbLiteral {
+            kind: LiteralKind::Bytes(definition.as_link()),
+            implicit: true,
+        })),
+        Specific::String => Type::owned(i_s.db.python_state.str_db_type()),
+        Specific::Int => Type::owned(i_s.db.python_state.int_db_type()),
+        Specific::Float => Type::owned(i_s.db.python_state.float_db_type()),
+        Specific::Bool => Type::owned(i_s.db.python_state.bool_db_type()),
+        Specific::Bytes => Type::owned(i_s.db.python_state.bytes_db_type()),
+        Specific::Complex => Type::owned(i_s.db.python_state.complex_db_type()),
+        Specific::Ellipsis => Type::owned(i_s.db.python_state.ellipsis_db_type()),
+        Specific::Function => Function::new(definition, i_s.current_class().copied()).as_type(i_s),
+        Specific::DecoratedFunction => {
+            let func = Function::new(definition, i_s.current_class().copied());
+            // Caches the decorated inference properly
+            saved_as_type(i_s, func.decorated(i_s).maybe_saved_link().unwrap())
+        }
+        Specific::AnnotationOrTypeCommentSimpleClassInstance
+        | Specific::AnnotationOrTypeCommentWithoutTypeVars
+        | Specific::AnnotationOrTypeCommentWithTypeVars
+        | Specific::AnnotationOrTypeCommentClassVar => {
+            use_cached_annotation_or_type_comment(i_s, definition)
+        }
+        Specific::MaybeSelfParam => Type::new(&DbType::Self_),
+        Specific::TypingTypeVarClass => todo!(),
+        Specific::TypingTypeVarTupleClass => todo!(),
+        Specific::TypingParamSpecClass => todo!(),
+        Specific::TypingType => Type::new(&i_s.db.python_state.type_of_any),
+        Specific::TypingTuple => Type::new(&i_s.db.python_state.type_of_arbitrary_tuple),
+        Specific::CollectionsNamedTuple => todo!(),
+        Specific::TypingProtocol
+        | Specific::TypingGeneric
+        | Specific::TypingUnion
+        | Specific::TypingOptional
+        | Specific::TypingLiteral
+        | Specific::TypingAnnotated
+        | Specific::TypingNamedTuple
+        | Specific::TypingTypedDict
+        | Specific::TypingCallable => todo!(),
+        Specific::TypingCast => todo!(),
+        Specific::TypingClassVar => todo!(),
+        Specific::RevealTypeFunction => todo!(),
+        Specific::None => Type::new(&DbType::None),
+        Specific::TypingNewType => todo!(),
+        Specific::TypingAny => todo!(),
+        Specific::MypyExtensionsArg
+        | Specific::MypyExtensionsDefaultArg
+        | Specific::MypyExtensionsNamedArg
+        | Specific::MypyExtensionsDefaultNamedArg
+        | Specific::MypyExtensionsVarArg
+        | Specific::MypyExtensionsKwArg => {
+            i_s.db
+                .python_state
+                .mypy_extensions_arg_func(i_s.db, specific)
+                .as_type(i_s);
+            todo!()
+        }
+        actual => unreachable!("{actual:?}"),
     }
 }
 
