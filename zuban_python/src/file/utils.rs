@@ -347,7 +347,7 @@ impl<'db> Inference<'db, '_, '_> {
                 }
             }
         }
-        found_keys.map(|keys| {
+        found_keys.map(|mut keys| {
             new_class!(
                 self.i_s.db.python_state.dict_node_ref().as_link(),
                 keys,
@@ -461,16 +461,18 @@ impl<'db> Inference<'db, '_, '_> {
                 }
             });
         });
+        let keys = keys.as_db_type(i_s).avoid_implicit_literal(self.i_s.db);
+        let values = values.as_db_type(i_s).avoid_implicit_literal(self.i_s.db);
         debug!(
             "Calculated generics for {}: dict[{}, {}]",
             dict.short_debug(),
-            keys.as_db_type(i_s).format_short(i_s.db),
-            values.as_db_type(i_s).format_short(i_s.db),
+            keys.format_short(i_s.db),
+            values.format_short(i_s.db),
         );
         Inferred::from_type(new_class!(
             i_s.db.python_state.dict_node_ref().as_link(),
-            keys.as_db_type(i_s),
-            values.as_db_type(i_s),
+            keys,
+            values,
         ))
     }
 

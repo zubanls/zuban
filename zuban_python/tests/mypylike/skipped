@@ -1,5 +1,42 @@
 # Next up
 
+# Literal Context issues
+testTypeUsingTypeCOverloadedClass
+testOverloadWithTupleVarArg
+testOverloadConstrainedTypevarNotShadowingAny
+testOverloadBoundedTypevarNotShadowingAny
+# operation context
+# tuple context
+testVariableLengthTupleError
+testNewNamedTupleOverloading
+testErrorMessageInFunctionNestedWithinMethod
+testErrorCodeOperators
+testInferredTypeNotSubTypeOfReturnType
+testCallsWithStars
+testTupleWithStarExpr1
+testTupleWithStarExpr4
+testTupleWithUndersizedContext
+testTupleWithOversizedContext
+testTupleSingleton
+testNonliteralTupleSlice
+testCallVarargsFunctionWithTupleAndPositional
+testMultiplyTupleByInteger
+testMultiplyTupleByIntegerReverse
+testListSetitemTuple
+nested_tuple_context_inference1
+nested_tuple_context_inference2
+nested_tuple_context_inference3
+nested_tuple_context_inference4
+# yield context
+testYieldTypeCheckInDecoratedCoroutine
+testAsyncGenerator
+testAsyncGeneratorReturnIterator
+testYieldFromTupleExpression
+testSimpleYield
+testYieldFromTupleStatement
+# diff?
+testOverloadOverlapWithTypeVarsWithValues
+
 # 3.7 tests
 testNamedTupleDefaults
 testAsyncForOutsideCoroutine

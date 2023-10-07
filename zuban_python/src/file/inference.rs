@@ -1551,8 +1551,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 had_error = true;
                                 let t = IssueType::UnsupportedOperand {
                                     operand: Box::from(op.operand),
-                                    left: l_type.format_short(i_s.db),
-                                    right: r_type.format_short(i_s.db),
+                                    left: l_type
+                                        .as_db_type()
+                                        .avoid_implicit_literal(i_s.db)
+                                        .format_short(i_s.db),
+                                    right: r_type
+                                        .as_db_type()
+                                        .avoid_implicit_literal(i_s.db)
+                                        .format_short(i_s.db),
                                 };
                                 node_ref.add_issue(i_s, t);
                                 Inferred::new_unknown()
@@ -1679,7 +1685,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     check_point_cache_with!(pub infer_atom, Self::_infer_atom, Atom, result_context);
     fn _infer_atom(&mut self, atom: Atom, result_context: &mut ResultContext) -> Inferred {
         let check_literal = |i_s, index, non_literal: Specific, literal| {
-            let specific = if result_context.is_literal_context(i_s) {
+            let specific = if result_context.can_be_an_implicit_literal(i_s) {
                 literal
             } else {
                 non_literal

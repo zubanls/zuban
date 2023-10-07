@@ -76,6 +76,23 @@ impl<'a> ResultContext<'a, '_> {
         .unwrap_or(false)
     }
 
+    pub fn can_be_an_implicit_literal<'db>(&self, i_s: &InferenceState<'db, '_>) -> bool {
+        if matches!(self, Self::AssignmentNewDefinition) && !i_s.is_calculating_enum_members() {
+            return false;
+        }
+        self.with_type_if_exists_and_replace_type_var_likes(
+            i_s,
+            |i_s: &InferenceState<'db, '_>, type_| match type_.as_ref() {
+                DbType::Literal(_) | DbType::EnumMember(_) => true,
+                DbType::Union(items) => items
+                    .iter()
+                    .any(|i| matches!(i, DbType::Literal(_) | DbType::EnumMember(_))),
+                _ => false,
+            },
+        )
+        .unwrap_or(true)
+    }
+
     pub fn expects_union(&self, i_s: &InferenceState) -> bool {
         match self {
             Self::Known(type_) | Self::WithMatcher { type_, .. } => {
