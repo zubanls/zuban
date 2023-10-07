@@ -1247,7 +1247,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             TypeContent::DbType(t) => match t {
                 DbType::Any => TypeContent::DbType(DbType::Any),
-                DbType::Enum(e) => match Enum::lookup(&e, db, name.as_str()) {
+                DbType::Enum(e) => match Enum::lookup(&e, db, name.as_str(), false) {
                     Some(m) => TypeContent::EnumMember(m),
                     _ => {
                         let content = TypeContent::Class {

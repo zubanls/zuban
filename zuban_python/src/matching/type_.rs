@@ -448,7 +448,7 @@ impl<'a> Type<'a> {
                 _ => Match::new_false(),
             },
             DbType::EnumMember(m1) => match value_type.as_ref() {
-                DbType::EnumMember(m2) => (m1 == m2).into(),
+                DbType::EnumMember(m2) => (m1.is_same_member(m2)).into(),
                 _ => Match::new_false(),
             },
             DbType::Module(file_index) => Match::new_false(),

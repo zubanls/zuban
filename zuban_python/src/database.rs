@@ -3137,13 +3137,15 @@ impl TypedDict {
 pub struct EnumMember {
     pub enum_: Rc<Enum>,
     member_index: usize,
+    implicit: bool,
 }
 
 impl EnumMember {
-    pub fn new(enum_: Rc<Enum>, member_index: usize) -> Self {
+    pub fn new(enum_: Rc<Enum>, member_index: usize, implicit: bool) -> Self {
         Self {
             enum_,
             member_index,
+            implicit,
         }
     }
 
@@ -3153,6 +3155,10 @@ impl EnumMember {
 
     pub fn value(&self) -> Option<PointLink> {
         self.enum_.members[self.member_index].value
+    }
+
+    pub fn is_same_member(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.enum_, &other.enum_) && self.member_index == other.member_index
     }
 
     pub fn format(&self, format_data: &FormatData) -> String {
@@ -3217,10 +3223,10 @@ impl Enum {
         Class::from_non_generic_link(db, self.class)
     }
 
-    pub fn lookup(rc: &Rc<Enum>, db: &Database, name: &str) -> Option<EnumMember> {
+    pub fn lookup(rc: &Rc<Enum>, db: &Database, name: &str, implicit: bool) -> Option<EnumMember> {
         for (index, member) in rc.members.iter().enumerate() {
             if name == member.name(db) {
-                return Some(EnumMember::new(rc.clone(), index));
+                return Some(EnumMember::new(rc.clone(), index, implicit));
             }
         }
         None

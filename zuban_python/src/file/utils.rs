@@ -344,7 +344,7 @@ impl<'db> Inference<'db, '_, '_> {
                 }
             }
         }
-        found_keys.map(|mut keys| {
+        found_keys.map(|keys| {
             new_class!(
                 self.i_s.db.python_state.dict_node_ref().as_link(),
                 keys,
