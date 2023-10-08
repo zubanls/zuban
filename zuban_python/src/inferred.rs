@@ -807,8 +807,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         _ => (),
                     },
                     PointType::Complex => {
-                        let file = i_s.db.loaded_python_file(definition.file);
-                        match file.complex_points.get(point.complex_index()) {
+                        match node_ref.complex().unwrap() {
                             ComplexPoint::FunctionOverload(o) => {
                                 let has_self_arguments = o.iter_functions().any(|c| {
                                     Function::new(
@@ -1109,53 +1108,50 @@ impl<'db: 'slf, 'slf> Inferred {
                         }
                         _ => (),
                     },
-                    PointType::Complex => {
-                        let file = i_s.db.loaded_python_file(definition.file);
-                        match file.complex_points.get(point.complex_index()) {
-                            ComplexPoint::FunctionOverload(o) => match o.kind() {
-                                FunctionKind::Function { .. } => {
-                                    return Some(Inferred::from_type(DbType::FunctionOverload(
-                                        FunctionOverload::new(
-                                            o.iter_functions()
-                                                .map(|c| {
-                                                    merge_class_type_vars_into_callable(
-                                                        i_s.db,
-                                                        *class,
-                                                        attribute_class,
-                                                        c,
-                                                    )
-                                                })
-                                                .collect(),
-                                        ),
-                                    )))
-                                }
-                                FunctionKind::Property { .. } => unreachable!(),
-                                FunctionKind::Classmethod { .. } => {
-                                    return Some(infer_overloaded_class_method(
-                                        i_s,
-                                        *class,
-                                        attribute_class,
-                                        o,
-                                    ))
-                                }
-                                FunctionKind::Staticmethod => (),
-                            },
-                            ComplexPoint::TypeInstance(t) => {
-                                if let Some(r) = Self::bind_class_descriptors_for_type(
-                                    i_s,
-                                    class,
-                                    attribute_class,
-                                    from,
-                                    apply_descriptor,
-                                    *definition,
-                                    t,
-                                ) {
-                                    return r;
-                                }
+                    PointType::Complex => match node_ref.complex().unwrap() {
+                        ComplexPoint::FunctionOverload(o) => match o.kind() {
+                            FunctionKind::Function { .. } => {
+                                return Some(Inferred::from_type(DbType::FunctionOverload(
+                                    FunctionOverload::new(
+                                        o.iter_functions()
+                                            .map(|c| {
+                                                merge_class_type_vars_into_callable(
+                                                    i_s.db,
+                                                    *class,
+                                                    attribute_class,
+                                                    c,
+                                                )
+                                            })
+                                            .collect(),
+                                    ),
+                                )))
                             }
-                            _ => (),
+                            FunctionKind::Property { .. } => unreachable!(),
+                            FunctionKind::Classmethod { .. } => {
+                                return Some(infer_overloaded_class_method(
+                                    i_s,
+                                    *class,
+                                    attribute_class,
+                                    o,
+                                ))
+                            }
+                            FunctionKind::Staticmethod => (),
+                        },
+                        ComplexPoint::TypeInstance(t) => {
+                            if let Some(r) = Self::bind_class_descriptors_for_type(
+                                i_s,
+                                class,
+                                attribute_class,
+                                from,
+                                apply_descriptor,
+                                *definition,
+                                t,
+                            ) {
+                                return r;
+                            }
                         }
-                    }
+                        _ => (),
+                    },
                     _ => (),
                 }
             }
@@ -1285,21 +1281,13 @@ impl<'db: 'slf, 'slf> Inferred {
                         }
                         _ => (),
                     },
-                    PointType::Complex => {
-                        let file = i_s.db.loaded_python_file(definition.file);
-                        match file.complex_points.get(point.complex_index()) {
-                            ComplexPoint::FunctionOverload(o) => {
-                                return infer_overloaded_class_method(
-                                    i_s,
-                                    *class,
-                                    attribute_class,
-                                    o,
-                                )
-                            }
-                            ComplexPoint::TypeInstance(DbType::Callable(_)) => todo!(),
-                            _ => (),
+                    PointType::Complex => match node_ref.complex().unwrap() {
+                        ComplexPoint::FunctionOverload(o) => {
+                            return infer_overloaded_class_method(i_s, *class, attribute_class, o)
                         }
-                    }
+                        ComplexPoint::TypeInstance(DbType::Callable(_)) => todo!(),
+                        _ => (),
+                    },
                     _ => (),
                 }
             }
