@@ -510,6 +510,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         None => ResultContext::AssignmentNewDefinition,
                     };
                     self.infer_assignment_right_side(right_side, &mut result_context)
+                        .avoid_implicit_literal(self.i_s)
                 };
                 let n = NodeRef::new(self.file, right_side.index());
                 for target in targets {

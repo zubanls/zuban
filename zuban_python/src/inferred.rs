@@ -646,6 +646,37 @@ impl<'db: 'slf, 'slf> Inferred {
         None
     }
 
+    pub fn avoid_implicit_literal(self, i_s: &InferenceState) -> Self {
+        match self.state {
+            InferredState::Saved(link) => {
+                let node_ref = NodeRef::from_link(i_s.db, link);
+                let point = node_ref.point();
+                match point.type_() {
+                    PointType::Specific => {
+                        if !matches!(
+                            point.specific(),
+                            Specific::IntLiteral
+                                | Specific::StringLiteral
+                                | Specific::BytesLiteral
+                                | Specific::BoolLiteral
+                        ) {
+                            return self;
+                        }
+                    }
+                    PointType::Complex => {
+                        if !matches!(node_ref.complex().unwrap(), ComplexPoint::TypeInstance(_)) {
+                            return self;
+                        }
+                    }
+                    _ => return self,
+                }
+            }
+            InferredState::UnsavedComplex(ComplexPoint::TypeInstance(_)) => (),
+            _ => return self,
+        }
+        Self::from_type(self.as_type(i_s).into_db_type())
+    }
+
     #[inline]
     pub fn gather_simplified_union(
         i_s: &InferenceState<'db, '_>,
