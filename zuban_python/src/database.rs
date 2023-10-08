@@ -2045,7 +2045,16 @@ impl Literal {
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
-        format!("Literal[{}]", self.format_inner(format_data.db)).into()
+        let question_mark = match format_data.style {
+            FormatStyle::MypyRevealType if self.implicit => "?",
+            _ => "",
+        };
+        format!(
+            "Literal[{}]{}",
+            self.format_inner(format_data.db),
+            question_mark
+        )
+        .into()
     }
 }
 
@@ -3162,7 +3171,11 @@ impl EnumMember {
     }
 
     pub fn format(&self, format_data: &FormatData) -> String {
-        format!("Literal[{}]", self.format_inner(format_data))
+        let question_mark = match format_data.style {
+            FormatStyle::MypyRevealType if self.implicit => "?",
+            _ => "",
+        };
+        format!("Literal[{}]{question_mark}", self.format_inner(format_data))
     }
 
     pub fn format_inner(&self, format_data: &FormatData) -> String {

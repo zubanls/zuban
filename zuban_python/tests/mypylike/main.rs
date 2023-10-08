@@ -77,8 +77,6 @@ lazy_static::lazy_static! {
     static ref REPLACE_COMMENTS: Regex = Regex::new(r"(?m)^--.*$\n").unwrap();
     static ref REPLACE_TUPLE: Regex = Regex::new(r"\bTuple\b").unwrap();
     static ref REPLACE_MYPY: Regex = Regex::new(r"`-?\d+").unwrap();
-    // Mypy has this weird distinction for literals like Literal[1]?
-    static ref REPLACE_LITERAL_QUESTION_MARK: Regex = Regex::new(r"(Literal\[.*?\])\?").unwrap();
 }
 
 #[derive(Default, Clone, Debug)]
@@ -431,13 +429,6 @@ fn wanted_output(project: &mut Project, step: &Step) -> Vec<String> {
         replace_unions(line)
     }
     wanted
-        .into_iter()
-        .map(|line| {
-            REPLACE_LITERAL_QUESTION_MARK
-                .replace_all(&line, r"$1")
-                .into()
-        })
-        .collect()
 }
 
 fn replace_unions(line: &mut String) {

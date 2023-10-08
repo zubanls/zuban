@@ -126,11 +126,10 @@ pub fn lookup_on_enum_member_instance(
     if is_enum {
         match name {
             "name" | "_name_" => {
-                return LookupResult::UnknownName(Inferred::from_type(DbType::Literal(
-                    Literal::new(LiteralKind::String(DbString::RcStr(
-                        member.name(i_s.db).into(),
-                    ))),
-                )))
+                return LookupResult::UnknownName(Inferred::from_type(DbType::Literal(Literal {
+                    implicit: true,
+                    kind: LiteralKind::String(DbString::RcStr(member.name(i_s.db).into())),
+                })))
             }
             "value" | "_value_" => {
                 let value = member.value();

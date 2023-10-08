@@ -9,7 +9,7 @@ use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{FormatData, OnTypeError, ResultContext, Type};
+use crate::matching::{CouldBeALiteral, FormatData, OnTypeError, ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::utils::join_with_commas;
 
@@ -115,7 +115,21 @@ impl RevealTypeFunction {
         } else {
             arg.infer(i_s, result_context)
         };
-        let s = reveal_type_info(i_s, inferred.as_type(i_s));
+        let t = inferred.as_type(i_s);
+        let s = reveal_type_info(
+            i_s,
+            match result_context.could_be_a_literal(i_s) {
+                CouldBeALiteral::Yes { implicit: false } => match t.as_ref() {
+                    DbType::Literal(l) => {
+                        let mut l = l.clone();
+                        l.implicit = false;
+                        Type::owned(DbType::Literal(l))
+                    }
+                    _ => t,
+                },
+                _ => t,
+            },
+        );
         arg.as_node_ref().add_issue(
             i_s,
             IssueType::Note(format!("Revealed type is \"{s}\"").into()),

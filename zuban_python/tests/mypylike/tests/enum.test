@@ -21,8 +21,8 @@ from enum import Enum
 
 E = Enum("E", "Fo" "o Bar")
 
-reveal_type(E.Foo)  # N: Revealed type is "Literal[__main__.E.Foo]"
-reveal_type(E.Bar)  # N: Revealed type is "Literal[__main__.E.Bar]"
+reveal_type(E.Foo)  # N: Revealed type is "Literal[__main__.E.Foo]?"
+reveal_type(E.Bar)  # N: Revealed type is "Literal[__main__.E.Bar]?"
 
 [case enum_str_passed]
 from enum import Enum
