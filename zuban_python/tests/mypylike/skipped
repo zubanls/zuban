@@ -13,9 +13,6 @@ testCallableSpecificOverload
 testOverloadErrorMessageManyMatches
 testOverloadPositionalOnlyErrorMessageOldStyle
 # ?
-testNewNamedTupleSimpleTypeInference
-testColumnInvalidIndexing
-testErrorCodeIndexing
 testReplaceNotDataclass
 testEnumIndexError
 testLambdaTypeInference

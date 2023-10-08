@@ -2555,6 +2555,12 @@ impl<'a> Type<'a> {
                 debug!("TODO None[...]");
                 Inferred::new_any()
             }
+            DbType::Literal(l) => i_s.db.python_state.literal_type(&l.kind).get_item(
+                i_s,
+                None,
+                slice_type,
+                result_context,
+            ),
             _ => todo!("get_item not implemented for {self:?}"),
         };
         // Make sure the slices are inferred

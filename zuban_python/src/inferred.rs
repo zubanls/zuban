@@ -1845,7 +1845,9 @@ impl<'db: 'slf, 'slf> Inferred {
             &|_| {
                 slice_type.as_node_ref().add_issue(
                     i_s,
-                    IssueType::UnsupportedSetItemTarget(self.format_short(i_s)),
+                    IssueType::UnsupportedSetItemTarget(
+                        self.clone().avoid_implicit_literal(i_s).format_short(i_s),
+                    ),
                 )
             },
             OnTypeError::new(&|i_s, function, arg, got, expected| {
