@@ -1372,11 +1372,39 @@ impl DbType {
         }
     }
 
-    pub fn avoid_implicit_literal(self, db: &Database) -> Self {
+    fn maybe_avoid_implicit_literal(&self, db: &Database) -> Option<Self> {
         match self {
-            DbType::Literal(l) if l.implicit => db.python_state.literal_db_type(&l.kind),
-            _ => self,
+            DbType::Literal(l) if l.implicit => Some(db.python_state.literal_db_type(&l.kind)),
+            DbType::Tuple(tup) => {
+                if let Some(TupleTypeArguments::FixedLength(ts)) = &tup.args {
+                    let mut gathered = vec![];
+                    if ts.iter().any(|type_or| match type_or {
+                        TypeOrTypeVarTuple::Type(t) => t.maybe_avoid_implicit_literal(db).is_some(),
+                        TypeOrTypeVarTuple::TypeVarTuple(_) => false,
+                    }) {
+                        for type_or in ts.iter() {
+                            if let TypeOrTypeVarTuple::Type(t) = type_or {
+                                if let Some(new_t) = t.maybe_avoid_implicit_literal(db) {
+                                    gathered.push(TypeOrTypeVarTuple::Type(new_t));
+                                    continue;
+                                }
+                            }
+                            gathered.push(type_or.clone())
+                        }
+                        return Some(DbType::Tuple(Rc::new(TupleContent::new_fixed_length(
+                            gathered.into(),
+                        ))));
+                    }
+                }
+                None
+            }
+            _ => None,
         }
+    }
+
+    pub fn avoid_implicit_literal(self, db: &Database) -> Self {
+        self.maybe_avoid_implicit_literal(db)
+            .unwrap_or_else(|| self)
     }
 }
 

@@ -1,4 +1,5 @@
 # Next up
+testLiteralInferredInTupleContext
 
 # Literal Context issues
 testTypeUsingTypeCOverloadedClass
