@@ -1,5 +1,6 @@
 # Next up
 testLiteralInferredInTupleContext
+nested_tuple_context_inference4
 
 # Literal Context issues
 testTypeUsingTypeCOverloadedClass

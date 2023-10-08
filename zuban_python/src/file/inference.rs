@@ -1817,17 +1817,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let mut generics = vec![];
         let mut is_arbitrary_length = false;
         let is_definition = matches!(result_context, ResultContext::AssignmentNewDefinition);
-        let to_member = |rc: &ResultContext, t: DbType| {
-            TypeOrTypeVarTuple::Type(
-                if rc.can_be_a_literal(self.i_s) && !is_definition
-                    || self.i_s.is_calculating_enum_members()
-                {
-                    t
-                } else {
-                    t.avoid_implicit_literal(self.i_s.db)
-                },
-            )
-        };
         result_context.with_tuple_context_iterator(self.i_s, |tuple_context_iterator| {
             for (e, mut rc) in iterator.clone().zip(tuple_context_iterator) {
                 match e {
@@ -1835,13 +1824,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         let t = self
                             .infer_named_expression_with_context(e, &mut rc)
                             .as_db_type(self.i_s);
-                        generics.push(to_member(&rc, t))
+                        generics.push(TypeOrTypeVarTuple::Type(t))
                     }
                     StarLikeExpression::Expression(e) => {
                         let t = self
                             .infer_expression_with_context(e, &mut rc)
                             .as_db_type(self.i_s);
-                        generics.push(to_member(&rc, t))
+                        generics.push(TypeOrTypeVarTuple::Type(t))
                     }
                     StarLikeExpression::StarNamedExpression(e) => {
                         let inferred = self.infer_expression_part(
