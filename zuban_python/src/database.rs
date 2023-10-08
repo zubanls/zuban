@@ -1372,7 +1372,7 @@ impl DbType {
         }
     }
 
-    fn maybe_avoid_implicit_literal(&self, db: &Database) -> Option<Self> {
+    pub fn maybe_avoid_implicit_literal(&self, db: &Database) -> Option<Self> {
         match self {
             DbType::Literal(l) if l.implicit => Some(db.python_state.literal_db_type(&l.kind)),
             DbType::Tuple(tup) => {

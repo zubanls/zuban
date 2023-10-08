@@ -647,6 +647,9 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn avoid_implicit_literal(self, i_s: &InferenceState) -> Self {
+        if i_s.is_calculating_enum_members() {
+            return self;
+        }
         match self.state {
             InferredState::Saved(link) => {
                 let node_ref = NodeRef::from_link(i_s.db, link);
@@ -674,7 +677,11 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::UnsavedComplex(ComplexPoint::TypeInstance(_)) => (),
             _ => return self,
         }
-        Self::from_type(self.as_type(i_s).into_db_type())
+        if let Some(t) = self.as_type(i_s).maybe_avoid_implicit_literal(i_s.db) {
+            Self::from_type(t)
+        } else {
+            self
+        }
     }
 
     #[inline]
