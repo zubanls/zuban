@@ -1,48 +1,20 @@
 # Next up
-testLiteralInferredInTupleContext
-nested_tuple_context_inference4
 
+# Assert type
+testAssertType
+testInvalidAssertType
+typing_extensions_assert_type
 # Literal Context issues
-testTypeUsingTypeCOverloadedClass
-testOverloadWithTupleVarArg
-testOverloadConstrainedTypevarNotShadowingAny
-testOverloadBoundedTypevarNotShadowingAny
-testNonTypeDoesNotMatchOverloadedFunctions
-testErrorCodeOverloadVariant
-testCallableSpecificOverload
-testOverloadErrorMessageManyMatches
-testOverloadPositionalOnlyErrorMessageOldStyle
-# ?
-testReplaceNotDataclass
-testEnumIndexError
 testLambdaTypeInference
 testInvalidSecondArgumentToSuper
 testHexOctBinLiterals
 testComplexArithmetic
 testsFloatOperations
-testInvalidTypeAnnotation
 functional_enum_attempt_to_reuse_keys
 testNoneReturnTypeWithExpressions2
-# operation context
-testTrailingCommaParsing
-testColumnsMultipleStatementsPerLine
-# tuple context
-testVariableLengthTupleError
-testNewNamedTupleOverloading
-testErrorCodeOperators
-testTupleSingleton
-testMultiplyTupleByInteger
-testMultiplyTupleByIntegerReverse
-testGenericTypeAliasesTuple
-# yield context
-testYieldTypeCheckInDecoratedCoroutine
-testAsyncGenerator
-testAsyncGeneratorReturnIterator
-testYieldFromTupleExpression
-testSimpleYield
-testYieldFromTupleStatement
+testEnumReusedKeys
 # diff?
-testOverloadOverlapWithTypeVarsWithValues
+nested_tuple_context_inference4
 
 # 3.7 tests
 testNamedTupleDefaults

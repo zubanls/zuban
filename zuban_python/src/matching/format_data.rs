@@ -28,6 +28,7 @@ pub struct FormatData<'db, 'a, 'b, 'c> {
     matcher: Option<&'b Matcher<'a>>,
     pub style: FormatStyle,
     pub verbose: bool,
+    pub hide_implicit_literals: bool,
     displayed_recursive: Option<DisplayedRecursive<'c>>,
 }
 
@@ -38,6 +39,7 @@ impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
             matcher: None,
             style: FormatStyle::Short,
             verbose: false,
+            hide_implicit_literals: true,
             displayed_recursive: None,
         }
     }
@@ -48,6 +50,7 @@ impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
             matcher: None,
             style,
             verbose: false,
+            hide_implicit_literals: true,
             displayed_recursive: None,
         }
     }
@@ -58,6 +61,7 @@ impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
             matcher: Some(matcher),
             style: FormatStyle::Short,
             verbose: false,
+            hide_implicit_literals: true,
             displayed_recursive: None,
         }
     }
@@ -72,6 +76,7 @@ impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
             matcher: Some(matcher),
             style,
             verbose: false,
+            hide_implicit_literals: true,
             displayed_recursive: None,
         }
     }
@@ -85,6 +90,7 @@ impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
             matcher: self.matcher,
             style: self.style,
             verbose: self.verbose,
+            hide_implicit_literals: self.hide_implicit_literals,
             displayed_recursive: Some(DisplayedRecursive {
                 current: rec,
                 parent: self.displayed_recursive.as_ref(),
@@ -98,6 +104,7 @@ impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
             matcher: None,
             style: self.style,
             verbose: self.verbose,
+            hide_implicit_literals: self.hide_implicit_literals,
             displayed_recursive: self.displayed_recursive,
         }
     }

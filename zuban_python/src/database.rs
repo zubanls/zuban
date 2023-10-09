@@ -848,6 +848,29 @@ impl<Iter: Iterator<Item = UnionEntry>> Iterator for DbTypeIterator<Iter> {
     }
 }
 
+enum DbTypeRefIterator<'a, Iter> {
+    Single(&'a DbType),
+    Union(Iter),
+    Finished,
+}
+
+impl<'a, Iter: Iterator<Item = &'a DbType>> Iterator for DbTypeRefIterator<'a, Iter> {
+    type Item = &'a DbType;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::Single(_) => {
+                let Self::Single(type_) = std::mem::replace(self, Self::Finished) else {
+                    unreachable!();
+                };
+                Some(type_)
+            }
+            Self::Union(items) => items.next(),
+            Self::Finished => None,
+        }
+    }
+}
+
 // PartialEq is only here for optimizations, it is not a reliable way to check if a type matches
 // with another type.
 #[derive(Debug, Clone, PartialEq)]
@@ -904,6 +927,14 @@ impl DbType {
             DbType::Union(items) => DbTypeIterator::Union(items.entries.into_vec().into_iter()),
             DbType::Never => DbTypeIterator::Finished,
             t => DbTypeIterator::Single(t),
+        }
+    }
+
+    fn iter_with_unpacked_unions(&self) -> impl Iterator<Item = &DbType> {
+        match self {
+            DbType::Union(items) => DbTypeRefIterator::Union(items.iter()),
+            DbType::Never => DbTypeRefIterator::Finished,
+            t => DbTypeRefIterator::Single(t),
         }
     }
 
@@ -1405,6 +1436,18 @@ impl DbType {
     pub fn avoid_implicit_literal(self, db: &Database) -> Self {
         self.maybe_avoid_implicit_literal(db)
             .unwrap_or_else(|| self)
+    }
+
+    pub fn is_literal_or_literal_in_tuple(&self) -> bool {
+        self.iter_with_unpacked_unions().any(|t| match t {
+            DbType::Literal(l) => true,
+            DbType::Tuple(tup) => match &tup.args {
+                Some(TupleTypeArguments::FixedLength(ts)) => ts.iter().any(|type_or| matches!(type_or, TypeOrTypeVarTuple::Type(t) if t.is_literal_or_literal_in_tuple())),
+                Some(TupleTypeArguments::ArbitraryLength(t)) => t.is_literal_or_literal_in_tuple(),
+                None => false,
+            },
+            _ => false,
+        })
     }
 }
 
@@ -2075,6 +2118,13 @@ impl Literal {
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
         let question_mark = match format_data.style {
             FormatStyle::MypyRevealType if self.implicit => "?",
+            _ if self.implicit && format_data.hide_implicit_literals => {
+                return format_data
+                    .db
+                    .python_state
+                    .literal_db_type(&self.kind)
+                    .format(format_data)
+            }
             _ => "",
         };
         format!(

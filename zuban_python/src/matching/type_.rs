@@ -1084,6 +1084,9 @@ impl<'a> Type<'a> {
         if let Match::False { ref reason, .. } = matches {
             let mut fmt1 = FormatData::new_short(i_s.db);
             let mut fmt2 = FormatData::with_matcher(i_s.db, matcher);
+            if self.is_literal_or_literal_in_tuple() {
+                fmt1.hide_implicit_literals = false;
+            }
             let mut input = value_type.format(&fmt1);
             let mut wanted = self.format(&fmt2);
             if input == wanted {
