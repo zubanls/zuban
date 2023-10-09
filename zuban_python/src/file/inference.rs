@@ -577,20 +577,16 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let Some(left) = self.infer_target(target) else {
                     todo!()
                 };
-                let had_error = Cell::new(false);
-                let mut result = left.type_lookup_and_execute_with_details(
+                let had_lookup_error = Cell::new(false);
+                let mut result = left.type_lookup_and_execute(
                     self.i_s,
                     node_ref,
                     inplace,
                     &KnownArguments::new(&right, node_ref),
-                    &|type_| had_error.set(true),
-                    OnTypeError::with_overload_mismatch(
-                        &|_, _, _, _, _| had_error.set(true),
-                        Some(&|_, _| had_error.set(true)),
-                    ),
+                    &|type_| had_lookup_error.set(true),
                 );
-                if had_error.get() {
-                    had_error.set(false);
+                let had_error = Cell::new(false);
+                if had_lookup_error.get() {
                     result = left.type_lookup_and_execute_with_details(
                         self.i_s,
                         node_ref,

@@ -78,8 +78,6 @@ testOperatorDoubleUnionStandardSubtyping
 testReverseOperatorMethodForwardIsAny3
 # Formatting?
 testMiscBinaryOperators
-# inplace operator methods
-testInplaceOperatorMethods
 # functools.total_ordering
 testTotalOrderingEqLt
 testTotalOrderingLambda
