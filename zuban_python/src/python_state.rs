@@ -449,18 +449,7 @@ impl PythonState {
             .unwrap()
             - NAME_TO_FUNCTION_DIFF;
 
-        let typed_dict_class = db.python_state.typed_dict_class();
-        let mut typed_dict_mro = Vec::from(typed_dict_class.use_cached_class_infos(db).mro.clone());
-        for base in typed_dict_mro.iter_mut() {
-            base.is_direct_base = false;
-        }
-        typed_dict_mro.insert(
-            0,
-            BaseClass {
-                type_: typed_dict_class.as_db_type(db),
-                is_direct_base: true,
-            },
-        );
+        let typed_dict_mro = calculate_mro_for_class(db, db.python_state.typed_dict_class());
 
         let s = &mut db.python_state;
         let object_db_type = s.object_db_type();
@@ -1058,4 +1047,19 @@ fn set_mypy_extension_specific(file: &PythonFile, name: &str, specific: Specific
         Some(Specific::Function | Specific::DecoratedFunction)
     ));
     result
+}
+
+fn calculate_mro_for_class(db: &Database, class: Class) -> Vec<BaseClass> {
+    let mut mro = Vec::from(class.use_cached_class_infos(db).mro.clone());
+    for base in mro.iter_mut() {
+        base.is_direct_base = false;
+    }
+    mro.insert(
+        0,
+        BaseClass {
+            type_: class.as_db_type(db),
+            is_direct_base: true,
+        },
+    );
+    mro
 }
