@@ -1,8 +1,6 @@
 # Next up
 
 # Literal Context issues
-functional_enum_attempt_to_reuse_keys
-# diff?
 nested_tuple_context_inference4
 
 # 3.7 tests

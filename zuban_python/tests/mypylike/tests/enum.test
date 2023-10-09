@@ -66,8 +66,8 @@ E4 = Enum("E4", {"A": 1,
                   2,
                  "B": 3,
                  })
-reveal_type(E4.A.value)  # N: Revealed type is "int"
-reveal_type(E4.B.value)  # N: Revealed type is "int"
+reveal_type(E4.A.value)  # N: Revealed type is "Literal[1]?"
+reveal_type(E4.B.value)  # N: Revealed type is "Literal[3]?"
 
 x: Literal["A B A"]
 E5 = Enum("E5", x)  # E: Attempted to reuse member name "A" in Enum definition "E5"
