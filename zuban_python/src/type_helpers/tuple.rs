@@ -208,12 +208,14 @@ fn tuple_mul_internal<'db>(
     let first = args.maybe_single_positional_arg(i_s, &mut ResultContext::Unknown)?;
     if let Some(TupleTypeArguments::FixedLength(ts)) = &tuple.args {
         first.run_on_int_literals(i_s, |int| {
-            let int = int.max(0);
+            let int = int.max(0) as usize;
             if int > 10 {
                 todo!("Do we really want extremely large tuples?")
             }
             Some(Inferred::from_type(DbType::Tuple(Rc::new(
-                TupleContent::new_fixed_length(ts.iter().cloned().collect()),
+                TupleContent::new_fixed_length(
+                    ts.iter().cycle().take(int * ts.len()).cloned().collect(),
+                ),
             ))))
         })
     } else {
