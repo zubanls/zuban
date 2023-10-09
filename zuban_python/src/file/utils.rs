@@ -271,15 +271,17 @@ impl<'db> Inference<'db, '_, '_> {
                     let key_match = key_t.is_super_type_of(i_s, matcher, &key_type);
                     let value_match = value_t.is_super_type_of(i_s, matcher, &value_type);
                     if key_match.bool() && value_match.bool() {
+                        let key_type = key_type.try_to_resemble_context(i_s, matcher, &key_t);
+                        let value_type = value_type.try_to_resemble_context(i_s, matcher, &value_t);
                         if let Some(found) = &mut found_keys {
-                            found.union_in_place(i_s.db, key_type.into_db_type())
+                            found.union_in_place(i_s.db, key_type)
                         } else {
-                            found_keys = Some(key_type.into_db_type());
+                            found_keys = Some(key_type);
                         }
                         if let Some(found) = &mut found_values {
-                            found.union_in_place(i_s.db, value_type.into_db_type())
+                            found.union_in_place(i_s.db, value_type)
                         } else {
-                            found_values = Some(value_type.into_db_type());
+                            found_values = Some(value_type);
                         }
                     } else {
                         NodeRef::new(self.file, key_value.index()).add_issue(
