@@ -1,9 +1,5 @@
 # Next up
 
-# Assert type
-testAssertType
-testInvalidAssertType
-typing_extensions_assert_type
 # Literal Context issues
 functional_enum_attempt_to_reuse_keys
 # diff?

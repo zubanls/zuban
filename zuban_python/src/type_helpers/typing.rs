@@ -227,11 +227,13 @@ pub fn execute_assert_type<'db>(
     };
     let second_type = second.as_type(i_s);
     if first_type.as_ref() != second_type.as_ref() {
+        let mut format_data = FormatData::new_short(i_s.db);
+        format_data.hide_implicit_literals = false;
         args.as_node_ref().add_issue(
             i_s,
             IssueType::InvalidAssertType {
-                actual: first_type.format_short(i_s.db),
-                wanted: second_type.format_short(i_s.db),
+                actual: first_type.format(&format_data),
+                wanted: second_type.format(&format_data),
             },
         );
     }
