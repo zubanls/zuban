@@ -45,7 +45,7 @@ impl<'a> Tuple<'a> {
     }
 
     pub fn lookup(&self, i_s: &InferenceState, node_ref: NodeRef, name: &str) -> LookupResult {
-        if name == "__mul__" {
+        if matches!(name, "__mul__" | "__rmul__") {
             return LookupResult::UnknownName(Inferred::from_type(DbType::CustomBehavior(
                 CustomBehavior::new_method(
                     tuple_mul,
