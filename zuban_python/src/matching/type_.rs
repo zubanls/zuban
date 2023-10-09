@@ -526,6 +526,18 @@ impl<'a> Type<'a> {
                     if !matcher.ignore_promotions() {
                         return self.check_promotion(i_s, matcher, class2.node_ref);
                     }
+                } else if let DbType::Literal(literal) = value_type.as_ref() {
+                    if !matcher.ignore_promotions() {
+                        return self.check_promotion(
+                            i_s,
+                            matcher,
+                            i_s.db
+                                .python_state
+                                .literal_instance(&literal.kind)
+                                .class
+                                .node_ref,
+                        );
+                    }
                 }
                 Match::new_false()
             });
