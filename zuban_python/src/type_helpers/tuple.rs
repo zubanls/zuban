@@ -91,18 +91,19 @@ impl<'a> Tuple<'a> {
                     if args.has_type_var_tuple().is_some() {
                         todo!()
                     }
+                    let out_of_range = || {
+                        slice_type
+                            .as_argument_node_ref()
+                            .add_issue(i_s, IssueType::TupleIndexOutOfRange);
+                        Some(Inferred::new_any())
+                    };
                     infer_index(i_s, simple.file, simple.named_expr.expression(), |index| {
                         let index = if index < 0 {
                             let index = ts.len() as isize + index;
-                            index
-                                .try_into()
-                                .map_err(|_| {
-                                    slice_type
-                                        .as_argument_node_ref()
-                                        .add_issue(i_s, IssueType::TupleIndexOutOfRange);
-                                    ()
-                                })
-                                .ok()?
+                            match index.try_into() {
+                                Ok(index) => index,
+                                Err(_) => return out_of_range(),
+                            }
                         } else {
                             index as usize
                         };
@@ -114,10 +115,7 @@ impl<'a> Tuple<'a> {
                                 TypeOrTypeVarTuple::TypeVarTuple(t) => unreachable!(),
                             })
                         } else {
-                            slice_type
-                                .as_argument_node_ref()
-                                .add_issue(i_s, IssueType::TupleIndexOutOfRange);
-                            Some(Inferred::new_any())
+                            return out_of_range();
                         }
                     })
                     .unwrap_or_else(|| {
