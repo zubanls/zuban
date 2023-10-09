@@ -6,7 +6,7 @@ use super::class::TypeOrClass;
 use super::{Class, MroIterator, NamedTupleValue, Tuple};
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments, NoArguments};
 use crate::database::{
-    ClassType, DbType, FunctionKind, GenericClass, PointLink, Specific, TypeVarKind,
+    ClassType, Database, DbType, FunctionKind, GenericClass, PointLink, Specific, TypeVarKind,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -513,7 +513,7 @@ fn execute_super_internal<'db>(
         }))
     };
     let first_type = match next_arg() {
-        Some(result) => match get_relevant_type_for_super(result?.as_type(i_s).as_ref()) {
+        Some(result) => match get_relevant_type_for_super(i_s.db, result?.as_type(i_s).as_ref()) {
             DbType::Type(t) => {
                 if !matches!(t.as_ref(), DbType::Class(..)) {
                     return Err(IssueType::SuperUnsupportedArgument { argument_index: 1 });
@@ -542,7 +542,7 @@ fn execute_super_internal<'db>(
         Some(result) => result?,
         None => return Err(IssueType::SuperWithSingleArgumentNotSupported),
     };
-    let cls = match get_relevant_type_for_super(&instance.as_type(i_s)) {
+    let cls = match get_relevant_type_for_super(i_s.db, &instance.as_type(i_s)) {
         DbType::Self_ => i_s.current_class().unwrap().as_generic_class(i_s.db),
         DbType::Class(g) => g,
         DbType::Any => return Ok(Inferred::new_any()),
@@ -560,12 +560,15 @@ fn execute_super_internal<'db>(
     success(cls, 0)
 }
 
-fn get_relevant_type_for_super(t: &DbType) -> DbType {
+fn get_relevant_type_for_super(db: &Database, t: &DbType) -> DbType {
+    if let DbType::Literal(l) = t {
+        return db.python_state.literal_db_type(&l.kind);
+    }
     let DbType::TypeVar(usage) = t else {
         return t.clone()
     };
     if let TypeVarKind::Bound(bound) = &usage.type_var.kind {
-        return bound.clone();
+        return get_relevant_type_for_super(db, bound);
     }
     t.clone()
 }
