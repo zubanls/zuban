@@ -2041,10 +2041,7 @@ impl<'a> Type<'a> {
                 custom.execute(i_s, args, result_context, on_type_error)
             }
             _ => {
-                let t = self
-                    .as_db_type()
-                    .avoid_implicit_literal(i_s.db)
-                    .format_short(i_s.db);
+                let t = self.as_db_type().format_short(i_s.db);
                 args.as_node_ref().add_issue(
                     i_s,
                     IssueType::NotCallable {

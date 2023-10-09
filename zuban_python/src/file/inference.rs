@@ -1563,14 +1563,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 had_error = true;
                                 let t = IssueType::UnsupportedOperand {
                                     operand: Box::from(op.operand),
-                                    left: l_type
-                                        .as_db_type()
-                                        .avoid_implicit_literal(i_s.db)
-                                        .format_short(i_s.db),
-                                    right: r_type
-                                        .as_db_type()
-                                        .avoid_implicit_literal(i_s.db)
-                                        .format_short(i_s.db),
+                                    left: l_type.as_db_type().format_short(i_s.db),
+                                    right: r_type.as_db_type().format_short(i_s.db),
                                 };
                                 node_ref.add_issue(i_s, t);
                                 Inferred::new_unknown()
