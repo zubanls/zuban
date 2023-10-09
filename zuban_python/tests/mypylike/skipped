@@ -389,9 +389,6 @@ testStarExpression
 testStarExpressionInFor
 # star input for tuple
 testTupleWithStarExpr
-# union tuple index
-testUnionOfTupleIndex
-testUnionOfTupleIndexMixed
 # tuple concatenation
 testFixedLengthTupleConcatenation
 # tuple multiplication

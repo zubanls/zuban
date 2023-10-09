@@ -117,7 +117,7 @@ impl<'a> Tuple<'a> {
                             slice_type
                                 .as_argument_node_ref()
                                 .add_issue(i_s, IssueType::TupleIndexOutOfRange);
-                            None
+                            Some(Inferred::new_any())
                         }
                     })
                     .unwrap_or_else(|| {
