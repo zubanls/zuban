@@ -40,6 +40,7 @@ impl<'db> Inference<'db, '_, '_> {
                     unreachable!()
                 }
             };
+            let t = t.avoid_implicit_literal(self.i_s.db);
             if let Some(r) = result.take() {
                 result = Some(Type::owned(r).common_base_type(self.i_s, &Type::owned(t)));
             } else {
@@ -47,9 +48,7 @@ impl<'db> Inference<'db, '_, '_> {
             }
         }
         // Just because we defined a final int somewhere, we should probably not infer that.
-        result
-            .unwrap_or(DbType::Never)
-            .avoid_implicit_literal(self.i_s.db)
+        result.unwrap_or(DbType::Never)
     }
 
     pub fn infer_list_literal_from_context(
