@@ -6,7 +6,6 @@ testInvalidAssertType
 typing_extensions_assert_type
 # Literal Context issues
 functional_enum_attempt_to_reuse_keys
-testNoneReturnTypeWithExpressions2
 testEnumReusedKeys
 # diff?
 nested_tuple_context_inference4
