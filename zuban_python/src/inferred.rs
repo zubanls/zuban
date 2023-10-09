@@ -1600,7 +1600,11 @@ impl<'db: 'slf, 'slf> Inferred {
                             }
                             Specific::TypingType => return execute_type(i_s, args, on_type_error),
                             Specific::TypingTuple => {
-                                todo!()
+                                return i_s
+                                    .db
+                                    .python_state
+                                    .tuple_class_with_generics_to_be_defined()
+                                    .execute(i_s, args, result_context, on_type_error)
                             }
                             Specific::TypingCast => {
                                 return TypingCast().execute(

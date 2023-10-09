@@ -363,7 +363,6 @@ testSelfTypeNew
 testSelfTypeNew_explicit
 
 # tuple() / tuple([1])
-testTupleAsSubtypeOfSequence
 testListInplaceAdd
 # Incompatible number of tuple items
 testVariableDeclWithInvalidNumberOfTypes

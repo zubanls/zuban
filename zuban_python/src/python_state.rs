@@ -578,6 +578,11 @@ impl PythonState {
         Class::from_position(self.tuple_node_ref(), Generics::List(generics, None), None)
     }
 
+    #[inline]
+    pub fn tuple_class_with_generics_to_be_defined(&self) -> Class {
+        Class::from_position(self.tuple_node_ref(), Generics::NotDefinedYet, None)
+    }
+
     attribute_node_ref!(builtins, pub object_node_ref, builtins_object_index);
     attribute_node_ref!(builtins, pub bare_type_node_ref, builtins_type_index);
     attribute_node_ref!(builtins, pub list_node_ref, builtins_list_index);
