@@ -3134,7 +3134,7 @@ impl<'db> Atom<'db> {
             Terminal(TerminalType::Name) => AtomContent::Name(Name::new(first)),
             Terminal(TerminalType::Number) => {
                 let code = first.as_code();
-                if code.contains('j') {
+                if code.contains('j') || code.contains('J') {
                     AtomContent::Complex(Complex::new(first))
                 } else if code.contains('.') {
                     AtomContent::Float(Float::new(first))

@@ -6,7 +6,6 @@ testInvalidAssertType
 typing_extensions_assert_type
 # Literal Context issues
 testLambdaTypeInference
-testComplexArithmetic
 testsFloatOperations
 functional_enum_attempt_to_reuse_keys
 testNoneReturnTypeWithExpressions2
