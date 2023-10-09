@@ -1449,7 +1449,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         },
                         type_vars: self.i_s.db.python_state.empty_type_var_likes.clone(),
                         params: CallableParams::Simple(Rc::new([])),
-                        result_type: result.as_db_type(self.i_s),
+                        result_type: result
+                            .as_db_type(self.i_s)
+                            .avoid_implicit_literal(self.i_s.db),
                     };
                     Inferred::from_type(DbType::Callable(Rc::new(c)))
                 } else {
