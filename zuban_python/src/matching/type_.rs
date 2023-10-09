@@ -13,7 +13,7 @@ use crate::arguments::Arguments;
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database,
     Dataclass, DbType, DoubleStarredParamSpecific, EnumMember, FunctionOverload, GenericClass,
-    GenericItem, GenericsList, Literal, MetaclassState, NamedTuple, ParamSpecArgument,
+    GenericItem, GenericsList, Literal, LiteralKind, MetaclassState, NamedTuple, ParamSpecArgument,
     ParamSpecTypeVars, ParamSpecUsage, ParamSpecific, PointLink, RecursiveAlias,
     StarredParamSpecific, TupleContent, TupleTypeArguments, TypeAlias, TypeArguments,
     TypeOrTypeVarTuple, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
@@ -730,6 +730,18 @@ impl<'a> Type<'a> {
 
     pub fn mro<'db: 'x, 'x>(&'x self, db: &'db Database) -> MroIterator<'db, '_> {
         match self.as_ref() {
+            DbType::Literal(literal) => MroIterator::new(
+                db,
+                TypeOrClass::Type(self.clone()),
+                Generics::None,
+                match literal.kind {
+                    LiteralKind::Int(_) => db.python_state.builtins_int_mro.iter(),
+                    LiteralKind::Bool(_) => db.python_state.builtins_bool_mro.iter(),
+                    LiteralKind::String(_) => db.python_state.builtins_str_mro.iter(),
+                    LiteralKind::Bytes(_) => db.python_state.builtins_bytes_mro.iter(),
+                },
+                false,
+            ),
             DbType::Class(c) => c.class(db).mro(db),
             DbType::Tuple(tup) => {
                 let tuple_class = db.python_state.tuple_class(db, tup);
