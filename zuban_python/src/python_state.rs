@@ -88,6 +88,10 @@ pub struct PythonState {
     builtins_staticmethod_index: NodeIndex,
     builtins_property_index: NodeIndex,
     builtins_ellipsis_index: NodeIndex,
+    builtins_int_mro: Box<[BaseClass]>,
+    builtins_bool_mro: Box<[BaseClass]>,
+    builtins_str_mro: Box<[BaseClass]>,
+    builtins_bytes_mro: Box<[BaseClass]>,
     typeshed_supports_keys_and_get_item_index: NodeIndex,
     typing_namedtuple_index: NodeIndex, // TODO Appears to be unused currently.
     typing_type_var: NodeIndex,
@@ -178,6 +182,10 @@ impl PythonState {
             builtins_staticmethod_index: 0,
             builtins_property_index: 0,
             builtins_ellipsis_index: 0,
+            builtins_int_mro: Box::new([]),   // will be set later
+            builtins_bool_mro: Box::new([]),  // will be set later
+            builtins_str_mro: Box::new([]),   // will be set later
+            builtins_bytes_mro: Box::new([]), // will be set later
             types_module_type_index: 0,
             types_none_type_index: 0,
             typeshed_supports_keys_and_get_item_index: 0,
@@ -450,6 +458,10 @@ impl PythonState {
             - NAME_TO_FUNCTION_DIFF;
 
         let typed_dict_mro = calculate_mro_for_class(db, db.python_state.typed_dict_class());
+        let builtins_int_mro = calculate_mro_for_class(db, db.python_state.int());
+        let builtins_bool_mro = calculate_mro_for_class(db, db.python_state.bool());
+        let builtins_str_mro = calculate_mro_for_class(db, db.python_state.str());
+        let builtins_bytes_mro = calculate_mro_for_class(db, db.python_state.bytes());
 
         let s = &mut db.python_state;
         let object_db_type = s.object_db_type();
@@ -484,7 +496,11 @@ impl PythonState {
         );
 
         // Cache
-        s.typing_typed_dict_bases = typed_dict_mro.into_boxed_slice();
+        s.typing_typed_dict_bases = typed_dict_mro;
+        s.builtins_int_mro = builtins_int_mro;
+        s.builtins_bool_mro = builtins_bool_mro;
+        s.builtins_str_mro = builtins_str_mro;
+        s.builtins_bytes_mro = builtins_bytes_mro;
     }
 
     #[inline]
@@ -614,6 +630,9 @@ impl PythonState {
 
     node_ref_to_class!(pub object_class, object_node_ref);
     node_ref_to_class!(int, int_node_ref);
+    node_ref_to_class!(bool, bool_node_ref);
+    node_ref_to_class!(str, str_node_ref);
+    node_ref_to_class!(bytes, bytes_node_ref);
     node_ref_to_class!(float, float_node_ref);
     node_ref_to_class!(memoryview, memoryview_node_ref);
     node_ref_to_class!(bytearray, bytearray_node_ref);
@@ -1049,7 +1068,7 @@ fn set_mypy_extension_specific(file: &PythonFile, name: &str, specific: Specific
     result
 }
 
-fn calculate_mro_for_class(db: &Database, class: Class) -> Vec<BaseClass> {
+fn calculate_mro_for_class(db: &Database, class: Class) -> Box<[BaseClass]> {
     let mut mro = Vec::from(class.use_cached_class_infos(db).mro.clone());
     for base in mro.iter_mut() {
         base.is_direct_base = false;
@@ -1061,5 +1080,5 @@ fn calculate_mro_for_class(db: &Database, class: Class) -> Vec<BaseClass> {
             is_direct_base: true,
         },
     );
-    mro
+    mro.into_boxed_slice()
 }
