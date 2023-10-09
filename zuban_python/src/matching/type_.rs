@@ -13,7 +13,7 @@ use crate::arguments::Arguments;
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database,
     Dataclass, DbType, DoubleStarredParamSpecific, EnumMember, FunctionOverload, GenericClass,
-    GenericItem, GenericsList, Literal, LiteralKind, MetaclassState, NamedTuple, ParamSpecArgument,
+    GenericItem, GenericsList, LiteralKind, MetaclassState, NamedTuple, ParamSpecArgument,
     ParamSpecTypeVars, ParamSpecUsage, ParamSpecific, PointLink, RecursiveAlias,
     StarredParamSpecific, TupleContent, TupleTypeArguments, TypeAlias, TypeArguments,
     TypeOrTypeVarTuple, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,

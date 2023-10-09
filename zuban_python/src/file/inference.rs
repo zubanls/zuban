@@ -578,26 +578,40 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     todo!()
                 };
                 let had_error = Cell::new(false);
-                let result = left.type_lookup_and_execute_with_details(
+                let mut result = left.type_lookup_and_execute_with_details(
                     self.i_s,
                     node_ref,
-                    normal,
+                    inplace,
                     &KnownArguments::new(&right, node_ref),
-                    &|type_| {
-                        let left = type_.format_short(self.i_s.db);
-                        node_ref.add_issue(
-                            self.i_s,
-                            IssueType::UnsupportedLeftOperand {
-                                operand: Box::from(aug_assign.operand()),
-                                left,
-                            },
-                        );
-                    },
+                    &|type_| had_error.set(true),
                     OnTypeError::with_overload_mismatch(
                         &|_, _, _, _, _| had_error.set(true),
                         Some(&|_, _| had_error.set(true)),
                     ),
                 );
+                if had_error.get() {
+                    had_error.set(false);
+                    result = left.type_lookup_and_execute_with_details(
+                        self.i_s,
+                        node_ref,
+                        normal,
+                        &KnownArguments::new(&right, node_ref),
+                        &|type_| {
+                            let left = type_.format_short(self.i_s.db);
+                            node_ref.add_issue(
+                                self.i_s,
+                                IssueType::UnsupportedLeftOperand {
+                                    operand: Box::from(aug_assign.operand()),
+                                    left,
+                                },
+                            );
+                        },
+                        OnTypeError::with_overload_mismatch(
+                            &|_, _, _, _, _| had_error.set(true),
+                            Some(&|_, _| had_error.set(true)),
+                        ),
+                    );
+                }
 
                 let n = NodeRef::new(self.file, right_side.index());
                 if had_error.get() {

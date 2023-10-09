@@ -78,8 +78,6 @@ testOperatorDoubleUnionStandardSubtyping
 testReverseOperatorMethodForwardIsAny3
 # Formatting?
 testMiscBinaryOperators
-# __setitem__/__iadd__: b[0] += 1
-testInplaceSetitem
 # inplace operator methods
 testInplaceOperatorMethods
 # functools.total_ordering
@@ -362,8 +360,6 @@ testSelfTypeNonsensical
 testSelfTypeNew
 testSelfTypeNew_explicit
 
-# tuple() / tuple([1])
-testListInplaceAdd
 # Incompatible number of tuple items
 testVariableDeclWithInvalidNumberOfTypes
 testVariableDeclWithInvalidNumberOfTypesNested
