@@ -2140,11 +2140,7 @@ impl<'a> Type<'a> {
             DbType::Literal(literal) => {
                 let instance = i_s.db.python_state.literal_instance(&literal.kind);
                 let result = instance.lookup(i_s, from, name, kind);
-                if literal.implicit {
-                    callable(&i_s.db.python_state.literal_type(&literal.kind), result)
-                } else {
-                    callable(self, result)
-                }
+                callable(self, result)
             }
             t @ DbType::TypeVar(usage) => match &usage.type_var.kind {
                 TypeVarKind::Bound(bound) => {
