@@ -255,8 +255,7 @@ impl<'db> Inference<'db, '_, '_> {
 
         // Since it's a list, now check all the entries if they match the given
         // result generic;
-        let mut found_keys: Option<DbType> = None;
-        let mut found_values: Option<DbType> = None;
+        let mut had_error = false;
         let i_s = self.i_s;
         let mut inference = self.file.inference(i_s);
         for (i, key_value) in dict.iter_elements().enumerate() {
@@ -266,24 +265,14 @@ impl<'db> Inference<'db, '_, '_> {
                         .infer_expression_with_context(key_value.key(), &mut new_key_context);
                     let value_inf = inference
                         .infer_expression_with_context(key_value.value(), &mut new_value_context);
-                    let key_type = key_inf.as_type(i_s);
-                    let value_type = value_inf.as_type(i_s);
-                    let key_match = key_t.is_super_type_of(i_s, matcher, &key_type);
-                    let value_match = value_t.is_super_type_of(i_s, matcher, &value_type);
-                    if key_match.bool() && value_match.bool() {
-                        let key_type = key_type.try_to_resemble_context(i_s, matcher, &key_t);
-                        let value_type = value_type.try_to_resemble_context(i_s, matcher, &value_t);
-                        if let Some(found) = &mut found_keys {
-                            found.union_in_place(i_s.db, key_type)
-                        } else {
-                            found_keys = Some(key_type);
-                        }
-                        if let Some(found) = &mut found_values {
-                            found.union_in_place(i_s.db, value_type)
-                        } else {
-                            found_values = Some(value_type);
-                        }
-                    } else {
+                    if !key_t
+                        .is_super_type_of(i_s, matcher, &key_inf.as_type(i_s))
+                        .bool()
+                        || !value_t
+                            .is_super_type_of(i_s, matcher, &value_inf.as_type(i_s))
+                            .bool()
+                    {
+                        had_error = true;
                         NodeRef::new(self.file, key_value.index()).add_issue(
                             i_s,
                             IssueType::DictMemberMismatch {
@@ -310,21 +299,14 @@ impl<'db> Inference<'db, '_, '_> {
                         &mut ResultContext::Unknown,
                     );
                     if let Some((key, value)) = unpack_star_star(i_s, &mapping.as_type(i_s)) {
-                        let key_match = key_t.is_super_type_of(i_s, matcher, &Type::new(&key));
-                        let value_match =
-                            value_t.is_super_type_of(i_s, matcher, &Type::new(&value));
-                        if key_match.bool() && value_match.bool() {
-                            if let Some(found) = &mut found_keys {
-                                found.union_in_place(i_s.db, key)
-                            } else {
-                                found_keys = Some(key);
-                            }
-                            if let Some(found) = &mut found_values {
-                                found.union_in_place(i_s.db, value)
-                            } else {
-                                found_values = Some(value);
-                            }
-                        } else {
+                        if !key_t
+                            .is_super_type_of(i_s, matcher, &Type::new(&key))
+                            .bool()
+                            || !value_t
+                                .is_super_type_of(i_s, matcher, &Type::new(&value))
+                                .bool()
+                        {
+                            had_error = true;
                             NodeRef::new(self.file, starred.index()).add_issue(
                                 i_s,
                                 IssueType::UnpackedDictMemberMismatch {
@@ -345,11 +327,11 @@ impl<'db> Inference<'db, '_, '_> {
                 }
             }
         }
-        found_keys.map(|keys| {
+        (!had_error).then(|| {
             new_class!(
-                self.i_s.db.python_state.dict_node_ref().as_link(),
-                keys,
-                found_values.unwrap(),
+                i_s.db.python_state.dict_node_ref().as_link(),
+                matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, &key_t),
+                matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, &value_t),
             )
         })
     }
