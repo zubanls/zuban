@@ -517,7 +517,7 @@ fn check_list_with_context<'db>(
 
     // Since it's a list, now check all the entries if they match the given
     // result generic;
-    let mut found: Option<DbType> = None;
+    let mut had_error = false;
     for (item, element) in iterator.enumerate() {
         let mut check_item = |i_s: &InferenceState<'db, '_>, inferred: Inferred, index| {
             let m = generic_t.error_if_not_matches_with_matcher(
@@ -537,15 +537,8 @@ fn check_list_with_context<'db>(
                     node_ref
                 }),
             );
-            if m.bool() {
-                let resembling = inferred
-                    .as_type(i_s)
-                    .try_to_resemble_context(i_s, matcher, &generic_t);
-                if let Some(found) = &mut found {
-                    found.union_in_place(i_s.db, resembling)
-                } else {
-                    found = Some(resembling);
-                }
+            if !m.bool() {
+                had_error = true;
             }
         };
         let mut inference = file.inference(i_s);
@@ -569,7 +562,12 @@ fn check_list_with_context<'db>(
             StarLikeExpression::StarExpression(e) => unreachable!(),
         };
     }
-    found.map(|inner| new_class!(i_s.db.python_state.list_node_ref().as_link(), inner,))
+    (!had_error).then(|| {
+        new_class!(
+            i_s.db.python_state.list_node_ref().as_link(),
+            matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, &generic_t),
+        )
+    })
 }
 
 pub fn on_argument_type_error(
