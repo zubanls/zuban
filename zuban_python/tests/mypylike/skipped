@@ -1,6 +1,4 @@
 # Next up
-testClassBasedEnumPropagation2
-testFuncBasedEnumPropagation2
 
 # Literal Context issues
 nested_tuple_context_inference4

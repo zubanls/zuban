@@ -1441,7 +1441,7 @@ impl DbType {
 
     pub fn is_literal_or_literal_in_tuple(&self) -> bool {
         self.iter_with_unpacked_unions().any(|t| match t {
-            DbType::Literal(l) => true,
+            DbType::Literal(_) | DbType::EnumMember(_) => true,
             DbType::Tuple(tup) => match &tup.args {
                 Some(TupleTypeArguments::FixedLength(ts)) => ts.iter().any(|type_or| matches!(type_or, TypeOrTypeVarTuple::Type(t) if t.is_literal_or_literal_in_tuple())),
                 Some(TupleTypeArguments::ArbitraryLength(t)) => t.is_literal_or_literal_in_tuple(),
@@ -3252,6 +3252,9 @@ impl EnumMember {
     pub fn format(&self, format_data: &FormatData) -> String {
         let question_mark = match format_data.style {
             FormatStyle::MypyRevealType if self.implicit => "?",
+            _ if self.implicit && format_data.hide_implicit_literals => {
+                return self.enum_.format(format_data)
+            }
             _ => "",
         };
         format!("Literal[{}]{question_mark}", self.format_inner(format_data))
