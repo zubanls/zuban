@@ -1338,28 +1338,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
             ExpressionPart::Factor(f) => {
                 let (operand, right) = f.unpack();
-                let method_name = match operand.as_code() {
-                    "-" => {
-                        if let ExpressionPart::Atom(atom) = right {
-                            if let AtomContent::Int(i) = atom.unpack() {
-                                return if let Some(i) = self.parse_int(i, result_context) {
-                                    Inferred::from_type(DbType::Literal(Literal {
-                                        kind: LiteralKind::Int(-i),
-                                        implicit: true,
-                                    }))
-                                } else {
-                                    let point =
-                                        Point::new_simple_specific(Specific::Int, Locality::Todo);
-                                    Inferred::new_and_save(self.file, f.index(), point)
-                                };
-                            }
-                        }
-                        "__neg__"
-                    }
-                    "+" => "__pos__",
-                    "~" => "__invert__",
-                    _ => unreachable!(),
-                };
                 let inf = self.infer_expression_part(right, &mut ResultContext::Unknown);
                 if operand.as_code() == "-" {
                     match inf.maybe_literal(self.i_s.db) {
@@ -1375,6 +1353,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         UnionValue::Any => (),
                     }
                 }
+                let method_name = match operand.as_code() {
+                    "-" => "__neg__",
+                    "+" => "__pos__",
+                    "~" => "__invert__",
+                    _ => unreachable!(),
+                };
                 let node_ref = NodeRef::new(self.file, f.index());
                 inf.type_lookup_and_execute(
                     self.i_s,
