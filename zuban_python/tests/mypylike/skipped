@@ -377,8 +377,6 @@ testStarExpression
 testStarExpressionInFor
 # star input for tuple
 testTupleWithStarExpr
-# tuple concatenation
-testFixedLengthTupleConcatenation
 # "Expression tuple item 8 has type "str"; "int" expected;"
 testAssigningWithLongTupleInitializer
 # Tuple operator in

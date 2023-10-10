@@ -45,13 +45,24 @@ impl<'a> Tuple<'a> {
     }
 
     pub fn lookup(&self, i_s: &InferenceState, node_ref: NodeRef, name: &str) -> LookupResult {
-        if matches!(name, "__mul__" | "__rmul__") {
-            return LookupResult::UnknownName(Inferred::from_type(DbType::CustomBehavior(
-                CustomBehavior::new_method(
-                    tuple_mul,
-                    Some(Rc::new(DbType::Tuple(self.content.clone()))),
-                ),
-            )));
+        match name {
+            "__mul__" | "__rmul__" => {
+                return LookupResult::UnknownName(Inferred::from_type(DbType::CustomBehavior(
+                    CustomBehavior::new_method(
+                        tuple_mul,
+                        Some(Rc::new(DbType::Tuple(self.content.clone()))),
+                    ),
+                )));
+            }
+            "__add__" => {
+                return LookupResult::UnknownName(Inferred::from_type(DbType::CustomBehavior(
+                    CustomBehavior::new_method(
+                        tuple_add,
+                        Some(Rc::new(DbType::Tuple(self.content.clone()))),
+                    ),
+                )));
+            }
+            _ => (),
         }
         let tuple_cls = i_s.db.python_state.tuple_class(i_s.db, self.content);
         let tuple_instance = Instance::new(tuple_cls, None);
@@ -178,6 +189,45 @@ fn simplified_union_of_tuple_entries(
     )
 }
 
+fn tuple_add<'db>(
+    i_s: &InferenceState<'db, '_>,
+    args: &dyn Arguments<'db>,
+    result_context: &mut ResultContext,
+    on_type_error: OnTypeError<'db, '_>,
+    bound: Option<&DbType>,
+) -> Inferred {
+    let DbType::Tuple(tuple) = bound.unwrap() else {
+        unreachable!();
+    };
+    method_with_fallback(
+        i_s,
+        args,
+        result_context,
+        on_type_error,
+        tuple.clone(),
+        "__add__",
+        tuple_add_internal,
+        || Instance::new(i_s.db.python_state.tuple_class(i_s.db, tuple), None),
+    )
+}
+
+fn tuple_add_internal<'db>(
+    i_s: &InferenceState<'db, '_>,
+    tuple1: Rc<TupleContent>,
+    args: &dyn Arguments<'db>,
+) -> Option<Inferred> {
+    let first = args.maybe_single_positional_arg(i_s, &mut ResultContext::Unknown)?;
+    if let Some(TupleTypeArguments::FixedLength(ts1)) = &tuple1.args {
+        if let DbType::Tuple(tuple2) = first.as_type(i_s).as_ref() {
+            if let Some(TupleTypeArguments::FixedLength(ts2)) = &tuple2.args {
+                return Some(Inferred::from_type(DbType::Tuple(Rc::new(
+                    TupleContent::new_fixed_length(ts1.iter().chain(ts2.iter()).cloned().collect()),
+                ))));
+            }
+        }
+    }
+    None
+}
 fn tuple_mul<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Arguments<'db>,
