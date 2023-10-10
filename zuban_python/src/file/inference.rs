@@ -1360,11 +1360,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     "~" => "__invert__",
                     _ => unreachable!(),
                 };
-                let inf = if matches!(result_context, ResultContext::ExpectUnused) {
-                    self.infer_expression_part(right, &mut ResultContext::Unknown)
-                } else {
-                    self.infer_expression_part(right, result_context)
-                };
+                let inf = self.infer_expression_part(right, &mut ResultContext::Unknown);
                 if operand.as_code() == "-" {
                     match inf.maybe_literal(self.i_s.db) {
                         UnionValue::Single(literal) => {
