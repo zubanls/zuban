@@ -2857,7 +2857,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 // This case is a bit weird in Mypy, but it makes it possible to use a type
                 // definition like:
                 //
-                //     Foo = 1  # Any
+                //     Foo = 1  # type: Any
                 if type_.is_any() {
                     return TypeNameLookup::Unknown;
                 }
