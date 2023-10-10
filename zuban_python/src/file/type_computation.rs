@@ -2853,12 +2853,12 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         if let Some((name_def, annotation, expr)) =
             assignment.maybe_simple_type_expression_assignment()
         {
-            if let Some((_, type_)) = self.check_for_type_comment(assignment) {
+            if let Some(type_comment) = self.check_for_type_comment(assignment) {
                 // This case is a bit weird in Mypy, but it makes it possible to use a type
                 // definition like:
                 //
                 //     Foo = 1  # type: Any
-                if type_.is_any() {
+                if type_comment.type_.is_any() {
                     return TypeNameLookup::Unknown;
                 }
             }
@@ -2977,7 +2977,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         start: CodeIndex,
         s: &str,
         assignment_node_ref: NodeRef,
-    ) -> (Inferred, Type<'db>) {
+    ) -> TypeCommentDetails<'db> {
         let f: &'db PythonFile =
             self.file
                 .new_annotation_file(self.i_s.db, start, s.trim_end_matches('\\').into());
@@ -3012,10 +3012,11 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                         });
                         debug_assert!(type_vars.is_empty());
                     }
-                    (
-                        Inferred::from_saved_node_ref(NodeRef::new(f, index)),
-                        inference.use_cached_annotation_or_type_comment_type_internal(index, expr),
-                    )
+                    TypeCommentDetails {
+                        inferred: Inferred::from_saved_node_ref(NodeRef::new(f, index)),
+                        type_: inference
+                            .use_cached_annotation_or_type_comment_type_internal(index, expr),
+                    }
                 }
                 StarExpressionContent::Tuple(t) => {
                     let star_exprs_index = star_exprs.index();
@@ -3024,23 +3025,26 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                     let unsaved = Inferred::from_type(db_type);
                     unsaved.save_redirect(self.i_s, f, index);
                     let complex_index = f.points.get(index).complex_index();
-                    (
-                        Inferred::from_saved_node_ref(NodeRef::new(f, index)),
-                        if let ComplexPoint::TypeInstance(db_type) =
+                    TypeCommentDetails {
+                        inferred: Inferred::from_saved_node_ref(NodeRef::new(f, index)),
+                        type_: if let ComplexPoint::TypeInstance(db_type) =
                             f.complex_points.get(complex_index)
                         {
                             Type::new(db_type)
                         } else {
                             unreachable!()
                         },
-                    )
+                    }
                 }
                 StarExpressionContent::StarExpression(s) => todo!(),
             }
         } else {
             for stmt_or_error in f.tree.root().iter_stmts() {
                 if let StmtOrError::Error(node_index) = stmt_or_error {
-                    return (Inferred::new_any(), Type::new(&DbType::Any));
+                    return TypeCommentDetails {
+                        inferred: Inferred::new_any(),
+                        type_: Type::new(&DbType::Any),
+                    };
                 }
             }
             debug!("Found non-expression in annotation: {}", f.tree.code());
@@ -3054,7 +3058,10 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                     },
                 },
             );
-            return (Inferred::new_any(), Type::new(&DbType::Any));
+            return TypeCommentDetails {
+                inferred: Inferred::new_any(),
+                type_: Type::new(&DbType::Any),
+            };
         }
     }
 
@@ -3098,7 +3105,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
     pub fn check_for_type_comment(
         &mut self,
         assignment: Assignment,
-    ) -> Option<(Inferred, Type<'db>)> {
+    ) -> Option<TypeCommentDetails<'db>> {
         let suffix = assignment.suffix();
         if let Some(start) = suffix.find('#') {
             let mut start = start + 1;
@@ -3776,4 +3783,9 @@ fn check_named_tuple_has_no_fields_with_underscore(
             },
         );
     }
+}
+
+pub struct TypeCommentDetails<'db> {
+    pub type_: Type<'db>,
+    pub inferred: Inferred,
 }

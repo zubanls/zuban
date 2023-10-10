@@ -490,18 +490,22 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let type_comment_result = self.check_for_type_comment(assignment);
 
                 let is_definition = type_comment_result.is_some();
-                let right = if let Some((r, type_)) = type_comment_result {
-                    let right = self
-                        .infer_assignment_right_side(right_side, &mut ResultContext::Known(&type_));
+                let right = if let Some(type_comment) = type_comment_result {
+                    let right = self.infer_assignment_right_side(
+                        right_side,
+                        &mut ResultContext::Known(&type_comment.type_),
+                    );
                     // It is very weird, but somehow type comments in Mypy are allowed to have the
                     // form of `x = None  # type: int` in classes, even with strict-optional. It's
                     // even weirder that the form `x: int = None` is not allowed.
                     if !(self.i_s.current_class().is_some()
                         && matches!(right.as_type(self.i_s).as_ref(), DbType::None))
                     {
-                        type_.error_if_not_matches(self.i_s, &right, on_type_error);
+                        type_comment
+                            .type_
+                            .error_if_not_matches(self.i_s, &right, on_type_error);
                     }
-                    r
+                    type_comment.inferred
                 } else {
                     let inf = self.inferred_context_for_simple_assignment(targets.clone());
                     let result_type = inf.as_ref().map(|inf| inf.as_type(self.i_s));
