@@ -495,7 +495,12 @@ impl<'db> Int<'db> {
     }
 
     pub fn parse(&self) -> Option<i64> {
-        let to_be_parsed = self.as_code();
+        let mut to_be_parsed = self.as_code();
+        let tmp;
+        if to_be_parsed.contains('_') {
+            tmp = to_be_parsed.replace('_', "");
+            to_be_parsed = &tmp;
+        }
         if let Some(stripped) = to_be_parsed.strip_prefix("0") {
             let base = match stripped.as_bytes().first() {
                 None => return Some(0),
@@ -506,9 +511,6 @@ impl<'db> Int<'db> {
             };
             i64::from_str_radix(&stripped[1..], base).ok()
         } else {
-            if to_be_parsed.contains('_') {
-                todo!("Stuff like 100_000")
-            }
             to_be_parsed.parse().ok()
         }
     }
