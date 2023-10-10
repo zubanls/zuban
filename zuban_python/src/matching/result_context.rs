@@ -77,13 +77,6 @@ impl<'a> ResultContext<'a, '_> {
         .unwrap_or(CouldBeALiteral::Yes { implicit: true })
     }
 
-    pub fn can_be_a_literal<'db>(&self, i_s: &InferenceState<'db, '_>) -> bool {
-        match self.could_be_a_literal(i_s) {
-            CouldBeALiteral::Yes { .. } => true,
-            CouldBeALiteral::No => false,
-        }
-    }
-
     pub fn expects_union(&self, i_s: &InferenceState) -> bool {
         match self {
             Self::Known(type_) | Self::WithMatcher { type_, .. } => {

@@ -155,12 +155,7 @@ fn lookup_members_on_enum(
     result_context: &mut ResultContext,
 ) -> LookupResult {
     match Enum::lookup(enum_, i_s.db, name, true) {
-        Some(m) => LookupResult::UnknownName(Inferred::from_type(
-            match result_context.can_be_a_literal(i_s) {
-                true => DbType::EnumMember(m),
-                false => DbType::Enum(enum_.clone()),
-            },
-        )),
+        Some(m) => LookupResult::UnknownName(Inferred::from_type(DbType::EnumMember(m))),
         None => LookupResult::None,
     }
 }

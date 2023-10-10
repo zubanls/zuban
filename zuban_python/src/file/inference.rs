@@ -1365,7 +1365,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 } else {
                     self.infer_expression_part(right, result_context)
                 };
-                if operand.as_code() == "-" && result_context.can_be_a_literal(self.i_s) {
+                if operand.as_code() == "-" {
                     match inf.maybe_literal(self.i_s.db) {
                         UnionValue::Single(literal) => {
                             if let LiteralKind::Int(i) = &literal.kind {
