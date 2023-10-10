@@ -27,18 +27,30 @@ impl<'db> Inference<'db, '_, '_> {
     ) -> DbType {
         let mut result = None;
         for child in elements {
+            let from_stars = |inferred: Inferred, from_index| {
+                inferred
+                    .iter(self.i_s, NodeRef::new(self.file, from_index))
+                    .infer_all(self.i_s)
+                    .as_db_type(self.i_s)
+            };
             let t = match child {
                 StarLikeExpression::NamedExpression(named_expr) => {
                     self.infer_named_expression(named_expr).as_db_type(self.i_s)
                 }
-                StarLikeExpression::StarNamedExpression(e) => self
-                    .infer_expression_part(e.expression_part(), &mut ResultContext::Unknown)
-                    .iter(self.i_s, NodeRef::new(self.file, e.index()))
-                    .infer_all(self.i_s)
-                    .as_db_type(self.i_s),
-                StarLikeExpression::Expression(_) | StarLikeExpression::StarExpression(_) => {
-                    unreachable!()
+                StarLikeExpression::StarNamedExpression(e) => from_stars(
+                    self.infer_expression_part(e.expression_part(), &mut ResultContext::Unknown),
+                    e.index(),
+                ),
+                StarLikeExpression::Expression(expr) => {
+                    self.infer_expression(expr).as_db_type(self.i_s)
                 }
+                StarLikeExpression::StarExpression(star_expr) => from_stars(
+                    self.infer_expression_part(
+                        star_expr.expression_part(),
+                        &mut ResultContext::Unknown,
+                    ),
+                    star_expr.index(),
+                ),
             };
             let t = t.avoid_implicit_literal(self.i_s.db);
             if let Some(r) = result.take() {

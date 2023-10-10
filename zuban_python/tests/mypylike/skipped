@@ -372,15 +372,10 @@ testUnionUnpackingChainedList2
 # star unpacking for tuples
 testAssignmentToComplexStar
 testAssignmentToStarFromTupleType
-testStarredExpressionsInForLoop
-testStarExpression
-testStarExpressionInFor
 # star input for tuple
 testTupleWithStarExpr
 # "Expression tuple item 8 has type "str"; "int" expected;"
 testAssigningWithLongTupleInitializer
-# Tuple operator in
-testTupleMethods
 # tuple assignment tuple[Any, ...] to tuple[A, A]
 testSubtypingWithNamedTupleType
 # tuple type expected for multiple variables
@@ -1226,6 +1221,7 @@ testVariableMethod
 testSelfTypeOverrideCompatibilityTypeVar
 testImplementAbstractPropertyViaPropertyInvalidType
 testOverridePropertyMethod
+testTupleMethods
 # With overload
 testSelfTypeOverrideCompatibility
 testSubtypeOverloadWithOverlappingArgumentsButWrongReturnType

@@ -1801,6 +1801,17 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let mut is_arbitrary_length = false;
         let is_definition = matches!(result_context, ResultContext::AssignmentNewDefinition);
         result_context.with_tuple_context_iterator(self.i_s, |tuple_context_iterator| {
+            let mut add_from_stars = |generics: &mut Vec<_>, inferred: Inferred, from_index| {
+                let mut iterator = inferred.iter(self.i_s, NodeRef::new(self.file, from_index));
+                if iterator.len().is_some() {
+                    while let Some(inf) = iterator.next(self.i_s) {
+                        generics.push(TypeOrTypeVarTuple::Type(inf.as_db_type(self.i_s)))
+                    }
+                } else {
+                    is_arbitrary_length = true;
+                    return;
+                }
+            };
             for (e, mut rc) in iterator.clone().zip(tuple_context_iterator) {
                 match e {
                     StarLikeExpression::NamedExpression(e) => {
@@ -1820,23 +1831,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             e.expression_part(),
                             &mut ResultContext::Unknown,
                         );
-                        let mut iterator =
-                            inferred.iter(self.i_s, NodeRef::new(self.file, e.index()));
-                        if iterator.len().is_some() {
-                            while let Some(inf) = iterator.next(self.i_s) {
-                                generics.push(TypeOrTypeVarTuple::Type(inf.as_db_type(self.i_s)))
-                            }
-                        } else {
-                            is_arbitrary_length = true;
-                            return;
-                        }
+                        add_from_stars(&mut generics, inferred, e.index())
                     }
                     StarLikeExpression::StarExpression(e) => {
                         let inferred = self.infer_expression_part(
                             e.expression_part(),
                             &mut ResultContext::Unknown,
                         );
-                        todo!()
+                        add_from_stars(&mut generics, inferred, e.index())
                     }
                 }
             }
