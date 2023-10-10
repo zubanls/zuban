@@ -364,7 +364,6 @@ testVariableDeclWithInvalidNumberOfTypesNested
 testVariableDeclWithInvalidNumberOfTypesNested2
 testVariableDeclWithInvalidNumberOfTypesNested4
 # "Too many values to unpack (2 expected, 3 provided)"
-testMultipleAssignmentWithInvalidNumberOfValues
 testInitializationWithMultipleValues
 testUnionOfVariableLengthTupleUnpacking
 # Union IteratorContent len() call
