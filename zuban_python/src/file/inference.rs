@@ -1690,10 +1690,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
     check_point_cache_with!(pub infer_atom, Self::_infer_atom, Atom, result_context);
     fn _infer_atom(&mut self, atom: Atom, result_context: &mut ResultContext) -> Inferred {
-        let check_literal = |i_s, index, non_literal: Specific, literal| {
+        let check_literal = |i_s, index, literal| {
             let specific = match result_context.could_be_a_literal(i_s) {
-                CouldBeALiteral::No => non_literal,
-                CouldBeALiteral::Yes { implicit: true } => literal,
+                CouldBeALiteral::No | CouldBeALiteral::Yes { implicit: true } => literal,
                 CouldBeALiteral::Yes { implicit: false } => {
                     let mut t = specific_to_type(
                         i_s,
@@ -1717,8 +1716,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             Name(n) => return self.infer_name_reference(n),
             Int(i) => match self.parse_int(i, result_context) {
                 Some(parsed) => {
-                    let CouldBeALiteral::Yes { implicit } = result_context.could_be_a_literal(self.i_s) else {
-                        unreachable!()
+                    let mut implicit = true;
+                    if let CouldBeALiteral::Yes { implicit: false } =
+                        result_context.could_be_a_literal(self.i_s)
+                    {
+                        implicit = false
                     };
                     if implicit {
                         let point =
@@ -1742,23 +1744,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                 }
                 if let Some(s) = s_o_b.maybe_single_string_literal() {
-                    return check_literal(
-                        self.i_s,
-                        s.index(),
-                        Specific::String,
-                        Specific::StringLiteral,
-                    );
+                    return check_literal(self.i_s, s.index(), Specific::StringLiteral);
                 } else {
                     Specific::String
                 }
             }
-            Bytes(b) => {
-                return check_literal(self.i_s, b.index(), Specific::Bytes, Specific::BytesLiteral)
-            }
+            Bytes(b) => return check_literal(self.i_s, b.index(), Specific::BytesLiteral),
             NoneLiteral => Specific::None,
-            Bool(b) => {
-                return check_literal(self.i_s, b.index(), Specific::Bool, Specific::BoolLiteral)
-            }
+            Bool(b) => return check_literal(self.i_s, b.index(), Specific::BoolLiteral),
             Ellipsis => Specific::Ellipsis,
             List(list) => {
                 if let Some(result) = self.infer_list_literal_from_context(list, result_context) {
