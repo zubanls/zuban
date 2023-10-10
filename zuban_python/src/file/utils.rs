@@ -37,18 +37,14 @@ impl<'db> Inference<'db, '_, '_> {
                 StarLikeExpression::NamedExpression(named_expr) => {
                     self.infer_named_expression(named_expr).as_db_type(self.i_s)
                 }
-                StarLikeExpression::StarNamedExpression(e) => from_stars(
-                    self.infer_expression_part(e.expression_part(), &mut ResultContext::Unknown),
-                    e.index(),
-                ),
+                StarLikeExpression::StarNamedExpression(e) => {
+                    from_stars(self.infer_expression_part(e.expression_part()), e.index())
+                }
                 StarLikeExpression::Expression(expr) => {
                     self.infer_expression(expr).as_db_type(self.i_s)
                 }
                 StarLikeExpression::StarExpression(star_expr) => from_stars(
-                    self.infer_expression_part(
-                        star_expr.expression_part(),
-                        &mut ResultContext::Unknown,
-                    ),
+                    self.infer_expression_part(star_expr.expression_part()),
                     star_expr.index(),
                 ),
             };
@@ -201,10 +197,7 @@ impl<'db> Inference<'db, '_, '_> {
                     }
                 }
                 DictElement::DictStarred(dict_starred) => {
-                    let inf = self.infer_expression_part(
-                        dict_starred.expression_part(),
-                        &mut ResultContext::Unknown,
-                    );
+                    let inf = self.infer_expression_part(dict_starred.expression_part());
                     let node_ref =
                         NodeRef::new(self.file, dict_starred.index()).to_db_lifetime(i_s.db);
                     match inf.as_type(i_s).as_ref() {
@@ -306,10 +299,7 @@ impl<'db> Inference<'db, '_, '_> {
                     }
                 }
                 DictElement::DictStarred(starred) => {
-                    let mapping = self.infer_expression_part(
-                        starred.expression_part(),
-                        &mut ResultContext::Unknown,
-                    );
+                    let mapping = self.infer_expression_part(starred.expression_part());
                     if let Some((key, value)) = unpack_star_star(i_s, &mapping.as_type(i_s)) {
                         if !key_t
                             .is_super_type_of(i_s, matcher, &Type::new(&key))
@@ -437,10 +427,7 @@ impl<'db> Inference<'db, '_, '_> {
                             gather_values(self.infer_expression(key_value.value()));
                         }
                         DictElement::DictStarred(starred) => {
-                            let mapping = self.infer_expression_part(
-                                starred.expression_part(),
-                                &mut ResultContext::Unknown,
-                            );
+                            let mapping = self.infer_expression_part(starred.expression_part());
                             if let Some((key, value)) = unpack_star_star(i_s, &mapping.as_type(i_s))
                             {
                                 gather_keys(Inferred::from_type(key));
@@ -539,8 +526,7 @@ fn check_list_with_context<'db>(
                 check_item(i_s, inferred, e.index())
             }
             StarLikeExpression::StarNamedExpression(starred) => {
-                let inferred = inference
-                    .infer_expression_part(starred.expression_part(), &mut ResultContext::Unknown);
+                let inferred = inference.infer_expression_part(starred.expression_part());
                 let from = NodeRef::new(file, starred.index());
                 check_item(
                     i_s,

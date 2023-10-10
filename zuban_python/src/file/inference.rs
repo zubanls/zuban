@@ -1149,12 +1149,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         result_context: &mut ResultContext,
     ) -> Inferred {
         let inferred = match expr.unpack() {
-            ExpressionContent::ExpressionPart(n) => self.infer_expression_part(n, result_context),
+            ExpressionContent::ExpressionPart(n) => {
+                self.infer_expression_part_with_context(n, result_context)
+            }
             ExpressionContent::Lambda(l) => self.infer_lambda(l, result_context),
             ExpressionContent::Ternary(t) => {
                 let (if_, condition, else_) = t.unpack();
-                self.infer_expression_part(condition, &mut ResultContext::Unknown);
-                let if_inf = self.infer_expression_part(if_, result_context);
+                self.infer_expression_part(condition);
+                let if_inf = self.infer_expression_part_with_context(if_, result_context);
                 let else_inf = self.infer_expression_with_context(else_, result_context);
 
                 // Mypy has a weird way of doing this:
@@ -1174,7 +1176,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         inferred.maybe_save_redirect(self.i_s, self.file, expr.index(), true)
     }
 
-    pub fn infer_expression_part(
+    pub fn infer_expression_part(&mut self, node: ExpressionPart) -> Inferred {
+        self.infer_expression_part_with_context(node, &mut ResultContext::Unknown)
+    }
+
+    pub fn infer_expression_part_with_context(
         &mut self,
         node: ExpressionPart,
         result_context: &mut ResultContext,
@@ -1191,7 +1197,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     if let ExpressionPart::Atom(atom) = op.left {
                         if matches!(atom.unpack(), AtomContent::List(_)) {
                             if self
-                                .infer_expression_part(op.right, &mut ResultContext::Unknown)
+                                .infer_expression_part(op.right)
                                 .as_type(self.i_s)
                                 .is_simple_sub_type_of(
                                     self.i_s,
@@ -1213,19 +1219,19 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             ExpressionPart::BitwiseXor(xor) => self.infer_operation(xor.as_operation()),
             ExpressionPart::Disjunction(or) => {
                 let (first, second) = or.unpack();
-                let first = self.infer_expression_part(first, &mut ResultContext::Unknown);
-                let second = self.infer_expression_part(second, &mut ResultContext::Unknown);
+                let first = self.infer_expression_part(first);
+                let second = self.infer_expression_part(second);
                 Inferred::from_type(self.i_s.db.python_state.bool_db_type())
             }
             ExpressionPart::Conjunction(and) => {
                 let (first, second) = and.unpack();
-                let first = self.infer_expression_part(first, &mut ResultContext::Unknown);
-                let second = self.infer_expression_part(second, &mut ResultContext::Unknown);
+                let first = self.infer_expression_part(first);
+                let second = self.infer_expression_part(second);
                 Inferred::from_type(self.i_s.db.python_state.bool_db_type())
             }
             ExpressionPart::Inversion(inversion) => {
                 let expr = inversion.expression();
-                self.infer_expression_part(expr, &mut ResultContext::Unknown);
+                self.infer_expression_part(expr);
                 Inferred::from_type(self.i_s.db.python_state.bool_db_type())
             }
             ExpressionPart::Comparisons(cmps) => {
@@ -1234,10 +1240,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         let result = match cmp {
                             ComparisonContent::Equals(first, op, second)
                             | ComparisonContent::NotEquals(first, op, second) => {
-                                let first =
-                                    self.infer_expression_part(first, &mut ResultContext::Unknown);
-                                let second =
-                                    self.infer_expression_part(second, &mut ResultContext::Unknown);
+                                let first = self.infer_expression_part(first);
+                                let second = self.infer_expression_part(second);
                                 let from = NodeRef::new(self.file, op.index());
                                 // TODO this does not implement __ne__ for NotEquals
                                 first.type_lookup_and_execute(
@@ -1250,18 +1254,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             }
                             ComparisonContent::Is(first, _, second)
                             | ComparisonContent::IsNot(first, _, second) => {
-                                let first =
-                                    self.infer_expression_part(first, &mut ResultContext::Unknown);
-                                let second =
-                                    self.infer_expression_part(second, &mut ResultContext::Unknown);
+                                let first = self.infer_expression_part(first);
+                                let second = self.infer_expression_part(second);
                                 Inferred::from_type(self.i_s.db.python_state.bool_db_type())
                             }
                             ComparisonContent::In(first, op, second)
                             | ComparisonContent::NotIn(first, op, second) => {
-                                let first =
-                                    self.infer_expression_part(first, &mut ResultContext::Unknown);
-                                let second =
-                                    self.infer_expression_part(second, &mut ResultContext::Unknown);
+                                let first = self.infer_expression_part(first);
+                                let second = self.infer_expression_part(second);
                                 let from = NodeRef::new(self.file, op.index());
                                 second.run_after_lookup_on_each_union_member(
                                     self.i_s,
@@ -1338,7 +1338,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
             ExpressionPart::Factor(f) => {
                 let (operand, right) = f.unpack();
-                let inf = self.infer_expression_part(right, &mut ResultContext::Unknown);
+                let inf = self.infer_expression_part(right);
                 if operand.as_code() == "-" {
                     match inf.maybe_literal(self.i_s.db) {
                         UnionValue::Single(literal) => {
@@ -1386,7 +1386,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     if function.is_async() {
                         await_(
                             self.i_s,
-                            self.infer_expression_part(
+                            self.infer_expression_part_with_context(
                                 await_node.primary(),
                                 &mut match result_context {
                                     ResultContext::ExpectUnused => ResultContext::ExpectUnused,
@@ -1455,7 +1455,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     fn infer_operation(&mut self, op: Operation) -> Inferred {
-        let left = self.infer_expression_part(op.left, &mut ResultContext::Unknown);
+        let left = self.infer_expression_part(op.left);
         self.infer_detailed_operation(op, left)
     }
 
@@ -1468,7 +1468,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             BothSidesError,
         }
 
-        let right = self.infer_expression_part(op.right, &mut ResultContext::Unknown);
+        let right = self.infer_expression_part(op.right);
         let node_ref = NodeRef::new(self.file, op.index);
         let mut had_error = false;
         let i_s = self.i_s;
@@ -1827,17 +1827,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         generics.push(TypeOrTypeVarTuple::Type(t))
                     }
                     StarLikeExpression::StarNamedExpression(e) => {
-                        let inferred = self.infer_expression_part(
-                            e.expression_part(),
-                            &mut ResultContext::Unknown,
-                        );
+                        let inferred = self.infer_expression_part(e.expression_part());
                         add_from_stars(&mut generics, inferred, e.index())
                     }
                     StarLikeExpression::StarExpression(e) => {
-                        let inferred = self.infer_expression_part(
-                            e.expression_part(),
-                            &mut ResultContext::Unknown,
-                        );
+                        let inferred = self.infer_expression_part(e.expression_part());
                         add_from_stars(&mut generics, inferred, e.index())
                     }
                 }
@@ -2279,7 +2273,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
             };
             let clause_node_ref = NodeRef::new(self.file, clause.index());
-            let base = self.infer_expression_part(expr_part, &mut ResultContext::Unknown);
+            let base = self.infer_expression_part(expr_part);
             let inf = if needs_await {
                 await_aiter_and_next(self.i_s, base, clause_node_ref)
             } else {
