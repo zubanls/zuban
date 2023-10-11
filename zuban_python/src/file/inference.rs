@@ -817,6 +817,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 from.to_db_lifetime(self.i_s.db)
                             },
                         );
+                        return;
                     }
                 }
                 save(self.i_s, name_def.index());

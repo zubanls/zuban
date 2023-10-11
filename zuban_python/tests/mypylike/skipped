@@ -358,15 +358,8 @@ testSelfTypeNonsensical
 testSelfTypeNew
 testSelfTypeNew_explicit
 
-# Incompatible number of tuple items
-testVariableDeclWithInvalidNumberOfTypes
-testVariableDeclWithInvalidNumberOfTypesNested
-testVariableDeclWithInvalidNumberOfTypesNested2
-testVariableDeclWithInvalidNumberOfTypesNested4
-# "Too many values to unpack (2 expected, 3 provided)"
-testInitializationWithMultipleValues
-testUnionOfVariableLengthTupleUnpacking
 # Union IteratorContent len() call
+testUnionOfVariableLengthTupleUnpacking
 testUnionUnpackingChainedList2
 # star unpacking for tuples
 testAssignmentToComplexStar
@@ -377,10 +370,6 @@ testTupleWithStarExpr
 testAssigningWithLongTupleInitializer
 # tuple assignment tuple[Any, ...] to tuple[A, A]
 testSubtypingWithNamedTupleType
-# tuple type expected for multiple variables
-testVariableDeclWithInvalidType
-testVariableDeclWithInvalidNumberOfTypesNested3
-testVariableDeclWithInvalidNumberOfTypesNested5
 
 # Tuple Super Class
 testNewAnalyzerTupleIteration
@@ -2717,6 +2706,7 @@ testOperatorContainsNarrowsTypedDicts_final
 
 # --no-strict-optional details
 testNestedListExpressions
+testInitializationWithMultipleValues
 
 # --no-namespace-packages
 testClassicNotPackage
@@ -2999,6 +2989,15 @@ testFastParsePerArgumentAnnotationsWithReturn
 testFastParsePerArgumentAnnotationsWithAnnotatedBareStar
 testFastParsePerArgumentAnnotationsWithReturnAndBareStar
 
+# Tuple comment syntax: Incompatible number of tuple items
+testVariableDeclWithInvalidNumberOfTypes
+testVariableDeclWithInvalidNumberOfTypesNested
+testVariableDeclWithInvalidNumberOfTypesNested2
+testVariableDeclWithInvalidNumberOfTypesNested4
+# Tuple comment syntax: tuple type expected for multiple variables
+testVariableDeclWithInvalidType
+testVariableDeclWithInvalidNumberOfTypesNested3
+testVariableDeclWithInvalidNumberOfTypesNested5
 # Won't support: Signature Comments
 testIncompatibleSignatureInComment
 testFunctionSignatureAsComment
