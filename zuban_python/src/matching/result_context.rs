@@ -152,24 +152,24 @@ pub enum TupleContextIterator<'a> {
 }
 
 impl<'a> Iterator for TupleContextIterator<'a> {
-    type Item = ResultContext<'a, 'a>;
+    type Item = &'a DbType;
 
     fn next(&mut self) -> Option<Self::Item> {
         Some(match self {
-            Self::ArbitraryLength(t) => ResultContext::Known(t),
+            Self::ArbitraryLength(t) => t,
             Self::FixedLength(items) => {
                 match items.next() {
-                    Some(TypeOrTypeVarTuple::Type(t)) => ResultContext::Known(t),
+                    Some(TypeOrTypeVarTuple::Type(t)) => t,
                     Some(TypeOrTypeVarTuple::TypeVarTuple(_)) => {
                         // Clear the remaining items, because the order of the following items is
                         // unclear.
                         *items = [].iter();
                         todo!("Probably return ResultContext::Unknown here")
                     }
-                    None => ResultContext::Unknown,
+                    None => &DbType::Any,
                 }
             }
-            Self::Unknown => ResultContext::Unknown,
+            Self::Unknown => &DbType::Any,
         })
     }
 }

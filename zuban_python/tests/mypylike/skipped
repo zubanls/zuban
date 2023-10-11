@@ -166,6 +166,8 @@ testNoCrashOnGenericUnionUnpacking
 testInferMultipleAnyUnionDifferentVariance
 # union tuple context inference
 testLiteralAndInstanceSubtyping
+# "Expression tuple item 8 has type "str"; "int" expected;"
+testAssigningWithLongTupleInitializer
 # union context inference
 testCrashOnComplexCheckWithNamedTupleNext
 # type vars against unions
@@ -366,8 +368,6 @@ testAssignmentToComplexStar
 testAssignmentToStarFromTupleType
 # star input for tuple
 testTupleWithStarExpr
-# "Expression tuple item 8 has type "str"; "int" expected;"
-testAssigningWithLongTupleInitializer
 # tuple assignment tuple[Any, ...] to tuple[A, A]
 testSubtypingWithNamedTupleType
 

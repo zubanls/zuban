@@ -1817,17 +1817,20 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     return;
                 }
             };
-            for (e, mut rc) in iterator.clone().zip(tuple_context_iterator) {
+            for (e, expected) in iterator.clone().zip(tuple_context_iterator) {
                 match e {
                     StarLikeExpression::NamedExpression(e) => {
                         let t = self
-                            .infer_named_expression_with_context(e, &mut rc)
+                            .infer_named_expression_with_context(
+                                e,
+                                &mut ResultContext::Known(expected),
+                            )
                             .as_db_type(self.i_s);
                         generics.push(TypeOrTypeVarTuple::Type(t))
                     }
                     StarLikeExpression::Expression(e) => {
                         let t = self
-                            .infer_expression_with_context(e, &mut rc)
+                            .infer_expression_with_context(e, &mut ResultContext::Known(expected))
                             .as_db_type(self.i_s);
                         generics.push(TypeOrTypeVarTuple::Type(t))
                     }
