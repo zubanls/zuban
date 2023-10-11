@@ -1192,7 +1192,7 @@ impl DbType {
             Self::TypeVar(t) => found_type_var(TypeVarLikeUsage::TypeVar(Cow::Borrowed(t))),
             Self::Type(db_type) => db_type.search_type_vars(found_type_var),
             Self::Tuple(content) => match &content.args {
-                Some(TupleTypeArguments::FixedLength(ts)) => {
+                TupleTypeArguments::FixedLength(ts) => {
                     for t in ts.iter() {
                         match t {
                             TypeOrTypeVarTuple::Type(t) => t.search_type_vars(found_type_var),
@@ -1202,8 +1202,7 @@ impl DbType {
                         }
                     }
                 }
-                Some(TupleTypeArguments::ArbitraryLength(t)) => t.search_type_vars(found_type_var),
-                None => (),
+                TupleTypeArguments::ArbitraryLength(t) => t.search_type_vars(found_type_var),
             },
             Self::Callable(content) => {
                 search_params(found_type_var, &content.params);
@@ -1283,11 +1282,7 @@ impl DbType {
                 .any(|callable| callable.has_any_internal(i_s, already_checked)),
             Self::TypeVar(t) => false,
             Self::Type(db_type) => db_type.has_any_internal(i_s, already_checked),
-            Self::Tuple(content) => content
-                .args
-                .as_ref()
-                .map(|args| args.has_any_internal(i_s, already_checked))
-                .unwrap_or(true),
+            Self::Tuple(content) => content.args.has_any_internal(i_s, already_checked),
             Self::Callable(content) => content.has_any_internal(i_s, already_checked),
             Self::Class(GenericClass {
                 generics:
@@ -1359,13 +1354,13 @@ impl DbType {
                 intersection.iter_functions().any(|t| t.has_self_type())
             }
             Self::Type(t) => t.has_self_type(),
-            Self::Tuple(content) => content.args.as_ref().is_some_and(|args| match args {
+            Self::Tuple(content) => match &content.args {
                 TupleTypeArguments::FixedLength(ts) => ts.iter().any(|t| match t {
                     TypeOrTypeVarTuple::Type(t) => t.has_self_type(),
                     TypeOrTypeVarTuple::TypeVarTuple(_) => false,
                 }),
                 TupleTypeArguments::ArbitraryLength(t) => t.has_self_type(),
-            }),
+            },
             Self::Callable(content) => content.has_self_type(),
             Self::Self_ => true,
             Self::Dataclass(_) => todo!(),
@@ -1405,7 +1400,7 @@ impl DbType {
             DbType::Literal(l) if l.implicit => Some(db.python_state.literal_db_type(&l.kind)),
             DbType::EnumMember(m) if m.implicit => Some(DbType::Enum(m.enum_.clone())),
             DbType::Tuple(tup) => {
-                if let Some(TupleTypeArguments::FixedLength(ts)) = &tup.args {
+                if let TupleTypeArguments::FixedLength(ts) = &tup.args {
                     let mut gathered = vec![];
                     if ts.iter().any(|type_or| match type_or {
                         TypeOrTypeVarTuple::Type(t) => t.maybe_avoid_implicit_literal(db).is_some(),
@@ -1440,9 +1435,8 @@ impl DbType {
         self.iter_with_unpacked_unions().any(|t| match t {
             DbType::Literal(_) | DbType::EnumMember(_) => true,
             DbType::Tuple(tup) => match &tup.args {
-                Some(TupleTypeArguments::FixedLength(ts)) => ts.iter().any(|type_or| matches!(type_or, TypeOrTypeVarTuple::Type(t) if t.is_literal_or_literal_in_tuple())),
-                Some(TupleTypeArguments::ArbitraryLength(t)) => t.is_literal_or_literal_in_tuple(),
-                None => false,
+                TupleTypeArguments::FixedLength(ts) => ts.iter().any(|type_or| matches!(type_or, TypeOrTypeVarTuple::Type(t) if t.is_literal_or_literal_in_tuple())),
+                TupleTypeArguments::ArbitraryLength(t) => t.is_literal_or_literal_in_tuple(),
             },
             _ => false,
         })
@@ -1622,14 +1616,14 @@ impl TupleTypeArguments {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TupleContent {
-    pub args: Option<TupleTypeArguments>,
+    pub args: TupleTypeArguments,
     tuple_class_generics: OnceCell<GenericsList>,
 }
 
 impl TupleContent {
     pub fn new(args: TupleTypeArguments) -> Self {
         Self {
-            args: Some(args),
+            args,
             tuple_class_generics: OnceCell::new(),
         }
     }
@@ -1649,10 +1643,7 @@ impl TupleContent {
     pub fn tuple_class_generics(&self, db: &Database) -> &GenericsList {
         self.tuple_class_generics.get_or_init(|| {
             GenericsList::new_generics(Rc::new([GenericItem::TypeArgument(
-                self.args
-                    .as_ref()
-                    .map(|args| args.common_base_type(&InferenceState::new(db)))
-                    .unwrap_or(DbType::Any),
+                self.args.common_base_type(&InferenceState::new(db)),
             )]))
         })
     }
@@ -1666,11 +1657,7 @@ impl TupleContent {
             FormatStyle::Short => "tuple",
             FormatStyle::Qualified | FormatStyle::MypyRevealType => "builtins.tuple",
         };
-        if let Some(args) = self.args.as_ref() {
-            format!("{base}[{}{fallback}]", args.format(format_data)).into()
-        } else {
-            format!("{base}[Any, ...{fallback}]").into()
-        }
+        format!("{base}[{}{fallback}]", self.args.format(format_data)).into()
     }
 }
 

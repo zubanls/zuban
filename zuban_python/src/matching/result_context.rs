@@ -103,7 +103,7 @@ impl<'a> ResultContext<'a, '_> {
     ) -> T {
         self.with_type_if_exists_and_replace_type_var_likes(i_s, |i_s: &InferenceState, type_| {
             match type_.as_ref() {
-                DbType::Tuple(tup) => tup.args.as_ref().map(|args| match args {
+                DbType::Tuple(tup) => Some(match &tup.args {
                     TupleTypeArguments::FixedLength(ts) => {
                         callable(TupleContextIterator::FixedLength(ts.iter()))
                     }

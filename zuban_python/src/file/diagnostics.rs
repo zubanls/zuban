@@ -970,7 +970,7 @@ fn except_type(i_s: &InferenceState, t: &DbType, allow_tuple: bool) -> ExceptTyp
         }
         DbType::Any => ExceptType::ContainsOnlyBaseExceptions,
         DbType::Tuple(content) if allow_tuple => match &content.args {
-            Some(TupleTypeArguments::FixedLength(ts)) => {
+            TupleTypeArguments::FixedLength(ts) => {
                 let mut result = ExceptType::ContainsOnlyBaseExceptions;
                 for t in ts.iter() {
                     match t {
@@ -984,8 +984,7 @@ fn except_type(i_s: &InferenceState, t: &DbType, allow_tuple: bool) -> ExceptTyp
                 }
                 result
             }
-            Some(TupleTypeArguments::ArbitraryLength(t)) => except_type(i_s, t, false),
-            _ => todo!(),
+            TupleTypeArguments::ArbitraryLength(t) => except_type(i_s, t, false),
         },
         DbType::Union(union) => {
             let mut result = ExceptType::ContainsOnlyBaseExceptions;

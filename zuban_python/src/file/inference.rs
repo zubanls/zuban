@@ -2335,7 +2335,7 @@ fn instantiate_except(i_s: &InferenceState, t: &DbType) -> DbType {
         DbType::Any => DbType::Any,
         DbType::Tuple(content) => {
             Inferred::gather_simplified_union(i_s, |add| match &content.args {
-                Some(TupleTypeArguments::FixedLength(ts)) => {
+                TupleTypeArguments::FixedLength(ts) => {
                     for t in ts.iter() {
                         match t {
                             TypeOrTypeVarTuple::Type(t) => {
@@ -2345,10 +2345,9 @@ fn instantiate_except(i_s: &InferenceState, t: &DbType) -> DbType {
                         }
                     }
                 }
-                Some(TupleTypeArguments::ArbitraryLength(t)) => {
+                TupleTypeArguments::ArbitraryLength(t) => {
                     add(Inferred::from_type(instantiate_except(i_s, t)))
                 }
-                _ => todo!(),
             })
             .as_type(i_s)
             .into_db_type()
@@ -2414,7 +2413,7 @@ fn gather_except_star(i_s: &InferenceState, t: &DbType) -> DbType {
         DbType::Any => DbType::Any,
         DbType::Tuple(content) => {
             Inferred::gather_simplified_union(i_s, |add| match &content.args {
-                Some(TupleTypeArguments::FixedLength(ts)) => {
+                TupleTypeArguments::FixedLength(ts) => {
                     for t in ts.iter() {
                         match t {
                             TypeOrTypeVarTuple::Type(t) => {
@@ -2424,10 +2423,9 @@ fn gather_except_star(i_s: &InferenceState, t: &DbType) -> DbType {
                         }
                     }
                 }
-                Some(TupleTypeArguments::ArbitraryLength(t)) => {
+                TupleTypeArguments::ArbitraryLength(t) => {
                     add(Inferred::from_type(gather_except_star(i_s, t)))
                 }
-                _ => todo!(),
             })
             .as_type(i_s)
             .into_db_type()

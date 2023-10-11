@@ -1315,7 +1315,7 @@ impl<'x> Param<'x> for FunctionParam<'x> {
                     let DbType::Tuple(t) = t.expect_borrowed_db_type() else {
                         unreachable!()
                     };
-                    match t.args.as_ref().unwrap() {
+                    match &t.args {
                         TupleTypeArguments::FixedLength(..) => todo!(),
                         TupleTypeArguments::ArbitraryLength(t) => Type::new(t),
                     }

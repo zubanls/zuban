@@ -980,20 +980,13 @@ impl<'a> Type<'a> {
         t2: &TupleContent,
         variance: Variance,
     ) -> Match {
-        if let Some(t1_args) = &t1.args {
-            if let Some(t2_args) = &t2.args {
-                return match_tuple_type_arguments(i_s, matcher, t1_args, t2_args, variance);
-            } else {
-                // TODO maybe set generics to any?
-            }
-        }
-        Match::new_true()
+        match_tuple_type_arguments(i_s, matcher, &t1.args, &t2.args, variance)
     }
 
     fn overlaps_tuple(i_s: &InferenceState, t1: &TupleContent, t2: &TupleContent) -> bool {
         use TupleTypeArguments::*;
         match (&t1.args, &t2.args) {
-            (Some(FixedLength(ts1)), Some(FixedLength(ts2))) => {
+            (FixedLength(ts1), FixedLength(ts2)) => {
                 let mut value_generics = ts2.iter();
                 let mut overlaps = true;
                 for type1 in ts1.iter() {
@@ -1023,10 +1016,10 @@ impl<'a> Type<'a> {
                 }
                 overlaps
             }
-            (Some(ArbitraryLength(t1)), Some(ArbitraryLength(t2))) => {
+            (ArbitraryLength(t1), ArbitraryLength(t2)) => {
                 Type::new(t1).overlaps(i_s, &Type::new(t2))
             }
-            (Some(ArbitraryLength(t1)), Some(FixedLength(ts2))) => {
+            (ArbitraryLength(t1), FixedLength(ts2)) => {
                 let t1 = Type::new(t1);
                 ts2.iter().all(|t2| match t2 {
                     TypeOrTypeVarTuple::Type(t2) => t1.overlaps(i_s, &Type::new(t2)),
@@ -1035,7 +1028,7 @@ impl<'a> Type<'a> {
                     }
                 })
             }
-            (Some(FixedLength(ts1)), Some(ArbitraryLength(t2))) => {
+            (FixedLength(ts1), ArbitraryLength(t2)) => {
                 let t2 = Type::new(t2);
                 ts1.iter().all(|t1| match t1 {
                     TypeOrTypeVarTuple::Type(t1) => Type::new(t1).overlaps(i_s, &t2),
@@ -1044,7 +1037,6 @@ impl<'a> Type<'a> {
                     }
                 })
             }
-            _ => true,
         }
     }
 
@@ -1356,14 +1348,9 @@ impl<'a> Type<'a> {
                 callable,
                 replace_self,
             ))),
-            DbType::Tuple(content) => DbType::Tuple(match &content.args {
-                Some(args) => Rc::new(TupleContent::new(replace_tuple_likes(
-                    args,
-                    callable,
-                    replace_self,
-                ))),
-                None => TupleContent::new_empty(),
-            }),
+            DbType::Tuple(content) => DbType::Tuple(Rc::new(TupleContent::new(
+                replace_tuple_likes(&content.args, callable, replace_self),
+            ))),
             DbType::Callable(content) => {
                 DbType::Callable(Rc::new(Self::replace_type_var_likes_and_self_for_callable(
                     content,
@@ -1808,28 +1795,23 @@ impl<'a> Type<'a> {
                 Type::new(db_type).rewrite_late_bound_callables(manager),
             )),
             DbType::Tuple(content) => DbType::Tuple(match &content.args {
-                Some(TupleTypeArguments::FixedLength(ts)) => {
-                    Rc::new(TupleContent::new_fixed_length(
-                        ts.iter()
-                            .map(|g| match g {
-                                TypeOrTypeVarTuple::Type(t) => TypeOrTypeVarTuple::Type(
-                                    Type::new(t).rewrite_late_bound_callables(manager),
-                                ),
-                                TypeOrTypeVarTuple::TypeVarTuple(t) => {
-                                    TypeOrTypeVarTuple::TypeVarTuple(
-                                        manager.remap_type_var_tuple(t),
-                                    )
-                                }
-                            })
-                            .collect(),
-                    ))
-                }
-                Some(TupleTypeArguments::ArbitraryLength(t)) => {
+                TupleTypeArguments::FixedLength(ts) => Rc::new(TupleContent::new_fixed_length(
+                    ts.iter()
+                        .map(|g| match g {
+                            TypeOrTypeVarTuple::Type(t) => TypeOrTypeVarTuple::Type(
+                                Type::new(t).rewrite_late_bound_callables(manager),
+                            ),
+                            TypeOrTypeVarTuple::TypeVarTuple(t) => {
+                                TypeOrTypeVarTuple::TypeVarTuple(manager.remap_type_var_tuple(t))
+                            }
+                        })
+                        .collect(),
+                )),
+                TupleTypeArguments::ArbitraryLength(t) => {
                     Rc::new(TupleContent::new_arbitrary_length(
                         Type::new(t).rewrite_late_bound_callables(manager),
                     ))
                 }
-                None => TupleContent::new_empty(),
             }),
             DbType::Literal { .. } => self.as_db_type(),
             DbType::Callable(content) => DbType::Callable(Rc::new(
@@ -2486,9 +2468,7 @@ impl<'a> Type<'a> {
                     let c1 = rc_unwrap_or_clone(c1);
                     let c2 = rc_unwrap_or_clone(c2);
                     DbType::Tuple(match (c1.args, c2.args) {
-                        (Some(FixedLength(ts1)), Some(FixedLength(ts2)))
-                            if ts1.len() == ts2.len() =>
-                        {
+                        (FixedLength(ts1), FixedLength(ts2)) if ts1.len() == ts2.len() => {
                             Rc::new(TupleContent::new_fixed_length(
                                 // Performance issue: Same as above
                                 ts1.iter()
@@ -2510,7 +2490,7 @@ impl<'a> Type<'a> {
                                     .collect(),
                             ))
                         }
-                        (Some(ArbitraryLength(t1)), Some(ArbitraryLength(t2))) => {
+                        (ArbitraryLength(t1), ArbitraryLength(t2)) => {
                             Rc::new(TupleContent::new_arbitrary_length(
                                 Type::owned(*t1)
                                     .merge_matching_parts(db, t2.as_ref().into())
@@ -2849,15 +2829,9 @@ fn common_base_for_tuples(
     tup1: &TupleContent,
     tup2: &TupleContent,
 ) -> TupleContent {
-    let Some(tup1_args) = &tup1.args else {
-        todo!()
-    };
-    let Some(tup2_args) = &tup2.args else {
-        todo!()
-    };
-    TupleContent::new(match tup2_args {
+    TupleContent::new(match &tup2.args {
         TupleTypeArguments::FixedLength(ts2) => {
-            let mut new_args = tup1_args.clone();
+            let mut new_args = tup1.args.clone();
             common_base_type_of_type_var_tuple_with_items(
                 &mut new_args,
                 i_s,
@@ -2866,9 +2840,9 @@ fn common_base_for_tuples(
             );
             new_args
         }
-        TupleTypeArguments::ArbitraryLength(t2) => match tup1_args {
+        TupleTypeArguments::ArbitraryLength(t2) => match &tup1.args {
             TupleTypeArguments::FixedLength(ts1) => {
-                let mut new_args = tup2_args.clone();
+                let mut new_args = tup2.args.clone();
                 common_base_type_of_type_var_tuple_with_items(
                     &mut new_args,
                     i_s,

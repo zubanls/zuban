@@ -368,8 +368,6 @@ testAssignmentToComplexStar
 testAssignmentToStarFromTupleType
 # star input for tuple
 testTupleWithStarExpr
-# tuple assignment tuple[Any, ...] to tuple[A, A]
-testSubtypingWithNamedTupleType
 
 # Tuple Super Class
 testNewAnalyzerTupleIteration

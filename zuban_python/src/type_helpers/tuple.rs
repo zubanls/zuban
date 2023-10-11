@@ -30,17 +30,16 @@ impl<'a> Tuple<'a> {
 
     pub fn iter(&self, i_s: &InferenceState, from: NodeRef) -> IteratorContent {
         match &self.content.args {
-            Some(args @ TupleTypeArguments::FixedLength(ts)) => {
+            args @ TupleTypeArguments::FixedLength(ts) => {
                 if args.has_type_var_tuple().is_some() {
                     todo!()
                 } else {
                     IteratorContent::new_tuple(ts.clone())
                 }
             }
-            Some(TupleTypeArguments::ArbitraryLength(t)) => {
+            TupleTypeArguments::ArbitraryLength(t) => {
                 IteratorContent::Inferred(Inferred::from_type(t.as_ref().clone()))
             }
-            None => todo!(),
         }
     }
 
@@ -97,7 +96,7 @@ impl<'a> Tuple<'a> {
         result_context: &mut ResultContext,
     ) -> Inferred {
         match &self.content.args {
-            Some(args @ TupleTypeArguments::FixedLength(ts)) => match slice_type.unpack() {
+            args @ TupleTypeArguments::FixedLength(ts) => match slice_type.unpack() {
                 SliceTypeContent::Simple(simple) => {
                     if args.has_type_var_tuple().is_some() {
                         todo!()
@@ -159,10 +158,9 @@ impl<'a> Tuple<'a> {
                     todo!()
                 }
             },
-            Some(TupleTypeArguments::ArbitraryLength(t)) => {
+            TupleTypeArguments::ArbitraryLength(t) => {
                 Inferred::execute_db_type(i_s, t.as_ref().clone())
             }
-            _ => Inferred::new_unknown(),
         }
     }
 }
@@ -217,9 +215,9 @@ fn tuple_add_internal<'db>(
     args: &dyn Arguments<'db>,
 ) -> Option<Inferred> {
     let first = args.maybe_single_positional_arg(i_s, &mut ResultContext::Unknown)?;
-    if let Some(TupleTypeArguments::FixedLength(ts1)) = &tuple1.args {
+    if let TupleTypeArguments::FixedLength(ts1) = &tuple1.args {
         if let DbType::Tuple(tuple2) = first.as_type(i_s).as_ref() {
-            if let Some(TupleTypeArguments::FixedLength(ts2)) = &tuple2.args {
+            if let TupleTypeArguments::FixedLength(ts2) = &tuple2.args {
                 return Some(Inferred::from_type(DbType::Tuple(Rc::new(
                     TupleContent::new_fixed_length(ts1.iter().chain(ts2.iter()).cloned().collect()),
                 ))));
@@ -256,7 +254,7 @@ fn tuple_mul_internal<'db>(
     args: &dyn Arguments<'db>,
 ) -> Option<Inferred> {
     let first = args.maybe_single_positional_arg(i_s, &mut ResultContext::Unknown)?;
-    if let Some(TupleTypeArguments::FixedLength(ts)) = &tuple.args {
+    if let TupleTypeArguments::FixedLength(ts) = &tuple.args {
         first.run_on_int_literals(i_s, |int| {
             let int = int.max(0) as usize;
             if int > 10 {
