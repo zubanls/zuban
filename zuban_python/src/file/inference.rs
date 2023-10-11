@@ -1803,17 +1803,17 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         result_context: &mut ResultContext,
     ) -> Inferred {
         let mut generics = vec![];
-        let mut is_arbitrary_length = false;
+        let is_arbitrary_length = Cell::new(false);
         let is_definition = matches!(result_context, ResultContext::AssignmentNewDefinition);
         result_context.with_tuple_context_iterator(self.i_s, |tuple_context_iterator| {
-            let mut add_from_stars = |generics: &mut Vec<_>, inferred: Inferred, from_index| {
+            let add_from_stars = |generics: &mut Vec<_>, inferred: Inferred, from_index| {
                 let mut iterator = inferred.iter(self.i_s, NodeRef::new(self.file, from_index));
                 if iterator.len().is_some() {
                     while let Some(inf) = iterator.next(self.i_s) {
                         generics.push(TypeOrTypeVarTuple::Type(inf.as_db_type(self.i_s)))
                     }
                 } else {
-                    is_arbitrary_length = true;
+                    is_arbitrary_length.set(true);
                     return;
                 }
             };
@@ -1843,9 +1843,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         add_from_stars(&mut generics, inferred, e.index())
                     }
                 }
+                if is_arbitrary_length.get() {
+                    return;
+                }
             }
         });
-        let content = if is_arbitrary_length {
+        let content = if is_arbitrary_length.get() {
             let generic = self.create_list_or_set_generics(iterator);
             TupleContent::new_arbitrary_length(generic)
         } else {
