@@ -40,10 +40,7 @@ use crate::workspaces::{
 use crate::PythonProject;
 
 thread_local! {
-    static EMPTY_TUPLE: Rc<TupleContent> = Rc::new(TupleContent {
-        args: None,
-        tuple_class_generics: OnceCell::new(),
-    });
+    static ARBITRARY_TUPLE: Rc<TupleContent> = Rc::new(TupleContent::new_arbitrary_length(DbType::Any));
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1646,7 +1643,7 @@ impl TupleContent {
     }
 
     pub fn new_empty() -> Rc<Self> {
-        EMPTY_TUPLE.with(|t| t.clone())
+        ARBITRARY_TUPLE.with(|t| t.clone())
     }
 
     pub fn tuple_class_generics(&self, db: &Database) -> &GenericsList {
