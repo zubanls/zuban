@@ -159,6 +159,8 @@ testTypeEquivalentTypeAnyEdgeCase
 testValidTypeAliasValues
 testValidTypeAliasValuesMoreRestrictive
 
+# union context inference
+testCrashOnComplexCheckWithNamedTupleNext
 # union list context inference
 testUnpackingUnionOfListsInFunction
 # union dict context inference
@@ -168,8 +170,8 @@ testInferMultipleAnyUnionDifferentVariance
 testLiteralAndInstanceSubtyping
 # "Expression tuple item 8 has type "str"; "int" expected;"
 testAssigningWithLongTupleInitializer
-# union context inference
-testCrashOnComplexCheckWithNamedTupleNext
+# Tuple a, *li = ta: "List item 0 has incompatible type "A"; expected "int""
+testAssignmentToStarFromTupleType
 # type vars against unions
 testLiteralMeets
 # Not able to infer context with unions
@@ -363,9 +365,6 @@ testSelfTypeNew_explicit
 # Union IteratorContent len() call
 testUnionOfVariableLengthTupleUnpacking
 testUnionUnpackingChainedList2
-# star unpacking for tuples
-testAssignmentToComplexStar
-testAssignmentToStarFromTupleType
 # star input for tuple
 testTupleWithStarExpr
 

@@ -995,30 +995,42 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             return;
                         } else if let Some(len) = value_iterator.len() {
                             let fetch = len - normal;
-                            let union = Inferred::gather_base_types(self.i_s, |callable| {
-                                for _ in 0..fetch {
-                                    callable(value_iterator.next(self.i_s).unwrap());
-                                }
-                            });
-                            let mut generic = union.as_db_type(self.i_s);
-                            if fetch == 0 {
-                                if let Some(t) = self.infer_target(star_target.as_target()) {
-                                    // The type is already defined, just use any here, because the
-                                    // list really can be anything.
-                                    generic = DbType::Any
-                                }
-                            }
-
-                            let list = Inferred::from_type(new_class!(
-                                self.i_s.db.python_state.list_node_ref().as_link(),
-                                generic,
-                            ));
-                            self.assign_targets(
-                                star_target.as_target(),
-                                list,
-                                value_node_ref,
-                                is_definition,
-                            );
+                            let new_target = star_target.as_target();
+                            let inner =
+                                Inferred::from_type(if matches!(new_target, Target::Tuple(_)) {
+                                    let mut tuple_entries = vec![];
+                                    for _ in 0..fetch {
+                                        tuple_entries.push(TypeOrTypeVarTuple::Type(
+                                            value_iterator
+                                                .next(self.i_s)
+                                                .unwrap()
+                                                .as_db_type(self.i_s),
+                                        ))
+                                    }
+                                    DbType::Tuple(Rc::new(TupleContent::new_fixed_length(
+                                        tuple_entries.into(),
+                                    )))
+                                } else {
+                                    let union = Inferred::gather_base_types(self.i_s, |callable| {
+                                        for _ in 0..fetch {
+                                            callable(value_iterator.next(self.i_s).unwrap());
+                                        }
+                                    });
+                                    let mut generic = union.as_db_type(self.i_s);
+                                    if fetch == 0 {
+                                        if let Some(t) = self.infer_target(star_target.as_target())
+                                        {
+                                            // The type is already defined, just use any here, because the
+                                            // list really can be anything.
+                                            generic = DbType::Any
+                                        }
+                                    }
+                                    new_class!(
+                                        self.i_s.db.python_state.list_node_ref().as_link(),
+                                        generic,
+                                    )
+                                });
+                            self.assign_targets(new_target, inner, value_node_ref, is_definition);
                         } else if value_iterator.len().is_none() {
                             let value = value_iterator.next(self.i_s).unwrap();
                             let list = Inferred::from_type(new_class!(
