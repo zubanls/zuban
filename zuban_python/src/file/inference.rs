@@ -136,7 +136,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                         self.i_s,
                                         self.file,
                                         name_def.index(),
-                                        true,
+                                        false,
                                     );
                                 }
                             }
@@ -154,7 +154,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     self.i_s,
                                     self.file,
                                     name_def.index(),
-                                    true,
+                                    false,
                                 );
                             }
                         }
@@ -1093,9 +1093,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 &value,
                 is_definition,
                 |i_s, index| {
+                    //NodeRef::new(self.file, index).accumulate_types(value)
                     value
                         .clone()
-                        .maybe_save_redirect(i_s, self.file, index, true);
+                        .maybe_save_redirect(i_s, self.file, index, false);
                 },
             ),
         };
