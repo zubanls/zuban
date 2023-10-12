@@ -1903,20 +1903,17 @@ impl<'a> Type<'a> {
 
     pub fn iter(&self, i_s: &InferenceState, from: NodeRef) -> IteratorContent {
         let on_error = |t: &DbType| {
-            let t = t.format_short(i_s.db);
             from.add_issue(
                 i_s,
                 IssueType::NotIterable {
-                    type_: format!("\"{}\"", t).into(),
+                    type_: format!("\"{}\"", t.format_short(i_s.db)).into(),
                 },
             );
-            IteratorContent::Any
         };
         match self.as_ref() {
             DbType::Class(c) => Instance::new(c.class(i_s.db), None).iter(i_s, from),
             DbType::Tuple(content) => Tuple::new(content).iter(i_s, from),
             DbType::NamedTuple(nt) => NamedTupleValue::new(i_s.db, nt).iter(i_s, from),
-            DbType::Any | DbType::Never => IteratorContent::Any,
             DbType::Union(union) => {
                 let mut items = vec![];
                 for t in union.iter() {
@@ -1927,12 +1924,34 @@ impl<'a> Type<'a> {
             DbType::TypeVar(tv) => match &tv.type_var.kind {
                 TypeVarKind::Bound(bound) => Type::new(bound).iter(i_s, from),
                 TypeVarKind::Constraints(_) => todo!(),
-                TypeVarKind::Unrestricted => on_error(self),
+                TypeVarKind::Unrestricted => {
+                    on_error(self);
+                    IteratorContent::Any
+                }
             },
             DbType::NewType(n) => Type::new(n.type_(i_s)).iter(i_s, from),
             DbType::Self_ => Instance::new(*i_s.current_class().unwrap(), None).iter(i_s, from),
-            DbType::Type(t) => iter_on_type(i_s, t, from, &on_error),
-            _ => on_error(self),
+            _ => IteratorContent::Inferred(
+                self.lookup(
+                    i_s,
+                    from,
+                    "__iter__",
+                    LookupKind::OnlyType,
+                    &mut ResultContext::Unknown,
+                    &|t| {
+                        on_error(t);
+                    },
+                )
+                .into_inferred()
+                .execute(i_s, &NoArguments::new(from))
+                .type_lookup_and_execute(
+                    i_s,
+                    from,
+                    "__next__",
+                    &NoArguments::new(from),
+                    &|_| todo!(),
+                ),
+            ),
         }
     }
 
@@ -2574,53 +2593,6 @@ pub fn match_tuple_type_arguments(
                 .into()
         }
     }
-}
-
-fn iter_on_type(
-    i_s: &InferenceState,
-    t: &DbType,
-    from: NodeRef,
-    on_error: &impl Fn(&DbType) -> IteratorContent,
-) -> IteratorContent {
-    match t {
-        DbType::Class(c) => {
-            if let Some(result) = c
-                .class(i_s.db)
-                .lookup(i_s, from, "__iter__", LookupKind::OnlyType)
-                .into_maybe_inferred()
-                .map(|__iter__| {
-                    IteratorContent::Inferred(
-                        __iter__
-                            .execute(i_s, &NoArguments::new(from))
-                            .type_lookup_and_execute(
-                                i_s,
-                                from,
-                                "__next__",
-                                &NoArguments::new(from),
-                                &|_| todo!(),
-                            ),
-                    )
-                })
-            {
-                return result;
-            }
-        }
-        DbType::Union(union) => {
-            let mut items = vec![];
-            for t in union.iter() {
-                items.push(iter_on_type(i_s, t, from, on_error));
-            }
-            return IteratorContent::Union(items);
-        }
-        DbType::TypeVar(t) => match &t.type_var.kind {
-            TypeVarKind::Bound(bound) => return iter_on_type(i_s, bound, from, on_error),
-            TypeVarKind::Constraints(constraints) => todo!(),
-            TypeVarKind::Unrestricted => (),
-        },
-        t @ DbType::Enum(_) => return IteratorContent::Inferred(Inferred::from_type(t.clone())),
-        _ => (),
-    }
-    on_error(&DbType::Type(Rc::new(t.clone())))
 }
 
 pub fn common_base_type<'x, I: Iterator<Item = &'x TypeOrTypeVarTuple>>(
