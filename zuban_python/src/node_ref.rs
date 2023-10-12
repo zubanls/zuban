@@ -75,6 +75,21 @@ impl<'file> NodeRef<'file> {
         )
     }
 
+    pub fn accumulate_types(&self, i_s: &InferenceState, add: &Inferred) {
+        if self.point().calculated() {
+            let new = self
+                .file
+                .inference(i_s)
+                .check_point_cache(self.node_index)
+                .unwrap()
+                .simplified_union(i_s, add.clone());
+            self.set_point(Point::new_uncalculated());
+            new.save_redirect(i_s, self.file, self.node_index);
+        } else {
+            add.clone().save_redirect(i_s, self.file, self.node_index);
+        }
+    }
+
     pub fn complex(&self) -> Option<&'file ComplexPoint> {
         let point = self.point();
         if !point.calculated() {
@@ -218,10 +233,6 @@ impl<'file> NodeRef<'file> {
     pub(crate) fn add_issue(&self, i_s: &InferenceState, issue_type: IssueType) {
         let issue = Issue::from_node_index(&self.file.tree, self.node_index, issue_type);
         self.file.add_issue(i_s, issue)
-    }
-
-    pub fn into_saved_inferred(self) -> Inferred {
-        Inferred::from_saved_node_ref(self)
     }
 
     pub fn node_start_position(self) -> CodeIndex {

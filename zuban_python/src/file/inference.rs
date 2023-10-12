@@ -1093,10 +1093,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 &value,
                 is_definition,
                 |i_s, index| {
-                    //NodeRef::new(self.file, index).accumulate_types(value)
-                    value
-                        .clone()
-                        .maybe_save_redirect(i_s, self.file, index, false);
+                    // Since it's possible that we are assigning unions to tuple/star targets, we
+                    // iterate over the different possibilities and end up with name definitions
+                    // that are already set. In those cases we use the "old" types and merge them.
+                    // In Mypy that is called "accumulate_type_assignments".
+                    NodeRef::new(self.file, index).accumulate_types(i_s, &value)
                 },
             ),
         };
