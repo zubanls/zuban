@@ -1636,31 +1636,6 @@ impl<'db: 'a, 'a> Class<'a> {
                 matches!(result_context, ResultContext::AssignmentNewDefinition),
             )
     }
-
-    pub fn iter(&self, i_s: &InferenceState, from: NodeRef) -> Option<IteratorContent> {
-        match self.use_cached_class_infos(i_s.db).metaclass {
-            MetaclassState::Some(_) => self
-                .lookup(i_s, from, "__iter__", LookupKind::OnlyType)
-                .into_maybe_inferred()
-                .map(|__iter__| {
-                    IteratorContent::Inferred(
-                        __iter__
-                            .execute(i_s, &NoArguments::new(from))
-                            .type_lookup_and_execute(
-                                i_s,
-                                from,
-                                "__next__",
-                                &NoArguments::new(from),
-                                &|_| todo!(),
-                            ),
-                    )
-                }),
-            MetaclassState::Unknown => {
-                todo!()
-            }
-            MetaclassState::None => None,
-        }
-    }
 }
 
 impl fmt::Debug for Class<'_> {

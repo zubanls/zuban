@@ -9,7 +9,7 @@ use super::{
     CalculatedTypeArguments, FormatData, Generics, IteratorContent, LookupResult, Match, Matcher,
     MismatchReason, OnLookupError, OnTypeError, ResultContext,
 };
-use crate::arguments::Arguments;
+use crate::arguments::{Arguments, NoArguments};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database,
     Dataclass, DbType, DoubleStarredParamSpecific, EnumMember, FunctionOverload, GenericClass,
@@ -2584,7 +2584,24 @@ fn iter_on_type(
 ) -> IteratorContent {
     match t {
         DbType::Class(c) => {
-            if let Some(result) = c.class(i_s.db).iter(i_s, from) {
+            if let Some(result) = c
+                .class(i_s.db)
+                .lookup(i_s, from, "__iter__", LookupKind::OnlyType)
+                .into_maybe_inferred()
+                .map(|__iter__| {
+                    IteratorContent::Inferred(
+                        __iter__
+                            .execute(i_s, &NoArguments::new(from))
+                            .type_lookup_and_execute(
+                                i_s,
+                                from,
+                                "__next__",
+                                &NoArguments::new(from),
+                                &|_| todo!(),
+                            ),
+                    )
+                })
+            {
                 return result;
             }
         }
