@@ -11,7 +11,8 @@ use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{
-    simplified_union_from_iterators, IteratorContent, LookupResult, OnTypeError, ResultContext,
+    simplified_union_from_iterators, IteratorContent, LookupKind, LookupResult, OnTypeError,
+    ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::Instance;
@@ -101,6 +102,22 @@ impl<'a> Tuple<'a> {
                     .file
                     .inference(i_s)
                     .infer_expression(simple.named_expr.expression());
+                if !index_inf
+                    .as_type(i_s)
+                    .is_simple_sub_type_of(i_s, &Type::owned(i_s.db.python_state.int_db_type()))
+                    .bool()
+                {
+                    Instance::new(i_s.db.python_state.tuple_class(i_s.db, self.content), None)
+                        .lookup(
+                            i_s,
+                            slice_type.as_node_ref(),
+                            "__getitem__",
+                            LookupKind::OnlyType,
+                        )
+                        .into_inferred()
+                        .execute(i_s, &slice_type.as_args(*i_s));
+                    return Inferred::new_any();
+                }
                 match &self.content.args {
                     TupleTypeArguments::ArbitraryLength(t) => {
                         Inferred::execute_db_type(i_s, t.as_ref().clone())

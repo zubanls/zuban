@@ -366,7 +366,6 @@ testSelfTypeNew_explicit
 
 # Tuple indexing (including slices)
 testTupleMeetTupleVariable
-testNonliteralTupleIndex
 # `Foo: NamedTuple` used as definition
 testNamedTupleTypeIsASuperTypeOfOtherNamedTuples
 testNamedTupleTypeIsASuperTypeOfOtherNamedTuplesReturns
