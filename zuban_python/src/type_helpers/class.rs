@@ -278,7 +278,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    fn is_calculating_class_infos(&self) -> bool {
+    pub fn is_calculating_class_infos(&self) -> bool {
         self.class_info_node_ref().point().calculating()
     }
 

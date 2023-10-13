@@ -2013,6 +2013,9 @@ impl<'a> Type<'a> {
             DbType::None | DbType::Union(_) => {
                 return Some(self.clone().simplified_union(i_s, other.clone()))
             }
+            DbType::Class(c) if c.class(i_s.db).is_calculating_class_infos() => {
+                Some(t1.clone().union(i_s.db, t2.clone()))
+            }
             DbType::Any => return Some(DbType::Any),
             _ => None,
         };
