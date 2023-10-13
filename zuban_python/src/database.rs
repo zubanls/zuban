@@ -1125,6 +1125,7 @@ impl DbType {
             // If we expect class generics and tuples are involved, the tuple was already
             // calculated.
             Self::Tuple(t) => t.tuple_class_generics.get().unwrap(),
+            Self::NamedTuple(nt) => nt.as_tuple_ref().tuple_class_generics.get().unwrap(),
             _ => unreachable!(),
         }
     }
@@ -3005,6 +3006,11 @@ impl NamedTuple {
                 ))
             })
             .clone()
+    }
+
+    pub fn as_tuple_ref(&self) -> &TupleContent {
+        self.as_tuple();
+        self.tuple.get().unwrap()
     }
 }
 

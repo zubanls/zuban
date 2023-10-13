@@ -1714,6 +1714,9 @@ fn linearize_mro(i_s: &InferenceState, class: &Class, bases: &[DbType]) -> Box<[
                 DbType::Class(c) => Some(c.class(i_s.db)),
                 DbType::Dataclass(d) => Some(d.class.class(i_s.db)),
                 DbType::Tuple(content) => Some(i_s.db.python_state.tuple_class(i_s.db, content)),
+                DbType::NamedTuple(nt) => {
+                    Some(i_s.db.python_state.tuple_class(i_s.db, &nt.as_tuple_ref()))
+                }
                 _ => None,
             };
             let super_classes = if let Some(cls) = generic_class {

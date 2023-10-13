@@ -364,8 +364,9 @@ testSelfTypeNonsensical
 testSelfTypeNew
 testSelfTypeNew_explicit
 
+testSelfRefNTIncremental4
+testMutuallyRecursiveNamedTuplesClasses
 # Tuple Super Class
-testNewAnalyzerTupleIteration
 testRecursiveRegularTupleClass
 testRecursiveTupleClassesNewType
 # Tuple indexing (including slices)
