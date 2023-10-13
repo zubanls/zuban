@@ -199,6 +199,8 @@ testDictWithKeywordArgs
 # Tuple type comment definitions with list assignment
 testMultipleAssignmentWithListsInInitialization
 testAssignmentToStarAnnotation
+# star input for tuple
+testTupleWithStarExpr
 # List literal inference that works like a tuple?
 testInferringLvarTypesInNestedListAssignment
 testNestedListAssignment
@@ -361,12 +363,6 @@ testTypingSelfClassMethod
 testSelfTypeNonsensical
 testSelfTypeNew
 testSelfTypeNew_explicit
-
-# Union IteratorContent len() call
-testUnionOfVariableLengthTupleUnpacking
-testUnionMultiassignIndexedWithError
-# star input for tuple
-testTupleWithStarExpr
 
 # Tuple Super Class
 testNewAnalyzerTupleIteration

@@ -966,7 +966,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     IssueType::TooManyValuesToUnpack { actual, expected }
                                 },
                             );
-                            return;
+                            continue;
                         }
                     }
                     while let Some(target) = targets.next() {
