@@ -167,6 +167,7 @@ impl<'file> Slice<'file> {
         let (first, second, third) = self.slice.unpack();
         let infer_third = |start_index, end_index| {
             if let Some(third) = third {
+                // TODO index is not type checked :(
                 infer_index(i_s, self.file, third, |step_index| {
                     Some(callback(start_index, end_index, step_index))
                 })

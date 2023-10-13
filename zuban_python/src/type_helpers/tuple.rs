@@ -95,44 +95,62 @@ impl<'a> Tuple<'a> {
         slice_type: &SliceType,
         result_context: &mut ResultContext,
     ) -> Inferred {
-        match &self.content.args {
-            args @ TupleTypeArguments::FixedLength(ts) => match slice_type.unpack() {
-                SliceTypeContent::Simple(simple) => {
-                    if args.has_type_var_tuple().is_some() {
-                        todo!()
+        match slice_type.unpack() {
+            SliceTypeContent::Simple(simple) => {
+                let index_inf = simple
+                    .file
+                    .inference(i_s)
+                    .infer_expression(simple.named_expr.expression());
+                match &self.content.args {
+                    TupleTypeArguments::ArbitraryLength(t) => {
+                        Inferred::execute_db_type(i_s, t.as_ref().clone())
                     }
-                    let out_of_range = || {
-                        slice_type
-                            .as_argument_node_ref()
-                            .add_issue(i_s, IssueType::TupleIndexOutOfRange);
-                        Some(Inferred::new_any())
-                    };
-                    infer_index(i_s, simple.file, simple.named_expr.expression(), |index| {
-                        let index = if index < 0 {
-                            let index = ts.len() as isize + index;
-                            match index.try_into() {
-                                Ok(index) => index,
-                                Err(_) => return out_of_range(),
-                            }
-                        } else {
-                            index as usize
-                        };
-                        if let Some(t) = ts.as_ref().get(index) {
-                            Some(match t {
-                                TypeOrTypeVarTuple::Type(t) => {
-                                    Inferred::execute_db_type(i_s, t.clone())
-                                }
-                                TypeOrTypeVarTuple::TypeVarTuple(t) => unreachable!(),
-                            })
-                        } else {
-                            return out_of_range();
+                    args @ TupleTypeArguments::FixedLength(ts) => {
+                        if args.has_type_var_tuple().is_some() {
+                            todo!()
                         }
-                    })
-                    .unwrap_or_else(|| {
-                        Inferred::from_type(simplified_union_of_tuple_entries(i_s, ts))
-                    })
+                        let out_of_range = || {
+                            slice_type
+                                .as_argument_node_ref()
+                                .add_issue(i_s, IssueType::TupleIndexOutOfRange);
+                            Some(Inferred::new_any())
+                        };
+                        index_inf
+                            .run_on_int_literals(i_s, |index| {
+                                let index = if index < 0 {
+                                    let index = ts.len() as isize + index;
+                                    match index.try_into() {
+                                        Ok(index) => index,
+                                        Err(_) => return out_of_range(),
+                                    }
+                                } else {
+                                    index as usize
+                                };
+                                if let Some(t) = ts.as_ref().get(index) {
+                                    Some(match t {
+                                        TypeOrTypeVarTuple::Type(t) => {
+                                            Inferred::execute_db_type(i_s, t.clone())
+                                        }
+                                        TypeOrTypeVarTuple::TypeVarTuple(t) => unreachable!(),
+                                    })
+                                } else {
+                                    return out_of_range();
+                                }
+                            })
+                            .unwrap_or_else(|| {
+                                Inferred::from_type(simplified_union_of_tuple_entries(i_s, ts))
+                            })
+                    }
                 }
-                SliceTypeContent::Slice(slice) => slice
+            }
+            SliceTypeContent::Slices(slices) => {
+                todo!()
+            }
+            SliceTypeContent::Slice(slice) => match &self.content.args {
+                TupleTypeArguments::ArbitraryLength(t) => {
+                    todo!()
+                }
+                args @ TupleTypeArguments::FixedLength(ts) => slice
                     .callback_on_tuple_indexes(i_s, ts, |start, end, step| {
                         Inferred::from_type(DbType::Tuple(Rc::new(TupleContent::new_fixed_length(
                             match step {
@@ -154,13 +172,7 @@ impl<'a> Tuple<'a> {
                             )),
                         )))
                     }),
-                SliceTypeContent::Slices(slices) => {
-                    todo!()
-                }
             },
-            TupleTypeArguments::ArbitraryLength(t) => {
-                Inferred::execute_db_type(i_s, t.as_ref().clone())
-            }
         }
     }
 }
