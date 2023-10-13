@@ -365,7 +365,6 @@ testSelfTypeNew
 testSelfTypeNew_explicit
 
 # Tuple indexing (including slices)
-testMultipleAssignmentWithIndexedLvalues
 testTupleMeetTupleVariable
 testNonliteralTupleIndex
 # `Foo: NamedTuple` used as definition

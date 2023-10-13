@@ -420,7 +420,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             match target {
                 Target::IndexExpression(t) => debug!("TODO enable context for index expr"),
                 _ => {
-                    if let Some(inferred) = self.infer_target(target) {
+                    if let Some(inferred) = self.infer_target(target, false) {
                         return Some(inferred);
                     }
                 }
@@ -578,7 +578,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let (inplace, normal, reverse) = aug_assign.magic_methods();
                 let right =
                     self.infer_assignment_right_side(right_side, &mut ResultContext::Unknown);
-                let Some(left) = self.infer_target(target) else {
+                let Some(left) = self.infer_target(target, true) else {
                     todo!()
                 };
                 let had_lookup_error = Cell::new(false);
@@ -765,7 +765,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    fn infer_target(&mut self, target: Target) -> Option<Inferred> {
+    fn infer_target(&mut self, target: Target, infer_index_expression: bool) -> Option<Inferred> {
         match target {
             // TODO it's a bit weird that we cannot just call self.infer_name_definition here
             Target::Name(name_def) => first_defined_name(self.file, name_def.name().index())
@@ -774,13 +774,15 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 debug!("TODO enable context for named expr");
                 None
             }
-            Target::IndexExpression(t) => Some(self.infer_primary_target(t)),
+            Target::IndexExpression(t) if infer_index_expression => {
+                Some(self.infer_primary_target(t))
+            }
             Target::Tuple(targets) => Some(Inferred::from_type(DbType::Tuple(Rc::new(
                 TupleContent::new_fixed_length(
                     targets
                         .map(|target| {
                             TypeOrTypeVarTuple::Type(
-                                self.infer_target(target)
+                                self.infer_target(target, infer_index_expression)
                                     .map(|i| i.as_db_type(self.i_s))
                                     .unwrap_or(DbType::Any),
                             )
@@ -788,7 +790,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         .collect(),
                 ),
             )))),
-            Target::Starred(_) => None,
+            _ => None,
         }
     }
 
@@ -1022,7 +1024,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                             });
                                         let mut generic = union.as_db_type(self.i_s);
                                         if fetch == 0 {
-                                            if self.infer_target(star_target.as_target()).is_some()
+                                            if self
+                                                .infer_target(star_target.as_target(), false)
+                                                .is_some()
                                             {
                                                 // The type is already defined, just use any here, because the
                                                 // list really can be anything.
