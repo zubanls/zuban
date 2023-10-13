@@ -927,7 +927,7 @@ impl DbType {
         }
     }
 
-    fn iter_with_unpacked_unions(&self) -> impl Iterator<Item = &DbType> {
+    pub fn iter_with_unpacked_unions(&self) -> impl Iterator<Item = &DbType> {
         match self {
             DbType::Union(items) => DbTypeRefIterator::Union(items.iter()),
             DbType::Never => DbTypeRefIterator::Finished,
@@ -940,13 +940,6 @@ impl DbType {
             DbType::Union(items) => items.entries.iter().map(|e| e.format_index).max().unwrap(),
             DbType::Never => 0,
             _ => 1,
-        }
-    }
-
-    pub fn contains_specific_type(&self, t: &DbType) -> bool {
-        match self {
-            DbType::Union(entries) => entries.iter().any(|other| other == t),
-            _ => self == t,
         }
     }
 

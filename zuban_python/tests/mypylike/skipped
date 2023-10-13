@@ -364,7 +364,7 @@ testSelfTypeNew_explicit
 
 # Union IteratorContent len() call
 testUnionOfVariableLengthTupleUnpacking
-testUnionUnpackingChainedList2
+testUnionMultiassignIndexedWithError
 # star input for tuple
 testTupleWithStarExpr
 

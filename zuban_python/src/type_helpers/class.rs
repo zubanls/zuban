@@ -11,7 +11,7 @@ use parsa_python_ast::{
 use super::enum_::execute_functional_enum;
 use super::overload::OverloadResult;
 use super::{Callable, Instance, Module, NamedTupleValue, TypedDictMemberGatherer};
-use crate::arguments::{Arguments, KnownArguments, NoArguments, SimpleArguments};
+use crate::arguments::{Arguments, KnownArguments, SimpleArguments};
 use crate::database::{
     BaseClass, CallableContent, CallableParam, CallableParams, ClassGenerics, ClassInfos,
     ClassStorage, ClassType, ComplexPoint, Database, Dataclass, DataclassOptions, DbType, Enum,
@@ -33,8 +33,8 @@ use crate::inferred::{FunctionOrOverload, Inferred};
 use crate::matching::{
     calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
     calculate_class_init_type_vars_and_return, CallableLike, FormatData, FunctionOrCallable,
-    Generics, IteratorContent, LookupKind, LookupResult, Match, Matcher, MismatchReason,
-    OnTypeError, ResultContext, Type,
+    Generics, LookupKind, LookupResult, Match, Matcher, MismatchReason, OnTypeError, ResultContext,
+    Type,
 };
 use crate::node_ref::NodeRef;
 use crate::python_state::NAME_TO_FUNCTION_DIFF;

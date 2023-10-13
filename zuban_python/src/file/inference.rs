@@ -933,58 +933,24 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         is_definition: bool,
     ) {
         match target {
-            Target::Tuple(mut targets) => {
-                if value
-                    .as_type(self.i_s)
-                    .contains_specific_type(&self.i_s.db.python_state.str_db_type())
-                {
-                    value_node_ref.add_issue(self.i_s, IssueType::UnpackingAStringIsDisallowed)
-                }
-                let mut value_iterator = value.iter(self.i_s, value_node_ref);
-                let mut counter = 0;
-                if let Some(actual) = value_iterator.len() {
-                    let expected = targets.clone().count();
-                    if !targets
-                        .clone()
-                        .any(|target| matches!(target, Target::Starred(_)))
-                        && actual != expected
-                    {
-                        for target in targets {
-                            counter += 1;
-                            self.assign_targets(
-                                target,
-                                Inferred::new_any(),
-                                value_node_ref,
-                                is_definition,
-                            );
-                        }
-                        value_node_ref.add_issue(
-                            self.i_s,
-                            if actual < expected {
-                                IssueType::TooFewValuesToUnpack { actual, expected }
-                            } else {
-                                IssueType::TooManyValuesToUnpack { actual, expected }
-                            },
-                        );
-                        return;
+            Target::Tuple(targets) => {
+                // TODO what about never? The loop will never be executed.
+                for union_part in value.as_type(self.i_s).iter_with_unpacked_unions() {
+                    let mut targets = targets.clone();
+                    if union_part == &self.i_s.db.python_state.str_db_type() {
+                        value_node_ref.add_issue(self.i_s, IssueType::UnpackingAStringIsDisallowed)
                     }
-                }
-                while let Some(target) = targets.next() {
-                    counter += 1;
-                    if let Target::Starred(star_target) = target {
-                        let (stars, normal) = targets.clone().remaining_stars_and_normal_count();
-                        if stars > 0 {
-                            NodeRef::new(self.file, star_target.index()).add_issue(
-                                self.i_s,
-                                IssueType::MultipleStarredExpressionsInAssignment,
-                            );
-                            self.assign_targets(
-                                star_target.as_target(),
-                                Inferred::new_any(),
-                                value_node_ref,
-                                is_definition,
-                            );
+                    let mut value_iterator = Type::new(union_part).iter(self.i_s, value_node_ref);
+                    let mut counter = 0;
+                    if let Some(actual) = value_iterator.len() {
+                        let expected = targets.clone().count();
+                        if !targets
+                            .clone()
+                            .any(|target| matches!(target, Target::Starred(_)))
+                            && actual != expected
+                        {
                             for target in targets {
+                                counter += 1;
                                 self.assign_targets(
                                     target,
                                     Inferred::new_any(),
@@ -992,89 +958,134 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     is_definition,
                                 );
                             }
-                            return;
-                        } else if let Some(len) = value_iterator.len() {
-                            let fetch = len - normal;
-                            let new_target = star_target.as_target();
-                            let inner =
-                                Inferred::from_type(if matches!(new_target, Target::Tuple(_)) {
-                                    let mut tuple_entries = vec![];
-                                    for _ in 0..fetch {
-                                        tuple_entries.push(TypeOrTypeVarTuple::Type(
-                                            value_iterator
-                                                .next(self.i_s)
-                                                .unwrap()
-                                                .as_db_type(self.i_s),
-                                        ))
-                                    }
-                                    DbType::Tuple(Rc::new(TupleContent::new_fixed_length(
-                                        tuple_entries.into(),
-                                    )))
+                            value_node_ref.add_issue(
+                                self.i_s,
+                                if actual < expected {
+                                    IssueType::TooFewValuesToUnpack { actual, expected }
                                 } else {
-                                    let union = Inferred::gather_base_types(self.i_s, |callable| {
-                                        for _ in 0..fetch {
-                                            callable(value_iterator.next(self.i_s).unwrap());
-                                        }
-                                    });
-                                    let mut generic = union.as_db_type(self.i_s);
-                                    if fetch == 0 {
-                                        if let Some(t) = self.infer_target(star_target.as_target())
-                                        {
-                                            // The type is already defined, just use any here, because the
-                                            // list really can be anything.
-                                            generic = DbType::Any
-                                        }
-                                    }
-                                    new_class!(
-                                        self.i_s.db.python_state.list_node_ref().as_link(),
-                                        generic,
-                                    )
-                                });
-                            self.assign_targets(new_target, inner, value_node_ref, is_definition);
-                        } else if value_iterator.len().is_none() {
-                            let value = value_iterator.next(self.i_s).unwrap();
-                            let list = Inferred::from_type(new_class!(
-                                self.i_s.db.python_state.list_node_ref().as_link(),
-                                value.as_db_type(self.i_s),
-                            ));
-                            self.assign_targets(
-                                star_target.as_target(),
-                                list,
-                                value_node_ref,
-                                is_definition,
+                                    IssueType::TooManyValuesToUnpack { actual, expected }
+                                },
                             );
-                        } else {
-                            todo!()
+                            return;
                         }
-                    } else if let Some(value) = value_iterator.next(self.i_s) {
-                        self.assign_targets(target, value, value_node_ref, is_definition)
-                    } else {
-                        let original_counter = counter;
-                        self.assign_targets(
-                            target,
-                            Inferred::new_any(),
-                            value_node_ref,
-                            is_definition,
-                        );
-                        for target in targets {
-                            if !matches!(target, Target::Starred(_)) {
-                                counter += 1;
+                    }
+                    while let Some(target) = targets.next() {
+                        counter += 1;
+                        if let Target::Starred(star_target) = target {
+                            let (stars, normal) =
+                                targets.clone().remaining_stars_and_normal_count();
+                            if stars > 0 {
+                                NodeRef::new(self.file, star_target.index()).add_issue(
+                                    self.i_s,
+                                    IssueType::MultipleStarredExpressionsInAssignment,
+                                );
+                                self.assign_targets(
+                                    star_target.as_target(),
+                                    Inferred::new_any(),
+                                    value_node_ref,
+                                    is_definition,
+                                );
+                                for target in targets {
+                                    self.assign_targets(
+                                        target,
+                                        Inferred::new_any(),
+                                        value_node_ref,
+                                        is_definition,
+                                    );
+                                }
+                                return;
+                            } else if let Some(len) = value_iterator.len() {
+                                let fetch = len - normal;
+                                let new_target = star_target.as_target();
+                                let inner = Inferred::from_type(
+                                    if matches!(new_target, Target::Tuple(_)) {
+                                        let mut tuple_entries = vec![];
+                                        for _ in 0..fetch {
+                                            tuple_entries.push(TypeOrTypeVarTuple::Type(
+                                                value_iterator
+                                                    .next(self.i_s)
+                                                    .unwrap()
+                                                    .as_db_type(self.i_s),
+                                            ))
+                                        }
+                                        DbType::Tuple(Rc::new(TupleContent::new_fixed_length(
+                                            tuple_entries.into(),
+                                        )))
+                                    } else {
+                                        let union =
+                                            Inferred::gather_base_types(self.i_s, |callable| {
+                                                for _ in 0..fetch {
+                                                    callable(
+                                                        value_iterator.next(self.i_s).unwrap(),
+                                                    );
+                                                }
+                                            });
+                                        let mut generic = union.as_db_type(self.i_s);
+                                        if fetch == 0 {
+                                            if self.infer_target(star_target.as_target()).is_some()
+                                            {
+                                                // The type is already defined, just use any here, because the
+                                                // list really can be anything.
+                                                generic = DbType::Any
+                                            }
+                                        }
+                                        new_class!(
+                                            self.i_s.db.python_state.list_node_ref().as_link(),
+                                            generic,
+                                        )
+                                    },
+                                );
+                                self.assign_targets(
+                                    new_target,
+                                    inner,
+                                    value_node_ref,
+                                    is_definition,
+                                );
+                            } else if value_iterator.len().is_none() {
+                                let value = value_iterator.next(self.i_s).unwrap();
+                                let list = Inferred::from_type(new_class!(
+                                    self.i_s.db.python_state.list_node_ref().as_link(),
+                                    value.as_db_type(self.i_s),
+                                ));
+                                self.assign_targets(
+                                    star_target.as_target(),
+                                    list,
+                                    value_node_ref,
+                                    is_definition,
+                                );
+                            } else {
+                                todo!()
                             }
+                        } else if let Some(value) = value_iterator.next(self.i_s) {
+                            self.assign_targets(target, value, value_node_ref, is_definition)
+                        } else {
+                            let original_counter = counter;
                             self.assign_targets(
                                 target,
                                 Inferred::new_any(),
                                 value_node_ref,
                                 is_definition,
                             );
+                            for target in targets {
+                                if !matches!(target, Target::Starred(_)) {
+                                    counter += 1;
+                                }
+                                self.assign_targets(
+                                    target,
+                                    Inferred::new_any(),
+                                    value_node_ref,
+                                    is_definition,
+                                );
+                            }
+                            value_node_ref.add_issue(
+                                self.i_s,
+                                IssueType::TooFewValuesToUnpack {
+                                    actual: original_counter - 1,
+                                    expected: counter,
+                                },
+                            );
+                            break;
                         }
-                        value_node_ref.add_issue(
-                            self.i_s,
-                            IssueType::TooFewValuesToUnpack {
-                                actual: original_counter - 1,
-                                expected: counter,
-                            },
-                        );
-                        break;
                     }
                 }
             }
