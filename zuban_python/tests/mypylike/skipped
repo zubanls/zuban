@@ -364,8 +364,6 @@ testSelfTypeNonsensical
 testSelfTypeNew
 testSelfTypeNew_explicit
 
-# Tuple Super Class
-testRecursiveTupleClassesNewType
 # Tuple indexing (including slices)
 testMultipleAssignmentWithIndexedLvalues
 testTupleMeetTupleVariable
