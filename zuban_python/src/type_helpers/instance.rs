@@ -69,15 +69,15 @@ impl<'a> Instance<'a> {
             );
         }
 
-        let check_compatible = |t: &Type, value: &_| {
-            t.error_if_not_matches(i_s, value, |got, expected| {
+        let check_compatible = |t: &DbType, value: &_| {
+            Type::new(t).error_if_not_matches(i_s, value, |got, expected| {
                 from.add_issue(i_s, IssueType::IncompatibleAssignment { got, expected });
                 from.to_db_lifetime(i_s.db)
             });
         };
 
-        inf.as_type(i_s).run_on_each_union_type(&mut |t| {
-            match t.as_ref() {
+        for t in inf.as_type(i_s).iter_with_unpacked_unions() {
+            match t {
                 DbType::Class(c) => {
                     let descriptor = c.class(i_s.db);
                     if let Some(__set__) = Instance::new(descriptor, None)
@@ -86,7 +86,7 @@ impl<'a> Instance<'a> {
                     {
                         let inst = self.as_inferred(i_s);
                         calculate_descriptor(i_s, from, __set__, inst, value);
-                        return;
+                        continue;
                     } else if let Some(inf) = Instance::new(descriptor, None).bind_dunder_get(
                         i_s,
                         from,
@@ -100,7 +100,7 @@ impl<'a> Instance<'a> {
                         // Here we ensure that the contract that the __get__ descriptor gives us is
                         // not violated.
                         check_compatible(&inf.as_type(i_s), value);
-                        return;
+                        continue;
                     }
                 }
                 DbType::Callable(c) if matches!(c.kind, FunctionKind::Property { .. }) => {
@@ -125,13 +125,13 @@ impl<'a> Instance<'a> {
                         }
                         _ => unreachable!(),
                     }
-                    return;
+                    continue;
                 }
                 _ => {}
             }
 
             check_compatible(t, value)
-        });
+        }
     }
 
     pub fn bind_dunder_get(

@@ -838,16 +838,17 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                     let base = base.as_type(i_s);
                     let node_ref = NodeRef::new(self.file, primary_target.index());
-                    base.run_on_each_union_type(&mut |t| {
-                        if let Some(cls) = t.maybe_class(i_s.db) {
-                            return Instance::new(cls, None).check_set_descriptor(
+                    for t in base.iter_with_unpacked_unions() {
+                        if let Some(cls) = Type::new(t).maybe_class(i_s.db) {
+                            Instance::new(cls, None).check_set_descriptor(
                                 i_s,
                                 node_ref,
                                 name_definition.name(),
                                 value,
                             );
+                            continue;
                         }
-                        if let DbType::Dataclass(d) = t.as_ref() {
+                        if let DbType::Dataclass(d) = t {
                             if d.options.frozen {
                                 from.add_issue(
                                     i_s,
@@ -857,15 +858,16 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     },
                                 )
                             }
-                            return Instance::new(d.class(i_s.db), None).check_set_descriptor(
+                            Instance::new(d.class(i_s.db), None).check_set_descriptor(
                                 i_s,
                                 node_ref,
                                 name_definition.name(),
                                 value,
                             );
+                            continue;
                         }
 
-                        let inf = t
+                        let inf = Type::new(t)
                             .maybe_type_of_class(i_s.db)
                             .and_then(|c| {
                                 // We need to handle class descriptors separately, because
@@ -879,23 +881,24 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 .into_maybe_inferred()
                             })
                             .unwrap_or_else(|| {
-                                t.lookup(
-                                    i_s,
-                                    node_ref,
-                                    name_definition.as_code(),
-                                    LookupKind::Normal,
-                                    &mut ResultContext::Unknown,
-                                    &|t| {
-                                        add_attribute_error(
-                                            self.i_s,
-                                            node_ref,
-                                            &base,
-                                            t,
-                                            name_definition.as_code(),
-                                        )
-                                    },
-                                )
-                                .into_inferred()
+                                Type::new(t)
+                                    .lookup(
+                                        i_s,
+                                        node_ref,
+                                        name_definition.as_code(),
+                                        LookupKind::Normal,
+                                        &mut ResultContext::Unknown,
+                                        &|t| {
+                                            add_attribute_error(
+                                                self.i_s,
+                                                node_ref,
+                                                &base,
+                                                t,
+                                                name_definition.as_code(),
+                                            )
+                                        },
+                                    )
+                                    .into_inferred()
                             });
                         inf.as_type(i_s)
                             .error_if_not_matches(i_s, value, |got, expected| {
@@ -905,7 +908,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 );
                                 from.to_db_lifetime(i_s.db)
                             });
-                    });
+                    }
                 }
                 // This mostly needs to be saved for self names
                 save(self.i_s, name_definition.index());
@@ -1516,7 +1519,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 LookupKind::OnlyType,
                 &mut |l_type, lookup_result| {
                     let left_op_method = lookup_result.into_maybe_inferred();
-                    right.as_type(i_s).run_on_each_union_type(&mut |r_type| {
+                    for r_type in right.as_type(i_s).iter_with_unpacked_unions() {
                         let error = Cell::new(LookupError::NoError);
                         if let Some(left) = left_op_method.as_ref() {
                             let had_left_error = Cell::new(false);
@@ -1531,12 +1534,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 ),
                             );
                             if !had_left_error.get() {
-                                return add_to_union(result);
+                                add_to_union(result);
+                                continue;
                             }
                         }
                         if op.shortcut_when_same_type {
                             if let Some(left_instance) = l_type.maybe_class(i_s.db) {
-                                if let Some(right_instance) = r_type.maybe_class(i_s.db) {
+                                if let Some(right_instance) = Type::new(r_type).maybe_class(i_s.db)
+                                {
                                     if left_instance.node_ref == right_instance.node_ref {
                                         error.set(LookupError::ShortCircuit);
                                     }
@@ -1545,7 +1550,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         }
                         let result = if error.get() != LookupError::ShortCircuit {
                             let left_inf = Inferred::execute_db_type_allocation_todo(i_s, l_type);
-                            r_type
+                            Type::new(r_type)
                                 .lookup(
                                     i_s,
                                     node_ref,
@@ -1580,7 +1585,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 let t = IssueType::UnsupportedOperand {
                                     operand: Box::from(op.operand),
                                     left: l_type.as_db_type().format_short(i_s.db),
-                                    right: r_type.as_db_type().format_short(i_s.db),
+                                    right: r_type.format_short(i_s.db),
                                 };
                                 node_ref.add_issue(i_s, t);
                                 Inferred::new_unknown()
@@ -1598,7 +1603,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 Inferred::new_unknown()
                             }
                         })
-                    })
+                    }
                 },
             )
         });

@@ -139,10 +139,9 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
-    pub fn execute_db_type_allocation_todo(i_s: &InferenceState<'db, '_>, t: &Type) -> Self {
+    pub fn execute_db_type_allocation_todo(i_s: &InferenceState<'db, '_>, t: &DbType) -> Self {
         // Everything that calls this should probably not allocate.
-        let t = t.as_db_type();
-        Self::from_type(t)
+        Self::from_type(t.clone())
     }
 
     pub fn from_type(t: DbType) -> Self {
