@@ -1289,6 +1289,150 @@ impl DbType {
             replace_self_type,
         )
     }
+
+    pub fn on_any_class(
+        &self,
+        i_s: &InferenceState,
+        matcher: &mut Matcher,
+        callable: &mut impl FnMut(&mut Matcher, &Class) -> bool,
+    ) -> bool {
+        self.on_any_resolved_context_type(i_s, matcher, &mut |matcher, t| match t {
+            DbType::Class(c) => callable(matcher, &c.class(i_s.db)),
+            _ => false,
+        })
+    }
+
+    pub fn on_any_typed_dict(
+        &self,
+        i_s: &InferenceState,
+        matcher: &mut Matcher,
+        callable: &mut impl FnMut(&mut Matcher, Rc<TypedDict>) -> bool,
+    ) -> bool {
+        self.on_any_resolved_context_type(i_s, matcher, &mut |matcher, t| match t {
+            DbType::TypedDict(td) => callable(matcher, td.clone()),
+            _ => false,
+        })
+    }
+
+    pub fn on_any_resolved_context_type(
+        &self,
+        i_s: &InferenceState,
+        matcher: &mut Matcher,
+        callable: &mut impl FnMut(&mut Matcher, &DbType) -> bool,
+    ) -> bool {
+        match self {
+            DbType::Union(union_type) => union_type
+                .iter()
+                .any(|t| t.on_any_resolved_context_type(i_s, matcher, callable)),
+            DbType::RecursiveAlias(r) => r
+                .calculated_db_type(i_s.db)
+                .on_any_resolved_context_type(i_s, matcher, callable),
+            db_type @ DbType::TypeVar(_) => {
+                if matcher.might_have_defined_type_vars() {
+                    matcher
+                        .replace_type_var_likes_for_nested_context(i_s.db, db_type)
+                        .on_any_resolved_context_type(i_s, matcher, callable)
+                } else {
+                    false
+                }
+            }
+            t => callable(matcher, t),
+        }
+    }
+
+    pub fn check_duplicate_base_class(&self, db: &Database, other: &Self) -> Option<Box<str>> {
+        match (self, other) {
+            (DbType::Class(c1), DbType::Class(c2)) => {
+                (c1.link == c2.link).then(|| Box::from(c1.class(db).name()))
+            }
+            (DbType::Type(_), DbType::Type(_)) => Some(Box::from("type")),
+            (DbType::Tuple(_), DbType::Tuple(_)) => Some(Box::from("tuple")),
+            (DbType::Callable(_), DbType::Callable(_)) => Some(Box::from("callable")),
+            (DbType::TypedDict(td1), DbType::TypedDict(td2))
+                if td1.defined_at == td2.defined_at =>
+            {
+                Some(td1.name_or_fallback(&FormatData::new_short(db)).into())
+            }
+            _ => None,
+        }
+    }
+
+    pub fn merge_matching_parts(&self, db: &Database, other: &Self) -> Self {
+        // TODO performance there's a lot of into_db_type here, that should not really be
+        /*
+        if self.as_ref() == other.as_ref() {
+            return self;
+        }
+        */
+        // necessary.
+        let merge_generics = |g1: &ClassGenerics, g2: &ClassGenerics| {
+            if matches!(g1, ClassGenerics::None) {
+                return ClassGenerics::None;
+            }
+            ClassGenerics::List(GenericsList::new_generics(
+                // Performance issue: clone could probably be removed. Rc -> Vec check
+                // https://github.com/rust-lang/rust/issues/93610#issuecomment-1528108612
+                Generics::from_class_generics(db, &g1)
+                    .iter(db)
+                    .zip(Generics::from_class_generics(db, &g2).iter(db))
+                    .map(|(gi1, gi2)| gi1.merge_matching_parts(db, gi2))
+                    .collect(),
+            ))
+        };
+        use TupleTypeArguments::*;
+        match self {
+            DbType::Class(c1) => match other {
+                DbType::Class(c2) if c1.link == c2.link => {
+                    DbType::new_class(c1.link, merge_generics(&c1.generics, &c2.generics))
+                }
+                _ => DbType::Any,
+            },
+            DbType::Union(u1) => match other {
+                DbType::Union(u2) if u1.iter().all(|x| u2.iter().any(|y| x == y)) => {
+                    DbType::Union(u1.clone())
+                }
+                _ => DbType::Any,
+            },
+            DbType::Tuple(c1) => match other {
+                DbType::Tuple(c2) => {
+                    DbType::Tuple(match (&c1.args, &c2.args) {
+                        (FixedLength(ts1), FixedLength(ts2)) if ts1.len() == ts2.len() => {
+                            Rc::new(TupleContent::new_fixed_length(
+                                // Performance issue: Same as above
+                                ts1.iter()
+                                    .zip(ts2.iter())
+                                    .map(|(t1, t2)| match (t1, t2) {
+                                        (
+                                            TypeOrTypeVarTuple::Type(t1),
+                                            TypeOrTypeVarTuple::Type(t2),
+                                        ) => TypeOrTypeVarTuple::Type(
+                                            Type::new(t1).merge_matching_parts(db, t2),
+                                        ),
+                                        (t1, t2) => match t1 == t2 {
+                                            true => t1.clone(),
+                                            false => todo!(),
+                                        },
+                                    })
+                                    .collect(),
+                            ))
+                        }
+                        (ArbitraryLength(t1), ArbitraryLength(t2)) => Rc::new(
+                            TupleContent::new_arbitrary_length(t1.merge_matching_parts(db, &t2)),
+                        ),
+                        _ => TupleContent::new_empty(),
+                    })
+                }
+                _ => DbType::Any,
+            },
+            DbType::Callable(content1) => match other {
+                DbType::Callable(content2) => {
+                    DbType::Callable(db.python_state.any_callable.clone())
+                }
+                _ => DbType::Any,
+            },
+            _ => DbType::Any,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

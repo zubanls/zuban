@@ -134,7 +134,7 @@ impl<'a> Generic<'a> {
         match self {
             Self::TypeArgument(t1) => match other {
                 Self::TypeArgument(t2) => {
-                    GenericItem::TypeArgument(t1.merge_matching_parts(db, t2).into_db_type())
+                    GenericItem::TypeArgument(t1.merge_matching_parts(db, &t2))
                 }
                 _ => todo!("maybe unreachable?!"),
             },

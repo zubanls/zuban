@@ -424,16 +424,16 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
     }
 
     fn fallback_type(&self, i_s: &InferenceState<'db, '_>) -> Inferred {
-        let mut t: Option<Type> = None;
+        let mut t: Option<DbType> = None;
         for callable in self.overload.iter_functions() {
-            let f_t = Type::new(&callable.result_type);
+            let f_t = &callable.result_type;
             if let Some(old_t) = t.take() {
                 t = Some(old_t.merge_matching_parts(i_s.db, f_t))
             } else {
-                t = Some(f_t);
+                t = Some(f_t.clone());
             }
         }
-        Inferred::from_type(t.unwrap().into_db_type())
+        Inferred::from_type(t.unwrap())
     }
 
     pub fn as_db_type(
