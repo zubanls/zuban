@@ -713,7 +713,7 @@ impl<'a> Type<'a> {
         m
     }
 
-    pub fn mro<'db: 'x, 'x>(&'x self, db: &'db Database) -> MroIterator<'db, '_> {
+    pub fn mro<'db: 'x, 'x>(&'x self, db: &'db Database) -> MroIterator<'db, 'x> {
         match self.as_ref() {
             DbType::Literal(literal) => MroIterator::new(
                 db,
