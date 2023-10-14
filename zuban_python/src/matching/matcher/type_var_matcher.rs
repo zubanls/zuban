@@ -107,7 +107,10 @@ impl CalculatedTypeVarLike {
         !matches!(self.type_, BoundKind::Uncalculated { .. })
     }
 
-    pub fn merge_fixed_length_type_var_tuple<'x, I: Iterator<Item = &'x TypeOrTypeVarTuple>>(
+    pub fn merge_fixed_length_type_var_tuple<
+        'x,
+        I: ExactSizeIterator<Item = &'x TypeOrTypeVarTuple>,
+    >(
         &mut self,
         i_s: &InferenceState,
         length: usize,

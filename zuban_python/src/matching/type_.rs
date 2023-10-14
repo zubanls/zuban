@@ -2895,7 +2895,7 @@ fn common_base_for_tuples(
 
 pub fn common_base_type_of_type_var_tuple_with_items<
     'x,
-    I: Iterator<Item = &'x TypeOrTypeVarTuple>,
+    I: ExactSizeIterator<Item = &'x TypeOrTypeVarTuple>,
 >(
     args: &mut TupleTypeArguments,
     i_s: &InferenceState,
@@ -2925,6 +2925,10 @@ pub fn common_base_type_of_type_var_tuple_with_items<
             }
         }
         TupleTypeArguments::ArbitraryLength(calc_t) => {
+            if items.len() == 0 {
+                // args is already ok, because we have an empty tuple here that can be anything.
+                return;
+            }
             let base =
                 Type::owned(common_base_type(i_s, items)).common_base_type(i_s, &Type::new(calc_t));
             *args = TupleTypeArguments::ArbitraryLength(Box::new(base));
