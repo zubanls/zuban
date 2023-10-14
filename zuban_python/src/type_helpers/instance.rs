@@ -5,9 +5,7 @@ use parsa_python_ast::Name;
 use super::class::TypeOrClass;
 use super::{Class, MroIterator, NamedTupleValue, Tuple};
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments, NoArguments};
-use crate::database::{
-    ClassType, Database, DbType, FunctionKind, GenericClass, PointLink, Specific, TypeVarKind,
-};
+use crate::database::{ClassType, Database, PointLink, Specific};
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::{on_argument_type_error, File};
@@ -18,6 +16,7 @@ use crate::matching::{
     IteratorContent, LookupKind, LookupResult, OnTypeError, ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
+use crate::type_::{DbType, FunctionKind, GenericClass, TypeVarKind};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Instance<'a> {

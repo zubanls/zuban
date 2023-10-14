@@ -7,13 +7,14 @@ use parsa_python_ast::{
 };
 
 use crate::database::{
-    ClassStorage, ComplexPoint, Database, DbType, FileIndex, Locality, Point, PointLink, PointType,
+    ClassStorage, ComplexPoint, Database, FileIndex, Locality, Point, PointLink, PointType,
 };
 use crate::diagnostics::{Issue, IssueType};
 use crate::file::File;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
+use crate::type_::DbType;
 use crate::type_helpers::Module;
 
 #[derive(Clone, Copy)]

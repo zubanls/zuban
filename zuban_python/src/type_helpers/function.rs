@@ -10,12 +10,8 @@ use std::rc::Rc;
 
 use crate::arguments::{Argument, Arguments, KnownArguments};
 use crate::database::{
-    CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database, DbType,
-    DoubleStarredParamSpecific, FunctionKind, FunctionOverload, GenericClass, GenericItem,
-    GenericsList, Locality, OverloadDefinition, OverloadImplementation, ParamSpecUsage,
-    ParamSpecific, Point, PointType, Specific, StarredParamSpecific, StringSlice,
-    TupleTypeArguments, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
-    TypeVarManager, TypeVarName, TypeVarUsage, Variance, WrongPositionalCount,
+    ComplexPoint, Database, Locality, OverloadDefinition, OverloadImplementation, Point, PointType,
+    Specific,
 };
 use crate::diagnostics::{Issue, IssueType};
 use crate::file::{
@@ -33,6 +29,13 @@ use crate::matching::{
 };
 use crate::node_ref::NodeRef;
 use crate::python_state::NAME_TO_FUNCTION_DIFF;
+use crate::type_::{
+    CallableContent, CallableParam, CallableParams, ClassGenerics, DbType,
+    DoubleStarredParamSpecific, FunctionKind, FunctionOverload, GenericClass, GenericItem,
+    GenericsList, ParamSpecUsage, ParamSpecific, StarredParamSpecific, StringSlice,
+    TupleTypeArguments, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
+    TypeVarManager, TypeVarName, TypeVarUsage, Variance, WrongPositionalCount,
+};
 use crate::type_helpers::{Class, Module};
 use crate::utils::rc_unwrap_or_clone;
 use crate::{debug, new_class};

@@ -1,9 +1,6 @@
 use std::rc::Rc;
 
 use crate::arguments::Arguments;
-use crate::database::{
-    CustomBehavior, DbType, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple,
-};
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::getitem::{SliceType, SliceTypeContent};
@@ -14,6 +11,7 @@ use crate::matching::{
     ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
+use crate::type_::{CustomBehavior, DbType, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple};
 use crate::type_helpers::Instance;
 
 use super::utils::method_with_fallback;

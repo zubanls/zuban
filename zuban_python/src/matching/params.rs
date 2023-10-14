@@ -2,13 +2,14 @@ use parsa_python_ast::ParamKind;
 
 use super::{Match, Matcher};
 use crate::arguments::{Argument, ArgumentKind};
-use crate::database::{
-    CallableParam, CallableParams, Database, DoubleStarredParamSpecific, ParamSpecUsage,
-    ParamSpecific, PointLink, StarredParamSpecific, TypeVarLikes, Variance,
-};
+use crate::database::{Database, PointLink};
 use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::matching::Type;
+use crate::type_::{
+    CallableParam, CallableParams, DoubleStarredParamSpecific, ParamSpecUsage, ParamSpecific,
+    StarredParamSpecific, TypeVarLikes, Variance,
+};
 
 pub trait Param<'x>: Copy + std::fmt::Debug {
     fn has_default(&self) -> bool;

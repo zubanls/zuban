@@ -1,4 +1,5 @@
-use crate::database::{Database, DbType, FileIndex, Namespace, PointLink};
+use crate::database::{Database, FileIndex, PointLink};
+use crate::type_::{DbType, Namespace};
 
 use crate::debug;
 use crate::file::File;

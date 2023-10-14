@@ -1,9 +1,9 @@
 use super::{FirstParamProperties, Function, OverloadedFunction};
 use crate::arguments::Arguments;
-use crate::database::DbType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{OnTypeError, ResultContext, Type};
+use crate::type_::DbType;
 
 #[derive(Debug)]
 pub enum BoundMethodFunction<'a> {

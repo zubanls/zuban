@@ -7,12 +7,7 @@ use parsa_python_ast::{
 
 use crate::{
     arguments::{Argument, ArgumentKind, Arguments, SimpleArguments},
-    database::{
-        CallableContent, CallableParam, CallableParams, ClassGenerics, Database, Dataclass,
-        DataclassOptions, DbString, DbType, FunctionKind, GenericClass, Literal, LiteralKind,
-        ParamSpecific, Specific, StringSlice, TupleContent, TypeOrTypeVarTuple, TypeVar,
-        TypeVarKind,
-    },
+    database::{Database, Specific},
     diagnostics::{Issue, IssueType},
     file::{File, PythonFile},
     inference_state::InferenceState,
@@ -22,6 +17,11 @@ use crate::{
         OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
+    type_::{
+        CallableContent, CallableParam, CallableParams, ClassGenerics, Dataclass, DataclassOptions,
+        DbString, DbType, FunctionKind, GenericClass, Literal, LiteralKind, ParamSpecific,
+        StringSlice, TupleContent, TypeOrTypeVarTuple, TypeVar, TypeVarKind,
+    },
     type_helpers::Callable,
 };
 

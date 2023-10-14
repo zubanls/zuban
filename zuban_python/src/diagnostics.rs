@@ -1,9 +1,10 @@
 use parsa_python_ast::{CodeIndex, NodeIndex, Tree};
 
-use crate::database::{Database, FunctionKind, StringSlice, TypeVarLike};
+use crate::database::Database;
 use crate::file::File;
 use crate::file::PythonFile;
 use crate::name::TreePosition;
+use crate::type_::{FunctionKind, StringSlice, TypeVarLike};
 use crate::utils::{join_with_commas, InsertOnlyVec};
 
 #[derive(Debug)]

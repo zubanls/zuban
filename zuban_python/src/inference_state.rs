@@ -1,8 +1,9 @@
 use std::cell::Cell;
 
 use crate::arguments::Arguments;
-use crate::database::{CallableContent, Database, ParentScope, TypeVarLike};
+use crate::database::{Database, ParentScope};
 use crate::file::TypeVarCallbackReturn;
+use crate::type_::{CallableContent, TypeVarLike};
 use crate::type_helpers::{Class, Function};
 
 #[derive(Debug, Copy, Clone)]

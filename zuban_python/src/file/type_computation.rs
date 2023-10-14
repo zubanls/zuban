@@ -6,14 +6,7 @@ use parsa_python_ast::*;
 use super::TypeVarFinder;
 use crate::arguments::{ArgumentIterator, ArgumentKind, Arguments, SimpleArguments};
 use crate::database::{
-    CallableContent, CallableParam, CallableParams, CallableWithParent, ClassGenerics,
-    ComplexPoint, Database, Dataclass, DbString, DbType, DoubleStarredParamSpecific, Enum,
-    EnumMember, FunctionKind, GenericClass, GenericItem, GenericsList, Literal, LiteralKind,
-    Locality, NamedTuple, Namespace, NewType, ParamSpecArgument, ParamSpecUsage, ParamSpecific,
-    Point, PointLink, PointType, RecursiveAlias, Specific, StarredParamSpecific, StringSlice,
-    TupleContent, TypeAlias, TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarKind, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, TypedDict,
-    TypedDictGenerics, TypedDictMember, UnionEntry, UnionType,
+    ComplexPoint, Database, Locality, Point, PointLink, PointType, Specific, TypeAlias,
 };
 use crate::diagnostics::{Issue, IssueType};
 use crate::file::File;
@@ -24,6 +17,15 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{FormatData, Generics, ResultContext, Type};
 use crate::node_ref::NodeRef;
+use crate::type_::{
+    CallableContent, CallableParam, CallableParams, CallableWithParent, ClassGenerics, Dataclass,
+    DbString, DbType, DoubleStarredParamSpecific, Enum, EnumMember, FunctionKind, GenericClass,
+    GenericItem, GenericsList, Literal, LiteralKind, NamedTuple, Namespace, NewType,
+    ParamSpecArgument, ParamSpecUsage, ParamSpecific, RecursiveAlias, StarredParamSpecific,
+    StringSlice, TupleContent, TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarKind,
+    TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage,
+    TypedDict, TypedDictGenerics, TypedDictMember, UnionEntry, UnionType,
+};
 use crate::type_helpers::{start_namedtuple_params, Class, Function, Module};
 use crate::{debug, new_class};
 

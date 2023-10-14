@@ -4,11 +4,8 @@ use std::rc::Rc;
 
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
 use crate::database::{
-    CallableContent, CallableParams, ClassGenerics, ComplexPoint, Database, DbString, DbType, Enum,
-    FileIndex, FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList,
-    Literal as DbLiteral, LiteralKind, LiteralValue, Locality, MroIndex, NewType,
-    OverloadDefinition, Point, PointLink, PointType, Specific, TypeVarKind, TypeVarLike,
-    TypeVarLikes, TypedDict,
+    ComplexPoint, Database, FileIndex, Locality, OverloadDefinition, Point, PointLink, PointType,
+    Specific,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -25,6 +22,11 @@ use crate::matching::{
     OnTypeError, ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
+use crate::type_::{
+    CallableContent, CallableParams, ClassGenerics, DbString, DbType, Enum, FunctionKind,
+    FunctionOverload, GenericClass, GenericItem, GenericsList, Literal as DbLiteral, LiteralKind,
+    LiteralValue, NewType, TypeVarKind, TypeVarLike, TypeVarLikes, TypedDict,
+};
 use crate::type_helpers::{
     execute_assert_type, execute_collections_named_tuple, execute_super, execute_type,
     execute_typing_named_tuple, merge_class_type_vars_into_callable, new_typed_dict, BoundMethod,
@@ -32,6 +34,15 @@ use crate::type_helpers::{
     OverloadedFunction, ParamSpecClass, RevealTypeFunction, TypeOrClass, TypeVarClass,
     TypeVarTupleClass, TypingCast,
 };
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]
+pub struct MroIndex(pub u32);
+
+impl From<usize> for MroIndex {
+    fn from(item: usize) -> Self {
+        Self(item as u32)
+    }
+}
 
 #[derive(Debug)]
 pub enum FunctionOrOverload<'a> {

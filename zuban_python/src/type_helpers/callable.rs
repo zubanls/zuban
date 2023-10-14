@@ -4,10 +4,7 @@ use parsa_python_ast::ParamKind;
 
 use super::Class;
 use crate::arguments::Arguments;
-use crate::database::{
-    CallableContent, CallableParams, Database, DbType, FormatStyle, TypeVar, TypeVarKind,
-    TypeVarLike, TypeVarLikes, TypeVarName, TypeVarUsage, Variance,
-};
+use crate::database::Database;
 use crate::diagnostics::IssueType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -15,6 +12,10 @@ use crate::matching::params::{WrappedDoubleStarred, WrappedParamSpecific, Wrappe
 use crate::matching::{
     calculate_callable_type_vars_and_return, maybe_class_usage, FormatData, OnTypeError, Param,
     ResultContext, Type,
+};
+use crate::type_::{
+    CallableContent, CallableParams, DbType, FormatStyle, TypeVar, TypeVarKind, TypeVarLike,
+    TypeVarLikes, TypeVarName, TypeVarUsage, Variance,
 };
 use crate::utils::join_with_commas;
 

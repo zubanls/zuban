@@ -1,15 +1,14 @@
 use std::mem;
 use std::rc::Rc;
 
-use crate::database::{
-    Database, DbType, GenericItem, ParamSpecUsage, StringSlice, TypedDict, Variance,
-};
+use crate::database::Database;
 use crate::diagnostics::IssueType;
 use crate::file::PythonFile;
 use crate::getitem::{SliceType, SliceTypeContent, Slices};
 use crate::inferred::Inferred;
 use crate::matching::{IteratorContent, Matcher, ResultContext, Type};
 use crate::node_ref::NodeRef;
+use crate::type_::{DbType, GenericItem, ParamSpecUsage, StringSlice, TypedDict, Variance};
 use crate::{debug, InferenceState};
 use parsa_python_ast::{
     Argument as ASTArgument, ArgumentsDetails, ArgumentsIterator, Comprehension, Expression,

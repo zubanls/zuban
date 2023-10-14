@@ -7,16 +7,16 @@ use parsa_python_ast::{
 
 use crate::{
     arguments::{ArgumentKind, Arguments},
-    database::{
-        DbString, DbType, Enum, EnumMember, EnumMemberDefinition, Literal, LiteralKind, PointLink,
-        StringSlice,
-    },
+    database::PointLink,
     diagnostics::IssueType,
     file::File,
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{CallableLike, LookupKind, LookupResult, ResultContext},
     node_ref::NodeRef,
+    type_::{
+        DbString, DbType, Enum, EnumMember, EnumMemberDefinition, Literal, LiteralKind, StringSlice,
+    },
 };
 
 use super::{Class, Instance, TypeOrClass};

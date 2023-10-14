@@ -6,7 +6,6 @@ use parsa_python_ast::{
 };
 
 use crate::arguments::{ArgumentIterator, Arguments, ArgumentsType};
-use crate::database::{DbType, TupleContent, TypeOrTypeVarTuple};
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::{infer_index, PythonFile};
@@ -14,6 +13,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{ResultContext, Type};
 use crate::node_ref::NodeRef;
+use crate::type_::{DbType, TupleContent, TypeOrTypeVarTuple};
 
 #[derive(Debug, Copy, Clone)]
 pub struct SliceType<'file> {

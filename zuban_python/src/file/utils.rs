@@ -6,10 +6,7 @@ use parsa_python_ast::{
 };
 
 use crate::arguments::{unpack_star_star, Argument, Arguments};
-use crate::database::{
-    ClassGenerics, Database, DbType, GenericItem, GenericsList, Literal, LiteralKind, LiteralValue,
-    TypedDict,
-};
+use crate::database::Database;
 use crate::diagnostics::IssueType;
 use crate::file::{Inference, PythonFile};
 use crate::getitem::Simple;
@@ -17,6 +14,9 @@ use crate::inference_state::InferenceState;
 use crate::inferred::UnionValue;
 use crate::matching::{FormatData, Matcher, MismatchReason, ResultContext, Type};
 use crate::node_ref::NodeRef;
+use crate::type_::{
+    ClassGenerics, DbType, GenericItem, GenericsList, Literal, LiteralKind, LiteralValue, TypedDict,
+};
 use crate::utils::join_with_commas;
 use crate::{debug, new_class, Inferred};
 

@@ -11,14 +11,15 @@ use super::super::{
 use super::bound::TypeVarBound;
 use super::type_var_matcher::{BoundKind, FunctionOrCallable, TypeVarMatcher};
 use crate::arguments::{Argument, ArgumentKind};
-use crate::database::{
-    CallableParams, ClassGenerics, GenericItem, GenericsList, PointLink, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes,
-};
+use crate::database::PointLink;
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::inference_state::InferenceState;
 use crate::node_ref::NodeRef;
+use crate::type_::{
+    CallableParams, ClassGenerics, GenericItem, GenericsList, TypeVarLike, TypeVarLikeUsage,
+    TypeVarLikes,
+};
 use crate::type_helpers::{Callable, Class, Function, TypeOrClass};
 
 pub fn calculate_callable_init_type_vars_and_return<'db: 'a, 'a>(

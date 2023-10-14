@@ -1,16 +1,17 @@
 use std::rc::Rc;
 
 use crate::arguments::{ArgumentKind, Arguments};
-use crate::database::{
-    ClassGenerics, ComplexPoint, DbType, FormatStyle, NewType, ParamSpec, PointLink, TypeVar,
-    TypeVarKind, TypeVarLike, TypeVarName, TypeVarTuple, TypedDictGenerics, Variance,
-};
+use crate::database::{ComplexPoint, PointLink};
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{CouldBeALiteral, FormatData, OnTypeError, ResultContext, Type};
 use crate::node_ref::NodeRef;
+use crate::type_::{
+    ClassGenerics, DbType, FormatStyle, NewType, ParamSpec, TypeVar, TypeVarKind, TypeVarLike,
+    TypeVarName, TypeVarTuple, TypedDictGenerics, Variance,
+};
 use crate::utils::join_with_commas;
 
 pub fn execute_type<'db>(

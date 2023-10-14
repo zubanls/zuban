@@ -3,14 +3,15 @@ use std::borrow::Cow;
 use parsa_python_ast::{Expression, SliceContent, SliceIterator, Slices};
 
 use super::{FormatData, Generic, Match, Matcher, Type};
-use crate::database::{
-    ClassGenerics, Database, DbType, GenericItem, GenericsList, ParamSpecArgument, ParamSpecUsage,
-    PointLink, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, Variance,
-};
+use crate::database::{Database, PointLink};
 use crate::debug;
 use crate::file::{use_cached_simple_generic_type, File, PythonFile};
 use crate::inference_state::InferenceState;
 use crate::node_ref::NodeRef;
+use crate::type_::{
+    ClassGenerics, DbType, GenericItem, GenericsList, ParamSpecArgument, ParamSpecUsage,
+    TypeVarLike, TypeVarLikeUsage, TypeVarLikes, Variance,
+};
 
 macro_rules! replace_class_vars {
     ($db:expr, $g:ident, $type_var_generics:ident) => {

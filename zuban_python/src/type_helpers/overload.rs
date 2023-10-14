@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::{
     arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments},
-    database::{Database, DbType, FunctionOverload},
+    database::Database,
     debug,
     diagnostics::IssueType,
     inference_state::InferenceState,
@@ -13,6 +13,7 @@ use crate::{
         FunctionOrCallable, OnTypeError, ReplaceSelf, ResultContext, SignatureMatch, Type,
     },
     node_ref::NodeRef,
+    type_::{DbType, FunctionOverload},
 };
 
 use super::{format_pretty_callable, Callable, Class};

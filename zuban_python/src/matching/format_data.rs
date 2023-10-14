@@ -1,5 +1,8 @@
 use super::Matcher;
-use crate::database::{Database, FormatStyle, RecursiveAlias, TypeVarLikeUsage};
+use crate::{
+    database::Database,
+    type_::{FormatStyle, RecursiveAlias, TypeVarLikeUsage},
+};
 
 #[derive(Clone, Copy)]
 struct DisplayedRecursive<'a> {

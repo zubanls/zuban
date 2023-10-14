@@ -10,21 +10,22 @@ use super::{
     MismatchReason, OnLookupError, OnTypeError, ResultContext,
 };
 use crate::arguments::{Arguments, NoArguments};
-use crate::database::{
-    CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database,
-    Dataclass, DbType, DoubleStarredParamSpecific, EnumMember, FunctionOverload, GenericClass,
-    GenericItem, GenericsList, LiteralKind, MetaclassState, NamedTuple, ParamSpecArgument,
-    ParamSpecTypeVars, ParamSpecUsage, ParamSpecific, PointLink, RecursiveAlias,
-    StarredParamSpecific, TupleContent, TupleTypeArguments, TypeAlias, TypeArguments,
-    TypeOrTypeVarTuple, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
-    TypeVarTupleUsage, TypeVarUsage, TypedDict, TypedDictGenerics, UnionEntry, UnionType, Variance,
-};
+use crate::database::{ComplexPoint, Database, MetaclassState, PointLink, TypeAlias};
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
+use crate::type_::{
+    CallableContent, CallableParam, CallableParams, ClassGenerics, Dataclass, DbType,
+    DoubleStarredParamSpecific, EnumMember, FunctionOverload, GenericClass, GenericItem,
+    GenericsList, LiteralKind, NamedTuple, ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage,
+    ParamSpecific, RecursiveAlias, StarredParamSpecific, TupleContent, TupleTypeArguments,
+    TypeArguments, TypeOrTypeVarTuple, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
+    TypeVarManager, TypeVarTupleUsage, TypeVarUsage, TypedDict, TypedDictGenerics, UnionEntry,
+    UnionType, Variance,
+};
 use crate::type_helpers::{
     lookup_in_namespace, lookup_on_enum_class, lookup_on_enum_instance,
     lookup_on_enum_member_instance, Callable, Class, DataclassHelper, Instance, Module,

@@ -1,9 +1,10 @@
 use std::rc::Rc;
 
-use crate::database::{Database, FileIndex, Namespace};
+use crate::database::{Database, FileIndex};
 use crate::debug;
 use crate::file::File;
 use crate::file::PythonFile;
+use crate::type_::Namespace;
 use crate::type_helpers::Module;
 use crate::workspaces::{Directory, DirectoryEntry};
 

@@ -15,16 +15,16 @@ use std::rc::Rc;
 use super::params::{matches_simple_params, InferrableParamIterator};
 use super::{FormatData, Match, OnTypeError, ParamsStyle, SignatureMatch, Type};
 use crate::arguments::{Argument, ArgumentKind};
-use crate::database::{
-    CallableContent, CallableParam, CallableParams, Database, DbType, GenericItem, GenericsList,
-    ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamSpecific, PointLink,
-    StarredParamSpecific, TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple, TypeVarKind,
-    TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, TypedDict, TypedDictGenerics,
-    Variance,
-};
+use crate::database::{Database, PointLink};
 use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::node_ref::NodeRef;
+use crate::type_::{
+    CallableContent, CallableParam, CallableParams, DbType, GenericItem, GenericsList,
+    ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamSpecific, StarredParamSpecific,
+    TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple, TypeVarKind, TypeVarLike,
+    TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, TypedDict, TypedDictGenerics, Variance,
+};
 use crate::type_helpers::{Callable, Class, Function};
 use type_var_matcher::{BoundKind, CalculatedTypeVarLike, TypeVarMatcher};
 use utils::match_arguments_against_params;

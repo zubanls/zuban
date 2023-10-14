@@ -1,7 +1,7 @@
 use std::ops::{BitAnd, BitAndAssign};
 use std::rc::Rc;
 
-use crate::database::{DbType, TypeVar};
+use crate::type_::{DbType, TypeVar};
 
 #[derive(Debug)]
 pub struct ArgumentIndexWithParam {

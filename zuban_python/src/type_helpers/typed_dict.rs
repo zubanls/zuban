@@ -4,10 +4,7 @@ use parsa_python_ast::{AtomContent, DictElement, ExpressionContent, ExpressionPa
 
 use crate::{
     arguments::{ArgumentKind, Arguments},
-    database::{
-        ComplexPoint, CustomBehavior, Database, DbType, StringSlice, TypedDict, TypedDictGenerics,
-        TypedDictMember,
-    },
+    database::{ComplexPoint, Database},
     diagnostics::IssueType,
     file::{infer_string_index, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn},
     getitem::{SliceType, SliceTypeContent},
@@ -15,6 +12,7 @@ use crate::{
     inferred::Inferred,
     matching::{FormatData, LookupKind, LookupResult, Matcher, OnTypeError, ResultContext, Type},
     node_ref::NodeRef,
+    type_::{CustomBehavior, DbType, StringSlice, TypedDict, TypedDictGenerics, TypedDictMember},
     utils::join_with_commas,
 };
 

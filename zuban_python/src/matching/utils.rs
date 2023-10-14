@@ -1,7 +1,6 @@
-use crate::database::{
-    CallableContent, Database, DbType, GenericItem, TypeVarLikeUsage, TypeVarLikes,
-};
+use crate::database::Database;
 use crate::inference_state::InferenceState;
+use crate::type_::{CallableContent, DbType, GenericItem, TypeVarLikeUsage, TypeVarLikes};
 use crate::type_helpers::Class;
 
 use super::type_::ReplaceSelf;

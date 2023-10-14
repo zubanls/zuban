@@ -34,11 +34,8 @@ pub use utils::{
 };
 
 use crate::{
-    arguments::Argument,
-    database::{Database, TypeOrTypeVarTuple},
-    inference_state::InferenceState,
-    inferred::Inferred,
-    type_helpers::Class,
+    arguments::Argument, database::Database, inference_state::InferenceState, inferred::Inferred,
+    type_::TypeOrTypeVarTuple, type_helpers::Class,
 };
 
 type OnOverloadMismatch<'db, 'a> = Option<&'a dyn Fn(&InferenceState<'db, '_>, Option<&Class>)>;

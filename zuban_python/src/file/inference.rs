@@ -7,10 +7,7 @@ use super::diagnostics::await_aiter_and_next;
 use super::{on_argument_type_error, File, PythonFile};
 use crate::arguments::{KnownArguments, NoArguments, SimpleArguments};
 use crate::database::{
-    CallableContent, CallableParams, ClassGenerics, ComplexPoint, Database, DbType, FileIndex,
-    FunctionKind, GenericItem, GenericsList, Literal, LiteralKind, Locality, Namespace,
-    ParamSpecific, Point, PointLink, PointType, Specific, TupleContent, TupleTypeArguments,
-    TypeOrTypeVarTuple, UnionEntry, UnionType,
+    ComplexPoint, Database, FileIndex, Locality, Point, PointLink, PointType, Specific,
 };
 use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
@@ -22,6 +19,11 @@ use crate::matching::{
     Type,
 };
 use crate::node_ref::NodeRef;
+use crate::type_::{
+    CallableContent, CallableParams, ClassGenerics, DbType, FunctionKind, GenericItem,
+    GenericsList, Literal, LiteralKind, Namespace, ParamSpecific, TupleContent, TupleTypeArguments,
+    TypeOrTypeVarTuple, UnionEntry, UnionType,
+};
 use crate::type_helpers::{
     lookup_in_namespace, Class, FirstParamKind, Function, GeneratorType, Instance, Module,
 };

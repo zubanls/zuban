@@ -3,14 +3,13 @@ use parsa_python_ast::*;
 use super::type_computation::{
     cache_name_on_class, SpecialType, TypeNameLookup, ASSIGNMENT_TYPE_CACHE_OFFSET,
 };
-use crate::database::{
-    Locality, Point, PointLink, PointType, TypeVarIndex, TypeVarLike, TypeVarLikes, TypeVarManager,
-};
+use crate::database::{Locality, Point, PointLink, PointType};
 use crate::diagnostics::IssueType;
 use crate::file::file_state::File;
 use crate::file::{Inference, PythonFile};
 use crate::getitem::{SliceOrSimple, SliceType};
 use crate::node_ref::NodeRef;
+use crate::type_::{TypeVarIndex, TypeVarLike, TypeVarLikes, TypeVarManager};
 use crate::type_helpers::Class;
 
 #[derive(Debug, Clone)]

@@ -3,15 +3,17 @@ use std::ptr::null;
 use std::rc::Rc;
 
 use crate::database::{
-    BaseClass, CallableContent, ClassGenerics, ComplexPoint, CustomBehavior, Database, DbType,
-    GenericItem, GenericsList, LiteralKind, Locality, Point, PointLink, PointType, Specific,
-    TupleContent, TypeVarLikes,
+    BaseClass, ComplexPoint, Database, Locality, Point, PointLink, PointType, Specific,
 };
 use crate::file::File;
 use crate::file::PythonFile;
 use crate::inferred::Inferred;
 use crate::matching::{Generics, Type};
 use crate::node_ref::NodeRef;
+use crate::type_::{
+    CallableContent, ClassGenerics, CustomBehavior, DbType, GenericItem, GenericsList, LiteralKind,
+    TupleContent, TypeVarLikes,
+};
 use crate::type_helpers::{dataclasses_replace, Class, Function, Instance};
 use crate::{new_class, InferenceState, PythonProject};
 

@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use crate::arguments::Arguments;
-use crate::database::{ComplexPoint, DbType, FormatStyle, NamedTuple, RecursiveAlias};
+use crate::database::ComplexPoint;
 use crate::debug;
 use crate::file::{new_collections_named_tuple, new_typing_named_tuple};
 use crate::getitem::SliceType;
@@ -10,6 +10,7 @@ use crate::inferred::Inferred;
 use crate::matching::{
     FormatData, Generics, IteratorContent, LookupResult, OnTypeError, ResultContext, Type,
 };
+use crate::type_::{DbType, FormatStyle, NamedTuple, RecursiveAlias};
 use crate::utils::join_with_commas;
 use crate::{database::Database, node_ref::NodeRef};
 

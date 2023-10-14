@@ -1,7 +1,7 @@
 use std::fmt;
 
 use super::{Matcher, Type};
-use crate::database::{DbType, TupleTypeArguments, TypeOrTypeVarTuple};
+use crate::type_::{DbType, TupleTypeArguments, TypeOrTypeVarTuple};
 use crate::{debug, InferenceState};
 
 pub enum ResultContext<'a, 'b> {
