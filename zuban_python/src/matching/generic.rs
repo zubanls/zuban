@@ -1,12 +1,11 @@
 use std::borrow::Cow;
 
-use super::{
-    match_tuple_type_arguments, matches_params, FormatData, Match, Matcher, ParamsStyle, Type,
-};
+use super::{matches_params, FormatData, Match, Matcher, ParamsStyle, Type};
 use crate::database::Database;
 use crate::inference_state::InferenceState;
 use crate::type_::{
-    CallableParams, DbType, GenericItem, ParamSpecArgument, TypeArguments, TypeVarLike, Variance,
+    match_tuple_type_arguments, CallableParams, DbType, GenericItem, ParamSpecArgument,
+    TypeArguments, TypeVarLike, Variance,
 };
 
 #[derive(Debug)]

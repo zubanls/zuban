@@ -3,8 +3,8 @@ use crate::{
     debug,
     inference_state::InferenceState,
     matching::{
-        match_tuple_type_arguments, matches_params, params::has_overlapping_params, CallableLike,
-        Match, Matcher, MismatchReason, Type,
+        matches_params, params::has_overlapping_params, CallableLike, Match, Matcher,
+        MismatchReason, Type,
     },
     node_ref::NodeRef,
     type_::{CallableParams, TupleTypeArguments, TypeOrTypeVarTuple, Variance},
@@ -804,5 +804,68 @@ impl DbType {
             }
         }
         false
+    }
+}
+
+pub fn match_tuple_type_arguments(
+    i_s: &InferenceState,
+    matcher: &mut Matcher,
+    t1: &TupleTypeArguments,
+    t2: &TupleTypeArguments,
+    variance: Variance,
+) -> Match {
+    if matcher.is_matching_reverse() {
+        return matcher.match_reverse(|matcher| {
+            match_tuple_type_arguments(i_s, matcher, t2, t1, variance.invert())
+        });
+    }
+    use TupleTypeArguments::*;
+    if matcher.might_have_defined_type_vars() {
+        if let Some(ts) = t1.has_type_var_tuple() {
+            return matcher.match_type_var_tuple(i_s, ts, t2, variance);
+        }
+    }
+    match (t1, t2, variance) {
+        (tup1_args @ FixedLength(ts1), tup2_args @ FixedLength(ts2), _) => {
+            if ts1.len() == ts2.len() {
+                let mut matches = Match::new_true();
+                for (t1, t2) in ts1.iter().zip(ts2.iter()) {
+                    match (t1, t2) {
+                        (TypeOrTypeVarTuple::Type(t1), TypeOrTypeVarTuple::Type(t2)) => {
+                            matches &=
+                                Type::new(t1).matches(i_s, matcher, &Type::new(t2), variance);
+                        }
+                        (
+                            TypeOrTypeVarTuple::TypeVarTuple(t1),
+                            TypeOrTypeVarTuple::TypeVarTuple(t2),
+                        ) => matches &= (t1 == t2).into(),
+                        _ => todo!("{t1:?} {t2:?}"),
+                    }
+                }
+                matches
+            } else {
+                Match::new_false()
+            }
+        }
+        (ArbitraryLength(t1), ArbitraryLength(t2), _) => {
+            Type::new(t1).matches(i_s, matcher, &Type::new(t2), variance)
+        }
+        (tup1_args @ FixedLength(ts1), tup2_args @ ArbitraryLength(t2), _) => Match::new_false(),
+        (ArbitraryLength(t1), FixedLength(ts2), Variance::Invariant) => {
+            todo!()
+        }
+        (ArbitraryLength(t1), FixedLength(ts2), _) => {
+            let t1 = Type::new(t1);
+            ts2.iter()
+                .all(|g2| match g2 {
+                    TypeOrTypeVarTuple::Type(t2) => {
+                        t1.matches(i_s, matcher, &Type::new(t2), variance).bool()
+                    }
+                    TypeOrTypeVarTuple::TypeVarTuple(_) => {
+                        todo!()
+                    }
+                })
+                .into()
+        }
     }
 }

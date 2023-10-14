@@ -23,7 +23,7 @@ pub use matcher::{
 };
 pub use params::{matches_params, matches_simple_params, Param};
 pub use result_context::{CouldBeALiteral, ResultContext};
-pub use type_::{match_tuple_type_arguments, CallableLike, LookupKind, Type};
+pub use type_::{CallableLike, LookupKind, Type};
 pub use utils::{
     calculate_property_return, create_signature_without_self,
     create_signature_without_self_for_callable, maybe_class_usage, replace_class_type_vars,
