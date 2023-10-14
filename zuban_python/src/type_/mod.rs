@@ -1,5 +1,6 @@
 mod common_base_type;
 mod common_sub_type;
+mod operations;
 mod simplified_union;
 mod type_var_likes;
 

@@ -1430,7 +1430,7 @@ impl<'db: 'slf, 'slf> Inferred {
         from: NodeRef,
         name: &str,
         kind: LookupKind,
-        callable: &mut impl FnMut(&Type, LookupResult),
+        callable: &mut impl FnMut(&DbType, LookupResult),
     ) {
         self.as_type(i_s).run_after_lookup_on_each_union_member(
             i_s,
@@ -2246,11 +2246,11 @@ enum ApplyDescriptorsKind {
 pub fn add_attribute_error(
     i_s: &InferenceState,
     node_ref: NodeRef,
-    full_type: &Type,
-    t: &Type,
+    full_type: &DbType,
+    t: &DbType,
     name: &str,
 ) {
-    let object = match t.as_ref() {
+    let object = match t {
         DbType::Module(f) => {
             node_ref.add_issue(i_s, IssueType::ModuleAttributeError { name: name.into() });
             return;
@@ -2258,7 +2258,7 @@ pub fn add_attribute_error(
         _ => format!("{:?}", t.format_short(i_s.db)).into(),
     };
     let name = Box::from(name);
-    if let DbType::TypeVar(usage) = full_type.as_ref() {
+    if let DbType::TypeVar(usage) = full_type {
         if let TypeVarKind::Bound(bound) = &usage.type_var.kind {
             if Type::new(bound).is_union_like() {
                 let bound = bound.format_short(i_s.db);

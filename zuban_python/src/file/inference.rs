@@ -1583,7 +1583,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 had_error = true;
                                 let t = IssueType::UnsupportedOperand {
                                     operand: Box::from(op.operand),
-                                    left: l_type.as_db_type().format_short(i_s.db),
+                                    left: l_type.format_short(i_s.db),
                                     right: r_type.format_short(i_s.db),
                                 };
                                 node_ref.add_issue(i_s, t);

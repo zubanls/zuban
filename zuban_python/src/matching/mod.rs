@@ -23,9 +23,7 @@ pub use matcher::{
 };
 pub use params::{matches_params, matches_simple_params, Param};
 pub use result_context::{CouldBeALiteral, ResultContext};
-pub use type_::{
-    execute_type_of_type, match_tuple_type_arguments, CallableLike, LookupKind, ReplaceSelf, Type,
-};
+pub use type_::{match_tuple_type_arguments, CallableLike, LookupKind, ReplaceSelf, Type};
 pub use utils::{
     calculate_property_return, create_signature_without_self,
     create_signature_without_self_for_callable, maybe_class_usage, replace_class_type_vars,
@@ -33,8 +31,12 @@ pub use utils::{
 };
 
 use crate::{
-    arguments::Argument, database::Database, inference_state::InferenceState, inferred::Inferred,
-    type_::TypeOrTypeVarTuple, type_helpers::Class,
+    arguments::Argument,
+    database::Database,
+    inference_state::InferenceState,
+    inferred::Inferred,
+    type_::{DbType, TypeOrTypeVarTuple},
+    type_helpers::Class,
 };
 
 type OnOverloadMismatch<'db, 'a> = Option<&'a dyn Fn(&InferenceState<'db, '_>, Option<&Class>)>;
@@ -95,7 +97,7 @@ pub type OnTypeErrorCallback<'db, 'a> = &'a dyn Fn(
     Box<str>,
     Box<str>,
 );
-pub type OnLookupError<'a> = &'a dyn Fn(&Type);
+pub type OnLookupError<'a> = &'a dyn Fn(&DbType);
 
 #[derive(Debug, Clone)]
 pub enum IteratorContent {
