@@ -2071,6 +2071,51 @@ impl<'a> Type<'a> {
                 }
                 None
             }
+            (DbType::Tuple(tup1), DbType::Tuple(tup2)) => {
+                if tup1.args.has_type_var_tuple().is_some()
+                    || tup2.args.has_type_var_tuple().is_some()
+                {
+                    todo!()
+                }
+                use TupleTypeArguments::*;
+                Some(match (&tup1.args, &tup2.args) {
+                    (FixedLength(ts1), FixedLength(ts2)) => {
+                        if ts1.len() != ts2.len() {
+                            return None;
+                        }
+                        let mut entries = vec![];
+                        for (t1, t2) in ts1.iter().zip(ts2.iter()) {
+                            match (t1, t2) {
+                                (TypeOrTypeVarTuple::Type(t1), TypeOrTypeVarTuple::Type(t2)) => {
+                                    entries.push(TypeOrTypeVarTuple::Type(
+                                        Type::new(t1).common_sub_type(i_s, &Type::new(t2))?,
+                                    ))
+                                }
+                                _ => todo!(),
+                            }
+                        }
+                        DbType::Tuple(Rc::new(TupleContent::new_fixed_length(entries.into())))
+                    }
+                    (ArbitraryLength(t1), ArbitraryLength(t2)) => {
+                        Type::new(t1).common_sub_type(i_s, &Type::new(t2))?
+                    }
+                    (ArbitraryLength(t2), FixedLength(ts1))
+                    | (FixedLength(ts1), ArbitraryLength(t2)) => {
+                        let mut entries = vec![];
+                        let t2 = Type::new(t2);
+                        for type_or1 in ts1.iter() {
+                            if let TypeOrTypeVarTuple::Type(t1) = type_or1 {
+                                entries.push(TypeOrTypeVarTuple::Type(
+                                    Type::new(t1).common_sub_type(i_s, &t2)?,
+                                ))
+                            } else {
+                                return None;
+                            }
+                        }
+                        DbType::Tuple(Rc::new(TupleContent::new_fixed_length(entries.into())))
+                    }
+                })
+            }
             (DbType::TypedDict(td1), DbType::TypedDict(td2)) => Some(td1.union(i_s, &td2)),
             (DbType::Callable(c1), DbType::Callable(c2)) => {
                 Some(DbType::Callable(common_sub_type_for_callables(i_s, c1, c2)))
