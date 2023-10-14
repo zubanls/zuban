@@ -65,13 +65,6 @@ impl<'a> Type<'a> {
     pub fn as_ref(&self) -> &DbType {
         self
     }
-
-    pub fn expect_borrowed_db_type(&self) -> &'a DbType {
-        match self.0 {
-            Cow::Borrowed(t) => t,
-            _ => unreachable!(),
-        }
-    }
 }
 
 impl TypeAlias {

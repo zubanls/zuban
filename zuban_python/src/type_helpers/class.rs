@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::cell::{Cell, OnceCell};
 use std::fmt;
 use std::rc::Rc;
@@ -29,7 +30,7 @@ use crate::inferred::{FunctionOrOverload, Inferred, MroIndex};
 use crate::matching::{
     calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
     calculate_class_init_type_vars_and_return, FormatData, FunctionOrCallable, Generics,
-    LookupKind, LookupResult, Match, Matcher, MismatchReason, OnTypeError, ResultContext, Type,
+    LookupKind, LookupResult, Match, Matcher, MismatchReason, OnTypeError, ResultContext,
 };
 use crate::node_ref::NodeRef;
 use crate::python_state::NAME_TO_FUNCTION_DIFF;
@@ -1826,7 +1827,7 @@ impl<'db, 'a> MroIterator<'db, 'a> {
 
 #[derive(Debug)]
 pub enum TypeOrClass<'a> {
-    Type(Type<'a>),
+    Type(Cow<'a, DbType>),
     Class(Class<'a>),
 }
 
@@ -1921,9 +1922,9 @@ fn apply_generics_to_base_class<'a>(
         }
         // TODO this is wrong, because it does not use generics.
         _ if matches!(generics, Generics::None | Generics::NotDefinedYet) => {
-            TypeOrClass::Type(Type::new(t))
+            TypeOrClass::Type(Cow::Borrowed(t))
         }
-        _ => TypeOrClass::Type(Type::owned(t.replace_type_var_likes_and_self(
+        _ => TypeOrClass::Type(Cow::Owned(t.replace_type_var_likes_and_self(
             db,
             &mut |usage| generics.nth_usage(db, &usage).into_generic_item(db),
             &|| todo!(),

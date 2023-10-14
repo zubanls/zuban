@@ -244,9 +244,9 @@ impl<'db: 'slf, 'slf> Inferred {
         // Mro classes are never owned, because they are saved on classes.
         match class_t {
             TypeOrClass::Class(class) => class,
-            TypeOrClass::Type(t) => match t.expect_borrowed_db_type() {
-                DbType::Dataclass(d) => d.class(i_s.db),
-                DbType::TypedDict(d) => todo!("is this even necessary?"),
+            TypeOrClass::Type(t) => match t {
+                Cow::Borrowed(DbType::Dataclass(d)) => d.class(i_s.db),
+                Cow::Borrowed(DbType::TypedDict(d)) => todo!("is this even necessary?"),
                 _ => unreachable!(),
             },
         }

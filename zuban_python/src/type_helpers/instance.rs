@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::rc::Rc;
 
 use parsa_python_ast::Name;
@@ -433,7 +434,7 @@ fn calculate_descriptor(
 
 enum FoundOnClass<'a> {
     Attribute(Inferred),
-    UnresolvedType(Type<'a>),
+    UnresolvedType(Cow<'a, DbType>),
 }
 
 struct ClassMroFinder<'db, 'a, 'd> {

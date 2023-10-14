@@ -1130,7 +1130,7 @@ impl DbType {
         match self {
             DbType::Literal(literal) => MroIterator::new(
                 db,
-                TypeOrClass::Type(Type::new(self)),
+                TypeOrClass::Type(Cow::Borrowed(self)),
                 Generics::None,
                 match literal.kind {
                     LiteralKind::Int(_) => db.python_state.builtins_int_mro.iter(),
@@ -1145,7 +1145,7 @@ impl DbType {
                 let tuple_class = db.python_state.tuple_class(db, tup);
                 MroIterator::new(
                     db,
-                    TypeOrClass::Type(Type::new(self)),
+                    TypeOrClass::Type(Cow::Borrowed(self)),
                     tuple_class.generics,
                     tuple_class.use_cached_class_infos(db).mro.iter(),
                     false,
@@ -1154,7 +1154,7 @@ impl DbType {
             // TODO? DbType::Dataclass(d) => Some(d.class(db).mro(db)),
             DbType::TypedDict(td) => MroIterator::new(
                 db,
-                TypeOrClass::Type(Type::new(self)),
+                TypeOrClass::Type(Cow::Borrowed(self)),
                 Generics::None,
                 db.python_state.typing_typed_dict_bases.iter(),
                 false,
@@ -1163,7 +1163,7 @@ impl DbType {
                 let class = e.class(db);
                 MroIterator::new(
                     db,
-                    TypeOrClass::Type(Type::new(self)),
+                    TypeOrClass::Type(Cow::Borrowed(self)),
                     class.generics,
                     class.use_cached_class_infos(db).mro.iter(),
                     false,
@@ -1171,7 +1171,7 @@ impl DbType {
             }
             _ => MroIterator::new(
                 db,
-                TypeOrClass::Type(Type::new(self)),
+                TypeOrClass::Type(Cow::Borrowed(self)),
                 Generics::None,
                 [].iter(),
                 false,
