@@ -1206,7 +1206,7 @@ impl<'db: 'a, 'a> Class<'a> {
         let type_vars = self.use_cached_type_vars(db);
         self.generics()
             .nth_type_argument(db, &type_vars[nth], nth)
-            .into_db_type()
+            .into_owned()
     }
 
     fn mro_maybe_without_object(

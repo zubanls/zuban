@@ -152,9 +152,7 @@ impl CalculatedTypeVarLike {
     pub fn update_uncalculated_with_generic_invariant(&mut self, db: &Database, g: Generic) {
         debug_assert!(matches!(self.type_, BoundKind::Uncalculated { .. }));
         self.type_ = match g {
-            Generic::TypeArgument(t) => {
-                BoundKind::TypeVar(TypeVarBound::Invariant(t.into_db_type()))
-            }
+            Generic::TypeArgument(t) => BoundKind::TypeVar(TypeVarBound::Invariant(t.into_owned())),
             Generic::TypeVarTuple(t) => todo!(),
             Generic::ParamSpecArgument(p) => todo!(),
         }

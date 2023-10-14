@@ -1,15 +1,12 @@
 use std::borrow::Cow;
 use std::rc::Rc;
 
-use super::Generics;
 use crate::database::{Database, TypeAlias};
 
-use crate::node_ref::NodeRef;
 use crate::type_::{
     DbType, GenericItem, GenericsList, ParamSpecUsage, RecursiveAlias, TypeVarLike,
     TypeVarLikeUsage, TypeVarTupleUsage, TypeVarUsage,
 };
-use crate::type_helpers::Class;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum LookupKind {
@@ -51,6 +48,10 @@ impl<'a> Type<'a> {
 
     pub fn owned(t: DbType) -> Self {
         Self(Cow::Owned(t))
+    }
+
+    pub fn into_cow(self) -> Cow<'a, DbType> {
+        self.0
     }
 
     pub fn into_db_type(self) -> DbType {

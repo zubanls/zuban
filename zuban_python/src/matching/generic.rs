@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use super::{matches_params, FormatData, Match, Matcher, ParamsStyle, Type};
+use super::{matches_params, FormatData, Match, Matcher, ParamsStyle};
 use crate::database::Database;
 use crate::inference_state::InferenceState;
 use crate::type_::{
@@ -10,7 +10,7 @@ use crate::type_::{
 
 #[derive(Debug)]
 pub enum Generic<'a> {
-    TypeArgument(Type<'a>),
+    TypeArgument(Cow<'a, DbType>),
     TypeVarTuple(Cow<'a, TypeArguments>),
     ParamSpecArgument(Cow<'a, ParamSpecArgument>),
 }
@@ -18,7 +18,7 @@ pub enum Generic<'a> {
 impl<'a> Generic<'a> {
     pub fn new(g: &'a GenericItem) -> Self {
         match g {
-            GenericItem::TypeArgument(t) => Self::TypeArgument(Type::new(t)),
+            GenericItem::TypeArgument(t) => Self::TypeArgument(Cow::Borrowed(t)),
             GenericItem::TypeArguments(args) => Self::TypeVarTuple(Cow::Borrowed(args)),
             GenericItem::ParamSpecArgument(params) => {
                 Self::ParamSpecArgument(Cow::Borrowed(params))
@@ -28,7 +28,7 @@ impl<'a> Generic<'a> {
 
     pub fn owned(g: GenericItem) -> Self {
         match g {
-            GenericItem::TypeArgument(t) => Self::TypeArgument(Type::owned(t)),
+            GenericItem::TypeArgument(t) => Self::TypeArgument(Cow::Owned(t)),
             GenericItem::TypeArguments(args) => Self::TypeVarTuple(Cow::Owned(args)),
             GenericItem::ParamSpecArgument(params) => Self::ParamSpecArgument(Cow::Owned(params)),
         }
@@ -36,7 +36,7 @@ impl<'a> Generic<'a> {
 
     pub fn into_generic_item(self, db: &Database) -> GenericItem {
         match self {
-            Self::TypeArgument(t) => GenericItem::TypeArgument(t.into_db_type()),
+            Self::TypeArgument(t) => GenericItem::TypeArgument(t.into_owned()),
             Self::TypeVarTuple(ts) => GenericItem::TypeArguments(ts.into_owned()),
             Self::ParamSpecArgument(params) => GenericItem::ParamSpecArgument(params.into_owned()),
         }
@@ -106,7 +106,7 @@ impl<'a> Generic<'a> {
         }
     }
 
-    pub fn expect_type_argument(self) -> Type<'a> {
+    pub fn expect_type_argument(self) -> Cow<'a, DbType> {
         match self {
             Self::TypeArgument(t) => t,
             _ => todo!(),

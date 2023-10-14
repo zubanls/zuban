@@ -107,10 +107,10 @@ fn common_base_class(i_s: &InferenceState, c1: Class, c2: Class) -> Option<DbTyp
                         // like T[Any, int] & T[int, Any] should become T[Any, Any]
                         match matches {
                             Match::True { with_any: false } => {
-                                generics.push(GenericItem::TypeArgument(inner_t1.into_db_type()));
+                                generics.push(GenericItem::TypeArgument(inner_t1.into_owned()));
                             }
                             Match::True { with_any: true } => {
-                                generics.push(GenericItem::TypeArgument(inner_t2.into_db_type()));
+                                generics.push(GenericItem::TypeArgument(inner_t2.into_owned()));
                             }
                             _ => return None,
                         }

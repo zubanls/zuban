@@ -252,7 +252,7 @@ fn add_generics_from_result_context_class(
                         unreachable!();
                     };
                     let bound =
-                        TypeVarBound::new(g.as_db_type(), type_var.variance.invert(), type_var);
+                        TypeVarBound::new(g.into_owned(), type_var.variance.invert(), type_var);
                     calculated.type_ = BoundKind::TypeVar(bound);
                     calculated.defined_by_result_context = true;
                 }

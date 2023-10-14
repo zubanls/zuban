@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use parsa_python_ast::{Expression, SliceContent, SliceIterator, Slices};
 
-use super::{FormatData, Generic, Match, Matcher, Type};
+use super::{FormatData, Generic, Match, Matcher};
 use crate::database::{Database, PointLink};
 use crate::debug;
 use crate::file::{use_cached_simple_generic_type, File, PythonFile};
@@ -101,7 +101,7 @@ impl<'a> Generics<'a> {
         db: &'db Database,
         type_var_like: &TypeVarLike,
         n: usize,
-    ) -> Type<'a> {
+    ) -> Cow<'a, DbType> {
         let generic = self.nth(db, type_var_like, n);
         if let Generic::TypeArgument(p) = generic {
             p
@@ -119,7 +119,9 @@ impl<'a> Generics<'a> {
         match self {
             Self::ExpressionWithClassType(file, expr) => {
                 if n == 0 {
-                    Generic::TypeArgument(use_cached_simple_generic_type(db, file, *expr))
+                    Generic::TypeArgument(
+                        use_cached_simple_generic_type(db, file, *expr).into_cow(),
+                    )
                 } else {
                     debug!(
                         "Generic expr {:?} has one item, but {:?} was requested",
@@ -135,7 +137,7 @@ impl<'a> Generics<'a> {
                     .nth(n)
                     .map(|slice_content| match slice_content {
                         SliceContent::NamedExpression(n) => {
-                            use_cached_simple_generic_type(db, file, n.expression())
+                            use_cached_simple_generic_type(db, file, n.expression()).into_cow()
                         }
                         SliceContent::Slice(s) => todo!(),
                     })
@@ -308,17 +310,15 @@ impl<'a> Iterator for GenericsIterator<'a> {
                     return None;
                 }
                 self.ended = true;
-                Some(Generic::TypeArgument(use_cached_simple_generic_type(
-                    self.db, file, *expr,
-                )))
+                Some(Generic::TypeArgument(
+                    use_cached_simple_generic_type(self.db, file, *expr).into_cow(),
+                ))
             }
             GenericsIteratorItem::SimpleGenericSliceIterator(file, iter) => {
                 if let Some(SliceContent::NamedExpression(s)) = iter.next() {
-                    Some(Generic::TypeArgument(use_cached_simple_generic_type(
-                        self.db,
-                        file,
-                        s.expression(),
-                    )))
+                    Some(Generic::TypeArgument(
+                        use_cached_simple_generic_type(self.db, file, s.expression()).into_cow(),
+                    ))
                 } else {
                     None
                 }
