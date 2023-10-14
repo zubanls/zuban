@@ -167,9 +167,7 @@ fn common_base_type_for_non_class(
         }
         DbType::Type(t1) => {
             if let DbType::Type(t2) = t2 {
-                return Some(DbType::Type(Rc::new(
-                    Type::new(t1).common_base_type(i_s, &Type::new(t2)),
-                )));
+                return Some(DbType::Type(Rc::new(t1.common_base_type(i_s, t2))));
             }
         }
         _ => {
@@ -244,7 +242,7 @@ fn common_params(
             }
             let t1 = p1.param_specific.maybe_positional_db_type()?;
             let t2 = p2.param_specific.maybe_positional_db_type()?;
-            let new_t = Type::new(t1).common_sub_type(i_s, &Type::new(t2))?;
+            let new_t = t1.common_sub_type(i_s, t2)?;
             new_params.push(CallableParam {
                 param_specific: match &kind {
                     ParamKind::PositionalOnly => ParamSpecific::PositionalOnly(new_t),
@@ -329,9 +327,7 @@ pub fn common_base_type_of_type_var_tuple_with_items<
                 for (t1, t2) in calc_ts.iter().zip(items) {
                     match (t1, t2) {
                         (TypeOrTypeVarTuple::Type(t1), TypeOrTypeVarTuple::Type(t2)) => {
-                            new.push(TypeOrTypeVarTuple::Type(
-                                Type::new(t1).common_base_type(i_s, &Type::new(t2)),
-                            ));
+                            new.push(TypeOrTypeVarTuple::Type(t1.common_base_type(i_s, t2)));
                         }
                         _ => todo!(),
                     }
@@ -349,8 +345,7 @@ pub fn common_base_type_of_type_var_tuple_with_items<
                 // args is already ok, because we have an empty tuple here that can be anything.
                 return;
             }
-            let base =
-                Type::owned(common_base_type(i_s, items)).common_base_type(i_s, &Type::new(calc_t));
+            let base = common_base_type(i_s, items).common_base_type(i_s, calc_t);
             *args = TupleTypeArguments::ArbitraryLength(Box::new(base));
         }
     }

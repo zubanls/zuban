@@ -19,7 +19,7 @@ impl DbType {
             (DbType::Union(union), _) => {
                 for t in union.iter() {
                     // TODO what about multiple items?
-                    if let Some(found) = Type::new(t).common_sub_type(i_s, other) {
+                    if let Some(found) = t.common_sub_type(i_s, other) {
                         return Some(found);
                     }
                 }
@@ -28,7 +28,7 @@ impl DbType {
             (_, DbType::Union(union)) => {
                 for t in union.iter() {
                     // TODO what about multiple items?
-                    if let Some(found) = Type::new(t).common_sub_type(i_s, self) {
+                    if let Some(found) = t.common_sub_type(i_s, self) {
                         return Some(found);
                     }
                 }
@@ -51,7 +51,7 @@ impl DbType {
                             match (t1, t2) {
                                 (TypeOrTypeVarTuple::Type(t1), TypeOrTypeVarTuple::Type(t2)) => {
                                     entries.push(TypeOrTypeVarTuple::Type(
-                                        Type::new(t1).common_sub_type(i_s, &Type::new(t2))?,
+                                        t1.common_sub_type(i_s, t2)?,
                                     ))
                                 }
                                 _ => todo!(),
@@ -59,18 +59,15 @@ impl DbType {
                         }
                         DbType::Tuple(Rc::new(TupleContent::new_fixed_length(entries.into())))
                     }
-                    (ArbitraryLength(t1), ArbitraryLength(t2)) => {
-                        Type::new(t1).common_sub_type(i_s, &Type::new(t2))?
-                    }
+                    (ArbitraryLength(t1), ArbitraryLength(t2)) => t1.common_sub_type(i_s, t2)?,
                     (ArbitraryLength(t2), FixedLength(ts1))
                     | (FixedLength(ts1), ArbitraryLength(t2)) => {
                         let mut entries = vec![];
                         let t2 = Type::new(t2);
                         for type_or1 in ts1.iter() {
                             if let TypeOrTypeVarTuple::Type(t1) = type_or1 {
-                                entries.push(TypeOrTypeVarTuple::Type(
-                                    Type::new(t1).common_sub_type(i_s, &t2)?,
-                                ))
+                                entries
+                                    .push(TypeOrTypeVarTuple::Type(t1.common_sub_type(i_s, &t2)?))
                             } else {
                                 return None;
                             }
@@ -114,8 +111,7 @@ fn common_sub_type_for_callables(
         CallableParams::Simple(params1) => match &c2.params {
             CallableParams::Simple(params2) => {
                 if let Some(params) = common_sub_type_params(i_s, &params1, &params2) {
-                    if let Some(result_type) =
-                        Type::new(&c1.result_type).common_sub_type(i_s, &Type::new(&c2.result_type))
+                    if let Some(result_type) = c1.result_type.common_sub_type(i_s, &c2.result_type)
                     {
                         return Rc::new(CallableContent {
                             name: None,
@@ -157,7 +153,7 @@ fn common_sub_type_params(
             }
             let t1 = p1.param_specific.maybe_positional_db_type()?;
             let t2 = p2.param_specific.maybe_positional_db_type()?;
-            let new_t = Type::new(t1).common_base_type(i_s, &Type::new(t2));
+            let new_t = t1.common_base_type(i_s, t2);
             new_params.push(CallableParam {
                 param_specific: match &p1.param_specific.param_kind() {
                     ParamKind::PositionalOnly => ParamSpecific::PositionalOnly(new_t),

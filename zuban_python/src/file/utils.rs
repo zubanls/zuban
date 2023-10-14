@@ -25,7 +25,7 @@ impl<'db> Inference<'db, '_, '_> {
         &mut self,
         elements: impl Iterator<Item = StarLikeExpression<'x>>,
     ) -> DbType {
-        let mut result = None;
+        let mut result: Option<DbType> = None;
         for child in elements {
             let from_stars = |inferred: Inferred, from_index| {
                 inferred
@@ -50,7 +50,7 @@ impl<'db> Inference<'db, '_, '_> {
             };
             let t = t.avoid_implicit_literal(self.i_s.db);
             if let Some(r) = result.take() {
-                result = Some(Type::owned(r).common_base_type(self.i_s, &Type::owned(t)));
+                result = Some(r.common_base_type(self.i_s, &t));
             } else {
                 result = Some(t)
             }

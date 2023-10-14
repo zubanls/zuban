@@ -105,7 +105,7 @@ impl TypeVarBound {
                         // case of LowerAndUpper?
                         let m = Type::new(t).is_simple_super_type_of(i_s, other);
                         if !m.bool() {
-                            *t = Type::new(t).common_base_type(i_s, other);
+                            *t = t.common_base_type(i_s, other);
                             return Match::new_true();
                         }
                         return m;
@@ -120,7 +120,7 @@ impl TypeVarBound {
                         // TODO shouldn't we also check LowerAndUpper like this?
                         let m = Type::new(t).is_simple_sub_type_of(i_s, other);
                         if !m.bool() {
-                            if let Some(new) = Type::new(t).common_sub_type(i_s, other) {
+                            if let Some(new) = t.common_sub_type(i_s, other) {
                                 *t = new;
                             } else {
                                 *t = DbType::Never;
