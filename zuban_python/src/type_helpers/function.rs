@@ -25,7 +25,7 @@ use crate::matching::params::{
 };
 use crate::matching::{
     calculate_function_type_vars_and_return, maybe_class_usage, CalculatedTypeArguments, Generic,
-    LookupResult, OnTypeError, ResultContext, Type,
+    LookupResult, OnTypeError, ResultContext,
 };
 use crate::node_ref::NodeRef;
 use crate::python_state::NAME_TO_FUNCTION_DIFF;
@@ -282,7 +282,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                             IssueType::Note(
                                 format!(
                                     "Consider using the upper bound \"{}\" instead",
-                                    Type::new(bound).format_short(i_s.db)
+                                    bound.format_short(i_s.db)
                                 )
                                 .into(),
                             ),
@@ -930,8 +930,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         DbType::Callable(Rc::new(self.as_callable(i_s, first)))
     }
 
-    pub fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        Type::owned(self.as_db_type(i_s, FirstParamProperties::None))
+    pub fn as_type(&self, i_s: &InferenceState<'db, '_>) -> DbType {
+        self.as_db_type(i_s, FirstParamProperties::None)
     }
 
     fn internal_as_db_type(

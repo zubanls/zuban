@@ -2192,7 +2192,9 @@ pub fn specific_to_type<'db>(
         Specific::Bytes => Type::owned(i_s.db.python_state.bytes_db_type()),
         Specific::Complex => Type::owned(i_s.db.python_state.complex_db_type()),
         Specific::Ellipsis => Type::owned(i_s.db.python_state.ellipsis_db_type()),
-        Specific::Function => Function::new(definition, i_s.current_class().copied()).as_type(i_s),
+        Specific::Function => {
+            Type::owned(Function::new(definition, i_s.current_class().copied()).as_type(i_s))
+        }
         Specific::DecoratedFunction => {
             let func = Function::new(definition, i_s.current_class().copied());
             // Caches the decorated inference properly
