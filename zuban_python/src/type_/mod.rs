@@ -24,6 +24,7 @@ use crate::database::TypeAlias;
 use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
+use crate::matching::CallableLike;
 use crate::matching::Generics;
 use crate::matching::OnTypeError;
 use crate::matching::ResultContext;
@@ -32,6 +33,7 @@ use crate::matching::{FormatData, Generic, ParamsStyle};
 use crate::node_ref::NodeRef;
 use crate::type_helpers::calculate_init_of_dataclass;
 use crate::type_helpers::dotted_path_from_dir;
+use crate::type_helpers::Instance;
 use crate::type_helpers::{format_pretty_callable, Class, Module};
 use crate::utils::join_with_commas;
 use crate::utils::{bytes_repr, str_repr};
@@ -546,6 +548,77 @@ impl DbType {
             DbType::TypedDict(td) => Some(td.clone()),
             _ => None,
         }
+    }
+
+    pub fn maybe_callable(&self, i_s: &InferenceState) -> Option<CallableLike> {
+        match self {
+            DbType::Callable(c) => Some(CallableLike::Callable(c.clone())),
+            DbType::Type(t) => match t.as_ref() {
+                DbType::Class(c) => {
+                    let cls = c.class(i_s.db);
+                    return cls.find_relevant_constructor(i_s).maybe_callable(i_s, cls);
+                }
+                DbType::Dataclass(d) => {
+                    let cls = d.class(i_s.db);
+                    if d.options.init {
+                        let mut init = Dataclass::__init__(d, i_s.db).clone();
+                        if d.class.generics != ClassGenerics::NotDefinedYet
+                            || cls.use_cached_type_vars(i_s.db).is_empty()
+                        {
+                            init.result_type = t.as_ref().clone();
+                        } else {
+                            let mut type_var_dataclass = (**d).clone();
+                            type_var_dataclass.class =
+                                Class::with_self_generics(i_s.db, cls.node_ref)
+                                    .as_generic_class(i_s.db);
+                            init.result_type = DbType::Dataclass(Rc::new(type_var_dataclass));
+                        }
+                        return Some(CallableLike::Callable(Rc::new(init)));
+                    }
+                    return cls.find_relevant_constructor(i_s).maybe_callable(i_s, cls);
+                }
+                DbType::TypedDict(_) => {
+                    todo!("Once this is implemented remove the reveal_type formatting")
+                }
+                DbType::NamedTuple(nt) => {
+                    let mut callable = nt.__new__.remove_first_param().unwrap();
+                    callable.result_type = (**t).clone();
+                    return Some(CallableLike::Callable(Rc::new(callable)));
+                }
+                _ => {
+                    /*
+                    if matches!(&c1.params, CallableParams::Any) {
+                        Type::new(&c1.result_type).is_super_type_of(
+                            i_s,
+                            matcher,
+                            &Type::new(t2.as_ref()),
+                        )
+                    } else {
+                        None
+                    }
+                    */
+                    None
+                }
+            },
+            DbType::Any => Some(CallableLike::Callable(
+                i_s.db.python_state.any_callable.clone(),
+            )),
+            DbType::Class(c) => {
+                let cls = c.class(i_s.db);
+                debug!("TODO this from is completely wrong and should never be used.");
+                let hack = cls.node_ref;
+                Instance::new(cls, None)
+                    .type_lookup(i_s, hack, "__call__")
+                    .into_maybe_inferred()
+                    .and_then(|i| i.as_type(i_s).maybe_callable(i_s))
+            }
+            DbType::FunctionOverload(overload) => Some(CallableLike::Overload(overload.clone())),
+            _ => None,
+        }
+    }
+
+    pub fn is_func_or_overload(&self) -> bool {
+        matches!(self, DbType::Callable(_) | DbType::FunctionOverload(_))
     }
 
     pub fn union(self, db: &Database, other: DbType) -> Self {
