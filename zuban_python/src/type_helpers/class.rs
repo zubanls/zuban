@@ -912,7 +912,7 @@ impl<'db: 'a, 'a> Class<'a> {
         &self,
         i_s: &InferenceState<'db, '_>,
         matcher: &mut Matcher,
-        other: &Type,
+        other: &DbType,
         variance: Variance,
     ) -> Match {
         const SHOW_MAX_MISMATCHES: usize = 2;
@@ -934,7 +934,7 @@ impl<'db: 'a, 'a> Class<'a> {
             for (name, _) in unsafe { symbol_table.iter_on_finished_table() } {
                 // It is possible to match a Callable against a Protocol that only implements
                 // __call__.
-                if name == "__call__" && !matches!(other.as_ref(), DbType::Class(_)) {
+                if name == "__call__" && !matches!(other, DbType::Class(_)) {
                     let inf1 = Instance::new(c, None)
                         .type_lookup(i_s, hack, name)
                         .into_inferred();
@@ -965,7 +965,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         if !had_conflict_note {
                             had_conflict_note = true;
                             notes.push(
-                                match other.as_ref() {
+                                match other {
                                     DbType::Module(file_index) => format!(
                                         "Following member(s) of Module \"{}\" have conflicts:",
                                         Module::from_file_index(i_s.db, *file_index)

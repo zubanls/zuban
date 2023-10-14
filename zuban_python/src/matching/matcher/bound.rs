@@ -67,7 +67,7 @@ impl TypeVarBound {
     pub fn merge_or_mismatch(
         &mut self,
         i_s: &InferenceState,
-        other: &Type,
+        other: &DbType,
         variance: Variance,
     ) -> Match {
         // First check if the value is between the bounds.
@@ -88,11 +88,11 @@ impl TypeVarBound {
         };
         if matches.bool() {
             // If we are between the bounds we might need to update lower/upper bounds
-            let db_other = other.as_db_type();
+            let other = other.clone();
             match variance {
-                Variance::Invariant => *self = Self::Invariant(db_other),
-                Variance::Covariant => self.update_upper_bound(db_other),
-                Variance::Contravariant => self.update_lower_bound(db_other),
+                Variance::Invariant => *self = Self::Invariant(other),
+                Variance::Covariant => self.update_upper_bound(other),
+                Variance::Contravariant => self.update_lower_bound(other),
             }
         } else {
             // If we are not between the lower and upper bound, but the value is co or

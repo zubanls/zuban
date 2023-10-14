@@ -205,7 +205,7 @@ impl TypeVarMatcher {
         i_s: &InferenceState,
         type_var_usage: &TypeVarUsage,
         type_var: &TypeVar,
-        value_type: &Type,
+        value_type: &DbType,
         variance: Variance,
     ) -> Match {
         let current = &mut self.calculated_type_vars[type_var_usage.index.as_usize()];
@@ -226,7 +226,7 @@ impl TypeVarMatcher {
             }
             Err(m) => {
                 current.type_ = BoundKind::Uncalculated {
-                    fallback: Some(value_type.as_db_type()),
+                    fallback: Some(value_type.clone()),
                 };
                 m
             }
@@ -237,7 +237,7 @@ impl TypeVarMatcher {
 pub fn check_constraints(
     i_s: &InferenceState,
     type_var: &Rc<TypeVar>,
-    value_type: &Type,
+    value_type: &DbType,
     variance: Variance,
 ) -> Result<TypeVarBound, Match> {
     let mut mismatch_constraints = false;
@@ -249,7 +249,7 @@ pub fn check_constraints(
                 .bool();
         }
         TypeVarKind::Constraints(constraints) => {
-            if let DbType::TypeVar(t2) = value_type.as_ref() {
+            if let DbType::TypeVar(t2) = value_type {
                 if let TypeVarKind::Constraints(constraints2) = &t2.type_var.kind {
                     if constraints2.iter().all(|r2| {
                         constraints.iter().any(|r1| {
@@ -258,7 +258,7 @@ pub fn check_constraints(
                                 .bool()
                         })
                     }) {
-                        return Ok(TypeVarBound::Invariant(value_type.as_db_type()));
+                        return Ok(TypeVarBound::Invariant(value_type.clone()));
                     } else {
                         mismatch_constraints = true;
                     }
@@ -288,16 +288,12 @@ pub fn check_constraints(
     if mismatch_constraints {
         Err(Match::False {
             reason: MismatchReason::ConstraintMismatch {
-                expected: value_type.as_db_type(),
+                expected: value_type.clone(),
                 type_var: type_var.clone(),
             },
             similar: false,
         })
     } else {
-        Ok(TypeVarBound::new(
-            value_type.as_db_type(),
-            variance,
-            type_var,
-        ))
+        Ok(TypeVarBound::new(value_type.clone(), variance, type_var))
     }
 }

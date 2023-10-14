@@ -153,7 +153,7 @@ impl<'a> Matcher<'a> {
         &mut self,
         i_s: &InferenceState,
         t1: &TypeVarUsage,
-        value_type: &Type,
+        value_type: &DbType,
         variance: Variance,
     ) -> Match {
         if let Some(matcher) = self.type_var_matcher.as_mut() {
@@ -190,7 +190,7 @@ impl<'a> Matcher<'a> {
             // class C:  # Forgot to add type params here
             //     def __init__(self, t: T) -> None: pass
         }
-        match value_type.as_ref() {
+        match value_type {
             DbType::TypeVar(t2) => {
                 (t1.index == t2.index && t1.in_definition == t2.in_definition).into()
             }
