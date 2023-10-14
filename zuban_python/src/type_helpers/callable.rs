@@ -178,7 +178,7 @@ pub fn merge_class_type_vars_into_callable(
         type_vars.push(TypeVarLike::TypeVar(self_type_var));
     }
     let type_vars = TypeVarLikes::from_vec(type_vars);
-    let mut callable = Type::replace_type_var_likes_and_self_for_callable(
+    let mut callable = DbType::replace_type_var_likes_and_self_for_callable(
         callable,
         db,
         &mut |usage| {

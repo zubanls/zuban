@@ -2,6 +2,7 @@ mod common_base_type;
 mod common_sub_type;
 mod matching;
 mod operations;
+mod replace;
 mod simplified_union;
 mod type_var_likes;
 
@@ -35,7 +36,6 @@ use crate::matching::Match;
 use crate::matching::Matcher;
 use crate::matching::MismatchReason;
 use crate::matching::OnTypeError;
-use crate::matching::ReplaceSelf;
 use crate::matching::ResultContext;
 use crate::matching::Type;
 use crate::matching::{FormatData, Generic, ParamsStyle};
@@ -51,6 +51,7 @@ use crate::utils::{bytes_repr, str_repr};
 use crate::workspaces::Directory;
 
 pub use common_base_type::{common_base_type, common_base_type_of_type_var_tuple_with_items};
+pub use replace::ReplaceSelf;
 pub use simplified_union::simplified_union_from_iterators;
 pub use type_var_likes::{
     CallableWithParent, ParamSpec, ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, TypeVar,

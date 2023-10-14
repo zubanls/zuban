@@ -10,10 +10,10 @@ use crate::{
     matching::{
         calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
         replace_class_type_vars_in_callable, ArgumentIndexWithParam, FormatData,
-        FunctionOrCallable, OnTypeError, ReplaceSelf, ResultContext, SignatureMatch, Type,
+        FunctionOrCallable, OnTypeError, ResultContext, SignatureMatch, Type,
     },
     node_ref::NodeRef,
-    type_::{DbType, FunctionOverload},
+    type_::{DbType, FunctionOverload, ReplaceSelf},
 };
 
 use super::{format_pretty_callable, Callable, Class};

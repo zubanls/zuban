@@ -1,9 +1,10 @@
 use crate::database::Database;
 use crate::inference_state::InferenceState;
-use crate::type_::{CallableContent, DbType, GenericItem, TypeVarLikeUsage, TypeVarLikes};
+use crate::type_::{
+    CallableContent, DbType, GenericItem, ReplaceSelf, TypeVarLikeUsage, TypeVarLikes,
+};
 use crate::type_helpers::Class;
 
-use super::type_::ReplaceSelf;
 use super::{Matcher, Type};
 
 pub fn replace_class_type_vars(
@@ -28,7 +29,7 @@ pub fn replace_class_type_vars_in_callable(
     func_class: Option<&Class>,
     as_self_instance: ReplaceSelf,
 ) -> CallableContent {
-    Type::replace_type_var_likes_and_self_for_callable(
+    DbType::replace_type_var_likes_and_self_for_callable(
         callable,
         db,
         &mut |usage| {
@@ -107,7 +108,7 @@ pub fn create_signature_without_self(
     let mut callable = get_callable();
     if !callable.type_vars.is_empty() {
         let calculated = matcher.unwrap_calculated_type_args();
-        callable = Type::replace_type_var_likes_and_self_for_callable(
+        callable = DbType::replace_type_var_likes_and_self_for_callable(
             &callable,
             i_s.db,
             &mut |usage| {
