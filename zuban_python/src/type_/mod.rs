@@ -35,6 +35,8 @@ use crate::node_ref::NodeRef;
 use crate::type_helpers::calculate_init_of_dataclass;
 use crate::type_helpers::dotted_path_from_dir;
 use crate::type_helpers::Instance;
+use crate::type_helpers::MroIterator;
+use crate::type_helpers::TypeOrClass;
 use crate::type_helpers::{format_pretty_callable, Class, Module};
 use crate::utils::join_with_commas;
 use crate::utils::{bytes_repr, str_repr};
@@ -1113,6 +1115,59 @@ impl DbType {
             },
             _ => false,
         })
+    }
+
+    pub fn mro<'db: 'x, 'x>(&'x self, db: &'db Database) -> MroIterator<'db, 'x> {
+        match self {
+            DbType::Literal(literal) => MroIterator::new(
+                db,
+                TypeOrClass::Type(Type::new(self)),
+                Generics::None,
+                match literal.kind {
+                    LiteralKind::Int(_) => db.python_state.builtins_int_mro.iter(),
+                    LiteralKind::Bool(_) => db.python_state.builtins_bool_mro.iter(),
+                    LiteralKind::String(_) => db.python_state.builtins_str_mro.iter(),
+                    LiteralKind::Bytes(_) => db.python_state.builtins_bytes_mro.iter(),
+                },
+                false,
+            ),
+            DbType::Class(c) => c.class(db).mro(db),
+            DbType::Tuple(tup) => {
+                let tuple_class = db.python_state.tuple_class(db, tup);
+                MroIterator::new(
+                    db,
+                    TypeOrClass::Type(Type::new(self)),
+                    tuple_class.generics,
+                    tuple_class.use_cached_class_infos(db).mro.iter(),
+                    false,
+                )
+            }
+            // TODO? DbType::Dataclass(d) => Some(d.class(db).mro(db)),
+            DbType::TypedDict(td) => MroIterator::new(
+                db,
+                TypeOrClass::Type(Type::new(self)),
+                Generics::None,
+                db.python_state.typing_typed_dict_bases.iter(),
+                false,
+            ),
+            DbType::Enum(e) | DbType::EnumMember(EnumMember { enum_: e, .. }) => {
+                let class = e.class(db);
+                MroIterator::new(
+                    db,
+                    TypeOrClass::Type(Type::new(self)),
+                    class.generics,
+                    class.use_cached_class_infos(db).mro.iter(),
+                    false,
+                )
+            }
+            _ => MroIterator::new(
+                db,
+                TypeOrClass::Type(Type::new(self)),
+                Generics::None,
+                [].iter(),
+                false,
+            ),
+        }
     }
 }
 

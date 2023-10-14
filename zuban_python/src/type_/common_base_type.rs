@@ -44,7 +44,7 @@ impl DbType {
                         let TypeOrClass::Type(t2) = c2 else {
                             continue
                         };
-                        if let Some(base) = common_base_type_for_non_class(i_s, t1, t2.as_ref()) {
+                        if let Some(base) = common_base_type_for_non_class(i_s, t1, &t2) {
                             return base;
                         }
                     }

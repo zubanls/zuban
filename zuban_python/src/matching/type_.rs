@@ -14,14 +14,13 @@ use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 use crate::type_::{
     simplified_union_from_iterators, CallableContent, CallableParam, CallableParams, ClassGenerics,
-    Dataclass, DbType, DoubleStarredParamSpecific, EnumMember, FunctionOverload, GenericClass,
-    GenericItem, GenericsList, LiteralKind, NamedTuple, ParamSpecArgument, ParamSpecTypeVars,
-    ParamSpecUsage, ParamSpecific, RecursiveAlias, StarredParamSpecific, TupleContent,
-    TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple, TypeVarKind, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, TypedDict,
-    TypedDictGenerics, UnionEntry, UnionType, Variance,
+    Dataclass, DbType, DoubleStarredParamSpecific, FunctionOverload, GenericClass, GenericItem,
+    GenericsList, NamedTuple, ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamSpecific,
+    RecursiveAlias, StarredParamSpecific, TupleContent, TupleTypeArguments, TypeArguments,
+    TypeOrTypeVarTuple, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
+    TypeVarTupleUsage, TypeVarUsage, TypedDict, TypedDictGenerics, UnionEntry, UnionType, Variance,
 };
-use crate::type_helpers::{Class, MroIterator, TypeOrClass};
+use crate::type_helpers::{Class, TypeOrClass};
 use crate::utils::{join_with_commas, rc_unwrap_or_clone};
 
 pub type ReplaceTypeVarLike<'x> = &'x mut dyn FnMut(TypeVarLikeUsage) -> GenericItem;
@@ -605,59 +604,6 @@ impl<'a> Type<'a> {
             _ => (),
         }
         m
-    }
-
-    pub fn mro<'db: 'x, 'x>(&'x self, db: &'db Database) -> MroIterator<'db, 'x> {
-        match self.as_ref() {
-            DbType::Literal(literal) => MroIterator::new(
-                db,
-                TypeOrClass::Type(self.clone()),
-                Generics::None,
-                match literal.kind {
-                    LiteralKind::Int(_) => db.python_state.builtins_int_mro.iter(),
-                    LiteralKind::Bool(_) => db.python_state.builtins_bool_mro.iter(),
-                    LiteralKind::String(_) => db.python_state.builtins_str_mro.iter(),
-                    LiteralKind::Bytes(_) => db.python_state.builtins_bytes_mro.iter(),
-                },
-                false,
-            ),
-            DbType::Class(c) => c.class(db).mro(db),
-            DbType::Tuple(tup) => {
-                let tuple_class = db.python_state.tuple_class(db, tup);
-                MroIterator::new(
-                    db,
-                    TypeOrClass::Type(Type::new(self)),
-                    tuple_class.generics,
-                    tuple_class.use_cached_class_infos(db).mro.iter(),
-                    false,
-                )
-            }
-            // TODO? DbType::Dataclass(d) => Some(d.class(db).mro(db)),
-            DbType::TypedDict(td) => MroIterator::new(
-                db,
-                TypeOrClass::Type(self.clone()),
-                Generics::None,
-                db.python_state.typing_typed_dict_bases.iter(),
-                false,
-            ),
-            DbType::Enum(e) | DbType::EnumMember(EnumMember { enum_: e, .. }) => {
-                let class = e.class(db);
-                MroIterator::new(
-                    db,
-                    TypeOrClass::Type(self.clone()),
-                    class.generics,
-                    class.use_cached_class_infos(db).mro.iter(),
-                    false,
-                )
-            }
-            _ => MroIterator::new(
-                db,
-                TypeOrClass::Type(self.clone()),
-                Generics::None,
-                [].iter(),
-                false,
-            ),
-        }
     }
 
     fn matches_union(
