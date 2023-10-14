@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::rc::Rc;
 
 use parsa_python_ast::ParamKind;
@@ -21,10 +22,10 @@ pub enum FunctionOrCallable<'a> {
 }
 
 impl<'db: 'a, 'a> FunctionOrCallable<'a> {
-    pub fn result_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
+    pub fn result_type(&self, i_s: &InferenceState<'db, '_>) -> Cow<'a, DbType> {
         match self {
             Self::Function(f) => f.result_type(i_s),
-            Self::Callable(c) => Type::new(&c.content.result_type),
+            Self::Callable(c) => Cow::Borrowed(&c.content.result_type),
         }
     }
 

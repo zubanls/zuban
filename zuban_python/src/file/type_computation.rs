@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::rc::Rc;
 
 use parsa_python_ast::SliceType as ASTSliceType;
@@ -2757,14 +2758,14 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
     pub fn use_cached_return_annotation_type(
         &mut self,
         annotation: ReturnAnnotation,
-    ) -> Type<'file> {
+    ) -> Cow<'file, DbType> {
         self.use_cached_annotation_or_type_comment_type_internal(
             annotation.index(),
             annotation.expression(),
         )
     }
 
-    pub fn use_cached_annotation_type(&mut self, annotation: Annotation) -> Type<'file> {
+    pub fn use_cached_annotation_type(&mut self, annotation: Annotation) -> Cow<'file, DbType> {
         self.use_cached_annotation_or_type_comment_type_internal(
             annotation.index(),
             annotation.expression(),
@@ -2775,7 +2776,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         &mut self,
         annotation_index: NodeIndex,
         expr: Expression,
-    ) -> Type<'file> {
+    ) -> Cow<'file, DbType> {
         let point = self.file.points.get(annotation_index);
         assert!(point.calculated(), "Expr: {:?}", expr);
         if point.specific() == Specific::AnnotationOrTypeCommentSimpleClassInstance {
@@ -2791,7 +2792,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         ));
         let complex_index = self.file.points.get(expr.index()).complex_index();
         match self.file.complex_points.get(complex_index) {
-            ComplexPoint::TypeInstance(t) => Type::new(t),
+            ComplexPoint::TypeInstance(t) => Cow::Borrowed(t),
             _ => unreachable!(),
         }
     }
@@ -3032,7 +3033,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                         type_: if let ComplexPoint::TypeInstance(db_type) =
                             f.complex_points.get(complex_index)
                         {
-                            Type::new(db_type)
+                            Cow::Borrowed(db_type)
                         } else {
                             unreachable!()
                         },
@@ -3045,7 +3046,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 if let StmtOrError::Error(node_index) = stmt_or_error {
                     return TypeCommentDetails {
                         inferred: Inferred::new_any(),
-                        type_: Type::new(&DbType::Any),
+                        type_: Cow::Borrowed(&DbType::Any),
                     };
                 }
             }
@@ -3062,7 +3063,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             );
             return TypeCommentDetails {
                 inferred: Inferred::new_any(),
-                type_: Type::new(&DbType::Any),
+                type_: Cow::Borrowed(&DbType::Any),
             };
         }
     }
@@ -3532,7 +3533,7 @@ pub fn use_cached_simple_generic_type<'db>(
     db: &'db Database,
     file: &PythonFile,
     expr: Expression,
-) -> Type<'db> {
+) -> Cow<'db, DbType> {
     // The context of inference state is not important, because this is only a simple generic type.
     let i_s = &InferenceState::new(db);
     let mut inference = file.inference(i_s);
@@ -3548,7 +3549,7 @@ pub fn use_cached_annotation_type<'db: 'file, 'file>(
     db: &'db Database,
     file: &'file PythonFile,
     annotation: Annotation,
-) -> Type<'file> {
+) -> Cow<'file, DbType> {
     file.inference(&InferenceState::new(db))
         .use_cached_annotation_or_type_comment_type_internal(
             annotation.index(),
@@ -3559,7 +3560,7 @@ pub fn use_cached_annotation_type<'db: 'file, 'file>(
 pub fn use_cached_annotation_or_type_comment<'db: 'file, 'file>(
     i_s: &InferenceState<'db, '_>,
     definition: NodeRef<'file>,
-) -> Type<'file> {
+) -> Cow<'file, DbType> {
     debug_assert!(matches!(
         definition.point().specific(),
         Specific::AnnotationOrTypeCommentSimpleClassInstance
@@ -3788,6 +3789,6 @@ fn check_named_tuple_has_no_fields_with_underscore(
 }
 
 pub struct TypeCommentDetails<'db> {
-    pub type_: Type<'db>,
+    pub type_: Cow<'db, DbType>,
     pub inferred: Inferred,
 }

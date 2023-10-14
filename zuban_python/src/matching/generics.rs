@@ -119,9 +119,7 @@ impl<'a> Generics<'a> {
         match self {
             Self::ExpressionWithClassType(file, expr) => {
                 if n == 0 {
-                    Generic::TypeArgument(
-                        use_cached_simple_generic_type(db, file, *expr).into_cow(),
-                    )
+                    Generic::TypeArgument(use_cached_simple_generic_type(db, file, *expr))
                 } else {
                     debug!(
                         "Generic expr {:?} has one item, but {:?} was requested",
@@ -137,7 +135,7 @@ impl<'a> Generics<'a> {
                     .nth(n)
                     .map(|slice_content| match slice_content {
                         SliceContent::NamedExpression(n) => {
-                            use_cached_simple_generic_type(db, file, n.expression()).into_cow()
+                            use_cached_simple_generic_type(db, file, n.expression())
                         }
                         SliceContent::Slice(s) => todo!(),
                     })
@@ -310,15 +308,17 @@ impl<'a> Iterator for GenericsIterator<'a> {
                     return None;
                 }
                 self.ended = true;
-                Some(Generic::TypeArgument(
-                    use_cached_simple_generic_type(self.db, file, *expr).into_cow(),
-                ))
+                Some(Generic::TypeArgument(use_cached_simple_generic_type(
+                    self.db, file, *expr,
+                )))
             }
             GenericsIteratorItem::SimpleGenericSliceIterator(file, iter) => {
                 if let Some(SliceContent::NamedExpression(s)) = iter.next() {
-                    Some(Generic::TypeArgument(
-                        use_cached_simple_generic_type(self.db, file, s.expression()).into_cow(),
-                    ))
+                    Some(Generic::TypeArgument(use_cached_simple_generic_type(
+                        self.db,
+                        file,
+                        s.expression(),
+                    )))
                 } else {
                     None
                 }

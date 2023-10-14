@@ -1945,7 +1945,7 @@ fn find_stmt_named_tuple_types(
                         continue;
                     }
                     file.inference(i_s).ensure_cached_annotation(annot);
-                    let t = use_cached_annotation_type(i_s.db, file, annot).into_db_type();
+                    let t = use_cached_annotation_type(i_s.db, file, annot).into_owned();
                     vec.push(CallableParam {
                         param_specific: ParamSpecific::PositionalOrKeyword(t),
                         has_default: default.is_some(),

@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use parsa_python_ast::ParamKind;
 
 use super::{Match, Matcher};
@@ -5,10 +7,9 @@ use crate::arguments::{Argument, ArgumentKind};
 use crate::database::{Database, PointLink};
 use crate::debug;
 use crate::inference_state::InferenceState;
-use crate::matching::Type;
 use crate::type_::{
-    CallableParam, CallableParams, DoubleStarredParamSpecific, ParamSpecUsage, ParamSpecific,
-    StarredParamSpecific, TypeVarLikes, Variance,
+    CallableParam, CallableParams, DbType, DoubleStarredParamSpecific, ParamSpecUsage,
+    ParamSpecific, StarredParamSpecific, TypeVarLikes, Variance,
 };
 
 pub trait Param<'x>: Copy + std::fmt::Debug {
@@ -91,7 +92,7 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
     variance: Variance,
 ) -> Match {
     let match_with_variance =
-        |i_s: &_, matcher: &mut _, a: &Option<Type>, b: &Option<Type>, variance| {
+        |i_s: &_, matcher: &mut _, a: &Option<Cow<DbType>>, b: &Option<Cow<DbType>>, variance| {
             if let Some(a) = a {
                 if let Some(b) = b {
                     return a.matches(i_s, matcher, b, variance);
@@ -100,7 +101,7 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
             Match::new_true()
         };
 
-    let match_ = |i_s: &_, matcher: &mut _, a: &Option<Type>, b: &Option<Type>| {
+    let match_ = |i_s: &_, matcher: &mut _, a: &Option<Cow<DbType>>, b: &Option<Cow<DbType>>| {
         match_with_variance(i_s, matcher, a, b, variance)
     };
 
@@ -328,7 +329,7 @@ fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
         WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u)) => todo!(),
         WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(u)) => todo!(),
     };
-    let check_type = |i_s: &InferenceState<'db, '_>, t1: Option<&Type>, p2: P2| {
+    let check_type = |i_s: &InferenceState<'db, '_>, t1: Option<&DbType>, p2: P2| {
         if let Some(t1) = t1 {
             if let Some(t2) = to_type(i_s.db, p2) {
                 return t1.overlaps(i_s, &t2);
@@ -360,7 +361,7 @@ fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
             WrappedParamSpecific::PositionalOrKeyword(t1)
             | WrappedParamSpecific::PositionalOnly(t1) => {
                 if let Some(param2) = params2.peek() {
-                    if !check_type(i_s, t1.as_ref(), *param2) {
+                    if !check_type(i_s, t1.as_deref(), *param2) {
                         return false;
                     }
                     match param2.kind(db) {
@@ -422,7 +423,7 @@ fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                         ParamKind::DoubleStarred => (),
                         _ => return false,
                     }
-                    if !check_type(i_s, t1.as_ref(), param2) {
+                    if !check_type(i_s, t1.as_deref(), param2) {
                         return false;
                     }
                 } else {
@@ -438,7 +439,7 @@ fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                     None => false,
                 } {
                     if let Some(param2) = params2.next() {
-                        if !check_type(i_s, t1.as_ref(), param2) {
+                        if !check_type(i_s, t1.as_deref(), param2) {
                             return false;
                         }
                     }
@@ -447,7 +448,7 @@ fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
             WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u)) => todo!(),
             WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t1)) => {
                 for param2 in params2 {
-                    if !check_type(i_s, t1.as_ref(), param2) {
+                    if !check_type(i_s, t1.as_deref(), param2) {
                         return false;
                     }
                 }
@@ -481,21 +482,23 @@ impl<'x> Param<'x> for &'x CallableParam {
     fn specific<'db: 'x>(&self, db: &Database) -> WrappedParamSpecific<'x> {
         match &self.param_specific {
             ParamSpecific::PositionalOnly(t) => {
-                WrappedParamSpecific::PositionalOnly(Some(Type::new(t)))
+                WrappedParamSpecific::PositionalOnly(Some(Cow::Borrowed(t)))
             }
             ParamSpecific::PositionalOrKeyword(t) => {
-                WrappedParamSpecific::PositionalOrKeyword(Some(Type::new(t)))
+                WrappedParamSpecific::PositionalOrKeyword(Some(Cow::Borrowed(t)))
             }
-            ParamSpecific::KeywordOnly(t) => WrappedParamSpecific::KeywordOnly(Some(Type::new(t))),
+            ParamSpecific::KeywordOnly(t) => {
+                WrappedParamSpecific::KeywordOnly(Some(Cow::Borrowed(t)))
+            }
             ParamSpecific::Starred(s) => WrappedParamSpecific::Starred(match s {
                 StarredParamSpecific::ArbitraryLength(t) => {
-                    WrappedStarred::ArbitraryLength(Some(Type::new(t)))
+                    WrappedStarred::ArbitraryLength(Some(Cow::Borrowed(t)))
                 }
                 StarredParamSpecific::ParamSpecArgs(u) => WrappedStarred::ParamSpecArgs(u),
             }),
             ParamSpecific::DoubleStarred(s) => WrappedParamSpecific::DoubleStarred(match s {
                 DoubleStarredParamSpecific::ValueType(t) => {
-                    WrappedDoubleStarred::ValueType(Some(Type::new(t)))
+                    WrappedDoubleStarred::ValueType(Some(Cow::Borrowed(t)))
                 }
                 DoubleStarredParamSpecific::ParamSpecKwargs(u) => {
                     WrappedDoubleStarred::ParamSpecKwargs(u)
@@ -757,21 +760,21 @@ pub struct InferrableParam<'db, 'a, P> {
 
 #[derive(Debug)]
 pub enum WrappedParamSpecific<'a> {
-    PositionalOnly(Option<Type<'a>>),
-    PositionalOrKeyword(Option<Type<'a>>),
-    KeywordOnly(Option<Type<'a>>),
+    PositionalOnly(Option<Cow<'a, DbType>>),
+    PositionalOrKeyword(Option<Cow<'a, DbType>>),
+    KeywordOnly(Option<Cow<'a, DbType>>),
     Starred(WrappedStarred<'a>),
     DoubleStarred(WrappedDoubleStarred<'a>),
 }
 
 #[derive(Debug)]
 pub enum WrappedStarred<'a> {
-    ArbitraryLength(Option<Type<'a>>),
+    ArbitraryLength(Option<Cow<'a, DbType>>),
     ParamSpecArgs(&'a ParamSpecUsage),
 }
 
 #[derive(Debug)]
 pub enum WrappedDoubleStarred<'a> {
-    ValueType(Option<Type<'a>>),
+    ValueType(Option<Cow<'a, DbType>>),
     ParamSpecKwargs(&'a ParamSpecUsage),
 }

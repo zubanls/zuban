@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use parsa_python_ast::*;
 
 use crate::arguments::{CombinedArguments, KnownArguments, NoArguments};
@@ -744,7 +746,7 @@ impl<'db> Inference<'db, '_, '_> {
                                 .add_issue(self.i_s, IssueType::ReturnInAsyncGenerator);
                             return;
                         } else {
-                            t = Type::owned(
+                            t = Cow::Owned(
                                 GeneratorType::from_type(self.i_s.db, t)
                                     .map(|g| g.return_type.unwrap_or(DbType::None))
                                     .unwrap_or(DbType::Any),

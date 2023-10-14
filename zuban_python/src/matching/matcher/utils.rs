@@ -538,7 +538,7 @@ pub fn match_arguments_against_params<
                 if matches!(m, Match::True { with_any: true }) {
                     argument_indices_with_any.push(ArgumentIndexWithParam {
                         argument_index: argument.index,
-                        type_: annotation_type.as_db_type(),
+                        type_: annotation_type.into_owned(),
                     })
                 }
                 matches &= m

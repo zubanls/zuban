@@ -1,4 +1,5 @@
 use parsa_python_ast::{NodeIndex, PrimaryContent, PythonString, SliceType as ASTSliceType};
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -365,7 +366,10 @@ impl<'db: 'slf, 'slf> Inferred {
         self
     }
 
-    pub fn expect_class_or_simple_generic(&self, i_s: &InferenceState<'db, '_>) -> Type<'db> {
+    pub fn expect_class_or_simple_generic(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+    ) -> Cow<'db, DbType> {
         let mut generics = ClassGenerics::None;
         if let InferredState::Saved(link) = &self.state {
             let definition = NodeRef::from_link(i_s.db, *link);
@@ -375,7 +379,7 @@ impl<'db: 'slf, 'slf> Inferred {
             }
         }
         let link = self.get_class_link(i_s);
-        Type::owned(DbType::new_class(link, generics))
+        Cow::Owned(DbType::new_class(link, generics))
     }
 
     fn get_class_link(&self, i_s: &InferenceState) -> PointLink {
@@ -1132,7 +1136,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             );
                             let has_explicit_self = t.has_self_type();
                             if has_explicit_self {
-                                t = Type::owned(replace_class_type_vars(
+                                t = Cow::Owned(replace_class_type_vars(
                                     i_s.db,
                                     &t,
                                     &attribute_class,
@@ -1151,7 +1155,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 return r;
                             }
                             if has_explicit_self {
-                                return Some(Inferred::from_type(t.into_db_type()));
+                                return Some(Inferred::from_type(t.into_owned()));
                             }
                         }
                         _ => (),
@@ -2198,7 +2202,7 @@ pub fn specific_to_type<'db>(
         | Specific::AnnotationOrTypeCommentWithoutTypeVars
         | Specific::AnnotationOrTypeCommentWithTypeVars
         | Specific::AnnotationOrTypeCommentClassVar => {
-            use_cached_annotation_or_type_comment(i_s, definition)
+            Type(use_cached_annotation_or_type_comment(i_s, definition))
         }
         Specific::MaybeSelfParam => Type::new(&DbType::Self_),
         Specific::TypingTypeVarClass => todo!(),

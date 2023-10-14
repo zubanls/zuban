@@ -885,12 +885,12 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
         let self_type_var_usage = self_type_var_usage.as_ref();
 
-        let as_db_type = |i_s: &InferenceState, t: Type| {
+        let as_db_type = |i_s: &InferenceState, t: &DbType| {
             if matches!(first, FirstParamProperties::None) {
-                return t.as_db_type();
+                return t.clone();
             }
             let Some(func_class) = self.class else {
-                return t.as_db_type()
+                return t.clone();
             };
             t.replace_type_var_likes_and_self(
                 i_s.db,
@@ -939,7 +939,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         i_s: &InferenceState,
         params: impl Iterator<Item = FunctionParam<'a>>,
         has_self_type_var_usage: bool,
-        mut as_db_type: impl FnMut(&InferenceState, Type) -> DbType,
+        mut as_db_type: impl FnMut(&InferenceState, &DbType) -> DbType,
     ) -> CallableContent {
         let mut params = params.peekable();
         let had_first_annotation =
@@ -956,7 +956,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             },
         };
         let result_type = self.result_type(i_s);
-        let mut result_type = as_db_type(i_s, result_type);
+        let mut result_type = as_db_type(i_s, &result_type);
         if self.is_async() && !self.is_generator() {
             result_type = new_class!(
                 i_s.db.python_state.coroutine_link(),
@@ -984,8 +984,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let file_index = self.node_ref.file_index();
         while let Some(p) = params.next() {
             let specific = p.specific(i_s.db);
-            let mut as_t = |t: Option<Type>| {
-                t.map(|t| as_db_type(i_s, t)).unwrap_or({
+            let mut as_t = |t: Option<Cow<_>>| {
+                t.map(|t| as_db_type(i_s, &t)).unwrap_or({
                     let name_ref =
                         NodeRef::new(self.node_ref.file, p.param.name_definition().index());
                     if name_ref.point().maybe_specific() == Some(Specific::MaybeSelfParam) {
@@ -1065,7 +1065,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         })
     }
 
-    pub fn first_param_annotation_type(&self, i_s: &InferenceState<'db, '_>) -> Option<Type> {
+    pub fn first_param_annotation_type(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+    ) -> Option<Cow<DbType>> {
         self.iter_params().next().and_then(|p| p.annotation(i_s))
     }
 
@@ -1184,7 +1187,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
-    pub fn result_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
+    pub fn result_type(&self, i_s: &InferenceState<'db, '_>) -> Cow<'a, DbType> {
         self.return_annotation()
             .map(|a| {
                 self.node_ref
@@ -1192,7 +1195,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     .inference(i_s)
                     .use_cached_return_annotation_type(a)
             })
-            .unwrap_or_else(|| Type::new(&DbType::Any))
+            .unwrap_or_else(|| Cow::Borrowed(&DbType::Any))
     }
 
     pub fn execute(
@@ -1282,7 +1285,7 @@ pub struct FunctionParam<'x> {
 }
 
 impl<'db: 'x, 'x> FunctionParam<'x> {
-    pub fn annotation(&self, i_s: &InferenceState<'db, '_>) -> Option<Type<'x>> {
+    pub fn annotation(&self, i_s: &InferenceState<'db, '_>) -> Option<Cow<'x, DbType>> {
         self.param
             .annotation()
             .map(|annotation| use_cached_annotation_type(i_s.db, self.file, annotation))
@@ -1303,9 +1306,18 @@ impl<'x> Param<'x> for FunctionParam<'x> {
             .param
             .annotation()
             .map(|annotation| use_cached_annotation_type(db, self.file, annotation));
-        fn dbt<'a>(t: Option<&Type<'a>>) -> Option<&'a DbType> {
-            t.map(|t| t.expect_borrowed_db_type())
+
+        fn expect_borrowed<'a>(t: &Cow<'a, DbType>) -> &'a DbType {
+            let Cow::Borrowed(t) = t else {
+                unreachable!();
+            };
+            *t
         }
+
+        fn dbt<'a>(t: Option<&Cow<'a, DbType>>) -> Option<&'a DbType> {
+            t.map(|t| expect_borrowed(t))
+        }
+
         match self.kind(db) {
             ParamKind::PositionalOnly => WrappedParamSpecific::PositionalOnly(t),
             ParamKind::PositionalOrKeyword => WrappedParamSpecific::PositionalOrKeyword(t),
@@ -1315,12 +1327,12 @@ impl<'x> Param<'x> for FunctionParam<'x> {
                     WrappedStarred::ParamSpecArgs(param_spec_usage)
                 }
                 _ => WrappedStarred::ArbitraryLength(t.map(|t| {
-                    let DbType::Tuple(t) = t.expect_borrowed_db_type() else {
+                    let DbType::Tuple(t) = expect_borrowed(&t) else {
                         unreachable!()
                     };
                     match &t.args {
                         TupleTypeArguments::FixedLength(..) => todo!(),
-                        TupleTypeArguments::ArbitraryLength(t) => Type::new(t),
+                        TupleTypeArguments::ArbitraryLength(t) => Cow::Borrowed(t.as_ref()),
                     }
                 }))
             }),
@@ -1329,13 +1341,13 @@ impl<'x> Param<'x> for FunctionParam<'x> {
                     WrappedDoubleStarred::ParamSpecKwargs(param_spec_usage)
                 }
                 _ => WrappedDoubleStarred::ValueType(t.map(|t| {
-                    let DbType::Class(GenericClass {generics: ClassGenerics::List(generics), ..}) = t.expect_borrowed_db_type() else {
+                    let DbType::Class(GenericClass {generics: ClassGenerics::List(generics), ..}) = expect_borrowed(&t) else {
                         unreachable!()
                     };
                     let GenericItem::TypeArgument(t) = &generics[1.into()] else {
                         unreachable!();
                     };
-                    Type::new(t)
+                    Cow::Borrowed(t)
                 }))
             })
         }
@@ -1461,7 +1473,7 @@ pub struct GeneratorType {
 }
 
 impl GeneratorType {
-    pub fn from_type(db: &Database, t: Type) -> Option<Self> {
+    pub fn from_type(db: &Database, t: Cow<DbType>) -> Option<Self> {
         match t.as_ref() {
             DbType::Class(c)
                 if c.link == db.python_state.iterator_link()
@@ -1492,7 +1504,7 @@ impl GeneratorType {
                 })
             }
             DbType::Union(union) => union.iter().fold(None, |a, b| {
-                if let Some(b) = Self::from_type(db, Type::new(b)) {
+                if let Some(b) = Self::from_type(db, Cow::Borrowed(b)) {
                     if let Some(a) = a {
                         let optional_union = |t1: Option<DbType>, t2: Option<DbType>| {
                             if let Some(t1) = t1 {

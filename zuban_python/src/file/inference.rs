@@ -734,7 +734,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     },
                 );
                 return if let Some(other) =
-                    GeneratorType::from_type(i_s.db, iter_result.as_type(i_s))
+                    GeneratorType::from_type(i_s.db, iter_result.as_type(i_s).into_cow())
                 {
                     if let Some(return_type) = other.return_type {
                         Inferred::from_type(return_type)

@@ -288,7 +288,7 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
                 }
                 let mut t = inference
                     .use_cached_annotation_type(annotation)
-                    .into_db_type();
+                    .into_owned();
                 if let DbType::Class(c) = &t {
                     if c.link == db.python_state.dataclasses_init_var_link() {
                         t = c.class(db).nth_type_argument(db, 0);

@@ -310,7 +310,7 @@ fn format_pretty_function_with_params(
     }
 }
 
-fn format_function_type(format_data: &FormatData, t: &Type, class: Option<Class>) -> Box<str> {
+fn format_function_type(format_data: &FormatData, t: &DbType, class: Option<Class>) -> Box<str> {
     if let Some(func_class) = class {
         let t = t.replace_type_var_likes_and_self(
             format_data.db,

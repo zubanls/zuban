@@ -19,7 +19,7 @@ pub enum LookupKind {
 
 #[derive(Debug, Clone)]
 #[allow(clippy::enum_variant_names)]
-pub struct Type<'a>(Cow<'a, DbType>);
+pub struct Type<'a>(pub Cow<'a, DbType>);
 
 impl<'x> From<&'x DbType> for Type<'x> {
     fn from(item: &'x DbType) -> Self {
