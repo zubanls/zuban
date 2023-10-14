@@ -493,8 +493,6 @@ testEnumValueInhomogenous
 testFunctionalEnumProtocols
 testEnumFlag
 testEnumIntFlag
-# dict meets/joins should avoid ors in literals and just be str
-testPrivateAttributeNotAsEnumMembers
 # All members in a union lead to the enum again
 testEnumTypeCompatibleWithLiteralUnion
 # Enum Dict value inferred is int instead of Literal[1]
@@ -578,9 +576,7 @@ testTypedDictUnpackStrictMode
 testTypedDictStrictUpdate
 testTypedDictFlexibleUpdateUnionStrict
 # Anonymous TypedDicts for join
-testJoinOfTypedDictWithCompatibleMappingIsMapping
 testJoinOfTypedDictWithCompatibleMappingSupertypeIsSupertype
-testJoinOfTypedDictWithIncompatibleTypeIsObject
 testCannotGetItemOfAnonymousTypedDictWithInvalidStringLiteralKey
 # Match mapping
 testMeetOfTypedDictWithCompatibleMappingIsUninhabitedForNow
