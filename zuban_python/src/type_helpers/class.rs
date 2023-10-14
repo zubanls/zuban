@@ -626,9 +626,10 @@ impl<'db: 'a, 'a> Class<'a> {
                         .compute_base_class(n.expression());
                         match base {
                             CalculatedBaseClass::DbType(t) => {
-                                if let Some(name) = bases.iter().find_map(|base| {
-                                    Type::new(base).check_duplicate_base_class(db, &Type::new(&t))
-                                }) {
+                                if let Some(name) = bases
+                                    .iter()
+                                    .find_map(|base| base.check_duplicate_base_class(db, &t))
+                                {
                                     NodeRef::new(self.node_ref.file, n.index())
                                         .add_issue(i_s, IssueType::DuplicateBaseClass { name });
                                     incomplete_mro = true;
@@ -839,14 +840,14 @@ impl<'db: 'a, 'a> Class<'a> {
             }
             MetaclassState::Some(link2) => match current {
                 MetaclassState::Some(link1) => {
-                    let t1 = Type::owned(DbType::Class(GenericClass {
+                    let t1 = DbType::Class(GenericClass {
                         link: *link1,
                         generics: ClassGenerics::None,
-                    }));
-                    let t2 = Type::owned(DbType::Class(GenericClass {
+                    });
+                    let t2 = DbType::Class(GenericClass {
                         link: link2,
                         generics: ClassGenerics::None,
-                    }));
+                    });
                     if !t1.is_simple_sub_type_of(i_s, &t2).bool() {
                         if t2.is_simple_sub_type_of(i_s, &t1).bool() {
                             *current = new
@@ -1175,7 +1176,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                 name,
                                 LookupKind::Normal,
                                 0,
-                                || self.as_type(i_s).into_db_type(),
+                                || self.as_type(i_s),
                             )
                             .1
                     }
@@ -1288,7 +1289,7 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn as_inferred(&self, i_s: &InferenceState) -> Inferred {
-        Inferred::from_type(self.as_type(i_s).into_db_type())
+        Inferred::from_type(self.as_type(i_s))
     }
 
     pub fn generics_as_list(&self, db: &Database) -> ClassGenerics {
@@ -1308,8 +1309,8 @@ impl<'db: 'a, 'a> Class<'a> {
         DbType::Class(self.as_generic_class(db))
     }
 
-    pub fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        Type::owned(DbType::Type(Rc::new(self.as_db_type(i_s.db))))
+    pub fn as_type(&self, i_s: &InferenceState<'db, '_>) -> DbType {
+        DbType::Type(Rc::new(self.as_db_type(i_s.db)))
     }
 
     fn named_tuple_from_class(&self, i_s: &InferenceState, cls: Class) -> Rc<NamedTuple> {
@@ -1563,8 +1564,9 @@ impl<'db: 'a, 'a> Class<'a> {
                 // Only subclasses of the current class are valid, otherwise return the current
                 // class. Diagnostics will care about these cases and raise errors when needed.
                 DbType::Class(c)
-                    if Type::new(&self.as_db_type(i_s.db))
-                        .is_simple_super_type_of(i_s, &Type::new(&result))
+                    if self
+                        .as_db_type(i_s.db)
+                        .is_simple_super_type_of(i_s, &result)
                         .bool() =>
                 {
                     ClassExecutionResult::Inferred(Inferred::from_type(result))
@@ -1703,7 +1705,7 @@ fn linearize_mro(i_s: &InferenceState, class: &Class, bases: &[DbType]) -> Box<[
                         *allowed_to_use += 1;
                         new_base.clone()
                     } else {
-                        Type::new(new_base).replace_type_var_likes(i_s.db, &mut |t| {
+                        new_base.replace_type_var_likes(i_s.db, &mut |t| {
                             bases[base_index].expect_class_generics()[t.index()].clone()
                         })
                     },
@@ -1921,7 +1923,7 @@ fn apply_generics_to_base_class<'a>(
         _ if matches!(generics, Generics::None | Generics::NotDefinedYet) => {
             TypeOrClass::Type(Type::new(t))
         }
-        _ => TypeOrClass::Type(Type::owned(Type::new(t).replace_type_var_likes_and_self(
+        _ => TypeOrClass::Type(Type::owned(t.replace_type_var_likes_and_self(
             db,
             &mut |usage| generics.nth_usage(db, &usage).into_generic_item(db),
             &|| todo!(),
@@ -2019,12 +2021,12 @@ fn add_protocol_mismatch(
     i_s: &InferenceState,
     notes: &mut Vec<Box<str>>,
     name: &str,
-    t1: &Type,
-    t2: &Type,
-    full1: &Type,
-    full2: &Type,
+    t1: &DbType,
+    t2: &DbType,
+    full1: &DbType,
+    full2: &DbType,
 ) {
-    match (full1.as_ref(), full2.as_ref()) {
+    match (full1, full2) {
         (DbType::Callable(c1), DbType::Callable(c2)) => {
             let s1 = format_pretty_callable(&FormatData::new_short(i_s.db), c1);
             let s2 = format_pretty_callable(&FormatData::new_short(i_s.db), c2);

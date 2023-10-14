@@ -993,7 +993,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                             if has_self_type_var_usage {
                                 DbType::Type(Rc::new(DbType::Self_))
                             } else {
-                                self.class.unwrap().as_type(i_s).into_db_type()
+                                self.class.unwrap().as_type(i_s)
                             }
                         } else if has_self_type_var_usage {
                             DbType::Self_
