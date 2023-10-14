@@ -2017,6 +2017,7 @@ impl<'a> Type<'a> {
                 Some(t1.clone().union(i_s.db, t2.clone()))
             }
             DbType::Any => return Some(DbType::Any),
+            DbType::Never => return Some(t2.clone()),
             _ => None,
         };
 

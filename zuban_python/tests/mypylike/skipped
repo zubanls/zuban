@@ -1540,7 +1540,6 @@ testConditionalExpressionWithEmptyIteableAndUnionWithAny
 testLiteralFinalErasureInMutableDatastructures2
 testInferNonOptionalListType
 testInferNonOptionalDictType
-testEmptyTupleJoin
 
 # OrderedDict = _Alias()
 testTypingExtensionsOrderedDictAlias
