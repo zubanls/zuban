@@ -394,10 +394,6 @@ testNamedTupleAttributesAreReadOnly
 testNewNamedTupleAttributesAreReadOnly
 # Namedtuple unpacking size messages
 testNamedTupleUsedAsTuple
-# Joining namedtuples (especially generic once)
-testGenericNamedTupleJoin
-testNewNamedTupleJoinNamedTuple
-testNewNamedTupleJoinTuple
 # "Generic named tuples are not supported for legacy class syntax"
 testGenericNamedTupleNoLegacySyntax
 # Recursive generic NamedTuple

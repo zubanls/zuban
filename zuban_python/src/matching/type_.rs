@@ -2925,8 +2925,9 @@ pub fn common_base_type_of_type_var_tuple_with_items<
             }
         }
         TupleTypeArguments::ArbitraryLength(calc_t) => {
-            let base = common_base_type(i_s, items);
-            debug!("TODO Type var tuple merging");
+            let base =
+                Type::owned(common_base_type(i_s, items)).common_base_type(i_s, &Type::new(calc_t));
+            *args = TupleTypeArguments::ArbitraryLength(Box::new(base));
         }
     }
 }
