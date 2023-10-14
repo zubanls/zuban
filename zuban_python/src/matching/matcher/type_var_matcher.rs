@@ -6,12 +6,11 @@ use super::super::{Generic, Match, MismatchReason, Type};
 use super::bound::TypeVarBound;
 use crate::database::{Database, PointLink};
 use crate::inference_state::InferenceState;
-use crate::matching::type_::common_base_type_of_type_var_tuple_with_items;
 use crate::matching::Param;
 use crate::type_::{
-    CallableParams, DbType, GenericItem, ParamSpecArgument, ParamSpecific, TypeArguments,
-    TypeOrTypeVarTuple, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
-    TypeVarUsage, Variance,
+    common_base_type_of_type_var_tuple_with_items, CallableParams, DbType, GenericItem,
+    ParamSpecArgument, ParamSpecific, TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarKind,
+    TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
 };
 use crate::type_helpers::{Callable, Class, Function};
 

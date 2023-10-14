@@ -1,3 +1,4 @@
+mod common_base_type;
 mod type_var_likes;
 
 use std::borrow::Cow;
@@ -25,7 +26,7 @@ use crate::matching::Generics;
 use crate::matching::OnTypeError;
 use crate::matching::ResultContext;
 use crate::matching::Type;
-use crate::matching::{common_base_type, FormatData, Generic, ParamsStyle};
+use crate::matching::{FormatData, Generic, ParamsStyle};
 use crate::node_ref::NodeRef;
 use crate::type_helpers::calculate_init_of_dataclass;
 use crate::type_helpers::dotted_path_from_dir;
@@ -34,6 +35,7 @@ use crate::utils::join_with_commas;
 use crate::utils::{bytes_repr, str_repr};
 use crate::workspaces::Directory;
 
+pub use common_base_type::{common_base_type, common_base_type_of_type_var_tuple_with_items};
 pub use type_var_likes::{
     CallableWithParent, ParamSpec, ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, TypeVar,
     TypeVarIndex, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
