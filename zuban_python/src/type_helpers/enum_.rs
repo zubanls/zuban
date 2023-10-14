@@ -12,10 +12,11 @@ use crate::{
     file::File,
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{CallableLike, LookupKind, LookupResult, ResultContext},
+    matching::{LookupKind, LookupResult, ResultContext},
     node_ref::NodeRef,
     type_::{
-        DbString, DbType, Enum, EnumMember, EnumMemberDefinition, Literal, LiteralKind, StringSlice,
+        CallableLike, DbString, DbType, Enum, EnumMember, EnumMemberDefinition, Literal,
+        LiteralKind, StringSlice,
     },
 };
 

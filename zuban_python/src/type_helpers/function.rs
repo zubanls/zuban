@@ -24,13 +24,13 @@ use crate::matching::params::{
     InferrableParamIterator, Param, WrappedDoubleStarred, WrappedParamSpecific, WrappedStarred,
 };
 use crate::matching::{
-    calculate_function_type_vars_and_return, maybe_class_usage, CalculatedTypeArguments,
-    CallableLike, Generic, LookupResult, OnTypeError, ResultContext, Type,
+    calculate_function_type_vars_and_return, maybe_class_usage, CalculatedTypeArguments, Generic,
+    LookupResult, OnTypeError, ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::python_state::NAME_TO_FUNCTION_DIFF;
 use crate::type_::{
-    CallableContent, CallableParam, CallableParams, ClassGenerics, DbType,
+    CallableContent, CallableLike, CallableParam, CallableParams, ClassGenerics, DbType,
     DoubleStarredParamSpecific, FunctionKind, FunctionOverload, GenericClass, GenericItem,
     GenericsList, ParamSpecUsage, ParamSpecific, ReplaceSelf, StarredParamSpecific, StringSlice,
     TupleTypeArguments, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,

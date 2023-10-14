@@ -3,11 +3,10 @@ use crate::{
     debug,
     inference_state::InferenceState,
     matching::{
-        matches_params, params::has_overlapping_params, CallableLike, Match, Matcher,
-        MismatchReason, Type,
+        matches_params, params::has_overlapping_params, Match, Matcher, MismatchReason, Type,
     },
     node_ref::NodeRef,
-    type_::{CallableParams, TupleTypeArguments, TypeOrTypeVarTuple, Variance},
+    type_::{CallableLike, CallableParams, TupleTypeArguments, TypeOrTypeVarTuple, Variance},
     type_helpers::{Class, TypeOrClass},
 };
 

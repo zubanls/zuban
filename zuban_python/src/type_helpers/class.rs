@@ -28,17 +28,16 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred, MroIndex};
 use crate::matching::{
     calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
-    calculate_class_init_type_vars_and_return, CallableLike, FormatData, FunctionOrCallable,
-    Generics, LookupKind, LookupResult, Match, Matcher, MismatchReason, OnTypeError, ResultContext,
-    Type,
+    calculate_class_init_type_vars_and_return, FormatData, FunctionOrCallable, Generics,
+    LookupKind, LookupResult, Match, Matcher, MismatchReason, OnTypeError, ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::python_state::NAME_TO_FUNCTION_DIFF;
 use crate::type_::{
-    CallableContent, CallableParam, CallableParams, ClassGenerics, Dataclass, DataclassOptions,
-    DbType, Enum, EnumMemberDefinition, FormatStyle, FunctionKind, FunctionOverload, GenericClass,
-    GenericsList, NamedTuple, ParamSpecific, RecursiveAlias, StringSlice, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember, Variance,
+    CallableContent, CallableLike, CallableParam, CallableParams, ClassGenerics, Dataclass,
+    DataclassOptions, DbType, Enum, EnumMemberDefinition, FormatStyle, FunctionKind,
+    FunctionOverload, GenericClass, GenericsList, NamedTuple, ParamSpecific, RecursiveAlias,
+    StringSlice, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember, Variance,
 };
 use crate::type_helpers::dataclass::check_dataclass_options;
 use crate::type_helpers::enum_::infer_value_on_member;

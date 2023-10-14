@@ -30,7 +30,6 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::maybe_class_usage;
 use crate::matching::CalculatedTypeArguments;
-use crate::matching::CallableLike;
 use crate::matching::Generics;
 use crate::matching::Match;
 use crate::matching::Matcher;
@@ -2721,5 +2720,22 @@ impl CustomBehavior {
             CustomBehaviorKind::Method { bound } => bound.as_deref(),
         };
         (self.callback)(i_s, args, result_context, on_type_error, bound)
+    }
+}
+
+pub enum CallableLike {
+    Callable(Rc<CallableContent>),
+    Overload(Rc<FunctionOverload>),
+}
+
+impl CallableLike {
+    pub fn format(self, format_data: &FormatData) -> String {
+        match self {
+            Self::Callable(c) => c.format(format_data),
+            Self::Overload(overload) => format!(
+                "Overload({})",
+                join_with_commas(overload.iter_functions().map(|c| c.format(format_data)))
+            ),
+        }
     }
 }

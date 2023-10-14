@@ -1,16 +1,15 @@
 use std::borrow::Cow;
 use std::rc::Rc;
 
-use super::{FormatData, Generics};
+use super::Generics;
 use crate::database::{Database, TypeAlias};
 
 use crate::node_ref::NodeRef;
 use crate::type_::{
-    CallableContent, DbType, FunctionOverload, GenericItem, GenericsList, ParamSpecUsage,
-    RecursiveAlias, TypeVarLike, TypeVarLikeUsage, TypeVarTupleUsage, TypeVarUsage,
+    DbType, GenericItem, GenericsList, ParamSpecUsage, RecursiveAlias, TypeVarLike,
+    TypeVarLikeUsage, TypeVarTupleUsage, TypeVarUsage,
 };
 use crate::type_helpers::Class;
-use crate::utils::join_with_commas;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum LookupKind {
@@ -187,23 +186,6 @@ impl RecursiveAlias {
                     })
                     .into_owned()
             })
-        }
-    }
-}
-
-pub enum CallableLike {
-    Callable(Rc<CallableContent>),
-    Overload(Rc<FunctionOverload>),
-}
-
-impl CallableLike {
-    pub fn format(self, format_data: &FormatData) -> String {
-        match self {
-            Self::Callable(c) => c.format(format_data),
-            Self::Overload(overload) => format!(
-                "Overload({})",
-                join_with_commas(overload.iter_functions().map(|c| c.format(format_data)))
-            ),
         }
     }
 }
