@@ -712,7 +712,7 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn simplified_union(self, i_s: &InferenceState<'db, '_>, other: Self) -> Self {
-        Inferred::from_type(self.as_type(i_s).simplified_union(i_s, other.as_type(i_s)))
+        Inferred::from_type(self.as_type(i_s).simplified_union(i_s, &other.as_type(i_s)))
     }
 
     #[inline]

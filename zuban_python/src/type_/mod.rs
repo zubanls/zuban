@@ -1,5 +1,6 @@
 mod common_base_type;
 mod common_sub_type;
+mod simplified_union;
 mod type_var_likes;
 
 use std::borrow::Cow;
@@ -37,6 +38,7 @@ use crate::utils::{bytes_repr, str_repr};
 use crate::workspaces::Directory;
 
 pub use common_base_type::{common_base_type, common_base_type_of_type_var_tuple_with_items};
+pub use simplified_union::simplified_union_from_iterators;
 pub use type_var_likes::{
     CallableWithParent, ParamSpec, ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, TypeVar,
     TypeVarIndex, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,

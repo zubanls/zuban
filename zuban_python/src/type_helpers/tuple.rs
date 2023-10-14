@@ -7,11 +7,13 @@ use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{
-    simplified_union_from_iterators, IteratorContent, LookupKind, LookupResult, OnTypeError,
-    ResultContext, Type,
+    IteratorContent, LookupKind, LookupResult, OnTypeError, ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
-use crate::type_::{CustomBehavior, DbType, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple};
+use crate::type_::{
+    simplified_union_from_iterators, CustomBehavior, DbType, TupleContent, TupleTypeArguments,
+    TypeOrTypeVarTuple,
+};
 use crate::type_helpers::Instance;
 
 use super::utils::method_with_fallback;

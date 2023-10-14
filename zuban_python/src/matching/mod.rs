@@ -24,8 +24,7 @@ pub use matcher::{
 pub use params::{matches_params, matches_simple_params, Param};
 pub use result_context::{CouldBeALiteral, ResultContext};
 pub use type_::{
-    execute_type_of_type, match_tuple_type_arguments, simplified_union_from_iterators,
-    CallableLike, LookupKind, ReplaceSelf, Type,
+    execute_type_of_type, match_tuple_type_arguments, CallableLike, LookupKind, ReplaceSelf, Type,
 };
 pub use utils::{
     calculate_property_return, create_signature_without_self,

@@ -22,9 +22,7 @@ impl DbType {
                 return self.clone().union(i_s.db, other.clone()).into_db_type()
             }
             */
-            DbType::None | DbType::Union(_) => {
-                return Some(Type::new(self).simplified_union(i_s, Type::new(other).clone()))
-            }
+            DbType::None | DbType::Union(_) => return Some(self.simplified_union(i_s, other)),
             DbType::Class(c) if c.class(i_s.db).is_calculating_class_infos() => {
                 Some(t1.clone().union(i_s.db, t2.clone()))
             }
