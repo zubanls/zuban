@@ -10,7 +10,7 @@ use crate::{
     matching::{
         calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
         replace_class_type_vars_in_callable, ArgumentIndexWithParam, FormatData,
-        FunctionOrCallable, OnTypeError, ResultContext, SignatureMatch, Type,
+        FunctionOrCallable, OnTypeError, ResultContext, SignatureMatch,
     },
     node_ref::NodeRef,
     type_::{DbType, FunctionOverload, ReplaceSelf},
@@ -369,7 +369,9 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             todo!()
                         } else {
                             return UnionMathResult::Match {
-                                result: Type::new(&callable.content.result_type)
+                                result: callable
+                                    .content
+                                    .result_type
                                     .execute_and_resolve_type_vars(
                                         i_s,
                                         &calculated_type_args,
@@ -460,8 +462,8 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         }
     }
 
-    pub fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'static> {
-        Type::owned(self.as_db_type(i_s, None))
+    pub fn as_type(&self, i_s: &InferenceState<'db, '_>) -> DbType {
+        self.as_db_type(i_s, None)
     }
 
     pub fn execute(

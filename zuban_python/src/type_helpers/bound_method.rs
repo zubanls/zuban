@@ -2,7 +2,7 @@ use super::{FirstParamProperties, Function, OverloadedFunction};
 use crate::arguments::Arguments;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{OnTypeError, ResultContext, Type};
+use crate::matching::{OnTypeError, ResultContext};
 use crate::type_::DbType;
 
 #[derive(Debug)]
@@ -44,8 +44,9 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
         }
     }
 
-    pub fn as_type<'db: 'a>(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        let t = match &self.function {
+    pub fn as_type<'db: 'a>(&self, i_s: &InferenceState<'db, '_>) -> DbType {
+        // TODO performance: it may be questionable that we allocate here again.
+        match &self.function {
             BoundMethodFunction::Function(f) => f.as_db_type(
                 i_s,
                 FirstParamProperties::Skip {
@@ -53,8 +54,6 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
                 },
             ),
             BoundMethodFunction::Overload(f) => f.as_db_type(i_s, Some(&|| self.instance.clone())),
-        };
-        // TODO performance: it may be questionable that we allocate here again.
-        Type::owned(t)
+        }
     }
 }

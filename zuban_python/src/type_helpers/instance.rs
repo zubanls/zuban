@@ -13,9 +13,7 @@ use crate::file::{on_argument_type_error, File};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{add_attribute_error, Inferred};
-use crate::matching::{
-    IteratorContent, LookupKind, LookupResult, OnTypeError, ResultContext, Type,
-};
+use crate::matching::{IteratorContent, LookupKind, LookupResult, OnTypeError, ResultContext};
 use crate::node_ref::NodeRef;
 use crate::type_::{DbType, FunctionKind, GenericClass, TypeVarKind};
 
@@ -51,7 +49,7 @@ impl<'a> Instance<'a> {
             .lookup_without_descriptors(i_s, from, name.as_str());
         let result = result.or_else(|| self.lookup(i_s, from, name.as_str(), LookupKind::Normal));
         let Some(inf) = result.into_maybe_inferred() else {
-            let t = Type::owned(self.class.as_db_type(i_s.db));
+            let t = self.class.as_db_type(i_s.db);
             add_attribute_error(
                 i_s,
                 from,
@@ -71,7 +69,7 @@ impl<'a> Instance<'a> {
         }
 
         let check_compatible = |t: &DbType, value: &_| {
-            Type::new(t).error_if_not_matches(i_s, value, |got, expected| {
+            t.error_if_not_matches(i_s, value, |got, expected| {
                 from.add_issue(i_s, IssueType::IncompatibleAssignment { got, expected });
                 from.to_db_lifetime(i_s.db)
             });
@@ -122,7 +120,7 @@ impl<'a> Instance<'a> {
                             }
                         }
                         FunctionKind::Property { writable: true, .. } => {
-                            check_compatible(&Type::new(&c.result_type), value);
+                            check_compatible(&c.result_type, value);
                         }
                         _ => unreachable!(),
                     }
@@ -548,7 +546,7 @@ fn execute_super_internal<'db>(
         DbType::Any => return Ok(Inferred::new_any()),
         _ => return Err(IssueType::SuperUnsupportedArgument { argument_index: 2 }),
     };
-    if !Type::owned(first_type)
+    if !first_type
         .is_simple_super_type_of(i_s, &instance.as_type(i_s))
         .bool()
     {

@@ -10,7 +10,7 @@ use crate::{
     getitem::{SliceType, SliceTypeContent},
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{FormatData, LookupKind, LookupResult, Matcher, OnTypeError, ResultContext, Type},
+    matching::{FormatData, LookupKind, LookupResult, Matcher, OnTypeError, ResultContext},
     node_ref::NodeRef,
     type_::{CustomBehavior, DbType, StringSlice, TypedDict, TypedDictGenerics, TypedDictMember},
     utils::join_with_commas,
@@ -459,18 +459,20 @@ fn typed_dict_setitem_internal<'db>(
     if let Some(literal) = inf_key.maybe_string_literal(i_s) {
         let key = literal.as_str(i_s.db);
         if let Some(member) = td.find_member(i_s.db, key) {
-            Type::new(&member.type_).error_if_not_matches(i_s, &value, |got, expected| {
-                let node_ref = args.as_node_ref();
-                node_ref.add_issue(
-                    i_s,
-                    IssueType::TypedDictKeySetItemIncompatibleType {
-                        key: key.into(),
-                        got,
-                        expected,
-                    },
-                );
-                node_ref.to_db_lifetime(i_s.db)
-            });
+            member
+                .type_
+                .error_if_not_matches(i_s, &value, |got, expected| {
+                    let node_ref = args.as_node_ref();
+                    node_ref.add_issue(
+                        i_s,
+                        IssueType::TypedDictKeySetItemIncompatibleType {
+                            key: key.into(),
+                            got,
+                            expected,
+                        },
+                    );
+                    node_ref.to_db_lifetime(i_s.db)
+                });
         } else {
             args.as_node_ref().add_issue(
                 i_s,

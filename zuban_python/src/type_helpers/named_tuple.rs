@@ -8,7 +8,7 @@ use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{
-    FormatData, Generics, IteratorContent, LookupResult, OnTypeError, ResultContext, Type,
+    FormatData, Generics, IteratorContent, LookupResult, OnTypeError, ResultContext,
 };
 use crate::type_::{DbType, FormatStyle, NamedTuple, RecursiveAlias};
 use crate::utils::join_with_commas;
@@ -50,7 +50,7 @@ impl<'a> NamedTupleValue<'a> {
                 let t = p.param_specific.expect_positional_db_type_as_ref();
                 match generics {
                     Generics::NotDefinedYet | Generics::None => t.format(format_data),
-                    _ => Type::new(t)
+                    _ => t
                         .replace_type_var_likes_and_self(
                             format_data.db,
                             &mut |usage| {

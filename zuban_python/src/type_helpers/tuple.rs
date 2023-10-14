@@ -6,9 +6,7 @@ use crate::diagnostics::IssueType;
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{
-    IteratorContent, LookupKind, LookupResult, OnTypeError, ResultContext, Type,
-};
+use crate::matching::{IteratorContent, LookupKind, LookupResult, OnTypeError, ResultContext};
 use crate::node_ref::NodeRef;
 use crate::type_::{
     simplified_union_from_iterators, CustomBehavior, DbType, TupleContent, TupleTypeArguments,
@@ -103,7 +101,7 @@ impl<'a> Tuple<'a> {
                     .infer_expression(simple.named_expr.expression());
                 if !index_inf
                     .as_type(i_s)
-                    .is_simple_sub_type_of(i_s, &Type::owned(i_s.db.python_state.int_db_type()))
+                    .is_simple_sub_type_of(i_s, &i_s.db.python_state.int_db_type())
                     .bool()
                 {
                     Instance::new(i_s.db.python_state.tuple_class(i_s.db, self.content), None)

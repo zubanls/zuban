@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::rc::Rc;
 
 use crate::arguments::{ArgumentKind, Arguments};
@@ -6,7 +7,7 @@ use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{CouldBeALiteral, FormatData, OnTypeError, ResultContext, Type};
+use crate::matching::{CouldBeALiteral, FormatData, OnTypeError, ResultContext};
 use crate::node_ref::NodeRef;
 use crate::type_::{
     ClassGenerics, DbType, FormatStyle, NewType, ParamSpec, TypeVar, TypeVarKind, TypeVarLike,
@@ -116,7 +117,7 @@ impl RevealTypeFunction {
         } else {
             arg.infer(i_s, result_context)
         };
-        let t = inferred.as_type(i_s);
+        let t = inferred.as_type(i_s).into_cow();
         let s = reveal_type_info(
             i_s,
             match result_context.could_be_a_literal(i_s) {
@@ -124,12 +125,13 @@ impl RevealTypeFunction {
                     DbType::Literal(l) => {
                         let mut l = l.clone();
                         l.implicit = false;
-                        Type::owned(DbType::Literal(l))
+                        Cow::Owned(DbType::Literal(l))
                     }
                     _ => t,
                 },
                 _ => t,
-            },
+            }
+            .as_ref(),
         );
         arg.as_node_ref().add_issue(
             i_s,
@@ -142,9 +144,9 @@ impl RevealTypeFunction {
     }
 }
 
-fn reveal_type_info(i_s: &InferenceState, t: Type) -> Box<str> {
+fn reveal_type_info(i_s: &InferenceState, t: &DbType) -> Box<str> {
     let format_data = FormatData::with_style(i_s.db, FormatStyle::MypyRevealType);
-    if let DbType::Type(type_) = t.as_ref() {
+    if let DbType::Type(type_) = t {
         match type_.as_ref() {
             DbType::Class(c) if c.generics != ClassGenerics::NotDefinedYet => (),
             DbType::TypedDict(td) => {

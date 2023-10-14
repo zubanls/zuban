@@ -202,7 +202,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 func_link,
             } => {
                 let class = Self::load_bound_method_class(i_s, instance, *mro_index);
-                load_bound_method(i_s, instance, class, *func_link).as_type(i_s)
+                Type::owned(load_bound_method(i_s, instance, class, *func_link).as_type(i_s))
             }
             InferredState::Unknown => Type::new(&DbType::Any),
         }
@@ -604,7 +604,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 file.complex_points.insert(
                     &file.points,
                     index,
-                    ComplexPoint::TypeInstance(bound_method.as_type(i_s).into_db_type()),
+                    ComplexPoint::TypeInstance(bound_method.as_type(i_s)),
                     Locality::Todo,
                 );
                 return Self::new_saved(file, index);
@@ -2119,7 +2119,7 @@ fn type_of_complex<'db: 'x, 'x>(
         ComplexPoint::FunctionOverload(overload) => {
             let overload =
                 OverloadedFunction::new(&overload.functions, i_s.current_class().copied());
-            overload.as_type(i_s)
+            Type::owned(overload.as_type(i_s))
         }
         ComplexPoint::TypeInstance(t) => Type::new(t),
         // TODO is this type correct with the Any?
