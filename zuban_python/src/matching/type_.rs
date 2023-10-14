@@ -65,24 +65,6 @@ impl<'a> Type<'a> {
         self
     }
 
-    #[inline]
-    pub fn expect_borrowed_class(&self, db: &'a Database) -> Class<'a> {
-        match self.0 {
-            Cow::Borrowed(t) => {
-                let DbType::Class(c) = t else {
-                    unreachable!();
-                };
-                c.class(db)
-            }
-            Cow::Owned(DbType::Class(ref c)) => Class::from_position(
-                NodeRef::from_link(db, c.link),
-                Generics::from_non_list_class_generics(db, &c.generics),
-                None,
-            ),
-            _ => unreachable!(),
-        }
-    }
-
     pub fn expect_borrowed_db_type(&self) -> &'a DbType {
         match self.0 {
             Cow::Borrowed(t) => t,
