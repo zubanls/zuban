@@ -839,7 +839,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     let base = base.as_type(i_s);
                     let node_ref = NodeRef::new(self.file, primary_target.index());
                     for t in base.iter_with_unpacked_unions() {
-                        if let Some(cls) = Type::new(t).maybe_class(i_s.db) {
+                        if let Some(cls) = t.maybe_class(i_s.db) {
                             Instance::new(cls, None).check_set_descriptor(
                                 i_s,
                                 node_ref,
@@ -1540,8 +1540,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         }
                         if op.shortcut_when_same_type {
                             if let Some(left_instance) = l_type.maybe_class(i_s.db) {
-                                if let Some(right_instance) = Type::new(r_type).maybe_class(i_s.db)
-                                {
+                                if let Some(right_instance) = r_type.maybe_class(i_s.db) {
                                     if left_instance.node_ref == right_instance.node_ref {
                                         error.set(LookupError::ShortCircuit);
                                     }

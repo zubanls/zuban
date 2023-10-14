@@ -961,7 +961,7 @@ fn except_type(i_s: &InferenceState, t: &DbType, allow_tuple: bool) -> ExceptTyp
     match t {
         DbType::Type(t) => {
             let db = i_s.db;
-            if let Some(cls) = Type::new(t.as_ref()).maybe_class(i_s.db) {
+            if let Some(cls) = t.maybe_class(i_s.db) {
                 if cls.is_base_exception_group(i_s.db) {
                     return ExceptType::HasExceptionGroup;
                 } else if cls.is_base_exception(i_s.db) {

@@ -89,31 +89,6 @@ impl<'a> Type<'a> {
     }
 
     #[inline]
-    pub fn maybe_class(&self, db: &'a Database) -> Option<Class<'_>> {
-        match self.as_ref() {
-            DbType::Class(c) => Some(c.class(db)),
-            _ => None,
-        }
-    }
-
-    #[inline]
-    pub fn maybe_type_of_class(&self, db: &'a Database) -> Option<Class<'_>> {
-        if let DbType::Type(t) = self.as_ref() {
-            if let DbType::Class(c) = t.as_ref() {
-                return Some(c.class(db));
-            }
-        }
-        None
-    }
-
-    pub fn maybe_typed_dict(&self, db: &'a Database) -> Option<Rc<TypedDict>> {
-        match self.as_ref() {
-            DbType::TypedDict(td) => Some(td.clone()),
-            _ => None,
-        }
-    }
-
-    #[inline]
     pub fn expect_borrowed_class(&self, db: &'a Database) -> Class<'a> {
         match self.0 {
             Cow::Borrowed(t) => {

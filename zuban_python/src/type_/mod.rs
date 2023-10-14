@@ -523,6 +523,31 @@ impl DbType {
         }
     }
 
+    #[inline]
+    pub fn maybe_class<'a>(&'a self, db: &'a Database) -> Option<Class<'a>> {
+        match self {
+            DbType::Class(c) => Some(c.class(db)),
+            _ => None,
+        }
+    }
+
+    #[inline]
+    pub fn maybe_type_of_class<'a>(&'a self, db: &'a Database) -> Option<Class<'a>> {
+        if let DbType::Type(t) = self {
+            if let DbType::Class(c) = t.as_ref() {
+                return Some(c.class(db));
+            }
+        }
+        None
+    }
+
+    pub fn maybe_typed_dict(&self, db: &Database) -> Option<Rc<TypedDict>> {
+        match self {
+            DbType::TypedDict(td) => Some(td.clone()),
+            _ => None,
+        }
+    }
+
     pub fn union(self, db: &Database, other: DbType) -> Self {
         self.union_with_details(db, other, false)
     }
