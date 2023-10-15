@@ -704,7 +704,7 @@ impl Type {
                     /*
                     if matcher.might_have_defined_type_vars() {
                         match type1 {
-                            DbType::TypeVarLike(t) if t.is_type_var_tuple() => {
+                            Type::TypeVarLike(t) if t.is_type_var_tuple() => {
                                 todo!()
                             }
                             _ => (),

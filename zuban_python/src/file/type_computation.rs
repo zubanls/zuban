@@ -221,7 +221,7 @@ enum TypeContent<'db, 'a> {
     Dataclass(Rc<Dataclass>),
     TypedDictDefinition(Rc<TypedDict>),
     TypeAlias(&'db TypeAlias),
-    DbType(Type),
+    Type(Type),
     SpecialType(SpecialType),
     RecursiveAlias(PointLink),
     InvalidVariable(InvalidVariableType<'a>),
@@ -265,7 +265,7 @@ pub(super) enum TypeNameLookup<'db, 'a> {
 
 #[derive(Debug)]
 pub enum CalculatedBaseClass {
-    DbType(Type),
+    Type(Type),
     Protocol,
     NamedTuple(Rc<NamedTuple>),
     TypedDict,
@@ -336,7 +336,7 @@ macro_rules! compute_type_application {
             TypeContent::SimpleGeneric{class_link, generics, ..} => {
                 Inferred::from_type(Type::Type(Rc::new(Type::new_class(class_link, generics))))
             }
-            TypeContent::DbType(mut db_type) => {
+            TypeContent::Type(mut db_type) => {
                 let type_var_likes = tcomp.into_type_vars(|inf, recalculate_type_vars| {
                     db_type = recalculate_type_vars(&db_type);
                 });
@@ -497,7 +497,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 CalculatedBaseClass::TypedDict
             }
             TypeContent::SpecialType(SpecialType::Type) => {
-                CalculatedBaseClass::DbType(Type::new_class(
+                CalculatedBaseClass::Type(Type::new_class(
                     self.inference
                         .i_s
                         .db
@@ -514,16 +514,16 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::ParamSpec(_) | TypeContent::InvalidVariable(_) => {
                 CalculatedBaseClass::Invalid
             }
-            TypeContent::DbType(Type::Enum(e)) => CalculatedBaseClass::InvalidEnum(e),
+            TypeContent::Type(Type::Enum(e)) => CalculatedBaseClass::InvalidEnum(e),
             _ => {
                 let db_type =
                     self.as_db_type(calculated, NodeRef::new(self.inference.file, expr.index()));
                 match db_type {
                     Type::Class(..) | Type::Tuple(_) | Type::TypedDict(_) | Type::Dataclass(_) => {
-                        CalculatedBaseClass::DbType(db_type)
+                        CalculatedBaseClass::Type(db_type)
                     }
                     Type::Type(t) if matches!(t.as_ref(), Type::Any) => {
-                        CalculatedBaseClass::DbType(Type::new_class(
+                        CalculatedBaseClass::Type(Type::new_class(
                             self.inference
                                 .i_s
                                 .db
@@ -740,7 +740,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 generics,
                 ..
             } => return Some(Type::new_class(class_link, generics)),
-            TypeContent::DbType(d) => return Some(d),
+            TypeContent::Type(d) => return Some(d),
             TypeContent::Dataclass(d) => {
                 return Some(Type::Dataclass({
                     let class = d.class(db);
@@ -956,7 +956,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     let node_ref = *node_ref;
                     // This essentially means we have a class with Any generics. This is not what
                     // we want to be defined as a redirect and therefore we calculate Foo[Any, ...]
-                    return TypeContent::DbType(self.as_db_type(type_content, node_ref));
+                    return TypeContent::Type(self.as_db_type(type_content, node_ref));
                 }
                 TypeContent::Class { node_ref, .. }
                 | TypeContent::SimpleGeneric { node_ref, .. } => {
@@ -1005,7 +1005,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 // TODO this should only merge in annotation contexts
                 let second = self.compute_type_expression_part(b);
                 let second = self.as_db_type(second, NodeRef::new(self.inference.file, b.index()));
-                TypeContent::DbType(first.union(self.inference.i_s.db, second))
+                TypeContent::Type(first.union(self.inference.i_s.db, second))
             }
             _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
         }
@@ -1025,7 +1025,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         self.inference.file,
                         primary,
                     );
-                    TypeContent::DbType(match new_typing_named_tuple(self.inference.i_s, &args) {
+                    TypeContent::Type(match new_typing_named_tuple(self.inference.i_s, &args) {
                         Some(rc) => Type::NamedTuple(rc),
                         None => Type::Any,
                     })
@@ -1036,7 +1036,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         self.inference.file,
                         primary,
                     );
-                    TypeContent::DbType(
+                    TypeContent::Type(
                         match new_collections_named_tuple(self.inference.i_s, &args) {
                             Some(rc) => Type::NamedTuple(rc),
                             None => Type::Any,
@@ -1081,8 +1081,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     } => {
                         todo!()
                     }
-                    TypeContent::DbType(d) => match d {
-                        Type::Any => TypeContent::DbType(d),
+                    TypeContent::Type(d) => match d {
+                        Type::Any => TypeContent::Type(d),
                         _ => {
                             debug!(
                                 "Invalid getitem used on {}",
@@ -1133,7 +1133,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                     "Self type cannot have type arguments",
                                 )),
                             );
-                            TypeContent::DbType(Type::Any)
+                            TypeContent::Type(Type::Any)
                         }
                         SpecialType::Final => self.compute_type_get_item_on_final(s),
                         SpecialType::Unpack => self.compute_type_get_item_on_unpack(s),
@@ -1147,7 +1147,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             .type_alias(self.inference.i_s.db)
                             .type_vars;
                         let generics = self.compute_generics_for_alias(s, type_vars);
-                        TypeContent::DbType(Type::RecursiveAlias(Rc::new(RecursiveAlias::new(
+                        TypeContent::Type(Type::RecursiveAlias(Rc::new(RecursiveAlias::new(
                             link,
                             Some(generics),
                         ))))
@@ -1245,8 +1245,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 let cls = Class::from_generic_class_components(db, class_link, &generics);
                 self.check_attribute_on_class(cls, primary, name)
             }
-            TypeContent::DbType(t) => match t {
-                Type::Any => TypeContent::DbType(Type::Any),
+            TypeContent::Type(t) => match t {
+                Type::Any => TypeContent::Type(Type::Any),
                 Type::Enum(e) => match Enum::lookup(&e, db, name.as_str(), false) {
                     Some(m) => TypeContent::EnumMember(m),
                     _ => {
@@ -1263,8 +1263,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::SpecialType(m) => todo!(),
             TypeContent::TypeVarTuple(_) => todo!(),
             TypeContent::ParamSpec(param_spec) => match name.as_code() {
-                "args" => TypeContent::DbType(Type::ParamSpecArgs(param_spec)),
-                "kwargs" => TypeContent::DbType(Type::ParamSpecKwargs(param_spec)),
+                "args" => TypeContent::Type(Type::ParamSpecArgs(param_spec)),
+                "kwargs" => TypeContent::Type(Type::ParamSpecKwargs(param_spec)),
                 _ => todo!(),
             },
             TypeContent::Unpacked(_) => todo!(),
@@ -1397,7 +1397,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 generics,
             },
         };
-        TypeContent::DbType(Type::Dataclass(Dataclass::new(c, dataclass.options)))
+        TypeContent::Type(Type::Dataclass(Dataclass::new(c, dataclass.options)))
     }
 
     fn compute_type_get_item_on_typed_dict(
@@ -1430,7 +1430,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             );
             let generics = GenericsList::generics_from_vec(generics);
             let new_td = typed_dict.replace_type_var_likes(db, generics);
-            TypeContent::DbType(Type::TypedDict(new_td))
+            TypeContent::Type(Type::TypedDict(new_td))
         } else {
             todo!()
         }
@@ -1443,7 +1443,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         primary: Option<Primary>,
     ) -> TypeContent<'db, 'db> {
         match self.compute_type_get_item_on_class_inner(class, slice_type, primary) {
-            ClassGetItemResult::GenericClass(c) => TypeContent::DbType(Type::Class(c)),
+            ClassGetItemResult::GenericClass(c) => TypeContent::Type(Type::Class(c)),
             ClassGetItemResult::SimpleGeneric {
                 node_ref,
                 class_link,
@@ -1670,7 +1670,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             if let SliceOrSimple::Simple(s) = slice_or_simple {
                 if s.named_expr.is_ellipsis_literal() {
                     let t = self.compute_slice_db_type(first);
-                    return TypeContent::DbType(Type::Tuple(Rc::new(
+                    return TypeContent::Type(Type::Tuple(Rc::new(
                         TupleContent::new_arbitrary_length(t),
                     )));
                 }
@@ -1681,7 +1681,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     self.compute_slice_type_or_type_var_tuple(slice_content)
                     /*
                      * TODO TypeVarTuple
-                    if matches!(t, DbType::TypeVar(ref t) if t.is_type_var_tuple()) {
+                    if matches!(t, Type::TypeVar(ref t) if t.is_type_var_tuple()) {
                         todo!()
                     }
                     */
@@ -1697,7 +1697,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 _ => Rc::new([self.convert_slice_type_or_type_var_tuple(t, first)]),
             }
         };
-        TypeContent::DbType(Type::Tuple(Rc::new(TupleContent::new_fixed_length(
+        TypeContent::Type(Type::Tuple(Rc::new(TupleContent::new_fixed_length(
             generics,
         ))))
     }
@@ -1889,7 +1889,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             self.inference.i_s.db.python_state.any_callable.clone()
         };
         self.current_callable = old;
-        TypeContent::DbType(Type::Callable(content))
+        TypeContent::Type(Type::Callable(content))
     }
 
     fn compute_type_get_item_on_union(
@@ -1900,7 +1900,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         if let SliceTypeIterator::SliceOrSimple(s) = iterator {
             let t = self.compute_slice_type(s);
             let t = self.as_db_type(t, s.as_node_ref());
-            TypeContent::DbType(t)
+            TypeContent::Type(t)
         } else {
             let mut t = UnionType::new(
                 iterator
@@ -1915,7 +1915,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     .collect(),
             );
             t.sort_for_priority();
-            TypeContent::DbType(Type::Union(t))
+            TypeContent::Type(Type::Union(t))
         }
     }
 
@@ -1934,7 +1934,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         if let Type::Union(union_type) = &mut t {
             union_type.sort_for_priority();
         };
-        TypeContent::DbType(t)
+        TypeContent::Type(t)
     }
 
     fn compute_type_get_item_on_type(&mut self, slice_type: SliceType) -> TypeContent<'db, 'db> {
@@ -1943,7 +1943,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         if iterator.count() > 0 {
             todo!()
         }
-        TypeContent::DbType(Type::Type(Rc::new(self.compute_slice_db_type(content))))
+        TypeContent::Type(Type::Type(Rc::new(self.compute_slice_db_type(content))))
     }
 
     fn compute_type_get_item_on_alias(
@@ -1953,7 +1953,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     ) -> TypeContent<'db, 'db> {
         let generics = self.compute_generics_for_alias(slice_type, &alias.type_vars);
         self.is_recursive_alias |= alias.is_recursive();
-        TypeContent::DbType(
+        TypeContent::Type(
             alias
                 .replace_type_var_likes(self.inference.i_s.db, false, &mut |usage| {
                     generics[usage.index()].clone()
@@ -1966,7 +1966,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut iterator = slice_type.iter();
         let first = iterator.next().unwrap();
         if iterator.count() == 0 {
-            TypeContent::DbType(self.compute_slice_db_type(first))
+            TypeContent::Type(self.compute_slice_db_type(first))
         } else {
             todo!()
         }
@@ -2013,7 +2013,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut iterator = slice_type.iter();
         let first = iterator.next().unwrap();
         if iterator.next().is_some() {
-            TypeContent::DbType(Type::Union(UnionType::new(
+            TypeContent::Type(Type::Union(UnionType::new(
                 slice_type
                     .iter()
                     .enumerate()
@@ -2097,7 +2097,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         _ => return expr_not_allowed(self),
                     };
                     if let Some(kind) = maybe {
-                        return TypeContent::DbType(Type::Literal(Literal {
+                        return TypeContent::Type(Type::Literal(Literal {
                             kind,
                             implicit: false,
                         }));
@@ -2110,7 +2110,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             if let AtomContent::Int(i) = atom.unpack() {
                                 if let Some(i) = i.parse() {
                                     let node_ref = NodeRef::new(self.inference.file, f.index());
-                                    return TypeContent::DbType(Type::Literal(Literal {
+                                    return TypeContent::Type(Type::Literal(Literal {
                                         kind: LiteralKind::Int(-i),
                                         implicit: false,
                                     }));
@@ -2150,16 +2150,16 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 );
                 TypeContent::Unknown
             }
-            TypeContent::EnumMember(e) => TypeContent::DbType(Type::EnumMember(e)),
+            TypeContent::EnumMember(e) => TypeContent::Type(Type::EnumMember(e)),
             t => match self.as_db_type(t, slice.as_node_ref()) {
                 Type::Any => TypeContent::Unknown,
-                t @ (Type::None | Type::Literal(_)) => TypeContent::DbType(t),
+                t @ (Type::None | Type::Literal(_)) => TypeContent::Type(t),
                 Type::Union(u)
                     if u.iter().all(|t| {
                         matches!(t, Type::Literal(_) | Type::None | Type::EnumMember(_))
                     }) =>
                 {
-                    TypeContent::DbType(Type::Union(u))
+                    TypeContent::Type(Type::Union(u))
                 }
                 _ => {
                     self.add_issue(
@@ -2186,7 +2186,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             );
             TypeContent::Unknown
         } else {
-            TypeContent::DbType(self.compute_slice_db_type(first))
+            TypeContent::Type(self.compute_slice_db_type(first))
         }
     }
 
@@ -2249,7 +2249,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             if !matches!(result, TypeContent::ParamSpec(_))
                 && !matches!(
                     result,
-                    TypeContent::DbType(Type::TypeVar(usage))
+                    TypeContent::Type(Type::TypeVar(usage))
                         if usage.in_definition == self.for_definition
                 )
                 && !unpacked_type_var_tuple
@@ -2277,7 +2277,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 PythonString::String(start, s) => self.compute_forward_reference(start, s.into()),
                 PythonString::FString => todo!(),
             },
-            AtomContent::NoneLiteral => TypeContent::DbType(Type::None),
+            AtomContent::NoneLiteral => TypeContent::Type(Type::None),
             AtomContent::List(_) => TypeContent::InvalidVariable(InvalidVariableType::List),
             AtomContent::Int(n) => {
                 TypeContent::InvalidVariable(InvalidVariableType::Literal(n.as_code()))
@@ -2311,7 +2311,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     self.current_callable,
                 ) {
                     TypeVarCallbackReturn::TypeVarLike(TypeVarLikeUsage::TypeVar(usage)) => {
-                        Some(TypeContent::DbType(Type::TypeVar(usage.into_owned())))
+                        Some(TypeContent::Type(Type::TypeVar(usage.into_owned())))
                     }
                     TypeVarCallbackReturn::TypeVarLike(TypeVarLikeUsage::TypeVarTuple(usage)) => {
                         Some(TypeContent::TypeVarTuple(usage.into_owned()))
@@ -2345,7 +2345,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     );
                     match type_var_like {
                         TypeVarLike::TypeVar(type_var) => {
-                            TypeContent::DbType(Type::TypeVar(TypeVarUsage {
+                            TypeContent::Type(Type::TypeVar(TypeVarUsage {
                                 type_var,
                                 index,
                                 in_definition: self.for_definition,
@@ -2369,10 +2369,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 })
             }
             TypeNameLookup::TypeAlias(alias) => TypeContent::TypeAlias(alias),
-            TypeNameLookup::NewType(n) => TypeContent::DbType(Type::NewType(n)),
-            TypeNameLookup::NamedTupleDefinition(t) => TypeContent::DbType(t),
+            TypeNameLookup::NewType(n) => TypeContent::Type(Type::NewType(n)),
+            TypeNameLookup::NamedTupleDefinition(t) => TypeContent::Type(t),
             TypeNameLookup::TypedDictDefinition(t) => TypeContent::TypedDictDefinition(t),
-            TypeNameLookup::Enum(t) => TypeContent::DbType(Type::Enum(t)),
+            TypeNameLookup::Enum(t) => TypeContent::Type(Type::Enum(t)),
             TypeNameLookup::Dataclass(d) => TypeContent::Dataclass(d),
             TypeNameLookup::InvalidVariable(t) => TypeContent::InvalidVariable(t),
             TypeNameLookup::Unknown => TypeContent::Unknown,

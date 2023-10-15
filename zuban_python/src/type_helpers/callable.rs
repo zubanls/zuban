@@ -197,7 +197,7 @@ pub fn merge_class_type_vars_into_callable(
                             usage.into_generic_item()
                         }
                     },
-                    &|| todo!("DbType::TypeVar(self_type_var_usage.clone().unwrap())"),
+                    &|| todo!("Type::TypeVar(self_type_var_usage.clone().unwrap())"),
                 )
             } else {
                 // This can happen for example if the return value is a Callable with its

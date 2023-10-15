@@ -118,9 +118,9 @@ impl Type {
                     /*
                     for db_type in constraints.iter() {
                         return match db_type {
-                            DbType::Class(link) => Instance::new(
+                            Type::Class(link) => Instance::new(
                                 Class::with_undefined_generics(NodeRef::from_link(i_s.db, *link)),
-                                &Inferred::from_type(DbType::Class(*link, None)),
+                                &Inferred::from_type(Type::Class(*link, None)),
                             )
                             .lookup(i_s, name),
                             _ => todo!("{:?}", db_type),

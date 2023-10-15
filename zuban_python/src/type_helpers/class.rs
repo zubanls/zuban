@@ -570,7 +570,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         )
                         .compute_base_class(expr);
                         match meta_base {
-                            CalculatedBaseClass::DbType(Type::Class(GenericClass {
+                            CalculatedBaseClass::Type(Type::Class(GenericClass {
                                 link,
                                 generics: ClassGenerics::None,
                             })) => {
@@ -626,7 +626,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         )
                         .compute_base_class(n.expression());
                         match base {
-                            CalculatedBaseClass::DbType(t) => {
+                            CalculatedBaseClass::Type(t) => {
                                 if let Some(name) = bases
                                     .iter()
                                     .find_map(|base| base.check_duplicate_base_class(db, &t))

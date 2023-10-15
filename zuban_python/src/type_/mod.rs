@@ -413,13 +413,13 @@ impl GenericClass {
     }
 }
 
-enum DbTypeIterator<Iter> {
+enum TypeIterator<Iter> {
     Single(Type),
     Union(Iter),
     Finished,
 }
 
-impl<Iter: Iterator<Item = UnionEntry>> Iterator for DbTypeIterator<Iter> {
+impl<Iter: Iterator<Item = UnionEntry>> Iterator for TypeIterator<Iter> {
     type Item = UnionEntry;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -439,13 +439,13 @@ impl<Iter: Iterator<Item = UnionEntry>> Iterator for DbTypeIterator<Iter> {
     }
 }
 
-enum DbTypeRefIterator<'a, Iter> {
+enum TypeRefIterator<'a, Iter> {
     Single(&'a Type),
     Union(Iter),
     Finished,
 }
 
-impl<'a, Iter: Iterator<Item = &'a Type>> Iterator for DbTypeRefIterator<'a, Iter> {
+impl<'a, Iter: Iterator<Item = &'a Type>> Iterator for TypeRefIterator<'a, Iter> {
     type Item = &'a Type;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -515,17 +515,17 @@ impl Type {
 
     pub fn into_iter_with_unpacked_unions(self) -> impl Iterator<Item = UnionEntry> {
         match self {
-            Type::Union(items) => DbTypeIterator::Union(items.entries.into_vec().into_iter()),
-            Type::Never => DbTypeIterator::Finished,
-            t => DbTypeIterator::Single(t),
+            Type::Union(items) => TypeIterator::Union(items.entries.into_vec().into_iter()),
+            Type::Never => TypeIterator::Finished,
+            t => TypeIterator::Single(t),
         }
     }
 
     pub fn iter_with_unpacked_unions(&self) -> impl Iterator<Item = &Type> {
         match self {
-            Type::Union(items) => DbTypeRefIterator::Union(items.iter()),
-            Type::Never => DbTypeRefIterator::Finished,
-            t => DbTypeRefIterator::Single(t),
+            Type::Union(items) => TypeRefIterator::Union(items.iter()),
+            Type::Never => TypeRefIterator::Finished,
+            t => TypeRefIterator::Single(t),
         }
     }
 
@@ -1151,7 +1151,7 @@ impl Type {
                     false,
                 )
             }
-            // TODO? DbType::Dataclass(d) => Some(d.class(db).mro(db)),
+            // TODO? Type::Dataclass(d) => Some(d.class(db).mro(db)),
             Type::TypedDict(td) => MroIterator::new(
                 db,
                 TypeOrClass::Type(Cow::Borrowed(self)),

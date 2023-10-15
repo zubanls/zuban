@@ -18,7 +18,7 @@ impl Type {
     pub fn common_base_type(&self, i_s: &InferenceState, other: &Self) -> Type {
         let check_both_sides = |t1: &_, t2: &Type| match t1 {
             /*
-            DbType::Union(u) if u.iter().any(|t| matches!(t, DbType::None)) => {
+            Type::Union(u) if u.iter().any(|t| matches!(t, Type::None)) => {
                 return self.clone().union(i_s.db, other.clone()).into_db_type()
             }
             */

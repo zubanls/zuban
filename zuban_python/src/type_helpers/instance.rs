@@ -193,7 +193,7 @@ impl<'a> Instance<'a> {
                  * TODO enable?
                 for (_, type_or_class) in self.class.mro(i_s.db) {
                     if let TypeOrClass::Type(t) = type_or_class {
-                        if let DbType::Tuple(tup) = t.as_ref() {
+                        if let Type::Tuple(tup) = t.as_ref() {
                             return Tuple::new(tup).iter(i_s, from)
                         }
                     }
