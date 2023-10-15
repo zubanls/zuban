@@ -868,7 +868,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 if needs_self_type_variable {
                     let self_type_var = Rc::new(TypeVar {
                         name_string: TypeVarName::Self_,
-                        kind: TypeVarKind::Bound(self.class.unwrap().as_db_type(i_s.db)),
+                        kind: TypeVarKind::Bound(self.class.unwrap().as_type(i_s.db)),
                         variance: Variance::Invariant,
                     });
                     self_type_var_usage = Some(TypeVarUsage {
@@ -990,14 +990,14 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                             if has_self_type_var_usage {
                                 Type::Type(Rc::new(Type::Self_))
                             } else {
-                                self.class.unwrap().as_type(i_s)
+                                self.class.unwrap().as_type_type(i_s)
                             }
                         } else if has_self_type_var_usage {
                             Type::Self_
                         } else {
                             match kind {
                                 FunctionKind::Function { .. } | FunctionKind::Property { .. } => {
-                                    self.class.unwrap().as_db_type(i_s.db)
+                                    self.class.unwrap().as_type(i_s.db)
                                 }
                                 FunctionKind::Classmethod { .. } => Type::Any,
                                 FunctionKind::Staticmethod => Type::Any,
@@ -1205,7 +1205,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 args,
                 false,
                 on_type_error,
-                &|| class.as_db_type(i_s.db),
+                &|| class.as_type(i_s.db),
                 result_context,
             )
         } else {

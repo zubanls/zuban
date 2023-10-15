@@ -1076,7 +1076,7 @@ fn calculate_mro_for_class(db: &Database, class: Class) -> Box<[BaseClass]> {
     mro.insert(
         0,
         BaseClass {
-            type_: class.as_db_type(db),
+            type_: class.as_type(db),
             is_direct_base: true,
         },
     );

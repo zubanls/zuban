@@ -88,7 +88,7 @@ impl<'a> Callable<'a> {
             self.defined_in.as_ref(),
             &|| {
                 self.defined_in
-                    .map(|c| c.as_db_type(i_s.db))
+                    .map(|c| c.as_type(i_s.db))
                     .unwrap_or(Type::Self_)
             },
         )
@@ -159,7 +159,7 @@ pub fn merge_class_type_vars_into_callable(
     }
     if needs_self_type_variable {
         let bound = Class::with_self_generics(db, class.node_ref)
-            .as_db_type(db)
+            .as_type(db)
             .replace_type_var_likes(db, &mut |mut usage| {
                 if usage.in_definition() == class.node_ref.as_link() {
                     usage.add_to_index(callable.type_vars.len() as i32);

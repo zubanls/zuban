@@ -732,7 +732,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let db = self.inference.i_s.db;
         match type_ {
             TypeContent::Class { node_ref, .. } => {
-                return Some(Class::with_undefined_generics(node_ref).as_db_type(db))
+                return Some(Class::with_undefined_generics(node_ref).as_type(db))
             }
             TypeContent::SimpleGeneric {
                 class_link,

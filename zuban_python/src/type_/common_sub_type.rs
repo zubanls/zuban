@@ -126,7 +126,7 @@ fn common_sub_type_for_callables(
     Rc::new(CallableContent::new_any(
         i_s.db.python_state.empty_type_var_likes.clone(),
     ))
-    //return i_s.db.python_state.function_db_type();
+    //return i_s.db.python_state.function_type();
 }
 
 fn common_sub_type_params(

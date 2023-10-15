@@ -1135,7 +1135,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     debug!("Found {} type vars in {}", type_vars.len(), expr.as_code());
                     ComplexPoint::TypeAlias(Box::new(TypeAlias {
                         type_vars: type_vars.into_boxed_slice(),
-                        db_type: self.infer_expression(expr).as_db_type(self.i_s),
+                        type_: self.infer_expression(expr).as_type(self.i_s),
                     }))
                     */
                     todo!()

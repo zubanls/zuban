@@ -1177,7 +1177,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                 name,
                                 LookupKind::Normal,
                                 0,
-                                || self.as_type(i_s),
+                                || self.as_type_type(i_s),
                             )
                             .1
                     }
@@ -1290,7 +1290,7 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn as_inferred(&self, i_s: &InferenceState) -> Inferred {
-        Inferred::from_type(self.as_type(i_s))
+        Inferred::from_type(self.as_type_type(i_s))
     }
 
     pub fn generics_as_list(&self, db: &Database) -> ClassGenerics {
@@ -1306,12 +1306,12 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    pub fn as_db_type(&self, db: &Database) -> Type {
+    pub fn as_type(&self, db: &Database) -> Type {
         Type::Class(self.as_generic_class(db))
     }
 
-    pub fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type {
-        Type::Type(Rc::new(self.as_db_type(i_s.db)))
+    pub fn as_type_type(&self, i_s: &InferenceState<'db, '_>) -> Type {
+        Type::Type(Rc::new(self.as_type(i_s.db)))
     }
 
     fn named_tuple_from_class(&self, i_s: &InferenceState, cls: Class) -> Rc<NamedTuple> {
@@ -1566,7 +1566,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 // class. Diagnostics will care about these cases and raise errors when needed.
                 Type::Class(c)
                     if self
-                        .as_db_type(i_s.db)
+                        .as_type(i_s.db)
                         .is_simple_super_type_of(i_s, &result)
                         .bool() =>
                 {
@@ -2100,7 +2100,7 @@ impl NewOrInitConstructor<'_> {
                     todo!()
                 }
                 c.remove_first_param().map(|mut c| {
-                    let self_ = cls.as_db_type(i_s.db);
+                    let self_ = cls.as_type(i_s.db);
                     if c.has_self_type() {
                         c = Type::replace_type_var_likes_and_self_for_callable(
                             &c,

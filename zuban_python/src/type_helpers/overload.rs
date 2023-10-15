@@ -376,11 +376,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                                         i_s,
                                         &calculated_type_args,
                                         self.class.as_ref(),
-                                        &|| {
-                                            class
-                                                .map(|c| c.as_db_type(i_s.db))
-                                                .unwrap_or(Type::Self_)
-                                        },
+                                        &|| class.map(|c| c.as_type(i_s.db)).unwrap_or(Type::Self_),
                                     )
                                     .as_type(i_s),
                                 first_similar_index: i,
@@ -415,7 +411,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         &|| Type::Self_,
                     );
                     if let Some(init_cls) = init_cls {
-                        callable.result_type = init_cls.as_db_type(i_s.db)
+                        callable.result_type = init_cls.as_type(i_s.db)
                     }
                     format_pretty_callable(format_data, &callable)
                 } else {

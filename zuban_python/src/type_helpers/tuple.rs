@@ -71,7 +71,7 @@ impl<'a> Tuple<'a> {
                 };
                 inf.bind_instance_descriptors(
                     i_s,
-                    tuple_cls.as_db_type(i_s.db),
+                    tuple_cls.as_type(i_s.db),
                     cls,
                     node_ref,
                     mro_index,

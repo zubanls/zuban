@@ -85,7 +85,7 @@ fn match_self_type(
     first_type: &Type,
 ) -> Option<()> {
     let expected = replace_class_type_vars(i_s.db, first_type, func_class, &|| {
-        func_class.as_db_type(i_s.db)
+        func_class.as_type(i_s.db)
     });
     if !expected.is_super_type_of(i_s, matcher, instance).bool() {
         return None;

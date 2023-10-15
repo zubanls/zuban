@@ -32,7 +32,7 @@ impl<'a> Instance<'a> {
         if let Some(inferred) = self.inferred {
             inferred.clone()
         } else {
-            let t = self.class.as_db_type(i_s.db);
+            let t = self.class.as_type(i_s.db);
             Inferred::from_type(t)
         }
     }
@@ -49,7 +49,7 @@ impl<'a> Instance<'a> {
             .lookup_without_descriptors(i_s, from, name.as_str());
         let result = result.or_else(|| self.lookup(i_s, from, name.as_str(), LookupKind::Normal));
         let Some(inf) = result.into_maybe_inferred() else {
-            let t = self.class.as_db_type(i_s.db);
+            let t = self.class.as_type(i_s.db);
             add_attribute_error(
                 i_s,
                 from,
@@ -89,7 +89,7 @@ impl<'a> Instance<'a> {
                     } else if let Some(inf) = Instance::new(descriptor, None).bind_dunder_get(
                         i_s,
                         from,
-                        self.class.as_db_type(i_s.db),
+                        self.class.as_type(i_s.db),
                     ) {
                         // It feels weird that a descriptor that only defines __get__ should
                         // match the value with __get__'s return type. But this makes sense:
@@ -309,7 +309,7 @@ impl<'a> Instance<'a> {
         super_count: usize,
     ) -> (TypeOrClass, LookupResult) {
         self.lookup_with_explicit_self_binding(i_s, node_ref, name, kind, super_count, || {
-            self.class.as_db_type(i_s.db)
+            self.class.as_type(i_s.db)
         })
     }
 
@@ -455,7 +455,7 @@ impl<'db: 'a, 'a> Iterator for ClassMroFinder<'db, 'a, '_> {
                         .and_then(|inf| {
                             inf.bind_instance_descriptors(
                                 self.i_s,
-                                self.instance.class.as_db_type(self.i_s.db),
+                                self.instance.class.as_type(self.i_s.db),
                                 class,
                                 self.from,
                                 mro_index,

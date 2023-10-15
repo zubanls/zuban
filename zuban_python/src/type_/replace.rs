@@ -586,9 +586,7 @@ impl Type {
                 }))
             }
             Type::TypeVar(t) => Type::TypeVar(manager.remap_type_var(t)),
-            Type::Type(db_type) => {
-                Type::Type(Rc::new(db_type.rewrite_late_bound_callables(manager)))
-            }
+            Type::Type(type_) => Type::Type(Rc::new(type_.rewrite_late_bound_callables(manager))),
             Type::Tuple(content) => Type::Tuple(match &content.args {
                 TupleTypeArguments::FixedLength(ts) => Rc::new(TupleContent::new_fixed_length(
                     ts.iter()

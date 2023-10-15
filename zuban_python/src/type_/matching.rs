@@ -268,7 +268,7 @@ impl Type {
                         // allocates when e.g.  Foo is passed to def x(f: Foo | None): ...
                         // This is a bit unfortunate, especially because it loops over the
                         // mro and allocates every time.
-                        let t2 = c2.as_db_type(i_s.db);
+                        let t2 = c2.as_type(i_s.db);
                         self.matches_internal(i_s, matcher, &t2, Variance::Covariant)
                     }
                 },
@@ -477,7 +477,7 @@ impl Type {
             Type::Never if variance == Variance::Covariant => return Match::new_true(), // Never is assignable to anything
             Type::Self_ if variance == Variance::Covariant => {
                 if let Some(cls) = i_s.current_class() {
-                    return self.simple_matches(i_s, &cls.as_db_type(i_s.db), variance);
+                    return self.simple_matches(i_s, &cls.as_type(i_s.db), variance);
                 }
             }
             Type::Module(_) => {
@@ -594,7 +594,7 @@ impl Type {
                 if let Type::Class(c2) = t2.as_ref() {
                     match c2.class(i_s.db).use_cached_class_infos(i_s.db).metaclass {
                         MetaclassState::Some(link) => {
-                            return class1.as_db_type(i_s.db).matches(
+                            return class1.as_type(i_s.db).matches(
                                 i_s,
                                 matcher,
                                 &Type::new_class(link, ClassGenerics::None),

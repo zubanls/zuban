@@ -667,11 +667,7 @@ impl<'db> Inference<'db, '_, '_> {
             match &callable.result_type {
                 Type::Class(_) => {
                     let t = &callable.result_type;
-                    if !class
-                        .as_db_type(i_s.db)
-                        .is_simple_super_type_of(i_s, t)
-                        .bool()
-                    {
+                    if !class.as_type(i_s.db).is_simple_super_type_of(i_s, t).bool() {
                         function.expect_return_annotation_node_ref().add_issue(
                             i_s,
                             IssueType::NewIncompatibleReturnType {

@@ -349,7 +349,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     Specific::AnnotationOrTypeCommentWithTypeVars => {
                         let t = use_cached_annotation_or_type_comment(i_s, definition);
                         let d = replace_class_type_vars(i_s.db, &t, attribute_class, &|| {
-                            class.as_db_type(i_s.db)
+                            class.as_type(i_s.db)
                         });
                         return Inferred::from_type(d);
                     }
@@ -1140,7 +1140,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     i_s.db,
                                     &t,
                                     &attribute_class,
-                                    &|| class.as_db_type(i_s.db),
+                                    &|| class.as_type(i_s.db),
                                 ));
                             }
                             if let Some(r) = Self::bind_class_descriptors_for_type(
@@ -1243,7 +1243,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     if result.is_none() {
                         let func = prepare_func(i_s, c.defined_at, attribute_class);
                         let inv = IssueType::InvalidSelfArgument {
-                            argument_type: class.as_type(i_s).format_short(i_s.db),
+                            argument_type: class.as_type_type(i_s).format_short(i_s.db),
                             function_name: Box::from(func.name()),
                             callable: func
                                 .as_type(i_s, FirstParamProperties::None)
@@ -1267,7 +1267,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 i_s.db,
                 t,
                 &attribute_class,
-                &|| class.as_db_type(i_s.db),
+                &|| class.as_type(i_s.db),
             ));
             t = new.as_ref().unwrap();
         }
@@ -1996,9 +1996,8 @@ fn proper_classmethod_callable(
 
             if let Some(t) = first_param.param_specific.maybe_positional_type() {
                 let mut matcher = Matcher::new_callable_matcher(&callable);
-                let instance_t = class.as_type(i_s);
-                let t =
-                    replace_class_type_vars(i_s.db, t, func_class, &|| class.as_db_type(i_s.db));
+                let instance_t = class.as_type_type(i_s);
+                let t = replace_class_type_vars(i_s.db, t, func_class, &|| class.as_type(i_s.db));
                 if !t.is_super_type_of(i_s, &mut matcher, &instance_t).bool() {
                     return None;
                 }
@@ -2042,7 +2041,7 @@ fn proper_classmethod_callable(
                 },
             )
         } else {
-            class.as_db_type(i_s.db)
+            class.as_type(i_s.db)
         }
     };
     let mut new_callable = Type::replace_type_var_likes_and_self_for_callable(

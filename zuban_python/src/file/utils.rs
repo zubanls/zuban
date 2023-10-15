@@ -82,7 +82,7 @@ impl<'db> Inference<'db, '_, '_> {
                                 // the given and expected result context as a type.
                                 fallback = Some(
                                     list_cls
-                                        .as_db_type(i_s.db)
+                                        .as_type(i_s.db)
                                         .replace_type_var_likes(self.i_s.db, &mut |tv| {
                                             tv.as_type_var_like().as_any_generic_item()
                                         }),
@@ -128,7 +128,7 @@ impl<'db> Inference<'db, '_, '_> {
                                 // As a fallback if there were only errors or no items at all, just use
                                 // the given and expected result context as a type.
                                 fallback = Some(
-                                    cls.as_db_type(i_s.db)
+                                    cls.as_type(i_s.db)
                                         .replace_type_var_likes(self.i_s.db, &mut |tv| {
                                             tv.as_type_var_like().as_any_generic_item()
                                         }),
