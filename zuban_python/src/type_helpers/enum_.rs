@@ -101,7 +101,7 @@ pub fn infer_value_on_member(
                                 CallableLike::Callable(c) => c.result_type.clone(),
                                 CallableLike::Overload(_) => todo!(),
                             })
-                            .unwrap_or(i_s.db.python_state.int_db_type()),
+                            .unwrap_or(i_s.db.python_state.int_type()),
                     )
                 }
                 _ => inferred,

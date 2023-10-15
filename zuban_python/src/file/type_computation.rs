@@ -336,9 +336,9 @@ macro_rules! compute_type_application {
             TypeContent::SimpleGeneric{class_link, generics, ..} => {
                 Inferred::from_type(Type::Type(Rc::new(Type::new_class(class_link, generics))))
             }
-            TypeContent::Type(mut db_type) => {
+            TypeContent::Type(mut type_) => {
                 let type_var_likes = tcomp.into_type_vars(|inf, recalculate_type_vars| {
-                    db_type = recalculate_type_vars(&db_type);
+                    type_ = recalculate_type_vars(&type_);
                 });
                 if type_var_likes.len() > 0 {
                     debug_assert!($from_alias_definition);
@@ -346,11 +346,11 @@ macro_rules! compute_type_application {
                         type_var_likes,
                         $slice_type.as_node_ref().as_link(),
                         None,
-                        Rc::new(db_type),
+                        Rc::new(type_),
                         false,
                     ))))
                 } else {
-                    Inferred::from_type(Type::Type(Rc::new(db_type)))
+                    Inferred::from_type(Type::Type(Rc::new(type_)))
                 }
             },
             TypeContent::Unknown => Inferred::new_any(),
@@ -516,11 +516,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             TypeContent::Type(Type::Enum(e)) => CalculatedBaseClass::InvalidEnum(e),
             _ => {
-                let db_type =
+                let type_ =
                     self.as_type(calculated, NodeRef::new(self.inference.file, expr.index()));
-                match db_type {
+                match type_ {
                     Type::Class(..) | Type::Tuple(_) | Type::TypedDict(_) | Type::Dataclass(_) => {
-                        CalculatedBaseClass::Type(db_type)
+                        CalculatedBaseClass::Type(type_)
                     }
                     Type::Type(t) if matches!(t.as_ref(), Type::Any) => {
                         CalculatedBaseClass::Type(Type::new_class(
@@ -632,7 +632,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 
         let node_ref = NodeRef::new(self.inference.file, expr.index());
         let mut is_class_var = false;
-        let mut db_type = match map_type_callback {
+        let mut type_ = match map_type_callback {
             Some(map_type_callback) => map_type_callback(self, type_),
             None => match type_ {
                 TypeContent::SimpleGeneric { .. } | TypeContent::Class { .. }
@@ -705,9 +705,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             },
         };
         if is_implicit_optional {
-            db_type.make_optional(self.inference.i_s.db)
+            type_.make_optional(self.inference.i_s.db)
         }
-        Inferred::from_type(db_type).save_redirect(
+        Inferred::from_type(type_).save_redirect(
             self.inference.i_s,
             self.inference.file,
             expr.index(),
@@ -2387,7 +2387,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         details: ArgumentsDetails,
     ) -> TypeContent<'db, 'db> {
         let mut name = None;
-        let mut db_type = None;
+        let mut type_ = None;
         self.inference
             .infer_primary(primary, &mut ResultContext::Unknown);
         match details {
@@ -2410,9 +2410,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 let arg = iterator.next().unwrap();
                 match arg {
                     // The first arg is always there
-                    Argument::Positional(n) => db_type = type_from_expr(self, n.expression()),
+                    Argument::Positional(n) => type_ = type_from_expr(self, n.expression()),
                     Argument::Keyword(kwarg) if kwarg.unpack().0.as_code() == "type" => {
-                        db_type = type_from_expr(self, kwarg.unpack().1)
+                        type_ = type_from_expr(self, kwarg.unpack().1)
                     }
                     Argument::Keyword(kwarg) if kwarg.unpack().0.as_code() == "name" => {
                         name = name_from_expr(self, kwarg.unpack().1)
@@ -2428,7 +2428,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             name = name_from_expr(self, kwarg.unpack().1)
                         }
                         Argument::Keyword(kwarg) if kwarg.unpack().0.as_code() == "type" => {
-                            db_type = type_from_expr(self, kwarg.unpack().1)
+                            type_ = type_from_expr(self, kwarg.unpack().1)
                         }
                         _ => (),
                     }
@@ -2460,17 +2460,17 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             Specific::MypyExtensionsKwArg => ParamKind::DoubleStarred,
             _ => unreachable!(),
         };
-        let db_type = db_type.unwrap_or(Type::Any);
+        let type_ = type_.unwrap_or(Type::Any);
         TypeContent::SpecialType(SpecialType::CallableParam(CallableParam {
             param_specific: match param_kind {
-                ParamKind::PositionalOnly => ParamSpecific::PositionalOnly(db_type),
-                ParamKind::PositionalOrKeyword => ParamSpecific::PositionalOrKeyword(db_type),
-                ParamKind::KeywordOnly => ParamSpecific::KeywordOnly(db_type),
+                ParamKind::PositionalOnly => ParamSpecific::PositionalOnly(type_),
+                ParamKind::PositionalOrKeyword => ParamSpecific::PositionalOrKeyword(type_),
+                ParamKind::KeywordOnly => ParamSpecific::KeywordOnly(type_),
                 ParamKind::Starred => {
-                    ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(db_type))
+                    ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(type_))
                 }
                 ParamKind::DoubleStarred => {
-                    ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ValueType(db_type))
+                    ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ValueType(type_))
                 }
             },
             name,
@@ -2919,14 +2919,14 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                     }
                     _ => {
                         let node_ref = NodeRef::new(file, expr.index());
-                        let db_type = comp.as_type(t, node_ref);
+                        let type_ = comp.as_type(t, node_ref);
                         debug_assert!(!comp.type_var_manager.has_type_vars());
                         let is_recursive = comp.is_recursive_alias;
                         let type_var_likes = type_var_manager.into_type_vars();
                         let ComplexPoint::TypeAlias(alias) = cached_type_node_ref.complex().unwrap() else {
                             unreachable!()
                         };
-                        alias.set_valid(db_type, is_recursive);
+                        alias.set_valid(type_, is_recursive);
                     }
                 };
                 load_cached_type(cached_type_node_ref)
@@ -2985,13 +2985,13 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                     let expr_index = expr.index();
                     let index = expr_index - ANNOTATION_TO_EXPR_DIFFERENCE;
                     if let Some(tuple) = expr.maybe_tuple() {
-                        let db_type =
+                        let type_ =
                             inference.calc_type_comment_tuple(assignment_node_ref, tuple.iter());
                         NodeRef::new(f, index).set_point(Point::new_simple_specific(
                             Specific::AnnotationOrTypeCommentWithTypeVars,
                             Locality::Todo,
                         ));
-                        Inferred::from_type(db_type).save_redirect(inference.i_s, f, expr_index);
+                        Inferred::from_type(type_).save_redirect(inference.i_s, f, expr_index);
                     } else {
                         let mut x = type_computation_for_variable_annotation;
                         let mut comp = TypeComputation::new(
@@ -3015,16 +3015,16 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 StarExpressionContent::Tuple(t) => {
                     let star_exprs_index = star_exprs.index();
                     let index = star_exprs_index - ANNOTATION_TO_EXPR_DIFFERENCE;
-                    let db_type = inference.calc_type_comment_tuple(assignment_node_ref, t.iter());
-                    let unsaved = Inferred::from_type(db_type);
+                    let type_ = inference.calc_type_comment_tuple(assignment_node_ref, t.iter());
+                    let unsaved = Inferred::from_type(type_);
                     unsaved.save_redirect(self.i_s, f, index);
                     let complex_index = f.points.get(index).complex_index();
                     TypeCommentDetails {
                         inferred: Inferred::from_saved_node_ref(NodeRef::new(f, index)),
-                        type_: if let ComplexPoint::TypeInstance(db_type) =
+                        type_: if let ComplexPoint::TypeInstance(type_) =
                             f.complex_points.get(complex_index)
                         {
-                            Cow::Borrowed(db_type)
+                            Cow::Borrowed(type_)
                         } else {
                             unreachable!()
                         },
@@ -3084,12 +3084,12 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                         TypeComputationOrigin::AssignmentTypeCommentOrAnnotation,
                     );
                     let t = comp.compute_type(expr);
-                    let mut db_type = comp.as_type(t, expr_node_ref);
+                    let mut type_ = comp.as_type(t, expr_node_ref);
                     let type_vars = comp.into_type_vars(|inf, recalculate_type_vars| {
-                        db_type = recalculate_type_vars(&db_type);
+                        type_ = recalculate_type_vars(&type_);
                     });
                     debug_assert!(type_vars.is_empty());
-                    db_type
+                    type_
                 })
             })
             .collect();
@@ -3133,14 +3133,14 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         );
 
         let t = comp.compute_type(named_expr.expression());
-        let Some(mut db_type) = comp.as_type_or_error(t, node_ref) else {
+        let Some(mut type_) = comp.as_type_or_error(t, node_ref) else {
             return Err(())
         };
         let type_vars = comp.into_type_vars(|inf, recalculate_type_vars| {
-            db_type = recalculate_type_vars(&db_type);
+            type_ = recalculate_type_vars(&type_);
         });
         debug_assert!(type_vars.is_empty());
-        Ok(Inferred::from_type(db_type))
+        Ok(Inferred::from_type(type_))
     }
 
     pub fn compute_class_typed_dict_member(
@@ -3512,7 +3512,7 @@ fn wrap_double_starred(db: &Database, t: Type) -> Type {
         Type::ParamSpecKwargs(_) => t,
         _ => new_class!(
             db.python_state.dict_node_ref().as_link(),
-            db.python_state.str_db_type(),
+            db.python_state.str_type(),
             t,
         ),
     }

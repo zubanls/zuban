@@ -134,7 +134,7 @@ impl<'file> Slice<'file> {
             if let Some(expr) = maybe_expr {
                 let inf = self.file.inference(i_s).infer_expression(expr);
                 let t = inf.as_type(i_s);
-                let supports_index = i_s.db.python_state.supports_index_db_type();
+                let supports_index = i_s.db.python_state.supports_index_type();
                 if !t.is_simple_sub_type_of(i_s, &supports_index).bool()
                     && !t.is_simple_sub_type_of(i_s, &Type::None).bool()
                 {
@@ -148,7 +148,7 @@ impl<'file> Slice<'file> {
         check(first);
         check(second);
         check(third);
-        Inferred::from_type(i_s.db.python_state.slice_db_type())
+        Inferred::from_type(i_s.db.python_state.slice_type())
     }
 
     pub fn callback_on_tuple_indexes(

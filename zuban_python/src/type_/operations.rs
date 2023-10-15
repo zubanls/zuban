@@ -284,7 +284,7 @@ impl Type {
                     let enum_index = slice_type.infer(i_s);
                     if !enum_index
                         .as_type(i_s)
-                        .is_simple_sub_type_of(i_s, &i_s.db.python_state.str_db_type())
+                        .is_simple_sub_type_of(i_s, &i_s.db.python_state.str_type())
                         .bool()
                     {
                         slice_type.as_node_ref().add_issue(

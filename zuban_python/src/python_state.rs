@@ -491,7 +491,7 @@ impl PythonState {
 
         s.dataclass_fields_type = new_class!(
             s.dict_node_ref().as_link(),
-            s.str_db_type(),
+            s.str_type(),
             new_class!(s.dataclasses_capital_field_link(), Type::Any,),
         );
 
@@ -646,21 +646,21 @@ impl PythonState {
     node_ref_to_class!(pub typed_dict_class, typed_dict_node_ref);
 
     node_ref_to_type_class_without_generic!(pub object_type, object_node_ref);
-    node_ref_to_type_class_without_generic!(pub slice_db_type, slice_node_ref);
-    node_ref_to_type_class_without_generic!(pub str_db_type, str_node_ref);
-    node_ref_to_type_class_without_generic!(pub bytes_db_type, bytes_node_ref);
-    node_ref_to_type_class_without_generic!(pub int_db_type, int_node_ref);
-    node_ref_to_type_class_without_generic!(pub bool_db_type, bool_node_ref);
-    node_ref_to_type_class_without_generic!(pub float_db_type, float_node_ref);
-    node_ref_to_type_class_without_generic!(pub complex_db_type, complex_node_ref);
-    node_ref_to_type_class_without_generic!(pub module_db_type, module_node_ref);
-    node_ref_to_type_class_without_generic!(pub property_db_type, property_node_ref);
-    node_ref_to_type_class_without_generic!(pub function_db_type, function_node_ref);
-    node_ref_to_type_class_without_generic!(pub bare_type_db_type, bare_type_node_ref);
-    node_ref_to_type_class_without_generic!(pub ellipsis_db_type, ellipsis_node_ref);
-    node_ref_to_type_class_without_generic!(pub typed_dict_db_type, typed_dict_node_ref);
+    node_ref_to_type_class_without_generic!(pub slice_type, slice_node_ref);
+    node_ref_to_type_class_without_generic!(pub str_type, str_node_ref);
+    node_ref_to_type_class_without_generic!(pub bytes_type, bytes_node_ref);
+    node_ref_to_type_class_without_generic!(pub int_type, int_node_ref);
+    node_ref_to_type_class_without_generic!(pub bool_type, bool_node_ref);
+    node_ref_to_type_class_without_generic!(pub float_type, float_node_ref);
+    node_ref_to_type_class_without_generic!(pub complex_type, complex_node_ref);
+    node_ref_to_type_class_without_generic!(pub module_type, module_node_ref);
+    node_ref_to_type_class_without_generic!(pub property_type, property_node_ref);
+    node_ref_to_type_class_without_generic!(pub function_type, function_node_ref);
+    node_ref_to_type_class_without_generic!(pub bare_type_type, bare_type_node_ref);
+    node_ref_to_type_class_without_generic!(pub ellipsis_type, ellipsis_node_ref);
+    node_ref_to_type_class_without_generic!(pub typed_dict_type, typed_dict_node_ref);
 
-    node_ref_to_type_class_without_generic!(pub supports_index_db_type, supports_index_node_ref);
+    node_ref_to_type_class_without_generic!(pub supports_index_type, supports_index_node_ref);
 
     pub fn none_instance(&self) -> Instance {
         Instance::new(

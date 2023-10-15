@@ -1223,7 +1223,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 FunctionKind::Property { .. } => {
                     return if apply_descriptor {
                         Some(Some(Inferred::from_type(
-                            i_s.db.python_state.property_db_type(),
+                            i_s.db.python_state.property_type(),
                         )))
                     } else {
                         None
@@ -2173,13 +2173,13 @@ pub fn specific_to_type<'db>(
             kind: LiteralKind::Bytes(definition.as_link()),
             implicit: true,
         })),
-        Specific::String => Cow::Owned(i_s.db.python_state.str_db_type()),
-        Specific::Int => Cow::Owned(i_s.db.python_state.int_db_type()),
-        Specific::Float => Cow::Owned(i_s.db.python_state.float_db_type()),
-        Specific::Bool => Cow::Owned(i_s.db.python_state.bool_db_type()),
-        Specific::Bytes => Cow::Owned(i_s.db.python_state.bytes_db_type()),
-        Specific::Complex => Cow::Owned(i_s.db.python_state.complex_db_type()),
-        Specific::Ellipsis => Cow::Owned(i_s.db.python_state.ellipsis_db_type()),
+        Specific::String => Cow::Owned(i_s.db.python_state.str_type()),
+        Specific::Int => Cow::Owned(i_s.db.python_state.int_type()),
+        Specific::Float => Cow::Owned(i_s.db.python_state.float_type()),
+        Specific::Bool => Cow::Owned(i_s.db.python_state.bool_type()),
+        Specific::Bytes => Cow::Owned(i_s.db.python_state.bytes_type()),
+        Specific::Complex => Cow::Owned(i_s.db.python_state.complex_type()),
+        Specific::Ellipsis => Cow::Owned(i_s.db.python_state.ellipsis_type()),
         Specific::Function => {
             Cow::Owned(Function::new(definition, i_s.current_class().copied()).as_type(i_s))
         }

@@ -204,7 +204,7 @@ fn common_base_for_callables(
         CallableParams::WithParamSpec(_, _) => (),
         CallableParams::Any => todo!(),
     }
-    i_s.db.python_state.function_db_type()
+    i_s.db.python_state.function_type()
 }
 
 fn common_params(

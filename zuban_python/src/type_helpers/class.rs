@@ -883,7 +883,7 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn is_metaclass(&self, db: &Database) -> bool {
-        let python_type = db.python_state.bare_type_db_type();
+        let python_type = db.python_state.bare_type_type();
         self.use_cached_class_infos(db)
             .mro
             .iter()

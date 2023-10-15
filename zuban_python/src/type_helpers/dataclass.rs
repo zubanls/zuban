@@ -196,7 +196,7 @@ impl<'a> DataclassHelper<'a> {
                     name: None,
                     has_default: false,
                 }])),
-                result_type: i_s.db.python_state.bool_db_type(),
+                result_type: i_s.db.python_state.bool_type(),
             },
         ))));
     }

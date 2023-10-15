@@ -941,7 +941,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 // TODO what about never? The loop will never be executed.
                 for union_part in value.as_type(self.i_s).iter_with_unpacked_unions() {
                     let mut targets = targets.clone();
-                    if union_part == &self.i_s.db.python_state.str_db_type() {
+                    if union_part == &self.i_s.db.python_state.str_type() {
                         value_node_ref.add_issue(self.i_s, IssueType::UnpackingAStringIsDisallowed)
                     }
                     let mut value_iterator = union_part.iter(self.i_s, value_node_ref);
@@ -1237,7 +1237,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 .as_type(self.i_s)
                                 .is_simple_sub_type_of(
                                     self.i_s,
-                                    &self.i_s.db.python_state.int_db_type(),
+                                    &self.i_s.db.python_state.int_type(),
                                 )
                                 .bool()
                             {
@@ -1257,18 +1257,18 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let (first, second) = or.unpack();
                 let first = self.infer_expression_part(first);
                 let second = self.infer_expression_part(second);
-                Inferred::from_type(self.i_s.db.python_state.bool_db_type())
+                Inferred::from_type(self.i_s.db.python_state.bool_type())
             }
             ExpressionPart::Conjunction(and) => {
                 let (first, second) = and.unpack();
                 let first = self.infer_expression_part(first);
                 let second = self.infer_expression_part(second);
-                Inferred::from_type(self.i_s.db.python_state.bool_db_type())
+                Inferred::from_type(self.i_s.db.python_state.bool_type())
             }
             ExpressionPart::Inversion(inversion) => {
                 let expr = inversion.expression();
                 self.infer_expression_part(expr);
-                Inferred::from_type(self.i_s.db.python_state.bool_db_type())
+                Inferred::from_type(self.i_s.db.python_state.bool_type())
             }
             ExpressionPart::Comparisons(cmps) => {
                 Inferred::gather_base_types(self.i_s, |gather| {
@@ -1292,7 +1292,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             | ComparisonContent::IsNot(first, _, second) => {
                                 let first = self.infer_expression_part(first);
                                 let second = self.infer_expression_part(second);
-                                Inferred::from_type(self.i_s.db.python_state.bool_db_type())
+                                Inferred::from_type(self.i_s.db.python_state.bool_type())
                             }
                             ComparisonContent::In(first, op, second)
                             | ComparisonContent::NotIn(first, op, second) => {
@@ -1364,7 +1364,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                         }
                                     },
                                 );
-                                Inferred::from_type(self.i_s.db.python_state.bool_db_type())
+                                Inferred::from_type(self.i_s.db.python_state.bool_type())
                             }
                             ComparisonContent::Operation(op) => self.infer_operation(op),
                         };
@@ -2137,7 +2137,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                                 .python_state
                                                                 .dict_node_ref()
                                                                 .as_link(),
-                                                            self.i_s.db.python_state.str_db_type(),
+                                                            self.i_s.db.python_state.str_type(),
                                                             Type::Any,
                                                         ))
                                                     }

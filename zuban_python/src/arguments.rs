@@ -597,7 +597,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                 ));
                             }
                             let unpacked = unpack_star_star(i_s, &type_);
-                            let s = i_s.db.python_state.str_db_type();
+                            let s = i_s.db.python_state.str_type();
                             let value = if let Some((key, value)) = unpacked {
                                 if !key.is_simple_same_type(i_s, &s).bool() {
                                     debug!("Keyword is type {}", key.format_short(i_s.db));

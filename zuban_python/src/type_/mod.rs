@@ -738,7 +738,7 @@ impl Type {
                 &TypeVarLikeUsage::TypeVar(Cow::Borrowed(t)),
                 ParamsStyle::Unreachable,
             ),
-            Self::Type(db_type) => format!("Type[{}]", db_type.format(format_data)).into(),
+            Self::Type(type_) => format!("Type[{}]", type_.format(format_data)).into(),
             Self::Tuple(content) => content.format(format_data),
             Self::Callable(content) => content.format(format_data).into(),
             Self::Any => Box::from("Any"),
@@ -793,7 +793,7 @@ impl Type {
             Self::Module(file_index) => format_data
                 .db
                 .python_state
-                .module_db_type()
+                .module_type()
                 .format(format_data),
             Self::Namespace(_) => "object".into(),
             Self::Super { .. } => "TODO super".into(),
@@ -874,7 +874,7 @@ impl Type {
                 }
             }
             Self::TypeVar(t) => found_type_var(TypeVarLikeUsage::TypeVar(Cow::Borrowed(t))),
-            Self::Type(db_type) => db_type.search_type_vars(found_type_var),
+            Self::Type(type_) => type_.search_type_vars(found_type_var),
             Self::Tuple(content) => match &content.args {
                 TupleTypeArguments::FixedLength(ts) => {
                     for t in ts.iter() {
@@ -965,7 +965,7 @@ impl Type {
                 .iter_functions()
                 .any(|callable| callable.has_any_internal(i_s, already_checked)),
             Self::TypeVar(t) => false,
-            Self::Type(db_type) => db_type.has_any_internal(i_s, already_checked),
+            Self::Type(type_) => type_.has_any_internal(i_s, already_checked),
             Self::Tuple(content) => content.args.has_any_internal(i_s, already_checked),
             Self::Callable(content) => content.has_any_internal(i_s, already_checked),
             Self::Class(GenericClass {
@@ -1261,10 +1261,10 @@ impl Type {
         class: Option<&Class>,
         replace_self_type: ReplaceSelf,
     ) -> Inferred {
-        let db_type =
+        let type_ =
             self.internal_resolve_type_vars(i_s, calculated_type_args, class, replace_self_type);
-        debug!("Resolved type vars: {}", db_type.format_short(i_s.db));
-        Inferred::from_type(db_type)
+        debug!("Resolved type vars: {}", type_.format_short(i_s.db));
+        Inferred::from_type(type_)
     }
 
     fn internal_resolve_type_vars(
@@ -1325,10 +1325,10 @@ impl Type {
             Type::RecursiveAlias(r) => r
                 .calculated_type(i_s.db)
                 .on_any_resolved_context_type(i_s, matcher, callable),
-            db_type @ Type::TypeVar(_) => {
+            type_ @ Type::TypeVar(_) => {
                 if matcher.might_have_defined_type_vars() {
                     matcher
-                        .replace_type_var_likes_for_nested_context(i_s.db, db_type)
+                        .replace_type_var_likes_for_nested_context(i_s.db, type_)
                         .on_any_resolved_context_type(i_s, matcher, callable)
                 } else {
                     false

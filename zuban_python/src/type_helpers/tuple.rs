@@ -101,7 +101,7 @@ impl<'a> Tuple<'a> {
                     .infer_expression(simple.named_expr.expression());
                 if !index_inf
                     .as_type(i_s)
-                    .is_simple_sub_type_of(i_s, &i_s.db.python_state.int_db_type())
+                    .is_simple_sub_type_of(i_s, &i_s.db.python_state.int_type())
                     .bool()
                 {
                     Instance::new(i_s.db.python_state.tuple_class(i_s.db, self.content), None)

@@ -464,7 +464,7 @@ impl OverloadDefinition {
 struct CalculatedTypeAlias {
     // This is intentionally private, it should not be used anywhere else, because the behavior of
     // a type alias that has `is_recursive` is different.
-    db_type: Rc<Type>,
+    type_: Rc<Type>,
     is_recursive: bool,
 }
 
@@ -497,13 +497,13 @@ impl TypeAlias {
         type_vars: TypeVarLikes,
         location: PointLink,
         name: Option<PointLink>,
-        db_type: Rc<Type>,
+        type_: Rc<Type>,
         is_recursive: bool,
     ) -> Self {
         let slf = Self::new(type_vars, location, name);
         slf.state
             .set(TypeAliasState::Valid(CalculatedTypeAlias {
-                db_type,
+                type_,
                 is_recursive,
             }))
             .unwrap();
@@ -524,7 +524,7 @@ impl TypeAlias {
     pub fn type_if_valid(&self) -> &Type {
         match self.state.get().unwrap() {
             TypeAliasState::Invalid => unreachable!(),
-            TypeAliasState::Valid(a) => a.db_type.as_ref(),
+            TypeAliasState::Valid(a) => a.type_.as_ref(),
         }
     }
 
@@ -532,10 +532,10 @@ impl TypeAlias {
         self.state.get().is_none()
     }
 
-    pub fn set_valid(&self, db_type: Type, is_recursive: bool) {
+    pub fn set_valid(&self, type_: Type, is_recursive: bool) {
         self.state
             .set(TypeAliasState::Valid(CalculatedTypeAlias {
-                db_type: Rc::new(db_type),
+                type_: Rc::new(type_),
                 is_recursive,
             }))
             .unwrap()

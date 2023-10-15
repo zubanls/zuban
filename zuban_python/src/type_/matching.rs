@@ -485,7 +485,7 @@ impl Type {
                     self.matches(
                         i_s,
                         matcher,
-                        &i_s.db.python_state.module_db_type().into(),
+                        &i_s.db.python_state.module_type().into(),
                         variance,
                     )
                 })
