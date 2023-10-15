@@ -9,8 +9,8 @@ use crate::file::{use_cached_simple_generic_type, File, PythonFile};
 use crate::inference_state::InferenceState;
 use crate::node_ref::NodeRef;
 use crate::type_::{
-    ClassGenerics, DbType, GenericItem, GenericsList, ParamSpecArgument, ParamSpecUsage,
-    TypeVarLike, TypeVarLikeUsage, TypeVarLikes, Variance,
+    ClassGenerics, GenericItem, GenericsList, ParamSpecArgument, ParamSpecUsage, Type, TypeVarLike,
+    TypeVarLikeUsage, TypeVarLikes, Variance,
 };
 
 macro_rules! replace_class_vars {
@@ -20,7 +20,7 @@ macro_rules! replace_class_vars {
             Some(type_var_generics) => Generic::owned($g.replace_type_var_likes(
                 $db,
                 &mut |t| type_var_generics.nth_usage($db, &t).into_generic_item($db),
-                &|| DbType::Self_,
+                &|| Type::Self_,
             )),
         }
     };
@@ -101,7 +101,7 @@ impl<'a> Generics<'a> {
         db: &'db Database,
         type_var_like: &TypeVarLike,
         n: usize,
-    ) -> Cow<'a, DbType> {
+    ) -> Cow<'a, Type> {
         let generic = self.nth(db, type_var_like, n);
         if let Generic::TypeArgument(p) = generic {
             p

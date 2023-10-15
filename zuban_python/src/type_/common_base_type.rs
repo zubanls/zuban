@@ -9,25 +9,25 @@ use crate::{
 };
 
 use super::{
-    CallableContent, CallableParam, CallableParams, ClassGenerics, DbType,
-    DoubleStarredParamSpecific, GenericItem, GenericsList, ParamSpecific, StarredParamSpecific,
-    TupleContent, TupleTypeArguments, TypeOrTypeVarTuple, TypeVarLike, Variance,
+    CallableContent, CallableParam, CallableParams, ClassGenerics, DoubleStarredParamSpecific,
+    GenericItem, GenericsList, ParamSpecific, StarredParamSpecific, TupleContent,
+    TupleTypeArguments, Type, TypeOrTypeVarTuple, TypeVarLike, Variance,
 };
 
-impl DbType {
-    pub fn common_base_type(&self, i_s: &InferenceState, other: &Self) -> DbType {
-        let check_both_sides = |t1: &_, t2: &DbType| match t1 {
+impl Type {
+    pub fn common_base_type(&self, i_s: &InferenceState, other: &Self) -> Type {
+        let check_both_sides = |t1: &_, t2: &Type| match t1 {
             /*
             DbType::Union(u) if u.iter().any(|t| matches!(t, DbType::None)) => {
                 return self.clone().union(i_s.db, other.clone()).into_db_type()
             }
             */
-            DbType::None | DbType::Union(_) => return Some(self.simplified_union(i_s, other)),
-            DbType::Class(c) if c.class(i_s.db).is_calculating_class_infos() => {
+            Type::None | Type::Union(_) => return Some(self.simplified_union(i_s, other)),
+            Type::Class(c) if c.class(i_s.db).is_calculating_class_infos() => {
                 Some(t1.clone().union(i_s.db, t2.clone()))
             }
-            DbType::Any => return Some(DbType::Any),
-            DbType::Never => return Some(t2.clone()),
+            Type::Any => return Some(Type::Any),
+            Type::Never => return Some(t2.clone()),
             _ => None,
         };
 
@@ -66,7 +66,7 @@ impl DbType {
 pub fn common_base_type<'x, I: Iterator<Item = &'x TypeOrTypeVarTuple>>(
     i_s: &InferenceState,
     mut ts: I,
-) -> DbType {
+) -> Type {
     if let Some(first) = ts.next() {
         let mut result = match first {
             TypeOrTypeVarTuple::Type(t) => Cow::Borrowed(t),
@@ -81,11 +81,11 @@ pub fn common_base_type<'x, I: Iterator<Item = &'x TypeOrTypeVarTuple>>(
         }
         result.into_owned()
     } else {
-        DbType::Never
+        Type::Never
     }
 }
 
-fn common_base_class(i_s: &InferenceState, c1: Class, c2: Class) -> Option<DbType> {
+fn common_base_class(i_s: &InferenceState, c1: Class, c2: Class) -> Option<Type> {
     if c1.node_ref != c2.node_ref {
         return None;
     }
@@ -132,42 +132,38 @@ fn common_base_class(i_s: &InferenceState, c1: Class, c2: Class) -> Option<DbTyp
             _ => todo!(),
         }
     }
-    Some(DbType::new_class(
+    Some(Type::new_class(
         c1.node_ref.as_link(),
         ClassGenerics::List(GenericsList::generics_from_vec(generics)),
     ))
 }
 
-fn common_base_type_for_non_class(
-    i_s: &InferenceState,
-    t1: &DbType,
-    t2: &DbType,
-) -> Option<DbType> {
+fn common_base_type_for_non_class(i_s: &InferenceState, t1: &Type, t2: &Type) -> Option<Type> {
     match t1 {
-        DbType::Callable(c1) => {
+        Type::Callable(c1) => {
             // TODO this should also be done for function/callable and callable/function and
             // not only callable/callable
-            if let DbType::Callable(c2) = t2 {
+            if let Type::Callable(c2) = t2 {
                 return Some(common_base_for_callables(i_s, c1, c2));
             }
         }
-        DbType::Tuple(tup1) => return common_base_for_tuple_against_db_type(i_s, tup1, t2),
-        DbType::NamedTuple(nt1) => {
-            if let DbType::NamedTuple(nt2) = t2 {
+        Type::Tuple(tup1) => return common_base_for_tuple_against_db_type(i_s, tup1, t2),
+        Type::NamedTuple(nt1) => {
+            if let Type::NamedTuple(nt2) = t2 {
                 if nt1.__new__.defined_at == nt2.__new__.defined_at {
-                    return Some(DbType::NamedTuple(nt1.clone()));
+                    return Some(Type::NamedTuple(nt1.clone()));
                 }
             }
             return common_base_for_tuple_against_db_type(i_s, &nt1.as_tuple(), t2);
         }
-        DbType::TypedDict(td1) => {
-            if let DbType::TypedDict(td2) = &t2 {
-                return Some(DbType::TypedDict(td1.intersection(i_s, td2)));
+        Type::TypedDict(td1) => {
+            if let Type::TypedDict(td2) = &t2 {
+                return Some(Type::TypedDict(td1.intersection(i_s, td2)));
             }
         }
-        DbType::Type(t1) => {
-            if let DbType::Type(t2) = t2 {
-                return Some(DbType::Type(Rc::new(t1.common_base_type(i_s, t2))));
+        Type::Type(t1) => {
+            if let Type::Type(t2) = t2 {
+                return Some(Type::Type(Rc::new(t1.common_base_type(i_s, t2))));
             }
         }
         _ => {
@@ -183,7 +179,7 @@ fn common_base_for_callables(
     i_s: &InferenceState,
     c1: &CallableContent,
     c2: &CallableContent,
-) -> DbType {
+) -> Type {
     if c1.kind != c2.kind {
         todo!()
     }
@@ -191,7 +187,7 @@ fn common_base_for_callables(
         CallableParams::Simple(params1) => match &c2.params {
             CallableParams::Simple(params2) => {
                 if let Some(params) = common_params(i_s, &params1, &params2) {
-                    return DbType::Callable(Rc::new(CallableContent {
+                    return Type::Callable(Rc::new(CallableContent {
                         name: None,
                         class_name: None,
                         defined_at: c1.defined_at,
@@ -264,12 +260,12 @@ fn common_params(
 fn common_base_for_tuple_against_db_type(
     i_s: &InferenceState,
     tup1: &TupleContent,
-    t2: &DbType,
-) -> Option<DbType> {
+    t2: &Type,
+) -> Option<Type> {
     Some(match t2 {
-        DbType::Tuple(tup2) => DbType::Tuple(Rc::new(common_base_for_tuples(i_s, tup1, tup2))),
-        DbType::NamedTuple(nt2) => {
-            DbType::Tuple(Rc::new(common_base_for_tuples(i_s, tup1, &nt2.as_tuple())))
+        Type::Tuple(tup2) => Type::Tuple(Rc::new(common_base_for_tuples(i_s, tup1, tup2))),
+        Type::NamedTuple(nt2) => {
+            Type::Tuple(Rc::new(common_base_for_tuples(i_s, tup1, &nt2.as_tuple())))
         }
         _ => return None,
     })

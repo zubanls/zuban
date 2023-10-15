@@ -1,12 +1,12 @@
 use std::ops::{BitAnd, BitAndAssign};
 use std::rc::Rc;
 
-use crate::type_::{DbType, TypeVar};
+use crate::type_::{Type, TypeVar};
 
 #[derive(Debug)]
 pub struct ArgumentIndexWithParam {
     pub argument_index: usize,
-    pub type_: DbType,
+    pub type_: Type,
 }
 
 #[derive(Debug)]
@@ -48,7 +48,7 @@ pub enum Match {
 pub enum MismatchReason {
     None,
     ConstraintMismatch {
-        expected: DbType,
+        expected: Type,
         type_var: Rc<TypeVar>,
     },
     ProtocolMismatches {

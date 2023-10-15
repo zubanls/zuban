@@ -1,14 +1,14 @@
 use std::fmt;
 
 use super::Matcher;
-use crate::type_::{DbType, TupleTypeArguments, TypeOrTypeVarTuple};
+use crate::type_::{TupleTypeArguments, Type, TypeOrTypeVarTuple};
 use crate::{debug, InferenceState};
 
 pub enum ResultContext<'a, 'b> {
-    Known(&'a DbType),
+    Known(&'a Type),
     WithMatcher {
         matcher: &'a mut Matcher<'b>,
-        type_: &'a DbType,
+        type_: &'a Type,
     },
     AssignmentNewDefinition,
     Unknown,
@@ -20,7 +20,7 @@ impl<'a> ResultContext<'a, '_> {
     pub fn with_type_if_exists_and_replace_type_var_likes<'db, T>(
         &self,
         i_s: &InferenceState<'db, '_>,
-        callable: impl FnOnce(&InferenceState<'db, '_>, &DbType) -> T,
+        callable: impl FnOnce(&InferenceState<'db, '_>, &Type) -> T,
     ) -> Option<T> {
         match self {
             Self::Known(type_) => Some(callable(i_s, type_)),
@@ -38,7 +38,7 @@ impl<'a> ResultContext<'a, '_> {
     pub fn with_type_if_exists<'db, T>(
         &mut self,
         i_s: &InferenceState<'db, '_>,
-        callable: impl FnOnce(&InferenceState<'db, '_>, &DbType, &mut Matcher) -> T,
+        callable: impl FnOnce(&InferenceState<'db, '_>, &Type, &mut Matcher) -> T,
     ) -> Option<T> {
         match self {
             Self::Known(type_) => Some(callable(i_s, type_, &mut Matcher::default())),
@@ -61,13 +61,11 @@ impl<'a> ResultContext<'a, '_> {
         self.with_type_if_exists_and_replace_type_var_likes(
             i_s,
             |i_s: &InferenceState<'db, '_>, type_| match type_ {
-                DbType::Literal(_) | DbType::EnumMember(_) => {
-                    CouldBeALiteral::Yes { implicit: false }
-                }
-                DbType::Union(items)
+                Type::Literal(_) | Type::EnumMember(_) => CouldBeALiteral::Yes { implicit: false },
+                Type::Union(items)
                     if items
                         .iter()
-                        .any(|i| matches!(i, DbType::Literal(_) | DbType::EnumMember(_))) =>
+                        .any(|i| matches!(i, Type::Literal(_) | Type::EnumMember(_))) =>
                 {
                     CouldBeALiteral::Yes { implicit: false }
                 }
@@ -80,7 +78,7 @@ impl<'a> ResultContext<'a, '_> {
     pub fn expects_union(&self, i_s: &InferenceState) -> bool {
         match self {
             Self::Known(type_) | Self::WithMatcher { type_, .. } => {
-                matches!(type_, DbType::Union(_))
+                matches!(type_, Type::Union(_))
             }
             Self::Unknown
             | Self::ExpectUnused
@@ -90,7 +88,7 @@ impl<'a> ResultContext<'a, '_> {
     }
 
     pub fn expect_not_none(&mut self, i_s: &InferenceState) -> bool {
-        self.with_type_if_exists(i_s, |i_s, type_, matcher| !matches!(type_, DbType::None))
+        self.with_type_if_exists(i_s, |i_s, type_, matcher| !matches!(type_, Type::None))
             .unwrap_or_else(|| !matches!(self, Self::ExpectUnused | Self::RevealType))
     }
 
@@ -101,7 +99,7 @@ impl<'a> ResultContext<'a, '_> {
     ) -> T {
         self.with_type_if_exists_and_replace_type_var_likes(i_s, |i_s: &InferenceState, type_| {
             match type_ {
-                DbType::Tuple(tup) => Some(match &tup.args {
+                Type::Tuple(tup) => Some(match &tup.args {
                     TupleTypeArguments::FixedLength(ts) => {
                         callable(TupleContextIterator::FixedLength(ts.iter()))
                     }
@@ -109,12 +107,12 @@ impl<'a> ResultContext<'a, '_> {
                         callable(TupleContextIterator::ArbitraryLength(t))
                     }
                 }),
-                DbType::Union(items) => {
+                Type::Union(items) => {
                     debug!("TODO union tuple inference context ignored");
                     None
                 }
                 // Case x: Iterable[int] = (1, 1)
-                DbType::Class(c) if c.link == i_s.db.python_state.iterable_link() => {
+                Type::Class(c) if c.link == i_s.db.python_state.iterable_link() => {
                     let t = c.class(i_s.db).nth_type_argument(i_s.db, 0);
                     Some(callable(TupleContextIterator::ArbitraryLength(&t)))
                 }
@@ -144,13 +142,13 @@ impl fmt::Debug for ResultContext<'_, '_> {
 }
 
 pub enum TupleContextIterator<'a> {
-    ArbitraryLength(&'a DbType),
+    ArbitraryLength(&'a Type),
     FixedLength(std::slice::Iter<'a, TypeOrTypeVarTuple>),
     Unknown,
 }
 
 impl<'a> Iterator for TupleContextIterator<'a> {
-    type Item = &'a DbType;
+    type Item = &'a Type;
 
     fn next(&mut self) -> Option<Self::Item> {
         Some(match self {
@@ -164,10 +162,10 @@ impl<'a> Iterator for TupleContextIterator<'a> {
                         *items = [].iter();
                         todo!("Probably return ResultContext::Unknown here")
                     }
-                    None => &DbType::Any,
+                    None => &Type::Any,
                 }
             }
-            Self::Unknown => &DbType::Any,
+            Self::Unknown => &Type::Any,
         })
     }
 }

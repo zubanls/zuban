@@ -11,8 +11,8 @@ use crate::inferred::Inferred;
 use crate::matching::Generics;
 use crate::node_ref::NodeRef;
 use crate::type_::{
-    CallableContent, ClassGenerics, CustomBehavior, DbType, GenericItem, GenericsList, LiteralKind,
-    TupleContent, TypeVarLikes,
+    CallableContent, ClassGenerics, CustomBehavior, GenericItem, GenericsList, LiteralKind,
+    TupleContent, Type, TypeVarLikes,
 };
 use crate::type_helpers::{dataclasses_replace, Class, Function, Instance};
 use crate::{new_class, InferenceState, PythonProject};
@@ -45,8 +45,8 @@ macro_rules! node_ref_to_class {
 macro_rules! node_ref_to_db_type_class_without_generic {
     ($vis:vis $name:ident, $from_node_ref:ident) => {
         #[inline]
-        $vis fn $name(&self) -> DbType {
-            DbType::new_class(self.$from_node_ref().as_link(), ClassGenerics::None)
+        $vis fn $name(&self) -> Type {
+            Type::new_class(self.$from_node_ref().as_link(), ClassGenerics::None)
         }
     };
 }
@@ -133,15 +133,15 @@ pub struct PythonState {
     dataclasses_field_index: NodeIndex,
     dataclasses_capital_field_index: NodeIndex,
     dataclasses_replace_index: NodeIndex,
-    pub type_of_object: DbType,
-    pub type_of_any: DbType,
-    pub type_of_self: DbType,
-    pub type_of_arbitrary_tuple: DbType,
+    pub type_of_object: Type,
+    pub type_of_any: Type,
+    pub type_of_self: Type,
+    pub type_of_arbitrary_tuple: Type,
     pub any_callable: Rc<CallableContent>,
-    pub generator_with_any_generics: DbType,
-    pub async_generator_with_any_generics: DbType,
+    pub generator_with_any_generics: Type,
+    pub async_generator_with_any_generics: Type,
     pub empty_type_var_likes: TypeVarLikes,
-    pub dataclass_fields_type: DbType,
+    pub dataclass_fields_type: Type,
 }
 
 impl PythonState {
@@ -227,17 +227,15 @@ impl PythonState {
             dataclasses_field_index: 0,
             dataclasses_capital_field_index: 0,
             dataclasses_replace_index: 0,
-            type_of_object: DbType::Any, // Will be set later
-            type_of_any: DbType::Type(Rc::new(DbType::Any)),
-            type_of_self: DbType::Type(Rc::new(DbType::Self_)),
-            type_of_arbitrary_tuple: DbType::Type(Rc::new(
-                DbType::Tuple(TupleContent::new_empty()),
-            )),
+            type_of_object: Type::Any, // Will be set later
+            type_of_any: Type::Type(Rc::new(Type::Any)),
+            type_of_self: Type::Type(Rc::new(Type::Self_)),
+            type_of_arbitrary_tuple: Type::Type(Rc::new(Type::Tuple(TupleContent::new_empty()))),
             any_callable: Rc::new(CallableContent::new_any(empty_type_var_likes.clone())),
-            generator_with_any_generics: DbType::Any, // Will be set later
-            async_generator_with_any_generics: DbType::Any, // Will be set later
+            generator_with_any_generics: Type::Any, // Will be set later
+            async_generator_with_any_generics: Type::Any, // Will be set later
             empty_type_var_likes,
-            dataclass_fields_type: DbType::Any, // Will be set later
+            dataclass_fields_type: Type::Any, // Will be set later
         }
     }
 
@@ -467,11 +465,11 @@ impl PythonState {
 
         let s = &mut db.python_state;
         let object_db_type = s.object_db_type();
-        s.type_of_object = DbType::Type(Rc::new(object_db_type));
+        s.type_of_object = Type::Type(Rc::new(object_db_type));
         s.generator_with_any_generics =
-            new_class!(s.generator_link(), DbType::Any, DbType::Any, DbType::Any,);
+            new_class!(s.generator_link(), Type::Any, Type::Any, Type::Any,);
         s.async_generator_with_any_generics =
-            new_class!(s.async_generator_link(), DbType::Any, DbType::Any,);
+            new_class!(s.async_generator_link(), Type::Any, Type::Any,);
 
         // Set promotions
         s.int()
@@ -494,7 +492,7 @@ impl PythonState {
         s.dataclass_fields_type = new_class!(
             s.dict_node_ref().as_link(),
             s.str_db_type(),
-            new_class!(s.dataclasses_capital_field_link(), DbType::Any,),
+            new_class!(s.dataclasses_capital_field_link(), Type::Any,),
         );
 
         // Cache
@@ -681,9 +679,9 @@ impl PythonState {
         Class::with_self_generics(db, node_ref)
     }
 
-    pub fn type_var_type(&self) -> DbType {
+    pub fn type_var_type(&self) -> Type {
         debug_assert!(self.typing_type_var != 0);
-        DbType::new_class(
+        Type::new_class(
             PointLink::new(self.typing().file_index(), self.typing_type_var),
             ClassGenerics::None,
         )
@@ -861,8 +859,8 @@ impl PythonState {
         )
     }
 
-    pub fn literal_type(&self, literal_kind: &LiteralKind) -> DbType {
-        DbType::new_class(
+    pub fn literal_type(&self, literal_kind: &LiteralKind) -> Type {
+        Type::new_class(
             self.literal_node_ref(literal_kind).as_link(),
             ClassGenerics::None,
         )
@@ -1007,7 +1005,7 @@ fn set_specific(file: &PythonFile, node_index: NodeIndex, specific: Specific) {
 fn set_custom_behavior(file: &PythonFile, name: &str, custom: CustomBehavior) {
     let node_index = file.symbol_table.lookup_symbol(name).unwrap();
     NodeRef::new(file, node_index).insert_complex(
-        ComplexPoint::TypeInstance(DbType::CustomBehavior(custom)),
+        ComplexPoint::TypeInstance(Type::CustomBehavior(custom)),
         Locality::Stmt,
     );
 }
@@ -1026,7 +1024,7 @@ fn set_custom_behavior_method(
         .lookup_symbol(name)
         .unwrap();
     NodeRef::new(file, node_index).insert_complex(
-        ComplexPoint::TypeInstance(DbType::CustomBehavior(custom)),
+        ComplexPoint::TypeInstance(Type::CustomBehavior(custom)),
         Locality::Stmt,
     );
 }

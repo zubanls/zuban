@@ -19,8 +19,8 @@ use crate::matching::{
 };
 use crate::node_ref::NodeRef;
 use crate::type_::{
-    CallableContent, CallableParams, ClassGenerics, DbType, FunctionKind, GenericItem,
-    GenericsList, Literal, LiteralKind, Namespace, ParamSpecific, TupleContent, TupleTypeArguments,
+    CallableContent, CallableParams, ClassGenerics, FunctionKind, GenericItem, GenericsList,
+    Literal, LiteralKind, Namespace, ParamSpecific, TupleContent, TupleTypeArguments, Type,
     TypeOrTypeVarTuple, UnionEntry, UnionType,
 };
 use crate::type_helpers::{
@@ -358,7 +358,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     fn save_namespace(&self, index: NodeIndex, namespace: Rc<Namespace>) {
-        Inferred::from_type(DbType::Namespace(namespace)).save_redirect(self.i_s, self.file, index);
+        Inferred::from_type(Type::Namespace(namespace)).save_redirect(self.i_s, self.file, index);
     }
 
     fn infer_import_dotted_name(
@@ -500,7 +500,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     // form of `x = None  # type: int` in classes, even with strict-optional. It's
                     // even weirder that the form `x: int = None` is not allowed.
                     if !(self.i_s.current_class().is_some()
-                        && matches!(right.as_type(self.i_s).as_ref(), DbType::None))
+                        && matches!(right.as_type(self.i_s).as_ref(), Type::None))
                     {
                         type_comment
                             .type_
@@ -668,9 +668,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             // In case we do not know the generator return, just return an Any version of it. The
             // function type will be checked in a different place.
             .unwrap_or(GeneratorType {
-                yield_type: DbType::Any,
-                send_type: Some(DbType::Any),
-                return_type: Some(DbType::Any),
+                yield_type: Type::Any,
+                send_type: Some(Type::Any),
+                return_type: Some(Type::Any),
             });
 
         match yield_expr.unpack() {
@@ -751,7 +751,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             YieldExprContent::None => {
                 if !generator
                     .yield_type
-                    .is_simple_super_type_of(i_s, &DbType::None)
+                    .is_simple_super_type_of(i_s, &Type::None)
                     .bool()
                 {
                     from.add_issue(i_s, IssueType::YieldValueExpected);
@@ -777,14 +777,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             Target::IndexExpression(t) if infer_index_expression => {
                 Some(self.infer_primary_target(t))
             }
-            Target::Tuple(targets) => Some(Inferred::from_type(DbType::Tuple(Rc::new(
+            Target::Tuple(targets) => Some(Inferred::from_type(Type::Tuple(Rc::new(
                 TupleContent::new_fixed_length(
                     targets
                         .map(|target| {
                             TypeOrTypeVarTuple::Type(
                                 self.infer_target(target, infer_index_expression)
                                     .map(|i| i.as_db_type(self.i_s))
-                                    .unwrap_or(DbType::Any),
+                                    .unwrap_or(Type::Any),
                             )
                         })
                         .collect(),
@@ -846,7 +846,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             );
                             continue;
                         }
-                        if let DbType::Dataclass(d) = t {
+                        if let Type::Dataclass(d) = t {
                             if d.options.frozen {
                                 from.add_issue(
                                     i_s,
@@ -1012,7 +1012,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                     .as_db_type(self.i_s),
                                             ))
                                         }
-                                        DbType::Tuple(Rc::new(TupleContent::new_fixed_length(
+                                        Type::Tuple(Rc::new(TupleContent::new_fixed_length(
                                             tuple_entries.into(),
                                         )))
                                     } else {
@@ -1032,7 +1032,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                             {
                                                 // The type is already defined, just use any here, because the
                                                 // list really can be anything.
-                                                generic = DbType::Any
+                                                generic = Type::Any
                                             }
                                         }
                                         new_class!(
@@ -1379,7 +1379,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     match inf.maybe_literal(self.i_s.db) {
                         UnionValue::Single(literal) => {
                             if let LiteralKind::Int(i) = &literal.kind {
-                                return Inferred::from_type(DbType::Literal(Literal {
+                                return Inferred::from_type(Type::Literal(Literal {
                                     kind: LiteralKind::Int(-i),
                                     implicit: true,
                                 }));
@@ -1450,7 +1450,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             .with_type_if_exists_and_replace_type_var_likes(
                 self.i_s,
                 |i_s: &InferenceState<'db, '_>, type_| {
-                    if let DbType::Callable(c) = type_ {
+                    if let Type::Callable(c) = type_ {
                         let i_s = i_s.with_lambda_callable(c);
                         let (params, expr) = lambda.unpack();
                         let result = self.file.inference(&i_s).infer_expression_without_cache(
@@ -1459,7 +1459,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         );
                         let mut c = (**c).clone();
                         c.result_type = result.as_type(&i_s).into_owned();
-                        Inferred::from_type(DbType::Callable(Rc::new(c)))
+                        Inferred::from_type(Type::Callable(Rc::new(c)))
                     } else {
                         todo!()
                     }
@@ -1483,7 +1483,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             .as_db_type(self.i_s)
                             .avoid_implicit_literal(self.i_s.db),
                     };
-                    Inferred::from_type(DbType::Callable(Rc::new(c)))
+                    Inferred::from_type(Type::Callable(Rc::new(c)))
                 } else {
                     todo!()
                 }
@@ -1717,7 +1717,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         literal,
                     )
                     .into_owned();
-                    let DbType::Literal(literal) = &mut t else {
+                    let Type::Literal(literal) = &mut t else {
                         unreachable!()
                     };
                     literal.implicit = true;
@@ -1744,7 +1744,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             Point::new_simple_specific(Specific::IntLiteral, Locality::Todo);
                         return Inferred::new_and_save(self.file, i.index(), point);
                     } else {
-                        return Inferred::from_type(DbType::Literal(Literal {
+                        return Inferred::from_type(Type::Literal(Literal {
                             kind: LiteralKind::Int(parsed),
                             implicit,
                         }));
@@ -1778,7 +1778,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     elements @ StarLikeExpressionIterator::Elements(_) => {
                         self.create_list_or_set_generics(elements)
                     }
-                    StarLikeExpressionIterator::Empty => DbType::Any, // TODO shouldn't this be Never?
+                    StarLikeExpressionIterator::Empty => Type::Any, // TODO shouldn't this be Never?
                 };
                 return Inferred::from_type(new_class!(
                     self.i_s.db.python_state.list_node_ref().as_link(),
@@ -1890,7 +1890,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             "Inferred: {}",
             content.format(&FormatData::new_short(self.i_s.db))
         );
-        Inferred::from_type(DbType::Tuple(Rc::new(content)))
+        Inferred::from_type(Type::Tuple(Rc::new(content)))
     }
 
     check_point_cache_with!(pub infer_primary_target, Self::_infer_primary_target, PrimaryTarget);
@@ -2121,7 +2121,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                 Inferred::new_saved(self.file, node_index)
                                             }
                                             FirstParamKind::ClassOfSelf => Inferred::from_type(
-                                                DbType::Type(Rc::new(DbType::Self_)),
+                                                Type::Type(Rc::new(Type::Self_)),
                                             ),
                                             FirstParamKind::InStaticmethod => todo!(),
                                         }
@@ -2138,7 +2138,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                                 .dict_node_ref()
                                                                 .as_link(),
                                                             self.i_s.db.python_state.str_db_type(),
-                                                            DbType::Any,
+                                                            Type::Any,
                                                         ))
                                                     }
                                                     _ => Inferred::new_any(),
@@ -2342,8 +2342,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     ComprehensionKind::Generator => new_class!(
                         self.i_s.db.python_state.generator_link(),
                         t,
-                        DbType::None,
-                        DbType::None,
+                        Type::None,
+                        Type::None,
                     ),
                 }
             }
@@ -2357,34 +2357,32 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 }
 
-fn instantiate_except(i_s: &InferenceState, t: &DbType) -> DbType {
+fn instantiate_except(i_s: &InferenceState, t: &Type) -> Type {
     match t {
         // No need to check these here, this is done when calculating diagnostics
-        DbType::Type(t) => match t.as_ref() {
-            inner @ DbType::Class(..) => inner.clone(),
+        Type::Type(t) => match t.as_ref() {
+            inner @ Type::Class(..) => inner.clone(),
             _ => todo!(),
         },
-        DbType::Any => DbType::Any,
-        DbType::Tuple(content) => {
-            Inferred::gather_simplified_union(i_s, |add| match &content.args {
-                TupleTypeArguments::FixedLength(ts) => {
-                    for t in ts.iter() {
-                        match t {
-                            TypeOrTypeVarTuple::Type(t) => {
-                                add(Inferred::from_type(instantiate_except(i_s, t)))
-                            }
-                            TypeOrTypeVarTuple::TypeVarTuple(_) => todo!(),
+        Type::Any => Type::Any,
+        Type::Tuple(content) => Inferred::gather_simplified_union(i_s, |add| match &content.args {
+            TupleTypeArguments::FixedLength(ts) => {
+                for t in ts.iter() {
+                    match t {
+                        TypeOrTypeVarTuple::Type(t) => {
+                            add(Inferred::from_type(instantiate_except(i_s, t)))
                         }
+                        TypeOrTypeVarTuple::TypeVarTuple(_) => todo!(),
                     }
                 }
-                TupleTypeArguments::ArbitraryLength(t) => {
-                    add(Inferred::from_type(instantiate_except(i_s, t)))
-                }
-            })
-            .as_type(i_s)
-            .into_owned()
-        }
-        DbType::Union(union) => DbType::Union(UnionType::new(
+            }
+            TupleTypeArguments::ArbitraryLength(t) => {
+                add(Inferred::from_type(instantiate_except(i_s, t)))
+            }
+        })
+        .as_type(i_s)
+        .into_owned(),
+        Type::Union(union) => Type::Union(UnionType::new(
             union
                 .entries
                 .iter()
@@ -2398,7 +2396,7 @@ fn instantiate_except(i_s: &InferenceState, t: &DbType) -> DbType {
     }
 }
 
-fn instantiate_except_star(i_s: &InferenceState, t: &DbType) -> DbType {
+fn instantiate_except_star(i_s: &InferenceState, t: &Type) -> Type {
     let result = gather_except_star(i_s, t);
     // When BaseException is used, we need a BaseExceptionGroup. Otherwise when every exception
     // inherits from Exception, ExceptionGroup is used.
@@ -2416,53 +2414,51 @@ fn instantiate_except_star(i_s: &InferenceState, t: &DbType) -> DbType {
     )
 }
 
-fn has_base_exception(db: &Database, t: &DbType) -> bool {
+fn has_base_exception(db: &Database, t: &Type) -> bool {
     match t {
-        DbType::Class(c) => !c.class(db).is_exception(db),
-        DbType::Union(u) => u.iter().any(|t| has_base_exception(db, t)),
-        DbType::Any => false,
+        Type::Class(c) => !c.class(db).is_exception(db),
+        Type::Union(u) => u.iter().any(|t| has_base_exception(db, t)),
+        Type::Any => false,
         // Gathering the exceptions already makes sure we do not end up with arbitrary types here.
         _ => unreachable!(),
     }
 }
 
-fn gather_except_star(i_s: &InferenceState, t: &DbType) -> DbType {
+fn gather_except_star(i_s: &InferenceState, t: &Type) -> Type {
     match t {
-        DbType::Type(t) => match t.as_ref() {
-            inner @ DbType::Class(c) => {
+        Type::Type(t) => match t.as_ref() {
+            inner @ Type::Class(c) => {
                 let cls = c.class(i_s.db);
                 if cls.is_base_exception_group(i_s.db) {
                     // Diagnostics are calculated when calculating diagnostics, not here.
-                    DbType::Any
+                    Type::Any
                 } else if cls.is_base_exception(i_s.db) {
                     inner.clone()
                 } else {
-                    DbType::Any
+                    Type::Any
                 }
             }
             _ => todo!(),
         },
-        DbType::Any => DbType::Any,
-        DbType::Tuple(content) => {
-            Inferred::gather_simplified_union(i_s, |add| match &content.args {
-                TupleTypeArguments::FixedLength(ts) => {
-                    for t in ts.iter() {
-                        match t {
-                            TypeOrTypeVarTuple::Type(t) => {
-                                add(Inferred::from_type(gather_except_star(i_s, t)))
-                            }
-                            TypeOrTypeVarTuple::TypeVarTuple(_) => todo!(),
+        Type::Any => Type::Any,
+        Type::Tuple(content) => Inferred::gather_simplified_union(i_s, |add| match &content.args {
+            TupleTypeArguments::FixedLength(ts) => {
+                for t in ts.iter() {
+                    match t {
+                        TypeOrTypeVarTuple::Type(t) => {
+                            add(Inferred::from_type(gather_except_star(i_s, t)))
                         }
+                        TypeOrTypeVarTuple::TypeVarTuple(_) => todo!(),
                     }
                 }
-                TupleTypeArguments::ArbitraryLength(t) => {
-                    add(Inferred::from_type(gather_except_star(i_s, t)))
-                }
-            })
-            .as_type(i_s)
-            .into_owned()
-        }
-        DbType::Union(union) => DbType::Union(UnionType::new(
+            }
+            TupleTypeArguments::ArbitraryLength(t) => {
+                add(Inferred::from_type(gather_except_star(i_s, t)))
+            }
+        })
+        .as_type(i_s)
+        .into_owned(),
+        Type::Union(union) => Type::Union(UnionType::new(
             union
                 .entries
                 .iter()
@@ -2476,17 +2472,17 @@ fn gather_except_star(i_s: &InferenceState, t: &DbType) -> DbType {
     }
 }
 
-fn get_generator_return_type(db: &Database, t: &DbType) -> DbType {
+fn get_generator_return_type(db: &Database, t: &Type) -> Type {
     match t {
-        DbType::Class(c) => {
+        Type::Class(c) => {
             if c.link == db.python_state.generator_link() {
                 c.class(db).nth_type_argument(db, 2)
             } else {
                 todo!("{t:?}")
             }
         }
-        DbType::Any => DbType::Any,
-        DbType::Union(union) => DbType::Union(UnionType::new(
+        Type::Any => Type::Any,
+        Type::Union(union) => Type::Union(UnionType::new(
             union
                 .entries
                 .iter()
@@ -2547,7 +2543,7 @@ pub fn await_(
         .as_type(i_s)
         .as_ref(),
     );
-    if expect_not_none && matches!(t, DbType::None) {
+    if expect_not_none && matches!(t, Type::None) {
         from.add_issue(i_s, IssueType::DoesNotReturnAValue("Function".into()));
         Inferred::new_any()
     } else {

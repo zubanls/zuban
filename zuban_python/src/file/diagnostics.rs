@@ -19,7 +19,7 @@ use crate::matching::{
 };
 use crate::node_ref::NodeRef;
 use crate::type_::{
-    CallableContent, DbType, FunctionKind, GenericItem, TupleTypeArguments, TypeOrTypeVarTuple,
+    CallableContent, FunctionKind, GenericItem, TupleTypeArguments, Type, TypeOrTypeVarTuple,
     TypeVarLike, Variance,
 };
 use crate::type_helpers::{
@@ -367,7 +367,7 @@ impl<'db> Inference<'db, '_, '_> {
                 .iter()
                 .zip(cls1.type_var_remap.map(|g| g.iter()).unwrap_or([].iter()))
             {
-                if let GenericItem::TypeArgument(DbType::TypeVar(tv)) = arg {
+                if let GenericItem::TypeArgument(Type::TypeVar(tv)) = arg {
                     if let TypeVarLike::TypeVar(tv_def) = type_var_like {
                         if tv.type_var.variance != Variance::Invariant
                             && tv.type_var.variance != tv_def.variance
@@ -587,7 +587,7 @@ impl<'db> Inference<'db, '_, '_> {
         {
             if let Some(annotation) = param.annotation() {
                 let t = self.use_cached_annotation_type(annotation);
-                if matches!(t.as_ref(), DbType::TypeVar(tv) if tv.type_var.variance == Variance::Covariant)
+                if matches!(t.as_ref(), Type::TypeVar(tv) if tv.type_var.variance == Variance::Covariant)
                 {
                     if !["__init__", "__new__", "__post_init__"].contains(&name.as_code()) {
                         NodeRef::new(self.file, annotation.index())
@@ -599,7 +599,7 @@ impl<'db> Inference<'db, '_, '_> {
 
         if let Some(return_annotation) = return_annotation {
             let t = self.use_cached_return_annotation_type(return_annotation);
-            if matches!(t.as_ref(), DbType::TypeVar(tv) if tv.type_var.variance == Variance::Contravariant)
+            if matches!(t.as_ref(), Type::TypeVar(tv) if tv.type_var.variance == Variance::Contravariant)
             {
                 NodeRef::new(self.file, return_annotation.index())
                     .add_issue(self.i_s, IssueType::TypeVarContravariantInReturnType);
@@ -665,7 +665,7 @@ impl<'db> Inference<'db, '_, '_> {
                 todo!()
             };
             match &callable.result_type {
-                DbType::Class(_) => {
+                Type::Class(_) => {
                     let t = &callable.result_type;
                     if !class
                         .as_db_type(i_s.db)
@@ -681,9 +681,9 @@ impl<'db> Inference<'db, '_, '_> {
                         )
                     }
                 }
-                DbType::Type(_) => (),
-                DbType::Any => (),
-                DbType::Enum(e) if e.class == class.node_ref.as_link() => (),
+                Type::Type(_) => (),
+                Type::Any => (),
+                Type::Enum(e) if e.class == class.node_ref.as_link() => (),
                 t => function.expect_return_annotation_node_ref().add_issue(
                     i_s,
                     IssueType::NewMustReturnAnInstance {
@@ -747,8 +747,8 @@ impl<'db> Inference<'db, '_, '_> {
                         } else {
                             t = Cow::Owned(
                                 GeneratorType::from_type(self.i_s.db, t)
-                                    .map(|g| g.return_type.unwrap_or(DbType::None))
-                                    .unwrap_or(DbType::Any),
+                                    .map(|g| g.return_type.unwrap_or(Type::None))
+                                    .unwrap_or(Type::Any),
                             );
                         }
                     }
@@ -917,16 +917,16 @@ impl<'db> Inference<'db, '_, '_> {
     }
 }
 
-fn valid_raise_type(i_s: &InferenceState, from: NodeRef, t: &DbType, allow_none: bool) -> bool {
+fn valid_raise_type(i_s: &InferenceState, from: NodeRef, t: &Type, allow_none: bool) -> bool {
     let db = i_s.db;
     let check = |cls: Class| {
         cls.incomplete_mro(db)
             || cls.class_link_in_mro(db, db.python_state.base_exception_node_ref().as_link())
     };
     match t {
-        DbType::Class(c) => check(c.class(db)),
-        DbType::Type(t) => match t.as_ref() {
-            DbType::Class(c) => {
+        Type::Class(c) => check(c.class(db)),
+        Type::Type(t) => match t.as_ref() {
+            Type::Class(c) => {
                 let cls = c.class(db);
                 cls.execute(
                     i_s,
@@ -942,12 +942,12 @@ fn valid_raise_type(i_s: &InferenceState, from: NodeRef, t: &DbType, allow_none:
             }
             _ => false,
         },
-        DbType::Any => true,
-        DbType::Never => todo!(),
-        DbType::Union(union) => union
+        Type::Any => true,
+        Type::Never => todo!(),
+        Type::Union(union) => union
             .iter()
             .all(|t| valid_raise_type(i_s, from, t, allow_none)),
-        DbType::None if allow_none => true,
+        Type::None if allow_none => true,
         _ => false,
     }
 }
@@ -958,9 +958,9 @@ enum ExceptType {
     Invalid,
 }
 
-fn except_type(i_s: &InferenceState, t: &DbType, allow_tuple: bool) -> ExceptType {
+fn except_type(i_s: &InferenceState, t: &Type, allow_tuple: bool) -> ExceptType {
     match t {
-        DbType::Type(t) => {
+        Type::Type(t) => {
             let db = i_s.db;
             if let Some(cls) = t.maybe_class(i_s.db) {
                 if cls.is_base_exception_group(i_s.db) {
@@ -971,8 +971,8 @@ fn except_type(i_s: &InferenceState, t: &DbType, allow_tuple: bool) -> ExceptTyp
             }
             ExceptType::Invalid
         }
-        DbType::Any => ExceptType::ContainsOnlyBaseExceptions,
-        DbType::Tuple(content) if allow_tuple => match &content.args {
+        Type::Any => ExceptType::ContainsOnlyBaseExceptions,
+        Type::Tuple(content) if allow_tuple => match &content.args {
             TupleTypeArguments::FixedLength(ts) => {
                 let mut result = ExceptType::ContainsOnlyBaseExceptions;
                 for t in ts.iter() {
@@ -989,7 +989,7 @@ fn except_type(i_s: &InferenceState, t: &DbType, allow_tuple: bool) -> ExceptTyp
             }
             TupleTypeArguments::ArbitraryLength(t) => except_type(i_s, t, false),
         },
-        DbType::Union(union) => {
+        Type::Union(union) => {
             let mut result = ExceptType::ContainsOnlyBaseExceptions;
             for t in union.iter() {
                 match except_type(i_s, t, allow_tuple) {
@@ -1030,13 +1030,13 @@ pub fn await_aiter_and_next(i_s: &InferenceState, base: Inferred, from: NodeRef)
 fn try_pretty_format(
     notes: &mut Vec<Box<str>>,
     i_s: &InferenceState,
-    t: &DbType,
+    t: &Type,
     class_lookup_result: LookupResult,
 ) {
     let prefix = "         ";
     if let Some(inf) = class_lookup_result.into_maybe_inferred() {
         match inf.as_type(i_s).as_ref() {
-            DbType::Callable(c) => {
+            Type::Callable(c) => {
                 notes.push(
                     format!(
                         "{prefix}{}",
@@ -1046,7 +1046,7 @@ fn try_pretty_format(
                 );
                 return;
             }
-            DbType::FunctionOverload(overloads) => {
+            Type::FunctionOverload(overloads) => {
                 for c in overloads.iter_functions() {
                     notes.push(format!("{prefix}@overload").into());
                     notes.push(

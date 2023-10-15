@@ -13,7 +13,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::ResultContext;
 use crate::node_ref::NodeRef;
-use crate::type_::{DbType, TupleContent, TypeOrTypeVarTuple};
+use crate::type_::{TupleContent, Type, TypeOrTypeVarTuple};
 
 #[derive(Debug, Copy, Clone)]
 pub struct SliceType<'file> {
@@ -136,7 +136,7 @@ impl<'file> Slice<'file> {
                 let t = inf.as_type(i_s);
                 let supports_index = i_s.db.python_state.supports_index_db_type();
                 if !t.is_simple_sub_type_of(i_s, &supports_index).bool()
-                    && !t.is_simple_sub_type_of(i_s, &DbType::None).bool()
+                    && !t.is_simple_sub_type_of(i_s, &Type::None).bool()
                 {
                     NodeRef::new(self.file, expr.index())
                         .add_issue(i_s, IssueType::InvalidSliceIndex);
@@ -222,9 +222,7 @@ impl<'file> Slices<'file> {
                 TypeOrTypeVarTuple::Type(x.infer(i_s, &mut ResultContext::Unknown).as_db_type(i_s))
             })
             .collect();
-        Inferred::from_type(DbType::Tuple(Rc::new(TupleContent::new_fixed_length(
-            parts,
-        ))))
+        Inferred::from_type(Type::Tuple(Rc::new(TupleContent::new_fixed_length(parts))))
     }
 }
 

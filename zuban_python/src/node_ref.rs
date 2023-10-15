@@ -14,7 +14,7 @@ use crate::file::File;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::type_::DbType;
+use crate::type_::Type;
 use crate::type_helpers::Module;
 
 #[derive(Clone, Copy)]
@@ -221,7 +221,7 @@ impl<'file> NodeRef<'file> {
         )
     }
 
-    pub fn compute_new_type_constraint(&self, i_s: &InferenceState) -> DbType {
+    pub fn compute_new_type_constraint(&self, i_s: &InferenceState) -> Type {
         self.file
             .inference(i_s)
             .compute_new_type_constraint(self.as_expression())

@@ -7,23 +7,23 @@ use crate::{
 
 use super::{
     simplified_union_from_iterators, CallableContent, CallableParam, CallableParams, ClassGenerics,
-    Dataclass, DbType, DoubleStarredParamSpecific, GenericClass, GenericItem, GenericsList,
-    NamedTuple, ParamSpecArgument, ParamSpecTypeVars, ParamSpecific, RecursiveAlias,
-    StarredParamSpecific, TupleContent, TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple,
-    TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypedDict, TypedDictGenerics,
-    UnionEntry, UnionType,
+    Dataclass, DoubleStarredParamSpecific, GenericClass, GenericItem, GenericsList, NamedTuple,
+    ParamSpecArgument, ParamSpecTypeVars, ParamSpecific, RecursiveAlias, StarredParamSpecific,
+    TupleContent, TupleTypeArguments, Type, TypeArguments, TypeOrTypeVarTuple, TypeVarLike,
+    TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypedDict, TypedDictGenerics, UnionEntry,
+    UnionType,
 };
 
 pub type ReplaceTypeVarLike<'x> = &'x mut dyn FnMut(TypeVarLikeUsage) -> GenericItem;
-pub type ReplaceSelf<'x> = &'x dyn Fn() -> DbType;
+pub type ReplaceSelf<'x> = &'x dyn Fn() -> Type;
 
-impl DbType {
+impl Type {
     pub fn replace_type_var_likes(
         &self,
         db: &Database,
         callable: &mut impl FnMut(TypeVarLikeUsage) -> GenericItem,
-    ) -> DbType {
-        self.replace_type_var_likes_and_self(db, callable, &|| DbType::Self_)
+    ) -> Type {
+        self.replace_type_var_likes_and_self(db, callable, &|| Type::Self_)
     }
 
     pub fn replace_type_var_likes_and_self(
@@ -31,7 +31,7 @@ impl DbType {
         db: &Database,
         callable: ReplaceTypeVarLike,
         replace_self: ReplaceSelf,
-    ) -> DbType {
+    ) -> Type {
         let replace_tuple_likes = |args: &TupleTypeArguments,
                                    callable: ReplaceTypeVarLike,
                                    replace_self: ReplaceSelf| {
@@ -113,12 +113,12 @@ impl DbType {
             )
         };
         match self {
-            DbType::Any => DbType::Any,
-            DbType::None => DbType::None,
-            DbType::Never => DbType::Never,
-            DbType::Class(c) => DbType::new_class(c.link, c.generics.map_list(replace_generics)),
-            DbType::FunctionOverload(overload) => {
-                DbType::FunctionOverload(overload.map_functions(|functions| {
+            Type::Any => Type::Any,
+            Type::None => Type::None,
+            Type::Never => Type::Never,
+            Type::Class(c) => Type::new_class(c.link, c.generics.map_list(replace_generics)),
+            Type::FunctionOverload(overload) => {
+                Type::FunctionOverload(overload.map_functions(|functions| {
                     functions
                         .iter()
                         .map(|c| {
@@ -132,7 +132,7 @@ impl DbType {
                         .collect()
                 }))
             }
-            DbType::Union(u) => {
+            Type::Union(u) => {
                 let new_entries = u
                     .entries
                     .iter()
@@ -157,39 +157,41 @@ impl DbType {
                     u.format_as_optional,
                 )
             }
-            DbType::TypeVar(t) => match callable(TypeVarLikeUsage::TypeVar(Cow::Borrowed(&t))) {
+            Type::TypeVar(t) => match callable(TypeVarLikeUsage::TypeVar(Cow::Borrowed(&t))) {
                 GenericItem::TypeArgument(t) => t,
                 GenericItem::TypeArguments(ts) => unreachable!(),
                 GenericItem::ParamSpecArgument(params) => todo!(),
             },
-            DbType::Type(t) => DbType::Type(Rc::new(t.replace_type_var_likes_and_self(
+            Type::Type(t) => Type::Type(Rc::new(t.replace_type_var_likes_and_self(
                 db,
                 callable,
                 replace_self,
             ))),
-            DbType::Tuple(content) => DbType::Tuple(Rc::new(TupleContent::new(
-                replace_tuple_likes(&content.args, callable, replace_self),
-            ))),
-            DbType::Callable(content) => {
-                DbType::Callable(Rc::new(Self::replace_type_var_likes_and_self_for_callable(
+            Type::Tuple(content) => Type::Tuple(Rc::new(TupleContent::new(replace_tuple_likes(
+                &content.args,
+                callable,
+                replace_self,
+            )))),
+            Type::Callable(content) => {
+                Type::Callable(Rc::new(Self::replace_type_var_likes_and_self_for_callable(
                     &content,
                     db,
                     callable,
                     replace_self,
                 )))
             }
-            DbType::Literal { .. } => self.clone(),
-            DbType::NewType(t) => DbType::NewType(t.clone()),
-            DbType::RecursiveAlias(rec) => DbType::RecursiveAlias(Rc::new(RecursiveAlias::new(
+            Type::Literal { .. } => self.clone(),
+            Type::NewType(t) => Type::NewType(t.clone()),
+            Type::RecursiveAlias(rec) => Type::RecursiveAlias(Rc::new(RecursiveAlias::new(
                 rec.link,
                 rec.generics.as_ref().map(replace_generics),
             ))),
-            DbType::Module(file_index) => DbType::Module(*file_index),
-            DbType::Namespace(namespace) => DbType::Namespace(namespace.clone()),
-            DbType::Self_ => replace_self(),
-            DbType::ParamSpecArgs(usage) => todo!(),
-            DbType::ParamSpecKwargs(usage) => todo!(),
-            DbType::Dataclass(d) => DbType::Dataclass({
+            Type::Module(file_index) => Type::Module(*file_index),
+            Type::Namespace(namespace) => Type::Namespace(namespace.clone()),
+            Type::Self_ => replace_self(),
+            Type::ParamSpecArgs(usage) => todo!(),
+            Type::ParamSpecKwargs(usage) => todo!(),
+            Type::Dataclass(d) => Type::Dataclass({
                 if matches!(d.class.generics, ClassGenerics::List(_)) {
                     Dataclass::new(
                         GenericClass {
@@ -202,7 +204,7 @@ impl DbType {
                     d.clone()
                 }
             }),
-            DbType::TypedDict(td) => {
+            Type::TypedDict(td) => {
                 let generics = match &td.generics {
                     TypedDictGenerics::None => TypedDictGenerics::None,
                     TypedDictGenerics::NotDefinedYet(tvs) => {
@@ -212,7 +214,7 @@ impl DbType {
                         TypedDictGenerics::Generics(replace_generics(generics))
                     }
                 };
-                DbType::TypedDict(TypedDict::new(
+                Type::TypedDict(TypedDict::new(
                     td.name,
                     td.members
                         .iter()
@@ -226,7 +228,7 @@ impl DbType {
                     generics,
                 ))
             }
-            DbType::NamedTuple(nt) => {
+            Type::NamedTuple(nt) => {
                 let mut constructor = nt.__new__.as_ref().clone();
                 constructor.params = CallableParams::Simple(
                     constructor
@@ -246,11 +248,11 @@ impl DbType {
                         })
                         .collect(),
                 );
-                DbType::NamedTuple(Rc::new(NamedTuple::new(nt.name, constructor)))
+                Type::NamedTuple(Rc::new(NamedTuple::new(nt.name, constructor)))
             }
-            t @ (DbType::Enum(_) | DbType::EnumMember(_)) => t.clone(),
-            DbType::Super { .. } => todo!(),
-            DbType::CustomBehavior(_) => todo!(),
+            t @ (Type::Enum(_) | Type::EnumMember(_)) => t.clone(),
+            Type::Super { .. } => todo!(),
+            Type::CustomBehavior(_) => todo!(),
         }
     }
 
@@ -492,7 +494,7 @@ impl DbType {
                         }
                         CallableParams::Any => CallableParams::Any,
                         CallableParams::WithParamSpec(new_types, p) => {
-                            let mut types: Vec<DbType> = types
+                            let mut types: Vec<Type> = types
                                 .iter()
                                 .map(|t| {
                                     t.replace_type_var_likes_and_self(db, callable, replace_self)
@@ -523,7 +525,7 @@ impl DbType {
         usage.into_generic_item()
     }
 
-    pub fn rewrite_late_bound_callables(&self, manager: &TypeVarManager) -> DbType {
+    pub fn rewrite_late_bound_callables(&self, manager: &TypeVarManager) -> Type {
         let rewrite_generics = |generics: &GenericsList| {
             GenericsList::new_generics(
                 generics
@@ -557,14 +559,14 @@ impl DbType {
             )
         };
         match self {
-            DbType::Any => DbType::Any,
-            DbType::None => DbType::None,
-            DbType::Never => DbType::Never,
-            DbType::Class(c) => DbType::Class(GenericClass {
+            Type::Any => Type::Any,
+            Type::None => Type::None,
+            Type::Never => Type::Never,
+            Type::Class(c) => Type::Class(GenericClass {
                 link: c.link,
                 generics: c.generics.map_list(rewrite_generics),
             }),
-            DbType::Union(u) => DbType::Union(UnionType {
+            Type::Union(u) => Type::Union(UnionType {
                 entries: u
                     .entries
                     .iter()
@@ -575,19 +577,19 @@ impl DbType {
                     .collect(),
                 format_as_optional: u.format_as_optional,
             }),
-            DbType::FunctionOverload(overload) => {
-                DbType::FunctionOverload(overload.map_functions(|functions| {
+            Type::FunctionOverload(overload) => {
+                Type::FunctionOverload(overload.map_functions(|functions| {
                     functions
                         .iter()
                         .map(|e| Self::rewrite_late_bound_callables_for_callable(e, manager))
                         .collect()
                 }))
             }
-            DbType::TypeVar(t) => DbType::TypeVar(manager.remap_type_var(t)),
-            DbType::Type(db_type) => {
-                DbType::Type(Rc::new(db_type.rewrite_late_bound_callables(manager)))
+            Type::TypeVar(t) => Type::TypeVar(manager.remap_type_var(t)),
+            Type::Type(db_type) => {
+                Type::Type(Rc::new(db_type.rewrite_late_bound_callables(manager)))
             }
-            DbType::Tuple(content) => DbType::Tuple(match &content.args {
+            Type::Tuple(content) => Type::Tuple(match &content.args {
                 TupleTypeArguments::FixedLength(ts) => Rc::new(TupleContent::new_fixed_length(
                     ts.iter()
                         .map(|g| match g {
@@ -604,35 +606,34 @@ impl DbType {
                     TupleContent::new_arbitrary_length(t.rewrite_late_bound_callables(manager)),
                 ),
             }),
-            DbType::Literal { .. } => self.clone(),
-            DbType::Callable(content) => DbType::Callable(Rc::new(
+            Type::Literal { .. } => self.clone(),
+            Type::Callable(content) => Type::Callable(Rc::new(
                 Self::rewrite_late_bound_callables_for_callable(content, manager),
             )),
-            DbType::NewType(_) => todo!(),
-            DbType::RecursiveAlias(recursive_alias) => {
-                DbType::RecursiveAlias(Rc::new(RecursiveAlias::new(
+            Type::NewType(_) => todo!(),
+            Type::RecursiveAlias(recursive_alias) => {
+                Type::RecursiveAlias(Rc::new(RecursiveAlias::new(
                     recursive_alias.link,
                     recursive_alias.generics.as_ref().map(rewrite_generics),
                 )))
             }
-            DbType::ParamSpecArgs(usage) => todo!(),
-            DbType::ParamSpecKwargs(usage) => todo!(),
-            DbType::Dataclass(d) => DbType::Dataclass(Dataclass::new(
+            Type::ParamSpecArgs(usage) => todo!(),
+            Type::ParamSpecKwargs(usage) => todo!(),
+            Type::Dataclass(d) => Type::Dataclass(Dataclass::new(
                 GenericClass {
                     link: d.class.link,
                     generics: d.class.generics.map_list(rewrite_generics),
                 },
                 d.options,
             )),
-            DbType::TypedDict(_) => todo!(),
-            DbType::NamedTuple(_) => todo!(),
-            DbType::Enum(_) => todo!(),
-            DbType::EnumMember(_) => todo!(),
-            DbType::Super { .. } => todo!(),
-            t @ (DbType::Module(_)
-            | DbType::Namespace(_)
-            | DbType::Self_
-            | DbType::CustomBehavior(_)) => t.clone(),
+            Type::TypedDict(_) => todo!(),
+            Type::NamedTuple(_) => todo!(),
+            Type::Enum(_) => todo!(),
+            Type::EnumMember(_) => todo!(),
+            Type::Super { .. } => todo!(),
+            t @ (Type::Module(_) | Type::Namespace(_) | Type::Self_ | Type::CustomBehavior(_)) => {
+                t.clone()
+            }
         }
     }
 }

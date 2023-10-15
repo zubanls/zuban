@@ -15,7 +15,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{add_attribute_error, Inferred};
 use crate::matching::{IteratorContent, LookupKind, LookupResult, OnTypeError, ResultContext};
 use crate::node_ref::NodeRef;
-use crate::type_::{DbType, FunctionKind, GenericClass, TypeVarKind};
+use crate::type_::{FunctionKind, GenericClass, Type, TypeVarKind};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Instance<'a> {
@@ -68,7 +68,7 @@ impl<'a> Instance<'a> {
             );
         }
 
-        let check_compatible = |t: &DbType, value: &_| {
+        let check_compatible = |t: &Type, value: &_| {
             t.error_if_not_matches(i_s, value, |got, expected| {
                 from.add_issue(i_s, IssueType::IncompatibleAssignment { got, expected });
                 from.to_db_lifetime(i_s.db)
@@ -77,7 +77,7 @@ impl<'a> Instance<'a> {
 
         for t in inf.as_type(i_s).iter_with_unpacked_unions() {
             match t {
-                DbType::Class(c) => {
+                Type::Class(c) => {
                     let descriptor = c.class(i_s.db);
                     if let Some(__set__) = Instance::new(descriptor, None)
                         .type_lookup(i_s, from, "__set__")
@@ -102,7 +102,7 @@ impl<'a> Instance<'a> {
                         continue;
                     }
                 }
-                DbType::Callable(c) if matches!(c.kind, FunctionKind::Property { .. }) => {
+                Type::Callable(c) if matches!(c.kind, FunctionKind::Property { .. }) => {
                     match c.kind {
                         FunctionKind::Property {
                             writable: false, ..
@@ -137,12 +137,12 @@ impl<'a> Instance<'a> {
         &self,
         i_s: &InferenceState,
         from: NodeRef,
-        instance: DbType,
+        instance: Type,
     ) -> Option<Inferred> {
         self.type_lookup(i_s, from, "__get__")
             .into_maybe_inferred()
             .map(|inf| {
-                let c_t = DbType::Type(Rc::new(instance.clone()));
+                let c_t = Type::Type(Rc::new(instance.clone()));
                 inf.execute(
                     i_s,
                     &CombinedArguments::new(
@@ -226,7 +226,7 @@ impl<'a> Instance<'a> {
                     );
                 }
                 FoundOnClass::UnresolvedType(t) => {
-                    if let DbType::Tuple(tup) = t.as_ref() {
+                    if let Type::Tuple(tup) = t.as_ref() {
                         return Tuple::new(tup).iter(i_s, from);
                     } else {
                         todo!();
@@ -252,7 +252,7 @@ impl<'a> Instance<'a> {
         name: &str,
         kind: LookupKind,
         super_count: usize,
-        as_self_instance: impl Fn() -> DbType,
+        as_self_instance: impl Fn() -> Type,
     ) -> (TypeOrClass, LookupResult) {
         for (mro_index, class) in self.class.mro(i_s.db).skip(super_count) {
             let (class_of_lookup, lookup) = class.lookup_symbol(i_s, name);
@@ -389,7 +389,7 @@ impl<'a> Instance<'a> {
                     );
                 }
                 FoundOnClass::UnresolvedType(t) => match t.as_ref() {
-                    DbType::Tuple(t) => {
+                    Type::Tuple(t) => {
                         return Tuple::new(t).get_item(i_s, slice_type, result_context);
                     }
                     _ => (),
@@ -432,7 +432,7 @@ fn calculate_descriptor(
 
 enum FoundOnClass<'a> {
     Attribute(Inferred),
-    UnresolvedType(Cow<'a, DbType>),
+    UnresolvedType(Cow<'a, Type>),
 }
 
 struct ClassMroFinder<'db, 'a, 'd> {
@@ -505,25 +505,25 @@ fn execute_super_internal<'db>(
             debug!("super() with incomplete base class leads to any");
             return Ok(Inferred::new_any());
         }
-        Ok(Inferred::from_type(DbType::Super {
+        Ok(Inferred::from_type(Type::Super {
             class: Rc::new(c),
             mro_index,
         }))
     };
     let first_type = match next_arg() {
         Some(result) => match get_relevant_type_for_super(i_s.db, result?.as_type(i_s).as_ref()) {
-            DbType::Type(t) => {
-                if !matches!(t.as_ref(), DbType::Class(..)) {
+            Type::Type(t) => {
+                if !matches!(t.as_ref(), Type::Class(..)) {
                     return Err(IssueType::SuperUnsupportedArgument { argument_index: 1 });
                 }
-                if matches!(t.as_ref(), DbType::Class(c)
+                if matches!(t.as_ref(), Type::Class(c)
                             if c.link == i_s.db.python_state.object_node_ref().as_link())
                 {
                     return Err(IssueType::SuperTargetClassHasNoBaseClass);
                 }
                 t.as_ref().clone()
             }
-            DbType::Any => DbType::Any,
+            Type::Any => Type::Any,
             _ => return Err(IssueType::SuperArgument1MustBeTypeObject),
         },
         None => {
@@ -541,9 +541,9 @@ fn execute_super_internal<'db>(
         None => return Err(IssueType::SuperWithSingleArgumentNotSupported),
     };
     let cls = match get_relevant_type_for_super(i_s.db, &instance.as_type(i_s)) {
-        DbType::Self_ => i_s.current_class().unwrap().as_generic_class(i_s.db),
-        DbType::Class(g) => g,
-        DbType::Any => return Ok(Inferred::new_any()),
+        Type::Self_ => i_s.current_class().unwrap().as_generic_class(i_s.db),
+        Type::Class(g) => g,
+        Type::Any => return Ok(Inferred::new_any()),
         _ => return Err(IssueType::SuperUnsupportedArgument { argument_index: 2 }),
     };
     if !first_type
@@ -558,11 +558,11 @@ fn execute_super_internal<'db>(
     success(cls, 0)
 }
 
-fn get_relevant_type_for_super(db: &Database, t: &DbType) -> DbType {
-    if let DbType::Literal(l) = t {
+fn get_relevant_type_for_super(db: &Database, t: &Type) -> Type {
+    if let Type::Literal(l) = t {
         return db.python_state.literal_type(&l.kind);
     }
-    let DbType::TypeVar(usage) = t else {
+    let Type::TypeVar(usage) = t else {
         return t.clone()
     };
     if let TypeVarKind::Bound(bound) = &usage.type_var.kind {

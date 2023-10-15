@@ -60,7 +60,7 @@ pub use type_var_likes::{
 };
 
 thread_local! {
-    static ARBITRARY_TUPLE: Rc<TupleContent> = Rc::new(TupleContent::new_arbitrary_length(DbType::Any));
+    static ARBITRARY_TUPLE: Rc<TupleContent> = Rc::new(TupleContent::new_arbitrary_length(Type::Any));
 }
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -157,7 +157,7 @@ impl TypeArguments {
         }
     }
 
-    pub fn new_arbitrary_length(arg: DbType) -> Self {
+    pub fn new_arbitrary_length(arg: Type) -> Self {
         Self {
             args: TupleTypeArguments::ArbitraryLength(Box::new(arg)),
         }
@@ -170,7 +170,7 @@ impl TypeArguments {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum GenericItem {
-    TypeArgument(DbType),
+    TypeArgument(Type),
     // For TypeVarTuple
     TypeArguments(TypeArguments),
     // For ParamSpec
@@ -180,7 +180,7 @@ pub enum GenericItem {
 impl GenericItem {
     fn is_any(&self) -> bool {
         match self {
-            Self::TypeArgument(t) => matches!(t, DbType::Any),
+            Self::TypeArgument(t) => matches!(t, Type::Any),
             Self::TypeArguments(ts) => ts.args.is_any(),
             Self::ParamSpecArgument(_) => false,
         }
@@ -255,7 +255,7 @@ impl std::ops::Index<TypeVarIndex> for GenericsList {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct UnionEntry {
-    pub type_: DbType,
+    pub type_: Type,
     pub format_index: usize,
 }
 
@@ -274,7 +274,7 @@ impl UnionType {
         }
     }
 
-    pub fn from_types(types: Vec<DbType>) -> Self {
+    pub fn from_types(types: Vec<Type>) -> Self {
         Self::new(
             types
                 .into_iter()
@@ -287,16 +287,16 @@ impl UnionType {
         )
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &DbType> {
+    pub fn iter(&self) -> impl Iterator<Item = &Type> {
         self.entries.iter().map(|u| &u.type_)
     }
 
     pub fn sort_for_priority(&mut self) {
         self.entries.sort_by_key(|t| match t.type_ {
-            DbType::Literal(_) | DbType::EnumMember(_) => -1,
-            DbType::None => 2,
-            DbType::TypeVar(_) => 3,
-            DbType::Any => 4,
+            Type::Literal(_) | Type::EnumMember(_) => -1,
+            Type::None => 2,
+            Type::TypeVar(_) => 3,
+            Type::Any => 4,
             _ => t.type_.has_type_vars().into(),
         });
     }
@@ -310,7 +310,7 @@ impl UnionType {
                 // instead of Literal[1] | Literal[2].
                 let count = self
                     .iter()
-                    .take_while(|t| matches!(t, DbType::Literal(_) | DbType::EnumMember(_)))
+                    .take_while(|t| matches!(t, Type::Literal(_) | Type::EnumMember(_)))
                     .count();
                 if count > 1 {
                     let lit = format!(
@@ -319,8 +319,8 @@ impl UnionType {
                             .by_ref()
                             .take(count)
                             .map(|t| match &t.type_ {
-                                DbType::Literal(l) => l.format_inner(format_data.db),
-                                DbType::EnumMember(m) => Cow::Owned(m.format_inner(format_data)),
+                                Type::Literal(l) => l.format_inner(format_data.db),
+                                Type::EnumMember(m) => Cow::Owned(m.format_inner(format_data)),
                                 _ => unreachable!(),
                             })
                             .collect::<Vec<_>>()
@@ -340,7 +340,7 @@ impl UnionType {
             self.format_as_optional && format_data.style != FormatStyle::MypyRevealType;
         let mut unsorted = iterator
             .filter_map(|e| {
-                (!format_as_optional || !matches!(e.type_, DbType::None))
+                (!format_as_optional || !matches!(e.type_, Type::None))
                     .then(|| (e.format_index, e.type_.format(format_data)))
             })
             .collect::<Vec<_>>();
@@ -414,7 +414,7 @@ impl GenericClass {
 }
 
 enum DbTypeIterator<Iter> {
-    Single(DbType),
+    Single(Type),
     Union(Iter),
     Finished,
 }
@@ -440,13 +440,13 @@ impl<Iter: Iterator<Item = UnionEntry>> Iterator for DbTypeIterator<Iter> {
 }
 
 enum DbTypeRefIterator<'a, Iter> {
-    Single(&'a DbType),
+    Single(&'a Type),
     Union(Iter),
     Finished,
 }
 
-impl<'a, Iter: Iterator<Item = &'a DbType>> Iterator for DbTypeRefIterator<'a, Iter> {
-    type Item = &'a DbType;
+impl<'a, Iter: Iterator<Item = &'a Type>> Iterator for DbTypeRefIterator<'a, Iter> {
+    type Item = &'a Type;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
@@ -465,12 +465,12 @@ impl<'a, Iter: Iterator<Item = &'a DbType>> Iterator for DbTypeRefIterator<'a, I
 // PartialEq is only here for optimizations, it is not a reliable way to check if a type matches
 // with another type.
 #[derive(Debug, Clone, PartialEq)]
-pub enum DbType {
+pub enum Type {
     Class(GenericClass),
     Union(UnionType),
     FunctionOverload(Rc<FunctionOverload>),
     TypeVar(TypeVarUsage),
-    Type(Rc<DbType>),
+    Type(Rc<Type>),
     Tuple(Rc<TupleContent>),
     Callable(Rc<CallableContent>),
     RecursiveAlias(Rc<RecursiveAlias>),
@@ -496,43 +496,43 @@ pub enum DbType {
     Never,
 }
 
-impl DbType {
+impl Type {
     pub fn new_class(link: PointLink, generics: ClassGenerics) -> Self {
         Self::Class(GenericClass { link, generics })
     }
 
     pub fn is_union_like(&self) -> bool {
         match self {
-            DbType::Union(_) => true,
-            DbType::Type(t) if t.as_ref().is_union_like() => true,
+            Type::Union(_) => true,
+            Type::Type(t) if t.as_ref().is_union_like() => true,
             _ => false,
         }
     }
 
     pub fn is_any(&self) -> bool {
-        matches!(self, DbType::Any)
+        matches!(self, Type::Any)
     }
 
     pub fn into_iter_with_unpacked_unions(self) -> impl Iterator<Item = UnionEntry> {
         match self {
-            DbType::Union(items) => DbTypeIterator::Union(items.entries.into_vec().into_iter()),
-            DbType::Never => DbTypeIterator::Finished,
+            Type::Union(items) => DbTypeIterator::Union(items.entries.into_vec().into_iter()),
+            Type::Never => DbTypeIterator::Finished,
             t => DbTypeIterator::Single(t),
         }
     }
 
-    pub fn iter_with_unpacked_unions(&self) -> impl Iterator<Item = &DbType> {
+    pub fn iter_with_unpacked_unions(&self) -> impl Iterator<Item = &Type> {
         match self {
-            DbType::Union(items) => DbTypeRefIterator::Union(items.iter()),
-            DbType::Never => DbTypeRefIterator::Finished,
+            Type::Union(items) => DbTypeRefIterator::Union(items.iter()),
+            Type::Never => DbTypeRefIterator::Finished,
             t => DbTypeRefIterator::Single(t),
         }
     }
 
     pub fn highest_union_format_index(&self) -> usize {
         match self {
-            DbType::Union(items) => items.entries.iter().map(|e| e.format_index).max().unwrap(),
-            DbType::Never => 0,
+            Type::Union(items) => items.entries.iter().map(|e| e.format_index).max().unwrap(),
+            Type::Never => 0,
             _ => 1,
         }
     }
@@ -540,15 +540,15 @@ impl DbType {
     #[inline]
     pub fn maybe_class<'a>(&'a self, db: &'a Database) -> Option<Class<'a>> {
         match self {
-            DbType::Class(c) => Some(c.class(db)),
+            Type::Class(c) => Some(c.class(db)),
             _ => None,
         }
     }
 
     #[inline]
     pub fn maybe_type_of_class<'a>(&'a self, db: &'a Database) -> Option<Class<'a>> {
-        if let DbType::Type(t) = self {
-            if let DbType::Class(c) = t.as_ref() {
+        if let Type::Type(t) = self {
+            if let Type::Class(c) = t.as_ref() {
                 return Some(c.class(db));
             }
         }
@@ -557,20 +557,20 @@ impl DbType {
 
     pub fn maybe_typed_dict(&self, db: &Database) -> Option<Rc<TypedDict>> {
         match self {
-            DbType::TypedDict(td) => Some(td.clone()),
+            Type::TypedDict(td) => Some(td.clone()),
             _ => None,
         }
     }
 
     pub fn maybe_callable(&self, i_s: &InferenceState) -> Option<CallableLike> {
         match self {
-            DbType::Callable(c) => Some(CallableLike::Callable(c.clone())),
-            DbType::Type(t) => match t.as_ref() {
-                DbType::Class(c) => {
+            Type::Callable(c) => Some(CallableLike::Callable(c.clone())),
+            Type::Type(t) => match t.as_ref() {
+                Type::Class(c) => {
                     let cls = c.class(i_s.db);
                     return cls.find_relevant_constructor(i_s).maybe_callable(i_s, cls);
                 }
-                DbType::Dataclass(d) => {
+                Type::Dataclass(d) => {
                     let cls = d.class(i_s.db);
                     if d.options.init {
                         let mut init = Dataclass::__init__(d, i_s.db).clone();
@@ -583,16 +583,16 @@ impl DbType {
                             type_var_dataclass.class =
                                 Class::with_self_generics(i_s.db, cls.node_ref)
                                     .as_generic_class(i_s.db);
-                            init.result_type = DbType::Dataclass(Rc::new(type_var_dataclass));
+                            init.result_type = Type::Dataclass(Rc::new(type_var_dataclass));
                         }
                         return Some(CallableLike::Callable(Rc::new(init)));
                     }
                     return cls.find_relevant_constructor(i_s).maybe_callable(i_s, cls);
                 }
-                DbType::TypedDict(_) => {
+                Type::TypedDict(_) => {
                     todo!("Once this is implemented remove the reveal_type formatting")
                 }
-                DbType::NamedTuple(nt) => {
+                Type::NamedTuple(nt) => {
                     let mut callable = nt.__new__.remove_first_param().unwrap();
                     callable.result_type = (**t).clone();
                     return Some(CallableLike::Callable(Rc::new(callable)));
@@ -612,10 +612,10 @@ impl DbType {
                     None
                 }
             },
-            DbType::Any => Some(CallableLike::Callable(
+            Type::Any => Some(CallableLike::Callable(
                 i_s.db.python_state.any_callable.clone(),
             )),
-            DbType::Class(c) => {
+            Type::Class(c) => {
                 let cls = c.class(i_s.db);
                 debug!("TODO this from is completely wrong and should never be used.");
                 let hack = cls.node_ref;
@@ -624,27 +624,27 @@ impl DbType {
                     .into_maybe_inferred()
                     .and_then(|i| i.as_type(i_s).maybe_callable(i_s))
             }
-            DbType::FunctionOverload(overload) => Some(CallableLike::Overload(overload.clone())),
+            Type::FunctionOverload(overload) => Some(CallableLike::Overload(overload.clone())),
             _ => None,
         }
     }
 
     pub fn is_func_or_overload(&self) -> bool {
-        matches!(self, DbType::Callable(_) | DbType::FunctionOverload(_))
+        matches!(self, Type::Callable(_) | Type::FunctionOverload(_))
     }
 
-    pub fn union(self, db: &Database, other: DbType) -> Self {
+    pub fn union(self, db: &Database, other: Type) -> Self {
         self.union_with_details(db, other, false)
     }
 
     pub fn make_optional(&mut self, db: &Database) {
-        *self = mem::replace(self, Self::Never).union_with_details(db, DbType::None, true);
+        *self = mem::replace(self, Self::Never).union_with_details(db, Type::None, true);
     }
 
     pub fn union_with_details(
         self,
         db: &Database,
-        other: DbType,
+        other: Type,
         mut format_as_optional: bool,
     ) -> Self {
         let entries = match self {
@@ -660,7 +660,7 @@ impl DbType {
                             }
                         }
                     }
-                    DbType::Never => (), // `X | Never is always X`
+                    Type::Never => (), // `X | Never is always X`
                     _ => {
                         if !vec.iter().any(|t| t.type_ == other) {
                             vec.push(UnionEntry {
@@ -689,7 +689,7 @@ impl DbType {
                     }
                 }
                 _ => {
-                    if self == other || matches!(other, DbType::Never) {
+                    if self == other || matches!(other, Type::Never) {
                         return self;
                     } else {
                         vec![
@@ -714,7 +714,7 @@ impl DbType {
         Self::Union(t)
     }
 
-    pub fn union_in_place(&mut self, db: &Database, other: DbType) {
+    pub fn union_in_place(&mut self, db: &Database, other: Type) {
         *self = mem::replace(self, Self::Never).union(db, other);
     }
 
@@ -1081,9 +1081,9 @@ impl DbType {
 
     pub fn maybe_avoid_implicit_literal(&self, db: &Database) -> Option<Self> {
         match self {
-            DbType::Literal(l) if l.implicit => Some(db.python_state.literal_type(&l.kind)),
-            DbType::EnumMember(m) if m.implicit => Some(DbType::Enum(m.enum_.clone())),
-            DbType::Tuple(tup) => {
+            Type::Literal(l) if l.implicit => Some(db.python_state.literal_type(&l.kind)),
+            Type::EnumMember(m) if m.implicit => Some(Type::Enum(m.enum_.clone())),
+            Type::Tuple(tup) => {
                 if let TupleTypeArguments::FixedLength(ts) = &tup.args {
                     let mut gathered = vec![];
                     if ts.iter().any(|type_or| match type_or {
@@ -1099,7 +1099,7 @@ impl DbType {
                             }
                             gathered.push(type_or.clone())
                         }
-                        return Some(DbType::Tuple(Rc::new(TupleContent::new_fixed_length(
+                        return Some(Type::Tuple(Rc::new(TupleContent::new_fixed_length(
                             gathered.into(),
                         ))));
                     }
@@ -1117,8 +1117,8 @@ impl DbType {
 
     pub fn is_literal_or_literal_in_tuple(&self) -> bool {
         self.iter_with_unpacked_unions().any(|t| match t {
-            DbType::Literal(_) | DbType::EnumMember(_) => true,
-            DbType::Tuple(tup) => match &tup.args {
+            Type::Literal(_) | Type::EnumMember(_) => true,
+            Type::Tuple(tup) => match &tup.args {
                 TupleTypeArguments::FixedLength(ts) => ts.iter().any(|type_or| matches!(type_or, TypeOrTypeVarTuple::Type(t) if t.is_literal_or_literal_in_tuple())),
                 TupleTypeArguments::ArbitraryLength(t) => t.is_literal_or_literal_in_tuple(),
             },
@@ -1128,7 +1128,7 @@ impl DbType {
 
     pub fn mro<'db: 'x, 'x>(&'x self, db: &'db Database) -> MroIterator<'db, 'x> {
         match self {
-            DbType::Literal(literal) => MroIterator::new(
+            Type::Literal(literal) => MroIterator::new(
                 db,
                 TypeOrClass::Type(Cow::Borrowed(self)),
                 Generics::None,
@@ -1140,8 +1140,8 @@ impl DbType {
                 },
                 false,
             ),
-            DbType::Class(c) => c.class(db).mro(db),
-            DbType::Tuple(tup) => {
+            Type::Class(c) => c.class(db).mro(db),
+            Type::Tuple(tup) => {
                 let tuple_class = db.python_state.tuple_class(db, tup);
                 MroIterator::new(
                     db,
@@ -1152,14 +1152,14 @@ impl DbType {
                 )
             }
             // TODO? DbType::Dataclass(d) => Some(d.class(db).mro(db)),
-            DbType::TypedDict(td) => MroIterator::new(
+            Type::TypedDict(td) => MroIterator::new(
                 db,
                 TypeOrClass::Type(Cow::Borrowed(self)),
                 Generics::None,
                 db.python_state.typing_typed_dict_bases.iter(),
                 false,
             ),
-            DbType::Enum(e) | DbType::EnumMember(EnumMember { enum_: e, .. }) => {
+            Type::Enum(e) | Type::EnumMember(EnumMember { enum_: e, .. }) => {
                 let class = e.class(db);
                 MroIterator::new(
                     db,
@@ -1273,7 +1273,7 @@ impl DbType {
         calculated_type_args: &CalculatedTypeArguments,
         class: Option<&Class>,
         replace_self_type: ReplaceSelf,
-    ) -> DbType {
+    ) -> Type {
         self.replace_type_var_likes_and_self(
             i_s.db,
             &mut |usage| {
@@ -1295,7 +1295,7 @@ impl DbType {
         callable: &mut impl FnMut(&mut Matcher, &Class) -> bool,
     ) -> bool {
         self.on_any_resolved_context_type(i_s, matcher, &mut |matcher, t| match t {
-            DbType::Class(c) => callable(matcher, &c.class(i_s.db)),
+            Type::Class(c) => callable(matcher, &c.class(i_s.db)),
             _ => false,
         })
     }
@@ -1307,7 +1307,7 @@ impl DbType {
         callable: &mut impl FnMut(&mut Matcher, Rc<TypedDict>) -> bool,
     ) -> bool {
         self.on_any_resolved_context_type(i_s, matcher, &mut |matcher, t| match t {
-            DbType::TypedDict(td) => callable(matcher, td.clone()),
+            Type::TypedDict(td) => callable(matcher, td.clone()),
             _ => false,
         })
     }
@@ -1316,16 +1316,16 @@ impl DbType {
         &self,
         i_s: &InferenceState,
         matcher: &mut Matcher,
-        callable: &mut impl FnMut(&mut Matcher, &DbType) -> bool,
+        callable: &mut impl FnMut(&mut Matcher, &Type) -> bool,
     ) -> bool {
         match self {
-            DbType::Union(union_type) => union_type
+            Type::Union(union_type) => union_type
                 .iter()
                 .any(|t| t.on_any_resolved_context_type(i_s, matcher, callable)),
-            DbType::RecursiveAlias(r) => r
+            Type::RecursiveAlias(r) => r
                 .calculated_db_type(i_s.db)
                 .on_any_resolved_context_type(i_s, matcher, callable),
-            db_type @ DbType::TypeVar(_) => {
+            db_type @ Type::TypeVar(_) => {
                 if matcher.might_have_defined_type_vars() {
                     matcher
                         .replace_type_var_likes_for_nested_context(i_s.db, db_type)
@@ -1340,15 +1340,13 @@ impl DbType {
 
     pub fn check_duplicate_base_class(&self, db: &Database, other: &Self) -> Option<Box<str>> {
         match (self, other) {
-            (DbType::Class(c1), DbType::Class(c2)) => {
+            (Type::Class(c1), Type::Class(c2)) => {
                 (c1.link == c2.link).then(|| Box::from(c1.class(db).name()))
             }
-            (DbType::Type(_), DbType::Type(_)) => Some(Box::from("type")),
-            (DbType::Tuple(_), DbType::Tuple(_)) => Some(Box::from("tuple")),
-            (DbType::Callable(_), DbType::Callable(_)) => Some(Box::from("callable")),
-            (DbType::TypedDict(td1), DbType::TypedDict(td2))
-                if td1.defined_at == td2.defined_at =>
-            {
+            (Type::Type(_), Type::Type(_)) => Some(Box::from("type")),
+            (Type::Tuple(_), Type::Tuple(_)) => Some(Box::from("tuple")),
+            (Type::Callable(_), Type::Callable(_)) => Some(Box::from("callable")),
+            (Type::TypedDict(td1), Type::TypedDict(td2)) if td1.defined_at == td2.defined_at => {
                 Some(td1.name_or_fallback(&FormatData::new_short(db)).into())
             }
             _ => None,
@@ -1379,21 +1377,21 @@ impl DbType {
         };
         use TupleTypeArguments::*;
         match self {
-            DbType::Class(c1) => match other {
-                DbType::Class(c2) if c1.link == c2.link => {
-                    DbType::new_class(c1.link, merge_generics(&c1.generics, &c2.generics))
+            Type::Class(c1) => match other {
+                Type::Class(c2) if c1.link == c2.link => {
+                    Type::new_class(c1.link, merge_generics(&c1.generics, &c2.generics))
                 }
-                _ => DbType::Any,
+                _ => Type::Any,
             },
-            DbType::Union(u1) => match other {
-                DbType::Union(u2) if u1.iter().all(|x| u2.iter().any(|y| x == y)) => {
-                    DbType::Union(u1.clone())
+            Type::Union(u1) => match other {
+                Type::Union(u2) if u1.iter().all(|x| u2.iter().any(|y| x == y)) => {
+                    Type::Union(u1.clone())
                 }
-                _ => DbType::Any,
+                _ => Type::Any,
             },
-            DbType::Tuple(c1) => match other {
-                DbType::Tuple(c2) => {
-                    DbType::Tuple(match (&c1.args, &c2.args) {
+            Type::Tuple(c1) => match other {
+                Type::Tuple(c2) => {
+                    Type::Tuple(match (&c1.args, &c2.args) {
                         (FixedLength(ts1), FixedLength(ts2)) if ts1.len() == ts2.len() => {
                             Rc::new(TupleContent::new_fixed_length(
                                 // Performance issue: Same as above
@@ -1420,15 +1418,13 @@ impl DbType {
                         _ => TupleContent::new_empty(),
                     })
                 }
-                _ => DbType::Any,
+                _ => Type::Any,
             },
-            DbType::Callable(content1) => match other {
-                DbType::Callable(content2) => {
-                    DbType::Callable(db.python_state.any_callable.clone())
-                }
-                _ => DbType::Any,
+            Type::Callable(content1) => match other {
+                Type::Callable(content2) => Type::Callable(db.python_state.any_callable.clone()),
+                _ => Type::Any,
             },
-            _ => DbType::Any,
+            _ => Type::Any,
         }
     }
 }
@@ -1494,17 +1490,17 @@ impl FunctionKind {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TypeOrTypeVarTuple {
-    Type(DbType),
+    Type(Type),
     TypeVarTuple(TypeVarTupleUsage),
 }
 
 impl TypeOrTypeVarTuple {
     #[allow(dead_code)] // TODO remove this
-    fn as_db_type(&self) -> DbType {
+    fn as_db_type(&self) -> Type {
         match self {
             Self::Type(t) => t.clone(),
             Self::TypeVarTuple(t) => {
-                DbType::Tuple(Rc::new(TupleContent::new_fixed_length(Rc::new([
+                Type::Tuple(Rc::new(TupleContent::new_fixed_length(Rc::new([
                     TypeOrTypeVarTuple::TypeVarTuple(t.clone()),
                 ]))))
             }
@@ -1525,7 +1521,7 @@ impl TypeOrTypeVarTuple {
 #[derive(Debug, Clone, PartialEq)]
 pub enum TupleTypeArguments {
     FixedLength(Rc<[TypeOrTypeVarTuple]>),
-    ArbitraryLength(Box<DbType>),
+    ArbitraryLength(Box<Type>),
 }
 
 impl TupleTypeArguments {
@@ -1541,7 +1537,7 @@ impl TupleTypeArguments {
 
     pub fn is_any(&self) -> bool {
         match self {
-            Self::ArbitraryLength(t) => matches!(t.as_ref(), DbType::Any),
+            Self::ArbitraryLength(t) => matches!(t.as_ref(), Type::Any),
             Self::FixedLength(_) => false,
         }
     }
@@ -1564,7 +1560,7 @@ impl TupleTypeArguments {
         }
     }
 
-    fn common_base_type(&self, i_s: &InferenceState) -> DbType {
+    fn common_base_type(&self, i_s: &InferenceState) -> Type {
         match self {
             Self::FixedLength(ts) => common_base_type(i_s, ts.iter()),
             Self::ArbitraryLength(t) => t.as_ref().clone(),
@@ -1600,7 +1596,7 @@ impl TupleContent {
         Self::new(TupleTypeArguments::FixedLength(args))
     }
 
-    pub fn new_arbitrary_length(arg: DbType) -> Self {
+    pub fn new_arbitrary_length(arg: Type) -> Self {
         Self::new(TupleTypeArguments::ArbitraryLength(Box::new(arg)))
     }
 
@@ -1631,21 +1627,21 @@ impl TupleContent {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum StarredParamSpecific {
-    ArbitraryLength(DbType),
+    ArbitraryLength(Type),
     ParamSpecArgs(ParamSpecUsage),
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum DoubleStarredParamSpecific {
-    ValueType(DbType),
+    ValueType(Type),
     ParamSpecKwargs(ParamSpecUsage),
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ParamSpecific {
-    PositionalOnly(DbType),
-    PositionalOrKeyword(DbType),
-    KeywordOnly(DbType),
+    PositionalOnly(Type),
+    PositionalOrKeyword(Type),
+    KeywordOnly(Type),
     Starred(StarredParamSpecific),
     DoubleStarred(DoubleStarredParamSpecific),
 }
@@ -1661,28 +1657,28 @@ impl ParamSpecific {
         }
     }
 
-    pub fn maybe_positional_db_type(&self) -> Option<&DbType> {
+    pub fn maybe_positional_db_type(&self) -> Option<&Type> {
         match self {
             Self::PositionalOnly(t) | Self::PositionalOrKeyword(t) => Some(t),
             _ => None,
         }
     }
 
-    pub fn expect_positional_db_type(self) -> DbType {
+    pub fn expect_positional_db_type(self) -> Type {
         match self {
             Self::PositionalOnly(t) | Self::PositionalOrKeyword(t) => t,
             _ => unreachable!(),
         }
     }
 
-    pub fn expect_positional_db_type_as_ref(&self) -> &DbType {
+    pub fn expect_positional_db_type_as_ref(&self) -> &Type {
         match &self {
             Self::PositionalOnly(t) | Self::PositionalOrKeyword(t) => t,
             _ => unreachable!(),
         }
     }
 
-    pub fn maybe_db_type(&self) -> Option<&DbType> {
+    pub fn maybe_db_type(&self) -> Option<&Type> {
         match self {
             Self::PositionalOnly(t)
             | Self::PositionalOrKeyword(t)
@@ -1818,7 +1814,7 @@ pub struct CallableContent {
     pub kind: FunctionKind,
     pub type_vars: TypeVarLikes,
     pub params: CallableParams,
-    pub result_type: DbType,
+    pub result_type: Type,
 }
 
 impl CallableContent {
@@ -1836,7 +1832,7 @@ impl CallableContent {
             },
             type_vars,
             params: CallableParams::Any,
-            result_type: DbType::Any,
+            result_type: Type::Any,
         }
     }
     pub fn new_any_with_defined_at(db: &Database, defined_at: PointLink) -> Self {
@@ -1869,7 +1865,7 @@ impl CallableContent {
         Some(c)
     }
 
-    pub fn first_positional_type(&self) -> Option<&DbType> {
+    pub fn first_positional_type(&self) -> Option<&Type> {
         match &self.params {
             CallableParams::Simple(params) => {
                 params.first().and_then(|p| match &p.param_specific {
@@ -1882,7 +1878,7 @@ impl CallableContent {
             CallableParams::WithParamSpec(pre, usage) => {
                 todo!()
             }
-            CallableParams::Any => Some(&DbType::Any),
+            CallableParams::Any => Some(&Type::Any),
         }
     }
 
@@ -1963,7 +1959,7 @@ pub struct NewType {
     pub name_string: PointLink,
     type_expression: PointLink,
     // TODO locality needs to be checked, because this is lazily calculated.
-    type_: OnceCell<DbType>,
+    type_: OnceCell<Type>,
 }
 
 impl NewType {
@@ -1975,7 +1971,7 @@ impl NewType {
         }
     }
 
-    pub fn type_(&self, i_s: &InferenceState) -> &DbType {
+    pub fn type_(&self, i_s: &InferenceState) -> &Type {
         self.type_.get_or_init(|| {
             let t =
                 NodeRef::from_link(i_s.db, self.type_expression).compute_new_type_constraint(i_s);
@@ -2093,7 +2089,7 @@ impl Literal {
 pub struct RecursiveAlias {
     pub link: PointLink,
     pub generics: Option<GenericsList>,
-    pub calculated_db_type: OnceCell<DbType>,
+    pub calculated_db_type: OnceCell<Type>,
 }
 
 impl RecursiveAlias {
@@ -2123,7 +2119,7 @@ impl std::cmp::PartialEq for RecursiveAlias {
 #[derive(Debug, Clone, PartialEq)]
 pub enum CallableParams {
     Simple(Rc<[CallableParam]>),
-    WithParamSpec(Rc<[DbType]>, ParamSpecUsage),
+    WithParamSpec(Rc<[Type]>, ParamSpecUsage),
     Any,
 }
 
@@ -2346,12 +2342,12 @@ impl NamedTuple {
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypedDictMember {
     pub name: StringSlice,
-    pub type_: DbType,
+    pub type_: Type,
     pub required: bool,
 }
 
 impl TypedDictMember {
-    pub fn replace_type(&self, callable: impl FnOnce(&DbType) -> DbType) -> Self {
+    pub fn replace_type(&self, callable: impl FnOnce(&Type) -> Type) -> Self {
         Self {
             name: self.name,
             type_: callable(&self.type_),
@@ -2440,7 +2436,7 @@ impl TypedDict {
         Some(format!("{module}.{}", name.as_str(db)))
     }
 
-    pub fn union(&self, i_s: &InferenceState, other: &Self) -> DbType {
+    pub fn union(&self, i_s: &InferenceState, other: &Self) -> Type {
         let mut members = self.members.clone().into_vec();
         'outer: for m2 in other.members.iter() {
             for m1 in members.iter() {
@@ -2448,14 +2444,14 @@ impl TypedDict {
                     if m1.required != m2.required
                         || !m1.type_.is_simple_same_type(i_s, &m2.type_).bool()
                     {
-                        return DbType::Never;
+                        return Type::Never;
                     }
                     continue 'outer;
                 }
             }
             members.push(m2.clone());
         }
-        DbType::TypedDict(Self::new(
+        Type::TypedDict(Self::new(
             None,
             members.into_boxed_slice(),
             self.defined_at,
@@ -2659,13 +2655,13 @@ type CustomBehaviorCallback = for<'db> fn(
     args: &dyn Arguments<'db>,
     result_context: &mut ResultContext,
     on_type_error: OnTypeError<'db, '_>,
-    bound: Option<&DbType>,
+    bound: Option<&Type>,
 ) -> Inferred;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum CustomBehaviorKind {
     Function,
-    Method { bound: Option<Rc<DbType>> },
+    Method { bound: Option<Rc<Type>> },
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -2682,14 +2678,14 @@ impl CustomBehavior {
         }
     }
 
-    pub fn new_method(callback: CustomBehaviorCallback, bound: Option<Rc<DbType>>) -> Self {
+    pub fn new_method(callback: CustomBehaviorCallback, bound: Option<Rc<Type>>) -> Self {
         Self {
             callback,
             kind: CustomBehaviorKind::Method { bound },
         }
     }
 
-    pub fn bind(&self, bound: Rc<DbType>) -> Self {
+    pub fn bind(&self, bound: Rc<Type>) -> Self {
         Self {
             callback: self.callback,
             kind: match self.kind {

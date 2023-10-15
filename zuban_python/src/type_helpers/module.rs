@@ -1,5 +1,5 @@
 use crate::database::{Database, FileIndex, PointLink};
-use crate::type_::{DbType, Namespace};
+use crate::type_::{Namespace, Type};
 
 use crate::debug;
 use crate::file::File;
@@ -107,7 +107,7 @@ pub fn lookup_in_namespace(
     match python_import(db, from_file, &namespace.path, &namespace.content, name) {
         Some(ImportResult::File(file_index)) => LookupResult::FileReference(file_index),
         Some(ImportResult::Namespace(namespace)) => {
-            LookupResult::UnknownName(Inferred::from_type(DbType::Namespace(namespace)))
+            LookupResult::UnknownName(Inferred::from_type(Type::Namespace(namespace)))
         }
         None => {
             debug!("TODO namespace basic lookups");

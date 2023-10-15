@@ -21,7 +21,7 @@ use crate::type_::CallableContent;
 use crate::type_::FunctionKind;
 use crate::type_::TypeVarLike;
 use crate::type_::TypeVarLikes;
-use crate::type_::{DbType, FunctionOverload, NamedTuple, NewType, TupleContent};
+use crate::type_::{FunctionOverload, NamedTuple, NewType, TupleContent, Type};
 use crate::type_helpers::{Class, Module};
 use crate::utils::{InsertOnlyVec, SymbolTable};
 use crate::workspaces::{
@@ -30,7 +30,7 @@ use crate::workspaces::{
 use crate::PythonProject;
 
 thread_local! {
-    static ARBITRARY_TUPLE: Rc<TupleContent> = Rc::new(TupleContent::new_arbitrary_length(DbType::Any));
+    static ARBITRARY_TUPLE: Rc<TupleContent> = Rc::new(TupleContent::new_arbitrary_length(Type::Any));
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -422,16 +422,16 @@ impl LocalityLink {
 // arrays. It therefore uses a lot of Rcs.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ComplexPoint {
-    TypeInstance(DbType),
+    TypeInstance(Type),
     Class(Box<ClassStorage>),
     ClassInfos(Box<ClassInfos>),
     TypeVarLikes(TypeVarLikes),
     FunctionOverload(Box<OverloadDefinition>),
     NewTypeDefinition(Rc<NewType>),
     // e.g. X = NamedTuple('X', []), does not include classes.
-    NamedTupleDefinition(Rc<DbType>),
+    NamedTupleDefinition(Rc<Type>),
     // e.g. X = TypedDict('X', {'x': int}), does not include classes.
-    TypedDictDefinition(Rc<DbType>),
+    TypedDictDefinition(Rc<Type>),
 
     // Relevant for types only (not inference)
     TypeVarLike(TypeVarLike),
@@ -464,7 +464,7 @@ impl OverloadDefinition {
 struct CalculatedTypeAlias {
     // This is intentionally private, it should not be used anywhere else, because the behavior of
     // a type alias that has `is_recursive` is different.
-    db_type: Rc<DbType>,
+    db_type: Rc<Type>,
     is_recursive: bool,
 }
 
@@ -497,7 +497,7 @@ impl TypeAlias {
         type_vars: TypeVarLikes,
         location: PointLink,
         name: Option<PointLink>,
-        db_type: Rc<DbType>,
+        db_type: Rc<Type>,
         is_recursive: bool,
     ) -> Self {
         let slf = Self::new(type_vars, location, name);
@@ -521,7 +521,7 @@ impl TypeAlias {
         matches!(self.state.get().unwrap(), TypeAliasState::Invalid)
     }
 
-    pub fn db_type_if_valid(&self) -> &DbType {
+    pub fn db_type_if_valid(&self) -> &Type {
         match self.state.get().unwrap() {
             TypeAliasState::Invalid => unreachable!(),
             TypeAliasState::Valid(a) => a.db_type.as_ref(),
@@ -532,7 +532,7 @@ impl TypeAlias {
         self.state.get().is_none()
     }
 
-    pub fn set_valid(&self, db_type: DbType, is_recursive: bool) {
+    pub fn set_valid(&self, db_type: Type, is_recursive: bool) {
         self.state
             .set(TypeAliasState::Valid(CalculatedTypeAlias {
                 db_type: Rc::new(db_type),
@@ -552,7 +552,7 @@ impl TypeAlias {
     pub fn application_allowed(&self) -> bool {
         !self.is_invalid()
             && match self.db_type_if_valid() {
-                DbType::Class(_) | DbType::TypedDict(_) => true,
+                Type::Class(_) | Type::TypedDict(_) => true,
                 _ => false,
             }
     }
@@ -919,7 +919,7 @@ pub enum ClassType {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct BaseClass {
-    pub type_: DbType,
+    pub type_: Type,
     pub is_direct_base: bool,
 }
 
@@ -962,8 +962,8 @@ mod tests {
         assert_eq!(size_of::<ClassGenerics>(), 24);
         assert_eq!(size_of::<UnionType>(), 24);
         assert_eq!(size_of::<TupleContent>(), 40);
-        assert_eq!(size_of::<DbType>(), 40); // TODO Would like it to be 32, but ClassGenerics is 24
-        assert_eq!(size_of::<ComplexPoint>(), size_of::<DbType>());
+        assert_eq!(size_of::<Type>(), 40); // TODO Would like it to be 32, but ClassGenerics is 24
+        assert_eq!(size_of::<ComplexPoint>(), size_of::<Type>());
         assert_eq!(size_of::<ClassStorage>(), 120);
         assert_eq!(size_of::<ClassInfos>(), 48);
         assert_eq!(size_of::<PointLink>(), 8);

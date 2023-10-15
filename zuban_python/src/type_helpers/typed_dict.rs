@@ -12,7 +12,7 @@ use crate::{
     inferred::Inferred,
     matching::{FormatData, LookupKind, LookupResult, Matcher, OnTypeError, ResultContext},
     node_ref::NodeRef,
-    type_::{CustomBehavior, DbType, StringSlice, TypedDict, TypedDictGenerics, TypedDictMember},
+    type_::{CustomBehavior, StringSlice, Type, TypedDict, TypedDictGenerics, TypedDictMember},
     utils::join_with_commas,
 };
 
@@ -88,7 +88,7 @@ impl<'a> TypedDictHelper<'a> {
             }
             first_arg.infer(
                 i_s,
-                &mut ResultContext::Known(&DbType::TypedDict(self.0.clone())),
+                &mut ResultContext::Known(&Type::TypedDict(self.0.clone())),
             );
             self.0.clone()
         } else {
@@ -107,7 +107,7 @@ impl<'a> TypedDictHelper<'a> {
                 self.0.clone()
             }
         };
-        Inferred::from_type(DbType::TypedDict(td))
+        Inferred::from_type(Type::TypedDict(td))
     }
 
     pub fn get_item(
@@ -159,8 +159,8 @@ impl<'a> TypedDictHelper<'a> {
         name: &str,
         kind: LookupKind,
     ) -> LookupResult {
-        let bound = || Rc::new(DbType::TypedDict(self.0.clone()));
-        LookupResult::UnknownName(Inferred::from_type(DbType::CustomBehavior(match name {
+        let bound = || Rc::new(Type::TypedDict(self.0.clone()));
+        LookupResult::UnknownName(Inferred::from_type(Type::CustomBehavior(match name {
             "get" | "pop" | "setdefault" => {
                 CustomBehavior::new_method(typed_dict_get, Some(bound()))
             }
@@ -315,7 +315,7 @@ fn new_typed_dict_internal<'db>(
 
     let type_var_likes = comp.into_type_vars(|_, _| ());
     Some(Inferred::new_unsaved_complex(
-        ComplexPoint::TypedDictDefinition(Rc::new(DbType::TypedDict(TypedDict::new_definition(
+        ComplexPoint::TypedDictDefinition(Rc::new(Type::TypedDict(TypedDict::new_definition(
             name,
             members.into_boxed_slice(),
             args_node_ref.as_link(),
@@ -342,9 +342,9 @@ pub fn typed_dict_get<'db>(
     args: &dyn Arguments<'db>,
     result_context: &mut ResultContext,
     on_type_error: OnTypeError<'db, '_>,
-    bound: Option<&DbType>,
+    bound: Option<&Type>,
 ) -> Inferred {
-    let DbType::TypedDict(td) = bound.unwrap() else {
+    let Type::TypedDict(td) = bound.unwrap() else {
         unreachable!();
     };
     typed_dict_method_with_fallback(
@@ -376,7 +376,7 @@ fn typed_dict_get_internal<'db>(
             }
             _ => return None,
         },
-        None => Some(DbType::None),
+        None => Some(Type::None),
     };
 
     let inferred_name = first_arg.maybe_positional_arg(i_s, &mut ResultContext::Unknown)?;
@@ -427,9 +427,9 @@ fn typed_dict_setitem<'db>(
     args: &dyn Arguments<'db>,
     result_context: &mut ResultContext,
     on_type_error: OnTypeError<'db, '_>,
-    bound: Option<&DbType>,
+    bound: Option<&Type>,
 ) -> Inferred {
-    let DbType::TypedDict(td) = bound.unwrap() else {
+    let Type::TypedDict(td) = bound.unwrap() else {
         unreachable!();
     };
     typed_dict_method_with_fallback(
@@ -493,9 +493,9 @@ fn typed_dict_delitem<'db>(
     args: &dyn Arguments<'db>,
     result_context: &mut ResultContext,
     on_type_error: OnTypeError<'db, '_>,
-    bound: Option<&DbType>,
+    bound: Option<&Type>,
 ) -> Inferred {
-    let DbType::TypedDict(td) = bound.unwrap() else {
+    let Type::TypedDict(td) = bound.unwrap() else {
         unreachable!();
     };
     typed_dict_method_with_fallback(
@@ -541,7 +541,7 @@ fn typed_dict_delitem_internal<'db>(
         args.as_node_ref()
             .add_issue(i_s, IssueType::TypedDictKeysMustBeStringLiteral);
     }
-    Some(Inferred::from_type(DbType::None))
+    Some(Inferred::from_type(Type::None))
 }
 
 fn typed_dict_update<'db>(
@@ -549,9 +549,9 @@ fn typed_dict_update<'db>(
     args: &dyn Arguments<'db>,
     result_context: &mut ResultContext,
     on_type_error: OnTypeError<'db, '_>,
-    bound: Option<&DbType>,
+    bound: Option<&Type>,
 ) -> Inferred {
-    let DbType::TypedDict(td) = bound.unwrap() else {
+    let Type::TypedDict(td) = bound.unwrap() else {
         unreachable!();
     };
     typed_dict_method_with_fallback(
@@ -580,9 +580,7 @@ fn typed_dict_update_internal<'db>(
         td.defined_at,
         td.generics.clone(),
     );
-    let inf_key = args.maybe_single_positional_arg(
-        i_s,
-        &mut ResultContext::Known(&DbType::TypedDict(expected)),
-    )?;
+    let inf_key = args
+        .maybe_single_positional_arg(i_s, &mut ResultContext::Known(&Type::TypedDict(expected)))?;
     Some(Inferred::new_none())
 }

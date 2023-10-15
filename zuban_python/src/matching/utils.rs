@@ -1,7 +1,7 @@
 use crate::database::Database;
 use crate::inference_state::InferenceState;
 use crate::type_::{
-    CallableContent, DbType, GenericItem, ReplaceSelf, TypeVarLikeUsage, TypeVarLikes,
+    CallableContent, GenericItem, ReplaceSelf, Type, TypeVarLikeUsage, TypeVarLikes,
 };
 use crate::type_helpers::Class;
 
@@ -9,10 +9,10 @@ use super::Matcher;
 
 pub fn replace_class_type_vars(
     db: &Database,
-    t: &DbType,
+    t: &Type,
     attribute_class: &Class,
     self_instance: ReplaceSelf,
-) -> DbType {
+) -> Type {
     t.replace_type_var_likes_and_self(
         db,
         &mut |usage| {
@@ -29,7 +29,7 @@ pub fn replace_class_type_vars_in_callable(
     func_class: Option<&Class>,
     as_self_instance: ReplaceSelf,
 ) -> CallableContent {
-    DbType::replace_type_var_likes_and_self_for_callable(
+    Type::replace_type_var_likes_and_self_for_callable(
         callable,
         db,
         &mut |usage| {
@@ -57,9 +57,9 @@ pub fn maybe_class_usage(
 pub fn create_signature_without_self_for_callable(
     i_s: &InferenceState,
     callable: &CallableContent,
-    instance: &DbType,
+    instance: &Type,
     func_class: &Class,
-    first_type: &DbType,
+    first_type: &Type,
 ) -> Option<CallableContent> {
     let matcher = Matcher::new_callable_matcher(callable);
     create_signature_without_self(
@@ -80,9 +80,9 @@ pub fn create_signature_without_self_for_callable(
 fn match_self_type(
     i_s: &InferenceState,
     matcher: &mut Matcher,
-    instance: &DbType,
+    instance: &Type,
     func_class: &Class,
-    first_type: &DbType,
+    first_type: &Type,
 ) -> Option<()> {
     let expected = replace_class_type_vars(i_s.db, first_type, func_class, &|| {
         func_class.as_db_type(i_s.db)
@@ -97,15 +97,15 @@ pub fn create_signature_without_self(
     i_s: &InferenceState,
     mut matcher: Matcher,
     get_callable: impl FnOnce() -> CallableContent,
-    instance: &DbType,
+    instance: &Type,
     func_class: &Class,
-    first_type: &DbType,
+    first_type: &Type,
 ) -> Option<CallableContent> {
     match_self_type(i_s, &mut matcher, instance, func_class, first_type)?;
     let mut callable = get_callable();
     if !callable.type_vars.is_empty() {
         let calculated = matcher.unwrap_calculated_type_args();
-        callable = DbType::replace_type_var_likes_and_self_for_callable(
+        callable = Type::replace_type_var_likes_and_self_for_callable(
             &callable,
             i_s.db,
             &mut |usage| {
@@ -146,10 +146,10 @@ pub fn create_signature_without_self(
 
 pub fn calculate_property_return(
     i_s: &InferenceState,
-    instance: &DbType,
+    instance: &Type,
     func_class: &Class,
     callable: &CallableContent,
-) -> Option<DbType> {
+) -> Option<Type> {
     let first_type = callable.first_positional_type().unwrap();
     let mut matcher = Matcher::new_callable_matcher(callable);
     match_self_type(i_s, &mut matcher, instance, func_class, first_type)?;

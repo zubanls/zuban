@@ -35,7 +35,7 @@ use crate::{
     database::Database,
     inference_state::InferenceState,
     inferred::Inferred,
-    type_::{DbType, TypeOrTypeVarTuple},
+    type_::{Type, TypeOrTypeVarTuple},
     type_helpers::Class,
 };
 
@@ -97,7 +97,7 @@ pub type OnTypeErrorCallback<'db, 'a> = &'a dyn Fn(
     Box<str>,
     Box<str>,
 );
-pub type OnLookupError<'a> = &'a dyn Fn(&DbType);
+pub type OnLookupError<'a> = &'a dyn Fn(&Type);
 
 #[derive(Debug, Clone)]
 pub enum IteratorContent {

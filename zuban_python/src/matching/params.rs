@@ -8,8 +8,8 @@ use crate::database::{Database, PointLink};
 use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::type_::{
-    CallableParam, CallableParams, DbType, DoubleStarredParamSpecific, ParamSpecUsage,
-    ParamSpecific, StarredParamSpecific, TypeVarLikes, Variance,
+    CallableParam, CallableParams, DoubleStarredParamSpecific, ParamSpecUsage, ParamSpecific,
+    StarredParamSpecific, Type, TypeVarLikes, Variance,
 };
 
 pub trait Param<'x>: Copy + std::fmt::Debug {
@@ -92,7 +92,7 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
     variance: Variance,
 ) -> Match {
     let match_with_variance =
-        |i_s: &_, matcher: &mut _, a: &Option<Cow<DbType>>, b: &Option<Cow<DbType>>, variance| {
+        |i_s: &_, matcher: &mut _, a: &Option<Cow<Type>>, b: &Option<Cow<Type>>, variance| {
             if let Some(a) = a {
                 if let Some(b) = b {
                     return a.matches(i_s, matcher, b, variance);
@@ -101,7 +101,7 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
             Match::new_true()
         };
 
-    let match_ = |i_s: &_, matcher: &mut _, a: &Option<Cow<DbType>>, b: &Option<Cow<DbType>>| {
+    let match_ = |i_s: &_, matcher: &mut _, a: &Option<Cow<Type>>, b: &Option<Cow<Type>>| {
         match_with_variance(i_s, matcher, a, b, variance)
     };
 
@@ -329,7 +329,7 @@ fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
         WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u)) => todo!(),
         WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(u)) => todo!(),
     };
-    let check_type = |i_s: &InferenceState<'db, '_>, t1: Option<&DbType>, p2: P2| {
+    let check_type = |i_s: &InferenceState<'db, '_>, t1: Option<&Type>, p2: P2| {
         if let Some(t1) = t1 {
             if let Some(t2) = to_type(i_s.db, p2) {
                 return t1.overlaps(i_s, &t2);
@@ -760,21 +760,21 @@ pub struct InferrableParam<'db, 'a, P> {
 
 #[derive(Debug)]
 pub enum WrappedParamSpecific<'a> {
-    PositionalOnly(Option<Cow<'a, DbType>>),
-    PositionalOrKeyword(Option<Cow<'a, DbType>>),
-    KeywordOnly(Option<Cow<'a, DbType>>),
+    PositionalOnly(Option<Cow<'a, Type>>),
+    PositionalOrKeyword(Option<Cow<'a, Type>>),
+    KeywordOnly(Option<Cow<'a, Type>>),
     Starred(WrappedStarred<'a>),
     DoubleStarred(WrappedDoubleStarred<'a>),
 }
 
 #[derive(Debug)]
 pub enum WrappedStarred<'a> {
-    ArbitraryLength(Option<Cow<'a, DbType>>),
+    ArbitraryLength(Option<Cow<'a, Type>>),
     ParamSpecArgs(&'a ParamSpecUsage),
 }
 
 #[derive(Debug)]
 pub enum WrappedDoubleStarred<'a> {
-    ValueType(Option<Cow<'a, DbType>>),
+    ValueType(Option<Cow<'a, Type>>),
     ParamSpecKwargs(&'a ParamSpecUsage),
 }

@@ -9,9 +9,9 @@ use crate::database::{Database, PointLink};
 use crate::inference_state::InferenceState;
 use crate::matching::Param;
 use crate::type_::{
-    common_base_type_of_type_var_tuple_with_items, CallableParams, DbType, GenericItem,
-    ParamSpecArgument, ParamSpecific, TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarKind,
-    TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
+    common_base_type_of_type_var_tuple_with_items, CallableParams, GenericItem, ParamSpecArgument,
+    ParamSpecific, Type, TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarKind, TypeVarLike,
+    TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
 };
 use crate::type_helpers::{Callable, Class, Function};
 
@@ -22,7 +22,7 @@ pub enum FunctionOrCallable<'a> {
 }
 
 impl<'db: 'a, 'a> FunctionOrCallable<'a> {
-    pub fn result_type(&self, i_s: &InferenceState<'db, '_>) -> Cow<'a, DbType> {
+    pub fn result_type(&self, i_s: &InferenceState<'db, '_>) -> Cow<'a, Type> {
         match self {
             Self::Function(f) => f.result_type(i_s),
             Self::Callable(c) => Cow::Borrowed(&c.content.result_type),
@@ -88,7 +88,7 @@ pub enum BoundKind {
     TypeVar(TypeVarBound),
     TypeVarTuple(TypeArguments),
     ParamSpecArgument(ParamSpecArgument),
-    Uncalculated { fallback: Option<DbType> },
+    Uncalculated { fallback: Option<Type> },
 }
 
 impl Default for BoundKind {
@@ -135,7 +135,7 @@ impl CalculatedTypeVarLike {
                     GenericItem::TypeArgument(fallback)
                 } else {
                     match type_var_like {
-                        TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(DbType::Never),
+                        TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(Type::Never),
                         // TODO TypeVarTuple: this feels wrong, should maybe be never?
                         TypeVarLike::TypeVarTuple(_) => {
                             GenericItem::TypeArguments(TypeArguments::new_fixed_length(Rc::new([])))
@@ -178,18 +178,18 @@ impl TypeVarMatcher {
         }
     }
 
-    pub fn set_all_contained_type_vars_to_any(&mut self, i_s: &InferenceState, type_: &DbType) {
+    pub fn set_all_contained_type_vars_to_any(&mut self, i_s: &InferenceState, type_: &Type) {
         type_.search_type_vars(&mut |t| {
             if t.in_definition() == self.match_in_definition {
                 let current = &mut self.calculated_type_vars[t.index().as_usize()];
                 if !current.calculated() {
                     current.type_ = match t {
                         TypeVarLikeUsage::TypeVar(_) => {
-                            BoundKind::TypeVar(TypeVarBound::Invariant(DbType::Any))
+                            BoundKind::TypeVar(TypeVarBound::Invariant(Type::Any))
                         }
-                        TypeVarLikeUsage::TypeVarTuple(_) => BoundKind::TypeVarTuple(
-                            TypeArguments::new_arbitrary_length(DbType::Any),
-                        ),
+                        TypeVarLikeUsage::TypeVarTuple(_) => {
+                            BoundKind::TypeVarTuple(TypeArguments::new_arbitrary_length(Type::Any))
+                        }
                         TypeVarLikeUsage::ParamSpec(_) => {
                             BoundKind::ParamSpecArgument(ParamSpecArgument::new_any())
                         }
@@ -204,7 +204,7 @@ impl TypeVarMatcher {
         i_s: &InferenceState,
         type_var_usage: &TypeVarUsage,
         type_var: &TypeVar,
-        value_type: &DbType,
+        value_type: &Type,
         variance: Variance,
     ) -> Match {
         let current = &mut self.calculated_type_vars[type_var_usage.index.as_usize()];
@@ -236,7 +236,7 @@ impl TypeVarMatcher {
 pub fn check_constraints(
     i_s: &InferenceState,
     type_var: &Rc<TypeVar>,
-    value_type: &DbType,
+    value_type: &Type,
     variance: Variance,
 ) -> Result<TypeVarBound, Match> {
     let mut mismatch_constraints = false;
@@ -246,7 +246,7 @@ pub fn check_constraints(
             mismatch_constraints |= !bound.is_simple_super_type_of(i_s, value_type).bool();
         }
         TypeVarKind::Constraints(constraints) => {
-            if let DbType::TypeVar(t2) = value_type {
+            if let Type::TypeVar(t2) = value_type {
                 if let TypeVarKind::Constraints(constraints2) = &t2.type_var.kind {
                     if constraints2.iter().all(|r2| {
                         constraints
@@ -267,7 +267,7 @@ pub fn check_constraints(
                         if matched_constraint.is_some() {
                             // This means that any is involved and multiple constraints
                             // are matching. Therefore just return Any.
-                            return Ok(TypeVarBound::Invariant(DbType::Any));
+                            return Ok(TypeVarBound::Invariant(Type::Any));
                         }
                         if value_type.has_any(i_s) {
                             matched_constraint = Some(constraint);

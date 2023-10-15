@@ -8,7 +8,7 @@ use crate::getitem::{SliceType, SliceTypeContent, Slices};
 use crate::inferred::Inferred;
 use crate::matching::{IteratorContent, Matcher, ResultContext};
 use crate::node_ref::NodeRef;
-use crate::type_::{DbType, GenericItem, ParamSpecUsage, StringSlice, TypedDict, Variance};
+use crate::type_::{GenericItem, ParamSpecUsage, StringSlice, Type, TypedDict, Variance};
 use crate::{debug, InferenceState};
 use parsa_python_ast::{
     Argument as ASTArgument, ArgumentsDetails, ArgumentsIterator, Comprehension, Expression,
@@ -343,7 +343,7 @@ impl<'db, 'a> Argument<'db, 'a> {
                 .inference(&i_s.use_mode_of(func_i_s))
                 .infer_comprehension(comprehension.unpack(), ComprehensionKind::Generator)*/,
             ArgumentKind::ParamSpec { usage, .. } => {
-                Inferred::from_type(DbType::ParamSpecArgs(usage.clone()))
+                Inferred::from_type(Type::ParamSpecArgs(usage.clone()))
             }
             ArgumentKind::Overridden { inferred, .. } => inferred.clone(),
         }
@@ -562,7 +562,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                 .infer_expression(starred_expr.expression());
                             let node_ref = NodeRef::new(file, starred_expr.index());
                             return match inf.as_type(i_s).as_ref() {
-                                DbType::ParamSpecArgs(usage) => {
+                                Type::ParamSpecArgs(usage) => {
                                     // TODO check for the next arg being **P.kwargs
                                     iterator.next();
                                     Some(BaseArgumentReturn::Argument(ArgumentKind::ParamSpec {
@@ -620,7 +620,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                         .into(),
                                     ),
                                 );
-                                DbType::Any
+                                Type::Any
                             };
                             return Some(BaseArgumentReturn::ArgsKwargs(
                                 ArgsKwargsIterator::Kwargs {
@@ -887,7 +887,7 @@ enum ArgsKwargsIterator<'a> {
     None,
 }
 
-pub fn unpack_star_star(i_s: &InferenceState, t: &DbType) -> Option<(DbType, DbType)> {
+pub fn unpack_star_star(i_s: &InferenceState, t: &Type) -> Option<(Type, Type)> {
     let wanted_cls = i_s.db.python_state.supports_keys_and_get_item_class(i_s.db);
     let mut matcher = Matcher::new_class_matcher(i_s, wanted_cls);
     let matches = wanted_cls

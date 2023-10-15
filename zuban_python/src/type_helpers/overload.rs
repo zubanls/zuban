@@ -13,7 +13,7 @@ use crate::{
         FunctionOrCallable, OnTypeError, ResultContext, SignatureMatch,
     },
     node_ref::NodeRef,
-    type_::{DbType, FunctionOverload, ReplaceSelf},
+    type_::{FunctionOverload, ReplaceSelf, Type},
 };
 
 use super::{format_pretty_callable, Callable, Class};
@@ -26,7 +26,7 @@ pub struct OverloadedFunction<'a> {
 
 pub enum OverloadResult<'a> {
     Single(Callable<'a>),
-    Union(DbType),
+    Union(Type),
     NotFound,
 }
 
@@ -35,7 +35,7 @@ pub enum UnionMathResult {
     FirstSimilarIndex(usize),
     Match {
         first_similar_index: usize,
-        result: DbType,
+        result: Type,
     },
     NoMatch,
 }
@@ -265,10 +265,10 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         inferred: Inferred::new_unknown(),
                     },
                 });
-                let DbType::Union(u) = inf.as_type(i_s).into_owned() else {
+                let Type::Union(u) = inf.as_type(i_s).into_owned() else {
                     unreachable!()
                 };
-                let mut unioned = DbType::Never;
+                let mut unioned = Type::Never;
                 let mut first_similar = None;
                 let mut mismatch = false;
                 for entry in u.entries.into_vec().into_iter() {
@@ -379,7 +379,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                                         &|| {
                                             class
                                                 .map(|c| c.as_db_type(i_s.db))
-                                                .unwrap_or(DbType::Self_)
+                                                .unwrap_or(Type::Self_)
                                         },
                                     )
                                     .as_db_type(i_s),
@@ -412,7 +412,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         i_s.db,
                         callable,
                         Some(&class),
-                        &|| DbType::Self_,
+                        &|| Type::Self_,
                     );
                     if let Some(init_cls) = init_cls {
                         callable.result_type = init_cls.as_db_type(i_s.db)
@@ -426,7 +426,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
     }
 
     fn fallback_type(&self, i_s: &InferenceState<'db, '_>) -> Inferred {
-        let mut t: Option<DbType> = None;
+        let mut t: Option<Type> = None;
         for callable in self.overload.iter_functions() {
             let f_t = &callable.result_type;
             if let Some(old_t) = t.take() {
@@ -442,9 +442,9 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         &self,
         i_s: &InferenceState<'db, '_>,
         replace_self_type: Option<ReplaceSelf>,
-    ) -> DbType {
+    ) -> Type {
         if let Some(replace_self_type) = replace_self_type {
-            DbType::FunctionOverload(FunctionOverload::new(
+            Type::FunctionOverload(FunctionOverload::new(
                 self.overload
                     .iter_functions()
                     .map(|callable| {
@@ -458,11 +458,11 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     .collect(),
             ))
         } else {
-            DbType::FunctionOverload(self.overload.clone())
+            Type::FunctionOverload(self.overload.clone())
         }
     }
 
-    pub fn as_type(&self, i_s: &InferenceState<'db, '_>) -> DbType {
+    pub fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type {
         self.as_db_type(i_s, None)
     }
 

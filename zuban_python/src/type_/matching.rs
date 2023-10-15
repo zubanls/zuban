@@ -8,12 +8,12 @@ use crate::{
     type_helpers::{Class, TypeOrClass},
 };
 
-use super::{CallableContent, ClassGenerics, DbType, TupleContent, TypeVarKind, UnionType};
+use super::{CallableContent, ClassGenerics, TupleContent, Type, TypeVarKind, UnionType};
 
-impl DbType {
+impl Type {
     pub fn overlaps(&self, i_s: &InferenceState, other: &Self) -> bool {
         match other {
-            DbType::TypeVar(t2_usage) => {
+            Type::TypeVar(t2_usage) => {
                 return match &t2_usage.type_var.kind {
                     TypeVarKind::Unrestricted => true,
                     TypeVarKind::Bound(bound) => self.overlaps(i_s, bound),
@@ -22,64 +22,64 @@ impl DbType {
                     }
                 }
             }
-            DbType::Union(union_type2) => return union_type2.iter().any(|t| self.overlaps(i_s, t)),
-            DbType::Any => return false, // This is a fallback
+            Type::Union(union_type2) => return union_type2.iter().any(|t| self.overlaps(i_s, t)),
+            Type::Any => return false, // This is a fallback
             _ => (),
         }
 
         match self {
-            DbType::Class(c) => match other {
-                DbType::Class(c) => Self::overlaps_class(i_s, c.class(i_s.db), c.class(i_s.db)),
+            Type::Class(c) => match other {
+                Type::Class(c) => Self::overlaps_class(i_s, c.class(i_s.db), c.class(i_s.db)),
                 _ => false,
             },
-            DbType::Type(t1) => match other {
-                DbType::Type(t2) => t1.overlaps(i_s, t2),
+            Type::Type(t1) => match other {
+                Type::Type(t2) => t1.overlaps(i_s, t2),
                 _ => false,
             },
-            DbType::Callable(c1) => match other {
-                DbType::Callable(c2) => {
+            Type::Callable(c1) => match other {
+                Type::Callable(c2) => {
                     c1.result_type.overlaps(i_s, &c2.result_type)
                         && has_overlapping_params(i_s, &c1.params, &c2.params)
                 }
-                DbType::Type(t2) => self.overlaps(i_s, &t2),
+                Type::Type(t2) => self.overlaps(i_s, &t2),
                 _ => false,
             },
-            DbType::Any => true,
-            DbType::Never => todo!(),
-            DbType::Literal(literal1) => match other {
-                DbType::Literal(literal2) => literal1.value(i_s.db) == literal2.value(i_s.db),
+            Type::Any => true,
+            Type::Never => todo!(),
+            Type::Literal(literal1) => match other {
+                Type::Literal(literal2) => literal1.value(i_s.db) == literal2.value(i_s.db),
                 _ => i_s
                     .db
                     .python_state
                     .literal_type(&literal1.kind)
                     .overlaps(i_s, other),
             },
-            DbType::None => matches!(other, DbType::None),
-            DbType::TypeVar(t1) => match &t1.type_var.kind {
+            Type::None => matches!(other, Type::None),
+            Type::TypeVar(t1) => match &t1.type_var.kind {
                 TypeVarKind::Unrestricted => true,
                 TypeVarKind::Bound(bound) => bound.overlaps(i_s, other),
                 TypeVarKind::Constraints(constraints) => todo!("{other:?}"),
             },
-            DbType::Tuple(t1) => match other {
-                DbType::Tuple(t2) => Self::overlaps_tuple(i_s, t1, t2),
+            Type::Tuple(t1) => match other {
+                Type::Tuple(t2) => Self::overlaps_tuple(i_s, t1, t2),
                 _ => false,
             },
-            DbType::Union(union) => union.iter().any(|t| t.overlaps(i_s, other)),
-            DbType::FunctionOverload(intersection) => todo!(),
-            DbType::NewType(_) => todo!(),
-            DbType::RecursiveAlias(_) => todo!(),
-            DbType::Self_ => false, // TODO this is wrong
-            DbType::ParamSpecArgs(usage) => todo!(),
-            DbType::ParamSpecKwargs(usage) => todo!(),
-            DbType::Module(file_index) => todo!(),
-            DbType::Namespace(file_index) => todo!(),
-            DbType::Dataclass(_) => todo!(),
-            DbType::TypedDict(_) => todo!(),
-            DbType::NamedTuple(_) => todo!(),
-            DbType::Enum(_) => todo!(),
-            DbType::EnumMember(_) => todo!(),
-            DbType::Super { .. } => todo!(),
-            DbType::CustomBehavior(_) => false,
+            Type::Union(union) => union.iter().any(|t| t.overlaps(i_s, other)),
+            Type::FunctionOverload(intersection) => todo!(),
+            Type::NewType(_) => todo!(),
+            Type::RecursiveAlias(_) => todo!(),
+            Type::Self_ => false, // TODO this is wrong
+            Type::ParamSpecArgs(usage) => todo!(),
+            Type::ParamSpecKwargs(usage) => todo!(),
+            Type::Module(file_index) => todo!(),
+            Type::Namespace(file_index) => todo!(),
+            Type::Dataclass(_) => todo!(),
+            Type::TypedDict(_) => todo!(),
+            Type::NamedTuple(_) => todo!(),
+            Type::Enum(_) => todo!(),
+            Type::EnumMember(_) => todo!(),
+            Type::Super { .. } => todo!(),
+            Type::CustomBehavior(_) => false,
         }
     }
 
@@ -91,74 +91,74 @@ impl DbType {
         variance: Variance,
     ) -> Match {
         match self {
-            DbType::Class(c) => Self::matches_class_against_type(
+            Type::Class(c) => Self::matches_class_against_type(
                 i_s,
                 matcher,
                 &c.class(i_s.db),
                 value_type,
                 variance,
             ),
-            DbType::Type(t1) => match value_type {
-                DbType::Type(t2) => t1.matches(i_s, matcher, t2, variance).similar_if_false(),
+            Type::Type(t1) => match value_type {
+                Type::Type(t2) => t1.matches(i_s, matcher, t2, variance).similar_if_false(),
                 _ => Match::new_false(),
             },
-            DbType::TypeVar(t1) => {
+            Type::TypeVar(t1) => {
                 if matcher.is_matching_reverse() {
                     Match::new_false()
                 } else {
                     matcher.match_or_add_type_var(i_s, t1, value_type, variance)
                 }
             }
-            DbType::Callable(c1) => {
+            Type::Callable(c1) => {
                 Self::matches_callable_against_arbitrary(i_s, matcher, c1, value_type, variance)
             }
-            DbType::None => matches!(value_type, DbType::None).into(),
-            DbType::Any if matcher.is_matching_reverse() => {
+            Type::None => matches!(value_type, Type::None).into(),
+            Type::Any if matcher.is_matching_reverse() => {
                 debug!("TODO write a test for this. (reverse matching any)");
                 matcher.set_all_contained_type_vars_to_any(i_s, self);
                 Match::True { with_any: true }
             }
-            DbType::Any => Match::new_true(),
-            DbType::Never => matches!(value_type, DbType::Never).into(),
-            DbType::Tuple(t1) => match value_type {
-                DbType::Tuple(t2) => {
+            Type::Any => Match::new_true(),
+            Type::Never => matches!(value_type, Type::Never).into(),
+            Type::Tuple(t1) => match value_type {
+                Type::Tuple(t2) => {
                     Self::matches_tuple(i_s, matcher, t1, t2, variance).similar_if_false()
                 }
-                DbType::NamedTuple(t2) => {
+                Type::NamedTuple(t2) => {
                     Self::matches_tuple(i_s, matcher, t1, &t2.as_tuple(), variance)
                         .similar_if_false()
                 }
                 _ => Match::new_false(),
             },
-            DbType::Union(union_type1) => {
+            Type::Union(union_type1) => {
                 self.matches_union(i_s, matcher, union_type1, value_type, variance)
             }
-            DbType::FunctionOverload(overload) if variance == Variance::Invariant => self
+            Type::FunctionOverload(overload) if variance == Variance::Invariant => self
                 .matches_internal(i_s, matcher, value_type, Variance::Covariant)
                 .or(|| value_type.matches_internal(i_s, matcher, self, Variance::Covariant)),
-            DbType::FunctionOverload(overload) => Match::all(overload.iter_functions(), |c1| {
+            Type::FunctionOverload(overload) => Match::all(overload.iter_functions(), |c1| {
                 Self::matches_callable_against_arbitrary(i_s, matcher, c1, value_type, variance)
             }),
-            DbType::Literal(literal1) => match value_type {
-                DbType::Literal(literal2) => {
+            Type::Literal(literal1) => match value_type {
+                Type::Literal(literal2) => {
                     (literal1.value(i_s.db) == literal2.value(i_s.db)).into()
                 }
                 _ => Match::new_false(),
             },
-            DbType::NewType(new_type1) => match value_type {
-                DbType::NewType(new_type2) => (new_type1 == new_type2).into(),
+            Type::NewType(new_type1) => match value_type {
+                Type::NewType(new_type2) => (new_type1 == new_type2).into(),
                 _ => Match::new_false(),
             },
-            t1 @ DbType::RecursiveAlias(rec1) => {
+            t1 @ Type::RecursiveAlias(rec1) => {
                 match value_type {
-                    t2 @ DbType::Class(_) => {
+                    t2 @ Type::Class(_) => {
                         // Classes like aliases can also be recursive in mypy, like `class B(List[B])`.
                         matcher.avoid_recursion(t1, t2, |matcher| {
                             let g = rec1.calculated_db_type(i_s.db);
                             g.matches_internal(i_s, matcher, value_type, variance)
                         })
                     }
-                    t @ DbType::RecursiveAlias(rec2) => matcher.avoid_recursion(t1, t, |matcher| {
+                    t @ Type::RecursiveAlias(rec2) => matcher.avoid_recursion(t1, t, |matcher| {
                         let t1 = rec1.calculated_db_type(i_s.db);
                         let t2 = rec2.calculated_db_type(i_s.db);
                         t1.matches_internal(i_s, matcher, &t2, variance)
@@ -169,28 +169,28 @@ impl DbType {
                     }
                 }
             }
-            DbType::Self_ => match value_type {
-                DbType::Self_ => Match::new_true(),
+            Type::Self_ => match value_type {
+                Type::Self_ => Match::new_true(),
                 _ => Match::new_false(),
             },
-            DbType::ParamSpecArgs(usage1) => match value_type {
-                DbType::ParamSpecArgs(usage2) => (usage1 == usage2).into(),
+            Type::ParamSpecArgs(usage1) => match value_type {
+                Type::ParamSpecArgs(usage2) => (usage1 == usage2).into(),
                 _ => Match::new_false(),
             },
-            DbType::ParamSpecKwargs(usage1) => match value_type {
-                DbType::ParamSpecKwargs(usage2) => (usage1 == usage2).into(),
+            Type::ParamSpecKwargs(usage1) => match value_type {
+                Type::ParamSpecKwargs(usage2) => (usage1 == usage2).into(),
                 _ => Match::new_false(),
             },
-            DbType::Dataclass(d1) => match value_type {
-                DbType::Dataclass(d2) => {
+            Type::Dataclass(d1) => match value_type {
+                Type::Dataclass(d2) => {
                     let c1 = d1.class(i_s.db);
                     let c2 = d2.class(i_s.db);
                     Self::matches_class(i_s, matcher, &c1, &c2, Variance::Covariant)
                 }
                 _ => Match::new_false(),
             },
-            DbType::TypedDict(d1) => match value_type {
-                DbType::TypedDict(d2) => {
+            Type::TypedDict(d1) => match value_type {
+                Type::TypedDict(d2) => {
                     let mut matches = Match::new_true();
                     for m1 in d1.members.iter() {
                         if let Some(m2) = d2.find_member(i_s.db, m1.name.as_str(i_s.db)) {
@@ -206,8 +206,8 @@ impl DbType {
                 }
                 _ => Match::new_false(),
             },
-            DbType::NamedTuple(nt1) => match value_type {
-                DbType::NamedTuple(nt2) => {
+            Type::NamedTuple(nt1) => match value_type {
+                Type::NamedTuple(nt2) => {
                     let c1 = &nt1.__new__;
                     let c2 = &nt2.__new__;
                     if !c1.type_vars.is_empty() || !c2.type_vars.is_empty() {
@@ -218,19 +218,19 @@ impl DbType {
                 }
                 _ => Match::new_false(),
             },
-            DbType::Enum(e1) => match value_type {
-                DbType::Enum(e2) => (e1 == e2).into(),
-                DbType::EnumMember(member) => (e1 == &member.enum_).into(),
+            Type::Enum(e1) => match value_type {
+                Type::Enum(e2) => (e1 == e2).into(),
+                Type::EnumMember(member) => (e1 == &member.enum_).into(),
                 _ => Match::new_false(),
             },
-            DbType::EnumMember(m1) => match value_type {
-                DbType::EnumMember(m2) => (m1.is_same_member(m2)).into(),
+            Type::EnumMember(m1) => match value_type {
+                Type::EnumMember(m2) => (m1.is_same_member(m2)).into(),
                 _ => Match::new_false(),
             },
-            DbType::Module(file_index) => Match::new_false(),
-            DbType::Namespace(file_index) => todo!(),
-            DbType::Super { .. } => todo!(),
-            DbType::CustomBehavior(_) => Match::new_false(),
+            Type::Module(file_index) => Match::new_false(),
+            Type::Namespace(file_index) => todo!(),
+            Type::Super { .. } => todo!(),
+            Type::CustomBehavior(_) => Match::new_false(),
         }
     }
 
@@ -302,7 +302,7 @@ impl DbType {
                     if !matcher.ignore_promotions() {
                         return self.check_promotion(i_s, matcher, class2.node_ref);
                     }
-                } else if let DbType::Literal(literal) = value_type {
+                } else if let Type::Literal(literal) = value_type {
                     if !matcher.ignore_promotions() {
                         return self.check_promotion(
                             i_s,
@@ -341,7 +341,7 @@ impl DbType {
             self.is_same_type(
                 i_s,
                 matcher,
-                &DbType::new_class(cls_node_ref.as_link(), ClassGenerics::None),
+                &Type::new_class(cls_node_ref.as_link(), ClassGenerics::None),
             )
             .or(|| self.check_promotion(i_s, matcher, cls_node_ref))
         } else {
@@ -418,15 +418,13 @@ impl DbType {
         // 3. Check if the value_type is special like Any or a Typevar and needs to be checked
         //    again.
         match value_type {
-            DbType::Any if matcher.is_matching_reverse() => return Match::new_true(),
-            DbType::Any => {
+            Type::Any if matcher.is_matching_reverse() => return Match::new_true(),
+            Type::Any => {
                 matcher.set_all_contained_type_vars_to_any(i_s, self);
                 return Match::True { with_any: true };
             }
-            DbType::None if !i_s.db.python_state.project.strict_optional => {
-                return Match::new_true()
-            }
-            DbType::TypeVar(t2) => {
+            Type::None if !i_s.db.python_state.project.strict_optional => return Match::new_true(),
+            Type::TypeVar(t2) => {
                 if matcher.is_matching_reverse() {
                     return matcher.match_or_add_type_var(i_s, t2, self, variance.invert());
                 }
@@ -451,7 +449,7 @@ impl DbType {
                 }
             }
             // Necessary to e.g. match int to Literal[1, 2]
-            DbType::Union(u2)
+            Type::Union(u2)
                 if variance == Variance::Covariant
                 // Union matching was already done.
                 && !self.is_union_like() =>
@@ -472,17 +470,17 @@ impl DbType {
                 }
                 return result.unwrap();
             }
-            DbType::NewType(n2) => {
+            Type::NewType(n2) => {
                 let t = n2.type_(i_s);
                 return self.matches(i_s, matcher, t, variance);
             }
-            DbType::Never if variance == Variance::Covariant => return Match::new_true(), // Never is assignable to anything
-            DbType::Self_ if variance == Variance::Covariant => {
+            Type::Never if variance == Variance::Covariant => return Match::new_true(), // Never is assignable to anything
+            Type::Self_ if variance == Variance::Covariant => {
                 if let Some(cls) = i_s.current_class() {
                     return self.simple_matches(i_s, &cls.as_db_type(i_s.db), variance);
                 }
             }
-            DbType::Module(_) => {
+            Type::Module(_) => {
                 m = m.or(|| {
                     self.matches(
                         i_s,
@@ -506,10 +504,10 @@ impl DbType {
         variance: Variance,
     ) -> Match {
         match value_type {
-            DbType::TypeVar(type_var2) if matcher.is_matching_reverse() => {
+            Type::TypeVar(type_var2) if matcher.is_matching_reverse() => {
                 matcher.match_or_add_type_var(i_s, type_var2, self, variance.invert())
             }
-            DbType::Union(u2) => match variance {
+            Type::Union(u2) => match variance {
                 Variance::Covariant => {
                     let mut matches = Match::new_true();
                     for g2 in u2.iter() {
@@ -555,11 +553,11 @@ impl DbType {
             if !result.bool() {
                 let mut check = |i_s: &InferenceState, n| {
                     let t1 = class1.nth_type_argument(i_s.db, n);
-                    if matches!(t1, DbType::Any) {
+                    if matches!(t1, Type::Any) {
                         return false;
                     }
                     let t2 = class2.nth_type_argument(i_s.db, n);
-                    if matches!(t2, DbType::Any) {
+                    if matches!(t2, Type::Any) {
                         return false;
                     }
                     t1.matches(i_s, matcher, &t2, variance).bool()
@@ -585,21 +583,21 @@ impl DbType {
         i_s: &InferenceState,
         matcher: &mut Matcher,
         class1: &Class,
-        value_type: &DbType,
+        value_type: &Type,
         variance: Variance,
     ) -> Match {
         match value_type {
-            DbType::Class(c2) => {
+            Type::Class(c2) => {
                 Self::matches_class(i_s, matcher, class1, &c2.class(i_s.db), variance)
             }
-            DbType::Type(t2) => {
-                if let DbType::Class(c2) = t2.as_ref() {
+            Type::Type(t2) => {
+                if let Type::Class(c2) = t2.as_ref() {
                     match c2.class(i_s.db).use_cached_class_infos(i_s.db).metaclass {
                         MetaclassState::Some(link) => {
                             return class1.as_db_type(i_s.db).matches(
                                 i_s,
                                 matcher,
-                                &DbType::new_class(link, ClassGenerics::None),
+                                &Type::new_class(link, ClassGenerics::None),
                                 variance,
                             );
                         }
@@ -611,7 +609,7 @@ impl DbType {
                 }
                 Match::new_false()
             }
-            DbType::Literal(literal) if variance == Variance::Covariant => {
+            Type::Literal(literal) if variance == Variance::Covariant => {
                 Self::matches_class_against_type(
                     i_s,
                     matcher,
@@ -633,7 +631,7 @@ impl DbType {
     ) -> Match {
         debug_assert_ne!(variance, Variance::Contravariant);
         match value_type {
-            DbType::FunctionOverload(overload) if variance == Variance::Covariant => {
+            Type::FunctionOverload(overload) if variance == Variance::Covariant => {
                 if matcher.is_matching_reverse() {
                     todo!()
                 }
@@ -641,7 +639,7 @@ impl DbType {
                     Self::matches_callable(i_s, matcher, c1, c2)
                 })
             }
-            DbType::Type(t2) if c1.params == CallableParams::Any => {
+            Type::Type(t2) if c1.params == CallableParams::Any => {
                 c1.result_type.is_super_type_of(i_s, matcher, t2)
             }
             _ => match value_type.maybe_callable(i_s) {
@@ -651,7 +649,7 @@ impl DbType {
                         i_s,
                         matcher,
                         c1,
-                        &DbType::FunctionOverload(overload),
+                        &Type::FunctionOverload(overload),
                         variance,
                     )
                 }
@@ -748,7 +746,7 @@ impl DbType {
     pub fn overlaps_class(i_s: &InferenceState, class1: Class, class2: Class) -> bool {
         let check = {
             #[inline]
-            |i_s: &InferenceState, t1: &DbType, t2: &DbType| {
+            |i_s: &InferenceState, t1: &Type, t2: &Type| {
                 t1.maybe_class(i_s.db)
                     .and_then(|c1| {
                         t2.maybe_class(i_s.db).map(|c2| {

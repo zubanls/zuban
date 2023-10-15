@@ -4,8 +4,8 @@ use std::rc::Rc;
 use crate::database::{Database, TypeAlias};
 
 use crate::type_::{
-    DbType, GenericItem, GenericsList, ParamSpecUsage, RecursiveAlias, TypeVarLike,
-    TypeVarLikeUsage, TypeVarTupleUsage, TypeVarUsage,
+    GenericItem, GenericsList, ParamSpecUsage, RecursiveAlias, Type, TypeVarLike, TypeVarLikeUsage,
+    TypeVarTupleUsage, TypeVarUsage,
 };
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -18,9 +18,9 @@ pub enum LookupKind {
 }
 
 impl TypeAlias {
-    pub fn as_db_type_and_set_type_vars_any(&self, db: &Database) -> DbType {
+    pub fn as_db_type_and_set_type_vars_any(&self, db: &Database) -> Type {
         if self.is_recursive() {
-            return DbType::RecursiveAlias(Rc::new(RecursiveAlias::new(
+            return Type::RecursiveAlias(Rc::new(RecursiveAlias::new(
                 self.location,
                 (!self.type_vars.is_empty()).then(|| {
                     GenericsList::new_generics(
@@ -48,9 +48,9 @@ impl TypeAlias {
         db: &Database,
         remove_recursive_wrapper: bool,
         callable: &mut impl FnMut(TypeVarLikeUsage) -> GenericItem,
-    ) -> Cow<DbType> {
+    ) -> Cow<Type> {
         if self.is_recursive() && !remove_recursive_wrapper {
-            return Cow::Owned(DbType::RecursiveAlias(Rc::new(RecursiveAlias::new(
+            return Cow::Owned(Type::RecursiveAlias(Rc::new(RecursiveAlias::new(
                 self.location,
                 (!self.type_vars.is_empty()).then(|| {
                     GenericsList::new_generics(
@@ -95,7 +95,7 @@ impl TypeAlias {
 }
 
 impl RecursiveAlias {
-    pub fn calculated_db_type<'db: 'slf, 'slf>(&'slf self, db: &'db Database) -> &'slf DbType {
+    pub fn calculated_db_type<'db: 'slf, 'slf>(&'slf self, db: &'db Database) -> &'slf Type {
         let alias = self.type_alias(db);
         if self.generics.is_none() {
             alias.db_type_if_valid()

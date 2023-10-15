@@ -15,7 +15,7 @@ use crate::inferred::UnionValue;
 use crate::matching::{FormatData, Matcher, MismatchReason, ResultContext};
 use crate::node_ref::NodeRef;
 use crate::type_::{
-    ClassGenerics, DbType, GenericItem, GenericsList, Literal, LiteralKind, LiteralValue, TypedDict,
+    ClassGenerics, GenericItem, GenericsList, Literal, LiteralKind, LiteralValue, Type, TypedDict,
 };
 use crate::utils::join_with_commas;
 use crate::{debug, new_class, Inferred};
@@ -24,8 +24,8 @@ impl<'db> Inference<'db, '_, '_> {
     pub fn create_list_or_set_generics<'x>(
         &mut self,
         elements: impl Iterator<Item = StarLikeExpression<'x>>,
-    ) -> DbType {
-        let mut result: Option<DbType> = None;
+    ) -> Type {
+        let mut result: Option<Type> = None;
         for child in elements {
             let from_stars = |inferred: Inferred, from_index| {
                 inferred
@@ -56,7 +56,7 @@ impl<'db> Inference<'db, '_, '_> {
             }
         }
         // Just because we defined a final int somewhere, we should probably not infer that.
-        result.unwrap_or(DbType::Never)
+        result.unwrap_or(Type::Never)
     }
 
     pub fn infer_list_literal_from_context(
@@ -71,7 +71,7 @@ impl<'db> Inference<'db, '_, '_> {
                 let mut fallback = None;
                 type_.on_any_resolved_context_type(i_s, matcher, &mut |matcher, t| {
                     match t {
-                        DbType::Class(c)
+                        Type::Class(c)
                             if c.link == i_s.db.python_state.list_node_ref().as_link() =>
                         {
                             let list_cls = c.class(i_s.db);
@@ -151,7 +151,7 @@ impl<'db> Inference<'db, '_, '_> {
         matcher: &mut Matcher,
         typed_dict: Rc<TypedDict>,
         dict: Dict,
-    ) -> Option<DbType> {
+    ) -> Option<Type> {
         let i_s = self.i_s;
         let mut extra_keys = vec![];
         let mut missing_keys: Vec<_> = typed_dict
@@ -192,7 +192,7 @@ impl<'db> Inference<'db, '_, '_> {
                     let node_ref =
                         NodeRef::new(self.file, dict_starred.index()).to_db_lifetime(i_s.db);
                     match inf.as_type(i_s).as_ref() {
-                        DbType::TypedDict(td) => {
+                        Type::TypedDict(td) => {
                             for member in td.members.iter() {
                                 let key = member.name.as_str(i_s.db);
                                 if member.required {
@@ -236,16 +236,16 @@ impl<'db> Inference<'db, '_, '_> {
                 },
             )
         }
-        Some(DbType::TypedDict(typed_dict))
+        Some(Type::TypedDict(typed_dict))
     }
 
     fn check_dict_literal_with_context(
         &mut self,
         matcher: &mut Matcher,
-        key_t: &DbType,
-        value_t: &DbType,
+        key_t: &Type,
+        value_t: &Type,
         dict: Dict,
-    ) -> Option<DbType> {
+    ) -> Option<Type> {
         let mut new_key_context = ResultContext::Known(&key_t);
         let mut new_value_context = ResultContext::Known(&value_t);
 
@@ -349,7 +349,7 @@ impl<'db> Inference<'db, '_, '_> {
         matcher: &mut Matcher,
         typed_dict: Rc<TypedDict>,
         args: &dyn Arguments<'db>,
-    ) -> Option<DbType> {
+    ) -> Option<Type> {
         let i_s = self.i_s;
         let mut extra_keys = vec![];
         for arg in args.iter() {
@@ -391,7 +391,7 @@ impl<'db> Inference<'db, '_, '_> {
                 },
             )
         }
-        Some(DbType::TypedDict(typed_dict))
+        Some(Type::TypedDict(typed_dict))
     }
 
     pub fn dict_literal_without_context(&mut self, dict: Dict) -> Inferred {
@@ -400,8 +400,8 @@ impl<'db> Inference<'db, '_, '_> {
         if matches!(dict_elements, DictElementIterator::Empty) {
             return Inferred::from_type(new_class!(
                 i_s.db.python_state.dict_node_ref().as_link(),
-                DbType::Any,
-                DbType::Any,
+                Type::Any,
+                Type::Any,
             ));
         }
         let mut values = Inferred::new_any();
@@ -451,13 +451,13 @@ impl<'db> Inference<'db, '_, '_> {
     }
 }
 
-fn is_any_dict(db: &Database, t: &DbType) -> bool {
+fn is_any_dict(db: &Database, t: &Type) -> bool {
     match t {
-        DbType::Any => true,
-        DbType::Class(c) => {
+        Type::Any => true,
+        Type::Class(c) => {
             c.link == db.python_state.dict_node_ref().as_link() && c.generics.all_any()
         }
-        DbType::Union(u) => u.iter().all(|t| is_any_dict(db, t)),
+        Type::Union(u) => u.iter().all(|t| is_any_dict(db, t)),
         _ => false,
     }
 }
@@ -465,10 +465,10 @@ fn is_any_dict(db: &Database, t: &DbType) -> bool {
 fn check_list_with_context<'db>(
     i_s: &InferenceState<'db, '_>,
     matcher: &mut Matcher,
-    generic_t: &DbType,
+    generic_t: &Type,
     file: &PythonFile,
     list: List,
-) -> Option<DbType> {
+) -> Option<Type> {
     let iterator = list.unpack();
     if matches!(iterator, StarLikeExpressionIterator::Empty) {
         return Some(new_class!(

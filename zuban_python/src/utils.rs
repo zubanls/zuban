@@ -39,7 +39,7 @@ macro_rules! debug {
 #[macro_export]
 macro_rules! new_class {
     ($link:expr, $($arg:expr),+,) => {
-        DbType::new_class(
+        Type::new_class(
             $link,
             ClassGenerics::List(GenericsList::new_generics(Rc::new([
                 $(GenericItem::TypeArgument($arg)),*

@@ -4,13 +4,13 @@ use super::{matches_params, FormatData, Match, Matcher, ParamsStyle};
 use crate::database::Database;
 use crate::inference_state::InferenceState;
 use crate::type_::{
-    match_tuple_type_arguments, CallableParams, DbType, GenericItem, ParamSpecArgument,
+    match_tuple_type_arguments, CallableParams, GenericItem, ParamSpecArgument, Type,
     TypeArguments, TypeVarLike, Variance,
 };
 
 #[derive(Debug)]
 pub enum Generic<'a> {
-    TypeArgument(Cow<'a, DbType>),
+    TypeArgument(Cow<'a, Type>),
     TypeVarTuple(Cow<'a, TypeArguments>),
     ParamSpecArgument(Cow<'a, ParamSpecArgument>),
 }
@@ -106,7 +106,7 @@ impl<'a> Generic<'a> {
         }
     }
 
-    pub fn expect_type_argument(self) -> Cow<'a, DbType> {
+    pub fn expect_type_argument(self) -> Cow<'a, Type> {
         match self {
             Self::TypeArgument(t) => t,
             _ => todo!(),
@@ -116,7 +116,7 @@ impl<'a> Generic<'a> {
     pub fn maybe_simple_type_var_like(&self) -> Option<TypeVarLike> {
         match self {
             Self::TypeArgument(t) => match t.as_ref() {
-                DbType::TypeVar(t) => Some(TypeVarLike::TypeVar(t.type_var.clone())),
+                Type::TypeVar(t) => Some(TypeVarLike::TypeVar(t.type_var.clone())),
                 _ => None,
             },
             Self::TypeVarTuple(ts) => todo!(),

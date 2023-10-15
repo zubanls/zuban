@@ -10,7 +10,7 @@ use crate::inferred::Inferred;
 use crate::matching::{CouldBeALiteral, FormatData, OnTypeError, ResultContext};
 use crate::node_ref::NodeRef;
 use crate::type_::{
-    ClassGenerics, DbType, FormatStyle, NewType, ParamSpec, TypeVar, TypeVarKind, TypeVarLike,
+    ClassGenerics, FormatStyle, NewType, ParamSpec, Type, TypeVar, TypeVarKind, TypeVarLike,
     TypeVarName, TypeVarTuple, TypedDictGenerics, Variance,
 };
 use crate::utils::join_with_commas;
@@ -25,7 +25,7 @@ pub fn execute_type<'db>(
     if let Some(x) = iterator.next() {
         todo!()
     } else if let Some(first) = first {
-        Inferred::from_type(DbType::Type(Rc::new(
+        Inferred::from_type(Type::Type(Rc::new(
             first
                 .infer(i_s, &mut ResultContext::Unknown)
                 .as_db_type(i_s),
@@ -122,10 +122,10 @@ impl RevealTypeFunction {
             i_s,
             match result_context.could_be_a_literal(i_s) {
                 CouldBeALiteral::Yes { implicit: false } => match t.as_ref() {
-                    DbType::Literal(l) => {
+                    Type::Literal(l) => {
                         let mut l = l.clone();
                         l.implicit = false;
-                        Cow::Owned(DbType::Literal(l))
+                        Cow::Owned(Type::Literal(l))
                     }
                     _ => t,
                 },
@@ -144,12 +144,12 @@ impl RevealTypeFunction {
     }
 }
 
-fn reveal_type_info(i_s: &InferenceState, t: &DbType) -> Box<str> {
+fn reveal_type_info(i_s: &InferenceState, t: &Type) -> Box<str> {
     let format_data = FormatData::with_style(i_s.db, FormatStyle::MypyRevealType);
-    if let DbType::Type(type_) = t {
+    if let Type::Type(type_) = t {
         match type_.as_ref() {
-            DbType::Class(c) if c.generics != ClassGenerics::NotDefinedYet => (),
-            DbType::TypedDict(td) => {
+            Type::Class(c) if c.generics != ClassGenerics::NotDefinedYet => (),
+            Type::TypedDict(td) => {
                 let tvs = match &td.generics {
                     TypedDictGenerics::NotDefinedYet(tvs) => Some(tvs.format(&format_data)),
                     _ => None,

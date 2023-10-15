@@ -1,9 +1,9 @@
 use crate::{inference_state::InferenceState, matching::Matcher};
 
-use super::{DbType, UnionEntry, UnionType};
+use super::{Type, UnionEntry, UnionType};
 
-impl DbType {
-    pub fn simplified_union(&self, i_s: &InferenceState, other: &Self) -> DbType {
+impl Type {
+    pub fn simplified_union(&self, i_s: &InferenceState, other: &Self) -> Type {
         // Check out how mypy does it:
         // https://github.com/python/mypy/blob/ff81a1c7abc91d9984fc73b9f2b9eab198001c8e/mypy/typeops.py#L413-L486
         let highest_union_format_index = self
@@ -20,11 +20,11 @@ impl DbType {
 
 pub fn simplified_union_from_iterators(
     i_s: &InferenceState,
-    types: impl Iterator<Item = (usize, DbType)>,
+    types: impl Iterator<Item = (usize, Type)>,
     // We need this to make sure that the unions within the iterator can be properly ordered.
     highest_union_format_index: usize,
     format_as_optional: bool,
-) -> DbType {
+) -> Type {
     let multiply = highest_union_format_index + 1;
     let mut result = merge_simplified_union_type(
         i_s,
@@ -49,7 +49,7 @@ pub fn simplified_union_from_iterators(
 
 enum MergeSimplifiedUnionResult {
     NotDone(Vec<UnionEntry>),
-    Done(DbType),
+    Done(Type),
 }
 
 fn merge_simplified_union_type(
@@ -70,14 +70,14 @@ fn merge_simplified_union_type(
             continue;
         }
         match &additional.type_ {
-            DbType::RecursiveAlias(r1) if r1.generics.is_some() => {
+            Type::RecursiveAlias(r1) if r1.generics.is_some() => {
                 // Recursive aliases need special handling, because the normal subtype
                 // checking will call this function again if generics are available to
                 // cache the type. In that case we just avoid complex matching and use
                 // a simple heuristic. This won't affect correctness, it might just
                 // display a bigger union than necessary.
                 for entry in new_types.iter() {
-                    if let DbType::RecursiveAlias(r2) = &entry.type_ {
+                    if let Type::RecursiveAlias(r2) = &entry.type_ {
                         if r1 == r2 {
                             continue 'outer;
                         }
@@ -90,7 +90,7 @@ fn merge_simplified_union_type(
                         continue;
                     }
                     match &current.type_ {
-                        DbType::RecursiveAlias(r) if r.generics.is_some() => (),
+                        Type::RecursiveAlias(r) if r.generics.is_some() => (),
                         t => {
                             if additional
                                 .type_
@@ -120,7 +120,7 @@ fn merge_simplified_union_type(
     }
     if finished {
         MergeSimplifiedUnionResult::Done(match new_types.len() {
-            0 => DbType::Never,
+            0 => Type::Never,
             1 => new_types.into_iter().next().unwrap().type_,
             _ => {
                 let mut union = UnionType {
@@ -128,7 +128,7 @@ fn merge_simplified_union_type(
                     entries: new_types.into(),
                 };
                 union.sort_for_priority();
-                DbType::Union(union)
+                Type::Union(union)
             }
         })
     } else {

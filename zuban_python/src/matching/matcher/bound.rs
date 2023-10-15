@@ -1,18 +1,18 @@
 use super::super::{FormatData, Match};
 use crate::database::Database;
 use crate::inference_state::InferenceState;
-use crate::type_::{DbType, FormatStyle, TypeVar, TypeVarKind, Variance};
+use crate::type_::{FormatStyle, Type, TypeVar, TypeVarKind, Variance};
 
 #[derive(Debug, Clone)]
 pub enum TypeVarBound {
-    Invariant(DbType),
-    Upper(DbType),
-    UpperAndLower(DbType, DbType),
-    Lower(DbType),
+    Invariant(Type),
+    Upper(Type),
+    UpperAndLower(Type, Type),
+    Lower(Type),
 }
 
 impl TypeVarBound {
-    pub fn new(t: DbType, variance: Variance, type_var: &TypeVar) -> Self {
+    pub fn new(t: Type, variance: Variance, type_var: &TypeVar) -> Self {
         match variance {
             Variance::Invariant => Self::Invariant(t),
             Variance::Covariant => match &type_var.kind {
@@ -31,11 +31,11 @@ impl TypeVarBound {
         }
     }
 
-    pub fn into_db_type(self, db: &Database) -> DbType {
+    pub fn into_db_type(self, db: &Database) -> Type {
         match self {
             // If the upper bound is a literal, we do not want to use the lower bound.
-            Self::UpperAndLower(t @ DbType::Literal(_), _) => t,
-            Self::Lower(DbType::Literal(l)) | Self::UpperAndLower(_, DbType::Literal(l))
+            Self::UpperAndLower(t @ Type::Literal(_), _) => t,
+            Self::Lower(Type::Literal(l)) | Self::UpperAndLower(_, Type::Literal(l))
                 if l.implicit =>
             {
                 db.python_state.literal_type(&l.kind)
@@ -44,7 +44,7 @@ impl TypeVarBound {
         }
     }
 
-    fn update_lower_bound(&mut self, lower: DbType) {
+    fn update_lower_bound(&mut self, lower: Type) {
         match self {
             Self::Upper(_) => *self = Self::Upper(lower),
             Self::Lower(upper) | Self::UpperAndLower(_, upper) => {
@@ -54,7 +54,7 @@ impl TypeVarBound {
         }
     }
 
-    fn update_upper_bound(&mut self, upper: DbType) {
+    fn update_upper_bound(&mut self, upper: Type) {
         match self {
             Self::Lower(_) => *self = Self::Lower(upper),
             Self::Upper(lower) | Self::UpperAndLower(lower, _) => {
@@ -67,7 +67,7 @@ impl TypeVarBound {
     pub fn merge_or_mismatch(
         &mut self,
         i_s: &InferenceState,
-        other: &DbType,
+        other: &Type,
         variance: Variance,
     ) -> Match {
         // First check if the value is between the bounds.
@@ -122,7 +122,7 @@ impl TypeVarBound {
                             if let Some(new) = t.common_sub_type(i_s, other) {
                                 *t = new;
                             } else {
-                                *t = DbType::Never;
+                                *t = Type::Never;
                             }
                             return Match::new_true();
                         }

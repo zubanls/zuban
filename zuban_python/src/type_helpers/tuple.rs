@@ -9,7 +9,7 @@ use crate::inferred::Inferred;
 use crate::matching::{IteratorContent, LookupKind, LookupResult, OnTypeError, ResultContext};
 use crate::node_ref::NodeRef;
 use crate::type_::{
-    simplified_union_from_iterators, CustomBehavior, DbType, TupleContent, TupleTypeArguments,
+    simplified_union_from_iterators, CustomBehavior, TupleContent, TupleTypeArguments, Type,
     TypeOrTypeVarTuple,
 };
 use crate::type_helpers::Instance;
@@ -44,18 +44,18 @@ impl<'a> Tuple<'a> {
     pub fn lookup(&self, i_s: &InferenceState, node_ref: NodeRef, name: &str) -> LookupResult {
         match name {
             "__mul__" | "__rmul__" => {
-                return LookupResult::UnknownName(Inferred::from_type(DbType::CustomBehavior(
+                return LookupResult::UnknownName(Inferred::from_type(Type::CustomBehavior(
                     CustomBehavior::new_method(
                         tuple_mul,
-                        Some(Rc::new(DbType::Tuple(self.content.clone()))),
+                        Some(Rc::new(Type::Tuple(self.content.clone()))),
                     ),
                 )));
             }
             "__add__" => {
-                return LookupResult::UnknownName(Inferred::from_type(DbType::CustomBehavior(
+                return LookupResult::UnknownName(Inferred::from_type(Type::CustomBehavior(
                     CustomBehavior::new_method(
                         tuple_add,
-                        Some(Rc::new(DbType::Tuple(self.content.clone()))),
+                        Some(Rc::new(Type::Tuple(self.content.clone()))),
                     ),
                 )));
             }
@@ -166,7 +166,7 @@ impl<'a> Tuple<'a> {
                 }
                 args @ TupleTypeArguments::FixedLength(ts) => slice
                     .callback_on_tuple_indexes(i_s, ts, |start, end, step| {
-                        Inferred::from_type(DbType::Tuple(Rc::new(TupleContent::new_fixed_length(
+                        Inferred::from_type(Type::Tuple(Rc::new(TupleContent::new_fixed_length(
                             match step {
                                 1 => ts[start..end].into(),
                                 n if n > 1 => {
@@ -180,7 +180,7 @@ impl<'a> Tuple<'a> {
                         ))))
                     })
                     .unwrap_or_else(|| {
-                        Inferred::from_type(DbType::Tuple(Rc::new(
+                        Inferred::from_type(Type::Tuple(Rc::new(
                             TupleContent::new_arbitrary_length(simplified_union_of_tuple_entries(
                                 i_s, ts,
                             )),
@@ -191,10 +191,7 @@ impl<'a> Tuple<'a> {
     }
 }
 
-fn simplified_union_of_tuple_entries(
-    i_s: &InferenceState,
-    entries: &[TypeOrTypeVarTuple],
-) -> DbType {
+fn simplified_union_of_tuple_entries(i_s: &InferenceState, entries: &[TypeOrTypeVarTuple]) -> Type {
     let iter = || {
         entries.iter().map(|t_or| match t_or {
             TypeOrTypeVarTuple::Type(t) => t,
@@ -218,9 +215,9 @@ fn tuple_add<'db>(
     args: &dyn Arguments<'db>,
     result_context: &mut ResultContext,
     on_type_error: OnTypeError<'db, '_>,
-    bound: Option<&DbType>,
+    bound: Option<&Type>,
 ) -> Inferred {
-    let DbType::Tuple(tuple) = bound.unwrap() else {
+    let Type::Tuple(tuple) = bound.unwrap() else {
         unreachable!();
     };
     method_with_fallback(
@@ -242,9 +239,9 @@ fn tuple_add_internal<'db>(
 ) -> Option<Inferred> {
     let first = args.maybe_single_positional_arg(i_s, &mut ResultContext::Unknown)?;
     if let TupleTypeArguments::FixedLength(ts1) = &tuple1.args {
-        if let DbType::Tuple(tuple2) = first.as_type(i_s).as_ref() {
+        if let Type::Tuple(tuple2) = first.as_type(i_s).as_ref() {
             if let TupleTypeArguments::FixedLength(ts2) = &tuple2.args {
-                return Some(Inferred::from_type(DbType::Tuple(Rc::new(
+                return Some(Inferred::from_type(Type::Tuple(Rc::new(
                     TupleContent::new_fixed_length(ts1.iter().chain(ts2.iter()).cloned().collect()),
                 ))));
             }
@@ -257,9 +254,9 @@ fn tuple_mul<'db>(
     args: &dyn Arguments<'db>,
     result_context: &mut ResultContext,
     on_type_error: OnTypeError<'db, '_>,
-    bound: Option<&DbType>,
+    bound: Option<&Type>,
 ) -> Inferred {
-    let DbType::Tuple(tuple) = bound.unwrap() else {
+    let Type::Tuple(tuple) = bound.unwrap() else {
         unreachable!();
     };
     method_with_fallback(
@@ -286,13 +283,13 @@ fn tuple_mul_internal<'db>(
             if int > 10 {
                 todo!("Do we really want extremely large tuples?")
             }
-            Some(Inferred::from_type(DbType::Tuple(Rc::new(
+            Some(Inferred::from_type(Type::Tuple(Rc::new(
                 TupleContent::new_fixed_length(
                     ts.iter().cycle().take(int * ts.len()).cloned().collect(),
                 ),
             ))))
         })
     } else {
-        Some(Inferred::from_type(DbType::Tuple(tuple)))
+        Some(Inferred::from_type(Type::Tuple(tuple)))
     }
 }

@@ -8,14 +8,14 @@ use crate::{
 };
 
 use super::{
-    CallableContent, CallableParam, CallableParams, DbType, DoubleStarredParamSpecific,
-    ParamSpecific, StarredParamSpecific,
+    CallableContent, CallableParam, CallableParams, DoubleStarredParamSpecific, ParamSpecific,
+    StarredParamSpecific, Type,
 };
 
-impl DbType {
-    pub fn common_sub_type(&self, i_s: &InferenceState, other: &Self) -> Option<DbType> {
+impl Type {
+    pub fn common_sub_type(&self, i_s: &InferenceState, other: &Self) -> Option<Type> {
         match (self, other) {
-            (DbType::Union(union), _) => {
+            (Type::Union(union), _) => {
                 for t in union.iter() {
                     // TODO what about multiple items?
                     if let Some(found) = t.common_sub_type(i_s, other) {
@@ -24,7 +24,7 @@ impl DbType {
                 }
                 None
             }
-            (_, DbType::Union(union)) => {
+            (_, Type::Union(union)) => {
                 for t in union.iter() {
                     // TODO what about multiple items?
                     if let Some(found) = t.common_sub_type(i_s, self) {
@@ -33,7 +33,7 @@ impl DbType {
                 }
                 None
             }
-            (DbType::Tuple(tup1), DbType::Tuple(tup2)) => {
+            (Type::Tuple(tup1), Type::Tuple(tup2)) => {
                 if tup1.args.has_type_var_tuple().is_some()
                     || tup2.args.has_type_var_tuple().is_some()
                 {
@@ -56,7 +56,7 @@ impl DbType {
                                 _ => todo!(),
                             }
                         }
-                        DbType::Tuple(Rc::new(TupleContent::new_fixed_length(entries.into())))
+                        Type::Tuple(Rc::new(TupleContent::new_fixed_length(entries.into())))
                     }
                     (ArbitraryLength(t1), ArbitraryLength(t2)) => t1.common_sub_type(i_s, t2)?,
                     (ArbitraryLength(t2), FixedLength(ts1))
@@ -70,13 +70,13 @@ impl DbType {
                                 return None;
                             }
                         }
-                        DbType::Tuple(Rc::new(TupleContent::new_fixed_length(entries.into())))
+                        Type::Tuple(Rc::new(TupleContent::new_fixed_length(entries.into())))
                     }
                 })
             }
-            (DbType::TypedDict(td1), DbType::TypedDict(td2)) => Some(td1.union(i_s, &td2)),
-            (DbType::Callable(c1), DbType::Callable(c2)) => {
-                Some(DbType::Callable(common_sub_type_for_callables(i_s, c1, c2)))
+            (Type::TypedDict(td1), Type::TypedDict(td2)) => Some(td1.union(i_s, &td2)),
+            (Type::Callable(c1), Type::Callable(c2)) => {
+                Some(Type::Callable(common_sub_type_for_callables(i_s, c1, c2)))
             }
             _ => {
                 if self.is_simple_sub_type_of(i_s, other).bool() {

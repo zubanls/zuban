@@ -20,10 +20,10 @@ use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::node_ref::NodeRef;
 use crate::type_::{
-    CallableContent, CallableParam, CallableParams, DbType, GenericItem, GenericsList,
-    ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamSpecific, StarredParamSpecific,
-    TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple, TypeVarKind, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, TypedDict, TypedDictGenerics, Variance,
+    CallableContent, CallableParam, CallableParams, GenericItem, GenericsList, ParamSpecArgument,
+    ParamSpecTypeVars, ParamSpecUsage, ParamSpecific, StarredParamSpecific, TupleTypeArguments,
+    Type, TypeArguments, TypeOrTypeVarTuple, TypeVarKind, TypeVarLike, TypeVarLikeUsage,
+    TypeVarLikes, TypeVarUsage, TypedDict, TypedDictGenerics, Variance,
 };
 use crate::type_helpers::{Callable, Class, Function};
 use type_var_matcher::{BoundKind, CalculatedTypeVarLike, TypeVarMatcher};
@@ -31,8 +31,8 @@ use utils::match_arguments_against_params;
 
 #[derive(Debug)]
 struct CheckedTypeRecursion<'a> {
-    type1: &'a DbType,
-    type2: &'a DbType,
+    type1: &'a Type,
+    type2: &'a Type,
     previously_checked: Option<&'a CheckedTypeRecursion<'a>>,
 }
 
@@ -153,7 +153,7 @@ impl<'a> Matcher<'a> {
         &mut self,
         i_s: &InferenceState,
         t1: &TypeVarUsage,
-        value_type: &DbType,
+        value_type: &Type,
         variance: Variance,
     ) -> Match {
         if let Some(matcher) = self.type_var_matcher.as_mut() {
@@ -191,7 +191,7 @@ impl<'a> Matcher<'a> {
             //     def __init__(self, t: T) -> None: pass
         }
         match value_type {
-            DbType::TypeVar(t2) => {
+            Type::TypeVar(t2) => {
                 (t1.index == t2.index && t1.in_definition == t2.in_definition).into()
             }
             _ => Match::new_false(),
@@ -282,9 +282,9 @@ impl<'a> Matcher<'a> {
     pub fn match_or_add_param_spec_against_param_spec(
         &mut self,
         i_s: &InferenceState,
-        p1_pre_param_spec: &[DbType],
+        p1_pre_param_spec: &[Type],
         p1: &ParamSpecUsage,
-        p2_pre_param_spec: &[DbType],
+        p2_pre_param_spec: &[Type],
         p2: &ParamSpecUsage,
         type_vars2: Option<(&TypeVarLikes, PointLink)>,
         variance: Variance,
@@ -357,7 +357,7 @@ impl<'a> Matcher<'a> {
     pub fn match_or_add_param_spec(
         &mut self,
         i_s: &InferenceState,
-        pre_param_spec_types: &[DbType],
+        pre_param_spec_types: &[Type],
         p1: &ParamSpecUsage,
         params2_iterator: std::slice::Iter<CallableParam>,
         type_vars2: Option<(&TypeVarLikes, PointLink)>,
@@ -533,7 +533,7 @@ impl<'a> Matcher<'a> {
                                 return bound.format(format_data);
                             }
                         }
-                        DbType::Never.format(format_data)
+                        Type::Never.format(format_data)
                     }
                 };
             }
@@ -565,19 +565,15 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    pub fn replace_type_var_likes_for_nested_context(&self, db: &Database, t: &DbType) -> DbType {
+    pub fn replace_type_var_likes_for_nested_context(&self, db: &Database, t: &Type) -> Type {
         self.replace_type_var_likes(db, t, false)
     }
 
-    pub fn replace_type_var_likes_for_unknown_type_vars(
-        &self,
-        db: &Database,
-        t: &DbType,
-    ) -> DbType {
+    pub fn replace_type_var_likes_for_unknown_type_vars(&self, db: &Database, t: &Type) -> Type {
         self.replace_type_var_likes(db, t, true)
     }
 
-    fn replace_type_var_likes(&self, db: &Database, t: &DbType, never_for_unbound: bool) -> DbType {
+    fn replace_type_var_likes(&self, db: &Database, t: &Type, never_for_unbound: bool) -> Type {
         t.replace_type_var_likes(db, &mut |type_var_like_usage| {
             if let Some(type_var_matcher) = self.type_var_matcher.as_ref() {
                 if type_var_like_usage.in_definition() == type_var_matcher.match_in_definition {
@@ -638,7 +634,7 @@ impl<'a> Matcher<'a> {
         })
     }
 
-    pub fn set_all_contained_type_vars_to_any(&mut self, i_s: &InferenceState, type_: &DbType) {
+    pub fn set_all_contained_type_vars_to_any(&mut self, i_s: &InferenceState, type_: &Type) {
         if let Some(matcher) = self.type_var_matcher.as_mut() {
             matcher.set_all_contained_type_vars_to_any(i_s, type_)
         }
@@ -646,8 +642,8 @@ impl<'a> Matcher<'a> {
 
     pub fn avoid_recursion(
         &mut self,
-        type1: &DbType,
-        type2: &DbType,
+        type1: &Type,
+        type2: &Type,
         callable: impl FnOnce(&mut Matcher) -> Match,
     ) -> Match {
         let mut type_recursion = self.checking_type_recursion.as_ref();

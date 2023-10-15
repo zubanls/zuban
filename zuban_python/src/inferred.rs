@@ -24,9 +24,9 @@ use crate::matching::{
 };
 use crate::node_ref::NodeRef;
 use crate::type_::{
-    CallableContent, CallableParams, ClassGenerics, DbString, DbType, Enum, FunctionKind,
-    FunctionOverload, GenericClass, GenericItem, GenericsList, Literal as DbLiteral, LiteralKind,
-    LiteralValue, NewType, TypeVarKind, TypeVarLike, TypeVarLikes, TypedDict,
+    CallableContent, CallableParams, ClassGenerics, DbString, Enum, FunctionKind, FunctionOverload,
+    GenericClass, GenericItem, GenericsList, Literal as DbLiteral, LiteralKind, LiteralValue,
+    NewType, Type, TypeVarKind, TypeVarLike, TypeVarLikes, TypedDict,
 };
 use crate::type_helpers::{
     execute_assert_type, execute_collections_named_tuple, execute_super, execute_type,
@@ -59,7 +59,7 @@ enum InferredState {
     UnsavedComplex(ComplexPoint),
     UnsavedSpecific(Specific),
     BoundMethod {
-        instance: DbType,
+        instance: Type,
         mro_index: MroIndex,
         func_link: PointLink,
     },
@@ -99,7 +99,7 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
-    fn new_bound_method(instance: DbType, mro_index: MroIndex, func_link: PointLink) -> Self {
+    fn new_bound_method(instance: Type, mro_index: MroIndex, func_link: PointLink) -> Self {
         Self {
             state: InferredState::BoundMethod {
                 instance,
@@ -140,54 +140,54 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
-    pub fn execute_db_type_allocation_todo(i_s: &InferenceState<'db, '_>, t: &DbType) -> Self {
+    pub fn execute_db_type_allocation_todo(i_s: &InferenceState<'db, '_>, t: &Type) -> Self {
         // Everything that calls this should probably not allocate.
         Self::from_type(t.clone())
     }
 
-    pub fn from_type(t: DbType) -> Self {
+    pub fn from_type(t: Type) -> Self {
         Self {
             state: InferredState::UnsavedComplex(ComplexPoint::TypeInstance(t)),
         }
     }
 
-    pub fn execute_db_type(i_s: &InferenceState<'db, '_>, generic: DbType) -> Self {
+    pub fn execute_db_type(i_s: &InferenceState<'db, '_>, generic: Type) -> Self {
         let state = match generic {
-            DbType::Type(ref c)
+            Type::Type(ref c)
                 if matches!(
                     c.as_ref(),
-                    DbType::Class(GenericClass {
+                    Type::Class(GenericClass {
                         generics: ClassGenerics::None,
                         ..
                     })
                 ) =>
             {
                 match c.as_ref() {
-                    DbType::Class(c) => {
+                    Type::Class(c) => {
                         let node_ref = NodeRef::from_link(i_s.db, c.link);
                         InferredState::Saved(c.link)
                     }
                     _ => unreachable!(),
                 }
             }
-            DbType::None => return Inferred::new_none(),
-            DbType::Any => return Inferred::new_any(),
+            Type::None => return Inferred::new_none(),
+            Type::Any => return Inferred::new_any(),
             _ => InferredState::UnsavedComplex(ComplexPoint::TypeInstance(generic)),
         };
         Self { state }
     }
 
-    pub fn as_type(&'slf self, i_s: &InferenceState<'db, '_>) -> Cow<'slf, DbType> {
+    pub fn as_type(&'slf self, i_s: &InferenceState<'db, '_>) -> Cow<'slf, Type> {
         match &self.state {
             InferredState::Saved(definition) => saved_as_type(i_s, *definition),
             InferredState::UnsavedComplex(complex) => type_of_complex(i_s, complex, None),
             InferredState::UnsavedSpecific(specific) => match specific {
-                Specific::None => Cow::Borrowed(&DbType::None),
-                Specific::Any | Specific::Cycle => Cow::Borrowed(&DbType::Any),
+                Specific::None => Cow::Borrowed(&Type::None),
+                Specific::Any | Specific::Cycle => Cow::Borrowed(&Type::Any),
                 _ => unreachable!("{specific:?}"),
             },
             InferredState::UnsavedFileReference(file_index) => {
-                Cow::Owned(DbType::Module(*file_index))
+                Cow::Owned(Type::Module(*file_index))
             }
             InferredState::BoundMethod {
                 instance,
@@ -197,11 +197,11 @@ impl<'db: 'slf, 'slf> Inferred {
                 let class = Self::load_bound_method_class(i_s, instance, *mro_index);
                 Cow::Owned(load_bound_method(i_s, instance, class, *func_link).as_type(i_s))
             }
-            InferredState::Unknown => Cow::Borrowed(&DbType::Any),
+            InferredState::Unknown => Cow::Borrowed(&Type::Any),
         }
     }
 
-    pub fn as_db_type(&self, i_s: &InferenceState<'db, '_>) -> DbType {
+    pub fn as_db_type(&self, i_s: &InferenceState<'db, '_>) -> Type {
         self.as_type(i_s).into_owned()
     }
 
@@ -215,13 +215,13 @@ impl<'db: 'slf, 'slf> Inferred {
 
     fn load_bound_method_class(
         i_s: &InferenceState<'db, '_>,
-        instance: &'slf DbType,
+        instance: &'slf Type,
         mro_index: MroIndex,
     ) -> Class<'slf> {
         let instance_class = match instance {
-            DbType::Class(c) => c.class(i_s.db),
-            DbType::Type(t) => match t.as_ref() {
-                DbType::Class(c) => c
+            Type::Class(c) => c.class(i_s.db),
+            Type::Type(t) => match t.as_ref() {
+                Type::Class(c) => c
                     .class(i_s.db)
                     .use_cached_class_infos(i_s.db)
                     .metaclass(i_s.db),
@@ -238,8 +238,8 @@ impl<'db: 'slf, 'slf> Inferred {
         match class_t {
             TypeOrClass::Class(class) => class,
             TypeOrClass::Type(t) => match t {
-                Cow::Borrowed(DbType::Dataclass(d)) => d.class(i_s.db),
-                Cow::Borrowed(DbType::TypedDict(d)) => todo!("is this even necessary?"),
+                Cow::Borrowed(Type::Dataclass(d)) => d.class(i_s.db),
+                Cow::Borrowed(Type::TypedDict(d)) => todo!("is this even necessary?"),
                 _ => unreachable!(),
             },
         }
@@ -264,7 +264,7 @@ impl<'db: 'slf, 'slf> Inferred {
         None
     }
 
-    pub fn maybe_named_tuple_definition(&self, i_s: &InferenceState) -> Option<DbType> {
+    pub fn maybe_named_tuple_definition(&self, i_s: &InferenceState) -> Option<Type> {
         if let InferredState::Saved(definition) = self.state {
             let node_ref = NodeRef::from_link(i_s.db, definition);
             if let Some(ComplexPoint::NamedTupleDefinition(n)) = node_ref.complex() {
@@ -278,7 +278,7 @@ impl<'db: 'slf, 'slf> Inferred {
         if let InferredState::Saved(definition) = self.state {
             let node_ref = NodeRef::from_link(i_s.db, definition);
             if let Some(ComplexPoint::TypedDictDefinition(t)) = node_ref.complex() {
-                let DbType::TypedDict(td) = t.as_ref() else {
+                let Type::TypedDict(td) = t.as_ref() else {
                     unreachable!();
                 };
                 return Some(td.clone());
@@ -290,8 +290,8 @@ impl<'db: 'slf, 'slf> Inferred {
     pub fn maybe_enum_definition(&self, i_s: &InferenceState) -> Option<Rc<Enum>> {
         if let InferredState::Saved(definition) = self.state {
             let node_ref = NodeRef::from_link(i_s.db, definition);
-            if let Some(ComplexPoint::TypeInstance(DbType::Type(t))) = node_ref.complex() {
-                if let DbType::Enum(e) = t.as_ref() {
+            if let Some(ComplexPoint::TypeInstance(Type::Type(t))) = node_ref.complex() {
+                if let Type::Enum(e) = t.as_ref() {
                     return Some(e.clone());
                 }
             }
@@ -359,10 +359,7 @@ impl<'db: 'slf, 'slf> Inferred {
         self
     }
 
-    pub fn expect_class_or_simple_generic(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-    ) -> Cow<'db, DbType> {
+    pub fn expect_class_or_simple_generic(&self, i_s: &InferenceState<'db, '_>) -> Cow<'db, Type> {
         let mut generics = ClassGenerics::None;
         if let InferredState::Saved(link) = &self.state {
             let definition = NodeRef::from_link(i_s.db, *link);
@@ -372,7 +369,7 @@ impl<'db: 'slf, 'slf> Inferred {
             }
         }
         let link = self.get_class_link(i_s);
-        Cow::Owned(DbType::new_class(link, generics))
+        Cow::Owned(Type::new_class(link, generics))
     }
 
     fn get_class_link(&self, i_s: &InferenceState) -> PointLink {
@@ -415,15 +412,15 @@ impl<'db: 'slf, 'slf> Inferred {
         &'slf self,
         db: &'db Database,
     ) -> UnionValue<DbLiteral, impl Iterator<Item = DbLiteral> + 'slf> {
-        let from_type = |t: &'slf DbType| match t {
-            DbType::Union(t) => match t.iter().next() {
-                Some(DbType::Literal(_)) => UnionValue::Multiple(t.iter().map_while(|t| match t {
-                    DbType::Literal(literal) => Some(literal.clone()),
+        let from_type = |t: &'slf Type| match t {
+            Type::Union(t) => match t.iter().next() {
+                Some(Type::Literal(_)) => UnionValue::Multiple(t.iter().map_while(|t| match t {
+                    Type::Literal(literal) => Some(literal.clone()),
                     _ => None,
                 })),
                 _ => UnionValue::Any,
             },
-            DbType::Literal(literal) => UnionValue::Single(literal.clone()),
+            Type::Literal(literal) => UnionValue::Single(literal.clone()),
             _ => UnionValue::Any,
         };
         if let InferredState::Saved(link) = self.state {
@@ -505,7 +502,7 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn maybe_bool_literal(&self, i_s: &InferenceState) -> Option<bool> {
-        if let DbType::Literal(DbLiteral {
+        if let Type::Literal(DbLiteral {
             kind: LiteralKind::Bool(b),
             ..
         }) = self.as_type(i_s).as_ref()
@@ -517,7 +514,7 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn maybe_string_literal(&self, i_s: &InferenceState) -> Option<DbString> {
-        if let DbType::Literal(DbLiteral {
+        if let Type::Literal(DbLiteral {
             kind: LiteralKind::String(b),
             ..
         }) = self.as_type(i_s).as_ref()
@@ -639,13 +636,13 @@ impl<'db: 'slf, 'slf> Inferred {
                             class,
                         )));
                     }
-                    Some(ComplexPoint::TypeInstance(DbType::Callable(c))) => {
+                    Some(ComplexPoint::TypeInstance(Type::Callable(c))) => {
                         return Some(FunctionOrOverload::Callable(c.clone()));
                     }
                     _ => (),
                 }
             }
-            InferredState::UnsavedComplex(ComplexPoint::TypeInstance(DbType::Callable(c))) => {
+            InferredState::UnsavedComplex(ComplexPoint::TypeInstance(Type::Callable(c))) => {
                 return Some(FunctionOrOverload::Callable(c.clone()));
             }
             _ => (),
@@ -724,7 +721,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 None => inferred,
             });
         });
-        result.unwrap_or_else(|| Inferred::from_type(DbType::Never))
+        result.unwrap_or_else(|| Inferred::from_type(Type::Never))
     }
 
     fn common_base_type(&self, i_s: &InferenceState, other: &Self) -> Self {
@@ -734,7 +731,7 @@ impl<'db: 'slf, 'slf> Inferred {
     pub fn bind_instance_descriptors(
         self,
         i_s: &InferenceState<'db, '_>,
-        instance: DbType,
+        instance: Type,
         func_class: Class,
         from: NodeRef,
         mro_index: MroIndex,
@@ -752,7 +749,7 @@ impl<'db: 'slf, 'slf> Inferred {
     fn bind_instance_descriptors_internal(
         self,
         i_s: &InferenceState<'db, '_>,
-        instance: DbType,
+        instance: Type,
         attribute_class: Class,
         from: NodeRef,
         mro_index: MroIndex,
@@ -783,7 +780,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     &first_type,
                                 ) {
                                     Some(Self::new_unsaved_complex(ComplexPoint::TypeInstance(
-                                        DbType::Callable(Rc::new(t)),
+                                        Type::Callable(Rc::new(t)),
                                     )))
                                 } else {
                                     let t = IssueType::InvalidSelfArgument {
@@ -886,7 +883,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                                 Some(attribute_class),
                                             );
                                             let t = IssueType::InvalidClassMethodFirstArgument {
-                                                argument_type: DbType::Type(Rc::new(instance))
+                                                argument_type: Type::Type(Rc::new(instance))
                                                     .format_short(i_s.db),
                                                 function_name: Box::from(overload.name(i_s.db)),
                                                 // Mypy just picks the first function.
@@ -902,13 +899,13 @@ impl<'db: 'slf, 'slf> Inferred {
                                             return Some(Self::new_any());
                                         }
                                         1 => {
-                                            return Some(Inferred::from_type(DbType::Callable(
+                                            return Some(Inferred::from_type(Type::Callable(
                                                 Rc::new(results.into_iter().next().unwrap()),
                                             )));
                                         }
                                         _ => {
                                             return Some(Inferred::from_type(
-                                                DbType::FunctionOverload(FunctionOverload::new(
+                                                Type::FunctionOverload(FunctionOverload::new(
                                                     results.into_iter().collect(),
                                                 )),
                                             ));
@@ -976,17 +973,17 @@ impl<'db: 'slf, 'slf> Inferred {
 
     fn bind_instance_descriptors_for_type(
         i_s: &InferenceState<'db, '_>,
-        instance: DbType,
+        instance: Type,
         attribute_class: Class,
         from: NodeRef,
         mro_index: MroIndex,
         definition: Option<PointLink>,
-        t: &DbType,
+        t: &Type,
         apply_descriptors_kind: ApplyDescriptorsKind,
     ) -> Option<Option<Self>> {
         let mut t = t; // Weird lifetime issue
         match t {
-            DbType::Callable(c) => match c.kind {
+            Type::Callable(c) => match c.kind {
                 FunctionKind::Function { .. }
                     if !matches!(apply_descriptors_kind, ApplyDescriptorsKind::NoBoundMethod) =>
                 {
@@ -1000,7 +997,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 &attribute_class,
                                 f,
                             )
-                            .map(|c| Inferred::from_type(DbType::Callable(Rc::new(c)))),
+                            .map(|c| Inferred::from_type(Type::Callable(Rc::new(c)))),
                         );
                     } else {
                         todo!()
@@ -1028,7 +1025,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     ));
                 }
                 FunctionKind::Classmethod { .. } => {
-                    let DbType::Class(instance_cls) = &instance else {
+                    let Type::Class(instance_cls) = &instance else {
                         todo!("Is this always the case?")
                     };
                     let instance_cls = instance_cls.class(i_s.db);
@@ -1036,7 +1033,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     if result.is_none() {
                         let func = prepare_func(i_s, c.defined_at, attribute_class);
                         let t = IssueType::InvalidClassMethodFirstArgument {
-                            argument_type: DbType::Type(Rc::new(instance)).format_short(i_s.db),
+                            argument_type: Type::Type(Rc::new(instance)).format_short(i_s.db),
                             function_name: Box::from(func.name()),
                             callable: func.as_type(i_s).format_short(i_s.db),
                         };
@@ -1048,8 +1045,8 @@ impl<'db: 'slf, 'slf> Inferred {
                 // Static methods can be passed out without any remapping.
                 FunctionKind::Staticmethod => (),
             },
-            DbType::CustomBehavior(custom) => {
-                return Some(Some(Inferred::from_type(DbType::CustomBehavior(
+            Type::CustomBehavior(custom) => {
+                return Some(Some(Inferred::from_type(Type::CustomBehavior(
                     custom.bind(Rc::new(instance)),
                 ))))
             }
@@ -1067,7 +1064,7 @@ impl<'db: 'slf, 'slf> Inferred {
             t = new.as_ref().unwrap();
         }
 
-        if let DbType::Class(c) = t {
+        if let Type::Class(c) = t {
             let potential_descriptor = use_instance_with_ref(
                 NodeRef::from_link(i_s.db, c.link),
                 Generics::from_class_generics(i_s.db, &c.generics),
@@ -1156,7 +1153,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     PointType::Complex => match node_ref.complex().unwrap() {
                         ComplexPoint::FunctionOverload(o) => match o.kind() {
                             FunctionKind::Function { .. } => {
-                                return Some(Inferred::from_type(DbType::FunctionOverload(
+                                return Some(Inferred::from_type(Type::FunctionOverload(
                                     FunctionOverload::new(
                                         o.iter_functions()
                                             .map(|c| {
@@ -1216,10 +1213,10 @@ impl<'db: 'slf, 'slf> Inferred {
         from: NodeRef,
         apply_descriptor: bool,
         definition: PointLink,
-        t: &DbType,
+        t: &Type,
     ) -> Option<Option<Self>> {
         let mut t = t;
-        if let DbType::Callable(c) = t {
+        if let Type::Callable(c) = t {
             match c.kind {
                 FunctionKind::Function { .. } => (),
                 FunctionKind::Property { .. } => {
@@ -1263,7 +1260,7 @@ impl<'db: 'slf, 'slf> Inferred {
             t = new.as_ref().unwrap();
         }
 
-        if let DbType::Class(c) = t {
+        if let Type::Class(c) = t {
             if apply_descriptor {
                 let inst = use_instance_with_ref(
                     NodeRef::from_link(i_s.db, c.link),
@@ -1330,13 +1327,13 @@ impl<'db: 'slf, 'slf> Inferred {
                         ComplexPoint::FunctionOverload(o) => {
                             return infer_overloaded_class_method(i_s, *class, attribute_class, o)
                         }
-                        ComplexPoint::TypeInstance(DbType::Callable(_)) => todo!(),
+                        ComplexPoint::TypeInstance(Type::Callable(_)) => todo!(),
                         _ => (),
                     },
                     _ => (),
                 }
             }
-            InferredState::UnsavedComplex(ComplexPoint::TypeInstance(DbType::Callable(c))) => {
+            InferredState::UnsavedComplex(ComplexPoint::TypeInstance(Type::Callable(c))) => {
                 // This is reached by NamedTuples. Not sure it this reached otherwise as well.
                 let result = infer_class_method(i_s, *class, attribute_class, c);
                 if let Some(result) = result {
@@ -1427,7 +1424,7 @@ impl<'db: 'slf, 'slf> Inferred {
         from: NodeRef,
         name: &str,
         kind: LookupKind,
-        callable: &mut impl FnMut(&DbType, LookupResult),
+        callable: &mut impl FnMut(&Type, LookupResult),
     ) {
         self.as_type(i_s).run_after_lookup_on_each_union_member(
             i_s,
@@ -1729,7 +1726,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                         ),
                                     );
                                 }
-                                return Self::from_type(DbType::NewType(new_type.clone()));
+                                return Self::from_type(Type::NewType(new_type.clone()));
                             }
                             _ => (),
                         }
@@ -1881,7 +1878,7 @@ impl<'db: 'slf, 'slf> Inferred {
 
 fn load_bound_method<'db: 'a, 'a, 'b>(
     i_s: &InferenceState<'db, '_>,
-    instance: &'b DbType,
+    instance: &'b Type,
     class: Class<'a>,
     func_link: PointLink,
 ) -> BoundMethod<'a, 'b> {
@@ -1931,7 +1928,7 @@ fn infer_overloaded_class_method(
     attribute_class: Class,
     o: &OverloadDefinition,
 ) -> Inferred {
-    Inferred::from_type(DbType::FunctionOverload(FunctionOverload::new(
+    Inferred::from_type(Type::FunctionOverload(FunctionOverload::new(
         o.iter_functions()
             .map(|callable| {
                 infer_class_method(i_s, class, attribute_class, callable).unwrap_or_else(|| todo!())
@@ -1993,8 +1990,8 @@ fn proper_classmethod_callable(
                 if !t.is_super_type_of(i_s, &mut matcher, &instance_t).bool() {
                     return None;
                 }
-                if let DbType::Type(t) = t {
-                    if let DbType::TypeVar(usage) = t.as_ref() {
+                if let Type::Type(t) = t {
+                    if let Type::TypeVar(usage) = t.as_ref() {
                         class_method_type_var_usage = Some(usage.clone());
                         type_vars.remove(0);
                     }
@@ -2020,7 +2017,7 @@ fn proper_classmethod_callable(
     let get_class_method_class = || {
         if class_generics_not_defined_yet {
             let type_var_likes = class.use_cached_type_vars(i_s.db);
-            DbType::new_class(
+            Type::new_class(
                 class.node_ref.as_link(),
                 match type_var_likes.len() {
                     0 => ClassGenerics::None,
@@ -2036,7 +2033,7 @@ fn proper_classmethod_callable(
             class.as_db_type(i_s.db)
         }
     };
-    let mut new_callable = DbType::replace_type_var_likes_and_self_for_callable(
+    let mut new_callable = Type::replace_type_var_likes_and_self_for_callable(
         &callable,
         i_s.db,
         &mut |mut usage| {
@@ -2090,18 +2087,18 @@ fn proper_classmethod_callable(
 }
 
 fn callable_into_inferred(callable: CallableContent) -> Inferred {
-    Inferred::from_type(DbType::Callable(Rc::new(callable)))
+    Inferred::from_type(Type::Callable(Rc::new(callable)))
 }
 
 fn type_of_complex<'db: 'x, 'x>(
     i_s: &InferenceState<'db, '_>,
     complex: &'x ComplexPoint,
     definition: Option<NodeRef<'x>>,
-) -> Cow<'x, DbType> {
+) -> Cow<'x, Type> {
     match complex {
         ComplexPoint::Class(cls_storage) => {
             // This can only ever happen for saved definitions, therefore we can unwrap.
-            Cow::Owned(DbType::Type(Rc::new(DbType::new_class(
+            Cow::Owned(Type::Type(Rc::new(Type::new_class(
                 definition.unwrap().as_link(),
                 ClassGenerics::NotDefinedYet,
             ))))
@@ -2113,7 +2110,7 @@ fn type_of_complex<'db: 'x, 'x>(
         }
         ComplexPoint::TypeInstance(t) => Cow::Borrowed(t),
         // TODO is this type correct with the Any?
-        ComplexPoint::TypeAlias(alias) => Cow::Owned(DbType::Type(Rc::new(
+        ComplexPoint::TypeAlias(alias) => Cow::Owned(Type::Type(Rc::new(
             alias.as_db_type_and_set_type_vars_any(i_s.db),
         ))),
         ComplexPoint::TypeVarLike(t) => match t {
@@ -2122,17 +2119,17 @@ fn type_of_complex<'db: 'x, 'x>(
             TypeVarLike::ParamSpec(_) => todo!(),
         },
         ComplexPoint::NewTypeDefinition(n) => {
-            Cow::Owned(DbType::Type(Rc::new(DbType::NewType(n.clone()))))
+            Cow::Owned(Type::Type(Rc::new(Type::NewType(n.clone()))))
         }
-        ComplexPoint::NamedTupleDefinition(n) => Cow::Owned(DbType::Type(n.clone())),
-        ComplexPoint::TypedDictDefinition(t) => Cow::Owned(DbType::Type(t.clone())),
+        ComplexPoint::NamedTupleDefinition(n) => Cow::Owned(Type::Type(n.clone())),
+        ComplexPoint::TypedDictDefinition(t) => Cow::Owned(Type::Type(t.clone())),
         _ => {
             unreachable!("Classes are handled earlier {complex:?}")
         }
     }
 }
 
-fn saved_as_type<'db>(i_s: &InferenceState<'db, '_>, definition: PointLink) -> Cow<'db, DbType> {
+fn saved_as_type<'db>(i_s: &InferenceState<'db, '_>, definition: PointLink) -> Cow<'db, Type> {
     let definition = NodeRef::from_link(i_s.db, definition);
     let point = definition.point();
     match point.type_() {
@@ -2141,7 +2138,7 @@ fn saved_as_type<'db>(i_s: &InferenceState<'db, '_>, definition: PointLink) -> C
             let complex = definition.file.complex_points.get(point.complex_index());
             type_of_complex(i_s, complex, Some(definition))
         }
-        PointType::FileReference => Cow::Owned(DbType::Module(point.file_index())),
+        PointType::FileReference => Cow::Owned(Type::Module(point.file_index())),
         x => unreachable!("{x:?}"),
     }
 }
@@ -2150,14 +2147,14 @@ pub fn specific_to_type<'db>(
     i_s: &InferenceState<'db, '_>,
     definition: NodeRef<'db>,
     specific: Specific,
-) -> Cow<'db, DbType> {
+) -> Cow<'db, Type> {
     match specific {
-        Specific::Any | Specific::Cycle => Cow::Borrowed(&DbType::Any),
-        Specific::IntLiteral => Cow::Owned(DbType::Literal(DbLiteral {
+        Specific::Any | Specific::Cycle => Cow::Borrowed(&Type::Any),
+        Specific::IntLiteral => Cow::Owned(Type::Literal(DbLiteral {
             kind: LiteralKind::Int(definition.expect_int().parse().unwrap()),
             implicit: true,
         })),
-        Specific::StringLiteral => Cow::Owned(DbType::Literal(DbLiteral {
+        Specific::StringLiteral => Cow::Owned(Type::Literal(DbLiteral {
             kind: LiteralKind::String(
                 DbString::from_python_string(
                     definition.file_index(),
@@ -2167,11 +2164,11 @@ pub fn specific_to_type<'db>(
             ),
             implicit: true,
         })),
-        Specific::BoolLiteral => Cow::Owned(DbType::Literal(DbLiteral {
+        Specific::BoolLiteral => Cow::Owned(Type::Literal(DbLiteral {
             kind: LiteralKind::Bool(definition.as_code() == "True"),
             implicit: true,
         })),
-        Specific::BytesLiteral => Cow::Owned(DbType::Literal(DbLiteral {
+        Specific::BytesLiteral => Cow::Owned(Type::Literal(DbLiteral {
             kind: LiteralKind::Bytes(definition.as_link()),
             implicit: true,
         })),
@@ -2196,7 +2193,7 @@ pub fn specific_to_type<'db>(
         | Specific::AnnotationOrTypeCommentClassVar => {
             use_cached_annotation_or_type_comment(i_s, definition)
         }
-        Specific::MaybeSelfParam => Cow::Borrowed(&DbType::Self_),
+        Specific::MaybeSelfParam => Cow::Borrowed(&Type::Self_),
         Specific::TypingTypeVarClass => todo!(),
         Specific::TypingTypeVarTupleClass => todo!(),
         Specific::TypingParamSpecClass => todo!(),
@@ -2215,7 +2212,7 @@ pub fn specific_to_type<'db>(
         Specific::TypingCast => todo!(),
         Specific::TypingClassVar => todo!(),
         Specific::RevealTypeFunction => todo!(),
-        Specific::None => Cow::Borrowed(&DbType::None),
+        Specific::None => Cow::Borrowed(&Type::None),
         Specific::TypingNewType => todo!(),
         Specific::TypingAny => todo!(),
         Specific::MypyExtensionsArg
@@ -2242,19 +2239,19 @@ enum ApplyDescriptorsKind {
 pub fn add_attribute_error(
     i_s: &InferenceState,
     node_ref: NodeRef,
-    full_type: &DbType,
-    t: &DbType,
+    full_type: &Type,
+    t: &Type,
     name: &str,
 ) {
     let object = match t {
-        DbType::Module(f) => {
+        Type::Module(f) => {
             node_ref.add_issue(i_s, IssueType::ModuleAttributeError { name: name.into() });
             return;
         }
         _ => format!("{:?}", t.format_short(i_s.db)).into(),
     };
     let name = Box::from(name);
-    if let DbType::TypeVar(usage) = full_type {
+    if let Type::TypeVar(usage) = full_type {
         if let TypeVarKind::Bound(bound) = &usage.type_var.kind {
             if bound.is_union_like() {
                 let bound = bound.format_short(i_s.db);

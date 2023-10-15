@@ -19,8 +19,8 @@ use crate::{
     node_ref::NodeRef,
     type_::{
         CallableContent, CallableParam, CallableParams, ClassGenerics, Dataclass, DataclassOptions,
-        DbString, DbType, FunctionKind, GenericClass, Literal, LiteralKind, ParamSpecific,
-        StringSlice, TupleContent, TypeOrTypeVarTuple, TypeVar, TypeVarKind,
+        DbString, FunctionKind, GenericClass, Literal, LiteralKind, ParamSpecific, StringSlice,
+        TupleContent, Type, TypeOrTypeVarTuple, TypeVar, TypeVarKind,
     },
     type_helpers::Callable,
 };
@@ -82,7 +82,7 @@ impl<'a> DataclassHelper<'a> {
             if !self.0.options.init || class.lookup_symbol(i_s, "__init__").is_some() {
                 // If the class has an __init__ method defined, the class itself wins.
                 class.execute(i_s, args, result_context, on_type_error);
-                return Inferred::from_type(DbType::Dataclass(self.0.clone()));
+                return Inferred::from_type(Type::Dataclass(self.0.clone()));
             } else {
                 calculate_callable_type_vars_and_return(
                     i_s,
@@ -94,7 +94,7 @@ impl<'a> DataclassHelper<'a> {
                     Some(on_type_error),
                 )
             };
-        Inferred::from_type(DbType::Dataclass(if self.0.has_defined_generics() {
+        Inferred::from_type(Type::Dataclass(if self.0.has_defined_generics() {
             self.0.clone()
         } else {
             Dataclass::new(
@@ -139,13 +139,13 @@ impl<'a> DataclassHelper<'a> {
                     .iter()
                     .take_while(|p| p.param_specific.maybe_positional_db_type().is_some())
                     .map(|p| {
-                        TypeOrTypeVarTuple::Type(DbType::Literal(Literal::new(
-                            LiteralKind::String(DbString::StringSlice(p.name.unwrap())),
-                        )))
+                        TypeOrTypeVarTuple::Type(Type::Literal(Literal::new(LiteralKind::String(
+                            DbString::StringSlice(p.name.unwrap()),
+                        ))))
                     })
                     .collect(),
             ));
-            return LookupResult::UnknownName(Inferred::from_type(DbType::Tuple(tup)));
+            return LookupResult::UnknownName(Inferred::from_type(Type::Tuple(tup)));
         }
         if self.0.options.order && ORDER_METHOD_NAMES.contains(&name) {
             return self.order_func(i_s, false);
@@ -158,9 +158,7 @@ impl<'a> DataclassHelper<'a> {
             .and_then(|inf| match inf.as_type(i_s).as_ref() {
                 // Init vars are not actually available on the class. They are just passed to __init__
                 // and are not class members.
-                DbType::Class(c) if c.link == i_s.db.python_state.dataclasses_init_var_link() => {
-                    None
-                }
+                Type::Class(c) if c.link == i_s.db.python_state.dataclasses_init_var_link() => None,
                 _ => Some(inf),
             })
             .unwrap_or(LookupResult::None)
@@ -174,7 +172,7 @@ impl<'a> DataclassHelper<'a> {
         if self.0.options.init && name == "__init__" {
             return (
                 None,
-                LookupResult::UnknownName(Inferred::from_type(DbType::Callable(Rc::new(
+                LookupResult::UnknownName(Inferred::from_type(Type::Callable(Rc::new(
                     Dataclass::__init__(self.0, i_s.db).clone(),
                 )))),
             );
@@ -184,7 +182,7 @@ impl<'a> DataclassHelper<'a> {
     }
 
     fn order_func(&self, i_s: &InferenceState, from_type: bool) -> LookupResult {
-        return LookupResult::UnknownName(Inferred::from_type(DbType::Callable(Rc::new(
+        return LookupResult::UnknownName(Inferred::from_type(Type::Callable(Rc::new(
             CallableContent {
                 name: None,
                 class_name: None,
@@ -194,9 +192,7 @@ impl<'a> DataclassHelper<'a> {
                 },
                 type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
                 params: CallableParams::Simple(Rc::new([CallableParam {
-                    param_specific: ParamSpecific::PositionalOnly(DbType::Dataclass(
-                        self.0.clone(),
-                    )),
+                    param_specific: ParamSpecific::PositionalOnly(Type::Dataclass(self.0.clone())),
                     name: None,
                     has_default: false,
                 }])),
@@ -239,7 +235,7 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
 
     for (_, c) in cls.mro(db).rev() {
         if let TypeOrClass::Type(t) = c {
-            if let DbType::Dataclass(super_dataclass) = t.as_ref() {
+            if let Type::Dataclass(super_dataclass) = t.as_ref() {
                 if dataclass.options.frozen != super_dataclass.options.frozen {
                     let arguments = cls.node().arguments().unwrap();
                     NodeRef::new(file, arguments.index()).add_issue(
@@ -261,7 +257,7 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
                         _ => unreachable!(),
                     };
                     *t = replace_class_type_vars(db, t, &cls, &|| {
-                        DbType::Dataclass(dataclass.clone())
+                        Type::Dataclass(dataclass.clone())
                     });
                     add_param(&mut params, new_param);
                 }
@@ -289,7 +285,7 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
                 let mut t = inference
                     .use_cached_annotation_type(annotation)
                     .into_owned();
-                if let DbType::Class(c) = &t {
+                if let Type::Class(c) = &t {
                     if c.link == db.python_state.dataclasses_init_var_link() {
                         t = c.class(db).nth_type_argument(db, 0);
                     }
@@ -317,7 +313,7 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
     let mut had_kw_only_marker = false;
     for (node_index, t, name, field_infos) in with_indexes.into_iter() {
         match t {
-            DbType::Class(c) if c.link == db.python_state.dataclasses_kw_only_link() => {
+            Type::Class(c) if c.link == db.python_state.dataclasses_kw_only_link() => {
                 if had_kw_only_marker {
                     NodeRef::new(file, node_index)
                         .add_issue(i_s, IssueType::DataclassMultipleKwOnly);
@@ -398,7 +394,7 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
             _ => i_s.db.python_state.empty_type_var_likes.clone(),
         },
         params: CallableParams::Simple(params.into()),
-        result_type: DbType::Any,
+        result_type: Type::Any,
     }
 }
 
@@ -486,7 +482,7 @@ pub fn dataclasses_replace<'db>(
     args: &dyn Arguments<'db>,
     result_context: &mut ResultContext,
     on_type_error: OnTypeError<'db, '_>,
-    bound: Option<&DbType>,
+    bound: Option<&Type>,
 ) -> Inferred {
     debug_assert!(bound.is_none());
 
@@ -519,7 +515,7 @@ pub fn dataclasses_replace<'db>(
                     params.insert(
                         0,
                         CallableParam {
-                            param_specific: ParamSpecific::PositionalOnly(DbType::Any),
+                            param_specific: ParamSpecific::PositionalOnly(Type::Any),
                             name: None,
                             has_default: false,
                         },
@@ -558,7 +554,7 @@ pub fn dataclasses_replace<'db>(
 fn run_on_dataclass(
     i_s: &InferenceState,
     from: Option<NodeRef>,
-    t: &DbType,
+    t: &Type,
     callback: &mut impl FnMut(&Rc<Dataclass>),
 ) -> bool {
     // Result type signals if we were successful
@@ -574,13 +570,13 @@ fn run_on_dataclass(
         false
     };
     match t {
-        DbType::Dataclass(d) => {
+        Type::Dataclass(d) => {
             callback(d);
             true
         }
-        DbType::Union(u) => u.iter().all(|t| run_on_dataclass(i_s, from, t, callback)),
-        DbType::Any => true,
-        DbType::TypeVar(tv) => match &tv.type_var.kind {
+        Type::Union(u) => u.iter().all(|t| run_on_dataclass(i_s, from, t, callback)),
+        Type::Any => true,
+        Type::TypeVar(tv) => match &tv.type_var.kind {
             TypeVarKind::Bound(bound) => {
                 let result = run_on_dataclass(i_s, None, bound, callback);
                 if !result {

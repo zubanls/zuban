@@ -11,7 +11,7 @@ use crate::utils::join_with_commas;
 use super::GenericItem;
 use super::GenericsList;
 use super::TypeArguments;
-use super::{CallableParams, DbType};
+use super::{CallableParams, Type};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]
 pub struct TypeVarIndex(pub(super) u32);
@@ -397,9 +397,9 @@ impl TypeVarLike {
 
     pub fn as_any_generic_item(&self) -> GenericItem {
         match self {
-            TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(DbType::Any),
+            TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(Type::Any),
             TypeVarLike::TypeVarTuple(_) => {
-                GenericItem::TypeArguments(TypeArguments::new_arbitrary_length(DbType::Any))
+                GenericItem::TypeArguments(TypeArguments::new_arbitrary_length(Type::Any))
             }
             TypeVarLike::ParamSpec(_) => {
                 GenericItem::ParamSpecArgument(ParamSpecArgument::new_any())
@@ -409,9 +409,9 @@ impl TypeVarLike {
 
     pub fn as_never_generic_item(&self) -> GenericItem {
         match self {
-            TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(DbType::Never),
+            TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(Type::Never),
             TypeVarLike::TypeVarTuple(_) => {
-                GenericItem::TypeArguments(TypeArguments::new_arbitrary_length(DbType::Never))
+                GenericItem::TypeArguments(TypeArguments::new_arbitrary_length(Type::Never))
             }
             TypeVarLike::ParamSpec(_) => todo!(),
         }
@@ -427,8 +427,8 @@ pub enum TypeVarName {
 #[derive(Debug, Clone)]
 pub enum TypeVarKind {
     Unrestricted,
-    Bound(DbType),
-    Constraints(Box<[DbType]>),
+    Bound(Type),
+    Constraints(Box<[Type]>),
 }
 
 #[derive(Debug, Clone)]
@@ -473,7 +473,7 @@ impl TypeVar {
 #[derive(Debug, Clone)]
 pub struct TypeVarTuple {
     pub name_string: PointLink,
-    pub default: Option<DbType>,
+    pub default: Option<Type>,
 }
 
 impl TypeVarTuple {
@@ -600,7 +600,7 @@ impl<'a> TypeVarLikeUsage<'a> {
     pub fn into_generic_item(self) -> GenericItem {
         match self {
             TypeVarLikeUsage::TypeVar(usage) => {
-                GenericItem::TypeArgument(DbType::TypeVar(usage.into_owned()))
+                GenericItem::TypeArgument(Type::TypeVar(usage.into_owned()))
             }
             TypeVarLikeUsage::TypeVarTuple(usage) => {
                 todo!()
@@ -619,7 +619,7 @@ impl<'a> TypeVarLikeUsage<'a> {
             TypeVarLikeUsage::TypeVar(usage) => {
                 let mut usage = usage.into_owned();
                 usage.index = index;
-                GenericItem::TypeArgument(DbType::TypeVar(usage))
+                GenericItem::TypeArgument(Type::TypeVar(usage))
             }
             TypeVarLikeUsage::TypeVarTuple(usage) => {
                 let mut usage = usage.into_owned();

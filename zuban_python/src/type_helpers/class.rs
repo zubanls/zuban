@@ -36,9 +36,9 @@ use crate::node_ref::NodeRef;
 use crate::python_state::NAME_TO_FUNCTION_DIFF;
 use crate::type_::{
     CallableContent, CallableLike, CallableParam, CallableParams, ClassGenerics, Dataclass,
-    DataclassOptions, DbType, Enum, EnumMemberDefinition, FormatStyle, FunctionKind,
-    FunctionOverload, GenericClass, GenericsList, NamedTuple, ParamSpecific, RecursiveAlias,
-    StringSlice, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember, Variance,
+    DataclassOptions, Enum, EnumMemberDefinition, FormatStyle, FunctionKind, FunctionOverload,
+    GenericClass, GenericsList, NamedTuple, ParamSpecific, RecursiveAlias, StringSlice, Type,
+    TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember, Variance,
 };
 use crate::type_helpers::dataclass::check_dataclass_options;
 use crate::type_helpers::enum_::infer_value_on_member;
@@ -360,7 +360,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     dataclass_options,
                 );
                 was_dataclass = Some(dataclass.clone());
-                let new_t = DbType::Type(Rc::new(DbType::Dataclass(dataclass)));
+                let new_t = Type::Type(Rc::new(Type::Dataclass(dataclass)));
                 Inferred::from_type(new_t).save_redirect(i_s, name_def.file, name_def.node_index);
             }
         }
@@ -370,7 +370,7 @@ impl<'db: 'a, 'a> Class<'a> {
         let mut was_enum_base = false;
         if let Some(td) = was_typed_dict {
             name_def.insert_complex(
-                ComplexPoint::TypedDictDefinition(Rc::new(DbType::TypedDict(td.clone()))),
+                ComplexPoint::TypedDictDefinition(Rc::new(Type::TypedDict(td.clone()))),
                 Locality::ImplicitExtern,
             );
         }
@@ -431,7 +431,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
 
         if let Some(enum_) = was_enum {
-            let c = ComplexPoint::TypeInstance(DbType::Type(Rc::new(DbType::Enum(enum_.clone()))));
+            let c = ComplexPoint::TypeInstance(Type::Type(Rc::new(Type::Enum(enum_.clone()))));
             // The locality is implicit, because we have a OnceCell that is inferred
             // after what we are doing here.
             name_def.insert_complex(c, Locality::ImplicitExtern);
@@ -544,7 +544,7 @@ impl<'db: 'a, 'a> Class<'a> {
         // Calculate all type vars beforehand
         let db = i_s.db;
 
-        let mut bases: Vec<DbType> = vec![];
+        let mut bases: Vec<Type> = vec![];
         let mut incomplete_mro = false;
         let mut class_type = ClassType::Normal;
         let mut typed_dict_members = TypedDictMemberGatherer::default();
@@ -570,7 +570,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         )
                         .compute_base_class(expr);
                         match meta_base {
-                            CalculatedBaseClass::DbType(DbType::Class(GenericClass {
+                            CalculatedBaseClass::DbType(Type::Class(GenericClass {
                                 link,
                                 generics: ClassGenerics::None,
                             })) => {
@@ -638,7 +638,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                 }
                                 bases.push(t);
                                 let class = match &bases.last().unwrap() {
-                                    DbType::Class(c) => {
+                                    Type::Class(c) => {
                                         if let Some(cached) =
                                             c.class(i_s.db).maybe_cached_class_infos(i_s.db)
                                         {
@@ -655,7 +655,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                         }
                                         Some(c.class(db))
                                     }
-                                    DbType::Tuple(content) => {
+                                    Type::Tuple(content) => {
                                         if class_type == ClassType::Normal {
                                             class_type = ClassType::Tuple;
                                         } else {
@@ -663,8 +663,8 @@ impl<'db: 'a, 'a> Class<'a> {
                                         }
                                         None
                                     }
-                                    DbType::Dataclass(d) => Some(d.class(db)),
-                                    DbType::TypedDict(typed_dict) => {
+                                    Type::Dataclass(d) => Some(d.class(db)),
+                                    Type::TypedDict(typed_dict) => {
                                         if matches!(
                                             class_type,
                                             ClassType::Normal | ClassType::TypedDict
@@ -732,13 +732,13 @@ impl<'db: 'a, 'a> Class<'a> {
                             CalculatedBaseClass::NamedTuple(named_tuple) => {
                                 let named_tuple =
                                     named_tuple.clone_with_new_init_class(self.name_string_slice());
-                                bases.push(DbType::NamedTuple(named_tuple.clone()));
+                                bases.push(Type::NamedTuple(named_tuple.clone()));
                                 class_type = ClassType::NamedTuple(named_tuple);
                             }
                             CalculatedBaseClass::NewNamedTuple => {
                                 let named_tuple = self
                                     .named_tuple_from_class(&i_s.with_class_context(self), *self);
-                                bases.push(DbType::NamedTuple(named_tuple.clone()));
+                                bases.push(Type::NamedTuple(named_tuple.clone()));
                                 class_type = ClassType::NamedTuple(named_tuple);
                             }
                             CalculatedBaseClass::TypedDict => {
@@ -799,7 +799,7 @@ impl<'db: 'a, 'a> Class<'a> {
             }
         }
         let was_typed_dict = (class_type == ClassType::TypedDict).then(|| {
-            if bases.iter().any(|t| !matches!(t, DbType::TypedDict(_))) {
+            if bases.iter().any(|t| !matches!(t, Type::TypedDict(_))) {
                 NodeRef::new(self.node_ref.file, self.node().arguments().unwrap().index())
                     .add_issue(i_s, IssueType::TypedDictBasesMustBeTypedKeys);
             }
@@ -841,11 +841,11 @@ impl<'db: 'a, 'a> Class<'a> {
             }
             MetaclassState::Some(link2) => match current {
                 MetaclassState::Some(link1) => {
-                    let t1 = DbType::Class(GenericClass {
+                    let t1 = Type::Class(GenericClass {
                         link: *link1,
                         generics: ClassGenerics::None,
                     });
-                    let t2 = DbType::Class(GenericClass {
+                    let t2 = Type::Class(GenericClass {
                         link: link2,
                         generics: ClassGenerics::None,
                     });
@@ -913,7 +913,7 @@ impl<'db: 'a, 'a> Class<'a> {
         &self,
         i_s: &InferenceState<'db, '_>,
         matcher: &mut Matcher,
-        other: &DbType,
+        other: &Type,
         variance: Variance,
     ) -> Match {
         const SHOW_MAX_MISMATCHES: usize = 2;
@@ -935,7 +935,7 @@ impl<'db: 'a, 'a> Class<'a> {
             for (name, _) in unsafe { symbol_table.iter_on_finished_table() } {
                 // It is possible to match a Callable against a Protocol that only implements
                 // __call__.
-                if name == "__call__" && !matches!(other, DbType::Class(_)) {
+                if name == "__call__" && !matches!(other, Type::Class(_)) {
                     let inf1 = Instance::new(c, None)
                         .type_lookup(i_s, hack, name)
                         .into_inferred();
@@ -967,12 +967,12 @@ impl<'db: 'a, 'a> Class<'a> {
                             had_conflict_note = true;
                             notes.push(
                                 match other {
-                                    DbType::Module(file_index) => format!(
+                                    Type::Module(file_index) => format!(
                                         "Following member(s) of Module \"{}\" have conflicts:",
                                         Module::from_file_index(i_s.db, *file_index)
                                             .qualified_name(i_s.db)
                                     ),
-                                    DbType::Type(t) => format!(
+                                    Type::Type(t) => format!(
                                         "Following member(s) of \"{}\" have conflicts:",
                                         t.format_short(i_s.db)
                                     ),
@@ -1204,7 +1204,7 @@ impl<'db: 'a, 'a> Class<'a> {
         matches!(self.generics, Generics::Self_ { .. }) && self.type_var_remap.is_none()
     }
 
-    pub fn nth_type_argument(&self, db: &Database, nth: usize) -> DbType {
+    pub fn nth_type_argument(&self, db: &Database, nth: usize) -> Type {
         let type_vars = self.use_cached_type_vars(db);
         self.generics()
             .nth_type_argument(db, &type_vars[nth], nth)
@@ -1240,7 +1240,7 @@ impl<'db: 'a, 'a> Class<'a> {
         class_infos
             .mro
             .iter()
-            .any(|b| matches!(&b.type_, DbType::Class(c) if link == c.link))
+            .any(|b| matches!(&b.type_, Type::Class(c) if link == c.link))
     }
 
     pub fn is_object_class(&self, db: &Database) -> Match {
@@ -1267,7 +1267,7 @@ impl<'db: 'a, 'a> Class<'a> {
             ClassType::Tuple if format_data.style == FormatStyle::MypyRevealType => {
                 for (_, type_or_class) in self.mro(format_data.db) {
                     if let TypeOrClass::Type(t) = type_or_class {
-                        if let DbType::Tuple(tup) = t.as_ref() {
+                        if let Type::Tuple(tup) = t.as_ref() {
                             let rec = RecursiveAlias::new(self.node_ref.as_link(), None);
                             if format_data.has_already_seen_recursive_alias(&rec) {
                                 return "...".into();
@@ -1306,12 +1306,12 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    pub fn as_db_type(&self, db: &Database) -> DbType {
-        DbType::Class(self.as_generic_class(db))
+    pub fn as_db_type(&self, db: &Database) -> Type {
+        Type::Class(self.as_generic_class(db))
     }
 
-    pub fn as_type(&self, i_s: &InferenceState<'db, '_>) -> DbType {
-        DbType::Type(Rc::new(self.as_db_type(i_s.db)))
+    pub fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type {
+        Type::Type(Rc::new(self.as_db_type(i_s.db)))
     }
 
     fn named_tuple_from_class(&self, i_s: &InferenceState, cls: Class) -> Rc<NamedTuple> {
@@ -1364,7 +1364,7 @@ impl<'db: 'a, 'a> Class<'a> {
             },
             type_vars: self.use_cached_type_vars(i_s.db).clone(),
             params: CallableParams::Simple(Rc::from(vec)),
-            result_type: DbType::Self_,
+            result_type: Type::Self_,
         }
     }
 
@@ -1497,7 +1497,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
         match self.execute_and_return_generics(original_i_s, args, result_context, on_type_error) {
             ClassExecutionResult::ClassGenerics(generics) => {
-                let result = Inferred::from_type(DbType::Class(GenericClass {
+                let result = Inferred::from_type(Type::Class(GenericClass {
                     link: self.node_ref.as_link(),
                     generics,
                 }));
@@ -1534,7 +1534,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 let call = metaclass
                     .type_lookup(i_s, args.as_node_ref(), "__call__")
                     .into_inferred();
-                let DbType::FunctionOverload(o) = call.as_db_type(i_s) else {
+                let Type::FunctionOverload(o) = call.as_db_type(i_s) else {
                     todo!()
                 };
                 // Enum currently has multiple signatures that are not all relevant. Just pick the one
@@ -1564,7 +1564,7 @@ impl<'db: 'a, 'a> Class<'a> {
             return match &result {
                 // Only subclasses of the current class are valid, otherwise return the current
                 // class. Diagnostics will care about these cases and raise errors when needed.
-                DbType::Class(c)
+                Type::Class(c)
                     if self
                         .as_db_type(i_s.db)
                         .is_simple_super_type_of(i_s, &result)
@@ -1674,20 +1674,20 @@ enum BaseKind {
     Enum,
 }
 
-fn to_base_kind(t: &DbType) -> BaseKind {
+fn to_base_kind(t: &Type) -> BaseKind {
     match t {
-        DbType::Class(c) => BaseKind::Class(c.link),
-        DbType::Type(_) => BaseKind::Type,
-        DbType::Tuple(_) => BaseKind::Tuple,
-        DbType::Dataclass(d) => BaseKind::Dataclass(d.class.link),
-        DbType::TypedDict(d) => BaseKind::TypedDict,
-        DbType::NamedTuple(_) => BaseKind::NamedTuple,
-        DbType::Enum(_) => BaseKind::Enum,
+        Type::Class(c) => BaseKind::Class(c.link),
+        Type::Type(_) => BaseKind::Type,
+        Type::Tuple(_) => BaseKind::Tuple,
+        Type::Dataclass(d) => BaseKind::Dataclass(d.class.link),
+        Type::TypedDict(d) => BaseKind::TypedDict,
+        Type::NamedTuple(_) => BaseKind::NamedTuple,
+        Type::Enum(_) => BaseKind::Enum,
         _ => unreachable!("{t:?}"),
     }
 }
 
-fn linearize_mro(i_s: &InferenceState, class: &Class, bases: &[DbType]) -> Box<[BaseClass]> {
+fn linearize_mro(i_s: &InferenceState, class: &Class, bases: &[Type]) -> Box<[BaseClass]> {
     let mut mro = vec![];
 
     let object = i_s.db.python_state.object_db_type();
@@ -1699,7 +1699,7 @@ fn linearize_mro(i_s: &InferenceState, class: &Class, bases: &[DbType]) -> Box<[
         }
     }
     let mut add_to_mro =
-        |base_index: usize, is_direct_base, new_base: &DbType, allowed_to_use: &mut usize| {
+        |base_index: usize, is_direct_base, new_base: &Type, allowed_to_use: &mut usize| {
             if new_base != &object {
                 mro.push(BaseClass {
                     type_: if is_direct_base {
@@ -1719,10 +1719,10 @@ fn linearize_mro(i_s: &InferenceState, class: &Class, bases: &[DbType]) -> Box<[
         .iter()
         .map(|t| {
             let generic_class = match &t {
-                DbType::Class(c) => Some(c.class(i_s.db)),
-                DbType::Dataclass(d) => Some(d.class.class(i_s.db)),
-                DbType::Tuple(content) => Some(i_s.db.python_state.tuple_class(i_s.db, content)),
-                DbType::NamedTuple(nt) => {
+                Type::Class(c) => Some(c.class(i_s.db)),
+                Type::Dataclass(d) => Some(d.class.class(i_s.db)),
+                Type::Tuple(content) => Some(i_s.db.python_state.tuple_class(i_s.db, content)),
+                Type::NamedTuple(nt) => {
                     Some(i_s.db.python_state.tuple_class(i_s.db, &nt.as_tuple_ref()))
                 }
                 _ => None,
@@ -1827,7 +1827,7 @@ impl<'db, 'a> MroIterator<'db, 'a> {
 
 #[derive(Debug)]
 pub enum TypeOrClass<'a> {
-    Type(Cow<'a, DbType>),
+    Type(Cow<'a, Type>),
     Class(Class<'a>),
 }
 
@@ -1847,7 +1847,7 @@ impl<'a> TypeOrClass<'a> {
         match self {
             Self::Class(class) => class.name(),
             Self::Type(t) => match t.as_ref() {
-                DbType::Dataclass(d) => d.class(db).name(),
+                Type::Dataclass(d) => d.class(db).name(),
                 _ => todo!(),
             },
         }
@@ -1906,11 +1906,11 @@ impl<'db: 'a, 'a> DoubleEndedIterator for MroIterator<'db, 'a> {
 
 fn apply_generics_to_base_class<'a>(
     db: &'a Database,
-    t: &'a DbType,
+    t: &'a Type,
     generics: Generics<'a>,
 ) -> TypeOrClass<'a> {
     match &t {
-        DbType::Class(g) => {
+        Type::Class(g) => {
             let n = NodeRef::from_link(db, g.link);
             TypeOrClass::Class(match &g.generics {
                 ClassGenerics::List(g) => Class::from_position(n, generics, Some(g)),
@@ -1998,7 +1998,7 @@ fn find_stmt_typed_dict_types(
                             vec.add(
                                 i_s.db,
                                 TypedDictMember {
-                                    type_: DbType::Any,
+                                    type_: Type::Any,
                                     required: true,
                                     name: StringSlice::from_name(
                                         file.file_index(),
@@ -2022,13 +2022,13 @@ fn add_protocol_mismatch(
     i_s: &InferenceState,
     notes: &mut Vec<Box<str>>,
     name: &str,
-    t1: &DbType,
-    t2: &DbType,
-    full1: &DbType,
-    full2: &DbType,
+    t1: &Type,
+    t2: &Type,
+    full1: &Type,
+    full2: &Type,
 ) {
     match (full1, full2) {
-        (DbType::Callable(c1), DbType::Callable(c2)) => {
+        (Type::Callable(c1), Type::Callable(c2)) => {
             let s1 = format_pretty_callable(&FormatData::new_short(i_s.db), c1);
             let s2 = format_pretty_callable(&FormatData::new_short(i_s.db), c2);
             notes.push("    Expected:".into());
@@ -2102,7 +2102,7 @@ impl NewOrInitConstructor<'_> {
                 c.remove_first_param().map(|mut c| {
                     let self_ = cls.as_db_type(i_s.db);
                     if c.has_self_type() {
-                        c = DbType::replace_type_var_likes_and_self_for_callable(
+                        c = Type::replace_type_var_likes_and_self_for_callable(
                             &c,
                             i_s.db,
                             &mut |usage| usage.into_generic_item(),

@@ -14,7 +14,7 @@ use crate::matching::{
     ResultContext,
 };
 use crate::type_::{
-    CallableContent, CallableParams, DbType, FormatStyle, TypeVar, TypeVarKind, TypeVarLike,
+    CallableContent, CallableParams, FormatStyle, Type, TypeVar, TypeVarKind, TypeVarLike,
     TypeVarLikes, TypeVarName, TypeVarUsage, Variance,
 };
 use crate::utils::join_with_commas;
@@ -62,7 +62,7 @@ impl<'a> Callable<'a> {
         result_context: &mut ResultContext,
     ) -> Inferred {
         let return_type = &self.content.result_type;
-        if result_context.expect_not_none(i_s) && matches!(&return_type, DbType::None) {
+        if result_context.expect_not_none(i_s) && matches!(&return_type, Type::None) {
             args.as_node_ref().add_issue(
                 i_s,
                 IssueType::DoesNotReturnAValue(
@@ -89,7 +89,7 @@ impl<'a> Callable<'a> {
             &|| {
                 self.defined_in
                     .map(|c| c.as_db_type(i_s.db))
-                    .unwrap_or(DbType::Self_)
+                    .unwrap_or(Type::Self_)
             },
         )
     }
@@ -131,7 +131,7 @@ pub fn format_pretty_callable(format_data: &FormatData, callable: &CallableConte
         }
         CallableParams::Any => {
             let mut s = format!("def {name}(*Any, **Any)");
-            if callable.result_type != DbType::None {
+            if callable.result_type != Type::None {
                 s += " -> ";
                 s += &callable.result_type.format(format_data);
             }
@@ -179,7 +179,7 @@ pub fn merge_class_type_vars_into_callable(
         type_vars.push(TypeVarLike::TypeVar(self_type_var));
     }
     let type_vars = TypeVarLikes::from_vec(type_vars);
-    let mut callable = DbType::replace_type_var_likes_and_self_for_callable(
+    let mut callable = Type::replace_type_var_likes_and_self_for_callable(
         callable,
         db,
         &mut |usage| {
@@ -205,7 +205,7 @@ pub fn merge_class_type_vars_into_callable(
                 usage.into_generic_item()
             }
         },
-        &|| DbType::TypeVar(self_type_var_usage.clone().unwrap()),
+        &|| Type::TypeVar(self_type_var_usage.clone().unwrap()),
     );
     callable.type_vars = type_vars;
     callable
@@ -218,7 +218,7 @@ fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
     name: &str,
     type_vars: &TypeVarLikes,
     params: impl Iterator<Item = P>,
-    return_type: Option<&DbType>,
+    return_type: Option<&Type>,
 ) -> Box<str> {
     let db = format_data.db;
     let is_reveal_type = format_data.style == FormatStyle::MypyRevealType;
@@ -291,7 +291,7 @@ fn format_pretty_function_with_params(
     format_data: &FormatData,
     class: Option<Class>,
     type_vars: &TypeVarLikes,
-    return_type: Option<&DbType>,
+    return_type: Option<&Type>,
     name: &str,
     params: &str,
 ) -> Box<str> {
@@ -299,7 +299,7 @@ fn format_pretty_function_with_params(
     let type_var_str = type_var_string.as_deref().unwrap_or("");
     let result_string = return_type
         .as_ref()
-        .filter(|t| format_data.style != FormatStyle::MypyRevealType || !matches!(t, DbType::None))
+        .filter(|t| format_data.style != FormatStyle::MypyRevealType || !matches!(t, Type::None))
         .map(|t| format_function_type(format_data, t, class));
 
     if let Some(result_string) = result_string {
@@ -309,7 +309,7 @@ fn format_pretty_function_with_params(
     }
 }
 
-fn format_function_type(format_data: &FormatData, t: &DbType, class: Option<Class>) -> Box<str> {
+fn format_function_type(format_data: &FormatData, t: &Type, class: Option<Class>) -> Box<str> {
     if let Some(func_class) = class {
         let t = t.replace_type_var_likes_and_self(
             format_data.db,

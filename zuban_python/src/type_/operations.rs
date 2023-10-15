@@ -19,9 +19,9 @@ use crate::{
     },
 };
 
-use super::{DbType, TypeVarKind};
+use super::{Type, TypeVarKind};
 
-impl DbType {
+impl Type {
     pub fn lookup(
         &self,
         i_s: &InferenceState,
@@ -62,12 +62,12 @@ impl DbType {
         name: &str,
     ) -> (Option<Class<'a>>, LookupResult) {
         match self {
-            DbType::Class(c) => todo!(),
-            DbType::Dataclass(d) => DataclassHelper(d).lookup_symbol(i_s, name),
-            DbType::TypedDict(_) => todo!(),
-            DbType::Tuple(t) => (None, LookupResult::None),
-            DbType::NamedTuple(nt) => (None, NamedTupleValue::new(i_s.db, nt).lookup(i_s, name)),
-            DbType::Callable(t) => todo!(),
+            Type::Class(c) => todo!(),
+            Type::Dataclass(d) => DataclassHelper(d).lookup_symbol(i_s, name),
+            Type::TypedDict(_) => todo!(),
+            Type::Tuple(t) => (None, LookupResult::None),
+            Type::NamedTuple(nt) => (None, NamedTupleValue::new(i_s.db, nt).lookup(i_s, name)),
+            Type::Callable(t) => todo!(),
             _ => todo!("{name:?} {self:?}"),
         }
     }
@@ -81,27 +81,27 @@ impl DbType {
         name: &str,
         kind: LookupKind,
         result_context: &mut ResultContext,
-        callable: &mut impl FnMut(&DbType, LookupResult),
+        callable: &mut impl FnMut(&Type, LookupResult),
     ) {
         match self {
-            DbType::Class(c) => callable(
+            Type::Class(c) => callable(
                 self,
                 Instance::new(c.class(i_s.db), from_inferred).lookup(i_s, from, name, kind),
             ),
-            DbType::Any => callable(self, LookupResult::any()),
-            DbType::None => callable(
+            Type::Any => callable(self, LookupResult::any()),
+            Type::None => callable(
                 self,
                 i_s.db
                     .python_state
                     .none_instance()
                     .lookup(i_s, from, name, kind),
             ),
-            DbType::Literal(literal) => {
+            Type::Literal(literal) => {
                 let instance = i_s.db.python_state.literal_instance(&literal.kind);
                 let result = instance.lookup(i_s, from, name, kind);
                 callable(self, result)
             }
-            t @ DbType::TypeVar(usage) => match &usage.type_var.kind {
+            t @ Type::TypeVar(usage) => match &usage.type_var.kind {
                 TypeVarKind::Bound(bound) => {
                     bound.run_after_lookup_on_each_union_member(
                         i_s,
@@ -145,8 +145,8 @@ impl DbType {
                     )
                 }
             },
-            DbType::Tuple(tup) => callable(self, Tuple::new(tup).lookup(i_s, from, name)),
-            DbType::Union(union) => {
+            Type::Tuple(tup) => callable(self, Tuple::new(tup).lookup(i_s, from, name)),
+            Type::Union(union) => {
                 for t in union.iter() {
                     t.run_after_lookup_on_each_union_member(
                         i_s,
@@ -159,23 +159,23 @@ impl DbType {
                     )
                 }
             }
-            DbType::Type(t) => {
+            Type::Type(t) => {
                 attribute_access_of_type(i_s, from, name, kind, result_context, callable, t.clone())
             }
-            DbType::Callable(_) | DbType::FunctionOverload(_) => callable(
+            Type::Callable(_) | Type::FunctionOverload(_) => callable(
                 self,
                 Instance::new(i_s.db.python_state.function_class(), None)
                     .lookup(i_s, from, name, kind),
             ),
-            DbType::Module(file_index) => {
+            Type::Module(file_index) => {
                 let module = Module::from_file_index(i_s.db, *file_index);
                 callable(self, module.lookup(i_s, from, name))
             }
-            DbType::Namespace(namespace) => callable(
+            Type::Namespace(namespace) => callable(
                 self,
                 lookup_in_namespace(i_s.db, from.file_index(), namespace, name),
             ),
-            DbType::Self_ => {
+            Type::Self_ => {
                 let current_class = i_s.current_class().unwrap();
                 let type_var_likes = current_class.type_vars(i_s);
                 callable(
@@ -190,7 +190,7 @@ impl DbType {
                     .lookup(i_s, from, name, kind),
                 )
             }
-            DbType::Super { class, mro_index } => {
+            Type::Super { class, mro_index } => {
                 let instance = Instance::new(class.class(i_s.db), None);
                 let result = instance
                     .lookup_and_maybe_ignore_super_count(
@@ -208,15 +208,13 @@ impl DbType {
                 }
                 callable(self, result)
             }
-            DbType::Dataclass(d) => callable(self, DataclassHelper(d).lookup(i_s, from, name)),
-            DbType::TypedDict(d) => {
-                callable(self, TypedDictHelper(d).lookup(i_s, from, name, kind))
-            }
-            DbType::NamedTuple(nt) => {
+            Type::Dataclass(d) => callable(self, DataclassHelper(d).lookup(i_s, from, name)),
+            Type::TypedDict(d) => callable(self, TypedDictHelper(d).lookup(i_s, from, name, kind)),
+            Type::NamedTuple(nt) => {
                 callable(self, NamedTupleValue::new(i_s.db, nt).lookup(i_s, name))
             }
-            DbType::Never => (),
-            DbType::NewType(new_type) => new_type.type_(i_s).run_after_lookup_on_each_union_member(
+            Type::Never => (),
+            Type::NewType(new_type) => new_type.type_(i_s).run_after_lookup_on_each_union_member(
                 i_s,
                 None,
                 from,
@@ -225,15 +223,15 @@ impl DbType {
                 result_context,
                 callable,
             ),
-            DbType::Enum(e) => callable(
+            Type::Enum(e) => callable(
                 self,
                 lookup_on_enum_instance(i_s, from, e, name, result_context),
             ),
-            DbType::EnumMember(member) => callable(
+            Type::EnumMember(member) => callable(
                 self,
                 lookup_on_enum_member_instance(i_s, from, member, name),
             ),
-            DbType::RecursiveAlias(r) => r
+            Type::RecursiveAlias(r) => r
                 .calculated_db_type(i_s.db)
                 .run_after_lookup_on_each_union_member(
                     i_s,
@@ -256,33 +254,33 @@ impl DbType {
         result_context: &mut ResultContext,
     ) -> Inferred {
         let inf = match self {
-            DbType::Class(c) => Instance::new(c.class(i_s.db), from_inferred).get_item(
+            Type::Class(c) => Instance::new(c.class(i_s.db), from_inferred).get_item(
                 i_s,
                 slice_type,
                 result_context,
             ),
-            DbType::Any => Inferred::new_any(),
-            DbType::Tuple(tup) => Tuple::new(tup).get_item(i_s, slice_type, result_context),
-            DbType::NamedTuple(nt) => {
+            Type::Any => Inferred::new_any(),
+            Type::Tuple(tup) => Tuple::new(tup).get_item(i_s, slice_type, result_context),
+            Type::NamedTuple(nt) => {
                 NamedTupleValue::new(i_s.db, nt).get_item(i_s, slice_type, result_context)
             }
-            DbType::Union(union) => Inferred::gather_simplified_union(i_s, |callable| {
+            Type::Union(union) => Inferred::gather_simplified_union(i_s, |callable| {
                 for t in union.iter() {
                     callable(t.get_item(i_s, None, slice_type, result_context))
                 }
             }),
-            t @ DbType::TypeVar(tv) => match &tv.type_var.kind {
+            t @ Type::TypeVar(tv) => match &tv.type_var.kind {
                 TypeVarKind::Bound(bound) => bound.get_item(i_s, None, slice_type, result_context),
                 TypeVarKind::Constraints(constraints) => todo!(),
                 TypeVarKind::Unrestricted => todo!(),
             },
-            DbType::Type(t) => match t.as_ref() {
-                DbType::Class(c) => c.class(i_s.db).get_item(i_s, slice_type, result_context),
-                DbType::Dataclass(d) => slice_type
+            Type::Type(t) => match t.as_ref() {
+                Type::Class(c) => c.class(i_s.db).get_item(i_s, slice_type, result_context),
+                Type::Dataclass(d) => slice_type
                     .file
                     .inference(i_s)
                     .compute_type_application_on_dataclass(d, *slice_type, false),
-                t @ DbType::Enum(_) => {
+                t @ Type::Enum(_) => {
                     let enum_index = slice_type.infer(i_s);
                     if !enum_index
                         .as_type(i_s)
@@ -298,7 +296,7 @@ impl DbType {
                     }
                     Inferred::from_type(t.clone())
                 }
-                DbType::TypedDict(td) => slice_type
+                Type::TypedDict(td) => slice_type
                     .file
                     .inference(i_s)
                     .compute_type_application_on_typed_dict(
@@ -313,33 +311,33 @@ impl DbType {
                     Inferred::new_any()
                 }
             },
-            DbType::NewType(new_type) => {
+            Type::NewType(new_type) => {
                 new_type
                     .type_(i_s)
                     .get_item(i_s, None, slice_type, result_context)
             }
-            DbType::RecursiveAlias(r) => {
+            Type::RecursiveAlias(r) => {
                 r.calculated_db_type(i_s.db)
                     .get_item(i_s, None, slice_type, result_context)
             }
-            DbType::TypedDict(d) => TypedDictHelper(d).get_item(i_s, slice_type, result_context),
-            DbType::Callable(_) => {
+            Type::TypedDict(d) => TypedDictHelper(d).get_item(i_s, slice_type, result_context),
+            Type::Callable(_) => {
                 slice_type
                     .as_node_ref()
                     .add_issue(i_s, IssueType::OnlyClassTypeApplication);
                 Inferred::new_unknown()
             }
-            DbType::FunctionOverload(_) => {
+            Type::FunctionOverload(_) => {
                 slice_type
                     .as_node_ref()
                     .add_issue(i_s, IssueType::OnlyClassTypeApplication);
                 todo!("Please write a test that checks this");
             }
-            DbType::None => {
+            Type::None => {
                 debug!("TODO None[...]");
                 Inferred::new_any()
             }
-            DbType::Literal(l) => i_s.db.python_state.literal_type(&l.kind).get_item(
+            Type::Literal(l) => i_s.db.python_state.literal_type(&l.kind).get_item(
                 i_s,
                 None,
                 slice_type,
@@ -361,38 +359,38 @@ impl DbType {
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         match self {
-            DbType::Class(c) => {
+            Type::Class(c) => {
                 let cls = c.class(i_s.db);
                 Instance::new(cls, inferred_from).execute(i_s, args, result_context, on_type_error)
             }
-            DbType::Type(cls) => {
+            Type::Type(cls) => {
                 execute_type_of_type(i_s, args, result_context, on_type_error, cls.as_ref())
             }
-            DbType::Union(union) => Inferred::gather_simplified_union(i_s, |gather| {
+            Type::Union(union) => Inferred::gather_simplified_union(i_s, |gather| {
                 for entry in union.iter() {
                     gather(entry.execute(i_s, None, args, result_context, on_type_error))
                 }
             }),
-            DbType::Callable(content) => {
+            Type::Callable(content) => {
                 Callable::new(content, None).execute(i_s, args, on_type_error, result_context)
             }
-            DbType::FunctionOverload(overload) => OverloadedFunction::new(overload, None).execute(
+            Type::FunctionOverload(overload) => OverloadedFunction::new(overload, None).execute(
                 i_s,
                 args,
                 result_context,
                 on_type_error,
             ),
-            DbType::TypeVar(tv) => match &tv.type_var.kind {
+            Type::TypeVar(tv) => match &tv.type_var.kind {
                 TypeVarKind::Bound(bound) => {
                     bound.execute(i_s, None, args, result_context, on_type_error)
                 }
                 _ => todo!(),
             },
-            DbType::Any | DbType::Never => {
+            Type::Any | Type::Never => {
                 args.iter().calculate_diagnostics(i_s);
                 Inferred::new_any()
             }
-            DbType::CustomBehavior(custom) => {
+            Type::CustomBehavior(custom) => {
                 custom.execute(i_s, args, result_context, on_type_error)
             }
             _ => {
@@ -409,7 +407,7 @@ impl DbType {
     }
 
     pub fn iter(&self, i_s: &InferenceState, from: NodeRef) -> IteratorContent {
-        let on_error = |t: &DbType| {
+        let on_error = |t: &Type| {
             from.add_issue(
                 i_s,
                 IssueType::NotIterable {
@@ -418,17 +416,17 @@ impl DbType {
             );
         };
         match self {
-            DbType::Class(c) => Instance::new(c.class(i_s.db), None).iter(i_s, from),
-            DbType::Tuple(content) => Tuple::new(content).iter(i_s, from),
-            DbType::NamedTuple(nt) => NamedTupleValue::new(i_s.db, nt).iter(i_s, from),
-            DbType::Union(union) => {
+            Type::Class(c) => Instance::new(c.class(i_s.db), None).iter(i_s, from),
+            Type::Tuple(content) => Tuple::new(content).iter(i_s, from),
+            Type::NamedTuple(nt) => NamedTupleValue::new(i_s.db, nt).iter(i_s, from),
+            Type::Union(union) => {
                 let mut items = vec![];
                 for t in union.iter() {
                     items.push(t.iter(i_s, from));
                 }
                 IteratorContent::Union(items)
             }
-            DbType::TypeVar(tv) => match &tv.type_var.kind {
+            Type::TypeVar(tv) => match &tv.type_var.kind {
                 TypeVarKind::Bound(bound) => bound.iter(i_s, from),
                 TypeVarKind::Constraints(_) => todo!(),
                 TypeVarKind::Unrestricted => {
@@ -436,8 +434,8 @@ impl DbType {
                     IteratorContent::Any
                 }
             },
-            DbType::NewType(n) => n.type_(i_s).iter(i_s, from),
-            DbType::Self_ => Instance::new(*i_s.current_class().unwrap(), None).iter(i_s, from),
+            Type::NewType(n) => n.type_(i_s).iter(i_s, from),
+            Type::Self_ => Instance::new(*i_s.current_class().unwrap(), None).iter(i_s, from),
             _ => IteratorContent::Inferred(
                 self.lookup(
                     i_s,
@@ -469,11 +467,11 @@ pub fn attribute_access_of_type(
     name: &str,
     kind: LookupKind,
     result_context: &mut ResultContext,
-    callable: &mut impl FnMut(&DbType, LookupResult),
-    in_type: Rc<DbType>,
+    callable: &mut impl FnMut(&Type, LookupResult),
+    in_type: Rc<Type>,
 ) {
     let lookup_result = match in_type.as_ref() {
-        DbType::Union(union) => {
+        Type::Union(union) => {
             debug_assert!(union.entries.len() > 1);
             for t in union.iter() {
                 attribute_access_of_type(
@@ -488,7 +486,7 @@ pub fn attribute_access_of_type(
             }
             return;
         }
-        DbType::TypeVar(t) => {
+        Type::TypeVar(t) => {
             match &t.type_var.kind {
                 TypeVarKind::Bound(bound) => attribute_access_of_type(
                     i_s,
@@ -504,48 +502,48 @@ pub fn attribute_access_of_type(
             }
             return;
         }
-        DbType::Class(g) => g.class(i_s.db).lookup(i_s, from, name, kind),
-        DbType::Literal(l) => i_s
+        Type::Class(g) => g.class(i_s.db).lookup(i_s, from, name, kind),
+        Type::Literal(l) => i_s
             .db
             .python_state
             .literal_instance(&l.kind)
             .class
             .lookup(i_s, from, name, kind),
-        DbType::Callable(_) => LookupResult::None,
-        DbType::Self_ => i_s.current_class().unwrap().lookup(i_s, from, name, kind),
-        DbType::Any => i_s
+        Type::Callable(_) => LookupResult::None,
+        Type::Self_ => i_s.current_class().unwrap().lookup(i_s, from, name, kind),
+        Type::Any => i_s
             .db
             .python_state
             .bare_type_class()
             .instance()
             .lookup(i_s, from, name, kind)
             .or_else(|| LookupResult::any()),
-        t @ DbType::Enum(e) => lookup_on_enum_class(i_s, from, e, name, result_context),
-        DbType::Dataclass(d) => DataclassHelper(d).lookup_on_type(i_s, from, name, kind),
-        DbType::TypedDict(d) => i_s
+        t @ Type::Enum(e) => lookup_on_enum_class(i_s, from, e, name, result_context),
+        Type::Dataclass(d) => DataclassHelper(d).lookup_on_type(i_s, from, name, kind),
+        Type::TypedDict(d) => i_s
             .db
             .python_state
             .typed_dict_class()
             .lookup(i_s, from, name, kind),
-        DbType::NamedTuple(nt) => match name {
+        Type::NamedTuple(nt) => match name {
             "__new__" => {
-                LookupResult::UnknownName(Inferred::from_type(DbType::Callable(nt.__new__.clone())))
+                LookupResult::UnknownName(Inferred::from_type(Type::Callable(nt.__new__.clone())))
             }
             _ => todo!(),
         },
-        DbType::Tuple(tup) => i_s
+        Type::Tuple(tup) => i_s
             .db
             .python_state
             .tuple_class(i_s.db, tup)
             .lookup(i_s, from, name, kind),
-        DbType::Type(_) => i_s
+        Type::Type(_) => i_s
             .db
             .python_state
             .bare_type_class()
             .lookup(i_s, from, name, kind),
         t => todo!("{name} on {t:?}"),
     };
-    callable(&DbType::Type(in_type.clone()), lookup_result)
+    callable(&Type::Type(in_type.clone()), lookup_result)
 }
 
 pub fn execute_type_of_type<'db>(
@@ -553,12 +551,12 @@ pub fn execute_type_of_type<'db>(
     args: &dyn Arguments<'db>,
     result_context: &mut ResultContext,
     on_type_error: OnTypeError<'db, '_>,
-    type_: &DbType,
+    type_: &Type,
 ) -> Inferred {
     match type_ {
         #![allow(unreachable_code)]
         // TODO remove this
-        tuple @ DbType::Tuple(tuple_content) => {
+        tuple @ Type::Tuple(tuple_content) => {
             debug!("TODO this does not check the arguments");
             return Inferred::from_type(tuple.clone());
             // TODO reenable this
@@ -579,10 +577,10 @@ pub fn execute_type_of_type<'db>(
             });
             Inferred::from_type(tuple.clone())
         }
-        DbType::Class(c) => c
+        Type::Class(c) => c
             .class(i_s.db)
             .execute(i_s, args, result_context, on_type_error),
-        DbType::TypeVar(t) => match &t.type_var.kind {
+        Type::TypeVar(t) => match &t.type_var.kind {
             TypeVarKind::Bound(bound) => {
                 execute_type_of_type(i_s, args, result_context, on_type_error, bound);
                 Inferred::from_type(type_.clone())
@@ -590,7 +588,7 @@ pub fn execute_type_of_type<'db>(
             TypeVarKind::Constraints(constraints) => todo!(),
             TypeVarKind::Unrestricted => todo!(),
         },
-        DbType::NewType(n) => {
+        Type::NewType(n) => {
             let mut iterator = args.iter();
             if let Some(first) = iterator.next() {
                 if iterator.next().is_some() {
@@ -602,20 +600,20 @@ pub fn execute_type_of_type<'db>(
                 todo!()
             }
         }
-        DbType::Self_ => {
+        Type::Self_ => {
             i_s.current_class()
                 .unwrap()
                 .execute(i_s, args, result_context, on_type_error);
-            Inferred::from_type(DbType::Self_)
+            Inferred::from_type(Type::Self_)
         }
-        DbType::Any => Inferred::new_any(),
-        DbType::Dataclass(d) => {
+        Type::Any => Inferred::new_any(),
+        Type::Dataclass(d) => {
             DataclassHelper(d).initialize(i_s, args, result_context, on_type_error)
         }
-        DbType::TypedDict(td) => {
+        Type::TypedDict(td) => {
             TypedDictHelper(td).initialize(i_s, args, result_context, on_type_error)
         }
-        DbType::NamedTuple(nt) => {
+        Type::NamedTuple(nt) => {
             let calculated_type_vars = calculate_callable_type_vars_and_return(
                 i_s,
                 Callable::new(&nt.__new__, None),
@@ -626,13 +624,13 @@ pub fn execute_type_of_type<'db>(
                 Some(on_type_error),
             );
             debug!("TODO use generics for namedtuple");
-            Inferred::from_type(DbType::NamedTuple(nt.clone()))
+            Inferred::from_type(Type::NamedTuple(nt.clone()))
         }
-        DbType::Enum(_) => {
+        Type::Enum(_) => {
             debug!("TODO did not check arguments in execution of enum");
             Inferred::from_type(type_.clone())
         }
-        DbType::Union(union) => Inferred::gather_base_types(i_s, |gather| {
+        Type::Union(union) => Inferred::gather_base_types(i_s, |gather| {
             for t in union.iter() {
                 gather(execute_type_of_type(
                     i_s,

@@ -15,8 +15,8 @@ use crate::{
     matching::{LookupKind, LookupResult, ResultContext},
     node_ref::NodeRef,
     type_::{
-        CallableLike, DbString, DbType, Enum, EnumMember, EnumMemberDefinition, Literal,
-        LiteralKind, StringSlice,
+        CallableLike, DbString, Enum, EnumMember, EnumMemberDefinition, Literal, LiteralKind,
+        StringSlice, Type,
     },
 };
 
@@ -81,7 +81,7 @@ pub fn infer_value_on_member(
                 node_ref.file.inference(i_s).infer_expression(expr)
             };
             match inferred.as_type(i_s).as_ref() {
-                DbType::Class(c) if c.link == i_s.db.python_state.enum_auto_link() => {
+                Type::Class(c) if c.link == i_s.db.python_state.enum_auto_link() => {
                     Inferred::from_type(
                         enum_
                             .class(i_s.db)
@@ -127,7 +127,7 @@ pub fn lookup_on_enum_member_instance(
     if is_enum {
         match name {
             "name" | "_name_" => {
-                return LookupResult::UnknownName(Inferred::from_type(DbType::Literal(Literal {
+                return LookupResult::UnknownName(Inferred::from_type(Type::Literal(Literal {
                     implicit: true,
                     kind: LiteralKind::String(DbString::RcStr(member.name(i_s.db).into())),
                 })))
@@ -156,7 +156,7 @@ fn lookup_members_on_enum(
     result_context: &mut ResultContext,
 ) -> LookupResult {
     match Enum::lookup(enum_, i_s.db, name, true) {
-        Some(m) => LookupResult::UnknownName(Inferred::from_type(DbType::EnumMember(m))),
+        Some(m) => LookupResult::UnknownName(Inferred::from_type(Type::EnumMember(m))),
         None => LookupResult::None,
     }
 }
@@ -222,7 +222,7 @@ pub fn execute_functional_enum(
         return None;
     }
 
-    Some(Inferred::from_type(DbType::Type(Rc::new(DbType::Enum(
+    Some(Inferred::from_type(Type::Type(Rc::new(Type::Enum(
         Enum::new(
             name,
             class.node_ref.as_link(),
@@ -389,7 +389,7 @@ fn gather_functional_enum_members(
                 .file
                 .inference(i_s)
                 .infer_atom(atom, &mut ResultContext::Unknown);
-            if let DbType::Literal(literal) = inf.as_type(i_s).as_ref() {
+            if let Type::Literal(literal) = inf.as_type(i_s).as_ref() {
                 if let LiteralKind::String(s) = &literal.kind {
                     split_enum_members(
                         i_s,
