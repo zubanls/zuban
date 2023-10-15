@@ -4,7 +4,6 @@ use parsa_python_ast::ParamKind;
 
 use crate::{
     inference_state::InferenceState,
-    matching::Type,
     type_::{TupleContent, TupleTypeArguments, TypeOrTypeVarTuple},
 };
 
@@ -63,7 +62,6 @@ impl DbType {
                     (ArbitraryLength(t2), FixedLength(ts1))
                     | (FixedLength(ts1), ArbitraryLength(t2)) => {
                         let mut entries = vec![];
-                        let t2 = Type::new(t2);
                         for type_or1 in ts1.iter() {
                             if let TypeOrTypeVarTuple::Type(t1) = type_or1 {
                                 entries
@@ -81,15 +79,9 @@ impl DbType {
                 Some(DbType::Callable(common_sub_type_for_callables(i_s, c1, c2)))
             }
             _ => {
-                if Type::new(self)
-                    .is_simple_sub_type_of(i_s, &Type::new(other))
-                    .bool()
-                {
-                    Some(Type::new(self).as_db_type())
-                } else if Type::new(other)
-                    .is_simple_sub_type_of(i_s, &Type::new(self))
-                    .bool()
-                {
+                if self.is_simple_sub_type_of(i_s, other).bool() {
+                    Some(self.clone())
+                } else if other.is_simple_sub_type_of(i_s, self).bool() {
                     Some(other.clone())
                 } else {
                     None

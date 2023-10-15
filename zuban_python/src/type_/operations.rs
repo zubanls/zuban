@@ -9,7 +9,7 @@ use crate::{
     inferred::Inferred,
     matching::{
         calculate_callable_type_vars_and_return, IteratorContent, LookupKind, LookupResult,
-        OnLookupError, OnTypeError, ResultContext, Type,
+        OnLookupError, OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
     type_helpers::{
@@ -103,7 +103,7 @@ impl DbType {
             }
             t @ DbType::TypeVar(usage) => match &usage.type_var.kind {
                 TypeVarKind::Bound(bound) => {
-                    Type::new(bound).run_after_lookup_on_each_union_member(
+                    bound.run_after_lookup_on_each_union_member(
                         i_s,
                         None,
                         from,
@@ -148,7 +148,7 @@ impl DbType {
             DbType::Tuple(tup) => callable(self, Tuple::new(tup).lookup(i_s, from, name)),
             DbType::Union(union) => {
                 for t in union.iter() {
-                    Type::new(t).run_after_lookup_on_each_union_member(
+                    t.run_after_lookup_on_each_union_member(
                         i_s,
                         None,
                         from,
@@ -216,16 +216,15 @@ impl DbType {
                 callable(self, NamedTupleValue::new(i_s.db, nt).lookup(i_s, name))
             }
             DbType::Never => (),
-            DbType::NewType(new_type) => Type::new(new_type.type_(i_s))
-                .run_after_lookup_on_each_union_member(
-                    i_s,
-                    None,
-                    from,
-                    name,
-                    kind,
-                    result_context,
-                    callable,
-                ),
+            DbType::NewType(new_type) => new_type.type_(i_s).run_after_lookup_on_each_union_member(
+                i_s,
+                None,
+                from,
+                name,
+                kind,
+                result_context,
+                callable,
+            ),
             DbType::Enum(e) => callable(
                 self,
                 lookup_on_enum_instance(i_s, from, e, name, result_context),
@@ -234,7 +233,8 @@ impl DbType {
                 self,
                 lookup_on_enum_member_instance(i_s, from, member, name),
             ),
-            DbType::RecursiveAlias(r) => Type::new(r.calculated_db_type(i_s.db))
+            DbType::RecursiveAlias(r) => r
+                .calculated_db_type(i_s.db)
                 .run_after_lookup_on_each_union_member(
                     i_s,
                     None,
@@ -268,13 +268,11 @@ impl DbType {
             }
             DbType::Union(union) => Inferred::gather_simplified_union(i_s, |callable| {
                 for t in union.iter() {
-                    callable(Type::new(t).get_item(i_s, None, slice_type, result_context))
+                    callable(t.get_item(i_s, None, slice_type, result_context))
                 }
             }),
             t @ DbType::TypeVar(tv) => match &tv.type_var.kind {
-                TypeVarKind::Bound(bound) => {
-                    Type::new(bound).get_item(i_s, None, slice_type, result_context)
-                }
+                TypeVarKind::Bound(bound) => bound.get_item(i_s, None, slice_type, result_context),
                 TypeVarKind::Constraints(constraints) => todo!(),
                 TypeVarKind::Unrestricted => todo!(),
             },
@@ -288,7 +286,7 @@ impl DbType {
                     let enum_index = slice_type.infer(i_s);
                     if !enum_index
                         .as_type(i_s)
-                        .is_simple_sub_type_of(i_s, &Type::owned(i_s.db.python_state.str_db_type()))
+                        .is_simple_sub_type_of(i_s, &i_s.db.python_state.str_db_type())
                         .bool()
                     {
                         slice_type.as_node_ref().add_issue(
@@ -316,14 +314,14 @@ impl DbType {
                 }
             },
             DbType::NewType(new_type) => {
-                Type::new(new_type.type_(i_s)).get_item(i_s, None, slice_type, result_context)
+                new_type
+                    .type_(i_s)
+                    .get_item(i_s, None, slice_type, result_context)
             }
-            DbType::RecursiveAlias(r) => Type::new(r.calculated_db_type(i_s.db)).get_item(
-                i_s,
-                None,
-                slice_type,
-                result_context,
-            ),
+            DbType::RecursiveAlias(r) => {
+                r.calculated_db_type(i_s.db)
+                    .get_item(i_s, None, slice_type, result_context)
+            }
             DbType::TypedDict(d) => TypedDictHelper(d).get_item(i_s, slice_type, result_context),
             DbType::Callable(_) => {
                 slice_type
@@ -372,7 +370,7 @@ impl DbType {
             }
             DbType::Union(union) => Inferred::gather_simplified_union(i_s, |gather| {
                 for entry in union.iter() {
-                    gather(Type::new(entry).execute(i_s, None, args, result_context, on_type_error))
+                    gather(entry.execute(i_s, None, args, result_context, on_type_error))
                 }
             }),
             DbType::Callable(content) => {
@@ -386,7 +384,7 @@ impl DbType {
             ),
             DbType::TypeVar(tv) => match &tv.type_var.kind {
                 TypeVarKind::Bound(bound) => {
-                    Type::new(bound).execute(i_s, None, args, result_context, on_type_error)
+                    bound.execute(i_s, None, args, result_context, on_type_error)
                 }
                 _ => todo!(),
             },
@@ -426,19 +424,19 @@ impl DbType {
             DbType::Union(union) => {
                 let mut items = vec![];
                 for t in union.iter() {
-                    items.push(Type::new(t).iter(i_s, from));
+                    items.push(t.iter(i_s, from));
                 }
                 IteratorContent::Union(items)
             }
             DbType::TypeVar(tv) => match &tv.type_var.kind {
-                TypeVarKind::Bound(bound) => Type::new(bound).iter(i_s, from),
+                TypeVarKind::Bound(bound) => bound.iter(i_s, from),
                 TypeVarKind::Constraints(_) => todo!(),
                 TypeVarKind::Unrestricted => {
                     on_error(self);
                     IteratorContent::Any
                 }
             },
-            DbType::NewType(n) => Type::new(n.type_(i_s)).iter(i_s, from),
+            DbType::NewType(n) => n.type_(i_s).iter(i_s, from),
             DbType::Self_ => Instance::new(*i_s.current_class().unwrap(), None).iter(i_s, from),
             _ => IteratorContent::Inferred(
                 self.lookup(
@@ -547,7 +545,7 @@ pub fn attribute_access_of_type(
             .lookup(i_s, from, name, kind),
         t => todo!("{name} on {t:?}"),
     };
-    callable(&Type::owned(DbType::Type(in_type.clone())), lookup_result)
+    callable(&DbType::Type(in_type.clone()), lookup_result)
 }
 
 pub fn execute_type_of_type<'db>(
@@ -575,7 +573,7 @@ pub fn execute_type_of_type<'db>(
             if args_iterator.next().is_some() {
                 todo!()
             }
-            Type::new(tuple).error_if_not_matches(i_s, &inferred_tup, |t1, t2| {
+            tuple.error_if_not_matches(i_s, &inferred_tup, |t1, t2| {
                 (on_type_error.callback)(i_s, &|_| todo!(), &arg, t1, t2);
                 args.as_node_ref().to_db_lifetime(i_s.db)
             });

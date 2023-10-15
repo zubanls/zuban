@@ -3,7 +3,7 @@ use std::ops::AddAssign;
 use std::rc::Rc;
 
 use crate::database::{Database, PointLink};
-use crate::matching::Type;
+
 use crate::matching::{FormatData, ParamsStyle};
 use crate::node_ref::NodeRef;
 use crate::utils::join_with_commas;
@@ -325,15 +325,13 @@ impl TypeVarLikes {
                     match &t.kind {
                         TypeVarKind::Unrestricted => (),
                         TypeVarKind::Bound(bound) => {
-                            s += &format!(" <: {}", Type::new(bound).format(format_data));
+                            s += &format!(" <: {}", bound.format(format_data));
                         }
                         TypeVarKind::Constraints(constraints) => {
                             s += &format!(
                                 " in ({})",
                                 join_with_commas(
-                                    constraints
-                                        .iter()
-                                        .map(|t| Type::new(t).format(format_data).into())
+                                    constraints.iter().map(|t| t.format(format_data).into())
                                 )
                             );
                         }

@@ -36,7 +36,7 @@ use crate::matching::Matcher;
 use crate::matching::MismatchReason;
 use crate::matching::OnTypeError;
 use crate::matching::ResultContext;
-use crate::matching::Type;
+
 use crate::matching::{FormatData, Generic, ParamsStyle};
 use crate::node_ref::NodeRef;
 use crate::type_helpers::calculate_init_of_dataclass;
@@ -600,10 +600,10 @@ impl DbType {
                 _ => {
                     /*
                     if matches!(&c1.params, CallableParams::Any) {
-                        Type::new(&c1.result_type).is_super_type_of(
+                        c1.result_type.is_super_type_of(
                             i_s,
                             matcher,
-                            &Type::new(t2.as_ref()),
+                            t2,
                         )
                     } else {
                         None
@@ -1201,7 +1201,7 @@ impl DbType {
         callback: Option<impl FnOnce(Box<str>, Box<str>, &MismatchReason) -> NodeRef<'db>>,
     ) -> Match {
         let value_type = value.as_type(i_s);
-        let matches = Type::new(self).is_super_type_of(i_s, matcher, &value_type);
+        let matches = self.is_super_type_of(i_s, matcher, &value_type);
         if let Match::False { ref reason, .. } = matches {
             let mut fmt1 = FormatData::new_short(i_s.db);
             let mut fmt2 = FormatData::with_matcher(i_s.db, matcher);
@@ -1263,10 +1263,7 @@ impl DbType {
     ) -> Inferred {
         let db_type =
             self.internal_resolve_type_vars(i_s, calculated_type_args, class, replace_self_type);
-        debug!(
-            "Resolved type vars: {}",
-            Type::new(&db_type).format_short(i_s.db)
-        );
+        debug!("Resolved type vars: {}", db_type.format_short(i_s.db));
         Inferred::from_type(db_type)
     }
 
@@ -1277,7 +1274,7 @@ impl DbType {
         class: Option<&Class>,
         replace_self_type: ReplaceSelf,
     ) -> DbType {
-        Type::new(self).replace_type_var_likes_and_self(
+        self.replace_type_var_likes_and_self(
             i_s.db,
             &mut |usage| {
                 if let Some(c) = class {
@@ -1407,7 +1404,7 @@ impl DbType {
                                             TypeOrTypeVarTuple::Type(t1),
                                             TypeOrTypeVarTuple::Type(t2),
                                         ) => TypeOrTypeVarTuple::Type(
-                                            Type::new(t1).merge_matching_parts(db, t2),
+                                            t1.merge_matching_parts(db, t2),
                                         ),
                                         (t1, t2) => match t1 == t2 {
                                             true => t1.clone(),
@@ -2418,7 +2415,7 @@ impl TypedDict {
             .iter()
             .map(|m| {
                 m.replace_type(|t| {
-                    Type::new(&m.type_)
+                    m.type_
                         .replace_type_var_likes(db, &mut |usage| generics[usage.index()].clone())
                 })
             })
@@ -2449,9 +2446,7 @@ impl TypedDict {
             for m1 in members.iter() {
                 if m1.name.as_str(i_s.db) == m2.name.as_str(i_s.db) {
                     if m1.required != m2.required
-                        || !Type::new(&m1.type_)
-                            .is_simple_same_type(i_s, &Type::new(&m2.type_))
-                            .bool()
+                        || !m1.type_.is_simple_same_type(i_s, &m2.type_).bool()
                     {
                         return DbType::Never;
                     }
@@ -2474,9 +2469,7 @@ impl TypedDict {
             for m2 in other.members.iter() {
                 if m1.name.as_str(i_s.db) == m2.name.as_str(i_s.db) {
                     if m1.required == m2.required
-                        && Type::new(&m1.type_)
-                            .is_simple_same_type(i_s, &Type::new(&m2.type_))
-                            .bool()
+                        && m1.type_.is_simple_same_type(i_s, &m2.type_).bool()
                     {
                         new_members.push(m1.clone());
                     }

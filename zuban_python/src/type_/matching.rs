@@ -35,15 +35,15 @@ impl DbType {
                 _ => false,
             },
             DbType::Type(t1) => match other {
-                DbType::Type(t2) => Type::new(t1).overlaps(i_s, &Type::new(t2)),
+                DbType::Type(t2) => t1.overlaps(i_s, t2),
                 _ => false,
             },
             DbType::Callable(c1) => match other {
                 DbType::Callable(c2) => {
-                    Type::new(&c1.result_type).overlaps(i_s, &Type::new(&c2.result_type))
+                    c1.result_type.overlaps(i_s, &c2.result_type)
                         && has_overlapping_params(i_s, &c1.params, &c2.params)
                 }
-                DbType::Type(t2) => Type::new(self).overlaps(i_s, &Type::new(t2)),
+                DbType::Type(t2) => self.overlaps(i_s, &t2),
                 _ => false,
             },
             DbType::Any => true,
@@ -59,14 +59,14 @@ impl DbType {
             DbType::None => matches!(other, DbType::None),
             DbType::TypeVar(t1) => match &t1.type_var.kind {
                 TypeVarKind::Unrestricted => true,
-                TypeVarKind::Bound(bound) => Type::new(bound).overlaps(i_s, other),
+                TypeVarKind::Bound(bound) => bound.overlaps(i_s, other),
                 TypeVarKind::Constraints(constraints) => todo!("{other:?}"),
             },
             DbType::Tuple(t1) => match other {
                 DbType::Tuple(t2) => Self::overlaps_tuple(i_s, t1, t2),
                 _ => false,
             },
-            DbType::Union(union) => union.iter().any(|t| Type::new(t).overlaps(i_s, other)),
+            DbType::Union(union) => union.iter().any(|t| t.overlaps(i_s, other)),
             DbType::FunctionOverload(intersection) => todo!(),
             DbType::NewType(_) => todo!(),
             DbType::RecursiveAlias(_) => todo!(),
@@ -101,9 +101,7 @@ impl DbType {
                 variance,
             ),
             DbType::Type(t1) => match value_type {
-                DbType::Type(t2) => Type::new(t1)
-                    .matches(i_s, matcher, t2, variance)
-                    .similar_if_false(),
+                DbType::Type(t2) => t1.matches(i_s, matcher, t2, variance).similar_if_false(),
                 _ => Match::new_false(),
             },
             DbType::TypeVar(t1) => {
@@ -159,17 +157,17 @@ impl DbType {
                         // Classes like aliases can also be recursive in mypy, like `class B(List[B])`.
                         matcher.avoid_recursion(t1, t2, |matcher| {
                             let g = rec1.calculated_db_type(i_s.db);
-                            Type::new(g).matches_internal(i_s, matcher, value_type, variance)
+                            g.matches_internal(i_s, matcher, value_type, variance)
                         })
                     }
                     t @ DbType::RecursiveAlias(rec2) => matcher.avoid_recursion(t1, t, |matcher| {
                         let t1 = rec1.calculated_db_type(i_s.db);
                         let t2 = rec2.calculated_db_type(i_s.db);
-                        Type::new(t1).matches_internal(i_s, matcher, &Type::new(t2), variance)
+                        t1.matches_internal(i_s, matcher, &t2, variance)
                     }),
                     _ => {
                         let g = rec1.calculated_db_type(i_s.db);
-                        Type::new(g).matches_internal(i_s, matcher, value_type, variance)
+                        g.matches_internal(i_s, matcher, value_type, variance)
                     }
                 }
             }
@@ -201,11 +199,7 @@ impl DbType {
                             if m1.required != m2.required {
                                 return Match::new_false().similar_if_false();
                             }
-                            matches &= Type::new(&m1.type_).is_same_type(
-                                i_s,
-                                matcher,
-                                &Type::new(&m2.type_),
-                            );
+                            matches &= m1.type_.is_same_type(i_s, matcher, &m2.type_);
                         } else {
                             return Match::new_false().similar_if_false();
                         }
@@ -276,7 +270,7 @@ impl DbType {
                         // allocates when e.g.  Foo is passed to def x(f: Foo | None): ...
                         // This is a bit unfortunate, especially because it loops over the
                         // mro and allocates every time.
-                        let t2 = Type::owned(c2.as_db_type(i_s.db));
+                        let t2 = c2.as_db_type(i_s.db);
                         self.matches_internal(i_s, matcher, &t2, Variance::Covariant)
                     }
                 },
@@ -349,10 +343,7 @@ impl DbType {
             self.is_same_type(
                 i_s,
                 matcher,
-                &Type::owned(DbType::new_class(
-                    cls_node_ref.as_link(),
-                    ClassGenerics::None,
-                )),
+                &DbType::new_class(cls_node_ref.as_link(), ClassGenerics::None),
             )
             .or(|| self.check_promotion(i_s, matcher, cls_node_ref))
         } else {
@@ -445,7 +436,7 @@ impl DbType {
                     match &t2.type_var.kind {
                         TypeVarKind::Unrestricted => (),
                         TypeVarKind::Bound(bound) => {
-                            let m = self.simple_matches(i_s, &Type::new(bound), variance);
+                            let m = self.simple_matches(i_s, bound, variance);
                             if m.bool() {
                                 return m;
                             }
@@ -453,7 +444,7 @@ impl DbType {
                         TypeVarKind::Constraints(constraints) => {
                             let m = constraints
                                 .iter()
-                                .all(|r| self.simple_matches(i_s, &Type::new(r), variance).bool());
+                                .all(|r| self.simple_matches(i_s, r, variance).bool());
                             if m {
                                 return Match::new_true();
                             }
@@ -472,7 +463,7 @@ impl DbType {
                 }
                 let mut result: Option<Match> = None;
                 for t in u2.iter() {
-                    let r = self.matches(i_s, matcher, &Type::new(t), variance);
+                    let r = self.matches(i_s, matcher, t, variance);
                     if !r.bool() {
                         return r.bool().into();
                     } else if let Some(old) = result {
@@ -485,16 +476,12 @@ impl DbType {
             }
             DbType::NewType(n2) => {
                 let t = n2.type_(i_s);
-                return self.matches(i_s, matcher, &Type::new(t), variance);
+                return self.matches(i_s, matcher, t, variance);
             }
             DbType::Never if variance == Variance::Covariant => return Match::new_true(), // Never is assignable to anything
             DbType::Self_ if variance == Variance::Covariant => {
                 if let Some(cls) = i_s.current_class() {
-                    return self.simple_matches(
-                        i_s,
-                        &Type::owned(cls.as_db_type(i_s.db)),
-                        variance,
-                    );
+                    return self.simple_matches(i_s, &cls.as_db_type(i_s.db), variance);
                 }
             }
             DbType::Module(_) => {
@@ -522,16 +509,14 @@ impl DbType {
     ) -> Match {
         match value_type {
             DbType::TypeVar(type_var2) if matcher.is_matching_reverse() => {
-                matcher.match_or_add_type_var(i_s, type_var2, &Type::new(self), variance.invert())
+                matcher.match_or_add_type_var(i_s, type_var2, self, variance.invert())
             }
             DbType::Union(u2) => match variance {
                 Variance::Covariant => {
                     let mut matches = Match::new_true();
                     for g2 in u2.iter() {
-                        let t2 = Type::new(g2);
-                        matches &= Match::any(u1.iter(), |g1| {
-                            Type::new(g1).matches(i_s, matcher, &t2, variance)
-                        })
+                        matches &=
+                            Match::any(u1.iter(), |g1| g1.matches(i_s, matcher, &g2, variance))
                     }
                     matches
                 }
@@ -542,12 +527,12 @@ impl DbType {
                 Variance::Contravariant => unreachable!(),
             },
             _ => match variance {
-                Variance::Covariant => Match::any(u1.iter(), |g| {
-                    Type::new(g).matches(i_s, matcher, value_type, variance)
-                }),
-                Variance::Invariant => Match::all(u1.iter(), |g| {
-                    Type::new(g).matches(i_s, matcher, value_type, variance)
-                }),
+                Variance::Covariant => {
+                    Match::any(u1.iter(), |g| g.matches(i_s, matcher, value_type, variance))
+                }
+                Variance::Invariant => {
+                    Match::all(u1.iter(), |g| g.matches(i_s, matcher, value_type, variance))
+                }
                 Variance::Contravariant => unreachable!(),
             },
         }
@@ -579,9 +564,7 @@ impl DbType {
                     if matches!(t2, DbType::Any) {
                         return false;
                     }
-                    Type::owned(t1)
-                        .matches(i_s, matcher, &Type::owned(t2), variance)
-                        .bool()
+                    t1.matches(i_s, matcher, &t2, variance).bool()
                 };
                 if class1.node_ref == i_s.db.python_state.list_node_ref() && check(i_s, 0) {
                     return Match::False {
@@ -615,10 +598,10 @@ impl DbType {
                 if let DbType::Class(c2) = t2.as_ref() {
                     match c2.class(i_s.db).use_cached_class_infos(i_s.db).metaclass {
                         MetaclassState::Some(link) => {
-                            return Type::owned(class1.as_db_type(i_s.db)).matches(
+                            return class1.as_db_type(i_s.db).matches(
                                 i_s,
                                 matcher,
-                                &Type::owned(DbType::new_class(link, ClassGenerics::None)),
+                                &DbType::new_class(link, ClassGenerics::None),
                                 variance,
                             );
                         }
@@ -661,7 +644,7 @@ impl DbType {
                 })
             }
             DbType::Type(t2) if c1.params == CallableParams::Any => {
-                Type::new(&c1.result_type).is_super_type_of(i_s, matcher, &Type::new(t2.as_ref()))
+                c1.result_type.is_super_type_of(i_s, matcher, t2)
             }
             _ => match value_type.maybe_callable(i_s) {
                 Some(CallableLike::Callable(c2)) => Self::matches_callable(i_s, matcher, c1, &c2),
@@ -670,7 +653,7 @@ impl DbType {
                         i_s,
                         matcher,
                         c1,
-                        &Type::owned(DbType::FunctionOverload(overload)),
+                        &DbType::FunctionOverload(overload),
                         variance,
                     )
                 }
@@ -692,7 +675,8 @@ impl DbType {
                 return Self::matches_callable(i_s, &mut matcher, c1, c2);
             }
         }
-        Type::new(&c1.result_type).is_super_type_of(i_s, matcher, &Type::new(&c2.result_type))
+        c1.result_type
+            .is_super_type_of(i_s, matcher, &c2.result_type)
             & matches_params(
                 i_s,
                 matcher,
@@ -734,7 +718,7 @@ impl DbType {
                     if let Some(type2) = value_generics.next() {
                         match (type1, type2) {
                             (TypeOrTypeVarTuple::Type(t1), TypeOrTypeVarTuple::Type(t2)) => {
-                                overlaps &= Type::new(t1).overlaps(i_s, &Type::new(t2));
+                                overlaps &= t1.overlaps(i_s, &t2);
                             }
                             _ => todo!(),
                         }
@@ -747,27 +731,19 @@ impl DbType {
                 }
                 overlaps
             }
-            (ArbitraryLength(t1), ArbitraryLength(t2)) => {
-                Type::new(t1).overlaps(i_s, &Type::new(t2))
-            }
-            (ArbitraryLength(t1), FixedLength(ts2)) => {
-                let t1 = Type::new(t1);
-                ts2.iter().all(|t2| match t2 {
-                    TypeOrTypeVarTuple::Type(t2) => t1.overlaps(i_s, &Type::new(t2)),
-                    TypeOrTypeVarTuple::TypeVarTuple(t2) => {
-                        todo!()
-                    }
-                })
-            }
-            (FixedLength(ts1), ArbitraryLength(t2)) => {
-                let t2 = Type::new(t2);
-                ts1.iter().all(|t1| match t1 {
-                    TypeOrTypeVarTuple::Type(t1) => Type::new(t1).overlaps(i_s, &t2),
-                    TypeOrTypeVarTuple::TypeVarTuple(t1) => {
-                        todo!()
-                    }
-                })
-            }
+            (ArbitraryLength(t1), ArbitraryLength(t2)) => t1.overlaps(i_s, t2),
+            (ArbitraryLength(t1), FixedLength(ts2)) => ts2.iter().all(|t2| match t2 {
+                TypeOrTypeVarTuple::Type(t2) => t1.overlaps(i_s, t2),
+                TypeOrTypeVarTuple::TypeVarTuple(t2) => {
+                    todo!()
+                }
+            }),
+            (FixedLength(ts1), ArbitraryLength(t2)) => ts1.iter().all(|t1| match t1 {
+                TypeOrTypeVarTuple::Type(t1) => t1.overlaps(i_s, &t2),
+                TypeOrTypeVarTuple::TypeVarTuple(t1) => {
+                    todo!()
+                }
+            }),
         }
     }
 
@@ -831,8 +807,7 @@ pub fn match_tuple_type_arguments(
                 for (t1, t2) in ts1.iter().zip(ts2.iter()) {
                     match (t1, t2) {
                         (TypeOrTypeVarTuple::Type(t1), TypeOrTypeVarTuple::Type(t2)) => {
-                            matches &=
-                                Type::new(t1).matches(i_s, matcher, &Type::new(t2), variance);
+                            matches &= t1.matches(i_s, matcher, t2, variance);
                         }
                         (
                             TypeOrTypeVarTuple::TypeVarTuple(t1),
@@ -846,25 +821,19 @@ pub fn match_tuple_type_arguments(
                 Match::new_false()
             }
         }
-        (ArbitraryLength(t1), ArbitraryLength(t2), _) => {
-            Type::new(t1).matches(i_s, matcher, &Type::new(t2), variance)
-        }
+        (ArbitraryLength(t1), ArbitraryLength(t2), _) => t1.matches(i_s, matcher, t2, variance),
         (tup1_args @ FixedLength(ts1), tup2_args @ ArbitraryLength(t2), _) => Match::new_false(),
         (ArbitraryLength(t1), FixedLength(ts2), Variance::Invariant) => {
             todo!()
         }
-        (ArbitraryLength(t1), FixedLength(ts2), _) => {
-            let t1 = Type::new(t1);
-            ts2.iter()
-                .all(|g2| match g2 {
-                    TypeOrTypeVarTuple::Type(t2) => {
-                        t1.matches(i_s, matcher, &Type::new(t2), variance).bool()
-                    }
-                    TypeOrTypeVarTuple::TypeVarTuple(_) => {
-                        todo!()
-                    }
-                })
-                .into()
-        }
+        (ArbitraryLength(t1), FixedLength(ts2), _) => ts2
+            .iter()
+            .all(|g2| match g2 {
+                TypeOrTypeVarTuple::Type(t2) => t1.matches(i_s, matcher, t2, variance).bool(),
+                TypeOrTypeVarTuple::TypeVarTuple(_) => {
+                    todo!()
+                }
+            })
+            .into(),
     }
 }

@@ -1,7 +1,4 @@
-use crate::{
-    inference_state::InferenceState,
-    matching::{Matcher, Type},
-};
+use crate::{inference_state::InferenceState, matching::Matcher};
 
 use super::{DbType, UnionEntry, UnionType};
 
@@ -95,25 +92,21 @@ fn merge_simplified_union_type(
                     match &current.type_ {
                         DbType::RecursiveAlias(r) if r.generics.is_some() => (),
                         t => {
-                            if Type::new(&additional.type_)
-                                .is_super_type_of(
-                                    i_s,
-                                    &mut Matcher::with_ignored_promotions(),
-                                    &Type::new(t),
-                                )
+                            if additional
+                                .type_
+                                .is_super_type_of(i_s, &mut Matcher::with_ignored_promotions(), t)
                                 .bool()
                             {
                                 new_types[i].type_ = additional.type_;
                                 finished = false;
                                 continue 'outer;
                             }
-                            if Type::new(t)
-                                .is_super_type_of(
-                                    i_s,
-                                    &mut Matcher::with_ignored_promotions(),
-                                    &Type::new(&additional.type_),
-                                )
-                                .bool()
+                            if t.is_super_type_of(
+                                i_s,
+                                &mut Matcher::with_ignored_promotions(),
+                                &additional.type_,
+                            )
+                            .bool()
                             {
                                 finished = false;
                                 continue 'outer;

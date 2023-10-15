@@ -4,7 +4,7 @@ use parsa_python_ast::ParamKind;
 
 use crate::{
     inference_state::InferenceState,
-    matching::{Match, Type},
+    matching::Match,
     type_helpers::{Class, TypeOrClass},
 };
 
@@ -37,8 +37,8 @@ impl DbType {
         if let Some(new) = check_both_sides(other, self) {
             return new;
         }
-        for (_, c1) in Type::new(self).mro(i_s.db) {
-            for (_, c2) in Type::new(other).mro(i_s.db) {
+        for (_, c1) in self.mro(i_s.db) {
+            for (_, c2) in other.mro(i_s.db) {
                 match &c1 {
                     TypeOrClass::Type(t1) => {
                         let TypeOrClass::Type(t2) = c2 else {
@@ -77,7 +77,7 @@ pub fn common_base_type<'x, I: Iterator<Item = &'x TypeOrTypeVarTuple>>(
                 TypeOrTypeVarTuple::Type(t) => t,
                 TypeOrTypeVarTuple::TypeVarTuple(_) => return i_s.db.python_state.object_db_type(),
             };
-            result = Cow::Owned(result.common_base_type(i_s, &Type::new(t)));
+            result = Cow::Owned(result.common_base_type(i_s, t));
         }
         result.into_owned()
     } else {
@@ -171,10 +171,7 @@ fn common_base_type_for_non_class(
             }
         }
         _ => {
-            if Type::new(t1)
-                .is_simple_same_type(i_s, &Type::new(t2))
-                .bool()
-            {
+            if t1.is_simple_same_type(i_s, t2).bool() {
                 return Some(t1.clone());
             }
         }
@@ -201,8 +198,7 @@ fn common_base_for_callables(
                         kind: c1.kind,
                         type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
                         params,
-                        result_type: Type::new(&c1.result_type)
-                            .common_base_type(i_s, &Type::new(&c2.result_type)),
+                        result_type: c1.result_type.common_base_type(i_s, &c2.result_type),
                     }));
                 }
             }
