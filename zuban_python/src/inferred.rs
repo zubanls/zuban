@@ -1399,7 +1399,7 @@ impl<'db: 'slf, 'slf> Inferred {
 
     pub fn is_union(&self, i_s: &InferenceState) -> bool {
         let check_complex_point = |c: &_| match c {
-            ComplexPoint::TypeInstance(t) => Type::new(t).is_union_like(),
+            ComplexPoint::TypeInstance(t) => t.is_union_like(),
             _ => false,
         };
         match &self.state {
@@ -1705,7 +1705,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 if let Some(first_arg) = iterator.next() {
                                     let t = new_type.type_(i_s);
                                     let inf = first_arg.infer(i_s, &mut ResultContext::Known(t));
-                                    Type::new(t).error_if_not_matches(i_s, &inf, |t1, t2| {
+                                    t.error_if_not_matches(i_s, &inf, |t1, t2| {
                                         (on_type_error.callback)(
                                             i_s,
                                             &|_| {
@@ -1997,10 +1997,7 @@ fn proper_classmethod_callable(
                 let instance_t = class.as_type(i_s);
                 let t =
                     replace_class_type_vars(i_s.db, t, func_class, &|| class.as_db_type(i_s.db));
-                if !Type::new(&t)
-                    .is_super_type_of(i_s, &mut matcher, &instance_t)
-                    .bool()
-                {
+                if !t.is_super_type_of(i_s, &mut matcher, &instance_t).bool() {
                     return None;
                 }
                 if let DbType::Type(t) = t {
@@ -2266,7 +2263,7 @@ pub fn add_attribute_error(
     let name = Box::from(name);
     if let DbType::TypeVar(usage) = full_type {
         if let TypeVarKind::Bound(bound) = &usage.type_var.kind {
-            if Type::new(bound).is_union_like() {
+            if bound.is_union_like() {
                 let bound = bound.format_short(i_s.db);
                 let type_var_name = usage.type_var.name(i_s.db);
                 node_ref.add_issue(

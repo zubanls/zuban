@@ -1081,7 +1081,7 @@ impl DbType {
 
     pub fn maybe_avoid_implicit_literal(&self, db: &Database) -> Option<Self> {
         match self {
-            DbType::Literal(l) if l.implicit => Some(db.python_state.literal_db_type(&l.kind)),
+            DbType::Literal(l) if l.implicit => Some(db.python_state.literal_type(&l.kind)),
             DbType::EnumMember(m) if m.implicit => Some(DbType::Enum(m.enum_.clone())),
             DbType::Tuple(tup) => {
                 if let TupleTypeArguments::FixedLength(ts) = &tup.args {
@@ -2075,7 +2075,7 @@ impl Literal {
                 return format_data
                     .db
                     .python_state
-                    .literal_db_type(&self.kind)
+                    .literal_type(&self.kind)
                     .format(format_data)
             }
             _ => "",

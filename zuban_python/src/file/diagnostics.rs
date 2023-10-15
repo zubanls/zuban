@@ -102,7 +102,7 @@ impl<'db> Inference<'db, '_, '_> {
         if !valid_raise_type(
             self.i_s,
             NodeRef::new(self.file, expr.index()),
-            self.infer_expression(expr).as_type(self.i_s),
+            &self.infer_expression(expr).as_type(self.i_s),
             allow_none,
         ) {
             NodeRef::new(self.file, expr.index())
@@ -515,8 +515,9 @@ impl<'db> Inference<'db, '_, '_> {
                                 unmatchable_signature_index: i + k + 2,
                             },
                         );
-                    } else if !Type::new(&c1.result_type)
-                        .is_simple_sub_type_of(self.i_s, &Type::new(&c2.result_type))
+                    } else if !c1
+                        .result_type
+                        .is_simple_sub_type_of(self.i_s, &c2.result_type)
                         .bool()
                         && has_overlapping_params(self.i_s, &c1.params, &c2.params)
                     {
@@ -609,10 +610,7 @@ impl<'db> Inference<'db, '_, '_> {
                 } else {
                     &self.i_s.db.python_state.generator_with_any_generics
                 };
-                if !t
-                    .is_simple_super_type_of(self.i_s, &Type::new(&expected))
-                    .bool()
-                {
+                if !t.is_simple_super_type_of(self.i_s, &expected).bool() {
                     if function.is_async() {
                         NodeRef::new(self.file, return_annotation.index())
                             .add_issue(self.i_s, IssueType::InvalidAsyncGeneratorReturnType);
@@ -668,9 +666,10 @@ impl<'db> Inference<'db, '_, '_> {
             };
             match &callable.result_type {
                 DbType::Class(_) => {
-                    let t = Type::new(&callable.result_type);
-                    if !Type::new(&class.as_db_type(i_s.db))
-                        .is_simple_super_type_of(i_s, &t)
+                    let t = &callable.result_type;
+                    if !class
+                        .as_db_type(i_s.db)
+                        .is_simple_super_type_of(i_s, t)
                         .bool()
                     {
                         function.expect_return_annotation_node_ref().add_issue(
@@ -703,8 +702,8 @@ impl<'db> Inference<'db, '_, '_> {
     ) {
         let issue_node_ref = NodeRef::from_link(self.i_s.db, implementation.function_link);
         let matcher = &mut Matcher::new_reverse_callable_matcher(&implementation.callable);
-        let implementation_result = &Type::new(&implementation.callable.result_type);
-        let item_result = Type::new(&overload_item.result_type);
+        let implementation_result = &implementation.callable.result_type;
+        let item_result = &overload_item.result_type;
         if !item_result
             .is_sub_type_of(self.i_s, matcher, implementation_result)
             .bool()
@@ -918,13 +917,13 @@ impl<'db> Inference<'db, '_, '_> {
     }
 }
 
-fn valid_raise_type(i_s: &InferenceState, from: NodeRef, t: Type, allow_none: bool) -> bool {
+fn valid_raise_type(i_s: &InferenceState, from: NodeRef, t: &DbType, allow_none: bool) -> bool {
     let db = i_s.db;
     let check = |cls: Class| {
         cls.incomplete_mro(db)
             || cls.class_link_in_mro(db, db.python_state.base_exception_node_ref().as_link())
     };
-    match t.into_db_type() {
+    match t {
         DbType::Class(c) => check(c.class(db)),
         DbType::Type(t) => match t.as_ref() {
             DbType::Class(c) => {
@@ -947,7 +946,7 @@ fn valid_raise_type(i_s: &InferenceState, from: NodeRef, t: Type, allow_none: bo
         DbType::Never => todo!(),
         DbType::Union(union) => union
             .iter()
-            .all(|t| valid_raise_type(i_s, from, Type::new(t), allow_none)),
+            .all(|t| valid_raise_type(i_s, from, t, allow_none)),
         DbType::None if allow_none => true,
         _ => false,
     }

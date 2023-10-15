@@ -1,4 +1,4 @@
-use super::super::{FormatData, Match, Type};
+use super::super::{FormatData, Match};
 use crate::database::Database;
 use crate::inference_state::InferenceState;
 use crate::type_::{DbType, FormatStyle, TypeVar, TypeVarKind, Variance};
@@ -38,7 +38,7 @@ impl TypeVarBound {
             Self::Lower(DbType::Literal(l)) | Self::UpperAndLower(_, DbType::Literal(l))
                 if l.implicit =>
             {
-                db.python_state.literal_db_type(&l.kind)
+                db.python_state.literal_type(&l.kind)
             }
             Self::Invariant(t) | Self::Upper(t) | Self::Lower(t) | Self::UpperAndLower(_, t) => t,
         }
@@ -73,17 +73,16 @@ impl TypeVarBound {
         // First check if the value is between the bounds.
         let matches = match self {
             Self::Invariant(t) => {
-                let m = Type::new(t).is_simple_same_type(i_s, other);
+                let m = t.is_simple_same_type(i_s, other);
                 if m.bool() {
                     return m; // In the false case we still have to check for the variance cases.
                 }
                 m
             }
-            Self::Upper(lower) => Type::new(lower).is_simple_super_type_of(i_s, other),
-            Self::Lower(upper) => Type::new(upper).is_simple_sub_type_of(i_s, other),
+            Self::Upper(lower) => lower.is_simple_super_type_of(i_s, other),
+            Self::Lower(upper) => upper.is_simple_sub_type_of(i_s, other),
             Self::UpperAndLower(lower, upper) => {
-                Type::new(lower).is_simple_super_type_of(i_s, other)
-                    & Type::new(upper).is_simple_sub_type_of(i_s, other)
+                lower.is_simple_super_type_of(i_s, other) & upper.is_simple_sub_type_of(i_s, other)
             }
         };
         if matches.bool() {
@@ -103,7 +102,7 @@ impl TypeVarBound {
                     Self::Lower(t) => {
                         // TODO shouldn't this also do a limited common base type search in the
                         // case of LowerAndUpper?
-                        let m = Type::new(t).is_simple_super_type_of(i_s, other);
+                        let m = t.is_simple_super_type_of(i_s, other);
                         if !m.bool() {
                             *t = t.common_base_type(i_s, other);
                             return Match::new_true();
@@ -111,14 +110,14 @@ impl TypeVarBound {
                         return m;
                     }
                     Self::Invariant(t) | Self::UpperAndLower(_, t) => {
-                        return Type::new(t).is_simple_super_type_of(i_s, other)
+                        return t.is_simple_super_type_of(i_s, other)
                     }
                     Self::Upper(t) => {}
                 },
                 Variance::Contravariant => match self {
                     Self::Upper(t) => {
                         // TODO shouldn't we also check LowerAndUpper like this?
-                        let m = Type::new(t).is_simple_sub_type_of(i_s, other);
+                        let m = t.is_simple_sub_type_of(i_s, other);
                         if !m.bool() {
                             if let Some(new) = t.common_sub_type(i_s, other) {
                                 *t = new;
@@ -130,7 +129,7 @@ impl TypeVarBound {
                         return m;
                     }
                     Self::Invariant(t) | Self::UpperAndLower(t, _) => {
-                        return Type::new(t).is_simple_sub_type_of(i_s, other);
+                        return t.is_simple_sub_type_of(i_s, other);
                     }
                     Self::Lower(_) => {}
                 },

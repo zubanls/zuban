@@ -12,7 +12,7 @@ use crate::file::{Inference, PythonFile};
 use crate::getitem::Simple;
 use crate::inference_state::InferenceState;
 use crate::inferred::UnionValue;
-use crate::matching::{FormatData, Matcher, MismatchReason, ResultContext, Type};
+use crate::matching::{FormatData, Matcher, MismatchReason, ResultContext};
 use crate::node_ref::NodeRef;
 use crate::type_::{
     ClassGenerics, DbType, GenericItem, GenericsList, Literal, LiteralKind, LiteralValue, TypedDict,
@@ -76,18 +76,13 @@ impl<'db> Inference<'db, '_, '_> {
                         {
                             let list_cls = c.class(i_s.db);
                             let generic_t = list_cls.nth_type_argument(i_s.db, 0);
-                            found = check_list_with_context(
-                                i_s,
-                                matcher,
-                                Type::owned(generic_t),
-                                file,
-                                list,
-                            );
+                            found = check_list_with_context(i_s, matcher, &generic_t, file, list);
                             if found.is_none() {
                                 // As a fallback if there were only errors or no items at all, just use
                                 // the given and expected result context as a type.
                                 fallback = Some(
-                                    Type::owned(list_cls.as_db_type(i_s.db))
+                                    list_cls
+                                        .as_db_type(i_s.db)
                                         .replace_type_var_likes(self.i_s.db, &mut |tv| {
                                             tv.as_type_var_like().as_any_generic_item()
                                         }),
@@ -127,17 +122,13 @@ impl<'db> Inference<'db, '_, '_> {
                         if cls.node_ref == i_s.db.python_state.dict_node_ref() {
                             let key_t = cls.nth_type_argument(i_s.db, 0);
                             let value_t = cls.nth_type_argument(i_s.db, 1);
-                            found = self.check_dict_literal_with_context(
-                                matcher,
-                                Type::owned(key_t),
-                                Type::owned(value_t),
-                                dict,
-                            );
+                            found = self
+                                .check_dict_literal_with_context(matcher, &key_t, &value_t, dict);
                             if found.is_none() {
                                 // As a fallback if there were only errors or no items at all, just use
                                 // the given and expected result context as a type.
                                 fallback = Some(
-                                    Type::owned(cls.as_db_type(i_s.db))
+                                    cls.as_db_type(i_s.db)
                                         .replace_type_var_likes(self.i_s.db, &mut |tv| {
                                             tv.as_type_var_like().as_any_generic_item()
                                         }),
@@ -251,8 +242,8 @@ impl<'db> Inference<'db, '_, '_> {
     fn check_dict_literal_with_context(
         &mut self,
         matcher: &mut Matcher,
-        key_t: Type,
-        value_t: Type,
+        key_t: &DbType,
+        value_t: &DbType,
         dict: Dict,
     ) -> Option<DbType> {
         let mut new_key_context = ResultContext::Known(&key_t);
@@ -301,12 +292,8 @@ impl<'db> Inference<'db, '_, '_> {
                 DictElement::DictStarred(starred) => {
                     let mapping = self.infer_expression_part(starred.expression_part());
                     if let Some((key, value)) = unpack_star_star(i_s, &mapping.as_type(i_s)) {
-                        if !key_t
-                            .is_super_type_of(i_s, matcher, &Type::new(&key))
-                            .bool()
-                            || !value_t
-                                .is_super_type_of(i_s, matcher, &Type::new(&value))
-                                .bool()
+                        if !key_t.is_super_type_of(i_s, matcher, &key).bool()
+                            || !value_t.is_super_type_of(i_s, matcher, &value).bool()
                         {
                             had_error = true;
                             NodeRef::new(self.file, starred.index()).add_issue(
@@ -478,7 +465,7 @@ fn is_any_dict(db: &Database, t: &DbType) -> bool {
 fn check_list_with_context<'db>(
     i_s: &InferenceState<'db, '_>,
     matcher: &mut Matcher,
-    generic_t: Type,
+    generic_t: &DbType,
     file: &PythonFile,
     list: List,
 ) -> Option<DbType> {
@@ -638,7 +625,7 @@ fn infer_typed_dict_item<'db>(
     if let Some(member) = typed_dict.find_member(i_s.db, key) {
         let inferred = infer(&mut ResultContext::Known(&member.type_));
 
-        Type::new(&member.type_).error_if_not_matches_with_matcher(
+        member.type_.error_if_not_matches_with_matcher(
             i_s,
             matcher,
             &inferred,

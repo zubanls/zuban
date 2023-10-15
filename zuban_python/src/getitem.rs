@@ -11,7 +11,7 @@ use crate::diagnostics::IssueType;
 use crate::file::{infer_index, PythonFile};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{ResultContext, Type};
+use crate::matching::ResultContext;
 use crate::node_ref::NodeRef;
 use crate::type_::{DbType, TupleContent, TypeOrTypeVarTuple};
 
@@ -135,12 +135,8 @@ impl<'file> Slice<'file> {
                 let inf = self.file.inference(i_s).infer_expression(expr);
                 let t = inf.as_type(i_s);
                 let supports_index = i_s.db.python_state.supports_index_db_type();
-                if !t
-                    .is_simple_sub_type_of(i_s, &Type::owned(supports_index))
-                    .bool()
-                    && !t
-                        .is_simple_sub_type_of(i_s, &Type::new(&DbType::None))
-                        .bool()
+                if !t.is_simple_sub_type_of(i_s, &supports_index).bool()
+                    && !t.is_simple_sub_type_of(i_s, &DbType::None).bool()
                 {
                     NodeRef::new(self.file, expr.index())
                         .add_issue(i_s, IssueType::InvalidSliceIndex);

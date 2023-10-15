@@ -560,7 +560,7 @@ fn execute_super_internal<'db>(
 
 fn get_relevant_type_for_super(db: &Database, t: &DbType) -> DbType {
     if let DbType::Literal(l) = t {
-        return db.python_state.literal_db_type(&l.kind);
+        return db.python_state.literal_type(&l.kind);
     }
     let DbType::TypeVar(usage) = t else {
         return t.clone()

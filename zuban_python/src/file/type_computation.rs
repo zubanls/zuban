@@ -16,7 +16,7 @@ use crate::getitem::{SliceOrSimple, SliceType, SliceTypeIterator};
 use crate::imports::{python_import, ImportResult};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{FormatData, Generics, ResultContext, Type};
+use crate::matching::{FormatData, Generics, ResultContext};
 use crate::node_ref::NodeRef;
 use crate::type_::{
     CallableContent, CallableParam, CallableParams, CallableWithParent, ClassGenerics, Dataclass,
@@ -760,10 +760,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 return match &td.generics {
                     TypedDictGenerics::None => Some(DbType::TypedDict(td)),
                     TypedDictGenerics::NotDefinedYet(_) => Some(
-                        Type::owned(DbType::TypedDict(td))
-                            .replace_type_var_likes(db, &mut |usage| {
-                                usage.as_type_var_like().as_any_generic_item()
-                            }),
+                        DbType::TypedDict(td).replace_type_var_likes(db, &mut |usage| {
+                            usage.as_type_var_like().as_any_generic_item()
+                        }),
                     ),
                     TypedDictGenerics::Generics(_) => unreachable!(),
                 }
@@ -1335,17 +1334,15 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeVarKind::Unrestricted => (),
             TypeVarKind::Bound(bound) => {
                 // Performance: This could be optimized to not create new objects all the time.
-                let t = self.as_db_type(type_.clone(), s.as_node_ref());
+                let actual = self.as_db_type(type_.clone(), s.as_node_ref());
                 let i_s = &mut self.inference.i_s;
-                let actual = Type::new(&t);
-                let expected = Type::new(bound);
-                if !expected.is_simple_super_type_of(i_s, &actual).bool() {
+                if !bound.is_simple_super_type_of(i_s, &actual).bool() {
                     s.as_node_ref().add_issue(
                         i_s,
                         IssueType::TypeVarBoundViolation {
                             actual: actual.format_short(i_s.db),
                             of: get_of(),
-                            expected: expected.format_short(i_s.db),
+                            expected: bound.format_short(i_s.db),
                         },
                     );
                 }
@@ -1356,21 +1353,18 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 if let DbType::TypeVar(usage) = &t2 {
                     if let TypeVarKind::Constraints(constraints2) = &usage.type_var.kind {
                         if constraints2.iter().all(|t2| {
-                            constraints.iter().any(|t| {
-                                Type::new(t)
-                                    .is_simple_super_type_of(i_s, &Type::new(t2))
-                                    .bool()
-                            })
+                            constraints
+                                .iter()
+                                .any(|t| t.is_simple_super_type_of(i_s, t2).bool())
                         }) {
                             // The provided type_var2 is a subset of the type_var constraints.
                             return;
                         }
                     }
                 }
-                let t2 = Type::new(&t2);
                 if !constraints
                     .iter()
-                    .any(|t| Type::new(t).is_simple_super_type_of(i_s, &t2).bool())
+                    .any(|t| t.is_simple_super_type_of(i_s, &t2).bool())
                 {
                     s.as_node_ref().add_issue(
                         i_s,
@@ -1937,7 +1931,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             self.add_issue(next.as_node_ref(), IssueType::OptionalMustHaveOneArgument);
         }
         let t = self.compute_slice_db_type(first);
-        let format_as_optional = !Type::new(&t).is_union_like();
+        let format_as_optional = !t.is_union_like();
         let mut t = t.union_with_details(self.inference.i_s.db, DbType::None, format_as_optional);
         if let DbType::Union(union_type) = &mut t {
             union_type.sort_for_priority();
@@ -2552,7 +2546,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     {
         if self.type_var_manager.has_late_bound_type_vars() {
             on_type_var_recalculation(self.inference, &|t| {
-                Type::new(t).rewrite_late_bound_callables(&self.type_var_manager)
+                t.rewrite_late_bound_callables(&self.type_var_manager)
             })
         }
         self.type_var_manager.into_type_vars()

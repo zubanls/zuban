@@ -13,7 +13,7 @@ use std::borrow::Cow;
 use std::rc::Rc;
 
 use super::params::{matches_simple_params, InferrableParamIterator};
-use super::{FormatData, Match, OnTypeError, ParamsStyle, SignatureMatch, Type};
+use super::{FormatData, Match, OnTypeError, ParamsStyle, SignatureMatch};
 use crate::arguments::{Argument, ArgumentKind};
 use crate::database::{Database, PointLink};
 use crate::debug;
@@ -216,12 +216,7 @@ impl<'a> Matcher<'a> {
                             if let Some(t2) = t2_iterator.next() {
                                 match t2 {
                                     TypeOrTypeVarTuple::Type(t2) => {
-                                        matches &= Type::new(t1).matches(
-                                            i_s,
-                                            self,
-                                            &Type::new(t2),
-                                            variance,
-                                        );
+                                        matches &= t1.matches(i_s, self, t2, variance);
                                     }
                                     TypeOrTypeVarTuple::TypeVarTuple(_) => {
                                         return Match::new_false();
@@ -300,7 +295,7 @@ impl<'a> Matcher<'a> {
             let Some(t2) = p2_pre_iterator.next() else {
                 return Match::new_false()
             };
-            matches &= Type::new(t1).matches(i_s, self, &Type::new(t2), variance);
+            matches &= t1.matches(i_s, self, t2, variance);
             if !matches.bool() {
                 return matches;
             }
@@ -317,8 +312,7 @@ impl<'a> Matcher<'a> {
                             debug!("TODO should maybe use type vars?");
                             let mut matches = matches;
                             for (t1, t2) in pre.iter().zip(p2_pre_iterator) {
-                                matches &=
-                                    Type::new(t1).simple_matches(i_s, &Type::new(t2), variance);
+                                matches &= t1.simple_matches(i_s, t2, variance);
                             }
                             matches & (usage == p2).into()
                         }
@@ -381,7 +375,7 @@ impl<'a> Matcher<'a> {
                 Some(ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(t))) => t,
                 _ => return Match::new_false(),
             };
-            matches &= Type::new(pre).matches(i_s, self, &Type::new(t), variance);
+            matches &= pre.matches(i_s, self, t, variance);
             if !matches.bool() {
                 return matches;
             }
@@ -584,7 +578,7 @@ impl<'a> Matcher<'a> {
     }
 
     fn replace_type_var_likes(&self, db: &Database, t: &DbType, never_for_unbound: bool) -> DbType {
-        Type::new(t).replace_type_var_likes(db, &mut |type_var_like_usage| {
+        t.replace_type_var_likes(db, &mut |type_var_like_usage| {
             if let Some(type_var_matcher) = self.type_var_matcher.as_ref() {
                 if type_var_like_usage.in_definition() == type_var_matcher.match_in_definition {
                     let current = &type_var_matcher.calculated_type_vars

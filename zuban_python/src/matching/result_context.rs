@@ -1,6 +1,6 @@
 use std::fmt;
 
-use super::{Matcher, Type};
+use super::Matcher;
 use crate::type_::{DbType, TupleTypeArguments, TypeOrTypeVarTuple};
 use crate::{debug, InferenceState};
 
@@ -20,13 +20,13 @@ impl<'a> ResultContext<'a, '_> {
     pub fn with_type_if_exists_and_replace_type_var_likes<'db, T>(
         &self,
         i_s: &InferenceState<'db, '_>,
-        callable: impl FnOnce(&InferenceState<'db, '_>, Type<'_>) -> T,
+        callable: impl FnOnce(&InferenceState<'db, '_>, &DbType) -> T,
     ) -> Option<T> {
         match self {
-            Self::Known(type_) => Some(callable(i_s, Type::new(type_))),
+            Self::Known(type_) => Some(callable(i_s, type_)),
             Self::WithMatcher { matcher, type_ } => {
                 let t = matcher.replace_type_var_likes_for_nested_context(i_s.db, type_);
-                Some(callable(i_s, Type::new(&t)))
+                Some(callable(i_s, &t))
             }
             Self::Unknown
             | Self::AssignmentNewDefinition
@@ -38,11 +38,11 @@ impl<'a> ResultContext<'a, '_> {
     pub fn with_type_if_exists<'db, T>(
         &mut self,
         i_s: &InferenceState<'db, '_>,
-        callable: impl FnOnce(&InferenceState<'db, '_>, Type<'_>, &mut Matcher) -> T,
+        callable: impl FnOnce(&InferenceState<'db, '_>, &DbType, &mut Matcher) -> T,
     ) -> Option<T> {
         match self {
-            Self::Known(type_) => Some(callable(i_s, Type::new(type_), &mut Matcher::default())),
-            Self::WithMatcher { matcher, type_ } => Some(callable(i_s, Type::new(type_), matcher)),
+            Self::Known(type_) => Some(callable(i_s, type_, &mut Matcher::default())),
+            Self::WithMatcher { matcher, type_ } => Some(callable(i_s, type_, matcher)),
             Self::Unknown
             | Self::AssignmentNewDefinition
             | Self::ExpectUnused
@@ -60,7 +60,7 @@ impl<'a> ResultContext<'a, '_> {
         }
         self.with_type_if_exists_and_replace_type_var_likes(
             i_s,
-            |i_s: &InferenceState<'db, '_>, type_| match type_.as_ref() {
+            |i_s: &InferenceState<'db, '_>, type_| match type_ {
                 DbType::Literal(_) | DbType::EnumMember(_) => {
                     CouldBeALiteral::Yes { implicit: false }
                 }
@@ -90,10 +90,8 @@ impl<'a> ResultContext<'a, '_> {
     }
 
     pub fn expect_not_none(&mut self, i_s: &InferenceState) -> bool {
-        self.with_type_if_exists(i_s, |i_s, type_, matcher| {
-            !matches!(type_.as_ref(), DbType::None)
-        })
-        .unwrap_or_else(|| !matches!(self, Self::ExpectUnused | Self::RevealType))
+        self.with_type_if_exists(i_s, |i_s, type_, matcher| !matches!(type_, DbType::None))
+            .unwrap_or_else(|| !matches!(self, Self::ExpectUnused | Self::RevealType))
     }
 
     pub fn with_tuple_context_iterator<T>(
@@ -102,7 +100,7 @@ impl<'a> ResultContext<'a, '_> {
         mut callable: impl FnMut(TupleContextIterator) -> T,
     ) -> T {
         self.with_type_if_exists_and_replace_type_var_likes(i_s, |i_s: &InferenceState, type_| {
-            match type_.as_ref() {
+            match type_ {
                 DbType::Tuple(tup) => Some(match &tup.args {
                     TupleTypeArguments::FixedLength(ts) => {
                         callable(TupleContextIterator::FixedLength(ts.iter()))

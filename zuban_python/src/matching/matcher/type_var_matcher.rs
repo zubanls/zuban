@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use parsa_python_ast::ParamKind;
 
-use super::super::{Generic, Match, MismatchReason, Type};
+use super::super::{Generic, Match, MismatchReason};
 use super::bound::TypeVarBound;
 use crate::database::{Database, PointLink};
 use crate::inference_state::InferenceState;
@@ -243,19 +243,15 @@ pub fn check_constraints(
     match &type_var.kind {
         TypeVarKind::Unrestricted => (),
         TypeVarKind::Bound(bound) => {
-            mismatch_constraints |= !Type::new(bound)
-                .is_simple_super_type_of(i_s, value_type)
-                .bool();
+            mismatch_constraints |= !bound.is_simple_super_type_of(i_s, value_type).bool();
         }
         TypeVarKind::Constraints(constraints) => {
             if let DbType::TypeVar(t2) = value_type {
                 if let TypeVarKind::Constraints(constraints2) = &t2.type_var.kind {
                     if constraints2.iter().all(|r2| {
-                        constraints.iter().any(|r1| {
-                            Type::new(r1)
-                                .is_simple_super_type_of(i_s, &Type::new(r2))
-                                .bool()
-                        })
+                        constraints
+                            .iter()
+                            .any(|r1| r1.is_simple_super_type_of(i_s, r2).bool())
                     }) {
                         return Ok(TypeVarBound::Invariant(value_type.clone()));
                     } else {
@@ -266,7 +262,7 @@ pub fn check_constraints(
             if !mismatch_constraints {
                 let mut matched_constraint = None;
                 for constraint in constraints.iter() {
-                    let m = Type::new(constraint).simple_matches(i_s, value_type, variance);
+                    let m = constraint.simple_matches(i_s, value_type, variance);
                     if m.bool() {
                         if matched_constraint.is_some() {
                             // This means that any is involved and multiple constraints

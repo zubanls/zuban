@@ -16,7 +16,6 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{add_attribute_error, specific_to_type, Inferred, UnionValue};
 use crate::matching::{
     CouldBeALiteral, FormatData, Generics, LookupKind, LookupResult, OnTypeError, ResultContext,
-    Type,
 };
 use crate::node_ref::NodeRef;
 use crate::type_::{
@@ -718,10 +717,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     &NoArguments::new(from),
                     &|_| todo!(),
                 );
-                Type::owned(generator.yield_type).error_if_not_matches(
-                    i_s,
-                    &yields,
-                    |got, expected| {
+                generator
+                    .yield_type
+                    .error_if_not_matches(i_s, &yields, |got, expected| {
                         from.add_issue(
                             i_s,
                             IssueType::IncompatibleTypes {
@@ -731,8 +729,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             },
                         );
                         from.to_db_lifetime(i_s.db)
-                    },
-                );
+                    });
                 return if let Some(other) =
                     GeneratorType::from_type(i_s.db, iter_result.as_type(i_s).into_cow())
                 {
@@ -752,8 +749,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 };
             }
             YieldExprContent::None => {
-                if !Type::owned(generator.yield_type)
-                    .is_simple_super_type_of(i_s, &Type::new(&DbType::None))
+                if !generator
+                    .yield_type
+                    .is_simple_super_type_of(i_s, &DbType::None)
                     .bool()
                 {
                     from.add_issue(i_s, IssueType::YieldValueExpected);
@@ -867,7 +865,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             continue;
                         }
 
-                        let inf = Type::new(t)
+                        let inf = t
                             .maybe_type_of_class(i_s.db)
                             .and_then(|c| {
                                 // We need to handle class descriptors separately, because
@@ -881,24 +879,23 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 .into_maybe_inferred()
                             })
                             .unwrap_or_else(|| {
-                                Type::new(t)
-                                    .lookup(
-                                        i_s,
-                                        node_ref,
-                                        name_definition.as_code(),
-                                        LookupKind::Normal,
-                                        &mut ResultContext::Unknown,
-                                        &|t| {
-                                            add_attribute_error(
-                                                self.i_s,
-                                                node_ref,
-                                                &base,
-                                                t,
-                                                name_definition.as_code(),
-                                            )
-                                        },
-                                    )
-                                    .into_inferred()
+                                t.lookup(
+                                    i_s,
+                                    node_ref,
+                                    name_definition.as_code(),
+                                    LookupKind::Normal,
+                                    &mut ResultContext::Unknown,
+                                    &|t| {
+                                        add_attribute_error(
+                                            self.i_s,
+                                            node_ref,
+                                            &base,
+                                            t,
+                                            name_definition.as_code(),
+                                        )
+                                    },
+                                )
+                                .into_inferred()
                             });
                         inf.as_type(i_s)
                             .error_if_not_matches(i_s, value, |got, expected| {
@@ -947,7 +944,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     if union_part == &self.i_s.db.python_state.str_db_type() {
                         value_node_ref.add_issue(self.i_s, IssueType::UnpackingAStringIsDisallowed)
                     }
-                    let mut value_iterator = Type::new(union_part).iter(self.i_s, value_node_ref);
+                    let mut value_iterator = union_part.iter(self.i_s, value_node_ref);
                     let mut counter = 0;
                     if let Some(actual) = value_iterator.len() {
                         let expected = targets.clone().count();
@@ -1240,7 +1237,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 .as_type(self.i_s)
                                 .is_simple_sub_type_of(
                                     self.i_s,
-                                    &Type::owned(self.i_s.db.python_state.int_db_type()),
+                                    &self.i_s.db.python_state.int_db_type(),
                                 )
                                 .bool()
                             {
@@ -1453,7 +1450,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             .with_type_if_exists_and_replace_type_var_likes(
                 self.i_s,
                 |i_s: &InferenceState<'db, '_>, type_| {
-                    if let DbType::Callable(c) = type_.as_ref() {
+                    if let DbType::Callable(c) = type_ {
                         let i_s = i_s.with_lambda_callable(c);
                         let (params, expr) = lambda.unpack();
                         let result = self.file.inference(&i_s).infer_expression_without_cache(
@@ -1549,7 +1546,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         }
                         let result = if error.get() != LookupError::ShortCircuit {
                             let left_inf = Inferred::execute_db_type_allocation_todo(i_s, l_type);
-                            Type::new(r_type)
+                            r_type
                                 .lookup(
                                     i_s,
                                     node_ref,

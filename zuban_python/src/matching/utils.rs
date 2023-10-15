@@ -5,7 +5,7 @@ use crate::type_::{
 };
 use crate::type_helpers::Class;
 
-use super::{Matcher, Type};
+use super::Matcher;
 
 pub fn replace_class_type_vars(
     db: &Database,
@@ -13,7 +13,7 @@ pub fn replace_class_type_vars(
     attribute_class: &Class,
     self_instance: ReplaceSelf,
 ) -> DbType {
-    Type::new(t).replace_type_var_likes_and_self(
+    t.replace_type_var_likes_and_self(
         db,
         &mut |usage| {
             maybe_class_usage(db, attribute_class, &usage)
@@ -87,10 +87,7 @@ fn match_self_type(
     let expected = replace_class_type_vars(i_s.db, first_type, func_class, &|| {
         func_class.as_db_type(i_s.db)
     });
-    if !Type::owned(expected)
-        .is_super_type_of(i_s, matcher, &Type::new(instance))
-        .bool()
-    {
+    if !expected.is_super_type_of(i_s, matcher, instance).bool() {
         return None;
     }
     Some(())
@@ -165,7 +162,7 @@ pub fn calculate_property_return(
         t
     } else {
         let calculated = matcher.unwrap_calculated_type_args();
-        Type::owned(t).replace_type_var_likes(i_s.db, &mut |usage| {
+        t.replace_type_var_likes(i_s.db, &mut |usage| {
             let index = usage.index().as_usize();
             if usage.in_definition() == callable.defined_at {
                 let c = &calculated[index];

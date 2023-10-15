@@ -597,11 +597,10 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                 ));
                             }
                             let unpacked = unpack_star_star(i_s, &type_);
-                            let s = Type::owned(i_s.db.python_state.str_db_type());
+                            let s = i_s.db.python_state.str_db_type();
                             let value = if let Some((key, value)) = unpacked {
-                                let t = Type::owned(key);
-                                if !t.is_simple_same_type(i_s, &s).bool() {
-                                    debug!("Keyword is type {}", t.format_short(i_s.db));
+                                if !key.is_simple_same_type(i_s, &s).bool() {
+                                    debug!("Keyword is type {}", key.format_short(i_s.db));
                                     node_ref.add_issue(
                                         i_s,
                                         IssueType::ArgumentIssue(Box::from(

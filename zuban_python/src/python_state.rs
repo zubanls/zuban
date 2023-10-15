@@ -862,11 +862,7 @@ impl PythonState {
         )
     }
 
-    pub fn literal_type(&self, literal_kind: &LiteralKind) -> Type {
-        Type::owned(self.literal_db_type(literal_kind))
-    }
-
-    pub fn literal_db_type(&self, literal_kind: &LiteralKind) -> DbType {
+    pub fn literal_type(&self, literal_kind: &LiteralKind) -> DbType {
         DbType::new_class(
             self.literal_node_ref(literal_kind).as_link(),
             ClassGenerics::None,

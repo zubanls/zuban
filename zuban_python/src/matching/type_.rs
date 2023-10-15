@@ -86,9 +86,7 @@ impl TypeAlias {
         if self.type_vars.is_empty() {
             db_type.clone()
         } else {
-            Type::new(db_type).replace_type_var_likes(db, &mut |t| match t.in_definition()
-                == self.location
-            {
+            db_type.replace_type_var_likes(db, &mut |t| match t.in_definition() == self.location {
                 true => t.as_type_var_like().as_any_generic_item(),
                 false => t.into_generic_item(),
             })
@@ -141,7 +139,7 @@ impl TypeAlias {
         if self.type_vars.is_empty() {
             Cow::Borrowed(db_type)
         } else {
-            Cow::Owned(Type::new(db_type).replace_type_var_likes(db, callable))
+            Cow::Owned(db_type.replace_type_var_likes(db, callable))
         }
     }
 }
