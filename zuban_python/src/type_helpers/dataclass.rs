@@ -155,7 +155,7 @@ impl<'a> DataclassHelper<'a> {
         }
         Instance::new(self.0.class(i_s.db), None)
             .lookup(i_s, from, name, LookupKind::Normal)
-            .and_then(|inf| match inf.as_type(i_s).as_ref() {
+            .and_then(|inf| match inf.as_cow_type(i_s).as_ref() {
                 // Init vars are not actually available on the class. They are just passed to __init__
                 // and are not class members.
                 Type::Class(c) if c.link == i_s.db.python_state.dataclasses_init_var_link() => None,
@@ -493,7 +493,7 @@ pub fn dataclasses_replace<'db>(
             if run_on_dataclass(
                 i_s,
                 Some(*node_ref),
-                &inferred.as_type(i_s),
+                &inferred.as_cow_type(i_s),
                 &mut |dataclass| {
                     let mut replace_func = Dataclass::__init__(dataclass, i_s.db).clone();
                     let mut params: Vec<_> = replace_func.expect_simple_params().into();

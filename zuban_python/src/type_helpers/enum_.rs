@@ -80,7 +80,7 @@ pub fn infer_value_on_member(
                 let expr = node_ref.as_expression();
                 node_ref.file.inference(i_s).infer_expression(expr)
             };
-            match inferred.as_type(i_s).as_ref() {
+            match inferred.as_cow_type(i_s).as_ref() {
                 Type::Class(c) if c.link == i_s.db.python_state.enum_auto_link() => {
                     Inferred::from_type(
                         enum_
@@ -95,7 +95,7 @@ pub fn infer_value_on_member(
                                 }) {
                                     return None;
                                 }
-                                inf.as_type(i_s).maybe_callable(i_s)
+                                inf.as_cow_type(i_s).maybe_callable(i_s)
                             })
                             .map(|callable| match callable {
                                 CallableLike::Callable(c) => c.result_type.clone(),
@@ -389,7 +389,7 @@ fn gather_functional_enum_members(
                 .file
                 .inference(i_s)
                 .infer_atom(atom, &mut ResultContext::Unknown);
-            if let Type::Literal(literal) = inf.as_type(i_s).as_ref() {
+            if let Type::Literal(literal) = inf.as_cow_type(i_s).as_ref() {
                 if let LiteralKind::String(s) = &literal.kind {
                     split_enum_members(
                         i_s,

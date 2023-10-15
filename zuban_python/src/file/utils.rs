@@ -191,7 +191,7 @@ impl<'db> Inference<'db, '_, '_> {
                     let inf = self.infer_expression_part(dict_starred.expression_part());
                     let node_ref =
                         NodeRef::new(self.file, dict_starred.index()).to_db_lifetime(i_s.db);
-                    match inf.as_type(i_s).as_ref() {
+                    match inf.as_cow_type(i_s).as_ref() {
                         Type::TypedDict(td) => {
                             for member in td.members.iter() {
                                 let key = member.name.as_str(i_s.db);
@@ -262,10 +262,10 @@ impl<'db> Inference<'db, '_, '_> {
                     let value_inf = inference
                         .infer_expression_with_context(key_value.value(), &mut new_value_context);
                     if !key_t
-                        .is_super_type_of(i_s, matcher, &key_inf.as_type(i_s))
+                        .is_super_type_of(i_s, matcher, &key_inf.as_cow_type(i_s))
                         .bool()
                         || !value_t
-                            .is_super_type_of(i_s, matcher, &value_inf.as_type(i_s))
+                            .is_super_type_of(i_s, matcher, &value_inf.as_cow_type(i_s))
                             .bool()
                     {
                         had_error = true;
@@ -291,7 +291,7 @@ impl<'db> Inference<'db, '_, '_> {
                 }
                 DictElement::DictStarred(starred) => {
                     let mapping = self.infer_expression_part(starred.expression_part());
-                    if let Some((key, value)) = unpack_star_star(i_s, &mapping.as_type(i_s)) {
+                    if let Some((key, value)) = unpack_star_star(i_s, &mapping.as_cow_type(i_s)) {
                         if !key_t.is_super_type_of(i_s, matcher, &key).bool()
                             || !value_t.is_super_type_of(i_s, matcher, &value).bool()
                         {
@@ -415,7 +415,8 @@ impl<'db> Inference<'db, '_, '_> {
                         }
                         DictElement::DictStarred(starred) => {
                             let mapping = self.infer_expression_part(starred.expression_part());
-                            if let Some((key, value)) = unpack_star_star(i_s, &mapping.as_type(i_s))
+                            if let Some((key, value)) =
+                                unpack_star_star(i_s, &mapping.as_cow_type(i_s))
                             {
                                 gather_keys(Inferred::from_type(key));
                                 gather_values(Inferred::from_type(value));

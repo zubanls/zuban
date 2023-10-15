@@ -178,7 +178,7 @@ impl<'db: 'slf, 'slf> Inferred {
         Self { state }
     }
 
-    pub fn as_type(&'slf self, i_s: &InferenceState<'db, '_>) -> Cow<'slf, Type> {
+    pub fn as_cow_type(&'slf self, i_s: &InferenceState<'db, '_>) -> Cow<'slf, Type> {
         match &self.state {
             InferredState::Saved(definition) => saved_as_type(i_s, *definition),
             InferredState::UnsavedComplex(complex) => type_of_complex(i_s, complex, None),
@@ -203,11 +203,11 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn as_db_type(&self, i_s: &InferenceState<'db, '_>) -> Type {
-        self.as_type(i_s).into_owned()
+        self.as_cow_type(i_s).into_owned()
     }
 
     pub fn format(&self, i_s: &InferenceState<'db, '_>, format_data: &FormatData) -> Box<str> {
-        self.as_type(i_s).format(format_data)
+        self.as_cow_type(i_s).format(format_data)
     }
 
     pub fn format_short(&self, i_s: &InferenceState<'db, '_>) -> Box<str> {
@@ -506,7 +506,7 @@ impl<'db: 'slf, 'slf> Inferred {
         if let Type::Literal(DbLiteral {
             kind: LiteralKind::Bool(b),
             ..
-        }) = self.as_type(i_s).as_ref()
+        }) = self.as_cow_type(i_s).as_ref()
         {
             Some(*b)
         } else {
@@ -518,7 +518,7 @@ impl<'db: 'slf, 'slf> Inferred {
         if let Type::Literal(DbLiteral {
             kind: LiteralKind::String(b),
             ..
-        }) = self.as_type(i_s).as_ref()
+        }) = self.as_cow_type(i_s).as_ref()
         {
             Some(b.clone())
         } else {
@@ -682,7 +682,7 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::UnsavedComplex(ComplexPoint::TypeInstance(_)) => (),
             _ => return self,
         }
-        if let Some(t) = self.as_type(i_s).maybe_avoid_implicit_literal(i_s.db) {
+        if let Some(t) = self.as_cow_type(i_s).maybe_avoid_implicit_literal(i_s.db) {
             Self::from_type(t)
         } else {
             self
@@ -706,7 +706,10 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn simplified_union(self, i_s: &InferenceState<'db, '_>, other: Self) -> Self {
-        Inferred::from_type(self.as_type(i_s).simplified_union(i_s, &other.as_type(i_s)))
+        Inferred::from_type(
+            self.as_cow_type(i_s)
+                .simplified_union(i_s, &other.as_cow_type(i_s)),
+        )
     }
 
     #[inline]
@@ -726,7 +729,10 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     fn common_base_type(&self, i_s: &InferenceState, other: &Self) -> Self {
-        Self::from_type(self.as_type(i_s).common_base_type(i_s, &other.as_type(i_s)))
+        Self::from_type(
+            self.as_cow_type(i_s)
+                .common_base_type(i_s, &other.as_cow_type(i_s)),
+        )
     }
 
     pub fn bind_instance_descriptors(
@@ -1432,7 +1438,7 @@ impl<'db: 'slf, 'slf> Inferred {
         kind: LookupKind,
         callable: &mut impl FnMut(&Type, LookupResult),
     ) {
-        self.as_type(i_s).run_after_lookup_on_each_union_member(
+        self.as_cow_type(i_s).run_after_lookup_on_each_union_member(
             i_s,
             Some(self),
             from,
@@ -1461,7 +1467,7 @@ impl<'db: 'slf, 'slf> Inferred {
         kind: LookupKind,
         result_context: &mut ResultContext,
     ) -> LookupResult {
-        let base_type = self.as_type(i_s);
+        let base_type = self.as_cow_type(i_s);
         base_type.lookup(i_s, node_ref, name, kind, result_context, &|t| {
             add_attribute_error(i_s, node_ref, &base_type, t, name)
         })
@@ -1493,7 +1499,7 @@ impl<'db: 'slf, 'slf> Inferred {
         args: &dyn Arguments<'db>,
     ) -> Self {
         self.type_lookup_and_execute(i_s, from, name, args, &|t| {
-            add_attribute_error(i_s, from, &self.as_type(i_s), t, name)
+            add_attribute_error(i_s, from, &self.as_cow_type(i_s), t, name)
         })
     }
 
@@ -1514,7 +1520,7 @@ impl<'db: 'slf, 'slf> Inferred {
             LookupKind::OnlyType,
             &mut |_, lookup_result| {
                 if matches!(lookup_result, LookupResult::None) {
-                    on_lookup_error(&self.as_type(i_s));
+                    on_lookup_error(&self.as_cow_type(i_s));
                 }
                 let inf = lookup_result.into_inferred().execute_with_details(
                     i_s,
@@ -1764,7 +1770,7 @@ impl<'db: 'slf, 'slf> Inferred {
             }
             _ => (),
         }
-        self.as_type(i_s)
+        self.as_cow_type(i_s)
             .execute(i_s, Some(self), args, result_context, on_type_error)
     }
 
@@ -1838,7 +1844,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 }
             }
         }
-        self.as_type(i_s)
+        self.as_cow_type(i_s)
             .get_item(i_s, Some(self), slice_type, result_context)
     }
 
@@ -1878,7 +1884,7 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn iter(self, i_s: &InferenceState<'db, '_>, from: NodeRef) -> IteratorContent {
-        self.as_type(i_s).iter(i_s, from)
+        self.as_cow_type(i_s).iter(i_s, from)
     }
 }
 
@@ -2231,7 +2237,7 @@ pub fn specific_to_type<'db>(
             i_s.db
                 .python_state
                 .mypy_extensions_arg_func(i_s.db, specific)
-                .as_type(i_s);
+                .as_cow_type(i_s);
             todo!()
         }
         actual => unreachable!("{actual:?}"),

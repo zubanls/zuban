@@ -100,7 +100,7 @@ impl<'a> Tuple<'a> {
                     .inference(i_s)
                     .infer_expression(simple.named_expr.expression());
                 if !index_inf
-                    .as_type(i_s)
+                    .as_cow_type(i_s)
                     .is_simple_sub_type_of(i_s, &i_s.db.python_state.int_type())
                     .bool()
                 {
@@ -239,7 +239,7 @@ fn tuple_add_internal<'db>(
 ) -> Option<Inferred> {
     let first = args.maybe_single_positional_arg(i_s, &mut ResultContext::Unknown)?;
     if let TupleTypeArguments::FixedLength(ts1) = &tuple1.args {
-        if let Type::Tuple(tuple2) = first.as_type(i_s).as_ref() {
+        if let Type::Tuple(tuple2) = first.as_cow_type(i_s).as_ref() {
             if let TupleTypeArguments::FixedLength(ts2) = &tuple2.args {
                 return Some(Inferred::from_type(Type::Tuple(Rc::new(
                     TupleContent::new_fixed_length(ts1.iter().chain(ts2.iter()).cloned().collect()),

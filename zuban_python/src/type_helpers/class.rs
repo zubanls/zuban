@@ -939,7 +939,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     let inf1 = Instance::new(c, None)
                         .type_lookup(i_s, hack, name)
                         .into_inferred();
-                    let t1 = inf1.as_type(i_s);
+                    let t1 = inf1.as_cow_type(i_s);
                     if t1.matches(i_s, matcher, other, variance).bool() {
                         continue;
                     }
@@ -959,8 +959,8 @@ impl<'db: 'a, 'a> Class<'a> {
                     let inf1 = Instance::new(c, None)
                         .full_lookup(i_s, hack, name)
                         .into_inferred();
-                    let t1 = inf1.as_type(i_s);
-                    let t2 = l.as_type(i_s);
+                    let t1 = inf1.as_cow_type(i_s);
+                    let t2 = l.as_cow_type(i_s);
                     let m = t1.matches(i_s, matcher, &t2, variance);
                     if !m.bool() {
                         if !had_conflict_note {
@@ -995,10 +995,10 @@ impl<'db: 'a, 'a> Class<'a> {
                                     &t2,
                                     &c.lookup(i_s, hack, name, LookupKind::Normal)
                                         .into_inferred()
-                                        .as_type(i_s),
+                                        .as_cow_type(i_s),
                                     &cls.lookup(i_s, hack, name, LookupKind::Normal)
                                         .into_inferred()
-                                        .as_type(i_s),
+                                        .as_cow_type(i_s),
                                 ),
                                 None => {
                                     add_protocol_mismatch(i_s, &mut notes, name, &t1, &t2, &t1, &t2)
@@ -2058,7 +2058,7 @@ impl NewOrInitConstructor<'_> {
     pub fn maybe_callable(self, i_s: &InferenceState, cls: Class) -> Option<CallableLike> {
         let inf = self.constructor.into_inferred();
         if self.is_new {
-            inf.as_type(i_s).maybe_callable(i_s).map(
+            inf.as_cow_type(i_s).maybe_callable(i_s).map(
                 |callable_like| /*match self.init_class {
                                        // TODO probably enable??
                     Some(class) => match callable_like {
@@ -2089,9 +2089,9 @@ impl NewOrInitConstructor<'_> {
             };
             let callable = if let Some(c) = self.init_class {
                 let i_s = &i_s.with_class_context(&c);
-                inf.as_type(i_s).maybe_callable(i_s)
+                inf.as_cow_type(i_s).maybe_callable(i_s)
             } else {
-                inf.as_type(i_s).maybe_callable(i_s)
+                inf.as_cow_type(i_s).maybe_callable(i_s)
             };
             let to_callable = |c: &CallableContent| {
                 // Since __init__ does not have a return, We need to check the params

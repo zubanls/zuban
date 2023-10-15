@@ -283,7 +283,7 @@ impl Type {
                 t @ Type::Enum(_) => {
                     let enum_index = slice_type.infer(i_s);
                     if !enum_index
-                        .as_type(i_s)
+                        .as_cow_type(i_s)
                         .is_simple_sub_type_of(i_s, &i_s.db.python_state.str_type())
                         .bool()
                     {

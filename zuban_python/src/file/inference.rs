@@ -131,7 +131,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     let inf = self.infer_expression(expr);
                                     Inferred::from_type(instantiate_except(
                                         self.i_s,
-                                        &inf.as_type(self.i_s),
+                                        &inf.as_cow_type(self.i_s),
                                     ))
                                     .maybe_save_redirect(
                                         self.i_s,
@@ -149,7 +149,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 let inf = self.infer_expression(expr);
                                 Inferred::from_type(instantiate_except_star(
                                     self.i_s,
-                                    &inf.as_type(self.i_s),
+                                    &inf.as_cow_type(self.i_s),
                                 ))
                                 .maybe_save_redirect(
                                     self.i_s,
@@ -500,7 +500,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     // form of `x = None  # type: int` in classes, even with strict-optional. It's
                     // even weirder that the form `x: int = None` is not allowed.
                     if !(self.i_s.current_class().is_some()
-                        && matches!(right.as_type(self.i_s).as_ref(), Type::None))
+                        && matches!(right.as_cow_type(self.i_s).as_ref(), Type::None))
                     {
                         type_comment
                             .type_
@@ -509,7 +509,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     type_comment.inferred
                 } else {
                     let inf = self.inferred_context_for_simple_assignment(targets.clone());
-                    let result_type = inf.as_ref().map(|inf| inf.as_type(self.i_s));
+                    let result_type = inf.as_ref().map(|inf| inf.as_cow_type(self.i_s));
                     let mut result_context = match &result_type {
                         Some(t) => ResultContext::Known(t),
                         None => ResultContext::AssignmentNewDefinition,
@@ -677,7 +677,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             YieldExprContent::StarExpressions(s) => {
                 let inf = self.infer_star_expressions(s, &mut ResultContext::Unknown);
                 Inferred::from_type(generator.yield_type)
-                    .as_type(i_s)
+                    .as_cow_type(i_s)
                     .error_if_not_matches(i_s, &inf, |got, expected| {
                         from.add_issue(
                             i_s,
@@ -731,7 +731,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         from.to_db_lifetime(i_s.db)
                     });
                 return if let Some(other) =
-                    GeneratorType::from_type(i_s.db, iter_result.as_type(i_s))
+                    GeneratorType::from_type(i_s.db, iter_result.as_cow_type(i_s))
                 {
                     if let Some(return_type) = other.return_type {
                         Inferred::from_type(return_type)
@@ -808,7 +808,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 if let Some(first_index) = first_defined_name(self.file, current_index) {
                     if current_index != first_index {
                         let inferred = self.infer_name_by_index(first_index);
-                        inferred.as_type(self.i_s).error_if_not_matches(
+                        inferred.as_cow_type(self.i_s).error_if_not_matches(
                             self.i_s,
                             value,
                             |got, expected| {
@@ -834,7 +834,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         NodeRef::new(self.file, primary_target.index())
                             .add_issue(i_s, IssueType::InvalidTypeDeclaration);
                     }
-                    let base = base.as_type(i_s);
+                    let base = base.as_cow_type(i_s);
                     let node_ref = NodeRef::new(self.file, primary_target.index());
                     for t in base.iter_with_unpacked_unions() {
                         if let Some(cls) = t.maybe_class(i_s.db) {
@@ -897,7 +897,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 )
                                 .into_inferred()
                             });
-                        inf.as_type(i_s)
+                        inf.as_cow_type(i_s)
                             .error_if_not_matches(i_s, value, |got, expected| {
                                 from.add_issue(
                                     i_s,
@@ -939,7 +939,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         match target {
             Target::Tuple(targets) => {
                 // TODO what about never? The loop will never be executed.
-                for union_part in value.as_type(self.i_s).iter_with_unpacked_unions() {
+                for union_part in value.as_cow_type(self.i_s).iter_with_unpacked_unions() {
                     let mut targets = targets.clone();
                     if union_part == &self.i_s.db.python_state.str_type() {
                         value_node_ref.add_issue(self.i_s, IssueType::UnpackingAStringIsDisallowed)
@@ -1200,8 +1200,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 if result_context.expects_union(self.i_s) {
                     if_inf.simplified_union(self.i_s, else_inf)
                 } else {
-                    let second = else_inf.as_type(self.i_s);
-                    let t = if_inf.as_type(self.i_s).common_base_type(self.i_s, &second);
+                    let second = else_inf.as_cow_type(self.i_s);
+                    let t = if_inf
+                        .as_cow_type(self.i_s)
+                        .common_base_type(self.i_s, &second);
                     Inferred::from_type(t)
                 }
             }
@@ -1234,7 +1236,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         if matches!(atom.unpack(), AtomContent::List(_)) {
                             if self
                                 .infer_expression_part(op.right)
-                                .as_type(self.i_s)
+                                .as_cow_type(self.i_s)
                                 .is_simple_sub_type_of(
                                     self.i_s,
                                     &self.i_s.db.python_state.int_type(),
@@ -1347,7 +1349,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                     &NoArguments::new(from),
                                                     &|_| todo!(),
                                                 )
-                                                .as_type(self.i_s)
+                                                .as_cow_type(self.i_s)
                                                 .error_if_not_matches(
                                                     self.i_s,
                                                     &first,
@@ -1458,7 +1460,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             &mut ResultContext::Known(&c.result_type),
                         );
                         let mut c = (**c).clone();
-                        c.result_type = result.as_type(&i_s).into_owned();
+                        c.result_type = result.as_cow_type(&i_s).into_owned();
                         Inferred::from_type(Type::Callable(Rc::new(c)))
                     } else {
                         todo!()
@@ -1516,7 +1518,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 LookupKind::OnlyType,
                 &mut |l_type, lookup_result| {
                     let left_op_method = lookup_result.into_maybe_inferred();
-                    for r_type in right.as_type(i_s).iter_with_unpacked_unions() {
+                    for r_type in right.as_cow_type(i_s).iter_with_unpacked_unions() {
                         let error = Cell::new(LookupError::NoError);
                         if let Some(left) = left_op_method.as_ref() {
                             let had_left_error = Cell::new(false);
@@ -2380,7 +2382,7 @@ fn instantiate_except(i_s: &InferenceState, t: &Type) -> Type {
                 add(Inferred::from_type(instantiate_except(i_s, t)))
             }
         })
-        .as_type(i_s)
+        .as_cow_type(i_s)
         .into_owned(),
         Type::Union(union) => Type::Union(UnionType::new(
             union
@@ -2456,7 +2458,7 @@ fn gather_except_star(i_s: &InferenceState, t: &Type) -> Type {
                 add(Inferred::from_type(gather_except_star(i_s, t)))
             }
         })
-        .as_type(i_s)
+        .as_cow_type(i_s)
         .into_owned(),
         Type::Union(union) => Type::Union(UnionType::new(
             union
@@ -2540,7 +2542,7 @@ pub fn await_(
                 },
             );
         })
-        .as_type(i_s)
+        .as_cow_type(i_s)
         .as_ref(),
     );
     if expect_not_none && matches!(t, Type::None) {

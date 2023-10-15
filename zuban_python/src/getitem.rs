@@ -133,7 +133,7 @@ impl<'file> Slice<'file> {
         let check = |maybe_expr| {
             if let Some(expr) = maybe_expr {
                 let inf = self.file.inference(i_s).infer_expression(expr);
-                let t = inf.as_type(i_s);
+                let t = inf.as_cow_type(i_s);
                 let supports_index = i_s.db.python_state.supports_index_type();
                 if !t.is_simple_sub_type_of(i_s, &supports_index).bool()
                     && !t.is_simple_sub_type_of(i_s, &Type::None).bool()

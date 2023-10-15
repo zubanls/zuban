@@ -451,7 +451,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 had_first_self_or_class_annotation: had_first_annotation,
                 ..
             } => {
-                let Type::Callable(mut callable) = details.inferred.as_type(i_s).into_owned() else {
+                let Type::Callable(mut callable) = details.inferred.as_cow_type(i_s).into_owned() else {
                     unreachable!()
                 };
                 if let Some(wrong) = callable.has_exactly_one_positional_parameter() {
@@ -571,7 +571,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 InferredDecorator::Abstractmethod => (),
             }
         }
-        if let Type::Callable(callable_content) = inferred.as_type(i_s).as_ref() {
+        if let Type::Callable(callable_content) = inferred.as_cow_type(i_s).as_ref() {
             let mut callable_content = (**callable_content).clone();
             callable_content.name = Some(self.name_string_slice());
             callable_content.class_name = self.class.map(|c| c.name_string_slice());
@@ -686,7 +686,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let file = self.node_ref.file;
         let mut functions = vec![];
         let mut add_func = |inf: Inferred| {
-            if let Some(CallableLike::Callable(callable)) = inf.as_type(i_s).maybe_callable(i_s) {
+            if let Some(CallableLike::Callable(callable)) = inf.as_cow_type(i_s).maybe_callable(i_s)
+            {
                 functions.push(rc_unwrap_or_clone(callable))
             } else {
                 todo!()
@@ -768,7 +769,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             } else {
                 // Check if the implementing function was already set
                 if implementation.is_none() {
-                    let t = next_details.inferred.as_type(i_s);
+                    let t = next_details.inferred.as_cow_type(i_s);
                     if !next_details.has_decorator && next_func.is_dynamic() || t.is_any() {
                         implementation = Some(OverloadImplementation {
                             function_link: func_ref.as_link(),
@@ -1111,7 +1112,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 i_s.db.python_state.coroutine_link(),
                 Type::Any,
                 Type::Any,
-                result.as_type(i_s).into_owned(),
+                result.as_cow_type(i_s).into_owned(),
             ));
         }
         result

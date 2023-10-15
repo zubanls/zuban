@@ -622,7 +622,7 @@ impl Type {
                 Instance::new(cls, None)
                     .type_lookup(i_s, hack, "__call__")
                     .into_maybe_inferred()
-                    .and_then(|i| i.as_type(i_s).maybe_callable(i_s))
+                    .and_then(|i| i.as_cow_type(i_s).maybe_callable(i_s))
             }
             Type::FunctionOverload(overload) => Some(CallableLike::Overload(overload.clone())),
             _ => None,
@@ -1200,7 +1200,7 @@ impl Type {
         value: &Inferred,
         callback: Option<impl FnOnce(Box<str>, Box<str>, &MismatchReason) -> NodeRef<'db>>,
     ) -> Match {
-        let value_type = value.as_type(i_s);
+        let value_type = value.as_cow_type(i_s);
         let matches = self.is_super_type_of(i_s, matcher, &value_type);
         if let Match::False { ref reason, .. } = matches {
             let mut fmt1 = FormatData::new_short(i_s.db);

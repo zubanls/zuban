@@ -117,7 +117,7 @@ impl RevealTypeFunction {
         } else {
             arg.infer(i_s, result_context)
         };
-        let t = inferred.as_type(i_s);
+        let t = inferred.as_cow_type(i_s);
         let s = reveal_type_info(
             i_s,
             match result_context.could_be_a_literal(i_s) {
@@ -220,7 +220,7 @@ pub fn execute_assert_type<'db>(
     } else {
         first.infer(i_s, result_context)
     };
-    let first_type = first.as_type(i_s);
+    let first_type = first.as_cow_type(i_s);
 
     let Ok(second) = second_node_ref
         .file
@@ -228,7 +228,7 @@ pub fn execute_assert_type<'db>(
         .compute_cast_target(second_node_ref) else {
         return Inferred::new_any()
     };
-    let second_type = second.as_type(i_s);
+    let second_type = second.as_cow_type(i_s);
     if first_type.as_ref() != second_type.as_ref() {
         let mut format_data = FormatData::new_short(i_s.db);
         format_data.hide_implicit_literals = false;

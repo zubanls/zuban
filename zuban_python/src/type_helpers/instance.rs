@@ -75,7 +75,7 @@ impl<'a> Instance<'a> {
             });
         };
 
-        for t in inf.as_type(i_s).iter_with_unpacked_unions() {
+        for t in inf.as_cow_type(i_s).iter_with_unpacked_unions() {
             match t {
                 Type::Class(c) => {
                     let descriptor = c.class(i_s.db);
@@ -98,7 +98,7 @@ impl<'a> Instance<'a> {
                         // the class attribute Foo.bar.
                         // Here we ensure that the contract that the __get__ descriptor gives us is
                         // not violated.
-                        check_compatible(&inf.as_type(i_s), value);
+                        check_compatible(&inf.as_cow_type(i_s), value);
                         continue;
                     }
                 }
@@ -511,21 +511,23 @@ fn execute_super_internal<'db>(
         }))
     };
     let first_type = match next_arg() {
-        Some(result) => match get_relevant_type_for_super(i_s.db, result?.as_type(i_s).as_ref()) {
-            Type::Type(t) => {
-                if !matches!(t.as_ref(), Type::Class(..)) {
-                    return Err(IssueType::SuperUnsupportedArgument { argument_index: 1 });
-                }
-                if matches!(t.as_ref(), Type::Class(c)
+        Some(result) => {
+            match get_relevant_type_for_super(i_s.db, result?.as_cow_type(i_s).as_ref()) {
+                Type::Type(t) => {
+                    if !matches!(t.as_ref(), Type::Class(..)) {
+                        return Err(IssueType::SuperUnsupportedArgument { argument_index: 1 });
+                    }
+                    if matches!(t.as_ref(), Type::Class(c)
                             if c.link == i_s.db.python_state.object_node_ref().as_link())
-                {
-                    return Err(IssueType::SuperTargetClassHasNoBaseClass);
+                    {
+                        return Err(IssueType::SuperTargetClassHasNoBaseClass);
+                    }
+                    t.as_ref().clone()
                 }
-                t.as_ref().clone()
+                Type::Any => Type::Any,
+                _ => return Err(IssueType::SuperArgument1MustBeTypeObject),
             }
-            Type::Any => Type::Any,
-            _ => return Err(IssueType::SuperArgument1MustBeTypeObject),
-        },
+        }
         None => {
             // This is the branch where we use super(), which is very much supported while in a
             // method.
@@ -540,14 +542,14 @@ fn execute_super_internal<'db>(
         Some(result) => result?,
         None => return Err(IssueType::SuperWithSingleArgumentNotSupported),
     };
-    let cls = match get_relevant_type_for_super(i_s.db, &instance.as_type(i_s)) {
+    let cls = match get_relevant_type_for_super(i_s.db, &instance.as_cow_type(i_s)) {
         Type::Self_ => i_s.current_class().unwrap().as_generic_class(i_s.db),
         Type::Class(g) => g,
         Type::Any => return Ok(Inferred::new_any()),
         _ => return Err(IssueType::SuperUnsupportedArgument { argument_index: 2 }),
     };
     if !first_type
-        .is_simple_super_type_of(i_s, &instance.as_type(i_s))
+        .is_simple_super_type_of(i_s, &instance.as_cow_type(i_s))
         .bool()
     {
         return Err(IssueType::SuperArgument2MustBeAnInstanceOfArgument1);

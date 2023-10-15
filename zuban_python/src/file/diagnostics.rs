@@ -102,7 +102,7 @@ impl<'db> Inference<'db, '_, '_> {
         if !valid_raise_type(
             self.i_s,
             NodeRef::new(self.file, expr.index()),
-            &self.infer_expression(expr).as_type(self.i_s),
+            &self.infer_expression(expr).as_cow_type(self.i_s),
             allow_none,
         ) {
             NodeRef::new(self.file, expr.index())
@@ -399,9 +399,9 @@ impl<'db> Inference<'db, '_, '_> {
                             debug!("TODO this check might omit the check between current class and c2?");
                             return
                         }
-                        let second = inf.as_type(self.i_s);
+                        let second = inf.as_cow_type(self.i_s);
                         let first = instance1.full_lookup(self.i_s, hack, name).into_inferred();
-                        let first = first.as_type(self.i_s);
+                        let first = first.as_cow_type(self.i_s);
                         if !first
                             .is_sub_type_of(
                                 self.i_s,
@@ -440,9 +440,9 @@ impl<'db> Inference<'db, '_, '_> {
                 let (defined_in, result) =
                     instance.lookup_and_maybe_ignore_super_count(self.i_s, hack, name, kind, 1);
                 if let Some(inf) = result.into_maybe_inferred() {
-                    let expected = inf.as_type(self.i_s);
+                    let expected = inf.as_cow_type(self.i_s);
                     let got = instance.full_lookup(self.i_s, hack, name).into_inferred();
-                    let got = got.as_type(self.i_s);
+                    let got = got.as_cow_type(self.i_s);
                     if !expected
                         .is_super_type_of(
                             self.i_s,
@@ -824,7 +824,7 @@ impl<'db> Inference<'db, '_, '_> {
                         let expression = except_expression.expression();
                         let inf = self.infer_expression(expression);
                         if !matches!(
-                            except_type(self.i_s, &inf.as_type(self.i_s), true),
+                            except_type(self.i_s, &inf.as_cow_type(self.i_s), true),
                             ExceptType::ContainsOnlyBaseExceptions
                         ) {
                             NodeRef::new(self.file, expression.index())
@@ -837,7 +837,7 @@ impl<'db> Inference<'db, '_, '_> {
                     let (except_expression, block) = except_star.unpack();
                     let expression = except_expression.expression();
                     let inf = self.infer_expression(expression);
-                    match except_type(self.i_s, &inf.as_type(self.i_s), true) {
+                    match except_type(self.i_s, &inf.as_cow_type(self.i_s), true) {
                         ExceptType::ContainsOnlyBaseExceptions => (),
                         ExceptType::HasExceptionGroup => {
                             NodeRef::new(self.file, expression.index()).add_issue(
@@ -1035,7 +1035,7 @@ fn try_pretty_format(
 ) {
     let prefix = "         ";
     if let Some(inf) = class_lookup_result.into_maybe_inferred() {
-        match inf.as_type(i_s).as_ref() {
+        match inf.as_cow_type(i_s).as_ref() {
             Type::Callable(c) => {
                 notes.push(
                     format!(

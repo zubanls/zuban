@@ -462,7 +462,7 @@ impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
     }
     fn into_argument_types(self, i_s: &InferenceState) -> Vec<Box<str>> {
         match self {
-            Self::Inferred { inferred, .. } => vec![inferred.as_type(i_s).format_short(i_s.db)],
+            Self::Inferred { inferred, .. } => vec![inferred.as_cow_type(i_s).format_short(i_s.db)],
             Self::Iterator {
                 i_s,
                 file,
@@ -561,7 +561,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                 .inference(i_s)
                                 .infer_expression(starred_expr.expression());
                             let node_ref = NodeRef::new(file, starred_expr.index());
-                            return match inf.as_type(i_s).as_ref() {
+                            return match inf.as_cow_type(i_s).as_ref() {
                                 Type::ParamSpecArgs(usage) => {
                                     // TODO check for the next arg being **P.kwargs
                                     iterator.next();
@@ -584,7 +584,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                             let inf = file
                                 .inference(i_s)
                                 .infer_expression(double_starred_expr.expression());
-                            let type_ = inf.as_type(i_s);
+                            let type_ = inf.as_cow_type(i_s);
                             let node_ref = NodeRef::new(file, double_starred_expr.index());
                             if let Some(typed_dict) = type_.maybe_typed_dict(i_s.db) {
                                 return Some(BaseArgumentReturn::ArgsKwargs(
