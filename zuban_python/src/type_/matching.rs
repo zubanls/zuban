@@ -154,17 +154,17 @@ impl Type {
                     t2 @ Type::Class(_) => {
                         // Classes like aliases can also be recursive in mypy, like `class B(List[B])`.
                         matcher.avoid_recursion(t1, t2, |matcher| {
-                            let g = rec1.calculated_db_type(i_s.db);
+                            let g = rec1.calculated_type(i_s.db);
                             g.matches_internal(i_s, matcher, value_type, variance)
                         })
                     }
                     t @ Type::RecursiveAlias(rec2) => matcher.avoid_recursion(t1, t, |matcher| {
-                        let t1 = rec1.calculated_db_type(i_s.db);
-                        let t2 = rec2.calculated_db_type(i_s.db);
+                        let t1 = rec1.calculated_type(i_s.db);
+                        let t2 = rec2.calculated_type(i_s.db);
                         t1.matches_internal(i_s, matcher, &t2, variance)
                     }),
                     _ => {
-                        let g = rec1.calculated_db_type(i_s.db);
+                        let g = rec1.calculated_type(i_s.db);
                         g.matches_internal(i_s, matcher, value_type, variance)
                     }
                 }

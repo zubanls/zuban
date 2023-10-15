@@ -70,12 +70,12 @@ pub fn common_base_type<'x, I: Iterator<Item = &'x TypeOrTypeVarTuple>>(
     if let Some(first) = ts.next() {
         let mut result = match first {
             TypeOrTypeVarTuple::Type(t) => Cow::Borrowed(t),
-            TypeOrTypeVarTuple::TypeVarTuple(_) => return i_s.db.python_state.object_db_type(),
+            TypeOrTypeVarTuple::TypeVarTuple(_) => return i_s.db.python_state.object_type(),
         };
         for t in ts {
             let t = match t {
                 TypeOrTypeVarTuple::Type(t) => t,
-                TypeOrTypeVarTuple::TypeVarTuple(_) => return i_s.db.python_state.object_db_type(),
+                TypeOrTypeVarTuple::TypeVarTuple(_) => return i_s.db.python_state.object_type(),
             };
             result = Cow::Owned(result.common_base_type(i_s, t));
         }

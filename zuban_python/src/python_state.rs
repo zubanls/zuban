@@ -42,7 +42,7 @@ macro_rules! node_ref_to_class {
     };
 }
 
-macro_rules! node_ref_to_db_type_class_without_generic {
+macro_rules! node_ref_to_type_class_without_generic {
     ($vis:vis $name:ident, $from_node_ref:ident) => {
         #[inline]
         $vis fn $name(&self) -> Type {
@@ -464,8 +464,8 @@ impl PythonState {
         let builtins_bytes_mro = calculate_mro_for_class(db, db.python_state.bytes());
 
         let s = &mut db.python_state;
-        let object_db_type = s.object_db_type();
-        s.type_of_object = Type::Type(Rc::new(object_db_type));
+        let object_type = s.object_type();
+        s.type_of_object = Type::Type(Rc::new(object_type));
         s.generator_with_any_generics =
             new_class!(s.generator_link(), Type::Any, Type::Any, Type::Any,);
         s.async_generator_with_any_generics =
@@ -645,22 +645,22 @@ impl PythonState {
     node_ref_to_class!(pub bare_type_class, bare_type_node_ref);
     node_ref_to_class!(pub typed_dict_class, typed_dict_node_ref);
 
-    node_ref_to_db_type_class_without_generic!(pub object_db_type, object_node_ref);
-    node_ref_to_db_type_class_without_generic!(pub slice_db_type, slice_node_ref);
-    node_ref_to_db_type_class_without_generic!(pub str_db_type, str_node_ref);
-    node_ref_to_db_type_class_without_generic!(pub bytes_db_type, bytes_node_ref);
-    node_ref_to_db_type_class_without_generic!(pub int_db_type, int_node_ref);
-    node_ref_to_db_type_class_without_generic!(pub bool_db_type, bool_node_ref);
-    node_ref_to_db_type_class_without_generic!(pub float_db_type, float_node_ref);
-    node_ref_to_db_type_class_without_generic!(pub complex_db_type, complex_node_ref);
-    node_ref_to_db_type_class_without_generic!(pub module_db_type, module_node_ref);
-    node_ref_to_db_type_class_without_generic!(pub property_db_type, property_node_ref);
-    node_ref_to_db_type_class_without_generic!(pub function_db_type, function_node_ref);
-    node_ref_to_db_type_class_without_generic!(pub bare_type_db_type, bare_type_node_ref);
-    node_ref_to_db_type_class_without_generic!(pub ellipsis_db_type, ellipsis_node_ref);
-    node_ref_to_db_type_class_without_generic!(pub typed_dict_db_type, typed_dict_node_ref);
+    node_ref_to_type_class_without_generic!(pub object_type, object_node_ref);
+    node_ref_to_type_class_without_generic!(pub slice_db_type, slice_node_ref);
+    node_ref_to_type_class_without_generic!(pub str_db_type, str_node_ref);
+    node_ref_to_type_class_without_generic!(pub bytes_db_type, bytes_node_ref);
+    node_ref_to_type_class_without_generic!(pub int_db_type, int_node_ref);
+    node_ref_to_type_class_without_generic!(pub bool_db_type, bool_node_ref);
+    node_ref_to_type_class_without_generic!(pub float_db_type, float_node_ref);
+    node_ref_to_type_class_without_generic!(pub complex_db_type, complex_node_ref);
+    node_ref_to_type_class_without_generic!(pub module_db_type, module_node_ref);
+    node_ref_to_type_class_without_generic!(pub property_db_type, property_node_ref);
+    node_ref_to_type_class_without_generic!(pub function_db_type, function_node_ref);
+    node_ref_to_type_class_without_generic!(pub bare_type_db_type, bare_type_node_ref);
+    node_ref_to_type_class_without_generic!(pub ellipsis_db_type, ellipsis_node_ref);
+    node_ref_to_type_class_without_generic!(pub typed_dict_db_type, typed_dict_node_ref);
 
-    node_ref_to_db_type_class_without_generic!(pub supports_index_db_type, supports_index_node_ref);
+    node_ref_to_type_class_without_generic!(pub supports_index_db_type, supports_index_node_ref);
 
     pub fn none_instance(&self) -> Instance {
         Instance::new(

@@ -517,7 +517,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::Type(Type::Enum(e)) => CalculatedBaseClass::InvalidEnum(e),
             _ => {
                 let db_type =
-                    self.as_db_type(calculated, NodeRef::new(self.inference.file, expr.index()));
+                    self.as_type(calculated, NodeRef::new(self.inference.file, expr.index()));
                 match db_type {
                     Type::Class(..) | Type::Tuple(_) | Type::TypedDict(_) | Type::Dataclass(_) => {
                         CalculatedBaseClass::Type(db_type)
@@ -560,7 +560,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::Required(t) => (t, true),
             TypeContent::NotRequired(t) => (t, false),
             _ => (
-                self.as_db_type(calculated, NodeRef::new(self.inference.file, expr.index())),
+                self.as_type(calculated, NodeRef::new(self.inference.file, expr.index())),
                 total,
             ),
         };
@@ -585,7 +585,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 expr,
                 false,
                 Some(&|slf, t| {
-                    wrap_starred(slf.as_db_type(t, NodeRef::new(self.inference.file, expr.index())))
+                    wrap_starred(slf.as_type(t, NodeRef::new(self.inference.file, expr.index())))
                 }),
             ),
             Some(SimpleParamKind::DoubleStarred) => self.cache_annotation_or_type_comment(
@@ -595,7 +595,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 Some(&|slf, t| {
                     wrap_double_starred(
                         self.inference.i_s.db,
-                        slf.as_db_type(t, NodeRef::new(self.inference.file, expr.index())),
+                        slf.as_type(t, NodeRef::new(self.inference.file, expr.index())),
                     )
                 }),
             ),
@@ -701,7 +701,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         t
                     }
                 }
-                _ => self.as_db_type(type_, node_ref),
+                _ => self.as_type(type_, node_ref),
             },
         };
         if is_implicit_optional {
@@ -724,7 +724,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         ));
     }
 
-    fn as_db_type(&mut self, type_: TypeContent, node_ref: NodeRef) -> Type {
+    fn as_type(&mut self, type_: TypeContent, node_ref: NodeRef) -> Type {
         self.as_type_or_error(type_, node_ref).unwrap_or(Type::Any)
     }
 
@@ -930,7 +930,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 
     fn compute_named_expr_type(&mut self, named_expr: NamedExpression) -> Type {
         let t = self.compute_type(named_expr.expression());
-        self.as_db_type(t, NodeRef::new(self.inference.file, named_expr.index()))
+        self.as_type(t, NodeRef::new(self.inference.file, named_expr.index()))
     }
 
     fn compute_slice_type(&mut self, slice: SliceOrSimple<'x>) -> TypeContent<'db, 'x> {
@@ -955,7 +955,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     let node_ref = *node_ref;
                     // This essentially means we have a class with Any generics. This is not what
                     // we want to be defined as a redirect and therefore we calculate Foo[Any, ...]
-                    return TypeContent::Type(self.as_db_type(type_content, node_ref));
+                    return TypeContent::Type(self.as_type(type_content, node_ref));
                 }
                 TypeContent::Class { node_ref, .. }
                 | TypeContent::SimpleGeneric { node_ref, .. } => {
@@ -973,7 +973,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 
     fn compute_slice_db_type(&mut self, slice: SliceOrSimple) -> Type {
         let t = self.compute_slice_type(slice);
-        self.as_db_type(t, slice.as_node_ref())
+        self.as_type(t, slice.as_node_ref())
     }
 
     fn compute_slice_type_or_type_var_tuple(&mut self, slice: SliceOrSimple) -> TypeOrTypeVarTuple {
@@ -989,7 +989,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         match t {
             TypeContent::Unpacked(x @ TypeOrTypeVarTuple::TypeVarTuple(_)) => x,
             TypeContent::Unpacked(TypeOrTypeVarTuple::Type(_)) => todo!(),
-            t => TypeOrTypeVarTuple::Type(self.as_db_type(t, slice.as_node_ref())),
+            t => TypeOrTypeVarTuple::Type(self.as_type(t, slice.as_node_ref())),
         }
     }
 
@@ -1000,10 +1000,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             ExpressionPart::BitwiseOr(bitwise_or) => {
                 let (a, b) = bitwise_or.unpack();
                 let first = self.compute_type_expression_part(a);
-                let first = self.as_db_type(first, NodeRef::new(self.inference.file, b.index()));
+                let first = self.as_type(first, NodeRef::new(self.inference.file, b.index()));
                 // TODO this should only merge in annotation contexts
                 let second = self.compute_type_expression_part(b);
-                let second = self.as_db_type(second, NodeRef::new(self.inference.file, b.index()));
+                let second = self.as_type(second, NodeRef::new(self.inference.file, b.index()));
                 TypeContent::Type(first.union(self.inference.i_s.db, second))
             }
             _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
@@ -1331,7 +1331,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeVarKind::Unrestricted => (),
             TypeVarKind::Bound(bound) => {
                 // Performance: This could be optimized to not create new objects all the time.
-                let actual = self.as_db_type(type_.clone(), s.as_node_ref());
+                let actual = self.as_type(type_.clone(), s.as_node_ref());
                 let i_s = &mut self.inference.i_s;
                 if !bound.is_simple_super_type_of(i_s, &actual).bool() {
                     s.as_node_ref().add_issue(
@@ -1345,7 +1345,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
             }
             TypeVarKind::Constraints(constraints) => {
-                let t2 = self.as_db_type(type_.clone(), s.as_node_ref());
+                let t2 = self.as_type(type_.clone(), s.as_node_ref());
                 let i_s = &mut self.inference.i_s;
                 if let Type::TypeVar(usage) = &t2 {
                     if let TypeVarKind::Constraints(constraints2) = &usage.type_var.kind {
@@ -1555,7 +1555,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         ));
                     }
                     generics.push(GenericItem::TypeArgument(
-                        self.as_db_type(t, slice_content.as_node_ref()),
+                        self.as_type(t, slice_content.as_node_ref()),
                     ));
                     return None;
                 }
@@ -1607,7 +1607,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         let t = self.compute_slice_type(slice_content);
                         self.check_constraints(&type_var, &slice_content, &t, get_of);
                         given_count += 1;
-                        GenericItem::TypeArgument(self.as_db_type(t, slice_content.as_node_ref()))
+                        GenericItem::TypeArgument(self.as_type(t, slice_content.as_node_ref()))
                     } else {
                         type_var_like.as_any_generic_item()
                     }
@@ -1719,7 +1719,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         } else {
             CallableParam {
                 param_specific: ParamSpecific::PositionalOnly(
-                    self.as_db_type(t, NodeRef::new(self.inference.file, index)),
+                    self.as_type(t, NodeRef::new(self.inference.file, index)),
                 ),
                 has_default: false,
                 name: None,
@@ -1898,7 +1898,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let iterator = slice_type.iter();
         if let SliceTypeIterator::SliceOrSimple(s) = iterator {
             let t = self.compute_slice_type(s);
-            let t = self.as_db_type(t, s.as_node_ref());
+            let t = self.as_type(t, s.as_node_ref());
             TypeContent::Type(t)
         } else {
             let mut t = UnionType::new(
@@ -1907,7 +1907,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     .map(|(format_index, slice_or_simple)| {
                         let t = self.compute_slice_type(slice_or_simple);
                         UnionEntry {
-                            type_: self.as_db_type(t, slice_or_simple.as_node_ref()),
+                            type_: self.as_type(t, slice_or_simple.as_node_ref()),
                             format_index,
                         }
                     })
@@ -1977,7 +1977,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         if iterator.count() == 0 {
             TypeContent::Unpacked(match self.compute_slice_type(first) {
                 TypeContent::TypeVarTuple(t) => TypeOrTypeVarTuple::TypeVarTuple(t),
-                t => TypeOrTypeVarTuple::Type(self.as_db_type(t, first.as_node_ref())),
+                t => TypeOrTypeVarTuple::Type(self.as_type(t, first.as_node_ref())),
             })
         } else {
             todo!()
@@ -2019,7 +2019,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     .map(|(i, s)| UnionEntry {
                         type_: {
                             let t = self.compute_get_item_on_literal_item(s, i + 1);
-                            self.as_db_type(t, s.as_node_ref())
+                            self.as_type(t, s.as_node_ref())
                         },
                         format_index: i,
                     })
@@ -2150,7 +2150,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 TypeContent::Unknown
             }
             TypeContent::EnumMember(e) => TypeContent::Type(Type::EnumMember(e)),
-            t => match self.as_db_type(t, slice.as_node_ref()) {
+            t => match self.as_type(t, slice.as_node_ref()) {
                 Type::Any => TypeContent::Unknown,
                 t @ (Type::None | Type::Literal(_)) => TypeContent::Type(t),
                 Type::Union(u)
@@ -2405,7 +2405,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 };
                 let type_from_expr = |slf: &mut Self, expr: Expression| {
                     let t = slf.compute_type(expr);
-                    Some(slf.as_db_type(t, NodeRef::new(self.inference.file, expr.index())))
+                    Some(slf.as_type(t, NodeRef::new(self.inference.file, expr.index())))
                 };
                 let arg = iterator.next().unwrap();
                 match arg {
@@ -2919,7 +2919,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                     }
                     _ => {
                         let node_ref = NodeRef::new(file, expr.index());
-                        let db_type = comp.as_db_type(t, node_ref);
+                        let db_type = comp.as_type(t, node_ref);
                         debug_assert!(!comp.type_var_manager.has_type_vars());
                         let is_recursive = comp.is_recursive_alias;
                         let type_var_likes = type_var_manager.into_type_vars();
@@ -3084,7 +3084,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                         TypeComputationOrigin::AssignmentTypeCommentOrAnnotation,
                     );
                     let t = comp.compute_type(expr);
-                    let mut db_type = comp.as_db_type(t, expr_node_ref);
+                    let mut db_type = comp.as_type(t, expr_node_ref);
                     let type_vars = comp.into_type_vars(|inf, recalculate_type_vars| {
                         db_type = recalculate_type_vars(&db_type);
                     });
@@ -3201,7 +3201,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 node_ref.add_issue(comp.inference.i_s, IssueType::TypeVarTypeExpected);
                 None
             }
-            _ => Some(comp.as_db_type(t, node_ref)),
+            _ => Some(comp.as_type(t, node_ref)),
         }
     }
 
@@ -3220,7 +3220,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 Type::Any
             }
             t => {
-                let t = comp.as_db_type(t, node_ref);
+                let t = comp.as_type(t, node_ref);
                 if !t.is_subclassable(self.i_s.db) {
                     node_ref.add_issue(
                         self.i_s,

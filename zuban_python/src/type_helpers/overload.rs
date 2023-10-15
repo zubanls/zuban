@@ -438,7 +438,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         Inferred::from_type(t.unwrap())
     }
 
-    pub fn as_db_type(
+    pub fn as_type(
         &self,
         i_s: &InferenceState<'db, '_>,
         replace_self_type: Option<ReplaceSelf>,
@@ -460,10 +460,6 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         } else {
             Type::FunctionOverload(self.overload.clone())
         }
-    }
-
-    pub fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type {
-        self.as_db_type(i_s, None)
     }
 
     pub fn execute(

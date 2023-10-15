@@ -151,7 +151,8 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
-    pub fn execute_db_type(i_s: &InferenceState<'db, '_>, generic: Type) -> Self {
+    pub fn execute_type(i_s: &InferenceState<'db, '_>, generic: Type) -> Self {
+        // TODO remove this and use some of its stuff maybe?
         let state = match generic {
             Type::Type(ref c)
                 if matches!(
@@ -2106,7 +2107,7 @@ fn type_of_complex<'db: 'x, 'x>(
         ComplexPoint::FunctionOverload(overload) => {
             let overload =
                 OverloadedFunction::new(&overload.functions, i_s.current_class().copied());
-            Cow::Owned(overload.as_type(i_s))
+            Cow::Owned(overload.as_type(i_s, None))
         }
         ComplexPoint::TypeInstance(t) => Cow::Borrowed(t),
         // TODO is this type correct with the Any?

@@ -117,7 +117,7 @@ impl<'a> Tuple<'a> {
                 }
                 match &self.content.args {
                     TupleTypeArguments::ArbitraryLength(t) => {
-                        Inferred::execute_db_type(i_s, t.as_ref().clone())
+                        Inferred::from_type(t.as_ref().clone())
                     }
                     args @ TupleTypeArguments::FixedLength(ts) => {
                         if args.has_type_var_tuple().is_some() {
@@ -143,7 +143,7 @@ impl<'a> Tuple<'a> {
                                 if let Some(t) = ts.as_ref().get(index) {
                                     Some(match t {
                                         TypeOrTypeVarTuple::Type(t) => {
-                                            Inferred::execute_db_type(i_s, t.clone())
+                                            Inferred::from_type(t.clone())
                                         }
                                         TypeOrTypeVarTuple::TypeVarTuple(t) => unreachable!(),
                                     })

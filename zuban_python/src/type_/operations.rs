@@ -232,7 +232,7 @@ impl Type {
                 lookup_on_enum_member_instance(i_s, from, member, name),
             ),
             Type::RecursiveAlias(r) => r
-                .calculated_db_type(i_s.db)
+                .calculated_type(i_s.db)
                 .run_after_lookup_on_each_union_member(
                     i_s,
                     None,
@@ -317,7 +317,7 @@ impl Type {
                     .get_item(i_s, None, slice_type, result_context)
             }
             Type::RecursiveAlias(r) => {
-                r.calculated_db_type(i_s.db)
+                r.calculated_type(i_s.db)
                     .get_item(i_s, None, slice_type, result_context)
             }
             Type::TypedDict(d) => TypedDictHelper(d).get_item(i_s, slice_type, result_context),

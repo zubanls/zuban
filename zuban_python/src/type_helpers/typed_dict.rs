@@ -388,11 +388,11 @@ fn typed_dict_get_internal<'db>(
                 t.simplified_union(i_s, &default)
             } else {
                 infer_default(&mut ResultContext::Unknown)?;
-                i_s.db.python_state.object_db_type()
+                i_s.db.python_state.object_type()
             }
         } else {
             infer_default(&mut ResultContext::Unknown)?;
-            i_s.db.python_state.object_db_type()
+            i_s.db.python_state.object_type()
         },
     ))
 }

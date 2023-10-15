@@ -885,7 +885,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
         let self_type_var_usage = self_type_var_usage.as_ref();
 
-        let as_db_type = |i_s: &InferenceState, t: &Type| {
+        let as_type = |i_s: &InferenceState, t: &Type| {
             if matches!(first, FirstParamProperties::None) {
                 return t.clone();
             }
@@ -921,7 +921,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             )
         };
         let mut callable =
-            self.internal_as_type(i_s, params, self_type_var_usage.is_some(), as_db_type);
+            self.internal_as_type(i_s, params, self_type_var_usage.is_some(), as_type);
         callable.type_vars = TypeVarLikes::from_vec(type_vars);
         callable
     }
@@ -939,7 +939,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         i_s: &InferenceState,
         params: impl Iterator<Item = FunctionParam<'a>>,
         has_self_type_var_usage: bool,
-        mut as_db_type: impl FnMut(&InferenceState, &Type) -> Type,
+        mut as_type: impl FnMut(&InferenceState, &Type) -> Type,
     ) -> CallableContent {
         let mut params = params.peekable();
         let had_first_annotation =
@@ -956,7 +956,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             },
         };
         let result_type = self.result_type(i_s);
-        let mut result_type = as_db_type(i_s, &result_type);
+        let mut result_type = as_type(i_s, &result_type);
         if self.is_async() && !self.is_generator() {
             result_type = new_class!(
                 i_s.db.python_state.coroutine_link(),
@@ -985,7 +985,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         while let Some(p) = params.next() {
             let specific = p.specific(i_s.db);
             let mut as_t = |t: Option<Cow<_>>| {
-                t.map(|t| as_db_type(i_s, &t)).unwrap_or({
+                t.map(|t| as_type(i_s, &t)).unwrap_or({
                     let name_ref =
                         NodeRef::new(self.node_ref.file, p.param.name_definition().index());
                     if name_ref.point().maybe_specific() == Some(Specific::MaybeSelfParam) {

@@ -53,7 +53,7 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
                     to_self_instance: &|| self.instance.clone(),
                 },
             ),
-            BoundMethodFunction::Overload(f) => f.as_db_type(i_s, Some(&|| self.instance.clone())),
+            BoundMethodFunction::Overload(f) => f.as_type(i_s, Some(&|| self.instance.clone())),
         }
     }
 }

@@ -1690,7 +1690,7 @@ fn to_base_kind(t: &Type) -> BaseKind {
 fn linearize_mro(i_s: &InferenceState, class: &Class, bases: &[Type]) -> Box<[BaseClass]> {
     let mut mro = vec![];
 
-    let object = i_s.db.python_state.object_db_type();
+    let object = i_s.db.python_state.object_type();
     if let Some(index) = bases.iter().position(|base| base == &object) {
         // Instead of adding object to each iterator (because in our mro, object is not saved), we
         // just check for object in bases here. If it's not in the last position it's wrong.

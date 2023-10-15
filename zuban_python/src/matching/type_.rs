@@ -32,11 +32,11 @@ impl TypeAlias {
                 }),
             )));
         }
-        let db_type = self.type_if_valid();
+        let type_ = self.type_if_valid();
         if self.type_vars.is_empty() {
-            db_type.clone()
+            type_.clone()
         } else {
-            db_type.replace_type_var_likes(db, &mut |t| match t.in_definition() == self.location {
+            type_.replace_type_var_likes(db, &mut |t| match t.in_definition() == self.location {
                 true => t.as_type_var_like().as_any_generic_item(),
                 false => t.into_generic_item(),
             })
@@ -85,22 +85,22 @@ impl TypeAlias {
                 }),
             ))));
         }
-        let db_type = self.type_if_valid();
+        let type_ = self.type_if_valid();
         if self.type_vars.is_empty() {
-            Cow::Borrowed(db_type)
+            Cow::Borrowed(type_)
         } else {
-            Cow::Owned(db_type.replace_type_var_likes(db, callable))
+            Cow::Owned(type_.replace_type_var_likes(db, callable))
         }
     }
 }
 
 impl RecursiveAlias {
-    pub fn calculated_db_type<'db: 'slf, 'slf>(&'slf self, db: &'db Database) -> &'slf Type {
+    pub fn calculated_type<'db: 'slf, 'slf>(&'slf self, db: &'db Database) -> &'slf Type {
         let alias = self.type_alias(db);
         if self.generics.is_none() {
             alias.type_if_valid()
         } else {
-            self.calculated_db_type.get_or_init(|| {
+            self.calculated_type.get_or_init(|| {
                 self.type_alias(db)
                     .replace_type_var_likes(db, true, &mut |t| {
                         self.generics

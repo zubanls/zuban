@@ -760,7 +760,7 @@ impl Type {
                     Box::from(alias.name(format_data.db).unwrap())
                 } else {
                     let format_data = format_data.with_seen_recursive_alias(rec);
-                    rec.calculated_db_type(format_data.db).format(&format_data)
+                    rec.calculated_type(format_data.db).format(&format_data)
                 }
             }
             Self::Self_ => Box::from("Self"),
@@ -1323,7 +1323,7 @@ impl Type {
                 .iter()
                 .any(|t| t.on_any_resolved_context_type(i_s, matcher, callable)),
             Type::RecursiveAlias(r) => r
-                .calculated_db_type(i_s.db)
+                .calculated_type(i_s.db)
                 .on_any_resolved_context_type(i_s, matcher, callable),
             db_type @ Type::TypeVar(_) => {
                 if matcher.might_have_defined_type_vars() {
@@ -1495,18 +1495,6 @@ pub enum TypeOrTypeVarTuple {
 }
 
 impl TypeOrTypeVarTuple {
-    #[allow(dead_code)] // TODO remove this
-    fn as_db_type(&self) -> Type {
-        match self {
-            Self::Type(t) => t.clone(),
-            Self::TypeVarTuple(t) => {
-                Type::Tuple(Rc::new(TupleContent::new_fixed_length(Rc::new([
-                    TypeOrTypeVarTuple::TypeVarTuple(t.clone()),
-                ]))))
-            }
-        }
-    }
-
     fn format(&self, format_data: &FormatData) -> Box<str> {
         match self {
             Self::Type(t) => t.format(format_data),
@@ -2089,7 +2077,7 @@ impl Literal {
 pub struct RecursiveAlias {
     pub link: PointLink,
     pub generics: Option<GenericsList>,
-    pub calculated_db_type: OnceCell<Type>,
+    pub calculated_type: OnceCell<Type>,
 }
 
 impl RecursiveAlias {
@@ -2097,7 +2085,7 @@ impl RecursiveAlias {
         Self {
             link,
             generics,
-            calculated_db_type: OnceCell::new(),
+            calculated_type: OnceCell::new(),
         }
     }
 
