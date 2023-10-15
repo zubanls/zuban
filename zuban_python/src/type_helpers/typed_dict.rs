@@ -372,7 +372,7 @@ fn typed_dict_get_internal<'db>(
     let infer_default = |context| match second_arg {
         Some(second) => match &second.kind {
             ArgumentKind::Positional { .. } | ArgumentKind::Keyword { key: "default", .. } => {
-                Some(second.infer(i_s, context).as_db_type(i_s))
+                Some(second.infer(i_s, context).as_type(i_s))
             }
             _ => return None,
         },

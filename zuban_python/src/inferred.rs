@@ -202,7 +202,7 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
-    pub fn as_db_type(&self, i_s: &InferenceState<'db, '_>) -> Type {
+    pub fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type {
         self.as_cow_type(i_s).into_owned()
     }
 

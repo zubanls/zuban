@@ -382,7 +382,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                                                 .unwrap_or(Type::Self_)
                                         },
                                     )
-                                    .as_db_type(i_s),
+                                    .as_type(i_s),
                                 first_similar_index: i,
                             };
                         }

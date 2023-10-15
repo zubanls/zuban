@@ -1534,7 +1534,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 let call = metaclass
                     .type_lookup(i_s, args.as_node_ref(), "__call__")
                     .into_inferred();
-                let Type::FunctionOverload(o) = call.as_db_type(i_s) else {
+                let Type::FunctionOverload(o) = call.as_type(i_s) else {
                     todo!()
                 };
                 // Enum currently has multiple signatures that are not all relevant. Just pick the one
@@ -1560,7 +1560,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 .constructor
                 .into_inferred()
                 .execute_with_details(i_s, args, result_context, on_type_error)
-                .as_db_type(i_s);
+                .as_type(i_s);
             return match &result {
                 // Only subclasses of the current class are valid, otherwise return the current
                 // class. Diagnostics will care about these cases and raise errors when needed.

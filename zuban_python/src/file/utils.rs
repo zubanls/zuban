@@ -31,17 +31,17 @@ impl<'db> Inference<'db, '_, '_> {
                 inferred
                     .iter(self.i_s, NodeRef::new(self.file, from_index))
                     .infer_all(self.i_s)
-                    .as_db_type(self.i_s)
+                    .as_type(self.i_s)
             };
             let t = match child {
                 StarLikeExpression::NamedExpression(named_expr) => {
-                    self.infer_named_expression(named_expr).as_db_type(self.i_s)
+                    self.infer_named_expression(named_expr).as_type(self.i_s)
                 }
                 StarLikeExpression::StarNamedExpression(e) => {
                     from_stars(self.infer_expression_part(e.expression_part()), e.index())
                 }
                 StarLikeExpression::Expression(expr) => {
-                    self.infer_expression(expr).as_db_type(self.i_s)
+                    self.infer_expression(expr).as_type(self.i_s)
                 }
                 StarLikeExpression::StarExpression(star_expr) => from_stars(
                     self.infer_expression_part(star_expr.expression_part()),
@@ -428,8 +428,8 @@ impl<'db> Inference<'db, '_, '_> {
                 }
             });
         });
-        let keys = keys.as_db_type(i_s).avoid_implicit_literal(self.i_s.db);
-        let values = values.as_db_type(i_s).avoid_implicit_literal(self.i_s.db);
+        let keys = keys.as_type(i_s).avoid_implicit_literal(self.i_s.db);
+        let values = values.as_type(i_s).avoid_implicit_literal(self.i_s.db);
         debug!(
             "Calculated generics for {}: dict[{}, {}]",
             dict.short_debug(),

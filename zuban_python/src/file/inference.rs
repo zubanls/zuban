@@ -783,7 +783,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         .map(|target| {
                             TypeOrTypeVarTuple::Type(
                                 self.infer_target(target, infer_index_expression)
-                                    .map(|i| i.as_db_type(self.i_s))
+                                    .map(|i| i.as_type(self.i_s))
                                     .unwrap_or(Type::Any),
                             )
                         })
@@ -1009,7 +1009,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                 value_iterator
                                                     .next(self.i_s)
                                                     .unwrap()
-                                                    .as_db_type(self.i_s),
+                                                    .as_type(self.i_s),
                                             ))
                                         }
                                         Type::Tuple(Rc::new(TupleContent::new_fixed_length(
@@ -1024,7 +1024,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                     );
                                                 }
                                             });
-                                        let mut generic = union.as_db_type(self.i_s);
+                                        let mut generic = union.as_type(self.i_s);
                                         if fetch == 0 {
                                             if self
                                                 .infer_target(star_target.as_target(), false)
@@ -1051,7 +1051,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 let value = value_iterator.next(self.i_s).unwrap();
                                 let list = Inferred::from_type(new_class!(
                                     self.i_s.db.python_state.list_node_ref().as_link(),
-                                    value.as_db_type(self.i_s),
+                                    value.as_type(self.i_s),
                                 ));
                                 self.assign_targets(
                                     star_target.as_target(),
@@ -1481,9 +1481,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         },
                         type_vars: self.i_s.db.python_state.empty_type_var_likes.clone(),
                         params: CallableParams::Simple(Rc::new([])),
-                        result_type: result
-                            .as_db_type(self.i_s)
-                            .avoid_implicit_literal(self.i_s.db),
+                        result_type: result.as_type(self.i_s).avoid_implicit_literal(self.i_s.db),
                     };
                     Inferred::from_type(Type::Callable(Rc::new(c)))
                 } else {
@@ -1844,7 +1842,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let mut iterator = inferred.iter(self.i_s, NodeRef::new(self.file, from_index));
                 if iterator.len().is_some() {
                     while let Some(inf) = iterator.next(self.i_s) {
-                        generics.push(TypeOrTypeVarTuple::Type(inf.as_db_type(self.i_s)))
+                        generics.push(TypeOrTypeVarTuple::Type(inf.as_type(self.i_s)))
                     }
                 } else {
                     is_arbitrary_length.set(true);
@@ -1859,13 +1857,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 e,
                                 &mut ResultContext::Known(expected),
                             )
-                            .as_db_type(self.i_s);
+                            .as_type(self.i_s);
                         generics.push(TypeOrTypeVarTuple::Type(t))
                     }
                     StarLikeExpression::Expression(e) => {
                         let t = self
                             .infer_expression_with_context(e, &mut ResultContext::Known(expected))
-                            .as_db_type(self.i_s);
+                            .as_type(self.i_s);
                         generics.push(TypeOrTypeVarTuple::Type(t))
                     }
                     StarLikeExpression::StarNamedExpression(e) => {
@@ -2333,7 +2331,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
         Inferred::from_type(match comp_expr {
             CommonComprehensionExpression::Single(named_expr) => {
-                let t = self.infer_named_expression(named_expr).as_db_type(self.i_s);
+                let t = self.infer_named_expression(named_expr).as_type(self.i_s);
                 match kind {
                     ComprehensionKind::List => {
                         new_class!(self.i_s.db.python_state.list_node_ref().as_link(), t,)
@@ -2351,9 +2349,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
             CommonComprehensionExpression::DictKeyValue(key_value) => new_class!(
                 self.i_s.db.python_state.dict_node_ref().as_link(),
-                self.infer_expression(key_value.key()).as_db_type(self.i_s),
-                self.infer_expression(key_value.value())
-                    .as_db_type(self.i_s),
+                self.infer_expression(key_value.key()).as_type(self.i_s),
+                self.infer_expression(key_value.value()).as_type(self.i_s),
             ),
         })
     }

@@ -26,9 +26,7 @@ pub fn execute_type<'db>(
         todo!()
     } else if let Some(first) = first {
         Inferred::from_type(Type::Type(Rc::new(
-            first
-                .infer(i_s, &mut ResultContext::Unknown)
-                .as_db_type(i_s),
+            first.infer(i_s, &mut ResultContext::Unknown).as_type(i_s),
         )))
     } else {
         todo!()

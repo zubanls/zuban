@@ -219,7 +219,7 @@ impl<'file> Slices<'file> {
         let parts = self
             .iter()
             .map(|x| {
-                TypeOrTypeVarTuple::Type(x.infer(i_s, &mut ResultContext::Unknown).as_db_type(i_s))
+                TypeOrTypeVarTuple::Type(x.infer(i_s, &mut ResultContext::Unknown).as_type(i_s))
             })
             .collect();
         Inferred::from_type(Type::Tuple(Rc::new(TupleContent::new_fixed_length(parts))))
