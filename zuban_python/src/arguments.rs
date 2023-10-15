@@ -6,7 +6,7 @@ use crate::diagnostics::IssueType;
 use crate::file::PythonFile;
 use crate::getitem::{SliceType, SliceTypeContent, Slices};
 use crate::inferred::Inferred;
-use crate::matching::{IteratorContent, Matcher, ResultContext, Type};
+use crate::matching::{IteratorContent, Matcher, ResultContext};
 use crate::node_ref::NodeRef;
 use crate::type_::{DbType, GenericItem, ParamSpecUsage, StringSlice, TypedDict, Variance};
 use crate::{debug, InferenceState};
@@ -887,7 +887,7 @@ enum ArgsKwargsIterator<'a> {
     None,
 }
 
-pub fn unpack_star_star(i_s: &InferenceState, t: &Type) -> Option<(DbType, DbType)> {
+pub fn unpack_star_star(i_s: &InferenceState, t: &DbType) -> Option<(DbType, DbType)> {
     let wanted_cls = i_s.db.python_state.supports_keys_and_get_item_class(i_s.db);
     let mut matcher = Matcher::new_class_matcher(i_s, wanted_cls);
     let matches = wanted_cls

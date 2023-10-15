@@ -20,7 +20,7 @@ use crate::matching::{
     calculate_property_return, create_signature_without_self,
     create_signature_without_self_for_callable, maybe_class_usage, replace_class_type_vars,
     FormatData, Generics, IteratorContent, LookupKind, LookupResult, Matcher, OnLookupError,
-    OnTypeError, ResultContext, Type,
+    OnTypeError, ResultContext,
 };
 use crate::node_ref::NodeRef;
 use crate::type_::{
@@ -177,24 +177,17 @@ impl<'db: 'slf, 'slf> Inferred {
         Self { state }
     }
 
-    pub fn saved_as_type(&self, i_s: &InferenceState<'db, '_>) -> Option<Type<'db>> {
-        match &self.state {
-            InferredState::Saved(definition) => Some(saved_as_type(i_s, *definition)),
-            _ => None,
-        }
-    }
-
-    pub fn as_type(&'slf self, i_s: &InferenceState<'db, '_>) -> Type<'slf> {
+    pub fn as_type(&'slf self, i_s: &InferenceState<'db, '_>) -> Cow<'slf, DbType> {
         match &self.state {
             InferredState::Saved(definition) => saved_as_type(i_s, *definition),
             InferredState::UnsavedComplex(complex) => type_of_complex(i_s, complex, None),
             InferredState::UnsavedSpecific(specific) => match specific {
-                Specific::None => Type::new(&DbType::None),
-                Specific::Any | Specific::Cycle => Type::new(&DbType::Any),
+                Specific::None => Cow::Borrowed(&DbType::None),
+                Specific::Any | Specific::Cycle => Cow::Borrowed(&DbType::Any),
                 _ => unreachable!("{specific:?}"),
             },
             InferredState::UnsavedFileReference(file_index) => {
-                Type::owned(DbType::Module(*file_index))
+                Cow::Owned(DbType::Module(*file_index))
             }
             InferredState::BoundMethod {
                 instance,
@@ -202,14 +195,14 @@ impl<'db: 'slf, 'slf> Inferred {
                 func_link,
             } => {
                 let class = Self::load_bound_method_class(i_s, instance, *mro_index);
-                Type::owned(load_bound_method(i_s, instance, class, *func_link).as_type(i_s))
+                Cow::Owned(load_bound_method(i_s, instance, class, *func_link).as_type(i_s))
             }
-            InferredState::Unknown => Type::new(&DbType::Any),
+            InferredState::Unknown => Cow::Borrowed(&DbType::Any),
         }
     }
 
     pub fn as_db_type(&self, i_s: &InferenceState<'db, '_>) -> DbType {
-        self.as_type(i_s).into_db_type()
+        self.as_type(i_s).into_owned()
     }
 
     pub fn format(&self, i_s: &InferenceState<'db, '_>, format_data: &FormatData) -> Box<str> {
@@ -2104,11 +2097,11 @@ fn type_of_complex<'db: 'x, 'x>(
     i_s: &InferenceState<'db, '_>,
     complex: &'x ComplexPoint,
     definition: Option<NodeRef<'x>>,
-) -> Type<'x> {
+) -> Cow<'x, DbType> {
     match complex {
         ComplexPoint::Class(cls_storage) => {
             // This can only ever happen for saved definitions, therefore we can unwrap.
-            Type::owned(DbType::Type(Rc::new(DbType::new_class(
+            Cow::Owned(DbType::Type(Rc::new(DbType::new_class(
                 definition.unwrap().as_link(),
                 ClassGenerics::NotDefinedYet,
             ))))
@@ -2116,30 +2109,30 @@ fn type_of_complex<'db: 'x, 'x>(
         ComplexPoint::FunctionOverload(overload) => {
             let overload =
                 OverloadedFunction::new(&overload.functions, i_s.current_class().copied());
-            Type::owned(overload.as_type(i_s))
+            Cow::Owned(overload.as_type(i_s))
         }
-        ComplexPoint::TypeInstance(t) => Type::new(t),
+        ComplexPoint::TypeInstance(t) => Cow::Borrowed(t),
         // TODO is this type correct with the Any?
-        ComplexPoint::TypeAlias(alias) => Type::owned(DbType::Type(Rc::new(
+        ComplexPoint::TypeAlias(alias) => Cow::Owned(DbType::Type(Rc::new(
             alias.as_db_type_and_set_type_vars_any(i_s.db),
         ))),
         ComplexPoint::TypeVarLike(t) => match t {
-            TypeVarLike::TypeVar(_) => i_s.db.python_state.type_var_type(),
+            TypeVarLike::TypeVar(_) => Cow::Owned(i_s.db.python_state.type_var_type()),
             TypeVarLike::TypeVarTuple(_) => todo!(),
             TypeVarLike::ParamSpec(_) => todo!(),
         },
         ComplexPoint::NewTypeDefinition(n) => {
-            Type::owned(DbType::Type(Rc::new(DbType::NewType(n.clone()))))
+            Cow::Owned(DbType::Type(Rc::new(DbType::NewType(n.clone()))))
         }
-        ComplexPoint::NamedTupleDefinition(n) => Type::owned(DbType::Type(n.clone())),
-        ComplexPoint::TypedDictDefinition(t) => Type::owned(DbType::Type(t.clone())),
+        ComplexPoint::NamedTupleDefinition(n) => Cow::Owned(DbType::Type(n.clone())),
+        ComplexPoint::TypedDictDefinition(t) => Cow::Owned(DbType::Type(t.clone())),
         _ => {
             unreachable!("Classes are handled earlier {complex:?}")
         }
     }
 }
 
-fn saved_as_type<'db>(i_s: &InferenceState<'db, '_>, definition: PointLink) -> Type<'db> {
+fn saved_as_type<'db>(i_s: &InferenceState<'db, '_>, definition: PointLink) -> Cow<'db, DbType> {
     let definition = NodeRef::from_link(i_s.db, definition);
     let point = definition.point();
     match point.type_() {
@@ -2148,7 +2141,7 @@ fn saved_as_type<'db>(i_s: &InferenceState<'db, '_>, definition: PointLink) -> T
             let complex = definition.file.complex_points.get(point.complex_index());
             type_of_complex(i_s, complex, Some(definition))
         }
-        PointType::FileReference => Type::owned(DbType::Module(point.file_index())),
+        PointType::FileReference => Cow::Owned(DbType::Module(point.file_index())),
         x => unreachable!("{x:?}"),
     }
 }
@@ -2157,14 +2150,14 @@ pub fn specific_to_type<'db>(
     i_s: &InferenceState<'db, '_>,
     definition: NodeRef<'db>,
     specific: Specific,
-) -> Type<'db> {
+) -> Cow<'db, DbType> {
     match specific {
-        Specific::Any | Specific::Cycle => Type::new(&DbType::Any),
-        Specific::IntLiteral => Type::owned(DbType::Literal(DbLiteral {
+        Specific::Any | Specific::Cycle => Cow::Borrowed(&DbType::Any),
+        Specific::IntLiteral => Cow::Owned(DbType::Literal(DbLiteral {
             kind: LiteralKind::Int(definition.expect_int().parse().unwrap()),
             implicit: true,
         })),
-        Specific::StringLiteral => Type::owned(DbType::Literal(DbLiteral {
+        Specific::StringLiteral => Cow::Owned(DbType::Literal(DbLiteral {
             kind: LiteralKind::String(
                 DbString::from_python_string(
                     definition.file_index(),
@@ -2174,23 +2167,23 @@ pub fn specific_to_type<'db>(
             ),
             implicit: true,
         })),
-        Specific::BoolLiteral => Type::owned(DbType::Literal(DbLiteral {
+        Specific::BoolLiteral => Cow::Owned(DbType::Literal(DbLiteral {
             kind: LiteralKind::Bool(definition.as_code() == "True"),
             implicit: true,
         })),
-        Specific::BytesLiteral => Type::owned(DbType::Literal(DbLiteral {
+        Specific::BytesLiteral => Cow::Owned(DbType::Literal(DbLiteral {
             kind: LiteralKind::Bytes(definition.as_link()),
             implicit: true,
         })),
-        Specific::String => Type::owned(i_s.db.python_state.str_db_type()),
-        Specific::Int => Type::owned(i_s.db.python_state.int_db_type()),
-        Specific::Float => Type::owned(i_s.db.python_state.float_db_type()),
-        Specific::Bool => Type::owned(i_s.db.python_state.bool_db_type()),
-        Specific::Bytes => Type::owned(i_s.db.python_state.bytes_db_type()),
-        Specific::Complex => Type::owned(i_s.db.python_state.complex_db_type()),
-        Specific::Ellipsis => Type::owned(i_s.db.python_state.ellipsis_db_type()),
+        Specific::String => Cow::Owned(i_s.db.python_state.str_db_type()),
+        Specific::Int => Cow::Owned(i_s.db.python_state.int_db_type()),
+        Specific::Float => Cow::Owned(i_s.db.python_state.float_db_type()),
+        Specific::Bool => Cow::Owned(i_s.db.python_state.bool_db_type()),
+        Specific::Bytes => Cow::Owned(i_s.db.python_state.bytes_db_type()),
+        Specific::Complex => Cow::Owned(i_s.db.python_state.complex_db_type()),
+        Specific::Ellipsis => Cow::Owned(i_s.db.python_state.ellipsis_db_type()),
         Specific::Function => {
-            Type::owned(Function::new(definition, i_s.current_class().copied()).as_type(i_s))
+            Cow::Owned(Function::new(definition, i_s.current_class().copied()).as_type(i_s))
         }
         Specific::DecoratedFunction => {
             let func = Function::new(definition, i_s.current_class().copied());
@@ -2201,14 +2194,14 @@ pub fn specific_to_type<'db>(
         | Specific::AnnotationOrTypeCommentWithoutTypeVars
         | Specific::AnnotationOrTypeCommentWithTypeVars
         | Specific::AnnotationOrTypeCommentClassVar => {
-            Type(use_cached_annotation_or_type_comment(i_s, definition))
+            use_cached_annotation_or_type_comment(i_s, definition)
         }
-        Specific::MaybeSelfParam => Type::new(&DbType::Self_),
+        Specific::MaybeSelfParam => Cow::Borrowed(&DbType::Self_),
         Specific::TypingTypeVarClass => todo!(),
         Specific::TypingTypeVarTupleClass => todo!(),
         Specific::TypingParamSpecClass => todo!(),
-        Specific::TypingType => Type::new(&i_s.db.python_state.type_of_any),
-        Specific::TypingTuple => Type::new(&i_s.db.python_state.type_of_arbitrary_tuple),
+        Specific::TypingType => Cow::Borrowed(&i_s.db.python_state.type_of_any),
+        Specific::TypingTuple => Cow::Borrowed(&i_s.db.python_state.type_of_arbitrary_tuple),
         Specific::CollectionsNamedTuple => todo!(),
         Specific::TypingProtocol
         | Specific::TypingGeneric
@@ -2222,7 +2215,7 @@ pub fn specific_to_type<'db>(
         Specific::TypingCast => todo!(),
         Specific::TypingClassVar => todo!(),
         Specific::RevealTypeFunction => todo!(),
-        Specific::None => Type::new(&DbType::None),
+        Specific::None => Cow::Borrowed(&DbType::None),
         Specific::TypingNewType => todo!(),
         Specific::TypingAny => todo!(),
         Specific::MypyExtensionsArg

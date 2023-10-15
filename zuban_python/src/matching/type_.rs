@@ -17,56 +17,6 @@ pub enum LookupKind {
     OnlyType,
 }
 
-#[derive(Debug, Clone)]
-#[allow(clippy::enum_variant_names)]
-pub struct Type<'a>(pub Cow<'a, DbType>);
-
-impl<'x> From<&'x DbType> for Type<'x> {
-    fn from(item: &'x DbType) -> Self {
-        Self(Cow::Borrowed(item))
-    }
-}
-
-impl From<DbType> for Type<'static> {
-    fn from(item: DbType) -> Self {
-        Self(Cow::Owned(item))
-    }
-}
-
-impl std::ops::Deref for Type<'_> {
-    type Target = DbType;
-
-    fn deref(&self) -> &Self::Target {
-        self.0.as_ref()
-    }
-}
-
-impl<'a> Type<'a> {
-    pub fn new(t: &'a DbType) -> Self {
-        Self(Cow::Borrowed(t))
-    }
-
-    pub fn owned(t: DbType) -> Self {
-        Self(Cow::Owned(t))
-    }
-
-    pub fn into_cow(self) -> Cow<'a, DbType> {
-        self.0
-    }
-
-    pub fn into_db_type(self) -> DbType {
-        self.0.into_owned()
-    }
-
-    pub fn as_db_type(&self) -> DbType {
-        self.0.as_ref().clone()
-    }
-
-    pub fn as_ref(&self) -> &DbType {
-        self
-    }
-}
-
 impl TypeAlias {
     pub fn as_db_type_and_set_type_vars_any(&self, db: &Database) -> DbType {
         if self.is_recursive() {

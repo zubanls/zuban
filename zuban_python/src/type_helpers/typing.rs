@@ -117,7 +117,7 @@ impl RevealTypeFunction {
         } else {
             arg.infer(i_s, result_context)
         };
-        let t = inferred.as_type(i_s).into_cow();
+        let t = inferred.as_type(i_s);
         let s = reveal_type_info(
             i_s,
             match result_context.could_be_a_literal(i_s) {

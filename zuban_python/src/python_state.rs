@@ -8,7 +8,7 @@ use crate::database::{
 use crate::file::File;
 use crate::file::PythonFile;
 use crate::inferred::Inferred;
-use crate::matching::{Generics, Type};
+use crate::matching::Generics;
 use crate::node_ref::NodeRef;
 use crate::type_::{
     CallableContent, ClassGenerics, CustomBehavior, DbType, GenericItem, GenericsList, LiteralKind,
@@ -681,13 +681,12 @@ impl PythonState {
         Class::with_self_generics(db, node_ref)
     }
 
-    pub fn type_var_type(&self) -> Type {
+    pub fn type_var_type(&self) -> DbType {
         debug_assert!(self.typing_type_var != 0);
         DbType::new_class(
             PointLink::new(self.typing().file_index(), self.typing_type_var),
             ClassGenerics::None,
         )
-        .into()
     }
 
     pub fn collections_namedtuple_function(&self) -> Function {

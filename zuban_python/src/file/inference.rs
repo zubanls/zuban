@@ -731,7 +731,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         from.to_db_lifetime(i_s.db)
                     });
                 return if let Some(other) =
-                    GeneratorType::from_type(i_s.db, iter_result.as_type(i_s).into_cow())
+                    GeneratorType::from_type(i_s.db, iter_result.as_type(i_s))
                 {
                     if let Some(return_type) = other.return_type {
                         Inferred::from_type(return_type)
@@ -1458,7 +1458,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             &mut ResultContext::Known(&c.result_type),
                         );
                         let mut c = (**c).clone();
-                        c.result_type = result.as_type(&i_s).into_db_type();
+                        c.result_type = result.as_type(&i_s).into_owned();
                         Inferred::from_type(DbType::Callable(Rc::new(c)))
                     } else {
                         todo!()
@@ -1716,7 +1716,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         NodeRef::new(self.file, index).to_db_lifetime(i_s.db),
                         literal,
                     )
-                    .into_db_type();
+                    .into_owned();
                     let DbType::Literal(literal) = &mut t else {
                         unreachable!()
                     };
@@ -2382,7 +2382,7 @@ fn instantiate_except(i_s: &InferenceState, t: &DbType) -> DbType {
                 }
             })
             .as_type(i_s)
-            .into_db_type()
+            .into_owned()
         }
         DbType::Union(union) => DbType::Union(UnionType::new(
             union
@@ -2460,7 +2460,7 @@ fn gather_except_star(i_s: &InferenceState, t: &DbType) -> DbType {
                 }
             })
             .as_type(i_s)
-            .into_db_type()
+            .into_owned()
         }
         DbType::Union(union) => DbType::Union(UnionType::new(
             union

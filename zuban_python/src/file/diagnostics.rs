@@ -15,7 +15,7 @@ use crate::inferred::{infer_class_method, Inferred};
 use crate::matching::params::has_overlapping_params;
 use crate::matching::{
     matches_params, FormatData, Generics, LookupKind, LookupResult, Match, Matcher, OnTypeError,
-    ResultContext, Type,
+    ResultContext,
 };
 use crate::node_ref::NodeRef;
 use crate::type_::{
@@ -462,7 +462,7 @@ impl<'db> Inference<'db, '_, '_> {
                                         TypeOrClass::Class(c) => c,
                                         TypeOrClass::Type(_) => c,
                                     }),
-                                    expected,
+                                    &expected,
                                     c.lookup_and_class_and_maybe_ignore_self(
                                         self.i_s, hack, name, kind, true,
                                     )
@@ -472,7 +472,7 @@ impl<'db> Inference<'db, '_, '_> {
                                 try_pretty_format(
                                     &mut notes,
                                     &self.i_s.with_class_context(&c),
-                                    got,
+                                    &got,
                                     c.lookup(self.i_s, hack, name, kind),
                                 );
 
@@ -1030,7 +1030,7 @@ pub fn await_aiter_and_next(i_s: &InferenceState, base: Inferred, from: NodeRef)
 fn try_pretty_format(
     notes: &mut Vec<Box<str>>,
     i_s: &InferenceState,
-    t: Type,
+    t: &DbType,
     class_lookup_result: LookupResult,
 ) {
     let prefix = "         ";

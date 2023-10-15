@@ -2,9 +2,7 @@ use crate::{
     database::{ComplexPoint, MetaclassState},
     debug,
     inference_state::InferenceState,
-    matching::{
-        matches_params, params::has_overlapping_params, Match, Matcher, MismatchReason, Type,
-    },
+    matching::{matches_params, params::has_overlapping_params, Match, Matcher, MismatchReason},
     node_ref::NodeRef,
     type_::{CallableLike, CallableParams, TupleTypeArguments, TypeOrTypeVarTuple, Variance},
     type_helpers::{Class, TypeOrClass},
@@ -750,7 +748,7 @@ impl DbType {
     pub fn overlaps_class(i_s: &InferenceState, class1: Class, class2: Class) -> bool {
         let check = {
             #[inline]
-            |i_s: &InferenceState, t1: &Type, t2: &Type| {
+            |i_s: &InferenceState, t1: &DbType, t2: &DbType| {
                 t1.maybe_class(i_s.db)
                     .and_then(|c1| {
                         t2.maybe_class(i_s.db).map(|c2| {
