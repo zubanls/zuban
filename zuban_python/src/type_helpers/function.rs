@@ -497,7 +497,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 .add_issue(i_s, IssueType::UsedWithANonMethod { name })
         };
 
-        let mut inferred = Inferred::from_type(self.as_db_type(i_s, FirstParamProperties::None));
+        let mut inferred = Inferred::from_type(self.as_type(i_s, FirstParamProperties::None));
         let had_first_annotation = self.class.is_none()
             || self
                 .node()
@@ -727,7 +727,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 }
                 Some(Specific::Function) => FunctionDetails {
                     inferred: Inferred::from_type(
-                        next_func.as_db_type(i_s, FirstParamProperties::None),
+                        next_func.as_type(i_s, FirstParamProperties::None),
                     ),
                     kind: FunctionKind::Function {
                         had_first_self_or_class_annotation: self
@@ -926,12 +926,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         callable
     }
 
-    pub fn as_db_type(&self, i_s: &InferenceState, first: FirstParamProperties) -> Type {
+    pub fn as_type(&self, i_s: &InferenceState, first: FirstParamProperties) -> Type {
         Type::Callable(Rc::new(self.as_callable(i_s, first)))
-    }
-
-    pub fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type {
-        self.as_db_type(i_s, FirstParamProperties::None)
     }
 
     fn internal_as_type(

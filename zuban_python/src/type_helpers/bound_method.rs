@@ -47,7 +47,7 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
     pub fn as_type<'db: 'a>(&self, i_s: &InferenceState<'db, '_>) -> Type {
         // TODO performance: it may be questionable that we allocate here again.
         match &self.function {
-            BoundMethodFunction::Function(f) => f.as_db_type(
+            BoundMethodFunction::Function(f) => f.as_type(
                 i_s,
                 FirstParamProperties::Skip {
                     to_self_instance: &|| self.instance.clone(),

@@ -787,7 +787,9 @@ impl<'db: 'slf, 'slf> Inferred {
                                     let t = IssueType::InvalidSelfArgument {
                                         argument_type: instance.format_short(i_s.db),
                                         function_name: Box::from(func.name()),
-                                        callable: func.as_type(i_s).format_short(i_s.db),
+                                        callable: func
+                                            .as_type(i_s, FirstParamProperties::None)
+                                            .format_short(i_s.db),
                                     };
                                     from.add_issue(i_s, t);
                                     Some(Self::new_any())
@@ -1036,7 +1038,9 @@ impl<'db: 'slf, 'slf> Inferred {
                         let t = IssueType::InvalidClassMethodFirstArgument {
                             argument_type: Type::Type(Rc::new(instance)).format_short(i_s.db),
                             function_name: Box::from(func.name()),
-                            callable: func.as_type(i_s).format_short(i_s.db),
+                            callable: func
+                                .as_type(i_s, FirstParamProperties::None)
+                                .format_short(i_s.db),
                         };
                         from.add_issue(i_s, t);
                         return Some(Some(Self::new_any()));
@@ -1097,8 +1101,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     PointType::Specific => match point.specific() {
                         Specific::Function => {
                             let func = Function::new(node_ref, Some(attribute_class));
-                            let t =
-                                func.as_db_type(i_s, FirstParamProperties::MethodAccessedOnClass);
+                            let t = func.as_type(i_s, FirstParamProperties::MethodAccessedOnClass);
                             return Some(Inferred::from_type(t));
                         }
                         Specific::DecoratedFunction => {
@@ -1236,7 +1239,9 @@ impl<'db: 'slf, 'slf> Inferred {
                         let inv = IssueType::InvalidSelfArgument {
                             argument_type: class.as_type(i_s).format_short(i_s.db),
                             function_name: Box::from(func.name()),
-                            callable: func.as_type(i_s).format_short(i_s.db),
+                            callable: func
+                                .as_type(i_s, FirstParamProperties::None)
+                                .format_short(i_s.db),
                         };
                         from.add_issue(i_s, inv);
                         return Some(Some(Self::new_any()));
@@ -2180,9 +2185,10 @@ pub fn specific_to_type<'db>(
         Specific::Bytes => Cow::Owned(i_s.db.python_state.bytes_type()),
         Specific::Complex => Cow::Owned(i_s.db.python_state.complex_type()),
         Specific::Ellipsis => Cow::Owned(i_s.db.python_state.ellipsis_type()),
-        Specific::Function => {
-            Cow::Owned(Function::new(definition, i_s.current_class().copied()).as_type(i_s))
-        }
+        Specific::Function => Cow::Owned(
+            Function::new(definition, i_s.current_class().copied())
+                .as_type(i_s, FirstParamProperties::None),
+        ),
         Specific::DecoratedFunction => {
             let func = Function::new(definition, i_s.current_class().copied());
             // Caches the decorated inference properly
