@@ -933,13 +933,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         self.as_type(t, NodeRef::new(self.inference.file, named_expr.index()))
     }
 
-    fn compute_slice_type(&mut self, slice: SliceOrSimple<'x>) -> TypeContent<'db, 'x> {
-        match slice {
-            SliceOrSimple::Simple(s) => self.compute_type(s.named_expr.expression()),
-            SliceOrSimple::Slice(n) => TypeContent::InvalidVariable(InvalidVariableType::Slice),
-        }
-    }
-
     fn compute_type(&mut self, expr: Expression<'x>) -> TypeContent<'db, 'x> {
         let type_content = match expr.unpack() {
             ExpressionContent::ExpressionPart(n) => self.compute_type_expression_part(n),
@@ -971,13 +964,20 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         type_content
     }
 
-    fn compute_slice_db_type(&mut self, slice: SliceOrSimple) -> Type {
-        let t = self.compute_slice_type(slice);
+    fn compute_slice_type_content(&mut self, slice: SliceOrSimple<'x>) -> TypeContent<'db, 'x> {
+        match slice {
+            SliceOrSimple::Simple(s) => self.compute_type(s.named_expr.expression()),
+            SliceOrSimple::Slice(n) => TypeContent::InvalidVariable(InvalidVariableType::Slice),
+        }
+    }
+
+    fn compute_slice_type(&mut self, slice: SliceOrSimple) -> Type {
+        let t = self.compute_slice_type_content(slice);
         self.as_type(t, slice.as_node_ref())
     }
 
     fn compute_slice_type_or_type_var_tuple(&mut self, slice: SliceOrSimple) -> TypeOrTypeVarTuple {
-        let t = self.compute_slice_type(slice);
+        let t = self.compute_slice_type_content(slice);
         self.convert_slice_type_or_type_var_tuple(t, slice)
     }
 
@@ -1538,7 +1538,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 return None
             };
             if let Some(slice_content) = iterator.next() {
-                let t = self.compute_slice_type(slice_content);
+                let t = self.compute_slice_type_content(slice_content);
                 self.check_constraints(type_var, &slice_content, &t, || Box::from(class.name()));
                 if !matches!(
                     t,
@@ -1551,7 +1551,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     // Backfill the generics
                     for slice_content in slice_type.iter().take(i) {
                         generics.push(GenericItem::TypeArgument(
-                            self.compute_slice_db_type(slice_content),
+                            self.compute_slice_type(slice_content),
                         ));
                     }
                     generics.push(GenericItem::TypeArgument(
@@ -1604,7 +1604,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             let generic_item = match type_var_like {
                 TypeVarLike::TypeVar(type_var) => {
                     if let Some(slice_content) = iterator.next() {
-                        let t = self.compute_slice_type(slice_content);
+                        let t = self.compute_slice_type_content(slice_content);
                         self.check_constraints(&type_var, &slice_content, &t, get_of);
                         given_count += 1;
                         GenericItem::TypeArgument(self.as_type(t, slice_content.as_node_ref()))
@@ -1650,7 +1650,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         for slice_content in iterator {
             // Still calculate errors for the rest of the types given. After all they are still
             // expected to be types.
-            self.compute_slice_db_type(slice_content);
+            self.compute_slice_type(slice_content);
             given_count += 1;
         }
         if given_count != expected_count {
@@ -1668,7 +1668,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let generics: Rc<[_]> = if let Some(slice_or_simple) = iterator.next() {
             if let SliceOrSimple::Simple(s) = slice_or_simple {
                 if s.named_expr.is_ellipsis_literal() {
-                    let t = self.compute_slice_db_type(first);
+                    let t = self.compute_slice_type(first);
                     return TypeContent::Type(Type::Tuple(Rc::new(
                         TupleContent::new_arbitrary_length(t),
                     )));
@@ -1687,7 +1687,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 })
                 .collect()
         } else {
-            let t = self.compute_slice_type(first);
+            let t = self.compute_slice_type_content(first);
             // Handle Tuple[()]
             match t {
                 TypeContent::InvalidVariable(InvalidVariableType::Tuple { tuple_length: 0 }) => {
@@ -1707,7 +1707,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     ) -> CallableParams {
         let mut params = vec![];
         for s in iterator {
-            let t = self.compute_slice_type(s);
+            let t = self.compute_slice_type_content(s);
             self.add_param(&mut params, t, s.as_node_ref().node_index)
         }
         CallableParams::Simple(Rc::from(params))
@@ -1799,7 +1799,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             todo!();
         };
         let calc_params =
-            |slf: &mut Self| match slf.compute_slice_type(first) {
+            |slf: &mut Self| match slf.compute_slice_type_content(first) {
                 TypeContent::ParamSpec(p) => CallableParams::WithParamSpec(Rc::new([]), p),
                 TypeContent::SpecialType(SpecialType::Any) if from_class_generics => {
                     CallableParams::Any
@@ -1864,7 +1864,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             let params = self.calculate_callable_params(iterator.next().unwrap(), false, false);
             let result_type = iterator
                 .next()
-                .map(|slice_content| self.compute_slice_db_type(slice_content))
+                .map(|slice_content| self.compute_slice_type(slice_content))
                 .unwrap_or(Type::Any);
             Rc::new(CallableContent {
                 name: None,
@@ -1897,7 +1897,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     ) -> TypeContent<'static, 'static> {
         let iterator = slice_type.iter();
         if let SliceTypeIterator::SliceOrSimple(s) = iterator {
-            let t = self.compute_slice_type(s);
+            let t = self.compute_slice_type_content(s);
             let t = self.as_type(t, s.as_node_ref());
             TypeContent::Type(t)
         } else {
@@ -1905,7 +1905,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 iterator
                     .enumerate()
                     .map(|(format_index, slice_or_simple)| {
-                        let t = self.compute_slice_type(slice_or_simple);
+                        let t = self.compute_slice_type_content(slice_or_simple);
                         UnionEntry {
                             type_: self.as_type(t, slice_or_simple.as_node_ref()),
                             format_index,
@@ -1927,7 +1927,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         if let Some(next) = iterator.next() {
             self.add_issue(next.as_node_ref(), IssueType::OptionalMustHaveOneArgument);
         }
-        let t = self.compute_slice_db_type(first);
+        let t = self.compute_slice_type(first);
         let format_as_optional = !t.is_union_like();
         let mut t = t.union_with_details(self.inference.i_s.db, Type::None, format_as_optional);
         if let Type::Union(union_type) = &mut t {
@@ -1942,7 +1942,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         if iterator.count() > 0 {
             todo!()
         }
-        TypeContent::Type(Type::Type(Rc::new(self.compute_slice_db_type(content))))
+        TypeContent::Type(Type::Type(Rc::new(self.compute_slice_type(content))))
     }
 
     fn compute_type_get_item_on_alias(
@@ -1965,7 +1965,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut iterator = slice_type.iter();
         let first = iterator.next().unwrap();
         if iterator.count() == 0 {
-            TypeContent::Type(self.compute_slice_db_type(first))
+            TypeContent::Type(self.compute_slice_type(first))
         } else {
             todo!()
         }
@@ -1975,7 +1975,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut iterator = slice_type.iter();
         let first = iterator.next().unwrap();
         if iterator.count() == 0 {
-            TypeContent::Unpacked(match self.compute_slice_type(first) {
+            TypeContent::Unpacked(match self.compute_slice_type_content(first) {
                 TypeContent::TypeVarTuple(t) => TypeOrTypeVarTuple::TypeVarTuple(t),
                 t => TypeOrTypeVarTuple::Type(self.as_type(t, first.as_node_ref())),
             })
@@ -1993,9 +1993,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let types = iterator
             .by_ref()
             .take(count - 1)
-            .map(|s| self.compute_slice_db_type(s))
+            .map(|s| self.compute_slice_type(s))
             .collect();
-        match self.compute_slice_type(iterator.next().unwrap()) {
+        match self.compute_slice_type_content(iterator.next().unwrap()) {
             TypeContent::ParamSpec(p) => {
                 TypeContent::Concatenate(CallableParams::WithParamSpec(types, p))
             }
@@ -2129,7 +2129,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 _ => return expr_not_allowed(self),
             }
         }
-        match self.compute_slice_type(slice) {
+        match self.compute_slice_type_content(slice) {
             TypeContent::SpecialType(SpecialType::Any) => {
                 self.add_issue(
                     slice.as_node_ref(),
@@ -2185,7 +2185,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             );
             TypeContent::Unknown
         } else {
-            TypeContent::Type(self.compute_slice_db_type(first))
+            TypeContent::Type(self.compute_slice_type(first))
         }
     }
 
@@ -2207,7 +2207,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 );
                 TypeContent::Unknown
             } else {
-                TypeContent::ClassVar(self.compute_slice_db_type(first))
+                TypeContent::ClassVar(self.compute_slice_type(first))
             }
         }
     }
@@ -2228,7 +2228,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             );
             TypeContent::Unknown
         } else {
-            let t = self.compute_slice_db_type(first);
+            let t = self.compute_slice_type(first);
             if case == "Required" {
                 TypeContent::Required(t)
             } else {
@@ -2239,7 +2239,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 
     fn expect_type_var_like_args(&mut self, slice_type: SliceType, class: &'static str) {
         for (i, s) in slice_type.iter().enumerate() {
-            let result = self.compute_slice_type(s);
+            let result = self.compute_slice_type_content(s);
             let unpacked_type_var_tuple = matches!(
                 &result,
                 TypeContent::Unpacked(TypeOrTypeVarTuple::TypeVarTuple(t))
