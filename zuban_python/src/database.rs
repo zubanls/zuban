@@ -521,7 +521,7 @@ impl TypeAlias {
         matches!(self.state.get().unwrap(), TypeAliasState::Invalid)
     }
 
-    pub fn db_type_if_valid(&self) -> &Type {
+    pub fn type_if_valid(&self) -> &Type {
         match self.state.get().unwrap() {
             TypeAliasState::Invalid => unreachable!(),
             TypeAliasState::Valid(a) => a.db_type.as_ref(),
@@ -551,7 +551,7 @@ impl TypeAlias {
 
     pub fn application_allowed(&self) -> bool {
         !self.is_invalid()
-            && match self.db_type_if_valid() {
+            && match self.type_if_valid() {
                 Type::Class(_) | Type::TypedDict(_) => true,
                 _ => false,
             }

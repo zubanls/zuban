@@ -19,7 +19,7 @@ impl Type {
         let check_both_sides = |t1: &_, t2: &Type| match t1 {
             /*
             Type::Union(u) if u.iter().any(|t| matches!(t, Type::None)) => {
-                return self.clone().union(i_s.db, other.clone()).into_db_type()
+                return self.clone().union(i_s.db, other.clone()).into_type()
             }
             */
             Type::None | Type::Union(_) => return Some(self.simplified_union(i_s, other)),
@@ -147,14 +147,14 @@ fn common_base_type_for_non_class(i_s: &InferenceState, t1: &Type, t2: &Type) ->
                 return Some(common_base_for_callables(i_s, c1, c2));
             }
         }
-        Type::Tuple(tup1) => return common_base_for_tuple_against_db_type(i_s, tup1, t2),
+        Type::Tuple(tup1) => return common_base_for_tuple_against_type(i_s, tup1, t2),
         Type::NamedTuple(nt1) => {
             if let Type::NamedTuple(nt2) = t2 {
                 if nt1.__new__.defined_at == nt2.__new__.defined_at {
                     return Some(Type::NamedTuple(nt1.clone()));
                 }
             }
-            return common_base_for_tuple_against_db_type(i_s, &nt1.as_tuple(), t2);
+            return common_base_for_tuple_against_type(i_s, &nt1.as_tuple(), t2);
         }
         Type::TypedDict(td1) => {
             if let Type::TypedDict(td2) = &t2 {
@@ -232,8 +232,8 @@ fn common_params(
                     return None;
                 }
             }
-            let t1 = p1.param_specific.maybe_positional_db_type()?;
-            let t2 = p2.param_specific.maybe_positional_db_type()?;
+            let t1 = p1.param_specific.maybe_positional_type()?;
+            let t2 = p2.param_specific.maybe_positional_type()?;
             let new_t = t1.common_sub_type(i_s, t2)?;
             new_params.push(CallableParam {
                 param_specific: match &kind {
@@ -257,7 +257,7 @@ fn common_params(
     }
 }
 
-fn common_base_for_tuple_against_db_type(
+fn common_base_for_tuple_against_type(
     i_s: &InferenceState,
     tup1: &TupleContent,
     t2: &Type,

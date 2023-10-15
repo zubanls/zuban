@@ -140,7 +140,7 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
-    pub fn execute_db_type_allocation_todo(i_s: &InferenceState<'db, '_>, t: &Type) -> Self {
+    pub fn execute_type_allocation_todo(i_s: &InferenceState<'db, '_>, t: &Type) -> Self {
         // Everything that calls this should probably not allocate.
         Self::from_type(t.clone())
     }
@@ -1679,7 +1679,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             ComplexPoint::TypeAlias(alias) => {
                                 if alias.application_allowed() {
                                     return Inferred::from_type(
-                                        alias.as_db_type_and_set_type_vars_any(i_s.db),
+                                        alias.as_type_and_set_type_vars_any(i_s.db),
                                     );
                                 }
                                 args.as_node_ref().add_issue(
@@ -1982,7 +1982,7 @@ fn proper_classmethod_callable(
             // The first argument in a class param is not relevant if we execute descriptors.
             let first_param = vec.remove(0);
 
-            if let Some(t) = first_param.param_specific.maybe_positional_db_type() {
+            if let Some(t) = first_param.param_specific.maybe_positional_type() {
                 let mut matcher = Matcher::new_callable_matcher(&callable);
                 let instance_t = class.as_type(i_s);
                 let t =
@@ -2111,7 +2111,7 @@ fn type_of_complex<'db: 'x, 'x>(
         ComplexPoint::TypeInstance(t) => Cow::Borrowed(t),
         // TODO is this type correct with the Any?
         ComplexPoint::TypeAlias(alias) => Cow::Owned(Type::Type(Rc::new(
-            alias.as_db_type_and_set_type_vars_any(i_s.db),
+            alias.as_type_and_set_type_vars_any(i_s.db),
         ))),
         ComplexPoint::TypeVarLike(t) => match t {
             TypeVarLike::TypeVar(_) => Cow::Owned(i_s.db.python_state.type_var_type()),

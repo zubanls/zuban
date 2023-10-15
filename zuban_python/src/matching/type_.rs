@@ -18,7 +18,7 @@ pub enum LookupKind {
 }
 
 impl TypeAlias {
-    pub fn as_db_type_and_set_type_vars_any(&self, db: &Database) -> Type {
+    pub fn as_type_and_set_type_vars_any(&self, db: &Database) -> Type {
         if self.is_recursive() {
             return Type::RecursiveAlias(Rc::new(RecursiveAlias::new(
                 self.location,
@@ -32,7 +32,7 @@ impl TypeAlias {
                 }),
             )));
         }
-        let db_type = self.db_type_if_valid();
+        let db_type = self.type_if_valid();
         if self.type_vars.is_empty() {
             db_type.clone()
         } else {
@@ -85,7 +85,7 @@ impl TypeAlias {
                 }),
             ))));
         }
-        let db_type = self.db_type_if_valid();
+        let db_type = self.type_if_valid();
         if self.type_vars.is_empty() {
             Cow::Borrowed(db_type)
         } else {
@@ -98,7 +98,7 @@ impl RecursiveAlias {
     pub fn calculated_db_type<'db: 'slf, 'slf>(&'slf self, db: &'db Database) -> &'slf Type {
         let alias = self.type_alias(db);
         if self.generics.is_none() {
-            alias.db_type_if_valid()
+            alias.type_if_valid()
         } else {
             self.calculated_db_type.get_or_init(|| {
                 self.type_alias(db)

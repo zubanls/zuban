@@ -1520,7 +1520,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         let error = Cell::new(LookupError::NoError);
                         if let Some(left) = left_op_method.as_ref() {
                             let had_left_error = Cell::new(false);
-                            let right_inf = Inferred::execute_db_type_allocation_todo(i_s, r_type);
+                            let right_inf = Inferred::execute_type_allocation_todo(i_s, r_type);
                             let result = left.execute_with_details(
                                 i_s,
                                 &KnownArguments::new(&right_inf, node_ref),
@@ -1545,7 +1545,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             }
                         }
                         let result = if error.get() != LookupError::ShortCircuit {
-                            let left_inf = Inferred::execute_db_type_allocation_todo(i_s, l_type);
+                            let left_inf = Inferred::execute_type_allocation_todo(i_s, l_type);
                             r_type
                                 .lookup(
                                     i_s,

@@ -148,7 +148,7 @@ pub fn merge_class_type_vars_into_callable(
 ) -> CallableContent {
     let mut needs_self_type_variable = callable.result_type.has_self_type();
     for param in callable.expect_simple_params().iter() {
-        if let Some(t) = param.param_specific.maybe_db_type() {
+        if let Some(t) = param.param_specific.maybe_type() {
             needs_self_type_variable |= t.has_self_type();
         }
     }

@@ -127,7 +127,7 @@ impl CalculatedTypeVarLike {
 
     pub fn into_generic_item(self, db: &Database, type_var_like: &TypeVarLike) -> GenericItem {
         match self.type_ {
-            BoundKind::TypeVar(t) => GenericItem::TypeArgument(t.into_db_type(db)),
+            BoundKind::TypeVar(t) => GenericItem::TypeArgument(t.into_type(db)),
             BoundKind::TypeVarTuple(ts) => GenericItem::TypeArguments(ts),
             BoundKind::ParamSpecArgument(params) => GenericItem::ParamSpecArgument(params),
             BoundKind::Uncalculated { fallback } => {

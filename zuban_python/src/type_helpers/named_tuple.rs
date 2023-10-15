@@ -47,7 +47,7 @@ impl<'a> NamedTupleValue<'a> {
         let types = match params.is_empty() {
             true => "()".into(),
             false => join_with_commas(params.iter().map(|p| {
-                let t = p.param_specific.expect_positional_db_type_as_ref();
+                let t = p.param_specific.expect_positional_type_as_ref();
                 match generics {
                     Generics::NotDefinedYet | Generics::None => t.format(format_data),
                     _ => t
@@ -76,7 +76,7 @@ impl<'a> NamedTupleValue<'a> {
         for p in self.nt.params() {
             if name == p.name.unwrap().as_str(i_s.db) {
                 return LookupResult::UnknownName(Inferred::from_type(
-                    p.param_specific.expect_positional_db_type_as_ref().clone(),
+                    p.param_specific.expect_positional_type_as_ref().clone(),
                 ));
             }
         }

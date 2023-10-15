@@ -725,11 +725,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     }
 
     fn as_db_type(&mut self, type_: TypeContent, node_ref: NodeRef) -> Type {
-        self.as_db_type_or_error(type_, node_ref)
-            .unwrap_or(Type::Any)
+        self.as_type_or_error(type_, node_ref).unwrap_or(Type::Any)
     }
 
-    fn as_db_type_or_error(&mut self, type_: TypeContent, node_ref: NodeRef) -> Option<Type> {
+    fn as_type_or_error(&mut self, type_: TypeContent, node_ref: NodeRef) -> Option<Type> {
         let db = self.inference.i_s.db;
         match type_ {
             TypeContent::Class { node_ref, .. } => {
@@ -773,7 +772,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             TypeContent::TypeAlias(a) => {
                 self.is_recursive_alias |= a.is_recursive();
-                return Some(a.as_db_type_and_set_type_vars_any(db));
+                return Some(a.as_type_and_set_type_vars_any(db));
             }
             TypeContent::SpecialType(m) => match m {
                 SpecialType::Callable => {
@@ -929,7 +928,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         None
     }
 
-    fn compute_named_expr_db_type(&mut self, named_expr: NamedExpression) -> Type {
+    fn compute_named_expr_type(&mut self, named_expr: NamedExpression) -> Type {
         let t = self.compute_type(named_expr.expression());
         self.as_db_type(t, NodeRef::new(self.inference.file, named_expr.index()))
     }
@@ -2528,7 +2527,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 return None
             };
             let name_str = name.as_str(self.inference.i_s.db);
-            let t = self.compute_named_expr_db_type(type_expr);
+            let t = self.compute_named_expr_type(type_expr);
             params.push(CallableParam {
                 param_specific: ParamSpecific::PositionalOrKeyword(t),
                 name: Some(name),
@@ -3134,7 +3133,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         );
 
         let t = comp.compute_type(named_expr.expression());
-        let Some(mut db_type) = comp.as_db_type_or_error(t, node_ref) else {
+        let Some(mut db_type) = comp.as_type_or_error(t, node_ref) else {
             return Err(())
         };
         let type_vars = comp.into_type_vars(|inf, recalculate_type_vars| {

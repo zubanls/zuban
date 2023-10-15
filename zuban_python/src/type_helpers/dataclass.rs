@@ -137,7 +137,7 @@ impl<'a> DataclassHelper<'a> {
                 __init__
                     .expect_simple_params()
                     .iter()
-                    .take_while(|p| p.param_specific.maybe_positional_db_type().is_some())
+                    .take_while(|p| p.param_specific.maybe_positional_type().is_some())
                     .map(|p| {
                         TypeOrTypeVarTuple::Type(Type::Literal(Literal::new(LiteralKind::String(
                             DbString::StringSlice(p.name.unwrap()),
@@ -498,7 +498,7 @@ pub fn dataclasses_replace<'db>(
                     let mut replace_func = Dataclass::__init__(dataclass, i_s.db).clone();
                     let mut params: Vec<_> = replace_func.expect_simple_params().into();
                     for param in params.iter_mut() {
-                        let t = param.param_specific.maybe_db_type().unwrap();
+                        let t = param.param_specific.maybe_type().unwrap();
                         param.param_specific = ParamSpecific::KeywordOnly(t.clone());
                         // All normal dataclass arguments are optional, because they can be
                         // overridden or just be left in place. However this is different for

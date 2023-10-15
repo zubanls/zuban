@@ -143,8 +143,8 @@ fn common_sub_type_params(
             if p1.param_specific.param_kind() != p2.param_specific.param_kind() {
                 return None;
             }
-            let t1 = p1.param_specific.maybe_positional_db_type()?;
-            let t2 = p2.param_specific.maybe_positional_db_type()?;
+            let t1 = p1.param_specific.maybe_positional_type()?;
+            let t2 = p2.param_specific.maybe_positional_type()?;
             let new_t = t1.common_base_type(i_s, t2);
             new_params.push(CallableParam {
                 param_specific: match &p1.param_specific.param_kind() {

@@ -310,7 +310,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             types.extend(
                 pre_params
                     .into_iter()
-                    .map(|p| p.param_specific.expect_positional_db_type()),
+                    .map(|p| p.param_specific.expect_positional_type()),
             );
             Rc::from(types)
         };
@@ -921,7 +921,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             )
         };
         let mut callable =
-            self.internal_as_db_type(i_s, params, self_type_var_usage.is_some(), as_db_type);
+            self.internal_as_type(i_s, params, self_type_var_usage.is_some(), as_db_type);
         callable.type_vars = TypeVarLikes::from_vec(type_vars);
         callable
     }
@@ -934,7 +934,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         self.as_db_type(i_s, FirstParamProperties::None)
     }
 
-    fn internal_as_db_type(
+    fn internal_as_type(
         &self,
         i_s: &InferenceState,
         params: impl Iterator<Item = FunctionParam<'a>>,

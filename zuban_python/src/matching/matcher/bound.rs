@@ -31,7 +31,7 @@ impl TypeVarBound {
         }
     }
 
-    pub fn into_db_type(self, db: &Database) -> Type {
+    pub fn into_type(self, db: &Database) -> Type {
         match self {
             // If the upper bound is a literal, we do not want to use the lower bound.
             Self::UpperAndLower(t @ Type::Literal(_), _) => t,

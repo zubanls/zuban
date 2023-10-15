@@ -580,9 +580,7 @@ impl<'a> Matcher<'a> {
                     let current = &type_var_matcher.calculated_type_vars
                         [type_var_like_usage.index().as_usize()];
                     return match &current.type_ {
-                        BoundKind::TypeVar(t) => {
-                            GenericItem::TypeArgument(t.clone().into_db_type(db))
-                        }
+                        BoundKind::TypeVar(t) => GenericItem::TypeArgument(t.clone().into_type(db)),
                         BoundKind::TypeVarTuple(_) => todo!(),
                         BoundKind::ParamSpecArgument(param_spec) => {
                             GenericItem::ParamSpecArgument(param_spec.clone())

@@ -992,7 +992,7 @@ impl Type {
                     already_checked.push(recursive_alias.clone());
                     recursive_alias
                         .type_alias(i_s.db)
-                        .db_type_if_valid()
+                        .type_if_valid()
                         .has_any_internal(i_s, already_checked)
                 }
             }
@@ -1354,7 +1354,7 @@ impl Type {
     }
 
     pub fn merge_matching_parts(&self, db: &Database, other: &Self) -> Self {
-        // TODO performance there's a lot of into_db_type here, that should not really be
+        // TODO performance there's a lot of into_type here, that should not really be
         /*
         if self.as_ref() == other.as_ref() {
             return self;
@@ -1657,28 +1657,28 @@ impl ParamSpecific {
         }
     }
 
-    pub fn maybe_positional_db_type(&self) -> Option<&Type> {
+    pub fn maybe_positional_type(&self) -> Option<&Type> {
         match self {
             Self::PositionalOnly(t) | Self::PositionalOrKeyword(t) => Some(t),
             _ => None,
         }
     }
 
-    pub fn expect_positional_db_type(self) -> Type {
+    pub fn expect_positional_type(self) -> Type {
         match self {
             Self::PositionalOnly(t) | Self::PositionalOrKeyword(t) => t,
             _ => unreachable!(),
         }
     }
 
-    pub fn expect_positional_db_type_as_ref(&self) -> &Type {
+    pub fn expect_positional_type_as_ref(&self) -> &Type {
         match &self {
             Self::PositionalOnly(t) | Self::PositionalOrKeyword(t) => t,
             _ => unreachable!(),
         }
     }
 
-    pub fn maybe_db_type(&self) -> Option<&Type> {
+    pub fn maybe_type(&self) -> Option<&Type> {
         match self {
             Self::PositionalOnly(t)
             | Self::PositionalOrKeyword(t)
@@ -2324,7 +2324,7 @@ impl NamedTuple {
                         .iter()
                         .map(|t| {
                             TypeOrTypeVarTuple::Type(
-                                t.param_specific.expect_positional_db_type_as_ref().clone(),
+                                t.param_specific.expect_positional_type_as_ref().clone(),
                             )
                         })
                         .collect(),
