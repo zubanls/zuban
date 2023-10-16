@@ -64,44 +64,23 @@ impl<'db> Inference<'db, '_, '_> {
         list: List,
         result_context: &mut ResultContext,
     ) -> Option<Inferred> {
-        let file = self.file;
-        result_context
-            .with_type_if_exists(|type_, matcher| {
-                let i_s = self.i_s;
-                let mut found = None;
-                let mut fallback = None;
-                type_.on_any_resolved_context_type(i_s, matcher, &mut |matcher, t| {
-                    match t {
-                        Type::Class(c)
-                            if c.link == i_s.db.python_state.list_node_ref().as_link() =>
-                        {
-                            let list_cls = c.class(i_s.db);
-                            let generic_t = list_cls.nth_type_argument(i_s.db, 0);
-                            found = check_list_with_context(i_s, matcher, &generic_t, file, list);
-                            if found.is_none() {
-                                // As a fallback if there were only errors or no items at all, just use
-                                // the given and expected result context as a type.
-                                fallback = Some(
-                                    list_cls
-                                        .as_type(i_s.db)
-                                        .replace_type_var_likes(self.i_s.db, &mut |tv| {
-                                            tv.as_type_var_like().as_any_generic_item()
-                                        }),
-                                );
-                                // TODO we need something like this for testUnpackingUnionOfListsInFunction
-                                //self.file.reset_non_name_cache_between(list.node_index_range());
-                                false
-                            } else {
-                                true
-                            }
-                        }
-                        _ => false,
-                    }
-                });
-                // `found` might still be empty, because we matched Any.
-                found.or(fallback).map(Inferred::from_type)
-            })
-            .flatten()
+        let i_s = self.i_s;
+        result_context.on_unique_class_in_unpacked_union(
+            i_s.db,
+            i_s.db.python_state.list_node_ref(),
+            |matcher, c| {
+                let list_cls = c.class(i_s.db);
+                let generic_t = list_cls.nth_type_argument(i_s.db, 0);
+                let found = check_list_with_context(i_s, matcher, &generic_t, self.file, list);
+                Inferred::from_type(found.unwrap_or_else(|| {
+                    list_cls
+                        .as_type(i_s.db)
+                        .replace_type_var_likes(self.i_s.db, &mut |tv| {
+                            tv.as_type_var_like().as_any_generic_item()
+                        })
+                }))
+            },
+        )
     }
 
     // For {..}

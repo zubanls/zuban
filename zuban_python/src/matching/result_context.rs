@@ -3,8 +3,7 @@ use std::fmt;
 use super::Matcher;
 use crate::database::Database;
 use crate::node_ref::NodeRef;
-use crate::type_::{ClassGenerics, TupleTypeArguments, Type, TypeOrTypeVarTuple};
-use crate::type_helpers::Class;
+use crate::type_::{GenericClass, TupleTypeArguments, Type, TypeOrTypeVarTuple};
 use crate::{debug, InferenceState};
 
 pub enum ResultContext<'a, 'b> {
@@ -52,11 +51,11 @@ impl<'a> ResultContext<'a, '_> {
         }
     }
 
-    pub fn on_unique_class_in_unpacked_union<'db, TRANSFER, T>(
+    pub fn on_unique_class_in_unpacked_union<'db, T>(
         &mut self,
         db: &Database,
         class: NodeRef,
-        on_unique_found: impl FnOnce(&mut Matcher, ClassGenerics) -> T,
+        on_unique_found: impl FnOnce(&mut Matcher, GenericClass) -> T,
     ) -> Option<T> {
         let class_link = class.as_link();
         self.with_type_if_exists(|t, matcher| {
@@ -64,7 +63,7 @@ impl<'a> ResultContext<'a, '_> {
                 db,
                 matcher,
                 &|t| match t {
-                    Type::Class(c) if c.link == class_link => Some(c.generics.clone()),
+                    Type::Class(c) if c.link == class_link => Some(c.clone()),
                     _ => None,
                 },
                 on_unique_found,
