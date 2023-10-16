@@ -273,7 +273,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     mut matcher: Matcher,
     func_or_callable: FunctionOrCallable<'a>,
-    expected_return_class: Option<&Class>,
+    return_class: Option<&Class>,
     mut args: impl Iterator<Item = Argument<'db, 'a>>,
     args_node_ref: &impl Fn() -> NodeRef<'a>,
     skip_first_param: bool,
@@ -284,20 +284,20 @@ fn calculate_type_vars<'db: 'a, 'a>(
 ) -> CalculatedTypeArguments {
     if matcher.type_var_matcher.is_some() {
         result_context.with_type_if_exists_and_replace_type_var_likes(i_s, |i_s, type_| {
-            if let Some(class) = expected_return_class {
+            if let Some(return_class) = return_class {
                 // This is kind of a special case. Since __init__ has no return annotation, we simply
                 // check if the classes match and then push the generics there.
-                let type_var_likes = class.type_vars(i_s);
+                let type_var_likes = return_class.type_vars(i_s);
                 if !type_var_likes.is_empty() {
-                    type_.on_any_class(i_s, &mut Matcher::default(), &mut |_, result_class| {
-                        for (_, t) in class.mro(i_s.db) {
+                    type_.on_any_class(i_s, &mut Matcher::default(), &mut |_, expected_class| {
+                        for (_, t) in return_class.mro(i_s.db) {
                             if let TypeOrClass::Class(class) = t {
-                                if result_class.node_ref == class.node_ref {
+                                if expected_class.node_ref == class.node_ref {
                                     add_generics_from_result_context_class(
                                         i_s,
                                         &mut matcher,
                                         type_var_likes,
-                                        result_class,
+                                        expected_class,
                                     );
                                     return true;
                                 }
