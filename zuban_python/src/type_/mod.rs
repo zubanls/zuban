@@ -1338,6 +1338,54 @@ impl Type {
         }
     }
 
+    pub fn on_unique_type_in_unpacked_union<TRANSFER, T>(
+        &self,
+        db: &Database,
+        matcher: &mut Matcher,
+        find: &impl Fn(&Type) -> Option<TRANSFER>,
+        on_unique_found: impl FnOnce(&mut Matcher, TRANSFER) -> T,
+    ) -> Option<T> {
+        let found = self
+            .find_unique_type_in_unpacked_union(db, matcher, find)
+            .ok()?;
+        Some(on_unique_found(matcher, found))
+    }
+
+    fn find_unique_type_in_unpacked_union<T>(
+        &self,
+        db: &Database,
+        matcher: &mut Matcher,
+        find: &impl Fn(&Type) -> Option<T>,
+    ) -> Result<T, UniqueInUnpackedUnionError> {
+        let mut found = Err(UniqueInUnpackedUnionError::None);
+        for t in self.iter_with_unpacked_unions() {
+            let new = match t {
+                Type::RecursiveAlias(r) => r
+                    .calculated_type(db)
+                    .find_unique_type_in_unpacked_union(db, matcher, find),
+                Type::TypeVar(_) if matcher.might_have_defined_type_vars() => matcher
+                    .replace_type_var_likes_for_nested_context(db, t)
+                    .find_unique_type_in_unpacked_union(db, matcher, find),
+                _ => {
+                    if let Some(x) = find(t) {
+                        if found.is_ok() {
+                            return Err(UniqueInUnpackedUnionError::Multiple);
+                        } else {
+                            found = Ok(x)
+                        }
+                    }
+                    continue;
+                }
+            };
+            match new {
+                err @ Err(UniqueInUnpackedUnionError::Multiple) => return err,
+                Ok(_) if found.is_ok() => return Err(UniqueInUnpackedUnionError::Multiple),
+                _ => found = new,
+            }
+        }
+        found
+    }
+
     pub fn check_duplicate_base_class(&self, db: &Database, other: &Self) -> Option<Box<str>> {
         match (self, other) {
             (Type::Class(c1), Type::Class(c2)) => {
@@ -2715,4 +2763,9 @@ impl CallableLike {
             ),
         }
     }
+}
+
+enum UniqueInUnpackedUnionError {
+    None,
+    Multiple,
 }

@@ -1,7 +1,10 @@
 use std::fmt;
 
 use super::Matcher;
-use crate::type_::{TupleTypeArguments, Type, TypeOrTypeVarTuple};
+use crate::database::Database;
+use crate::node_ref::NodeRef;
+use crate::type_::{ClassGenerics, TupleTypeArguments, Type, TypeOrTypeVarTuple};
+use crate::type_helpers::Class;
 use crate::{debug, InferenceState};
 
 pub enum ResultContext<'a, 'b> {
@@ -47,6 +50,27 @@ impl<'a> ResultContext<'a, '_> {
             | Self::ExpectUnused
             | Self::RevealType => None,
         }
+    }
+
+    pub fn on_unique_class_in_unpacked_union<'db, TRANSFER, T>(
+        &mut self,
+        db: &Database,
+        class: NodeRef,
+        on_unique_found: impl FnOnce(&mut Matcher, ClassGenerics) -> T,
+    ) -> Option<T> {
+        let class_link = class.as_link();
+        self.with_type_if_exists(|t, matcher| {
+            t.on_unique_type_in_unpacked_union(
+                db,
+                matcher,
+                &|t| match t {
+                    Type::Class(c) if c.link == class_link => Some(c.generics.clone()),
+                    _ => None,
+                },
+                on_unique_found,
+            )
+        })
+        .flatten()
     }
 
     pub fn has_explicit_type(&self) -> bool {
