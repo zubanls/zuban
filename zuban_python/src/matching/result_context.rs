@@ -37,12 +37,11 @@ impl<'a> ResultContext<'a, '_> {
 
     pub fn with_type_if_exists<'db, T>(
         &mut self,
-        i_s: &InferenceState<'db, '_>,
-        callable: impl FnOnce(&InferenceState<'db, '_>, &Type, &mut Matcher) -> T,
+        callable: impl FnOnce(&Type, &mut Matcher) -> T,
     ) -> Option<T> {
         match self {
-            Self::Known(type_) => Some(callable(i_s, type_, &mut Matcher::default())),
-            Self::WithMatcher { matcher, type_ } => Some(callable(i_s, type_, matcher)),
+            Self::Known(type_) => Some(callable(type_, &mut Matcher::default())),
+            Self::WithMatcher { matcher, type_ } => Some(callable(type_, matcher)),
             Self::Unknown
             | Self::AssignmentNewDefinition
             | Self::ExpectUnused
@@ -88,7 +87,7 @@ impl<'a> ResultContext<'a, '_> {
     }
 
     pub fn expect_not_none(&mut self, i_s: &InferenceState) -> bool {
-        self.with_type_if_exists(i_s, |i_s, type_, matcher| !matches!(type_, Type::None))
+        self.with_type_if_exists(|type_, matcher| !matches!(type_, Type::None))
             .unwrap_or_else(|| !matches!(self, Self::ExpectUnused | Self::RevealType))
     }
 

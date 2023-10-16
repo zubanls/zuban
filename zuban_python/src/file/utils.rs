@@ -66,7 +66,8 @@ impl<'db> Inference<'db, '_, '_> {
     ) -> Option<Inferred> {
         let file = self.file;
         result_context
-            .with_type_if_exists(self.i_s, |i_s: &InferenceState<'db, '_>, type_, matcher| {
+            .with_type_if_exists(|type_, matcher| {
+                let i_s = self.i_s;
                 let mut found = None;
                 let mut fallback = None;
                 type_.on_any_resolved_context_type(i_s, matcher, &mut |matcher, t| {
@@ -110,9 +111,10 @@ impl<'db> Inference<'db, '_, '_> {
         result_context: &mut ResultContext,
     ) -> Option<Inferred> {
         result_context
-            .with_type_if_exists(self.i_s, |i_s: &InferenceState<'db, '_>, type_, matcher| {
+            .with_type_if_exists(|type_, matcher| {
                 let mut found = None;
                 let mut fallback = None;
+                let i_s = self.i_s;
                 type_.on_any_typed_dict(i_s, matcher, &mut |matcher, td| {
                     found = self.check_typed_dict_literal_with_context(matcher, td, dict);
                     found.is_some()
@@ -332,9 +334,9 @@ impl<'db> Inference<'db, '_, '_> {
         result_context: &mut ResultContext,
     ) -> Option<Inferred> {
         result_context
-            .with_type_if_exists(self.i_s, |i_s: &InferenceState<'db, '_>, type_, matcher| {
+            .with_type_if_exists(|type_, matcher| {
                 let mut found = None;
-                type_.on_any_typed_dict(i_s, matcher, &mut |matcher, td| {
+                type_.on_any_typed_dict(self.i_s, matcher, &mut |matcher, td| {
                     found = self.check_typed_dict_call_with_context(matcher, td, args);
                     found.is_some()
                 });
