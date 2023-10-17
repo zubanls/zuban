@@ -169,8 +169,6 @@ testLiteralAndInstanceSubtyping
 testAssigningWithLongTupleInitializer
 # Tuple a, *li = ta: "List item 0 has incompatible type "A"; expected "int""
 testAssignmentToStarFromTupleType
-# type vars against unions
-testLiteralMeets
 # Not able to infer context with unions
 testLiteralAndGenericWithUnion
 testLiteralAndGenericsNoMatch
@@ -187,7 +185,6 @@ testDictFromIterableAndStarStarArgs2
 testSpecialSignatureForSubclassOfDict
 testSpecialSignatureForSubclassOfDict2
 testDictWithStarStarExpr
-testDictIncompatibleTypeErrorMessage
 testDictIncompatibleKeyVerbosity
 testDictIncompatibleValueVerbosity
 testDictExpressionErrorLocations
