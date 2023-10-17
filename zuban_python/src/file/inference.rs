@@ -1708,7 +1708,23 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     check_point_cache_with!(pub infer_atom, Self::_infer_atom, Atom, result_context);
     fn _infer_atom(&mut self, atom: Atom, result_context: &mut ResultContext) -> Inferred {
         let check_literal = |i_s, index, literal| {
-            let point = Point::new_simple_specific(literal, Locality::Todo);
+            let specific = match result_context.could_be_a_literal(i_s) {
+                CouldBeALiteral::No | CouldBeALiteral::Yes { implicit: true } => literal,
+                CouldBeALiteral::Yes { implicit: false } => {
+                    let mut t = specific_to_type(
+                        i_s,
+                        NodeRef::new(self.file, index).to_db_lifetime(i_s.db),
+                        literal,
+                    )
+                    .into_owned();
+                    let Type::Literal(literal) = &mut t else {
+                        unreachable!()
+                    };
+                    literal.implicit = true;
+                    return Inferred::from_type(t).save_redirect(i_s, self.file, index);
+                }
+            };
+            let point = Point::new_simple_specific(specific, Locality::Todo);
             Inferred::new_and_save(self.file, index, point)
         };
 
