@@ -289,31 +289,57 @@ fn calculate_type_vars<'db: 'a, 'a>(
                 // check if the classes match and then push the generics there.
                 let type_var_likes = return_class.type_vars(i_s);
                 if !type_var_likes.is_empty() {
-                    expected.on_any_class(
-                        i_s,
-                        &mut Matcher::default(),
-                        &mut |_, expected_class| {
-                            for (_, t) in return_class.mro(i_s.db) {
-                                if let TypeOrClass::Class(class) = t {
-                                    if expected_class.node_ref == class.node_ref {
-                                        add_generics_from_result_context_class(
-                                            i_s,
-                                            &mut matcher,
-                                            type_var_likes,
-                                            expected_class,
-                                        );
-                                        return true;
-                                    }
+                    debug_assert!(matches!(return_class.generics, Generics::NotDefinedYet));
+                    let return_class = Class::with_self_generics(i_s.db, return_class.node_ref);
+                    if return_class
+                        .as_type(i_s.db)
+                        .is_sub_type_of(i_s, &mut matcher, expected)
+                        .bool()
+                    {
+                        for calculated in matcher.iter_calculated_type_vars() {
+                            let has_any = match &calculated.type_ {
+                                BoundKind::TypeVar(
+                                    TypeVarBound::Invariant(t)
+                                    | TypeVarBound::Upper(t)
+                                    | TypeVarBound::Lower(t),
+                                ) => t.has_any(i_s),
+                                BoundKind::TypeVar(TypeVarBound::UpperAndLower(t1, t2)) => {
+                                    t1.has_any(i_s) | t2.has_any(i_s)
                                 }
+                                BoundKind::TypeVarTuple(ts) => ts.args.has_any(i_s),
+                                BoundKind::ParamSpecArgument(params) => match &params.params {
+                                    CallableParams::Simple(params) => params.iter().any(|t| {
+                                        t.param_specific
+                                            .maybe_type()
+                                            .is_some_and(|t| t.has_any(i_s))
+                                    }),
+                                    CallableParams::WithParamSpec(pre, _) => {
+                                        pre.iter().any(|t| t.has_any(i_s))
+                                    }
+                                    CallableParams::Any => true,
+                                },
+                                BoundKind::Uncalculated { .. } => {
+                                    // Make sure that the fallback is never used from a context.
+                                    calculated.type_ = BoundKind::Uncalculated { fallback: None };
+                                    continue;
+                                }
+                            };
+                            if has_any {
+                                calculated.type_ = BoundKind::Uncalculated { fallback: None }
+                            } else {
+                                calculated.defined_by_result_context = true;
                             }
-                            false
-                        },
-                    );
+                        }
+                    } else {
+                        for calculated in matcher.iter_calculated_type_vars() {
+                            calculated.type_ = BoundKind::Uncalculated { fallback: None }
+                        }
+                    }
                 }
             } else {
                 let result_type = func_or_callable.result_type(i_s);
                 // Fill the type var arguments from context
-                result_type.is_sub_type_of(i_s, &mut matcher, &expected);
+                result_type.is_sub_type_of(i_s, &mut matcher, expected);
                 for calculated in matcher.iter_calculated_type_vars() {
                     let has_any = match &calculated.type_ {
                         BoundKind::TypeVar(
