@@ -283,33 +283,37 @@ fn calculate_type_vars<'db: 'a, 'a>(
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> CalculatedTypeArguments {
     if matcher.type_var_matcher.is_some() {
-        result_context.with_type_if_exists_and_replace_type_var_likes(i_s, |i_s, type_| {
+        result_context.with_type_if_exists_and_replace_type_var_likes(i_s, |i_s, expected| {
             if let Some(return_class) = return_class {
                 // This is kind of a special case. Since __init__ has no return annotation, we simply
                 // check if the classes match and then push the generics there.
                 let type_var_likes = return_class.type_vars(i_s);
                 if !type_var_likes.is_empty() {
-                    type_.on_any_class(i_s, &mut Matcher::default(), &mut |_, expected_class| {
-                        for (_, t) in return_class.mro(i_s.db) {
-                            if let TypeOrClass::Class(class) = t {
-                                if expected_class.node_ref == class.node_ref {
-                                    add_generics_from_result_context_class(
-                                        i_s,
-                                        &mut matcher,
-                                        type_var_likes,
-                                        expected_class,
-                                    );
-                                    return true;
+                    expected.on_any_class(
+                        i_s,
+                        &mut Matcher::default(),
+                        &mut |_, expected_class| {
+                            for (_, t) in return_class.mro(i_s.db) {
+                                if let TypeOrClass::Class(class) = t {
+                                    if expected_class.node_ref == class.node_ref {
+                                        add_generics_from_result_context_class(
+                                            i_s,
+                                            &mut matcher,
+                                            type_var_likes,
+                                            expected_class,
+                                        );
+                                        return true;
+                                    }
                                 }
                             }
-                        }
-                        false
-                    });
+                            false
+                        },
+                    );
                 }
             } else {
                 let result_type = func_or_callable.result_type(i_s);
                 // Fill the type var arguments from context
-                result_type.is_sub_type_of(i_s, &mut matcher, &type_);
+                result_type.is_sub_type_of(i_s, &mut matcher, &expected);
                 for calculated in matcher.iter_calculated_type_vars() {
                     let has_any = match &calculated.type_ {
                         BoundKind::TypeVar(
