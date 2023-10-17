@@ -163,7 +163,6 @@ testValidTypeAliasValuesMoreRestrictive
 testCrashOnComplexCheckWithNamedTupleNext
 # union dict context inference
 testNoCrashOnGenericUnionUnpacking
-testInferMultipleAnyUnionDifferentVariance
 # union tuple context inference
 testLiteralAndInstanceSubtyping
 # "Expression tuple item 8 has type "str"; "int" expected;"

@@ -1,9 +1,8 @@
 use std::fmt;
 
 use super::{CalculatedTypeVarLike, Matcher};
-use crate::database::Database;
 use crate::node_ref::NodeRef;
-use crate::type_::{GenericClass, TupleTypeArguments, Type, TypeOrTypeVarTuple};
+use crate::type_::{TupleTypeArguments, Type, TypeOrTypeVarTuple};
 use crate::type_helpers::Class;
 use crate::{debug, InferenceState};
 
@@ -71,27 +70,6 @@ impl<'a> ResultContext<'a, '_> {
                         .is_super_type_of(i_s, &mut matcher, t)
                         .non_any_match()
                         .then(|| matcher.unwrap_calculated_type_args())
-                },
-                on_unique_found,
-            )
-        })
-        .flatten()
-    }
-
-    pub fn on_unique_class2_in_unpacked_union<'db, T>(
-        &mut self,
-        db: &Database,
-        class: NodeRef,
-        on_unique_found: impl FnOnce(&mut Matcher, GenericClass) -> T,
-    ) -> Option<T> {
-        let class_link = class.as_link();
-        self.with_type_if_exists(|t, matcher| {
-            t.on_unique_type_in_unpacked_union(
-                db,
-                matcher,
-                &|t| match t {
-                    Type::Class(c) if c.link == class_link => Some(c.clone()),
-                    _ => None,
                 },
                 on_unique_found,
             )

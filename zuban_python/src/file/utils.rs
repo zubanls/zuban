@@ -110,20 +110,32 @@ impl<'db> Inference<'db, '_, '_> {
             return typed_dict_result;
         }
 
-        result_context.on_unique_class2_in_unpacked_union(
-            i_s.db,
-            i_s.db.python_state.dict_node_ref(),
-            |matcher, c| {
-                let dict_cls = c.class(i_s.db);
-                let key_t = dict_cls.nth_type_argument(i_s.db, 0);
-                let value_t = dict_cls.nth_type_argument(i_s.db, 1);
+        result_context.on_unique_protocol_in_unpacked_union(
+            i_s,
+            i_s.db.python_state.supports_keys_and_get_item_node_ref(),
+            |matcher, calculated_type_args| {
+                let mut generics = calculated_type_args.into_iter();
+                let key_t = generics
+                    .next()
+                    .unwrap()
+                    .maybe_calculated_type(i_s.db)
+                    .unwrap();
+                let value_t = generics
+                    .next()
+                    .unwrap()
+                    .maybe_calculated_type(i_s.db)
+                    .unwrap();
                 let found = self.check_dict_literal_with_context(matcher, &key_t, &value_t, dict);
                 Inferred::from_type(found.unwrap_or_else(|| {
-                    dict_cls
-                        .as_type(i_s.db)
-                        .replace_type_var_likes(self.i_s.db, &mut |tv| {
+                    new_class!(
+                        i_s.db.python_state.dict_node_ref().as_link(),
+                        key_t.replace_type_var_likes(self.i_s.db, &mut |tv| {
                             tv.as_type_var_like().as_any_generic_item()
-                        })
+                        }),
+                        value_t.replace_type_var_likes(self.i_s.db, &mut |tv| {
+                            tv.as_type_var_like().as_any_generic_item()
+                        }),
+                    )
                 }))
             },
         )

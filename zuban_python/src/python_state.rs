@@ -628,7 +628,7 @@ impl PythonState {
     attribute_node_ref!(types, module_node_ref, types_module_type_index);
     attribute_node_ref!(
         typeshed,
-        supports_keys_and_get_item_node_ref,
+        pub supports_keys_and_get_item_node_ref,
         typeshed_supports_keys_and_get_item_index
     );
     attribute_node_ref!(enum_file, pub enum_node_ref, enum_enum_index);
