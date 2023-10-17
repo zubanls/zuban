@@ -169,8 +169,6 @@ testLiteralAndInstanceSubtyping
 testAssigningWithLongTupleInitializer
 # Tuple a, *li = ta: "List item 0 has incompatible type "A"; expected "int""
 testAssignmentToStarFromTupleType
-# Not able to infer context with unions
-testLiteralAndGenericWithUnion
 # Union not matching type vars (None | Any and int | None leads to None | Any)
 testJoinUnionWithUnionAndAny
 # dict specialities

@@ -32,3 +32,13 @@ def foo(x: T) -> str | Literal[1, 2] | float | Literal['x'] | T: ...
 def x(y: int) -> None: ...
 x(foo(l))  # E: Argument 1 to "x" has incompatible type "Literal[1, 2, 3] | float | str"; expected "int"
 x(foo(u))  # E: Argument 1 to "x" has incompatible type "Literal[1, 2, 3] | float | str | list[int]"; expected "int"
+
+[case str_literal_assignment]
+# Like testLiteralFromTypingWorks, but for strings
+from typing import Literal
+
+x: Literal["foo"]
+x = "bar"  # E: Incompatible types in assignment (expression has type "Literal['bar']", variable has type "Literal['foo']")
+
+y: Literal["bar"]
+y = "bar"

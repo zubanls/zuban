@@ -1720,7 +1720,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     let Type::Literal(literal) = &mut t else {
                         unreachable!()
                     };
-                    literal.implicit = true;
+                    literal.implicit = false;
                     return Inferred::from_type(t).save_redirect(i_s, self.file, index);
                 }
             };
