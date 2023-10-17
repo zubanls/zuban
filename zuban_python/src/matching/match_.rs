@@ -128,6 +128,10 @@ impl Match {
             }
         }
     }
+
+    pub fn non_any_match(&self) -> bool {
+        matches!(self, Match::True { with_any: false })
+    }
 }
 
 impl BitAnd for Match {

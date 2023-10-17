@@ -26,8 +26,10 @@ use crate::type_::{
     TypeVarLikes, TypeVarUsage, TypedDict, TypedDictGenerics, Variance,
 };
 use crate::type_helpers::{Callable, Class, Function};
-use type_var_matcher::{BoundKind, CalculatedTypeVarLike, TypeVarMatcher};
+use type_var_matcher::{BoundKind, TypeVarMatcher};
 use utils::match_arguments_against_params;
+
+pub use type_var_matcher::CalculatedTypeVarLike;
 
 #[derive(Debug)]
 struct CheckedTypeRecursion<'a> {

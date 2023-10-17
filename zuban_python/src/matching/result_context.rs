@@ -1,9 +1,10 @@
 use std::fmt;
 
-use super::Matcher;
+use super::{CalculatedTypeVarLike, Matcher};
 use crate::database::Database;
 use crate::node_ref::NodeRef;
 use crate::type_::{GenericClass, TupleTypeArguments, Type, TypeOrTypeVarTuple};
+use crate::type_helpers::Class;
 use crate::{debug, InferenceState};
 
 pub enum ResultContext<'a, 'b> {
@@ -51,7 +52,33 @@ impl<'a> ResultContext<'a, '_> {
         }
     }
 
-    pub fn on_unique_class_in_unpacked_union<'db, T>(
+    pub fn on_unique_protocol_in_unpacked_union<'db, T>(
+        &mut self,
+        i_s: &InferenceState,
+        class: NodeRef,
+        on_unique_found: impl FnOnce(&mut Matcher, Vec<CalculatedTypeVarLike>) -> T,
+    ) -> Option<T> {
+        self.with_type_if_exists(|t, matcher| {
+            t.on_unique_type_in_unpacked_union(
+                i_s.db,
+                matcher,
+                &|t| {
+                    let c = Class::from_non_generic_node_ref(class);
+                    let mut matcher = Matcher::new_class_matcher(i_s, c);
+                    let self_class = Class::with_self_generics(i_s.db, class);
+                    self_class
+                        .as_type(i_s.db)
+                        .is_super_type_of(i_s, &mut matcher, t)
+                        .non_any_match()
+                        .then(|| matcher.unwrap_calculated_type_args())
+                },
+                on_unique_found,
+            )
+        })
+        .flatten()
+    }
+
+    pub fn on_unique_class2_in_unpacked_union<'db, T>(
         &mut self,
         db: &Database,
         class: NodeRef,

@@ -65,19 +65,24 @@ impl<'db> Inference<'db, '_, '_> {
         result_context: &mut ResultContext,
     ) -> Option<Inferred> {
         let i_s = self.i_s;
-        result_context.on_unique_class_in_unpacked_union(
-            i_s.db,
+        result_context.on_unique_protocol_in_unpacked_union(
+            i_s,
             i_s.db.python_state.list_node_ref(),
-            |matcher, c| {
-                let list_cls = c.class(i_s.db);
-                let generic_t = list_cls.nth_type_argument(i_s.db, 0);
+            |matcher, calculated_type_args| {
+                let generic_t = calculated_type_args
+                    .into_iter()
+                    .next()
+                    .unwrap()
+                    .maybe_calculated_type(i_s.db)
+                    .unwrap();
                 let found = check_list_with_context(i_s, matcher, &generic_t, self.file, list);
                 Inferred::from_type(found.unwrap_or_else(|| {
-                    list_cls
-                        .as_type(i_s.db)
-                        .replace_type_var_likes(self.i_s.db, &mut |tv| {
+                    new_class!(
+                        i_s.db.python_state.list_node_ref().as_link(),
+                        generic_t.replace_type_var_likes(self.i_s.db, &mut |tv| {
                             tv.as_type_var_like().as_any_generic_item()
-                        })
+                        }),
+                    )
                 }))
             },
         )
@@ -105,7 +110,7 @@ impl<'db> Inference<'db, '_, '_> {
             return typed_dict_result;
         }
 
-        result_context.on_unique_class_in_unpacked_union(
+        result_context.on_unique_class2_in_unpacked_union(
             i_s.db,
             i_s.db.python_state.dict_node_ref(),
             |matcher, c| {

@@ -150,6 +150,13 @@ impl CalculatedTypeVarLike {
         }
     }
 
+    pub fn maybe_calculated_type(self, db: &Database) -> Option<Type> {
+        let BoundKind::TypeVar(bound) = self.type_ else {
+            return None
+        };
+        Some(bound.into_type(db))
+    }
+
     pub fn update_uncalculated_with_generic_invariant(&mut self, db: &Database, g: Generic) {
         debug_assert!(matches!(self.type_, BoundKind::Uncalculated { .. }));
         self.type_ = match g {
