@@ -110,7 +110,7 @@ impl<'a> Generics<'a> {
         }
     }
 
-    pub fn nth<'db: 'a>(
+    fn nth<'db: 'a>(
         &self,
         db: &'db Database,
         type_var_like: &TypeVarLike,
