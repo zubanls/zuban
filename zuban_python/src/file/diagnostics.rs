@@ -655,7 +655,9 @@ impl<'db> Inference<'db, '_, '_> {
             let i_s = self.i_s;
             let mut class = class.unwrap();
             // Here we do not want self generics, we actually want Any generics.
-            class.generics = Generics::NotDefinedYet;
+            class.generics = Generics::NotDefinedYet {
+                from_class: class.node_ref,
+            };
             let Some(callable) = infer_class_method(
                 i_s,
                 class,

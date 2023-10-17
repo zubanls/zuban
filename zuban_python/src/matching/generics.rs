@@ -16,7 +16,7 @@ use crate::type_::{
 macro_rules! replace_class_vars {
     ($db:expr, $g:ident, $type_var_generics:ident) => {
         match $type_var_generics {
-            None | Some(Generics::None | Generics::NotDefinedYet) => Generic::new($g),
+            None | Some(Generics::None | Generics::NotDefinedYet { .. }) => Generic::new($g),
             Some(type_var_generics) => Generic::owned($g.replace_type_var_likes(
                 $db,
                 &mut |t| type_var_generics.nth_usage($db, &t).into_generic_item($db),
@@ -39,7 +39,9 @@ pub enum Generics<'a> {
         type_var_likes: &'a TypeVarLikes,
     },
     None,
-    NotDefinedYet,
+    NotDefinedYet {
+        from_class: NodeRef<'a>,
+    },
 }
 
 impl<'a> Generics<'a> {
@@ -47,23 +49,11 @@ impl<'a> Generics<'a> {
         Self::List(list, None)
     }
 
-    pub fn from_non_list_class_generics(db: &'a Database, g: &ClassGenerics) -> Self {
-        match g {
-            ClassGenerics::None => Generics::None,
-            ClassGenerics::ExpressionWithClassType(link) => {
-                let node_ref = NodeRef::from_link(db, *link);
-                Self::ExpressionWithClassType(node_ref.file, node_ref.as_expression())
-            }
-            ClassGenerics::SlicesWithClassTypes(link) => {
-                let node_ref = NodeRef::from_link(db, *link);
-                Self::SlicesWithClassTypes(node_ref.file, node_ref.as_slices())
-            }
-            ClassGenerics::NotDefinedYet => Generics::NotDefinedYet,
-            ClassGenerics::List(l) => unreachable!(),
-        }
-    }
-
-    pub fn from_class_generics(db: &'a Database, g: &'a ClassGenerics) -> Self {
+    pub fn from_class_generics(
+        db: &'a Database,
+        from_class: NodeRef<'a>,
+        g: &'a ClassGenerics,
+    ) -> Self {
         match g {
             ClassGenerics::List(l) => Self::List(l, None),
             ClassGenerics::None => Generics::None,
@@ -75,7 +65,7 @@ impl<'a> Generics<'a> {
                 let node_ref = NodeRef::from_link(db, *link);
                 Self::SlicesWithClassTypes(node_ref.file, node_ref.as_slices())
             }
-            ClassGenerics::NotDefinedYet => Generics::NotDefinedYet,
+            ClassGenerics::NotDefinedYet => Generics::NotDefinedYet { from_class },
         }
     }
 
@@ -153,7 +143,7 @@ impl<'a> Generics<'a> {
                     todo!()
                 }
             }
-            Self::NotDefinedYet => Generic::owned(type_var_like.as_any_generic_item()),
+            Self::NotDefinedYet { .. } => Generic::owned(type_var_like.as_any_generic_item()),
             Self::Self_ {
                 class_definition, ..
             } => Generic::owned(
@@ -181,7 +171,7 @@ impl<'a> Generics<'a> {
                 iterator: type_var_likes.iter().enumerate(),
                 definition: *class_definition,
             },
-            Self::None | Self::NotDefinedYet => GenericsIteratorItem::None,
+            Self::None | Self::NotDefinedYet { .. } => GenericsIteratorItem::None,
         };
         GenericsIterator::new(db, item)
     }
@@ -189,7 +179,7 @@ impl<'a> Generics<'a> {
     pub fn as_generics_list(&self, db: &Database, type_var_likes: &TypeVarLikes) -> ClassGenerics {
         match type_var_likes.is_empty() {
             false => match self {
-                Self::NotDefinedYet => ClassGenerics::List(GenericsList::new_generics(
+                Self::NotDefinedYet { .. } => ClassGenerics::List(GenericsList::new_generics(
                     type_var_likes
                         .iter()
                         .map(|t| t.as_any_generic_item())

@@ -174,7 +174,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 unreachable!()
             };
 
-            let class = Class::new(definition, cls_storage, Generics::NotDefinedYet, None);
+            let class = Class::new(
+                definition,
+                cls_storage,
+                Generics::NotDefinedYet {
+                    from_class: definition,
+                },
+                None,
+            );
             // Make sure the type vars are properly pre-calculated
             class.ensure_calculated_class_infos(self.i_s, name_def);
         }
