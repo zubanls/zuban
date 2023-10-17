@@ -171,7 +171,6 @@ testAssigningWithLongTupleInitializer
 testAssignmentToStarFromTupleType
 # Not able to infer context with unions
 testLiteralAndGenericWithUnion
-testLiteralAndGenericsNoMatch
 # Union not matching type vars (None | Any and int | None leads to None | Any)
 testJoinUnionWithUnionAndAny
 # dict specialities
