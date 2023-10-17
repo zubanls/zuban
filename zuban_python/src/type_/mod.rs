@@ -776,11 +776,15 @@ impl Type {
                 use crate::type_helpers::NamedTupleValue;
                 match format_data.style {
                     FormatStyle::Short => NamedTupleValue::new(format_data.db, nt)
-                        .format_with_name(format_data, nt.name(format_data.db), Generics::None),
+                        .format_with_name(
+                            format_data,
+                            nt.name(format_data.db),
+                            Generics::NotDefinedYet,
+                        ),
                     _ => NamedTupleValue::new(format_data.db, nt).format_with_name(
                         format_data,
                         &nt.qualified_name(format_data.db),
-                        Generics::None,
+                        Generics::NotDefinedYet,
                     ),
                 }
             }
@@ -1405,16 +1409,16 @@ impl Type {
         }
         */
         // necessary.
-        let merge_generics = |from_class, g1: &ClassGenerics, g2: &ClassGenerics| {
+        let merge_generics = |g1: &ClassGenerics, g2: &ClassGenerics| {
             if matches!(g1, ClassGenerics::None) {
                 return ClassGenerics::None;
             }
             ClassGenerics::List(GenericsList::new_generics(
                 // Performance issue: clone could probably be removed. Rc -> Vec check
                 // https://github.com/rust-lang/rust/issues/93610#issuecomment-1528108612
-                Generics::from_class_generics(db, from_class, &g1)
+                Generics::from_class_generics(db, &g1)
                     .iter(db)
-                    .zip(Generics::from_class_generics(db, from_class, &g2).iter(db))
+                    .zip(Generics::from_class_generics(db, &g2).iter(db))
                     .map(|(gi1, gi2)| gi1.merge_matching_parts(db, gi2))
                     .collect(),
             ))
@@ -1423,8 +1427,7 @@ impl Type {
         match self {
             Type::Class(c1) => match other {
                 Type::Class(c2) if c1.link == c2.link => {
-                    let n = NodeRef::from_link(db, c1.link);
-                    Type::new_class(c1.link, merge_generics(n, &c1.generics, &c2.generics))
+                    Type::new_class(c1.link, merge_generics(&c1.generics, &c2.generics))
                 }
                 _ => Type::Any,
             },

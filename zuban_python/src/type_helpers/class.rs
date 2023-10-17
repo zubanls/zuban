@@ -72,9 +72,8 @@ impl<'db: 'a, 'a> Class<'a> {
         link: PointLink,
         list: &'a ClassGenerics,
     ) -> Self {
-        let node_ref = NodeRef::from_link(db, link);
-        let generics = Generics::from_class_generics(db, node_ref, list);
-        Self::from_position(node_ref, generics, None)
+        let generics = Generics::from_class_generics(db, list);
+        Self::from_position(NodeRef::from_link(db, link), generics, None)
     }
 
     pub fn from_non_generic_link(db: &'db Database, link: PointLink) -> Self {
@@ -100,8 +99,8 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     #[inline]
-    pub fn with_undefined_generics(from_class: NodeRef<'a>) -> Self {
-        Self::from_position(from_class, Generics::NotDefinedYet { from_class }, None)
+    pub fn with_undefined_generics(node_ref: NodeRef<'a>) -> Self {
+        Self::from_position(node_ref, Generics::NotDefinedYet, None)
     }
 
     pub fn with_self_generics(db: &'a Database, node_ref: NodeRef<'a>) -> Self {
@@ -1922,7 +1921,7 @@ fn apply_generics_to_base_class<'a>(
             })
         }
         // TODO this is wrong, because it does not use generics.
-        _ if matches!(generics, Generics::None | Generics::NotDefinedYet { .. }) => {
+        _ if matches!(generics, Generics::None | Generics::NotDefinedYet) => {
             TypeOrClass::Type(Cow::Borrowed(t))
         }
         _ => TypeOrClass::Type(Cow::Owned(t.replace_type_var_likes_and_self(
@@ -2083,7 +2082,7 @@ impl NewOrInitConstructor<'_> {
                     None => */callable_like, /*}*/
             )
         } else {
-            let cls = if matches!(cls.generics(), Generics::NotDefinedYet { .. }) {
+            let cls = if matches!(cls.generics(), Generics::NotDefinedYet) {
                 Class::with_self_generics(i_s.db, cls.node_ref)
             } else {
                 cls

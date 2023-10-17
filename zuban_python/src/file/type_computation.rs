@@ -1461,10 +1461,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         slice_type: SliceType,
         primary: Option<Primary>,
     ) -> ClassGetItemResult<'db> {
-        if !matches!(
-            class.generics(),
-            Generics::None | Generics::NotDefinedYet { .. }
-        ) {
+        if !matches!(class.generics(), Generics::None | Generics::NotDefinedYet) {
             todo!();
             //return TypeContent::InvalidVariable(InvalidVariableType::Other);
         }

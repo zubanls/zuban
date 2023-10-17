@@ -73,10 +73,8 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
 ) -> CalculatedTypeArguments {
     debug!("Calculate __init__ type vars for class {}", class.name());
     let type_vars = class.type_vars(i_s);
-    let has_generics = !matches!(
-        class.generics,
-        Generics::None | Generics::NotDefinedYet { .. }
-    ) || type_vars.is_empty();
+    let has_generics =
+        !matches!(class.generics, Generics::None | Generics::NotDefinedYet) || type_vars.is_empty();
     // Function type vars need to be calculated, so annotations are used.
     let func_type_vars = func_or_callable.type_vars(i_s);
 

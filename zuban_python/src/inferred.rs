@@ -945,9 +945,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 let class = Class::new(
                                     node_ref,
                                     cls_storage,
-                                    Generics::NotDefinedYet {
-                                        from_class: node_ref,
-                                    },
+                                    Generics::NotDefinedYet,
                                     None,
                                 );
                                 debug!("TODO class descriptors");
@@ -1078,10 +1076,9 @@ impl<'db: 'slf, 'slf> Inferred {
         }
 
         if let Type::Class(c) = t {
-            let node_ref = NodeRef::from_link(i_s.db, c.link);
             let potential_descriptor = use_instance_with_ref(
-                node_ref,
-                Generics::from_class_generics(i_s.db, node_ref, &c.generics),
+                NodeRef::from_link(i_s.db, c.link),
+                Generics::from_class_generics(i_s.db, &c.generics),
                 None,
             );
             if let Some(inf) = potential_descriptor.bind_dunder_get(i_s, from, instance) {
@@ -1277,10 +1274,9 @@ impl<'db: 'slf, 'slf> Inferred {
 
         if let Type::Class(c) = t {
             if apply_descriptor {
-                let node_ref = NodeRef::from_link(i_s.db, c.link);
                 let inst = use_instance_with_ref(
-                    node_ref,
-                    Generics::from_class_generics(i_s.db, node_ref, &c.generics),
+                    NodeRef::from_link(i_s.db, c.link),
+                    Generics::from_class_generics(i_s.db, &c.generics),
                     None,
                 );
                 if let Some(inf) = inst.type_lookup(i_s, from, "__get__").into_maybe_inferred() {
@@ -1689,20 +1685,8 @@ impl<'db: 'slf, 'slf> Inferred {
                                 );
                             }
                             ComplexPoint::Class(cls) => {
-                                return Class::new(
-                                    node_ref,
-                                    cls,
-                                    Generics::NotDefinedYet {
-                                        from_class: node_ref,
-                                    },
-                                    None,
-                                )
-                                .execute(
-                                    i_s,
-                                    args,
-                                    result_context,
-                                    on_type_error,
-                                )
+                                return Class::new(node_ref, cls, Generics::NotDefinedYet, None)
+                                    .execute(i_s, args, result_context, on_type_error)
                             }
                             ComplexPoint::TypeAlias(alias) => {
                                 if alias.application_allowed() {
@@ -1852,14 +1836,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 )
                         }
                         Some(ComplexPoint::Class(c)) => {
-                            let class = Class::new(
-                                node_ref,
-                                c,
-                                Generics::NotDefinedYet {
-                                    from_class: node_ref,
-                                },
-                                None,
-                            );
+                            let class = Class::new(node_ref, c, Generics::NotDefinedYet, None);
                             return class.get_item(i_s, slice_type, result_context);
                         }
                         _ => (),
@@ -1979,8 +1956,8 @@ pub fn infer_class_method<'db: 'class, 'class>(
     callable: &CallableContent,
 ) -> Option<CallableContent> {
     let mut func_class = func_class;
-    let class_generics_not_defined_yet = matches!(class.generics, Generics::NotDefinedYet { .. })
-        && !class.type_vars(i_s).is_empty();
+    let class_generics_not_defined_yet =
+        matches!(class.generics, Generics::NotDefinedYet) && !class.type_vars(i_s).is_empty();
     if class_generics_not_defined_yet {
         // Check why this is necessary by following class_generics_not_defined_yet.
         let self_generics = Generics::Self_ {
