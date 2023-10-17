@@ -89,42 +89,39 @@ impl<'db> Inference<'db, '_, '_> {
         dict: Dict,
         result_context: &mut ResultContext,
     ) -> Option<Inferred> {
-        result_context
+        let i_s = self.i_s;
+        let typed_dict_result = result_context
             .with_type_if_exists(|type_, matcher| {
                 let mut found = None;
-                let mut fallback = None;
-                let i_s = self.i_s;
                 type_.on_any_typed_dict(i_s, matcher, &mut |matcher, td| {
                     found = self.check_typed_dict_literal_with_context(matcher, td, dict);
                     found.is_some()
                 });
-                if found.is_none() {
-                    type_.on_any_class(i_s, matcher, &mut |matcher, cls| {
-                        if cls.node_ref == i_s.db.python_state.dict_node_ref() {
-                            let key_t = cls.nth_type_argument(i_s.db, 0);
-                            let value_t = cls.nth_type_argument(i_s.db, 1);
-                            found = self
-                                .check_dict_literal_with_context(matcher, &key_t, &value_t, dict);
-                            if found.is_none() {
-                                // As a fallback if there were only errors or no items at all, just use
-                                // the given and expected result context as a type.
-                                fallback = Some(
-                                    cls.as_type(i_s.db)
-                                        .replace_type_var_likes(self.i_s.db, &mut |tv| {
-                                            tv.as_type_var_like().as_any_generic_item()
-                                        }),
-                                );
-                                // TODO we need something like this for testUnpackingUnionOfListsInFunction
-                                //self.file.reset_non_name_cache_between(list.node_index_range());
-                            }
-                        }
-                        found.is_some()
-                    });
-                }
                 // `found` might still be empty, because we matched Any.
-                found.or(fallback).map(Inferred::from_type)
+                found.map(Inferred::from_type)
             })
-            .flatten()
+            .flatten();
+        if typed_dict_result.is_some() {
+            return typed_dict_result;
+        }
+
+        result_context.on_unique_class_in_unpacked_union(
+            i_s.db,
+            i_s.db.python_state.dict_node_ref(),
+            |matcher, c| {
+                let dict_cls = c.class(i_s.db);
+                let key_t = dict_cls.nth_type_argument(i_s.db, 0);
+                let value_t = dict_cls.nth_type_argument(i_s.db, 1);
+                let found = self.check_dict_literal_with_context(matcher, &key_t, &value_t, dict);
+                Inferred::from_type(found.unwrap_or_else(|| {
+                    dict_cls
+                        .as_type(i_s.db)
+                        .replace_type_var_likes(self.i_s.db, &mut |tv| {
+                            tv.as_type_var_like().as_any_generic_item()
+                        })
+                }))
+            },
+        )
     }
 
     fn check_typed_dict_literal_with_context(
