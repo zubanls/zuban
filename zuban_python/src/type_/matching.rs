@@ -258,6 +258,14 @@ impl Type {
         value_type: &Self,
     ) -> Match {
         // 1. Check if the type is part of the mro.
+        let debug_message_for_result = |result| {
+            debug!(
+                "Match covariant {} :> {} -> {:?}",
+                self.format_short(i_s.db),
+                value_type.format_short(i_s.db),
+                result
+            )
+        };
         let mut m = Match::new_false();
         for (_, t2) in value_type.mro(i_s.db) {
             m = match t2 {
@@ -283,6 +291,7 @@ impl Type {
                     similar: false
                 }
             ) {
+                debug_message_for_result(&m);
                 return m;
             }
         }
@@ -317,12 +326,7 @@ impl Type {
                 }
                 Match::new_false()
             });
-        debug!(
-            "Match covariant {} :> {} -> {:?}",
-            self.format_short(i_s.db),
-            value_type.format_short(i_s.db),
-            result
-        );
+        debug_message_for_result(&result);
         result
     }
 
