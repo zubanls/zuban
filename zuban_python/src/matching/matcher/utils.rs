@@ -236,39 +236,6 @@ fn get_matcher<'a>(
     Matcher::new(class, func_or_callable, matcher)
 }
 
-fn add_generics_from_result_context_class(
-    i_s: &InferenceState,
-    matcher: &mut Matcher,
-    type_vars: &TypeVarLikes,
-    result_class: &Class,
-) {
-    let mut calculating = matcher.iter_calculated_type_vars();
-    for (type_var_like, g) in type_vars.iter().zip(result_class.generics().iter(i_s.db)) {
-        let calculated = calculating.next().unwrap();
-        match g {
-            Generic::TypeArgument(g) => {
-                if !g.is_any() {
-                    let TypeVarLike::TypeVar(type_var) = type_var_like else {
-                        unreachable!();
-                    };
-                    let bound =
-                        TypeVarBound::new(g.into_owned(), type_var.variance.invert(), type_var);
-                    calculated.type_ = BoundKind::TypeVar(bound);
-                    calculated.defined_by_result_context = true;
-                }
-            }
-            Generic::TypeVarTuple(ts) => {
-                calculated.type_ = BoundKind::TypeVarTuple(ts.into_owned());
-                calculated.defined_by_result_context = true;
-            }
-            Generic::ParamSpecArgument(p) => {
-                calculated.type_ = BoundKind::ParamSpecArgument(p.into_owned());
-                calculated.defined_by_result_context = true;
-            }
-        };
-    }
-}
-
 fn calculate_type_vars<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     mut matcher: Matcher,
