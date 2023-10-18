@@ -23,8 +23,12 @@ reveal_type(unite(i2, i1))  # N: Revealed type is "typing.Sequence[... | int | s
 reveal_type(unite(i1, i3))  # N: Revealed type is "typing.Sequence[... | int] | typing.Sequence[... | float]"
 reveal_type(unite(i3, i1))  # N: Revealed type is "typing.Sequence[... | float] | typing.Sequence[... | int]"
 
-reveal_type(unite(i1, s1))  # N: Revealed type is "typing.Sequence[... | int] | typing.Sequence[... | str]"
-reveal_type(unite(s1, i1))  # N: Revealed type is "typing.Sequence[... | str] | typing.Sequence[... | int]"
+u1 = unite(i1, s1)
+u2 = unite(s1, i1)
+x: str = u1  # E: Incompatible types in assignment (expression has type "Rec1[int] | Rec1[str]", variable has type "str") 
+y: str = u2  # E: Incompatible types in assignment (expression has type "Rec1[str] | Rec1[int]", variable has type "str") 
+reveal_type(u1)  # N: Revealed type is "typing.Sequence[... | int] | typing.Sequence[... | int]"
+reveal_type(u2)  # N: Revealed type is "typing.Sequence[... | int] | typing.Sequence[... | int]"
 
 [case recursive_alias_incorrect_generics_no_restrictions]
 # flags: --mypy-compatible
