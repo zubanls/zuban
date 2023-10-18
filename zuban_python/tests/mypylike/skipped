@@ -1,4 +1,5 @@
 # Next up
+testParamSpecJoin
 
 # Literal Context issues
 nested_tuple_context_inference4
@@ -163,8 +164,6 @@ testValidTypeAliasValuesMoreRestrictive
 testCrashOnComplexCheckWithNamedTupleNext
 # union dict context inference
 testNoCrashOnGenericUnionUnpacking
-# Union not matching type vars (None | Any and int | None leads to None | Any)
-testJoinUnionWithUnionAndAny
 # dict specialities
 testDictWithKeywordArgsOnly
 testDictWithoutKeywordArgs
@@ -197,6 +196,7 @@ testRecursiveAliasGenericInferenceNested
 testRecursiveAliasTopUnion
 testCrashInJoinOfSelfRecursiveNamedTuples
 testGenericJoinRecursiveTypes
+testRecursiveAliasWithRecursiveInstance
 
 # WTF why is this base type not object/function?
 testListLiteralWithNameOnlyArgsDoesNotEraseNames

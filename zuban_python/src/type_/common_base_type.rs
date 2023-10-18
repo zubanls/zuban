@@ -129,7 +129,8 @@ fn common_base_class(i_s: &InferenceState, c1: Class, c2: Class) -> Option<Type>
                     }
                 }
             }
-            _ => todo!(),
+            TypeVarLike::TypeVarTuple(_) => todo!(),
+            TypeVarLike::ParamSpec(spec) => return None,
         }
     }
     Some(Type::new_class(

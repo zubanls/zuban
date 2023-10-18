@@ -44,21 +44,22 @@ impl TypeVarBound {
         }
     }
 
-    fn update_upper_bound(&mut self, upper: Type) {
+    fn update_upper_bound(&mut self, i_s: &InferenceState, upper: &Type) {
         match self {
-            Self::Upper(_) => *self = Self::Upper(upper),
+            Self::Upper(old) => *self = Self::Upper(upper.clone()),
             Self::Lower(lower) | Self::UpperAndLower(_, lower) => {
-                *self = Self::UpperAndLower(upper, lower.clone())
+                *self = Self::UpperAndLower(upper.clone(), lower.clone())
             }
             Self::Invariant(_) => unreachable!(),
         }
     }
 
-    fn update_lower_bound(&mut self, lower: Type) {
+    fn update_lower_bound(&mut self, i_s: &InferenceState, lower: &Type) {
         match self {
-            Self::Lower(_) => *self = Self::Lower(lower),
-            Self::Upper(upper) | Self::UpperAndLower(upper, _) => {
-                *self = Self::UpperAndLower(upper.clone(), lower)
+            Self::Lower(old) => *self = Self::Lower(old.common_base_type(i_s, lower)),
+            Self::Upper(upper) => *self = Self::UpperAndLower(upper.clone(), lower.clone()),
+            Self::UpperAndLower(upper, old) => {
+                *self = Self::UpperAndLower(upper.clone(), old.common_base_type(i_s, lower))
             }
             Self::Invariant(_) => unreachable!(),
         }
@@ -87,11 +88,10 @@ impl TypeVarBound {
         };
         if matches.bool() {
             // If we are between the bounds we might need to update lower/upper bounds
-            let other = other.clone();
             match variance {
-                Variance::Invariant => *self = Self::Invariant(other),
-                Variance::Covariant => self.update_lower_bound(other),
-                Variance::Contravariant => self.update_upper_bound(other),
+                Variance::Invariant => *self = Self::Invariant(other.clone()),
+                Variance::Covariant => self.update_lower_bound(i_s, other),
+                Variance::Contravariant => self.update_upper_bound(i_s, other),
             }
         } else {
             // If we are not between the lower and upper bound, but the value is co or
