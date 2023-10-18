@@ -163,8 +163,6 @@ testValidTypeAliasValuesMoreRestrictive
 testCrashOnComplexCheckWithNamedTupleNext
 # union dict context inference
 testNoCrashOnGenericUnionUnpacking
-# union tuple context inference
-testLiteralAndInstanceSubtyping
 # "Expression tuple item 8 has type "str"; "int" expected;"
 testAssigningWithLongTupleInitializer
 # Tuple a, *li = ta: "List item 0 has incompatible type "A"; expected "int""
