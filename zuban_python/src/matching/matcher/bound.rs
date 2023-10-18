@@ -44,21 +44,21 @@ impl TypeVarBound {
         }
     }
 
-    fn update_lower_bound(&mut self, lower: Type) {
+    fn update_upper_bound(&mut self, upper: Type) {
         match self {
-            Self::Upper(_) => *self = Self::Upper(lower),
-            Self::Lower(upper) | Self::UpperAndLower(_, upper) => {
-                *self = Self::UpperAndLower(lower, upper.clone())
+            Self::Upper(_) => *self = Self::Upper(upper),
+            Self::Lower(lower) | Self::UpperAndLower(_, lower) => {
+                *self = Self::UpperAndLower(upper, lower.clone())
             }
             Self::Invariant(_) => unreachable!(),
         }
     }
 
-    fn update_upper_bound(&mut self, upper: Type) {
+    fn update_lower_bound(&mut self, lower: Type) {
         match self {
-            Self::Lower(_) => *self = Self::Lower(upper),
-            Self::Upper(lower) | Self::UpperAndLower(lower, _) => {
-                *self = Self::UpperAndLower(lower.clone(), upper)
+            Self::Lower(_) => *self = Self::Lower(lower),
+            Self::Upper(upper) | Self::UpperAndLower(upper, _) => {
+                *self = Self::UpperAndLower(upper.clone(), lower)
             }
             Self::Invariant(_) => unreachable!(),
         }
@@ -90,8 +90,8 @@ impl TypeVarBound {
             let other = other.clone();
             match variance {
                 Variance::Invariant => *self = Self::Invariant(other),
-                Variance::Covariant => self.update_upper_bound(other),
-                Variance::Contravariant => self.update_lower_bound(other),
+                Variance::Covariant => self.update_lower_bound(other),
+                Variance::Contravariant => self.update_upper_bound(other),
             }
         } else {
             // If we are not between the lower and upper bound, but the value is co or
