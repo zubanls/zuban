@@ -130,7 +130,10 @@ fn common_base_class(i_s: &InferenceState, c1: Class, c2: Class) -> Option<Type>
                 }
             }
             TypeVarLike::TypeVarTuple(_) => todo!(),
-            TypeVarLike::ParamSpec(spec) => return None,
+            TypeVarLike::ParamSpec(spec) => {
+                // TODO Common base types of param specs should united somehow?
+                generics.push(generic1.into_generic_item(i_s.db));
+            }
         }
     }
     Some(Type::new_class(
@@ -193,6 +196,7 @@ fn common_base_for_callables(
                         class_name: None,
                         defined_at: c1.defined_at,
                         kind: c1.kind,
+                        // TODO why do we just remove type vars here???
                         type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
                         params,
                         result_type: c1.result_type.common_base_type(i_s, &c2.result_type),
@@ -202,7 +206,25 @@ fn common_base_for_callables(
             CallableParams::WithParamSpec(_, _) => (),
             CallableParams::Any => todo!(),
         },
-        CallableParams::WithParamSpec(_, _) => (),
+        CallableParams::WithParamSpec(pre1, spec1) => match &c2.params {
+            CallableParams::WithParamSpec(pre2, spec2) => {
+                if !pre1.is_empty() || !pre2.is_empty() {
+                    todo!()
+                }
+                if spec1 == spec2 {
+                    return Type::Callable(Rc::new(CallableContent {
+                        name: None,
+                        class_name: None,
+                        defined_at: c1.defined_at,
+                        kind: c1.kind,
+                        type_vars: c1.type_vars.clone(),
+                        params: CallableParams::WithParamSpec(pre1.clone(), spec1.clone()),
+                        result_type: c1.result_type.common_base_type(i_s, &c2.result_type),
+                    }));
+                }
+            }
+            _ => (),
+        },
         CallableParams::Any => todo!(),
     }
     i_s.db.python_state.function_type()
