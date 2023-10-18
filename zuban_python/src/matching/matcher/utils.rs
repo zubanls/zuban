@@ -5,8 +5,8 @@ use super::super::params::{
     WrappedStarred,
 };
 use super::super::{
-    ArgumentIndexWithParam, FormatData, Generic, Generics, Match, Matcher, MismatchReason,
-    OnTypeError, ResultContext, SignatureMatch,
+    ArgumentIndexWithParam, FormatData, Generics, Match, Matcher, MismatchReason, OnTypeError,
+    ResultContext, SignatureMatch,
 };
 use super::bound::TypeVarBound;
 use super::type_var_matcher::{BoundKind, FunctionOrCallable, TypeVarMatcher};
@@ -17,10 +17,9 @@ use crate::diagnostics::IssueType;
 use crate::inference_state::InferenceState;
 use crate::node_ref::NodeRef;
 use crate::type_::{
-    CallableParams, ClassGenerics, GenericItem, GenericsList, TypeVarLike, TypeVarLikeUsage,
-    TypeVarLikes,
+    CallableParams, ClassGenerics, GenericItem, GenericsList, TypeVarLikeUsage, TypeVarLikes,
 };
-use crate::type_helpers::{Callable, Class, Function, TypeOrClass};
+use crate::type_helpers::{Callable, Class, Function};
 
 pub fn calculate_callable_init_type_vars_and_return<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,

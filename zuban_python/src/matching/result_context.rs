@@ -1,8 +1,9 @@
 use std::fmt;
 
 use super::{CalculatedTypeVarLike, Matcher};
+use crate::database::Specific;
 use crate::node_ref::NodeRef;
-use crate::type_::{TupleTypeArguments, Type, TypeOrTypeVarTuple};
+use crate::type_::{LiteralKind, TupleTypeArguments, Type, TypeOrTypeVarTuple};
 use crate::type_helpers::Class;
 use crate::{debug, InferenceState};
 
@@ -88,18 +89,36 @@ impl<'a> ResultContext<'a, '_> {
         self.with_type_if_exists_and_replace_type_var_likes(
             i_s,
             |i_s: &InferenceState<'db, '_>, type_| match type_ {
-                Type::Literal(_) | Type::EnumMember(_) => CouldBeALiteral::Yes { implicit: false },
+                Type::Literal(l) => CouldBeALiteral::Yes {
+                    implicit: false,
+                    kind: Some(match &l.kind {
+                        LiteralKind::Int(_) => SimpleLiteralKind::Int,
+                        LiteralKind::Bool(_) => SimpleLiteralKind::Bool,
+                        LiteralKind::String(_) => SimpleLiteralKind::Str,
+                        LiteralKind::Bytes(_) => SimpleLiteralKind::Bytes,
+                    }),
+                },
+                Type::EnumMember(_) => CouldBeALiteral::Yes {
+                    implicit: false,
+                    kind: Some(SimpleLiteralKind::Enum),
+                },
                 Type::Union(items)
                     if items
                         .iter()
                         .any(|i| matches!(i, Type::Literal(_) | Type::EnumMember(_))) =>
                 {
-                    CouldBeALiteral::Yes { implicit: false }
+                    CouldBeALiteral::Yes {
+                        implicit: false,
+                        kind: None,
+                    }
                 }
                 _ => CouldBeALiteral::No,
             },
         )
-        .unwrap_or(CouldBeALiteral::Yes { implicit: true })
+        .unwrap_or(CouldBeALiteral::Yes {
+            implicit: true,
+            kind: None,
+        })
     }
 
     pub fn expects_union(&self, i_s: &InferenceState) -> bool {
@@ -197,7 +216,31 @@ impl<'a> Iterator for TupleContextIterator<'a> {
     }
 }
 
+#[derive(Clone, Copy)]
+pub enum SimpleLiteralKind {
+    Str,
+    Int,
+    Bool,
+    Bytes,
+    Enum,
+}
+
+impl SimpleLiteralKind {
+    pub fn matches_specific(self, specific: Specific) -> bool {
+        match (self, specific) {
+            (Self::Int, Specific::IntLiteral)
+            | (Self::Bool, Specific::BoolLiteral)
+            | (Self::Str, Specific::StringLiteral)
+            | (Self::Bytes, Specific::BytesLiteral) => true,
+            _ => false,
+        }
+    }
+}
+
 pub enum CouldBeALiteral {
-    Yes { implicit: bool },
+    Yes {
+        implicit: bool,
+        kind: Option<SimpleLiteralKind>,
+    },
     No,
 }

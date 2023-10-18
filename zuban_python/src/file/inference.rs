@@ -1707,10 +1707,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
     check_point_cache_with!(pub infer_atom, Self::_infer_atom, Atom, result_context);
     fn _infer_atom(&mut self, atom: Atom, result_context: &mut ResultContext) -> Inferred {
-        let check_literal = |i_s, index, literal| {
+        let check_literal = |result_context: &ResultContext, i_s, index, literal| {
             let specific = match result_context.could_be_a_literal(i_s) {
-                CouldBeALiteral::No | CouldBeALiteral::Yes { implicit: true } => literal,
-                CouldBeALiteral::Yes { implicit: false } => {
+                CouldBeALiteral::Yes {
+                    implicit: false,
+                    kind,
+                } if kind.is_none() || kind.is_some_and(|k| k.matches_specific(literal)) => {
                     let mut t = specific_to_type(
                         i_s,
                         NodeRef::new(self.file, index).to_db_lifetime(i_s.db),
@@ -1723,6 +1725,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     literal.implicit = false;
                     return Inferred::from_type(t).save_redirect(i_s, self.file, index);
                 }
+                _ => literal,
             };
             let point = Point::new_simple_specific(specific, Locality::Todo);
             Inferred::new_and_save(self.file, index, point)
@@ -1733,22 +1736,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             Name(n) => return self.infer_name_reference(n),
             Int(i) => match self.parse_int(i, result_context) {
                 Some(parsed) => {
-                    let mut implicit = true;
-                    if let CouldBeALiteral::Yes { implicit: false } =
-                        result_context.could_be_a_literal(self.i_s)
-                    {
-                        implicit = false
-                    };
-                    if implicit {
-                        let point =
-                            Point::new_simple_specific(Specific::IntLiteral, Locality::Todo);
-                        return Inferred::new_and_save(self.file, i.index(), point);
-                    } else {
-                        return Inferred::from_type(Type::Literal(Literal {
-                            kind: LiteralKind::Int(parsed),
-                            implicit,
-                        }));
-                    }
+                    return check_literal(
+                        result_context,
+                        self.i_s,
+                        i.index(),
+                        Specific::IntLiteral,
+                    );
                 }
                 None => Specific::Int,
             },
@@ -1761,14 +1754,23 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                 }
                 if let Some(s) = s_o_b.maybe_single_string_literal() {
-                    return check_literal(self.i_s, s.index(), Specific::StringLiteral);
+                    return check_literal(
+                        result_context,
+                        self.i_s,
+                        s.index(),
+                        Specific::StringLiteral,
+                    );
                 } else {
                     Specific::String
                 }
             }
-            Bytes(b) => return check_literal(self.i_s, b.index(), Specific::BytesLiteral),
+            Bytes(b) => {
+                return check_literal(result_context, self.i_s, b.index(), Specific::BytesLiteral)
+            }
             NoneLiteral => Specific::None,
-            Bool(b) => return check_literal(self.i_s, b.index(), Specific::BoolLiteral),
+            Bool(b) => {
+                return check_literal(result_context, self.i_s, b.index(), Specific::BoolLiteral)
+            }
             Ellipsis => Specific::Ellipsis,
             List(list) => {
                 if let Some(result) = self.infer_list_literal_from_context(list, result_context) {
