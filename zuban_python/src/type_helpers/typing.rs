@@ -119,9 +119,7 @@ impl RevealTypeFunction {
         let s = reveal_type_info(
             i_s,
             match result_context.could_be_a_literal(i_s) {
-                CouldBeALiteral::Yes {
-                    implicit: false, ..
-                } => match t.as_ref() {
+                CouldBeALiteral::Yes { implicit: false } => match t.as_ref() {
                     Type::Literal(l) => {
                         let mut l = l.clone();
                         l.implicit = false;

@@ -1709,10 +1709,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     fn _infer_atom(&mut self, atom: Atom, result_context: &mut ResultContext) -> Inferred {
         let check_literal = |result_context: &ResultContext, i_s, index, literal| {
             let specific = match result_context.could_be_a_literal(i_s) {
-                CouldBeALiteral::Yes {
-                    implicit: false,
-                    kind,
-                } if kind.is_none() || kind.is_some_and(|k| k.matches_specific(literal)) => {
+                CouldBeALiteral::Yes { implicit: false } => {
                     let mut t = specific_to_type(
                         i_s,
                         NodeRef::new(self.file, index).to_db_lifetime(i_s.db),
