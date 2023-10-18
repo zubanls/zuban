@@ -748,16 +748,24 @@ impl Type {
             Self::NewType(n) => n.format(format_data),
             Self::RecursiveAlias(rec) => {
                 if let Some(generics) = &rec.generics {
-                    let alias = rec.type_alias(format_data.db);
-                    format!(
-                        "{}[{}]",
-                        alias.name(format_data.db).unwrap(),
-                        generics.format(format_data)
-                    )
-                    .into()
-                } else if format_data.has_already_seen_recursive_alias(rec) {
-                    let alias = rec.type_alias(format_data.db);
-                    Box::from(alias.name(format_data.db).unwrap())
+                    if format_data.style != FormatStyle::MypyRevealType {
+                        let alias = rec.type_alias(format_data.db);
+                        return format!(
+                            "{}[{}]",
+                            alias.name(format_data.db).unwrap(),
+                            generics.format(format_data)
+                        )
+                        .into();
+                    }
+                }
+
+                if format_data.has_already_seen_recursive_alias(rec) {
+                    if format_data.style == FormatStyle::MypyRevealType {
+                        "...".into()
+                    } else {
+                        let alias = rec.type_alias(format_data.db);
+                        Box::from(alias.name(format_data.db).unwrap())
+                    }
                 } else {
                     let format_data = format_data.with_seen_recursive_alias(rec);
                     rec.calculated_type(format_data.db).format(&format_data)

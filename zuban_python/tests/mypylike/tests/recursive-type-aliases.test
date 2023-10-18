@@ -17,14 +17,14 @@ i3: Rec3[int]
 
 s1: Rec1[str]
 
-reveal_type(unite(i1, i1))  # N: Revealed type is "Rec1[int]"
-reveal_type(unite(i1, i2))  # N: Revealed type is "Rec1[int] | Rec2[int]"
-reveal_type(unite(i2, i1))  # N: Revealed type is "Rec2[int] | Rec1[int]"
-reveal_type(unite(i1, i3))  # N: Revealed type is "Rec1[int] | Rec3[int]"
-reveal_type(unite(i3, i1))  # N: Revealed type is "Rec3[int] | Rec1[int]"
+reveal_type(unite(i1, i1))  # N: Revealed type is "typing.Sequence[... | int]"
+reveal_type(unite(i1, i2))  # N: Revealed type is "typing.Sequence[... | int] | typing.Sequence[... | int | str]"
+reveal_type(unite(i2, i1))  # N: Revealed type is "typing.Sequence[... | int | str] | typing.Sequence[... | int]"
+reveal_type(unite(i1, i3))  # N: Revealed type is "typing.Sequence[... | int] | typing.Sequence[... | float]"
+reveal_type(unite(i3, i1))  # N: Revealed type is "typing.Sequence[... | float] | typing.Sequence[... | int]"
 
-reveal_type(unite(i1, s1))  # N: Revealed type is "Rec1[int] | Rec1[str]"
-reveal_type(unite(s1, i1))  # N: Revealed type is "Rec1[str] | Rec1[int]"
+reveal_type(unite(i1, s1))  # N: Revealed type is "typing.Sequence[... | int] | typing.Sequence[... | str]"
+reveal_type(unite(s1, i1))  # N: Revealed type is "typing.Sequence[... | str] | typing.Sequence[... | int]"
 
 [case recursive_alias_incorrect_generics_no_restrictions]
 # flags: --mypy-compatible
@@ -37,17 +37,17 @@ Rec = list[Union[Rec[T, S], T, S]]
 
 x1: Rec[int, float]
 x2: Rec[str, int]
-reveal_type(x1)  # N: Revealed type is "Rec[int, float]"
-reveal_type(x1[0])  # N: Revealed type is "Rec[int, float] | int | float"
-reveal_type(x2)  # N: Revealed type is "Rec[str, int]"
-reveal_type(x2[0])  # N: Revealed type is "Rec[str, int] | str | int"
+reveal_type(x1)  # N: Revealed type is "list[... | int | float]"
+reveal_type(x1[0])  # N: Revealed type is "list[... | int | float] | int | float"
+reveal_type(x2)  # N: Revealed type is "list[... | str | int]"
+reveal_type(x2[0])  # N: Revealed type is "list[... | str | int] | str | int"
 
 x3: Rec[str]  # E: Bad number of arguments for type alias, expected: 2, given: 1
 x4: Rec[str, int, float]  # E: Bad number of arguments for type alias, expected: 2, given: 3
-reveal_type(x3)  # N: Revealed type is "Rec[Any, Any]"
-reveal_type(x3[0])  # N: Revealed type is "Rec[Any, Any] | Any"
-reveal_type(x4)  # N: Revealed type is "Rec[Any, Any]"
-reveal_type(x4[0])  # N: Revealed type is "Rec[Any, Any] | Any"
+reveal_type(x3)  # N: Revealed type is "list[... | Any]"
+reveal_type(x3[0])  # N: Revealed type is "list[... | Any] | Any"
+reveal_type(x4)  # N: Revealed type is "list[... | Any]"
+reveal_type(x4[0])  # N: Revealed type is "list[... | Any] | Any"
 
 [case recursive_alias_incorrect_generics_inside_no_restrictions]
 # flags: --mypy-compatible
@@ -63,9 +63,9 @@ Rec3 = list[Union[Rec3[int], T, S]]  # E: Bad number of arguments for type alias
 x1: Rec1[int, str]
 x2: Rec2[int, str]
 x3: Rec3[int, str]
-reveal_type(x1)  # N: Revealed type is "Rec1[int, str]"
-reveal_type(x1[0])  # N: Revealed type is "Rec1[int, str] | int | str"
-reveal_type(x2)  # N: Revealed type is "Rec2[int, str]"
-reveal_type(x2[0])  # N: Revealed type is "Rec2[Any, Any] | int | str"
-reveal_type(x3)  # N: Revealed type is "Rec3[int, str]"
-reveal_type(x3[0])  # N: Revealed type is "Rec3[Any, Any] | int | str"
+reveal_type(x1)  # N: Revealed type is "list[... | int | str]"
+reveal_type(x1[0])  # N: Revealed type is "list[... | int | str] | int | str"
+reveal_type(x2)  # N: Revealed type is "list[list[... | Any] | int | str]"
+reveal_type(x2[0])  # N: Revealed type is "list[... | Any] | int | str"
+reveal_type(x3)  # N: Revealed type is "list[list[... | Any] | int | str]"
+reveal_type(x3[0])  # N: Revealed type is "list[... | Any] | int | str"
