@@ -103,8 +103,8 @@ impl TypeVarBound {
                         // TODO shouldn't this also do a limited common base type search in the
                         // case of LowerAndUpper?
                         let m = t.is_simple_super_type_of(i_s, other);
+                        *t = t.common_base_type(i_s, other);
                         if !m.bool() {
-                            *t = t.common_base_type(i_s, other);
                             return Match::new_true();
                         }
                         return m;
