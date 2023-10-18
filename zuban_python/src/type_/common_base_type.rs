@@ -40,22 +40,30 @@ impl Type {
         for (_, c1) in self.mro(i_s.db) {
             for (_, c2) in other.mro(i_s.db) {
                 match &c1 {
-                    TypeOrClass::Type(t1) => {
-                        let TypeOrClass::Type(t2) = c2 else {
-                            continue
-                        };
-                        if let Some(base) = common_base_type_for_non_class(i_s, t1, &t2) {
-                            return base;
+                    TypeOrClass::Type(t1) => match c2 {
+                        TypeOrClass::Class(c2) => {
+                            if let Some(base) = class_against_non_class(i_s, c2, &t1) {
+                                return base;
+                            }
                         }
-                    }
-                    TypeOrClass::Class(c1) => {
-                        let TypeOrClass::Class(c2) = c2 else {
-                            continue
-                        };
-                        if let Some(t) = common_base_class(i_s, *c1, c2) {
-                            return t;
+                        TypeOrClass::Type(t2) => {
+                            if let Some(base) = common_base_type_for_non_class(i_s, t1, &t2) {
+                                return base;
+                            }
                         }
-                    }
+                    },
+                    TypeOrClass::Class(c1) => match c2 {
+                        TypeOrClass::Class(c2) => {
+                            if let Some(t) = common_base_class(i_s, *c1, c2) {
+                                return t;
+                            }
+                        }
+                        TypeOrClass::Type(t2) => {
+                            if let Some(base) = class_against_non_class(i_s, *c1, &t2) {
+                                return base;
+                            }
+                        }
+                    },
                 }
             }
         }
@@ -140,6 +148,15 @@ fn common_base_class(i_s: &InferenceState, c1: Class, c2: Class) -> Option<Type>
         c1.node_ref.as_link(),
         ClassGenerics::List(GenericsList::generics_from_vec(generics)),
     ))
+}
+
+fn class_against_non_class(i_s: &InferenceState, c1: Class, t2: &Type) -> Option<Type> {
+    if let Type::RecursiveAlias(r2) = t2 {
+        if let Type::Class(c2) = r2.calculated_type(i_s.db) {
+            return common_base_class(i_s, c1, c2.class(i_s.db));
+        }
+    }
+    None
 }
 
 fn common_base_type_for_non_class(i_s: &InferenceState, t1: &Type, t2: &Type) -> Option<Type> {
