@@ -163,10 +163,6 @@ testValidTypeAliasValuesMoreRestrictive
 testCrashOnComplexCheckWithNamedTupleNext
 # union dict context inference
 testNoCrashOnGenericUnionUnpacking
-# "Expression tuple item 8 has type "str"; "int" expected;"
-testAssigningWithLongTupleInitializer
-# Tuple a, *li = ta: "List item 0 has incompatible type "A"; expected "int""
-testAssignmentToStarFromTupleType
 # Union not matching type vars (None | Any and int | None leads to None | Any)
 testJoinUnionWithUnionAndAny
 # dict specialities
@@ -194,6 +190,8 @@ testTupleWithStarExpr
 testInferringLvarTypesInNestedListAssignment
 testNestedListAssignment
 testNestedListAssignmentToTuple
+# Tuple a, *li = ta: "List item 0 has incompatible type "A"; expected "int""
+testAssignmentToStarFromTupleType
 # recursive limits missing for joins
 testRecursiveAliasGenericInferenceNested
 testRecursiveAliasTopUnion
@@ -2275,6 +2273,8 @@ testCallableFastParseBadArgArgName
 testDistinctTypes
 # Separate formatting for ambigous names???
 testIncompatibleAssignmentAmbiguousShortnames
+# for long tuples: "Expression tuple item 8 has type "str"; "int" expected;"
+testAssigningWithLongTupleInitializer
 
 # Assignment like ac[b] += c with both __getitem__ and __setitem__ has same error twice
 testOperatorAssignmentWithIndexLvalue1
