@@ -166,15 +166,13 @@ testNoCrashOnGenericUnionUnpacking
 # dict specialities
 testDictFromList
 testDictFromIterableAndKeywordArg2
+testDictWithKeywordArgs
 #
 testDictWithKeywordArgsOnly
 testDictFromIterableAndStarStarArgs2
 testSpecialSignatureForSubclassOfDict
 testDictWithStarStarExpr
-#
-testDictFromIterableAndKeywordArg
 testDictFromIterableAndStarStarArgs
-testDictWithKeywordArgs
 
 # Tuple type comment definitions with list assignment
 testMultipleAssignmentWithListsInInitialization

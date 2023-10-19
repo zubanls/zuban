@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use crate::database::{Database, PointsBackup};
 use crate::diagnostics::IssueType;
-use crate::file::{File, PythonFile};
+use crate::file::PythonFile;
 use crate::getitem::{SliceType, SliceTypeContent, Slices};
 use crate::inferred::Inferred;
 use crate::matching::{IteratorContent, Matcher, ResultContext};

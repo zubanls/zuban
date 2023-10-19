@@ -78,7 +78,7 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
     let func_type_vars = func_or_callable.type_vars(i_s);
 
     let match_in_definition;
-    let matcher = if has_generics {
+    let mut matcher = if has_generics {
         match_in_definition = func_or_callable.defined_at();
         get_matcher(
             Some(class),
@@ -114,6 +114,26 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
         };
         type_arguments
     } else {
+        if let Some(t) = func_or_callable.first_self_or_class_annotation(i_s) {
+            // When an __init__ has a self annotation, it's a bit special, because it influences
+            // the generics.
+            let func_class = func_or_callable.class().unwrap();
+            if !Class::with_self_generics(i_s.db, class.node_ref)
+                .as_type(i_s.db)
+                .is_sub_type_of(i_s, &mut matcher, &t)
+                .bool()
+            {
+                todo!()
+            }
+            for entry in &mut matcher
+                .type_var_matcher
+                .as_mut()
+                .unwrap()
+                .calculated_type_vars
+            {
+                entry.avoid_type_vars_from_class_self_arguments(func_class);
+            }
+        }
         calculate_type_vars(
             i_s,
             matcher,

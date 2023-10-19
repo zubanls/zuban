@@ -57,6 +57,20 @@ impl<'db: 'a, 'a> FunctionOrCallable<'a> {
         }
     }
 
+    pub fn first_self_or_class_annotation(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+    ) -> Option<Cow<Type>> {
+        match self {
+            Self::Function(function) => function.first_param_annotation_type(i_s),
+            Self::Callable(c) => c
+                .content
+                .kind
+                .had_first_self_or_class_annotation()
+                .then(|| Cow::Borrowed(c.content.first_positional_type().unwrap())),
+        }
+    }
+
     pub fn has_keyword_param_with_name(&self, db: &Database, name: &str) -> bool {
         match self {
             Self::Function(function) => function.iter_params().any(|p| {
@@ -165,6 +179,31 @@ impl CalculatedTypeVarLike {
             Generic::ParamSpecArgument(p) => todo!(),
         }
     }
+
+    pub fn avoid_type_vars_from_class_self_arguments(&mut self, class: Class) {
+        let is_self_type_var = match &self.type_ {
+            BoundKind::TypeVar(
+                TypeVarBound::Invariant(t) | TypeVarBound::Lower(t) | TypeVarBound::Upper(t),
+            ) => match t {
+                Type::TypeVar(tv) if class.node_ref.as_link() == tv.in_definition => true,
+                _ => false,
+            },
+            BoundKind::TypeVar(TypeVarBound::UpperAndLower(_, _)) => unreachable!(),
+            BoundKind::TypeVarTuple(tvt) => todo!(),
+            BoundKind::ParamSpecArgument(p) => match &p.params {
+                CallableParams::WithParamSpec(pre, p2)
+                    if pre.is_empty() && class.node_ref.as_link() == p2.in_definition =>
+                {
+                    true
+                }
+                _ => false,
+            },
+            BoundKind::Uncalculated { .. } => false,
+        };
+        if is_self_type_var {
+            self.type_ = BoundKind::Uncalculated { fallback: None };
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -214,6 +253,7 @@ impl TypeVarMatcher {
         value_type: &Type,
         variance: Variance,
     ) -> Match {
+        debug_assert_eq!(type_var_usage.in_definition, self.match_in_definition);
         let current = &mut self.calculated_type_vars[type_var_usage.index.as_usize()];
         if let BoundKind::TypeVar(current_type) = &mut current.type_ {
             let m = current_type.merge_or_mismatch(i_s, value_type, variance);
