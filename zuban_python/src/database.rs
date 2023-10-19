@@ -2,6 +2,7 @@ use std::cell::Cell;
 use std::collections::HashMap;
 use std::fmt;
 use std::mem;
+use std::ops::Range;
 use std::path::Path;
 use std::pin::Pin;
 use std::rc::Rc;
@@ -271,6 +272,25 @@ impl Points {
             }
         }
     }
+
+    pub fn backup(&self, range: Range<NodeIndex>) -> PointsBackup {
+        let slice = &self.0[range.start as usize..range.end as usize];
+        PointsBackup {
+            range,
+            points: slice.to_vec(),
+        }
+    }
+
+    pub fn reset_from_backup(&self, backup: &PointsBackup) {
+        for (i, points_index) in backup.range.clone().enumerate() {
+            self.0[points_index as usize].set(backup.points[i].get());
+        }
+    }
+}
+
+pub struct PointsBackup {
+    pub range: Range<NodeIndex>,
+    points: Vec<Cell<Point>>,
 }
 
 #[derive(Debug, PartialEq, Eq)]

@@ -84,6 +84,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         let mut first_similar = None;
         let mut multi_any_match: Option<(_, _, Box<_>)> = None;
         let mut had_error_in_func = None;
+        let points_backup = args.points_backup();
         for (i, callable) in self.overload.iter_functions().enumerate() {
             let callable = Callable::new(callable, self.class);
             let (calculated_type_args, had_error) =
@@ -110,7 +111,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             args.as_node_ref().line(),
                             callable.content.format(&FormatData::new_short(i_s.db))
                         );
-                        args.reset_cache();
+                        args.reset_points_from_backup(&points_backup);
                         return OverloadResult::Single(callable);
                     }
                 }
@@ -127,7 +128,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             &argument_indices,
                         ) {
                             if had_error {
-                                args.reset_cache();
+                                args.reset_points_from_backup(&points_backup);
                                 // Need to run the whole thing again to generate errors, because
                                 // the function is not going to be checked.
                                 match_signature(i_s, result_context, callable);
@@ -139,7 +140,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                                 args.as_node_ref().line(),
                                 callable.content.format(&FormatData::new_short(i_s.db)),
                             );
-                            args.reset_cache();
+                            args.reset_points_from_backup(&points_backup);
                             return OverloadResult::NotFound;
                         }
                     } else {
@@ -159,7 +160,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 }
                 SignatureMatch::False { similar: false } => (),
             }
-            args.reset_cache();
+            args.reset_points_from_backup(&points_backup);
         }
         if let Some((type_arguments, callable, _)) = multi_any_match {
             debug!(

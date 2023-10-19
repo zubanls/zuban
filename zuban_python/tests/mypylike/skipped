@@ -165,7 +165,6 @@ testCrashOnComplexCheckWithNamedTupleNext
 testNoCrashOnGenericUnionUnpacking
 # dict specialities
 testDictWithKeywordArgsOnly
-testDictWithoutKeywordArgs
 testDictFromList
 testDictFromIterableAndKeywordArg
 testDictFromIterableAndKeywordArg2
@@ -2208,6 +2207,7 @@ testTupleWithoutContext
 testReusingInferredForIndex2
 testErrorCodeNeedTypeAnnotation
 testColumnNeedTypeAnnotation
+testDictWithoutKeywordArgs
 # "Perhaps you need a type annotation for "x"? Suggestion: "List[str | int]""
 testInferredTypeSubTypeOfReturnType
 

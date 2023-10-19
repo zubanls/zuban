@@ -1,7 +1,6 @@
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::fmt;
-use std::ops::Range;
 use std::rc::Rc;
 
 use parsa_python_ast::*;
@@ -292,14 +291,6 @@ impl<'db> PythonFile {
 
     pub fn file_entry(&self, db: &Database) -> Rc<FileEntry> {
         db.file_state(self.file_index()).file_entry()
-    }
-
-    pub fn reset_non_name_cache_between(&self, range: Range<NodeIndex>) {
-        for i in range {
-            if NodeRef::new(self, i).maybe_name().is_none() {
-                self.points.set(i, Point::new_uncalculated())
-            }
-        }
     }
 
     pub fn add_issue(&self, i_s: &InferenceState, issue: Issue) {

@@ -6,6 +6,7 @@ use parsa_python_ast::{
 };
 
 use crate::arguments::{ArgumentIterator, Arguments, ArgumentsType};
+use crate::database::PointsBackup;
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::{infer_index, PythonFile};
@@ -317,7 +318,12 @@ impl<'db> Arguments<'db> for SliceArguments<'db, '_> {
         self.slice_type.as_argument_node_ref()
     }
 
-    fn reset_cache(&self) {
-        debug!("TODO implement reset_cache for SliceArguments");
+    fn points_backup(&self) -> Option<PointsBackup> {
+        debug!("TODO implement points_backup for SliceArguments");
+        None
+    }
+
+    fn reset_points_from_backup(&self, backup: &Option<PointsBackup>) {
+        debug!("TODO implement reset_from_backup for SliceArguments");
     }
 }

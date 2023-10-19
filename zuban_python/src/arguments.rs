@@ -1,9 +1,9 @@
 use std::mem;
 use std::rc::Rc;
 
-use crate::database::Database;
+use crate::database::{Database, PointsBackup};
 use crate::diagnostics::IssueType;
-use crate::file::PythonFile;
+use crate::file::{File, PythonFile};
 use crate::getitem::{SliceType, SliceTypeContent, Slices};
 use crate::inferred::Inferred;
 use crate::matching::{IteratorContent, Matcher, ResultContext};
@@ -25,7 +25,10 @@ pub trait Arguments<'db>: std::fmt::Debug {
     fn iter(&self) -> ArgumentIterator<'db, '_>;
     fn type_(&self) -> ArgumentsType;
     fn as_node_ref(&self) -> NodeRef;
-    fn reset_cache(&self) {
+    fn points_backup(&self) -> Option<PointsBackup> {
+        None
+    }
+    fn reset_points_from_backup(&self, backup: &Option<PointsBackup>) {
         // This is a bit special, but we use this to reset the type cache of the expressions to
         // avoid overload context inference issues.
     }
@@ -118,13 +121,17 @@ impl<'db: 'a, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
         NodeRef::new(self.file, self.primary_node_index)
     }
 
-    fn reset_cache(&self) {
-        // Details is empty when no arguments are provided (e.g. `foo()`), which means we do not
-        // have to reset the cache.
+    fn points_backup(&self) -> Option<PointsBackup> {
         let primary = self.as_node_ref().as_primary();
         let start = primary.index();
         let end = primary.expect_closing_bracket_index();
-        self.file.reset_non_name_cache_between(start..end);
+        Some(self.file.points.backup(start..end))
+    }
+
+    fn reset_points_from_backup(&self, backup: &Option<PointsBackup>) {
+        // Details is empty when no arguments are provided (e.g. `foo()`), which means we do not
+        // have to reset the cache.
+        self.file.points.reset_from_backup(backup.as_ref().unwrap());
     }
 }
 
@@ -208,9 +215,14 @@ impl<'db, 'a> Arguments<'db> for CombinedArguments<'db, 'a> {
         self.args2.as_node_ref()
     }
 
-    fn reset_cache(&self) {
-        self.args1.reset_cache();
-        self.args2.reset_cache();
+    fn points_backup(&self) -> Option<PointsBackup> {
+        debug_assert!(self.args1.points_backup().is_none());
+        self.args2.points_backup()
+    }
+
+    fn reset_points_from_backup(&self, backup: &Option<PointsBackup>) {
+        self.args1.reset_points_from_backup(backup);
+        self.args2.reset_points_from_backup(backup);
     }
 }
 
