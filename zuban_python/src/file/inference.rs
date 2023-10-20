@@ -1785,7 +1785,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 ));
             }
             ListComprehension(comp) => {
-                return self.infer_comprehension(comp.unpack(), ComprehensionKind::List)
+                let t = self
+                    .infer_comprehension_expr(comp.unpack())
+                    .as_type(self.i_s);
+                return Inferred::from_type(new_class!(
+                    self.i_s.db.python_state.list_node_ref().as_link(),
+                    t,
+                ));
             }
             Dict(dict) => {
                 if let Some(result) = self.infer_dict_literal_from_context(dict, result_context) {
@@ -1807,7 +1813,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
             }
             SetComprehension(comp) => {
-                return self.infer_comprehension(comp.unpack(), ComprehensionKind::SetOrDict)
+                let t = self
+                    .infer_comprehension_expr(comp.unpack())
+                    .as_type(self.i_s);
+                return Inferred::from_type(new_class!(
+                    self.i_s.db.python_state.set_node_ref().as_link(),
+                    t,
+                ));
             }
             Tuple(tuple) => {
                 return self
@@ -1815,7 +1827,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     .save_redirect(self.i_s, self.file, atom.index())
             }
             GeneratorComprehension(comp) => {
-                return self.infer_comprehension(comp.unpack(), ComprehensionKind::Generator)
+                return self.infer_generator_comprehension(comp.unpack())
             }
             YieldExpr(yield_expr) => return self.infer_yield_expr(yield_expr, result_context),
             NamedExpression(named_expression) => {
@@ -2322,7 +2334,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    pub fn infer_dict_comprehension(
+    fn infer_dict_comprehension(
         &mut self,
         unpacked: (CommonComprehensionExpression, ForIfClauses),
     ) -> Inferred {
@@ -2338,31 +2350,28 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         ))
     }
 
-    pub fn infer_comprehension(
+    fn infer_comprehension_expr(
         &mut self,
         unpacked: (CommonComprehensionExpression, ForIfClauses),
-        kind: ComprehensionKind,
     ) -> Inferred {
         let (comp_expr, for_if_clauses) = unpacked;
         self.infer_for_if_clauses(for_if_clauses);
         let CommonComprehensionExpression::Single(named_expr) = comp_expr else {
             unreachable!()
         };
-        let t = self.infer_named_expression(named_expr).as_type(self.i_s);
-        Inferred::from_type(match kind {
-            ComprehensionKind::List => {
-                new_class!(self.i_s.db.python_state.list_node_ref().as_link(), t,)
-            }
-            ComprehensionKind::SetOrDict => {
-                new_class!(self.i_s.db.python_state.set_node_ref().as_link(), t,)
-            }
-            ComprehensionKind::Generator => new_class!(
-                self.i_s.db.python_state.generator_link(),
-                t,
-                Type::None,
-                Type::None,
-            ),
-        })
+        self.infer_named_expression(named_expr)
+    }
+
+    fn infer_generator_comprehension(
+        &mut self,
+        unpacked: (CommonComprehensionExpression, ForIfClauses),
+    ) -> Inferred {
+        Inferred::from_type(new_class!(
+            self.i_s.db.python_state.generator_link(),
+            self.infer_comprehension_expr(unpacked).as_type(self.i_s),
+            Type::None,
+            Type::None,
+        ))
     }
 }
 
@@ -2558,10 +2567,4 @@ pub fn await_(
     } else {
         Inferred::from_type(t)
     }
-}
-
-pub enum ComprehensionKind {
-    SetOrDict,
-    List,
-    Generator,
 }
