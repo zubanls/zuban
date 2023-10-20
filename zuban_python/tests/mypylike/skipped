@@ -159,9 +159,6 @@ testTypeEquivalentTypeAnyEdgeCase
 testValidTypeAliasValues
 testValidTypeAliasValuesMoreRestrictive
 
-# union context inference
-testCrashOnComplexCheckWithNamedTupleNext
-
 # Tuple type comment definitions with list assignment
 testMultipleAssignmentWithListsInInitialization
 testAssignmentToStarAnnotation
@@ -230,6 +227,7 @@ testGenericInferenceWithItertools
 param_spec_with_generic_class
 # type var backtracking
 testUnionInference
+testCrashOnComplexCheckWithNamedTupleNext
 unite_type_vars_mypy_issue_5874
 multiple_lambda_mypy_issue_4226
 # func type var in __init__
