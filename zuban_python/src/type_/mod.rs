@@ -1296,18 +1296,6 @@ impl Type {
         )
     }
 
-    pub fn on_any_class(
-        &self,
-        i_s: &InferenceState,
-        matcher: &mut Matcher,
-        callable: &mut impl FnMut(&mut Matcher, &Class) -> bool,
-    ) -> bool {
-        self.on_any_resolved_context_type(i_s, matcher, &mut |matcher, t| match t {
-            Type::Class(c) => callable(matcher, &c.class(i_s.db)),
-            _ => false,
-        })
-    }
-
     pub fn on_any_typed_dict(
         &self,
         i_s: &InferenceState,
