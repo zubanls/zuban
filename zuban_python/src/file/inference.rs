@@ -1773,14 +1773,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     result,
                 ));
             }
-            ListComprehension(comp) => {
-                return self.infer_comprehension_with_context(
-                    result_context,
-                    i_s.db.python_state.list_node_ref(),
-                    |got, expected| IssueType::ListComprehensionMismatch { got, expected },
-                    comp,
-                )
-            }
+            ListComprehension(comp) => return self.infer_list_comprehension(comp, result_context),
             Dict(dict) => {
                 if let Some(result) = self.infer_dict_literal_from_context(dict, result_context) {
                     return result.save_redirect(i_s, self.file, atom.index());
@@ -1800,21 +1793,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     todo!()
                 }
             }
-            SetComprehension(comp) => {
-                return self.infer_comprehension_with_context(
-                    result_context,
-                    i_s.db.python_state.set_node_ref(),
-                    |got, expected| IssueType::SetComprehensionMismatch { got, expected },
-                    comp,
-                )
-            }
+            SetComprehension(comp) => return self.infer_set_comprehension(comp, result_context),
             Tuple(tuple) => {
                 return self
                     .infer_tuple_iterator(tuple.iter(), result_context)
                     .save_redirect(i_s, self.file, atom.index())
             }
             GeneratorComprehension(comp) => {
-                return self.infer_generator_comprehension(comp.unpack())
+                return self.infer_generator_comprehension(comp, result_context)
             }
             YieldExpr(yield_expr) => return self.infer_yield_expr(yield_expr, result_context),
             NamedExpression(named_expression) => {
@@ -2337,17 +2323,17 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         ))
     }
 
-    fn infer_comprehension_with_context(
+    fn infer_comprehension_expr_with_context(
         &mut self,
         result_context: &mut ResultContext,
-        for_class: NodeRef,
+        expected_protocol: NodeRef,
         on_mismatch: impl FnOnce(Box<str>, Box<str>) -> IssueType,
         comp: Comprehension,
-    ) -> Inferred {
+    ) -> Type {
         let i_s = self.i_s;
         let inner_expected = result_context.on_unique_protocol_in_unpacked_union(
             i_s,
-            for_class,
+            expected_protocol,
             |matcher, calculated_type_args| {
                 calculated_type_args
                     .into_iter()
@@ -2372,7 +2358,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 from.to_db_lifetime(i_s.db)
             });
         }
-        Inferred::from_type(new_class!(for_class.as_link(), t,))
+        t
     }
     fn infer_comprehension_expr(
         &mut self,
@@ -2387,14 +2373,54 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         self.infer_named_expression_with_context(named_expr, result_context)
     }
 
+    fn infer_list_comprehension(
+        &mut self,
+        comp: Comprehension,
+        result_context: &mut ResultContext,
+    ) -> Inferred {
+        let t = self.infer_comprehension_expr_with_context(
+            result_context,
+            self.i_s.db.python_state.iterable_node_ref(),
+            |got, expected| IssueType::ListComprehensionMismatch { got, expected },
+            comp,
+        );
+        Inferred::from_type(new_class!(
+            self.i_s.db.python_state.list_node_ref().as_link(),
+            t,
+        ))
+    }
+
+    fn infer_set_comprehension(
+        &mut self,
+        comp: Comprehension,
+        result_context: &mut ResultContext,
+    ) -> Inferred {
+        let t = self.infer_comprehension_expr_with_context(
+            result_context,
+            self.i_s.db.python_state.iterable_node_ref(),
+            |got, expected| IssueType::SetComprehensionMismatch { got, expected },
+            comp,
+        );
+        Inferred::from_type(new_class!(
+            self.i_s.db.python_state.set_node_ref().as_link(),
+            t,
+        ))
+    }
+
     fn infer_generator_comprehension(
         &mut self,
-        unpacked: (CommonComprehensionExpression, ForIfClauses),
+        comp: Comprehension,
+        result_context: &mut ResultContext,
     ) -> Inferred {
+        let t = self.infer_comprehension_expr_with_context(
+            result_context,
+            self.i_s.db.python_state.iterable_node_ref(),
+            |got, expected| IssueType::GeneratorComprehensionMismatch { got, expected },
+            comp,
+        );
         Inferred::from_type(new_class!(
             self.i_s.db.python_state.generator_link(),
-            self.infer_comprehension_expr(unpacked, &mut ResultContext::Unknown)
-                .as_type(self.i_s),
+            t,
             Type::None,
             Type::None,
         ))

@@ -491,7 +491,7 @@ impl<'db> Diagnostic<'db> {
                 "Set comprehension has incompatible type Set[{got}]; expected Set[{expected}]",
             ),
             GeneratorComprehensionMismatch{got, expected} => format!(
-                "Generator has incompatible item type {got}; expected {expected}",
+                "Generator has incompatible item type \"{got}\"; expected \"{expected}\"",
             ),
             DictMemberMismatch{item, got_pair, expected_pair} => format!(
                 "Dict entry {item} has incompatible type {got_pair}; expected {expected_pair}",

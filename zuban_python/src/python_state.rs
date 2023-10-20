@@ -624,6 +624,8 @@ impl PythonState {
     attribute_node_ref!(typing, typed_dict_node_ref, typing_typed_dict_index);
     attribute_node_ref!(typing, mapping_node_ref, typing_mapping_index);
     attribute_node_ref!(typing, mapping_get_node_ref, typing_mapping_get_index);
+    attribute_node_ref!(typing, pub generator_node_ref, typing_generator_index);
+    attribute_node_ref!(typing, pub iterable_node_ref, typing_iterable_index);
     attribute_node_ref!(types, none_type_node_ref, types_none_type_index);
     attribute_node_ref!(types, module_node_ref, types_module_type_index);
     attribute_node_ref!(
@@ -738,8 +740,7 @@ impl PythonState {
     }
 
     pub fn generator_link(&self) -> PointLink {
-        debug_assert!(self.typing_generator_index != 0);
-        PointLink::new(self.typing().file_index(), self.typing_generator_index)
+        self.generator_node_ref().as_link()
     }
 
     pub fn iterator_link(&self) -> PointLink {
@@ -748,8 +749,7 @@ impl PythonState {
     }
 
     pub fn iterable_link(&self) -> PointLink {
-        debug_assert!(self.typing_iterable_index != 0);
-        PointLink::new(self.typing().file_index(), self.typing_iterable_index)
+        self.iterable_node_ref().as_link()
     }
 
     pub fn async_generator_link(&self) -> PointLink {
