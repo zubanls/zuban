@@ -169,6 +169,7 @@ pub(crate) enum IssueType {
     TupleExpectedAsNamedTupleField,
     NamedTupleNamesCannotStartWithUnderscore { name: &'static str, field_names: Box<str> },
     NamedTupleInvalidFieldName,
+    NamedTupleFirstArgumentMismatch { should: Box<str>, is: Box<str> },
 
     TypedDictIncompatibleType { got: Box<str>, key: Box<str>, expected: Box<str> },
     TypedDictExtraKey { key: Box<str>, typed_dict: Box<str> },
@@ -857,6 +858,9 @@ impl<'db> Diagnostic<'db> {
             NamedTupleNamesCannotStartWithUnderscore{name, field_names} => format!(
                 "\"{name}()\" field names cannot start with an underscore: {field_names}"),
             NamedTupleInvalidFieldName => "Invalid \"NamedTuple()\" field name".to_string(),
+            NamedTupleFirstArgumentMismatch { should, is } => format!(
+                r#"First argument to namedtuple() should be "{should}", not "{is}""#
+            ),
 
             TypedDictIncompatibleType {got, key, expected} => format!(
                 r#"Incompatible types (expression has type "{got}", TypedDict item "{key}" has type "{expected}")"#

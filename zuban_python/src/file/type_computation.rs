@@ -3608,6 +3608,21 @@ fn check_named_tuple_name<'x, 'y>(
         node_ref.add_issue(i_s, IssueType::NamedTupleExpectsStringLiteralAsFirstArg { name: executable_name });
         return None
     };
+    let py_string = expr.maybe_single_string_literal()?;
+    if let Some(name) = py_string.in_simple_assignment() {
+        let should = name.as_code();
+        let is = py_string.content();
+        if should != is {
+            node_ref.add_issue(
+                i_s,
+                IssueType::NamedTupleFirstArgumentMismatch {
+                    should: should.into(),
+                    is: is.into(),
+                },
+            );
+            return None;
+        }
+    }
     let Some(second_arg) = iterator.next() else {
         // TODO this is only done for namedtuple and not NamedTuple
         // Detected by execution of namedtuple
