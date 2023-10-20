@@ -15,7 +15,7 @@ use parsa_python_ast::{
     ExceptExpression, Expression, File, ForIfClause, ForIfClauseIterator, ForStmt, FunctionDef,
     IfBlockType, IfStmt, ImportFromTargets, InterestingNode, InterestingNodeSearcher, Lambda,
     MatchStmt, Name, NameDefinition, NameParent, NodeIndex, SimpleStmts, StmtContent, StmtIterator,
-    StmtOrError, Tree, TryBlockType, TryStmt, WhileStmt, WithStmt,
+    StmtOrError, Tree, TryBlockType, TryStmt, WhileStmt, WithStmt, YieldExprContent,
 };
 
 #[derive(PartialEq, Debug)]
@@ -756,9 +756,18 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 }
                 InterestingNode::YieldExpr(n) => {
                     if self.type_ != NameBinderType::Function {
+                        let keyword = match n.unpack() {
+                            YieldExprContent::YieldFrom(_) => "yield from",
+                            _ => "yield",
+                        };
                         self.add_issue(
                             n.index(),
-                            IssueType::StmtOutsideFunction { keyword: "yield" },
+                            match self.type_ {
+                                NameBinderType::Comprehension => {
+                                    IssueType::YieldOrYieldFromInsideComprehension { keyword }
+                                }
+                                _ => IssueType::StmtOutsideFunction { keyword },
+                            },
                         )
                     }
                     self.index_return_or_yield(&mut latest_return_or_yield, n.index());
@@ -821,14 +830,11 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         clause: &ForIfClause<'db>,
         clauses: &mut ForIfClauseIterator<'db>,
     ) {
-        let targets = match clause {
+        let (targets, ifs) = match clause {
             ForIfClause::Sync(sync_for_if_clause) | ForIfClause::Async(sync_for_if_clause) => {
                 let (targets, from, ifs) = sync_for_if_clause.unpack();
                 self.index_non_block_node(&from, true, false);
-                for if_ in ifs {
-                    self.index_non_block_node(&if_, true, false);
-                }
-                targets
+                (targets, ifs)
             }
         };
         // TODO this is not exactly correct for named expressions and their scopes.
@@ -839,6 +845,9 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             &symbol_table,
             |binder| {
                 binder.index_non_block_node(&targets, true, false);
+                for if_ in ifs {
+                    binder.index_non_block_node(&if_, true, false);
+                }
 
                 if let Some(clause) = clauses.next() {
                     binder.index_comprehension_clause(expr, &clause, clauses);

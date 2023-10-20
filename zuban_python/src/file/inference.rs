@@ -661,7 +661,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let i_s = self.i_s;
         let from = NodeRef::new(self.file, yield_expr.index());
         let Some(current_function) = self.i_s.current_function() else {
-            todo!()
+            // The name binder already added an issue here.
+            return Inferred::new_any()
         };
         let generator = current_function
             .generator_return(i_s)

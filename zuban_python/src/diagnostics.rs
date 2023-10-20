@@ -72,6 +72,7 @@ pub(crate) enum IssueType {
     UnpackingAStringIsDisallowed,
     StarredExpressionOnlyNoTarget,
     StmtOutsideFunction { keyword: &'static str },
+    YieldOrYieldFromInsideComprehension { keyword: &'static str },
     AwaitOutsideFunction,
     AwaitOutsideCoroutine,
     YieldFromInAsyncFunction,
@@ -673,6 +674,9 @@ impl<'db> Diagnostic<'db> {
             StarredExpressionOnlyNoTarget =>
                 "Can use starred expression only as assignment target".to_string(),
             StmtOutsideFunction{keyword} => format!("{keyword:?} outside function"),
+            YieldOrYieldFromInsideComprehension { keyword } => format!(
+                "{keyword:?} inside comprehension or generator expression"
+            ),
             AwaitOutsideFunction => r#""await" outside function"#.to_string(),
             AwaitOutsideCoroutine => r#""await" outside coroutine ("async def")"#.to_string(),
             YieldFromInAsyncFunction => r#""yield from" in async function"#.to_string(),

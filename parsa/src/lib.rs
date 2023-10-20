@@ -485,8 +485,14 @@ macro_rules! __create_node {
                     }
                     for t in self.search_types {
                         if t.to_internal() == n.type_ {
-                            let node = $Node::new(self.internal_tree, self.next_index + i, n);
-                            self.next_index += i + 1;
+                            self.next_index += i;
+                            let node = $Node::new(self.internal_tree, self.next_index, n);
+                            if node.internal_node.next_node_offset != 0 {
+                                self.next_index += node.internal_node.next_node_offset;
+                            } else {
+                                // TODO skip here to the next node!
+                                self.next_index += 1;
+                            }
                             return Some(node)
                         }
                     }

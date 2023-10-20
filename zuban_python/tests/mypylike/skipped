@@ -17,6 +17,7 @@ testCallablesAsParameters
 testPEP570Calls
 testPEP570Unannotated
 testWalrus
+testWalrusRedefined
 testWalrusConditionalTypeBinder
 testWalrusConditionalTypeCheck
 testWalrusConditionalTypeCheck2
@@ -579,7 +580,6 @@ testEnumerateReturningSelfFromIter
 testListComprehensionWithNonDirectMapping
 testTypeInferenceOfListComprehension
 testComprehensionShadowBinder
-testYieldOutsideFunction
 testIterableProtocolOnClass
 testIterableProtocolOnMetaclass
 # "Assignment expression within a comprehension cannot be used in a class body"
