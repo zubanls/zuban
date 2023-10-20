@@ -2302,7 +2302,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             };
             self.assign_targets(targets.as_target(), inf, clause_node_ref, false);
             for comp_if in comp_ifs {
-                debug!("TODO implement comp_if {comp_if:?}");
+                self.infer_expression_part(comp_if.expression_part());
             }
         }
     }

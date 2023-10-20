@@ -1674,6 +1674,12 @@ impl<'db> Iterator for CompIfIterator<'db> {
     }
 }
 
+impl<'db> CompIf<'db> {
+    pub fn expression_part(&self) -> ExpressionPart<'db> {
+        ExpressionPart::new(self.node.nth_child(1))
+    }
+}
+
 impl<'db> ClassDef<'db> {
     pub fn name_definition(&self) -> NameDefinition<'db> {
         NameDefinition::new(self.node.nth_child(1))
