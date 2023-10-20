@@ -228,7 +228,7 @@ macro_rules! create_struct {
                     Nonterminal(return_stmt),
                     Nonterminal(dict_comprehension),
                 ];
-                InterestingNodes(self.node.search(SEARCH_NAMES))
+                InterestingNodes(self.node.search(SEARCH_NAMES, true))
             }
         }
     };
@@ -744,7 +744,7 @@ impl<'db> Expression<'db> {
     }
 
     pub fn search_names(&self) -> NameIterator<'db> {
-        NameIterator(self.node.search(&[Terminal(TerminalType::Name)]))
+        NameIterator(self.node.search(&[Terminal(TerminalType::Name)], false))
     }
 
     fn maybe_name_or_last_primary_name(&self) -> Option<Name<'db>> {
@@ -1061,7 +1061,7 @@ impl<'db> Block<'db> {
             Nonterminal(class_def),
             Nonterminal(function_def),
         ];
-        RelevantUntypedNodes(self.node.search(SEARCH))
+        RelevantUntypedNodes(self.node.search(SEARCH, false))
     }
 }
 
@@ -1712,7 +1712,7 @@ impl<'db> ClassDef<'db> {
     }
 
     pub fn search_potential_self_assignments(&self) -> PotentialSelfAssignments<'db> {
-        PotentialSelfAssignments(self.node.search(&[Nonterminal(t_primary)]))
+        PotentialSelfAssignments(self.node.search(&[Nonterminal(t_primary)], true))
     }
 
     pub fn maybe_decorated(&self) -> Option<Decorated<'db>> {
@@ -2899,7 +2899,7 @@ impl<'db> Arguments<'db> {
     }
 
     pub fn search_names(&self) -> NameIterator<'db> {
-        NameIterator(self.node.search(&[Terminal(TerminalType::Name)]))
+        NameIterator(self.node.search(&[Terminal(TerminalType::Name)], false))
     }
 }
 

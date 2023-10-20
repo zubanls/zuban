@@ -755,6 +755,25 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                     }
                 }
                 InterestingNode::YieldExpr(n) => {
+                    match n.unpack() {
+                        YieldExprContent::StarExpressions(s) => {
+                            self.index_non_block_node_full(
+                                &s,
+                                ordered,
+                                in_base_scope,
+                                from_annotation,
+                            );
+                        }
+                        YieldExprContent::YieldFrom(y) => {
+                            self.index_non_block_node_full(
+                                &y,
+                                ordered,
+                                in_base_scope,
+                                from_annotation,
+                            );
+                        }
+                        YieldExprContent::None => (),
+                    }
                     if self.type_ != NameBinderType::Function {
                         let keyword = match n.unpack() {
                             YieldExprContent::YieldFrom(_) => "yield from",
@@ -778,6 +797,14 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                             n.index(),
                             IssueType::StmtOutsideFunction { keyword: "return" },
                         )
+                    }
+                    if let Some(return_expr) = n.star_expressions() {
+                        self.index_non_block_node_full(
+                            &return_expr,
+                            ordered,
+                            in_base_scope,
+                            from_annotation,
+                        );
                     }
                     self.index_return_or_yield(&mut latest_return_or_yield, n.index());
                 }

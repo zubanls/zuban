@@ -311,13 +311,14 @@ macro_rules! __create_node {
                 None
             }
 
-            pub fn search(&self, types: &'static [$NodeType]) -> SearchIterator<'a> {
+            pub fn search(&self, types: &'static [$NodeType], avoid_found_subtrees: bool) -> SearchIterator<'a> {
                 assert!(!self.is_leaf(), "Unexpected Leaf: {:?}", self.type_());
                 SearchIterator {
                     internal_tree: self.internal_tree,
                     next_index: self.index,
                     end_code_index: self.end(),
                     search_types: types,
+                    avoid_found_subtrees,
                 }
             }
 
@@ -347,6 +348,14 @@ macro_rules! __create_node {
                     }
                 }
                 return None
+            }
+
+            pub fn last_leaf_in_subtree(&self) -> $Node<'a> {
+                if self.is_leaf() {
+                    *self
+                } else {
+                    self.iter_children().last().unwrap().last_leaf_in_subtree()
+                }
             }
 
             pub fn type_(&self) -> $NodeType {
@@ -471,6 +480,7 @@ macro_rules! __create_node {
             next_index: $crate::NodeIndex,
             end_code_index: $crate::CodeIndex,
             search_types: &'static [$NodeType],
+            avoid_found_subtrees: bool,
         }
 
         impl<'a> Iterator for SearchIterator<'a> {
@@ -487,10 +497,13 @@ macro_rules! __create_node {
                         if t.to_internal() == n.type_ {
                             self.next_index += i;
                             let node = $Node::new(self.internal_tree, self.next_index, n);
-                            if node.internal_node.next_node_offset != 0 {
-                                self.next_index += node.internal_node.next_node_offset;
+                            if self.avoid_found_subtrees {
+                                if node.internal_node.next_node_offset == 0 {
+                                    self.next_index = node.last_leaf_in_subtree().index + 1;
+                                } else {
+                                    self.next_index += node.internal_node.next_node_offset;
+                                }
                             } else {
-                                // TODO skip here to the next node!
                                 self.next_index += 1;
                             }
                             return Some(node)
