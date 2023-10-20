@@ -2407,7 +2407,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         ))
     }
 
-    fn infer_generator_comprehension(
+    pub fn infer_generator_comprehension(
         &mut self,
         comp: Comprehension,
         result_context: &mut ResultContext,

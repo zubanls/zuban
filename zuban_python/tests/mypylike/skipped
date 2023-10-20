@@ -570,19 +570,18 @@ testCallingNoTypeCheckFunction
 testCallingNoTypeCheckFunction2
 testNoTypeCheckDecoratorSemanticError
 
-# Comprehensions
+# Dict comprehensions
 testNewAnalyzerDictionaryComprehension
+testDictionaryComprehensionWithNonDirectMapping
+testSimpleDictionaryComprehension
+# Other Comprehensions
 testEnumerateReturningSelfFromIter
 testListComprehensionWithNonDirectMapping
 testTypeInferenceOfListComprehension
-testSimpleDictionaryComprehension
-testDictionaryComprehensionWithNonDirectMapping
 testComprehensionShadowBinder
+testYieldOutsideFunction
 testIterableProtocolOnClass
 testIterableProtocolOnMetaclass
-testYieldOutsideFunction
-# comprehensions Scoping
-testListComprehensionSpecialScoping
 # "Assignment expression within a comprehension cannot be used in a class body"
 testNoCrashOnAssignmentExprClass
 
@@ -1884,6 +1883,8 @@ testOverrideByIdemAliasReversed
 testOverrideByIdemAliasGeneric
 testOverrideByIdemAliasImported
 testConditionalExceptionAliasOverride
+# comprehensions Scoping (actually Python 3.10 name lookup behavior)
+testListComprehensionSpecialScoping
 
 # Conditional definitions
 testNewAnalyzerConditionalFunc
