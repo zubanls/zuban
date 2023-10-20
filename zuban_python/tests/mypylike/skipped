@@ -161,8 +161,6 @@ testValidTypeAliasValuesMoreRestrictive
 
 # union context inference
 testCrashOnComplexCheckWithNamedTupleNext
-# union dict context inference
-testNoCrashOnGenericUnionUnpacking
 
 # Tuple type comment definitions with list assignment
 testMultipleAssignmentWithListsInInitialization

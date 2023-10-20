@@ -78,7 +78,7 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
     let func_type_vars = func_or_callable.type_vars(i_s);
 
     let match_in_definition;
-    let mut matcher = if has_generics {
+    let matcher = if has_generics {
         match_in_definition = func_or_callable.defined_at();
         get_matcher(
             Some(class),
@@ -114,26 +114,6 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
         };
         type_arguments
     } else {
-        if let Some(t) = func_or_callable.first_self_or_class_annotation(i_s) {
-            // When an __init__ has a self annotation, it's a bit special, because it influences
-            // the generics.
-            let func_class = func_or_callable.class().unwrap();
-            if !Class::with_self_generics(i_s.db, class.node_ref)
-                .as_type(i_s.db)
-                .is_sub_type_of(i_s, &mut matcher, &t)
-                .bool()
-            {
-                todo!()
-            }
-            for entry in &mut matcher
-                .type_var_matcher
-                .as_mut()
-                .unwrap()
-                .calculated_type_vars
-            {
-                entry.avoid_type_vars_from_class_self_arguments(func_class);
-            }
-        }
         calculate_type_vars(
             i_s,
             matcher,
@@ -269,6 +249,31 @@ fn calculate_type_vars<'db: 'a, 'a>(
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> CalculatedTypeArguments {
     if matcher.type_var_matcher.is_some() {
+        let add_init_generics = |matcher: &mut _, return_class: &Class| {
+            if let Some(t) = func_or_callable.first_self_or_class_annotation(i_s) {
+                // When an __init__ has a self annotation, it's a bit special, because it influences
+                // the generics.
+                let func_class = func_or_callable.class().unwrap();
+                if !Class::with_self_generics(i_s.db, return_class.node_ref)
+                    .as_type(i_s.db)
+                    .is_sub_type_of(i_s, matcher, &t)
+                    .bool()
+                {
+                    todo!()
+                }
+                for entry in &mut matcher
+                    .type_var_matcher
+                    .as_mut()
+                    .unwrap()
+                    .calculated_type_vars
+                {
+                    entry.avoid_type_vars_from_class_self_arguments(func_class);
+                }
+            }
+        };
+        if let Some(return_class) = return_class {
+            add_init_generics(&mut matcher, return_class)
+        }
         result_context.with_type_if_exists_and_replace_type_var_likes(i_s, |i_s, expected| {
             if let Some(return_class) = return_class {
                 // This is kind of a special case. Since __init__ has no return annotation, we simply
@@ -276,8 +281,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
                 let type_var_likes = return_class.type_vars(i_s);
                 if !type_var_likes.is_empty() {
                     debug_assert!(matches!(return_class.generics, Generics::NotDefinedYet));
-                    let return_class = Class::with_self_generics(i_s.db, return_class.node_ref);
-                    if return_class
+                    if Class::with_self_generics(i_s.db, return_class.node_ref)
                         .as_type(i_s.db)
                         .is_sub_type_of(i_s, &mut matcher, expected)
                         .bool()
@@ -320,6 +324,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
                         for calculated in matcher.iter_calculated_type_vars() {
                             calculated.type_ = BoundKind::Uncalculated { fallback: None }
                         }
+                        add_init_generics(&mut matcher, return_class)
                     }
                 }
             } else {
