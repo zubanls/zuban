@@ -172,6 +172,12 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             return OverloadResult::Single(callable);
         }
         if let Some((type_arguments, callable)) = first_arbitrary_length_not_handled {
+            debug!(
+                "Decided overload with arbitrary length not handled for {} (called on #{}): {:?}",
+                self.name(i_s.db),
+                args.as_node_ref().line(),
+                callable.content.format(&FormatData::new_short(i_s.db))
+            );
             return OverloadResult::Single(callable);
         }
         if first_similar.is_none() && args.has_a_union_argument(i_s) {
