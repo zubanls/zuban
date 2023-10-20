@@ -163,10 +163,6 @@ testValidTypeAliasValuesMoreRestrictive
 testCrashOnComplexCheckWithNamedTupleNext
 # union dict context inference
 testNoCrashOnGenericUnionUnpacking
-# dict specialities
-testDictWithStarStarExpr
-testDictFromIterableAndStarStarArgs
-testDictFromIterableAndStarStarArgs2
 
 # Tuple type comment definitions with list assignment
 testMultipleAssignmentWithListsInInitialization
@@ -202,6 +198,10 @@ testRegression12258
 # Callable matching
 testNoCrashOnNestedGenericCallable
 testSubtypingGenericTypeObject
+# dict questionable decisions
+testDictWithStarStarExpr
+testDictFromIterableAndStarStarArgs
+testDictFromIterableAndStarStarArgs2
 # Type variable "C.T" cannot be used as an expression
 testClassMemberTypeVarInFunctionBody
 # Type variable "__main__.Ts" is invalid as target for type alias
