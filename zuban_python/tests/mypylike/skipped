@@ -346,9 +346,6 @@ testNamedTuplesTwoAsBaseClasses2
 # "NamedTuple type as an attribute is not supported"
 testAssignNamedTupleAsAttribute
 testNoCrashUnsupportedNamedTuple
-# "First argument to namedtuple() should be "A", not "X""
-testNamedTupleNameMismatch
-testNewAnalyzerIncrementalBrokenNamedTuple
 # "Statement is unreachable"
 testNamedTupleWithBoolNarrowsToBool
 testUnreachableWithStdlibContextManagers

@@ -3604,7 +3604,7 @@ fn check_named_tuple_name<'x, 'y>(
     let first = expr
         .maybe_single_string_literal()
         .map(|py_string| (node_ref, py_string));
-    let Some(string_slice) = StringSlice::from_string_in_expression(node_ref.file_index(), expr) else {
+    let Some(mut string_slice) = StringSlice::from_string_in_expression(node_ref.file_index(), expr) else {
         node_ref.add_issue(i_s, IssueType::NamedTupleExpectsStringLiteralAsFirstArg { name: executable_name });
         return None
     };
@@ -3620,7 +3620,7 @@ fn check_named_tuple_name<'x, 'y>(
                     is: is.into(),
                 },
             );
-            return None;
+            string_slice = StringSlice::from_name(node_ref.file_index(), name.name());
         }
     }
     let Some(second_arg) = iterator.next() else {

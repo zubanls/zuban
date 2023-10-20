@@ -308,7 +308,7 @@ impl IssueType {
             AwaitOutsideFunction => "top-level-await",
             AwaitOutsideCoroutine => "await-not-async",
 
-            TypedDictNameMismatch { .. } => "name-match",
+            TypedDictNameMismatch { .. } | NamedTupleFirstArgumentMismatch { .. } => "name-match",
             TypedDictMissingKeys { .. }
             | TypedDictIncompatibleType { .. }
             | TypedDictKeySetItemIncompatibleType { .. }
