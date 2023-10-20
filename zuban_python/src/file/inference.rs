@@ -1794,9 +1794,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     return self.dict_literal_without_context(dict);
                 }
             }
-            DictComprehension(comp) => {
-                return self.infer_comprehension(comp.unpack(), ComprehensionKind::SetOrDict)
-            }
+            DictComprehension(comp) => return self.infer_dict_comprehension(comp.unpack()),
             Set(set) => {
                 if let elements @ StarLikeExpressionIterator::Elements(_) = set.unpack() {
                     return Inferred::from_type(new_class!(
@@ -2299,12 +2297,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             .unwrap_or_else(|| todo!())
     }
 
-    pub fn infer_comprehension(
-        &mut self,
-        unpacked: (CommonComprehensionExpression, ForIfClauses),
-        kind: ComprehensionKind,
-    ) -> Inferred {
-        let (comp_expr, for_if_clauses) = unpacked;
+    fn infer_for_if_clauses(&mut self, for_if_clauses: ForIfClauses) {
         for clause in for_if_clauses.iter() {
             let mut needs_await = false;
             let (targets, expr_part, comp_ifs) = match clause {
@@ -2327,29 +2320,47 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 debug!("TODO implement comp_if {comp_if:?}");
             }
         }
+    }
 
-        Inferred::from_type(match comp_expr {
-            CommonComprehensionExpression::Single(named_expr) => {
-                let t = self.infer_named_expression(named_expr).as_type(self.i_s);
-                match kind {
-                    ComprehensionKind::List => {
-                        new_class!(self.i_s.db.python_state.list_node_ref().as_link(), t,)
-                    }
-                    ComprehensionKind::SetOrDict => {
-                        new_class!(self.i_s.db.python_state.set_node_ref().as_link(), t,)
-                    }
-                    ComprehensionKind::Generator => new_class!(
-                        self.i_s.db.python_state.generator_link(),
-                        t,
-                        Type::None,
-                        Type::None,
-                    ),
-                }
+    pub fn infer_dict_comprehension(
+        &mut self,
+        unpacked: (CommonComprehensionExpression, ForIfClauses),
+    ) -> Inferred {
+        let (comp_expr, for_if_clauses) = unpacked;
+        self.infer_for_if_clauses(for_if_clauses);
+        let CommonComprehensionExpression::DictKeyValue(key_value) = comp_expr else {
+            unreachable!();
+        };
+        Inferred::from_type(new_class!(
+            self.i_s.db.python_state.dict_node_ref().as_link(),
+            self.infer_expression(key_value.key()).as_type(self.i_s),
+            self.infer_expression(key_value.value()).as_type(self.i_s),
+        ))
+    }
+
+    pub fn infer_comprehension(
+        &mut self,
+        unpacked: (CommonComprehensionExpression, ForIfClauses),
+        kind: ComprehensionKind,
+    ) -> Inferred {
+        let (comp_expr, for_if_clauses) = unpacked;
+        self.infer_for_if_clauses(for_if_clauses);
+        let CommonComprehensionExpression::Single(named_expr) = comp_expr else {
+            unreachable!()
+        };
+        let t = self.infer_named_expression(named_expr).as_type(self.i_s);
+        Inferred::from_type(match kind {
+            ComprehensionKind::List => {
+                new_class!(self.i_s.db.python_state.list_node_ref().as_link(), t,)
             }
-            CommonComprehensionExpression::DictKeyValue(key_value) => new_class!(
-                self.i_s.db.python_state.dict_node_ref().as_link(),
-                self.infer_expression(key_value.key()).as_type(self.i_s),
-                self.infer_expression(key_value.value()).as_type(self.i_s),
+            ComprehensionKind::SetOrDict => {
+                new_class!(self.i_s.db.python_state.set_node_ref().as_link(), t,)
+            }
+            ComprehensionKind::Generator => new_class!(
+                self.i_s.db.python_state.generator_link(),
+                t,
+                Type::None,
+                Type::None,
             ),
         })
     }
