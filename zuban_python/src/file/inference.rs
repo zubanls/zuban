@@ -1774,44 +1774,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 ));
             }
             ListComprehension(comp) => {
-                let inner_expected = result_context.on_unique_protocol_in_unpacked_union(
-                    i_s,
+                return self.infer_comprehension_with_context(
+                    result_context,
                     i_s.db.python_state.list_node_ref(),
-                    |matcher, calculated_type_args| {
-                        calculated_type_args
-                            .into_iter()
-                            .next()
-                            .unwrap()
-                            .maybe_calculated_type(i_s.db)
-                            .unwrap()
-                    },
-                );
-                let unpacked = comp.unpack();
-                let mut inner_context = inner_expected
-                    .as_ref()
-                    .map(ResultContext::Known)
-                    .unwrap_or(ResultContext::Unknown);
-                let inf = self.infer_comprehension_expr(unpacked, &mut inner_context);
-                let mut t = inf.as_type(i_s);
-                if let Some(inner_expected) = inner_expected {
-                    inner_expected.error_if_not_matches(i_s, &inf, |got, expected| {
-                        let from = NodeRef::new(self.file, unpacked.0.index());
-                        from.add_issue(
-                            i_s,
-                            IssueType::ComprehensionMismatch {
-                                class: "List",
-                                got,
-                                expected,
-                            },
-                        );
-                        t = inner_expected.clone();
-                        from.to_db_lifetime(i_s.db)
-                    });
-                }
-                return Inferred::from_type(new_class!(
-                    i_s.db.python_state.list_node_ref().as_link(),
-                    t,
-                ));
+                    |got, expected| IssueType::ListComprehensionMismatch { got, expected },
+                    comp,
+                )
             }
             Dict(dict) => {
                 if let Some(result) = self.infer_dict_literal_from_context(dict, result_context) {
@@ -1833,13 +1801,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
             }
             SetComprehension(comp) => {
-                let t = self
-                    .infer_comprehension_expr(comp.unpack(), &mut ResultContext::Unknown)
-                    .as_type(i_s);
-                return Inferred::from_type(new_class!(
-                    i_s.db.python_state.set_node_ref().as_link(),
-                    t,
-                ));
+                return self.infer_comprehension_with_context(
+                    result_context,
+                    i_s.db.python_state.set_node_ref(),
+                    |got, expected| IssueType::SetComprehensionMismatch { got, expected },
+                    comp,
+                )
             }
             Tuple(tuple) => {
                 return self
@@ -2370,6 +2337,43 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         ))
     }
 
+    fn infer_comprehension_with_context(
+        &mut self,
+        result_context: &mut ResultContext,
+        for_class: NodeRef,
+        on_mismatch: impl FnOnce(Box<str>, Box<str>) -> IssueType,
+        comp: Comprehension,
+    ) -> Inferred {
+        let i_s = self.i_s;
+        let inner_expected = result_context.on_unique_protocol_in_unpacked_union(
+            i_s,
+            for_class,
+            |matcher, calculated_type_args| {
+                calculated_type_args
+                    .into_iter()
+                    .next()
+                    .unwrap()
+                    .maybe_calculated_type(i_s.db)
+                    .unwrap()
+            },
+        );
+        let unpacked = comp.unpack();
+        let mut inner_context = inner_expected
+            .as_ref()
+            .map(ResultContext::Known)
+            .unwrap_or(ResultContext::Unknown);
+        let inf = self.infer_comprehension_expr(unpacked, &mut inner_context);
+        let mut t = inf.as_type(i_s);
+        if let Some(inner_expected) = inner_expected {
+            inner_expected.error_if_not_matches(i_s, &inf, |got, expected| {
+                let from = NodeRef::new(self.file, unpacked.0.index());
+                from.add_issue(i_s, on_mismatch(got, expected));
+                t = inner_expected.clone();
+                from.to_db_lifetime(i_s.db)
+            });
+        }
+        Inferred::from_type(new_class!(for_class.as_link(), t,))
+    }
     fn infer_comprehension_expr(
         &mut self,
         unpacked: (CommonComprehensionExpression, ForIfClauses),
