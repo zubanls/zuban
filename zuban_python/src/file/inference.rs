@@ -693,7 +693,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
             YieldExprContent::YieldFrom(yield_from) => {
                 if current_function.is_async() {
-                    from.add_issue(i_s, IssueType::YieldFromInAsyncFunction);
+                    // The name binder already added an issue here.
                     return Inferred::new_any();
                 }
                 let expr_result = self.infer_expression(yield_from.expression());

@@ -1057,7 +1057,6 @@ impl<'db> Block<'db> {
             Nonterminal(import_name),
             Nonterminal(import_from),
             Nonterminal(assignment),
-            Nonterminal(yield_from),
             Nonterminal(class_def),
             Nonterminal(function_def),
         ];
@@ -1076,7 +1075,6 @@ pub enum RelevantUntypedNode<'db> {
     ImportName(ImportName<'db>),
     Primary(Primary<'db>),
     Assignment(Assignment<'db>),
-    YieldFrom(YieldFrom<'db>),
     ClassDef(ClassDef<'db>),
     FunctionDef(FunctionDef<'db>),
 }
@@ -1091,8 +1089,6 @@ impl<'db> Iterator for RelevantUntypedNodes<'db> {
                 RelevantUntypedNode::Primary(Primary::new(n))
             } else if n.is_type(Nonterminal(assignment)) {
                 RelevantUntypedNode::Assignment(Assignment::new(n))
-            } else if n.is_type(Nonterminal(yield_from)) {
-                RelevantUntypedNode::YieldFrom(YieldFrom::new(n))
             } else if n.is_type(Nonterminal(class_def)) {
                 RelevantUntypedNode::ClassDef(ClassDef::new(n))
             } else if n.is_type(Nonterminal(function_def)) {

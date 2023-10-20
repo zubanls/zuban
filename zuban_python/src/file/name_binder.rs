@@ -21,7 +21,7 @@ use parsa_python_ast::{
 #[derive(PartialEq, Debug)]
 enum NameBinderType {
     Global,
-    Function,
+    Function { is_async: bool },
     Class,
     Lambda,
     Comprehension,
@@ -31,6 +31,7 @@ enum Unresolved<'db> {
     FunctionDef {
         func: FunctionDef<'db>,
         is_method: bool,
+        is_async: bool,
     },
     Lambda(Lambda<'db>),
     Comprehension(Comprehension<'db>),
@@ -396,10 +397,14 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                             self.names_to_be_resolved_in_parent.push(name);
                         }
                     }
-                    Unresolved::FunctionDef { func, is_method } => {
+                    Unresolved::FunctionDef {
+                        func,
+                        is_method,
+                        is_async,
+                    } => {
                         let symbol_table = SymbolTable::default();
                         self.with_nested(
-                            NameBinderType::Function,
+                            NameBinderType::Function { is_async },
                             func.index(),
                             &symbol_table,
                             |binder| binder.index_function_body(func, is_method),
@@ -632,7 +637,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 parent_scope: match self.type_ {
                     NameBinderType::Global => ParentScope::Module,
                     NameBinderType::Class => ParentScope::Class(self.scope_node),
-                    NameBinderType::Function => ParentScope::Function(self.scope_node),
+                    NameBinderType::Function { .. } => ParentScope::Function(self.scope_node),
                     _ => unreachable!(),
                 },
                 promote_to: Default::default(),
@@ -755,7 +760,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                     }
                 }
                 InterestingNode::YieldExpr(n) => {
-                    match n.unpack() {
+                    let is_yield_from = match n.unpack() {
                         YieldExprContent::StarExpressions(s) => {
                             self.index_non_block_node_full(
                                 &s,
@@ -763,6 +768,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                                 in_base_scope,
                                 from_annotation,
                             );
+                            false
                         }
                         YieldExprContent::YieldFrom(y) => {
                             self.index_non_block_node_full(
@@ -771,28 +777,29 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                                 in_base_scope,
                                 from_annotation,
                             );
+                            true
                         }
-                        YieldExprContent::None => (),
-                    }
-                    if self.type_ != NameBinderType::Function {
-                        let keyword = match n.unpack() {
-                            YieldExprContent::YieldFrom(_) => "yield from",
-                            _ => "yield",
-                        };
-                        self.add_issue(
+                        YieldExprContent::None => false,
+                    };
+                    let keyword = match is_yield_from {
+                        true => "yield from",
+                        false => "yield",
+                    };
+                    match self.type_ {
+                        NameBinderType::Function { is_async: true } if is_yield_from => {
+                            self.add_issue(n.index(), IssueType::YieldFromInAsyncFunction)
+                        }
+                        NameBinderType::Function { .. } => (),
+                        NameBinderType::Comprehension => self.add_issue(
                             n.index(),
-                            match self.type_ {
-                                NameBinderType::Comprehension => {
-                                    IssueType::YieldOrYieldFromInsideComprehension { keyword }
-                                }
-                                _ => IssueType::StmtOutsideFunction { keyword },
-                            },
-                        )
+                            IssueType::YieldOrYieldFromInsideComprehension { keyword },
+                        ),
+                        _ => self.add_issue(n.index(), IssueType::StmtOutsideFunction { keyword }),
                     }
                     self.index_return_or_yield(&mut latest_return_or_yield, n.index());
                 }
                 InterestingNode::ReturnStmt(n) => {
-                    if self.type_ != NameBinderType::Function {
+                    if !matches!(self.type_, NameBinderType::Function { .. }) {
                         self.add_issue(
                             n.index(),
                             IssueType::StmtOutsideFunction { keyword: "return" },
@@ -905,6 +912,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         self.unresolved_nodes.push(Unresolved::FunctionDef {
             func,
             is_method: self.type_ == NameBinderType::Class,
+            is_async,
         });
 
         let (name_def, params, return_annotation, _) = func.unpack();
@@ -928,7 +936,9 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         self.points.set(
             func.index(),
             Point::new_simple_specific(
-                if self.type_ != NameBinderType::Function || return_annotation.is_some() {
+                if !matches!(self.type_, NameBinderType::Function { .. })
+                    || return_annotation.is_some()
+                {
                     if is_decorated {
                         Specific::DecoratedFunction
                     } else {

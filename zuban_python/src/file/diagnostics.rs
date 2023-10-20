@@ -305,16 +305,6 @@ impl<'db> Inference<'db, '_, '_> {
                 RelevantUntypedNode::ClassDef(class) => {
                     // TODO
                 }
-                RelevantUntypedNode::YieldFrom(yield_from) => {
-                    if let Some(func) = self.i_s.current_function() {
-                        if func.is_async() {
-                            NodeRef::new(self.file, yield_from.index())
-                                .add_issue(self.i_s, IssueType::YieldFromInAsyncFunction);
-                        }
-                    } else {
-                        todo!()
-                    }
-                }
             }
         }
     }
