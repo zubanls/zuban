@@ -39,6 +39,7 @@ pub(crate) enum IssueType {
     IncompatibleAssignment { got: Box<str>, expected: Box<str> },
     CannotAssignToClassVarViaInstance { name: Box<str> },
     ListItemMismatch { item: usize, got: Box<str>, expected: Box<str> },
+    ListComprehensionMismatch { got: Box<str>, expected: Box<str> },
     DictMemberMismatch { item: usize, got_pair: Box<str>, expected_pair: Box<str> },
     UnpackedDictMemberMismatch { item: usize, got: Box<str>, expected: Box<str> },
 
@@ -480,6 +481,9 @@ impl<'db> Diagnostic<'db> {
             ),
             ListItemMismatch{item, got, expected} => format!(
                 "List item {item} has incompatible type \"{got}\"; expected \"{expected}\"",
+            ),
+            ListComprehensionMismatch{got, expected} => format!(
+                "List comprehension has incompatible type List[{got}]; expected List[{expected}]",
             ),
             DictMemberMismatch{item, got_pair, expected_pair} => format!(
                 "Dict entry {item} has incompatible type {got_pair}; expected {expected_pair}",

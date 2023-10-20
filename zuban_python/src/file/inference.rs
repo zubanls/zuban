@@ -1707,6 +1707,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
     check_point_cache_with!(pub infer_atom, Self::_infer_atom, Atom, result_context);
     fn _infer_atom(&mut self, atom: Atom, result_context: &mut ResultContext) -> Inferred {
+        let i_s = self.i_s;
         let check_literal = |result_context: &ResultContext, i_s, index, literal| {
             let specific = match result_context.could_be_a_literal(i_s) {
                 CouldBeALiteral::Yes { implicit: false } => {
@@ -1733,12 +1734,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             Name(n) => return self.infer_name_reference(n),
             Int(i) => match self.parse_int(i, result_context) {
                 Some(parsed) => {
-                    return check_literal(
-                        result_context,
-                        self.i_s,
-                        i.index(),
-                        Specific::IntLiteral,
-                    );
+                    return check_literal(result_context, i_s, i.index(), Specific::IntLiteral);
                 }
                 None => Specific::Int,
             },
@@ -1751,27 +1747,20 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                 }
                 if let Some(s) = s_o_b.maybe_single_string_literal() {
-                    return check_literal(
-                        result_context,
-                        self.i_s,
-                        s.index(),
-                        Specific::StringLiteral,
-                    );
+                    return check_literal(result_context, i_s, s.index(), Specific::StringLiteral);
                 } else {
                     Specific::String
                 }
             }
             Bytes(b) => {
-                return check_literal(result_context, self.i_s, b.index(), Specific::BytesLiteral)
+                return check_literal(result_context, i_s, b.index(), Specific::BytesLiteral)
             }
             NoneLiteral => Specific::None,
-            Bool(b) => {
-                return check_literal(result_context, self.i_s, b.index(), Specific::BoolLiteral)
-            }
+            Bool(b) => return check_literal(result_context, i_s, b.index(), Specific::BoolLiteral),
             Ellipsis => Specific::Ellipsis,
             List(list) => {
                 if let Some(result) = self.infer_list_literal_from_context(list, result_context) {
-                    return result.save_redirect(self.i_s, self.file, atom.index());
+                    return result.save_redirect(i_s, self.file, atom.index());
                 }
                 let result = match list.unpack() {
                     elements @ StarLikeExpressionIterator::Elements(_) => {
@@ -1780,22 +1769,46 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     StarLikeExpressionIterator::Empty => Type::Any, // TODO shouldn't this be Never?
                 };
                 return Inferred::from_type(new_class!(
-                    self.i_s.db.python_state.list_node_ref().as_link(),
+                    i_s.db.python_state.list_node_ref().as_link(),
                     result,
                 ));
             }
             ListComprehension(comp) => {
-                let t = self
-                    .infer_comprehension_expr(comp.unpack())
-                    .as_type(self.i_s);
+                let inner_expected = result_context.on_unique_protocol_in_unpacked_union(
+                    i_s,
+                    i_s.db.python_state.list_node_ref(),
+                    |matcher, calculated_type_args| {
+                        calculated_type_args
+                            .into_iter()
+                            .next()
+                            .unwrap()
+                            .maybe_calculated_type(i_s.db)
+                            .unwrap()
+                    },
+                );
+                let unpacked = comp.unpack();
+                let mut inner_context = inner_expected
+                    .as_ref()
+                    .map(ResultContext::Known)
+                    .unwrap_or(ResultContext::Unknown);
+                let inf = self.infer_comprehension_expr(unpacked, &mut inner_context);
+                let mut t = inf.as_type(i_s);
+                if let Some(inner_expected) = inner_expected {
+                    inner_expected.error_if_not_matches(i_s, &inf, |got, expected| {
+                        let from = NodeRef::new(self.file, unpacked.0.index());
+                        from.add_issue(i_s, IssueType::ListComprehensionMismatch { got, expected });
+                        t = inner_expected.clone();
+                        from.to_db_lifetime(i_s.db)
+                    });
+                }
                 return Inferred::from_type(new_class!(
-                    self.i_s.db.python_state.list_node_ref().as_link(),
+                    i_s.db.python_state.list_node_ref().as_link(),
                     t,
                 ));
             }
             Dict(dict) => {
                 if let Some(result) = self.infer_dict_literal_from_context(dict, result_context) {
-                    return result.save_redirect(self.i_s, self.file, atom.index());
+                    return result.save_redirect(i_s, self.file, atom.index());
                 } else {
                     return self.dict_literal_without_context(dict);
                 }
@@ -1804,27 +1817,27 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             Set(set) => {
                 if let elements @ StarLikeExpressionIterator::Elements(_) = set.unpack() {
                     return Inferred::from_type(new_class!(
-                        self.i_s.db.python_state.set_node_ref().as_link(),
+                        i_s.db.python_state.set_node_ref().as_link(),
                         self.create_list_or_set_generics(elements),
                     ))
-                    .save_redirect(self.i_s, self.file, atom.index());
+                    .save_redirect(i_s, self.file, atom.index());
                 } else {
                     todo!()
                 }
             }
             SetComprehension(comp) => {
                 let t = self
-                    .infer_comprehension_expr(comp.unpack())
-                    .as_type(self.i_s);
+                    .infer_comprehension_expr(comp.unpack(), &mut ResultContext::Unknown)
+                    .as_type(i_s);
                 return Inferred::from_type(new_class!(
-                    self.i_s.db.python_state.set_node_ref().as_link(),
+                    i_s.db.python_state.set_node_ref().as_link(),
                     t,
                 ));
             }
             Tuple(tuple) => {
                 return self
                     .infer_tuple_iterator(tuple.iter(), result_context)
-                    .save_redirect(self.i_s, self.file, atom.index())
+                    .save_redirect(i_s, self.file, atom.index())
             }
             GeneratorComprehension(comp) => {
                 return self.infer_generator_comprehension(comp.unpack())
@@ -2353,13 +2366,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     fn infer_comprehension_expr(
         &mut self,
         unpacked: (CommonComprehensionExpression, ForIfClauses),
+        result_context: &mut ResultContext,
     ) -> Inferred {
         let (comp_expr, for_if_clauses) = unpacked;
         self.infer_for_if_clauses(for_if_clauses);
         let CommonComprehensionExpression::Single(named_expr) = comp_expr else {
             unreachable!()
         };
-        self.infer_named_expression(named_expr)
+        self.infer_named_expression_with_context(named_expr, result_context)
     }
 
     fn infer_generator_comprehension(
@@ -2368,7 +2382,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     ) -> Inferred {
         Inferred::from_type(new_class!(
             self.i_s.db.python_state.generator_link(),
-            self.infer_comprehension_expr(unpacked).as_type(self.i_s),
+            self.infer_comprehension_expr(unpacked, &mut ResultContext::Unknown)
+                .as_type(self.i_s),
             Type::None,
             Type::None,
         ))

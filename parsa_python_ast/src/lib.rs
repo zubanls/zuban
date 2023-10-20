@@ -1637,9 +1637,19 @@ impl<'db> Iterator for ForIfClauseIterator<'db> {
     }
 }
 
+#[derive(Clone, Copy)]
 pub enum CommonComprehensionExpression<'db> {
     Single(NamedExpression<'db>),
     DictKeyValue(DictKeyValue<'db>),
+}
+
+impl CommonComprehensionExpression<'_> {
+    pub fn index(&self) -> NodeIndex {
+        match self {
+            Self::Single(n) => n.index(),
+            Self::DictKeyValue(d) => d.index(),
+        }
+    }
 }
 
 impl<'db> SyncForIfClause<'db> {
