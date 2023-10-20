@@ -346,11 +346,6 @@ testNamedTuplesTwoAsBaseClasses2
 # "NamedTuple type as an attribute is not supported"
 testAssignNamedTupleAsAttribute
 testNoCrashUnsupportedNamedTuple
-# "Statement is unreachable"
-testNamedTupleWithBoolNarrowsToBool
-testUnreachableWithStdlibContextManagers
-testUnreachableWithStdlibContextManagersNoStrictOptional
-testSpecialTypingProtocols
 # "Self type cannot be used in NamedTuple item type"
 testNamedTupleSelfItemNotAllowed
 # "Property "y" defined in "Point" is read-only"
@@ -2649,6 +2644,11 @@ textNoImplicitReexportSuggestions
 
 # --warn-unreachable
 testOperatorContainsNarrowsTypedDicts_final
+# "Statement is unreachable"
+testNamedTupleWithBoolNarrowsToBool
+testUnreachableWithStdlibContextManagers
+testUnreachableWithStdlibContextManagersNoStrictOptional
+testSpecialTypingProtocols
 
 # --no-strict-optional details
 testNestedListExpressions
