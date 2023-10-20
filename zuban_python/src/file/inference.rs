@@ -1796,7 +1796,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 if let Some(inner_expected) = inner_expected {
                     inner_expected.error_if_not_matches(i_s, &inf, |got, expected| {
                         let from = NodeRef::new(self.file, unpacked.0.index());
-                        from.add_issue(i_s, IssueType::ListComprehensionMismatch { got, expected });
+                        from.add_issue(
+                            i_s,
+                            IssueType::ComprehensionMismatch {
+                                class: "List",
+                                got,
+                                expected,
+                            },
+                        );
                         t = inner_expected.clone();
                         from.to_db_lifetime(i_s.db)
                     });
