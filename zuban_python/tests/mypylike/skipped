@@ -1,9 +1,15 @@
 # Next up
+testLiteralAndGenericsNoMatch
+testTupleWithUndersizedContext
+testTupleWithOversizedContext
+testNestedProtocolGenericUnions
+testNestedProtocolGenericUnionsDeep
+class_generics_recursion
 
 # Literal Context issues
 nested_tuple_context_inference4
 
-# 3.7 tests
+# 3.7 tests (deprecated) https://github.com/python/mypy/pull/15566
 testNamedTupleDefaults
 testAsyncForOutsideCoroutine
 testAsyncWithOutsideCoroutine
@@ -25,6 +31,9 @@ testWalrusAssignmentAndConditionScopeForLiteral
 testWalrusAssignmentAndConditionScopeForProperty
 testWalrusAssignmentAndConditionScopeForFunction
 testWalrusUsedBeforeDef
+# "Assignment expression within a comprehension cannot be used in a class body"
+testNoCrashOnAssignmentExprClass
+#
 testOverloadWithPositionalOnlySelf
 testOverloadPositionalOnlyErrorMessage
 testOverloadPositionalOnlyErrorMessageAllTypes
@@ -578,8 +587,6 @@ testTypeInferenceOfListComprehension
 testComprehensionShadowBinder
 testIterableProtocolOnClass
 testIterableProtocolOnMetaclass
-# "Assignment expression within a comprehension cannot be used in a class body"
-testNoCrashOnAssignmentExprClass
 
 # lambda
 testIncrementalWithDecorators
