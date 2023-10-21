@@ -1577,11 +1577,12 @@ impl<'db> StarNamedExpression<'db> {
 }
 
 impl<'db> Comprehension<'db> {
-    pub fn unpack(&self) -> (CommonComprehensionExpression<'db>, ForIfClauses<'db>) {
+    pub fn unpack(&self) -> (NamedExpression<'db>, ForIfClauses<'db>) {
         let mut iter = self.node.iter_children();
-        let expr =
-            CommonComprehensionExpression::Single(NamedExpression::new(iter.next().unwrap()));
-        (expr, ForIfClauses::new(iter.next().unwrap()))
+        (
+            NamedExpression::new(iter.next().unwrap()),
+            ForIfClauses::new(iter.next().unwrap()),
+        )
     }
 
     pub fn is_generator(&self) -> bool {
@@ -1590,11 +1591,12 @@ impl<'db> Comprehension<'db> {
 }
 
 impl<'db> DictComprehension<'db> {
-    pub fn unpack(&self) -> (CommonComprehensionExpression<'db>, ForIfClauses<'db>) {
+    pub fn unpack(&self) -> (DictKeyValue<'db>, ForIfClauses<'db>) {
         let mut iter = self.node.iter_children();
-        let expr =
-            CommonComprehensionExpression::DictKeyValue(DictKeyValue::new(iter.next().unwrap()));
-        (expr, ForIfClauses::new(iter.next().unwrap()))
+        (
+            DictKeyValue::new(iter.next().unwrap()),
+            ForIfClauses::new(iter.next().unwrap()),
+        )
     }
 }
 
@@ -1630,21 +1632,6 @@ impl<'db> Iterator for ForIfClauseIterator<'db> {
                 Self::Item::Async(SyncForIfClause::new(n.nth_child(1)))
             }
         })
-    }
-}
-
-#[derive(Clone, Copy)]
-pub enum CommonComprehensionExpression<'db> {
-    Single(NamedExpression<'db>),
-    DictKeyValue(DictKeyValue<'db>),
-}
-
-impl CommonComprehensionExpression<'_> {
-    pub fn index(&self) -> NodeIndex {
-        match self {
-            Self::Single(n) => n.index(),
-            Self::DictKeyValue(d) => d.index(),
-        }
     }
 }
 

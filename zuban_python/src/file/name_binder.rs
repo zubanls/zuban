@@ -11,11 +11,11 @@ use crate::file::ComplexValues;
 use crate::utils::SymbolTable;
 use parsa_python_ast::{
     AssignmentContentWithSimpleTargets, AssignmentRightSide, AsyncStmtContent, Block, BlockContent,
-    ClassDef, CommonComprehensionExpression, Comprehension, Decoratee, DictComprehension,
-    ExceptExpression, Expression, File, ForIfClause, ForIfClauseIterator, ForStmt, FunctionDef,
-    IfBlockType, IfStmt, ImportFromTargets, InterestingNode, InterestingNodeSearcher, Lambda,
-    MatchStmt, Name, NameDefinition, NameParent, NodeIndex, SimpleStmts, StmtContent, StmtIterator,
-    StmtOrError, Tree, TryBlockType, TryStmt, WhileStmt, WithStmt, YieldExprContent,
+    ClassDef, Comprehension, Decoratee, DictComprehension, ExceptExpression, Expression, File,
+    ForIfClause, ForIfClauseIterator, ForStmt, FunctionDef, IfBlockType, IfStmt, ImportFromTargets,
+    InterestingNode, InterestingNodeSearcher, Lambda, MatchStmt, Name, NameDefinition, NameParent,
+    NodeIndex, SimpleStmts, StmtContent, StmtIterator, StmtOrError, Tree, TryBlockType, TryStmt,
+    WhileStmt, WithStmt, YieldExprContent,
 };
 
 #[derive(PartialEq, Debug)]
@@ -847,22 +847,26 @@ impl<'db, 'a> NameBinder<'db, 'a> {
 
     fn index_comprehension(&mut self, comp: Comprehension<'db>, ordered: bool) {
         // TODO the ordered argument is not used here currently and it should probably be used.
-        let (expr, for_if_clauses) = comp.unpack();
+        let (named_expr, for_if_clauses) = comp.unpack();
         let mut clauses = for_if_clauses.iter();
-        self.index_comprehension_clause(&expr, &clauses.next().unwrap(), &mut clauses)
+        self.index_comprehension_clause(&clauses.next().unwrap(), &mut clauses, |binder| {
+            binder.index_non_block_node(&named_expr, true, false);
+        })
     }
 
     fn index_dict_comprehension(&mut self, comp: DictComprehension<'db>, ordered: bool) {
-        let (expr, for_if_clauses) = comp.unpack();
+        let (key_value, for_if_clauses) = comp.unpack();
         let mut clauses = for_if_clauses.iter();
-        self.index_comprehension_clause(&expr, &clauses.next().unwrap(), &mut clauses)
+        self.index_comprehension_clause(&clauses.next().unwrap(), &mut clauses, |binder| {
+            binder.index_non_block_node(&key_value, true, false);
+        })
     }
 
     fn index_comprehension_clause(
         &mut self,
-        expr: &CommonComprehensionExpression<'db>,
         clause: &ForIfClause<'db>,
         clauses: &mut ForIfClauseIterator<'db>,
+        on_expr: impl FnOnce(&mut NameBinder<'db, '_>),
     ) {
         let (targets, ifs) = match clause {
             ForIfClause::Sync(sync_for_if_clause) | ForIfClause::Async(sync_for_if_clause) => {
@@ -884,16 +888,9 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 }
 
                 if let Some(clause) = clauses.next() {
-                    binder.index_comprehension_clause(expr, &clause, clauses);
+                    binder.index_comprehension_clause(&clause, clauses, on_expr);
                 } else {
-                    match expr {
-                        CommonComprehensionExpression::Single(named_expr) => {
-                            binder.index_non_block_node(named_expr, true, false)
-                        }
-                        CommonComprehensionExpression::DictKeyValue(dict_key_value) => {
-                            binder.index_non_block_node(dict_key_value, true, false)
-                        }
-                    };
+                    on_expr(binder)
                 }
             },
         );

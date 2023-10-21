@@ -1782,7 +1782,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     return self.dict_literal_without_context(dict);
                 }
             }
-            DictComprehension(comp) => return self.infer_dict_comprehension(comp.unpack()),
+            DictComprehension(comp) => return self.infer_dict_comprehension(comp),
             Set(set) => {
                 if let elements @ StarLikeExpressionIterator::Elements(_) = set.unpack() {
                     return Inferred::from_type(new_class!(
@@ -2308,15 +2308,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    fn infer_dict_comprehension(
-        &mut self,
-        unpacked: (CommonComprehensionExpression, ForIfClauses),
-    ) -> Inferred {
-        let (comp_expr, for_if_clauses) = unpacked;
+    fn infer_dict_comprehension(&mut self, comp: DictComprehension) -> Inferred {
+        let (key_value, for_if_clauses) = comp.unpack();
         self.infer_for_if_clauses(for_if_clauses);
-        let CommonComprehensionExpression::DictKeyValue(key_value) = comp_expr else {
-            unreachable!();
-        };
         Inferred::from_type(new_class!(
             self.i_s.db.python_state.dict_node_ref().as_link(),
             self.infer_expression(key_value.key()).as_type(self.i_s),
@@ -2344,34 +2338,23 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     .unwrap()
             },
         );
-        let unpacked = comp.unpack();
-        let mut inner_context = inner_expected
+        let (comp_expr, for_if_clauses) = comp.unpack();
+        let inner_context = inner_expected
             .as_ref()
             .map(ResultContext::Known)
             .unwrap_or(ResultContext::Unknown);
-        let inf = self.infer_comprehension_expr(unpacked, &mut inner_context);
+        self.infer_for_if_clauses(for_if_clauses);
+        let inf = self.infer_named_expression_with_context(comp_expr, result_context);
         let mut t = inf.as_type(i_s);
         if let Some(inner_expected) = inner_expected {
             inner_expected.error_if_not_matches(i_s, &inf, |got, expected| {
-                let from = NodeRef::new(self.file, unpacked.0.index());
+                let from = NodeRef::new(self.file, comp_expr.index());
                 from.add_issue(i_s, on_mismatch(got, expected));
                 t = inner_expected.clone();
                 from.to_db_lifetime(i_s.db)
             });
         }
         t
-    }
-    fn infer_comprehension_expr(
-        &mut self,
-        unpacked: (CommonComprehensionExpression, ForIfClauses),
-        result_context: &mut ResultContext,
-    ) -> Inferred {
-        let (comp_expr, for_if_clauses) = unpacked;
-        self.infer_for_if_clauses(for_if_clauses);
-        let CommonComprehensionExpression::Single(named_expr) = comp_expr else {
-            unreachable!()
-        };
-        self.infer_named_expression_with_context(named_expr, result_context)
     }
 
     fn infer_list_comprehension(
