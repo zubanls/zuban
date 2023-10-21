@@ -2340,21 +2340,23 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             let mut check = |expected_t: Type, expr, part| {
                 let inf = self
                     .infer_expression_with_context(expr, &mut ResultContext::Known(&expected_t));
-                let mut result = inf.as_type(i_s);
-                expected_t.error_if_not_matches(i_s, &inf, |got, expected| {
+                if expected_t
+                    .is_simple_super_type_of(i_s, &inf.as_cow_type(i_s))
+                    .bool()
+                {
+                    inf.as_type(i_s)
+                } else {
                     let from = NodeRef::new(self.file, expr.index());
                     from.add_issue(
                         i_s,
                         IssueType::DictComprehensionMismatch {
                             part,
-                            got,
-                            expected,
+                            got: inf.format_short(i_s),
+                            expected: expected_t.format_short(i_s.db),
                         },
                     );
-                    result = expected_t.clone();
-                    from.to_db_lifetime(i_s.db)
-                });
-                result
+                    expected_t.clone()
+                }
             };
             (
                 check(expected_key, key_value.key(), "Key"),
