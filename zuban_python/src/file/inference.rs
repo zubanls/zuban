@@ -2330,7 +2330,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let inf =
                     self.infer_expression_with_context(expr, &mut ResultContext::Known(expected_t));
                 let t = inf.as_cow_type(i_s);
-                if expected_t.is_simple_super_type_of(i_s, &t).bool() {
+                if expected_t.is_super_type_of(i_s, matcher, &t).bool() {
                     Some(t.into_owned())
                 } else {
                     let from = NodeRef::new(self.file, expr.index());

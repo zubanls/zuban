@@ -571,8 +571,6 @@ testCallingNoTypeCheckFunction
 testCallingNoTypeCheckFunction2
 testNoTypeCheckDecoratorSemanticError
 
-# Dict comprehensions
-testDictUpdateInference
 # Other Comprehensions
 testEnumerateReturningSelfFromIter
 testListComprehensionWithNonDirectMapping
