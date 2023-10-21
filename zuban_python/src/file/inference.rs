@@ -1782,7 +1782,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     return self.dict_literal_without_context(dict);
                 }
             }
-            DictComprehension(comp) => return self.infer_dict_comprehension(comp),
+            DictComprehension(comp) => return self.infer_dict_comprehension(comp, result_context),
             Set(set) => {
                 if let elements @ StarLikeExpressionIterator::Elements(_) = set.unpack() {
                     return Inferred::from_type(new_class!(
@@ -2308,13 +2308,69 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    fn infer_dict_comprehension(&mut self, comp: DictComprehension) -> Inferred {
-        let (key_value, for_if_clauses) = comp.unpack();
+    fn infer_dict_comprehension(
+        &mut self,
+        dict_comp: DictComprehension,
+        result_context: &mut ResultContext,
+    ) -> Inferred {
+        let i_s = self.i_s;
+        let (key_value, for_if_clauses) = dict_comp.unpack();
+        self.infer_for_if_clauses(for_if_clauses);
+
+        let expected = result_context.on_unique_protocol_in_unpacked_union(
+            i_s,
+            i_s.db.python_state.supports_keys_and_get_item_node_ref(),
+            |matcher, calculated_type_args| {
+                let mut generics = calculated_type_args.into_iter();
+                let key_t = generics
+                    .next()
+                    .unwrap()
+                    .maybe_calculated_type(i_s.db)
+                    .unwrap();
+                let value_t = generics
+                    .next()
+                    .unwrap()
+                    .maybe_calculated_type(i_s.db)
+                    .unwrap();
+                (key_t, value_t)
+            },
+        );
+
+        let (key, value) = if let Some((expected_key, expected_value)) = expected {
+            let mut check = |expected_t: Type, expr, part| {
+                let inf = self
+                    .infer_expression_with_context(expr, &mut ResultContext::Known(&expected_t));
+                let mut result = inf.as_type(i_s);
+                expected_t.error_if_not_matches(i_s, &inf, |got, expected| {
+                    let from = NodeRef::new(self.file, expr.index());
+                    from.add_issue(
+                        i_s,
+                        IssueType::DictComprehensionMismatch {
+                            part,
+                            got,
+                            expected,
+                        },
+                    );
+                    result = expected_t.clone();
+                    from.to_db_lifetime(i_s.db)
+                });
+                result
+            };
+            (
+                check(expected_key, key_value.key(), "Key"),
+                check(expected_value, key_value.value(), "Value"),
+            )
+        } else {
+            (
+                self.infer_expression(key_value.key()).as_type(i_s),
+                self.infer_expression(key_value.value()).as_type(i_s),
+            )
+        };
         self.infer_for_if_clauses(for_if_clauses);
         Inferred::from_type(new_class!(
             self.i_s.db.python_state.dict_node_ref().as_link(),
-            self.infer_expression(key_value.key()).as_type(self.i_s),
-            self.infer_expression(key_value.value()).as_type(self.i_s),
+            key,
+            value,
         ))
     }
 

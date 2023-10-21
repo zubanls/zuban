@@ -42,6 +42,7 @@ pub(crate) enum IssueType {
     ListComprehensionMismatch { got: Box<str>, expected: Box<str> },
     SetComprehensionMismatch { got: Box<str>, expected: Box<str> },
     GeneratorComprehensionMismatch { got: Box<str>, expected: Box<str> },
+    DictComprehensionMismatch { part: &'static str, got: Box<str>, expected: Box<str> },
     DictMemberMismatch { item: usize, got_pair: Box<str>, expected_pair: Box<str> },
     UnpackedDictMemberMismatch { item: usize, got: Box<str>, expected: Box<str> },
 
@@ -493,6 +494,9 @@ impl<'db> Diagnostic<'db> {
             ),
             GeneratorComprehensionMismatch{got, expected} => format!(
                 "Generator has incompatible item type \"{got}\"; expected \"{expected}\"",
+            ),
+            DictComprehensionMismatch{part, got, expected} => format!(
+                r#"{part} expression in dictionary comprehension has incompatible type "{got}"; expected type "{expected}""#,
             ),
             DictMemberMismatch{item, got_pair, expected_pair} => format!(
                 "Dict entry {item} has incompatible type {got_pair}; expected {expected_pair}",

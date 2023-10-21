@@ -572,9 +572,7 @@ testCallingNoTypeCheckFunction2
 testNoTypeCheckDecoratorSemanticError
 
 # Dict comprehensions
-testNewAnalyzerDictionaryComprehension
-testDictionaryComprehensionWithNonDirectMapping
-testSimpleDictionaryComprehension
+testDictUpdateInference
 # Other Comprehensions
 testEnumerateReturningSelfFromIter
 testListComprehensionWithNonDirectMapping
