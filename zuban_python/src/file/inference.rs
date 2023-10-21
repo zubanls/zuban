@@ -4,6 +4,7 @@ use std::rc::Rc;
 use parsa_python_ast::*;
 
 use super::diagnostics::await_aiter_and_next;
+use super::utils::infer_dict_like;
 use super::{on_argument_type_error, File, PythonFile};
 use crate::arguments::{KnownArguments, NoArguments, SimpleArguments};
 use crate::database::{
@@ -2317,63 +2318,42 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let (key_value, for_if_clauses) = dict_comp.unpack();
         self.infer_for_if_clauses(for_if_clauses);
 
-        let expected = result_context.on_unique_protocol_in_unpacked_union(
-            i_s,
-            i_s.db.python_state.supports_keys_and_get_item_node_ref(),
-            |matcher, calculated_type_args| {
-                let mut generics = calculated_type_args.into_iter();
-                let key_t = generics
-                    .next()
-                    .unwrap()
-                    .maybe_calculated_type(i_s.db)
-                    .unwrap();
-                let value_t = generics
-                    .next()
-                    .unwrap()
-                    .maybe_calculated_type(i_s.db)
-                    .unwrap();
-                (key_t, value_t)
-            },
-        );
-
-        let (key, value) = if let Some((expected_key, expected_value)) = expected {
-            let mut check = |expected_t: Type, expr, part| {
-                let inf = self
-                    .infer_expression_with_context(expr, &mut ResultContext::Known(&expected_t));
-                if expected_t
-                    .is_simple_super_type_of(i_s, &inf.as_cow_type(i_s))
-                    .bool()
-                {
-                    inf.as_type(i_s)
+        let to_dict = |key, value| {
+            new_class!(
+                self.i_s.db.python_state.dict_node_ref().as_link(),
+                key,
+                value,
+            )
+        };
+        let found = infer_dict_like(i_s, result_context, |matcher, key_t, value_t| {
+            let mut check = |expected_t: &Type, expr, part| {
+                let inf =
+                    self.infer_expression_with_context(expr, &mut ResultContext::Known(expected_t));
+                let t = inf.as_cow_type(i_s);
+                if expected_t.is_simple_super_type_of(i_s, &t).bool() {
+                    Some(t.into_owned())
                 } else {
                     let from = NodeRef::new(self.file, expr.index());
                     from.add_issue(
                         i_s,
                         IssueType::DictComprehensionMismatch {
                             part,
-                            got: inf.format_short(i_s),
+                            got: t.format_short(i_s.db),
                             expected: expected_t.format_short(i_s.db),
                         },
                     );
-                    expected_t.clone()
+                    None
                 }
             };
-            (
-                check(expected_key, key_value.key(), "Key"),
-                check(expected_value, key_value.value(), "Value"),
-            )
-        } else {
-            (
-                self.infer_expression(key_value.key()).as_type(i_s),
-                self.infer_expression(key_value.value()).as_type(i_s),
-            )
-        };
-        self.infer_for_if_clauses(for_if_clauses);
-        Inferred::from_type(new_class!(
-            self.i_s.db.python_state.dict_node_ref().as_link(),
-            key,
-            value,
-        ))
+            let key_result = check(key_t, key_value.key(), "Key");
+            let value_result = check(value_t, key_value.value(), "Value");
+            key_result.zip(value_result).map(|(k, v)| to_dict(k, v))
+        });
+        found.unwrap_or_else(|| {
+            let key = self.infer_expression(key_value.key()).as_type(i_s);
+            let value = self.infer_expression(key_value.value()).as_type(i_s);
+            Inferred::from_type(to_dict(key, value))
+        })
     }
 
     fn infer_comprehension_expr_with_context(

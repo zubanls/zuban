@@ -110,35 +110,9 @@ impl<'db> Inference<'db, '_, '_> {
             return typed_dict_result;
         }
 
-        result_context.on_unique_protocol_in_unpacked_union(
-            i_s,
-            i_s.db.python_state.supports_keys_and_get_item_node_ref(),
-            |matcher, calculated_type_args| {
-                let mut generics = calculated_type_args.into_iter();
-                let key_t = generics
-                    .next()
-                    .unwrap()
-                    .maybe_calculated_type(i_s.db)
-                    .unwrap();
-                let value_t = generics
-                    .next()
-                    .unwrap()
-                    .maybe_calculated_type(i_s.db)
-                    .unwrap();
-                let found = self.check_dict_literal_with_context(matcher, &key_t, &value_t, dict);
-                Inferred::from_type(found.unwrap_or_else(|| {
-                    new_class!(
-                        i_s.db.python_state.dict_node_ref().as_link(),
-                        key_t.replace_type_var_likes(self.i_s.db, &mut |tv| {
-                            tv.as_type_var_like().as_any_generic_item()
-                        }),
-                        value_t.replace_type_var_likes(self.i_s.db, &mut |tv| {
-                            tv.as_type_var_like().as_any_generic_item()
-                        }),
-                    )
-                }))
-            },
-        )
+        infer_dict_like(i_s, result_context, |matcher, key_t, value_t| {
+            self.check_dict_literal_with_context(matcher, &key_t, &value_t, dict)
+        })
     }
 
     fn check_typed_dict_literal_with_context(
@@ -640,6 +614,42 @@ fn infer_typed_dict_item<'db>(
     } else {
         extra_keys.push(key.into())
     }
+}
+
+pub fn infer_dict_like(
+    i_s: &InferenceState,
+    result_context: &mut ResultContext,
+    infer_with_context: impl FnOnce(&mut Matcher, &Type, &Type) -> Option<Type>,
+) -> Option<Inferred> {
+    result_context.on_unique_protocol_in_unpacked_union(
+        i_s,
+        i_s.db.python_state.supports_keys_and_get_item_node_ref(),
+        |matcher, calculated_type_args| {
+            let mut generics = calculated_type_args.into_iter();
+            let key_t = generics
+                .next()
+                .unwrap()
+                .maybe_calculated_type(i_s.db)
+                .unwrap();
+            let value_t = generics
+                .next()
+                .unwrap()
+                .maybe_calculated_type(i_s.db)
+                .unwrap();
+            let found = infer_with_context(matcher, &key_t, &value_t);
+            Inferred::from_type(found.unwrap_or_else(|| {
+                new_class!(
+                    i_s.db.python_state.dict_node_ref().as_link(),
+                    key_t.replace_type_var_likes(i_s.db, &mut |tv| {
+                        tv.as_type_var_like().as_any_generic_item()
+                    }),
+                    value_t.replace_type_var_likes(i_s.db, &mut |tv| {
+                        tv.as_type_var_like().as_any_generic_item()
+                    }),
+                )
+            }))
+        },
+    )
 }
 
 fn maybe_add_extra_keys_issue(
