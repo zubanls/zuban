@@ -22,8 +22,8 @@ use crate::node_ref::NodeRef;
 use crate::type_::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, DoubleStarredParamSpecific,
     FunctionKind, GenericItem, GenericsList, Literal, LiteralKind, Namespace, ParamSpecific,
-    StarredParamSpecific, TupleContent, TupleTypeArguments, Type, TypeOrTypeVarTuple, UnionEntry,
-    UnionType,
+    StarredParamSpecific, StringSlice, TupleContent, TupleTypeArguments, Type, TypeOrTypeVarTuple,
+    UnionEntry, UnionType,
 };
 use crate::type_helpers::{
     lookup_in_namespace, Class, FirstParamKind, Function, GeneratorType, Instance, Module,
@@ -1474,12 +1474,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         );
                         let mut c = (**c).clone();
                         c.result_type = result.as_cow_type(&i_s).into_owned();
-                        Inferred::from_type(Type::Callable(Rc::new(c)))
+                        Some(Inferred::from_type(Type::Callable(Rc::new(c))))
                     } else {
-                        todo!()
+                        None
                     }
                 },
             )
+            .flatten()
             .unwrap_or_else(|| {
                 let (params, expr) = lambda.unpack();
                 check_defaults(self);
@@ -1511,7 +1512,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                         DoubleStarredParamSpecific::ValueType(Type::Any),
                                     ),
                                 },
-                                name: None,
+                                name: Some(StringSlice::from_name(
+                                    self.file.file_index(),
+                                    param.name_definition().name(),
+                                )),
                                 has_default: param.default().is_some(),
                             })
                             .collect(),
