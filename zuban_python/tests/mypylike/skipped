@@ -1,19 +1,8 @@
 # Next up
-testPEP570Unannotated
+testOverloadWithPositionalOnlySelf
 
 # Literal Context issues
 nested_tuple_context_inference4
-
-# 3.7 tests (deprecated?)
-testNamedTupleDefaults
-testAsyncForOutsideCoroutine
-testAsyncWithOutsideCoroutine
-testAwaitMissingNote
-testIncrementalWithDifferentKindsOfNestedTypesWithinMethod
-testTypeAliasWithNewStyleUnionInStub
-testNewAnalyzerModuleGetAttrInPython37
-# 3.8 tests
-testOverloadWithPositionalOnlySelf
 
 # super with Type[...]
 testSuperWithAny
@@ -230,6 +219,7 @@ testMalformedTypeAliasRuntimeReassignments
 testAliasToTupleAndCallable
 # Type alias inference should be typing._SpecialForm
 testTypeAliasWithNewStyleUnion
+testTypeAliasWithNewStyleUnionInStub
 
 # Nested type vars
 testFunctionInGenericInnerClassTypeVariable-skip
@@ -318,6 +308,8 @@ testSelfTypeNonsensical
 testSelfTypeNew
 testSelfTypeNew_explicit
 
+# Namedtuple defaults
+testNamedTupleDefaults
 # `Foo: NamedTuple` used as definition
 testNamedTupleTypeIsASuperTypeOfOtherNamedTuples
 testNamedTupleTypeIsASuperTypeOfOtherNamedTuplesReturns
@@ -579,6 +571,7 @@ testSortedNoError
 testReModuleBytes
 testReModuleString
 testRejectCovariantArgumentInLambda
+testPEP570Unannotated
 # lambda: Name "UNDEFINED" is not defined
 testLambdaInheritsCheckedContextFromTypedFunc
 testLambdaInheritsCheckedContextFromTypedFuncForced
@@ -1075,6 +1068,7 @@ testSelfTypeNotSelfType
 
 # "Maybe you forgot to use "await"?"
 testErrorOneLessFutureInReturnType
+testAwaitMissingNote
 
 # None as a default for class variables, even if not optional?
 testNoneClassVariableInInit
@@ -1866,6 +1860,10 @@ testConditionalFunctionDefinitionUsingDecorator2
 testConditionalFunctionDefinitionUnreachable
 testConditionalExpressionAndTypeContext
 
+# ""async for" outside async function"
+testAsyncForOutsideCoroutine
+testAsyncWithOutsideCoroutine
+
 # "All conditional function variants must have identical signatures"
 testIncompatibleConditionalFunctionDefinition
 testIncompatibleConditionalFunctionDefinition2
@@ -2172,6 +2170,7 @@ testGetAttrDescriptor
 testIncrementalNodeCreatedFromGetattr
 testAddedMissingStubsPackagePartialGetAttr
 testFineAddedMissingStubsPackagePartialGetAttr
+testNewAnalyzerModuleGetAttrInPython37
 
 # attrs
 testAttrs*
