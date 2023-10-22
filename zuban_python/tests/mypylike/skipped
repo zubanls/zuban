@@ -12,19 +12,7 @@ testAwaitMissingNote
 testIncrementalWithDifferentKindsOfNestedTypesWithinMethod
 testTypeAliasWithNewStyleUnionInStub
 testNewAnalyzerModuleGetAttrInPython37
-# Walrus tests
-testWalrus
-testWalrusRedefined
-testWalrusConditionalTypeBinder
-testWalrusConditionalTypeCheck
-testWalrusConditionalTypeCheck2
-testWalrusAssignmentAndConditionScopeForLiteral
-testWalrusAssignmentAndConditionScopeForProperty
-testWalrusAssignmentAndConditionScopeForFunction
-testWalrusUsedBeforeDef
-# "Assignment expression within a comprehension cannot be used in a class body"
-testNoCrashOnAssignmentExprClass
-#
+# 3.8 tests
 testOverloadWithPositionalOnlySelf
 testOverloadPositionalOnlyErrorMessage
 testOverloadPositionalOnlyErrorMessageAllTypes
@@ -2024,6 +2012,19 @@ testDel
 testReuseTryExceptionVariable
 testReuseDefinedTryExceptionVariable
 testRaiseFromStatement
+
+# Walrus tests
+testWalrus
+testWalrusRedefined
+testWalrusConditionalTypeBinder
+testWalrusConditionalTypeCheck
+testWalrusConditionalTypeCheck2
+testWalrusAssignmentAndConditionScopeForLiteral
+testWalrusAssignmentAndConditionScopeForProperty
+testWalrusAssignmentAndConditionScopeForFunction
+testWalrusUsedBeforeDef
+# "Assignment expression within a comprehension cannot be used in a class body"
+testNoCrashOnAssignmentExprClass
 
 # match statement
 testValuePattern
