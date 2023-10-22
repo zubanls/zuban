@@ -14,13 +14,6 @@ testTypeAliasWithNewStyleUnionInStub
 testNewAnalyzerModuleGetAttrInPython37
 # 3.8 tests
 testOverloadWithPositionalOnlySelf
-testOverloadPositionalOnlyErrorMessage
-testOverloadPositionalOnlyErrorMessageAllTypes
-testOverloadPositionalOnlyErrorMessageMultiplePosArgs
-testOverloadPositionalOnlyErrorMessageMethod
-testOverloadPositionalOnlyErrorMessageClassMethod
-testUnpackWithDuplicateNamePositionalOnly
-testPossiblyUndefinedWithAssignmentExpr
 
 # super with Type[...]
 testSuperWithAny
@@ -86,6 +79,7 @@ testOverloadClassmethodDisappears
 testOverloaded__new__
 testGenericClassInGenericFunctionOverloadedConstructor-skip
 testIOTypes
+testOverloadPositionalOnlyErrorMessageClassMethod
 # overload *args should be used if a list of never/any is given?
 testOverloadVarargsSelection
 
@@ -2023,6 +2017,7 @@ testWalrusAssignmentAndConditionScopeForLiteral
 testWalrusAssignmentAndConditionScopeForProperty
 testWalrusAssignmentAndConditionScopeForFunction
 testWalrusUsedBeforeDef
+testPossiblyUndefinedWithAssignmentExpr
 # "Assignment expression within a comprehension cannot be used in a class body"
 testNoCrashOnAssignmentExprClass
 
