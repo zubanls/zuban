@@ -20,9 +20,10 @@ use crate::matching::{
 };
 use crate::node_ref::NodeRef;
 use crate::type_::{
-    CallableContent, CallableParams, ClassGenerics, FunctionKind, GenericItem, GenericsList,
-    Literal, LiteralKind, Namespace, ParamSpecific, TupleContent, TupleTypeArguments, Type,
-    TypeOrTypeVarTuple, UnionEntry, UnionType,
+    CallableContent, CallableParam, CallableParams, ClassGenerics, DoubleStarredParamSpecific,
+    FunctionKind, GenericItem, GenericsList, Literal, LiteralKind, Namespace, ParamSpecific,
+    StarredParamSpecific, TupleContent, TupleTypeArguments, Type, TypeOrTypeVarTuple, UnionEntry,
+    UnionType,
 };
 use crate::type_helpers::{
     lookup_in_namespace, Class, FirstParamKind, Function, GeneratorType, Instance, Module,
@@ -1471,24 +1472,42 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             )
             .unwrap_or_else(|| {
                 let (params, expr) = lambda.unpack();
-                if params.count() == 0 {
-                    let result =
-                        self.infer_expression_without_cache(expr, &mut ResultContext::ExpectUnused);
-                    let c = CallableContent {
-                        name: None,
-                        class_name: None,
-                        defined_at: PointLink::new(self.file.file_index(), lambda.index()),
-                        kind: FunctionKind::Function {
-                            had_first_self_or_class_annotation: true,
-                        },
-                        type_vars: self.i_s.db.python_state.empty_type_var_likes.clone(),
-                        params: CallableParams::Simple(Rc::new([])),
-                        result_type: result.as_type(self.i_s).avoid_implicit_literal(self.i_s.db),
-                    };
-                    Inferred::from_type(Type::Callable(Rc::new(c)))
-                } else {
-                    todo!()
-                }
+                let result =
+                    self.infer_expression_without_cache(expr, &mut ResultContext::ExpectUnused);
+                let c = CallableContent {
+                    name: None,
+                    class_name: None,
+                    defined_at: PointLink::new(self.file.file_index(), lambda.index()),
+                    kind: FunctionKind::Function {
+                        had_first_self_or_class_annotation: true,
+                    },
+                    type_vars: self.i_s.db.python_state.empty_type_var_likes.clone(),
+                    params: CallableParams::Simple(
+                        params
+                            .map(|param| CallableParam {
+                                param_specific: match param.type_() {
+                                    ParamKind::PositionalOnly => {
+                                        ParamSpecific::PositionalOnly(Type::Any)
+                                    }
+                                    ParamKind::PositionalOrKeyword => {
+                                        ParamSpecific::PositionalOrKeyword(Type::Any)
+                                    }
+                                    ParamKind::KeywordOnly => ParamSpecific::KeywordOnly(Type::Any),
+                                    ParamKind::Starred => ParamSpecific::Starred(
+                                        StarredParamSpecific::ArbitraryLength(Type::Any),
+                                    ),
+                                    ParamKind::DoubleStarred => ParamSpecific::DoubleStarred(
+                                        DoubleStarredParamSpecific::ValueType(Type::Any),
+                                    ),
+                                },
+                                name: None,
+                                has_default: param.default().is_some(),
+                            })
+                            .collect(),
+                    ),
+                    result_type: result.as_type(self.i_s).avoid_implicit_literal(self.i_s.db),
+                };
+                Inferred::from_type(Type::Callable(Rc::new(c)))
             })
     }
 
