@@ -637,7 +637,7 @@ impl Type {
         match value_type {
             Type::FunctionOverload(overload) if variance == Variance::Covariant => {
                 if matcher.is_matching_reverse() {
-                    todo!()
+                    debug!("TODO is matching reverse for function overload?");
                 }
                 Match::any(overload.iter_functions(), |c2| {
                     Self::matches_callable(i_s, matcher, c1, c2)

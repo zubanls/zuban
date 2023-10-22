@@ -1,11 +1,5 @@
 # Next up
-testLiteralAndGenericsNoMatch
-testTupleWithUndersizedContext
-testTupleWithOversizedContext
-testNestedProtocolGenericUnions
-testNestedProtocolGenericUnionsDeep
 class_generics_recursion
-
 testFunctionalEnumErrors
 testFunctionalEnum
 

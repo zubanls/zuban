@@ -65,9 +65,9 @@ impl<'db> Inference<'db, '_, '_> {
         result_context: &mut ResultContext,
     ) -> Option<Inferred> {
         let i_s = self.i_s;
-        result_context.on_unique_protocol_in_unpacked_union(
+        result_context.on_unique_protocol_in_unpacked_union2(
             i_s,
-            i_s.db.python_state.iterable_node_ref(),
+            i_s.db.python_state.list_node_ref(),
             |matcher, calculated_type_args| {
                 let generic_t = calculated_type_args
                     .into_iter()
