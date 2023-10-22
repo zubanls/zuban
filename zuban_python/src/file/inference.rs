@@ -1451,6 +1451,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     pub fn infer_lambda(&mut self, lambda: Lambda, result_context: &mut ResultContext) -> Inferred {
+        let check_defaults = |inference: &mut Inference| {
+            let (params, expr) = lambda.unpack();
+            for param in params {
+                if let Some(default) = param.default() {
+                    inference.infer_expression(default);
+                }
+            }
+        };
         result_context
             .with_type_if_exists_and_replace_type_var_likes(
                 self.i_s,
@@ -1458,7 +1466,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     if let Type::Callable(c) = type_ {
                         let i_s = i_s.with_lambda_callable(c);
                         let (params, expr) = lambda.unpack();
-                        let result = self.file.inference(&i_s).infer_expression_without_cache(
+                        let mut inference = self.file.inference(&i_s);
+                        check_defaults(&mut inference);
+                        let result = inference.infer_expression_without_cache(
                             expr,
                             &mut ResultContext::Known(&c.result_type),
                         );
@@ -1472,6 +1482,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             )
             .unwrap_or_else(|| {
                 let (params, expr) = lambda.unpack();
+                check_defaults(self);
                 let result =
                     self.infer_expression_without_cache(expr, &mut ResultContext::ExpectUnused);
                 let c = CallableContent {
@@ -2186,7 +2197,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                 CallableParams::WithParamSpec(_, _) => todo!(),
                                             };
                                         } else {
-                                            todo!()
+                                            return Inferred::new_any();
                                         }
                                     }
                                 }
