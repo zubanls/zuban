@@ -1,8 +1,5 @@
 # Next up
 
-# Literal Context issues
-nested_tuple_context_inference4
-
 # super with Type[...]
 testSuperWithAny
 testSuperInClassMethod
