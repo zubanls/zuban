@@ -65,7 +65,7 @@ impl<'db> Inference<'db, '_, '_> {
         result_context: &mut ResultContext,
     ) -> Option<Inferred> {
         let i_s = self.i_s;
-        result_context.on_unique_protocol_in_unpacked_union2(
+        result_context.on_unique_type_in_unpacked_union(
             i_s,
             i_s.db.python_state.list_node_ref(),
             |matcher, calculated_type_args| {
@@ -74,7 +74,7 @@ impl<'db> Inference<'db, '_, '_> {
                     .next()
                     .unwrap()
                     .maybe_calculated_type(i_s.db)
-                    .unwrap();
+                    .unwrap_or(Type::Any);
                 let found = check_list_with_context(i_s, matcher, &generic_t, self.file, list);
                 Inferred::from_type(found.unwrap_or_else(|| {
                     new_class!(
@@ -621,7 +621,7 @@ pub fn infer_dict_like(
     result_context: &mut ResultContext,
     infer_with_context: impl FnOnce(&mut Matcher, &Type, &Type) -> Option<Type>,
 ) -> Option<Inferred> {
-    result_context.on_unique_protocol_in_unpacked_union2(
+    result_context.on_unique_type_in_unpacked_union(
         i_s,
         i_s.db.python_state.dict_node_ref(),
         |matcher, calculated_type_args| {
@@ -630,12 +630,12 @@ pub fn infer_dict_like(
                 .next()
                 .unwrap()
                 .maybe_calculated_type(i_s.db)
-                .unwrap();
+                .unwrap_or(Type::Any);
             let value_t = generics
                 .next()
                 .unwrap()
                 .maybe_calculated_type(i_s.db)
-                .unwrap();
+                .unwrap_or(Type::Any);
             let found = infer_with_context(matcher, &key_t, &value_t);
             Inferred::from_type(found.unwrap_or_else(|| {
                 new_class!(

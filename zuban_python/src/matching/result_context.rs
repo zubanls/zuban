@@ -51,40 +51,7 @@ impl<'a> ResultContext<'a, '_> {
         }
     }
 
-    pub fn on_unique_protocol_in_unpacked_union2<'db, T>(
-        &mut self,
-        i_s: &InferenceState,
-        class: NodeRef,
-        on_unique_found: impl FnOnce(&mut Matcher, Vec<CalculatedTypeVarLike>) -> T,
-    ) -> Option<T> {
-        self.with_type_if_exists(|t, matcher| {
-            t.on_unique_type_in_unpacked_union(
-                i_s.db,
-                matcher,
-                &|t| {
-                    let c = Class::from_non_generic_node_ref(class);
-                    let mut matcher = Matcher::new_class_matcher(i_s, c);
-                    let self_class = Class::with_self_generics(i_s.db, class);
-                    let matched = self_class
-                        .as_type(i_s.db)
-                        .is_sub_type_of(i_s, &mut matcher, t)
-                        .non_any_match();
-
-                    let calculated = matcher.unwrap_calculated_type_args();
-                    for x in &calculated {
-                        if !x.calculated() {
-                            return None;
-                        }
-                    }
-                    matched.then(|| calculated)
-                },
-                on_unique_found,
-            )
-        })
-        .flatten()
-    }
-
-    pub fn on_unique_protocol_in_unpacked_union<'db, T>(
+    pub fn on_unique_type_in_unpacked_union<'db, T>(
         &mut self,
         i_s: &InferenceState,
         class: NodeRef,
@@ -100,7 +67,7 @@ impl<'a> ResultContext<'a, '_> {
                     let self_class = Class::with_self_generics(i_s.db, class);
                     self_class
                         .as_type(i_s.db)
-                        .is_super_type_of(i_s, &mut matcher, t)
+                        .is_sub_type_of(i_s, &mut matcher, t)
                         .non_any_match()
                         .then(|| matcher.unwrap_calculated_type_args())
                 },
