@@ -73,3 +73,14 @@ T = TypeVar('T')
 def foo(x: SupportsKeysAndGetItem[S, T]) -> Tuple[S, T]: ...
 
 x: Tuple[int, str] = foo(reveal_type({}))  # N: Revealed type is "dict[int, str]"
+
+[case iterable_propagation]
+from typing import TypeVar, Tuple, Iterable
+
+T = TypeVar('T')
+
+def foo(x: Iterable[T]) -> T: ...
+def bar(x: Iterable[T]) -> Tuple[T]: ...
+
+x: int = foo(reveal_type([]))  # N: Revealed type is "list[int]"
+y: Tuple[int] = bar(reveal_type([]))  # N: Revealed type is "list[int]"
