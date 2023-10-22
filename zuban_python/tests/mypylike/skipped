@@ -1,10 +1,9 @@
 # Next up
-class_generics_recursion
 
 # Literal Context issues
 nested_tuple_context_inference4
 
-# 3.7 tests (deprecated) https://github.com/python/mypy/pull/15566
+# 3.7 tests (deprecated?)
 testNamedTupleDefaults
 testAsyncForOutsideCoroutine
 testAsyncWithOutsideCoroutine
@@ -121,7 +120,13 @@ testOrOperationInferredFromContext
 testRecursiveDoubleUnionNoCrash
 testNoRecursiveExpandInstanceUnionCrashGeneric
 testNoRecursiveExpandInstanceUnionCrashInference
-
+# recursive limits missing for joins
+testRecursiveAliasGenericInferenceNested
+testRecursiveAliasTopUnion
+testCrashInJoinOfSelfRecursiveNamedTuples
+testGenericJoinRecursiveTypes
+testRecursiveAliasWithRecursiveInstance
+class_generics_recursion
 # Invalid recursive aliases --enable-recursive-aliases
 testRecursiveAliasesProhibitBadAliases
 # Recursive Alias wrong type var inference --enable-recursive-aliases
@@ -175,12 +180,6 @@ testNestedListAssignment
 testNestedListAssignmentToTuple
 # Tuple a, *li = ta: "List item 0 has incompatible type "A"; expected "int""
 testAssignmentToStarFromTupleType
-# recursive limits missing for joins
-testRecursiveAliasGenericInferenceNested
-testRecursiveAliasTopUnion
-testCrashInJoinOfSelfRecursiveNamedTuples
-testGenericJoinRecursiveTypes
-testRecursiveAliasWithRecursiveInstance
 
 # WTF why is this base type not object/function?
 testListLiteralWithNameOnlyArgsDoesNotEraseNames
