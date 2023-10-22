@@ -184,9 +184,12 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                     _ => return Match::new_false(),
                 },
                 WrappedParamSpecific::KeywordOnly(t1) => match &specific2 {
-                    WrappedParamSpecific::KeywordOnly(t2)
-                    | WrappedParamSpecific::PositionalOnly(t2)
-                    | WrappedParamSpecific::PositionalOrKeyword(t2) => {
+                    WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t2)) => {
+                        matches &= match_(i_s, matcher, t1, t2);
+                        continue;
+                    }
+                    WrappedParamSpecific::DoubleStarred(_) => return Match::new_false(),
+                    _ => {
                         let mut found = false;
                         for (i, p2) in unused_keyword_params.iter().enumerate() {
                             if param1.name(i_s.db) == p2.name(i_s.db) {
@@ -202,17 +205,9 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                             }
                         }
                         if !found {
-                            while match params2.peek() {
-                                Some(p2) => {
-                                    matches!(
-                                        p2.kind(i_s.db),
-                                        ParamKind::KeywordOnly
-                                            | ParamKind::PositionalOrKeyword
-                                            | ParamKind::PositionalOnly
-                                    )
-                                }
-                                None => false,
-                            } {
+                            while params2.peek().is_some_and(|p2| {
+                                !matches!(p2.kind(i_s.db), ParamKind::DoubleStarred)
+                            }) {
                                 param2 = *params2.peek().unwrap();
                                 if param1.name(i_s.db) == param2.name(i_s.db) {
                                     match &param2.specific(i_s.db) {
@@ -222,12 +217,16 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                                             found = true;
                                             break;
                                         }
-                                        WrappedParamSpecific::PositionalOnly(t2) => continue,
-                                        _ => unreachable!(),
+                                        _ => continue,
                                     }
                                 } else {
                                     params2.next();
-                                    unused_keyword_params.push(param2);
+                                    if matches!(
+                                        param2.kind(i_s.db),
+                                        ParamKind::PositionalOrKeyword | ParamKind::KeywordOnly
+                                    ) {
+                                        unused_keyword_params.push(param2);
+                                    }
                                 }
                             }
                             if !found {
@@ -235,11 +234,6 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                             }
                         }
                     }
-                    WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t2)) => {
-                        matches &= match_(i_s, matcher, t1, t2);
-                        continue;
-                    }
-                    _ => return Match::new_false(),
                 },
                 WrappedParamSpecific::Starred(s1) => match &specific2 {
                     WrappedParamSpecific::Starred(s2) => match (s1, s2) {

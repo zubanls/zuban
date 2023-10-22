@@ -308,7 +308,7 @@ foo(1, y=1)  # E: Unexpected keyword argument "y" for "foo"
 bar(1, x=1)  # E: function gets multiple values for keyword argument "x"
 bar(1, y=1)  # E: Unexpected keyword argument "y"
 
-[case callable_subtyping_keyword_only_default_params]
+[case callable_subtyping_keyword_only_default_params1]
 def foo(*, y: str) -> None: ...
 def bar(x: int = 0, *, y: str) -> None: ...
 
@@ -316,3 +316,12 @@ if bool():
     foo = bar
 if bool():
     bar = foo # E: Incompatible types in assignment (expression has type "Callable[[NamedArg(str, 'y')], None]", variable has type "Callable[[int, NamedArg(str, 'y')], None]")
+
+[case callable_subtyping_keyword_only_default_params2]
+def foo(*, y: str) -> None: ...
+def bar(x: int = 0, *bar: bytes, y: str) -> None: ...
+
+if bool():
+    foo = bar
+if bool():
+    bar = foo # E: Incompatible types in assignment (expression has type "Callable[[NamedArg(str, 'y')], None]", variable has type "Callable[[int, VarArg(bytes), NamedArg(str, 'y')], None]")
