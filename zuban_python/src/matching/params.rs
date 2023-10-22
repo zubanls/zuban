@@ -281,8 +281,10 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
             return Match::new_false();
         }
     }
-    if !unused_keyword_params.is_empty() {
-        return Match::new_false();
+    for unused in unused_keyword_params {
+        if !unused.has_default() {
+            return Match::new_false();
+        }
     }
     for param2 in params2 {
         if !param2.has_default()
