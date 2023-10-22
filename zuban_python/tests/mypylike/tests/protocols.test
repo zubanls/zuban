@@ -63,3 +63,13 @@ r: R = C  # E: Incompatible types in assignment (expression has type "Type[C]", 
           # N:         def __call__(app: str) -> Callable[[int], None] \
           # N:     Got: \
           # N:         def __init__(app: str) -> C
+
+[case supports_keys_and_getitem_propagation]
+from typing import TypeVar, Tuple
+from _typeshed import SupportsKeysAndGetItem
+
+S = TypeVar('S')
+T = TypeVar('T')
+def foo(x: SupportsKeysAndGetItem[S, T]) -> Tuple[S, T]: ...
+
+x: Tuple[int, str] = foo(reveal_type({}))  # N: Revealed type is "dict[int, str]"
