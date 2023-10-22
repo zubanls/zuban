@@ -2359,7 +2359,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     fn infer_comprehension_expr_with_context(
         &mut self,
         result_context: &mut ResultContext,
-        expected_protocol: NodeRef,
         on_mismatch: impl FnOnce(Box<str>, Box<str>) -> IssueType,
         comp: Comprehension,
     ) -> Type {
@@ -2370,7 +2369,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         result_context
             .on_unique_protocol_in_unpacked_union(
                 i_s,
-                expected_protocol,
+                self.i_s.db.python_state.iterable_node_ref(),
                 |matcher, calculated_type_args| {
                     let inner_expected = calculated_type_args
                         .into_iter()
@@ -2380,9 +2379,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         .unwrap();
                     let inf = self.infer_named_expression_with_context(
                         comp_expr,
-                        &mut ResultContext::Known(&inner_expected),
+                        &mut ResultContext::WithMatcher {
+                            matcher,
+                            type_: &inner_expected,
+                        },
                     );
-                    let result = inner_expected.error_if_not_matches_with_matcher(
+                    inner_expected.error_if_not_matches_with_matcher(
                         i_s,
                         matcher,
                         &inf,
@@ -2392,12 +2394,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             from.to_db_lifetime(i_s.db)
                         }),
                     );
-                    if result.bool() {
-                        inf.as_type(i_s)
-                    } else {
-                        matcher
-                            .replace_type_var_likes_for_unknown_type_vars(i_s.db, &inner_expected)
-                    }
+                    matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, &inner_expected)
                 },
             )
             .unwrap_or_else(|| self.infer_named_expression(comp_expr).as_type(i_s))
@@ -2410,7 +2407,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     ) -> Inferred {
         let t = self.infer_comprehension_expr_with_context(
             result_context,
-            self.i_s.db.python_state.iterable_node_ref(),
             |got, expected| IssueType::ListComprehensionMismatch { got, expected },
             comp,
         );
@@ -2427,7 +2423,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     ) -> Inferred {
         let t = self.infer_comprehension_expr_with_context(
             result_context,
-            self.i_s.db.python_state.iterable_node_ref(),
             |got, expected| IssueType::SetComprehensionMismatch { got, expected },
             comp,
         );
@@ -2444,7 +2439,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     ) -> Inferred {
         let t = self.infer_comprehension_expr_with_context(
             result_context,
-            self.i_s.db.python_state.iterable_node_ref(),
             |got, expected| IssueType::GeneratorComprehensionMismatch { got, expected },
             comp,
         );
