@@ -2364,35 +2364,43 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         comp: Comprehension,
     ) -> Type {
         let i_s = self.i_s;
-        let inner_expected = result_context.on_unique_protocol_in_unpacked_union(
-            i_s,
-            expected_protocol,
-            |matcher, calculated_type_args| {
-                calculated_type_args
-                    .into_iter()
-                    .next()
-                    .unwrap()
-                    .maybe_calculated_type(i_s.db)
-                    .unwrap()
-            },
-        );
         let (comp_expr, for_if_clauses) = comp.unpack();
-        let inner_context = inner_expected
-            .as_ref()
-            .map(ResultContext::Known)
-            .unwrap_or(ResultContext::Unknown);
         self.infer_for_if_clauses(for_if_clauses);
-        let inf = self.infer_named_expression_with_context(comp_expr, result_context);
-        let mut t = inf.as_type(i_s);
-        if let Some(inner_expected) = inner_expected {
-            inner_expected.error_if_not_matches(i_s, &inf, |got, expected| {
-                let from = NodeRef::new(self.file, comp_expr.index());
-                from.add_issue(i_s, on_mismatch(got, expected));
-                t = inner_expected.clone();
-                from.to_db_lifetime(i_s.db)
-            });
-        }
-        t
+
+        result_context
+            .on_unique_protocol_in_unpacked_union(
+                i_s,
+                expected_protocol,
+                |matcher, calculated_type_args| {
+                    let inner_expected = calculated_type_args
+                        .into_iter()
+                        .next()
+                        .unwrap()
+                        .maybe_calculated_type(i_s.db)
+                        .unwrap();
+                    let inf = self.infer_named_expression_with_context(
+                        comp_expr,
+                        &mut ResultContext::Known(&inner_expected),
+                    );
+                    let result = inner_expected.error_if_not_matches_with_matcher(
+                        i_s,
+                        matcher,
+                        &inf,
+                        Some(|got, expected, _: &_| {
+                            let from = NodeRef::new(self.file, comp_expr.index());
+                            from.add_issue(i_s, on_mismatch(got, expected));
+                            from.to_db_lifetime(i_s.db)
+                        }),
+                    );
+                    if result.bool() {
+                        inf.as_type(i_s)
+                    } else {
+                        matcher
+                            .replace_type_var_likes_for_unknown_type_vars(i_s.db, &inner_expected)
+                    }
+                },
+            )
+            .unwrap_or_else(|| self.infer_named_expression(comp_expr).as_type(i_s))
     }
 
     fn infer_list_comprehension(

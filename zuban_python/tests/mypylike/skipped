@@ -582,9 +582,7 @@ testNoTypeCheckDecoratorSemanticError
 
 # Other Comprehensions
 testEnumerateReturningSelfFromIter
-testListComprehensionWithNonDirectMapping
 testTypeInferenceOfListComprehension
-testComprehensionShadowBinder
 testIterableProtocolOnClass
 testIterableProtocolOnMetaclass
 
