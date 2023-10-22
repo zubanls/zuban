@@ -98,6 +98,10 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 } if !had_error => {
                     if multi_any_match.is_some() {
                         // This means that there was an explicit any in a param.
+                        debug!(
+                            "Decided overload as not found, because of Any, \
+                                which match multiple overload versions"
+                        );
                         return OverloadResult::NotFound;
                     } else if !arbitrary_length_handled {
                         if first_arbitrary_length_not_handled.is_none() {
@@ -192,7 +196,15 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 search_init,
                 class,
             ) {
-                UnionMathResult::Match { result, .. } => return OverloadResult::Union(result),
+                UnionMathResult::Match { result, .. } => {
+                    debug!(
+                        "Decided overload as union math result {} (called on #{}): {:?}",
+                        self.name(i_s.db),
+                        args.as_node_ref().line(),
+                        result.format(&FormatData::new_short(i_s.db))
+                    );
+                    return OverloadResult::Union(result);
+                }
                 UnionMathResult::FirstSimilarIndex(index) => {
                     first_similar = Some(Callable::new(
                         self.overload.iter_functions().nth(index).unwrap(),
@@ -223,6 +235,12 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             // its diagnostics and return its types.
             // This is also how mypy does it. See `check_overload_call` (9943444c7)
             let calculated_type_args = match_signature(i_s, result_context, callable);
+            debug!(
+                "Decided overload as first similar: {} (called on #{}): {:?}",
+                self.name(i_s.db),
+                args.as_node_ref().line(),
+                callable.content.format(&FormatData::new_short(i_s.db))
+            );
             return OverloadResult::Single(callable);
         }
         if let Some(on_overload_mismatch) = on_type_error.on_overload_mismatch {
@@ -241,6 +259,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             };
             args.as_node_ref().add_issue(i_s, t);
         }
+        debug!("Decided overload as not found");
         if let Some(callable) = had_error_in_func {
             // Need to run the whole thing again to generate errors, because the function is not
             // going to be checked.

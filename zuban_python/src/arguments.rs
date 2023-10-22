@@ -663,12 +663,18 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                 }
                 None
             }
-            Self::Comprehension(i_s, file, comprehension) => {
-                Some(BaseArgumentReturn::Argument(ArgumentKind::Comprehension {
-                    i_s: *i_s,
-                    file,
-                    comprehension: *comprehension,
-                }))
+            Self::Comprehension(..) => {
+                if let Self::Comprehension(i_s, file, comprehension) =
+                    mem::replace(self, Self::Finished)
+                {
+                    Some(BaseArgumentReturn::Argument(ArgumentKind::Comprehension {
+                        i_s,
+                        file,
+                        comprehension,
+                    }))
+                } else {
+                    unreachable!()
+                }
             }
             Self::Finished => None,
             Self::SliceType(..) => {

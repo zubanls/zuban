@@ -580,11 +580,6 @@ testCallingNoTypeCheckFunction
 testCallingNoTypeCheckFunction2
 testNoTypeCheckDecoratorSemanticError
 
-# Other Comprehensions
-testEnumerateReturningSelfFromIter
-testIterableProtocolOnClass
-testIterableProtocolOnMetaclass
-
 # lambda
 testIncrementalWithDecorators
 testLambdaWithArguments
@@ -1007,6 +1002,7 @@ metaclass_descriptor
 testNotSimplifyingUnionWithMetaclass
 # Metaclass iter/getitem/addition
 testInferringLvarTypesUnpackedFromIterableClassObjectWithGenericIter
+testIterableProtocolOnMetaclass
 # Metaclass instance vs. class members
 testMetaclassConflictingInstanceVars
 testInferenceOfDunderDictOnClassObjects
