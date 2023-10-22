@@ -1,4 +1,5 @@
 # Next up
+testPEP570Unannotated
 
 # Literal Context issues
 nested_tuple_context_inference4
@@ -11,11 +12,7 @@ testAwaitMissingNote
 testIncrementalWithDifferentKindsOfNestedTypesWithinMethod
 testTypeAliasWithNewStyleUnionInStub
 testNewAnalyzerModuleGetAttrInPython37
-# 3.8 tests
-testParamSpecConcatenateNamedArgs
-testCallablesAsParameters
-testPEP570Calls
-testPEP570Unannotated
+# Walrus tests
 testWalrus
 testWalrusRedefined
 testWalrusConditionalTypeBinder
@@ -539,6 +536,7 @@ testSerializeTypedDictInMethod
 testTypedDictUnpackStrictMode
 testTypedDictStrictUpdate
 testTypedDictFlexibleUpdateUnionStrict
+testParamSpecConcatenateNamedArgs
 # Anonymous TypedDicts for join
 testJoinOfTypedDictWithCompatibleMappingSupertypeIsSupertype
 testCannotGetItemOfAnonymousTypedDictWithInvalidStringLiteralKey

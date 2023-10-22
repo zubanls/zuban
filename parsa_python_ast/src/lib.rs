@@ -1887,7 +1887,10 @@ impl<'db> Iterator for ParamIterator<'db> {
                             [",", "*", "/"].contains(&node.as_code()),
                             "{}",
                             node.as_code()
-                        )
+                        );
+                        if node.as_code() == "/" {
+                            *positional_only = false;
+                        }
                     }
                 }
                 None
