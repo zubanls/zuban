@@ -185,6 +185,7 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                 },
                 WrappedParamSpecific::KeywordOnly(t1) => match &specific2 {
                     WrappedParamSpecific::KeywordOnly(t2)
+                    | WrappedParamSpecific::PositionalOnly(t2)
                     | WrappedParamSpecific::PositionalOrKeyword(t2) => {
                         let mut found = false;
                         for (i, p2) in unused_keyword_params.iter().enumerate() {
@@ -205,7 +206,9 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                                 Some(p2) => {
                                     matches!(
                                         p2.kind(i_s.db),
-                                        ParamKind::KeywordOnly | ParamKind::PositionalOrKeyword
+                                        ParamKind::KeywordOnly
+                                            | ParamKind::PositionalOrKeyword
+                                            | ParamKind::PositionalOnly
                                     )
                                 }
                                 None => false,
@@ -219,6 +222,7 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                                             found = true;
                                             break;
                                         }
+                                        WrappedParamSpecific::PositionalOnly(t2) => continue,
                                         _ => unreachable!(),
                                     }
                                 } else {

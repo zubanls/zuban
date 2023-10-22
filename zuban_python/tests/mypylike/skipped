@@ -1,5 +1,4 @@
 # Next up
-testOverloadWithPositionalOnlySelf
 
 # Literal Context issues
 nested_tuple_context_inference4
