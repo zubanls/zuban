@@ -543,17 +543,13 @@ testCallingNoTypeCheckFunction2
 testNoTypeCheckDecoratorSemanticError
 
 # lambda
-testIncrementalWithDecorators
 testLambdaWithArguments
 testLambdaDefaultTypeErrors
 testLambdaDefaultContext
-testLambdaVarargContext
 testLambdaDeferredSpecialCase
 testErasedTypeRuntimeCoverage
 testLambdaJoinWithDynamicConstructor
-testSelfTypeLambdaDefault
 testEnclosingScopeLambdaNoCrash
-testEnclosingScopeLambdaNoCrashExplicit
 testLambdaAndReachability
 testNoCrashOnPartialLambdaInference
 testGenericLambdaGenericMethodNoCrash
@@ -584,13 +580,13 @@ testLambdaInheritsCheckedContextFromFuncForced
 # Lambda with defined return types (inferred context)
 testInferLambdaTypeUsingContext
 testLambdaWithoutContext
-testInvalidContextForLambda
 testEllipsisContextForLambda
 testEllipsisContextForLambda2
 testIsinstanceInInferredLambda
 testLambdaDeferredCrash
-# Cannot infer type of lambda
+# "Cannot infer type of lambda"
 testParamSpecLiteralsTypeApplication
+testInvalidContextForLambda
 # Param Spec lambda type inference
 testParamSpecInferredFromLambda
 # Generator in lambda
