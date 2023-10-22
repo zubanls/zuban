@@ -621,9 +621,9 @@ pub fn infer_dict_like(
     result_context: &mut ResultContext,
     infer_with_context: impl FnOnce(&mut Matcher, &Type, &Type) -> Option<Type>,
 ) -> Option<Inferred> {
-    result_context.on_unique_protocol_in_unpacked_union(
+    result_context.on_unique_protocol_in_unpacked_union2(
         i_s,
-        i_s.db.python_state.supports_keys_and_get_item_node_ref(),
+        i_s.db.python_state.dict_node_ref(),
         |matcher, calculated_type_args| {
             let mut generics = calculated_type_args.into_iter();
             let key_t = generics

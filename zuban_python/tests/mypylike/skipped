@@ -6,6 +6,9 @@ testNestedProtocolGenericUnions
 testNestedProtocolGenericUnionsDeep
 class_generics_recursion
 
+testFunctionalEnumErrors
+testFunctionalEnum
+
 # Literal Context issues
 nested_tuple_context_inference4
 
