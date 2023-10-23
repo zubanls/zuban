@@ -559,8 +559,6 @@ testReModuleBytes
 testReModuleString
 testRejectCovariantArgumentInLambda
 testInferLambdaTypeUsingContext
-testLambdaWithoutContext
-testIsinstanceInInferredLambda
 testLambdaDeferredCrash
 # returning wrong callable from inference
 testLambdaDefaultContext
@@ -1576,6 +1574,8 @@ testColumnsSimpleIsinstance
 testTypeshedRecursiveTypesExample
 testTypedDictIsInstance
 testTypedDictIsInstanceABCs
+# isinstance in lambda
+testIsinstanceInInferredLambda
 # isinstance Intersection types
 testIsInstanceAdHocIntersectionFineGrainedIncrementalNoChange
 testIsInstanceAdHocIntersectionFineGrainedIncrementalIsInstanceChange

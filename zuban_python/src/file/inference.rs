@@ -1520,7 +1520,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             })
                             .collect(),
                     ),
-                    result_type: result.as_type(self.i_s).avoid_implicit_literal(self.i_s.db),
+                    result_type: result.as_type(self.i_s),
                 };
                 Inferred::from_type(Type::Callable(Rc::new(c)))
             })
