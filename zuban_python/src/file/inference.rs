@@ -1459,6 +1459,32 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
             }
         };
+        let any_params = |params: ParamIterator| {
+            CallableParams::Simple(
+                params
+                    .map(|param| CallableParam {
+                        param_specific: match param.type_() {
+                            ParamKind::PositionalOnly => ParamSpecific::PositionalOnly(Type::Any),
+                            ParamKind::PositionalOrKeyword => {
+                                ParamSpecific::PositionalOrKeyword(Type::Any)
+                            }
+                            ParamKind::KeywordOnly => ParamSpecific::KeywordOnly(Type::Any),
+                            ParamKind::Starred => ParamSpecific::Starred(
+                                StarredParamSpecific::ArbitraryLength(Type::Any),
+                            ),
+                            ParamKind::DoubleStarred => ParamSpecific::DoubleStarred(
+                                DoubleStarredParamSpecific::ValueType(Type::Any),
+                            ),
+                        },
+                        name: Some(StringSlice::from_name(
+                            self.file.file_index(),
+                            param.name_definition().name(),
+                        )),
+                        has_default: param.default().is_some(),
+                    })
+                    .collect(),
+            )
+        };
         result_context
             .with_type_if_exists_and_replace_type_var_likes(
                 self.i_s,
@@ -1473,6 +1499,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             &mut ResultContext::Known(&c.result_type),
                         );
                         let mut c = (**c).clone();
+                        if matches!(c.params, CallableParams::Any) {
+                            c.params = any_params(params);
+                        }
                         c.result_type = result.as_cow_type(&i_s).into_owned();
                         Some(Inferred::from_type(Type::Callable(Rc::new(c))))
                     } else {
@@ -1494,32 +1523,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         had_first_self_or_class_annotation: true,
                     },
                     type_vars: self.i_s.db.python_state.empty_type_var_likes.clone(),
-                    params: CallableParams::Simple(
-                        params
-                            .map(|param| CallableParam {
-                                param_specific: match param.type_() {
-                                    ParamKind::PositionalOnly => {
-                                        ParamSpecific::PositionalOnly(Type::Any)
-                                    }
-                                    ParamKind::PositionalOrKeyword => {
-                                        ParamSpecific::PositionalOrKeyword(Type::Any)
-                                    }
-                                    ParamKind::KeywordOnly => ParamSpecific::KeywordOnly(Type::Any),
-                                    ParamKind::Starred => ParamSpecific::Starred(
-                                        StarredParamSpecific::ArbitraryLength(Type::Any),
-                                    ),
-                                    ParamKind::DoubleStarred => ParamSpecific::DoubleStarred(
-                                        DoubleStarredParamSpecific::ValueType(Type::Any),
-                                    ),
-                                },
-                                name: Some(StringSlice::from_name(
-                                    self.file.file_index(),
-                                    param.name_definition().name(),
-                                )),
-                                has_default: param.default().is_some(),
-                            })
-                            .collect(),
-                    ),
+                    params: any_params(params),
                     result_type: result.as_type(self.i_s),
                 };
                 Inferred::from_type(Type::Callable(Rc::new(c)))

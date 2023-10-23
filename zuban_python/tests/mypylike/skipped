@@ -544,6 +544,7 @@ testNoTypeCheckDecoratorSemanticError
 
 # i_s missing current class
 testLambdaDeferredSpecialCase
+testLambdaDeferredCrash
 # join lambda
 testLambdaJoinWithDynamicConstructor
 # "Duplicate argument "x" in function definition"
@@ -559,9 +560,6 @@ testReModuleBytes
 testReModuleString
 testRejectCovariantArgumentInLambda
 testInferLambdaTypeUsingContext
-testLambdaDeferredCrash
-# returning wrong callable from inference
-testLambdaDefaultContext
 testEllipsisContextForLambda
 testEllipsisContextForLambda2
 # "Cannot infer type of lambda"
