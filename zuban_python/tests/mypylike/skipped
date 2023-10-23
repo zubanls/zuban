@@ -542,26 +542,30 @@ testCallingNoTypeCheckFunction
 testCallingNoTypeCheckFunction2
 testNoTypeCheckDecoratorSemanticError
 
-# lambda
-testLambdaDefaultContext
+# i_s missing current class
 testLambdaDeferredSpecialCase
+# join lambda
 testLambdaJoinWithDynamicConstructor
-testNoCrashOnPartialLambdaInference
-testGenericLambdaGenericMethodNoCrash
+# "Duplicate argument "x" in function definition"
 testFastParserDuplicateNames
-testMapWithLambdaSpecialCase
-testReModuleBytes
-testReModuleString
-testRejectCovariantArgumentInLambda
+# --check-untyped-defs
 testLambdaInheritsCheckedContextFromFuncLambdaStackForce
 testLambdaInheritsCheckedContextFromFuncForced
 # Lambda with defined return types (inferred context)
+testMapWithLambdaSpecialCase
+testNoCrashOnPartialLambdaInference
+testGenericLambdaGenericMethodNoCrash
+testReModuleBytes
+testReModuleString
+testRejectCovariantArgumentInLambda
 testInferLambdaTypeUsingContext
 testLambdaWithoutContext
-testEllipsisContextForLambda
-testEllipsisContextForLambda2
 testIsinstanceInInferredLambda
 testLambdaDeferredCrash
+# returning wrong callable from inference
+testLambdaDefaultContext
+testEllipsisContextForLambda
+testEllipsisContextForLambda2
 # "Cannot infer type of lambda"
 testParamSpecLiteralsTypeApplication
 testInvalidContextForLambda
