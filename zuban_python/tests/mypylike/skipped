@@ -189,6 +189,7 @@ testInferenceAgainstGenericSplitOrder
 testInferenceAgainstGenericSplitOrderGeneric
 testInferenceAgainstGenericCallableNewVariable
 testInferenceAgainstGenericBoundsAndValues
+testGenericLambdaGenericMethodNoCrash
 testDefaultDict
 testGenericInferenceWithDataclass
 testGenericInferenceWithItertools
@@ -206,6 +207,7 @@ testVarArgsFunctionSubtyping
 # lambda infer callable after type params after it.
 testMapWithLambdaSpecialCase
 
+testRejectCovariantArgumentInLambda
 # i_s missing current class
 testLambdaDeferredSpecialCase
 testLambdaDeferredCrash
@@ -216,15 +218,8 @@ testFastParserDuplicateNames
 # --check-untyped-defs
 testLambdaInheritsCheckedContextFromFuncLambdaStackForce
 testLambdaInheritsCheckedContextFromFuncForced
-# Lambda with defined return types (inferred context)
-testNoCrashOnPartialLambdaInference
-testGenericLambdaGenericMethodNoCrash
-testReModuleBytes
-testReModuleString
-testRejectCovariantArgumentInLambda
+# Lambda inferred like (lambda x: x)(1)
 testInferLambdaTypeUsingContext
-# wtf?
-testEllipsisContextForLambda2
 # "Cannot infer type of lambda"
 testParamSpecLiteralsTypeApplication
 testInvalidContextForLambda
@@ -232,9 +227,8 @@ testInvalidContextForLambda
 testParamSpecInferredFromLambda
 # Generator in lambda
 testNoCrashOnLambdaGenerator
-# Callable[..., int] | Callable[..., str] lambda inference may conflict
-testOptionalLambdaInference
-
+# wtf?
+testEllipsisContextForLambda2
 
 # Type alias issues where it's unclear if something is an alias or not
 testUnionOrSyntaxWithTypeAliasWorking
@@ -1712,6 +1706,8 @@ testIsInstanceAdHocIntersectionIncrementalUnreachaableToIntersection
 testGenericPatterns
 testGenericMatch
 testTypedDictUpdate3
+testReModuleBytes
+testReModuleString
 # narrowing with in
 testOperatorContainsNarrowsTypedDicts_unionWithList
 testOperatorContainsNarrowsTypedDicts_total
@@ -1740,6 +1736,7 @@ testExceptionVariableReuseInDeferredNode5
 testExceptionVariableReuseInDeferredNode6
 testSerializeNamedTuple
 testDataclassesInitVars
+testOptionalLambdaInference
 # narrowing with dict keys
 testNarrowTypeForDictKeys
 
@@ -1766,6 +1763,7 @@ testIncompatibleInheritedAttributeNoStrictOptional
 testInheritedAttributeStrictOptional
 testIgnoreTypeInferenceError2
 testCheckUntypedDefsSelf2
+testNoCrashOnPartialLambdaInference
 
 # Weird Name binder type definitions (overwritten?)
 testLiteralBinderLastValueErased
