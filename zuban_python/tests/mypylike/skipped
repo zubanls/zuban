@@ -560,7 +560,7 @@ testReModuleBytes
 testReModuleString
 testRejectCovariantArgumentInLambda
 testInferLambdaTypeUsingContext
-testEllipsisContextForLambda
+# wtf?
 testEllipsisContextForLambda2
 # "Cannot infer type of lambda"
 testParamSpecLiteralsTypeApplication
