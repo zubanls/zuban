@@ -1486,29 +1486,26 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             )
         };
         result_context
-            .with_type_if_exists_and_replace_type_var_likes(
-                self.i_s,
-                |i_s: &InferenceState<'db, '_>, type_| {
-                    if let Type::Callable(c) = type_ {
-                        let i_s = i_s.with_lambda_callable(c);
-                        let (params, expr) = lambda.unpack();
-                        let mut inference = self.file.inference(&i_s);
-                        check_defaults(&mut inference);
-                        let result = inference.infer_expression_without_cache(
-                            expr,
-                            &mut ResultContext::Known(&c.result_type),
-                        );
-                        let mut c = (**c).clone();
-                        if matches!(c.params, CallableParams::Any) {
-                            c.params = any_params(params);
-                        }
-                        c.result_type = result.as_type(&i_s);
-                        Some(Inferred::from_type(Type::Callable(Rc::new(c))))
-                    } else {
-                        None
+            .with_type_if_exists_and_replace_type_var_likes(self.i_s, |type_| {
+                if let Type::Callable(c) = type_ {
+                    let i_s = self.i_s.with_lambda_callable(c);
+                    let (params, expr) = lambda.unpack();
+                    let mut inference = self.file.inference(&i_s);
+                    check_defaults(&mut inference);
+                    let result = inference.infer_expression_without_cache(
+                        expr,
+                        &mut ResultContext::Known(&c.result_type),
+                    );
+                    let mut c = (**c).clone();
+                    if matches!(c.params, CallableParams::Any) {
+                        c.params = any_params(params);
                     }
-                },
-            )
+                    c.result_type = result.as_type(&i_s);
+                    Some(Inferred::from_type(Type::Callable(Rc::new(c))))
+                } else {
+                    None
+                }
+            })
             .flatten()
             .unwrap_or_else(|| {
                 let (params, expr) = lambda.unpack();

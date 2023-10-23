@@ -22,13 +22,13 @@ impl<'a> ResultContext<'a, '_> {
     pub fn with_type_if_exists_and_replace_type_var_likes<'db, T>(
         &self,
         i_s: &InferenceState<'db, '_>,
-        callable: impl FnOnce(&InferenceState<'db, '_>, &Type) -> T,
+        callable: impl FnOnce(&Type) -> T,
     ) -> Option<T> {
         match self {
-            Self::Known(type_) => Some(callable(i_s, type_)),
+            Self::Known(type_) => Some(callable(type_)),
             Self::WithMatcher { matcher, type_ } => {
                 let t = matcher.replace_type_var_likes_for_nested_context(i_s.db, type_);
-                Some(callable(i_s, &t))
+                Some(callable(&t))
             }
             Self::Unknown
             | Self::AssignmentNewDefinition
@@ -85,21 +85,18 @@ impl<'a> ResultContext<'a, '_> {
         if matches!(self, Self::AssignmentNewDefinition) && !i_s.is_calculating_enum_members() {
             return CouldBeALiteral::No;
         }
-        self.with_type_if_exists_and_replace_type_var_likes(
-            i_s,
-            |i_s: &InferenceState<'db, '_>, type_| match type_ {
-                Type::Literal(l) => CouldBeALiteral::Yes { implicit: false },
-                Type::EnumMember(_) => CouldBeALiteral::Yes { implicit: false },
-                Type::Union(items)
-                    if items
-                        .iter()
-                        .any(|i| matches!(i, Type::Literal(_) | Type::EnumMember(_))) =>
-                {
-                    CouldBeALiteral::Yes { implicit: false }
-                }
-                _ => CouldBeALiteral::No,
-            },
-        )
+        self.with_type_if_exists_and_replace_type_var_likes(i_s, |type_| match type_ {
+            Type::Literal(l) => CouldBeALiteral::Yes { implicit: false },
+            Type::EnumMember(_) => CouldBeALiteral::Yes { implicit: false },
+            Type::Union(items)
+                if items
+                    .iter()
+                    .any(|i| matches!(i, Type::Literal(_) | Type::EnumMember(_))) =>
+            {
+                CouldBeALiteral::Yes { implicit: false }
+            }
+            _ => CouldBeALiteral::No,
+        })
         .unwrap_or(CouldBeALiteral::Yes { implicit: true })
     }
 
@@ -125,7 +122,7 @@ impl<'a> ResultContext<'a, '_> {
         i_s: &InferenceState,
         mut callable: impl FnMut(TupleContextIterator) -> T,
     ) -> T {
-        self.with_type_if_exists_and_replace_type_var_likes(i_s, |i_s: &InferenceState, type_| {
+        self.with_type_if_exists_and_replace_type_var_likes(i_s, |type_| {
             match type_ {
                 Type::Tuple(tup) => Some(match &tup.args {
                     TupleTypeArguments::FixedLength(ts) => {
