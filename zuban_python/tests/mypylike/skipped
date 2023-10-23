@@ -203,6 +203,38 @@ testInvalidNumberOfTypeArgs
 testInheritedConstructor2
 testMapStr
 testVarArgsFunctionSubtyping
+# lambda infer callable after type params after it.
+testMapWithLambdaSpecialCase
+
+# i_s missing current class
+testLambdaDeferredSpecialCase
+testLambdaDeferredCrash
+# join lambda
+testLambdaJoinWithDynamicConstructor
+# "Duplicate argument "x" in function definition"
+testFastParserDuplicateNames
+# --check-untyped-defs
+testLambdaInheritsCheckedContextFromFuncLambdaStackForce
+testLambdaInheritsCheckedContextFromFuncForced
+# Lambda with defined return types (inferred context)
+testNoCrashOnPartialLambdaInference
+testGenericLambdaGenericMethodNoCrash
+testReModuleBytes
+testReModuleString
+testRejectCovariantArgumentInLambda
+testInferLambdaTypeUsingContext
+# wtf?
+testEllipsisContextForLambda2
+# "Cannot infer type of lambda"
+testParamSpecLiteralsTypeApplication
+testInvalidContextForLambda
+# Param Spec lambda type inference
+testParamSpecInferredFromLambda
+# Generator in lambda
+testNoCrashOnLambdaGenerator
+# Callable[..., int] | Callable[..., str] lambda inference may conflict
+testOptionalLambdaInference
+
 
 # Type alias issues where it's unclear if something is an alias or not
 testUnionOrSyntaxWithTypeAliasWorking
@@ -541,36 +573,6 @@ testNoTypeCheckDecoratorOnMethod2
 testCallingNoTypeCheckFunction
 testCallingNoTypeCheckFunction2
 testNoTypeCheckDecoratorSemanticError
-
-# i_s missing current class
-testLambdaDeferredSpecialCase
-testLambdaDeferredCrash
-# join lambda
-testLambdaJoinWithDynamicConstructor
-# "Duplicate argument "x" in function definition"
-testFastParserDuplicateNames
-# --check-untyped-defs
-testLambdaInheritsCheckedContextFromFuncLambdaStackForce
-testLambdaInheritsCheckedContextFromFuncForced
-# Lambda with defined return types (inferred context)
-testMapWithLambdaSpecialCase
-testNoCrashOnPartialLambdaInference
-testGenericLambdaGenericMethodNoCrash
-testReModuleBytes
-testReModuleString
-testRejectCovariantArgumentInLambda
-testInferLambdaTypeUsingContext
-# wtf?
-testEllipsisContextForLambda2
-# "Cannot infer type of lambda"
-testParamSpecLiteralsTypeApplication
-testInvalidContextForLambda
-# Param Spec lambda type inference
-testParamSpecInferredFromLambda
-# Generator in lambda
-testNoCrashOnLambdaGenerator
-# Callable[..., int] | Callable[..., str] lambda inference may conflict
-testOptionalLambdaInference
 
 # Random protocol issues
 testEnumIterable
