@@ -1502,7 +1502,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         if matches!(c.params, CallableParams::Any) {
                             c.params = any_params(params);
                         }
-                        c.result_type = result.as_cow_type(&i_s).into_owned();
+                        c.result_type = result.as_type(&i_s);
                         Some(Inferred::from_type(Type::Callable(Rc::new(c))))
                     } else {
                         None

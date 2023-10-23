@@ -451,7 +451,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 had_first_self_or_class_annotation: had_first_annotation,
                 ..
             } => {
-                let Type::Callable(mut callable) = details.inferred.as_cow_type(i_s).into_owned() else {
+                let Type::Callable(mut callable) = details.inferred.as_type(i_s) else {
                     unreachable!()
                 };
                 if let Some(wrong) = callable.has_exactly_one_positional_parameter() {
@@ -1112,7 +1112,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 i_s.db.python_state.coroutine_link(),
                 Type::Any,
                 Type::Any,
-                result.as_cow_type(i_s).into_owned(),
+                result.as_type(i_s),
             ));
         }
         result
