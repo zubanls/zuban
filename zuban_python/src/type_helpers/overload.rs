@@ -244,7 +244,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             return OverloadResult::Single(callable);
         }
         if let Some(on_overload_mismatch) = on_type_error.on_overload_mismatch {
-            on_overload_mismatch(i_s, class)
+            on_overload_mismatch()
         } else {
             let f_or_c = FunctionOrCallable::Callable(Callable::new(
                 self.overload.iter_functions().next().unwrap(),

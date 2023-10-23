@@ -611,7 +611,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         },
                         OnTypeError::with_overload_mismatch(
                             &|_, _, _, _, _| had_error.set(true),
-                            Some(&|_, _| had_error.set(true)),
+                            Some(&|| had_error.set(true)),
                         ),
                     );
                 }
@@ -1560,7 +1560,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 &mut ResultContext::Unknown,
                                 OnTypeError::with_overload_mismatch(
                                     &|_, _, _, _, _| had_left_error.set(true),
-                                    Some(&|_, _| had_left_error.set(true)),
+                                    Some(&|| had_left_error.set(true)),
                                 ),
                             );
                             if !had_left_error.get() {
@@ -1601,7 +1601,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     &mut ResultContext::Unknown,
                                     OnTypeError::with_overload_mismatch(
                                         &|_, _, _, _, _| error.set(LookupError::BothSidesError),
-                                        Some(&|_, _| error.set(LookupError::BothSidesError)),
+                                        Some(&|| error.set(LookupError::BothSidesError)),
                                     ),
                                 )
                         } else {

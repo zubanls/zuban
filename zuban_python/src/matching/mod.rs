@@ -36,10 +36,9 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     type_::{Type, TypeOrTypeVarTuple},
-    type_helpers::Class,
 };
 
-type OnOverloadMismatch<'db, 'a> = Option<&'a dyn Fn(&InferenceState<'db, '_>, Option<&Class>)>;
+type OnOverloadMismatch<'db, 'a> = Option<&'a dyn Fn()>;
 type GenerateDiagnosticString<'a> = &'a dyn Fn(&FunctionOrCallable, &Database) -> Option<String>;
 
 #[derive(Clone, Copy)]
