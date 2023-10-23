@@ -542,8 +542,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 NodeRef::new(self.file, right_side.index()),
                                 &right.clone(),
                                 true,
-                                |i_s, index| {
-                                    right.save_redirect(i_s, self.file, index);
+                                |index| {
+                                    right.save_redirect(self.i_s, self.file, index);
                                 },
                             );
                         } else {
@@ -564,7 +564,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             Some(right_side) => NodeRef::new(self.file, right_side.index()),
                             None => NodeRef::new(self.file, annotation.index()),
                         };
-                        self.assign_single_target(target, n, &inf_annot, true, |_, index| {
+                        self.assign_single_target(target, n, &inf_annot, true, |index| {
                             self.file.points.set(
                                 index,
                                 Point::new_redirect(
@@ -630,7 +630,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let AssignmentContent::AugAssign(target, ..) = assignment.unpack() else {
                     unreachable!()
                 };
-                self.assign_single_target(target, n, &result, false, |_, index| {
+                self.assign_single_target(target, n, &result, false, |index| {
                     // There is no need to save this, because it's never used
                 })
             }
@@ -803,7 +803,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         from: NodeRef,
         value: &Inferred,
         is_definition: bool,
-        save: impl FnOnce(&InferenceState, NodeIndex),
+        save: impl FnOnce(NodeIndex),
     ) {
         match target {
             Target::Name(name_def) => {
@@ -825,7 +825,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         return;
                     }
                 }
-                save(self.i_s, name_def.index());
+                save(name_def.index());
             }
             Target::NameExpression(primary_target, name_definition) => {
                 let base = self.infer_primary_target_or_atom(primary_target.first());
@@ -911,7 +911,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                 }
                 // This mostly needs to be saved for self names
-                save(self.i_s, name_definition.index());
+                save(name_definition.index());
             }
             Target::IndexExpression(primary_target) => {
                 let base = self.infer_primary_target_or_atom(primary_target.first());
@@ -1107,19 +1107,15 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     is_definition,
                 );
             }
-            _ => self.assign_single_target(
-                target,
-                value_node_ref,
-                &value,
-                is_definition,
-                |i_s, index| {
+            _ => {
+                self.assign_single_target(target, value_node_ref, &value, is_definition, |index| {
                     // Since it's possible that we are assigning unions to tuple/star targets, we
                     // iterate over the different possibilities and end up with name definitions
                     // that are already set. In those cases we use the "old" types and merge them.
                     // In Mypy that is called "accumulate_type_assignments".
-                    NodeRef::new(self.file, index).accumulate_types(i_s, &value)
-                },
-            ),
+                    NodeRef::new(self.file, index).accumulate_types(self.i_s, &value)
+                })
+            }
         };
     }
 
