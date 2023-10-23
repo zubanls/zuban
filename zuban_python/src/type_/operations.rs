@@ -253,6 +253,12 @@ impl Type {
         slice_type: &SliceType,
         result_context: &mut ResultContext,
     ) -> Inferred {
+        let not_possible = || {
+            slice_type
+                .as_node_ref()
+                .add_issue(i_s, IssueType::OnlyClassTypeApplication);
+            Inferred::new_any()
+        };
         let inf = match self {
             Type::Class(c) => Instance::new(c.class(i_s.db), from_inferred).get_item(
                 i_s,
@@ -304,12 +310,7 @@ impl Type {
                         *slice_type,
                         matches!(result_context, ResultContext::AssignmentNewDefinition),
                     ),
-                _ => {
-                    slice_type
-                        .as_node_ref()
-                        .add_issue(i_s, IssueType::OnlyClassTypeApplication);
-                    Inferred::new_any()
-                }
+                _ => not_possible(),
             },
             Type::NewType(new_type) => {
                 new_type
@@ -321,16 +322,9 @@ impl Type {
                     .get_item(i_s, None, slice_type, result_context)
             }
             Type::TypedDict(d) => TypedDictHelper(d).get_item(i_s, slice_type, result_context),
-            Type::Callable(_) => {
-                slice_type
-                    .as_node_ref()
-                    .add_issue(i_s, IssueType::OnlyClassTypeApplication);
-                Inferred::new_unknown()
-            }
+            Type::Callable(_) => not_possible(),
             Type::FunctionOverload(_) => {
-                slice_type
-                    .as_node_ref()
-                    .add_issue(i_s, IssueType::OnlyClassTypeApplication);
+                not_possible();
                 todo!("Please write a test that checks this");
             }
             Type::None => {
