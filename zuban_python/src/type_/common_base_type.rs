@@ -169,7 +169,6 @@ fn common_base_type_for_non_class(
         Type::Callable(c1) => {
             // TODO this should also be done for function/callable and callable/function and
             // not only callable/callable
-            dbg!(&type2.maybe_callable(i_s));
             if let Some(CallableLike::Callable(c2)) = type2.maybe_callable(i_s) {
                 return Some(common_base_for_callables(i_s, c1, &c2));
             }
