@@ -769,6 +769,8 @@ testInvalidUnpackTypes
 # Unpack item in ** argument must be a TypedDict
 testTypeVarTuple
 
+# import order
+testTypeAliasesToNamedTuple
 # __builtins__ object
 testBuiltinsUsingModule
 # future imports (future is not part of stubs)
