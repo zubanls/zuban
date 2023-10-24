@@ -749,6 +749,10 @@ impl<'db> Inference<'db, '_, '_> {
                 } else {
                     debug!("TODO what about an implicit None?");
                 }
+            } else {
+                if let Some(star_expressions) = return_stmt.star_expressions() {
+                    self.infer_star_expressions(star_expressions, &mut ResultContext::Unknown);
+                }
             }
         }
     }

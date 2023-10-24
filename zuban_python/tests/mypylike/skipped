@@ -214,9 +214,6 @@ testLambdaDeferredSpecialCase
 testLambdaDeferredCrash
 # "Duplicate argument "x" in function definition"
 testFastParserDuplicateNames
-# --check-untyped-defs
-testLambdaInheritsCheckedContextFromFuncLambdaStackForce
-testLambdaInheritsCheckedContextFromFuncForced
 # Lambda inferred like (lambda x: x)(1)
 testInferLambdaTypeUsingContext
 # "Cannot infer type of lambda"
