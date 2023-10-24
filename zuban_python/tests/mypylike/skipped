@@ -206,6 +206,7 @@ testMapStr
 testVarArgsFunctionSubtyping
 # lambda infer callable after type params after it.
 testMapWithLambdaSpecialCase
+testParamSpecInferredFromLambda
 
 # lambda context recursion
 testRejectCovariantArgumentInLambda
@@ -216,11 +217,6 @@ testLambdaDeferredCrash
 testFastParserDuplicateNames
 # Lambda inferred like (lambda x: x)(1)
 testInferLambdaTypeUsingContext
-# "Cannot infer type of lambda"
-testParamSpecLiteralsTypeApplication
-testInvalidContextForLambda
-# Param Spec lambda type inference
-testParamSpecInferredFromLambda
 # Generator in lambda
 testNoCrashOnLambdaGenerator
 # wtf?

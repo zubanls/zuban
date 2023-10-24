@@ -45,6 +45,7 @@ pub(crate) enum IssueType {
     DictComprehensionMismatch { part: &'static str, got: Box<str>, expected: Box<str> },
     DictMemberMismatch { item: usize, got_pair: Box<str>, expected_pair: Box<str> },
     UnpackedDictMemberMismatch { item: usize, got: Box<str>, expected: Box<str> },
+    CannotInferLambdaParams,
 
     Redefinition { line: usize },
     ModuleNotFound { module_name: Box<str> },
@@ -504,6 +505,8 @@ impl<'db> Diagnostic<'db> {
             UnpackedDictMemberMismatch{item, got, expected} => format!(
                 r#"Unpacked dict entry {item} has incompatible type "{got}"; expected "{expected}""#,
             ),
+            CannotInferLambdaParams => "Cannot infer type of lambda".to_string(),
+
             Redefinition{line} => {
                 format!("Name {:?} already defined line {line}", self.code_under_issue())
             }

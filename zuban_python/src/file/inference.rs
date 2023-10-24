@@ -16,14 +16,15 @@ use crate::imports::{find_ancestor, global_import, python_import, ImportResult};
 use crate::inference_state::InferenceState;
 use crate::inferred::{add_attribute_error, specific_to_type, Inferred, UnionValue};
 use crate::matching::{
-    CouldBeALiteral, FormatData, Generics, LookupKind, LookupResult, OnTypeError, ResultContext,
+    matches_simple_params, CouldBeALiteral, FormatData, Generics, LookupKind, LookupResult,
+    Matcher, OnTypeError, ResultContext,
 };
 use crate::node_ref::NodeRef;
 use crate::type_::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, DoubleStarredParamSpecific,
     FunctionKind, GenericItem, GenericsList, Literal, LiteralKind, Namespace, ParamSpecific,
     StarredParamSpecific, StringSlice, TupleContent, TupleTypeArguments, Type, TypeOrTypeVarTuple,
-    UnionEntry, UnionType,
+    UnionEntry, UnionType, Variance,
 };
 use crate::type_helpers::{
     lookup_in_namespace, Class, FirstParamKind, Function, GeneratorType, Instance, Module,
@@ -1455,31 +1456,23 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
             }
         };
-        let any_params = |params: ParamIterator| {
-            CallableParams::Simple(
-                params
-                    .map(|param| CallableParam {
-                        param_specific: match param.type_() {
-                            ParamKind::PositionalOnly => ParamSpecific::PositionalOnly(Type::Any),
-                            ParamKind::PositionalOrKeyword => {
-                                ParamSpecific::PositionalOrKeyword(Type::Any)
-                            }
-                            ParamKind::KeywordOnly => ParamSpecific::KeywordOnly(Type::Any),
-                            ParamKind::Starred => ParamSpecific::Starred(
-                                StarredParamSpecific::ArbitraryLength(Type::Any),
-                            ),
-                            ParamKind::DoubleStarred => ParamSpecific::DoubleStarred(
-                                DoubleStarredParamSpecific::ValueType(Type::Any),
-                            ),
-                        },
-                        name: Some(StringSlice::from_name(
-                            self.file.file_index(),
-                            param.name_definition().name(),
-                        )),
-                        has_default: param.default().is_some(),
-                    })
-                    .collect(),
-            )
+        let to_callable_param = |param: Param| CallableParam {
+            param_specific: match param.type_() {
+                ParamKind::PositionalOnly => ParamSpecific::PositionalOnly(Type::Any),
+                ParamKind::PositionalOrKeyword => ParamSpecific::PositionalOrKeyword(Type::Any),
+                ParamKind::KeywordOnly => ParamSpecific::KeywordOnly(Type::Any),
+                ParamKind::Starred => {
+                    ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(Type::Any))
+                }
+                ParamKind::DoubleStarred => {
+                    ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ValueType(Type::Any))
+                }
+            },
+            name: Some(StringSlice::from_name(
+                self.file.file_index(),
+                param.name_definition().name(),
+            )),
+            has_default: param.default().is_some(),
         };
         result_context
             .with_type_if_exists_and_replace_type_var_likes(self.i_s, |type_| {
@@ -1493,8 +1486,27 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         &mut ResultContext::Known(&c.result_type),
                     );
                     let mut c = (**c).clone();
-                    if matches!(c.params, CallableParams::Any) {
-                        c.params = any_params(params);
+                    let params = params.map(to_callable_param);
+                    match &c.params {
+                        CallableParams::Simple(expected_params) => {
+                            let params: Vec<_> = params.collect();
+                            if !matches_simple_params(
+                                self.i_s,
+                                &mut Matcher::default(),
+                                expected_params.iter(),
+                                params.iter(),
+                                Variance::Invariant,
+                            )
+                            .bool()
+                            {
+                                NodeRef::new(self.file, lambda.index())
+                                    .add_issue(self.i_s, IssueType::CannotInferLambdaParams);
+                                c.params = CallableParams::Simple(params.into());
+                            }
+                        }
+                        _ => {
+                            c.params = CallableParams::Simple(params.collect());
+                        }
                     }
                     c.result_type = result.as_type(&i_s);
                     Some(Inferred::from_type(Type::Callable(Rc::new(c))))
@@ -1516,7 +1528,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         had_first_self_or_class_annotation: true,
                     },
                     type_vars: self.i_s.db.python_state.empty_type_var_likes.clone(),
-                    params: any_params(params),
+                    params: CallableParams::Simple(params.map(to_callable_param).collect()),
                     result_type: result.as_type(self.i_s),
                 };
                 Inferred::from_type(Type::Callable(Rc::new(c)))
