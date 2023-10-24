@@ -1,12 +1,5 @@
 # Next up
-asyncIteratorInProtocol
-testImplicitClassScopedNames
-testIncrementalAddOverloadedMethodPlugin
-testVariadicTupleIncrementalUpdateNoCrash
-testWideOuterContextEmptyError
-testWideOuterContextNoArgsError
 testInferenceAgainstTypeVarActualBound
-testInferenceWorksWithEmptyCollectionsNested
 testInferenceWorksWithEmptyCollectionsUnion
 testRegularGenericDecoratorOverload
 testParamSpecEllipsisInConcatenate
@@ -17,7 +10,6 @@ testSubtypingWithTupleType
 testSubtypingWithTupleTypeSubclass
 testTupleOverloadZipAny
 testTupleSubclassSlice
-testCallerVarargsAndComplexTypeInference
 
 testUnimportedRevealType
 testUnimportedRevealTypePy311
@@ -159,6 +151,8 @@ testNewAnalyzerMemberNameMatchesTypedDict
 
 # Module attributes
 testModuleImplicitAttributes
+# class attributes
+testImplicitClassScopedNames
 # type.__init__ where self is implicitly Any
 testTypeEquivalentTypeAnyEdgeCase
 
@@ -177,6 +171,12 @@ testNestedListAssignment
 testNestedListAssignmentToTuple
 # Tuple a, *li = ta: "List item 0 has incompatible type "A"; expected "int""
 testAssignmentToStarFromTupleType
+
+# Special-case type inference of empty collections https://github.com/python/mypy/pull/16122
+testWideOuterContextEmptyError
+testWideOuterContextNoArgsError
+testInferenceWorksWithEmptyCollectionsNested
+testCallerVarargsAndComplexTypeInference
 
 # WTF why is this base type not object/function?
 testListLiteralWithNameOnlyArgsDoesNotEraseNames
@@ -900,6 +900,7 @@ testInvalidUnpackTypes
 testTupleWithStarExpr2
 testTupleWithStarExpr3
 testUnpackInCallableType
+testVariadicTupleIncrementalUpdateNoCrash
 # Unpack item in ** argument must be a TypedDict
 testTypeVarTuple
 # *ts TypeVarTuple syntax
@@ -1340,6 +1341,7 @@ testSelfTypeBound
 testMethodOverridingAcrossDeepInheritanceHierarchy2
 testMethodOverridingWithVoidReturnValue
 testNewNamedTupleMethodInheritance
+asyncIteratorInProtocol
 # Signatures of "__ior__" and "__or__" are incompatible
 testGenericOperatorMethodOverlapping
 testGenericOperatorMethodOverlapping2
@@ -2486,6 +2488,7 @@ testAddedPluginsInvalidateCache
 testRemovedPluginsInvalidateCache
 testPluginConfigData
 testIncrementalAddClassMethodPlugin
+testIncrementalAddOverloadedMethodPlugin
 
 # Mypy inline config https://mypy.readthedocs.io/en/stable/inline_config.html
 testOptionalIterator
