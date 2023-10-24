@@ -207,12 +207,11 @@ testVarArgsFunctionSubtyping
 # lambda infer callable after type params after it.
 testMapWithLambdaSpecialCase
 
+# lambda context recursion
 testRejectCovariantArgumentInLambda
 # i_s missing current class
 testLambdaDeferredSpecialCase
 testLambdaDeferredCrash
-# join lambda
-testLambdaJoinWithDynamicConstructor
 # "Duplicate argument "x" in function definition"
 testFastParserDuplicateNames
 # --check-untyped-defs

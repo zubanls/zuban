@@ -5,6 +5,7 @@ use parsa_python_ast::ParamKind;
 use crate::{
     inference_state::InferenceState,
     matching::Match,
+    type_::CallableLike,
     type_helpers::{Class, TypeOrClass},
 };
 
@@ -159,37 +160,42 @@ fn class_against_non_class(i_s: &InferenceState, c1: Class, t2: &Type) -> Option
     None
 }
 
-fn common_base_type_for_non_class(i_s: &InferenceState, t1: &Type, t2: &Type) -> Option<Type> {
-    match t1 {
+fn common_base_type_for_non_class(
+    i_s: &InferenceState,
+    type1: &Type,
+    type2: &Type,
+) -> Option<Type> {
+    match type1 {
         Type::Callable(c1) => {
             // TODO this should also be done for function/callable and callable/function and
             // not only callable/callable
-            if let Type::Callable(c2) = t2 {
-                return Some(common_base_for_callables(i_s, c1, c2));
+            dbg!(&type2.maybe_callable(i_s));
+            if let Some(CallableLike::Callable(c2)) = type2.maybe_callable(i_s) {
+                return Some(common_base_for_callables(i_s, c1, &c2));
             }
         }
-        Type::Tuple(tup1) => return common_base_for_tuple_against_type(i_s, tup1, t2),
+        Type::Tuple(tup1) => return common_base_for_tuple_against_type(i_s, tup1, type2),
         Type::NamedTuple(nt1) => {
-            if let Type::NamedTuple(nt2) = t2 {
+            if let Type::NamedTuple(nt2) = type2 {
                 if nt1.__new__.defined_at == nt2.__new__.defined_at {
                     return Some(Type::NamedTuple(nt1.clone()));
                 }
             }
-            return common_base_for_tuple_against_type(i_s, &nt1.as_tuple(), t2);
+            return common_base_for_tuple_against_type(i_s, &nt1.as_tuple(), type2);
         }
         Type::TypedDict(td1) => {
-            if let Type::TypedDict(td2) = &t2 {
+            if let Type::TypedDict(td2) = &type2 {
                 return Some(Type::TypedDict(td1.intersection(i_s, td2)));
             }
         }
-        Type::Type(t1) => {
-            if let Type::Type(t2) = t2 {
-                return Some(Type::Type(Rc::new(t1.common_base_type(i_s, t2))));
-            }
-        }
+        Type::Type(t1) => match type2 {
+            Type::Type(t2) => return Some(Type::Type(Rc::new(t1.common_base_type(i_s, t2)))),
+            Type::Callable(c2) => return common_base_type_for_non_class(i_s, type2, type1),
+            _ => (),
+        },
         _ => {
-            if t1.is_simple_same_type(i_s, t2).bool() {
-                return Some(t1.clone());
+            if type1.is_simple_same_type(i_s, type2).bool() {
+                return Some(type1.clone());
             }
         }
     }
@@ -201,8 +207,8 @@ fn common_base_for_callables(
     c1: &CallableContent,
     c2: &CallableContent,
 ) -> Type {
-    if c1.kind != c2.kind {
-        todo!()
+    if !c1.kind.is_same_base_kind(c2.kind) {
+        todo!("{:?} {:?}", c1.kind, c2.kind)
     }
     match &c1.params {
         CallableParams::Simple(params1) => match &c2.params {
