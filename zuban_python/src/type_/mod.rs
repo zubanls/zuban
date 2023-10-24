@@ -743,7 +743,7 @@ impl Type {
             Self::Callable(content) => content.format(format_data).into(),
             Self::Any => Box::from("Any"),
             Self::None => Box::from("None"),
-            Self::Never => Box::from("<nothing>"),
+            Self::Never => Box::from("Never"),
             Self::Literal(literal) => literal.format(format_data),
             Self::NewType(n) => n.format(format_data),
             Self::RecursiveAlias(rec) => {

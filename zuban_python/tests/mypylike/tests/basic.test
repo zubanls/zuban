@@ -139,7 +139,7 @@ class SubGenerator2(Generator[int, str, bytes]):
         raise NotImplementedError
 
 def g() -> Generator[int, None, None]:
-    x = yield from ()  # E: Function does not return a value
+    x = yield from ()  # E: Function does not return a value (it only ever returns None)
     y = yield from SubGenerator1()
     reveal_type(y)  # N: Revealed type is "bytes"
     z = yield from SubGenerator2()

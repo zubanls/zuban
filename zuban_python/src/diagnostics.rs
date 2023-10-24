@@ -469,7 +469,7 @@ impl<'db> Diagnostic<'db> {
             IncompatibleTypes{cause, got, expected} => {
                 format!(r#"Incompatible types in {cause} (actual type "{got}", expected type "{expected}")"#)
             }
-            DoesNotReturnAValue(named) => format!("{named} does not return a value"),
+            DoesNotReturnAValue(named) => format!("{named} does not return a value (it only ever returns None)"),
             InvalidGeneratorReturnType =>
                 r#"The return type of a generator function should be "Generator" or one of its supertypes"#.to_string(),
             InvalidAsyncGeneratorReturnType =>

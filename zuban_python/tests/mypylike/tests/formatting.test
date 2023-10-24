@@ -8,8 +8,8 @@ class Foo(Generic[T]):
     def bar(self, x: int, y: list[T]) -> list[T]: ...
 
 
-reveal_type(Foo().foo)  # N: Revealed type is "def (x: int, y: <nothing>) -> <nothing>"
+reveal_type(Foo().foo)  # N: Revealed type is "def (x: int, y: Never) -> Never"
 reveal_type(Foo[str]().foo)  # N: Revealed type is "def (x: int, y: str) -> str"
 
-reveal_type(Foo().bar)  # N: Revealed type is "def (x: int, y: list[<nothing>]) -> list[<nothing>]"
+reveal_type(Foo().bar)  # N: Revealed type is "def (x: int, y: list[Never]) -> list[Never]"
 reveal_type(Foo[str]().bar)  # N: Revealed type is "def (x: int, y: list[str]) -> list[str]"

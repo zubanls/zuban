@@ -5,7 +5,7 @@ reveal_type(x.index(0)) # N: Revealed type is "int"
 
 [case tuple_methods_empty]
 x: tuple[()]
-reveal_type(x.__getitem__(0)) # N: Revealed type is "<nothing>"
+reveal_type(x.__getitem__(0)) # N: Revealed type is "Never"
 reveal_type(x.index(0)) # N: Revealed type is "int"
 
 [case tuple_methods_one]
