@@ -1,8 +1,6 @@
 # Next up
 asyncIteratorInProtocol
 testImplicitClassScopedNames
-testNestedGenericInAliasDisallow
-testNestedGenericInAliasAllow
 testCallableProperty
 testIncrementalAddOverloadedMethodPlugin
 testVariadicTupleIncrementalUpdateNoCrash
@@ -2605,6 +2603,7 @@ testDisallowAnyGenericsPlainList
 testDisallowAnyGenericsCustomGenericClass
 testDisallowAnyGenericsForAliasesInRuntimeContext
 testGenericTypedDictAlias
+testNestedGenericInAliasDisallow
 
 # --disallow-any-unimported
 testErrorCodeAnyFromUnfollowedImport
