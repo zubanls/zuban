@@ -571,17 +571,25 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 InferredDecorator::Abstractmethod => (),
             }
         }
-        if let Type::Callable(callable_content) = inferred.as_cow_type(i_s).as_ref() {
-            let mut callable_content = (**callable_content).clone();
-            callable_content.name = Some(self.name_string_slice());
-            callable_content.class_name = self.class.map(|c| c.name_string_slice());
-            callable_content.kind = kind;
-            inferred = Inferred::from_type(Type::Callable(Rc::new(callable_content)));
-        } else if !matches!(
+        let overwrite_callable = |inferred: &mut _, mut callable: CallableContent| {
+            callable.name = Some(self.name_string_slice());
+            callable.class_name = self.class.map(|c| c.name_string_slice());
+            callable.kind = kind;
+            *inferred = Inferred::from_type(Type::Callable(Rc::new(callable)));
+        };
+        if matches!(
             kind,
             FunctionKind::Function { .. } | FunctionKind::Staticmethod
         ) {
-            todo!("{kind:?}")
+            if let Type::Callable(c) = inferred.as_type(i_s) {
+                overwrite_callable(&mut inferred, (*c).clone())
+            }
+        } else {
+            if let Some(CallableLike::Callable(c)) = inferred.as_type(i_s).maybe_callable(i_s) {
+                overwrite_callable(&mut inferred, (*c).clone())
+            } else {
+                todo!()
+            }
         }
         Some(FunctionDetails {
             inferred,

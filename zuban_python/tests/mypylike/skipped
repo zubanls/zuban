@@ -1,7 +1,6 @@
 # Next up
 asyncIteratorInProtocol
 testImplicitClassScopedNames
-testCallableProperty
 testIncrementalAddOverloadedMethodPlugin
 testVariadicTupleIncrementalUpdateNoCrash
 testWideOuterContextEmptyError
