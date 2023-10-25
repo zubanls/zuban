@@ -2,8 +2,6 @@
 testParamSpecEllipsisInConcatenate
 testPropagatedAnyConstraintsAreOK
 testSelfTypeMethodOnClassObject
-testSubtypingWithTupleType
-testSubtypingWithTupleTypeSubclass
 testTupleOverloadZipAny
 
 # 3.12 type var syntax

@@ -822,7 +822,12 @@ pub fn match_tuple_type_arguments(
             }
         }
         (ArbitraryLength(t1), ArbitraryLength(t2), _) => t1.matches(i_s, matcher, t2, variance),
-        (tup1_args @ FixedLength(ts1), tup2_args @ ArbitraryLength(t2), _) => Match::new_false(),
+        (tup1_args @ FixedLength(_), tup2_args @ ArbitraryLength(t2), _)
+            if matches!(t2.as_ref(), Type::Any) =>
+        {
+            Match::new_true()
+        }
+        (tup1_args @ FixedLength(_), tup2_args @ ArbitraryLength(_), _) => Match::new_false(),
         (ArbitraryLength(t1), FixedLength(ts2), Variance::Invariant) => {
             todo!()
         }
