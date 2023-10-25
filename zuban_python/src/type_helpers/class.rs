@@ -1718,12 +1718,19 @@ fn linearize_mro(i_s: &InferenceState, class: &Class, bases: &[Type]) -> Box<[Ba
     let mut base_iterators: Vec<_> = bases
         .iter()
         .map(|t| {
+            let mut additional_type = None;
             let generic_class = match &t {
                 Type::Class(c) => Some(c.class(i_s.db)),
                 Type::Dataclass(d) => Some(d.class.class(i_s.db)),
-                Type::Tuple(content) => Some(i_s.db.python_state.tuple_class(i_s.db, content)),
+                Type::Tuple(content) => {
+                    let cls = i_s.db.python_state.tuple_class(i_s.db, content);
+                    additional_type = Some(cls.as_type(i_s.db));
+                    Some(cls)
+                }
                 Type::NamedTuple(nt) => {
-                    Some(i_s.db.python_state.tuple_class(i_s.db, &nt.as_tuple_ref()))
+                    let cls = i_s.db.python_state.tuple_class(i_s.db, &nt.as_tuple_ref());
+                    additional_type = Some(cls.as_type(i_s.db));
+                    Some(cls)
                 }
                 _ => None,
             };
@@ -1733,8 +1740,9 @@ fn linearize_mro(i_s: &InferenceState, class: &Class, bases: &[Type]) -> Box<[Ba
             } else {
                 &[]
             };
-            std::iter::once(t)
-                .chain(super_classes.iter().map(|base| &base.type_))
+            std::iter::once(Cow::Borrowed(t))
+                .chain(additional_type.into_iter().map(|t| Cow::Owned(t)))
+                .chain(super_classes.iter().map(|base| Cow::Borrowed(&base.type_)))
                 .enumerate()
                 .peekable()
         })
@@ -1744,20 +1752,20 @@ fn linearize_mro(i_s: &InferenceState, class: &Class, bases: &[Type]) -> Box<[Ba
     'outer: loop {
         let mut had_entry = false;
         for base_index in 0..allowed_to_use.min(bases.len()) {
-            if let Some((i, candidate)) = base_iterators[base_index].peek().copied() {
+            if let Some((i, candidate)) = base_iterators[base_index].peek().cloned() {
                 had_entry = true;
                 let conflicts = base_iterators.iter().any(|base_bases| {
                     base_bases
                         .clone()
                         .skip(1)
-                        .any(|(_, other)| to_base_kind(candidate) == to_base_kind(other))
+                        .any(|(_, other)| to_base_kind(&candidate) == to_base_kind(&other))
                 });
                 if !conflicts {
                     for base_bases in base_iterators.iter_mut() {
                         base_bases
-                            .next_if(|(_, next)| to_base_kind(candidate) == to_base_kind(next));
+                            .next_if(|(_, next)| to_base_kind(&candidate) == to_base_kind(next));
                     }
-                    add_to_mro(base_index, i == 0, candidate, &mut allowed_to_use);
+                    add_to_mro(base_index, i == 0, &candidate, &mut allowed_to_use);
                     continue 'outer;
                 }
             }
@@ -1769,10 +1777,10 @@ fn linearize_mro(i_s: &InferenceState, class: &Class, bases: &[Type]) -> Box<[Ba
             if let Some((i, type_)) = base_bases.next() {
                 // If it doesn't have to do with one of the first type, it is caused by
                 // inconsistencies earlier.
-                if bases.contains(type_) {
+                if bases.contains(&type_) {
                     linearizable = false;
                 }
-                add_to_mro(base_index, i == 0, type_, &mut allowed_to_use);
+                add_to_mro(base_index, i == 0, &type_, &mut allowed_to_use);
                 continue 'outer;
             }
         }

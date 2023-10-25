@@ -5,7 +5,13 @@ testSelfTypeMethodOnClassObject
 testSubtypingWithTupleType
 testSubtypingWithTupleTypeSubclass
 testTupleOverloadZipAny
-testTupleSubclassSlice
+
+# tuple definitions
+testRecursiveRegularTupleClass
+testRecursiveTupleClassesNewType
+testSerializeRecursiveAliases3
+testSelfRefNTIncremental4
+testMutuallyRecursiveNamedTuplesClasses
 
 # 3.12 type var syntax
 test695TypeAlias
