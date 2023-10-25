@@ -5,7 +5,6 @@ testSelfTypeMethodOnClassObject
 testSubtypingWithTupleType
 testSubtypingWithTupleTypeSubclass
 testTupleOverloadZipAny
-testSerializeRecursiveAliases3
 
 # 3.12 type var syntax
 test695TypeAlias
