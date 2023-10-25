@@ -70,7 +70,24 @@ pub fn matches_params(
                 i_s, pre1, usage1, pre2, usage2, type_vars2, variance,
             )
         }
-        (Any, _) | (_, Any) => Match::new_true(),
+        (Any, _) => Match::new_true(),
+        (Simple(params1), Any) => {
+            for p in params1.iter() {
+                if let Some(t) = p.param_specific.maybe_type() {
+                    matcher.set_all_contained_type_vars_to_any(i_s, t);
+                } else {
+                    todo!()
+                }
+            }
+            Match::new_true()
+        }
+        (WithParamSpec(pre, usage1), Any) => {
+            for t in pre.iter() {
+                matcher.set_all_contained_type_vars_to_any(i_s, t);
+            }
+            // TODO should probably set usage1 to any
+            Match::new_true()
+        }
         (WithParamSpec(types, param_spec), Simple(params2)) => {
             let mut params2 = params2.iter();
             if skip_first_of_params2 {

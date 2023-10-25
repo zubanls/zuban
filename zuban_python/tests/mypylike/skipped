@@ -1,23 +1,11 @@
 # Next up
-testInferenceAgainstTypeVarActualBound
-testInferenceWorksWithEmptyCollectionsUnion
-testRegularGenericDecoratorOverload
 testParamSpecEllipsisInConcatenate
 testPropagatedAnyConstraintsAreOK
-testSelfTypesWithParamSpecInfer
 testSelfTypeMethodOnClassObject
 testSubtypingWithTupleType
 testSubtypingWithTupleTypeSubclass
 testTupleOverloadZipAny
 testTupleSubclassSlice
-
-testUnimportedRevealType
-testUnimportedRevealTypePy311
-testUnimportedRevealTypeInUncheckedFunc
-testUnimportedRevealLocals
-
-testReplaceNotDataclass
-testReplaceIsDataclass
 
 # 3.12 type var syntax
 test695TypeAlias
@@ -173,6 +161,7 @@ testNestedListAssignmentToTuple
 testAssignmentToStarFromTupleType
 
 # Special-case type inference of empty collections https://github.com/python/mypy/pull/16122
+testInferenceWorksWithEmptyCollectionsUnion
 testWideOuterContextEmptyError
 testWideOuterContextNoArgsError
 testInferenceWorksWithEmptyCollectionsNested
@@ -206,6 +195,8 @@ testGenericTypeAliasesWrongAliases
 # Type var used in bound, defined in class body, bound to that class
 testGenericClassAlternativeConstructorPreciseOverloaded
 
+# Callable remapping over overload leads to a mapped overload
+testRegularGenericDecoratorOverload
 # --new-type-inference
 testInferenceAgainstGenericCallable
 testInferenceAgainstGenericCallableNoLeak
@@ -375,6 +366,7 @@ testOverride__new__AndCallObject
 testSelfTypeClone
 testNewAnalyzerTypeVarBoundInCycle
 testSelfTypeVarIndexExpr
+testSelfTypesWithParamSpecInfer
 # classmethod self param in overload is not a self param
 testOverloadClassMethodImplementation
 testClassMethodBeforeInit3
@@ -508,6 +500,9 @@ updateDataclassTransformParameterViaParentClass
 updateBaseClassToUseDataclassTransform
 frozenInheritanceViaDefault
 testDataclassReplaceOptional
+# dataclass replace changes
+testReplaceNotDataclass
+testReplaceIsDataclass
 
 # Enum is also a NamedTuple. wtf?
 testNamedTupleEnum
@@ -2783,6 +2778,12 @@ testDisableEnableErrorCodesIncremental
 testDisableBytearrayPromotion
 # --disable-memoryview-promotion
 testDisableMemoryviewPromotion
+
+# --enable-error-code=unimported-reveal
+testUnimportedRevealType
+testUnimportedRevealTypePy311
+testUnimportedRevealTypeInUncheckedFunc
+testUnimportedRevealLocals
 
 # Not all modules are checked in mypy: `# cmd: mypy -m m`
 testTypeCheckNamedModule4

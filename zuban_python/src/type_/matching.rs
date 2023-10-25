@@ -436,7 +436,7 @@ impl Type {
                     match &t2.type_var.kind {
                         TypeVarKind::Unrestricted => (),
                         TypeVarKind::Bound(bound) => {
-                            let m = self.simple_matches(i_s, bound, variance);
+                            let m = self.matches(i_s, matcher, bound, variance);
                             if m.bool() {
                                 return m;
                             }
