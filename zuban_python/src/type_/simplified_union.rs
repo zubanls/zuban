@@ -92,6 +92,15 @@ fn merge_simplified_union_type(
                     match &current.type_ {
                         Type::RecursiveAlias(r) if r.generics.is_some() => (),
                         t => {
+                            if let Type::Class(c) = t {
+                                if c.class(i_s.db).is_calculating_class_infos() {
+                                    if &additional.type_ == t {
+                                        continue 'outer;
+                                    } else {
+                                        continue;
+                                    }
+                                }
+                            }
                             if additional
                                 .type_
                                 .is_super_type_of(i_s, &mut Matcher::with_ignored_promotions(), t)
