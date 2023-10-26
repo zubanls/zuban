@@ -2,7 +2,6 @@
 testParamSpecEllipsisInConcatenate
 testPropagatedAnyConstraintsAreOK
 testSelfTypeMethodOnClassObject
-testTupleOverloadZipAny
 
 # 3.12 type var syntax
 test695TypeAlias
@@ -77,6 +76,8 @@ testIOTypes
 testOverloadPositionalOnlyErrorMessageClassMethod
 # overload *args should be used if a list of never/any is given?
 testOverloadVarargsSelection
+# overload x should be preferred over an *x alternative
+testTupleOverloadZipAny
 
 # Union of empty lists dicts sets with used ones
 testUnificationEmptyListLeft

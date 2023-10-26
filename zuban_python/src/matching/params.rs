@@ -593,8 +593,8 @@ impl<'db, 'a, I, P, AI: Iterator<Item = Argument<'db, 'a>>>
 
     fn maybe_exact_multi_arg(&mut self, is_keyword_arg: bool) -> Option<Argument<'db, 'a>> {
         self.next_arg().and_then(|arg| {
-            self.arbitrary_length_handled = true;
             if arg.is_keyword_argument() == is_keyword_arg {
+                self.arbitrary_length_handled = true;
                 self.current_arg = None;
                 Some(arg)
             } else {
