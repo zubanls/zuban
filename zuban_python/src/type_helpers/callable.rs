@@ -211,18 +211,14 @@ pub fn merge_class_type_vars_into_callable(
     callable
 }
 
-fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
+pub fn format_callable_params<'db: 'x, 'x, P: Param<'x>>(
     format_data: &FormatData<'db, '_, '_, '_>,
     class: Option<Class>,
     avoid_self_annotation: bool,
-    name: &str,
-    type_vars: &TypeVarLikes,
     params: impl Iterator<Item = P>,
-    return_type: Option<&Type>,
-) -> Box<str> {
+    show_additional_information: bool,
+) -> String {
     let db = format_data.db;
-    let is_reveal_type = format_data.style == FormatStyle::MypyRevealType;
-
     let mut previous_kind = None;
     let mut had_kwargs_separator = false;
     let mut args = join_with_commas(params.enumerate().map(|(i, p)| {
@@ -262,7 +258,7 @@ fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
             };
             if previous_kind == Some(ParamKind::PositionalOnly)
                 && current_kind != ParamKind::PositionalOnly
-                && !is_reveal_type
+                && show_additional_information
             {
                 out = format!("/, {out}")
             }
@@ -274,19 +270,38 @@ fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
         }
         had_kwargs_separator |= matches!(specific, WrappedParamSpecific::Starred(_));
         if p.has_default() {
-            if is_reveal_type {
-                out += " =";
-            } else {
+            if show_additional_information {
                 out += " = ...";
+            } else {
+                out += " =";
             }
         }
         previous_kind = Some(current_kind);
         out
     }));
-    if previous_kind == Some(ParamKind::PositionalOnly) && !is_reveal_type {
+    if previous_kind == Some(ParamKind::PositionalOnly) && show_additional_information {
         args += ", /";
     }
-    format_pretty_function_with_params(format_data, class, type_vars, return_type, name, &args)
+    args
+}
+
+fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
+    format_data: &FormatData<'db, '_, '_, '_>,
+    class: Option<Class>,
+    avoid_self_annotation: bool,
+    name: &str,
+    type_vars: &TypeVarLikes,
+    params: impl Iterator<Item = P>,
+    return_type: Option<&Type>,
+) -> Box<str> {
+    let params = format_callable_params(
+        format_data,
+        class,
+        avoid_self_annotation,
+        params,
+        format_data.style != FormatStyle::MypyRevealType,
+    );
+    format_pretty_function_with_params(format_data, class, type_vars, return_type, name, &params)
 }
 
 fn format_pretty_function_with_params(

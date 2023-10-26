@@ -7,6 +7,7 @@ use crate::type_::{
     match_tuple_type_arguments, CallableParams, GenericItem, ParamSpecArgument, Type,
     TypeArguments, TypeVarLike, Variance,
 };
+use crate::type_helpers::format_callable_params;
 
 #[derive(Debug)]
 pub enum Generic<'a> {
@@ -47,8 +48,15 @@ impl<'a> Generic<'a> {
             Self::TypeArgument(t) => t.format(format_data),
             Self::TypeVarTuple(ts) => ts.format(format_data),
             Self::ParamSpecArgument(args) => match &args.params {
+                CallableParams::Simple(params) => format!(
+                    "[{}]",
+                    &format_callable_params(format_data, None, false, params.iter(), false)
+                )
+                .into(),
                 CallableParams::Any => Box::from("Any"),
-                _ => args.params.format(format_data, ParamsStyle::CallableParams),
+                CallableParams::WithParamSpec(..) => {
+                    args.params.format(format_data, ParamsStyle::CallableParams)
+                }
             },
         }
     }
