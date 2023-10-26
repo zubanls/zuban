@@ -95,9 +95,7 @@ pub fn matches_params(
             }
             matcher.match_or_add_param_spec(i_s, types, param_spec, params2, type_vars2, variance)
         }
-        (Simple(_), WithParamSpec(..)) => {
-            todo!()
-        }
+        (Simple(_), WithParamSpec(..)) => Match::new_false(),
     }
 }
 
