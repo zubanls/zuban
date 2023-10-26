@@ -615,8 +615,8 @@ impl Type {
                     recursive_alias.generics.as_ref().map(rewrite_generics),
                 )))
             }
-            Type::ParamSpecArgs(usage) => todo!(),
-            Type::ParamSpecKwargs(usage) => todo!(),
+            Type::ParamSpecArgs(usage) => Type::ParamSpecArgs(manager.remap_param_spec(usage)),
+            Type::ParamSpecKwargs(usage) => Type::ParamSpecKwargs(manager.remap_param_spec(usage)),
             Type::Dataclass(d) => Type::Dataclass(Dataclass::new(
                 GenericClass {
                     link: d.class.link,
