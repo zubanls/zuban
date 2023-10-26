@@ -13,7 +13,7 @@ use std::borrow::Cow;
 use std::rc::Rc;
 
 use super::params::{matches_simple_params, InferrableParamIterator};
-use super::{FormatData, Match, OnTypeError, ParamsStyle, SignatureMatch};
+use super::{FormatData, Match, OnTypeError, ParamsStyle, ResultContext, SignatureMatch};
 use crate::arguments::{Argument, ArgumentKind};
 use crate::database::{Database, PointLink};
 use crate::debug;
@@ -476,7 +476,20 @@ impl<'a> Matcher<'a> {
             CallableParams::WithParamSpec(pre, usage1) => {
                 let mut arg_iterator = args.into_vec().into_iter();
                 if !pre.is_empty() {
-                    todo!()
+                    for (spec_t, arg_t) in pre.iter().zip(arg_iterator.by_ref()) {
+                        if let Some(arg_inf) =
+                            arg_t.maybe_positional_arg(i_s, &mut ResultContext::Unknown)
+                        {
+                            match spec_t.is_simple_super_type_of(i_s, &arg_inf.as_type(i_s)) {
+                                Match::False { similar, .. } => {
+                                    return SignatureMatch::False { similar }
+                                }
+                                Match::True { .. } => (),
+                            }
+                        } else {
+                            return SignatureMatch::False { similar: false };
+                        }
+                    }
                 }
                 let Some(last_arg) = arg_iterator.next() else {
                     todo!()
