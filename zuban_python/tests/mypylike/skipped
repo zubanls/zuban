@@ -324,9 +324,14 @@ testParamSpecCorrectParameterNameInference
 # Are generics in self types always bound to the function?
 # https://github.com/python/typing/discussions/1340
 # https://github.com/python/mypy/issues/14729
-testSelfTypeBadTypeIgnoredInConstructorGeneric
 testSelfTypeRestrictedMethodOverloadInit
-
+# Self tests
+testTypingSelfAttrOldVsNewStyle
+# "Method cannot have explicit self annotation and Self type"
+testTypingSelfConflict
+# "Self argument missing for a non-static method"
+# "The erased type of self "None" is not a supertype of its class "__main__.A""
+testSelfTypeNotSelfType
 # Self in bound method shouldn't probably be there
 testFunctionAssignedAsCallback
 testErrorSettingCallbackWithDifferentFutureType
@@ -366,7 +371,6 @@ testSelfTypeVarIndexExpr
 testSelfTypesWithParamSpecInfer
 # classmethod self param in overload is not a self param
 testOverloadClassMethodImplementation
-testClassMethodBeforeInit3
 # Recursion error wtf?
 testRefMethodWithOverloadDecorator
 # classmethod self type with overload
@@ -1152,14 +1156,6 @@ testProtocolClassObjectClassVarRejected
 testClassVarWithoutArguments
 testIncrementalClassVar
 
-# Self tests
-testTypingSelfAttrOldVsNewStyle
-# "Method cannot have explicit self annotation and Self type"
-testTypingSelfConflict
-# "Self argument missing for a non-static method"
-# "The erased type of self "None" is not a supertype of its class "__main__.A""
-testSelfTypeNotSelfType
-
 # "Maybe you forgot to use "await"?"
 testErrorOneLessFutureInReturnType
 testAwaitMissingNote
@@ -1397,8 +1393,6 @@ testOverrideWithNormalAttribute
 testOverrideWithAttributeWithClassVar
 testOverrideClassVarManyBases
 
-# setting class attributes on self
-self_instance_variable1
 # verify class definitions when setting self
 testInferAttributeTypeAndAssignInInit
 testTypingSelfInternalSafe
@@ -1927,8 +1921,6 @@ testOptionalDescriptorsBinder
 testUnionDescriptorsBinder
 testSubclassDescriptorsBinder
 testPropertyGetterBody
-# Use x instead of self as first argument (probably name binding issue)
-testNonStandardNameForSelfAndInit
 
 # All conditional function variants must have identical signatures (flow analysis)
 testUnionOrderEquivalence
