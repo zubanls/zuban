@@ -389,8 +389,9 @@ fn calculate_type_vars<'db: 'a, 'a>(
             CallableParams::Any => SignatureMatch::new_true(),
             CallableParams::WithParamSpec(pre_types, param_spec) => {
                 if !pre_types.is_empty() {
-                    dbg!(pre_types, args.collect::<Vec<_>>());
-                    todo!()
+                    //dbg!(pre_types, args.collect::<Vec<_>>());
+                    //todo!()
+                    debug!("TODO we should match param spec pre types?");
                 }
                 if let Some(arg) = args.next() {
                     if let ArgumentKind::ParamSpec { usage, .. } = &arg.kind {
@@ -400,7 +401,8 @@ fn calculate_type_vars<'db: 'a, 'a>(
                             SignatureMatch::False { similar: false }
                         }
                     } else {
-                        todo!()
+                        debug!("TODO is this ok param spec false?");
+                        SignatureMatch::False { similar: false }
                     }
                 } else {
                     todo!()
