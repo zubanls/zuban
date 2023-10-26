@@ -129,6 +129,7 @@ pub(crate) enum IssueType {
     UnexpectedTypeForTypeVar,
     TypeVarTupleTooManyArguments,
     ParamSpecTooManyKeywordArguments,
+    ParamSpecNestedSpecificationsNotAllowed,
     MultipleTypeVarTuplesInClassDef,
     BoundTypeVarInAlias { name: Box<str> },
     NestedConcatenate,
@@ -791,6 +792,8 @@ impl<'db> Diagnostic<'db> {
                 "Only the first argument to TypeVarTuple has defined semantics".to_string(),
             ParamSpecTooManyKeywordArguments =>
                 "The variance and bound arguments to ParamSpec do not have defined semantics yet".to_string(),
+            ParamSpecNestedSpecificationsNotAllowed =>
+                "Nested parameter specifications are not allowed".to_string(),
             MultipleTypeVarTuplesInClassDef =>
                 "Can only use one type var tuple in a class def".to_string(),
             BoundTypeVarInAlias{name} =>

@@ -1706,11 +1706,25 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         iterator: &mut I,
     ) -> CallableParams {
         let mut params = vec![];
-        for s in iterator {
+        let mut had_issue = false;
+        for s in iterator.by_ref() {
             let t = self.compute_slice_type_content(s);
-            self.add_param(&mut params, t, s.as_node_ref().node_index)
+            match t {
+                TypeContent::InvalidVariable(InvalidVariableType::List) => {
+                    self.add_issue(
+                        s.as_node_ref(),
+                        IssueType::ParamSpecNestedSpecificationsNotAllowed,
+                    );
+                    had_issue = true;
+                }
+                _ => self.add_param(&mut params, t, s.as_node_ref().node_index),
+            }
         }
-        CallableParams::Simple(Rc::from(params))
+        if had_issue {
+            CallableParams::Any
+        } else {
+            CallableParams::Simple(Rc::from(params))
+        }
     }
 
     fn check_param(&mut self, t: TypeContent, index: NodeIndex) -> CallableParam {
