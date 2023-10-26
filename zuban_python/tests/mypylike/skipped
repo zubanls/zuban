@@ -1,7 +1,6 @@
 # Next up
 testParamSpecEllipsisInConcatenate
 testPropagatedAnyConstraintsAreOK
-testSelfTypeMethodOnClassObject
 
 # 3.12 type var syntax
 test695TypeAlias

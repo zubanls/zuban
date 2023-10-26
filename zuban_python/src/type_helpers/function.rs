@@ -1001,7 +1001,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                                 self.class.unwrap().as_type_type(i_s)
                             }
                         } else if has_self_type_var_usage {
-                            Type::Self_
+                            as_type(&Type::Self_)
                         } else {
                             match kind {
                                 FunctionKind::Function { .. } | FunctionKind::Property { .. } => {
