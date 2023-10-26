@@ -186,14 +186,17 @@ impl TypeVarManager {
                     _ => false,
                 },
             };
-            if matched {
+            if let Some(in_def) = in_definition {
+                if in_definition == t.most_outer_callable {
+                    index += 1;
+                }
+            } else if matched {
                 if t.most_outer_callable.is_some() {
                     in_definition = t.most_outer_callable;
+                    index = 0;
                 } else {
                     return None;
                 }
-            } else if in_definition == t.most_outer_callable {
-                index += 1;
             }
         }
         in_definition.map(|d| (index.into(), d))
