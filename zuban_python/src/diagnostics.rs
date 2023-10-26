@@ -132,6 +132,7 @@ pub(crate) enum IssueType {
     MultipleTypeVarTuplesInClassDef,
     BoundTypeVarInAlias { name: Box<str> },
     NestedConcatenate,
+    ConcatenateLastParamNeedsToBeParamSpec,
     InvalidSelfArgument { argument_type: Box<str>, function_name: Box<str>, callable: Box<str> },
     SelfTypeInMetaclass,
     SelfTypeInTypeAliasTarget,
@@ -796,6 +797,8 @@ impl<'db> Diagnostic<'db> {
                 format!("Can't use bound type variable \"{name}\" to define generic alias"),
             NestedConcatenate =>
                 "Nested Concatenates are invalid".to_string(),
+            ConcatenateLastParamNeedsToBeParamSpec =>
+                "The last parameter to Concatenate needs to be a ParamSpec".to_string(),
             InvalidSelfArgument{argument_type, function_name, callable} => format!(
                 "Invalid self argument \"{argument_type}\" to attribute function \"{function_name}\" with type \"{callable}\""
             ),

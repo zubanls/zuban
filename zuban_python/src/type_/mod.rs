@@ -1730,6 +1730,14 @@ pub struct CallableParam {
 }
 
 impl CallableParam {
+    pub fn new_anonymous(param_specific: ParamSpecific) -> Self {
+        CallableParam {
+            param_specific,
+            name: None,
+            has_default: false,
+        }
+    }
+
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
         if !matches!(self.param_specific, ParamSpecific::PositionalOnly(_))
             || format_data.verbose && self.has_default

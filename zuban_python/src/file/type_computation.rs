@@ -1990,21 +1990,40 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     ) -> TypeContent<'db, 'db> {
         let count = slice_type.iter().count();
         let mut iterator = slice_type.iter();
-        let types = iterator
+        let types: Vec<_> = iterator
             .by_ref()
             .take(count - 1)
             .map(|s| self.compute_slice_type(s))
             .collect();
         match self.compute_slice_type_content(iterator.next().unwrap()) {
             TypeContent::ParamSpec(p) => {
-                TypeContent::Concatenate(CallableParams::WithParamSpec(types, p))
+                TypeContent::Concatenate(CallableParams::WithParamSpec(types.into(), p))
             }
             TypeContent::Concatenate(_) => {
                 self.add_issue(slice_type.as_node_ref(), IssueType::NestedConcatenate);
                 TypeContent::Unknown
             }
             TypeContent::Unknown => TypeContent::Unknown,
-            t => todo!("{t:?}"),
+            TypeContent::InvalidVariable(InvalidVariableType::Ellipsis) => {
+                let mut params: Vec<_> = types
+                    .into_iter()
+                    .map(|t| CallableParam::new_anonymous(ParamSpecific::PositionalOnly(t)))
+                    .collect();
+                params.push(CallableParam::new_anonymous(ParamSpecific::Starred(
+                    StarredParamSpecific::ArbitraryLength(Type::Any),
+                )));
+                params.push(CallableParam::new_anonymous(ParamSpecific::DoubleStarred(
+                    DoubleStarredParamSpecific::ValueType(Type::Any),
+                )));
+                TypeContent::Concatenate(CallableParams::Simple(params.into()))
+            }
+            _ => {
+                self.add_issue(
+                    slice_type.as_node_ref(),
+                    IssueType::ConcatenateLastParamNeedsToBeParamSpec,
+                );
+                TypeContent::Unknown
+            }
         }
     }
 

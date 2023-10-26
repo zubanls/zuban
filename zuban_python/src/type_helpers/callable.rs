@@ -251,12 +251,14 @@ fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
         } else {
             let mut out = if current_kind == ParamKind::PositionalOnly {
                 annotation_str.unwrap_or_else(|| Box::from("Any")).into()
-            } else {
+            } else if let Some(name) = p.name(db) {
                 format!(
                     "{stars}{}: {}",
-                    p.name(db).unwrap(),
+                    name,
                     annotation_str.as_deref().unwrap_or("Any")
                 )
+            } else {
+                format!("{stars}{}", annotation_str.as_deref().unwrap_or("Any"))
             };
             if previous_kind == Some(ParamKind::PositionalOnly)
                 && current_kind != ParamKind::PositionalOnly
