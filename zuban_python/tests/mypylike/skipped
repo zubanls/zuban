@@ -378,9 +378,6 @@ testSelfTypeNonsensical
 testSelfTypeNew
 testSelfTypeNew_explicit
 
-# `Foo: NamedTuple` used as definition
-testNamedTupleTypeIsASuperTypeOfOtherNamedTuples
-testNamedTupleTypeIsASuperTypeOfOtherNamedTuplesReturns
 # "Class has two incompatible bases derived from tuple"
 testNamedTuplesTwoAsBaseClasses
 testNamedTuplesTwoAsBaseClasses2

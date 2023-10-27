@@ -626,7 +626,7 @@ impl PythonState {
     attribute_node_ref!(typing, mapping_get_node_ref, typing_mapping_get_index);
     attribute_node_ref!(typing, pub generator_node_ref, typing_generator_index);
     attribute_node_ref!(typing, pub iterable_node_ref, typing_iterable_index);
-    attribute_node_ref!(typing, typing_namedtuple_node_ref, typing_namedtuple_index);
+    attribute_node_ref!(typing, pub typing_named_tuple_node_ref, typing_namedtuple_index);
     attribute_node_ref!(types, none_type_node_ref, types_none_type_index);
     attribute_node_ref!(types, module_node_ref, types_module_type_index);
     attribute_node_ref!(
@@ -662,7 +662,7 @@ impl PythonState {
     node_ref_to_type_class_without_generic!(pub bare_type_type, bare_type_node_ref);
     node_ref_to_type_class_without_generic!(pub ellipsis_type, ellipsis_node_ref);
     node_ref_to_type_class_without_generic!(pub typed_dict_type, typed_dict_node_ref);
-    node_ref_to_type_class_without_generic!(pub typing_named_tuple_type, typing_namedtuple_node_ref);
+    node_ref_to_type_class_without_generic!(pub typing_named_tuple_type, typing_named_tuple_node_ref);
 
     node_ref_to_type_class_without_generic!(pub supports_index_type, supports_index_node_ref);
 

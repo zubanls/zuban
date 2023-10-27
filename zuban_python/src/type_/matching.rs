@@ -622,6 +622,11 @@ impl Type {
                     variance,
                 )
             }
+            Type::NamedTuple(_)
+                if class1.node_ref == i_s.db.python_state.typing_named_tuple_node_ref() =>
+            {
+                Match::new_true()
+            }
             _ => Match::new_false(),
         }
     }
