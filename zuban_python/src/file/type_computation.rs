@@ -3653,8 +3653,10 @@ fn check_named_tuple_name<'x, 'y>(
         }
     }
     let Some(second_arg) = iterator.next() else {
-        // TODO this is only done for namedtuple and not NamedTuple
-        // Detected by execution of namedtuple
+        if executable_name != "namedtuple" {
+            // For namedtuple this is already handled by type checking.
+            args.as_node_ref().add_issue(i_s, IssueType::TooFewArguments(r#" for "NamedTuple()""#.into()));
+        }
         return None
     };
     let ArgumentKind::Positional { node_ref, .. } = second_arg.kind else {
