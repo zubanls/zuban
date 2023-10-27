@@ -762,42 +762,32 @@ impl<'db> Expression<'db> {
     }
 
     pub fn is_none_literal(&self) -> bool {
+        matches!(self.maybe_unpacked_atom(), Some(AtomContent::NoneLiteral))
+    }
+
+    pub fn maybe_unpacked_atom(&self) -> Option<AtomContent<'db>> {
         match self.unpack() {
-            ExpressionContent::ExpressionPart(ExpressionPart::Atom(a)) => {
-                matches!(a.unpack(), AtomContent::NoneLiteral)
-            }
-            _ => false,
+            ExpressionContent::ExpressionPart(ExpressionPart::Atom(a)) => Some(a.unpack()),
+            _ => None,
         }
     }
 
     pub fn maybe_tuple(&self) -> Option<Tuple<'db>> {
-        match self.unpack() {
-            ExpressionContent::ExpressionPart(ExpressionPart::Atom(a)) => {
-                if let AtomContent::Tuple(t) = a.unpack() {
-                    Some(t)
-                } else {
-                    None
-                }
-            }
+        match self.maybe_unpacked_atom() {
+            Some(AtomContent::Tuple(t)) => Some(t),
             _ => None,
         }
     }
 
     pub fn maybe_single_string_literal(&self) -> Option<StringLiteral<'db>> {
-        if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(a)) = self.unpack() {
-            if let AtomContent::Strings(s) = a.unpack() {
-                return s.maybe_single_string_literal();
-            }
+        match self.maybe_unpacked_atom() {
+            Some(AtomContent::Strings(s)) => s.maybe_single_string_literal(),
+            _ => None,
         }
-        None
     }
 
     pub fn is_ellipsis_literal(&self) -> bool {
-        if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(a)) = self.unpack() {
-            matches!(a.unpack(), AtomContent::Ellipsis)
-        } else {
-            false
-        }
+        matches!(self.maybe_unpacked_atom(), Some(AtomContent::Ellipsis))
     }
 }
 
