@@ -378,8 +378,8 @@ testSelfTypeNonsensical
 testSelfTypeNew
 testSelfTypeNew_explicit
 
-# Namedtuple defaults
-testNamedTupleDefaults
+# collections.namedtuple args
+testNamedTupleAdditionalArgs
 # `Foo: NamedTuple` used as definition
 testNamedTupleTypeIsASuperTypeOfOtherNamedTuples
 testNamedTupleTypeIsASuperTypeOfOtherNamedTuplesReturns

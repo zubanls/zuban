@@ -3724,12 +3724,9 @@ pub fn new_collections_named_tuple(
     i_s: &InferenceState,
     args: &dyn Arguments,
 ) -> Option<Rc<NamedTuple>> {
-    let Some((name, second_node_ref, atom_content, mut iterator)) = check_named_tuple_name(i_s, "namedtuple", args) else {
+    let Some((name, second_node_ref, atom_content, _)) = check_named_tuple_name(i_s, "namedtuple", args) else {
         return None
     };
-    if iterator.next().is_some() {
-        return None;
-    }
     let args_node_ref = args.as_node_ref();
     let mut params = start_namedtuple_params(i_s.db);
 
@@ -3781,6 +3778,39 @@ pub fn new_collections_named_tuple(
         }
     };
     check_named_tuple_has_no_fields_with_underscore(i_s, "namedtuple", args, &params);
+
+    for arg in args.iter() {
+        if let ArgumentKind::Keyword {
+            key: "defaults",
+            expression,
+            ..
+        } = arg.kind
+        {
+            let defaults_iterator = match expression.maybe_unpacked_atom() {
+                Some(AtomContent::List(list)) => list.unpack(),
+                Some(AtomContent::Tuple(tuple)) => tuple.iter(),
+                _ => {
+                    arg.as_node_ref()
+                        .add_issue(i_s, IssueType::NamedTupleDefaultsShouldBeListOrTuple);
+                    return None;
+                }
+            };
+            let member_count = params.len() - 1;
+            let defaults_count = defaults_iterator.count();
+            let skip = if defaults_count > member_count {
+                arg.as_node_ref()
+                    .add_issue(i_s, IssueType::NamedTupleToManyDefaults);
+                0
+            } else {
+                member_count - defaults_count
+            };
+            for param in params.iter_mut().skip(skip + 1) {
+                param.has_default = true;
+            }
+            break;
+        }
+    }
+
     let callable = CallableContent {
         name: Some(name),
         class_name: None,
