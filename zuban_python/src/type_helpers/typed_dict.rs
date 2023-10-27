@@ -242,7 +242,7 @@ fn new_typed_dict_internal<'db>(
     let ArgumentKind::Positional { node_ref: second_node_ref, .. } = second_arg.kind else {
         todo!()
     };
-    let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) = second_node_ref.as_named_expression().expression().unpack() else {
+    let Some(atom_content) = second_node_ref.as_named_expression().expression().maybe_unpacked_atom() else {
         todo!()
     };
     let mut total = true;
@@ -272,7 +272,7 @@ fn new_typed_dict_internal<'db>(
             .add_issue(i_s, IssueType::TooManyArguments(" for \"TODO()\"".into()));
         return None;
     }
-    let dct_iterator = match atom.unpack() {
+    let dct_iterator = match atom_content {
         AtomContent::Dict(dct) => dct.iter_elements(),
         _ => {
             second_node_ref.add_issue(i_s, IssueType::TypedDictSecondArgMustBeDict);

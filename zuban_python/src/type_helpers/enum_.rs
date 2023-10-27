@@ -299,21 +299,18 @@ fn gather_functional_enum_members(
             let StarLikeExpression::NamedExpression(ne) = element else {
                 todo!()
             };
-            let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) = ne.expression().unpack() else {
-                todo!()
-            };
-            let name = match atom.unpack() {
-                AtomContent::List(list) => get_tuple_like(list.unpack())?,
-                AtomContent::Tuple(tup) => get_tuple_like(tup.iter())?,
-                _ => StringSlice::from_string_in_expression(
-                    node_ref.file.file_index(),
-                    ne.expression(),
-                )?,
+            let expression = ne.expression();
+            let name = match expression.maybe_unpacked_atom() {
+                Some(AtomContent::List(list)) => get_tuple_like(list.unpack())?,
+                Some(AtomContent::Tuple(tup)) => get_tuple_like(tup.iter())?,
+                _ => {
+                    StringSlice::from_string_in_expression(node_ref.file.file_index(), expression)?
+                }
             };
             members.add_member(
                 i_s,
                 enum_name,
-                NodeRef::new(node_ref.file, atom.index()),
+                NodeRef::new(node_ref.file, expression.index()),
                 EnumMemberDefinition::new(name.into(), None),
             )
         }

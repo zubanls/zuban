@@ -1837,27 +1837,21 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     CallableParams::Any
                 }
             };
-        if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) =
-            n.named_expr.expression().unpack()
-        {
-            match atom.unpack() {
-                AtomContent::List(list) => {
-                    let mut params = vec![];
-                    for i in list.unpack() {
-                        if let StarLikeExpression::NamedExpression(n) = i {
-                            let t = self.compute_type(n.expression());
-                            self.add_param(&mut params, t, n.index())
-                        } else {
-                            todo!()
-                        }
+        match n.named_expr.expression().maybe_unpacked_atom() {
+            Some(AtomContent::List(list)) => {
+                let mut params = vec![];
+                for i in list.unpack() {
+                    if let StarLikeExpression::NamedExpression(n) = i {
+                        let t = self.compute_type(n.expression());
+                        self.add_param(&mut params, t, n.index())
+                    } else {
+                        todo!()
                     }
-                    CallableParams::Simple(Rc::from(params))
                 }
-                AtomContent::Ellipsis => CallableParams::Any,
-                _ => calc_params(self),
+                CallableParams::Simple(Rc::from(params))
             }
-        } else {
-            calc_params(self)
+            Some(AtomContent::Ellipsis) => CallableParams::Any,
+            _ => calc_params(self),
         }
     }
 
@@ -2527,13 +2521,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             let StarLikeExpression::NamedExpression(ne) = element else {
                 todo!()
             };
-            let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) = ne.expression().unpack() else {
-                todo!()
-            };
-            let mut parts = match atom.unpack() {
-                AtomContent::Tuple(tup) => tup.iter(),
+            let mut parts = match ne.expression().maybe_unpacked_atom() {
+                Some(AtomContent::Tuple(tup)) => tup.iter(),
                 _ => {
-                    NodeRef::new(self.inference.file, atom.index()).add_issue(
+                    NodeRef::new(self.inference.file, ne.index()).add_issue(
                         self.inference.i_s,
                         IssueType::TupleExpectedAsNamedTupleField,
                     );
