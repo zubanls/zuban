@@ -278,7 +278,7 @@ pub enum CalculatedBaseClass {
 
 macro_rules! compute_type_application {
     ($self:ident, $slice_type:expr, $from_alias_definition:expr, $method:ident $args:tt) => {{
-        let mut on_type_var = |i_s: &InferenceState, _: &_, type_var_like: TypeVarLike, current_callable| {
+        let mut on_type_var = |i_s: &InferenceState, _: &_, type_var_like: TypeVarLike, _| {
             if let Some(class) = i_s.current_class() {
                 if let Some(usage) = class
                     .type_vars(i_s)
