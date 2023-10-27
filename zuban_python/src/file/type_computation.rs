@@ -3615,7 +3615,12 @@ fn check_named_tuple_name<'x, 'y>(
     i_s: &InferenceState,
     executable_name: &'static str,
     args: &'y dyn Arguments<'x>,
-) -> Option<(StringSlice, NodeRef<'y>, Atom<'y>, ArgumentIterator<'x, 'y>)> {
+) -> Option<(
+    StringSlice,
+    NodeRef<'y>,
+    AtomContent<'y>,
+    ArgumentIterator<'x, 'y>,
+)> {
     let mut iterator = args.iter();
     let Some(first_arg) = iterator.next() else {
         todo!()
@@ -3655,17 +3660,17 @@ fn check_named_tuple_name<'x, 'y>(
     let ArgumentKind::Positional { node_ref, .. } = second_arg.kind else {
         todo!()
     };
-    let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) = node_ref.as_named_expression().expression().unpack() else {
+    let Some(atom_content) = node_ref.as_named_expression().expression().maybe_unpacked_atom() else {
         todo!()
     };
-    Some((string_slice, node_ref, atom, iterator))
+    Some((string_slice, node_ref, atom_content, iterator))
 }
 
 pub fn new_typing_named_tuple(
     i_s: &InferenceState,
     args: &dyn Arguments,
 ) -> Option<Rc<NamedTuple>> {
-    let Some((name, second_node_ref, atom, mut iterator)) = check_named_tuple_name(i_s, "NamedTuple", args) else {
+    let Some((name, second_node_ref, atom_content, mut iterator)) = check_named_tuple_name(i_s, "NamedTuple", args) else {
         return None
     };
     if iterator.next().is_some() {
@@ -3675,7 +3680,7 @@ pub fn new_typing_named_tuple(
         );
         return None;
     }
-    let list_iterator = match atom.unpack() {
+    let list_iterator = match atom_content {
         AtomContent::List(list) => list.unpack(),
         AtomContent::Tuple(tup) => tup.iter(),
         _ => {
@@ -3719,7 +3724,7 @@ pub fn new_collections_named_tuple(
     i_s: &InferenceState,
     args: &dyn Arguments,
 ) -> Option<Rc<NamedTuple>> {
-    let Some((name, second_node_ref, atom, mut iterator)) = check_named_tuple_name(i_s, "namedtuple", args) else {
+    let Some((name, second_node_ref, atom_content, mut iterator)) = check_named_tuple_name(i_s, "namedtuple", args) else {
         return None
     };
     if iterator.next().is_some() {
@@ -3749,7 +3754,7 @@ pub fn new_collections_named_tuple(
             add_param(string_slice)
         }
     };
-    match atom.unpack() {
+    match atom_content {
         AtomContent::List(list) => add_from_iterator(list.unpack()),
         AtomContent::Tuple(tup) => add_from_iterator(tup.iter()),
         AtomContent::Strings(s) => match s.maybe_single_string_literal() {
