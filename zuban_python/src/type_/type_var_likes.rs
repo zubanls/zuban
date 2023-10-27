@@ -168,7 +168,10 @@ impl TypeVarManager {
         None
     }
 
-    fn remap_internal(&self, usage: &TypeVarLikeUsage) -> Option<(TypeVarIndex, PointLink)> {
+    fn remap_internal(
+        &self,
+        usage: &TypeVarLikeUsage,
+    ) -> Option<(TypeVarIndex, Option<PointLink>)> {
         let mut index = 0;
         let mut in_definition = None;
         for t in self.type_vars.iter().rev() {
@@ -187,16 +190,12 @@ impl TypeVarManager {
                 },
             };
             if let Some(in_def) = in_definition {
-                if in_definition == t.most_outer_callable {
+                if in_def == t.most_outer_callable {
                     index += 1;
                 }
             } else if matched {
-                if t.most_outer_callable.is_some() {
-                    in_definition = t.most_outer_callable;
-                    index = 0;
-                } else {
-                    return None;
-                }
+                in_definition = Some(t.most_outer_callable);
+                index = 0;
             }
         }
         in_definition.map(|d| (index.into(), d))
@@ -208,7 +207,7 @@ impl TypeVarManager {
         {
             TypeVarUsage {
                 type_var: usage.type_var.clone(),
-                in_definition,
+                in_definition: in_definition.unwrap_or(usage.in_definition),
                 index,
             }
         } else {
@@ -226,7 +225,7 @@ impl TypeVarManager {
         {
             ParamSpecUsage {
                 param_spec: usage.param_spec.clone(),
-                in_definition,
+                in_definition: in_definition.unwrap_or(usage.in_definition),
                 index,
             }
         } else {

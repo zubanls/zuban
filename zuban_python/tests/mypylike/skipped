@@ -178,6 +178,7 @@ testRegression12258
 # Callable matching
 testNoCrashOnNestedGenericCallable
 testSubtypingGenericTypeObject
+testParamSpecNoCrashOnUnificationPrefix
 # dict questionable decisions
 testDictWithStarStarExpr
 testDictFromIterableAndStarStarArgs
@@ -306,7 +307,6 @@ testParamSpecAliasNested
 testParamSpecArgumentParamInferenceRegular
 testParamSpecApplyPosVsNamedOptional
 testParamSpecConcatenateSelfType
-testParamSpecNoCrashOnUnificationPrefix
 testParamSpecCorrectParameterNameInference
 
 # Are generics in self types always bound to the function?
