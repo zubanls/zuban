@@ -410,9 +410,6 @@ testNewNamedTupleReplaceTyped
 testNewNamedTupleFields
 testNewNamedTupleUnit
 testNamedTupleTypeInheritanceSpecialCase
-# Namedtuple class attr access
-testNamedTupleForwardFunctionIndirectReveal
-testNamedTupleMissingClassAttribute
 # Namedtuple bad overwrite of count etc
 testNamedTupleIncompatibleRedefinition
 testNewNamedTupleIllegalNames

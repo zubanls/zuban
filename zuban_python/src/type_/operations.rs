@@ -523,7 +523,14 @@ pub fn attribute_access_of_type(
             "__new__" => {
                 LookupResult::UnknownName(Inferred::from_type(Type::Callable(nt.__new__.clone())))
             }
-            _ => todo!(),
+            _ if nt.search_param(i_s.db, name).is_some() => {
+                // TODO this is currently wrong, because it should be a
+                // `<_collections._tuplegetter object at 0x7f3f5578cbe0>`, but mypy returns the
+                // type it would also return for instance lookups, which is completely wrong, so
+                // use this for now.
+                LookupResult::UnknownName(Inferred::from_type(i_s.db.python_state.object_type()))
+            }
+            _ => LookupResult::None,
         },
         Type::Tuple(tup) => i_s
             .db
