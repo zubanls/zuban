@@ -100,7 +100,7 @@ impl<'a> NamedTupleValue<'a> {
 }
 
 pub fn execute_typing_named_tuple(i_s: &InferenceState, args: &dyn Arguments) -> Inferred {
-    match new_typing_named_tuple(i_s, args) {
+    match new_typing_named_tuple(i_s, args, false) {
         Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(Rc::new(
             Type::NamedTuple(rc),
         ))),

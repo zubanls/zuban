@@ -1027,10 +1027,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         self.inference.file,
                         primary,
                     );
-                    TypeContent::Type(match new_typing_named_tuple(self.inference.i_s, &args) {
-                        Some(rc) => Type::NamedTuple(rc),
-                        None => Type::Any,
-                    })
+                    TypeContent::Type(
+                        match new_typing_named_tuple(self.inference.i_s, &args, true) {
+                            Some(rc) => Type::NamedTuple(rc),
+                            None => Type::Any,
+                        },
+                    )
                 }
                 TypeContent::SpecialType(SpecialType::CollectionsNamedTuple) => {
                     let args = SimpleArguments::from_primary(
@@ -3663,6 +3665,7 @@ fn check_named_tuple_name<'x, 'y>(
 pub fn new_typing_named_tuple(
     i_s: &InferenceState,
     args: &dyn Arguments,
+    in_type_definition: bool,
 ) -> Option<Rc<NamedTuple>> {
     let Some((name, second_node_ref, atom_content, mut iterator)) = check_named_tuple_name(i_s, "NamedTuple", args) else {
         return None
@@ -3697,6 +3700,11 @@ pub fn new_typing_named_tuple(
     if let Some(params) = comp.compute_named_tuple_initializer(args_node_ref, list_iterator) {
         check_named_tuple_has_no_fields_with_underscore(i_s, "NamedTuple", args, &params);
         let type_var_likes = comp.into_type_vars(|_, _| ());
+        if in_type_definition && !type_var_likes.is_empty() {
+            args.as_node_ref()
+                .add_issue(i_s, IssueType::NamedTupleGenericInClassDefinition);
+            return None;
+        }
         let callable = CallableContent {
             name: Some(name),
             class_name: None,

@@ -383,8 +383,6 @@ testAssignNamedTupleAsAttribute
 testNoCrashUnsupportedNamedTuple
 # "Self type cannot be used in NamedTuple item type"
 testNamedTupleSelfItemNotAllowed
-# "Generic named tuples are not supported for legacy class syntax"
-testGenericNamedTupleNoLegacySyntax
 # Recursive generic NamedTuple
 testBasicRecursiveGenericNamedTuple
 # NamedTuple generic used

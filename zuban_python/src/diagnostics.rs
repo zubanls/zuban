@@ -182,6 +182,7 @@ pub(crate) enum IssueType {
     NamedTupleFirstArgumentMismatch { should: Box<str>, is: Box<str> },
     NamedTupleDefaultsShouldBeListOrTuple,
     NamedTupleToManyDefaults,
+    NamedTupleGenericInClassDefinition,
 
     TypedDictIncompatibleType { got: Box<str>, key: Box<str>, expected: Box<str> },
     TypedDictExtraKey { key: Box<str>, typed_dict: Box<str> },
@@ -901,6 +902,10 @@ impl<'db> Diagnostic<'db> {
                 r#"List or tuple literal expected as the defaults argument to namedtuple()"#.to_string(),
             NamedTupleToManyDefaults =>
                 r#"Too many defaults given in call to "namedtuple()""#.to_string(),
+            NamedTupleGenericInClassDefinition => {
+                additional_notes.push("Use either Python 3 class syntax, or the assignment syntax".into());
+                "Generic named tuples are not supported for legacy class syntax".to_string()
+            }
 
             TypedDictIncompatibleType {got, key, expected} => format!(
                 r#"Incompatible types (expression has type "{got}", TypedDict item "{key}" has type "{expected}")"#
