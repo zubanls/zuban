@@ -429,8 +429,6 @@ testNamedTupleIncompatibleRedefinition
 testNewNamedTupleIllegalNames
 # "Protocol member HasX.x expected settable variable, got read-only attribute"
 testTypingNamedTupleAttributesAreReadOnly
-# "NamedTuple field name cannot start with an underscore: _y"
-testNewNamedTupleNoUnderscoreFields
 # "NamedTuple should be a single base"
 testNewNamedTupleShouldBeSingleBase
 # Tuple Qualified nested class name

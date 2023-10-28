@@ -1965,11 +1965,20 @@ fn find_stmt_named_tuple_types(
                     }
                     file.inference(i_s).ensure_cached_annotation(annot);
                     let t = use_cached_annotation_type(i_s.db, file, annot).into_owned();
-                    vec.push(CallableParam {
-                        param_specific: ParamSpecific::PositionalOrKeyword(t),
-                        has_default: default.is_some(),
-                        name: Some(StringSlice::from_name(file.file_index(), name.name())),
-                    })
+                    if name.as_code().starts_with('_') {
+                        NodeRef::new(file, name.index()).add_issue(
+                            i_s,
+                            IssueType::NamedTupleNameCannotStartWithUnderscore {
+                                field_name: name.as_code().into(),
+                            },
+                        )
+                    } else {
+                        vec.push(CallableParam {
+                            param_specific: ParamSpecific::PositionalOrKeyword(t),
+                            has_default: default.is_some(),
+                            name: Some(StringSlice::from_name(file.file_index(), name.name())),
+                        })
+                    }
                 }
                 _ => NodeRef::new(file, assignment.index())
                     .add_issue(i_s, IssueType::InvalidStmtInNamedTuple),
