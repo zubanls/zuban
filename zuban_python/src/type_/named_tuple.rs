@@ -151,6 +151,7 @@ impl NamedTuple {
                     .take(self.params().len())
                     .collect(),
             ))),
+            "_source" => i_s.db.python_state.str_type(),
             _ if self.search_param(i_s.db, name).is_some() => {
                 // TODO this is currently wrong, because it should be a
                 // `<_collections._tuplegetter object at 0x7f3f5578cbe0>`, but mypy returns the

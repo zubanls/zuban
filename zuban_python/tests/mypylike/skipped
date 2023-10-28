@@ -395,7 +395,6 @@ testNamedTupleReplace
 testNamedTupleReplaceAsClass
 testNamedTupleReplaceTyped
 testNamedTupleMake
-testNamedTupleSource
 testNamedTupleUnit
 testNamedTupleFieldTypes
 testNamedTupleSelfTypeReplace
