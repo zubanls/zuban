@@ -183,6 +183,7 @@ pub(crate) enum IssueType {
     NamedTupleDefaultsShouldBeListOrTuple,
     NamedTupleToManyDefaults,
     NamedTupleGenericInClassDefinition,
+    NamedTupleShouldBeASingleBase,
 
     TypedDictIncompatibleType { got: Box<str>, key: Box<str>, expected: Box<str> },
     TypedDictExtraKey { key: Box<str>, typed_dict: Box<str> },
@@ -906,6 +907,7 @@ impl<'db> Diagnostic<'db> {
                 additional_notes.push("Use either Python 3 class syntax, or the assignment syntax".into());
                 "Generic named tuples are not supported for legacy class syntax".to_string()
             }
+            NamedTupleShouldBeASingleBase => "NamedTuple should be a single base".to_string(),
 
             TypedDictIncompatibleType {got, key, expected} => format!(
                 r#"Incompatible types (expression has type "{got}", TypedDict item "{key}" has type "{expected}")"#

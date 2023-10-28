@@ -551,8 +551,10 @@ impl<'db: 'a, 'a> Class<'a> {
         let mut typed_dict_members = TypedDictMemberGatherer::default();
         let mut typed_dict_total = None;
         let mut had_new_typed_dict = false;
+        let mut is_new_named_tuple = false;
         let mut metaclass = MetaclassState::None;
-        if let Some(arguments) = self.node().arguments() {
+        let arguments = self.node().arguments();
+        if let Some(arguments) = arguments {
             // Check metaclass before checking all the arguments, because it has a preference over
             // the metaclasses of the subclasses.
             for argument in arguments.iter() {
@@ -737,6 +739,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                 class_type = ClassType::NamedTuple(named_tuple);
                             }
                             CalculatedBaseClass::NewNamedTuple => {
+                                is_new_named_tuple = true;
                                 let named_tuple = self
                                     .named_tuple_from_class(&i_s.with_class_context(self), *self);
                                 bases.push(Type::NamedTuple(named_tuple.clone()));
@@ -801,7 +804,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
         let was_typed_dict = (class_type == ClassType::TypedDict).then(|| {
             if bases.iter().any(|t| !matches!(t, Type::TypedDict(_))) {
-                NodeRef::new(self.node_ref.file, self.node().arguments().unwrap().index())
+                NodeRef::new(self.node_ref.file, arguments.unwrap().index())
                     .add_issue(i_s, IssueType::TypedDictBasesMustBeTypedKeys);
             }
             self.initialize_typed_dict_members(
@@ -816,6 +819,10 @@ impl<'db: 'a, 'a> Class<'a> {
                 self.type_vars(i_s).clone(),
             )
         });
+        if is_new_named_tuple && bases.len() > 1 {
+            NodeRef::new(self.node_ref.file, arguments.unwrap().index())
+                .add_issue(i_s, IssueType::NamedTupleShouldBeASingleBase);
+        }
 
         let mro = linearize_mro(i_s, self, &bases);
 
@@ -824,7 +831,7 @@ impl<'db: 'a, 'a> Class<'a> {
             if matches!(base.type_, Type::Tuple(_) | Type::NamedTuple(_)) {
                 if let Some(found_tuple_like) = found_tuple_like {
                     if found_tuple_like != &base.type_ {
-                        NodeRef::new(self.node_ref.file, self.node().arguments().unwrap().index())
+                        NodeRef::new(self.node_ref.file, arguments.unwrap().index())
                             .add_issue(i_s, IssueType::IncompatibleBaseTuples);
                     }
                 } else {

@@ -410,8 +410,6 @@ testNewNamedTupleReplaceTyped
 testNewNamedTupleFields
 testNewNamedTupleUnit
 testNamedTupleTypeInheritanceSpecialCase
-# "NamedTuple should be a single base"
-testNewNamedTupleShouldBeSingleBase
 # Tuple Qualified nested class name
 testNewAnalyzerNamedTupleClassNestedMethod
 testNewAnalyzerNamedTupleCallNested
