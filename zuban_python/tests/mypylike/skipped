@@ -410,11 +410,6 @@ testNewNamedTupleReplaceTyped
 testNewNamedTupleFields
 testNewNamedTupleUnit
 testNamedTupleTypeInheritanceSpecialCase
-# Namedtuple bad overwrite of count etc
-testNamedTupleIncompatibleRedefinition
-testNewNamedTupleIllegalNames
-# "Protocol member HasX.x expected settable variable, got read-only attribute"
-testTypingNamedTupleAttributesAreReadOnly
 # "NamedTuple should be a single base"
 testNewNamedTupleShouldBeSingleBase
 # Tuple Qualified nested class name
@@ -647,9 +642,6 @@ testProtocolVarianceWithCallableAndList
 testProtocolVarianceWithUnusedVariable
 testSubtleBadVarianceInProtocols
 testAutomaticProtocolVariance
-# "Protocol member P.x expected settable variable, got read-only attribute"
-testFinalAttributeProtocol
-testModuleAsProtocolImplementationFinal
 # "All protocol members must have explicitly declared types"
 testImplicitTypesInProtocols
 # "Type aliases are prohibited in protocol bodies"
@@ -658,6 +650,9 @@ testTypeAliasInProtocolBody
 testWeAreCarefulWithBuiltinProtocols
 testWeAreCarefullWithBuiltinProtocolsBase
 # "Protocol member PPS.attr expected settable variable, got read-only attribute"
+testFinalAttributeProtocol
+testModuleAsProtocolImplementationFinal
+testTypingNamedTupleAttributesAreReadOnly
 testPropertyInProtocols
 testSettablePropertyInProtocols
 testNotManyFlagConflitsShownInProtocols
@@ -1338,6 +1333,9 @@ testNamedTupleFallback
 testMultipleInheritance_NestedVariableOverriddenWithIncompatibleType1
 testErrorCodeAssignment
 testChangeBaseClassAttributeType
+# Namedtuple bad overwrite of count etc
+testNewNamedTupleIllegalNames
+testNamedTupleIncompatibleRedefinition
 # List item 0 has incompatible type "str"; expected "int"
 testVariableTypeVarList
 testInWithInvalidArgs
