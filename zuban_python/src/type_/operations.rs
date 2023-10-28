@@ -267,9 +267,7 @@ impl Type {
             ),
             Type::Any => Inferred::new_any(),
             Type::Tuple(tup) => Tuple::new(tup).get_item(i_s, slice_type, result_context),
-            Type::NamedTuple(nt) => {
-                NamedTupleValue::new(i_s.db, nt).get_item(i_s, slice_type, result_context)
-            }
+            Type::NamedTuple(nt) => nt.get_item(i_s, slice_type, result_context),
             Type::Union(union) => Inferred::gather_simplified_union(i_s, |callable| {
                 for t in union.iter() {
                     callable(t.get_item(i_s, None, slice_type, result_context))
@@ -412,7 +410,7 @@ impl Type {
         match self {
             Type::Class(c) => Instance::new(c.class(i_s.db), None).iter(i_s, from),
             Type::Tuple(content) => Tuple::new(content).iter(i_s, from),
-            Type::NamedTuple(nt) => NamedTupleValue::new(i_s.db, nt).iter(i_s, from),
+            Type::NamedTuple(nt) => nt.iter(i_s, from),
             Type::Union(union) => {
                 let mut items = vec![];
                 for t in union.iter() {

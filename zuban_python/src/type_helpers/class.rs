@@ -11,7 +11,7 @@ use parsa_python_ast::{
 
 use super::enum_::execute_functional_enum;
 use super::overload::OverloadResult;
-use super::{Callable, Instance, Module, NamedTupleValue, TypedDictMemberGatherer};
+use super::{Callable, Instance, Module, TypedDictMemberGatherer};
 use crate::arguments::{Arguments, KnownArguments, SimpleArguments};
 use crate::database::{
     BaseClass, ClassInfos, ClassStorage, ClassType, ComplexPoint, Database, Locality,
@@ -1288,11 +1288,7 @@ impl<'db: 'a, 'a> Class<'a> {
         if let Some(class_infos) = self.maybe_cached_class_infos(format_data.db) {
             match &class_infos.class_type {
                 ClassType::NamedTuple(named_tuple) => {
-                    return NamedTupleValue::new(format_data.db, named_tuple).format_with_name(
-                        format_data,
-                        &result,
-                        self.generics,
-                    )
+                    return named_tuple.format_with_name(format_data, &result, self.generics)
                 }
                 ClassType::Tuple if format_data.style == FormatStyle::MypyRevealType => {
                     for (_, type_or_class) in self.mro(format_data.db) {

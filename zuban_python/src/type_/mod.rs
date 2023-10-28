@@ -782,22 +782,18 @@ impl Type {
             }
             Self::Dataclass(d) => d.class(format_data.db).format(format_data),
             Self::TypedDict(d) => d.format(format_data).into(),
-            Self::NamedTuple(nt) => {
-                use crate::type_helpers::NamedTupleValue;
-                match format_data.style {
-                    FormatStyle::Short => NamedTupleValue::new(format_data.db, nt)
-                        .format_with_name(
-                            format_data,
-                            nt.name(format_data.db),
-                            Generics::NotDefinedYet,
-                        ),
-                    _ => NamedTupleValue::new(format_data.db, nt).format_with_name(
-                        format_data,
-                        &nt.qualified_name(format_data.db),
-                        Generics::NotDefinedYet,
-                    ),
-                }
-            }
+            Self::NamedTuple(nt) => match format_data.style {
+                FormatStyle::Short => nt.format_with_name(
+                    format_data,
+                    nt.name(format_data.db),
+                    Generics::NotDefinedYet,
+                ),
+                _ => nt.format_with_name(
+                    format_data,
+                    &nt.qualified_name(format_data.db),
+                    Generics::NotDefinedYet,
+                ),
+            },
             Self::Enum(e) => e.format(format_data).into(),
             Self::EnumMember(e) => e.format(format_data).into(),
             Self::Module(file_index) => format_data

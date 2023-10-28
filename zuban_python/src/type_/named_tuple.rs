@@ -1,8 +1,20 @@
 use std::{cell::OnceCell, rc::Rc};
 
-use crate::{database::Database, type_helpers::Module};
+use crate::{
+    database::Database,
+    getitem::SliceType,
+    inference_state::InferenceState,
+    inferred::Inferred,
+    matching::{FormatData, Generics, IteratorContent, ResultContext},
+    node_ref::NodeRef,
+    type_helpers::{Module, Tuple},
+    utils::join_with_commas,
+};
 
-use super::{CallableContent, CallableParam, StringSlice, TupleContent, TypeOrTypeVarTuple};
+use super::{
+    CallableContent, CallableParam, FormatStyle, RecursiveAlias, StringSlice, TupleContent,
+    TypeOrTypeVarTuple,
+};
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct NamedTuple {
@@ -68,5 +80,59 @@ impl NamedTuple {
     pub fn as_tuple_ref(&self) -> &TupleContent {
         self.as_tuple();
         self.tuple.get().unwrap()
+    }
+
+    pub fn format_with_name(
+        &self,
+        format_data: &FormatData,
+        name: &str,
+        generics: Generics,
+    ) -> Box<str> {
+        if format_data.style != FormatStyle::MypyRevealType {
+            return Box::from(name);
+        }
+        let params = self.params();
+        // We need to check recursions here, because for class definitions of named tuples can
+        // recurse with their attributes.
+        let rec = RecursiveAlias::new(self.__new__.defined_at, None);
+        if format_data.has_already_seen_recursive_alias(&rec) {
+            return Box::from(name);
+        }
+        let format_data = &format_data.with_seen_recursive_alias(&rec);
+        let types = match params.is_empty() {
+            true => "()".into(),
+            false => join_with_commas(params.iter().map(|p| {
+                let t = p.param_specific.expect_positional_type_as_ref();
+                match generics {
+                    Generics::NotDefinedYet | Generics::None => t.format(format_data),
+                    _ => t
+                        .replace_type_var_likes_and_self(
+                            format_data.db,
+                            &mut |usage| {
+                                generics
+                                    .nth_usage(format_data.db, &usage)
+                                    .into_generic_item(format_data.db)
+                            },
+                            &|| todo!(),
+                        )
+                        .format(format_data),
+                }
+                .into()
+            })),
+        };
+        format!("tuple[{types}, fallback={name}]",).into()
+    }
+
+    pub fn iter(&self, i_s: &InferenceState, from: NodeRef) -> IteratorContent {
+        Tuple::new(&self.as_tuple()).iter(i_s, from)
+    }
+
+    pub fn get_item(
+        &self,
+        i_s: &InferenceState,
+        slice_type: &SliceType,
+        result_context: &mut ResultContext,
+    ) -> Inferred {
+        Tuple::new(&self.as_tuple()).get_item(i_s, slice_type, result_context)
     }
 }

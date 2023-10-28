@@ -4,7 +4,7 @@ use std::rc::Rc;
 use parsa_python_ast::Name;
 
 use super::class::TypeOrClass;
-use super::{Class, MroIterator, NamedTupleValue, Tuple};
+use super::{Class, MroIterator, Tuple};
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments, NoArguments};
 use crate::database::{ClassType, Database, PointLink, Specific};
 use crate::debug;
@@ -196,7 +196,7 @@ impl<'a> Instance<'a> {
         match &self.class.use_cached_class_infos(i_s.db).class_type {
             ClassType::NamedTuple(named_tuple) => {
                 // TODO this doesn't take care of the mro and could not be the first __iter__
-                return NamedTupleValue::new(i_s.db, named_tuple).iter(i_s, from);
+                return named_tuple.iter(i_s, from);
             }
             ClassType::Tuple => {
                 /*
@@ -361,11 +361,7 @@ impl<'a> Instance<'a> {
         match &self.class.use_cached_class_infos(i_s.db).class_type {
             ClassType::NamedTuple(named_tuple) => {
                 // TODO this doesn't take care of the mro and could not be the first __getitem__
-                return NamedTupleValue::new(i_s.db, named_tuple).get_item(
-                    i_s,
-                    slice_type,
-                    result_context,
-                );
+                return named_tuple.get_item(i_s, slice_type, result_context);
             }
             _ => (),
         }
