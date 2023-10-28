@@ -3286,6 +3286,7 @@ fn check_special_type(point: Point) -> Option<SpecialType> {
             Specific::TypingRequired => SpecialType::Required,
             Specific::TypingNotRequired => SpecialType::NotRequired,
             Specific::TypingClassVar => SpecialType::ClassVar,
+            Specific::TypingNamedTuple => SpecialType::TypingNamedTuple,
             Specific::MypyExtensionsArg
             | Specific::MypyExtensionsDefaultArg
             | Specific::MypyExtensionsNamedArg
