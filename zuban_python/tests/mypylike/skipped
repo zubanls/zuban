@@ -378,9 +378,6 @@ testSelfTypeNonsensical
 testSelfTypeNew
 testSelfTypeNew_explicit
 
-# "Class has two incompatible bases derived from tuple"
-testNamedTuplesTwoAsBaseClasses
-testNamedTuplesTwoAsBaseClasses2
 # "NamedTuple type as an attribute is not supported"
 testAssignNamedTupleAsAttribute
 testNoCrashUnsupportedNamedTuple

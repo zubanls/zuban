@@ -37,8 +37,9 @@ use crate::python_state::NAME_TO_FUNCTION_DIFF;
 use crate::type_::{
     CallableContent, CallableLike, CallableParam, CallableParams, ClassGenerics, Dataclass,
     DataclassOptions, Enum, EnumMemberDefinition, FormatStyle, FunctionKind, FunctionOverload,
-    GenericClass, GenericsList, NamedTuple, ParamSpecific, RecursiveAlias, StringSlice, Type,
-    TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember, Variance,
+    GenericClass, GenericsList, NamedTuple, ParamSpecific, RecursiveAlias, StringSlice,
+    TupleContent, Type, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember,
+    Variance,
 };
 use crate::type_helpers::dataclass::check_dataclass_options;
 use crate::type_helpers::enum_::infer_value_on_member;
@@ -815,9 +816,25 @@ impl<'db: 'a, 'a> Class<'a> {
                 self.type_vars(i_s).clone(),
             )
         });
+
+        let mro = linearize_mro(i_s, self, &bases);
+
+        let mut found_tuple_like = None;
+        for base in mro.iter() {
+            if matches!(base.type_, Type::Tuple(_) | Type::NamedTuple(_)) {
+                if let Some(found_tuple_like) = found_tuple_like {
+                    if found_tuple_like != &base.type_ {
+                        NodeRef::new(self.node_ref.file, self.node().arguments().unwrap().index())
+                            .add_issue(i_s, IssueType::IncompatibleBaseTuples);
+                    }
+                } else {
+                    found_tuple_like = Some(&base.type_);
+                }
+            }
+        }
         (
             Box::new(ClassInfos {
-                mro: linearize_mro(i_s, self, &bases),
+                mro,
                 metaclass,
                 incomplete_mro,
                 class_type,
@@ -1671,13 +1688,13 @@ pub enum ClassExecutionResult {
     Inferred(Inferred),
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq)]
 enum BaseKind {
     Class(PointLink),
     Dataclass(PointLink),
-    NamedTuple,
+    NamedTuple(Rc<NamedTuple>),
     TypedDict,
-    Tuple,
+    Tuple(Rc<TupleContent>),
     Type,
     Enum,
 }
@@ -1686,10 +1703,10 @@ fn to_base_kind(t: &Type) -> BaseKind {
     match t {
         Type::Class(c) => BaseKind::Class(c.link),
         Type::Type(_) => BaseKind::Type,
-        Type::Tuple(_) => BaseKind::Tuple,
+        Type::Tuple(tup) => BaseKind::Tuple(tup.clone()),
         Type::Dataclass(d) => BaseKind::Dataclass(d.class.link),
         Type::TypedDict(d) => BaseKind::TypedDict,
-        Type::NamedTuple(_) => BaseKind::NamedTuple,
+        Type::NamedTuple(nt) => BaseKind::NamedTuple(nt.clone()),
         Type::Enum(_) => BaseKind::Enum,
         _ => unreachable!("{t:?}"),
     }
