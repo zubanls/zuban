@@ -391,7 +391,6 @@ testGenericNamedTupleCallSyntax
 # NamedTuple special methods
 testNewAnalyzerNamedTupleSpecialMethods
 testNewAnalyzerNamedTupleBaseClass
-testNamedTupleAsDict
 testNamedTupleReplace
 testNamedTupleReplaceAsClass
 testNamedTupleReplaceTyped
@@ -404,12 +403,10 @@ testNamedTupleSelfTypeReplace
 testNamedTupleSelfTypeMake
 testNamedTupleTypingSelfMethod
 testGenericNamedTupleMethods
-testUnionUnpackingInForTuple
 testNewNamedTupleAsDict
 testNewNamedTupleReplaceTyped
 testNewNamedTupleFields
 testNewNamedTupleUnit
-testNamedTupleTypeInheritanceSpecialCase
 
 # dataclass issue with structure
 testReplaceTypeVarBound

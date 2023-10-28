@@ -647,6 +647,7 @@ impl PythonState {
     node_ref_to_class!(pub function_class, function_node_ref);
     node_ref_to_class!(pub bare_type_class, bare_type_node_ref);
     node_ref_to_class!(pub typed_dict_class, typed_dict_node_ref);
+    node_ref_to_class!(pub typing_named_tuple_class, typing_named_tuple_node_ref);
 
     node_ref_to_type_class_without_generic!(pub object_type, object_node_ref);
     node_ref_to_type_class_without_generic!(pub slice_type, slice_node_ref);

@@ -5,15 +5,16 @@ use parsa_python_ast::{AtomContent, CodeIndex, StarLikeExpression};
 use crate::{
     arguments::{ArgumentIterator, ArgumentKind, Arguments},
     database::{ComplexPoint, Database},
-    debug,
     diagnostics::IssueType,
     file::{File, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn},
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{FormatData, Generics, IteratorContent, LookupResult, OnTypeError, ResultContext},
+    matching::{
+        FormatData, Generics, IteratorContent, LookupKind, LookupResult, OnTypeError, ResultContext,
+    },
     node_ref::NodeRef,
-    type_helpers::{start_namedtuple_params, Module, Tuple},
+    type_helpers::{start_namedtuple_params, Class, Module, Tuple},
     utils::join_with_commas,
 };
 
@@ -142,7 +143,7 @@ impl NamedTuple {
         Tuple::new(&self.as_tuple()).get_item(i_s, slice_type, result_context)
     }
 
-    pub fn lookup(&self, i_s: &InferenceState, name: &str) -> LookupResult {
+    fn lookup_helper(&self, i_s: &InferenceState, name: &str) -> LookupResult {
         for p in self.params() {
             if name == p.name.unwrap().as_str(i_s.db) {
                 return LookupResult::UnknownName(Inferred::from_type(
@@ -155,8 +156,40 @@ impl NamedTuple {
                 self.__new__.clone(),
             )));
         }
-        debug!("TODO lookup of NamedTuple base classes");
         LookupResult::None
+    }
+
+    pub fn lookup_symbol<'db>(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        name: &str,
+    ) -> (Option<Class<'db>>, LookupResult) {
+        if name == "__init__" {
+            return (None, LookupResult::None);
+        }
+        let result = self.lookup_helper(i_s, name);
+        if result.is_some() {
+            return (None, result);
+        } else {
+            let cls = i_s.db.python_state.typing_named_tuple_class();
+            (Some(cls), cls.lookup_symbol(i_s, name))
+        }
+    }
+
+    pub fn lookup(
+        &self,
+        i_s: &InferenceState,
+        from: NodeRef,
+        name: &str,
+        kind: LookupKind,
+    ) -> LookupResult {
+        self.lookup_helper(i_s, name).or_else(|| {
+            i_s.db
+                .python_state
+                .typing_named_tuple_class()
+                .instance()
+                .lookup(i_s, from, name, kind)
+        })
     }
 }
 
