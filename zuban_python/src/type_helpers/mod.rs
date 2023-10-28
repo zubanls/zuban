@@ -6,7 +6,6 @@ mod enum_;
 mod function;
 mod instance;
 mod module;
-mod named_tuple;
 mod overload;
 mod tuple;
 mod typed_dict;
@@ -23,9 +22,6 @@ pub use enum_::{lookup_on_enum_class, lookup_on_enum_instance, lookup_on_enum_me
 pub use function::{is_private, FirstParamKind, FirstParamProperties, Function, GeneratorType};
 pub use instance::{execute_super, Instance};
 pub use module::{dotted_path_from_dir, lookup_in_namespace, Module};
-pub use named_tuple::{
-    execute_collections_named_tuple, execute_typing_named_tuple, NamedTupleValue,
-};
 pub use overload::OverloadedFunction;
 pub use tuple::Tuple;
 pub use typed_dict::{

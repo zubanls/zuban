@@ -1,18 +1,21 @@
 use std::{cell::OnceCell, rc::Rc};
 
 use crate::{
-    database::Database,
+    arguments::Arguments,
+    database::{ComplexPoint, Database},
+    debug,
+    file::{new_collections_named_tuple, new_typing_named_tuple},
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{FormatData, Generics, IteratorContent, ResultContext},
+    matching::{FormatData, Generics, IteratorContent, LookupResult, OnTypeError, ResultContext},
     node_ref::NodeRef,
     type_helpers::{Module, Tuple},
     utils::join_with_commas,
 };
 
 use super::{
-    CallableContent, CallableParam, FormatStyle, RecursiveAlias, StringSlice, TupleContent,
+    CallableContent, CallableParam, FormatStyle, RecursiveAlias, StringSlice, TupleContent, Type,
     TypeOrTypeVarTuple,
 };
 
@@ -134,5 +137,49 @@ impl NamedTuple {
         result_context: &mut ResultContext,
     ) -> Inferred {
         Tuple::new(&self.as_tuple()).get_item(i_s, slice_type, result_context)
+    }
+
+    pub fn lookup(&self, i_s: &InferenceState, name: &str) -> LookupResult {
+        for p in self.params() {
+            if name == p.name.unwrap().as_str(i_s.db) {
+                return LookupResult::UnknownName(Inferred::from_type(
+                    p.param_specific.expect_positional_type_as_ref().clone(),
+                ));
+            }
+        }
+        if name == "__new__" {
+            return LookupResult::UnknownName(Inferred::from_type(Type::Callable(
+                self.__new__.clone(),
+            )));
+        }
+        debug!("TODO lookup of NamedTuple base classes");
+        LookupResult::None
+    }
+}
+
+pub fn execute_typing_named_tuple(i_s: &InferenceState, args: &dyn Arguments) -> Inferred {
+    match new_typing_named_tuple(i_s, args, false) {
+        Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(Rc::new(
+            Type::NamedTuple(rc),
+        ))),
+        None => Inferred::new_any(),
+    }
+}
+
+pub fn execute_collections_named_tuple<'db>(
+    i_s: &InferenceState<'db, '_>,
+    args: &dyn Arguments<'db>,
+    result_context: &mut ResultContext,
+    on_type_error: OnTypeError<'db, '_>,
+) -> Inferred {
+    i_s.db
+        .python_state
+        .collections_namedtuple_function()
+        .execute(i_s, args, result_context, on_type_error);
+    match new_collections_named_tuple(i_s, args) {
+        Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(Rc::new(
+            Type::NamedTuple(rc),
+        ))),
+        None => Inferred::new_any(),
     }
 }

@@ -24,16 +24,16 @@ use crate::matching::{
 };
 use crate::node_ref::NodeRef;
 use crate::type_::{
-    CallableContent, CallableParams, ClassGenerics, DbString, Enum, FunctionKind, FunctionOverload,
-    GenericClass, GenericItem, GenericsList, Literal as DbLiteral, LiteralKind, LiteralValue,
-    NewType, Type, TypeVarKind, TypeVarLike, TypeVarLikes, TypedDict,
+    execute_collections_named_tuple, execute_typing_named_tuple, CallableContent, CallableParams,
+    ClassGenerics, DbString, Enum, FunctionKind, FunctionOverload, GenericClass, GenericItem,
+    GenericsList, Literal as DbLiteral, LiteralKind, LiteralValue, NewType, Type, TypeVarKind,
+    TypeVarLike, TypeVarLikes, TypedDict,
 };
 use crate::type_helpers::{
-    execute_assert_type, execute_collections_named_tuple, execute_super, execute_type,
-    execute_typing_named_tuple, merge_class_type_vars_into_callable, new_typed_dict, BoundMethod,
-    BoundMethodFunction, Class, FirstParamProperties, Function, Instance, NewTypeClass,
-    OverloadedFunction, ParamSpecClass, RevealTypeFunction, TypeOrClass, TypeVarClass,
-    TypeVarTupleClass, TypingCast,
+    execute_assert_type, execute_super, execute_type, merge_class_type_vars_into_callable,
+    new_typed_dict, BoundMethod, BoundMethodFunction, Class, FirstParamProperties, Function,
+    Instance, NewTypeClass, OverloadedFunction, ParamSpecClass, RevealTypeFunction, TypeOrClass,
+    TypeVarClass, TypeVarTupleClass, TypingCast,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]
