@@ -286,6 +286,7 @@ testTupleAndDictOperationsOnParamSpecArgsAndKwargs
 testUnpackingParamsSpecArgsAndKwargs
 testParamSpecConcatenateFromPep
 testNestedGenericFunctionTypeApplication
+testIncrementalInnerClassAttrInMethodReveal
 param_spec_with_identity_mypy_issue_12278
 
 # Param spec invalid definitions
@@ -330,6 +331,8 @@ testNewTypeInLocalScope
 testForwardReferenceToNestedClassWithinClass
 testClassWithBaseClassWithinClass
 testDeclarationReferenceToNestedClass
+testNewAnalyzerNamedTupleCallNested
+testNewAnalyzerNamedTupleCallNestedMethod
 # class in function forward reference / type comment
 testGenericClassWithinFunction
 testGenericClassWithInvalidTypevarUseWithinFunction
@@ -378,9 +381,6 @@ testSelfTypeNonsensical
 testSelfTypeNew
 testSelfTypeNew_explicit
 
-# "NamedTuple type as an attribute is not supported"
-testAssignNamedTupleAsAttribute
-testNoCrashUnsupportedNamedTuple
 # "Self type cannot be used in NamedTuple item type"
 testNamedTupleSelfItemNotAllowed
 # Recursive generic NamedTuple
@@ -410,14 +410,6 @@ testNewNamedTupleReplaceTyped
 testNewNamedTupleFields
 testNewNamedTupleUnit
 testNamedTupleTypeInheritanceSpecialCase
-# Tuple Qualified nested class name
-testNewAnalyzerNamedTupleClassNestedMethod
-testNewAnalyzerNamedTupleCallNested
-testNewAnalyzerNamedTupleCallNestedMethod
-testIncrementalInnerClassAttrInMethodReveal
-testSelfTypeProperSupertypeAttributeTuple
-# Formatting qualified names like tuple[int, fallback=b.C.Hidden@5]
-testNewAnalyzerIncrementalMethodNamedTuple
 
 # dataclass issue with structure
 testReplaceTypeVarBound
@@ -1884,6 +1876,9 @@ testOptionalDescriptorsBinder
 testUnionDescriptorsBinder
 testSubclassDescriptorsBinder
 testPropertyGetterBody
+# "NamedTuple type as an attribute is not supported"
+testAssignNamedTupleAsAttribute
+testNoCrashUnsupportedNamedTuple
 
 # All conditional function variants must have identical signatures (flow analysis)
 testUnionOrderEquivalence
@@ -2260,6 +2255,8 @@ testConditionalImportAndAssignInvalidToModule
 testModuleAliasRepeatedWithAnnotation
 # qualified name in function contains class path: __main__.Cls.FooEnum@4
 testAnonymousFunctionalEnum
+testNewAnalyzerIncrementalMethodNamedTuple
+testNewAnalyzerNamedTupleClassNestedMethod
 # qualified name for NewType for different module
 testNewTypeInMultipleFiles
 # qualified name for Enum for different module
