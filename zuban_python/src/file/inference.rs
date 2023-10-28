@@ -850,23 +850,35 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             );
                             continue;
                         }
-                        if let Type::Dataclass(d) = t {
-                            if d.options.frozen {
-                                from.add_issue(
-                                    i_s,
-                                    IssueType::PropertyIsReadOnly {
-                                        class_name: d.class(i_s.db).name().into(),
-                                        property_name: name_definition.as_code().into(),
-                                    },
-                                )
-                            }
-                            Instance::new(d.class(i_s.db), None).check_set_descriptor(
+                        let property_is_read_only = |class_name| {
+                            from.add_issue(
                                 i_s,
-                                node_ref,
-                                name_definition.name(),
-                                value,
-                            );
-                            continue;
+                                IssueType::PropertyIsReadOnly {
+                                    class_name,
+                                    property_name: name_definition.as_code().into(),
+                                },
+                            )
+                        };
+                        match t {
+                            Type::Dataclass(d) => {
+                                if d.options.frozen {
+                                    property_is_read_only(d.class(i_s.db).name().into())
+                                }
+                                Instance::new(d.class(i_s.db), None).check_set_descriptor(
+                                    i_s,
+                                    node_ref,
+                                    name_definition.name(),
+                                    value,
+                                );
+                                continue;
+                            }
+                            Type::NamedTuple(nt) => {
+                                if nt.search_param(i_s.db, name_definition.as_code()).is_some() {
+                                    property_is_read_only(nt.name(i_s.db).into());
+                                    continue;
+                                }
+                            }
+                            _ => (),
                         }
 
                         let inf = t

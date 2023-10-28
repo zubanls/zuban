@@ -2347,6 +2347,12 @@ impl NamedTuple {
         &self.__new__.expect_simple_params()[1..]
     }
 
+    pub fn search_param(&self, db: &Database, search_name: &str) -> Option<&CallableParam> {
+        self.params()
+            .iter()
+            .find(|p| p.name.unwrap().as_str(db) == search_name)
+    }
+
     pub fn name<'a>(&self, db: &'a Database) -> &'a str {
         self.name.as_str(db)
     }

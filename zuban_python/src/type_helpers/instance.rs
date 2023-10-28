@@ -44,6 +44,22 @@ impl<'a> Instance<'a> {
         name: Name,
         value: &Inferred,
     ) {
+        let property_is_read_only = |class_name| {
+            from.add_issue(
+                i_s,
+                IssueType::PropertyIsReadOnly {
+                    class_name,
+                    property_name: name.as_str().into(),
+                },
+            );
+        };
+        let cached_class_infos = self.class.use_cached_class_infos(i_s.db);
+        if let ClassType::NamedTuple(nt) = &cached_class_infos.class_type {
+            if nt.search_param(i_s.db, name.as_code()).is_some() {
+                property_is_read_only(nt.name(i_s.db).into());
+                return;
+            }
+        }
         let (result, class) = self
             .class
             .lookup_without_descriptors(i_s, from, name.as_str());
@@ -108,13 +124,7 @@ impl<'a> Instance<'a> {
                             writable: false, ..
                         } => {
                             if let Some(class) = class {
-                                from.add_issue(
-                                    i_s,
-                                    IssueType::PropertyIsReadOnly {
-                                        class_name: class.name().into(),
-                                        property_name: name.as_str().into(),
-                                    },
-                                );
+                                property_is_read_only(class.name().into())
                             } else {
                                 todo!()
                             }

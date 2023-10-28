@@ -385,8 +385,6 @@ testNoCrashUnsupportedNamedTuple
 testNamedTupleSelfItemNotAllowed
 # "Property "y" defined in "Point" is read-only"
 testTypingExtensionsNamedTuple
-testNamedTupleAttributesAreReadOnly
-testNewNamedTupleAttributesAreReadOnly
 # Namedtuple unpacking size messages
 testNamedTupleUsedAsTuple
 # "Generic named tuples are not supported for legacy class syntax"
