@@ -143,6 +143,25 @@ impl NamedTuple {
         Tuple::new(&self.as_tuple()).get_item(i_s, slice_type, result_context)
     }
 
+    pub fn type_lookup(&self, i_s: &InferenceState, name: &str) -> LookupResult {
+        LookupResult::UnknownName(Inferred::from_type(match name {
+            "__new__" => Type::Callable(self.__new__.clone()),
+            "_fields" => Type::Tuple(Rc::new(TupleContent::new_fixed_length(
+                std::iter::repeat(TypeOrTypeVarTuple::Type(i_s.db.python_state.str_type()))
+                    .take(self.params().len())
+                    .collect(),
+            ))),
+            _ if self.search_param(i_s.db, name).is_some() => {
+                // TODO this is currently wrong, because it should be a
+                // `<_collections._tuplegetter object at 0x7f3f5578cbe0>`, but mypy returns the
+                // type it would also return for instance lookups, which is completely wrong, so
+                // use this for now.
+                i_s.db.python_state.object_type()
+            }
+            _ => return LookupResult::None,
+        }))
+    }
+
     fn lookup_helper(&self, i_s: &InferenceState, name: &str) -> LookupResult {
         for p in self.params() {
             if name == p.name.unwrap().as_str(i_s.db) {
@@ -151,12 +170,7 @@ impl NamedTuple {
                 ));
             }
         }
-        if name == "__new__" {
-            return LookupResult::UnknownName(Inferred::from_type(Type::Callable(
-                self.__new__.clone(),
-            )));
-        }
-        LookupResult::None
+        self.type_lookup(i_s, name)
     }
 
     pub fn lookup_symbol<'db>(
