@@ -3377,26 +3377,14 @@ fn check_type_name<'db: 'file, 'file>(
         TypeLike::ClassDef(c) => {
             let point = name_node_ref.point();
             if point.calculated() {
-                match point.maybe_specific() {
-                    Some(Specific::TypingType) => {
-                        return TypeNameLookup::SpecialType(SpecialType::Type);
-                    }
-                    Some(Specific::TypingTuple) => {
-                        return TypeNameLookup::SpecialType(SpecialType::Tuple);
-                    }
-                    Some(Specific::TypingNamedTuple) => {
-                        return TypeNameLookup::SpecialType(SpecialType::TypingNamedTuple);
-                    }
-                    Some(s) => {
-                        debug!(
-                            "Found an unexpected specific {s:?} for {}",
-                            new_name.as_code()
-                        );
-                        return TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(
-                            name_node_ref,
-                        ));
-                    }
-                    _ => (),
+                if let Some(specific) = point.maybe_specific() {
+                    debug!(
+                        "Found an unexpected specific {specific:?} for {}",
+                        new_name.as_code()
+                    );
+                    return TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(
+                        name_node_ref,
+                    ));
                 }
             }
             // At this point the class is not necessarily calculated and we therefore do this here.
