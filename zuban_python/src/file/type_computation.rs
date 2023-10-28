@@ -5,7 +5,7 @@ use parsa_python_ast::SliceType as ASTSliceType;
 use parsa_python_ast::*;
 
 use super::TypeVarFinder;
-use crate::arguments::{ArgumentIterator, ArgumentKind, Arguments, SimpleArguments};
+use crate::arguments::SimpleArguments;
 use crate::database::{
     ComplexPoint, Database, Locality, Point, PointLink, PointType, Specific, TypeAlias,
 };
@@ -19,13 +19,14 @@ use crate::inferred::Inferred;
 use crate::matching::{FormatData, Generics, ResultContext};
 use crate::node_ref::NodeRef;
 use crate::type_::{
-    CallableContent, CallableParam, CallableParams, CallableWithParent, ClassGenerics, Dataclass,
-    DbString, DoubleStarredParamSpecific, Enum, EnumMember, FunctionKind, GenericClass,
-    GenericItem, GenericsList, Literal, LiteralKind, NamedTuple, Namespace, NewType,
-    ParamSpecArgument, ParamSpecUsage, ParamSpecific, RecursiveAlias, StarredParamSpecific,
-    StringSlice, TupleContent, Type, TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarKind,
-    TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage,
-    TypedDict, TypedDictGenerics, TypedDictMember, UnionEntry, UnionType,
+    new_collections_named_tuple, new_typing_named_tuple, CallableContent, CallableParam,
+    CallableParams, CallableWithParent, ClassGenerics, Dataclass, DbString,
+    DoubleStarredParamSpecific, Enum, EnumMember, FunctionKind, GenericClass, GenericItem,
+    GenericsList, Literal, LiteralKind, NamedTuple, Namespace, NewType, ParamSpecArgument,
+    ParamSpecUsage, ParamSpecific, RecursiveAlias, StarredParamSpecific, StringSlice, TupleContent,
+    Type, TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage,
+    TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, TypedDict, TypedDictGenerics,
+    TypedDictMember, UnionEntry, UnionType,
 };
 use crate::type_helpers::{start_namedtuple_params, Class, Function, Module};
 use crate::{debug, new_class};
@@ -3603,254 +3604,6 @@ pub fn maybe_saved_annotation(node_ref: NodeRef) -> Option<&Type> {
         return Some(t);
     }
     None
-}
-
-fn check_named_tuple_name<'x, 'y>(
-    i_s: &InferenceState,
-    executable_name: &'static str,
-    args: &'y dyn Arguments<'x>,
-) -> Option<(
-    StringSlice,
-    NodeRef<'y>,
-    AtomContent<'y>,
-    ArgumentIterator<'x, 'y>,
-)> {
-    let mut iterator = args.iter();
-    let Some(first_arg) = iterator.next() else {
-        todo!()
-    };
-    let ArgumentKind::Positional { node_ref, .. } = first_arg.kind else {
-        first_arg.as_node_ref().add_issue(i_s, IssueType::UnexpectedArgumentsTo { name: "namedtuple" });
-        return None
-    };
-    let expr = node_ref.as_named_expression().expression();
-    let first = expr
-        .maybe_single_string_literal()
-        .map(|py_string| (node_ref, py_string));
-    let Some(mut string_slice) = StringSlice::from_string_in_expression(node_ref.file_index(), expr) else {
-        node_ref.add_issue(i_s, IssueType::NamedTupleExpectsStringLiteralAsFirstArg { name: executable_name });
-        return None
-    };
-    let py_string = expr.maybe_single_string_literal()?;
-    if let Some(name) = py_string.in_simple_assignment() {
-        let should = name.as_code();
-        let is = py_string.content();
-        if should != is {
-            node_ref.add_issue(
-                i_s,
-                IssueType::NamedTupleFirstArgumentMismatch {
-                    should: should.into(),
-                    is: is.into(),
-                },
-            );
-            string_slice = StringSlice::from_name(node_ref.file_index(), name.name());
-        }
-    }
-    let Some(second_arg) = iterator.next() else {
-        if executable_name != "namedtuple" {
-            // For namedtuple this is already handled by type checking.
-            args.as_node_ref().add_issue(i_s, IssueType::TooFewArguments(r#" for "NamedTuple()""#.into()));
-        }
-        return None
-    };
-    let ArgumentKind::Positional { node_ref, .. } = second_arg.kind else {
-        todo!()
-    };
-    let Some(atom_content) = node_ref.as_named_expression().expression().maybe_unpacked_atom() else {
-        todo!()
-    };
-    Some((string_slice, node_ref, atom_content, iterator))
-}
-
-pub fn new_typing_named_tuple(
-    i_s: &InferenceState,
-    args: &dyn Arguments,
-    in_type_definition: bool,
-) -> Option<Rc<NamedTuple>> {
-    let Some((name, second_node_ref, atom_content, mut iterator)) = check_named_tuple_name(i_s, "NamedTuple", args) else {
-        return None
-    };
-    if iterator.next().is_some() {
-        args.as_node_ref().add_issue(
-            i_s,
-            IssueType::TooManyArguments(" for \"NamedTuple()\"".into()),
-        );
-        return None;
-    }
-    let list_iterator = match atom_content {
-        AtomContent::List(list) => list.unpack(),
-        AtomContent::Tuple(tup) => tup.iter(),
-        _ => {
-            second_node_ref.add_issue(
-                i_s,
-                IssueType::InvalidSecondArgumentToNamedTuple { name: "NamedTuple" },
-            );
-            return None;
-        }
-    };
-    let args_node_ref = args.as_node_ref();
-    let on_type_var = &mut |i_s: &InferenceState, _: &_, _, _| TypeVarCallbackReturn::NotFound;
-    let mut inference = args_node_ref.file.inference(i_s);
-    let mut comp = TypeComputation::new(
-        &mut inference,
-        args.as_node_ref().as_link(),
-        on_type_var,
-        TypeComputationOrigin::Constraint,
-    );
-    if let Some(params) = comp.compute_named_tuple_initializer(args_node_ref, list_iterator) {
-        check_named_tuple_has_no_fields_with_underscore(i_s, "NamedTuple", args, &params);
-        let type_var_likes = comp.into_type_vars(|_, _| ());
-        if in_type_definition && !type_var_likes.is_empty() {
-            args.as_node_ref()
-                .add_issue(i_s, IssueType::NamedTupleGenericInClassDefinition);
-            return None;
-        }
-        let callable = CallableContent {
-            name: Some(name),
-            class_name: None,
-            defined_at: args_node_ref.as_link(),
-            kind: FunctionKind::Function {
-                had_first_self_or_class_annotation: true,
-            },
-            type_vars: type_var_likes,
-            params: CallableParams::Simple(Rc::from(params)),
-            result_type: Type::Self_,
-        };
-        Some(Rc::new(NamedTuple::new(name, callable)))
-    } else {
-        None
-    }
-}
-
-pub fn new_collections_named_tuple(
-    i_s: &InferenceState,
-    args: &dyn Arguments,
-) -> Option<Rc<NamedTuple>> {
-    let Some((name, second_node_ref, atom_content, _)) = check_named_tuple_name(i_s, "namedtuple", args) else {
-        return None
-    };
-    let args_node_ref = args.as_node_ref();
-    let mut params = start_namedtuple_params(i_s.db);
-
-    let mut add_param = |name| {
-        params.push(CallableParam {
-            param_specific: ParamSpecific::PositionalOrKeyword(Type::Any),
-            name: Some(name),
-            has_default: false,
-        })
-    };
-
-    let mut add_from_iterator = |iterator| {
-        for element in iterator {
-            let StarLikeExpression::NamedExpression(ne) = element else {
-            todo!()
-        };
-            let Some(string_slice) = StringSlice::from_string_in_expression(args_node_ref.file.file_index(), ne.expression()) else {
-                NodeRef::new(second_node_ref.file, ne.index())
-                    .add_issue(i_s, IssueType::StringLiteralExpectedAsNamedTupleItem);
-                continue
-            };
-            add_param(string_slice)
-        }
-    };
-    match atom_content {
-        AtomContent::List(list) => add_from_iterator(list.unpack()),
-        AtomContent::Tuple(tup) => add_from_iterator(tup.iter()),
-        AtomContent::Strings(s) => match s.maybe_single_string_literal() {
-            Some(s) => {
-                let (mut start, _) = s.content_start_and_end_in_literal();
-                start += s.start();
-                for part in s.content().split(&[',', ' ']) {
-                    add_param(StringSlice::new(
-                        args_node_ref.file_index(),
-                        start,
-                        start + part.len() as CodeIndex,
-                    ));
-                    start += part.len() as CodeIndex + 1;
-                }
-            }
-            _ => todo!(),
-        },
-        _ => {
-            second_node_ref.add_issue(
-                i_s,
-                IssueType::InvalidSecondArgumentToNamedTuple { name: "namedtuple" },
-            );
-            return None;
-        }
-    };
-    check_named_tuple_has_no_fields_with_underscore(i_s, "namedtuple", args, &params);
-
-    for arg in args.iter() {
-        if let ArgumentKind::Keyword {
-            key: "defaults",
-            expression,
-            ..
-        } = arg.kind
-        {
-            let defaults_iterator = match expression.maybe_unpacked_atom() {
-                Some(AtomContent::List(list)) => list.unpack(),
-                Some(AtomContent::Tuple(tuple)) => tuple.iter(),
-                _ => {
-                    arg.as_node_ref()
-                        .add_issue(i_s, IssueType::NamedTupleDefaultsShouldBeListOrTuple);
-                    return None;
-                }
-            };
-            let member_count = params.len() - 1;
-            let defaults_count = defaults_iterator.count();
-            let skip = if defaults_count > member_count {
-                arg.as_node_ref()
-                    .add_issue(i_s, IssueType::NamedTupleToManyDefaults);
-                0
-            } else {
-                member_count - defaults_count
-            };
-            for param in params.iter_mut().skip(skip + 1) {
-                param.has_default = true;
-            }
-            break;
-        }
-    }
-
-    let callable = CallableContent {
-        name: Some(name),
-        class_name: None,
-        defined_at: args_node_ref.as_link(),
-        kind: FunctionKind::Function {
-            had_first_self_or_class_annotation: true,
-        },
-        type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
-        params: CallableParams::Simple(Rc::from(params)),
-        result_type: Type::Self_,
-    };
-    Some(Rc::new(NamedTuple::new(name, callable)))
-}
-
-fn check_named_tuple_has_no_fields_with_underscore(
-    i_s: &InferenceState,
-    name: &'static str,
-    args: &dyn Arguments,
-    params: &[CallableParam],
-) {
-    let field_names_with_underscore: Vec<_> = params
-        .iter()
-        .filter_map(|p| {
-            p.name.and_then(|name| {
-                let name_str = name.as_str(i_s.db);
-                name_str.starts_with('_').then_some(name_str)
-            })
-        })
-        .collect();
-    if !field_names_with_underscore.is_empty() {
-        args.as_node_ref().add_issue(
-            i_s,
-            IssueType::NamedTupleNamesCannotStartWithUnderscore {
-                name,
-                field_names: field_names_with_underscore.join(", ").into(),
-            },
-        );
-    }
 }
 
 pub struct TypeCommentDetails<'db> {

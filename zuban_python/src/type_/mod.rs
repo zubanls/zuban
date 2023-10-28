@@ -52,7 +52,10 @@ use crate::workspaces::Directory;
 
 pub use common_base_type::{common_base_type, common_base_type_of_type_var_tuple_with_items};
 pub use matching::match_tuple_type_arguments;
-pub use named_tuple::{execute_collections_named_tuple, execute_typing_named_tuple, NamedTuple};
+pub use named_tuple::{
+    execute_collections_named_tuple, execute_typing_named_tuple, new_collections_named_tuple,
+    new_typing_named_tuple, NamedTuple,
+};
 pub use replace::ReplaceSelf;
 pub use simplified_union::simplified_union_from_iterators;
 pub use type_var_likes::{

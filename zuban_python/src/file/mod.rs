@@ -15,8 +15,7 @@ pub use inference::first_defined_name;
 use inference::Inference;
 pub use python_file::{ComplexValues, PythonFile};
 pub use type_computation::{
-    maybe_saved_annotation, new_collections_named_tuple, new_typing_named_tuple,
-    use_cached_annotation_or_type_comment, use_cached_annotation_type,
+    maybe_saved_annotation, use_cached_annotation_or_type_comment, use_cached_annotation_type,
     use_cached_simple_generic_type, CalculatedBaseClass, TypeComputation, TypeComputationOrigin,
     TypeVarCallbackReturn,
 };
