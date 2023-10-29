@@ -170,14 +170,13 @@ impl NamedTuple {
     }
 
     fn lookup_helper(&self, i_s: &InferenceState, name: &str) -> LookupResult {
-        for p in self.params() {
-            if name == p.name.unwrap().as_str(i_s.db) {
-                return LookupResult::UnknownName(Inferred::from_type(
-                    p.param_specific.expect_positional_type_as_ref().clone(),
-                ));
-            }
+        if let Some(param) = self.search_param(i_s.db, name) {
+            LookupResult::UnknownName(Inferred::from_type(
+                param.param_specific.expect_positional_type_as_ref().clone(),
+            ))
+        } else {
+            self.type_lookup(i_s, name)
         }
-        self.type_lookup(i_s, name)
     }
 
     pub fn lookup_symbol<'db>(
