@@ -530,6 +530,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             .next()
             .unwrap()
             .name
+            .as_ref()
             .unwrap_or_else(|| todo!())
             .as_str(db)
     }

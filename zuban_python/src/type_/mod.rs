@@ -1849,7 +1849,7 @@ impl CallableParam {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CallableContent {
-    pub name: Option<StringSlice>,
+    pub name: Option<DbString>,
     pub class_name: Option<StringSlice>,
     pub defined_at: PointLink,
     pub kind: FunctionKind,

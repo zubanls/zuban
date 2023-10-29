@@ -36,10 +36,10 @@ use crate::node_ref::NodeRef;
 use crate::python_state::NAME_TO_FUNCTION_DIFF;
 use crate::type_::{
     CallableContent, CallableLike, CallableParam, CallableParams, ClassGenerics, Dataclass,
-    DataclassOptions, Enum, EnumMemberDefinition, FormatStyle, FunctionKind, FunctionOverload,
-    GenericClass, GenericsList, NamedTuple, ParamSpecific, RecursiveAlias, StringSlice,
-    TupleContent, Type, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember,
-    Variance,
+    DataclassOptions, DbString, Enum, EnumMemberDefinition, FormatStyle, FunctionKind,
+    FunctionOverload, GenericClass, GenericsList, NamedTuple, ParamSpecific, RecursiveAlias,
+    StringSlice, TupleContent, Type, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict,
+    TypedDictMember, Variance,
 };
 use crate::type_helpers::dataclass::check_dataclass_options;
 use crate::type_helpers::enum_::infer_value_on_member;
@@ -1384,7 +1384,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
         let tvls = self.use_cached_type_vars(i_s.db);
         CallableContent {
-            name: Some(name),
+            name: Some(DbString::StringSlice(name)),
             class_name: None,
             defined_at: self.node_ref.as_link(),
             kind: FunctionKind::Function {

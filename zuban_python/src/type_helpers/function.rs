@@ -30,7 +30,7 @@ use crate::matching::{
 use crate::node_ref::NodeRef;
 use crate::python_state::NAME_TO_FUNCTION_DIFF;
 use crate::type_::{
-    CallableContent, CallableLike, CallableParam, CallableParams, ClassGenerics,
+    CallableContent, CallableLike, CallableParam, CallableParams, ClassGenerics, DbString,
     DoubleStarredParamSpecific, FunctionKind, FunctionOverload, GenericClass, GenericItem,
     ParamSpecUsage, ParamSpecific, ReplaceSelf, StarredParamSpecific, StringSlice,
     TupleTypeArguments, Type, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
@@ -572,7 +572,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             }
         }
         let overwrite_callable = |inferred: &mut _, mut callable: CallableContent| {
-            callable.name = Some(self.name_string_slice());
+            callable.name = Some(DbString::StringSlice(self.name_string_slice()));
             callable.class_name = self.class.map(|c| c.name_string_slice());
             callable.kind = kind;
             *inferred = Inferred::from_type(Type::Callable(Rc::new(callable)));
@@ -972,7 +972,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
 
         let return_result = |params| CallableContent {
-            name: Some(self.name_string_slice()),
+            name: Some(DbString::StringSlice(self.name_string_slice())),
             class_name: self.class.map(|c| c.name_string_slice()),
             defined_at: self.node_ref.as_link(),
             // The actual kind is set by using the decorated() function.

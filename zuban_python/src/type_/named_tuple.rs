@@ -18,8 +18,8 @@ use crate::{
 };
 
 use super::{
-    CallableContent, CallableParam, CallableParams, FormatStyle, FunctionKind, ParamSpecific,
-    RecursiveAlias, StringSlice, TupleContent, Type, TypeOrTypeVarTuple,
+    CallableContent, CallableParam, CallableParams, DbString, FormatStyle, FunctionKind,
+    ParamSpecific, RecursiveAlias, StringSlice, TupleContent, Type, TypeOrTypeVarTuple,
 };
 
 #[derive(Debug, PartialEq, Clone)]
@@ -41,7 +41,7 @@ impl NamedTuple {
     pub fn clone_with_new_init_class(&self, name: StringSlice) -> Rc<NamedTuple> {
         let mut nt = self.clone();
         let mut callable = nt.__new__.as_ref().clone();
-        callable.name = Some(name);
+        callable.name = Some(DbString::StringSlice(name));
         nt.__new__ = Rc::new(callable);
         Rc::new(nt)
     }
@@ -311,7 +311,7 @@ pub fn new_typing_named_tuple(
             return None;
         }
         let callable = CallableContent {
-            name: Some(name),
+            name: Some(DbString::StringSlice(name)),
             class_name: None,
             defined_at: args_node_ref.as_link(),
             kind: FunctionKind::Function {
@@ -419,7 +419,7 @@ pub fn new_collections_named_tuple(
     }
 
     let callable = CallableContent {
-        name: Some(name),
+        name: Some(DbString::StringSlice(name)),
         class_name: None,
         defined_at: args_node_ref.as_link(),
         kind: FunctionKind::Function {

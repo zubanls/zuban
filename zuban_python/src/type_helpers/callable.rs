@@ -34,7 +34,7 @@ impl<'a> Callable<'a> {
     }
 
     pub fn diagnostic_string(&self, db: &Database) -> Option<String> {
-        self.content.name.map(|n| {
+        self.content.name.as_ref().map(|n| {
             let name = n.as_str(db);
             match self.content.class_name {
                 Some(c) => format!("\"{}\" of \"{}\"", name, c.as_str(db)),
@@ -100,6 +100,7 @@ pub fn format_pretty_callable(format_data: &FormatData, callable: &CallableConte
     let not_reveal_type = format_data.style != FormatStyle::MypyRevealType;
     let name = callable
         .name
+        .as_ref()
         .and_then(|s| not_reveal_type.then(|| s.as_str(db)))
         .unwrap_or("");
     match &callable.params {

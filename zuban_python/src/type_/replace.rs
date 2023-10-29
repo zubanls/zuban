@@ -289,7 +289,7 @@ impl Type {
             );
         }
         CallableContent {
-            name: c.name,
+            name: c.name.clone(),
             class_name: c.class_name,
             defined_at: c.defined_at,
             kind: c.kind,
@@ -312,7 +312,7 @@ impl Type {
             })
             .collect::<Rc<_>>();
         CallableContent {
-            name: c.name,
+            name: c.name.clone(),
             class_name: c.class_name,
             defined_at: c.defined_at,
             kind: c.kind,

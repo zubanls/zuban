@@ -1024,7 +1024,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             let inv = IssueType::InvalidSelfArgument {
                                 argument_type: instance.format_short(i_s.db),
                                 function_name: Box::from(
-                                    c.name.map(|n| n.as_str(i_s.db)).unwrap_or(""),
+                                    c.name.as_ref().map(|n| n.as_str(i_s.db)).unwrap_or(""),
                                 ),
                                 callable: c.format(&FormatData::new_short(i_s.db)).into(),
                             };

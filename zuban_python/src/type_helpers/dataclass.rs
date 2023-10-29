@@ -383,7 +383,7 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
         }
     }
     CallableContent {
-        name: Some(cls.name_string_slice()),
+        name: Some(DbString::StringSlice(cls.name_string_slice())),
         class_name: None,
         defined_at: cls.node_ref.as_link(),
         kind: FunctionKind::Function {
