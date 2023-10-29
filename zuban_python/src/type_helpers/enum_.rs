@@ -423,7 +423,7 @@ fn split_enum_members(
                 let start = slice.start + start;
                 StringSlice::new(slice.file_index, start, start + part.len() as CodeIndex).into()
             }
-            DbString::RcStr(_) => DbString::RcStr(part.into()),
+            _ => DbString::RcStr(part.into()),
         };
         members.add_member(
             i_s,

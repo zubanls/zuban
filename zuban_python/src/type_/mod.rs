@@ -121,6 +121,7 @@ impl fmt::Display for FileIndex {
 pub enum DbString {
     StringSlice(StringSlice),
     RcStr(Rc<str>),
+    Static(&'static str),
 }
 
 impl DbString {
@@ -128,6 +129,7 @@ impl DbString {
         match self {
             Self::StringSlice(s) => s.as_str(db),
             Self::RcStr(s) => s,
+            Self::Static(s) => s,
         }
     }
 
