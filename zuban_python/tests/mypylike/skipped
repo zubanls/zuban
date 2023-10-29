@@ -404,6 +404,7 @@ testNewNamedTupleAsDict
 testNewNamedTupleReplaceTyped
 testNewNamedTupleFields
 testNewNamedTupleUnit
+testNamedTupleAsDict
 
 # dataclass issue with structure
 testReplaceTypeVarBound

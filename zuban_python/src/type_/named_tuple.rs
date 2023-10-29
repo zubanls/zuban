@@ -185,16 +185,8 @@ impl NamedTuple {
         i_s: &InferenceState<'db, '_>,
         name: &str,
     ) -> (Option<Class<'db>>, LookupResult) {
-        if name == "__init__" {
-            return (None, LookupResult::None);
-        }
         let result = self.lookup_helper(i_s, name);
-        if result.is_some() {
-            return (None, result);
-        } else {
-            let cls = i_s.db.python_state.typing_named_tuple_class();
-            (Some(cls), cls.lookup_symbol(i_s, name))
-        }
+        (None, result)
     }
 
     pub fn lookup(
@@ -204,13 +196,7 @@ impl NamedTuple {
         name: &str,
         kind: LookupKind,
     ) -> LookupResult {
-        self.lookup_helper(i_s, name).or_else(|| {
-            i_s.db
-                .python_state
-                .typing_named_tuple_class()
-                .instance()
-                .lookup(i_s, from, name, kind)
-        })
+        self.lookup_helper(i_s, name)
     }
 }
 
