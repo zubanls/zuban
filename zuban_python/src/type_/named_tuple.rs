@@ -144,7 +144,7 @@ impl NamedTuple {
         Tuple::new(&self.as_tuple()).get_item(i_s, slice_type, result_context)
     }
 
-    pub fn type_lookup(&self, i_s: &InferenceState, name: &str) -> LookupResult {
+    fn lookup_internal(&self, i_s: &InferenceState, name: &str, from_type: bool) -> LookupResult {
         LookupResult::UnknownName(Inferred::from_type(match name {
             "__new__" => Type::Callable(self.__new__.clone()),
             "_fields" => Type::Tuple(Rc::new(TupleContent::new_fixed_length(
@@ -158,25 +158,30 @@ impl NamedTuple {
                 Type::Any,
             ),
             "_source" => i_s.db.python_state.str_type(),
-            _ if self.search_param(i_s.db, name).is_some() => {
-                // TODO this is currently wrong, because it should be a
-                // `<_collections._tuplegetter object at 0x7f3f5578cbe0>`, but mypy returns the
-                // type it would also return for instance lookups, which is completely wrong, so
-                // use this for now.
-                i_s.db.python_state.object_type()
+            _ => {
+                if let Some(param) = self.search_param(i_s.db, name) {
+                    if from_type {
+                        // TODO this is currently wrong, because it should be a
+                        // `<_collections._tuplegetter object at 0x7f3f5578cbe0>`, but mypy returns the
+                        // type it would also return for instance lookups, which is completely wrong, so
+                        // use this for now.
+                        i_s.db.python_state.object_type()
+                    } else {
+                        param.param_specific.expect_positional_type_as_ref().clone()
+                    }
+                } else {
+                    return LookupResult::None;
+                }
             }
-            _ => return LookupResult::None,
         }))
     }
 
+    pub fn type_lookup(&self, i_s: &InferenceState, name: &str) -> LookupResult {
+        self.lookup_internal(i_s, name, true)
+    }
+
     fn lookup_helper(&self, i_s: &InferenceState, name: &str) -> LookupResult {
-        if let Some(param) = self.search_param(i_s.db, name) {
-            LookupResult::UnknownName(Inferred::from_type(
-                param.param_specific.expect_positional_type_as_ref().clone(),
-            ))
-        } else {
-            self.type_lookup(i_s, name)
-        }
+        self.lookup_internal(i_s, name, false)
     }
 
     pub fn lookup_symbol<'db>(
