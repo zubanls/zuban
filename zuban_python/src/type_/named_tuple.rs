@@ -10,12 +10,10 @@ use crate::{
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{
-        FormatData, Generics, IteratorContent, LookupKind, LookupResult, OnTypeError, ResultContext,
-    },
+    matching::{FormatData, Generics, IteratorContent, LookupResult, OnTypeError, ResultContext},
     new_class,
     node_ref::NodeRef,
-    type_helpers::{start_namedtuple_params, Class, Module, Tuple},
+    type_helpers::{start_namedtuple_params, Module, Tuple},
     utils::join_with_commas,
 };
 
@@ -180,27 +178,8 @@ impl NamedTuple {
         self.lookup_internal(i_s, name, true)
     }
 
-    fn lookup_helper(&self, i_s: &InferenceState, name: &str) -> LookupResult {
+    pub fn lookup(&self, i_s: &InferenceState, name: &str) -> LookupResult {
         self.lookup_internal(i_s, name, false)
-    }
-
-    pub fn lookup_symbol<'db>(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        name: &str,
-    ) -> (Option<Class<'db>>, LookupResult) {
-        let result = self.lookup_helper(i_s, name);
-        (None, result)
-    }
-
-    pub fn lookup(
-        &self,
-        i_s: &InferenceState,
-        from: NodeRef,
-        name: &str,
-        kind: LookupKind,
-    ) -> LookupResult {
-        self.lookup_helper(i_s, name)
     }
 }
 
