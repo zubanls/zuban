@@ -391,9 +391,7 @@ testGenericNamedTupleCallSyntax
 # NamedTuple special methods
 testNewAnalyzerNamedTupleSpecialMethods
 testNewAnalyzerNamedTupleBaseClass
-testNamedTupleReplace
 testNamedTupleReplaceAsClass
-testNamedTupleReplaceTyped
 testNamedTupleMake
 testNamedTupleUnit
 testNamedTupleSelfTypeReplace

@@ -4,7 +4,7 @@ use parsa_python_ast::{AtomContent, CodeIndex, StarLikeExpression};
 
 use crate::{
     arguments::{ArgumentIterator, ArgumentKind, Arguments},
-    database::{ComplexPoint, Database},
+    database::{ComplexPoint, Database, FileIndex, PointLink},
     diagnostics::IssueType,
     file::{File, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn},
     getitem::SliceType,
@@ -142,9 +142,42 @@ impl NamedTuple {
         Tuple::new(&self.as_tuple()).get_item(i_s, slice_type, result_context)
     }
 
-    fn lookup_internal(&self, i_s: &InferenceState, name: &str, from_type: bool) -> LookupResult {
+    fn lookup_internal(
+        &self,
+        i_s: &InferenceState,
+        name: &str,
+        from_type: bool,
+        as_self: Option<&dyn Fn() -> Type>,
+    ) -> LookupResult {
         LookupResult::UnknownName(Inferred::from_type(match name {
             "__new__" => Type::Callable(self.__new__.clone()),
+            "_replace" => Type::Callable({
+                let mut params = vec![];
+                if from_type {
+                    params.push(CallableParam::new_anonymous(ParamSpecific::PositionalOnly(
+                        Type::Self_,
+                    )));
+                }
+                for param in self.params() {
+                    let mut new_param = param.clone();
+                    new_param.has_default = true;
+                    new_param.param_specific = ParamSpecific::KeywordOnly(
+                        new_param.param_specific.expect_positional_type().clone(),
+                    );
+                    params.push(new_param);
+                }
+                Rc::new(CallableContent {
+                    name: Some(DbString::Static("_replace")),
+                    class_name: Some(self.name),
+                    defined_at: PointLink::new(FileIndex(0), 0),
+                    kind: FunctionKind::Function {
+                        had_first_self_or_class_annotation: true,
+                    },
+                    type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
+                    params: CallableParams::Simple(params.into()),
+                    result_type: as_self.map(|as_self| as_self()).unwrap_or(Type::Self_),
+                })
+            }),
             "_fields" => Type::Tuple(Rc::new(TupleContent::new_fixed_length(
                 std::iter::repeat(TypeOrTypeVarTuple::Type(i_s.db.python_state.str_type()))
                     .take(self.params().len())
@@ -175,11 +208,16 @@ impl NamedTuple {
     }
 
     pub fn type_lookup(&self, i_s: &InferenceState, name: &str) -> LookupResult {
-        self.lookup_internal(i_s, name, true)
+        self.lookup_internal(i_s, name, true, None)
     }
 
-    pub fn lookup(&self, i_s: &InferenceState, name: &str) -> LookupResult {
-        self.lookup_internal(i_s, name, false)
+    pub fn lookup(
+        &self,
+        i_s: &InferenceState,
+        name: &str,
+        as_self: Option<&dyn Fn() -> Type>,
+    ) -> LookupResult {
+        self.lookup_internal(i_s, name, false, as_self)
     }
 }
 

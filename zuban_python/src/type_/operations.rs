@@ -66,7 +66,7 @@ impl Type {
             Type::Dataclass(d) => DataclassHelper(d).lookup_symbol(i_s, name),
             Type::TypedDict(_) => todo!(),
             Type::Tuple(t) => (None, LookupResult::None),
-            Type::NamedTuple(nt) => (None, nt.lookup(i_s, name)),
+            Type::NamedTuple(nt) => (None, nt.lookup(i_s, name, None)),
             Type::Callable(t) => todo!(),
             _ => todo!("{name:?} {self:?}"),
         }
@@ -210,7 +210,7 @@ impl Type {
             }
             Type::Dataclass(d) => callable(self, DataclassHelper(d).lookup(i_s, from, name)),
             Type::TypedDict(d) => callable(self, TypedDictHelper(d).lookup(i_s, from, name, kind)),
-            Type::NamedTuple(nt) => callable(self, nt.lookup(i_s, name)),
+            Type::NamedTuple(nt) => callable(self, nt.lookup(i_s, name, Some(&|| self.clone()))),
             Type::Never => (),
             Type::NewType(new_type) => new_type.type_(i_s).run_after_lookup_on_each_union_member(
                 i_s,
