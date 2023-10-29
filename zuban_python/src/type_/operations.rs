@@ -66,7 +66,10 @@ impl Type {
             Type::Dataclass(d) => DataclassHelper(d).lookup_symbol(i_s, name),
             Type::TypedDict(_) => todo!(),
             Type::Tuple(t) => (None, LookupResult::None),
-            Type::NamedTuple(nt) => (None, nt.lookup(i_s, name, None)),
+            Type::NamedTuple(nt) => (
+                Some(i_s.db.python_state.typing_named_tuple_class()),
+                nt.type_lookup(i_s, name),
+            ),
             Type::Callable(t) => todo!(),
             _ => todo!("{name:?} {self:?}"),
         }

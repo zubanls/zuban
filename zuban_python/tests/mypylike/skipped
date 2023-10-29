@@ -393,15 +393,11 @@ testNewAnalyzerNamedTupleSpecialMethods
 testNewAnalyzerNamedTupleBaseClass
 testNamedTupleReplaceAsClass
 testNamedTupleMake
-testNamedTupleUnit
-testNamedTupleSelfTypeReplace
 testNamedTupleSelfTypeMake
 testNamedTupleTypingSelfMethod
 testGenericNamedTupleMethods
 testNewNamedTupleAsDict
-testNewNamedTupleReplaceTyped
 testNewNamedTupleFields
-testNewNamedTupleUnit
 testNamedTupleAsDict
 
 # dataclass issue with structure

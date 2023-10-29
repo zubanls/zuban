@@ -191,15 +191,7 @@ impl NamedTuple {
             "_source" => i_s.db.python_state.str_type(),
             _ => {
                 if let Some(param) = self.search_param(i_s.db, name) {
-                    if from_type {
-                        // TODO this is currently wrong, because it should be a
-                        // `<_collections._tuplegetter object at 0x7f3f5578cbe0>`, but mypy returns the
-                        // type it would also return for instance lookups, which is completely wrong, so
-                        // use this for now.
-                        i_s.db.python_state.object_type()
-                    } else {
-                        param.param_specific.expect_positional_type_as_ref().clone()
-                    }
+                    param.param_specific.expect_positional_type_as_ref().clone()
                 } else {
                     return LookupResult::None;
                 }
