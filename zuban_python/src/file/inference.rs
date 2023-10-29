@@ -21,10 +21,9 @@ use crate::matching::{
 };
 use crate::node_ref::NodeRef;
 use crate::type_::{
-    CallableContent, CallableParam, CallableParams, ClassGenerics, DoubleStarredParamSpecific,
-    FunctionKind, GenericItem, GenericsList, Literal, LiteralKind, Namespace, ParamSpecific,
-    StarredParamSpecific, StringSlice, TupleContent, TupleTypeArguments, Type, TypeOrTypeVarTuple,
-    UnionEntry, UnionType, Variance,
+    CallableContent, CallableParam, CallableParams, DoubleStarredParamSpecific, FunctionKind,
+    Literal, LiteralKind, Namespace, ParamSpecific, StarredParamSpecific, StringSlice,
+    TupleContent, TupleTypeArguments, Type, TypeOrTypeVarTuple, UnionEntry, UnionType, Variance,
 };
 use crate::type_helpers::{
     lookup_in_namespace, Class, FirstParamKind, Function, GeneratorType, Instance, Module,

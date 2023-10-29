@@ -11,8 +11,7 @@ use crate::inferred::Inferred;
 use crate::matching::Generics;
 use crate::node_ref::NodeRef;
 use crate::type_::{
-    CallableContent, ClassGenerics, CustomBehavior, GenericItem, GenericsList, LiteralKind,
-    TupleContent, Type, TypeVarLikes,
+    CallableContent, ClassGenerics, CustomBehavior, LiteralKind, TupleContent, Type, TypeVarLikes,
 };
 use crate::type_helpers::{dataclasses_replace, Class, Function, Instance};
 use crate::{new_class, InferenceState, PythonProject};

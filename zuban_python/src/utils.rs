@@ -39,10 +39,10 @@ macro_rules! debug {
 #[macro_export]
 macro_rules! new_class {
     ($link:expr, $($arg:expr),+,) => {
-        Type::new_class(
+        $crate::type_::Type::new_class(
             $link,
-            ClassGenerics::List(GenericsList::new_generics(Rc::new([
-                $(GenericItem::TypeArgument($arg)),*
+            $crate::type_::ClassGenerics::List($crate::type_::GenericsList::new_generics(Rc::new([
+                $($crate::type_::GenericItem::TypeArgument($arg)),*
             ])))
         )
     }

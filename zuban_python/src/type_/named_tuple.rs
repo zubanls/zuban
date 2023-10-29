@@ -13,6 +13,7 @@ use crate::{
     matching::{
         FormatData, Generics, IteratorContent, LookupKind, LookupResult, OnTypeError, ResultContext,
     },
+    new_class,
     node_ref::NodeRef,
     type_helpers::{start_namedtuple_params, Class, Module, Tuple},
     utils::join_with_commas,
@@ -151,6 +152,11 @@ impl NamedTuple {
                     .take(self.params().len())
                     .collect(),
             ))),
+            "_field_types" => new_class!(
+                i_s.db.python_state.dict_node_ref().as_link(),
+                i_s.db.python_state.str_type(),
+                Type::Any,
+            ),
             "_source" => i_s.db.python_state.str_type(),
             _ if self.search_param(i_s.db, name).is_some() => {
                 // TODO this is currently wrong, because it should be a

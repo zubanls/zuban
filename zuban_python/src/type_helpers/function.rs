@@ -32,7 +32,7 @@ use crate::python_state::NAME_TO_FUNCTION_DIFF;
 use crate::type_::{
     CallableContent, CallableLike, CallableParam, CallableParams, ClassGenerics,
     DoubleStarredParamSpecific, FunctionKind, FunctionOverload, GenericClass, GenericItem,
-    GenericsList, ParamSpecUsage, ParamSpecific, ReplaceSelf, StarredParamSpecific, StringSlice,
+    ParamSpecUsage, ParamSpecific, ReplaceSelf, StarredParamSpecific, StringSlice,
     TupleTypeArguments, Type, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
     TypeVarManager, TypeVarName, TypeVarUsage, Variance, WrongPositionalCount,
 };

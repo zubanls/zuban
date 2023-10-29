@@ -14,9 +14,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::UnionValue;
 use crate::matching::{FormatData, Matcher, MismatchReason, ResultContext};
 use crate::node_ref::NodeRef;
-use crate::type_::{
-    ClassGenerics, GenericItem, GenericsList, Literal, LiteralKind, LiteralValue, Type, TypedDict,
-};
+use crate::type_::{Literal, LiteralKind, LiteralValue, Type, TypedDict};
 use crate::utils::join_with_commas;
 use crate::{debug, new_class, Inferred};
 
