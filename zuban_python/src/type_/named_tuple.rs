@@ -210,6 +210,11 @@ impl NamedTuple {
                     .take(self.params().len())
                     .collect(),
             ))),
+            "_field_defaults" => new_class!(
+                i_s.db.python_state.dict_node_ref().as_link(),
+                i_s.db.python_state.str_type(),
+                Type::Any,
+            ),
             "_field_types" => new_class!(
                 i_s.db.python_state.dict_node_ref().as_link(),
                 i_s.db.python_state.str_type(),

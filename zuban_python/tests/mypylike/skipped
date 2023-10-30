@@ -393,7 +393,6 @@ testNamedTupleMake
 testNamedTupleTypingSelfMethod
 testGenericNamedTupleMethods
 testNewNamedTupleAsDict
-testNewNamedTupleFields
 testNamedTupleAsDict
 
 # dataclass issue with structure
