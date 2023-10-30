@@ -389,7 +389,6 @@ testBasicRecursiveGenericNamedTuple
 testGenericNamedTupleCallSyntax
 # ^ need to add generic namedtuple tests for call syntax
 # NamedTuple special methods
-testNamedTupleMake
 testGenericNamedTupleMethods
 
 # dataclass issue with structure
