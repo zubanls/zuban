@@ -859,14 +859,9 @@ impl<'db: 'slf, 'slf> Inferred {
                     PointType::Complex => {
                         match node_ref.complex().unwrap() {
                             ComplexPoint::FunctionOverload(o) => {
-                                let has_self_arguments = o.iter_functions().any(|c| {
-                                    Function::new(
-                                        NodeRef::from_link(i_s.db, c.defined_at),
-                                        Some(attribute_class),
-                                    )
-                                    .first_param_annotation_type(i_s)
-                                    .is_some()
-                                });
+                                let has_self_arguments = o
+                                    .iter_functions()
+                                    .any(|c| c.kind.had_first_self_or_class_annotation());
                                 if has_self_arguments {
                                     let results: Vec<_> = o
                                         .iter_functions()
