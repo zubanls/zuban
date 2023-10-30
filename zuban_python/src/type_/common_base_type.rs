@@ -262,8 +262,8 @@ fn common_params(
         for (p1, p2) in params1.iter().zip(params2.iter()) {
             let mut kind = p1.param_specific.param_kind();
             let p2_kind = p2.param_specific.param_kind();
-            let p1_name = p1.name.map(|n| n.as_str(i_s.db));
-            let p2_name = p2.name.map(|n| n.as_str(i_s.db));
+            let p1_name = p1.name.as_ref().map(|n| n.as_str(i_s.db));
+            let p2_name = p2.name.as_ref().map(|n| n.as_str(i_s.db));
             if p1_name != p2_name {
                 if matches!(
                     kind,
@@ -292,7 +292,7 @@ fn common_params(
                         ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ValueType(new_t))
                     }
                 },
-                name: (p1_name == p2_name).then(|| p1.name).flatten(),
+                name: (p1_name == p2_name).then(|| p1.name.clone()).flatten(),
                 has_default: p1.has_default & p2.has_default,
             });
         }

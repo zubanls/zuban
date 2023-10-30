@@ -54,7 +54,7 @@ impl NamedTuple {
     pub fn search_param(&self, db: &Database, search_name: &str) -> Option<&CallableParam> {
         self.params()
             .iter()
-            .find(|p| p.name.unwrap().as_str(db) == search_name)
+            .find(|p| p.name.as_ref().unwrap().as_str(db) == search_name)
     }
 
     pub fn name<'a>(&self, db: &'a Database) -> &'a str {
@@ -390,7 +390,7 @@ pub fn new_collections_named_tuple(
                     .add_issue(i_s, IssueType::StringLiteralExpectedAsNamedTupleItem);
                 continue
             };
-            add_param(string_slice)
+            add_param(string_slice.into())
         }
     };
     match atom_content {
@@ -401,11 +401,14 @@ pub fn new_collections_named_tuple(
                 let (mut start, _) = s.content_start_and_end_in_literal();
                 start += s.start();
                 for part in s.content().split(&[',', ' ']) {
-                    add_param(StringSlice::new(
-                        args_node_ref.file_index(),
-                        start,
-                        start + part.len() as CodeIndex,
-                    ));
+                    add_param(
+                        StringSlice::new(
+                            args_node_ref.file_index(),
+                            start,
+                            start + part.len() as CodeIndex,
+                        )
+                        .into(),
+                    );
                     start += part.len() as CodeIndex + 1;
                 }
             }
@@ -476,7 +479,7 @@ fn check_named_tuple_has_no_fields_with_underscore(
     let field_names_with_underscore: Vec<_> = params
         .iter()
         .filter_map(|p| {
-            p.name.and_then(|name| {
+            p.name.as_ref().and_then(|name| {
                 let name_str = name.as_str(i_s.db);
                 name_str.starts_with('_').then_some(name_str)
             })

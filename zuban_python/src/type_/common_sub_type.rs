@@ -158,7 +158,7 @@ fn common_sub_type_params(
                         ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ValueType(new_t))
                     }
                 },
-                name: p1.name,
+                name: p1.name.clone(),
                 has_default: p1.has_default,
             });
         }

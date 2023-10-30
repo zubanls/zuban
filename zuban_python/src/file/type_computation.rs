@@ -1787,10 +1787,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 return;
             }
 
-            if let Some(param_name) = p.name {
+            if let Some(param_name) = p.name.as_ref() {
                 let param_name = param_name.as_str(self.inference.i_s.db);
                 for other in params.iter() {
-                    if let Some(other_name) = other.name {
+                    if let Some(other_name) = other.name.as_ref() {
                         let other_name = other_name.as_str(self.inference.i_s.db);
                         if param_name == other_name {
                             self.add_issue_for_index(
@@ -2506,7 +2506,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ValueType(type_))
                 }
             },
-            name,
+            name: name.map(|s| s.into()),
             has_default: matches!(
                 specific,
                 Specific::MypyExtensionsDefaultArg | Specific::MypyExtensionsDefaultNamedArg
@@ -2560,7 +2560,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             let t = self.compute_named_expr_type(type_expr);
             params.push(CallableParam {
                 param_specific: ParamSpecific::PositionalOrKeyword(t),
-                name: Some(name),
+                name: Some(name.into()),
                 has_default: false,
             });
         }

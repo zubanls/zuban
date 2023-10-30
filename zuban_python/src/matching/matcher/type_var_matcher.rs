@@ -82,7 +82,7 @@ impl<'db: 'a, 'a> FunctionOrCallable<'a> {
             }),
             Self::Callable(c) => match &c.content.params {
                 CallableParams::Simple(params) => params.iter().any(|p| {
-                    p.name.is_some_and(|n| {
+                    p.name.as_ref().is_some_and(|n| {
                         n.as_str(db) == name
                             && matches!(
                                 p.param_specific,

@@ -1728,7 +1728,7 @@ impl ParamSpecific {
 #[derive(Debug, Clone, PartialEq)]
 pub struct CallableParam {
     pub param_specific: ParamSpecific,
-    pub name: Option<StringSlice>,
+    pub name: Option<DbString>,
     pub has_default: bool,
 }
 
@@ -1761,7 +1761,7 @@ impl CallableParam {
                     DoubleStarredParamSpecific::ParamSpecKwargs(_) => unreachable!(),
                 }
                 .into();
-            } else if let Some(name) = self.name {
+            } else if let Some(name) = self.name.as_ref() {
                 match format_data.style {
                     FormatStyle::MypyRevealType => {
                         let mut string = match &self.param_specific {

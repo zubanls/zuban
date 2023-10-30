@@ -2001,7 +2001,9 @@ fn find_stmt_named_tuple_types(
                         vec.push(CallableParam {
                             param_specific: ParamSpecific::PositionalOrKeyword(t),
                             has_default: default.is_some(),
-                            name: Some(StringSlice::from_name(file.file_index(), name.name())),
+                            name: Some(
+                                StringSlice::from_name(file.file_index(), name.name()).into(),
+                            ),
                         })
                     }
                 }

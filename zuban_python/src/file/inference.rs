@@ -1479,10 +1479,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ValueType(Type::Any))
                 }
             },
-            name: Some(StringSlice::from_name(
-                self.file.file_index(),
-                param.name_definition().name(),
-            )),
+            name: Some(
+                StringSlice::from_name(self.file.file_index(), param.name_definition().name())
+                    .into(),
+            ),
             has_default: param.default().is_some(),
         };
         result_context

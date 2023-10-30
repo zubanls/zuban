@@ -243,7 +243,7 @@ impl Type {
                                     t.replace_type_var_likes_and_self(db, callable, replace_self),
                                 ),
                                 has_default: param.has_default,
-                                name: param.name,
+                                name: param.name.clone(),
                             }
                         })
                         .collect(),
@@ -356,7 +356,7 @@ impl Type {
                                 }
                             },
                             has_default: p.has_default,
-                            name: p.name,
+                            name: p.name.clone(),
                         })
                         .collect(),
                 ),
@@ -429,7 +429,7 @@ impl Type {
                             }
                         },
                         has_default: p.has_default,
-                        name: p.name,
+                        name: p.name.clone(),
                     })
                     .collect(),
             ),

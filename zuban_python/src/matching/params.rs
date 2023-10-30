@@ -491,7 +491,7 @@ impl<'x> Param<'x> for &'x CallableParam {
     }
 
     fn name(&self, db: &'x Database) -> Option<&str> {
-        self.name.map(|n| n.as_str(db))
+        self.name.as_ref().map(|n| n.as_str(db))
     }
 
     fn specific<'db: 'x>(&self, db: &Database) -> WrappedParamSpecific<'x> {

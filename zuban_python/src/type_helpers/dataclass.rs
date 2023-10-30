@@ -140,7 +140,7 @@ impl<'a> DataclassHelper<'a> {
                     .take_while(|p| p.param_specific.maybe_positional_type().is_some())
                     .map(|p| {
                         TypeOrTypeVarTuple::Type(Type::Literal(Literal::new(LiteralKind::String(
-                            DbString::StringSlice(p.name.unwrap()),
+                            p.name.clone().unwrap(),
                         ))))
                     })
                     .collect(),
@@ -221,7 +221,9 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
             {
                 first_kwarg = Some(i);
             }
-            if param.name.unwrap().as_str(db) == new_param.name.unwrap().as_str(db) {
+            if param.name.as_ref().unwrap().as_str(db)
+                == new_param.name.as_ref().unwrap().as_str(db)
+            {
                 *param = new_param;
                 return;
             }
@@ -333,7 +335,7 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
                                 false => ParamSpecific::PositionalOrKeyword(t),
                                 true => ParamSpecific::KeywordOnly(t),
                             },
-                            name: Some(name),
+                            name: Some(name.into()),
                             has_default: field_infos.has_default,
                         },
                     );
@@ -348,10 +350,13 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
             && !next_param.has_default
         {
             if latest_default_issue.is_none() {
-                let name = next_param.name.unwrap();
+                let name = next_param.name.as_ref().unwrap();
                 let issue_type = IssueType::DataclassNoDefaultAfterDefault;
+                let DbString::StringSlice(name) = name else {
+                    unreachable!();
+                };
                 if name.file_index == file.file_index() {
-                    file.add_issue(i_s, Issue::from_string_slice(name, issue_type));
+                    file.add_issue(i_s, Issue::from_string_slice(*name, issue_type));
                 } else {
                     // The class arguments are always set, because we are working with params from
                     // a different file, which means inheritance.
@@ -506,7 +511,11 @@ pub fn dataclasses_replace<'db>(
                         // InitVar, we use this hack and check if the attribute exists on the
                         // dataclass. If not, it's an InitVar.
                         if DataclassHelper(dataclass)
-                            .lookup(i_s, args.as_node_ref(), param.name.unwrap().as_str(i_s.db))
+                            .lookup(
+                                i_s,
+                                args.as_node_ref(),
+                                param.name.as_ref().unwrap().as_str(i_s.db),
+                            )
                             .is_some()
                         {
                             param.has_default = true;

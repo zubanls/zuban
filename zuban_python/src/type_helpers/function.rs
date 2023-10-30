@@ -1051,7 +1051,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 has_default: p.has_default(),
                 name: Some({
                     let n = p.param.name_definition();
-                    StringSlice::new(file_index, n.start(), n.end())
+                    StringSlice::new(file_index, n.start(), n.end()).into()
                 }),
             });
         }
