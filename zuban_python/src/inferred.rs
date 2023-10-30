@@ -1244,13 +1244,10 @@ impl<'db: 'slf, 'slf> Inferred {
                 FunctionKind::Classmethod { .. } => {
                     let result = infer_class_method(i_s, *class, attribute_class, c);
                     if result.is_none() {
-                        let func = prepare_func(i_s, c.defined_at, attribute_class);
                         let inv = IssueType::InvalidSelfArgument {
                             argument_type: class.as_type_type(i_s).format_short(i_s.db),
-                            function_name: Box::from(func.name()),
-                            callable: func
-                                .as_type(i_s, FirstParamProperties::None)
-                                .format_short(i_s.db),
+                            function_name: c.name(i_s.db).into(),
+                            callable: t.format_short(i_s.db),
                         };
                         from.add_issue(i_s, inv);
                         return Some(Some(Self::new_any()));
