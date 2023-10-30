@@ -220,6 +220,7 @@ enum TypeContent<'db, 'a> {
         generics: ClassGenerics,
     },
     Dataclass(Rc<Dataclass>),
+    NamedTuple(Rc<NamedTuple>),
     TypedDictDefinition(Rc<TypedDict>),
     TypeAlias(&'db TypeAlias),
     Type(Type),
@@ -754,6 +755,17 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     }
                 }));
             }
+            TypeContent::NamedTuple(nt) => {
+                return Some({
+                    if nt.__new__.type_vars.is_empty() {
+                        Type::NamedTuple(nt)
+                    } else {
+                        Type::NamedTuple(nt).replace_type_var_likes(db, &mut |usage| {
+                            usage.as_type_var_like().as_any_generic_item()
+                        })
+                    }
+                });
+            }
             TypeContent::TypedDictDefinition(td) => {
                 return match &td.generics {
                     TypedDictGenerics::None => Some(Type::TypedDict(td)),
@@ -1076,6 +1088,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     TypeContent::Dataclass(d) => {
                         self.compute_type_get_item_on_dataclass(&d, s, Some(primary))
                     }
+                    TypeContent::NamedTuple(nt) => {
+                        self.compute_type_get_item_on_named_tuple(&nt, s, Some(primary))
+                    }
                     TypeContent::TypedDictDefinition(td) => {
                         self.compute_type_get_item_on_typed_dict(&td, s, Some(primary))
                     }
@@ -1240,7 +1255,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 let cls = Class::with_undefined_generics(node_ref);
                 self.check_attribute_on_class(cls, primary, name)
             }
-            TypeContent::Dataclass(_) => todo!(),
+            TypeContent::Dataclass(_) | TypeContent::NamedTuple(_) => todo!(),
             TypeContent::TypedDictDefinition(_) => todo!(),
             TypeContent::SimpleGeneric {
                 class_link,
@@ -1403,6 +1418,16 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             },
         };
         TypeContent::Type(Type::Dataclass(Dataclass::new(c, dataclass.options)))
+    }
+
+    fn compute_type_get_item_on_named_tuple(
+        &mut self,
+        named_tuple: &NamedTuple,
+        slice_type: SliceType,
+        primary: Option<Primary>,
+    ) -> TypeContent<'db, 'db> {
+        let db = self.inference.i_s.db;
+        todo!()
     }
 
     fn compute_type_get_item_on_typed_dict(
@@ -2402,7 +2427,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             TypeNameLookup::TypeAlias(alias) => TypeContent::TypeAlias(alias),
             TypeNameLookup::NewType(n) => TypeContent::Type(Type::NewType(n)),
-            TypeNameLookup::NamedTupleDefinition(n) => TypeContent::Type(Type::NamedTuple(n)),
+            TypeNameLookup::NamedTupleDefinition(n) => TypeContent::NamedTuple(n),
             TypeNameLookup::TypedDictDefinition(t) => TypeContent::TypedDictDefinition(t),
             TypeNameLookup::Enum(t) => TypeContent::Type(Type::Enum(t)),
             TypeNameLookup::Dataclass(d) => TypeContent::Dataclass(d),
