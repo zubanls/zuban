@@ -1064,13 +1064,13 @@ impl Type {
                 debug!("TODO namedtuple has_self_type");
                 false
             }
-            Self::Enum(_) => todo!(),
             Self::EnumMember(_) => todo!(),
             Self::Class(..)
             | Self::None
             | Self::Never
             | Self::Literal { .. }
             | Self::Any
+            | Self::Enum(_)
             | Self::NewType(_)
             | Self::ParamSpecArgs(_)
             | Self::ParamSpecKwargs(_)

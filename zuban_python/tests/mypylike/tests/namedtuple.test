@@ -29,3 +29,18 @@ def identity(x: Callable[P, T]) -> Callable[P, T]:
 reveal_type(identity(Foo)) # N: Revealed type is "def (a: builtins.int =) -> tuple[builtins.int, fallback=__main__.Foo]"
 reveal_type(identity(Bar)) # N: Revealed type is "def [T] (a: T) -> tuple[T, fallback=__main__.Bar[T]]"
 reveal_type(identity(Baz)) # N: Revealed type is "def (x: builtins.int) -> tuple[builtins.int, fallback=__main__.Baz]"
+
+[case namedtuple_replace_on_inherited_class]
+from typing import NamedTuple
+
+class Foo(NamedTuple):
+    a: int
+
+class Bar(Foo): ...
+
+b: Bar
+Bar._replace(b, c=3) # E: Unexpected keyword argument "c" for "_replace" of "Foo"
+Bar._replace(b, a=3)
+
+b._replace(c=3) # E: Unexpected keyword argument "c" for "_replace" of "Foo"
+b._replace(a=3)

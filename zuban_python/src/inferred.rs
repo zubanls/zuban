@@ -844,7 +844,6 @@ impl<'db: 'slf, 'slf> Inferred {
                                 attribute_class,
                                 from,
                                 mro_index,
-                                None,
                                 &t,
                                 if specific == Specific::AnnotationOrTypeCommentClassVar {
                                     ApplyDescriptorsKind::All
@@ -934,7 +933,6 @@ impl<'db: 'slf, 'slf> Inferred {
                                     attribute_class,
                                     from,
                                     mro_index,
-                                    Some(*definition),
                                     t,
                                     apply_descriptors_kind,
                                 ) {
@@ -964,7 +962,6 @@ impl<'db: 'slf, 'slf> Inferred {
                         attribute_class,
                         from,
                         mro_index,
-                        None,
                         t,
                         apply_descriptors_kind,
                     ) {
@@ -986,7 +983,6 @@ impl<'db: 'slf, 'slf> Inferred {
         attribute_class: Class,
         from: NodeRef,
         mro_index: MroIndex,
-        definition: Option<PointLink>,
         t: &Type,
         apply_descriptors_kind: ApplyDescriptorsKind,
     ) -> Option<Option<Self>> {
@@ -1149,7 +1145,6 @@ impl<'db: 'slf, 'slf> Inferred {
                                 attribute_class,
                                 from,
                                 apply_descriptor,
-                                *definition,
                                 &t,
                             ) {
                                 return r;
@@ -1196,7 +1191,6 @@ impl<'db: 'slf, 'slf> Inferred {
                                 attribute_class,
                                 from,
                                 apply_descriptor,
-                                *definition,
                                 t,
                             ) {
                                 return r;
@@ -1207,7 +1201,20 @@ impl<'db: 'slf, 'slf> Inferred {
                     _ => (),
                 }
             }
-            InferredState::UnsavedComplex(complex) => (),
+            InferredState::UnsavedComplex(complex) => {
+                if let ComplexPoint::TypeInstance(t) = complex {
+                    if let Some(inf) = Self::bind_class_descriptors_for_type(
+                        i_s,
+                        class,
+                        attribute_class,
+                        from,
+                        apply_descriptor,
+                        t,
+                    ) {
+                        return inf;
+                    }
+                }
+            }
             InferredState::UnsavedSpecific(specific) => todo!(),
             InferredState::UnsavedFileReference(file_index) => todo!(),
             InferredState::BoundMethod { .. } => todo!(),
@@ -1222,7 +1229,6 @@ impl<'db: 'slf, 'slf> Inferred {
         attribute_class: Class, // The (sub-)class in which an attribute is defined
         from: NodeRef,
         apply_descriptor: bool,
-        definition: PointLink,
         t: &Type,
     ) -> Option<Option<Self>> {
         let mut t = t;
@@ -1260,7 +1266,7 @@ impl<'db: 'slf, 'slf> Inferred {
         let needs_remapping = match attribute_class.generics {
             Generics::Self_ { .. } => !attribute_class.has_simple_self_generics(),
             _ => !attribute_class.type_vars(i_s).is_empty(),
-        };
+        } || t.has_self_type();
         let mut new = None;
         if needs_remapping {
             new = Some(replace_class_type_vars(

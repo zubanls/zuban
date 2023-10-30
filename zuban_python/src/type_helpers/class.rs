@@ -1123,11 +1123,15 @@ impl<'db: 'a, 'a> Class<'a> {
         {
             let (_, result) = c.lookup_symbol(i_s, name);
             if !matches!(result, LookupResult::None) {
-                if let TypeOrClass::Class(c) = c {
-                    return (result, Some(c), mro_index);
-                } else {
-                    return (result, None, mro_index);
-                }
+                return match c {
+                    TypeOrClass::Class(c) => (result, Some(c), mro_index),
+                    TypeOrClass::Type(t) if matches!(t.as_ref(), Type::NamedTuple(_)) => (
+                        result,
+                        Some(i_s.db.python_state.typing_named_tuple_class()),
+                        mro_index,
+                    ),
+                    _ => (result, None, mro_index),
+                };
             }
         }
         (LookupResult::None, None, 0.into())
