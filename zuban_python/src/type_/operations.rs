@@ -285,6 +285,10 @@ impl Type {
                     .file
                     .inference(i_s)
                     .compute_type_application_on_dataclass(d, *slice_type, false),
+                Type::NamedTuple(nt) => slice_type
+                    .file
+                    .inference(i_s)
+                    .compute_type_application_on_named_tuple(nt.clone(), *slice_type, false),
                 t @ Type::Enum(_) => {
                     let enum_index = slice_type.infer(i_s);
                     if !enum_index

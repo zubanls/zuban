@@ -760,8 +760,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     if nt.__new__.type_vars.is_empty() {
                         Type::NamedTuple(nt)
                     } else {
+                        let defined_at = nt.__new__.defined_at;
                         Type::NamedTuple(nt).replace_type_var_likes(db, &mut |usage| {
-                            usage.as_type_var_like().as_any_generic_item()
+                            if usage.in_definition() == defined_at {
+                                usage.as_type_var_like().as_any_generic_item()
+                            } else {
+                                todo!()
+                            }
                         })
                     }
                 });
@@ -1089,7 +1094,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         self.compute_type_get_item_on_dataclass(&d, s, Some(primary))
                     }
                     TypeContent::NamedTuple(nt) => {
-                        self.compute_type_get_item_on_named_tuple(&nt, s, Some(primary))
+                        self.compute_type_get_item_on_named_tuple(nt, s, Some(primary))
                     }
                     TypeContent::TypedDictDefinition(td) => {
                         self.compute_type_get_item_on_typed_dict(&td, s, Some(primary))
@@ -1422,12 +1427,32 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 
     fn compute_type_get_item_on_named_tuple(
         &mut self,
-        named_tuple: &NamedTuple,
+        named_tuple: Rc<NamedTuple>,
         slice_type: SliceType,
         primary: Option<Primary>,
     ) -> TypeContent<'db, 'db> {
         let db = self.inference.i_s.db;
-        todo!()
+        let mut generics = vec![];
+        self.calculate_type_arguments(
+            slice_type,
+            &mut generics,
+            slice_type.iter(),
+            &named_tuple.__new__.type_vars,
+            &|| todo!(), //Box::from("TODO type name"),
+            |slf: &mut Self, given_count, expected_count| {
+                slf.add_issue(slice_type.as_node_ref(), todo!());
+            },
+        );
+        let defined_at = named_tuple.__new__.defined_at;
+        TypeContent::Type(
+            Type::NamedTuple(named_tuple).replace_type_var_likes(db, &mut |usage| {
+                if usage.in_definition() == defined_at {
+                    generics[usage.index().as_usize()].clone()
+                } else {
+                    todo!()
+                }
+            }),
+        )
     }
 
     fn compute_type_get_item_on_typed_dict(
@@ -2672,6 +2697,20 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             slice_type,
             from_alias_definition,
             compute_type_get_item_on_dataclass(dataclass, slice_type, None)
+        )
+    }
+
+    pub fn compute_type_application_on_named_tuple(
+        &mut self,
+        named_tuple: Rc<NamedTuple>,
+        slice_type: SliceType,
+        from_alias_definition: bool,
+    ) -> Inferred {
+        compute_type_application!(
+            self,
+            slice_type,
+            from_alias_definition,
+            compute_type_get_item_on_named_tuple(named_tuple, slice_type, None)
         )
     }
 
