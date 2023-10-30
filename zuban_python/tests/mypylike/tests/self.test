@@ -142,3 +142,18 @@ reveal_type(C().bar()) # E: Attribute function "foo" with type "Callable[[], Non
                        # N: Revealed type is "None"
 
 reveal_type(C().foo3()) # N: Revealed type is "None"
+
+[case self_return_allowed]
+class Foo():
+    def meth2(self: Self) -> Self:
+        return self
+    def meth3(self) -> Self:
+        return self
+    def meth(self) -> Self:
+        if bool():
+            return self.meth2()
+        else:
+            return self.meth3()
+
+reveal_type(Foo().meth()) # N: Revealed type is "__main__.Foo"
+reveal_type(Foo().meth2()) # N: Revealed type is "__main__.Foo"

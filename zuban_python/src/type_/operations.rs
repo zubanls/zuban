@@ -190,7 +190,7 @@ impl Type {
                         ),
                         from_inferred,
                     )
-                    .lookup(i_s, from, name, kind),
+                    .lookup_on_self(i_s, from, name, kind),
                 )
             }
             Type::Super { class, mro_index } => {

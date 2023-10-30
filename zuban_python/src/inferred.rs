@@ -214,8 +214,8 @@ impl<'db: 'slf, 'slf> Inferred {
         self.format(i_s, &FormatData::new_short(i_s.db))
     }
 
-    fn load_bound_method_class(
-        i_s: &InferenceState<'db, '_>,
+    fn load_bound_method_class<'a: 'slf>(
+        i_s: &InferenceState<'db, 'a>,
         instance: &'slf Type,
         mro_index: MroIndex,
     ) -> Class<'slf> {
@@ -228,6 +228,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     .metaclass(i_s.db),
                 _ => unreachable!(),
             },
+            Type::Self_ => *i_s.current_class().unwrap(),
             _ => unreachable!(),
         };
         let class_t = instance_class

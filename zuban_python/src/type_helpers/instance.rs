@@ -318,6 +318,17 @@ impl<'a> Instance<'a> {
             .1
     }
 
+    pub fn lookup_on_self(
+        &self,
+        i_s: &InferenceState,
+        node_ref: NodeRef,
+        name: &str,
+        kind: LookupKind,
+    ) -> LookupResult {
+        self.lookup_with_explicit_self_binding(i_s, node_ref, name, kind, 0, || Type::Self_)
+            .1
+    }
+
     pub fn full_lookup(&self, i_s: &InferenceState, node_ref: NodeRef, name: &str) -> LookupResult {
         self.lookup(i_s, node_ref, name, LookupKind::Normal)
     }

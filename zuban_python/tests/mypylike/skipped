@@ -390,7 +390,6 @@ testGenericNamedTupleCallSyntax
 # ^ need to add generic namedtuple tests for call syntax
 # NamedTuple special methods
 testNamedTupleMake
-testNamedTupleTypingSelfMethod
 testGenericNamedTupleMethods
 
 # dataclass issue with structure
