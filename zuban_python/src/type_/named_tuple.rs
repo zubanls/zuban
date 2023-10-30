@@ -178,6 +178,29 @@ impl NamedTuple {
                     result_type: as_self.map(|as_self| as_self()).unwrap_or(Type::Self_),
                 })
             }),
+            "_asdict" => Type::Callable({
+                let mut params = vec![];
+                if from_type {
+                    params.push(CallableParam::new_anonymous(ParamSpecific::PositionalOnly(
+                        as_self.map(|as_self| as_self()).unwrap_or(Type::Self_),
+                    )));
+                }
+                Rc::new(CallableContent {
+                    name: Some(DbString::Static("_as_dict")),
+                    class_name: Some(self.name),
+                    defined_at: PointLink::new(FileIndex(0), 0),
+                    kind: FunctionKind::Function {
+                        had_first_self_or_class_annotation: true,
+                    },
+                    type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
+                    params: CallableParams::Simple(params.into()),
+                    result_type: new_class!(
+                        i_s.db.python_state.dict_node_ref().as_link(),
+                        i_s.db.python_state.str_type(),
+                        Type::Any,
+                    ),
+                })
+            }),
             "_make" => Type::Callable({
                 let mut params = vec![];
                 if as_self.is_none() {

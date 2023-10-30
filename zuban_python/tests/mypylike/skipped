@@ -392,8 +392,6 @@ testGenericNamedTupleCallSyntax
 testNamedTupleMake
 testNamedTupleTypingSelfMethod
 testGenericNamedTupleMethods
-testNewNamedTupleAsDict
-testNamedTupleAsDict
 
 # dataclass issue with structure
 testReplaceTypeVarBound
