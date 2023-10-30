@@ -256,7 +256,7 @@ pub(super) enum TypeNameLookup<'db, 'a> {
     NewType(Rc<NewType>),
     SpecialType(SpecialType),
     InvalidVariable(InvalidVariableType<'a>),
-    NamedTupleDefinition(Type),
+    NamedTupleDefinition(Rc<NamedTuple>),
     TypedDictDefinition(Rc<TypedDict>),
     Enum(Rc<Enum>),
     Dataclass(Rc<Dataclass>),
@@ -2402,7 +2402,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             TypeNameLookup::TypeAlias(alias) => TypeContent::TypeAlias(alias),
             TypeNameLookup::NewType(n) => TypeContent::Type(Type::NewType(n)),
-            TypeNameLookup::NamedTupleDefinition(t) => TypeContent::Type(t),
+            TypeNameLookup::NamedTupleDefinition(n) => TypeContent::Type(Type::NamedTuple(n)),
             TypeNameLookup::TypedDictDefinition(t) => TypeContent::TypedDictDefinition(t),
             TypeNameLookup::Enum(t) => TypeContent::Type(Type::Enum(t)),
             TypeNameLookup::Dataclass(d) => TypeContent::Dataclass(d),
@@ -2904,7 +2904,8 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             } else if let Some(n) = inferred.maybe_new_type(self.i_s) {
                 TypeNameLookup::NewType(n)
             } else if let Some(t) = inferred.maybe_named_tuple_definition(self.i_s) {
-                TypeNameLookup::NamedTupleDefinition(t)
+                let Type::NamedTuple(nt) = t else { unreachable!() };
+                TypeNameLookup::NamedTupleDefinition(nt)
             } else if let Some(t) = inferred.maybe_typed_dict_definition(self.i_s) {
                 TypeNameLookup::TypedDictDefinition(t)
             } else if let Some(t) = inferred.maybe_enum_definition(self.i_s) {
