@@ -1036,13 +1036,15 @@ impl<'db: 'slf, 'slf> Inferred {
                     let instance_cls = instance_cls.class(i_s.db);
                     let result = infer_class_method(i_s, instance_cls, attribute_class, c);
                     if result.is_none() {
-                        let func = prepare_func(i_s, c.defined_at, attribute_class);
                         let t = IssueType::InvalidClassMethodFirstArgument {
                             argument_type: Type::Type(Rc::new(instance)).format_short(i_s.db),
-                            function_name: Box::from(func.name()),
-                            callable: func
-                                .as_type(i_s, FirstParamProperties::None)
-                                .format_short(i_s.db),
+                            function_name: c
+                                .name
+                                .as_ref()
+                                .map(|n| n.as_str(i_s.db))
+                                .unwrap_or("function")
+                                .into(),
+                            callable: t.format_short(i_s.db),
                         };
                         from.add_issue(i_s, t);
                         return Some(Some(Self::new_any()));
