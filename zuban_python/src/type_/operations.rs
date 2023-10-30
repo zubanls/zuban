@@ -68,7 +68,7 @@ impl Type {
             Type::Tuple(t) => (None, LookupResult::None),
             Type::NamedTuple(nt) => (
                 Some(i_s.db.python_state.typing_named_tuple_class()),
-                nt.type_lookup(i_s, name),
+                nt.type_lookup(i_s, name, None),
             ),
             Type::Callable(t) => todo!(),
             _ => todo!("{name:?} {self:?}"),
@@ -518,7 +518,7 @@ pub fn attribute_access_of_type(
             .python_state
             .typed_dict_class()
             .lookup(i_s, from, name, kind),
-        Type::NamedTuple(nt) => nt.type_lookup(i_s, name),
+        Type::NamedTuple(nt) => nt.type_lookup(i_s, name, Some(&|| (*in_type).clone())),
         Type::Tuple(tup) => i_s
             .db
             .python_state

@@ -155,7 +155,7 @@ impl NamedTuple {
                 let mut params = vec![];
                 if from_type {
                     params.push(CallableParam::new_anonymous(ParamSpecific::PositionalOnly(
-                        Type::Self_,
+                        as_self.map(|as_self| as_self()).unwrap_or(Type::Self_),
                     )));
                 }
                 for param in self.params() {
@@ -199,8 +199,13 @@ impl NamedTuple {
         }))
     }
 
-    pub fn type_lookup(&self, i_s: &InferenceState, name: &str) -> LookupResult {
-        self.lookup_internal(i_s, name, true, None)
+    pub fn type_lookup(
+        &self,
+        i_s: &InferenceState,
+        name: &str,
+        as_self: Option<&dyn Fn() -> Type>,
+    ) -> LookupResult {
+        self.lookup_internal(i_s, name, true, as_self)
     }
 
     pub fn lookup(
