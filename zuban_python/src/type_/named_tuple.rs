@@ -178,6 +178,33 @@ impl NamedTuple {
                     result_type: as_self.map(|as_self| as_self()).unwrap_or(Type::Self_),
                 })
             }),
+            "_make" => Type::Callable({
+                let mut params = vec![];
+                if as_self.is_none() {
+                    params.push(CallableParam::new_anonymous(ParamSpecific::PositionalOnly(
+                        i_s.db.python_state.type_of_self.clone(),
+                    )));
+                }
+                params.push(CallableParam {
+                    param_specific: ParamSpecific::PositionalOrKeyword(new_class!(
+                        i_s.db.python_state.iterable_link(),
+                        Type::Any,
+                    )),
+                    name: Some(DbString::Static("iterable")),
+                    has_default: false,
+                });
+                Rc::new(CallableContent {
+                    name: Some(DbString::Static("_make")),
+                    class_name: Some(self.name),
+                    defined_at: PointLink::new(FileIndex(0), 0),
+                    kind: FunctionKind::Classmethod {
+                        had_first_self_or_class_annotation: true,
+                    },
+                    type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
+                    params: CallableParams::Simple(params.into()),
+                    result_type: as_self.map(|as_self| as_self()).unwrap_or(Type::Self_),
+                })
+            }),
             "_fields" => Type::Tuple(Rc::new(TupleContent::new_fixed_length(
                 std::iter::repeat(TypeOrTypeVarTuple::Type(i_s.db.python_state.str_type()))
                     .take(self.params().len())
