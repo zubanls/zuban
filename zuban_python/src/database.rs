@@ -927,14 +927,14 @@ pub enum MetaclassState {
     Some(PointLink),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ClassType {
     Normal,
     Protocol,
     Enum,
     TypedDict,
     Tuple,
-    NamedTuple(Rc<NamedTuple>),
+    NamedTuple,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -956,6 +956,34 @@ impl ClassInfos {
         match self.metaclass {
             MetaclassState::Some(link) => Class::from_non_generic_link(db, link),
             _ => db.python_state.bare_type_class(),
+        }
+    }
+
+    pub fn maybe_named_tuple(&self) -> Option<&NamedTuple> {
+        if self.class_type == ClassType::NamedTuple {
+            for base in self.mro.iter() {
+                if let Type::NamedTuple(named_tuple) = &base.type_ {
+                    return Some(named_tuple);
+                }
+            }
+            unreachable!()
+        }
+        None
+    }
+
+    pub fn maybe_tuple(&self) -> Option<Rc<TupleContent>> {
+        match self.class_type {
+            ClassType::NamedTuple | ClassType::Tuple => {
+                for base in self.mro.iter() {
+                    return Some(match &base.type_ {
+                        Type::NamedTuple(named_tuple) => named_tuple.as_tuple(),
+                        Type::Tuple(tup) => tup.clone(),
+                        _ => continue,
+                    });
+                }
+                unreachable!()
+            }
+            _ => None,
         }
     }
 }

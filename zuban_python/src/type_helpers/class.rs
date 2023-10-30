@@ -708,13 +708,12 @@ impl<'db: 'a, 'a> Class<'a> {
                                             cached_class_infos.metaclass,
                                         );
                                         match &cached_class_infos.class_type {
-                                            ClassType::NamedTuple(named_tuple) => {
+                                            ClassType::NamedTuple => {
                                                 if matches!(
                                                     class_type,
-                                                    ClassType::Normal | ClassType::NamedTuple(_)
+                                                    ClassType::Normal | ClassType::NamedTuple
                                                 ) {
-                                                    class_type =
-                                                        ClassType::NamedTuple(named_tuple.clone());
+                                                    class_type = ClassType::NamedTuple;
                                                 } else {
                                                     todo!()
                                                 }
@@ -735,15 +734,15 @@ impl<'db: 'a, 'a> Class<'a> {
                             CalculatedBaseClass::NamedTuple(named_tuple) => {
                                 let named_tuple =
                                     named_tuple.clone_with_new_init_class(self.name_string_slice());
-                                bases.push(Type::NamedTuple(named_tuple.clone()));
-                                class_type = ClassType::NamedTuple(named_tuple);
+                                bases.push(Type::NamedTuple(named_tuple));
+                                class_type = ClassType::NamedTuple;
                             }
                             CalculatedBaseClass::NewNamedTuple => {
                                 is_new_named_tuple = true;
                                 let named_tuple = self
                                     .named_tuple_from_class(&i_s.with_class_context(self), *self);
-                                bases.push(Type::NamedTuple(named_tuple.clone()));
-                                class_type = ClassType::NamedTuple(named_tuple);
+                                bases.push(Type::NamedTuple(named_tuple));
+                                class_type = ClassType::NamedTuple;
                             }
                             CalculatedBaseClass::TypedDict => {
                                 if had_new_typed_dict {
@@ -1291,8 +1290,9 @@ impl<'db: 'a, 'a> Class<'a> {
 
         if let Some(class_infos) = self.maybe_cached_class_infos(format_data.db) {
             match &class_infos.class_type {
-                ClassType::NamedTuple(named_tuple) => {
-                    return named_tuple.format_with_name(format_data, &result, self.generics)
+                ClassType::NamedTuple => {
+                    let named_tuple = class_infos.maybe_named_tuple().unwrap();
+                    return named_tuple.format_with_name(format_data, &result, self.generics);
                 }
                 ClassType::Tuple if format_data.style == FormatStyle::MypyRevealType => {
                     for (_, type_or_class) in self.mro(format_data.db) {

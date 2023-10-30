@@ -6,7 +6,7 @@ use parsa_python_ast::Name;
 use super::class::TypeOrClass;
 use super::{Class, MroIterator, Tuple};
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments, NoArguments};
-use crate::database::{ClassType, Database, PointLink, Specific};
+use crate::database::{Database, PointLink, Specific};
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::{on_argument_type_error, File};
@@ -54,7 +54,7 @@ impl<'a> Instance<'a> {
             );
         };
         let cached_class_infos = self.class.use_cached_class_infos(i_s.db);
-        if let ClassType::NamedTuple(nt) = &cached_class_infos.class_type {
+        if let Some(nt) = cached_class_infos.maybe_named_tuple() {
             if nt.search_param(i_s.db, name.as_code()).is_some() {
                 property_is_read_only(nt.name(i_s.db).into());
                 return;
@@ -193,25 +193,9 @@ impl<'a> Instance<'a> {
     }
 
     pub fn iter(&self, i_s: &InferenceState, from: NodeRef) -> IteratorContent {
-        match &self.class.use_cached_class_infos(i_s.db).class_type {
-            ClassType::NamedTuple(named_tuple) => {
-                // TODO this doesn't take care of the mro and could not be the first __iter__
-                return named_tuple.iter(i_s, from);
-            }
-            ClassType::Tuple => {
-                /*
-                 * TODO enable?
-                for (_, type_or_class) in self.class.mro(i_s.db) {
-                    if let TypeOrClass::Type(t) = type_or_class {
-                        if let Type::Tuple(tup) = t.as_ref() {
-                            return Tuple::new(tup).iter(i_s, from)
-                        }
-                    }
-                }
-                unreachable!()
-                */
-            }
-            _ => (),
+        if let Some(tup) = self.class.use_cached_class_infos(i_s.db).maybe_tuple() {
+            // TODO this doesn't take care of the mro and could not be the first __iter__
+            return Tuple::new(&tup).iter(i_s, from);
         }
         let mro_iterator = self.class.mro(i_s.db);
         let finder = ClassMroFinder {
@@ -358,12 +342,13 @@ impl<'a> Instance<'a> {
         slice_type: &SliceType,
         result_context: &mut ResultContext,
     ) -> Inferred {
-        match &self.class.use_cached_class_infos(i_s.db).class_type {
-            ClassType::NamedTuple(named_tuple) => {
-                // TODO this doesn't take care of the mro and could not be the first __getitem__
-                return named_tuple.get_item(i_s, slice_type, result_context);
-            }
-            _ => (),
+        if let Some(named_tuple) = self
+            .class
+            .use_cached_class_infos(i_s.db)
+            .maybe_named_tuple()
+        {
+            // TODO this doesn't take care of the mro and could not be the first __getitem__
+            return named_tuple.get_item(i_s, slice_type, result_context);
         }
         let mro_iterator = self.class.mro(i_s.db);
         let from = slice_type.as_node_ref();
