@@ -40,7 +40,19 @@ class Bar(Foo): ...
 
 b: Bar
 Bar._replace(b, c=3) # E: Unexpected keyword argument "c" for "_replace" of "Foo"
-Bar._replace(b, a=3)
+reveal_type(Bar._replace(b, a=3)) # N: Revealed type is "tuple[int, fallback=__main__.Bar]"
 
 b._replace(c=3) # E: Unexpected keyword argument "c" for "_replace" of "Foo"
-b._replace(a=3)
+reveal_type(b._replace(a=3)) # N: Revealed type is "tuple[int, fallback=__main__.Bar]"
+
+[case namedtuple_make_on_inherited_class]
+from typing import NamedTuple
+
+class Foo(NamedTuple):
+    a: int
+
+class Bar(Foo): ...
+
+b: Bar
+reveal_type(Bar._make([])) # N: Revealed type is "tuple[int, fallback=__main__.Bar]"
+reveal_type(b._make([])) # N: Revealed type is "tuple[int, fallback=__main__.Bar]"
