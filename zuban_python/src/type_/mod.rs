@@ -1865,6 +1865,13 @@ impl CallableContent {
         Self::new_any_internal(PointLink::new(FileIndex(0), 0), type_vars)
     }
 
+    pub fn name<'x>(&'x self, db: &'x Database) -> &'x str {
+        self.name
+            .as_ref()
+            .map(|n| n.as_str(db))
+            .unwrap_or("function")
+    }
+
     fn new_any_internal(defined_at: PointLink, type_vars: TypeVarLikes) -> Self {
         Self {
             name: None,

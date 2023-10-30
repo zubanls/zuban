@@ -1038,12 +1038,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     if result.is_none() {
                         let t = IssueType::InvalidClassMethodFirstArgument {
                             argument_type: Type::Type(Rc::new(instance)).format_short(i_s.db),
-                            function_name: c
-                                .name
-                                .as_ref()
-                                .map(|n| n.as_str(i_s.db))
-                                .unwrap_or("function")
-                                .into(),
+                            function_name: c.name(i_s.db).into(),
                             callable: t.format_short(i_s.db),
                         };
                         from.add_issue(i_s, t);
