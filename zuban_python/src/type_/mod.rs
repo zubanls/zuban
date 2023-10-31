@@ -1,5 +1,6 @@
 mod common_base_type;
 mod common_sub_type;
+mod dataclass;
 mod matching;
 mod named_tuple;
 mod operations;
@@ -41,7 +42,6 @@ use crate::matching::ResultContext;
 
 use crate::matching::{FormatData, Generic, ParamsStyle};
 use crate::node_ref::NodeRef;
-use crate::type_helpers::calculate_init_of_dataclass;
 use crate::type_helpers::dotted_path_from_dir;
 use crate::type_helpers::Instance;
 use crate::type_helpers::MroIterator;
@@ -51,6 +51,7 @@ use crate::utils::join_with_commas;
 use crate::utils::{bytes_repr, str_repr};
 use crate::workspaces::Directory;
 
+pub use self::dataclass::{Dataclass, DataclassOptions};
 pub use common_base_type::{common_base_type, common_base_type_of_type_var_tuple_with_items};
 pub use matching::match_tuple_type_arguments;
 pub use named_tuple::{
@@ -2212,70 +2213,6 @@ impl CallableParams {
                 .any(|t| t.has_any_internal(i_s, already_checked)),
             Self::Any => true,
         }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct DataclassOptions {
-    pub init: bool,
-    pub eq: bool,
-    pub order: bool,
-    pub frozen: bool,
-    pub match_args: bool,
-    pub kw_only: bool,
-    pub slots: bool,
-    // the keyword arguments `weakref_slot = false` and `repr = true` are ignored here, because
-    // they are not relevant for us as a typechecker.
-}
-
-impl Default for DataclassOptions {
-    fn default() -> Self {
-        Self {
-            init: true,
-            eq: true,
-            order: false,
-            frozen: false,
-            match_args: true,
-            kw_only: false,
-            slots: false,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct Dataclass {
-    pub class: GenericClass,
-    __init__: OnceCell<CallableContent>,
-    pub options: DataclassOptions,
-}
-
-impl Dataclass {
-    pub fn new(class: GenericClass, options: DataclassOptions) -> Rc<Self> {
-        Rc::new(Self {
-            class,
-            __init__: OnceCell::new(),
-            options,
-        })
-    }
-
-    pub fn class<'a>(&'a self, db: &'a Database) -> Class<'a> {
-        self.class.class(db)
-    }
-
-    pub fn has_defined_generics(&self) -> bool {
-        !matches!(self.class.generics, ClassGenerics::NotDefinedYet)
-    }
-
-    pub fn __init__<'a>(self_: &'a Rc<Self>, db: &Database) -> &'a CallableContent {
-        if self_.__init__.get().is_none() {
-            // Cannot use get_or_init, because this might cycle ones for some reasons (see for
-            // example the test testDeferredDataclassInitSignatureSubclass)
-            self_
-                .__init__
-                .set(calculate_init_of_dataclass(db, self_))
-                .ok();
-        }
-        self_.__init__.get().unwrap()
     }
 }
 

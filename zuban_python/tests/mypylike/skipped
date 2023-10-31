@@ -400,10 +400,10 @@ testDataclassesInitVarNoOverride
 # dataclass classmethod
 testDataclassesClassmethods
 testClassmethodShadowingFieldDoesNotCrash
+testDeferredDataclassInitSignature
 # dataclass circular inheritance
 testDataclassGenericWithBound
 testNoCrashOnSelfWithForwardRefGenericDataclass
-testDeferredDataclassInitSignature
 # : TypeAlias in dataclasses
 testTypeAliasInDataclassDoesNotCrash
 # : Final in dataclasses
