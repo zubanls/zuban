@@ -56,3 +56,24 @@ class Bar(Foo): ...
 b: Bar
 reveal_type(Bar._make([])) # N: Revealed type is "tuple[int, fallback=__main__.Bar]"
 reveal_type(b._make([])) # N: Revealed type is "tuple[int, fallback=__main__.Bar]"
+
+[case namedtuple_generic_call_form_in_class]
+from typing import NamedTuple, TypeVar, Generic
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+class Foo(Generic[S]):
+    def foo(self, s: S) -> None:
+        NT = NamedTuple("NT", [("key", S), ("value", T)])
+        reveal_type(NT)  # N: Revealed type is "def [T] (key: S, value: T) -> Tuple[S, T, fallback=__main__.NT]"
+
+        wrong_count: NT[int, str] # E: "NT" expects 1 type argument, but 2 given
+
+        nt_any: NT
+        reveal_type(nt_any)  # N: Revealed type is "Tuple[S, Any, fallback=__main__.NT]"
+        nts: NT[str]
+        reveal_type(nts)  # N: Revealed type is "Tuple[S, builtins.str, fallback=__main__.NT]"
+
+        NT[int](key=1, value=1)  # E: Argument "key" to "NT" has incompatible type "int"; expected "S"
+        NT[int](key=s, value=1)

@@ -765,7 +765,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             if usage.in_definition() == defined_at {
                                 usage.as_type_var_like().as_any_generic_item()
                             } else {
-                                todo!()
+                                usage.into_generic_item()
                             }
                         })
                     }
@@ -1440,7 +1440,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             &named_tuple.__new__.type_vars,
             &|| todo!(), //Box::from("TODO type name"),
             |slf: &mut Self, given_count, expected_count| {
-                slf.add_issue(slice_type.as_node_ref(), todo!());
+                slf.add_issue(
+                    slice_type.as_node_ref(),
+                    IssueType::TypeArgumentIssue {
+                        class: named_tuple.name.as_str(db).into(),
+                        given_count,
+                        expected_count,
+                    },
+                );
             },
         );
         let defined_at = named_tuple.__new__.defined_at;
@@ -1449,7 +1456,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 if usage.in_definition() == defined_at {
                     generics[usage.index().as_usize()].clone()
                 } else {
-                    todo!()
+                    usage.into_generic_item()
                 }
             }),
         )
