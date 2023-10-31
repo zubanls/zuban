@@ -138,6 +138,7 @@ pub(crate) enum IssueType {
     InvalidSelfArgument { argument_type: Box<str>, function_name: Box<str>, callable: Box<str> },
     SelfTypeInMetaclass,
     SelfTypeInTypeAliasTarget,
+    SelfTypeOutsideOfClass,
     InvalidClassMethodFirstArgument { argument_type: Box<str>, function_name: Box<str>, callable: Box<str> },
     InvalidClassmethodAndStaticmethod,
     UsedWithANonMethod { name: &'static str },
@@ -815,6 +816,8 @@ impl<'db> Diagnostic<'db> {
             ),
             SelfTypeInMetaclass => "Self type cannot be used in a metaclass".to_string(),
             SelfTypeInTypeAliasTarget => "Self type cannot be used in type alias target".to_string(),
+            SelfTypeOutsideOfClass =>
+                "Self type is only allowed in annotations within class definition".to_string(),
             InvalidClassMethodFirstArgument{argument_type, function_name, callable} => format!(
                 "Invalid self argument \"{argument_type}\" to class attribute function \"{function_name}\" with type \"{callable}\""
             ),

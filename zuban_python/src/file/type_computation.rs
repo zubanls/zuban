@@ -822,41 +822,34 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         )),
                     );
                 }
-                SpecialType::Self_ if self.origin == TypeComputationOrigin::TypedDictMember => {
-                    self.add_issue(node_ref, IssueType::TypedDictSelfNotAllowed);
-                }
-                SpecialType::Self_ if self.origin == TypeComputationOrigin::NamedTupleMember => {
-                    self.add_issue(node_ref, IssueType::NamedTupleSelfNotAllowed);
-                }
-                SpecialType::Self_
-                    if matches!(
-                        self.origin,
-                        TypeComputationOrigin::TypeApplication | TypeComputationOrigin::TypeAlias
-                    ) =>
-                {
-                    self.add_issue(node_ref, IssueType::SelfTypeInTypeAliasTarget);
-                }
-                SpecialType::Self_
-                    if !matches!(
-                        self.origin,
-                        TypeComputationOrigin::Constraint | TypeComputationOrigin::BaseClass
-                    ) && self.inference.i_s.current_class().is_some() =>
-                {
-                    if self.inference.i_s.current_class().unwrap().is_metaclass(db) {
-                        self.add_issue(node_ref, IssueType::SelfTypeInMetaclass);
-                    } else {
-                        self.has_type_vars_or_self = true;
-                        return Some(Type::Self_);
-                    }
-                }
-                SpecialType::Self_ => {
-                    self.add_issue(
-                        node_ref,
-                        IssueType::InvalidType(Box::from(
-                            "Self type is only allowed in annotations within class definition",
-                        )),
-                    );
-                }
+                SpecialType::Self_ => self.add_issue(
+                    node_ref,
+                    match self.origin {
+                        TypeComputationOrigin::TypedDictMember => {
+                            IssueType::TypedDictSelfNotAllowed
+                        }
+                        TypeComputationOrigin::NamedTupleMember => {
+                            IssueType::NamedTupleSelfNotAllowed
+                        }
+                        TypeComputationOrigin::TypeApplication
+                        | TypeComputationOrigin::TypeAlias => IssueType::SelfTypeInTypeAliasTarget,
+                        TypeComputationOrigin::Constraint | TypeComputationOrigin::BaseClass => {
+                            IssueType::SelfTypeOutsideOfClass
+                        }
+                        _ => {
+                            if let Some(class) = self.inference.i_s.current_class() {
+                                if class.is_metaclass(db) {
+                                    IssueType::SelfTypeInMetaclass
+                                } else {
+                                    self.has_type_vars_or_self = true;
+                                    return Some(Type::Self_);
+                                }
+                            } else {
+                                IssueType::SelfTypeOutsideOfClass
+                            }
+                        }
+                    },
+                ),
                 SpecialType::Annotated => {
                     self.add_issue(
                         node_ref,
