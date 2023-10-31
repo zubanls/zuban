@@ -5,6 +5,7 @@ mod named_tuple;
 mod operations;
 mod replace;
 mod simplified_union;
+mod tuple;
 mod type_var_likes;
 
 use std::borrow::Cow;
@@ -58,15 +59,12 @@ pub use named_tuple::{
 };
 pub use replace::ReplaceSelf;
 pub use simplified_union::simplified_union_from_iterators;
+pub use tuple::TupleContent;
 pub use type_var_likes::{
     CallableWithParent, ParamSpec, ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, TypeVar,
     TypeVarIndex, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
     TypeVarName, TypeVarTuple, TypeVarTupleUsage, TypeVarUsage, Variance,
 };
-
-thread_local! {
-    static ARBITRARY_TUPLE: Rc<TupleContent> = Rc::new(TupleContent::new_arbitrary_length(Type::Any));
-}
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum FormatStyle {
@@ -1610,53 +1608,6 @@ impl TupleTypeArguments {
             }
             Self::ArbitraryLength(t) => format!("{}, ...", t.format(format_data)).into(),
         }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct TupleContent {
-    pub args: TupleTypeArguments,
-    tuple_class_generics: OnceCell<GenericsList>,
-}
-
-impl TupleContent {
-    pub fn new(args: TupleTypeArguments) -> Self {
-        Self {
-            args,
-            tuple_class_generics: OnceCell::new(),
-        }
-    }
-
-    pub fn new_fixed_length(args: Rc<[TypeOrTypeVarTuple]>) -> Self {
-        Self::new(TupleTypeArguments::FixedLength(args))
-    }
-
-    pub fn new_arbitrary_length(arg: Type) -> Self {
-        Self::new(TupleTypeArguments::ArbitraryLength(Box::new(arg)))
-    }
-
-    pub fn new_empty() -> Rc<Self> {
-        ARBITRARY_TUPLE.with(|t| t.clone())
-    }
-
-    pub fn tuple_class_generics(&self, db: &Database) -> &GenericsList {
-        self.tuple_class_generics.get_or_init(|| {
-            GenericsList::new_generics(Rc::new([GenericItem::TypeArgument(
-                self.args.common_base_type(&InferenceState::new(db)),
-            )]))
-        })
-    }
-
-    pub fn format(&self, format_data: &FormatData) -> Box<str> {
-        self.format_with_fallback(format_data, "")
-    }
-
-    pub fn format_with_fallback(&self, format_data: &FormatData, fallback: &str) -> Box<str> {
-        let base = match format_data.style {
-            FormatStyle::Short => "tuple",
-            FormatStyle::Qualified | FormatStyle::MypyRevealType => "builtins.tuple",
-        };
-        format!("{base}[{}{fallback}]", self.args.format(format_data)).into()
     }
 }
 
