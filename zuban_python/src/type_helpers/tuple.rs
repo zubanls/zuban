@@ -65,34 +65,32 @@ impl<'a> Tuple<'a> {
     }
 
     pub fn lookup(&self, i_s: &InferenceState, node_ref: NodeRef, name: &str) -> LookupResult {
-        let result = self.lookup_magic_methods(name);
-        if result.is_some() {
-            return result;
-        }
-        let tuple_cls = i_s.db.python_state.tuple_class(i_s.db, self.content);
-        let tuple_instance = Instance::new(tuple_cls, None);
-        for (mro_index, class_or_type) in tuple_cls.mro(i_s.db) {
-            let (cls, lookup) = class_or_type.lookup_symbol(i_s, name);
-            let result = lookup.and_then(|inf| {
-                let Some(cls) = cls else {
-                    unreachable!();
-                };
-                inf.bind_instance_descriptors(
-                    i_s,
-                    tuple_cls.as_type(i_s.db),
-                    cls,
-                    node_ref,
-                    mro_index,
-                )
-            });
-            match result {
-                Some(LookupResult::None) => (),
-                None => return LookupResult::None,
-                Some(x) => return x,
+        self.lookup_magic_methods(name).or_else(|| {
+            let tuple_cls = i_s.db.python_state.tuple_class(i_s.db, self.content);
+            let tuple_instance = Instance::new(tuple_cls, None);
+            for (mro_index, class_or_type) in tuple_cls.mro(i_s.db) {
+                let (cls, lookup) = class_or_type.lookup_symbol(i_s, name);
+                let result = lookup.and_then(|inf| {
+                    let Some(cls) = cls else {
+                        unreachable!();
+                    };
+                    inf.bind_instance_descriptors(
+                        i_s,
+                        tuple_cls.as_type(i_s.db),
+                        cls,
+                        node_ref,
+                        mro_index,
+                    )
+                });
+                match result {
+                    Some(LookupResult::None) => (),
+                    None => return LookupResult::None,
+                    Some(x) => return x,
+                }
             }
-        }
-        debug!("TODO tuple object lookups");
-        LookupResult::None
+            debug!("TODO tuple object lookups");
+            LookupResult::None
+        })
     }
 
     pub fn get_item(
