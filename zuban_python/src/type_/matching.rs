@@ -8,7 +8,7 @@ use crate::{
     type_helpers::{Class, TypeOrClass},
 };
 
-use super::{CallableContent, ClassGenerics, TupleContent, Type, TypeVarKind, UnionType};
+use super::{CallableContent, ClassGenerics, Tuple, Type, TypeVarKind, UnionType};
 
 impl Type {
     pub fn overlaps(&self, i_s: &InferenceState, other: &Self) -> bool {
@@ -696,14 +696,14 @@ impl Type {
     fn matches_tuple(
         i_s: &InferenceState,
         matcher: &mut Matcher,
-        t1: &TupleContent,
-        t2: &TupleContent,
+        t1: &Tuple,
+        t2: &Tuple,
         variance: Variance,
     ) -> Match {
         match_tuple_type_arguments(i_s, matcher, &t1.args, &t2.args, variance)
     }
 
-    fn overlaps_tuple(i_s: &InferenceState, t1: &TupleContent, t2: &TupleContent) -> bool {
+    fn overlaps_tuple(i_s: &InferenceState, t1: &Tuple, t2: &Tuple) -> bool {
         use TupleTypeArguments::*;
         match (&t1.args, &t2.args) {
             (FixedLength(ts1), FixedLength(ts2)) => {

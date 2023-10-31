@@ -14,7 +14,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::ResultContext;
 use crate::node_ref::NodeRef;
-use crate::type_::{TupleContent, Type, TypeOrTypeVarTuple};
+use crate::type_::{Tuple, Type, TypeOrTypeVarTuple};
 
 #[derive(Debug, Copy, Clone)]
 pub struct SliceType<'file> {
@@ -223,7 +223,7 @@ impl<'file> Slices<'file> {
                 TypeOrTypeVarTuple::Type(x.infer(i_s, &mut ResultContext::Unknown).as_type(i_s))
             })
             .collect();
-        Inferred::from_type(Type::Tuple(Rc::new(TupleContent::new_fixed_length(parts))))
+        Inferred::from_type(Type::Tuple(Rc::new(Tuple::new_fixed_length(parts))))
     }
 }
 

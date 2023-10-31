@@ -22,8 +22,8 @@ use crate::matching::{
 use crate::node_ref::NodeRef;
 use crate::type_::{
     CallableContent, CallableParam, CallableParams, DoubleStarredParamSpecific, FunctionKind,
-    Literal, LiteralKind, Namespace, ParamSpecific, StarredParamSpecific, StringSlice,
-    TupleContent, TupleTypeArguments, Type, TypeOrTypeVarTuple, UnionEntry, UnionType, Variance,
+    Literal, LiteralKind, Namespace, ParamSpecific, StarredParamSpecific, StringSlice, Tuple,
+    TupleTypeArguments, Type, TypeOrTypeVarTuple, UnionEntry, UnionType, Variance,
 };
 use crate::type_helpers::{
     lookup_in_namespace, Class, FirstParamKind, Function, GeneratorType, Instance, Module,
@@ -781,7 +781,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 Some(self.infer_primary_target(t))
             }
             Target::Tuple(targets) => Some(Inferred::from_type(Type::Tuple(Rc::new(
-                TupleContent::new_fixed_length(
+                Tuple::new_fixed_length(
                     targets
                         .map(|target| {
                             TypeOrTypeVarTuple::Type(
@@ -1027,7 +1027,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                     .as_type(self.i_s),
                                             ))
                                         }
-                                        Type::Tuple(Rc::new(TupleContent::new_fixed_length(
+                                        Type::Tuple(Rc::new(Tuple::new_fixed_length(
                                             tuple_entries.into(),
                                         )))
                                     } else {
@@ -1920,9 +1920,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         });
         let content = if is_arbitrary_length.get() {
             let generic = self.create_list_or_set_generics(iterator);
-            TupleContent::new_arbitrary_length(generic)
+            Tuple::new_arbitrary_length(generic)
         } else {
-            TupleContent::new_fixed_length(generics.into())
+            Tuple::new_fixed_length(generics.into())
         };
         debug!(
             "Inferred: {}",

@@ -4,7 +4,7 @@ use parsa_python_ast::ParamKind;
 
 use crate::{
     inference_state::InferenceState,
-    type_::{TupleContent, TupleTypeArguments, TypeOrTypeVarTuple},
+    type_::{Tuple, TupleTypeArguments, TypeOrTypeVarTuple},
 };
 
 use super::{
@@ -56,7 +56,7 @@ impl Type {
                                 _ => todo!(),
                             }
                         }
-                        Type::Tuple(Rc::new(TupleContent::new_fixed_length(entries.into())))
+                        Type::Tuple(Rc::new(Tuple::new_fixed_length(entries.into())))
                     }
                     (ArbitraryLength(t1), ArbitraryLength(t2)) => t1.common_sub_type(i_s, t2)?,
                     (ArbitraryLength(t2), FixedLength(ts1))
@@ -70,7 +70,7 @@ impl Type {
                                 return None;
                             }
                         }
-                        Type::Tuple(Rc::new(TupleContent::new_fixed_length(entries.into())))
+                        Type::Tuple(Rc::new(Tuple::new_fixed_length(entries.into())))
                     }
                 })
             }

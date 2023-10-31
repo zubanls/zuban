@@ -11,7 +11,7 @@ use crate::inferred::Inferred;
 use crate::matching::Generics;
 use crate::node_ref::NodeRef;
 use crate::type_::{
-    CallableContent, ClassGenerics, CustomBehavior, LiteralKind, TupleContent, Type, TypeVarLikes,
+    CallableContent, ClassGenerics, CustomBehavior, LiteralKind, Tuple, Type, TypeVarLikes,
 };
 use crate::type_helpers::{dataclasses_replace, Class, Function, Instance};
 use crate::{new_class, InferenceState, PythonProject};
@@ -229,7 +229,7 @@ impl PythonState {
             type_of_object: Type::Any, // Will be set later
             type_of_any: Type::Type(Rc::new(Type::Any)),
             type_of_self: Type::Type(Rc::new(Type::Self_)),
-            type_of_arbitrary_tuple: Type::Type(Rc::new(Type::Tuple(TupleContent::new_empty()))),
+            type_of_arbitrary_tuple: Type::Type(Rc::new(Type::Tuple(Tuple::new_empty()))),
             any_callable: Rc::new(CallableContent::new_any(empty_type_var_likes.clone())),
             generator_with_any_generics: Type::Any, // Will be set later
             async_generator_with_any_generics: Type::Any, // Will be set later
@@ -568,11 +568,7 @@ impl PythonState {
     }
 
     #[inline]
-    pub fn tuple_class<'db: 'a, 'a>(
-        &'db self,
-        db: &'db Database,
-        tuple: &'a TupleContent,
-    ) -> Class<'a> {
+    pub fn tuple_class<'db: 'a, 'a>(&'db self, db: &'db Database, tuple: &'a Tuple) -> Class<'a> {
         let generics = tuple.tuple_class_generics(db);
         Class::from_position(self.tuple_node_ref(), Generics::List(generics, None), None)
     }

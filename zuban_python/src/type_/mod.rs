@@ -59,7 +59,7 @@ pub use named_tuple::{
 };
 pub use replace::ReplaceSelf;
 pub use simplified_union::simplified_union_from_iterators;
-pub use tuple::TupleContent;
+pub use tuple::Tuple;
 pub use type_var_likes::{
     CallableWithParent, ParamSpec, ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, TypeVar,
     TypeVarIndex, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
@@ -476,7 +476,7 @@ pub enum Type {
     FunctionOverload(Rc<FunctionOverload>),
     TypeVar(TypeVarUsage),
     Type(Rc<Type>),
-    Tuple(Rc<TupleContent>),
+    Tuple(Rc<Tuple>),
     Callable(Rc<CallableContent>),
     RecursiveAlias(Rc<RecursiveAlias>),
     NewType(Rc<NewType>),
@@ -1108,7 +1108,7 @@ impl Type {
                             }
                             gathered.push(type_or.clone())
                         }
-                        return Some(Type::Tuple(Rc::new(TupleContent::new_fixed_length(
+                        return Some(Type::Tuple(Rc::new(Tuple::new_fixed_length(
                             gathered.into(),
                         ))));
                     }
@@ -1438,7 +1438,7 @@ impl Type {
                 Type::Tuple(c2) => {
                     Type::Tuple(match (&c1.args, &c2.args) {
                         (FixedLength(ts1), FixedLength(ts2)) if ts1.len() == ts2.len() => {
-                            Rc::new(TupleContent::new_fixed_length(
+                            Rc::new(Tuple::new_fixed_length(
                                 // Performance issue: Same as above
                                 ts1.iter()
                                     .zip(ts2.iter())
@@ -1458,9 +1458,9 @@ impl Type {
                             ))
                         }
                         (ArbitraryLength(t1), ArbitraryLength(t2)) => Rc::new(
-                            TupleContent::new_arbitrary_length(t1.merge_matching_parts(db, &t2)),
+                            Tuple::new_arbitrary_length(t1.merge_matching_parts(db, &t2)),
                         ),
-                        _ => TupleContent::new_empty(),
+                        _ => Tuple::new_empty(),
                     })
                 }
                 _ => Type::Any,

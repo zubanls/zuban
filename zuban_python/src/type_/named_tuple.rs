@@ -19,14 +19,14 @@ use crate::{
 
 use super::{
     CallableContent, CallableParam, CallableParams, DbString, FormatStyle, FunctionKind,
-    ParamSpecific, RecursiveAlias, StringSlice, TupleContent, Type, TypeOrTypeVarTuple,
+    ParamSpecific, RecursiveAlias, StringSlice, Tuple, Type, TypeOrTypeVarTuple,
 };
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct NamedTuple {
     pub name: StringSlice,
     pub __new__: Rc<CallableContent>,
-    tuple: OnceCell<Rc<TupleContent>>,
+    tuple: OnceCell<Rc<Tuple>>,
 }
 
 impl NamedTuple {
@@ -66,10 +66,10 @@ impl NamedTuple {
         format!("{module}.{}", self.name(db))
     }
 
-    pub fn as_tuple(&self) -> Rc<TupleContent> {
+    pub fn as_tuple(&self) -> Rc<Tuple> {
         self.tuple
             .get_or_init(|| {
-                Rc::new(TupleContent::new_fixed_length(
+                Rc::new(Tuple::new_fixed_length(
                     self.params()
                         .iter()
                         .map(|t| {
@@ -83,7 +83,7 @@ impl NamedTuple {
             .clone()
     }
 
-    pub fn as_tuple_ref(&self) -> &TupleContent {
+    pub fn as_tuple_ref(&self) -> &Tuple {
         self.as_tuple();
         self.tuple.get().unwrap()
     }
@@ -228,7 +228,7 @@ impl NamedTuple {
                     result_type: as_self.map(|as_self| as_self()).unwrap_or(Type::Self_),
                 })
             }),
-            "_fields" => Type::Tuple(Rc::new(TupleContent::new_fixed_length(
+            "_fields" => Type::Tuple(Rc::new(Tuple::new_fixed_length(
                 std::iter::repeat(TypeOrTypeVarTuple::Type(i_s.db.python_state.str_type()))
                     .take(self.params().len())
                     .collect(),

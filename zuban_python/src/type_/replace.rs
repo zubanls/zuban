@@ -9,7 +9,7 @@ use super::{
     simplified_union_from_iterators, CallableContent, CallableParam, CallableParams, ClassGenerics,
     Dataclass, DoubleStarredParamSpecific, GenericClass, GenericItem, GenericsList, NamedTuple,
     ParamSpecArgument, ParamSpecTypeVars, ParamSpecific, RecursiveAlias, StarredParamSpecific,
-    TupleContent, TupleTypeArguments, Type, TypeArguments, TypeOrTypeVarTuple, TypeVarLike,
+    Tuple, TupleTypeArguments, Type, TypeArguments, TypeOrTypeVarTuple, TypeVarLike,
     TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypedDict, TypedDictGenerics, UnionEntry,
     UnionType,
 };
@@ -167,7 +167,7 @@ impl Type {
                 callable,
                 replace_self,
             ))),
-            Type::Tuple(content) => Type::Tuple(Rc::new(TupleContent::new(replace_tuple_likes(
+            Type::Tuple(content) => Type::Tuple(Rc::new(Tuple::new(replace_tuple_likes(
                 &content.args,
                 callable,
                 replace_self,
@@ -588,7 +588,7 @@ impl Type {
             Type::TypeVar(t) => Type::TypeVar(manager.remap_type_var(t)),
             Type::Type(type_) => Type::Type(Rc::new(type_.rewrite_late_bound_callables(manager))),
             Type::Tuple(content) => Type::Tuple(match &content.args {
-                TupleTypeArguments::FixedLength(ts) => Rc::new(TupleContent::new_fixed_length(
+                TupleTypeArguments::FixedLength(ts) => Rc::new(Tuple::new_fixed_length(
                     ts.iter()
                         .map(|g| match g {
                             TypeOrTypeVarTuple::Type(t) => {
@@ -600,9 +600,9 @@ impl Type {
                         })
                         .collect(),
                 )),
-                TupleTypeArguments::ArbitraryLength(t) => Rc::new(
-                    TupleContent::new_arbitrary_length(t.rewrite_late_bound_callables(manager)),
-                ),
+                TupleTypeArguments::ArbitraryLength(t) => Rc::new(Tuple::new_arbitrary_length(
+                    t.rewrite_late_bound_callables(manager),
+                )),
             }),
             Type::Literal { .. } => self.clone(),
             Type::Callable(content) => Type::Callable(Rc::new(

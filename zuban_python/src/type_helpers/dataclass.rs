@@ -20,7 +20,7 @@ use crate::{
     type_::{
         CallableContent, CallableParam, CallableParams, ClassGenerics, Dataclass, DataclassOptions,
         DbString, FunctionKind, GenericClass, Literal, LiteralKind, ParamSpecific, StringSlice,
-        TupleContent, Type, TypeOrTypeVarTuple, TypeVar, TypeVarKind,
+        Tuple, Type, TypeOrTypeVarTuple, TypeVar, TypeVarKind,
     },
     type_helpers::Callable,
 };
@@ -133,7 +133,7 @@ impl<'a> DataclassHelper<'a> {
             ));
         } else if name == "__match_args__" && self.0.options.match_args {
             let __init__ = Dataclass::__init__(self.0, i_s.db);
-            let tup = Rc::new(TupleContent::new_fixed_length(
+            let tup = Rc::new(Tuple::new_fixed_length(
                 __init__
                     .expect_simple_params()
                     .iter()

@@ -23,8 +23,8 @@ use crate::type_::{
     CallableParams, CallableWithParent, ClassGenerics, Dataclass, DbString,
     DoubleStarredParamSpecific, Enum, EnumMember, FunctionKind, GenericClass, GenericItem,
     GenericsList, Literal, LiteralKind, NamedTuple, Namespace, NewType, ParamSpecArgument,
-    ParamSpecUsage, ParamSpecific, RecursiveAlias, StarredParamSpecific, StringSlice, TupleContent,
-    Type, TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage,
+    ParamSpecUsage, ParamSpecific, RecursiveAlias, StarredParamSpecific, StringSlice, Tuple, Type,
+    TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage,
     TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, TypedDict, TypedDictGenerics,
     TypedDictMember, UnionEntry, UnionType,
 };
@@ -800,7 +800,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
                 SpecialType::Any => return Some(Type::Any),
                 SpecialType::Type => return Some(db.python_state.type_of_any.clone()),
-                SpecialType::Tuple => return Some(Type::Tuple(TupleContent::new_empty())),
+                SpecialType::Tuple => return Some(Type::Tuple(Tuple::new_empty())),
                 SpecialType::TypingNamedTuple => {
                     return Some(db.python_state.typing_named_tuple_type())
                 }
@@ -1732,9 +1732,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             if let SliceOrSimple::Simple(s) = slice_or_simple {
                 if s.named_expr.is_ellipsis_literal() {
                     let t = self.compute_slice_type(first);
-                    return TypeContent::Type(Type::Tuple(Rc::new(
-                        TupleContent::new_arbitrary_length(t),
-                    )));
+                    return TypeContent::Type(Type::Tuple(Rc::new(Tuple::new_arbitrary_length(t))));
                 }
             }
             slice_type
@@ -1759,9 +1757,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 _ => Rc::new([self.convert_slice_type_or_type_var_tuple(t, first)]),
             }
         };
-        TypeContent::Type(Type::Tuple(Rc::new(TupleContent::new_fixed_length(
-            generics,
-        ))))
+        TypeContent::Type(Type::Tuple(Rc::new(Tuple::new_fixed_length(generics))))
     }
 
     fn calculate_simplified_param_spec_generics<'y, I: Iterator<Item = SliceOrSimple<'y>>>(
@@ -3195,7 +3191,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 })
             })
             .collect();
-        Type::Tuple(Rc::new(TupleContent::new_fixed_length(generics)))
+        Type::Tuple(Rc::new(Tuple::new_fixed_length(generics)))
     }
 
     pub fn check_for_type_comment(
@@ -3594,7 +3590,7 @@ pub(super) fn cache_name_on_class(cls: Class, file: &PythonFile, name: Name) -> 
 fn wrap_starred(t: Type) -> Type {
     match &t {
         Type::ParamSpecArgs(_) => t,
-        _ => Type::Tuple(Rc::new(TupleContent::new_arbitrary_length(t))),
+        _ => Type::Tuple(Rc::new(Tuple::new_arbitrary_length(t))),
     }
 }
 

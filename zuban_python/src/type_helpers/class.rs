@@ -38,7 +38,7 @@ use crate::type_::{
     CallableContent, CallableLike, CallableParam, CallableParams, ClassGenerics, Dataclass,
     DataclassOptions, DbString, Enum, EnumMemberDefinition, FormatStyle, FunctionKind,
     FunctionOverload, GenericClass, GenericsList, NamedTuple, ParamSpecific, RecursiveAlias,
-    StringSlice, TupleContent, Type, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict,
+    StringSlice, Tuple, Type, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict,
     TypedDictMember, Variance,
 };
 use crate::type_helpers::dataclass::check_dataclass_options;
@@ -1701,7 +1701,7 @@ enum BaseKind {
     Dataclass(PointLink),
     NamedTuple(Rc<NamedTuple>),
     TypedDict,
-    Tuple(Rc<TupleContent>),
+    Tuple(Rc<Tuple>),
     Type,
     Enum,
 }

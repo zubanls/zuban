@@ -11,8 +11,8 @@ use crate::{
 
 use super::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, DoubleStarredParamSpecific,
-    GenericItem, GenericsList, ParamSpecific, StarredParamSpecific, TupleContent,
-    TupleTypeArguments, Type, TypeOrTypeVarTuple, TypeVarLike, Variance,
+    GenericItem, GenericsList, ParamSpecific, StarredParamSpecific, Tuple, TupleTypeArguments,
+    Type, TypeOrTypeVarTuple, TypeVarLike, Variance,
 };
 
 impl Type {
@@ -304,7 +304,7 @@ fn common_params(
 
 fn common_base_for_tuple_against_type(
     i_s: &InferenceState,
-    tup1: &TupleContent,
+    tup1: &Tuple,
     t2: &Type,
 ) -> Option<Type> {
     Some(match t2 {
@@ -316,12 +316,8 @@ fn common_base_for_tuple_against_type(
     })
 }
 
-fn common_base_for_tuples(
-    i_s: &InferenceState,
-    tup1: &TupleContent,
-    tup2: &TupleContent,
-) -> TupleContent {
-    TupleContent::new(match &tup2.args {
+fn common_base_for_tuples(i_s: &InferenceState, tup1: &Tuple, tup2: &Tuple) -> Tuple {
+    Tuple::new(match &tup2.args {
         TupleTypeArguments::FixedLength(ts2) => {
             let mut new_args = tup1.args.clone();
             common_base_type_of_type_var_tuple_with_items(

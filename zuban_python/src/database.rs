@@ -22,7 +22,7 @@ use crate::type_::CallableContent;
 use crate::type_::FunctionKind;
 use crate::type_::TypeVarLike;
 use crate::type_::TypeVarLikes;
-use crate::type_::{FunctionOverload, NamedTuple, NewType, TupleContent, Type};
+use crate::type_::{FunctionOverload, NamedTuple, NewType, Tuple, Type};
 use crate::type_helpers::{Class, Module};
 use crate::utils::{InsertOnlyVec, SymbolTable};
 use crate::workspaces::{
@@ -31,7 +31,7 @@ use crate::workspaces::{
 use crate::PythonProject;
 
 thread_local! {
-    static ARBITRARY_TUPLE: Rc<TupleContent> = Rc::new(TupleContent::new_arbitrary_length(Type::Any));
+    static ARBITRARY_TUPLE: Rc<Tuple> = Rc::new(Tuple::new_arbitrary_length(Type::Any));
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -971,7 +971,7 @@ impl ClassInfos {
         None
     }
 
-    pub fn maybe_tuple(&self) -> Option<Rc<TupleContent>> {
+    pub fn maybe_tuple(&self) -> Option<Rc<Tuple>> {
         match self.class_type {
             ClassType::NamedTuple | ClassType::Tuple => {
                 for base in self.mro.iter() {
@@ -1009,7 +1009,7 @@ mod tests {
         use std::mem::size_of;
         assert_eq!(size_of::<ClassGenerics>(), 24);
         assert_eq!(size_of::<UnionType>(), 24);
-        assert_eq!(size_of::<TupleContent>(), 40);
+        assert_eq!(size_of::<Tuple>(), 40);
         assert_eq!(size_of::<Type>(), 40); // TODO Would like it to be 32, but ClassGenerics is 24
         assert_eq!(size_of::<ComplexPoint>(), size_of::<Type>());
         assert_eq!(size_of::<ClassStorage>(), 120);

@@ -20,16 +20,16 @@ use super::{
 };
 
 thread_local! {
-    static ARBITRARY_TUPLE: Rc<TupleContent> = Rc::new(TupleContent::new_arbitrary_length(Type::Any));
+    static ARBITRARY_TUPLE: Rc<Tuple> = Rc::new(Tuple::new_arbitrary_length(Type::Any));
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct TupleContent {
+pub struct Tuple {
     pub args: TupleTypeArguments,
     pub(super) tuple_class_generics: OnceCell<GenericsList>,
 }
 
-impl TupleContent {
+impl Tuple {
     pub fn new(args: TupleTypeArguments) -> Self {
         Self {
             args,
@@ -163,7 +163,7 @@ impl TupleContent {
                 }
                 args @ TupleTypeArguments::FixedLength(ts) => slice
                     .callback_on_tuple_indexes(i_s, ts, |start, end, step| {
-                        Inferred::from_type(Type::Tuple(Rc::new(TupleContent::new_fixed_length(
+                        Inferred::from_type(Type::Tuple(Rc::new(Tuple::new_fixed_length(
                             match step {
                                 1 => ts[start..end].into(),
                                 n if n > 1 => {
@@ -177,11 +177,9 @@ impl TupleContent {
                         ))))
                     })
                     .unwrap_or_else(|| {
-                        Inferred::from_type(Type::Tuple(Rc::new(
-                            TupleContent::new_arbitrary_length(simplified_union_of_tuple_entries(
-                                i_s, ts,
-                            )),
-                        )))
+                        Inferred::from_type(Type::Tuple(Rc::new(Tuple::new_arbitrary_length(
+                            simplified_union_of_tuple_entries(i_s, ts),
+                        ))))
                     }),
             },
         }
@@ -189,7 +187,7 @@ impl TupleContent {
 }
 
 pub fn lookup_on_tuple(
-    tuple: Rc<TupleContent>,
+    tuple: Rc<Tuple>,
     i_s: &InferenceState,
     node_ref: NodeRef,
     name: &str,
@@ -222,7 +220,7 @@ pub fn lookup_on_tuple(
     })
 }
 
-pub fn lookup_tuple_magic_methods(tuple: Rc<TupleContent>, name: &str) -> LookupResult {
+pub fn lookup_tuple_magic_methods(tuple: Rc<Tuple>, name: &str) -> LookupResult {
     match name {
         "__mul__" | "__rmul__" => {
             return LookupResult::UnknownName(Inferred::from_type(Type::CustomBehavior(
@@ -281,7 +279,7 @@ fn tuple_add<'db>(
 
 fn tuple_add_internal<'db>(
     i_s: &InferenceState<'db, '_>,
-    tuple1: Rc<TupleContent>,
+    tuple1: Rc<Tuple>,
     args: &dyn Arguments<'db>,
 ) -> Option<Inferred> {
     let first = args.maybe_single_positional_arg(i_s, &mut ResultContext::Unknown)?;
@@ -291,7 +289,7 @@ fn tuple_add_internal<'db>(
                 if let Type::Tuple(tuple2) = t.as_ref() {
                     if let TupleTypeArguments::FixedLength(ts2) = &tuple2.args {
                         return Some(Inferred::from_type(Type::Tuple(Rc::new(
-                            TupleContent::new_fixed_length(
+                            Tuple::new_fixed_length(
                                 ts1.iter().chain(ts2.iter()).cloned().collect(),
                             ),
                         ))));
@@ -326,7 +324,7 @@ fn tuple_mul<'db>(
 
 fn tuple_mul_internal<'db>(
     i_s: &InferenceState<'db, '_>,
-    tuple: Rc<TupleContent>,
+    tuple: Rc<Tuple>,
     args: &dyn Arguments<'db>,
 ) -> Option<Inferred> {
     let first = args.maybe_single_positional_arg(i_s, &mut ResultContext::Unknown)?;
@@ -337,9 +335,7 @@ fn tuple_mul_internal<'db>(
                 todo!("Do we really want extremely large tuples?")
             }
             Some(Inferred::from_type(Type::Tuple(Rc::new(
-                TupleContent::new_fixed_length(
-                    ts.iter().cycle().take(int * ts.len()).cloned().collect(),
-                ),
+                Tuple::new_fixed_length(ts.iter().cycle().take(int * ts.len()).cloned().collect()),
             ))))
         })
     } else {
