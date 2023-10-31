@@ -53,7 +53,7 @@ impl<'a> Callable<'a> {
         self.execute_internal(i_s, args, false, on_type_error, result_context)
     }
 
-    pub(super) fn execute_internal<'db>(
+    pub fn execute_internal<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,

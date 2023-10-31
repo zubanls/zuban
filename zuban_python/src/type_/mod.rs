@@ -51,7 +51,11 @@ use crate::utils::join_with_commas;
 use crate::utils::{bytes_repr, str_repr};
 use crate::workspaces::Directory;
 
-pub use self::dataclass::{Dataclass, DataclassOptions};
+pub use self::dataclass::{
+    check_dataclass_options, dataclass_init_func, dataclass_initialize, dataclasses_replace,
+    lookup_dataclass_symbol, lookup_on_dataclass, lookup_on_dataclass_type, Dataclass,
+    DataclassOptions,
+};
 pub use common_base_type::{common_base_type, common_base_type_of_type_var_tuple_with_items};
 pub use matching::match_tuple_type_arguments;
 pub use named_tuple::{
@@ -579,7 +583,7 @@ impl Type {
                 Type::Dataclass(d) => {
                     let cls = d.class(i_s.db);
                     if d.options.init {
-                        let mut init = Dataclass::__init__(d, i_s.db).clone();
+                        let mut init = dataclass_init_func(d, i_s.db).clone();
                         if d.class.generics != ClassGenerics::NotDefinedYet
                             || cls.use_cached_type_vars(i_s.db).is_empty()
                         {

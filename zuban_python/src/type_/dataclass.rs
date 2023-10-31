@@ -6,19 +6,24 @@ use parsa_python_ast::{
 };
 
 use crate::{
-    arguments::{Arguments, SimpleArguments},
+    arguments::{Argument, ArgumentKind, Arguments, SimpleArguments},
     database::{Database, Specific},
     diagnostics::{Issue, IssueType},
     file::{File, PythonFile},
     inference_state::InferenceState,
-    matching::{replace_class_type_vars, ResultContext},
+    inferred::Inferred,
+    matching::{
+        calculate_callable_type_vars_and_return, replace_class_type_vars, LookupKind, LookupResult,
+        OnTypeError, ResultContext,
+    },
     node_ref::NodeRef,
-    type_helpers::{Class, Function, TypeOrClass},
+    type_helpers::{Callable, Class, Function, Instance, TypeOrClass},
 };
 
 use super::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, DbString, FunctionKind,
-    GenericClass, ParamSpecific, StringSlice, Type,
+    GenericClass, Literal, LiteralKind, ParamSpecific, StringSlice, Tuple, Type,
+    TypeOrTypeVarTuple, TypeVar, TypeVarKind,
 };
 
 const ORDER_METHOD_NAMES: [&'static str; 4] = ["__lt__", "__gt__", "__le__", "__ge__"];
@@ -73,18 +78,6 @@ impl Dataclass {
     pub fn has_defined_generics(&self) -> bool {
         !matches!(self.class.generics, ClassGenerics::NotDefinedYet)
     }
-
-    pub fn __init__<'a>(self_: &'a Rc<Self>, db: &Database) -> &'a CallableContent {
-        if self_.__init__.get().is_none() {
-            // Cannot use get_or_init, because this might cycle ones for some reasons (see for
-            // example the test testDeferredDataclassInitSignatureSubclass)
-            self_
-                .__init__
-                .set(calculate_init_of_dataclass(db, self_))
-                .ok();
-        }
-        self_.__init__.get().unwrap()
-    }
 }
 
 pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> CallableContent {
@@ -134,7 +127,7 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
                     );
                 }
                 let cls = super_dataclass.class(db);
-                for param in Dataclass::__init__(super_dataclass, db)
+                for param in dataclass_init_func(super_dataclass, db)
                     .expect_simple_params()
                     .iter()
                 {
@@ -365,4 +358,317 @@ fn field_options_from_args<'db>(
         }
     }
     options
+}
+
+pub fn check_dataclass_options<'db>(
+    i_s: &InferenceState<'db, '_>,
+    args: &SimpleArguments<'db, '_>,
+) -> DataclassOptions {
+    let mut options = DataclassOptions::default();
+    let assign_option = |target: &mut _, arg: Argument<'db, '_>| {
+        let result = arg.infer(i_s, &mut ResultContext::Unknown);
+        if let Some(bool_) = result.maybe_bool_literal(i_s) {
+            *target = bool_;
+        } else {
+            todo!()
+        }
+    };
+    for arg in args.iter() {
+        if let Some(key) = arg.keyword_name(i_s.db) {
+            match key {
+                "kw_only" => assign_option(&mut options.kw_only, arg),
+                "frozen" => assign_option(&mut options.frozen, arg),
+                "order" => assign_option(&mut options.order, arg),
+                "eq" => assign_option(&mut options.eq, arg),
+                "init" => assign_option(&mut options.init, arg),
+                "match_args" => assign_option(&mut options.match_args, arg),
+                "slots" => assign_option(&mut options.slots, arg),
+                _ => (),
+            }
+        } else {
+            todo!("{:?}", arg)
+        }
+    }
+    if !options.eq && options.order {
+        options.eq = true;
+        args.as_node_ref()
+            .add_issue(i_s, IssueType::DataclassOrderEnabledButNotEq);
+    }
+    options
+}
+
+pub fn dataclasses_replace<'db>(
+    i_s: &InferenceState<'db, '_>,
+    args: &dyn Arguments<'db>,
+    result_context: &mut ResultContext,
+    on_type_error: OnTypeError<'db, '_>,
+    bound: Option<&Type>,
+) -> Inferred {
+    debug_assert!(bound.is_none());
+
+    let mut arg_iterator = args.iter();
+    if let Some(first) = arg_iterator.next() {
+        if let ArgumentKind::Positional { node_ref, .. } = &first.kind {
+            let inferred = first.infer(i_s, &mut ResultContext::Unknown);
+            if run_on_dataclass(
+                i_s,
+                Some(*node_ref),
+                &inferred.as_cow_type(i_s),
+                &mut |dataclass| {
+                    let mut replace_func = dataclass_init_func(dataclass, i_s.db).clone();
+                    let mut params: Vec<_> = replace_func.expect_simple_params().into();
+                    for param in params.iter_mut() {
+                        let t = param.param_specific.maybe_type().unwrap();
+                        param.param_specific = ParamSpecific::KeywordOnly(t.clone());
+                        // All normal dataclass arguments are optional, because they can be
+                        // overridden or just be left in place. However this is different for
+                        // InitVars, which always need to be there. To check if something is an
+                        // InitVar, we use this hack and check if the attribute exists on the
+                        // dataclass. If not, it's an InitVar.
+                        if lookup_on_dataclass(
+                            dataclass.clone(),
+                            i_s,
+                            args.as_node_ref(),
+                            param.name.as_ref().unwrap().as_str(i_s.db),
+                        )
+                        .is_some()
+                        {
+                            param.has_default = true;
+                        }
+                    }
+                    params.insert(
+                        0,
+                        CallableParam {
+                            param_specific: ParamSpecific::PositionalOnly(Type::Any),
+                            name: None,
+                            has_default: false,
+                        },
+                    );
+                    replace_func.params = CallableParams::Simple(params.into());
+                    Callable::new(&replace_func, Some(dataclass.class(i_s.db))).execute_internal(
+                        i_s,
+                        args,
+                        false,
+                        on_type_error.with_custom_generate_diagnostic_string(&|_, _| {
+                            Some(format!(
+                                r#""replace" of "{}""#,
+                                dataclass.class(i_s.db).format_short(i_s.db)
+                            ))
+                        }),
+                        &mut ResultContext::Unknown,
+                    );
+                },
+            ) {
+                return inferred;
+            } else {
+                return Inferred::new_any();
+            }
+            // All other cases are checked by the type checker that uses the typeshed stubs.
+        }
+    }
+    // Execute the original function (in typeshed).
+    return i_s.db.python_state.dataclasses_replace().execute(
+        i_s,
+        args,
+        result_context,
+        on_type_error,
+    );
+}
+
+fn run_on_dataclass(
+    i_s: &InferenceState,
+    from: Option<NodeRef>,
+    t: &Type,
+    callback: &mut impl FnMut(&Rc<Dataclass>),
+) -> bool {
+    // Result type signals if we were successful
+    let type_var_error = |tv: &TypeVar| {
+        if let Some(from) = from {
+            from.add_issue(
+                i_s,
+                IssueType::DataclassReplaceExpectedDataclassInTypeVarBound {
+                    got: tv.name(i_s.db).into(),
+                },
+            );
+        }
+        false
+    };
+    match t {
+        Type::Dataclass(d) => {
+            callback(d);
+            true
+        }
+        Type::Union(u) => u.iter().all(|t| run_on_dataclass(i_s, from, t, callback)),
+        Type::Any => true,
+        Type::TypeVar(tv) => match &tv.type_var.kind {
+            TypeVarKind::Bound(bound) => {
+                let result = run_on_dataclass(i_s, None, bound, callback);
+                if !result {
+                    type_var_error(&tv.type_var);
+                }
+                result
+            }
+            TypeVarKind::Constraints(_) => todo!(),
+            TypeVarKind::Unrestricted => type_var_error(&tv.type_var),
+        },
+        _ => {
+            if let Some(from) = from {
+                from.add_issue(
+                    i_s,
+                    IssueType::DataclassReplaceExpectedDataclass {
+                        got: t.format_short(i_s.db),
+                    },
+                );
+            }
+            false
+        }
+    }
+}
+
+pub fn dataclass_initialize<'db>(
+    dataclass: &Rc<Dataclass>,
+    i_s: &InferenceState<'db, '_>,
+    args: &dyn Arguments<'db>,
+    result_context: &mut ResultContext,
+    on_type_error: OnTypeError<'db, '_>,
+) -> Inferred {
+    let class = dataclass.class(i_s.db);
+    let __init__ = dataclass_init_func(dataclass, i_s.db);
+    let class_generics =
+        if !dataclass.options.init || class.lookup_symbol(i_s, "__init__").is_some() {
+            // If the class has an __init__ method defined, the class itself wins.
+            class.execute(i_s, args, result_context, on_type_error);
+            return Inferred::from_type(Type::Dataclass(dataclass.clone()));
+        } else {
+            calculate_callable_type_vars_and_return(
+                i_s,
+                Callable::new(__init__, Some(class)),
+                args.iter(),
+                &|| args.as_node_ref(),
+                false,
+                result_context,
+                Some(on_type_error),
+            )
+        };
+    Inferred::from_type(Type::Dataclass(if dataclass.has_defined_generics() {
+        dataclass.clone()
+    } else {
+        Dataclass::new(
+            GenericClass {
+                link: dataclass.class.link,
+                generics: class_generics.type_arguments_into_class_generics(),
+            },
+            dataclass.options,
+        )
+    }))
+}
+
+pub fn dataclass_init_func<'a>(self_: &'a Rc<Dataclass>, db: &Database) -> &'a CallableContent {
+    if self_.__init__.get().is_none() {
+        // Cannot use get_or_init, because this might cycle ones for some reasons (see for
+        // example the test testDeferredDataclassInitSignatureSubclass)
+        self_
+            .__init__
+            .set(calculate_init_of_dataclass(db, self_))
+            .ok();
+    }
+    self_.__init__.get().unwrap()
+}
+
+pub fn lookup_dataclass_symbol<'db: 'a, 'a>(
+    self_: &'a Rc<Dataclass>,
+    i_s: &InferenceState<'db, '_>,
+    name: &str,
+) -> (Option<Class<'a>>, LookupResult) {
+    if self_.options.init && name == "__init__" {
+        return (
+            None,
+            LookupResult::UnknownName(Inferred::from_type(Type::Callable(Rc::new(
+                dataclass_init_func(self_, i_s.db).clone(),
+            )))),
+        );
+    }
+    let class = self_.class(i_s.db);
+    (Some(class), class.lookup_symbol(i_s, name))
+}
+
+pub fn lookup_on_dataclass_type(
+    self_: Rc<Dataclass>,
+    i_s: &InferenceState,
+    from: NodeRef,
+    name: &str,
+    kind: LookupKind,
+) -> LookupResult {
+    if name == "__dataclass_fields__" && kind == LookupKind::Normal {
+        return LookupResult::UnknownName(Inferred::from_type(
+            i_s.db.python_state.dataclass_fields_type.clone(),
+        ));
+    }
+    if self_.options.order && ORDER_METHOD_NAMES.contains(&name) && kind == LookupKind::Normal {
+        return order_func(self_, i_s, true);
+    }
+    self_.class(i_s.db).lookup(i_s, from, name, kind)
+}
+
+pub fn lookup_on_dataclass(
+    self_: Rc<Dataclass>,
+    i_s: &InferenceState,
+    from: NodeRef,
+    name: &str,
+) -> LookupResult {
+    if name == "__dataclass_fields__" {
+        return LookupResult::UnknownName(Inferred::from_type(
+            i_s.db.python_state.dataclass_fields_type.clone(),
+        ));
+    } else if name == "__match_args__" && self_.options.match_args {
+        let __init__ = dataclass_init_func(&self_, i_s.db);
+        let tup = Rc::new(Tuple::new_fixed_length(
+            __init__
+                .expect_simple_params()
+                .iter()
+                .take_while(|p| p.param_specific.maybe_positional_type().is_some())
+                .map(|p| {
+                    TypeOrTypeVarTuple::Type(Type::Literal(Literal::new(LiteralKind::String(
+                        p.name.clone().unwrap(),
+                    ))))
+                })
+                .collect(),
+        ));
+        return LookupResult::UnknownName(Inferred::from_type(Type::Tuple(tup)));
+    }
+    if self_.options.order && ORDER_METHOD_NAMES.contains(&name) {
+        return order_func(self_, i_s, false);
+    }
+    if self_.options.slots {
+        todo!()
+    }
+    Instance::new(self_.class(i_s.db), None)
+        .lookup(i_s, from, name, LookupKind::Normal)
+        .and_then(|inf| match inf.as_cow_type(i_s).as_ref() {
+            // Init vars are not actually available on the class. They are just passed to __init__
+            // and are not class members.
+            Type::Class(c) if c.link == i_s.db.python_state.dataclasses_init_var_link() => None,
+            _ => Some(inf),
+        })
+        .unwrap_or(LookupResult::None)
+}
+
+fn order_func(self_: Rc<Dataclass>, i_s: &InferenceState, from_type: bool) -> LookupResult {
+    return LookupResult::UnknownName(Inferred::from_type(Type::Callable(Rc::new(
+        CallableContent {
+            name: None,
+            class_name: None,
+            defined_at: self_.class.link,
+            kind: FunctionKind::Function {
+                had_first_self_or_class_annotation: false,
+            },
+            type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
+            params: CallableParams::Simple(Rc::new([CallableParam {
+                param_specific: ParamSpecific::PositionalOnly(Type::Dataclass(self_)),
+                name: None,
+                has_default: false,
+            }])),
+            result_type: i_s.db.python_state.bool_type(),
+        },
+    ))));
 }

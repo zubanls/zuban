@@ -35,13 +35,12 @@ use crate::matching::{
 use crate::node_ref::NodeRef;
 use crate::python_state::NAME_TO_FUNCTION_DIFF;
 use crate::type_::{
-    CallableContent, CallableLike, CallableParam, CallableParams, ClassGenerics, Dataclass,
-    DataclassOptions, DbString, Enum, EnumMemberDefinition, FormatStyle, FunctionKind,
-    FunctionOverload, GenericClass, GenericsList, NamedTuple, ParamSpecific, RecursiveAlias,
-    StringSlice, Tuple, Type, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict,
-    TypedDictMember, Variance,
+    check_dataclass_options, dataclass_init_func, CallableContent, CallableLike, CallableParam,
+    CallableParams, ClassGenerics, Dataclass, DataclassOptions, DbString, Enum,
+    EnumMemberDefinition, FormatStyle, FunctionKind, FunctionOverload, GenericClass, GenericsList,
+    NamedTuple, ParamSpecific, RecursiveAlias, StringSlice, Tuple, Type, TypeVarLike,
+    TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember, Variance,
 };
-use crate::type_helpers::dataclass::check_dataclass_options;
 use crate::type_helpers::enum_::infer_value_on_member;
 use crate::type_helpers::{format_pretty_callable, infer_typed_dict_total_argument};
 
@@ -428,7 +427,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
 
         if let Some(dataclass) = was_dataclass {
-            Dataclass::__init__(&dataclass, i_s.db);
+            dataclass_init_func(&dataclass, i_s.db);
         }
 
         if let Some(enum_) = was_enum {

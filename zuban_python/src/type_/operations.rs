@@ -15,12 +15,13 @@ use crate::{
     type_::NamedTuple,
     type_helpers::{
         lookup_in_namespace, lookup_on_enum_class, lookup_on_enum_instance,
-        lookup_on_enum_member_instance, Callable, Class, DataclassHelper, Instance, Module,
-        OverloadedFunction, TypedDictHelper,
+        lookup_on_enum_member_instance, Callable, Class, Instance, Module, OverloadedFunction,
+        TypedDictHelper,
     },
 };
 
 use super::{
+    dataclass_initialize, lookup_dataclass_symbol, lookup_on_dataclass, lookup_on_dataclass_type,
     tuple::{lookup_on_tuple, lookup_tuple_magic_methods},
     Type, TypeVarKind,
 };
@@ -67,7 +68,7 @@ impl Type {
     ) -> (Option<Class<'a>>, LookupResult) {
         match self {
             Type::Class(c) => todo!(),
-            Type::Dataclass(d) => DataclassHelper(d).lookup_symbol(i_s, name),
+            Type::Dataclass(d) => lookup_dataclass_symbol(d, i_s, name),
             Type::TypedDict(_) => todo!(),
             Type::Tuple(tuple) => (None, lookup_tuple_magic_methods(tuple.clone(), name)),
             Type::NamedTuple(nt) => (
@@ -215,7 +216,7 @@ impl Type {
                 }
                 callable(self, result)
             }
-            Type::Dataclass(d) => callable(self, DataclassHelper(d).lookup(i_s, from, name)),
+            Type::Dataclass(d) => callable(self, lookup_on_dataclass(d.clone(), i_s, from, name)),
             Type::TypedDict(d) => callable(self, TypedDictHelper(d).lookup(i_s, from, name, kind)),
             Type::NamedTuple(nt) => callable(self, nt.lookup(i_s, name, Some(&|| self.clone()))),
             Type::Never => (),
@@ -520,7 +521,7 @@ pub fn attribute_access_of_type(
             .lookup(i_s, from, name, kind)
             .or_else(|| LookupResult::any()),
         t @ Type::Enum(e) => lookup_on_enum_class(i_s, from, e, name, result_context),
-        Type::Dataclass(d) => DataclassHelper(d).lookup_on_type(i_s, from, name, kind),
+        Type::Dataclass(d) => lookup_on_dataclass_type(d.clone(), i_s, from, name, kind),
         Type::TypedDict(d) => i_s
             .db
             .python_state
@@ -603,9 +604,7 @@ pub fn execute_type_of_type<'db>(
             Inferred::from_type(Type::Self_)
         }
         Type::Any => Inferred::new_any(),
-        Type::Dataclass(d) => {
-            DataclassHelper(d).initialize(i_s, args, result_context, on_type_error)
-        }
+        Type::Dataclass(d) => dataclass_initialize(d, i_s, args, result_context, on_type_error),
         Type::TypedDict(td) => {
             TypedDictHelper(td).initialize(i_s, args, result_context, on_type_error)
         }

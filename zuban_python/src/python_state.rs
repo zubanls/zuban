@@ -11,9 +11,10 @@ use crate::inferred::Inferred;
 use crate::matching::Generics;
 use crate::node_ref::NodeRef;
 use crate::type_::{
-    CallableContent, ClassGenerics, CustomBehavior, LiteralKind, Tuple, Type, TypeVarLikes,
+    dataclasses_replace, CallableContent, ClassGenerics, CustomBehavior, LiteralKind, Tuple, Type,
+    TypeVarLikes,
 };
-use crate::type_helpers::{dataclasses_replace, Class, Function, Instance};
+use crate::type_helpers::{Class, Function, Instance};
 use crate::{new_class, InferenceState, PythonProject};
 
 // This is a bit hacky, but I'm sure the tests will fail somewhere if this constant is
