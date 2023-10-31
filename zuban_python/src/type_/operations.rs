@@ -16,11 +16,14 @@ use crate::{
     type_helpers::{
         lookup_in_namespace, lookup_on_enum_class, lookup_on_enum_instance,
         lookup_on_enum_member_instance, Callable, Class, DataclassHelper, Instance, Module,
-        OverloadedFunction, Tuple, TypedDictHelper,
+        OverloadedFunction, TypedDictHelper,
     },
 };
 
-use super::{Type, TypeVarKind};
+use super::{
+    tuple::{lookup_on_tuple, lookup_tuple_magic_methods},
+    Type, TypeVarKind,
+};
 
 impl Type {
     pub fn lookup(
@@ -66,7 +69,7 @@ impl Type {
             Type::Class(c) => todo!(),
             Type::Dataclass(d) => DataclassHelper(d).lookup_symbol(i_s, name),
             Type::TypedDict(_) => todo!(),
-            Type::Tuple(t) => (None, { Tuple::new(t).lookup_magic_methods(name) }),
+            Type::Tuple(tuple) => (None, lookup_tuple_magic_methods(tuple.clone(), name)),
             Type::NamedTuple(nt) => (
                 Some(i_s.db.python_state.typing_named_tuple_class()),
                 nt.type_lookup(i_s, name, None),
@@ -149,7 +152,7 @@ impl Type {
                     )
                 }
             },
-            Type::Tuple(tup) => callable(self, Tuple::new(tup).lookup(i_s, from, name)),
+            Type::Tuple(tup) => callable(self, lookup_on_tuple(tup.clone(), i_s, from, name)),
             Type::Union(union) => {
                 for t in union.iter() {
                     t.run_after_lookup_on_each_union_member(
@@ -268,7 +271,7 @@ impl Type {
                 result_context,
             ),
             Type::Any => Inferred::new_any(),
-            Type::Tuple(tup) => Tuple::new(tup).get_item(i_s, slice_type, result_context),
+            Type::Tuple(tup) => tup.get_item(i_s, slice_type, result_context),
             Type::NamedTuple(nt) => nt.get_item(i_s, slice_type, result_context),
             Type::Union(union) => Inferred::gather_simplified_union(i_s, |callable| {
                 for t in union.iter() {
@@ -415,7 +418,7 @@ impl Type {
         };
         match self {
             Type::Class(c) => Instance::new(c.class(i_s.db), None).iter(i_s, from),
-            Type::Tuple(content) => Tuple::new(content).iter(i_s, from),
+            Type::Tuple(tuple) => tuple.iter(i_s, from),
             Type::NamedTuple(nt) => nt.iter(i_s, from),
             Type::Union(union) => {
                 let mut items = vec![];

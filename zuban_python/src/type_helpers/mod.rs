@@ -7,7 +7,6 @@ mod function;
 mod instance;
 mod module;
 mod overload;
-mod tuple;
 mod typed_dict;
 mod typing;
 mod utils;
@@ -23,7 +22,6 @@ pub use function::{is_private, FirstParamKind, FirstParamProperties, Function, G
 pub use instance::{execute_super, Instance};
 pub use module::{dotted_path_from_dir, lookup_in_namespace, Module};
 pub use overload::OverloadedFunction;
-pub use tuple::Tuple;
 pub use typed_dict::{
     infer_typed_dict_total_argument, new_typed_dict, typed_dict_get, TypedDictHelper,
     TypedDictMemberGatherer,
@@ -32,3 +30,4 @@ pub use typing::{
     execute_assert_type, execute_type, NewTypeClass, ParamSpecClass, RevealTypeFunction,
     TypeVarClass, TypeVarTupleClass, TypingCast,
 };
+pub use utils::method_with_fallback;

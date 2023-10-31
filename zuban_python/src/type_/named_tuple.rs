@@ -13,7 +13,7 @@ use crate::{
     matching::{FormatData, Generics, IteratorContent, LookupResult, OnTypeError, ResultContext},
     new_class,
     node_ref::NodeRef,
-    type_helpers::{start_namedtuple_params, Module, Tuple},
+    type_helpers::{start_namedtuple_params, Module},
     utils::join_with_commas,
 };
 
@@ -130,7 +130,7 @@ impl NamedTuple {
     }
 
     pub fn iter(&self, i_s: &InferenceState, from: NodeRef) -> IteratorContent {
-        Tuple::new(&self.as_tuple()).iter(i_s, from)
+        self.as_tuple().iter(i_s, from)
     }
 
     pub fn get_item(
@@ -139,7 +139,7 @@ impl NamedTuple {
         slice_type: &SliceType,
         result_context: &mut ResultContext,
     ) -> Inferred {
-        Tuple::new(&self.as_tuple()).get_item(i_s, slice_type, result_context)
+        self.as_tuple().get_item(i_s, slice_type, result_context)
     }
 
     fn lookup_internal(

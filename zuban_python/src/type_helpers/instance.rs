@@ -4,7 +4,7 @@ use std::rc::Rc;
 use parsa_python_ast::Name;
 
 use super::class::TypeOrClass;
-use super::{Class, MroIterator, Tuple};
+use super::{Class, MroIterator};
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments, NoArguments};
 use crate::database::{Database, PointLink, Specific};
 use crate::debug;
@@ -195,7 +195,7 @@ impl<'a> Instance<'a> {
     pub fn iter(&self, i_s: &InferenceState, from: NodeRef) -> IteratorContent {
         if let Some(tup) = self.class.use_cached_class_infos(i_s.db).maybe_tuple() {
             // TODO this doesn't take care of the mro and could not be the first __iter__
-            return Tuple::new(&tup).iter(i_s, from);
+            return tup.iter(i_s, from);
         }
         let mro_iterator = self.class.mro(i_s.db);
         let finder = ClassMroFinder {
@@ -221,7 +221,7 @@ impl<'a> Instance<'a> {
                 }
                 FoundOnClass::UnresolvedType(t) => {
                     if let Type::Tuple(tup) = t.as_ref() {
-                        return Tuple::new(tup).iter(i_s, from);
+                        return tup.iter(i_s, from);
                     } else {
                         todo!();
                     }
@@ -392,7 +392,7 @@ impl<'a> Instance<'a> {
                 }
                 FoundOnClass::UnresolvedType(t) => match t.as_ref() {
                     Type::Tuple(t) => {
-                        return Tuple::new(t).get_item(i_s, slice_type, result_context);
+                        return t.get_item(i_s, slice_type, result_context);
                     }
                     _ => (),
                 },
