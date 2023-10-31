@@ -1889,6 +1889,7 @@ impl<'a> TypeOrClass<'a> {
             Self::Type(t) => match t.as_ref() {
                 Type::Dataclass(d) => d.class(db).name(),
                 Type::NamedTuple(nt) => nt.name(db),
+                Type::Tuple(_) => "Tuple",
                 _ => todo!(),
             },
         }

@@ -92,12 +92,13 @@ testOrOperationInferredFromContext
 testRecursiveDoubleUnionNoCrash
 testNoRecursiveExpandInstanceUnionCrashGeneric
 testNoRecursiveExpandInstanceUnionCrashInference
-# recursive limits missing for joins
+# recursive limits missing for joins / unions
 testRecursiveAliasGenericInferenceNested
 testRecursiveAliasTopUnion
 testCrashInJoinOfSelfRecursiveNamedTuples
 testGenericJoinRecursiveTypes
 testRecursiveAliasWithRecursiveInstance
+testBasicRecursiveGenericNamedTuple
 class_generics_recursion
 # Invalid recursive aliases --enable-recursive-aliases
 testRecursiveAliasesProhibitBadAliases
@@ -383,8 +384,6 @@ testSelfTypeNew_explicit
 
 # "Self type cannot be used in NamedTuple item type"
 testNamedTupleSelfItemNotAllowed
-# Recursive generic NamedTuple
-testBasicRecursiveGenericNamedTuple
 # NamedTuple special methods
 testGenericNamedTupleMethods
 

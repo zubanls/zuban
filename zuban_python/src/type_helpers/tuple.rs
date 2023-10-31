@@ -15,6 +15,7 @@ use crate::type_::{
 use crate::type_helpers::Instance;
 
 use super::utils::method_with_fallback;
+use super::TypeOrClass;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Tuple<'a> {
@@ -41,7 +42,7 @@ impl<'a> Tuple<'a> {
         }
     }
 
-    pub fn lookup(&self, i_s: &InferenceState, node_ref: NodeRef, name: &str) -> LookupResult {
+    pub fn lookup_magic_methods(&self, name: &str) -> LookupResult {
         match name {
             "__mul__" | "__rmul__" => {
                 return LookupResult::UnknownName(Inferred::from_type(Type::CustomBehavior(
@@ -59,7 +60,14 @@ impl<'a> Tuple<'a> {
                     ),
                 )));
             }
-            _ => (),
+            _ => LookupResult::None,
+        }
+    }
+
+    pub fn lookup(&self, i_s: &InferenceState, node_ref: NodeRef, name: &str) -> LookupResult {
+        let result = self.lookup_magic_methods(name);
+        if result.is_some() {
+            return result;
         }
         let tuple_cls = i_s.db.python_state.tuple_class(i_s.db, self.content);
         let tuple_instance = Instance::new(tuple_cls, None);
@@ -239,11 +247,17 @@ fn tuple_add_internal<'db>(
 ) -> Option<Inferred> {
     let first = args.maybe_single_positional_arg(i_s, &mut ResultContext::Unknown)?;
     if let TupleTypeArguments::FixedLength(ts1) = &tuple1.args {
-        if let Type::Tuple(tuple2) = first.as_cow_type(i_s).as_ref() {
-            if let TupleTypeArguments::FixedLength(ts2) = &tuple2.args {
-                return Some(Inferred::from_type(Type::Tuple(Rc::new(
-                    TupleContent::new_fixed_length(ts1.iter().chain(ts2.iter()).cloned().collect()),
-                ))));
+        for (_, type_or_class) in first.as_cow_type(i_s).mro(i_s.db) {
+            if let TypeOrClass::Type(t) = type_or_class {
+                if let Type::Tuple(tuple2) = t.as_ref() {
+                    if let TupleTypeArguments::FixedLength(ts2) = &tuple2.args {
+                        return Some(Inferred::from_type(Type::Tuple(Rc::new(
+                            TupleContent::new_fixed_length(
+                                ts1.iter().chain(ts2.iter()).cloned().collect(),
+                            ),
+                        ))));
+                    }
+                }
             }
         }
     }
