@@ -397,7 +397,7 @@ pub fn new_typing_named_tuple(
         &mut inference,
         args.as_node_ref().as_link(),
         on_type_var,
-        TypeComputationOrigin::Constraint,
+        TypeComputationOrigin::NamedTupleMember,
     );
     if let Some(params) = comp.compute_named_tuple_initializer(args_node_ref, list_iterator) {
         check_named_tuple_has_no_fields_with_underscore(i_s, "NamedTuple", args, &params);

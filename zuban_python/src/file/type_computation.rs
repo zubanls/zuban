@@ -106,6 +106,7 @@ pub enum TypeComputationOrigin {
     TypeAlias,
     CastTarget,
     Constraint,
+    NamedTupleMember,
     BaseClass,
 }
 
@@ -823,6 +824,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
                 SpecialType::Self_ if self.origin == TypeComputationOrigin::TypedDictMember => {
                     self.add_issue(node_ref, IssueType::TypedDictSelfNotAllowed);
+                }
+                SpecialType::Self_ if self.origin == TypeComputationOrigin::NamedTupleMember => {
+                    self.add_issue(node_ref, IssueType::NamedTupleSelfNotAllowed);
                 }
                 SpecialType::Self_
                     if matches!(
@@ -2659,20 +2663,35 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 }
 
 impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
-    pub fn ensure_cached_annotation(&mut self, annotation: Annotation) {
+    pub fn ensure_cached_named_tuple_annotation(&mut self, annotation: Annotation) {
+        self.ensure_cached_annotation_internal(annotation, TypeComputationOrigin::NamedTupleMember)
+    }
+
+    fn ensure_cached_annotation_internal(
+        &mut self,
+        annotation: Annotation,
+        origin: TypeComputationOrigin,
+    ) {
         if !self.file.points.get(annotation.index()).calculated() {
             let mut x = type_computation_for_variable_annotation;
             let mut comp = TypeComputation::new(
                 self,
                 PointLink::new(self.file_index, annotation.index()),
                 &mut x,
-                TypeComputationOrigin::AssignmentTypeCommentOrAnnotation,
+                origin,
             );
             comp.cache_annotation(annotation, false);
             comp.into_type_vars(|inf, recalculate_type_vars| {
                 inf.recalculate_annotation_type_vars(annotation.index(), recalculate_type_vars);
             });
         }
+    }
+
+    pub fn ensure_cached_annotation(&mut self, annotation: Annotation) {
+        self.ensure_cached_annotation_internal(
+            annotation,
+            TypeComputationOrigin::AssignmentTypeCommentOrAnnotation,
+        )
     }
 
     pub fn compute_type_application_on_class(

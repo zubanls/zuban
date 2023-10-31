@@ -382,9 +382,6 @@ testSelfTypeNonsensical
 testSelfTypeNew
 testSelfTypeNew_explicit
 
-# "Self type cannot be used in NamedTuple item type"
-testNamedTupleSelfItemNotAllowed
-
 # dataclass issue with structure
 testReplaceTypeVarBound
 # __post_init__

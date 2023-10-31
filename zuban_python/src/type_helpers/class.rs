@@ -1989,7 +1989,8 @@ fn find_stmt_named_tuple_types(
                             .add_issue(i_s, IssueType::NamedTupleNonDefaultFieldFollowsDefault);
                         continue;
                     }
-                    file.inference(i_s).ensure_cached_annotation(annot);
+                    file.inference(i_s)
+                        .ensure_cached_named_tuple_annotation(annot);
                     let t = use_cached_annotation_type(i_s.db, file, annot).into_owned();
                     if name.as_code().starts_with('_') {
                         NodeRef::new(file, name.index()).add_issue(
