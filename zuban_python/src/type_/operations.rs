@@ -12,6 +12,7 @@ use crate::{
         OnLookupError, OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
+    type_::NamedTuple,
     type_helpers::{
         lookup_in_namespace, lookup_on_enum_class, lookup_on_enum_instance,
         lookup_on_enum_member_instance, Callable, Class, DataclassHelper, Instance, Module,
@@ -615,8 +616,18 @@ pub fn execute_type_of_type<'db>(
                 &mut ResultContext::Unknown,
                 Some(on_type_error),
             );
-            debug!("TODO use generics for namedtuple");
-            Inferred::from_type(Type::NamedTuple(nt.clone()))
+            Inferred::from_type(Type::NamedTuple(if nt.__new__.type_vars.is_empty() {
+                nt.clone()
+            } else {
+                let mut __new__ = Type::replace_type_var_likes_and_self_for_callable(
+                    &nt.__new__,
+                    i_s.db,
+                    &mut |usage| calculated_type_vars.lookup_type_var_usage(i_s, usage),
+                    &|| Type::Self_,
+                );
+                __new__.type_vars = i_s.db.python_state.empty_type_var_likes.clone();
+                Rc::new(NamedTuple::new(nt.name, __new__))
+            }))
         }
         Type::Enum(_) => {
             debug!("TODO did not check arguments in execution of enum");

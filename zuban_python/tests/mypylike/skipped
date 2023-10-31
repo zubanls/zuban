@@ -385,9 +385,6 @@ testSelfTypeNew_explicit
 testNamedTupleSelfItemNotAllowed
 # Recursive generic NamedTuple
 testBasicRecursiveGenericNamedTuple
-# NamedTuple generic used
-testGenericNamedTupleCallSyntax
-# ^ need to add generic namedtuple tests for call syntax
 # NamedTuple special methods
 testGenericNamedTupleMethods
 
