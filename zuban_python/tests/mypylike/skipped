@@ -384,8 +384,6 @@ testSelfTypeNew_explicit
 
 # "Self type cannot be used in NamedTuple item type"
 testNamedTupleSelfItemNotAllowed
-# NamedTuple special methods
-testGenericNamedTupleMethods
 
 # dataclass issue with structure
 testReplaceTypeVarBound

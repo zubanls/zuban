@@ -18,8 +18,9 @@ use crate::{
 };
 
 use super::{
-    CallableContent, CallableParam, CallableParams, DbString, FormatStyle, FunctionKind,
-    ParamSpecific, RecursiveAlias, StringSlice, Tuple, Type, TypeOrTypeVarTuple,
+    tuple::lookup_tuple_magic_methods, CallableContent, CallableParam, CallableParams, DbString,
+    FormatStyle, FunctionKind, ParamSpecific, RecursiveAlias, StringSlice, Tuple, Type,
+    TypeOrTypeVarTuple,
 };
 
 #[derive(Debug, PartialEq, Clone)]
@@ -244,6 +245,9 @@ impl NamedTuple {
                 Type::Any,
             ),
             "_source" => i_s.db.python_state.str_type(),
+            "__mul__" | "__rmul__" | "__add__" => {
+                return lookup_tuple_magic_methods(self.as_tuple(), name)
+            }
             _ => {
                 if let Some(param) = self.search_param(i_s.db, name) {
                     param.param_specific.expect_positional_type_as_ref().clone()
