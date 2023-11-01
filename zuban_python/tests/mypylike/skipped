@@ -276,8 +276,6 @@ testTypeAliasWithNewStyleUnionChangedToVariable
 # x: typing_extensions.TypeAlias = int
 testClassLevelTypeAliasesInUnusualContexts
 testMalformedTypeAliasRuntimeReassignments
-# Aliases in Mypy define generics as X = Foo as Foo[Any, Any]
-testAliasToTupleAndCallable
 # Type alias inference should be typing._SpecialForm
 testTypeAliasWithNewStyleUnion
 testTypeAliasWithNewStyleUnionInStub
