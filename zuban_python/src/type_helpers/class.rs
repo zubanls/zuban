@@ -14,7 +14,7 @@ use super::overload::OverloadResult;
 use super::{Callable, Instance, Module, TypedDictMemberGatherer};
 use crate::arguments::{Arguments, KnownArguments, SimpleArguments};
 use crate::database::{
-    BaseClass, ClassInfos, ClassStorage, ClassType, ComplexPoint, Database, Locality,
+    BaseClass, ClassInfos, ClassKind, ClassStorage, ComplexPoint, Database, Locality,
     MetaclassState, ParentScope, Point, PointLink, PointType,
 };
 use crate::debug;
@@ -380,7 +380,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 if !self.use_cached_type_vars(i_s.db).is_empty() {
                     self.node_ref.add_issue(i_s, IssueType::EnumCannotBeGeneric);
                 }
-                class_infos.class_type = ClassType::Enum;
+                class_infos.class_kind = ClassKind::Enum;
                 let members = self.enum_members(i_s);
                 if !members.is_empty() {
                     let enum_ = Enum::new(
@@ -454,11 +454,11 @@ impl<'db: 'a, 'a> Class<'a> {
             let mut enum_spotted: Option<Class> = None;
             for base in self.bases(i_s.db) {
                 if let TypeOrClass::Class(c) = &base {
-                    let is_enum = c.use_cached_class_infos(i_s.db).class_type == ClassType::Enum;
+                    let is_enum = c.use_cached_class_infos(i_s.db).class_kind == ClassKind::Enum;
                     let has_mixin_enum_new = if is_enum {
                         c.bases(i_s.db).any(|inner| match inner {
                             TypeOrClass::Class(inner) => {
-                                inner.use_cached_class_infos(i_s.db).class_type != ClassType::Enum
+                                inner.use_cached_class_infos(i_s.db).class_kind != ClassKind::Enum
                                     && inner.has_customized_enum_new(i_s)
                             }
                             TypeOrClass::Type(_) => false,
@@ -546,7 +546,7 @@ impl<'db: 'a, 'a> Class<'a> {
 
         let mut bases: Vec<Type> = vec![];
         let mut incomplete_mro = false;
-        let mut class_type = ClassType::Normal;
+        let mut class_kind = ClassKind::Normal;
         let mut typed_dict_members = TypedDictMemberGatherer::default();
         let mut typed_dict_total = None;
         let mut had_new_typed_dict = false;
@@ -644,13 +644,13 @@ impl<'db: 'a, 'a> Class<'a> {
                                         if let Some(cached) =
                                             c.class(i_s.db).maybe_cached_class_infos(i_s.db)
                                         {
-                                            if cached.class_type != ClassType::Normal {
-                                                if class_type == ClassType::Normal {
+                                            if cached.class_kind != ClassKind::Normal {
+                                                if class_kind == ClassKind::Normal {
                                                     if !matches!(
-                                                        cached.class_type,
-                                                        ClassType::Protocol
+                                                        cached.class_kind,
+                                                        ClassKind::Protocol
                                                     ) {
-                                                        class_type = cached.class_type.clone();
+                                                        class_kind = cached.class_kind.clone();
                                                     }
                                                 }
                                             }
@@ -658,8 +658,8 @@ impl<'db: 'a, 'a> Class<'a> {
                                         Some(c.class(db))
                                     }
                                     Type::Tuple(content) => {
-                                        if class_type == ClassType::Normal {
-                                            class_type = ClassType::Tuple;
+                                        if class_kind == ClassKind::Normal {
+                                            class_kind = ClassKind::Tuple;
                                         } else {
                                             todo!()
                                         }
@@ -668,8 +668,8 @@ impl<'db: 'a, 'a> Class<'a> {
                                     Type::Dataclass(d) => Some(d.class(db)),
                                     Type::TypedDict(typed_dict) => {
                                         if matches!(
-                                            class_type,
-                                            ClassType::Normal | ClassType::TypedDict
+                                            class_kind,
+                                            ClassKind::Normal | ClassKind::TypedDict
                                         ) {
                                             if typed_dict_total.is_none() {
                                                 typed_dict_total =
@@ -682,7 +682,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                                 NodeRef::new(self.node_ref.file, n.index()),
                                                 &typed_dict.members,
                                             );
-                                            class_type = ClassType::TypedDict;
+                                            class_kind = ClassKind::TypedDict;
                                         } else {
                                             todo!()
                                         }
@@ -706,18 +706,18 @@ impl<'db: 'a, 'a> Class<'a> {
                                             &mut metaclass,
                                             cached_class_infos.metaclass,
                                         );
-                                        match &cached_class_infos.class_type {
-                                            ClassType::NamedTuple => {
+                                        match &cached_class_infos.class_kind {
+                                            ClassKind::NamedTuple => {
                                                 if matches!(
-                                                    class_type,
-                                                    ClassType::Normal | ClassType::NamedTuple
+                                                    class_kind,
+                                                    ClassKind::Normal | ClassKind::NamedTuple
                                                 ) {
-                                                    class_type = ClassType::NamedTuple;
+                                                    class_kind = ClassKind::NamedTuple;
                                                 } else {
                                                     todo!()
                                                 }
                                             }
-                                            ClassType::TypedDict => {
+                                            ClassKind::TypedDict => {
                                                 unreachable!()
                                             }
                                             _ => (),
@@ -727,21 +727,21 @@ impl<'db: 'a, 'a> Class<'a> {
                             }
                             // TODO this might overwrite other class types
                             CalculatedBaseClass::Protocol => {
-                                class_type = ClassType::Protocol;
+                                class_kind = ClassKind::Protocol;
                                 metaclass = MetaclassState::Some(db.python_state.abc_meta_link())
                             }
                             CalculatedBaseClass::NamedTuple(named_tuple) => {
                                 let named_tuple =
                                     named_tuple.clone_with_new_init_class(self.name_string_slice());
                                 bases.push(Type::NamedTuple(named_tuple));
-                                class_type = ClassType::NamedTuple;
+                                class_kind = ClassKind::NamedTuple;
                             }
                             CalculatedBaseClass::NewNamedTuple => {
                                 is_new_named_tuple = true;
                                 let named_tuple = self
                                     .named_tuple_from_class(&i_s.with_class_context(self), *self);
                                 bases.push(Type::NamedTuple(named_tuple));
-                                class_type = ClassType::NamedTuple;
+                                class_kind = ClassKind::NamedTuple;
                             }
                             CalculatedBaseClass::TypedDict => {
                                 if had_new_typed_dict {
@@ -753,7 +753,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                     );
                                 } else {
                                     had_new_typed_dict = true;
-                                    class_type = ClassType::TypedDict;
+                                    class_kind = ClassKind::TypedDict;
                                     if typed_dict_total.is_none() {
                                         typed_dict_total = Some(
                                             self.check_total_typed_dict_argument(i_s, arguments),
@@ -800,7 +800,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 }
             }
         }
-        let was_typed_dict = (class_type == ClassType::TypedDict).then(|| {
+        let was_typed_dict = (class_kind == ClassKind::TypedDict).then(|| {
             if bases.iter().any(|t| !matches!(t, Type::TypedDict(_))) {
                 NodeRef::new(self.node_ref.file, arguments.unwrap().index())
                     .add_issue(i_s, IssueType::TypedDictBasesMustBeTypedKeys);
@@ -842,7 +842,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 mro,
                 metaclass,
                 incomplete_mro,
-                class_type,
+                class_kind,
             }),
             was_typed_dict,
         )
@@ -928,7 +928,7 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn is_protocol(&self, db: &Database) -> bool {
-        self.use_cached_class_infos(db).class_type == ClassType::Protocol
+        self.use_cached_class_infos(db).class_kind == ClassKind::Protocol
     }
 
     pub fn check_protocol_match(
@@ -1173,7 +1173,7 @@ impl<'db: 'a, 'a> Class<'a> {
     ) -> (LookupResult, Option<Class>) {
         let class_infos = self.use_cached_class_infos(i_s.db);
         let (result, in_class) = if kind == LookupKind::Normal {
-            if class_infos.class_type == ClassType::Enum && use_descriptors && name == "_ignore_" {
+            if class_infos.class_kind == ClassKind::Enum && use_descriptors && name == "_ignore_" {
                 return (LookupResult::None, Some(*self));
             }
             let (lookup_result, in_class, _) =
@@ -1250,7 +1250,7 @@ impl<'db: 'a, 'a> Class<'a> {
             class_infos.mro.iter(),
             without_object
                 || self.node_ref == db.python_state.object_node_ref()
-                || class_infos.class_type == ClassType::Protocol,
+                || class_infos.class_kind == ClassKind::Protocol,
         )
     }
 
@@ -1288,12 +1288,12 @@ impl<'db: 'a, 'a> Class<'a> {
         }
 
         if let Some(class_infos) = self.maybe_cached_class_infos(format_data.db) {
-            match &class_infos.class_type {
-                ClassType::NamedTuple => {
+            match &class_infos.class_kind {
+                ClassKind::NamedTuple => {
                     let named_tuple = class_infos.maybe_named_tuple().unwrap();
                     return named_tuple.format_with_name(format_data, &result, self.generics);
                 }
-                ClassType::Tuple if format_data.style == FormatStyle::MypyRevealType => {
+                ClassKind::Tuple if format_data.style == FormatStyle::MypyRevealType => {
                     for (_, type_or_class) in self.mro(format_data.db) {
                         if let TypeOrClass::Type(t) = type_or_class {
                             if let Type::Tuple(tup) = t.as_ref() {
@@ -1554,8 +1554,8 @@ impl<'db: 'a, 'a> Class<'a> {
         };
         let on_type_error = on_type_error.with_custom_generate_diagnostic_string(&d);
 
-        match &self.use_cached_class_infos(i_s.db).class_type {
-            ClassType::Enum if self.node_ref.as_link() != i_s.db.python_state.enum_auto_link() => {
+        match &self.use_cached_class_infos(i_s.db).class_kind {
+            ClassKind::Enum if self.node_ref.as_link() != i_s.db.python_state.enum_auto_link() => {
                 // For whatever reason, auto is special, because it is somehow defined as an enum as
                 // well, which is very weird.
                 let metaclass = Instance::new(

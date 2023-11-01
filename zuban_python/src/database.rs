@@ -928,7 +928,7 @@ pub enum MetaclassState {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum ClassType {
+pub enum ClassKind {
     Normal,
     Protocol,
     Enum,
@@ -947,7 +947,7 @@ pub struct BaseClass {
 pub struct ClassInfos {
     pub mro: Box<[BaseClass]>, // Does never include `object`
     pub metaclass: MetaclassState,
-    pub class_type: ClassType,
+    pub class_kind: ClassKind,
     pub incomplete_mro: bool,
 }
 
@@ -960,7 +960,7 @@ impl ClassInfos {
     }
 
     pub fn maybe_named_tuple(&self) -> Option<&NamedTuple> {
-        if self.class_type == ClassType::NamedTuple {
+        if self.class_kind == ClassKind::NamedTuple {
             for base in self.mro.iter() {
                 if let Type::NamedTuple(named_tuple) = &base.type_ {
                     return Some(named_tuple);
@@ -972,8 +972,8 @@ impl ClassInfos {
     }
 
     pub fn maybe_tuple(&self) -> Option<Rc<Tuple>> {
-        match self.class_type {
-            ClassType::NamedTuple | ClassType::Tuple => {
+        match self.class_kind {
+            ClassKind::NamedTuple | ClassKind::Tuple => {
                 for base in self.mro.iter() {
                     return Some(match &base.type_ {
                         Type::NamedTuple(named_tuple) => named_tuple.as_tuple(),

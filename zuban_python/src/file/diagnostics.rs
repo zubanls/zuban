@@ -4,7 +4,7 @@ use parsa_python_ast::*;
 
 use crate::arguments::{CombinedArguments, KnownArguments, NoArguments};
 use crate::database::{
-    ClassType, ComplexPoint, Locality, OverloadImplementation, Point, PointType, Specific,
+    ClassKind, ComplexPoint, Locality, OverloadImplementation, Point, PointType, Specific,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -333,8 +333,8 @@ impl<'db> Inference<'db, '_, '_> {
         let db = self.i_s.db;
         let c = Class::with_self_generics(db, class_node_ref);
         if matches!(
-            c.use_cached_class_infos(db).class_type,
-            ClassType::TypedDict
+            c.use_cached_class_infos(db).class_kind,
+            ClassKind::TypedDict
         ) {
             // TypedDicts are special, because they really only contain annotations and no methods.
             // We skip all of this logic, because there's custom logic for TypedDicts.
