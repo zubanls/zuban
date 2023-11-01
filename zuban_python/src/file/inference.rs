@@ -450,6 +450,34 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
+    fn check_right_side_against_expected(
+        &self,
+        expected: &Type,
+        right: Inferred,
+        right_side: AssignmentRightSide,
+    ) {
+        let on_type_error = |got, expected| -> NodeRef {
+            // In cases of stubs when an ellipsis is given, it's not an error.
+            let node_ref = NodeRef::new(self.file, right_side.index()).to_db_lifetime(self.i_s.db);
+            if self.file.is_stub(self.i_s.db) {
+                // Right side always exists, because it was compared and there was an error because
+                // of it.
+                if let AssignmentRightSide::StarExpressions(star_exprs) = right_side {
+                    if let StarExpressionContent::Expression(expr) = star_exprs.unpack() {
+                        if expr.is_ellipsis_literal() {
+                            return node_ref;
+                        }
+                    }
+                }
+            }
+            node_ref.add_issue(
+                self.i_s,
+                IssueType::IncompatibleAssignment { got, expected },
+            );
+            node_ref
+        };
+        expected.error_if_not_matches(self.i_s, &right, on_type_error);
+    }
     pub fn cache_assignment_nodes(&mut self, assignment: Assignment) {
         let node_ref = NodeRef::new(self.file, assignment.index()).to_db_lifetime(self.i_s.db);
         if node_ref.point().calculated() {
@@ -468,26 +496,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
             AssignmentContent::AugAssign(target, aug_assign, right_side) => Some(right_side),
         };
-        let on_type_error = |got, expected| -> NodeRef {
-            // In cases of stubs when an ellipsis is given, it's not an error.
-            if self.file.is_stub(self.i_s.db) {
-                // Right side always exists, because it was compared and there was an error because
-                // of it.
-                if let AssignmentRightSide::StarExpressions(star_exprs) = right_side.unwrap() {
-                    if let StarExpressionContent::Expression(expr) = star_exprs.unpack() {
-                        if expr.is_ellipsis_literal() {
-                            return node_ref;
-                        }
-                    }
-                }
-            }
-            let node_ref = NodeRef::new(node_ref.file, right_side.unwrap().index());
-            node_ref.add_issue(
-                self.i_s,
-                IssueType::IncompatibleAssignment { got, expected },
-            );
-            node_ref
-        };
         match assignment.unpack() {
             AssignmentContent::Normal(targets, right_side) => {
                 let type_comment_result = self.check_for_type_comment(assignment);
@@ -504,9 +512,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     if !(self.i_s.current_class().is_some()
                         && matches!(right.as_cow_type(self.i_s).as_ref(), Type::None))
                     {
-                        type_comment
-                            .type_
-                            .error_if_not_matches(self.i_s, &right, on_type_error);
+                        self.check_right_side_against_expected(
+                            &type_comment.type_,
+                            right,
+                            right_side,
+                        )
                     }
                     type_comment.inferred
                 } else {
@@ -557,7 +567,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 right_side,
                                 &mut ResultContext::Known(&t),
                             );
-                            t.error_if_not_matches(self.i_s, &right, on_type_error);
+                            self.check_right_side_against_expected(&t, right, right_side)
                         }
                         let inf_annot = self.use_cached_annotation(annotation);
                         let n = match right_side {
