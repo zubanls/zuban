@@ -1839,7 +1839,7 @@ fn add_inconsistency_issue(i_s: &InferenceState, class: &Class) {
 pub struct MroIterator<'db, 'a> {
     db: &'db Database,
     generics: Generics<'a>,
-    class: Option<TypeOrClass<'a>>,
+    pub class: Option<TypeOrClass<'a>>,
     iterator: std::slice::Iter<'a, BaseClass>,
     mro_index: u32,
     returned_object: bool,

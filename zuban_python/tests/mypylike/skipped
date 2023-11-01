@@ -382,8 +382,6 @@ testSelfTypeNonsensical
 testSelfTypeNew
 testSelfTypeNew_explicit
 
-# dataclass issue with structure
-testReplaceTypeVarBound
 # __post_init__
 testPostInitSubclassing
 testPostInitNotADataclassCheck

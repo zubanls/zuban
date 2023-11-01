@@ -1165,7 +1165,11 @@ impl Type {
                     false,
                 )
             }
-            // TODO? Type::Dataclass(d) => Some(d.class(db).mro(db)),
+            Type::Dataclass(d) => {
+                let mut mro = d.class(db).mro(db);
+                mro.class = Some(TypeOrClass::Type(Cow::Borrowed(self)));
+                mro
+            }
             Type::TypedDict(td) => MroIterator::new(
                 db,
                 TypeOrClass::Type(Cow::Borrowed(self)),
