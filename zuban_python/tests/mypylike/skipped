@@ -132,6 +132,9 @@ testSelfReferentialSubscriptExpression
 testNewAnalyzerMemberNameMatchesNamedTuple
 testVariableTypeWithQualifiedName
 testNewAnalyzerMemberNameMatchesTypedDict
+# dataclass circles with bound
+testDataclassGenericWithBound
+testNoCrashOnSelfWithForwardRefGenericDataclass
 
 # Module attributes
 testModuleImplicitAttributes
@@ -398,13 +401,8 @@ testDataclassesInitVarNoOverride
 testDataclassesClassmethods
 testClassmethodShadowingFieldDoesNotCrash
 testDeferredDataclassInitSignature
-# dataclass circular inheritance
-testDataclassGenericWithBound
-testNoCrashOnSelfWithForwardRefGenericDataclass
 # : TypeAlias in dataclasses
 testTypeAliasInDataclassDoesNotCrash
-# : Final in dataclasses
-testFinalInDataclass
 # dataclass order
 testIncrementalDataclassesDunder
 testDataclassUpdate6
@@ -1547,6 +1545,8 @@ testFinalAddFinalVarAssign
 testFinalAddFinalVarOverride
 # Final: "Cannot override final attribute "meth" (previously declared in base class "C")"
 testFinalAddFinalMethodOverride
+# : Final in dataclasses
+testFinalInDataclass
 # Final literal issues
 testLiteralWithFinalPropagation
 testLiteralWithFinalPropagationIsNotLeaking

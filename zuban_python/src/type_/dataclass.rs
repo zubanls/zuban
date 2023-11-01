@@ -158,9 +158,17 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
                 inference.ensure_cached_annotation(annotation);
                 let field_infos = calculate_field_arg(i_s, file, right_side);
                 let point = file.points.get(annotation.index());
-                if point.maybe_specific() == Some(Specific::AnnotationOrTypeCommentClassVar) {
-                    // ClassVar[] are not part of the dataclass.
-                    continue;
+                match point.maybe_specific() {
+                    Some(Specific::AnnotationOrTypeCommentClassVar) => {
+                        // ClassVar[] are not part of the dataclass.
+                        continue;
+                    }
+                    Some(Specific::TypingTypeAlias) => {
+                        NodeRef::new(file, assignment.index())
+                            .add_issue(i_s, IssueType::DataclassContainsTypeAlias);
+                        continue;
+                    }
+                    _ => (),
                 }
                 let mut t = inference
                     .use_cached_annotation_type(annotation)

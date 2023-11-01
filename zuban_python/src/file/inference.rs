@@ -2289,7 +2289,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             .or_else(|| {
                 if point.calculating() {
                     let node_ref = NodeRef::new(self.file, node_index);
-                    debug!("Found a cycle at node index {node_index}");
+                    debug!(
+                        "Found a cycle at #{}, {}:{node_index}: {:?}",
+                        node_ref.line(),
+                        self.file.file_index(),
+                        node_ref.as_code()
+                    );
                     node_ref.set_point(Point::new_simple_specific(Specific::Cycle, Locality::Todo));
                     Some(Inferred::new_cycle())
                 } else {

@@ -256,6 +256,7 @@ pub(crate) enum IssueType {
     DataclassCannotInheritFrozenFromNonFrozen,
     DataclassReplaceExpectedDataclass { got: Box<str> },
     DataclassReplaceExpectedDataclassInTypeVarBound { got: Box<str> },
+    DataclassContainsTypeAlias,
 
     // From --disallow-untyped-defs
     FunctionIsDynamic,
@@ -668,6 +669,8 @@ impl<'db> Diagnostic<'db> {
             DataclassReplaceExpectedDataclassInTypeVarBound { got } => format!(
                 r#"Argument 1 to "replace" has a variable type "{got}" not bound to a dataclass"#,
             ),
+            DataclassContainsTypeAlias =>
+                "Type aliases inside dataclass definitions are not supported at runtime".to_string(),
 
             FunctionIsDynamic => "Function is missing a type annotation".to_string(),
             FunctionMissingReturnAnnotation =>
