@@ -1088,7 +1088,11 @@ impl Type {
 
     pub fn is_subclassable(&self, db: &Database) -> bool {
         match self {
-            Self::Class(_) | Self::Tuple(_) | Self::NewType(_) | Self::NamedTuple(_) => true,
+            Self::Class(_)
+            | Self::Tuple(_)
+            | Self::NewType(_)
+            | Self::NamedTuple(_)
+            | Self::Dataclass(_) => true,
             _ => false,
         }
     }

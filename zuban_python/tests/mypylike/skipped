@@ -279,7 +279,6 @@ testMalformedTypeAliasRuntimeReassignments
 # Type alias inference should be typing._SpecialForm
 testTypeAliasWithNewStyleUnion
 testTypeAliasWithNewStyleUnionInStub
-testTypeAliasInDataclassDoesNotCrash
 
 # Nested type vars
 testFunctionInGenericInnerClassTypeVariable-skip

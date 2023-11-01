@@ -110,6 +110,7 @@ pub struct PythonState {
     typing_typed_dict_index: NodeIndex,
     typing_mapping_index: NodeIndex,
     typing_mapping_get_index: NodeIndex,
+    typing_special_form_index: NodeIndex,
     pub typing_typed_dict_bases: Box<[BaseClass]>,
     types_module_type_index: NodeIndex,
     types_none_type_index: NodeIndex,
@@ -198,6 +199,7 @@ impl PythonState {
             typing_typed_dict_index: 0,
             typing_mapping_index: 0,
             typing_mapping_get_index: 0,
+            typing_special_form_index: 0,
             typing_coroutine_index: 0,
             typing_iterator_index: 0,
             typing_iterable_index: 0,
@@ -385,6 +387,7 @@ impl PythonState {
         cache_index!(typing_supports_index_index, db, typing, "SupportsIndex");
         cache_index!(typing_typed_dict_index, db, typing, "_TypedDict");
         cache_index!(typing_mapping_index, db, typing, "Mapping");
+        cache_index!(typing_special_form_index, db, typing, "_SpecialForm");
         cache_index!(types_none_type_index, db, types, "NoneType");
         cache_index!(abc_abstractproperty_index, db, abc, "abstractproperty");
         cache_index!(
@@ -623,6 +626,11 @@ impl PythonState {
     attribute_node_ref!(typing, pub generator_node_ref, typing_generator_index);
     attribute_node_ref!(typing, pub iterable_node_ref, typing_iterable_index);
     attribute_node_ref!(typing, pub typing_named_tuple_node_ref, typing_namedtuple_index);
+    attribute_node_ref!(
+        typing,
+        typing_special_form_node_ref,
+        typing_special_form_index
+    );
     attribute_node_ref!(types, none_type_node_ref, types_none_type_index);
     attribute_node_ref!(types, module_node_ref, types_module_type_index);
     attribute_node_ref!(
@@ -660,6 +668,7 @@ impl PythonState {
     node_ref_to_type_class_without_generic!(pub ellipsis_type, ellipsis_node_ref);
     node_ref_to_type_class_without_generic!(pub typed_dict_type, typed_dict_node_ref);
     node_ref_to_type_class_without_generic!(pub typing_named_tuple_type, typing_named_tuple_node_ref);
+    node_ref_to_type_class_without_generic!(pub typing_special_form_type, typing_special_form_node_ref);
 
     node_ref_to_type_class_without_generic!(pub supports_index_type, supports_index_node_ref);
 

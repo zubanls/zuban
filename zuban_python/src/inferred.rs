@@ -2117,9 +2117,13 @@ fn type_of_complex<'db: 'x, 'x>(
         }
         ComplexPoint::TypeInstance(t) => Cow::Borrowed(t),
         // TODO is this type correct with the Any?
-        ComplexPoint::TypeAlias(alias) => Cow::Owned(Type::Type(Rc::new(
-            alias.as_type_and_set_type_vars_any(i_s.db),
-        ))),
+        ComplexPoint::TypeAlias(alias) => Cow::Owned({
+            if alias.type_if_valid().is_subclassable(i_s.db) {
+                Type::Type(Rc::new(alias.as_type_and_set_type_vars_any(i_s.db)))
+            } else {
+                i_s.db.python_state.typing_special_form_type()
+            }
+        }),
         ComplexPoint::TypeVarLike(t) => match t {
             TypeVarLike::TypeVar(_) => Cow::Owned(i_s.db.python_state.type_var_type()),
             TypeVarLike::TypeVarTuple(_) => todo!(),
