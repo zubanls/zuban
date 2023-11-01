@@ -1,7 +1,7 @@
 use parsa_python_ast::*;
 
 use super::type_computation::{
-    cache_name_on_class, SpecialType, TypeNameLookup, ASSIGNMENT_TYPE_CACHE_OFFSET,
+    assignment_type_node_ref, cache_name_on_class, SpecialType, TypeNameLookup,
 };
 use crate::database::{Locality, Point, PointLink, PointType};
 use crate::diagnostics::IssueType;
@@ -202,10 +202,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
             if node_ref.file_index() == self.inference.file_index {
                 let redirected_name = node_ref.as_name();
                 if let TypeLike::Assignment(assignment) = redirected_name.expect_type() {
-                    let node_ref = NodeRef::new(
-                        self.inference.file,
-                        assignment.index() + ASSIGNMENT_TYPE_CACHE_OFFSET,
-                    );
+                    let node_ref = assignment_type_node_ref(self.inference.file, assignment);
                     if node_ref.point().calculating() {
                         // This means that this is probably a recursive type alias being calculated. Just
                         // ignore.

@@ -31,7 +31,7 @@ use crate::type_::{
 use crate::type_helpers::{start_namedtuple_params, Class, Function, Module};
 use crate::{debug, new_class};
 
-pub(super) const ASSIGNMENT_TYPE_CACHE_OFFSET: u32 = 1;
+const ASSIGNMENT_TYPE_CACHE_OFFSET: u32 = 1;
 const ANNOTATION_TO_EXPR_DIFFERENCE: u32 = 2;
 
 #[derive(Debug)]
@@ -2927,8 +2927,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
     ) -> TypeNameLookup<'file, 'file> {
         // Use the node star_targets or single_target, because they are not used otherwise.
         let file = self.file;
-        let cached_type_node_ref =
-            NodeRef::new(file, assignment.index() + ASSIGNMENT_TYPE_CACHE_OFFSET);
+        let cached_type_node_ref = assignment_type_node_ref(self.file, assignment);
         let point = cached_type_node_ref.point();
         if point.calculated() {
             return load_cached_type(cached_type_node_ref);
@@ -2973,7 +2972,11 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 ));
             }
             debug_assert!(file.points.get(name_def.index()).calculated() || annotation.is_some());
-            let inferred = self.check_point_cache(name_def.index()).unwrap();
+            let inferred = if is_explicit {
+                Inferred::new_none() // TODO
+            } else {
+                self.check_point_cache(name_def.index()).unwrap()
+            };
             let in_definition = cached_type_node_ref.as_link();
             if inferred.maybe_saved_specific(self.i_s.db) == Some(Specific::Any) {
                 // Happens e.g. when an invalid enum is defined somewhere.
@@ -3052,8 +3055,15 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    pub(super) fn compute_explicit_type_assignment(&mut self, assignment: Assignment) {
+    pub(super) fn compute_explicit_type_assignment(&mut self, assignment: Assignment) -> Inferred {
         self.compute_type_assignment(assignment, true);
+        let t = Inferred::from_saved_node_ref(assignment_type_node_ref(self.file, assignment))
+            .as_type(self.i_s);
+        if t.is_subclassable(self.i_s.db) {
+            Inferred::from_type(t)
+        } else {
+            Inferred::from_type(t) // TODO return typing._SpecialForm
+        }
     }
 
     pub(super) fn lookup_type_name(&mut self, name: Name<'x>) -> TypeNameLookup<'db, 'x> {
@@ -3343,6 +3353,13 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             }
         }
     }
+}
+
+pub(super) fn assignment_type_node_ref<'x>(
+    file: &'x PythonFile,
+    assignment: Assignment,
+) -> NodeRef<'x> {
+    NodeRef::new(file, assignment.index() + ASSIGNMENT_TYPE_CACHE_OFFSET)
 }
 
 #[inline]
