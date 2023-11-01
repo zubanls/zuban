@@ -478,8 +478,34 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         };
         expected.error_if_not_matches(self.i_s, &right, on_type_error);
     }
+
+    pub fn check_right_side_against_annotation(
+        &mut self,
+        expected: &Type,
+        right_side: AssignmentRightSide,
+    ) {
+        let right =
+            self.infer_assignment_right_side(right_side, &mut ResultContext::Known(expected));
+        self.check_right_side_against_expected(expected, right, right_side)
+    }
+
+    pub fn assign_for_annotation(
+        &mut self,
+        annotation: Annotation,
+        target: Target,
+        node_ref: NodeRef,
+    ) {
+        let inf_annot = self.use_cached_annotation(annotation);
+        self.assign_single_target(target, node_ref, &inf_annot, true, |index| {
+            self.file.points.set(
+                index,
+                Point::new_redirect(self.file.file_index(), annotation.index(), Locality::Todo),
+            );
+        })
+    }
+
     pub fn cache_assignment_nodes(&mut self, assignment: Assignment) {
-        let node_ref = NodeRef::new(self.file, assignment.index()).to_db_lifetime(self.i_s.db);
+        let node_ref = NodeRef::new(self.file, assignment.index());
         if node_ref.point().calculated() {
             return;
         }
@@ -563,27 +589,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     _ => {
                         if let Some(right_side) = right_side {
                             let t = self.use_cached_annotation_type(annotation);
-                            let right = self.infer_assignment_right_side(
-                                right_side,
-                                &mut ResultContext::Known(&t),
-                            );
-                            self.check_right_side_against_expected(&t, right, right_side)
+                            self.check_right_side_against_annotation(&t, right_side);
                         }
-                        let inf_annot = self.use_cached_annotation(annotation);
                         let n = match right_side {
                             Some(right_side) => NodeRef::new(self.file, right_side.index()),
                             None => NodeRef::new(self.file, annotation.index()),
                         };
-                        self.assign_single_target(target, n, &inf_annot, true, |index| {
-                            self.file.points.set(
-                                index,
-                                Point::new_redirect(
-                                    self.file.file_index(),
-                                    annotation.index(),
-                                    Locality::Todo,
-                                ),
-                            );
-                        })
+                        self.assign_for_annotation(annotation, target, n)
                     }
                 }
             }

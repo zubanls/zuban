@@ -7,7 +7,7 @@ use parsa_python_ast::{
 
 use crate::{
     arguments::{Argument, ArgumentKind, Arguments, SimpleArguments},
-    database::{Database, Specific},
+    database::{Database, Locality, Point, Specific},
     diagnostics::{Issue, IssueType},
     file::{File, PythonFile},
     inference_state::InferenceState,
@@ -152,11 +152,11 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
     } {
         let name = NodeRef::new(file, *name_index).as_name();
         if let Some(assignment) = name.maybe_assignment_definition_name() {
-            if let AssignmentContent::WithAnnotation(_, annotation, right_side) =
+            if let AssignmentContent::WithAnnotation(target, annotation, right_side) =
                 assignment.unpack()
             {
+                inference.ensure_cached_annotation(annotation);
                 let field_infos = calculate_field_arg(i_s, file, right_side);
-                inference.cache_assignment_nodes(assignment);
                 let point = file.points.get(annotation.index());
                 if point.maybe_specific() == Some(Specific::AnnotationOrTypeCommentClassVar) {
                     // ClassVar[] are not part of the dataclass.
@@ -176,6 +176,19 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
                     t = replace_class_type_vars(db, &t, &cls, &|| todo!());
                 }
                 */
+                if let Some(right_side) = right_side {
+                    // Since an InitVar is special and actually not checked against defaults, we
+                    // need to check for this separately and tell the inference that this was
+                    // already done.
+                    inference.check_right_side_against_annotation(&t, right_side);
+                    inference.assign_for_annotation(
+                        annotation,
+                        target,
+                        NodeRef::new(file, right_side.index()),
+                    );
+                    file.points
+                        .set(assignment.index(), Point::new_node_analysis(Locality::Todo));
+                }
                 with_indexes.push((
                     *name_index,
                     t,

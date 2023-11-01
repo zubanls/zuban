@@ -385,7 +385,6 @@ testSelfTypeNew_explicit
 # dataclass issue with structure
 testReplaceTypeVarBound
 # __post_init__
-testPostInitCorrectSignature
 testPostInitSubclassing
 testPostInitNotADataclassCheck
 testPostInitMissingParam
@@ -415,7 +414,6 @@ testDataclassUpdate6
 testDataclassesAnyInherit
 # InitVar set default
 testDataclassInitVarCannotBeSet
-testReplace
 # dataclass transform
 updateDataclassTransformParameterViaDecorator
 updateDataclassTransformParameterViaParentClass
