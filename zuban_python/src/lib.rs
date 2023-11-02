@@ -69,6 +69,21 @@ impl Default for TypeCheckerFlags {
     }
 }
 
+impl TypeCheckerFlags {
+    pub fn strict() -> Self {
+        Self {
+            strict_optional: true,
+            implicit_optional: true,
+            check_untyped_defs: true,
+            disallow_untyped_defs: true,
+            disallow_untyped_calls: true,
+            disallow_any_generics: true,
+            extra_checks: false,
+            mypy_compatible: false,
+        }
+    }
+}
+
 impl Project {
     pub fn new(options: ProjectOptions) -> Self {
         let loaders = Box::new([Box::<file::PythonFileLoader>::default() as Box<_>]);

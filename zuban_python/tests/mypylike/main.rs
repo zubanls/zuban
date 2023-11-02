@@ -110,17 +110,29 @@ impl<'name, 'code> TestCase<'name, 'code> {
         if self.file_name == "check-columns" || steps.flags.contains(&"--show-column-numbers") {
             diagnostics_config.show_column_numbers = true;
         }
-        let config = TypeCheckerFlags {
-            implicit_optional: steps.flags.contains(&"--implicit-optional"),
-            check_untyped_defs: steps.flags.contains(&"--check-untyped-defs"),
-            disallow_untyped_defs: steps.flags.contains(&"--disallow-untyped-defs"),
-            disallow_untyped_calls: steps.flags.contains(&"--disallow-untyped-calls"),
-            disallow_any_generics: steps.flags.contains(&"--disallow-any-generics"),
-            extra_checks: steps.flags.contains(&"--extra-checks"),
-            strict_optional: !steps.flags.contains(&"--no-strict-optional")
-                && !self.file_name.starts_with("semanal-"),
-            mypy_compatible: mypy_compatible_override || steps.flags.contains(&"--mypy-compatible"),
-            ..Default::default()
+        let mypy_compatible =
+            mypy_compatible_override || steps.flags.contains(&"--mypy-compatible");
+        let extra_checks = steps.flags.contains(&"--extra-checks");
+        let config = if steps.flags.contains(&"--strict") {
+            TypeCheckerFlags {
+                extra_checks,
+                mypy_compatible,
+                disallow_any_generics: !steps.flags.contains(&"--allow-any-generics"),
+                ..TypeCheckerFlags::strict()
+            }
+        } else {
+            TypeCheckerFlags {
+                implicit_optional: steps.flags.contains(&"--implicit-optional"),
+                check_untyped_defs: steps.flags.contains(&"--check-untyped-defs"),
+                disallow_untyped_defs: steps.flags.contains(&"--disallow-untyped-defs"),
+                disallow_untyped_calls: steps.flags.contains(&"--disallow-untyped-calls"),
+                disallow_any_generics: steps.flags.contains(&"--disallow-any-generics"),
+                extra_checks,
+                strict_optional: !steps.flags.contains(&"--no-strict-optional")
+                    && !self.file_name.starts_with("semanal-"),
+                mypy_compatible,
+                ..Default::default()
+            }
         };
         let project = projects.get_mut(config);
 
