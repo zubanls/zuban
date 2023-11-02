@@ -789,11 +789,21 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::TypedDictDefinition(td) => {
                 return match &td.generics {
                     TypedDictGenerics::None => Some(Type::TypedDict(td)),
-                    TypedDictGenerics::NotDefinedYet(_) => Some(
-                        Type::TypedDict(td).replace_type_var_likes(db, &mut |usage| {
-                            usage.as_type_var_like().as_any_generic_item()
-                        }),
-                    ),
+                    TypedDictGenerics::NotDefinedYet(_) => {
+                        if db.project.flags.disallow_any_generics {
+                            self.add_issue(
+                                node_ref,
+                                IssueType::MissingTypeParameters {
+                                    name: td.name.unwrap().as_str(db).into(),
+                                },
+                            );
+                        }
+                        Some(
+                            Type::TypedDict(td).replace_type_var_likes(db, &mut |usage| {
+                                usage.as_type_var_like().as_any_generic_item()
+                            }),
+                        )
+                    }
                     TypedDictGenerics::Generics(_) => unreachable!(),
                 }
             }

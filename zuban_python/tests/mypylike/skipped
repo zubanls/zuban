@@ -2166,6 +2166,7 @@ testColumnNeedTypeAnnotation
 testDictWithoutKeywordArgs
 testUninferableLambda
 testUninferableLambdaWithTypeError
+testDisallowAnyGenericsPlainList
 # "Perhaps you need a type annotation for "x"? Suggestion: "List[str | int]""
 testInferredTypeSubTypeOfReturnType
 
@@ -2487,10 +2488,8 @@ testDisallowAnyExprAllowsAnyInVariableAssignmentWithExplicitTypeAnnotation
 testDisallowAnyExprGeneric
 
 # --disallow-any-generics
-testUnpackGenericTypedDictImplicitAnyDisabled
 testCheckDisallowAnyGenericsStubOnly
 testStrictAnyGeneric
-testDisallowAnyGenericsPlainList
 testDisallowAnyGenericsForAliasesInRuntimeContext
 testGenericTypedDictAlias
 testNestedGenericInAliasDisallow
