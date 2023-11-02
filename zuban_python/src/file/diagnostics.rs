@@ -616,12 +616,12 @@ impl<'db> Inference<'db, '_, '_> {
         let args = NoArguments::new(NodeRef::new(self.file, f.index()));
         let function_i_s = &mut self.i_s.with_diagnostic_func_and_args(&function, &args);
         let mut inference = self.file.inference(function_i_s);
-        if !is_dynamic || self.i_s.db.python_state.project.flags.check_untyped_defs {
+        if !is_dynamic || self.i_s.db.project.flags.check_untyped_defs {
             inference.calc_block_diagnostics(block, None, Some(&function))
         } else {
             inference.calc_untyped_block_diagnostics(block)
         }
-        if self.i_s.db.python_state.project.flags.disallow_untyped_defs {
+        if self.i_s.db.project.flags.disallow_untyped_defs {
             match (
                 function.is_missing_param_annotations(self.i_s),
                 function.return_annotation().is_none(),

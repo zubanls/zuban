@@ -596,6 +596,7 @@ pub struct Database {
     in_memory_files: HashMap<Box<str>, FileIndex>,
 
     pub python_state: PythonState,
+    pub project: PythonProject,
 }
 
 impl Database {
@@ -617,7 +618,8 @@ impl Database {
             path_to_file: Default::default(),
             workspaces,
             in_memory_files: Default::default(),
-            python_state: PythonState::reserve(project),
+            python_state: PythonState::reserve(),
+            project,
         };
         this.initial_python_load();
         this
@@ -655,7 +657,7 @@ impl Database {
         let f = state
             .file(&*self.vfs)
             .unwrap_or_else(|| panic!("file #{index}: {}", state.path()));
-        f.ensure_initialized(&self.python_state.project);
+        f.ensure_initialized(&self.project);
         f
     }
 

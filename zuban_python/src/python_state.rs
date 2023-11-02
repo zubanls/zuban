@@ -3,8 +3,7 @@ use std::ptr::null;
 use std::rc::Rc;
 
 use crate::database::{
-    BaseClass, ComplexPoint, Database, Locality, Point, PointLink, PointType, PythonProject,
-    Specific,
+    BaseClass, ComplexPoint, Database, Locality, Point, PointLink, PointType, Specific,
 };
 use crate::file::File;
 use crate::file::PythonFile;
@@ -53,8 +52,6 @@ macro_rules! node_ref_to_type_class_without_generic {
 }
 
 pub struct PythonState {
-    pub project: PythonProject,
-
     builtins: *const PythonFile,
     typing: *const PythonFile,
     typeshed: *const PythonFile,
@@ -147,10 +144,9 @@ pub struct PythonState {
 }
 
 impl PythonState {
-    pub fn reserve(project: PythonProject) -> Self {
+    pub fn reserve() -> Self {
         let empty_type_var_likes = TypeVarLikes::new(Rc::new([]));
         Self {
-            project,
             builtins: null(),
             typing: null(),
             typeshed: null(),

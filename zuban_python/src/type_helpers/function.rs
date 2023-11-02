@@ -144,7 +144,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
     ) -> Inferred {
-        if i_s.db.python_state.project.flags.mypy_compatible {
+        if i_s.db.project.flags.mypy_compatible {
             return Inferred::new_any();
         }
         if self.is_generator() {
@@ -212,7 +212,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             return &i_s.db.python_state.empty_type_var_likes;
         }
         let func_node = self.node();
-        let implicit_optional = i_s.db.python_state.project.flags.implicit_optional;
+        let implicit_optional = i_s.db.project.flags.implicit_optional;
         let mut inference = self.node_ref.file.inference(i_s);
         let in_result_type = Cell::new(false);
         let mut unbound_type_vars = vec![];
@@ -1105,7 +1105,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 result_context,
             )
         } else {
-            if i_s.db.python_state.project.flags.disallow_untyped_calls && self.is_dynamic() {
+            if i_s.db.project.flags.disallow_untyped_calls && self.is_dynamic() {
                 args.as_node_ref().add_issue(
                     i_s,
                     IssueType::CallToUntypedFunction {
@@ -1358,7 +1358,7 @@ impl<'x> Param<'x> for FunctionParam<'x> {
     fn kind(&self, db: &Database) -> ParamKind {
         let mut t = self.param.type_();
         if t == ParamKind::PositionalOrKeyword
-            && db.python_state.project.flags.mypy_compatible
+            && db.project.flags.mypy_compatible
             && is_private(self.param.name_definition().as_code())
         {
             // Mypy treats __ params as positional only

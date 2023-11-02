@@ -739,7 +739,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 ..
             } => {
                 let cls = Class::with_undefined_generics(class_node_ref);
-                if db.python_state.project.flags.disallow_any_generics
+                if db.project.flags.disallow_any_generics
                     && !cls.type_vars(self.inference.i_s).is_empty()
                 {
                     self.add_issue(
@@ -804,7 +804,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 self.add_module_issue(node_ref, &n.qualified_name());
             }
             TypeContent::TypeAlias(a) => {
-                if db.python_state.project.flags.disallow_any_generics && !a.type_vars.is_empty() {
+                if db.project.flags.disallow_any_generics && !a.type_vars.is_empty() {
                     self.add_issue(
                         node_ref,
                         IssueType::MissingTypeParameters {

@@ -165,7 +165,7 @@ impl<'db> Inference<'db, '_, '_> {
                                 if member.required {
                                     missing_keys.retain(|k| *k != key);
                                 }
-                                if i_s.db.python_state.project.flags.extra_checks {
+                                if i_s.db.project.flags.extra_checks {
                                     debug!("TODO need to implement --extra-checks");
                                 }
                                 infer_typed_dict_item(
