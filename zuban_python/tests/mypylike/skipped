@@ -438,6 +438,7 @@ testAssignEnumAsAttribute
 # "TypedDict type as attribute is not supported"
 testAssignTypedDictAsAttribute
 
+testGenericTypedDictAlias
 # TypedDict recursions
 testBasicRecursiveTypedDictClass
 testBasicRecursiveTypedDictExtending
@@ -2169,6 +2170,10 @@ testUninferableLambdaWithTypeError
 testDisallowAnyGenericsPlainList
 # "Perhaps you need a type annotation for "x"? Suggestion: "List[str | int]""
 testInferredTypeSubTypeOfReturnType
+# --disallow-any-generics
+testDisallowAnyGenericsForAliasesInRuntimeContext
+# "Subscripting classes that are not generic at runtime may require escaping"
+testCheckDisallowAnyGenericsStubOnly
 
 # Module __getattr__
 testNewAnalyzerModuleGetattrSerialize_incremental
@@ -2486,12 +2491,6 @@ testDisallowAnyExprExplicitAnyParam
 testDisallowAnyExprAllowsAnyInCast
 testDisallowAnyExprAllowsAnyInVariableAssignmentWithExplicitTypeAnnotation
 testDisallowAnyExprGeneric
-
-# --disallow-any-generics
-testDisallowAnyGenericsForAliasesInRuntimeContext
-testGenericTypedDictAlias
-# "Subscripting classes that are not generic at runtime may require escaping"
-testCheckDisallowAnyGenericsStubOnly
 
 # --disallow-any-unimported
 testErrorCodeAnyFromUnfollowedImport
