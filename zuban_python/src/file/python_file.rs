@@ -9,7 +9,8 @@ use super::file_state::{File, Leaf};
 use super::inference::Inference;
 use super::name_binder::NameBinder;
 use crate::database::{
-    ComplexPoint, Database, FileIndex, Locality, LocalityLink, Point, Points, Specific,
+    ComplexPoint, Database, FileIndex, Locality, LocalityLink, Point, Points, PythonProject,
+    Specific,
 };
 use crate::debug;
 use crate::diagnostics::{Diagnostic, DiagnosticConfig, Diagnostics, Issue};
@@ -21,7 +22,6 @@ use crate::name::{Names, TreeName, TreePosition};
 use crate::node_ref::NodeRef;
 use crate::utils::{InsertOnlyVec, SymbolTable};
 use crate::workspaces::FileEntry;
-use crate::PythonProject;
 
 #[derive(Default, Debug)]
 pub struct ComplexValues(InsertOnlyVec<ComplexPoint>);
@@ -228,7 +228,7 @@ impl<'db> PythonFile {
         func: impl FnOnce(&mut NameBinder<'db, 'db>),
     ) {
         NameBinder::with_global_binder(
-            project.mypy_compatible,
+            project.flags.mypy_compatible,
             &self.tree,
             &self.symbol_table,
             &self.points,

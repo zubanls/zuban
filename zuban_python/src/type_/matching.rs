@@ -427,7 +427,9 @@ impl Type {
                 matcher.set_all_contained_type_vars_to_any(i_s, self);
                 return Match::True { with_any: true };
             }
-            Type::None if !i_s.db.python_state.project.strict_optional => return Match::new_true(),
+            Type::None if !i_s.db.python_state.project.flags.strict_optional => {
+                return Match::new_true()
+            }
             Type::TypeVar(t2) => {
                 if matcher.is_matching_reverse() {
                     return matcher.match_or_add_type_var(i_s, t2, self, variance.invert());

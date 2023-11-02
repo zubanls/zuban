@@ -21,7 +21,7 @@ mod type_helpers;
 mod utils;
 mod workspaces;
 
-use database::{Database, FileIndex};
+use database::{Database, FileIndex, PythonProject};
 pub use diagnostics::DiagnosticConfig;
 use file::Leaf;
 use inference_state::InferenceState;
@@ -36,6 +36,11 @@ pub struct Project {
 #[derive(Clone)]
 pub struct ProjectOptions {
     pub path: Box<str>,
+    pub flags: TypeCheckerFlags,
+}
+
+#[derive(Clone, Default, Hash, PartialEq, Eq)]
+pub struct TypeCheckerFlags {
     pub strict_optional: bool,
     pub implicit_optional: bool,
     pub check_untyped_defs: bool,
@@ -61,16 +66,10 @@ impl Project {
         ];
         let db = Database::new(
             loaders,
+            options.path,
             PythonProject {
-                path: options.path,
                 sys_path,
-                strict_optional: options.strict_optional,
-                implicit_optional: options.implicit_optional,
-                check_untyped_defs: options.check_untyped_defs,
-                disallow_untyped_defs: options.disallow_untyped_defs,
-                disallow_untyped_calls: options.disallow_untyped_calls,
-                extra_checks: options.extra_checks,
-                mypy_compatible: options.mypy_compatible,
+                flags: options.flags,
             },
         );
         Self { db }
@@ -120,19 +119,6 @@ impl Project {
         }
         all_diagnostics.into_boxed_slice()
     }
-}
-
-pub struct PythonProject {
-    path: Box<str>,
-    sys_path: Vec<Box<str>>,
-    strict_optional: bool,
-    implicit_optional: bool,
-    mypy_compatible: bool,
-    check_untyped_defs: bool,
-    disallow_untyped_defs: bool,
-    disallow_untyped_calls: bool,
-    extra_checks: bool,
-    // is_django: bool,  // TODO maybe add?
 }
 
 #[derive(Debug, Clone, Copy)]

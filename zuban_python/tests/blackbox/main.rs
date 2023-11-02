@@ -5,7 +5,7 @@ use std::fs::{read_dir, read_to_string};
 use std::path::PathBuf;
 use std::time::Instant;
 
-use zuban_python::{Project, ProjectOptions};
+use zuban_python::{Project, ProjectOptions, TypeCheckerFlags};
 
 #[derive(Debug)]
 pub struct Filter {
@@ -67,13 +67,11 @@ fn main() {
 
     let mut project = Project::new(ProjectOptions {
         path: "tests/blackbox/".into(),
-        strict_optional: true,
-        implicit_optional: false,
-        check_untyped_defs: true,
-        disallow_untyped_defs: false,
-        disallow_untyped_calls: false,
-        mypy_compatible: false,
-        extra_checks: false,
+        flags: TypeCheckerFlags {
+            strict_optional: true,
+            check_untyped_defs: true,
+            ..Default::default()
+        },
     });
 
     let files = python_files();

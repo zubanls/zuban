@@ -8,7 +8,7 @@ use std::time::Instant;
 
 use regex::{Captures, Regex, Replacer};
 
-use zuban_python::{DiagnosticConfig, Project, ProjectOptions};
+use zuban_python::{DiagnosticConfig, Project, ProjectOptions, TypeCheckerFlags};
 
 const SKIP_MYPY_TEST_FILES: [&str; 38] = [
     "check-typevar-defaults.test",
@@ -99,7 +99,11 @@ struct Steps<'code> {
 }
 
 impl<'name, 'code> TestCase<'name, 'code> {
-    fn run(&self, projects: &mut HashMap<BaseConfig, LazyProject>, mypy_compatible_override: bool) {
+    fn run(
+        &self,
+        projects: &mut HashMap<TypeCheckerFlags, LazyProject>,
+        mypy_compatible_override: bool,
+    ) {
         let steps = self.calculate_steps();
         let mut diagnostics_config = DiagnosticConfig::default();
 
@@ -112,7 +116,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
         if self.file_name == "check-columns" || steps.flags.contains(&"--show-column-numbers") {
             diagnostics_config.show_column_numbers = true;
         }
-        let mut config = BaseConfig {
+        let mut config = TypeCheckerFlags {
             strict_optional: true,
             ..Default::default()
         };
@@ -559,17 +563,6 @@ fn calculate_filters(args: Vec<String>) -> Vec<String> {
     filters
 }
 
-#[derive(PartialEq, Eq, Hash, Default, Copy, Clone)]
-struct BaseConfig {
-    mypy_compatible: bool,
-    strict_optional: bool,
-    implicit_optional: bool,
-    check_untyped_defs: bool,
-    disallow_untyped_defs: bool,
-    disallow_untyped_calls: bool,
-    extra_checks: bool,
-}
-
 struct LazyProject {
     project: OnceCell<Project>,
     options: ProjectOptions,
@@ -616,7 +609,7 @@ fn main() {
                     for disallow_untyped_defs in [false, true] {
                         for disallow_untyped_calls in [false, true] {
                             for extra_checks in [false, true] {
-                                let config = BaseConfig {
+                                let flags = TypeCheckerFlags {
                                     strict_optional,
                                     implicit_optional,
                                     mypy_compatible,
@@ -626,16 +619,10 @@ fn main() {
                                     extra_checks,
                                 };
                                 projects.insert(
-                                    config,
+                                    flags.clone(),
                                     LazyProject::new(ProjectOptions {
                                         path: BASE_PATH.into(),
-                                        implicit_optional: config.implicit_optional,
-                                        check_untyped_defs: config.check_untyped_defs,
-                                        disallow_untyped_defs: config.disallow_untyped_defs,
-                                        disallow_untyped_calls: config.disallow_untyped_calls,
-                                        strict_optional: config.strict_optional,
-                                        mypy_compatible: config.mypy_compatible,
-                                        extra_checks: config.extra_checks,
+                                        flags,
                                     }),
                                 );
                             }

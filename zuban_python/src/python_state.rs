@@ -3,7 +3,8 @@ use std::ptr::null;
 use std::rc::Rc;
 
 use crate::database::{
-    BaseClass, ComplexPoint, Database, Locality, Point, PointLink, PointType, Specific,
+    BaseClass, ComplexPoint, Database, Locality, Point, PointLink, PointType, PythonProject,
+    Specific,
 };
 use crate::file::File;
 use crate::file::PythonFile;
@@ -15,7 +16,7 @@ use crate::type_::{
     TypeVarLikes,
 };
 use crate::type_helpers::{Class, Function, Instance};
-use crate::{new_class, InferenceState, PythonProject};
+use crate::{new_class, InferenceState};
 
 // This is a bit hacky, but I'm sure the tests will fail somewhere if this constant is
 // wrong. Basically it goes three nodes back: name_def class literal and then the actual

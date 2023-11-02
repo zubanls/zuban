@@ -28,7 +28,7 @@ use crate::utils::{InsertOnlyVec, SymbolTable};
 use crate::workspaces::{
     Directory, DirectoryEntry, FileEntry, Invalidations, WorkspaceFileIndex, Workspaces,
 };
-use crate::PythonProject;
+use crate::TypeCheckerFlags;
 
 thread_local! {
     static ARBITRARY_TUPLE: Rc<Tuple> = Rc::new(Tuple::new_arbitrary_length(Type::Any));
@@ -599,12 +599,16 @@ pub struct Database {
 }
 
 impl Database {
-    pub fn new(file_state_loaders: FileStateLoaders, project: PythonProject) -> Self {
+    pub fn new(
+        file_state_loaders: FileStateLoaders,
+        project_path: Box<str>,
+        project: PythonProject,
+    ) -> Self {
         let mut workspaces = Workspaces::default();
         for p in &project.sys_path {
             workspaces.add(file_state_loaders.as_ref(), p.to_owned())
         }
-        workspaces.add(file_state_loaders.as_ref(), project.path.clone());
+        workspaces.add(file_state_loaders.as_ref(), project_path.clone());
         let mut this = Self {
             in_use: false,
             vfs: Box::<FileSystemReader>::default(),
@@ -884,6 +888,12 @@ impl Database {
             mypy_extensions,
         );
     }
+}
+
+pub struct PythonProject {
+    pub sys_path: Vec<Box<str>>,
+    pub flags: TypeCheckerFlags,
+    // is_django: bool,  // TODO maybe add?
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
