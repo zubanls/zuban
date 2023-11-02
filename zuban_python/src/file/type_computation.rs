@@ -3057,13 +3057,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
 
     pub(super) fn compute_explicit_type_assignment(&mut self, assignment: Assignment) -> Inferred {
         self.compute_type_assignment(assignment, true);
-        let t = Inferred::from_saved_node_ref(assignment_type_node_ref(self.file, assignment))
-            .as_type(self.i_s);
-        if t.is_subclassable(self.i_s.db) {
-            Inferred::from_type(t)
-        } else {
-            Inferred::from_type(t) // TODO return typing._SpecialForm
-        }
+        Inferred::from_saved_node_ref(assignment_type_node_ref(self.file, assignment))
     }
 
     pub(super) fn lookup_type_name(&mut self, name: Name<'x>) -> TypeNameLookup<'db, 'x> {

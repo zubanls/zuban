@@ -572,7 +572,7 @@ impl TypeAlias {
     pub fn application_allowed(&self) -> bool {
         !self.is_invalid()
             && match self.type_if_valid() {
-                Type::Class(_) | Type::TypedDict(_) => true,
+                Type::Class(_) | Type::TypedDict(_) | Type::Dataclass(_) => true,
                 _ => false,
             }
     }

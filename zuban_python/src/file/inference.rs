@@ -564,7 +564,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 self.ensure_cached_annotation(annotation);
                 match self.file.points.get(annotation.index()).maybe_specific() {
                     Some(Specific::TypingTypeAlias) => {
-                        debug!("TODO TypeAlias calculation, does this make sense?");
                         let inf = self.compute_explicit_type_assignment(assignment);
                         self.assign_single_target(target, node_ref, &inf.clone(), true, |index| {
                             inf.save_redirect(self.i_s, self.file, index);

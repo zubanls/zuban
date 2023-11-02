@@ -24,10 +24,10 @@ use crate::matching::{
 };
 use crate::node_ref::NodeRef;
 use crate::type_::{
-    execute_collections_named_tuple, execute_typing_named_tuple, CallableContent, CallableParams,
-    ClassGenerics, DbString, Enum, FunctionKind, FunctionOverload, GenericClass, GenericItem,
-    GenericsList, Literal as DbLiteral, LiteralKind, LiteralValue, NewType, Type, TypeVarKind,
-    TypeVarLike, TypeVarLikes, TypedDict,
+    execute_collections_named_tuple, execute_type_of_type, execute_typing_named_tuple,
+    CallableContent, CallableParams, ClassGenerics, DbString, Enum, FunctionKind, FunctionOverload,
+    GenericClass, GenericItem, GenericsList, Literal as DbLiteral, LiteralKind, LiteralValue,
+    NewType, Type, TypeVarKind, TypeVarLike, TypeVarLikes, TypedDict,
 };
 use crate::type_helpers::{
     execute_assert_type, execute_super, execute_type, merge_class_type_vars_into_callable,
@@ -1686,8 +1686,12 @@ impl<'db: 'slf, 'slf> Inferred {
                             }
                             ComplexPoint::TypeAlias(alias) => {
                                 if alias.application_allowed() {
-                                    return Inferred::from_type(
-                                        alias.as_type_and_set_type_vars_any(i_s.db),
+                                    return execute_type_of_type(
+                                        i_s,
+                                        args,
+                                        result_context,
+                                        on_type_error,
+                                        &alias.as_type_and_set_type_vars_any(i_s.db),
                                     );
                                 }
                                 args.as_node_ref().add_issue(

@@ -56,6 +56,7 @@ pub use self::dataclass::{
     lookup_dataclass_symbol, lookup_on_dataclass, lookup_on_dataclass_type, Dataclass,
     DataclassOptions,
 };
+pub use self::operations::execute_type_of_type;
 pub use common_base_type::{common_base_type, common_base_type_of_type_var_tuple_with_items};
 pub use matching::match_tuple_type_arguments;
 pub use named_tuple::{
