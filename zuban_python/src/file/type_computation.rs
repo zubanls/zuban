@@ -2972,29 +2972,11 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 ));
             }
             debug_assert!(file.points.get(name_def.index()).calculated() || annotation.is_some());
-            let inferred = if is_explicit {
-                Inferred::new_none() // TODO
-            } else {
-                self.check_point_cache(name_def.index()).unwrap()
-            };
             let in_definition = cached_type_node_ref.as_link();
-            if inferred.maybe_saved_specific(self.i_s.db) == Some(Specific::Any) {
-                // Happens e.g. when an invalid enum is defined somewhere.
-                TypeNameLookup::Unknown
-            } else if let Some(tv) = inferred.maybe_type_var_like(self.i_s) {
-                TypeNameLookup::TypeVarLike(tv)
-            } else if let Some(n) = inferred.maybe_new_type(self.i_s) {
-                TypeNameLookup::NewType(n)
-            } else if let Some(t) = inferred.maybe_named_tuple_definition(self.i_s) {
-                let Type::NamedTuple(nt) = t else { unreachable!() };
-                TypeNameLookup::NamedTupleDefinition(nt)
-            } else if let Some(t) = inferred.maybe_typed_dict_definition(self.i_s) {
-                TypeNameLookup::TypedDictDefinition(t)
-            } else if let Some(t) = inferred.maybe_enum_definition(self.i_s) {
-                TypeNameLookup::Enum(t)
-            } else {
+
+            let check_for_alias = |self_: &mut _| {
                 cached_type_node_ref.set_point(Point::new_calculating());
-                let type_var_likes = TypeVarFinder::find_alias_type_vars(self, expr);
+                let type_var_likes = TypeVarFinder::find_alias_type_vars(self_, expr);
                 let complex = ComplexPoint::TypeAlias(Box::new(TypeAlias::new(
                     type_var_likes,
                     in_definition,
@@ -3016,7 +2998,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                     };
                 let p = file.points.get(expr.index());
                 let mut comp = TypeComputation::new(
-                    self,
+                    self_,
                     in_definition,
                     &mut type_var_callback,
                     TypeComputationOrigin::TypeAlias,
@@ -3043,6 +3025,29 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                     }
                 };
                 load_cached_type(cached_type_node_ref)
+            };
+
+            if is_explicit {
+                return check_for_alias(self);
+            }
+
+            let inferred = self.check_point_cache(name_def.index()).unwrap();
+            if inferred.maybe_saved_specific(self.i_s.db) == Some(Specific::Any) {
+                // Happens e.g. when an invalid enum is defined somewhere.
+                TypeNameLookup::Unknown
+            } else if let Some(tv) = inferred.maybe_type_var_like(self.i_s) {
+                TypeNameLookup::TypeVarLike(tv)
+            } else if let Some(n) = inferred.maybe_new_type(self.i_s) {
+                TypeNameLookup::NewType(n)
+            } else if let Some(t) = inferred.maybe_named_tuple_definition(self.i_s) {
+                let Type::NamedTuple(nt) = t else { unreachable!() };
+                TypeNameLookup::NamedTupleDefinition(nt)
+            } else if let Some(t) = inferred.maybe_typed_dict_definition(self.i_s) {
+                TypeNameLookup::TypedDictDefinition(t)
+            } else if let Some(t) = inferred.maybe_enum_definition(self.i_s) {
+                TypeNameLookup::Enum(t)
+            } else {
+                check_for_alias(self)
             }
         } else {
             if let Some(annotation) = assignment.maybe_annotation() {
