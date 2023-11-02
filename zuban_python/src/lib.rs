@@ -39,7 +39,7 @@ pub struct ProjectOptions {
     pub flags: TypeCheckerFlags,
 }
 
-#[derive(Clone, Default, Hash, PartialEq, Eq)]
+#[derive(Clone, Hash, PartialEq, Eq)]
 pub struct TypeCheckerFlags {
     pub strict_optional: bool,
     pub implicit_optional: bool,
@@ -48,6 +48,20 @@ pub struct TypeCheckerFlags {
     pub disallow_untyped_calls: bool,
     pub extra_checks: bool,
     pub mypy_compatible: bool,
+}
+
+impl Default for TypeCheckerFlags {
+    fn default() -> Self {
+        Self {
+            strict_optional: true,
+            implicit_optional: false,
+            check_untyped_defs: false,
+            disallow_untyped_defs: false,
+            disallow_untyped_calls: false,
+            extra_checks: false,
+            mypy_compatible: false,
+        }
+    }
 }
 
 impl Project {

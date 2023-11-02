@@ -116,10 +116,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
         if self.file_name == "check-columns" || steps.flags.contains(&"--show-column-numbers") {
             diagnostics_config.show_column_numbers = true;
         }
-        let mut config = TypeCheckerFlags {
-            strict_optional: true,
-            ..Default::default()
-        };
+        let mut config = TypeCheckerFlags::default();
         if steps.flags.contains(&"--no-strict-optional") || self.file_name.starts_with("semanal-") {
             config.strict_optional = false;
         }
