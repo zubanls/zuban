@@ -1,4 +1,6 @@
 # Next up
+testBadEnumLoading
+testInvalidNamedTupleWithinFunction
 
 # 3.12 type var syntax
 test695TypeAlias
@@ -268,12 +270,6 @@ testInferLambdaTypeUsingContext
 testNoCrashOnLambdaGenerator
 # wtf?
 testEllipsisContextForLambda2
-
-# TypeAlias normal string interpreted as a forward reference
-testTypeAliasWithNewStyleUnionChangedToVariable
-# x: typing_extensions.TypeAlias = int
-testClassLevelTypeAliasesInUnusualContexts
-testMalformedTypeAliasRuntimeReassignments
 
 # Nested type vars
 testFunctionInGenericInnerClassTypeVariable-skip
@@ -2314,6 +2310,9 @@ testAsyncIteratorWithIgnoredErrorsAndYieldFrom
 # "mypy: "tmp/typing.py" shadows library module "typing""
 testShadowTypingModule
 
+# Weird and unsound mypy cases for x: typing.TypeAlias = ...
+testClassLevelTypeAliasesInUnusualContexts
+testMalformedTypeAliasRuntimeReassignments
 # weird files
 testScriptsAreNotModules
 

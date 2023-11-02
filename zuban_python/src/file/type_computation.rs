@@ -3044,10 +3044,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             }
 
             let inferred = self.check_point_cache(name_def.index()).unwrap();
-            if inferred.maybe_saved_specific(self.i_s.db) == Some(Specific::Any) {
-                // Happens e.g. when an invalid enum is defined somewhere.
-                TypeNameLookup::Unknown
-            } else if let Some(tv) = inferred.maybe_type_var_like(self.i_s) {
+            if let Some(tv) = inferred.maybe_type_var_like(self.i_s) {
                 TypeNameLookup::TypeVarLike(tv)
             } else if let Some(n) = inferred.maybe_new_type(self.i_s) {
                 TypeNameLookup::NewType(n)
