@@ -116,28 +116,17 @@ impl<'name, 'code> TestCase<'name, 'code> {
         if self.file_name == "check-columns" || steps.flags.contains(&"--show-column-numbers") {
             diagnostics_config.show_column_numbers = true;
         }
-        let mut config = TypeCheckerFlags::default();
-        if steps.flags.contains(&"--no-strict-optional") || self.file_name.starts_with("semanal-") {
-            config.strict_optional = false;
-        }
-        if steps.flags.contains(&"--implicit-optional") {
-            config.implicit_optional = true;
-        }
-        if steps.flags.contains(&"--check-untyped-defs") {
-            config.check_untyped_defs = true;
-        }
-        if steps.flags.contains(&"--disallow-untyped-defs") {
-            config.disallow_untyped_defs = true;
-        }
-        if steps.flags.contains(&"--disallow-untyped-calls") {
-            config.disallow_untyped_calls = true;
-        }
-        if steps.flags.contains(&"--extra-checks") {
-            config.extra_checks = true;
-        }
-        if mypy_compatible_override || steps.flags.contains(&"--mypy-compatible") {
-            config.mypy_compatible = true;
-        }
+        let config = TypeCheckerFlags {
+            implicit_optional: steps.flags.contains(&"--implicit-optional"),
+            check_untyped_defs: steps.flags.contains(&"--check-untyped-defs"),
+            disallow_untyped_defs: steps.flags.contains(&"--disallow-untyped-defs"),
+            disallow_untyped_calls: steps.flags.contains(&"--disallow-untyped-calls"),
+            extra_checks: steps.flags.contains(&"--extra-checks"),
+            strict_optional: !steps.flags.contains(&"--no-strict-optional")
+                && !self.file_name.starts_with("semanal-"),
+            mypy_compatible: mypy_compatible_override || steps.flags.contains(&"--mypy-compatible"),
+            ..Default::default()
+        };
         let project = projects.get_mut(&config).unwrap();
 
         let is_parse_test = self.file_name.starts_with("parse");
