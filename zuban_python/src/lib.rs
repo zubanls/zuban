@@ -44,8 +44,12 @@ pub struct TypeCheckerFlags {
     pub strict_optional: bool,
     pub implicit_optional: bool,
     pub check_untyped_defs: bool,
+
     pub disallow_untyped_defs: bool,
     pub disallow_untyped_calls: bool,
+
+    pub disallow_any_generics: bool,
+
     pub extra_checks: bool,
     pub mypy_compatible: bool,
 }
@@ -58,6 +62,7 @@ impl Default for TypeCheckerFlags {
             check_untyped_defs: false,
             disallow_untyped_defs: false,
             disallow_untyped_calls: false,
+            disallow_any_generics: false,
             extra_checks: false,
             mypy_compatible: false,
         }

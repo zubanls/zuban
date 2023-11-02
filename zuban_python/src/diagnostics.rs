@@ -264,6 +264,8 @@ pub(crate) enum IssueType {
     FunctionMissingParamAnnotations,
     // From --disallow-untyped-calls
     CallToUntypedFunction { name: Box<str> },
+    // From --disallow-any-generics
+    MissingTypeParameters { name: Box<str> },
 
     InvariantNote { actual: &'static str, maybe: &'static str },
     AnnotationInUntypedFunction,
@@ -679,6 +681,9 @@ impl<'db> Diagnostic<'db> {
                 "Function is missing a type annotation for one or more arguments".to_string(),
             CallToUntypedFunction{name} => format!(
                 "Call to untyped function \"{name}\" in typed context"
+            ),
+            MissingTypeParameters { name } => format!(
+                r#"Missing type parameters for generic type "{name}""#
             ),
 
             OnlyClassTypeApplication => {

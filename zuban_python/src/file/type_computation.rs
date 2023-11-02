@@ -734,8 +734,22 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     fn as_type_or_error(&mut self, type_: TypeContent, node_ref: NodeRef) -> Option<Type> {
         let db = self.inference.i_s.db;
         match type_ {
-            TypeContent::Class { node_ref, .. } => {
-                return Some(Class::with_undefined_generics(node_ref).as_type(db))
+            TypeContent::Class {
+                node_ref: class_node_ref,
+                ..
+            } => {
+                let cls = Class::with_undefined_generics(class_node_ref);
+                if db.python_state.project.flags.disallow_any_generics
+                    && !cls.type_vars(self.inference.i_s).is_empty()
+                {
+                    self.add_issue(
+                        node_ref,
+                        IssueType::MissingTypeParameters {
+                            name: cls.name().into(),
+                        },
+                    );
+                }
+                return Some(cls.as_type(db));
             }
             TypeContent::SimpleGeneric {
                 class_link,
@@ -960,13 +974,15 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         if !self.inference.file.points.get(expr.index()).calculated() {
             match &type_content {
                 TypeContent::Class {
-                    node_ref,
                     has_type_vars: true,
+                    ..
                 } => {
-                    let node_ref = *node_ref;
                     // This essentially means we have a class with Any generics. This is not what
                     // we want to be defined as a redirect and therefore we calculate Foo[Any, ...]
-                    return TypeContent::Type(self.as_type(type_content, node_ref));
+                    return TypeContent::Type(self.as_type(
+                        type_content,
+                        NodeRef::new(self.inference.file, expr.index()),
+                    ));
                 }
                 TypeContent::Class { node_ref, .. }
                 | TypeContent::SimpleGeneric { node_ref, .. } => {
