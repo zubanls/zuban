@@ -841,7 +841,17 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     }
                     return Some(db.python_state.type_of_any.clone());
                 }
-                SpecialType::Tuple => return Some(Type::Tuple(Tuple::new_empty())),
+                SpecialType::Tuple => {
+                    if db.project.flags.disallow_any_generics {
+                        self.add_issue(
+                            node_ref,
+                            IssueType::MissingTypeParameters {
+                                name: "Tuple".into(),
+                            },
+                        );
+                    }
+                    return Some(Type::Tuple(Tuple::new_empty()));
+                }
                 SpecialType::TypingNamedTuple => {
                     return Some(db.python_state.typing_named_tuple_type())
                 }
