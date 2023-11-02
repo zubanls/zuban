@@ -277,7 +277,6 @@ testTypeAliasWithNewStyleUnionChangedToVariable
 testClassLevelTypeAliasesInUnusualContexts
 testMalformedTypeAliasRuntimeReassignments
 # Type alias inference should be typing._SpecialForm
-testTypeAliasWithNewStyleUnion
 testTypeAliasWithNewStyleUnionInStub
 
 # Nested type vars

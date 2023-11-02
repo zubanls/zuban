@@ -1796,14 +1796,18 @@ impl<'db: 'slf, 'slf> Inferred {
                     | Specific::CollectionsNamedTuple
                     | Specific::TypingCallable),
                 ) => {
-                    return slice_type
+                    let result = slice_type
                         .file
                         .inference(i_s)
                         .compute_type_application_on_typing_class(
                             specific,
                             *slice_type,
                             matches!(result_context, ResultContext::AssignmentNewDefinition),
-                        )
+                        );
+                    if matches!(specific, Specific::TypingLiteral) {
+                        return Inferred::from_type(i_s.db.python_state.typing_special_form_type());
+                    }
+                    return result;
                 }
                 Some(Specific::TypingClassVar) => {
                     return match slice_type.unpack() {
@@ -2120,9 +2124,9 @@ fn type_of_complex<'db: 'x, 'x>(
             Cow::Owned(overload.as_type(i_s, None))
         }
         ComplexPoint::TypeInstance(t) => Cow::Borrowed(t),
-        // TODO is this type correct with the Any?
         ComplexPoint::TypeAlias(alias) => Cow::Owned({
             if alias.type_if_valid().is_subclassable(i_s.db) {
+                // TODO is this type correct with the Any?
                 Type::Type(Rc::new(alias.as_type_and_set_type_vars_any(i_s.db)))
             } else {
                 i_s.db.python_state.typing_special_form_type()
