@@ -269,8 +269,6 @@ testNoCrashOnLambdaGenerator
 # wtf?
 testEllipsisContextForLambda2
 
-# Type alias issues where it's unclear if something is an alias or not
-testUnionOrSyntaxWithTypeAliasWorking
 # TypeAlias normal string interpreted as a forward reference
 testTypeAliasWithNewStyleUnionChangedToVariable
 # x: typing_extensions.TypeAlias = int

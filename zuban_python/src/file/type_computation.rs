@@ -1018,10 +1018,22 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             ExpressionPart::BitwiseOr(bitwise_or) => {
                 let (a, b) = bitwise_or.unpack();
                 let first = self.compute_type_expression_part(a);
-                let first = self.as_type(first, NodeRef::new(self.inference.file, b.index()));
-                // TODO this should only merge in annotation contexts
                 let second = self.compute_type_expression_part(b);
-                let second = self.as_type(second, NodeRef::new(self.inference.file, b.index()));
+
+                let node_ref = NodeRef::new(self.inference.file, b.index());
+                if self.errors_already_calculated {
+                    if let Some(first) = self.as_type_or_error(first, node_ref) {
+                        if let Some(second) = self.as_type_or_error(second, node_ref) {
+                            return TypeContent::Type(first.union(self.inference.i_s.db, second));
+                        }
+                    }
+                    // We need to somehow track that it was an invalid union for checking aliases.
+                    return TypeContent::InvalidVariable(InvalidVariableType::Other);
+                }
+
+                let first = self.as_type(first, node_ref);
+                // TODO this should only merge in annotation contexts
+                let second = self.as_type(second, node_ref);
                 TypeContent::Type(first.union(self.inference.i_s.db, second))
             }
             _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
