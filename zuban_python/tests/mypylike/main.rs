@@ -1,8 +1,6 @@
-use std::cell::OnceCell;
 use std::collections::HashMap;
 use std::env;
 use std::fs::{read_dir, read_to_string};
-use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -545,48 +543,14 @@ fn calculate_filters(args: Vec<String>) -> Vec<String> {
     filters
 }
 
-struct LazyProject {
-    project: OnceCell<Project>,
-    options: ProjectOptions,
-}
-
-impl LazyProject {
-    fn new(options: ProjectOptions) -> LazyProject {
-        LazyProject {
-            project: OnceCell::new(),
-            options,
-        }
-    }
-
-    fn init(&self) -> &Project {
-        self.project
-            .get_or_init(|| Project::new(self.options.clone()))
-    }
-}
-
-impl Deref for LazyProject {
-    type Target = Project;
-
-    fn deref(&self) -> &Self::Target {
-        self.init()
-    }
-}
-
-impl DerefMut for LazyProject {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        self.init();
-        self.project.get_mut().unwrap()
-    }
-}
-
-struct ProjectsCache(HashMap<TypeCheckerFlags, LazyProject>);
+struct ProjectsCache(HashMap<TypeCheckerFlags, Project>);
 
 impl ProjectsCache {
     fn get_mut(&mut self, flags: TypeCheckerFlags) -> &mut Project {
         if self.0.get(&flags).is_none() {
             self.0.insert(
                 flags.clone(),
-                LazyProject::new(ProjectOptions {
+                Project::new(ProjectOptions {
                     path: BASE_PATH.into(),
                     flags: flags.clone(),
                 }),
