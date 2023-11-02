@@ -99,11 +99,7 @@ struct Steps<'code> {
 }
 
 impl<'name, 'code> TestCase<'name, 'code> {
-    fn run(
-        &self,
-        projects: &mut HashMap<TypeCheckerFlags, LazyProject>,
-        mypy_compatible_override: bool,
-    ) {
+    fn run(&self, projects: &mut ProjectsCache, mypy_compatible_override: bool) {
         let steps = self.calculate_steps();
         let mut diagnostics_config = DiagnosticConfig::default();
 
@@ -127,7 +123,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
             mypy_compatible: mypy_compatible_override || steps.flags.contains(&"--mypy-compatible"),
             ..Default::default()
         };
-        let project = projects.get_mut(&config).unwrap();
+        let project = projects.get_mut(config);
 
         let is_parse_test = self.file_name.starts_with("parse");
 
@@ -583,42 +579,28 @@ impl DerefMut for LazyProject {
     }
 }
 
+struct ProjectsCache(HashMap<TypeCheckerFlags, LazyProject>);
+
+impl ProjectsCache {
+    fn get_mut(&mut self, flags: TypeCheckerFlags) -> &mut Project {
+        if self.0.get(&flags).is_none() {
+            self.0.insert(
+                flags.clone(),
+                LazyProject::new(ProjectOptions {
+                    path: BASE_PATH.into(),
+                    flags: flags.clone(),
+                }),
+            );
+        }
+        self.0.get_mut(&flags).unwrap()
+    }
+}
+
 fn main() {
     let cli_args: Vec<String> = env::args().collect();
     let filters = calculate_filters(cli_args);
 
-    let mut projects = HashMap::new();
-    for strict_optional in [false, true] {
-        for implicit_optional in [false, true] {
-            for mypy_compatible in [false, true] {
-                for check_untyped_defs in [false, true] {
-                    for disallow_untyped_defs in [false, true] {
-                        for disallow_untyped_calls in [false, true] {
-                            for extra_checks in [false, true] {
-                                let flags = TypeCheckerFlags {
-                                    strict_optional,
-                                    implicit_optional,
-                                    mypy_compatible,
-                                    check_untyped_defs,
-                                    disallow_untyped_defs,
-                                    disallow_untyped_calls,
-                                    extra_checks,
-                                };
-                                projects.insert(
-                                    flags.clone(),
-                                    LazyProject::new(ProjectOptions {
-                                        path: BASE_PATH.into(),
-                                        flags,
-                                    }),
-                                );
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
+    let mut projects = ProjectsCache(HashMap::new());
     let skipped = skipped();
 
     let files = find_mypy_style_files();
