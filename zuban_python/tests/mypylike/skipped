@@ -2487,7 +2487,6 @@ testDisallowAnyExprAllowsAnyInVariableAssignmentWithExplicitTypeAnnotation
 testDisallowAnyExprGeneric
 
 # --disallow-any-generics
-testColumnMissingTypeParameters
 testUnpackGenericTypedDictImplicitAnyDisabled
 testCheckDisallowAnyGenericsStubOnly
 testStrictAnyGeneric
