@@ -308,7 +308,7 @@ impl IssueType {
             | UnsupportedOperandForUnary { .. }
             | NotCallable { .. }
             | UnknownFunctionNotCallable => "operator",
-            TypeArgumentIssue { .. } => "type-arg",
+            TypeArgumentIssue { .. } | MissingTypeParameters { .. } => "type-arg",
             ModuleNotFound { .. } => "import",
             ListItemMismatch { .. } => "list-item",
             DictMemberMismatch { .. } | UnpackedDictMemberMismatch { .. } => "dict-item",

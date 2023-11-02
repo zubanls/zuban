@@ -804,6 +804,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 self.add_module_issue(node_ref, &n.qualified_name());
             }
             TypeContent::TypeAlias(a) => {
+                if db.python_state.project.flags.disallow_any_generics && !a.type_vars.is_empty() {
+                    self.add_issue(
+                        node_ref,
+                        IssueType::MissingTypeParameters {
+                            name: a.name(db).unwrap().into(),
+                        },
+                    );
+                }
                 self.is_recursive_alias |= a.is_recursive();
                 return Some(a.as_type_and_set_type_vars_any(db));
             }
