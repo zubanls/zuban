@@ -276,8 +276,6 @@ testTypeAliasWithNewStyleUnionChangedToVariable
 # x: typing_extensions.TypeAlias = int
 testClassLevelTypeAliasesInUnusualContexts
 testMalformedTypeAliasRuntimeReassignments
-# Type alias inference should be typing._SpecialForm
-testTypeAliasWithNewStyleUnionInStub
 
 # Nested type vars
 testFunctionInGenericInnerClassTypeVariable-skip

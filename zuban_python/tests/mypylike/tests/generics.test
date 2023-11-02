@@ -32,7 +32,7 @@ class P6(Generic[T], Protocol[S], Protocol[U]): # E: Only single Generic[...] or
 
 [case type_type_application]
 from typing import Type
-reveal_type(Type[int]) # N: Revealed type is "Type[Type[int]]"
+reveal_type(Type[int]) # N: Revealed type is "typing._SpecialForm"
 
 [case subtyping_only_result_generics]
 -- It feels like this test is a bit weird, because a generic as a result in

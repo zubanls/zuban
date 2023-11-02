@@ -1804,10 +1804,17 @@ impl<'db: 'slf, 'slf> Inferred {
                             *slice_type,
                             matches!(result_context, ResultContext::AssignmentNewDefinition),
                         );
-                    if matches!(specific, Specific::TypingLiteral) {
-                        return Inferred::from_type(i_s.db.python_state.typing_special_form_type());
+                    if matches!(
+                        specific,
+                        Specific::TypingAnnotated
+                            | Specific::TypingTuple
+                            | Specific::TypingUnion
+                            | Specific::TypingCallable
+                            | Specific::TypingOptional
+                    ) {
+                        return result;
                     }
-                    return result;
+                    return Inferred::from_type(i_s.db.python_state.typing_special_form_type());
                 }
                 Some(Specific::TypingClassVar) => {
                     return match slice_type.unpack() {
