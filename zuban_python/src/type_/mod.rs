@@ -75,7 +75,7 @@ pub use named_tuple::{
 };
 pub use replace::ReplaceSelf;
 pub use simplified_union::simplified_union_from_iterators;
-pub use tuple::Tuple;
+pub use tuple::{Tuple, TupleTypeArguments};
 pub use type_var_likes::{
     CallableWithParent, ParamSpec, ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, TypeVar,
     TypeVarIndex, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
@@ -1571,66 +1571,6 @@ impl TypeOrTypeVarTuple {
                 &TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(t)),
                 ParamsStyle::Unreachable,
             ),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum TupleTypeArguments {
-    FixedLength(Rc<[TypeOrTypeVarTuple]>),
-    ArbitraryLength(Box<Type>),
-}
-
-impl TupleTypeArguments {
-    pub fn has_type_var_tuple(&self) -> Option<&[TypeOrTypeVarTuple]> {
-        match self {
-            Self::FixedLength(ts) => ts
-                .iter()
-                .any(|t| matches!(t, TypeOrTypeVarTuple::TypeVarTuple(_)))
-                .then(|| ts.as_ref()),
-            _ => None,
-        }
-    }
-
-    pub fn is_any(&self) -> bool {
-        match self {
-            Self::ArbitraryLength(t) => matches!(t.as_ref(), Type::Any),
-            Self::FixedLength(_) => false,
-        }
-    }
-
-    pub fn has_any(&self, i_s: &InferenceState) -> bool {
-        self.has_any_internal(i_s, &mut Vec::new())
-    }
-
-    fn has_any_internal(
-        &self,
-        i_s: &InferenceState,
-        already_checked: &mut Vec<Rc<RecursiveAlias>>,
-    ) -> bool {
-        match self {
-            Self::FixedLength(ts) => ts.iter().any(|t| match t {
-                TypeOrTypeVarTuple::Type(t) => t.has_any_internal(i_s, already_checked),
-                TypeOrTypeVarTuple::TypeVarTuple(_) => false,
-            }),
-            Self::ArbitraryLength(t) => t.has_any_internal(i_s, already_checked),
-        }
-    }
-
-    fn common_base_type(&self, i_s: &InferenceState) -> Type {
-        match self {
-            Self::FixedLength(ts) => common_base_type(i_s, ts.iter()),
-            Self::ArbitraryLength(t) => t.as_ref().clone(),
-        }
-    }
-
-    pub fn format(&self, format_data: &FormatData) -> Box<str> {
-        match self {
-            Self::FixedLength(ts) if ts.is_empty() => Box::from("()"),
-            Self::FixedLength(ts) => {
-                join_with_commas(ts.iter().map(|g| g.format(format_data).into())).into()
-            }
-            Self::ArbitraryLength(t) => format!("{}, ...", t.format(format_data)).into(),
         }
     }
 }
