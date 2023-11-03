@@ -73,6 +73,7 @@ pub use self::typed_dict::{
     TypedDict, TypedDictGenerics, TypedDictMember, TypedDictMemberGatherer,
 };
 pub use self::union::simplified_union_from_iterators;
+pub use self::union::{UnionEntry, UnionType};
 pub use common_base_type::{common_base_type, common_base_type_of_type_var_tuple_with_items};
 pub use matching::match_tuple_type_arguments;
 pub use named_tuple::{
@@ -276,111 +277,6 @@ impl std::ops::Index<TypeVarIndex> for GenericsList {
 
     fn index(&self, index: TypeVarIndex) -> &Self::Output {
         &self.0[index.0 as usize]
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct UnionEntry {
-    pub type_: Type,
-    pub format_index: usize,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct UnionType {
-    pub entries: Box<[UnionEntry]>,
-    pub format_as_optional: bool,
-}
-
-impl UnionType {
-    pub fn new(entries: Vec<UnionEntry>) -> Self {
-        debug_assert!(entries.len() > 1);
-        Self {
-            entries: entries.into_boxed_slice(),
-            format_as_optional: false,
-        }
-    }
-
-    pub fn from_types(types: Vec<Type>) -> Self {
-        Self::new(
-            types
-                .into_iter()
-                .enumerate()
-                .map(|(format_index, type_)| UnionEntry {
-                    format_index,
-                    type_,
-                })
-                .collect(),
-        )
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = &Type> {
-        self.entries.iter().map(|u| &u.type_)
-    }
-
-    pub fn sort_for_priority(&mut self) {
-        self.entries.sort_by_key(|t| match t.type_ {
-            Type::Literal(_) | Type::EnumMember(_) => -1,
-            Type::None => 2,
-            Type::TypeVar(_) => 3,
-            Type::Any => 4,
-            _ => t.type_.has_type_vars().into(),
-        });
-    }
-
-    pub fn format(&self, format_data: &FormatData) -> Box<str> {
-        let mut iterator = self.entries.iter();
-        let mut sorted = match format_data.style {
-            FormatStyle::MypyRevealType => String::new(),
-            _ => {
-                // Fetch the literals in the front of the union and format them like Literal[1, 2]
-                // instead of Literal[1] | Literal[2].
-                let count = self
-                    .iter()
-                    .take_while(|t| matches!(t, Type::Literal(_) | Type::EnumMember(_)))
-                    .count();
-                if count > 1 {
-                    let lit = format!(
-                        "Literal[{}]",
-                        iterator
-                            .by_ref()
-                            .take(count)
-                            .map(|t| match &t.type_ {
-                                Type::Literal(l) => l.format_inner(format_data.db),
-                                Type::EnumMember(m) => Cow::Owned(m.format_inner(format_data)),
-                                _ => unreachable!(),
-                            })
-                            .collect::<Vec<_>>()
-                            .join(", ")
-                    );
-                    if count == self.entries.len() {
-                        return lit.into();
-                    } else {
-                        lit + " | "
-                    }
-                } else {
-                    String::new()
-                }
-            }
-        };
-        let format_as_optional =
-            self.format_as_optional && format_data.style != FormatStyle::MypyRevealType;
-        let mut unsorted = iterator
-            .filter_map(|e| {
-                (!format_as_optional || !matches!(e.type_, Type::None))
-                    .then(|| (e.format_index, e.type_.format(format_data)))
-            })
-            .collect::<Vec<_>>();
-        unsorted.sort_by_key(|(format_index, _)| *format_index);
-        sorted += &unsorted
-            .into_iter()
-            .map(|(_, t)| t)
-            .collect::<Vec<_>>()
-            .join(" | ");
-        if format_as_optional {
-            format!("Optional[{sorted}]").into()
-        } else {
-            sorted.into()
-        }
     }
 }
 
