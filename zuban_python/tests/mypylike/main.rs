@@ -126,6 +126,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 check_untyped_defs: steps.flags.contains(&"--check-untyped-defs"),
                 disallow_untyped_defs: steps.flags.contains(&"--disallow-untyped-defs"),
                 disallow_untyped_calls: steps.flags.contains(&"--disallow-untyped-calls"),
+                disallow_untyped_decorators: steps.flags.contains(&"--disallow-untyped-decorators"),
                 disallow_any_generics: steps.flags.contains(&"--disallow-any-generics"),
                 extra_checks,
                 strict_optional: !steps.flags.contains(&"--no-strict-optional")
