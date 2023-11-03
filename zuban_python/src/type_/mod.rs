@@ -7,10 +7,10 @@ mod matching;
 mod named_tuple;
 mod operations;
 mod replace;
-mod simplified_union;
 mod tuple;
 mod type_var_likes;
 mod typed_dict;
+mod union;
 mod utils;
 
 use std::borrow::Cow;
@@ -72,6 +72,7 @@ pub use self::typed_dict::{
     infer_typed_dict_total_argument, initialize_typed_dict, lookup_on_typed_dict, new_typed_dict,
     TypedDict, TypedDictGenerics, TypedDictMember, TypedDictMemberGatherer,
 };
+pub use self::union::simplified_union_from_iterators;
 pub use common_base_type::{common_base_type, common_base_type_of_type_var_tuple_with_items};
 pub use matching::match_tuple_type_arguments;
 pub use named_tuple::{
@@ -79,7 +80,6 @@ pub use named_tuple::{
     new_typing_named_tuple, NamedTuple,
 };
 pub use replace::ReplaceSelf;
-pub use simplified_union::simplified_union_from_iterators;
 pub use tuple::{Tuple, TupleTypeArguments};
 pub use type_var_likes::{
     CallableWithParent, ParamSpec, ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, TypeVar,
