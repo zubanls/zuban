@@ -57,7 +57,10 @@ pub use self::dataclass::{
     lookup_dataclass_symbol, lookup_on_dataclass, lookup_on_dataclass_type, Dataclass,
     DataclassOptions,
 };
-pub use self::enum_::{Enum, EnumMember, EnumMemberDefinition};
+pub use self::enum_::{
+    execute_functional_enum, infer_value_on_member, lookup_on_enum_class, lookup_on_enum_instance,
+    lookup_on_enum_member_instance, Enum, EnumMember, EnumMemberDefinition,
+};
 pub use self::operations::execute_type_of_type;
 pub use self::typed_dict::{
     infer_typed_dict_total_argument, initialize_typed_dict, lookup_on_typed_dict, new_typed_dict,

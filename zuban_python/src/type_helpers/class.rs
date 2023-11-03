@@ -9,7 +9,6 @@ use parsa_python_ast::{
     SimpleStmts, StmtContent, StmtOrError, Target,
 };
 
-use super::enum_::execute_functional_enum;
 use super::overload::OverloadResult;
 use super::{Callable, Instance, Module};
 use crate::arguments::{Arguments, KnownArguments, SimpleArguments};
@@ -19,10 +18,9 @@ use crate::database::{
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
-use crate::file::{use_cached_annotation_type, File};
 use crate::file::{
-    CalculatedBaseClass, PythonFile, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn,
-    TypeVarFinder,
+    use_cached_annotation_type, CalculatedBaseClass, File, PythonFile, TypeComputation,
+    TypeComputationOrigin, TypeVarCallbackReturn, TypeVarFinder,
 };
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
@@ -35,14 +33,13 @@ use crate::matching::{
 use crate::node_ref::NodeRef;
 use crate::python_state::NAME_TO_FUNCTION_DIFF;
 use crate::type_::{
-    check_dataclass_options, dataclass_init_func, infer_typed_dict_total_argument, CallableContent,
-    CallableLike, CallableParam, CallableParams, ClassGenerics, Dataclass, DataclassOptions,
-    DbString, Enum, EnumMemberDefinition, FormatStyle, FunctionKind, FunctionOverload,
-    GenericClass, GenericsList, NamedTuple, ParamSpecific, RecursiveAlias, StringSlice, Tuple,
-    Type, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember,
-    TypedDictMemberGatherer, Variance,
+    check_dataclass_options, dataclass_init_func, execute_functional_enum,
+    infer_typed_dict_total_argument, infer_value_on_member, CallableContent, CallableLike,
+    CallableParam, CallableParams, ClassGenerics, Dataclass, DataclassOptions, DbString, Enum,
+    EnumMemberDefinition, FormatStyle, FunctionKind, FunctionOverload, GenericClass, GenericsList,
+    NamedTuple, ParamSpecific, RecursiveAlias, StringSlice, Tuple, Type, TypeVarLike,
+    TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember, TypedDictMemberGatherer, Variance,
 };
-use crate::type_helpers::enum_::infer_value_on_member;
 use crate::type_helpers::format_pretty_callable;
 
 #[derive(Clone, Copy)]
