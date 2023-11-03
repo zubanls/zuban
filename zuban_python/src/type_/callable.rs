@@ -448,63 +448,63 @@ impl CallableContent {
 
     pub fn format(&self, format_data: &FormatData) -> String {
         if format_data.style == FormatStyle::MypyRevealType {
-            return format_pretty_callable(format_data, self).into();
+            return self.format_pretty(format_data).into();
         }
         let result = self.result_type.format(format_data);
         let params = self.params.format(format_data, ParamsStyle::CallableParams);
         format!("Callable[{params}, {result}]")
+    }
+
+    pub fn format_pretty(&self, format_data: &FormatData) -> Box<str> {
+        let db = format_data.db;
+        let not_reveal_type = format_data.style != FormatStyle::MypyRevealType;
+        let name = self
+            .name
+            .as_ref()
+            .and_then(|s| not_reveal_type.then(|| s.as_str(db)))
+            .unwrap_or("");
+        match &self.params {
+            CallableParams::Simple(params) => {
+                let avoid_self_annotation = !self.kind.had_first_self_or_class_annotation();
+                format_pretty_function_like(
+                    format_data,
+                    None,
+                    avoid_self_annotation && not_reveal_type,
+                    name,
+                    &self.type_vars,
+                    params.iter(),
+                    Some(&self.result_type),
+                )
+            }
+            CallableParams::WithParamSpec(pre_types, usage) => {
+                if !pre_types.is_empty() {
+                    todo!()
+                }
+                let spec = usage.param_spec.name(db);
+                format_pretty_function_with_params(
+                    format_data,
+                    None,
+                    &self.type_vars,
+                    Some(&self.result_type),
+                    name,
+                    &format!("*{spec}.args, **{spec}.kwargs"),
+                )
+            }
+            CallableParams::Any => {
+                let mut s = format!("def {name}(*Any, **Any)");
+                if self.result_type != Type::None {
+                    s += " -> ";
+                    s += &self.result_type.format(format_data);
+                }
+                s.into()
+            }
+        }
     }
 }
 
 pub enum WrongPositionalCount {
     TooMany,
     TooFew,
-}
-
-pub fn format_pretty_callable(format_data: &FormatData, callable: &CallableContent) -> Box<str> {
-    let db = format_data.db;
-    let not_reveal_type = format_data.style != FormatStyle::MypyRevealType;
-    let name = callable
-        .name
-        .as_ref()
-        .and_then(|s| not_reveal_type.then(|| s.as_str(db)))
-        .unwrap_or("");
-    match &callable.params {
-        CallableParams::Simple(params) => {
-            let avoid_self_annotation = !callable.kind.had_first_self_or_class_annotation();
-            format_pretty_function_like(
-                format_data,
-                None,
-                avoid_self_annotation && not_reveal_type,
-                name,
-                &callable.type_vars,
-                params.iter(),
-                Some(&callable.result_type),
-            )
-        }
-        CallableParams::WithParamSpec(pre_types, usage) => {
-            if !pre_types.is_empty() {
-                todo!()
-            }
-            let spec = usage.param_spec.name(db);
-            format_pretty_function_with_params(
-                format_data,
-                None,
-                &callable.type_vars,
-                Some(&callable.result_type),
-                name,
-                &format!("*{spec}.args, **{spec}.kwargs"),
-            )
-        }
-        CallableParams::Any => {
-            let mut s = format!("def {name}(*Any, **Any)");
-            if callable.result_type != Type::None {
-                s += " -> ";
-                s += &callable.result_type.format(format_data);
-            }
-            s.into()
-        }
-    }
 }
 
 pub fn format_callable_params<'db: 'x, 'x, P: Param<'x>>(

@@ -33,7 +33,7 @@ use crate::matching::{
 use crate::node_ref::NodeRef;
 use crate::python_state::NAME_TO_FUNCTION_DIFF;
 use crate::type_::{
-    check_dataclass_options, dataclass_init_func, execute_functional_enum, format_pretty_callable,
+    check_dataclass_options, dataclass_init_func, execute_functional_enum,
     infer_typed_dict_total_argument, infer_value_on_member, CallableContent, CallableLike,
     CallableParam, CallableParams, ClassGenerics, Dataclass, DataclassOptions, DbString, Enum,
     EnumMemberDefinition, FormatStyle, FunctionKind, FunctionOverload, GenericClass, GenericsList,
@@ -2079,8 +2079,8 @@ fn add_protocol_mismatch(
 ) {
     match (full1, full2) {
         (Type::Callable(c1), Type::Callable(c2)) => {
-            let s1 = format_pretty_callable(&FormatData::new_short(i_s.db), c1);
-            let s2 = format_pretty_callable(&FormatData::new_short(i_s.db), c2);
+            let s1 = c1.format_pretty(&FormatData::new_short(i_s.db));
+            let s2 = c2.format_pretty(&FormatData::new_short(i_s.db));
             notes.push("    Expected:".into());
             notes.push(format!("        {s1}").into());
             notes.push("    Got:".into());

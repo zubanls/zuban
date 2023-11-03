@@ -19,8 +19,8 @@ use crate::matching::{
 };
 use crate::node_ref::NodeRef;
 use crate::type_::{
-    format_pretty_callable, CallableContent, FunctionKind, GenericItem, TupleTypeArguments, Type,
-    TypeOrTypeVarTuple, TypeVarLike, Variance,
+    CallableContent, FunctionKind, GenericItem, TupleTypeArguments, Type, TypeOrTypeVarTuple,
+    TypeVarLike, Variance,
 };
 use crate::type_helpers::{
     is_private, Class, FirstParamProperties, Function, GeneratorType, Instance, TypeOrClass,
@@ -1029,7 +1029,7 @@ fn try_pretty_format(
                 notes.push(
                     format!(
                         "{prefix}{}",
-                        format_pretty_callable(&FormatData::new_short(i_s.db), c)
+                        c.format_pretty(&FormatData::new_short(i_s.db))
                     )
                     .into(),
                 );
@@ -1041,7 +1041,7 @@ fn try_pretty_format(
                     notes.push(
                         format!(
                             "{prefix}{}",
-                            format_pretty_callable(&FormatData::new_short(i_s.db), c)
+                            c.format_pretty(&FormatData::new_short(i_s.db))
                         )
                         .into(),
                     );

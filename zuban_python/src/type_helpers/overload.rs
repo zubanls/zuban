@@ -13,7 +13,7 @@ use crate::{
         FunctionOrCallable, OnTypeError, ResultContext, SignatureMatch,
     },
     node_ref::NodeRef,
-    type_::{format_pretty_callable, FunctionOverload, ReplaceSelf, Type},
+    type_::{FunctionOverload, ReplaceSelf, Type},
 };
 
 use super::{Callable, Class};
@@ -439,9 +439,9 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     if let Some(init_cls) = init_cls {
                         callable.result_type = init_cls.as_type(i_s.db)
                     }
-                    format_pretty_callable(format_data, &callable)
+                    callable.format_pretty(format_data)
                 } else {
-                    format_pretty_callable(format_data, callable)
+                    callable.format_pretty(format_data)
                 }
             })
             .collect()
