@@ -438,7 +438,6 @@ testAssignEnumAsAttribute
 # "TypedDict type as attribute is not supported"
 testAssignTypedDictAsAttribute
 
-testGenericTypedDictAlias
 # TypedDict recursions
 testBasicRecursiveTypedDictClass
 testBasicRecursiveTypedDictExtending
@@ -2172,6 +2171,7 @@ testDisallowAnyGenericsPlainList
 testInferredTypeSubTypeOfReturnType
 # --disallow-any-generics
 testDisallowAnyGenericsForAliasesInRuntimeContext
+testGenericTypedDictAlias
 # "Subscripting classes that are not generic at runtime may require escaping"
 testCheckDisallowAnyGenericsStubOnly
 

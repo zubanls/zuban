@@ -285,15 +285,19 @@ impl Type {
                 TypeVarKind::Unrestricted => todo!(),
             },
             Type::Type(t) => match t.as_ref() {
-                Type::Class(c) => c.class(i_s.db).get_item(i_s, slice_type, result_context),
-                Type::Dataclass(d) => slice_type
-                    .file
-                    .inference(i_s)
-                    .compute_type_application_on_dataclass(d, *slice_type, false),
-                Type::NamedTuple(nt) => slice_type
-                    .file
-                    .inference(i_s)
-                    .compute_type_application_on_named_tuple(nt.clone(), *slice_type, false),
+                Type::Class(c) => return c.class(i_s.db).get_item(i_s, slice_type, result_context),
+                Type::Dataclass(d) => {
+                    return slice_type
+                        .file
+                        .inference(i_s)
+                        .compute_type_application_on_dataclass(d, *slice_type, false)
+                }
+                Type::NamedTuple(nt) => {
+                    return slice_type
+                        .file
+                        .inference(i_s)
+                        .compute_type_application_on_named_tuple(nt.clone(), *slice_type, false)
+                }
                 t @ Type::Enum(_) => {
                     let enum_index = slice_type.infer(i_s);
                     if !enum_index
@@ -308,16 +312,18 @@ impl Type {
                             },
                         );
                     }
-                    Inferred::from_type(t.clone())
+                    return Inferred::from_type(t.clone());
                 }
-                Type::TypedDict(td) => slice_type
-                    .file
-                    .inference(i_s)
-                    .compute_type_application_on_typed_dict(
-                        td,
-                        *slice_type,
-                        matches!(result_context, ResultContext::AssignmentNewDefinition),
-                    ),
+                Type::TypedDict(td) => {
+                    return slice_type
+                        .file
+                        .inference(i_s)
+                        .compute_type_application_on_typed_dict(
+                            td,
+                            *slice_type,
+                            matches!(result_context, ResultContext::AssignmentNewDefinition),
+                        )
+                }
                 _ => not_possible(),
             },
             Type::NewType(new_type) => {
