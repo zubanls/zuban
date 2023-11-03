@@ -12,12 +12,13 @@ use crate::{
     inferred::Inferred,
     matching::{FormatData, LookupKind, LookupResult, Matcher, OnTypeError, ResultContext},
     node_ref::NodeRef,
-    type_helpers::{method_with_fallback, Instance, Module},
+    type_helpers::{Instance, Module},
     utils::join_with_commas,
 };
 
 use super::{
-    CustomBehavior, FormatStyle, GenericsList, RecursiveAlias, StringSlice, Type, TypeVarLikes,
+    utils::method_with_fallback, CustomBehavior, FormatStyle, GenericsList, RecursiveAlias,
+    StringSlice, Type, TypeVarLikes,
 };
 
 #[derive(Debug, Clone, PartialEq)]

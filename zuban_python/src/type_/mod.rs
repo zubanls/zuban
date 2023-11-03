@@ -10,6 +10,7 @@ mod simplified_union;
 mod tuple;
 mod type_var_likes;
 mod typed_dict;
+mod utils;
 
 use std::borrow::Cow;
 use std::fmt;

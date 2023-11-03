@@ -11,12 +11,12 @@ use crate::{
     matching::{FormatData, IteratorContent, LookupKind, LookupResult, OnTypeError, ResultContext},
     node_ref::NodeRef,
     type_::Type,
-    type_helpers::{method_with_fallback, Instance, TypeOrClass},
+    type_helpers::{Instance, TypeOrClass},
 };
 
 use super::{
-    simplified_union_from_iterators, CustomBehavior, FormatStyle, GenericItem, GenericsList,
-    TupleTypeArguments, TypeOrTypeVarTuple,
+    simplified_union_from_iterators, utils::method_with_fallback, CustomBehavior, FormatStyle,
+    GenericItem, GenericsList, TupleTypeArguments, TypeOrTypeVarTuple,
 };
 
 thread_local! {

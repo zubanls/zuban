@@ -6,7 +6,6 @@ mod instance;
 mod module;
 mod overload;
 mod typing;
-mod utils;
 
 pub use bound_method::{BoundMethod, BoundMethodFunction};
 pub use callable::{
@@ -21,4 +20,3 @@ pub use typing::{
     execute_assert_type, execute_type, NewTypeClass, ParamSpecClass, RevealTypeFunction,
     TypeVarClass, TypeVarTupleClass, TypingCast,
 };
-pub use utils::method_with_fallback;
