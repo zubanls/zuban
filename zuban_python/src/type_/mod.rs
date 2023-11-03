@@ -58,7 +58,10 @@ pub use self::dataclass::{
     DataclassOptions,
 };
 pub use self::operations::execute_type_of_type;
-pub use self::typed_dict::{TypedDict, TypedDictGenerics, TypedDictMember};
+pub use self::typed_dict::{
+    infer_typed_dict_total_argument, initialize_typed_dict, lookup_on_typed_dict, new_typed_dict,
+    TypedDict, TypedDictGenerics, TypedDictMember, TypedDictMemberGatherer,
+};
 pub use common_base_type::{common_base_type, common_base_type_of_type_var_tuple_with_items};
 pub use matching::match_tuple_type_arguments;
 pub use named_tuple::{

@@ -16,12 +16,12 @@ use crate::{
     type_helpers::{
         lookup_in_namespace, lookup_on_enum_class, lookup_on_enum_instance,
         lookup_on_enum_member_instance, Callable, Class, Instance, Module, OverloadedFunction,
-        TypedDictHelper,
     },
 };
 
 use super::{
-    dataclass_initialize, lookup_dataclass_symbol, lookup_on_dataclass, lookup_on_dataclass_type,
+    dataclass_initialize, initialize_typed_dict, lookup_dataclass_symbol, lookup_on_dataclass,
+    lookup_on_dataclass_type, lookup_on_typed_dict,
     tuple::{lookup_on_tuple, lookup_tuple_magic_methods},
     Type, TypeVarKind,
 };
@@ -217,7 +217,10 @@ impl Type {
                 callable(self, result)
             }
             Type::Dataclass(d) => callable(self, lookup_on_dataclass(d.clone(), i_s, from, name)),
-            Type::TypedDict(d) => callable(self, TypedDictHelper(d).lookup(i_s, from, name, kind)),
+            Type::TypedDict(td) => callable(
+                self,
+                lookup_on_typed_dict(td.clone(), i_s, from, name, kind),
+            ),
             Type::NamedTuple(nt) => callable(self, nt.lookup(i_s, name, Some(&|| self.clone()))),
             Type::Never => (),
             Type::NewType(new_type) => new_type.type_(i_s).run_after_lookup_on_each_union_member(
@@ -334,7 +337,7 @@ impl Type {
                 r.calculated_type(i_s.db)
                     .get_item(i_s, None, slice_type, result_context)
             }
-            Type::TypedDict(d) => TypedDictHelper(d).get_item(i_s, slice_type, result_context),
+            Type::TypedDict(d) => d.get_item(i_s, slice_type, result_context),
             Type::Callable(_) => not_possible(),
             Type::FunctionOverload(_) => {
                 not_possible();
@@ -609,7 +612,7 @@ pub fn execute_type_of_type<'db>(
         Type::Any => Inferred::new_any(),
         Type::Dataclass(d) => dataclass_initialize(d, i_s, args, result_context, on_type_error),
         Type::TypedDict(td) => {
-            TypedDictHelper(td).initialize(i_s, args, result_context, on_type_error)
+            initialize_typed_dict(td.clone(), i_s, args, result_context, on_type_error)
         }
         Type::NamedTuple(nt) => {
             let calculated_type_vars = calculate_callable_type_vars_and_return(

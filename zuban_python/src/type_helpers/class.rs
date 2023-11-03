@@ -11,7 +11,7 @@ use parsa_python_ast::{
 
 use super::enum_::execute_functional_enum;
 use super::overload::OverloadResult;
-use super::{Callable, Instance, Module, TypedDictMemberGatherer};
+use super::{Callable, Instance, Module};
 use crate::arguments::{Arguments, KnownArguments, SimpleArguments};
 use crate::database::{
     BaseClass, ClassInfos, ClassKind, ClassStorage, ComplexPoint, Database, Locality,
@@ -35,14 +35,15 @@ use crate::matching::{
 use crate::node_ref::NodeRef;
 use crate::python_state::NAME_TO_FUNCTION_DIFF;
 use crate::type_::{
-    check_dataclass_options, dataclass_init_func, CallableContent, CallableLike, CallableParam,
-    CallableParams, ClassGenerics, Dataclass, DataclassOptions, DbString, Enum,
-    EnumMemberDefinition, FormatStyle, FunctionKind, FunctionOverload, GenericClass, GenericsList,
-    NamedTuple, ParamSpecific, RecursiveAlias, StringSlice, Tuple, Type, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember, Variance,
+    check_dataclass_options, dataclass_init_func, infer_typed_dict_total_argument, CallableContent,
+    CallableLike, CallableParam, CallableParams, ClassGenerics, Dataclass, DataclassOptions,
+    DbString, Enum, EnumMemberDefinition, FormatStyle, FunctionKind, FunctionOverload,
+    GenericClass, GenericsList, NamedTuple, ParamSpecific, RecursiveAlias, StringSlice, Tuple,
+    Type, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember,
+    TypedDictMemberGatherer, Variance,
 };
 use crate::type_helpers::enum_::infer_value_on_member;
-use crate::type_helpers::{format_pretty_callable, infer_typed_dict_total_argument};
+use crate::type_helpers::format_pretty_callable;
 
 #[derive(Clone, Copy)]
 pub struct Class<'a> {

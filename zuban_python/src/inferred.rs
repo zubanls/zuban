@@ -25,14 +25,14 @@ use crate::matching::{
 use crate::node_ref::NodeRef;
 use crate::type_::{
     execute_collections_named_tuple, execute_type_of_type, execute_typing_named_tuple,
-    CallableContent, CallableParams, ClassGenerics, DbString, Enum, FunctionKind, FunctionOverload,
-    GenericClass, GenericItem, GenericsList, Literal as DbLiteral, LiteralKind, LiteralValue,
-    NewType, Type, TypeVarKind, TypeVarLike, TypeVarLikes, TypedDict,
+    new_typed_dict, CallableContent, CallableParams, ClassGenerics, DbString, Enum, FunctionKind,
+    FunctionOverload, GenericClass, GenericItem, GenericsList, Literal as DbLiteral, LiteralKind,
+    LiteralValue, NewType, Type, TypeVarKind, TypeVarLike, TypeVarLikes, TypedDict,
 };
 use crate::type_helpers::{
     execute_assert_type, execute_super, execute_type, merge_class_type_vars_into_callable,
-    new_typed_dict, BoundMethod, BoundMethodFunction, Class, FirstParamProperties, Function,
-    Instance, NewTypeClass, OverloadedFunction, ParamSpecClass, RevealTypeFunction, TypeOrClass,
+    BoundMethod, BoundMethodFunction, Class, FirstParamProperties, Function, Instance,
+    NewTypeClass, OverloadedFunction, ParamSpecClass, RevealTypeFunction, TypeOrClass,
     TypeVarClass, TypeVarTupleClass, TypingCast,
 };
 
