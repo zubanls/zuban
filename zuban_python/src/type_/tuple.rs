@@ -90,6 +90,8 @@ impl Tuple {
         slice_type: &SliceType,
         result_context: &mut ResultContext,
     ) -> Inferred {
+        // Make sure the get_item part is inferred.
+        slice_type.infer(i_s);
         match slice_type.unpack() {
             SliceTypeContent::Simple(simple) => {
                 let index_inf = simple

@@ -263,15 +263,20 @@ impl Type {
             slice_type
                 .as_node_ref()
                 .add_issue(i_s, IssueType::OnlyClassTypeApplication);
+            slice_type.infer(i_s);
             Inferred::new_any()
         };
-        let inf = match self {
+        match self {
             Type::Class(c) => Instance::new(c.class(i_s.db), from_inferred).get_item(
                 i_s,
                 slice_type,
                 result_context,
             ),
-            Type::Any => Inferred::new_any(),
+            Type::Any => {
+                // Make sure the slices are inferred
+                slice_type.infer(i_s);
+                Inferred::new_any()
+            }
             Type::Tuple(tup) => tup.get_item(i_s, slice_type, result_context),
             Type::NamedTuple(nt) => nt.get_item(i_s, slice_type, result_context),
             Type::Union(union) => Inferred::gather_simplified_union(i_s, |callable| {
@@ -285,19 +290,15 @@ impl Type {
                 TypeVarKind::Unrestricted => todo!(),
             },
             Type::Type(t) => match t.as_ref() {
-                Type::Class(c) => return c.class(i_s.db).get_item(i_s, slice_type, result_context),
-                Type::Dataclass(d) => {
-                    return slice_type
-                        .file
-                        .inference(i_s)
-                        .compute_type_application_on_dataclass(d, *slice_type, false)
-                }
-                Type::NamedTuple(nt) => {
-                    return slice_type
-                        .file
-                        .inference(i_s)
-                        .compute_type_application_on_named_tuple(nt.clone(), *slice_type, false)
-                }
+                Type::Class(c) => c.class(i_s.db).get_item(i_s, slice_type, result_context),
+                Type::Dataclass(d) => slice_type
+                    .file
+                    .inference(i_s)
+                    .compute_type_application_on_dataclass(d, *slice_type, false),
+                Type::NamedTuple(nt) => slice_type
+                    .file
+                    .inference(i_s)
+                    .compute_type_application_on_named_tuple(nt.clone(), *slice_type, false),
                 t @ Type::Enum(_) => {
                     let enum_index = slice_type.infer(i_s);
                     if !enum_index
@@ -312,18 +313,16 @@ impl Type {
                             },
                         );
                     }
-                    return Inferred::from_type(t.clone());
+                    Inferred::from_type(t.clone())
                 }
-                Type::TypedDict(td) => {
-                    return slice_type
-                        .file
-                        .inference(i_s)
-                        .compute_type_application_on_typed_dict(
-                            td,
-                            *slice_type,
-                            matches!(result_context, ResultContext::AssignmentNewDefinition),
-                        )
-                }
+                Type::TypedDict(td) => slice_type
+                    .file
+                    .inference(i_s)
+                    .compute_type_application_on_typed_dict(
+                        td,
+                        *slice_type,
+                        matches!(result_context, ResultContext::AssignmentNewDefinition),
+                    ),
                 _ => not_possible(),
             },
             Type::NewType(new_type) => {
@@ -343,6 +342,7 @@ impl Type {
             }
             Type::None => {
                 debug!("TODO None[...]");
+                slice_type.infer(i_s);
                 Inferred::new_any()
             }
             Type::Literal(l) => i_s.db.python_state.literal_type(&l.kind).get_item(
@@ -352,10 +352,7 @@ impl Type {
                 result_context,
             ),
             _ => todo!("get_item not implemented for {self:?}"),
-        };
-        // Make sure the slices are inferred
-        slice_type.infer(i_s);
-        inf
+        }
     }
 
     pub fn execute<'db>(
