@@ -2113,19 +2113,17 @@ impl NewOrInitConstructor<'_> {
                                        // TODO probably enable??
                     Some(class) => match callable_like {
                         CallableLike::Callable(c) => {
-                            CallableLike::Callable(Rc::new(merge_class_type_vars_into_callable(
+                            CallableLike::Callable(Rc::new(c.merge_class_type_vars(
                                 i_s.db,
                                 class,
                                 class,
-                                &c,
                             )))
                         }
                         CallableLike::Overload(overload) => CallableLike::Overload(FunctionOverload::new(overload.iter_functions().map(|c| {
-                            dbg!(merge_class_type_vars_into_callable(
+                            dbg!(c.merge_class_type_vars(
                                 i_s.db,
                                 class,
                                 class,
-                                &c,
                             ))
                         }).collect()))
                     },

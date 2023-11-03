@@ -30,10 +30,9 @@ use crate::type_::{
     LiteralValue, NewType, Type, TypeVarKind, TypeVarLike, TypeVarLikes, TypedDict,
 };
 use crate::type_helpers::{
-    execute_assert_type, execute_super, execute_type, merge_class_type_vars_into_callable,
-    BoundMethod, BoundMethodFunction, Class, FirstParamProperties, Function, Instance,
-    NewTypeClass, OverloadedFunction, ParamSpecClass, RevealTypeFunction, TypeOrClass,
-    TypeVarClass, TypeVarTupleClass, TypingCast,
+    execute_assert_type, execute_super, execute_type, BoundMethod, BoundMethodFunction, Class,
+    FirstParamProperties, Function, Instance, NewTypeClass, OverloadedFunction, ParamSpecClass,
+    RevealTypeFunction, TypeOrClass, TypeVarClass, TypeVarTupleClass, TypingCast,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]
@@ -1155,11 +1154,10 @@ impl<'db: 'slf, 'slf> Inferred {
                                     FunctionOverload::new(
                                         o.iter_functions()
                                             .map(|c| {
-                                                merge_class_type_vars_into_callable(
+                                                c.merge_class_type_vars(
                                                     i_s.db,
                                                     *class,
                                                     attribute_class,
-                                                    c,
                                                 )
                                             })
                                             .collect(),
