@@ -13,10 +13,10 @@ use crate::{
         FunctionOrCallable, OnTypeError, ResultContext, SignatureMatch,
     },
     node_ref::NodeRef,
-    type_::{FunctionOverload, ReplaceSelf, Type},
+    type_::{format_pretty_callable, FunctionOverload, ReplaceSelf, Type},
 };
 
-use super::{format_pretty_callable, Callable, Class};
+use super::{Callable, Class};
 
 #[derive(Debug)]
 pub struct OverloadedFunction<'a> {

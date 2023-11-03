@@ -33,14 +33,13 @@ use crate::matching::{
 use crate::node_ref::NodeRef;
 use crate::python_state::NAME_TO_FUNCTION_DIFF;
 use crate::type_::{
-    check_dataclass_options, dataclass_init_func, execute_functional_enum,
+    check_dataclass_options, dataclass_init_func, execute_functional_enum, format_pretty_callable,
     infer_typed_dict_total_argument, infer_value_on_member, CallableContent, CallableLike,
     CallableParam, CallableParams, ClassGenerics, Dataclass, DataclassOptions, DbString, Enum,
     EnumMemberDefinition, FormatStyle, FunctionKind, FunctionOverload, GenericClass, GenericsList,
     NamedTuple, ParamSpecific, RecursiveAlias, StringSlice, Tuple, Type, TypeVarLike,
     TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember, TypedDictMemberGatherer, Variance,
 };
-use crate::type_helpers::format_pretty_callable;
 
 #[derive(Clone, Copy)]
 pub struct Class<'a> {

@@ -8,9 +8,7 @@ mod overload;
 mod typing;
 
 pub use bound_method::{BoundMethod, BoundMethodFunction};
-pub use callable::{
-    format_callable_params, format_pretty_callable, merge_class_type_vars_into_callable, Callable,
-};
+pub use callable::{merge_class_type_vars_into_callable, Callable};
 pub use class::{start_namedtuple_params, Class, MroIterator, TypeOrClass};
 pub use function::{is_private, FirstParamKind, FirstParamProperties, Function, GeneratorType};
 pub use instance::{execute_super, Instance};

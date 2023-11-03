@@ -19,12 +19,11 @@ use crate::matching::{
 };
 use crate::node_ref::NodeRef;
 use crate::type_::{
-    CallableContent, FunctionKind, GenericItem, TupleTypeArguments, Type, TypeOrTypeVarTuple,
-    TypeVarLike, Variance,
+    format_pretty_callable, CallableContent, FunctionKind, GenericItem, TupleTypeArguments, Type,
+    TypeOrTypeVarTuple, TypeVarLike, Variance,
 };
 use crate::type_helpers::{
-    format_pretty_callable, is_private, Class, FirstParamProperties, Function, GeneratorType,
-    Instance, TypeOrClass,
+    is_private, Class, FirstParamProperties, Function, GeneratorType, Instance, TypeOrClass,
 };
 
 use super::inference::await_;

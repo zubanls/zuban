@@ -55,8 +55,8 @@ use crate::utils::{bytes_repr, str_repr};
 use crate::workspaces::Directory;
 
 pub use self::callable::{
-    CallableContent, CallableParam, CallableParams, DoubleStarredParamSpecific, ParamSpecific,
-    StarredParamSpecific, WrongPositionalCount,
+    format_callable_params, format_pretty_callable, CallableContent, CallableParam, CallableParams,
+    DoubleStarredParamSpecific, ParamSpecific, StarredParamSpecific, WrongPositionalCount,
 };
 pub use self::dataclass::{
     check_dataclass_options, dataclass_init_func, dataclass_initialize, dataclasses_replace,

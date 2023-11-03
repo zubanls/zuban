@@ -4,10 +4,9 @@ use super::{matches_params, FormatData, Match, Matcher, ParamsStyle};
 use crate::database::Database;
 use crate::inference_state::InferenceState;
 use crate::type_::{
-    match_tuple_type_arguments, CallableParams, GenericItem, ParamSpecArgument, Type,
-    TypeArguments, TypeVarLike, Variance,
+    format_callable_params, match_tuple_type_arguments, CallableParams, GenericItem,
+    ParamSpecArgument, Type, TypeArguments, TypeVarLike, Variance,
 };
-use crate::type_helpers::format_callable_params;
 
 #[derive(Debug)]
 pub enum Generic<'a> {
