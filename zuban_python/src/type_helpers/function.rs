@@ -563,9 +563,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         let is_typed = |inf: &Inferred| {
                             inf.as_cow_type(i_s)
                                 .maybe_callable(i_s)
-                                .is_some_and(|c| c.is_typed())
+                                .map(|c| c.is_typed())
                         };
-                        if is_typed(&inferred) && !is_typed(&dec_inf) {
+                        if is_typed(&inferred).unwrap_or(false)
+                            && !is_typed(&dec_inf).unwrap_or(true)
+                        {
                             NodeRef::new(self.node_ref.file, decorator.index()).add_issue(
                                 i_s,
                                 IssueType::UntypedDecorator {
