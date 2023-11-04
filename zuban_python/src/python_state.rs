@@ -11,8 +11,8 @@ use crate::inferred::Inferred;
 use crate::matching::Generics;
 use crate::node_ref::NodeRef;
 use crate::type_::{
-    dataclasses_replace, CallableContent, ClassGenerics, CustomBehavior, LiteralKind, Tuple, Type,
-    TypeVarLikes,
+    dataclasses_replace, AnyCause, CallableContent, ClassGenerics, CustomBehavior, LiteralKind,
+    Tuple, Type, TypeVarLikes,
 };
 use crate::type_helpers::{Class, Function, Instance};
 use crate::{new_class, InferenceState};
@@ -226,15 +226,15 @@ impl PythonState {
             dataclasses_field_index: 0,
             dataclasses_capital_field_index: 0,
             dataclasses_replace_index: 0,
-            type_of_object: Type::Any, // Will be set later
-            type_of_any: Type::Type(Rc::new(Type::Any)),
+            type_of_object: Type::None, // Will be set later
+            type_of_any: Type::Type(Rc::new(Type::Any(AnyCause::Todo))),
             type_of_self: Type::Type(Rc::new(Type::Self_)),
             type_of_arbitrary_tuple: Type::Type(Rc::new(Type::Tuple(Tuple::new_empty()))),
             any_callable: Rc::new(CallableContent::new_any(empty_type_var_likes.clone())),
-            generator_with_any_generics: Type::Any, // Will be set later
-            async_generator_with_any_generics: Type::Any, // Will be set later
+            generator_with_any_generics: Type::None, // Will be set later
+            async_generator_with_any_generics: Type::None, // Will be set later
             empty_type_var_likes,
-            dataclass_fields_type: Type::Any, // Will be set later
+            dataclass_fields_type: Type::None, // Will be set later
         }
     }
 
@@ -466,10 +466,17 @@ impl PythonState {
         let s = &mut db.python_state;
         let object_type = s.object_type();
         s.type_of_object = Type::Type(Rc::new(object_type));
-        s.generator_with_any_generics =
-            new_class!(s.generator_link(), Type::Any, Type::Any, Type::Any,);
-        s.async_generator_with_any_generics =
-            new_class!(s.async_generator_link(), Type::Any, Type::Any,);
+        s.generator_with_any_generics = new_class!(
+            s.generator_link(),
+            Type::Any(AnyCause::Internal),
+            Type::Any(AnyCause::Internal),
+            Type::Any(AnyCause::Internal),
+        );
+        s.async_generator_with_any_generics = new_class!(
+            s.async_generator_link(),
+            Type::Any(AnyCause::Internal),
+            Type::Any(AnyCause::Internal),
+        );
 
         // Set promotions
         s.int()
@@ -492,7 +499,10 @@ impl PythonState {
         s.dataclass_fields_type = new_class!(
             s.dict_node_ref().as_link(),
             s.str_type(),
-            new_class!(s.dataclasses_capital_field_link(), Type::Any,),
+            new_class!(
+                s.dataclasses_capital_field_link(),
+                Type::Any(AnyCause::Internal),
+            ),
         );
 
         // Cache

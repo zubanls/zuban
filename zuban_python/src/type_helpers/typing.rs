@@ -10,8 +10,8 @@ use crate::inferred::Inferred;
 use crate::matching::{CouldBeALiteral, FormatData, OnTypeError, ResultContext};
 use crate::node_ref::NodeRef;
 use crate::type_::{
-    ClassGenerics, FormatStyle, NewType, ParamSpec, Type, TypeVar, TypeVarKind, TypeVarLike,
-    TypeVarName, TypeVarTuple, TypedDictGenerics, Variance,
+    AnyCause, ClassGenerics, FormatStyle, NewType, ParamSpec, Type, TypeVar, TypeVarKind,
+    TypeVarLike, TypeVarName, TypeVarTuple, TypedDictGenerics, Variance,
 };
 use crate::utils::join_with_commas;
 
@@ -64,7 +64,7 @@ impl<'db> TypingCast {
                                 .file
                                 .inference(i_s)
                                 .compute_cast_target(node_ref)
-                                .unwrap_or(Inferred::new_any()),
+                                .unwrap_or(Inferred::new_any(AnyCause::FromError)),
                         )
                     } else {
                         arg.infer(i_s, &mut ResultContext::ExpectUnused);
@@ -82,7 +82,7 @@ impl<'db> TypingCast {
                 i_s,
                 IssueType::ArgumentIssue(Box::from("\"cast\" expects 2 arguments")),
             );
-            return Inferred::new_any();
+            return Inferred::new_any(AnyCause::FromError);
         } else if had_non_positional {
             args.as_node_ref().add_issue(
                 i_s,
@@ -91,7 +91,7 @@ impl<'db> TypingCast {
                 )),
             );
         }
-        result.unwrap_or_else(Inferred::new_any)
+        result.unwrap_or_else(|| Inferred::new_any(AnyCause::FromError))
     }
 }
 
@@ -191,7 +191,7 @@ pub fn execute_assert_type<'db>(
             i_s,
             IssueType::ArgumentIssue(Box::from("\"assert_type\" expects 2 arguments")),
         );
-        return Inferred::new_any();
+        return Inferred::new_any(AnyCause::FromError);
     };
 
     let mut iterator = args.iter();
@@ -205,7 +205,7 @@ pub fn execute_assert_type<'db>(
                 "\"assert_type\" must be called with 2 positional arguments",
             )),
         );
-        Inferred::new_any()
+        Inferred::new_any(AnyCause::FromError)
     };
     if !matches!(&first.kind, ArgumentKind::Positional { .. }) {
         return error_non_positional();
@@ -224,7 +224,7 @@ pub fn execute_assert_type<'db>(
         .file
         .inference(i_s)
         .compute_cast_target(second_node_ref) else {
-        return Inferred::new_any()
+        return Inferred::new_any(AnyCause::FromError)
     };
     let second_type = second.as_cow_type(i_s);
     if first_type.as_ref() != second_type.as_ref() {

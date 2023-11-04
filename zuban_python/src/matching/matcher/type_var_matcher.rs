@@ -9,9 +9,9 @@ use crate::database::{Database, PointLink};
 use crate::inference_state::InferenceState;
 use crate::matching::Param;
 use crate::type_::{
-    common_base_type_of_type_var_tuple_with_items, CallableParams, GenericItem, ParamSpecArgument,
-    ParamSpecific, Type, TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarKind, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
+    common_base_type_of_type_var_tuple_with_items, AnyCause, CallableParams, GenericItem,
+    ParamSpecArgument, ParamSpecific, Type, TypeArguments, TypeOrTypeVarTuple, TypeVar,
+    TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
 };
 use crate::type_helpers::{Callable, Class, Function};
 
@@ -231,11 +231,11 @@ impl TypeVarMatcher {
                 if !current.calculated() {
                     current.type_ = match t {
                         TypeVarLikeUsage::TypeVar(_) => {
-                            BoundKind::TypeVar(TypeVarBound::Invariant(Type::Any))
+                            BoundKind::TypeVar(TypeVarBound::Invariant(Type::Any(AnyCause::Todo)))
                         }
-                        TypeVarLikeUsage::TypeVarTuple(_) => {
-                            BoundKind::TypeVarTuple(TypeArguments::new_arbitrary_length(Type::Any))
-                        }
+                        TypeVarLikeUsage::TypeVarTuple(_) => BoundKind::TypeVarTuple(
+                            TypeArguments::new_arbitrary_length(Type::Any(AnyCause::Todo)),
+                        ),
                         TypeVarLikeUsage::ParamSpec(_) => {
                             BoundKind::ParamSpecArgument(ParamSpecArgument::new_any())
                         }
@@ -314,7 +314,7 @@ pub fn check_constraints(
                         if matched_constraint.is_some() {
                             // This means that any is involved and multiple constraints
                             // are matching. Therefore just return Any.
-                            return Ok(TypeVarBound::Invariant(Type::Any));
+                            return Ok(TypeVarBound::Invariant(Type::Any(AnyCause::Todo)));
                         }
                         if value_type.has_any(i_s) {
                             matched_constraint = Some(constraint);

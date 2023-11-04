@@ -35,7 +35,7 @@ use crate::{
     database::Database,
     inference_state::InferenceState,
     inferred::Inferred,
-    type_::{Type, TypeOrTypeVarTuple},
+    type_::{AnyCause, Type, TypeOrTypeVarTuple},
 };
 
 type OnOverloadMismatch<'db, 'a> = Option<&'a dyn Fn()>;
@@ -139,7 +139,7 @@ impl IteratorContent {
                 }
             }),
             Self::Empty => todo!(),
-            Self::Any => Inferred::new_any(),
+            Self::Any => Inferred::new_any(AnyCause::Todo),
         }
     }
 
@@ -172,7 +172,7 @@ impl IteratorContent {
                 had_next.then_some(result)
             }
             Self::Empty => todo!(),
-            Self::Any => Some(Inferred::new_any()),
+            Self::Any => Some(Inferred::new_any(AnyCause::Todo)),
         }
     }
 

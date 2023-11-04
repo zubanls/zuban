@@ -113,7 +113,7 @@ impl Type {
             )
         };
         match self {
-            Type::Any => Type::Any,
+            Type::Any(cause) => Type::Any(*cause),
             Type::None => Type::None,
             Type::Never => Type::Never,
             Type::Class(c) => Type::new_class(c.link, c.generics.map_list(replace_generics)),
@@ -559,7 +559,7 @@ impl Type {
             )
         };
         match self {
-            Type::Any => Type::Any,
+            Type::Any(cause) => Type::Any(*cause),
             Type::None => Type::None,
             Type::Never => Type::Never,
             Type::Class(c) => Type::Class(GenericClass {

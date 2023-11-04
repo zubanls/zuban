@@ -15,7 +15,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{add_attribute_error, Inferred};
 use crate::matching::{IteratorContent, LookupKind, LookupResult, OnTypeError, ResultContext};
 use crate::node_ref::NodeRef;
-use crate::type_::{FunctionKind, GenericClass, Type, TypeVarKind};
+use crate::type_::{AnyCause, FunctionKind, GenericClass, Type, TypeVarKind};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Instance<'a> {
@@ -288,7 +288,10 @@ impl<'a> Instance<'a> {
             }
         }
         if self.class.incomplete_mro(i_s.db) {
-            (TypeOrClass::Class(self.class), LookupResult::any())
+            (
+                TypeOrClass::Class(self.class),
+                LookupResult::any(AnyCause::Todo),
+            )
         } else {
             (TypeOrClass::Class(self.class), LookupResult::None)
         }
@@ -404,7 +407,7 @@ impl<'a> Instance<'a> {
                 type_: self.class.format_short(i_s.db),
             },
         );
-        Inferred::new_any()
+        Inferred::new_any(AnyCause::FromError)
     }
 }
 
@@ -483,7 +486,7 @@ pub fn execute_super<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Arguments<'d
         Ok(inf) => inf,
         Err(issue) => {
             args.as_node_ref().add_issue(i_s, issue);
-            Inferred::new_any()
+            Inferred::new_any(AnyCause::FromError)
         }
     }
 }
@@ -505,7 +508,7 @@ fn execute_super_internal<'db>(
     let success = |c: GenericClass, mro_index| {
         if c.class(i_s.db).incomplete_mro(i_s.db) {
             debug!("super() with incomplete base class leads to any");
-            return Ok(Inferred::new_any());
+            return Ok(Inferred::new_any(AnyCause::Todo));
         }
         Ok(Inferred::from_type(Type::Super {
             class: Rc::new(c),
@@ -526,7 +529,7 @@ fn execute_super_internal<'db>(
                     }
                     t.as_ref().clone()
                 }
-                Type::Any => Type::Any,
+                Type::Any(cause) => Type::Any(cause),
                 _ => return Err(IssueType::SuperArgument1MustBeTypeObject),
             }
         }
@@ -547,7 +550,7 @@ fn execute_super_internal<'db>(
     let cls = match get_relevant_type_for_super(i_s.db, &instance.as_cow_type(i_s)) {
         Type::Self_ => i_s.current_class().unwrap().as_generic_class(i_s.db),
         Type::Class(g) => g,
-        Type::Any => return Ok(Inferred::new_any()),
+        Type::Any(cause) => return Ok(Inferred::new_any(cause)),
         _ => return Err(IssueType::SuperUnsupportedArgument { argument_index: 2 }),
     };
     if !first_type

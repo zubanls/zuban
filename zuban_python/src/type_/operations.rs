@@ -21,7 +21,7 @@ use super::{
     lookup_on_dataclass_type, lookup_on_enum_class, lookup_on_enum_instance,
     lookup_on_enum_member_instance, lookup_on_typed_dict,
     tuple::{lookup_on_tuple, lookup_tuple_magic_methods},
-    Type, TypeVarKind,
+    AnyCause, Type, TypeVarKind,
 };
 
 impl Type {
@@ -94,7 +94,7 @@ impl Type {
                 self,
                 Instance::new(c.class(i_s.db), from_inferred).lookup(i_s, from, name, kind),
             ),
-            Type::Any => callable(self, LookupResult::any()),
+            Type::Any(cause) => callable(self, LookupResult::any(*cause)),
             Type::None => callable(
                 self,
                 i_s.db
@@ -209,7 +209,10 @@ impl Type {
                     .1;
                 if matches!(&result, LookupResult::None) {
                     from.add_issue(i_s, IssueType::UndefinedInSuperclass { name: name.into() });
-                    callable(self, LookupResult::UnknownName(Inferred::new_any()));
+                    callable(
+                        self,
+                        LookupResult::UnknownName(Inferred::new_any(AnyCause::FromError)),
+                    );
                     return;
                 }
                 callable(self, result)
@@ -265,7 +268,7 @@ impl Type {
                 .as_node_ref()
                 .add_issue(i_s, IssueType::OnlyClassTypeApplication);
             slice_type.infer(i_s);
-            Inferred::new_any()
+            Inferred::new_any(AnyCause::FromError)
         };
         match self {
             Type::Class(c) => Instance::new(c.class(i_s.db), from_inferred).get_item(
@@ -273,10 +276,10 @@ impl Type {
                 slice_type,
                 result_context,
             ),
-            Type::Any => {
+            Type::Any(cause) => {
                 // Make sure the slices are inferred
                 slice_type.infer(i_s);
-                Inferred::new_any()
+                Inferred::new_any(*cause)
             }
             Type::Tuple(tup) => tup.get_item(i_s, slice_type, result_context),
             Type::NamedTuple(nt) => nt.get_item(i_s, slice_type, result_context),
@@ -344,7 +347,7 @@ impl Type {
             Type::None => {
                 debug!("TODO None[...]");
                 slice_type.infer(i_s);
-                Inferred::new_any()
+                Inferred::new_any(AnyCause::Todo)
             }
             Type::Literal(l) => i_s.db.python_state.literal_type(&l.kind).get_item(
                 i_s,
@@ -392,9 +395,13 @@ impl Type {
                 }
                 _ => todo!(),
             },
-            Type::Any | Type::Never => {
+            Type::Any(cause) => {
                 args.iter().calculate_diagnostics(i_s);
-                Inferred::new_any()
+                Inferred::new_any(*cause)
+            }
+            Type::Never => {
+                args.iter().calculate_diagnostics(i_s);
+                Inferred::new_any(AnyCause::Todo)
             }
             Type::CustomBehavior(custom) => {
                 custom.execute(i_s, args, result_context, on_type_error)
@@ -517,13 +524,13 @@ pub fn attribute_access_of_type(
             .lookup(i_s, from, name, kind),
         Type::Callable(_) => LookupResult::None,
         Type::Self_ => i_s.current_class().unwrap().lookup(i_s, from, name, kind),
-        Type::Any => i_s
+        Type::Any(cause) => i_s
             .db
             .python_state
             .bare_type_class()
             .instance()
             .lookup(i_s, from, name, kind)
-            .or_else(|| LookupResult::any()),
+            .or_else(|| LookupResult::any(*cause)),
         t @ Type::Enum(e) => lookup_on_enum_class(i_s, from, e, name, result_context),
         Type::Dataclass(d) => lookup_on_dataclass_type(d.clone(), i_s, from, name, kind),
         Type::TypedDict(d) => i_s
@@ -607,7 +614,7 @@ pub fn execute_type_of_type<'db>(
                 .execute(i_s, args, result_context, on_type_error);
             Inferred::from_type(Type::Self_)
         }
-        Type::Any => Inferred::new_any(),
+        Type::Any(cause) => Inferred::new_any(*cause),
         Type::Dataclass(d) => dataclass_initialize(d, i_s, args, result_context, on_type_error),
         Type::TypedDict(td) => {
             initialize_typed_dict(td.clone(), i_s, args, result_context, on_type_error)

@@ -4,6 +4,7 @@ use crate::database::{FileIndex, Locality, Point, PointLink};
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
+use crate::type_::AnyCause;
 
 #[derive(Debug, Clone)]
 pub enum LookupResult {
@@ -15,8 +16,8 @@ pub enum LookupResult {
 }
 
 impl LookupResult {
-    pub fn any() -> Self {
-        Self::UnknownName(Inferred::new_any())
+    pub fn any(cause: AnyCause) -> Self {
+        Self::UnknownName(Inferred::new_any(cause))
     }
 
     pub fn is_some(&self) -> bool {

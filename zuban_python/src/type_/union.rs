@@ -193,7 +193,7 @@ impl UnionType {
             Type::Literal(_) | Type::EnumMember(_) => -1,
             Type::None => 2,
             Type::TypeVar(_) => 3,
-            Type::Any => 4,
+            Type::Any(_) => 4,
             _ => t.type_.has_type_vars().into(),
         });
     }

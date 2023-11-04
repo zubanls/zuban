@@ -207,7 +207,7 @@ pub enum GenericItem {
 impl GenericItem {
     fn is_any(&self) -> bool {
         match self {
-            Self::TypeArgument(t) => matches!(t, Type::Any),
+            Self::TypeArgument(t) => matches!(t, Type::Any(_)),
             Self::TypeArguments(ts) => ts.args.is_any(),
             Self::ParamSpecArgument(_) => false,
         }
@@ -414,7 +414,7 @@ pub enum Type {
     CustomBehavior(CustomBehavior),
     Self_,
     None,
-    Any,
+    Any(AnyCause),
     Never,
 }
 
@@ -432,7 +432,7 @@ impl Type {
     }
 
     pub fn is_any(&self) -> bool {
-        matches!(self, Type::Any)
+        matches!(self, Type::Any(_))
     }
 
     pub fn into_iter_with_unpacked_unions(self) -> impl Iterator<Item = UnionEntry> {
@@ -534,7 +534,7 @@ impl Type {
                     None
                 }
             },
-            Type::Any => Some(CallableLike::Callable(
+            Type::Any(_) => Some(CallableLike::Callable(
                 i_s.db.python_state.any_callable.clone(),
             )),
             Type::Class(c) => {
@@ -663,7 +663,7 @@ impl Type {
             Self::Type(type_) => format!("Type[{}]", type_.format(format_data)).into(),
             Self::Tuple(content) => content.format(format_data),
             Self::Callable(content) => content.format(format_data).into(),
-            Self::Any => Box::from("Any"),
+            Self::Any(_) => Box::from("Any"),
             Self::None => Box::from("None"),
             Self::Never => Box::from("Never"),
             Self::Literal(literal) => literal.format(format_data),
@@ -819,7 +819,7 @@ impl Type {
                 content.result_type.search_type_vars(found_type_var)
             }
             Self::Class(..)
-            | Self::Any
+            | Self::Any(_)
             | Self::None
             | Self::Never
             | Self::Literal { .. }
@@ -904,7 +904,7 @@ impl Type {
             | Self::None
             | Self::Never
             | Self::Literal { .. } => false,
-            Self::Any => true,
+            Self::Any(_) => true,
             Self::NewType(n) => n.type_(i_s).has_any(i_s),
             Self::RecursiveAlias(recursive_alias) => {
                 if let Some(generics) = &recursive_alias.generics {
@@ -984,7 +984,7 @@ impl Type {
             | Self::None
             | Self::Never
             | Self::Literal { .. }
-            | Self::Any
+            | Self::Any(_)
             | Self::Enum(_)
             | Self::NewType(_)
             | Self::ParamSpecArgs(_)
@@ -1351,13 +1351,13 @@ impl Type {
                 Type::Class(c2) if c1.link == c2.link => {
                     Type::new_class(c1.link, merge_generics(&c1.generics, &c2.generics))
                 }
-                _ => Type::Any,
+                _ => Type::Any(AnyCause::FromError),
             },
             Type::Union(u1) => match other {
                 Type::Union(u2) if u1.iter().all(|x| u2.iter().any(|y| x == y)) => {
                     Type::Union(u1.clone())
                 }
-                _ => Type::Any,
+                _ => Type::Any(AnyCause::FromError),
             },
             Type::Tuple(c1) => match other {
                 Type::Tuple(c2) => {
@@ -1388,13 +1388,13 @@ impl Type {
                         _ => Tuple::new_empty(),
                     })
                 }
-                _ => Type::Any,
+                _ => Type::Any(AnyCause::FromError),
             },
             Type::Callable(content1) => match other {
                 Type::Callable(content2) => Type::Callable(db.python_state.any_callable.clone()),
-                _ => Type::Any,
+                _ => Type::Any(AnyCause::FromError),
             },
-            _ => Type::Any,
+            _ => Type::Any(AnyCause::FromError),
         }
     }
 }
@@ -1721,4 +1721,19 @@ impl CallableLike {
 enum UniqueInUnpackedUnionError {
     None,
     Multiple,
+}
+
+impl PartialEq for AnyCause {
+    fn eq(&self, other: &Self) -> bool {
+        true
+    }
+}
+
+#[derive(Debug, Eq, Copy, Clone)]
+pub enum AnyCause {
+    Unannotated,
+    Explicit,
+    FromError,
+    Internal,
+    Todo, // Used for cases where it's currently unclear what the cause should be.
 }

@@ -30,10 +30,6 @@ use crate::workspaces::{
 };
 use crate::TypeCheckerFlags;
 
-thread_local! {
-    static ARBITRARY_TUPLE: Rc<Tuple> = Rc::new(Tuple::new_arbitrary_length(Type::Any));
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileIndex(pub u32);
 type FileStateLoaders = Box<[Box<dyn FileStateLoader>]>;

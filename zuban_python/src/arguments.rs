@@ -8,7 +8,7 @@ use crate::getitem::{SliceType, SliceTypeContent, Slices};
 use crate::inferred::Inferred;
 use crate::matching::{IteratorContent, Matcher, ResultContext};
 use crate::node_ref::NodeRef;
-use crate::type_::{GenericItem, ParamSpecUsage, StringSlice, Type, TypedDict, Variance};
+use crate::type_::{AnyCause, GenericItem, ParamSpecUsage, StringSlice, Type, TypedDict, Variance};
 use crate::{debug, InferenceState};
 use parsa_python_ast::{
     Argument as ASTArgument, ArgumentsDetails, ArgumentsIterator, Comprehension, Expression,
@@ -632,7 +632,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                         .into(),
                                     ),
                                 );
-                                Type::Any
+                                Type::Any(AnyCause::FromError)
                             };
                             return Some(BaseArgumentReturn::ArgsKwargs(
                                 ArgsKwargsIterator::Kwargs {

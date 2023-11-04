@@ -21,8 +21,8 @@ use crate::{
 };
 
 use super::{
-    CallableContent, CallableParam, CallableParams, ClassGenerics, DbString, FunctionKind,
-    GenericClass, Literal, LiteralKind, ParamSpecific, StringSlice, Tuple, Type,
+    AnyCause, CallableContent, CallableParam, CallableParams, ClassGenerics, DbString,
+    FunctionKind, GenericClass, Literal, LiteralKind, ParamSpecific, StringSlice, Tuple, Type,
     TypeOrTypeVarTuple, TypeVar, TypeVarKind,
 };
 
@@ -298,7 +298,7 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
             _ => i_s.db.python_state.empty_type_var_likes.clone(),
         },
         params: CallableParams::Simple(params.into()),
-        result_type: Type::Any,
+        result_type: Type::Any(AnyCause::Todo),
     }
 }
 
@@ -460,7 +460,9 @@ pub fn dataclasses_replace<'db>(
                     params.insert(
                         0,
                         CallableParam {
-                            param_specific: ParamSpecific::PositionalOnly(Type::Any),
+                            param_specific: ParamSpecific::PositionalOnly(Type::Any(
+                                AnyCause::Todo,
+                            )),
                             name: None,
                             has_default: false,
                         },
@@ -482,7 +484,8 @@ pub fn dataclasses_replace<'db>(
             ) {
                 return inferred;
             } else {
-                return Inferred::new_any();
+                // Error is raised by the type checker
+                return Inferred::new_any(AnyCause::FromError);
             }
             // All other cases are checked by the type checker that uses the typeshed stubs.
         }
@@ -520,7 +523,7 @@ fn run_on_dataclass(
             true
         }
         Type::Union(u) => u.iter().all(|t| run_on_dataclass(i_s, from, t, callback)),
-        Type::Any => true,
+        Type::Any(_) => true,
         Type::TypeVar(tv) => match &tv.type_var.kind {
             TypeVarKind::Bound(bound) => {
                 let result = run_on_dataclass(i_s, None, bound, callback);

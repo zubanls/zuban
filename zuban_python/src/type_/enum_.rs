@@ -17,7 +17,9 @@ use crate::{
     type_helpers::{Class, Instance, TypeOrClass},
 };
 
-use super::{CallableLike, DbString, FormatStyle, Literal, LiteralKind, StringSlice, Type};
+use super::{
+    AnyCause, CallableLike, DbString, FormatStyle, Literal, LiteralKind, StringSlice, Type,
+};
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct EnumMember {
@@ -229,7 +231,7 @@ pub fn infer_value_on_member(
                 _ => inferred,
             }
         }
-        _ => Inferred::new_any(),
+        _ => Inferred::new_any(AnyCause::Todo),
     }
 }
 

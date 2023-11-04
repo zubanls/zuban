@@ -17,8 +17,8 @@ use crate::{
 };
 
 use super::{
-    utils::method_with_fallback, CustomBehavior, FormatStyle, GenericsList, RecursiveAlias,
-    StringSlice, Type, TypeVarLikes,
+    utils::method_with_fallback, AnyCause, CustomBehavior, FormatStyle, GenericsList,
+    RecursiveAlias, StringSlice, Type, TypeVarLikes,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -228,7 +228,7 @@ impl TypedDict {
                                     key: key.into(),
                                 },
                             );
-                            Inferred::new_any()
+                            Inferred::new_any(AnyCause::FromError)
                         }
                     })
                 },
@@ -310,7 +310,7 @@ fn add_access_key_must_be_string_literal_issue(
 }
 
 pub fn new_typed_dict<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Arguments<'db>) -> Inferred {
-    new_typed_dict_internal(i_s, args).unwrap_or_else(|| Inferred::new_any())
+    new_typed_dict_internal(i_s, args).unwrap_or_else(|| Inferred::new_any(AnyCause::FromError))
 }
 
 fn new_typed_dict_internal<'db>(
@@ -714,7 +714,7 @@ pub fn initialize_typed_dict<'db>(
             next_arg
                 .as_node_ref()
                 .add_issue(i_s, IssueType::TypedDictWrongArgumentsInConstructor);
-            return Inferred::new_any();
+            return Inferred::new_any(AnyCause::FromError);
         }
         first_arg.infer(
             i_s,

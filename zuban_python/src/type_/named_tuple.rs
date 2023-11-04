@@ -18,8 +18,8 @@ use crate::{
 };
 
 use super::{
-    tuple::lookup_tuple_magic_methods, CallableContent, CallableParam, CallableParams, DbString,
-    FormatStyle, FunctionKind, ParamSpecific, RecursiveAlias, StringSlice, Tuple, Type,
+    tuple::lookup_tuple_magic_methods, AnyCause, CallableContent, CallableParam, CallableParams,
+    DbString, FormatStyle, FunctionKind, ParamSpecific, RecursiveAlias, StringSlice, Tuple, Type,
     TypeOrTypeVarTuple,
 };
 
@@ -198,7 +198,7 @@ impl NamedTuple {
                     result_type: new_class!(
                         i_s.db.python_state.dict_node_ref().as_link(),
                         i_s.db.python_state.str_type(),
-                        Type::Any,
+                        Type::Any(AnyCause::Explicit),
                     ),
                 })
             }),
@@ -212,7 +212,7 @@ impl NamedTuple {
                 params.push(CallableParam {
                     param_specific: ParamSpecific::PositionalOrKeyword(new_class!(
                         i_s.db.python_state.iterable_link(),
-                        Type::Any,
+                        Type::Any(AnyCause::Explicit),
                     )),
                     name: Some(DbString::Static("iterable")),
                     has_default: false,
@@ -237,12 +237,12 @@ impl NamedTuple {
             "_field_defaults" => new_class!(
                 i_s.db.python_state.dict_node_ref().as_link(),
                 i_s.db.python_state.str_type(),
-                Type::Any,
+                Type::Any(AnyCause::Explicit),
             ),
             "_field_types" => new_class!(
                 i_s.db.python_state.dict_node_ref().as_link(),
                 i_s.db.python_state.str_type(),
-                Type::Any,
+                Type::Any(AnyCause::Explicit),
             ),
             "_source" => i_s.db.python_state.str_type(),
             "__mul__" | "__rmul__" | "__add__" => {
@@ -282,7 +282,7 @@ pub fn execute_typing_named_tuple(i_s: &InferenceState, args: &dyn Arguments) ->
         Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(Rc::new(
             Type::NamedTuple(rc),
         ))),
-        None => Inferred::new_any(),
+        None => Inferred::new_any(AnyCause::FromError),
     }
 }
 
@@ -300,7 +300,7 @@ pub fn execute_collections_named_tuple<'db>(
         Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(Rc::new(
             Type::NamedTuple(rc),
         ))),
-        None => Inferred::new_any(),
+        None => Inferred::new_any(AnyCause::FromError),
     }
 }
 
@@ -436,7 +436,7 @@ pub fn new_collections_named_tuple(
 
     let mut add_param = |name| {
         params.push(CallableParam {
-            param_specific: ParamSpecific::PositionalOrKeyword(Type::Any),
+            param_specific: ParamSpecific::PositionalOrKeyword(Type::Any(AnyCause::Todo)),
             name: Some(name),
             has_default: false,
         })

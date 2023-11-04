@@ -30,9 +30,9 @@ use crate::matching::{
 use crate::node_ref::NodeRef;
 use crate::python_state::NAME_TO_FUNCTION_DIFF;
 use crate::type_::{
-    CallableContent, CallableLike, CallableParam, CallableParams, ClassGenerics, DbString,
-    DoubleStarredParamSpecific, FunctionKind, FunctionOverload, GenericClass, GenericItem,
-    ParamSpecUsage, ParamSpecific, ReplaceSelf, StarredParamSpecific, StringSlice,
+    AnyCause, CallableContent, CallableLike, CallableParam, CallableParams, ClassGenerics,
+    DbString, DoubleStarredParamSpecific, FunctionKind, FunctionOverload, GenericClass,
+    GenericItem, ParamSpecUsage, ParamSpecific, ReplaceSelf, StarredParamSpecific, StringSlice,
     TupleTypeArguments, Type, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
     TypeVarManager, TypeVarName, TypeVarUsage, Variance, WrongPositionalCount,
 };
@@ -145,7 +145,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         args: &dyn Arguments<'db>,
     ) -> Inferred {
         if i_s.db.project.flags.mypy_compatible {
-            return Inferred::new_any();
+            return Inferred::new_any(AnyCause::Unannotated);
         }
         if self.is_generator() {
             todo!("Maybe not check here, because this could be precalculated and cached");
@@ -434,7 +434,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     ) -> Inferred {
         let node = self.node();
         let Some(details) = self.calculate_decorated_function_details(i_s) else {
-            return Inferred::new_any()
+            return Inferred::new_any(AnyCause::FromError)
         };
 
         let func_node = self.node();
@@ -443,7 +443,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             return if let Some(overload) = self.calculate_next_overload_items(i_s, details) {
                 Inferred::new_unsaved_complex(ComplexPoint::FunctionOverload(Box::new(overload)))
             } else {
-                Inferred::new_any()
+                Inferred::new_any(AnyCause::FromError)
             };
         }
         match details.kind {
@@ -463,7 +463,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         // IssueType::MethodWithoutArguments will be checked and added later.
                         WrongPositionalCount::TooFew => (),
                     }
-                    return Inferred::new_any();
+                    return Inferred::new_any(AnyCause::FromError);
                 }
                 // Make sure the old Rc count is decreased, so we can use it mutable without cloning.
                 drop(details);
@@ -965,8 +965,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         if self.is_async() && !self.is_generator() {
             result_type = new_class!(
                 i_s.db.python_state.coroutine_link(),
-                Type::Any,
-                Type::Any,
+                Type::Any(AnyCause::Todo),
+                Type::Any(AnyCause::Todo),
                 result_type,
             );
         }
@@ -1007,12 +1007,14 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                                 FunctionKind::Function { .. } | FunctionKind::Property { .. } => {
                                     self.class.unwrap().as_type(i_s.db)
                                 }
-                                FunctionKind::Classmethod { .. } => Type::Any,
-                                FunctionKind::Staticmethod => Type::Any,
+                                FunctionKind::Classmethod { .. } => {
+                                    Type::Any(AnyCause::Unannotated)
+                                }
+                                FunctionKind::Staticmethod => Type::Any(AnyCause::Unannotated),
                             }
                         }
                     } else {
-                        Type::Any
+                        Type::Any(AnyCause::Unannotated)
                     }
                 })
             };
@@ -1118,8 +1120,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         if self.is_async() && !self.is_generator() {
             return Inferred::from_type(new_class!(
                 i_s.db.python_state.coroutine_link(),
-                Type::Any,
-                Type::Any,
+                Type::Any(AnyCause::Todo),
+                Type::Any(AnyCause::Todo),
                 result.as_type(i_s),
             ));
         }
@@ -1149,7 +1151,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 i_s,
                 IssueType::DoesNotReturnAValue(self.diagnostic_string().into()),
             );
-            return Inferred::new_any();
+            return Inferred::new_any(AnyCause::FromError);
         }
         // We check first if type vars are involved, because if they aren't we can reuse the
         // annotation expression cache instead of recalculating.
@@ -1197,7 +1199,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     .inference(i_s)
                     .use_cached_return_annotation_type(a)
             })
-            .unwrap_or_else(|| Cow::Borrowed(&Type::Any))
+            .unwrap_or_else(|| Cow::Borrowed(&Type::Any(AnyCause::Unannotated)))
     }
 
     pub fn execute(

@@ -8,9 +8,9 @@ use crate::matching::{FormatData, ParamsStyle};
 use crate::node_ref::NodeRef;
 use crate::utils::join_with_commas;
 
-use super::GenericItem;
 use super::GenericsList;
 use super::TypeArguments;
+use super::{AnyCause, GenericItem};
 use super::{CallableParams, Type};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]
@@ -399,10 +399,10 @@ impl TypeVarLike {
 
     pub fn as_any_generic_item(&self) -> GenericItem {
         match self {
-            TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(Type::Any),
-            TypeVarLike::TypeVarTuple(_) => {
-                GenericItem::TypeArguments(TypeArguments::new_arbitrary_length(Type::Any))
-            }
+            TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(Type::Any(AnyCause::Todo)),
+            TypeVarLike::TypeVarTuple(_) => GenericItem::TypeArguments(
+                TypeArguments::new_arbitrary_length(Type::Any(AnyCause::Todo)),
+            ),
             TypeVarLike::ParamSpec(_) => {
                 GenericItem::ParamSpecArgument(ParamSpecArgument::new_any())
             }

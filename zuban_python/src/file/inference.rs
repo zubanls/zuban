@@ -21,9 +21,10 @@ use crate::matching::{
 };
 use crate::node_ref::NodeRef;
 use crate::type_::{
-    CallableContent, CallableParam, CallableParams, DoubleStarredParamSpecific, FunctionKind,
-    Literal, LiteralKind, Namespace, ParamSpecific, StarredParamSpecific, StringSlice, Tuple,
-    TupleTypeArguments, Type, TypeOrTypeVarTuple, UnionEntry, UnionType, Variance,
+    AnyCause, CallableContent, CallableParam, CallableParams, DoubleStarredParamSpecific,
+    FunctionKind, Literal, LiteralKind, Namespace, ParamSpecific, StarredParamSpecific,
+    StringSlice, Tuple, TupleTypeArguments, Type, TypeOrTypeVarTuple, UnionEntry, UnionType,
+    Variance,
 };
 use crate::type_helpers::{
     lookup_in_namespace, Class, FirstParamKind, Function, GeneratorType, Instance, Module,
@@ -688,16 +689,16 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let from = NodeRef::new(self.file, yield_expr.index());
         let Some(current_function) = self.i_s.current_function() else {
             // The name binder already added an issue here.
-            return Inferred::new_any()
+            return Inferred::new_any(AnyCause::FromError)
         };
         let generator = current_function
             .generator_return(i_s)
             // In case we do not know the generator return, just return an Any version of it. The
             // function type will be checked in a different place.
             .unwrap_or(GeneratorType {
-                yield_type: Type::Any,
-                send_type: Some(Type::Any),
-                return_type: Some(Type::Any),
+                yield_type: Type::Any(AnyCause::FromError),
+                send_type: Some(Type::Any(AnyCause::FromError)),
+                return_type: Some(Type::Any(AnyCause::FromError)),
             });
 
         match yield_expr.unpack() {
@@ -720,7 +721,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             YieldExprContent::YieldFrom(yield_from) => {
                 if current_function.is_async() {
                     // The name binder already added an issue here.
-                    return Inferred::new_any();
+                    return Inferred::new_any(AnyCause::FromError);
                 }
                 let expr_result = self.infer_expression(yield_from.expression());
                 let iter_result = expr_result.type_lookup_and_execute(
@@ -765,14 +766,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     } else {
                         if result_context.expect_not_none(i_s) {
                             from.add_issue(i_s, IssueType::DoesNotReturnAValue("Function".into()));
-                            Inferred::new_any()
+                            Inferred::new_any(AnyCause::FromError)
                         } else {
                             Inferred::new_none()
                         }
                     }
                 } else {
-                    // An invalid type
-                    Inferred::new_any()
+                    // An invalid type, error should have been added by checking the function
+                    Inferred::new_any(AnyCause::FromError)
                 };
             }
             YieldExprContent::None => {
@@ -811,7 +812,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             TypeOrTypeVarTuple::Type(
                                 self.infer_target(target, infer_index_expression)
                                     .map(|i| i.as_type(self.i_s))
-                                    .unwrap_or(Type::Any),
+                                    .unwrap_or(Type::Any(AnyCause::Todo)),
                             )
                         })
                         .collect(),
@@ -996,7 +997,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 counter += 1;
                                 self.assign_targets(
                                     target,
-                                    Inferred::new_any(),
+                                    Inferred::new_any(AnyCause::FromError),
                                     value_node_ref,
                                     is_definition,
                                 );
@@ -1024,14 +1025,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 );
                                 self.assign_targets(
                                     star_target.as_target(),
-                                    Inferred::new_any(),
+                                    Inferred::new_any(AnyCause::FromError),
                                     value_node_ref,
                                     is_definition,
                                 );
                                 for target in targets {
                                     self.assign_targets(
                                         target,
-                                        Inferred::new_any(),
+                                        Inferred::new_any(AnyCause::FromError),
                                         value_node_ref,
                                         is_definition,
                                     );
@@ -1071,7 +1072,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                             {
                                                 // The type is already defined, just use any here, because the
                                                 // list really can be anything.
-                                                generic = Type::Any
+                                                generic = Type::Any(AnyCause::Todo)
                                             }
                                         }
                                         new_class!(
@@ -1104,10 +1105,16 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         } else if let Some(value) = value_iterator.next(self.i_s) {
                             self.assign_targets(target, value, value_node_ref, is_definition)
                         } else {
-                            let original_counter = counter;
+                            value_node_ref.add_issue(
+                                self.i_s,
+                                IssueType::TooFewValuesToUnpack {
+                                    actual: counter - 1,
+                                    expected: counter,
+                                },
+                            );
                             self.assign_targets(
                                 target,
-                                Inferred::new_any(),
+                                Inferred::new_any(AnyCause::FromError),
                                 value_node_ref,
                                 is_definition,
                             );
@@ -1117,18 +1124,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 }
                                 self.assign_targets(
                                     target,
-                                    Inferred::new_any(),
+                                    Inferred::new_any(AnyCause::FromError),
                                     value_node_ref,
                                     is_definition,
                                 );
                             }
-                            value_node_ref.add_issue(
-                                self.i_s,
-                                IssueType::TooFewValuesToUnpack {
-                                    actual: original_counter - 1,
-                                    expected: counter,
-                                },
-                            );
                             break;
                         }
                     }
@@ -1138,7 +1138,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 // This is always invalid, just set it to Any. Issues were added before.
                 self.assign_targets(
                     starred.as_target(),
-                    Inferred::new_any(),
+                    Inferred::new_any(AnyCause::FromError),
                     value_node_ref,
                     is_definition,
                 );
@@ -1179,7 +1179,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             StarExpressionContent::StarExpression(expr) => {
                 NodeRef::new(self.file, expr.index())
                     .add_issue(self.i_s, IssueType::StarredExpressionOnlyNoTarget);
-                Inferred::new_any()
+                Inferred::new_any(AnyCause::FromError)
             }
             StarExpressionContent::Tuple(tuple) => self
                 .infer_tuple_iterator(tuple.iter(), result_context)
@@ -1472,11 +1472,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         )
                     } else {
                         from.add_issue(self.i_s, IssueType::AwaitOutsideCoroutine);
-                        Inferred::new_any()
+                        Inferred::new_any(AnyCause::FromError)
                     }
                 } else {
                     from.add_issue(self.i_s, IssueType::AwaitOutsideFunction);
-                    Inferred::new_any()
+                    Inferred::new_any(AnyCause::FromError)
                 }
             }
         }
@@ -1493,15 +1493,21 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         };
         let to_callable_param = |param: Param| CallableParam {
             param_specific: match param.type_() {
-                ParamKind::PositionalOnly => ParamSpecific::PositionalOnly(Type::Any),
-                ParamKind::PositionalOrKeyword => ParamSpecific::PositionalOrKeyword(Type::Any),
-                ParamKind::KeywordOnly => ParamSpecific::KeywordOnly(Type::Any),
-                ParamKind::Starred => {
-                    ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(Type::Any))
+                ParamKind::PositionalOnly => {
+                    ParamSpecific::PositionalOnly(Type::Any(AnyCause::Unannotated))
                 }
-                ParamKind::DoubleStarred => {
-                    ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ValueType(Type::Any))
+                ParamKind::PositionalOrKeyword => {
+                    ParamSpecific::PositionalOrKeyword(Type::Any(AnyCause::Unannotated))
                 }
+                ParamKind::KeywordOnly => {
+                    ParamSpecific::KeywordOnly(Type::Any(AnyCause::Unannotated))
+                }
+                ParamKind::Starred => ParamSpecific::Starred(
+                    StarredParamSpecific::ArbitraryLength(Type::Any(AnyCause::Unannotated)),
+                ),
+                ParamKind::DoubleStarred => ParamSpecific::DoubleStarred(
+                    DoubleStarredParamSpecific::ValueType(Type::Any(AnyCause::Unannotated)),
+                ),
             },
             name: Some(
                 StringSlice::from_name(self.file.file_index(), param.name_definition().name())
@@ -1846,7 +1852,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     elements @ StarLikeExpressionIterator::Elements(_) => {
                         self.create_list_or_set_generics(elements)
                     }
-                    StarLikeExpressionIterator::Empty => Type::Any, // TODO shouldn't this be Never?
+                    StarLikeExpressionIterator::Empty => Type::Any(AnyCause::Todo), // TODO shouldn't this be Never?
                 };
                 return Inferred::from_type(new_class!(
                     i_s.db.python_state.list_node_ref().as_link(),
@@ -2200,10 +2206,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                                 .dict_node_ref()
                                                                 .as_link(),
                                                             self.i_s.db.python_state.str_type(),
-                                                            Type::Any,
+                                                            Type::Any(AnyCause::Unannotated),
                                                         ))
                                                     }
-                                                    _ => Inferred::new_any(),
+                                                    _ => Inferred::new_any(AnyCause::Unannotated),
                                                 };
                                             }
                                         }
@@ -2241,11 +2247,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                         todo!()
                                                     }
                                                 }
-                                                CallableParams::Any => Inferred::new_any(),
+                                                CallableParams::Any => {
+                                                    Inferred::new_any(AnyCause::Todo)
+                                                }
                                                 CallableParams::WithParamSpec(_, _) => todo!(),
                                             };
                                         } else {
-                                            return Inferred::new_any();
+                                            return Inferred::new_any(AnyCause::Todo);
                                         }
                                     }
                                 }
@@ -2457,7 +2465,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     .next()
                     .unwrap()
                     .maybe_calculated_type(i_s.db)
-                    .unwrap_or(Type::Any);
+                    .unwrap_or(Type::Any(AnyCause::Todo));
                 let inf = self.infer_named_expression_with_context(
                     comp_expr,
                     &mut ResultContext::WithMatcher {
@@ -2541,7 +2549,7 @@ fn instantiate_except(i_s: &InferenceState, t: &Type) -> Type {
             inner @ Type::Class(..) => inner.clone(),
             _ => todo!(),
         },
-        Type::Any => Type::Any,
+        Type::Any(cause) => Type::Any(*cause),
         Type::Tuple(content) => Inferred::gather_simplified_union(i_s, |add| match &content.args {
             TupleTypeArguments::FixedLength(ts) => {
                 for t in ts.iter() {
@@ -2595,7 +2603,7 @@ fn has_base_exception(db: &Database, t: &Type) -> bool {
     match t {
         Type::Class(c) => !c.class(db).is_exception(db),
         Type::Union(u) => u.iter().any(|t| has_base_exception(db, t)),
-        Type::Any => false,
+        Type::Any(_) => false,
         // Gathering the exceptions already makes sure we do not end up with arbitrary types here.
         _ => unreachable!(),
     }
@@ -2608,16 +2616,16 @@ fn gather_except_star(i_s: &InferenceState, t: &Type) -> Type {
                 let cls = c.class(i_s.db);
                 if cls.is_base_exception_group(i_s.db) {
                     // Diagnostics are calculated when calculating diagnostics, not here.
-                    Type::Any
+                    Type::Any(AnyCause::FromError)
                 } else if cls.is_base_exception(i_s.db) {
                     inner.clone()
                 } else {
-                    Type::Any
+                    Type::Any(AnyCause::FromError)
                 }
             }
             _ => todo!(),
         },
-        Type::Any => Type::Any,
+        Type::Any(cause) => Type::Any(*cause),
         Type::Tuple(content) => Inferred::gather_simplified_union(i_s, |add| match &content.args {
             TupleTypeArguments::FixedLength(ts) => {
                 for t in ts.iter() {
@@ -2658,7 +2666,7 @@ fn get_generator_return_type(db: &Database, t: &Type) -> Type {
                 todo!("{t:?}")
             }
         }
-        Type::Any => Type::Any,
+        Type::Any(cause) => Type::Any(*cause),
         Type::Union(union) => Type::Union(UnionType::new(
             union
                 .entries
@@ -2722,7 +2730,7 @@ pub fn await_(
     );
     if expect_not_none && matches!(t, Type::None) {
         from.add_issue(i_s, IssueType::DoesNotReturnAValue("Function".into()));
-        Inferred::new_any()
+        Inferred::new_any(AnyCause::FromError)
     } else {
         Inferred::from_type(t)
     }

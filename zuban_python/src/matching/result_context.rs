@@ -2,7 +2,7 @@ use std::fmt;
 
 use super::{CalculatedTypeVarLike, Matcher};
 use crate::node_ref::NodeRef;
-use crate::type_::{TupleTypeArguments, Type, TypeOrTypeVarTuple};
+use crate::type_::{AnyCause, TupleTypeArguments, Type, TypeOrTypeVarTuple};
 use crate::type_helpers::Class;
 use crate::{debug, InferenceState};
 
@@ -187,10 +187,10 @@ impl<'a> Iterator for TupleContextIterator<'a> {
                         *items = [].iter();
                         todo!("Probably return ResultContext::Unknown here")
                     }
-                    None => &Type::Any,
+                    None => &Type::Any(AnyCause::Todo),
                 }
             }
-            Self::Unknown => &Type::Any,
+            Self::Unknown => &Type::Any(AnyCause::Todo),
         })
     }
 }

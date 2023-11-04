@@ -14,7 +14,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::UnionValue;
 use crate::matching::{FormatData, Matcher, MismatchReason, ResultContext};
 use crate::node_ref::NodeRef;
-use crate::type_::{Literal, LiteralKind, LiteralValue, Type, TypedDict};
+use crate::type_::{AnyCause, Literal, LiteralKind, LiteralValue, Type, TypedDict};
 use crate::utils::join_with_commas;
 use crate::{debug, new_class, Inferred};
 
@@ -72,7 +72,7 @@ impl<'db> Inference<'db, '_, '_> {
                     .next()
                     .unwrap()
                     .maybe_calculated_type(i_s.db)
-                    .unwrap_or(Type::Any);
+                    .unwrap_or(Type::Any(AnyCause::Todo));
                 let found = check_list_with_context(i_s, matcher, &generic_t, self.file, list);
                 Inferred::from_type(found.unwrap_or_else(|| {
                     new_class!(
@@ -367,11 +367,11 @@ impl<'db> Inference<'db, '_, '_> {
         if matches!(dict_elements, DictElementIterator::Empty) {
             return Inferred::from_type(new_class!(
                 i_s.db.python_state.dict_node_ref().as_link(),
-                Type::Any,
-                Type::Any,
+                Type::Any(AnyCause::Todo),
+                Type::Any(AnyCause::Todo),
             ));
         }
-        let mut values = Inferred::new_any();
+        let mut values = Inferred::new_any(AnyCause::Todo);
         let keys = Inferred::gather_base_types(i_s, |gather_keys| {
             values = Inferred::gather_base_types(i_s, |gather_values| {
                 for child in dict_elements {
@@ -421,7 +421,7 @@ impl<'db> Inference<'db, '_, '_> {
 
 fn is_any_dict(db: &Database, t: &Type) -> bool {
     match t {
-        Type::Any => true,
+        Type::Any(_) => true,
         Type::Class(c) => {
             c.link == db.python_state.dict_node_ref().as_link() && c.generics.all_any()
         }
@@ -628,12 +628,12 @@ pub fn infer_dict_like(
                 .next()
                 .unwrap()
                 .maybe_calculated_type(i_s.db)
-                .unwrap_or(Type::Any);
+                .unwrap_or(Type::Any(AnyCause::Todo));
             let value_t = generics
                 .next()
                 .unwrap()
                 .maybe_calculated_type(i_s.db)
-                .unwrap_or(Type::Any);
+                .unwrap_or(Type::Any(AnyCause::Todo));
             let found = infer_with_context(matcher, &key_t, &value_t);
             Inferred::from_type(found.unwrap_or_else(|| {
                 new_class!(

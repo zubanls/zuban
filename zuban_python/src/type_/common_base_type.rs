@@ -27,7 +27,7 @@ impl Type {
             Type::Class(c) if c.class(i_s.db).is_calculating_class_infos() => {
                 Some(t1.clone().union(i_s.db, t2.clone()))
             }
-            Type::Any => return Some(Type::Any),
+            Type::Any(cause) => return Some(Type::Any(*cause)),
             Type::Never => return Some(t2.clone()),
             _ => None,
         };

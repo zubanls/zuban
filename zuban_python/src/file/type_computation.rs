@@ -19,7 +19,7 @@ use crate::inferred::Inferred;
 use crate::matching::{FormatData, Generics, ResultContext};
 use crate::node_ref::NodeRef;
 use crate::type_::{
-    new_collections_named_tuple, new_typing_named_tuple, CallableContent, CallableParam,
+    new_collections_named_tuple, new_typing_named_tuple, AnyCause, CallableContent, CallableParam,
     CallableParams, CallableWithParent, ClassGenerics, Dataclass, DbString,
     DoubleStarredParamSpecific, Enum, EnumMember, FunctionKind, GenericClass, GenericItem,
     GenericsList, Literal, LiteralKind, NamedTuple, Namespace, NewType, ParamSpecArgument,
@@ -356,7 +356,7 @@ macro_rules! compute_type_application {
                     Inferred::from_type(Type::Type(Rc::new(type_)))
                 }
             },
-            TypeContent::Unknown => Inferred::new_any(),
+            TypeContent::Unknown => Inferred::new_any(AnyCause::Todo),
             _ => todo!("type application: {t:?}"),
         }
     }}
@@ -525,7 +525,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     Type::Class(..) | Type::Tuple(_) | Type::TypedDict(_) | Type::Dataclass(_) => {
                         CalculatedBaseClass::Type(type_)
                     }
-                    Type::Type(t) if matches!(t.as_ref(), Type::Any) => {
+                    Type::Type(t) if matches!(t.as_ref(), Type::Any(_)) => {
                         CalculatedBaseClass::Type(Type::new_class(
                             self.inference
                                 .i_s
@@ -541,7 +541,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         // duplicated.
                         CalculatedBaseClass::NamedTuple(nt)
                     }
-                    Type::Any => CalculatedBaseClass::Unknown,
+                    Type::Any(_) => CalculatedBaseClass::Unknown,
                     Type::NewType(_) => {
                         self.add_issue_for_index(expr.index(), IssueType::CannotSubclassNewType);
                         CalculatedBaseClass::Unknown
@@ -671,14 +671,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         todo!()
                     } else {
                         self.add_issue(node_ref, IssueType::ClassVarOnlyInAssignmentsInClass);
-                        Type::Any
+                        Type::Any(AnyCause::FromError)
                     }
                 }
                 TypeContent::ClassVar(t) => {
                     is_class_var = true;
                     if self.origin != TypeComputationOrigin::AssignmentTypeCommentOrAnnotation {
                         self.add_issue(node_ref, IssueType::ClassVarOnlyInAssignmentsInClass);
-                        Type::Any
+                        Type::Any(AnyCause::FromError)
                     } else if self.has_type_vars_or_self {
                         let i_s = self.inference.i_s;
                         let class = i_s.current_class().unwrap();
@@ -690,7 +690,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         });
                         if uses_class_generics {
                             self.add_issue(node_ref, IssueType::ClassVarCannotContainTypeVariables);
-                            Type::Any
+                            Type::Any(AnyCause::FromError)
                         } else if !class.type_vars(i_s).is_empty() && t.has_self_type() {
                             self.add_issue(
                                 node_ref,
@@ -728,7 +728,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     }
 
     fn as_type(&mut self, type_: TypeContent, node_ref: NodeRef) -> Type {
-        self.as_type_or_error(type_, node_ref).unwrap_or(Type::Any)
+        self.as_type_or_error(type_, node_ref)
+            .unwrap_or(Type::Any(AnyCause::FromError))
     }
 
     fn as_type_or_error(&mut self, type_: TypeContent, node_ref: NodeRef) -> Option<Type> {
@@ -839,7 +840,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         self.inference.i_s.db.python_state.any_callable.clone(),
                     ));
                 }
-                SpecialType::Any => return Some(Type::Any),
+                SpecialType::Any => return Some(Type::Any(AnyCause::Explicit)),
                 SpecialType::Type => {
                     if db.project.flags.disallow_any_generics {
                         self.add_issue(
@@ -1119,7 +1120,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     TypeContent::Type(
                         match new_typing_named_tuple(self.inference.i_s, &args, true) {
                             Some(rc) => Type::NamedTuple(rc),
-                            None => Type::Any,
+                            None => Type::Any(AnyCause::FromError),
                         },
                     )
                 }
@@ -1132,7 +1133,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     TypeContent::Type(
                         match new_collections_named_tuple(self.inference.i_s, &args) {
                             Some(rc) => Type::NamedTuple(rc),
-                            None => Type::Any,
+                            None => Type::Any(AnyCause::FromError),
                         },
                     )
                 }
@@ -1178,7 +1179,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         todo!()
                     }
                     TypeContent::Type(d) => match d {
-                        Type::Any => TypeContent::Type(d),
+                        Type::Any(_) => TypeContent::Type(d),
                         _ => {
                             debug!(
                                 "Invalid getitem used on {}",
@@ -1229,7 +1230,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                     "Self type cannot have type arguments",
                                 )),
                             );
-                            TypeContent::Type(Type::Any)
+                            TypeContent::Type(Type::Any(AnyCause::FromError))
                         }
                         SpecialType::Final => self.compute_type_get_item_on_final(s),
                         SpecialType::Unpack => self.compute_type_get_item_on_unpack(s),
@@ -1342,7 +1343,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 self.check_attribute_on_class(cls, primary, name)
             }
             TypeContent::Type(t) => match t {
-                Type::Any => TypeContent::Type(Type::Any),
+                Type::Any(cause) => TypeContent::Type(Type::Any(cause)),
                 Type::Enum(e) => match Enum::lookup(&e, db, name.as_str(), false) {
                     Some(m) => TypeContent::EnumMember(m),
                     _ => {
@@ -2003,7 +2004,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             let result_type = iterator
                 .next()
                 .map(|slice_content| self.compute_slice_type(slice_content))
-                .unwrap_or(Type::Any);
+                .unwrap_or(Type::Any(AnyCause::Todo));
             Rc::new(CallableContent {
                 name: None,
                 class_name: None,
@@ -2148,10 +2149,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     .map(|t| CallableParam::new_anonymous(ParamSpecific::PositionalOnly(t)))
                     .collect();
                 params.push(CallableParam::new_anonymous(ParamSpecific::Starred(
-                    StarredParamSpecific::ArbitraryLength(Type::Any),
+                    StarredParamSpecific::ArbitraryLength(Type::Any(AnyCause::Explicit)),
                 )));
                 params.push(CallableParam::new_anonymous(ParamSpecific::DoubleStarred(
-                    DoubleStarredParamSpecific::ValueType(Type::Any),
+                    DoubleStarredParamSpecific::ValueType(Type::Any(AnyCause::Explicit)),
                 )));
                 TypeContent::Concatenate(CallableParams::Simple(params.into()))
             }
@@ -2308,7 +2309,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             TypeContent::EnumMember(e) => TypeContent::Type(Type::EnumMember(e)),
             t => match self.as_type(t, slice.as_node_ref()) {
-                Type::Any => TypeContent::Unknown,
+                Type::Any(_) => TypeContent::Unknown,
                 t @ (Type::None | Type::Literal(_)) => TypeContent::Type(t),
                 Type::Union(u)
                     if u.iter().all(|t| {
@@ -2617,7 +2618,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             Specific::MypyExtensionsKwArg => ParamKind::DoubleStarred,
             _ => unreachable!(),
         };
-        let type_ = type_.unwrap_or(Type::Any);
+        let type_ = type_.unwrap_or(Type::Any(AnyCause::Todo));
         TypeContent::SpecialType(SpecialType::CallableParam(CallableParam {
             param_specific: match param_kind {
                 ParamKind::PositionalOnly => ParamSpecific::PositionalOnly(type_),
@@ -2827,7 +2828,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             slice_type
                 .as_node_ref()
                 .add_issue(self.i_s, IssueType::OnlyClassTypeApplication);
-            return Inferred::new_any();
+            return Inferred::new_any(AnyCause::FromError);
         }
         compute_type_application!(
             self,
@@ -3226,8 +3227,8 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             for stmt_or_error in f.tree.root().iter_stmts() {
                 if let StmtOrError::Error(node_index) = stmt_or_error {
                     return TypeCommentDetails {
-                        inferred: Inferred::new_any(),
-                        type_: Cow::Borrowed(&Type::Any),
+                        inferred: Inferred::new_any(AnyCause::FromError),
+                        type_: Cow::Borrowed(&Type::Any(AnyCause::FromError)),
                     };
                 }
             }
@@ -3243,8 +3244,8 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 },
             );
             return TypeCommentDetails {
-                inferred: Inferred::new_any(),
-                type_: Cow::Borrowed(&Type::Any),
+                inferred: Inferred::new_any(AnyCause::FromError),
+                type_: Cow::Borrowed(&Type::Any(AnyCause::FromError)),
             };
         }
     }
@@ -3407,7 +3408,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         match comp.compute_type(expr) {
             TypeContent::InvalidVariable(_) => {
                 node_ref.add_issue(self.i_s, IssueType::NewTypeInvalidType);
-                Type::Any
+                Type::Any(AnyCause::FromError)
             }
             t => {
                 let t = comp.as_type(t, node_ref);
@@ -3639,9 +3640,9 @@ fn check_type_name<'db: 'file, 'file>(
             let as_base_class_any = annotation
                 .map(
                     |a| match use_cached_annotation_type(i_s.db, name_node_ref.file, a).as_ref() {
-                        Type::Any => true,
+                        Type::Any(_) => true,
                         Type::Type(t) => match t.as_ref() {
-                            Type::Any => true,
+                            Type::Any(_) => true,
                             Type::Class(GenericClass {
                                 link,
                                 generics: ClassGenerics::None,

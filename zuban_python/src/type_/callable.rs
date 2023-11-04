@@ -16,7 +16,7 @@ use crate::{
 };
 
 use super::{
-    DbString, FunctionKind, ParamSpecUsage, RecursiveAlias, StringSlice, Type, TypeVar,
+    AnyCause, DbString, FunctionKind, ParamSpecUsage, RecursiveAlias, StringSlice, Type, TypeVar,
     TypeVarKind, TypeVarLike, TypeVarLikes, TypeVarName, TypeVarUsage, Variance,
 };
 
@@ -340,7 +340,7 @@ impl CallableContent {
             },
             type_vars,
             params: CallableParams::Any,
-            result_type: Type::Any,
+            result_type: Type::Any(AnyCause::Todo),
         }
     }
     pub fn new_any_with_defined_at(db: &Database, defined_at: PointLink) -> Self {
@@ -386,7 +386,7 @@ impl CallableContent {
             CallableParams::WithParamSpec(pre, usage) => {
                 todo!()
             }
-            CallableParams::Any => Some(&Type::Any),
+            CallableParams::Any => Some(&Type::Any(AnyCause::Todo)),
         }
     }
 

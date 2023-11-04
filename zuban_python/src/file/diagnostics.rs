@@ -19,8 +19,8 @@ use crate::matching::{
 };
 use crate::node_ref::NodeRef;
 use crate::type_::{
-    CallableContent, FunctionKind, GenericItem, TupleTypeArguments, Type, TypeOrTypeVarTuple,
-    TypeVarLike, Variance,
+    AnyCause, CallableContent, FunctionKind, GenericItem, TupleTypeArguments, Type,
+    TypeOrTypeVarTuple, TypeVarLike, Variance,
 };
 use crate::type_helpers::{
     is_private, Class, FirstParamProperties, Function, GeneratorType, Instance, TypeOrClass,
@@ -229,11 +229,11 @@ impl<'db> Inference<'db, '_, '_> {
                     true => "__aexit__",
                 },
                 &CombinedArguments::new(
-                    &KnownArguments::new(&Inferred::new_any(), from),
+                    &KnownArguments::new(&Inferred::new_any(AnyCause::Todo), from),
                     &CombinedArguments::new(
                         // TODO don't use any here.
-                        &KnownArguments::new(&Inferred::new_any(), from),
-                        &KnownArguments::new(&Inferred::new_any(), from),
+                        &KnownArguments::new(&Inferred::new_any(AnyCause::Todo), from),
+                        &KnownArguments::new(&Inferred::new_any(AnyCause::Todo), from),
                     ),
                 ),
             );
@@ -667,7 +667,7 @@ impl<'db> Inference<'db, '_, '_> {
                     }
                 }
                 Type::Type(_) => (),
-                Type::Any => (),
+                Type::Any(_) => (),
                 Type::Enum(e) if e.class == class.node_ref.as_link() => (),
                 t => function.expect_return_annotation_node_ref().add_issue(
                     i_s,
@@ -733,7 +733,7 @@ impl<'db> Inference<'db, '_, '_> {
                             t = Cow::Owned(
                                 GeneratorType::from_type(self.i_s.db, t)
                                     .map(|g| g.return_type.unwrap_or(Type::None))
-                                    .unwrap_or(Type::Any),
+                                    .unwrap_or(Type::Any(AnyCause::Todo)),
                             );
                         }
                     }
@@ -931,7 +931,7 @@ fn valid_raise_type(i_s: &InferenceState, from: NodeRef, t: &Type, allow_none: b
             }
             _ => false,
         },
-        Type::Any => true,
+        Type::Any(_) => true,
         Type::Never => todo!(),
         Type::Union(union) => union
             .iter()
@@ -960,7 +960,7 @@ fn except_type(i_s: &InferenceState, t: &Type, allow_tuple: bool) -> ExceptType 
             }
             ExceptType::Invalid
         }
-        Type::Any => ExceptType::ContainsOnlyBaseExceptions,
+        Type::Any(_) => ExceptType::ContainsOnlyBaseExceptions,
         Type::Tuple(content) if allow_tuple => match &content.args {
             TupleTypeArguments::FixedLength(ts) => {
                 let mut result = ExceptType::ContainsOnlyBaseExceptions;

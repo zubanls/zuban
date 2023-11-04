@@ -23,7 +23,7 @@ impl Type {
                 }
             }
             Type::Union(union_type2) => return union_type2.iter().any(|t| self.overlaps(i_s, t)),
-            Type::Any => return false, // This is a fallback
+            Type::Any(_) => return false, // This is a fallback
             _ => (),
         }
 
@@ -44,7 +44,7 @@ impl Type {
                 Type::Type(t2) => self.overlaps(i_s, &t2),
                 _ => false,
             },
-            Type::Any => true,
+            Type::Any(_) => true,
             Type::Never => todo!(),
             Type::Literal(literal1) => match other {
                 Type::Literal(literal2) => literal1.value(i_s.db) == literal2.value(i_s.db),
@@ -113,12 +113,12 @@ impl Type {
                 Self::matches_callable_against_arbitrary(i_s, matcher, c1, value_type, variance)
             }
             Type::None => matches!(value_type, Type::None).into(),
-            Type::Any if matcher.is_matching_reverse() => {
+            Type::Any(_) if matcher.is_matching_reverse() => {
                 debug!("TODO write a test for this. (reverse matching any)");
                 matcher.set_all_contained_type_vars_to_any(i_s, self);
                 Match::True { with_any: true }
             }
-            Type::Any => Match::new_true(),
+            Type::Any(_) => Match::new_true(),
             Type::Never => matches!(value_type, Type::Never).into(),
             Type::Tuple(t1) => match value_type {
                 Type::Tuple(t2) => {
@@ -422,8 +422,8 @@ impl Type {
         // 3. Check if the value_type is special like Any or a Typevar and needs to be checked
         //    again.
         match value_type {
-            Type::Any if matcher.is_matching_reverse() => return Match::new_true(),
-            Type::Any => {
+            Type::Any(_) if matcher.is_matching_reverse() => return Match::new_true(),
+            Type::Any(_) => {
                 matcher.set_all_contained_type_vars_to_any(i_s, self);
                 return Match::True { with_any: true };
             }
@@ -557,11 +557,11 @@ impl Type {
             if !result.bool() {
                 let mut check = |i_s: &InferenceState, n| {
                     let t1 = class1.nth_type_argument(i_s.db, n);
-                    if matches!(t1, Type::Any) {
+                    if matches!(t1, Type::Any(_)) {
                         return false;
                     }
                     let t2 = class2.nth_type_argument(i_s.db, n);
-                    if matches!(t2, Type::Any) {
+                    if matches!(t2, Type::Any(_)) {
                         return false;
                     }
                     t1.matches(i_s, matcher, &t2, variance).bool()
@@ -828,7 +828,7 @@ pub fn match_tuple_type_arguments(
         }
         (ArbitraryLength(t1), ArbitraryLength(t2), _) => t1.matches(i_s, matcher, t2, variance),
         (tup1_args @ FixedLength(_), tup2_args @ ArbitraryLength(t2), _)
-            if matches!(t2.as_ref(), Type::Any) =>
+            if matches!(t2.as_ref(), Type::Any(_)) =>
         {
             Match::new_true()
         }

@@ -10,7 +10,7 @@ use crate::{
     inferred::Inferred,
     matching::{FormatData, IteratorContent, LookupKind, LookupResult, OnTypeError, ResultContext},
     node_ref::NodeRef,
-    type_::Type,
+    type_::{AnyCause, Type},
     type_helpers::{Instance, TypeOrClass},
     utils::join_with_commas,
 };
@@ -21,7 +21,7 @@ use super::{
 };
 
 thread_local! {
-    static ARBITRARY_TUPLE: Rc<Tuple> = Rc::new(Tuple::new_arbitrary_length(Type::Any));
+    static ARBITRARY_TUPLE: Rc<Tuple> = Rc::new(Tuple::new_arbitrary_length(Type::Any(AnyCause::Todo)));
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -113,7 +113,7 @@ impl Tuple {
                         )
                         .into_inferred()
                         .execute(i_s, &slice_type.as_args(*i_s));
-                    return Inferred::new_any();
+                    return Inferred::new_any(AnyCause::Todo);
                 }
                 match &self.args {
                     TupleTypeArguments::ArbitraryLength(t) => {
@@ -127,7 +127,7 @@ impl Tuple {
                             slice_type
                                 .as_argument_node_ref()
                                 .add_issue(i_s, IssueType::TupleIndexOutOfRange);
-                            Some(Inferred::new_any())
+                            Some(Inferred::new_any(AnyCause::FromError))
                         };
                         index_inf
                             .run_on_int_literals(i_s, |index| {
@@ -208,7 +208,7 @@ impl TupleTypeArguments {
 
     pub fn is_any(&self) -> bool {
         match self {
-            Self::ArbitraryLength(t) => matches!(t.as_ref(), Type::Any),
+            Self::ArbitraryLength(t) => matches!(t.as_ref(), Type::Any(_)),
             Self::FixedLength(_) => false,
         }
     }

@@ -34,11 +34,12 @@ use crate::node_ref::NodeRef;
 use crate::python_state::NAME_TO_FUNCTION_DIFF;
 use crate::type_::{
     check_dataclass_options, dataclass_init_func, execute_functional_enum,
-    infer_typed_dict_total_argument, infer_value_on_member, CallableContent, CallableLike,
-    CallableParam, CallableParams, ClassGenerics, Dataclass, DataclassOptions, DbString, Enum,
-    EnumMemberDefinition, FormatStyle, FunctionKind, FunctionOverload, GenericClass, GenericsList,
-    NamedTuple, ParamSpecific, RecursiveAlias, StringSlice, Tuple, Type, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember, TypedDictMemberGatherer, Variance,
+    infer_typed_dict_total_argument, infer_value_on_member, AnyCause, CallableContent,
+    CallableLike, CallableParam, CallableParams, ClassGenerics, Dataclass, DataclassOptions,
+    DbString, Enum, EnumMemberDefinition, FormatStyle, FunctionKind, FunctionOverload,
+    GenericClass, GenericsList, NamedTuple, ParamSpecific, RecursiveAlias, StringSlice, Tuple,
+    Type, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember,
+    TypedDictMemberGatherer, Variance,
 };
 
 #[derive(Clone, Copy)]
@@ -1190,7 +1191,7 @@ impl<'db: 'a, 'a> Class<'a> {
         match result {
             Some(LookupResult::None) | None => {
                 let result = match class_infos.metaclass {
-                    MetaclassState::Unknown => LookupResult::any(),
+                    MetaclassState::Unknown => LookupResult::any(AnyCause::Todo),
                     _ => {
                         let instance = Instance::new(class_infos.metaclass(i_s.db), None);
                         instance
@@ -1206,7 +1207,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     }
                 };
                 if matches!(result, LookupResult::None) && self.incomplete_mro(i_s.db) {
-                    (LookupResult::any(), in_class)
+                    (LookupResult::any(AnyCause::Todo), in_class)
                 } else {
                     (result, in_class)
                 }
@@ -1572,11 +1573,11 @@ impl<'db: 'a, 'a> Class<'a> {
                     Callable::new(o.iter_functions().nth(1).unwrap(), Some(metaclass.class));
                 significant_call.execute(i_s, args, on_type_error, result_context);
                 if had_type_error.get() {
-                    return ClassExecutionResult::Inferred(Inferred::new_any());
+                    return ClassExecutionResult::Inferred(Inferred::new_any(AnyCause::FromError));
                 }
                 return ClassExecutionResult::Inferred(
                     execute_functional_enum(original_i_s, *self, args, result_context)
-                        .unwrap_or_else(Inferred::new_any),
+                        .unwrap_or_else(|| Inferred::new_any(AnyCause::FromError)),
                 );
             }
             _ => (),
@@ -1613,7 +1614,7 @@ impl<'db: 'a, 'a> Class<'a> {
             on_type_error,
         ) {
             Some(generics) => ClassExecutionResult::ClassGenerics(generics),
-            None => ClassExecutionResult::Inferred(Inferred::new_any()),
+            None => ClassExecutionResult::Inferred(Inferred::new_any(AnyCause::FromError)),
         }
     }
 
@@ -2048,7 +2049,7 @@ fn find_stmt_typed_dict_types(
                             vec.add(
                                 i_s.db,
                                 TypedDictMember {
-                                    type_: Type::Any,
+                                    type_: Type::Any(AnyCause::Todo),
                                     required: true,
                                     name: StringSlice::from_name(
                                         file.file_index(),

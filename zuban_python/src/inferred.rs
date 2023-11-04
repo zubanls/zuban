@@ -25,9 +25,9 @@ use crate::matching::{
 use crate::node_ref::NodeRef;
 use crate::type_::{
     execute_collections_named_tuple, execute_type_of_type, execute_typing_named_tuple,
-    new_typed_dict, CallableContent, CallableParams, ClassGenerics, DbString, Enum, FunctionKind,
-    FunctionOverload, GenericClass, GenericItem, GenericsList, Literal as DbLiteral, LiteralKind,
-    LiteralValue, NewType, Type, TypeVarKind, TypeVarLike, TypeVarLikes, TypedDict,
+    new_typed_dict, AnyCause, CallableContent, CallableParams, ClassGenerics, DbString, Enum,
+    FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList, Literal as DbLiteral,
+    LiteralKind, LiteralValue, NewType, Type, TypeVarKind, TypeVarLike, TypeVarLikes, TypedDict,
 };
 use crate::type_helpers::{
     execute_assert_type, execute_super, execute_type, BoundMethod, BoundMethodFunction, Class,
@@ -126,10 +126,8 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
-    pub fn new_any() -> Self {
-        Self {
-            state: InferredState::UnsavedSpecific(Specific::Any),
-        }
+    pub fn new_any(cause: AnyCause) -> Self {
+        Self::from_type(Type::Any(cause))
     }
 
     pub fn new_file_reference(index: FileIndex) -> Self {
@@ -171,7 +169,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 }
             }
             Type::None => return Inferred::new_none(),
-            Type::Any => return Inferred::new_any(),
+            Type::Any(cause) => return Inferred::new_any(cause),
             _ => InferredState::UnsavedComplex(ComplexPoint::TypeInstance(generic)),
         };
         Self { state }
@@ -183,7 +181,7 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::UnsavedComplex(complex) => type_of_complex(i_s, complex, None),
             InferredState::UnsavedSpecific(specific) => match specific {
                 Specific::None => Cow::Borrowed(&Type::None),
-                Specific::Any | Specific::Cycle => Cow::Borrowed(&Type::Any),
+                Specific::Any | Specific::Cycle => Cow::Borrowed(&Type::Any(AnyCause::Todo)),
                 _ => unreachable!("{specific:?}"),
             },
             InferredState::UnsavedFileReference(file_index) => {
@@ -197,7 +195,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 let class = Self::load_bound_method_class(i_s, instance, *mro_index);
                 Cow::Owned(load_bound_method(i_s, instance, class, *func_link).as_type(i_s))
             }
-            InferredState::Unknown => Cow::Borrowed(&Type::Any),
+            InferredState::Unknown => Cow::Borrowed(&Type::Any(AnyCause::Todo)),
         }
     }
 
@@ -798,7 +796,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                             .format_short(i_s.db),
                                     };
                                     from.add_issue(i_s, t);
-                                    Some(Self::new_any())
+                                    Some(Self::new_any(AnyCause::FromError))
                                 }
                             } else {
                                 Some(Self::new_bound_method(instance, mro_index, *definition))
@@ -899,7 +897,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                                     .into(),
                                             };
                                             from.add_issue(i_s, t);
-                                            return Some(Self::new_any());
+                                            return Some(Self::new_any(AnyCause::FromError));
                                         }
                                         1 => {
                                             return Some(Inferred::from_type(Type::Callable(
@@ -1020,7 +1018,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 callable: c.format(&FormatData::new_short(i_s.db)).into(),
                             };
                             from.add_issue(i_s, inv);
-                            Inferred::new_any()
+                            Inferred::new_any(AnyCause::FromError)
                         },
                     ));
                 }
@@ -1037,7 +1035,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             callable: t.format_short(i_s.db),
                         };
                         from.add_issue(i_s, t);
-                        return Some(Some(Self::new_any()));
+                        return Some(Some(Self::new_any(AnyCause::FromError)));
                     }
                     return Some(result.map(callable_into_inferred));
                 }
@@ -1244,7 +1242,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             callable: t.format_short(i_s.db),
                         };
                         from.add_issue(i_s, inv);
-                        return Some(Some(Self::new_any()));
+                        return Some(Some(Self::new_any(AnyCause::FromError)));
                     }
                     return Some(result.map(callable_into_inferred));
                 }
@@ -1651,7 +1649,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             Specific::TypingAny => {
                                 args.as_node_ref().add_issue(i_s, IssueType::AnyNotCallable);
                                 args.iter().calculate_diagnostics(i_s);
-                                return Inferred::new_any();
+                                return Inferred::new_any(AnyCause::FromError);
                             }
                             Specific::MypyExtensionsArg
                             | Specific::MypyExtensionsDefaultArg
@@ -1698,7 +1696,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                         type_: Box::from("\"<typing special form>\""),
                                     },
                                 );
-                                return Inferred::new_any();
+                                return Inferred::new_any(AnyCause::FromError);
                             }
                             ComplexPoint::NewTypeDefinition(new_type) => {
                                 let mut iterator = args.iter();
@@ -2173,7 +2171,7 @@ pub fn specific_to_type<'db>(
     specific: Specific,
 ) -> Cow<'db, Type> {
     match specific {
-        Specific::Any | Specific::Cycle => Cow::Borrowed(&Type::Any),
+        Specific::Any | Specific::Cycle => Cow::Borrowed(&Type::Any(AnyCause::Todo)),
         Specific::IntLiteral => Cow::Owned(Type::Literal(DbLiteral {
             kind: LiteralKind::Int(definition.expect_int().parse().unwrap()),
             implicit: true,
