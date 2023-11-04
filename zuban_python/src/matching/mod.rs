@@ -108,7 +108,7 @@ pub enum IteratorContent {
     },
     Union(Vec<IteratorContent>),
     Empty,
-    Any,
+    Any(AnyCause),
 }
 
 impl IteratorContent {
@@ -139,7 +139,7 @@ impl IteratorContent {
                 }
             }),
             Self::Empty => todo!(),
-            Self::Any => Inferred::new_any(AnyCause::Todo),
+            Self::Any(cause) => Inferred::new_any(cause),
         }
     }
 
@@ -172,13 +172,13 @@ impl IteratorContent {
                 had_next.then_some(result)
             }
             Self::Empty => todo!(),
-            Self::Any => Some(Inferred::new_any(AnyCause::Todo)),
+            Self::Any(cause) => Some(Inferred::new_any(*cause)),
         }
     }
 
     pub fn len(&self) -> Option<usize> {
         match self {
-            Self::Inferred(_) | Self::Any => None,
+            Self::Inferred(_) | Self::Any(_) => None,
             Self::FixedLengthTupleGenerics {
                 entries,
                 current_index,

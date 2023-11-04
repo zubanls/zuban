@@ -444,7 +444,7 @@ impl Type {
                 TypeVarKind::Constraints(_) => todo!(),
                 TypeVarKind::Unrestricted => {
                     on_error(self);
-                    IteratorContent::Any
+                    IteratorContent::Any(AnyCause::FromError)
                 }
             },
             Type::NewType(n) => n.type_(i_s).iter(i_s, from),
