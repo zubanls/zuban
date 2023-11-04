@@ -572,6 +572,23 @@ impl CallableContent {
         callable.type_vars = type_vars;
         callable
     }
+
+    pub fn is_typed(&self) -> bool {
+        let has_unannotated = |t: &Type| matches!(t, Type::Any(AnyCause::Unannotated));
+        if !has_unannotated(&self.result_type) {
+            return true;
+        }
+        match &self.params {
+            CallableParams::Simple(params) => !params.iter().all(|t| {
+                t.param_specific
+                    .maybe_type()
+                    .is_some_and(|t| has_unannotated(t))
+            }),
+            CallableParams::Any(cause) => !matches!(cause, AnyCause::Unannotated),
+            // Should probably never happen?!
+            CallableParams::WithParamSpec(..) => true,
+        }
+    }
 }
 
 pub enum WrongPositionalCount {

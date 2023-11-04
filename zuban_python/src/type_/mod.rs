@@ -1707,13 +1707,20 @@ pub enum CallableLike {
 }
 
 impl CallableLike {
-    pub fn format(self, format_data: &FormatData) -> String {
+    pub fn format(&self, format_data: &FormatData) -> String {
         match self {
             Self::Callable(c) => c.format(format_data),
             Self::Overload(overload) => format!(
                 "Overload({})",
                 join_with_commas(overload.iter_functions().map(|c| c.format(format_data)))
             ),
+        }
+    }
+
+    pub fn is_typed(&self) -> bool {
+        match self {
+            Self::Callable(c) => c.is_typed(),
+            Self::Overload(overload) => overload.iter_functions().all(|c| c.is_typed()),
         }
     }
 }

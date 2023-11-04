@@ -556,10 +556,25 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     }
                     kind = k
                 }
-                InferredDecorator::Inferred(decorate) => {
+                InferredDecorator::Inferred(dec_inf) => {
                     // TODO check if it's an function without a return annotation and
                     // abort in that case.
-                    inferred = decorate.execute(
+                    if i_s.db.project.flags.disallow_untyped_decorators {
+                        let is_typed = |inf: &Inferred| {
+                            inf.as_cow_type(i_s)
+                                .maybe_callable(i_s)
+                                .is_some_and(|c| c.is_typed())
+                        };
+                        if is_typed(&inferred) && !is_typed(&dec_inf) {
+                            NodeRef::new(self.node_ref.file, decorator.index()).add_issue(
+                                i_s,
+                                IssueType::UntypedDecorator {
+                                    name: self.name().into(),
+                                },
+                            );
+                        }
+                    }
+                    inferred = dec_inf.execute(
                         i_s,
                         &KnownArguments::new(
                             &inferred,

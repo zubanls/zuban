@@ -262,10 +262,11 @@ pub(crate) enum IssueType {
     FunctionIsDynamic,
     FunctionMissingReturnAnnotation,
     FunctionMissingParamAnnotations,
-    // From --disallow-untyped-calls
-    CallToUntypedFunction { name: Box<str> },
-    // From --disallow-any-generics
-    MissingTypeParameters { name: Box<str> },
+
+    CallToUntypedFunction { name: Box<str> }, // From --disallow-untyped-calls
+    MissingTypeParameters { name: Box<str> }, // From --disallow-any-generics
+    UntypedDecorator { name: Box<str> }, // From --disallow-untyped-decorators
+    
 
     InvariantNote { actual: &'static str, maybe: &'static str },
     AnnotationInUntypedFunction,
@@ -684,6 +685,9 @@ impl<'db> Diagnostic<'db> {
             ),
             MissingTypeParameters { name } => format!(
                 r#"Missing type parameters for generic type "{name}""#
+            ),
+            UntypedDecorator { name } => format!(
+                r#"Untyped decorator makes function "{name}" untyped"#
             ),
 
             OnlyClassTypeApplication => {
