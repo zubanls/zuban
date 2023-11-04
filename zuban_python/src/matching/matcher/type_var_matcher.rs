@@ -67,7 +67,7 @@ impl<'db: 'a, 'a> FunctionOrCallable<'a> {
                 .content
                 .kind
                 .had_first_self_or_class_annotation()
-                .then(|| Cow::Borrowed(c.content.first_positional_type().unwrap())),
+                .then(|| Cow::Owned(c.content.first_positional_type().unwrap())),
         }
     }
 

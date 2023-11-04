@@ -870,7 +870,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                                     callable,
                                                     &instance,
                                                     &attribute_class,
-                                                    t,
+                                                    &t,
                                                 )
                                             } else {
                                                 todo!()
@@ -993,7 +993,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 c,
                                 &instance,
                                 &attribute_class,
-                                f,
+                                &f,
                             )
                             .map(|c| Inferred::from_type(Type::Callable(Rc::new(c)))),
                         );

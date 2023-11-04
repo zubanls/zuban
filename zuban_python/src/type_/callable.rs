@@ -373,12 +373,12 @@ impl CallableContent {
         Some(c)
     }
 
-    pub fn first_positional_type(&self) -> Option<&Type> {
+    pub fn first_positional_type(&self) -> Option<Type> {
         match &self.params {
             CallableParams::Simple(params) => {
                 params.first().and_then(|p| match &p.param_specific {
                     ParamSpecific::PositionalOnly(t) | ParamSpecific::PositionalOrKeyword(t) => {
-                        Some(t)
+                        Some(t.clone())
                     }
                     _ => todo!(),
                 })
@@ -386,7 +386,7 @@ impl CallableContent {
             CallableParams::WithParamSpec(pre, usage) => {
                 todo!()
             }
-            CallableParams::Any(cause) => Some(&Type::Any(AnyCause::Todo)),
+            CallableParams::Any(cause) => Some(Type::Any(*cause)),
         }
     }
 

@@ -152,7 +152,7 @@ pub fn calculate_property_return(
 ) -> Option<Type> {
     let first_type = callable.first_positional_type().unwrap();
     let mut matcher = Matcher::new_callable_matcher(callable);
-    match_self_type(i_s, &mut matcher, instance, func_class, first_type)?;
+    match_self_type(i_s, &mut matcher, instance, func_class, &first_type)?;
 
     let t = replace_class_type_vars(i_s.db, &callable.result_type, func_class, &|| {
         instance.clone()
