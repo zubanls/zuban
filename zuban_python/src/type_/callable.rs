@@ -213,7 +213,7 @@ impl CallableParam {
 pub enum CallableParams {
     Simple(Rc<[CallableParam]>),
     WithParamSpec(Rc<[Type]>, ParamSpecUsage),
-    Any,
+    Any(AnyCause),
 }
 
 impl CallableParams {
@@ -271,7 +271,7 @@ impl CallableParams {
                     parts.chain(std::iter::once(spec)).collect()
                 }
             }
-            Self::Any => return Box::from("..."),
+            Self::Any(_) => return Box::from("..."),
         };
         let params = parts.join(", ");
         match style {
@@ -302,7 +302,7 @@ impl CallableParams {
             Self::WithParamSpec(pre_types, usage) => pre_types
                 .iter()
                 .any(|t| t.has_any_internal(i_s, already_checked)),
-            Self::Any => true,
+            Self::Any(_) => true,
         }
     }
 }
@@ -339,7 +339,7 @@ impl CallableContent {
                 had_first_self_or_class_annotation: false,
             },
             type_vars,
-            params: CallableParams::Any,
+            params: CallableParams::Any(AnyCause::Todo),
             result_type: Type::Any(AnyCause::Todo),
         }
     }
@@ -368,7 +368,7 @@ impl CallableContent {
             CallableParams::WithParamSpec(pre, usage) => {
                 todo!()
             }
-            CallableParams::Any => CallableParams::Any,
+            CallableParams::Any(cause) => CallableParams::Any(*cause),
         };
         Some(c)
     }
@@ -386,7 +386,7 @@ impl CallableContent {
             CallableParams::WithParamSpec(pre, usage) => {
                 todo!()
             }
-            CallableParams::Any => Some(&Type::Any(AnyCause::Todo)),
+            CallableParams::Any(cause) => Some(&Type::Any(AnyCause::Todo)),
         }
     }
 
@@ -410,7 +410,7 @@ impl CallableContent {
                 }
             },
             CallableParams::WithParamSpec(_, _) => Some(WrongPositionalCount::TooMany),
-            CallableParams::Any => None,
+            CallableParams::Any(_) => None,
         }
     }
 
@@ -440,7 +440,7 @@ impl CallableContent {
                     )) => false,
                 })
             }
-            CallableParams::Any => false,
+            CallableParams::Any(_) => false,
             CallableParams::WithParamSpec(types, param_spec) => {
                 todo!()
             }
@@ -491,7 +491,7 @@ impl CallableContent {
                     &format!("*{spec}.args, **{spec}.kwargs"),
                 )
             }
-            CallableParams::Any => {
+            CallableParams::Any(_) => {
                 let mut s = format!("def {name}(*Any, **Any)");
                 if self.result_type != Type::None {
                     s += " -> ";

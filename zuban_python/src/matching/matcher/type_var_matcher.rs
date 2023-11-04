@@ -155,9 +155,9 @@ impl CalculatedTypeVarLike {
                             GenericItem::TypeArguments(TypeArguments::new_fixed_length(Rc::new([])))
                         }
                         // TODO ParamSpec: this feels wrong, should maybe be never?
-                        TypeVarLike::ParamSpec(_) => {
-                            GenericItem::ParamSpecArgument(ParamSpecArgument::new_any())
-                        }
+                        TypeVarLike::ParamSpec(_) => GenericItem::ParamSpecArgument(
+                            ParamSpecArgument::new_any(AnyCause::Todo),
+                        ),
                     }
                 }
             }
@@ -224,20 +224,25 @@ impl TypeVarMatcher {
         }
     }
 
-    pub fn set_all_contained_type_vars_to_any(&mut self, i_s: &InferenceState, type_: &Type) {
+    pub fn set_all_contained_type_vars_to_any(
+        &mut self,
+        i_s: &InferenceState,
+        type_: &Type,
+        cause: AnyCause,
+    ) {
         type_.search_type_vars(&mut |t| {
             if t.in_definition() == self.match_in_definition {
                 let current = &mut self.calculated_type_vars[t.index().as_usize()];
                 if !current.calculated() {
                     current.type_ = match t {
                         TypeVarLikeUsage::TypeVar(_) => {
-                            BoundKind::TypeVar(TypeVarBound::Invariant(Type::Any(AnyCause::Todo)))
+                            BoundKind::TypeVar(TypeVarBound::Invariant(Type::Any(cause)))
                         }
                         TypeVarLikeUsage::TypeVarTuple(_) => BoundKind::TypeVarTuple(
-                            TypeArguments::new_arbitrary_length(Type::Any(AnyCause::Todo)),
+                            TypeArguments::new_arbitrary_length(Type::Any(cause)),
                         ),
                         TypeVarLikeUsage::ParamSpec(_) => {
-                            BoundKind::ParamSpecArgument(ParamSpecArgument::new_any())
+                            BoundKind::ParamSpecArgument(ParamSpecArgument::new_any(cause))
                         }
                     }
                 }

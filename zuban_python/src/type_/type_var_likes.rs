@@ -404,7 +404,7 @@ impl TypeVarLike {
                 TypeArguments::new_arbitrary_length(Type::Any(AnyCause::Todo)),
             ),
             TypeVarLike::ParamSpec(_) => {
-                GenericItem::ParamSpecArgument(ParamSpecArgument::new_any())
+                GenericItem::ParamSpecArgument(ParamSpecArgument::new_any(AnyCause::Todo))
             }
         }
     }
@@ -551,9 +551,9 @@ impl ParamSpecArgument {
         Self { params, type_vars }
     }
 
-    pub fn new_any() -> Self {
+    pub fn new_any(cause: AnyCause) -> Self {
         Self {
-            params: CallableParams::Any,
+            params: CallableParams::Any(cause),
             type_vars: None,
         }
     }

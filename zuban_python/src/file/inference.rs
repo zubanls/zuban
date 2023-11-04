@@ -2247,8 +2247,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                         todo!()
                                                     }
                                                 }
-                                                CallableParams::Any => {
-                                                    Inferred::new_any(AnyCause::Todo)
+                                                CallableParams::Any(cause) => {
+                                                    Inferred::new_any(*cause)
                                                 }
                                                 CallableParams::WithParamSpec(_, _) => todo!(),
                                             };

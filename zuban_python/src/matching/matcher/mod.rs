@@ -20,10 +20,10 @@ use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::node_ref::NodeRef;
 use crate::type_::{
-    CallableContent, CallableParam, CallableParams, GenericItem, GenericsList, ParamSpecArgument,
-    ParamSpecTypeVars, ParamSpecUsage, ParamSpecific, StarredParamSpecific, TupleTypeArguments,
-    Type, TypeArguments, TypeOrTypeVarTuple, TypeVarKind, TypeVarLike, TypeVarLikeUsage,
-    TypeVarLikes, TypeVarUsage, TypedDict, TypedDictGenerics, Variance,
+    AnyCause, CallableContent, CallableParam, CallableParams, GenericItem, GenericsList,
+    ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamSpecific, StarredParamSpecific,
+    TupleTypeArguments, Type, TypeArguments, TypeOrTypeVarTuple, TypeVarKind, TypeVarLike,
+    TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, TypedDict, TypedDictGenerics, Variance,
 };
 use crate::type_helpers::{Callable, Class, Function};
 use type_var_matcher::{BoundKind, TypeVarMatcher};
@@ -306,7 +306,7 @@ impl<'a> Matcher<'a> {
             |i_s: &_, matches, params: &ParamSpecArgument, p2_pre_iterator: std::slice::Iter<_>| {
                 match &params.params {
                     CallableParams::Simple(params1) => todo!(),
-                    CallableParams::Any => matches,
+                    CallableParams::Any(_) => matches,
                     CallableParams::WithParamSpec(pre, usage) => {
                         if pre.len() != p2_pre_iterator.len() {
                             todo!()
@@ -393,7 +393,7 @@ impl<'a> Matcher<'a> {
                         variance,
                     )
             }
-            CallableParams::Any => matches,
+            CallableParams::Any(_) => matches,
             CallableParams::WithParamSpec(_, _) => todo!(),
         };
         if let Some(class) = self.class {
@@ -472,7 +472,7 @@ impl<'a> Matcher<'a> {
                     iter,
                 )
             }
-            CallableParams::Any => SignatureMatch::new_true(),
+            CallableParams::Any(_) => SignatureMatch::new_true(),
             CallableParams::WithParamSpec(pre, usage1) => {
                 let mut arg_iterator = args.into_vec().into_iter();
                 if !pre.is_empty() {
@@ -647,9 +647,14 @@ impl<'a> Matcher<'a> {
         })
     }
 
-    pub fn set_all_contained_type_vars_to_any(&mut self, i_s: &InferenceState, type_: &Type) {
+    pub fn set_all_contained_type_vars_to_any(
+        &mut self,
+        i_s: &InferenceState,
+        type_: &Type,
+        cause: AnyCause,
+    ) {
         if let Some(matcher) = self.type_var_matcher.as_mut() {
-            matcher.set_all_contained_type_vars_to_any(i_s, type_)
+            matcher.set_all_contained_type_vars_to_any(i_s, type_, cause)
         }
     }
 

@@ -306,7 +306,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
                                     CallableParams::WithParamSpec(pre, _) => {
                                         pre.iter().any(|t| t.has_any(i_s))
                                     }
-                                    CallableParams::Any => true,
+                                    CallableParams::Any(_) => true,
                                 },
                                 BoundKind::Uncalculated { .. } => {
                                     // Make sure that the fallback is never used from a context.
@@ -347,7 +347,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
                             CallableParams::WithParamSpec(pre, _) => {
                                 pre.iter().any(|t| t.has_any(i_s))
                             }
-                            CallableParams::Any => true,
+                            CallableParams::Any(_) => true,
                         },
                         BoundKind::Uncalculated { .. } => {
                             // Make sure that the fallback is never used from a context.
@@ -386,7 +386,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
                     args,
                 ),
             ),
-            CallableParams::Any => SignatureMatch::new_true(),
+            CallableParams::Any(_) => SignatureMatch::new_true(),
             CallableParams::WithParamSpec(pre_types, param_spec) => {
                 if !pre_types.is_empty() {
                     //dbg!(pre_types, args.collect::<Vec<_>>());

@@ -52,7 +52,7 @@ impl<'a> Generic<'a> {
                     &format_callable_params(format_data, None, false, params.iter(), false)
                 )
                 .into(),
-                CallableParams::Any => Box::from("Any"),
+                CallableParams::Any(_) => Box::from("Any"),
                 CallableParams::WithParamSpec(..) => {
                     args.params.format(format_data, ParamsStyle::CallableParams)
                 }

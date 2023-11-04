@@ -113,9 +113,9 @@ impl Type {
                 Self::matches_callable_against_arbitrary(i_s, matcher, c1, value_type, variance)
             }
             Type::None => matches!(value_type, Type::None).into(),
-            Type::Any(_) if matcher.is_matching_reverse() => {
+            Type::Any(cause) if matcher.is_matching_reverse() => {
                 debug!("TODO write a test for this. (reverse matching any)");
-                matcher.set_all_contained_type_vars_to_any(i_s, self);
+                matcher.set_all_contained_type_vars_to_any(i_s, self, *cause);
                 Match::True { with_any: true }
             }
             Type::Any(_) => Match::new_true(),
@@ -423,8 +423,8 @@ impl Type {
         //    again.
         match value_type {
             Type::Any(_) if matcher.is_matching_reverse() => return Match::new_true(),
-            Type::Any(_) => {
-                matcher.set_all_contained_type_vars_to_any(i_s, self);
+            Type::Any(cause) => {
+                matcher.set_all_contained_type_vars_to_any(i_s, self, *cause);
                 return Match::True { with_any: true };
             }
             Type::None if !i_s.db.project.flags.strict_optional => return Match::new_true(),
@@ -648,7 +648,7 @@ impl Type {
                     Self::matches_callable(i_s, matcher, c1, c2)
                 })
             }
-            Type::Type(t2) if c1.params == CallableParams::Any => {
+            Type::Type(t2) if matches!(c1.params, CallableParams::Any(_)) => {
                 c1.result_type.is_super_type_of(i_s, matcher, t2)
             }
             _ => match value_type.maybe_callable(i_s) {

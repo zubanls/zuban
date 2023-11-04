@@ -1852,7 +1852,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
         }
         if had_issue {
-            CallableParams::Any
+            CallableParams::Any(AnyCause::FromError)
         } else {
             CallableParams::Simple(Rc::from(params))
         }
@@ -1947,9 +1947,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             |slf: &mut Self| match slf.compute_slice_type_content(first) {
                 TypeContent::ParamSpec(p) => CallableParams::WithParamSpec(Rc::new([]), p),
                 TypeContent::SpecialType(SpecialType::Any) if from_class_generics => {
-                    CallableParams::Any
+                    CallableParams::Any(AnyCause::Explicit)
                 }
-                TypeContent::Unknown => CallableParams::Any,
+                TypeContent::Unknown => CallableParams::Any(AnyCause::Todo),
                 TypeContent::Concatenate(p) => p,
                 t if allow_aesthetic_class_simplification => CallableParams::Simple(Rc::new([
                     slf.check_param(t, first.as_node_ref().node_index)
@@ -1965,7 +1965,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     } else {
                         slf.add_issue(n.as_node_ref(), IssueType::InvalidCallableParams);
                     }
-                    CallableParams::Any
+                    CallableParams::Any(AnyCause::FromError)
                 }
             };
         match n.named_expr.expression().maybe_unpacked_atom() {
@@ -1981,7 +1981,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
                 CallableParams::Simple(Rc::from(params))
             }
-            Some(AtomContent::Ellipsis) => CallableParams::Any,
+            Some(AtomContent::Ellipsis) => CallableParams::Any(AnyCause::Explicit),
             _ => calc_params(self),
         }
     }

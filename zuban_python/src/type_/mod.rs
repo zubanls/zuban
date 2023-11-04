@@ -769,7 +769,7 @@ impl Type {
                     }
                 }
             }
-            CallableParams::Any => (),
+            CallableParams::Any(_) => (),
             CallableParams::WithParamSpec(_, spec) => {
                 found_type_var(TypeVarLikeUsage::ParamSpec(Cow::Borrowed(spec)))
             }

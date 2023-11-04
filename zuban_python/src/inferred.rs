@@ -2018,7 +2018,7 @@ fn proper_classmethod_callable(
             callable.params = CallableParams::Simple(Rc::from(vec));
         }
         CallableParams::WithParamSpec(_, _) => todo!(),
-        CallableParams::Any => (),
+        CallableParams::Any(_) => (),
     };
 
     let type_vars = RefCell::new(type_vars);

@@ -360,7 +360,7 @@ impl Type {
                         })
                         .collect(),
                 ),
-                CallableParams::Any => CallableParams::Any,
+                CallableParams::Any(cause) => CallableParams::Any(*cause),
                 CallableParams::WithParamSpec(types, param_spec) => CallableParams::WithParamSpec(
                     types
                         .iter()
@@ -433,7 +433,7 @@ impl Type {
                     })
                     .collect(),
             ),
-            CallableParams::Any => CallableParams::Any,
+            CallableParams::Any(cause) => CallableParams::Any(*cause),
             CallableParams::WithParamSpec(types, param_spec) => {
                 let result = callable(TypeVarLikeUsage::ParamSpec(Cow::Borrowed(param_spec)));
                 let GenericItem::ParamSpecArgument(mut new) = result else {
@@ -492,7 +492,7 @@ impl Type {
                             );
                             CallableParams::Simple(Rc::from(params))
                         }
-                        CallableParams::Any => CallableParams::Any,
+                        CallableParams::Any(cause) => CallableParams::Any(cause),
                         CallableParams::WithParamSpec(new_types, p) => {
                             let mut types: Vec<Type> = types
                                 .iter()
@@ -549,7 +549,7 @@ impl Type {
                                         )
                                     }
                                     CallableParams::Simple(x) => unreachable!(),
-                                    CallableParams::Any => unreachable!(),
+                                    CallableParams::Any(_) => unreachable!(),
                                 },
                                 type_vars: p.type_vars.clone(),
                             }

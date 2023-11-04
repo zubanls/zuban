@@ -118,10 +118,10 @@ fn common_sub_type_for_callables(
                 }
             }
             CallableParams::WithParamSpec(_, _) => todo!(),
-            CallableParams::Any => todo!(),
+            CallableParams::Any(_) => todo!(),
         },
         CallableParams::WithParamSpec(_, _) => todo!(),
-        CallableParams::Any => todo!(),
+        CallableParams::Any(_) => todo!(),
     }
     Rc::new(CallableContent::new_any(
         i_s.db.python_state.empty_type_var_likes.clone(),
