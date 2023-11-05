@@ -2237,7 +2237,8 @@ pub fn specific_to_type<'db>(
         Specific::RevealTypeFunction => todo!(),
         Specific::None => Cow::Borrowed(&Type::None),
         Specific::TypingNewType => todo!(),
-        Specific::TypingAny => todo!(),
+        // Typeshed defines this as object()
+        Specific::TypingAny => Cow::Owned(i_s.db.python_state.object_type()),
         Specific::MypyExtensionsArg
         | Specific::MypyExtensionsDefaultArg
         | Specific::MypyExtensionsNamedArg
