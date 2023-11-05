@@ -1717,10 +1717,12 @@ impl CallableLike {
         }
     }
 
-    pub fn is_typed(&self) -> bool {
+    pub fn is_typed(&self, skip_first_param: bool) -> bool {
         match self {
-            Self::Callable(c) => c.is_typed(),
-            Self::Overload(overload) => overload.iter_functions().all(|c| c.is_typed()),
+            Self::Callable(c) => c.is_typed(skip_first_param),
+            Self::Overload(overload) => overload
+                .iter_functions()
+                .all(|c| c.is_typed(skip_first_param)),
         }
     }
 }

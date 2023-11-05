@@ -560,13 +560,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     // TODO check if it's an function without a return annotation and
                     // abort in that case.
                     if i_s.db.project.flags.disallow_untyped_decorators {
-                        let is_typed = |inf: &Inferred| {
+                        let is_typed = |inf: &Inferred, skip_first_param| {
                             inf.as_cow_type(i_s)
                                 .maybe_callable(i_s)
-                                .map(|c| c.is_typed())
+                                .map(|c| c.is_typed(skip_first_param))
                         };
-                        if is_typed(&inferred).unwrap_or(false)
-                            && !is_typed(&dec_inf).unwrap_or(true)
+                        if is_typed(&inferred, self.class.is_some()).unwrap_or(false)
+                            && !is_typed(&dec_inf, false).unwrap_or(true)
                         {
                             NodeRef::new(self.node_ref.file, decorator.index()).add_issue(
                                 i_s,
@@ -801,6 +801,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                             callable: CallableContent::new_any_with_defined_at(
                                 i_s.db,
                                 func_ref.as_link(),
+                                AnyCause::Todo,
                             ),
                         });
                     } else if let Some(CallableLike::Callable(callable)) = t.maybe_callable(i_s) {
@@ -814,6 +815,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                             callable: CallableContent::new_any_with_defined_at(
                                 i_s.db,
                                 func_ref.as_link(),
+                                AnyCause::FromError,
                             ),
                         });
                         NodeRef::new(func_ref.file, next_func.expect_decorated_node().index())

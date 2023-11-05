@@ -8,8 +8,8 @@ use crate::{
 };
 
 use super::{
-    CallableContent, CallableParam, CallableParams, DoubleStarredParamSpecific, ParamSpecific,
-    StarredParamSpecific, Type,
+    AnyCause, CallableContent, CallableParam, CallableParams, DoubleStarredParamSpecific,
+    ParamSpecific, StarredParamSpecific, Type,
 };
 
 impl Type {
@@ -125,6 +125,7 @@ fn common_sub_type_for_callables(
     }
     Rc::new(CallableContent::new_any(
         i_s.db.python_state.empty_type_var_likes.clone(),
+        AnyCause::Todo,
     ))
     //return i_s.db.python_state.function_type();
 }

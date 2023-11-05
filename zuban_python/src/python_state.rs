@@ -230,7 +230,10 @@ impl PythonState {
             type_of_any: Type::Type(Rc::new(Type::Any(AnyCause::Todo))),
             type_of_self: Type::Type(Rc::new(Type::Self_)),
             type_of_arbitrary_tuple: Type::Type(Rc::new(Type::Tuple(Tuple::new_empty()))),
-            any_callable: Rc::new(CallableContent::new_any(empty_type_var_likes.clone())),
+            any_callable: Rc::new(CallableContent::new_any(
+                empty_type_var_likes.clone(),
+                AnyCause::Todo,
+            )),
             generator_with_any_generics: Type::None, // Will be set later
             async_generator_with_any_generics: Type::None, // Will be set later
             empty_type_var_likes,

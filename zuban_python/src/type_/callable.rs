@@ -319,8 +319,8 @@ pub struct CallableContent {
 }
 
 impl CallableContent {
-    pub fn new_any(type_vars: TypeVarLikes) -> Self {
-        Self::new_any_internal(PointLink::new(FileIndex(0), 0), type_vars)
+    pub fn new_any(type_vars: TypeVarLikes, cause: AnyCause) -> Self {
+        Self::new_any_internal(PointLink::new(FileIndex(0), 0), type_vars, cause)
     }
 
     pub fn name<'x>(&'x self, db: &'x Database) -> &'x str {
@@ -330,7 +330,7 @@ impl CallableContent {
             .unwrap_or("function")
     }
 
-    fn new_any_internal(defined_at: PointLink, type_vars: TypeVarLikes) -> Self {
+    fn new_any_internal(defined_at: PointLink, type_vars: TypeVarLikes, cause: AnyCause) -> Self {
         Self {
             name: None,
             class_name: None,
@@ -339,12 +339,16 @@ impl CallableContent {
                 had_first_self_or_class_annotation: false,
             },
             type_vars,
-            params: CallableParams::Any(AnyCause::Todo),
-            result_type: Type::Any(AnyCause::Todo),
+            params: CallableParams::Any(cause),
+            result_type: Type::Any(cause),
         }
     }
-    pub fn new_any_with_defined_at(db: &Database, defined_at: PointLink) -> Self {
-        Self::new_any_internal(defined_at, db.python_state.empty_type_var_likes.clone())
+    pub fn new_any_with_defined_at(db: &Database, defined_at: PointLink, cause: AnyCause) -> Self {
+        Self::new_any_internal(
+            defined_at,
+            db.python_state.empty_type_var_likes.clone(),
+            cause,
+        )
     }
 
     pub fn expect_simple_params(&self) -> &[CallableParam] {
@@ -573,17 +577,20 @@ impl CallableContent {
         callable
     }
 
-    pub fn is_typed(&self) -> bool {
+    pub fn is_typed(&self, skip_first_param: bool) -> bool {
         let has_unannotated = |t: &Type| matches!(t, Type::Any(AnyCause::Unannotated));
+        dbg!(self);
         if !has_unannotated(&self.result_type) {
             return true;
         }
         match &self.params {
-            CallableParams::Simple(params) => !params.iter().all(|t| {
-                t.param_specific
-                    .maybe_type()
-                    .is_some_and(|t| has_unannotated(t))
-            }),
+            CallableParams::Simple(params) => {
+                !params.iter().skip(skip_first_param.into()).all(|t| {
+                    t.param_specific
+                        .maybe_type()
+                        .is_some_and(|t| has_unannotated(t))
+                })
+            }
             CallableParams::Any(cause) => !matches!(cause, AnyCause::Unannotated),
             // Should probably never happen?!
             CallableParams::WithParamSpec(..) => true,
