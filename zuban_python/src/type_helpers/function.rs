@@ -565,9 +565,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                                 .maybe_callable(i_s)
                                 .map(|c| c.is_typed(skip_first_param))
                         };
-                        if is_typed(&inferred, self.class.is_some()).unwrap_or(false)
-                            && !is_typed(&dec_inf, false).unwrap_or(true)
-                        {
+                        if !self.is_dynamic() && !is_typed(&dec_inf, false).unwrap_or(true) {
                             NodeRef::new(self.node_ref.file, decorator.index()).add_issue(
                                 i_s,
                                 IssueType::UntypedDecorator {

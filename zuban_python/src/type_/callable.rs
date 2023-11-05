@@ -579,7 +579,6 @@ impl CallableContent {
 
     pub fn is_typed(&self, skip_first_param: bool) -> bool {
         let has_unannotated = |t: &Type| matches!(t, Type::Any(AnyCause::Unannotated));
-        dbg!(self);
         if !has_unannotated(&self.result_type) {
             return true;
         }

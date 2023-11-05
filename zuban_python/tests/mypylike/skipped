@@ -2520,7 +2520,6 @@ testDisallowAnyDecoratedPartlyTypedCallable
 testDisallowAnyDecoratedTwoDecorators
 # --disallow-untyped-decorators
 testDisallowUntypedDecoratorsUnresolvedDecorator
-testDisallowUntypedDecoratorsMultipleDecorators
 
 # --disallow-untyped-calls
 testDisallowUntypedCallsArgType
