@@ -130,6 +130,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 disallow_any_generics: steps.flags.contains(&"--disallow-any-generics"),
                 disallow_any_decorated: steps.flags.contains(&"--disallow-any-decorated"),
                 disallow_subclassing_any: steps.flags.contains(&"--disallow-subclassing-any"),
+                disallow_any_explicit: steps.flags.contains(&"--disallow-any-explicit"),
                 extra_checks,
                 strict_optional: !steps.flags.contains(&"--no-strict-optional")
                     && !self.file_name.starts_with("semanal-"),

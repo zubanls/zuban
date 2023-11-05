@@ -2543,7 +2543,17 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeNameLookup::Dataclass(d) => TypeContent::Dataclass(d),
             TypeNameLookup::InvalidVariable(t) => TypeContent::InvalidVariable(t),
             TypeNameLookup::Unknown => TypeContent::Unknown,
-            TypeNameLookup::SpecialType(special) => TypeContent::SpecialType(special),
+            TypeNameLookup::SpecialType(special) => {
+                let i_s = self.inference.i_s;
+                if matches!(special, SpecialType::Any) && i_s.db.project.flags.disallow_any_explicit
+                {
+                    self.add_issue(
+                        NodeRef::new(self.inference.file, name.index()),
+                        IssueType::DisallowedAnyExplicit,
+                    )
+                }
+                TypeContent::SpecialType(special)
+            }
             TypeNameLookup::RecursiveAlias(link) => TypeContent::RecursiveAlias(link),
         }
     }

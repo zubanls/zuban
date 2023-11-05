@@ -269,7 +269,7 @@ pub(crate) enum IssueType {
     UntypedFunctionAfterDecorator { got: Option<Box<str>> }, // From --disallow-any-decorated
     DisallowedAnySubclass { class: Box<str> }, // From --disallow-subclassing-any
     DisallowedAnyMetaclass { class: Box<str> }, // From --disallow-subclassing-any
-    
+    DisallowedAnyExplicit, // From --disallow-any-explicit
 
     InvariantNote { actual: &'static str, maybe: &'static str },
     AnnotationInUntypedFunction,
@@ -702,6 +702,7 @@ impl<'db> Diagnostic<'db> {
             DisallowedAnyMetaclass{class} => format!(
                 r#"Class cannot use "{class}" as a metaclass (has type "Any")"#
             ),
+            DisallowedAnyExplicit => r#"Explicit "Any" is not allowed"#.to_string(),
 
             OnlyClassTypeApplication => {
                 "Type application is only supported for generic classes".to_string()
