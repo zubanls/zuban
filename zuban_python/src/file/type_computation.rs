@@ -837,7 +837,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         );
                     }
                     return Some(Type::Callable(
-                        self.inference.i_s.db.python_state.any_callable.clone(),
+                        self.inference
+                            .i_s
+                            .db
+                            .python_state
+                            .any_callable_from_error
+                            .clone(),
                     ));
                 }
                 SpecialType::Any => return Some(Type::Any(AnyCause::Explicit)),
@@ -2024,7 +2029,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             })
         } else {
             self.add_issue(slice_type.as_node_ref(), IssueType::InvalidCallableArgCount);
-            self.inference.i_s.db.python_state.any_callable.clone()
+            self.inference
+                .i_s
+                .db
+                .python_state
+                .any_callable_from_error
+                .clone()
         };
         self.current_callable = old;
         TypeContent::Type(Type::Callable(content))

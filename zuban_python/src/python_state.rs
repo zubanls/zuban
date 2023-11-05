@@ -136,7 +136,7 @@ pub struct PythonState {
     pub type_of_any: Type,
     pub type_of_self: Type,
     pub type_of_arbitrary_tuple: Type,
-    pub any_callable: Rc<CallableContent>,
+    pub any_callable_from_error: Rc<CallableContent>,
     pub generator_with_any_generics: Type,
     pub async_generator_with_any_generics: Type,
     pub empty_type_var_likes: TypeVarLikes,
@@ -230,9 +230,9 @@ impl PythonState {
             type_of_any: Type::Type(Rc::new(Type::Any(AnyCause::Todo))),
             type_of_self: Type::Type(Rc::new(Type::Self_)),
             type_of_arbitrary_tuple: Type::Type(Rc::new(Type::Tuple(Tuple::new_empty()))),
-            any_callable: Rc::new(CallableContent::new_any(
+            any_callable_from_error: Rc::new(CallableContent::new_any(
                 empty_type_var_likes.clone(),
-                AnyCause::Todo,
+                AnyCause::FromError,
             )),
             generator_with_any_generics: Type::None, // Will be set later
             async_generator_with_any_generics: Type::None, // Will be set later

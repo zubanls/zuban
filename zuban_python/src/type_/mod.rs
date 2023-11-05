@@ -534,9 +534,10 @@ impl Type {
                     None
                 }
             },
-            Type::Any(_) => Some(CallableLike::Callable(
-                i_s.db.python_state.any_callable.clone(),
-            )),
+            Type::Any(cause) => Some(CallableLike::Callable(Rc::new(CallableContent::new_any(
+                i_s.db.python_state.empty_type_var_likes.clone(),
+                *cause,
+            )))),
             Type::Class(c) => {
                 let cls = c.class(i_s.db);
                 debug!("TODO this from is completely wrong and should never be used.");
@@ -1391,7 +1392,9 @@ impl Type {
                 _ => Type::Any(AnyCause::FromError),
             },
             Type::Callable(content1) => match other {
-                Type::Callable(content2) => Type::Callable(db.python_state.any_callable.clone()),
+                Type::Callable(content2) => {
+                    Type::Callable(db.python_state.any_callable_from_error.clone())
+                }
                 _ => Type::Any(AnyCause::FromError),
             },
             _ => Type::Any(AnyCause::FromError),
