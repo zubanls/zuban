@@ -50,6 +50,7 @@ pub struct TypeCheckerFlags {
     pub disallow_untyped_decorators: bool,
     pub disallow_any_generics: bool,
     pub disallow_any_decorated: bool,
+    pub disallow_subclassing_any: bool,
 
     pub extra_checks: bool,
     pub mypy_compatible: bool,
@@ -66,6 +67,7 @@ impl Default for TypeCheckerFlags {
             disallow_untyped_decorators: false,
             disallow_any_generics: false,
             disallow_any_decorated: false,
+            disallow_subclassing_any: false,
             extra_checks: false,
             mypy_compatible: false,
         }
@@ -83,6 +85,7 @@ impl TypeCheckerFlags {
             disallow_untyped_decorators: false,
             disallow_any_generics: true,
             disallow_any_decorated: true,
+            disallow_subclassing_any: true,
             extra_checks: false,
             mypy_compatible: false,
         }

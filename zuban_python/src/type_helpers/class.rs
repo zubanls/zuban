@@ -761,6 +761,14 @@ impl<'db: 'a, 'a> Class<'a> {
                             }
                             CalculatedBaseClass::Generic => (),
                             CalculatedBaseClass::Unknown => {
+                                if i_s.db.project.flags.disallow_subclassing_any {
+                                    NodeRef::new(self.node_ref.file, n.index()).add_issue(
+                                        i_s,
+                                        IssueType::DisallowedAnySubclass {
+                                            class: n.as_code().into(),
+                                        },
+                                    );
+                                }
                                 incomplete_mro = true;
                             }
                             CalculatedBaseClass::InvalidEnum(enum_) => {

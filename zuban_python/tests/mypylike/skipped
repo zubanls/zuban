@@ -2520,10 +2520,6 @@ testDisallowUntypedCallsAllowListFlags
 
 # --disallow-subclassing-any
 testMetaclassAsAnyWithAFlag
-testSubclassingAny
-testSubclassingAnyMultipleBaseClasses
-testSubclassingAnySilentImports
-testSubclassingAnySilentImports2
 
 # --disallow-any-explicit
 testDisallowAnyExplicitDefSignature
@@ -2597,6 +2593,8 @@ testFileAddedAndImported2
 testDeleteFileWithErrors
 testDoNotFollowImportToNonStubFile
 testFollowImportsSkip
+testSubclassingAnySilentImports
+testSubclassingAnySilentImports2
 
 # --no-implicit-reexport
 testNoImplicitReexport
