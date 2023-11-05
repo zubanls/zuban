@@ -267,7 +267,8 @@ pub(crate) enum IssueType {
     MissingTypeParameters { name: Box<str> }, // From --disallow-any-generics
     UntypedDecorator { name: Box<str> }, // From --disallow-untyped-decorators
     UntypedFunctionAfterDecorator { got: Option<Box<str>> }, // From --disallow-any-decorated
-    DisallowedAnySubclass { class: Box<str> },
+    DisallowedAnySubclass { class: Box<str> }, // From --disallow-subclassing-any
+    DisallowedAnyMetaclass { class: Box<str> }, // From --disallow-subclassing-any
     
 
     InvariantNote { actual: &'static str, maybe: &'static str },
@@ -697,6 +698,9 @@ impl<'db> Diagnostic<'db> {
             },
             DisallowedAnySubclass{class} => format!(
                 r#"Class cannot subclass "{class}" (has type "Any")"#
+            ),
+            DisallowedAnyMetaclass{class} => format!(
+                r#"Class cannot use "{class}" as a metaclass (has type "Any")"#
             ),
 
             OnlyClassTypeApplication => {

@@ -592,7 +592,17 @@ impl<'db: 'a, 'a> Class<'a> {
                                         .add_issue(i_s, IssueType::MetaclassMustInheritFromType);
                                 }
                             }
-                            CalculatedBaseClass::Unknown => metaclass = MetaclassState::Unknown,
+                            CalculatedBaseClass::Unknown => {
+                                if i_s.db.project.flags.disallow_subclassing_any {
+                                    NodeRef::new(self.node_ref.file, kwarg.index()).add_issue(
+                                        i_s,
+                                        IssueType::DisallowedAnyMetaclass {
+                                            class: expr.as_code().into(),
+                                        },
+                                    );
+                                }
+                                metaclass = MetaclassState::Unknown
+                            }
                             _ => {
                                 node_ref.add_issue(i_s, IssueType::InvalidMetaclass);
                             }

@@ -2518,9 +2518,6 @@ testDisallowUntypedCallsArgType
 # --untyped-calls-exclude=bar.A
 testDisallowUntypedCallsAllowListFlags
 
-# --disallow-subclassing-any
-testMetaclassAsAnyWithAFlag
-
 # --disallow-any-explicit
 testDisallowAnyExplicitDefSignature
 testDisallowAnyExplicitVarDeclaration
