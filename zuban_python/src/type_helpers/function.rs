@@ -592,6 +592,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             callable.kind = kind;
             *inferred = Inferred::from_type(Type::Callable(Rc::new(callable)));
         };
+        if i_s.db.project.flags.disallow_any_decorated && inferred.as_type(i_s).has_any(i_s) {
+            NodeRef::new(self.node_ref.file, self.node().name().index())
+                .add_issue(i_s, IssueType::UntypedFunctionAfterDecorator)
+        }
         if matches!(
             kind,
             FunctionKind::Function { .. } | FunctionKind::Staticmethod

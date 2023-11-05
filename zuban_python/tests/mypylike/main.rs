@@ -128,6 +128,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 disallow_untyped_calls: steps.flags.contains(&"--disallow-untyped-calls"),
                 disallow_untyped_decorators: steps.flags.contains(&"--disallow-untyped-decorators"),
                 disallow_any_generics: steps.flags.contains(&"--disallow-any-generics"),
+                disallow_any_decorated: steps.flags.contains(&"--disallow-any-decorated"),
                 extra_checks,
                 strict_optional: !steps.flags.contains(&"--no-strict-optional")
                     && !self.file_name.starts_with("semanal-"),
