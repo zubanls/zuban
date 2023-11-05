@@ -2510,9 +2510,6 @@ testDisallowImplicitAnyVarDeclaration
 testDisallowUnimportedAnyTypedDictSimple
 testDisallowUnimportedAnyTypedDictGeneric
 
-# --disallow-any-decorated
-testDisallowAnyDecoratedReturnCallable
-testDisallowAnyDecoratedPartlyTypedCallable
 # --disallow-untyped-decorators
 testDisallowUntypedDecoratorsUnresolvedDecorator
 

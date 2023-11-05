@@ -592,9 +592,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             callable.kind = kind;
             *inferred = Inferred::from_type(Type::Callable(Rc::new(callable)));
         };
-        if i_s.db.project.flags.disallow_any_decorated && inferred.as_type(i_s).has_any(i_s) {
-            NodeRef::new(self.node_ref.file, self.node().name().index())
-                .add_issue(i_s, IssueType::UntypedFunctionAfterDecorator)
+        if i_s.db.project.flags.disallow_any_decorated {
+            let t = inferred.as_cow_type(i_s);
+            if t.has_any(i_s) {
+                let got = (!matches!(t.as_ref(), Type::Any(_))).then(|| t.format_short(i_s.db));
+                NodeRef::new(self.node_ref.file, self.node().name().index())
+                    .add_issue(i_s, IssueType::UntypedFunctionAfterDecorator { got })
+            }
         }
         if matches!(
             kind,
@@ -604,7 +608,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 overwrite_callable(&mut inferred, (*c).clone())
             }
         } else {
-            if let Some(CallableLike::Callable(c)) = inferred.as_type(i_s).maybe_callable(i_s) {
+            if let Some(CallableLike::Callable(c)) = inferred.as_cow_type(i_s).maybe_callable(i_s) {
                 overwrite_callable(&mut inferred, (*c).clone())
             } else {
                 todo!()

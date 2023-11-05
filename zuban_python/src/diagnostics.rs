@@ -266,7 +266,7 @@ pub(crate) enum IssueType {
     CallToUntypedFunction { name: Box<str> }, // From --disallow-untyped-calls
     MissingTypeParameters { name: Box<str> }, // From --disallow-any-generics
     UntypedDecorator { name: Box<str> }, // From --disallow-untyped-decorators
-    UntypedFunctionAfterDecorator, // From --disallow-any-decorated
+    UntypedFunctionAfterDecorator { got: Option<Box<str>> }, // From --disallow-any-decorated
     
 
     InvariantNote { actual: &'static str, maybe: &'static str },
@@ -690,8 +690,10 @@ impl<'db> Diagnostic<'db> {
             UntypedDecorator { name } => format!(
                 r#"Untyped decorator makes function "{name}" untyped"#
             ),
-            UntypedFunctionAfterDecorator =>
-                "Function is untyped after decorator transformation".to_string(),
+            UntypedFunctionAfterDecorator { got } => match got {
+                Some(got) => format!(r#"Type of decorated function contains type "Any" ("{got}")"#),
+                None => "Function is untyped after decorator transformation".to_string(),
+            },
 
             OnlyClassTypeApplication => {
                 "Type application is only supported for generic classes".to_string()
