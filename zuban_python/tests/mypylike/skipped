@@ -2193,6 +2193,9 @@ testAttrs*
 updateMagicField
 magicAttributeConsistency
 magicAttributeConsistency2-only_when_cache
+testDisallowIncompleteDefsAttrsNoAnnotations
+testDisallowIncompleteDefsAttrsWithAnnotations
+testDisallowIncompleteDefsAttrsPartialAnnotations
 
 # Special case for assignment to '_'
 testUnusedTargetLocal
@@ -2517,13 +2520,6 @@ testDisallowUntypedDecoratorsUnresolvedDecorator
 testDisallowUntypedCallsArgType
 # --untyped-calls-exclude=bar.A
 testDisallowUntypedCallsAllowListFlags
-
-# --disallow-incomplete-defs
-testDisallowIncompleteDefs
-testDisallowIncompleteDefsPartiallyAnnotatedParams
-testDisallowIncompleteDefsAttrsNoAnnotations
-testDisallowIncompleteDefsAttrsWithAnnotations
-testDisallowIncompleteDefsAttrsPartialAnnotations
 
 # --warn-return-any
 testErrorCodeReturnAny

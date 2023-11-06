@@ -260,8 +260,8 @@ pub(crate) enum IssueType {
 
     // From --disallow-untyped-defs
     FunctionIsDynamic,
-    FunctionMissingReturnAnnotation,
-    FunctionMissingParamAnnotations,
+    FunctionMissingReturnAnnotation, // Also from --disallow-incomplete-defs
+    FunctionMissingParamAnnotations, // Also from --disallow-incomplete-defs
 
     CallToUntypedFunction { name: Box<str> }, // From --disallow-untyped-calls
     MissingTypeParameters { name: Box<str> }, // From --disallow-any-generics

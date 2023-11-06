@@ -569,10 +569,11 @@ impl<'db> Inference<'db, '_, '_> {
                 }
             }
         }
-
+        let flags = &self.i_s.db.project.flags;
+        let mut had_missing_annotation = false;
         for param in params
             .iter()
-            .skip((function.kind(self.i_s) != FunctionKind::Staticmethod).into())
+            .skip((class.is_some() && function.kind(self.i_s) != FunctionKind::Staticmethod).into())
         {
             if let Some(annotation) = param.annotation() {
                 let t = self.use_cached_annotation_type(annotation);
@@ -583,7 +584,14 @@ impl<'db> Inference<'db, '_, '_> {
                             .add_issue(self.i_s, IssueType::TypeVarCovariantInParamType);
                     }
                 }
+            } else if flags.disallow_incomplete_defs {
+                had_missing_annotation = true;
             }
+        }
+        if had_missing_annotation {
+            function
+                .node_ref
+                .add_issue(self.i_s, IssueType::FunctionMissingParamAnnotations);
         }
 
         if let Some(return_annotation) = return_annotation {
@@ -609,18 +617,22 @@ impl<'db> Inference<'db, '_, '_> {
                     }
                 }
             }
+        } else if flags.disallow_incomplete_defs {
+            function
+                .node_ref
+                .add_issue(self.i_s, IssueType::FunctionMissingReturnAnnotation);
         }
 
         let is_dynamic = function.is_dynamic();
         let args = NoArguments::new(NodeRef::new(self.file, f.index()));
         let function_i_s = &mut self.i_s.with_diagnostic_func_and_args(&function, &args);
         let mut inference = self.file.inference(function_i_s);
-        if !is_dynamic || self.i_s.db.project.flags.check_untyped_defs {
+        if !is_dynamic || flags.check_untyped_defs {
             inference.calc_block_diagnostics(block, None, Some(&function))
         } else {
             inference.calc_untyped_block_diagnostics(block)
         }
-        if self.i_s.db.project.flags.disallow_untyped_defs {
+        if flags.disallow_untyped_defs && !flags.disallow_incomplete_defs {
             match (
                 function.is_missing_param_annotations(self.i_s),
                 function.return_annotation().is_none(),
