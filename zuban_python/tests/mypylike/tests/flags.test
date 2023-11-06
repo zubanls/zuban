@@ -26,3 +26,11 @@ x2 = list[Any] | int  # E: Explicit "Any" is not allowed
 y2 = int | list[Any]  # E: Explicit "Any" is not allowed
 
 x: Tuple[x1, y1, x2, y2]
+
+[case redundant_casts_with_any_nested]
+# flags: --warn-redundant-casts
+from typing import cast
+
+x: list[int]
+cast(list[int], x) # E: Redundant cast to "list[int]"
+cast(list[Any], x)

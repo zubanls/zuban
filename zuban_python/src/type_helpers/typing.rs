@@ -96,7 +96,7 @@ impl<'db> TypingCast {
             if let Some(actual) = actual {
                 let t_in = actual.as_cow_type(i_s);
                 let t_out = result.as_type(i_s);
-                if t_in.is_simple_same_type(i_s, &t_out).bool() && !(t_in.is_any()) {
+                if t_in.is_simple_same_type(i_s, &t_out).non_any_match() && !(t_in.is_any()) {
                     args.as_node_ref().add_issue(
                         i_s,
                         IssueType::RedundantCast {
