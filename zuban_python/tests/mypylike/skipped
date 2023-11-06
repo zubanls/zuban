@@ -531,6 +531,14 @@ testLiteralCheckSubtypingNoStrictOptional
 testNewAndInitNoReturn
 testOverloadedNewAndInitNoReturn
 testNoReturnImportFromTyping
+# --warn-no-return
+testNoReturnDisallowsReturn
+testNoReturnDisallowsImplicitReturn
+testNoReturnImplicitReturnCheckInDeferredNode
+testNoReturnInExpr
+testNoReturnAsync
+# --no-warn-no-return
+testNoWarnNoReturn
 
 # typing.no_type_check
 testNoTypeCheckDecoratorOnMethod1
@@ -2515,15 +2523,6 @@ testDisallowUntypedDecoratorsUnresolvedDecorator
 testDisallowUntypedCallsArgType
 # --untyped-calls-exclude=bar.A
 testDisallowUntypedCallsAllowListFlags
-
-# --warn-no-return
-testNoReturnDisallowsReturn
-testNoReturnDisallowsImplicitReturn
-testNoReturnImplicitReturnCheckInDeferredNode
-testNoReturnInExpr
-testNoReturnAsync
-# --no-warn-no-return
-testNoWarnNoReturn
 
 # --follow-imports=error
 testImportSuppressedWhileAlmostSilent
