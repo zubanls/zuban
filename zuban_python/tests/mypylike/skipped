@@ -2259,6 +2259,7 @@ testEllipsisDefaultArgValueInNonStubsMethods
 
 # NotImplemented
 testOperatorMethodAgainstSameType
+testReturnAnyForNotImplementedInNormalMethods
 
 # Probably fixed eventually by updating mypy or typeshed
 testDecoratorTypeAfterReprocessing
@@ -2515,9 +2516,6 @@ testDisallowUntypedCallsArgType
 # --untyped-calls-exclude=bar.A
 testDisallowUntypedCallsAllowListFlags
 
-# --warn-return-any
-testReturnAnyForNotImplementedInNormalMethods
-testOKReturnAnyIfProperSubtype
 # --warn-no-return
 testNoReturnDisallowsReturn
 testNoReturnDisallowsImplicitReturn
