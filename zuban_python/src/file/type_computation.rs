@@ -1088,10 +1088,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 let first = self.compute_type_expression_part(a);
                 let second = self.compute_type_expression_part(b);
 
-                let node_ref = NodeRef::new(self.inference.file, b.index());
+                let node_ref_a = NodeRef::new(self.inference.file, a.index());
+                let node_ref_b = NodeRef::new(self.inference.file, b.index());
                 if self.errors_already_calculated {
-                    if let Some(first) = self.as_type_or_error(first, node_ref) {
-                        if let Some(second) = self.as_type_or_error(second, node_ref) {
+                    if let Some(first) = self.as_type_or_error(first, node_ref_a) {
+                        if let Some(second) = self.as_type_or_error(second, node_ref_b) {
                             return TypeContent::Type(first.union(self.inference.i_s.db, second));
                         }
                     }
@@ -1099,9 +1100,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     return TypeContent::InvalidVariable(InvalidVariableType::Other);
                 }
 
-                let first = self.as_type(first, node_ref);
+                let first = self.as_type(first, node_ref_a);
                 // TODO this should only merge in annotation contexts
-                let second = self.as_type(second, node_ref);
+                let second = self.as_type(second, node_ref_b);
                 TypeContent::Type(first.union(self.inference.i_s.db, second))
             }
             _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
