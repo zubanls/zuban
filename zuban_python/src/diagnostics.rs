@@ -271,6 +271,7 @@ pub(crate) enum IssueType {
     DisallowedAnyMetaclass { class: Box<str> }, // From --disallow-subclassing-any
     DisallowedAnyExplicit, // From --disallow-any-explicit
     RedundantCast { to: Box<str> }, // From --warn-redundant-casts
+    ReturnedAnyWarning { expected: Box<str> }, // From --warn-return-any
 
     InvariantNote { actual: &'static str, maybe: &'static str },
     AnnotationInUntypedFunction,
@@ -340,6 +341,7 @@ impl IssueType {
             TypedDictExtraKey { .. } | TypedDictHasNoKey { .. } => "typeddict-unknown-key",
 
             RedundantCast { .. } => "redundant-cast",
+            ReturnedAnyWarning { .. } => "no-any-return",
 
             _ => "misc",
         })
@@ -708,6 +710,9 @@ impl<'db> Diagnostic<'db> {
             ),
             DisallowedAnyExplicit => r#"Explicit "Any" is not allowed"#.to_string(),
             RedundantCast { to } => format!(r#"Redundant cast to "{to}""#),
+            ReturnedAnyWarning { expected } => format!(
+                r#"Returning Any from function declared to return "{expected}""#
+            ),
 
             OnlyClassTypeApplication => {
                 "Type application is only supported for generic classes".to_string()

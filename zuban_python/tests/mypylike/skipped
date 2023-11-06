@@ -2516,12 +2516,8 @@ testDisallowUntypedCallsArgType
 testDisallowUntypedCallsAllowListFlags
 
 # --warn-return-any
-testErrorCodeReturnAny
-testReturnAnyFromTypedFunction
-testReturnAnyForNotImplementedInBinaryMagicMethods
 testReturnAnyForNotImplementedInNormalMethods
-testReturnAnyFromTypedFunctionWithSpecificFormatting
-testReturnAnyLambda
+testOKReturnAnyIfProperSubtype
 # --warn-no-return
 testNoReturnDisallowsReturn
 testNoReturnDisallowsImplicitReturn

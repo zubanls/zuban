@@ -734,16 +734,17 @@ impl<'db> Inference<'db, '_, '_> {
     fn calc_return_stmt_diagnostics(&mut self, func: Option<&Function>, return_stmt: ReturnStmt) {
         if let Some(func) = func {
             if let Some(annotation) = func.return_annotation() {
+                let i_s = self.i_s;
                 if let Some(star_expressions) = return_stmt.star_expressions() {
                     let mut t = self.use_cached_return_annotation_type(annotation);
                     if func.is_generator() {
                         if func.is_async() {
                             NodeRef::new(self.file, star_expressions.index())
-                                .add_issue(self.i_s, IssueType::ReturnInAsyncGenerator);
+                                .add_issue(i_s, IssueType::ReturnInAsyncGenerator);
                             return;
                         } else {
                             t = Cow::Owned(
-                                GeneratorType::from_type(self.i_s.db, t)
+                                GeneratorType::from_type(i_s.db, t)
                                     .map(|g| g.return_type.unwrap_or(Type::None))
                                     .unwrap_or(Type::Any(AnyCause::Todo)),
                             );
@@ -751,11 +752,22 @@ impl<'db> Inference<'db, '_, '_> {
                     }
                     let inf = self
                         .infer_star_expressions(star_expressions, &mut ResultContext::Known(&t));
-                    t.error_if_not_matches(self.i_s, &inf, |got, expected| {
+                    if i_s.db.project.flags.warn_return_any
+                        && matches!(inf.as_cow_type(i_s).as_ref(), Type::Any(_))
+                        && t.as_ref() != &i_s.db.python_state.object_type()
+                        && !matches!(t.as_ref(), Type::Any(_))
+                    {
+                        NodeRef::new(self.file, star_expressions.index()).add_issue(
+                            i_s,
+                            IssueType::ReturnedAnyWarning {
+                                expected: t.format_short(i_s.db),
+                            },
+                        )
+                    }
+                    t.error_if_not_matches(i_s, &inf, |got, expected| {
                         let node_ref = NodeRef::new(self.file, star_expressions.index());
-                        node_ref
-                            .add_issue(self.i_s, IssueType::IncompatibleReturn { got, expected });
-                        node_ref.to_db_lifetime(self.i_s.db)
+                        node_ref.add_issue(i_s, IssueType::IncompatibleReturn { got, expected });
+                        node_ref.to_db_lifetime(i_s.db)
                     });
                 } else {
                     debug!("TODO what about an implicit None?");

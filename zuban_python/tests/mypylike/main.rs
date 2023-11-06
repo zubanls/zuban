@@ -133,6 +133,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 disallow_any_explicit: steps.flags.contains(&"--disallow-any-explicit"),
                 disallow_incomplete_defs: steps.flags.contains(&"--disallow-incomplete-defs"),
                 warn_redundant_casts: steps.flags.contains(&"--warn-redundant-casts"),
+                warn_return_any: steps.flags.contains(&"--warn-return-any"),
                 extra_checks,
                 strict_optional: !steps.flags.contains(&"--no-strict-optional")
                     && !self.file_name.starts_with("semanal-"),
