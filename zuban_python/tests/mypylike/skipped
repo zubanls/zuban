@@ -1602,6 +1602,7 @@ testColumnsSimpleIsinstance
 testTypeshedRecursiveTypesExample
 testTypedDictIsInstance
 testTypedDictIsInstanceABCs
+testRedundantCastWithIsinstance
 # isinstance in lambda
 testIsinstanceInInferredLambda
 # isinstance Intersection types
@@ -2417,13 +2418,6 @@ testStrictOptionalCovarianceCrossModule
 testFlexibleAlias1
 testFlexibleAlias2
 testFlexibleAlias3
-
-# flags: --warn-redundant-casts
-# "Redundant cast to "int""
-testErrorCodeRedundantCast
-testColumnRedundantCast
-testRedundantCast
-testRedundantCastWithIsinstance
 
 # enable-error-code="redundant-self"
 # "Redundant "Self" annotation for the first method argument"

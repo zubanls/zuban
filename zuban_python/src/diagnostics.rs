@@ -270,6 +270,7 @@ pub(crate) enum IssueType {
     DisallowedAnySubclass { class: Box<str> }, // From --disallow-subclassing-any
     DisallowedAnyMetaclass { class: Box<str> }, // From --disallow-subclassing-any
     DisallowedAnyExplicit, // From --disallow-any-explicit
+    RedundantCast { to: Box<str> }, // From --warn-redundant-casts
 
     InvariantNote { actual: &'static str, maybe: &'static str },
     AnnotationInUntypedFunction,
@@ -337,6 +338,9 @@ impl IssueType {
             | TypedDictKeySetItemIncompatibleType { .. }
             | TypedDictHasNoKeyForGet { .. } => "typeddict-item",
             TypedDictExtraKey { .. } | TypedDictHasNoKey { .. } => "typeddict-unknown-key",
+
+            RedundantCast { .. } => "redundant-cast",
+
             _ => "misc",
         })
     }
@@ -703,6 +707,7 @@ impl<'db> Diagnostic<'db> {
                 r#"Class cannot use "{class}" as a metaclass (has type "Any")"#
             ),
             DisallowedAnyExplicit => r#"Explicit "Any" is not allowed"#.to_string(),
+            RedundantCast { to } => format!(r#"Redundant cast to "{to}""#),
 
             OnlyClassTypeApplication => {
                 "Type application is only supported for generic classes".to_string()

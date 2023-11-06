@@ -45,6 +45,7 @@ impl<'db> TypingCast {
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         let mut result = None;
+        let mut actual = None;
         let mut count = 0;
         let mut had_non_positional = false;
         for arg in args.iter() {
@@ -59,15 +60,14 @@ impl<'db> TypingCast {
                     position, node_ref, ..
                 } => {
                     if position == 1 {
-                        result = Some(
-                            arg.as_node_ref()
-                                .file
-                                .inference(i_s)
-                                .compute_cast_target(node_ref)
-                                .unwrap_or(Inferred::new_any(AnyCause::FromError)),
-                        )
+                        result = arg
+                            .as_node_ref()
+                            .file
+                            .inference(i_s)
+                            .compute_cast_target(node_ref)
+                            .ok()
                     } else {
-                        arg.infer(i_s, &mut ResultContext::ExpectUnused);
+                        actual = Some(arg.infer(i_s, &mut ResultContext::ExpectUnused));
                     }
                 }
                 _ => {
@@ -91,7 +91,22 @@ impl<'db> TypingCast {
                 )),
             );
         }
-        result.unwrap_or_else(|| Inferred::new_any(AnyCause::FromError))
+        let result = result.unwrap_or_else(|| Inferred::new_any(AnyCause::FromError));
+        if i_s.db.project.flags.warn_redundant_casts {
+            if let Some(actual) = actual {
+                let t_in = actual.as_cow_type(i_s);
+                let t_out = result.as_type(i_s);
+                if t_in.is_simple_same_type(i_s, &t_out).bool() && !(t_in.is_any()) {
+                    args.as_node_ref().add_issue(
+                        i_s,
+                        IssueType::RedundantCast {
+                            to: result.format_short(i_s),
+                        },
+                    );
+                }
+            }
+        }
+        result
     }
 }
 

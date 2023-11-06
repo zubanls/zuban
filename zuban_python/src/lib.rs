@@ -53,6 +53,7 @@ pub struct TypeCheckerFlags {
     pub disallow_subclassing_any: bool,
     pub disallow_any_explicit: bool,
     pub disallow_incomplete_defs: bool,
+    pub warn_redundant_casts: bool,
 
     pub extra_checks: bool,
     pub mypy_compatible: bool,
@@ -72,6 +73,7 @@ impl Default for TypeCheckerFlags {
             disallow_subclassing_any: false,
             disallow_any_explicit: false,
             disallow_incomplete_defs: false,
+            warn_redundant_casts: false,
             extra_checks: false,
             mypy_compatible: false,
         }
@@ -92,6 +94,7 @@ impl TypeCheckerFlags {
             disallow_subclassing_any: true,
             disallow_any_explicit: true,
             disallow_incomplete_defs: true,
+            warn_redundant_casts: true,
             extra_checks: false,
             mypy_compatible: false,
         }
