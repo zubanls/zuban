@@ -3,14 +3,26 @@ def reveal_type(a: str) -> None: ...
 def foo():
     reveal_type(1)
 
-[case union_alias_disallowed_any_expr]
+[case union_alias_disallowed_any_expr_simple]
 # flags: --disallow-any-explicit
 from typing import Any, TypeAlias, Tuple
 
 x1: TypeAlias = Any | int  # E: Explicit "Any" is not allowed
 y1: TypeAlias = int | Any  # E: Explicit "Any" is not allowed
 
-x2 = Any | int
-y2 = int | Any
+x2 = Any | int  # E: Explicit "Any" is not allowed
+y2 = int | Any  # E: Explicit "Any" is not allowed
+
+x: Tuple[x1, y1, x2, y2]
+
+[case union_alias_disallowed_any_expr_nested]
+# flags: --disallow-any-explicit
+from typing import Any, TypeAlias, Tuple
+
+x1: TypeAlias = list[Any] | int  # E: Explicit "Any" is not allowed
+y1: TypeAlias = int | list[Any]  # E: Explicit "Any" is not allowed
+
+x2 = list[Any] | int  # E: Explicit "Any" is not allowed
+y2 = int | list[Any]  # E: Explicit "Any" is not allowed
 
 x: Tuple[x1, y1, x2, y2]

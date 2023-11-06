@@ -1091,6 +1091,16 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 let node_ref_a = NodeRef::new(self.inference.file, a.index());
                 let node_ref_b = NodeRef::new(self.inference.file, b.index());
                 if self.errors_already_calculated {
+                    if self.inference.i_s.db.project.flags.disallow_any_explicit {
+                        if matches!(first, TypeContent::SpecialType(SpecialType::Any)) {
+                            node_ref_a
+                                .add_issue(self.inference.i_s, IssueType::DisallowedAnyExplicit)
+                        }
+                        if matches!(second, TypeContent::SpecialType(SpecialType::Any)) {
+                            node_ref_b
+                                .add_issue(self.inference.i_s, IssueType::DisallowedAnyExplicit)
+                        }
+                    }
                     if let Some(first) = self.as_type_or_error(first, node_ref_a) {
                         if let Some(second) = self.as_type_or_error(second, node_ref_b) {
                             return TypeContent::Type(first.union(self.inference.i_s.db, second));
