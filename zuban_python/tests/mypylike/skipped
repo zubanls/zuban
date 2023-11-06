@@ -2518,9 +2518,6 @@ testDisallowUntypedCallsArgType
 # --untyped-calls-exclude=bar.A
 testDisallowUntypedCallsAllowListFlags
 
-# --disallow-any-explicit
-testDisallowAnyExplicitAlias
-
 # --disallow-incomplete-defs
 testDisallowIncompleteDefs
 testDisallowIncompleteDefsPartiallyAnnotatedParams

@@ -3046,17 +3046,25 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         if let Some(name) = assignment.maybe_simple_type_reassignment() {
             // For very simple cases like `Foo = int`. Not sure yet if this going to stay.
 
-            if self
+            match self
                 .infer_name_reference(name)
                 .maybe_saved_specific(self.i_s.db)
-                == Some(Specific::Any)
             {
-                return TypeNameLookup::Unknown;
+                Some(Specific::Any) => return TypeNameLookup::Unknown,
+                Some(Specific::TypingAny) => {
+                    // This is a bit of a weird special case that was necessary to pass the test
+                    // testDisallowAnyExplicitAlias
+                    if self.i_s.db.project.flags.disallow_any_explicit {
+                        NodeRef::new(file, name.index())
+                            .add_issue(self.i_s, IssueType::DisallowedAnyExplicit)
+                    }
+                }
+                _ => {
+                    let node_ref = NodeRef::new(file, name.index());
+                    debug_assert!(node_ref.point().calculated());
+                    return check_type_name(self.i_s, node_ref);
+                }
             }
-
-            let node_ref = NodeRef::new(file, name.index());
-            debug_assert!(node_ref.point().calculated());
-            return check_type_name(self.i_s, node_ref);
         }
         if let Some((name_def, annotation, expr)) =
             assignment.maybe_simple_type_expression_assignment()
