@@ -1246,7 +1246,19 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         // We only save the result if nothing is there, yet. It could be that we pass this function
         // twice, when for example a class F(List[X]) is created, where X = F and X is defined
         // before F, this might happen.
-        inferred.maybe_save_redirect(self.i_s, self.file, expr.index(), true)
+        let inferred = inferred.maybe_save_redirect(self.i_s, self.file, expr.index(), true);
+        if self.i_s.db.project.flags.disallow_any_expr && !self.file.is_stub(self.i_s.db) {
+            let t = inferred.as_cow_type(self.i_s);
+            if t.has_any(self.i_s) {
+                NodeRef::new(self.file, expr.index()).add_issue(
+                    self.i_s,
+                    IssueType::DisallowedAnyExpr {
+                        type_: t.format_short(self.i_s.db),
+                    },
+                )
+            }
+        }
+        inferred
     }
 
     pub fn infer_expression_part(&mut self, node: ExpressionPart) -> Inferred {

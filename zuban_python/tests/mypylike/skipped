@@ -2490,8 +2490,8 @@ testCannotRenameExternalVarWithinClass
 
 # --disallow-any-expr
 testDoNotLimitErrorVolumeIfNotImportErrors
-testUnlimitedStubErrorVolume
 testDisallowAnyExprIncremental
+testDisallowAnyExprUnannotatedFunction
 testDisallowAnyExprSimple
 testDisallowAnyExprExplicitAnyParam
 testDisallowAnyExprAllowsAnyInCast
