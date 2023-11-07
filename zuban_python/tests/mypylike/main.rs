@@ -131,6 +131,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 disallow_any_decorated: steps.flags.contains(&"--disallow-any-decorated"),
                 disallow_any_explicit: steps.flags.contains(&"--disallow-any-explicit"),
                 disallow_any_expr: steps.flags.contains(&"--disallow-any-expr"),
+                disallow_any_unimported: steps.flags.contains(&"--disallow-any-unimported"),
                 disallow_subclassing_any: steps.flags.contains(&"--disallow-subclassing-any"),
                 disallow_incomplete_defs: steps.flags.contains(&"--disallow-incomplete-defs"),
                 warn_redundant_casts: steps.flags.contains(&"--warn-redundant-casts"),

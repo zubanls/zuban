@@ -685,6 +685,18 @@ impl<'db> Inference<'db, '_, '_> {
                 ),
             }
         }
+
+        if flags.disallow_any_unimported {
+            for param in params
+                .iter()
+                .skip((class.is_some() && function.kind(i_s) != FunctionKind::Staticmethod).into())
+            {
+                if let Some(annotation) = param.annotation() {
+                    let t = self.use_cached_annotation_type(annotation);
+                    // TODO implement --disallow-any-unimported
+                }
+            }
+        }
     }
 
     fn calc_overload_implementation_diagnostics(
