@@ -711,11 +711,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         if is_implicit_optional {
             type_.make_optional(self.inference.i_s.db)
         }
-        Inferred::from_type(type_).save_redirect(
-            self.inference.i_s,
-            self.inference.file,
-            expr.index(),
-        );
+        node_ref.insert_complex(ComplexPoint::TypeInstance(type_), Locality::Todo);
         annotation_node_ref.set_point(Point::new_simple_specific(
             if is_class_var {
                 Specific::AnnotationOrTypeCommentClassVar
@@ -3222,7 +3218,8 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                             Specific::AnnotationOrTypeCommentWithTypeVars,
                             Locality::Todo,
                         ));
-                        Inferred::from_type(type_).save_redirect(inference.i_s, f, expr_index);
+                        NodeRef::new(f, expr_index)
+                            .insert_complex(ComplexPoint::TypeInstance(type_), Locality::Todo);
                     } else {
                         let mut x = type_computation_for_variable_annotation;
                         let mut comp = TypeComputation::new(
@@ -3247,8 +3244,8 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                     let star_exprs_index = star_exprs.index();
                     let index = star_exprs_index - ANNOTATION_TO_EXPR_DIFFERENCE;
                     let type_ = inference.calc_type_comment_tuple(assignment_node_ref, t.iter());
-                    let unsaved = Inferred::from_type(type_);
-                    unsaved.save_redirect(self.i_s, f, index);
+                    NodeRef::new(f, index)
+                        .insert_complex(ComplexPoint::TypeInstance(type_), Locality::Todo);
                     let complex_index = f.points.get(index).complex_index();
                     TypeCommentDetails {
                         inferred: Inferred::from_saved_node_ref(NodeRef::new(f, index)),

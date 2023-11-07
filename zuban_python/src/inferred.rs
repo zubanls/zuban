@@ -145,33 +145,6 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
-    pub fn execute_type(i_s: &InferenceState<'db, '_>, generic: Type) -> Self {
-        // TODO remove this and use some of its stuff maybe?
-        let state = match generic {
-            Type::Type(ref c)
-                if matches!(
-                    c.as_ref(),
-                    Type::Class(GenericClass {
-                        generics: ClassGenerics::None,
-                        ..
-                    })
-                ) =>
-            {
-                match c.as_ref() {
-                    Type::Class(c) => {
-                        let node_ref = NodeRef::from_link(i_s.db, c.link);
-                        InferredState::Saved(c.link)
-                    }
-                    _ => unreachable!(),
-                }
-            }
-            Type::None => return Inferred::new_none(),
-            Type::Any(cause) => return Inferred::new_any(cause),
-            _ => InferredState::UnsavedComplex(ComplexPoint::TypeInstance(generic)),
-        };
-        Self { state }
-    }
-
     pub fn as_cow_type(&'slf self, i_s: &InferenceState<'db, '_>) -> Cow<'slf, Type> {
         match &self.state {
             InferredState::Saved(definition) => saved_as_type(i_s, *definition),
@@ -558,11 +531,16 @@ impl<'db: 'slf, 'slf> Inferred {
                 );
                 return self;
             }
-            InferredState::UnsavedComplex(complex) => {
-                file.complex_points
-                    .insert(&file.points, index, complex, Locality::Todo);
-                return Self::new_saved(file, index);
-            }
+            InferredState::UnsavedComplex(complex) => match complex {
+                ComplexPoint::TypeInstance(Type::None) => {
+                    Point::new_simple_specific(Specific::None, Locality::Todo)
+                }
+                _ => {
+                    file.complex_points
+                        .insert(&file.points, index, complex, Locality::Todo);
+                    return Self::new_saved(file, index);
+                }
+            },
             InferredState::UnsavedSpecific(mut specific) => {
                 if specific == Specific::Cycle {
                     let r = NodeRef::new(file, index);
