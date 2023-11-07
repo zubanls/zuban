@@ -62,7 +62,6 @@ enum InferredState {
         mro_index: MroIndex,
         func_link: PointLink,
     },
-    Unknown,
 }
 
 #[derive(Clone, Debug)]
@@ -114,16 +113,14 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
-    pub fn new_unknown() -> Self {
-        Self {
-            state: InferredState::Unknown,
-        }
-    }
-
     pub fn new_none() -> Self {
         Self {
             state: InferredState::UnsavedSpecific(Specific::None),
         }
+    }
+
+    pub fn new_any_from_error() -> Self {
+        Self::from_type(Type::Any(AnyCause::FromError))
     }
 
     pub fn new_any(cause: AnyCause) -> Self {
@@ -195,7 +192,6 @@ impl<'db: 'slf, 'slf> Inferred {
                 let class = Self::load_bound_method_class(i_s, instance, *mro_index);
                 Cow::Owned(load_bound_method(i_s, instance, class, *func_link).as_type(i_s))
             }
-            InferredState::Unknown => Cow::Borrowed(&Type::Any(AnyCause::Todo)),
         }
     }
 
@@ -598,7 +594,6 @@ impl<'db: 'slf, 'slf> Inferred {
                 );
                 return Self::new_saved(file, index);
             }
-            InferredState::Unknown => Point::new_unknown(Locality::Todo),
         };
         file.points.set(index, point);
         Self::new_saved(file, index)
@@ -965,7 +960,6 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::UnsavedSpecific(specific) => todo!(),
             InferredState::UnsavedFileReference(file_index) => todo!(),
             InferredState::BoundMethod { .. } => todo!(),
-            InferredState::Unknown => (),
         }
         Some(self)
     }
@@ -1207,7 +1201,6 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::UnsavedSpecific(specific) => todo!(),
             InferredState::UnsavedFileReference(file_index) => todo!(),
             InferredState::BoundMethod { .. } => todo!(),
-            InferredState::Unknown => (),
         }
         Some(self)
     }
@@ -1350,7 +1343,6 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::UnsavedSpecific(specific) => todo!(),
             InferredState::UnsavedFileReference(file_index) => todo!(),
             InferredState::BoundMethod { .. } => todo!(),
-            InferredState::Unknown => (),
         }
         self
     }
@@ -1746,7 +1738,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 type_: Box::from("Module"),
                             },
                         );
-                        return Inferred::new_unknown();
+                        return Inferred::new_any_from_error();
                     }
                     _ => (),
                 }

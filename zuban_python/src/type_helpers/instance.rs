@@ -188,7 +188,7 @@ impl<'a> Instance<'a> {
                     }
                 },
             );
-            Inferred::new_unknown()
+            Inferred::new_any_from_error()
         }
     }
 

@@ -689,7 +689,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let from = NodeRef::new(self.file, yield_expr.index());
         let Some(current_function) = self.i_s.current_function() else {
             // The name binder already added an issue here.
-            return Inferred::new_any(AnyCause::FromError)
+            return Inferred::new_any_from_error()
         };
         let generator = current_function
             .generator_return(i_s)
@@ -721,7 +721,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             YieldExprContent::YieldFrom(yield_from) => {
                 if current_function.is_async() {
                     // The name binder already added an issue here.
-                    return Inferred::new_any(AnyCause::FromError);
+                    return Inferred::new_any_from_error();
                 }
                 let expr_result = self.infer_expression(yield_from.expression());
                 let iter_result = expr_result.type_lookup_and_execute(
@@ -766,14 +766,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     } else {
                         if result_context.expect_not_none(i_s) {
                             from.add_issue(i_s, IssueType::DoesNotReturnAValue("Function".into()));
-                            Inferred::new_any(AnyCause::FromError)
+                            Inferred::new_any_from_error()
                         } else {
                             Inferred::new_none()
                         }
                     }
                 } else {
                     // An invalid type, error should have been added by checking the function
-                    Inferred::new_any(AnyCause::FromError)
+                    Inferred::new_any_from_error()
                 };
             }
             YieldExprContent::None => {
@@ -997,7 +997,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 counter += 1;
                                 self.assign_targets(
                                     target,
-                                    Inferred::new_any(AnyCause::FromError),
+                                    Inferred::new_any_from_error(),
                                     value_node_ref,
                                     is_definition,
                                 );
@@ -1025,14 +1025,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 );
                                 self.assign_targets(
                                     star_target.as_target(),
-                                    Inferred::new_any(AnyCause::FromError),
+                                    Inferred::new_any_from_error(),
                                     value_node_ref,
                                     is_definition,
                                 );
                                 for target in targets {
                                     self.assign_targets(
                                         target,
-                                        Inferred::new_any(AnyCause::FromError),
+                                        Inferred::new_any_from_error(),
                                         value_node_ref,
                                         is_definition,
                                     );
@@ -1114,7 +1114,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             );
                             self.assign_targets(
                                 target,
-                                Inferred::new_any(AnyCause::FromError),
+                                Inferred::new_any_from_error(),
                                 value_node_ref,
                                 is_definition,
                             );
@@ -1124,7 +1124,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 }
                                 self.assign_targets(
                                     target,
-                                    Inferred::new_any(AnyCause::FromError),
+                                    Inferred::new_any_from_error(),
                                     value_node_ref,
                                     is_definition,
                                 );
@@ -1138,7 +1138,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 // This is always invalid, just set it to Any. Issues were added before.
                 self.assign_targets(
                     starred.as_target(),
-                    Inferred::new_any(AnyCause::FromError),
+                    Inferred::new_any_from_error(),
                     value_node_ref,
                     is_definition,
                 );
@@ -1179,7 +1179,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             StarExpressionContent::StarExpression(expr) => {
                 NodeRef::new(self.file, expr.index())
                     .add_issue(self.i_s, IssueType::StarredExpressionOnlyNoTarget);
-                Inferred::new_any(AnyCause::FromError)
+                Inferred::new_any_from_error()
             }
             StarExpressionContent::Tuple(tuple) => self
                 .infer_tuple_iterator(tuple.iter(), result_context)
@@ -1484,11 +1484,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         )
                     } else {
                         from.add_issue(self.i_s, IssueType::AwaitOutsideCoroutine);
-                        Inferred::new_any(AnyCause::FromError)
+                        Inferred::new_any_from_error()
                     }
                 } else {
                     from.add_issue(self.i_s, IssueType::AwaitOutsideFunction);
-                    Inferred::new_any(AnyCause::FromError)
+                    Inferred::new_any_from_error()
                 }
             }
         }
@@ -1670,7 +1670,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     ),
                                 )
                         } else {
-                            Inferred::new_unknown()
+                            Inferred::new_any_from_error()
                         };
                         add_to_union(match error.get() {
                             LookupError::NoError => result,
@@ -1682,7 +1682,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     right: r_type.format_short(i_s.db),
                                 };
                                 node_ref.add_issue(i_s, t);
-                                Inferred::new_unknown()
+                                Inferred::new_any_from_error()
                             }
                             LookupError::LeftError | LookupError::ShortCircuit => {
                                 had_error = true;
@@ -1694,7 +1694,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                         left,
                                     },
                                 );
-                                Inferred::new_unknown()
+                                Inferred::new_any_from_error()
                             }
                         })
                     }
@@ -1769,7 +1769,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     result_context,
                 )
                 .save_name(self.i_s, self.file, name)
-                .unwrap_or_else(Inferred::new_unknown)
+                .unwrap_or_else(Inferred::new_any_from_error)
             }
             PrimaryContent::Execution(details) => {
                 let f = self.file;
@@ -2742,7 +2742,7 @@ pub fn await_(
     );
     if expect_not_none && matches!(t, Type::None) {
         from.add_issue(i_s, IssueType::DoesNotReturnAValue("Function".into()));
-        Inferred::new_any(AnyCause::FromError)
+        Inferred::new_any_from_error()
     } else {
         Inferred::from_type(t)
     }

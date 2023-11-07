@@ -35,7 +35,7 @@ impl LookupResult {
 
     pub fn into_inferred(self) -> Inferred {
         self.into_maybe_inferred()
-            .unwrap_or_else(Inferred::new_unknown)
+            .unwrap_or_else(|| Inferred::new_any(AnyCause::Todo))
     }
 
     pub fn union(self, i_s: &InferenceState, other: Self) -> Self {

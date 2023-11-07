@@ -414,7 +414,7 @@ impl Type {
                         type_: format!("\"{}\"", t).into(),
                     },
                 );
-                Inferred::new_unknown()
+                Inferred::new_any_from_error()
             }
         }
     }

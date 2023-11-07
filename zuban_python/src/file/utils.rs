@@ -578,7 +578,7 @@ pub fn infer_string_index(
             None
         }
     }
-    .unwrap_or_else(Inferred::new_unknown)
+    .unwrap_or_else(|| Inferred::new_any(AnyCause::Todo))
 }
 
 fn infer_typed_dict_item<'db>(

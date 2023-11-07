@@ -13,7 +13,7 @@ use crate::{
         FunctionOrCallable, OnTypeError, ResultContext, SignatureMatch,
     },
     node_ref::NodeRef,
-    type_::{FunctionOverload, ReplaceSelf, Type},
+    type_::{AnyCause, FunctionOverload, ReplaceSelf, Type},
 };
 
 use super::{Callable, Class};
@@ -288,7 +288,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     index: next_arg.index,
                     kind: ArgumentKind::Overridden {
                         original: nxt_arg,
-                        inferred: Inferred::new_unknown(),
+                        inferred: Inferred::new_any(AnyCause::Todo),
                     },
                 });
                 let Type::Union(u) = inf.as_type(i_s) else {
