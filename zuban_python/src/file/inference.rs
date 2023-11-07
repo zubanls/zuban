@@ -209,7 +209,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             self.save_namespace(as_name_def.index(), namespace.clone());
                             continue;
                         }
-                        None => Point::new_unknown(Locality::Todo),
+                        None => {
+                            Point::new_simple_specific(Specific::ModuleNotFound, Locality::Todo)
+                        }
                     };
                     self.file.points.set(as_name_def.index(), point);
                 }
@@ -249,7 +251,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         Point::new_file_reference(file_index, Locality::Todo)
                     }
                     Some(ImportResult::Namespace { .. }) => todo!(),
-                    None => Point::new_unknown(Locality::Todo),
+                    None => Point::new_simple_specific(Specific::ModuleNotFound, Locality::Todo),
                 };
                 self.file.points.set(keyword.index(), point);
             }
@@ -279,12 +281,17 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                             name: Box::from(import_name.as_str()),
                                         },
                                     );
-                                    Point::new_unknown(Locality::Todo)
+                                    Point::new_simple_specific(
+                                        Specific::ModuleNotFound,
+                                        Locality::Todo,
+                                    )
                                 }
                             }
                         }
                         // Means one of the imports before failed.
-                        None => Point::new_unknown(Locality::Todo),
+                        None => {
+                            Point::new_simple_specific(Specific::ModuleNotFound, Locality::Todo)
+                        }
                     };
 
                     self.file.points.set(name_def.index(), point);
@@ -351,7 +358,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         module_name: Box::from(name.as_str()),
                     },
                 );
-                Point::new_unknown(Locality::Todo)
+                Point::new_simple_specific(Specific::ModuleNotFound, Locality::Todo)
             }
         };
         if let Some(name_def) = name_def {

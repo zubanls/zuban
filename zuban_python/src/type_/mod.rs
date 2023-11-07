@@ -1746,6 +1746,7 @@ pub enum AnyCause {
     Unannotated,
     Explicit,
     FromError,
+    ModuleNotFound,
     Internal,
     Todo, // Used for cases where it's currently unclear what the cause should be.
 }

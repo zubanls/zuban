@@ -96,10 +96,6 @@ impl Point {
         }
     }
 
-    pub fn new_unknown(locality: Locality) -> Self {
-        Self::new_simple_specific(Specific::Any, locality)
-    }
-
     pub fn new_simple_specific(type_: Specific, locality: Locality) -> Self {
         let flags = Self::calculate_flags(PointType::Specific, type_ as u32, locality);
         Self {
@@ -309,8 +305,8 @@ pub enum Specific {
     Calculating,
     Cycle,
     OverloadUnreachable,
-    Any,
     AnyDueToError,
+    ModuleNotFound,
 
     String,
     Float,

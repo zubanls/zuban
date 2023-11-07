@@ -1313,10 +1313,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             let node_ref = NodeRef::new(self.inference.file, primary.index());
                             debug!("TypeComputation: Attribute on class not found");
                             self.add_issue_for_index(primary.index(), IssueType::TypeNotFound);
-                            self.inference
-                                .file
-                                .points
-                                .set(name.index(), Point::new_unknown(Locality::Todo));
+                            self.inference.file.points.set(
+                                name.index(),
+                                Point::new_simple_specific(Specific::AnyDueToError, Locality::Todo),
+                            );
                             TypeContent::Unknown(AnyCause::FromError)
                         }
                     }
@@ -3047,7 +3047,6 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 .infer_name_reference(name)
                 .maybe_saved_specific(self.i_s.db)
             {
-                Some(Specific::Any) => return TypeNameLookup::Unknown(AnyCause::Todo),
                 Some(Specific::TypingAny) => {
                     // This is a bit of a weird special case that was necessary to pass the test
                     // testDisallowAnyExplicitAlias
@@ -3666,7 +3665,7 @@ fn check_type_name<'db: 'file, 'file>(
                         return TypeNameLookup::Namespace(namespace.clone());
                     }
                 }
-                debug_assert_eq!(p.maybe_specific(), Some(Specific::Any));
+                debug_assert_eq!(p.maybe_specific(), Some(Specific::ModuleNotFound));
                 TypeNameLookup::Unknown(AnyCause::Todo)
             } else {
                 name_node_ref.file.inference(i_s).infer_name(new_name);
@@ -3718,7 +3717,7 @@ pub(super) fn cache_name_on_class(cls: Class, file: &PythonFile, name: Name) -> 
         {
             Point::new_redirect(cls.node_ref.file.file_index(), index, Locality::Todo)
         } else {
-            Point::new_unknown(Locality::Todo)
+            Point::new_simple_specific(Specific::AnyDueToError, Locality::Todo)
         },
     );
     cache_name_on_class(cls, file, name)

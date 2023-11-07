@@ -183,7 +183,7 @@ impl StarImport {
     pub(super) fn to_file<'db>(&self, inf: &mut Inference<'db, '_, '_>) -> Option<&'db PythonFile> {
         let point = inf.file.points.get(self.star_node);
         if point.calculated() {
-            return if point.maybe_specific() == Some(Specific::Any) {
+            return if point.maybe_specific() == Some(Specific::ModuleNotFound) {
                 None
             } else {
                 Some(inf.i_s.db.loaded_python_file(point.file_index()))

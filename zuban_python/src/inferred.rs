@@ -2141,8 +2141,9 @@ pub fn specific_to_type<'db>(
     specific: Specific,
 ) -> Cow<'db, Type> {
     match specific {
-        Specific::Any | Specific::Cycle => Cow::Borrowed(&Type::Any(AnyCause::Todo)),
         Specific::AnyDueToError => Cow::Borrowed(&Type::Any(AnyCause::FromError)),
+        Specific::ModuleNotFound => Cow::Borrowed(&Type::Any(AnyCause::ModuleNotFound)),
+        Specific::Cycle => Cow::Borrowed(&Type::Any(AnyCause::Todo)),
         Specific::IntLiteral => Cow::Owned(Type::Literal(DbLiteral {
             kind: LiteralKind::Int(definition.expect_int().parse().unwrap()),
             implicit: true,
