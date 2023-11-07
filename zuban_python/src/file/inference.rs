@@ -2064,7 +2064,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     ),
                 );
             }
-            Point::new_unknown(Locality::Todo)
+            Point::new_simple_specific(Specific::AnyDueToError, Locality::Todo)
         };
         self.file.points.set(name.index(), point);
         debug_assert!(self.file.points.get(name.index()).calculated());

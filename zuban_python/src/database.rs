@@ -310,6 +310,7 @@ pub enum Specific {
     Cycle,
     OverloadUnreachable,
     Any,
+    AnyDueToError,
 
     String,
     Float,

@@ -26,8 +26,8 @@ use crate::node_ref::NodeRef;
 use crate::type_::{
     execute_collections_named_tuple, execute_type_of_type, execute_typing_named_tuple,
     new_typed_dict, AnyCause, CallableContent, CallableParams, ClassGenerics, DbString, Enum,
-    FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList, Literal as DbLiteral,
-    LiteralKind, LiteralValue, NewType, Type, TypeVarKind, TypeVarLike, TypeVarLikes, TypedDict,
+    FunctionKind, FunctionOverload, GenericItem, GenericsList, Literal as DbLiteral, LiteralKind,
+    LiteralValue, NewType, Type, TypeVarKind, TypeVarLike, TypeVarLikes, TypedDict,
 };
 use crate::type_helpers::{
     execute_assert_type, execute_super, execute_type, BoundMethod, BoundMethodFunction, Class,
@@ -550,7 +550,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             name: Box::from(r.as_code()),
                         },
                     );
-                    specific = Specific::Any;
+                    specific = Specific::AnyDueToError;
                 }
                 Point::new_simple_specific(specific, Locality::Todo)
             }
@@ -2142,6 +2142,7 @@ pub fn specific_to_type<'db>(
 ) -> Cow<'db, Type> {
     match specific {
         Specific::Any | Specific::Cycle => Cow::Borrowed(&Type::Any(AnyCause::Todo)),
+        Specific::AnyDueToError => Cow::Borrowed(&Type::Any(AnyCause::FromError)),
         Specific::IntLiteral => Cow::Owned(Type::Literal(DbLiteral {
             kind: LiteralKind::Int(definition.expect_int().parse().unwrap()),
             implicit: true,

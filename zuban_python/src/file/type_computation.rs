@@ -3178,7 +3178,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         debug_assert!(self.file.points.get(name.index()).calculated());
         match point.type_() {
             PointType::Specific => match point.specific() {
-                Specific::Any => TypeNameLookup::Unknown(AnyCause::Todo),
+                Specific::AnyDueToError => TypeNameLookup::Unknown(AnyCause::Todo),
                 _ => todo!(),
             },
             PointType::Redirect => {
