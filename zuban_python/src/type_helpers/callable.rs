@@ -5,7 +5,7 @@ use crate::diagnostics::IssueType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{calculate_callable_type_vars_and_return, OnTypeError, ResultContext};
-use crate::type_::{AnyCause, CallableContent, Type};
+use crate::type_::{CallableContent, Type};
 
 #[derive(Debug, Copy, Clone)]
 pub struct Callable<'a> {

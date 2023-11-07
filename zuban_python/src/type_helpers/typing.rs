@@ -10,8 +10,8 @@ use crate::inferred::Inferred;
 use crate::matching::{CouldBeALiteral, FormatData, OnTypeError, ResultContext};
 use crate::node_ref::NodeRef;
 use crate::type_::{
-    AnyCause, ClassGenerics, FormatStyle, NewType, ParamSpec, Type, TypeVar, TypeVarKind,
-    TypeVarLike, TypeVarName, TypeVarTuple, TypedDictGenerics, Variance,
+    ClassGenerics, FormatStyle, NewType, ParamSpec, Type, TypeVar, TypeVarKind, TypeVarLike,
+    TypeVarName, TypeVarTuple, TypedDictGenerics, Variance,
 };
 use crate::utils::join_with_commas;
 

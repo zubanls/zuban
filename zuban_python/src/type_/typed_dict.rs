@@ -17,8 +17,8 @@ use crate::{
 };
 
 use super::{
-    utils::method_with_fallback, AnyCause, CustomBehavior, FormatStyle, GenericsList,
-    RecursiveAlias, StringSlice, Type, TypeVarLikes,
+    utils::method_with_fallback, CustomBehavior, FormatStyle, GenericsList, RecursiveAlias,
+    StringSlice, Type, TypeVarLikes,
 };
 
 #[derive(Debug, Clone, PartialEq)]
