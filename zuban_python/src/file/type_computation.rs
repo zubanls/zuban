@@ -2859,7 +2859,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             slice_type
                 .as_node_ref()
                 .add_issue(self.i_s, IssueType::OnlyClassTypeApplication);
-            return Inferred::new_any(AnyCause::FromError);
+            return Inferred::new_any_from_error();
         }
         compute_type_application!(
             self,
@@ -3266,7 +3266,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             for stmt_or_error in f.tree.root().iter_stmts() {
                 if let StmtOrError::Error(node_index) = stmt_or_error {
                     return TypeCommentDetails {
-                        inferred: Inferred::new_any(AnyCause::FromError),
+                        inferred: Inferred::new_any_from_error(),
                         type_: Cow::Borrowed(&Type::Any(AnyCause::FromError)),
                     };
                 }
@@ -3283,7 +3283,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 },
             );
             return TypeCommentDetails {
-                inferred: Inferred::new_any(AnyCause::FromError),
+                inferred: Inferred::new_any_from_error(),
                 type_: Cow::Borrowed(&Type::Any(AnyCause::FromError)),
             };
         }

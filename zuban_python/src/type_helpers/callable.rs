@@ -59,7 +59,7 @@ impl<'a> Callable<'a> {
                         .into(),
                 ),
             );
-            return Inferred::new_any(AnyCause::FromError);
+            return Inferred::new_any_from_error();
         }
         let calculated_type_vars = calculate_callable_type_vars_and_return(
             i_s,

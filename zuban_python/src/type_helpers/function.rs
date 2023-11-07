@@ -434,7 +434,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     ) -> Inferred {
         let node = self.node();
         let Some(details) = self.calculate_decorated_function_details(i_s) else {
-            return Inferred::new_any(AnyCause::FromError)
+            return Inferred::new_any_from_error()
         };
 
         let func_node = self.node();
@@ -443,7 +443,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             return if let Some(overload) = self.calculate_next_overload_items(i_s, details) {
                 Inferred::new_unsaved_complex(ComplexPoint::FunctionOverload(Box::new(overload)))
             } else {
-                Inferred::new_any(AnyCause::FromError)
+                Inferred::new_any_from_error()
             };
         }
         match details.kind {
@@ -463,7 +463,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         // IssueType::MethodWithoutArguments will be checked and added later.
                         WrongPositionalCount::TooFew => (),
                     }
-                    return Inferred::new_any(AnyCause::FromError);
+                    return Inferred::new_any_from_error();
                 }
                 // Make sure the old Rc count is decreased, so we can use it mutable without cloning.
                 drop(details);
@@ -1176,7 +1176,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 i_s,
                 IssueType::DoesNotReturnAValue(self.diagnostic_string().into()),
             );
-            return Inferred::new_any(AnyCause::FromError);
+            return Inferred::new_any_from_error();
         }
         // We check first if type vars are involved, because if they aren't we can reuse the
         // annotation expression cache instead of recalculating.

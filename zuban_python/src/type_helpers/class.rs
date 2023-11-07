@@ -1591,11 +1591,11 @@ impl<'db: 'a, 'a> Class<'a> {
                     Callable::new(o.iter_functions().nth(1).unwrap(), Some(metaclass.class));
                 significant_call.execute(i_s, args, on_type_error, result_context);
                 if had_type_error.get() {
-                    return ClassExecutionResult::Inferred(Inferred::new_any(AnyCause::FromError));
+                    return ClassExecutionResult::Inferred(Inferred::new_any_from_error());
                 }
                 return ClassExecutionResult::Inferred(
                     execute_functional_enum(original_i_s, *self, args, result_context)
-                        .unwrap_or_else(|| Inferred::new_any(AnyCause::FromError)),
+                        .unwrap_or_else(|| Inferred::new_any_from_error()),
                 );
             }
             _ => (),
@@ -1632,7 +1632,7 @@ impl<'db: 'a, 'a> Class<'a> {
             on_type_error,
         ) {
             Some(generics) => ClassExecutionResult::ClassGenerics(generics),
-            None => ClassExecutionResult::Inferred(Inferred::new_any(AnyCause::FromError)),
+            None => ClassExecutionResult::Inferred(Inferred::new_any_from_error()),
         }
     }
 

@@ -485,7 +485,7 @@ pub fn dataclasses_replace<'db>(
                 return inferred;
             } else {
                 // Error is raised by the type checker
-                return Inferred::new_any(AnyCause::FromError);
+                return Inferred::new_any_from_error();
             }
             // All other cases are checked by the type checker that uses the typeshed stubs.
         }

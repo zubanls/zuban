@@ -211,7 +211,7 @@ impl Type {
                     from.add_issue(i_s, IssueType::UndefinedInSuperclass { name: name.into() });
                     callable(
                         self,
-                        LookupResult::UnknownName(Inferred::new_any(AnyCause::FromError)),
+                        LookupResult::UnknownName(Inferred::new_any_from_error()),
                     );
                     return;
                 }
@@ -268,7 +268,7 @@ impl Type {
                 .as_node_ref()
                 .add_issue(i_s, IssueType::OnlyClassTypeApplication);
             slice_type.infer(i_s);
-            Inferred::new_any(AnyCause::FromError)
+            Inferred::new_any_from_error()
         };
         match self {
             Type::Class(c) => Instance::new(c.class(i_s.db), from_inferred).get_item(

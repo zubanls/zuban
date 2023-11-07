@@ -82,7 +82,7 @@ impl<'db> TypingCast {
                 i_s,
                 IssueType::ArgumentIssue(Box::from("\"cast\" expects 2 arguments")),
             );
-            return Inferred::new_any(AnyCause::FromError);
+            return Inferred::new_any_from_error();
         } else if had_non_positional {
             args.as_node_ref().add_issue(
                 i_s,
@@ -91,7 +91,7 @@ impl<'db> TypingCast {
                 )),
             );
         }
-        let result = result.unwrap_or_else(|| Inferred::new_any(AnyCause::FromError));
+        let result = result.unwrap_or_else(Inferred::new_any_from_error);
         if i_s.db.project.flags.warn_redundant_casts {
             if let Some(actual) = actual {
                 let t_in = actual.as_cow_type(i_s);
@@ -206,7 +206,7 @@ pub fn execute_assert_type<'db>(
             i_s,
             IssueType::ArgumentIssue(Box::from("\"assert_type\" expects 2 arguments")),
         );
-        return Inferred::new_any(AnyCause::FromError);
+        return Inferred::new_any_from_error();
     };
 
     let mut iterator = args.iter();
@@ -220,7 +220,7 @@ pub fn execute_assert_type<'db>(
                 "\"assert_type\" must be called with 2 positional arguments",
             )),
         );
-        Inferred::new_any(AnyCause::FromError)
+        Inferred::new_any_from_error()
     };
     if !matches!(&first.kind, ArgumentKind::Positional { .. }) {
         return error_non_positional();
@@ -239,7 +239,7 @@ pub fn execute_assert_type<'db>(
         .file
         .inference(i_s)
         .compute_cast_target(second_node_ref) else {
-        return Inferred::new_any(AnyCause::FromError)
+        return Inferred::new_any_from_error()
     };
     let second_type = second.as_cow_type(i_s);
     if first_type.as_ref() != second_type.as_ref() {
@@ -270,7 +270,7 @@ impl TypeVarClass {
         if let Some(t) = maybe_type_var(i_s, args, result_context) {
             Inferred::new_unsaved_complex(ComplexPoint::TypeVarLike(t))
         } else {
-            Inferred::new_any(AnyCause::FromError)
+            Inferred::new_any_from_error()
         }
     }
 }
@@ -475,7 +475,7 @@ impl TypeVarTupleClass {
         if let Some(t) = maybe_type_var_tuple(i_s, args, result_context) {
             Inferred::new_unsaved_complex(ComplexPoint::TypeVarLike(t))
         } else {
-            Inferred::new_any(AnyCause::FromError)
+            Inferred::new_any_from_error()
         }
     }
 }
@@ -607,7 +607,7 @@ impl ParamSpecClass {
         if let Some(t) = maybe_param_spec(i_s, args, result_context) {
             Inferred::new_unsaved_complex(ComplexPoint::TypeVarLike(t))
         } else {
-            Inferred::new_any(AnyCause::FromError)
+            Inferred::new_any_from_error()
         }
     }
 }
@@ -728,7 +728,7 @@ impl NewTypeClass {
         if let Some(n) = maybe_new_type(i_s, args) {
             Inferred::new_unsaved_complex(ComplexPoint::NewTypeDefinition(Rc::new(n)))
         } else {
-            Inferred::new_any(AnyCause::FromError)
+            Inferred::new_any_from_error()
         }
     }
 }

@@ -228,7 +228,7 @@ impl TypedDict {
                                     key: key.into(),
                                 },
                             );
-                            Inferred::new_any(AnyCause::FromError)
+                            Inferred::new_any_from_error()
                         }
                     })
                 },
@@ -310,7 +310,7 @@ fn add_access_key_must_be_string_literal_issue(
 }
 
 pub fn new_typed_dict<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Arguments<'db>) -> Inferred {
-    new_typed_dict_internal(i_s, args).unwrap_or_else(|| Inferred::new_any(AnyCause::FromError))
+    new_typed_dict_internal(i_s, args).unwrap_or_else(Inferred::new_any_from_error)
 }
 
 fn new_typed_dict_internal<'db>(
@@ -714,7 +714,7 @@ pub fn initialize_typed_dict<'db>(
             next_arg
                 .as_node_ref()
                 .add_issue(i_s, IssueType::TypedDictWrongArgumentsInConstructor);
-            return Inferred::new_any(AnyCause::FromError);
+            return Inferred::new_any_from_error();
         }
         first_arg.infer(
             i_s,

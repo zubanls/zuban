@@ -791,7 +791,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                             .format_short(i_s.db),
                                     };
                                     from.add_issue(i_s, t);
-                                    Some(Self::new_any(AnyCause::FromError))
+                                    Some(Self::new_any_from_error())
                                 }
                             } else {
                                 Some(Self::new_bound_method(instance, mro_index, *definition))
@@ -892,7 +892,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                                     .into(),
                                             };
                                             from.add_issue(i_s, t);
-                                            return Some(Self::new_any(AnyCause::FromError));
+                                            return Some(Self::new_any_from_error());
                                         }
                                         1 => {
                                             return Some(Inferred::from_type(Type::Callable(
@@ -1012,7 +1012,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 callable: c.format(&FormatData::new_short(i_s.db)).into(),
                             };
                             from.add_issue(i_s, inv);
-                            Inferred::new_any(AnyCause::FromError)
+                            Inferred::new_any_from_error()
                         },
                     ));
                 }
@@ -1029,7 +1029,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             callable: t.format_short(i_s.db),
                         };
                         from.add_issue(i_s, t);
-                        return Some(Some(Self::new_any(AnyCause::FromError)));
+                        return Some(Some(Self::new_any_from_error()));
                     }
                     return Some(result.map(callable_into_inferred));
                 }
@@ -1235,7 +1235,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             callable: t.format_short(i_s.db),
                         };
                         from.add_issue(i_s, inv);
-                        return Some(Some(Self::new_any(AnyCause::FromError)));
+                        return Some(Some(Self::new_any_from_error()));
                     }
                     return Some(result.map(callable_into_inferred));
                 }
@@ -1641,7 +1641,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             Specific::TypingAny => {
                                 args.as_node_ref().add_issue(i_s, IssueType::AnyNotCallable);
                                 args.iter().calculate_diagnostics(i_s);
-                                return Inferred::new_any(AnyCause::FromError);
+                                return Inferred::new_any_from_error();
                             }
                             Specific::MypyExtensionsArg
                             | Specific::MypyExtensionsDefaultArg
@@ -1688,7 +1688,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                         type_: Box::from("\"<typing special form>\""),
                                     },
                                 );
-                                return Inferred::new_any(AnyCause::FromError);
+                                return Inferred::new_any_from_error();
                             }
                             ComplexPoint::NewTypeDefinition(new_type) => {
                                 let mut iterator = args.iter();

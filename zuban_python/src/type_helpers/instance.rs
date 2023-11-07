@@ -407,7 +407,7 @@ impl<'a> Instance<'a> {
                 type_: self.class.format_short(i_s.db),
             },
         );
-        Inferred::new_any(AnyCause::FromError)
+        Inferred::new_any_from_error()
     }
 }
 
@@ -486,7 +486,7 @@ pub fn execute_super<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Arguments<'d
         Ok(inf) => inf,
         Err(issue) => {
             args.as_node_ref().add_issue(i_s, issue);
-            Inferred::new_any(AnyCause::FromError)
+            Inferred::new_any_from_error()
         }
     }
 }

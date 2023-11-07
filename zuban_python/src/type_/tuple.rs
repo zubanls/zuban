@@ -127,7 +127,7 @@ impl Tuple {
                             slice_type
                                 .as_argument_node_ref()
                                 .add_issue(i_s, IssueType::TupleIndexOutOfRange);
-                            Some(Inferred::new_any(AnyCause::FromError))
+                            Some(Inferred::new_any_from_error())
                         };
                         index_inf
                             .run_on_int_literals(i_s, |index| {
