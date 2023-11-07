@@ -485,10 +485,11 @@ impl<'db> Inference<'db, '_, '_> {
     }
 
     fn calc_function_diagnostics(&mut self, f: FunctionDef, class: Option<Class>) {
+        let i_s = self.i_s;
         let function = Function::new(NodeRef::new(self.file, f.index()), class);
         let decorator_ref = function.decorator_ref();
         let mut is_overload_member = false;
-        let inf = function.as_inferred_from_name(self.i_s);
+        let inf = function.as_inferred_from_name(i_s);
         if let Some(ComplexPoint::FunctionOverload(o)) = decorator_ref.complex() {
             is_overload_member = true;
             for (i, c1) in o.iter_functions().enumerate() {
@@ -496,9 +497,9 @@ impl<'db> Inference<'db, '_, '_> {
                     self.calc_overload_implementation_diagnostics(c1, implementation, i + 1)
                 }
                 for (k, c2) in o.iter_functions().skip(i + 1).enumerate() {
-                    if is_overload_unmatchable(self.i_s, c1, c2) {
-                        NodeRef::from_link(self.i_s.db, c2.defined_at).add_issue(
-                            self.i_s,
+                    if is_overload_unmatchable(i_s, c1, c2) {
+                        NodeRef::from_link(i_s.db, c2.defined_at).add_issue(
+                            i_s,
                             IssueType::OverloadUnmatchable {
                                 matchable_signature_index: i + 1,
                                 unmatchable_signature_index: i + k + 2,
@@ -506,12 +507,12 @@ impl<'db> Inference<'db, '_, '_> {
                         );
                     } else if !c1
                         .result_type
-                        .is_simple_sub_type_of(self.i_s, &c2.result_type)
+                        .is_simple_sub_type_of(i_s, &c2.result_type)
                         .bool()
-                        && has_overlapping_params(self.i_s, &c1.params, &c2.params)
+                        && has_overlapping_params(i_s, &c1.params, &c2.params)
                     {
-                        NodeRef::from_link(self.i_s.db, c1.defined_at).add_issue(
-                            self.i_s,
+                        NodeRef::from_link(i_s.db, c1.defined_at).add_issue(
+                            i_s,
                             IssueType::OverloadIncompatibleReturnTypes {
                                 first_signature_index: i + 1,
                                 second_signature_index: i + k + 2,
@@ -527,15 +528,15 @@ impl<'db> Inference<'db, '_, '_> {
         }
         if class.is_some()
             && function.node().params().iter().next().is_none()
-            && function.kind(self.i_s) != FunctionKind::Staticmethod
+            && function.kind(i_s) != FunctionKind::Staticmethod
         {
             function
                 .node_ref
-                .add_issue(self.i_s, IssueType::MethodWithoutArguments)
+                .add_issue(i_s, IssueType::MethodWithoutArguments)
         }
 
         // Make sure the type vars are properly pre-calculated
-        function.type_vars(self.i_s);
+        function.type_vars(i_s);
         let (name, params, return_annotation, block) = f.unpack();
         if !is_overload_member {
             // Check defaults here.
@@ -545,10 +546,10 @@ impl<'db> Inference<'db, '_, '_> {
                         let t = self.use_cached_annotation_type(annotation);
                         let inf = self
                             .infer_expression_with_context(default, &mut ResultContext::Known(&t));
-                        t.error_if_not_matches(self.i_s, &inf, |got, expected| {
-                            let node_ref = NodeRef::new(self.file, default.index())
-                                .to_db_lifetime(self.i_s.db);
-                            if self.file.is_stub_or_in_protocol(self.i_s)
+                        t.error_if_not_matches(i_s, &inf, |got, expected| {
+                            let node_ref =
+                                NodeRef::new(self.file, default.index()).to_db_lifetime(i_s.db);
+                            if self.file.is_stub_or_in_protocol(i_s)
                                 && default.is_ellipsis_literal()
                             {
                                 // In stubs it is allowed to do stuff like:
@@ -556,7 +557,7 @@ impl<'db> Inference<'db, '_, '_> {
                                 return node_ref;
                             }
                             node_ref.add_issue(
-                                self.i_s,
+                                i_s,
                                 IssueType::IncompatibleDefaultArgument {
                                     argument_name: Box::from(param.name_definition().as_code()),
                                     got,
@@ -569,11 +570,11 @@ impl<'db> Inference<'db, '_, '_> {
                 }
             }
         }
-        let flags = &self.i_s.db.project.flags;
+        let flags = &i_s.db.project.flags;
         let mut had_missing_annotation = false;
         for param in params
             .iter()
-            .skip((class.is_some() && function.kind(self.i_s) != FunctionKind::Staticmethod).into())
+            .skip((class.is_some() && function.kind(i_s) != FunctionKind::Staticmethod).into())
         {
             if let Some(annotation) = param.annotation() {
                 let t = self.use_cached_annotation_type(annotation);
@@ -581,7 +582,7 @@ impl<'db> Inference<'db, '_, '_> {
                 {
                     if !["__init__", "__new__", "__post_init__"].contains(&name.as_code()) {
                         NodeRef::new(self.file, annotation.index())
-                            .add_issue(self.i_s, IssueType::TypeVarCovariantInParamType);
+                            .add_issue(i_s, IssueType::TypeVarCovariantInParamType);
                     }
                 }
             } else if flags.disallow_incomplete_defs {
@@ -591,7 +592,7 @@ impl<'db> Inference<'db, '_, '_> {
         if had_missing_annotation {
             function
                 .node_ref
-                .add_issue(self.i_s, IssueType::FunctionMissingParamAnnotations);
+                .add_issue(i_s, IssueType::FunctionMissingParamAnnotations);
         }
 
         if let Some(return_annotation) = return_annotation {
@@ -599,33 +600,33 @@ impl<'db> Inference<'db, '_, '_> {
             if matches!(t.as_ref(), Type::TypeVar(tv) if tv.type_var.variance == Variance::Contravariant)
             {
                 NodeRef::new(self.file, return_annotation.index())
-                    .add_issue(self.i_s, IssueType::TypeVarContravariantInReturnType);
+                    .add_issue(i_s, IssueType::TypeVarContravariantInReturnType);
             }
             if function.is_generator() {
                 let expected = if function.is_async() {
-                    &self.i_s.db.python_state.async_generator_with_any_generics
+                    &i_s.db.python_state.async_generator_with_any_generics
                 } else {
-                    &self.i_s.db.python_state.generator_with_any_generics
+                    &i_s.db.python_state.generator_with_any_generics
                 };
-                if !t.is_simple_super_type_of(self.i_s, &expected).bool() {
+                if !t.is_simple_super_type_of(i_s, &expected).bool() {
                     if function.is_async() {
                         NodeRef::new(self.file, return_annotation.index())
-                            .add_issue(self.i_s, IssueType::InvalidAsyncGeneratorReturnType);
+                            .add_issue(i_s, IssueType::InvalidAsyncGeneratorReturnType);
                     } else {
                         NodeRef::new(self.file, return_annotation.index())
-                            .add_issue(self.i_s, IssueType::InvalidGeneratorReturnType);
+                            .add_issue(i_s, IssueType::InvalidGeneratorReturnType);
                     }
                 }
             }
         } else if flags.disallow_incomplete_defs {
             function
                 .node_ref
-                .add_issue(self.i_s, IssueType::FunctionMissingReturnAnnotation);
+                .add_issue(i_s, IssueType::FunctionMissingReturnAnnotation);
         }
 
         let is_dynamic = function.is_dynamic();
         let args = NoArguments::new(NodeRef::new(self.file, f.index()));
-        let function_i_s = &mut self.i_s.with_diagnostic_func_and_args(&function, &args);
+        let function_i_s = &mut i_s.with_diagnostic_func_and_args(&function, &args);
         let mut inference = self.file.inference(function_i_s);
         if !is_dynamic || flags.check_untyped_defs {
             inference.calc_block_diagnostics(block, None, Some(&function))
@@ -634,26 +635,21 @@ impl<'db> Inference<'db, '_, '_> {
         }
         if flags.disallow_untyped_defs && !flags.disallow_incomplete_defs {
             match (
-                function.is_missing_param_annotations(self.i_s),
+                function.is_missing_param_annotations(i_s),
                 function.return_annotation().is_none(),
             ) {
                 (true, true) => {
-                    function.add_issue_for_declaration(self.i_s, IssueType::FunctionIsDynamic)
+                    function.add_issue_for_declaration(i_s, IssueType::FunctionIsDynamic)
                 }
-                (true, false) => function.add_issue_for_declaration(
-                    self.i_s,
-                    IssueType::FunctionMissingParamAnnotations,
-                ),
-                (false, true) => function.add_issue_for_declaration(
-                    self.i_s,
-                    IssueType::FunctionMissingReturnAnnotation,
-                ),
+                (true, false) => function
+                    .add_issue_for_declaration(i_s, IssueType::FunctionMissingParamAnnotations),
+                (false, true) => function
+                    .add_issue_for_declaration(i_s, IssueType::FunctionMissingReturnAnnotation),
                 (false, false) => (),
             }
         }
 
         if function.is_dunder_new() {
-            let i_s = self.i_s;
             let mut class = class.unwrap();
             // Here we do not want self generics, we actually want Any generics.
             class.generics = Generics::NotDefinedYet;
