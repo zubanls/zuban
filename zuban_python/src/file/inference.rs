@@ -261,33 +261,28 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     let (import_name, name_def) = target.unpack();
 
                     let point = match &from_first_part {
-                        Some(imp) => {
-                            match self.lookup_import_from_target(imp, import_name.as_str()) {
-                                LookupResult::GotoName(link, ..) => {
-                                    link.into_redirect_point(Locality::Todo)
-                                }
-                                LookupResult::FileReference(file_index) => {
-                                    Point::new_file_reference(file_index, Locality::Todo)
-                                }
-                                LookupResult::UnknownName(inf) => {
-                                    inf.save_redirect(self.i_s, self.file, name_def.index());
-                                    continue;
-                                }
-                                LookupResult::None => {
-                                    NodeRef::new(self.file, import_name.index()).add_issue(
-                                        self.i_s,
-                                        IssueType::ImportAttributeError {
-                                            module_name: Box::from(imp.qualified_name(self.i_s.db)),
-                                            name: Box::from(import_name.as_str()),
-                                        },
-                                    );
-                                    Point::new_simple_specific(
-                                        Specific::ModuleNotFound,
-                                        Locality::Todo,
-                                    )
-                                }
+                        Some(imp) => match self.lookup_import_from_target(imp, import_name) {
+                            LookupResult::GotoName(link, ..) => {
+                                link.into_redirect_point(Locality::Todo)
                             }
-                        }
+                            LookupResult::FileReference(file_index) => {
+                                Point::new_file_reference(file_index, Locality::Todo)
+                            }
+                            LookupResult::UnknownName(inf) => {
+                                inf.save_redirect(self.i_s, self.file, name_def.index());
+                                continue;
+                            }
+                            LookupResult::None => {
+                                NodeRef::new(self.file, import_name.index()).add_issue(
+                                    self.i_s,
+                                    IssueType::ImportAttributeError {
+                                        module_name: Box::from(imp.qualified_name(self.i_s.db)),
+                                        name: Box::from(import_name.as_str()),
+                                    },
+                                );
+                                Point::new_simple_specific(Specific::ModuleNotFound, Locality::Todo)
+                            }
+                        },
                         // Means one of the imports before failed.
                         None => {
                             Point::new_simple_specific(Specific::ModuleNotFound, Locality::Todo)
@@ -304,10 +299,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     fn lookup_import_from_target(
-        &self,
+        &mut self,
         from_first_part: &ImportResult,
-        name: &str,
+        import_name: Name,
     ) -> LookupResult {
+        let name = import_name.as_str();
         match from_first_part {
             ImportResult::File(file_index) => {
                 let import_file = self.i_s.db.loaded_python_file(*file_index);
@@ -325,6 +321,20 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     .lookup_from_star_import(name, false)
                 {
                     LookupResult::GotoName(link, Inferred::from_saved_link(link))
+                } else if let Some(link) = import_file.lookup_global("__getattr__") {
+                    let inf = self
+                        .i_s
+                        .db
+                        .loaded_python_file(link.file)
+                        .inference(self.i_s)
+                        .infer_name_by_index(link.node_index);
+                    LookupResult::UnknownName(inf.execute(
+                        self.i_s,
+                        &KnownArguments::new(
+                            &Inferred::from_type(self.i_s.db.python_state.str_type()),
+                            NodeRef::new(self.file, import_name.index()),
+                        ),
+                    ))
                 } else {
                     LookupResult::None
                 }
