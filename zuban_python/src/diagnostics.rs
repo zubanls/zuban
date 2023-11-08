@@ -163,6 +163,7 @@ pub(crate) enum IssueType {
     MultipleInheritanceIncompatibility { name: Box<str>, class1: Box<str>, class2: Box<str> },
     NewMustReturnAnInstance { got: Box<str> },
     NewIncompatibleReturnType { returns: Box<str>, must_return: Box<str> },
+    GetattributeInvalidAtModuleLevel,
 
     BaseExceptionExpected,
     BaseExceptionExpectedForRaise,
@@ -915,6 +916,8 @@ impl<'db> Diagnostic<'db> {
                 "Incompatible return type for \"__new__\" (returns \
                  \"{returns}\", but must return a subtype of \"{must_return}\")"
             ),
+            GetattributeInvalidAtModuleLevel =>
+                "__getattribute__ is not valid at the module level".to_string(),
 
             BaseExceptionExpected =>
                 "Exception type must be derived from BaseException (or be a \

@@ -38,6 +38,11 @@ impl<'db> Inference<'db, '_, '_> {
                 n.type_(self.i_s);
             }
         }
+
+        if let Some(index) = self.file.symbol_table.lookup_symbol("__getattribute__") {
+            NodeRef::new(self.file, index)
+                .add_issue(self.i_s, IssueType::GetattributeInvalidAtModuleLevel)
+        }
     }
 
     fn calc_simple_stmts_diagnostics(

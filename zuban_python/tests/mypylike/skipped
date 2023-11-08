@@ -2189,8 +2189,6 @@ testModuleLevelGetattrInvalidSignature
 testModuleLevelGetattrNotCallable
 testModuleLevelGetattrAssignedBad
 testModuleLevelGetattrImportedBad
-# "__getattribute__ is not valid at the module level"
-testModuleLevelGetattribute
 # Module __getattr__
 testModuleGetattrInitIncremental
 testModuleGetattrInit2
