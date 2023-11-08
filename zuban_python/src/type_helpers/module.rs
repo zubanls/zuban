@@ -61,40 +61,33 @@ impl<'a> Module<'a> {
     }
 
     pub fn lookup(&self, i_s: &InferenceState, from: NodeRef, name: &str) -> LookupResult {
-        self.file
-            .symbol_table
-            .lookup_symbol(name)
-            .map(|i| {
-                LookupResult::GotoName(
-                    PointLink::new(self.file.file_index(), i),
-                    self.file.inference(i_s).infer_name_by_index(i),
-                )
-            })
-            .or_else(|| {
-                self.sub_module(i_s.db, name).map(|result| match result {
-                    ImportResult::File(file_index) => LookupResult::FileReference(file_index),
-                    ImportResult::Namespace { .. } => todo!(),
-                })
-            })
-            .or_else(|| {
-                self.file
-                    .inference(i_s)
-                    .lookup_from_star_import(name, false)
-                    .map(|link| {
-                        let inf = i_s
-                            .db
-                            .loaded_python_file(link.file)
-                            .inference(i_s)
-                            .infer_name_by_index(link.node_index);
-                        LookupResult::GotoName(link, inf)
-                    })
-            })
-            .unwrap_or_else(|| {
-                i_s.db
-                    .python_state
-                    .module_instance()
-                    .type_lookup(i_s, from, name)
-            })
+        if let Some(link) = self.file.symbol_table.lookup_symbol(name) {
+            LookupResult::GotoName(
+                PointLink::new(self.file.file_index(), link),
+                self.file.inference(i_s).infer_name_by_index(link),
+            )
+        } else if let Some(sub_module) = self.sub_module(i_s.db, name) {
+            match sub_module {
+                ImportResult::File(file_index) => LookupResult::FileReference(file_index),
+                ImportResult::Namespace { .. } => todo!(),
+            }
+        } else if let Some(link) = self
+            .file
+            .inference(i_s)
+            .lookup_from_star_import(name, false)
+        {
+            let inf = i_s
+                .db
+                .loaded_python_file(link.file)
+                .inference(i_s)
+                .infer_name_by_index(link.node_index);
+            LookupResult::GotoName(link, inf)
+        } else {
+            i_s.db
+                .python_state
+                .module_instance()
+                .type_lookup(i_s, from, name)
+        }
     }
 }
 

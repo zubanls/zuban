@@ -914,7 +914,6 @@ testDequeWrongCase
 testAsyncWithError
 
 # Unexpected keyword argument "otter" for "f"; did you mean "other"?
-testKeywordMisspelling
 testMultipleKeywordsForMisspelling
 testKeywordMisspelling*
 # "TypedDict "XXX" has no key "xxx" note: Did you mean "type"?"
