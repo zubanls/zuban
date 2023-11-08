@@ -370,6 +370,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     let r = module.sub_module(self.i_s.db, name.as_str());
 
                     // This is such weird logic. I don't understand at all why Mypy is doing this.
+                    // It seems to come from here:
+                    // https://github.com/python/mypy/blob/bc591c756a453bb6a78a31e734b1f0aa475e90e0/mypy/semanal_pass1.py#L87-L96
                     if r.is_none()
                         && module.file.is_stub(self.i_s.db)
                         && module
@@ -398,7 +400,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     imported.path(self.i_s.db),
                     dotted.as_code(),
                 );
-            } else if !in_stub_and_has_getattr {
+            } else if in_stub_and_has_getattr {
+                debug!(
+                    "Ignored import of {}, because of a __getattr__ in a stub file",
+                    name.as_str()
+                );
+            } else {
                 let node_ref = NodeRef::new(self.file, name.index());
                 let module_name = format!(
                     "{}.{}",

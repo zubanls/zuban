@@ -111,6 +111,11 @@ impl<'a> Module<'a> {
                 i_s,
                 &KnownArguments::new(&Inferred::from_type(i_s.db.python_state.str_type()), from),
             ))
+        } else if name == "__getattr__" {
+            // There is a weird (and wrong) definition in typeshed that defines __getattr__ on
+            // ModuleType:
+            // https://github.com/python/typeshed/blob/516f6655051b061652f086445ea54e8e82232349/stdlib/types.pyi#L352
+            return LookupResult::None;
         } else {
             i_s.db
                 .python_state
