@@ -51,7 +51,7 @@ impl<'a> Module<'a> {
         };
         if name == "__init__" {
             if let Ok(dir) = entry.parent.maybe_dir() {
-                return dir.name.to_string();
+                return dotted_path_from_dir(&dir);
             }
         }
         if let Ok(parent_dir) = entry.parent.maybe_dir() {

@@ -2193,8 +2193,6 @@ testCheckDisallowAnyGenericsStubOnly
 # "Invalid signature "Callable[[int, str], str]" for "__getattr__""
 testModuleLevelGetattrInvalidSignature
 # Module __getattr__
-testModuleGetattrInit8
-testModuleGetattrInit8a
 testGetAttrImportAnnotation
 testGetAttrImportBaseClass
 testNewAnalyzerModuleGetAttrInPython37
