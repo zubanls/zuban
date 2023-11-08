@@ -1,3 +1,4 @@
+use crate::arguments::KnownArguments;
 use crate::database::{Database, FileIndex, PointLink};
 use crate::type_::{Namespace, Type};
 
@@ -82,6 +83,16 @@ impl<'a> Module<'a> {
                 .inference(i_s)
                 .infer_name_by_index(link.node_index);
             LookupResult::GotoName(link, inf)
+        } else if let Some(link) = self.file.lookup_global("__getattr__") {
+            let inf = i_s
+                .db
+                .loaded_python_file(link.file)
+                .inference(i_s)
+                .infer_name_by_index(link.node_index);
+            LookupResult::UnknownName(inf.execute(
+                i_s,
+                &KnownArguments::new(&Inferred::from_type(i_s.db.python_state.str_type()), from),
+            ))
         } else {
             i_s.db
                 .python_state
