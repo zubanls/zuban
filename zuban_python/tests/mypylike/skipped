@@ -2190,11 +2190,6 @@ testGenericTypedDictAlias
 # "Subscripting classes that are not generic at runtime may require escaping"
 testCheckDisallowAnyGenericsStubOnly
 
-# Module __getattr__
-testGetAttrImportAnnotation
-testGetAttrImportBaseClass
-testNewAnalyzerModuleGetAttrInPython37
-
 # attrs
 testAttrs*
 updateMagicField

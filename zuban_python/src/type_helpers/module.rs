@@ -101,27 +101,33 @@ impl<'a> Module<'a> {
                     .infer_name_by_index(link.node_index)
             };
             LookupResult::GotoName(link, inf)
-        } else if let Some(link) = self.file.lookup_global("__getattr__") {
-            let inf = i_s
-                .db
-                .loaded_python_file(link.file)
-                .inference(i_s)
-                .infer_name_by_index(link.node_index);
-            LookupResult::UnknownName(inf.execute(
-                i_s,
-                &KnownArguments::new(&Inferred::from_type(i_s.db.python_state.str_type()), from),
-            ))
+        } else if let Some(inf) = self.maybe_execute_getattr(i_s, from) {
+            LookupResult::UnknownName(inf)
         } else if name == "__getattr__" {
             // There is a weird (and wrong) definition in typeshed that defines __getattr__ on
             // ModuleType:
             // https://github.com/python/typeshed/blob/516f6655051b061652f086445ea54e8e82232349/stdlib/types.pyi#L352
-            return LookupResult::None;
+            LookupResult::None
         } else {
             i_s.db
                 .python_state
                 .module_instance()
                 .type_lookup(i_s, from, name)
         }
+    }
+
+    pub fn maybe_execute_getattr(&self, i_s: &InferenceState, from: NodeRef) -> Option<Inferred> {
+        self.file.lookup_global("__getattr__").map(|link| {
+            let inf = i_s
+                .db
+                .loaded_python_file(link.file)
+                .inference(i_s)
+                .infer_name_by_index(link.node_index);
+            inf.execute(
+                i_s,
+                &KnownArguments::new(&Inferred::from_type(i_s.db.python_state.str_type()), from),
+            )
+        })
     }
 }
 

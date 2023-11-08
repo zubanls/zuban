@@ -1300,7 +1300,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     );
                     self.compute_type_name(name)
                 } else {
-                    match Module::new(f).sub_module(db, name.as_str()) {
+                    let module = Module::new(f);
+                    match module.sub_module(db, name.as_str()) {
                         Some(ImportResult::File(file_index)) => {
                             self.inference.file.points.set(
                                 name.index(),
@@ -1311,13 +1312,27 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         Some(ImportResult::Namespace { .. }) => todo!(),
                         None => {
                             let node_ref = NodeRef::new(self.inference.file, primary.index());
-                            debug!("TypeComputation: Attribute on class not found");
-                            self.add_issue_for_index(primary.index(), IssueType::TypeNotFound);
-                            self.inference.file.points.set(
-                                name.index(),
-                                Point::new_simple_specific(Specific::AnyDueToError, Locality::Todo),
-                            );
-                            TypeContent::Unknown(AnyCause::FromError)
+                            if let Some(inf) =
+                                module.maybe_execute_getattr(self.inference.i_s, node_ref)
+                            {
+                                // If a module contains a __getattr__, the type can be part of that
+                                // (which is typically just an Any that propagates).
+                                match check_module_getattr_type(self.inference.i_s, inf) {
+                                    TypeNameLookup::Unknown(cause) => TypeContent::Unknown(cause),
+                                    _ => unreachable!(),
+                                }
+                            } else {
+                                debug!("TypeComputation: Attribute on class not found");
+                                self.add_issue_for_index(primary.index(), IssueType::TypeNotFound);
+                                self.inference.file.points.set(
+                                    name.index(),
+                                    Point::new_simple_specific(
+                                        Specific::AnyDueToError,
+                                        Locality::Todo,
+                                    ),
+                                );
+                                TypeContent::Unknown(AnyCause::FromError)
+                            }
                         }
                     }
                 }
@@ -3670,18 +3685,14 @@ fn check_type_name<'db: 'file, 'file>(
                 } else {
                     // This typically happens with a module __getattr__ and the type can be
                     // anything.
-                    if let Type::Any(cause) = name_def_ref
-                        .file
-                        .inference(i_s)
-                        .check_point_cache(name_def_ref.node_index)
-                        .unwrap()
-                        .as_cow_type(i_s)
-                        .as_ref()
-                    {
-                        TypeNameLookup::Unknown(*cause)
-                    } else {
-                        todo!()
-                    }
+                    check_module_getattr_type(
+                        i_s,
+                        name_def_ref
+                            .file
+                            .inference(i_s)
+                            .check_point_cache(name_def_ref.node_index)
+                            .unwrap(),
+                    )
                 }
             } else {
                 name_node_ref.file.inference(i_s).infer_name(new_name);
@@ -3754,6 +3765,17 @@ fn wrap_double_starred(db: &Database, t: Type) -> Type {
             db.python_state.str_type(),
             t,
         ),
+    }
+}
+
+fn check_module_getattr_type(
+    i_s: &InferenceState,
+    inf: Inferred,
+) -> TypeNameLookup<'static, 'static> {
+    if let Type::Any(cause) = inf.as_cow_type(i_s).as_ref() {
+        TypeNameLookup::Unknown(*cause)
+    } else {
+        todo!()
     }
 }
 
