@@ -417,13 +417,15 @@ fn wanted_output(project: &mut Project, step: &Step) -> Vec<String> {
                     if i != 0 {
                         type_ = "note";
                     }
-                    if let Some(column) = column {
-                        wanted.push(format!(
-                            "{p}:{line_nr}:{column}: {type_}: {}",
-                            comment.trim_end()
-                        ))
-                    } else {
-                        wanted.push(format!("{p}:{line_nr}: {type_}: {}", comment.trim_end()))
+                    if let Some(comment) = cleanup_mypy_issues(&comment) {
+                        if let Some(column) = column {
+                            wanted.push(format!(
+                                "{p}:{line_nr}:{column}: {type_}: {}",
+                                comment.trim_end()
+                            ))
+                        } else {
+                            wanted.push(format!("{p}:{line_nr}: {type_}: {}", comment.trim_end()))
+                        }
                     }
                 }
             }
@@ -496,17 +498,15 @@ impl Iterator for ErrorCommentsOnCode<'_> {
                     rest = &rest[first.len() + 1..];
                 }
 
-                if let Some(out) = cleanup_mypy_issues(&rest[1..]) {
-                    return Some((
-                        i + 1 - backslashes,
-                        column,
-                        match was_exception {
-                            Some(_) => "error",
-                            None => "note",
-                        },
-                        out,
-                    ));
-                }
+                return Some((
+                    i + 1 - backslashes,
+                    column,
+                    match was_exception {
+                        Some(_) => "error",
+                        None => "note",
+                    },
+                    rest[1..].to_string(),
+                ));
             }
         }
         None

@@ -1356,6 +1356,7 @@ testIterableUnpackingWithGetAttr
 testProtocolAttrAccessDecoratedGetAttrDunder
 testClassesGetattrWithProtocols
 testModuleLevelGetAttrInStub
+testGetAttrDescriptor
 
 # __setattr__
 testSetattr
@@ -2196,7 +2197,6 @@ testModuleGetattrInit8
 testModuleGetattrInit8a
 testGetAttrImportAnnotation
 testGetAttrImportBaseClass
-testGetAttrDescriptor
 testNewAnalyzerModuleGetAttrInPython37
 
 # attrs
