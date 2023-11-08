@@ -971,6 +971,11 @@ testReExportChildStubs3
 testNewSemanticAnalyzerModulePrivateRefInMiddleOfQualified
 # underscore names are not exported in an import with stubs
 testInternalBuiltinDefinition
+# --no-implicit-reexport
+testNoImplicitReexport
+testNoImplicitReexportRespectsAll
+testNoImplicitReexportGetAttr
+textNoImplicitReexportSuggestions
 
 # Metaclass descriptor
 metaclass_descriptor
@@ -2567,12 +2572,6 @@ testDoNotFollowImportToNonStubFile
 testFollowImportsSkip
 testSubclassingAnySilentImports
 testSubclassingAnySilentImports2
-
-# --no-implicit-reexport
-testNoImplicitReexport
-testNoImplicitReexportRespectsAll
-testNoImplicitReexportGetAttr
-textNoImplicitReexportSuggestions
 
 # --warn-unreachable
 testOperatorContainsNarrowsTypedDicts_final
