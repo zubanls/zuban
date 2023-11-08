@@ -2204,10 +2204,6 @@ testGetAttrDescriptor
 testAddedMissingStubsPackagePartialGetAttr
 testFineAddedMissingStubsPackagePartialGetAttr
 testNewAnalyzerModuleGetAttrInPython37
-testModuleGetattrIncrementalSerializeVarFlag
-testIncrementalNodeCreatedFromGetattr
-testModuleGetattrBusted
-testModuleGetattrBusted2
 
 # attrs
 testAttrs*

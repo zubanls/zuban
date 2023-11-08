@@ -3665,8 +3665,24 @@ fn check_type_name<'db: 'file, 'file>(
                         return TypeNameLookup::Namespace(namespace.clone());
                     }
                 }
-                debug_assert_eq!(p.maybe_specific(), Some(Specific::ModuleNotFound));
-                TypeNameLookup::Unknown(AnyCause::Todo)
+                if p.maybe_specific() == Some(Specific::ModuleNotFound) {
+                    TypeNameLookup::Unknown(AnyCause::ModuleNotFound)
+                } else {
+                    // This typically happens with a module __getattr__ and the type can be
+                    // anything.
+                    if let Type::Any(cause) = name_def_ref
+                        .file
+                        .inference(i_s)
+                        .check_point_cache(name_def_ref.node_index)
+                        .unwrap()
+                        .as_cow_type(i_s)
+                        .as_ref()
+                    {
+                        TypeNameLookup::Unknown(*cause)
+                    } else {
+                        todo!()
+                    }
+                }
             } else {
                 name_node_ref.file.inference(i_s).infer_name(new_name);
                 check_type_name(i_s, name_node_ref)
