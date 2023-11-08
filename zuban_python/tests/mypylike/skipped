@@ -2190,8 +2190,6 @@ testGenericTypedDictAlias
 # "Subscripting classes that are not generic at runtime may require escaping"
 testCheckDisallowAnyGenericsStubOnly
 
-# "Invalid signature "Callable[[int, str], str]" for "__getattr__""
-testModuleLevelGetattrInvalidSignature
 # Module __getattr__
 testGetAttrImportAnnotation
 testGetAttrImportBaseClass
