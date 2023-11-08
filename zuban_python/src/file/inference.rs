@@ -307,37 +307,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         match from_first_part {
             ImportResult::File(file_index) => {
                 let import_file = self.i_s.db.loaded_python_file(*file_index);
-                let module = Module::new(import_file);
-
-                if let Some(link) = import_file.lookup_global(name) {
-                    LookupResult::GotoName(link.into(), Inferred::from_saved_link(link.into()))
-                } else if let Some(import_result) = module.sub_module(self.i_s.db, name) {
-                    let ImportResult::File(file_index) = import_result else {
-                        todo!()
-                    };
-                    LookupResult::FileReference(file_index)
-                } else if let Some(link) = import_file
-                    .inference(self.i_s)
-                    .lookup_from_star_import(name, false)
-                {
-                    LookupResult::GotoName(link, Inferred::from_saved_link(link))
-                } else if let Some(link) = import_file.lookup_global("__getattr__") {
-                    let inf = self
-                        .i_s
-                        .db
-                        .loaded_python_file(link.file)
-                        .inference(self.i_s)
-                        .infer_name_by_index(link.node_index);
-                    LookupResult::UnknownName(inf.execute(
-                        self.i_s,
-                        &KnownArguments::new(
-                            &Inferred::from_type(self.i_s.db.python_state.str_type()),
-                            NodeRef::new(self.file, import_name.index()),
-                        ),
-                    ))
-                } else {
-                    LookupResult::None
-                }
+                Module::new(import_file).lookup_with_is_import(
+                    self.i_s,
+                    NodeRef::new(self.file, import_name.index()),
+                    import_name.as_str(),
+                    true,
+                )
             }
             ImportResult::Namespace(namespace) => {
                 lookup_in_namespace(self.i_s.db, self.file_index, namespace, name)

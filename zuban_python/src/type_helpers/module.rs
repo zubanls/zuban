@@ -62,10 +62,25 @@ impl<'a> Module<'a> {
     }
 
     pub fn lookup(&self, i_s: &InferenceState, from: NodeRef, name: &str) -> LookupResult {
-        if let Some(link) = self.file.symbol_table.lookup_symbol(name) {
+        self.lookup_with_is_import(i_s, from, name, false)
+    }
+
+    pub fn lookup_with_is_import(
+        &self,
+        i_s: &InferenceState,
+        from: NodeRef,
+        name: &str,
+        is_import: bool,
+    ) -> LookupResult {
+        if let Some(index) = self.file.symbol_table.lookup_symbol(name) {
+            let link = PointLink::new(self.file.file_index(), index);
             LookupResult::GotoName(
-                PointLink::new(self.file.file_index(), link),
-                self.file.inference(i_s).infer_name_by_index(link),
+                link,
+                if is_import {
+                    Inferred::from_saved_link(link)
+                } else {
+                    self.file.inference(i_s).infer_name_by_index(index)
+                },
             )
         } else if let Some(sub_module) = self.sub_module(i_s.db, name) {
             match sub_module {
@@ -77,11 +92,14 @@ impl<'a> Module<'a> {
             .inference(i_s)
             .lookup_from_star_import(name, false)
         {
-            let inf = i_s
-                .db
-                .loaded_python_file(link.file)
-                .inference(i_s)
-                .infer_name_by_index(link.node_index);
+            let inf = if is_import {
+                Inferred::from_saved_link(link)
+            } else {
+                i_s.db
+                    .loaded_python_file(link.file)
+                    .inference(i_s)
+                    .infer_name_by_index(link.node_index)
+            };
             LookupResult::GotoName(link, inf)
         } else if let Some(link) = self.file.lookup_global("__getattr__") {
             let inf = i_s
