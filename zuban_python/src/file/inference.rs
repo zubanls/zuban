@@ -362,11 +362,27 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         base: Option<ImportResult>,
     ) -> Option<ImportResult> {
         let file_index = self.file_index;
-        let infer_name = |i_s, import_result, name: Name| {
+        let infer_name = |import_result, name: Name| {
+            let mut in_stub_and_has_getattr = false;
             let result = match &import_result {
                 ImportResult::File(file_index) => {
                     let module = Module::from_file_index(self.i_s.db, *file_index);
-                    module.sub_module(self.i_s.db, name.as_str())
+                    let r = module.sub_module(self.i_s.db, name.as_str());
+
+                    // This is such weird logic. I don't understand at all why Mypy is doing this.
+                    if r.is_none()
+                        && module.file.is_stub(self.i_s.db)
+                        && module
+                            .lookup(
+                                self.i_s,
+                                NodeRef::new(self.file, name.index()),
+                                "__getattr__",
+                            )
+                            .is_some()
+                    {
+                        in_stub_and_has_getattr = true
+                    }
+                    r
                 }
                 ImportResult::Namespace(namespace) => python_import(
                     self.i_s.db,
@@ -382,29 +398,29 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     imported.path(self.i_s.db),
                     dotted.as_code(),
                 );
-            } else {
+            } else if !in_stub_and_has_getattr {
                 let node_ref = NodeRef::new(self.file, name.index());
-                let m = format!(
+                let module_name = format!(
                     "{}.{}",
                     import_result.qualified_name(self.i_s.db),
                     name.as_str()
                 )
                 .into();
-                node_ref.add_issue(i_s, IssueType::ModuleNotFound { module_name: m });
+                node_ref.add_issue(self.i_s, IssueType::ModuleNotFound { module_name });
             }
             result
         };
         match dotted.unpack() {
             DottedNameContent::Name(name) => {
                 if let Some(base) = base {
-                    infer_name(self.i_s, base, name)
+                    infer_name(base, name)
                 } else {
                     self.global_import(name, None)
                 }
             }
             DottedNameContent::DottedName(dotted_name, name) => self
                 .infer_import_dotted_name(dotted_name, base)
-                .and_then(|result| infer_name(self.i_s, result, name)),
+                .and_then(|result| infer_name(result, name)),
         }
     }
 
