@@ -1,10 +1,12 @@
 use std::borrow::Cow;
+use std::rc::Rc;
 
 use parsa_python_ast::*;
 
 use crate::arguments::{CombinedArguments, KnownArguments, NoArguments};
 use crate::database::{
-    ClassKind, ComplexPoint, Locality, OverloadImplementation, Point, PointType, Specific,
+    ClassKind, ComplexPoint, Locality, OverloadImplementation, Point, PointLink, PointType,
+    Specific,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -19,8 +21,8 @@ use crate::matching::{
 };
 use crate::node_ref::NodeRef;
 use crate::type_::{
-    AnyCause, CallableContent, FunctionKind, GenericItem, TupleTypeArguments, Type,
-    TypeOrTypeVarTuple, TypeVarLike, Variance,
+    AnyCause, CallableContent, CallableParam, CallableParams, FunctionKind, GenericItem,
+    ParamSpecific, TupleTypeArguments, Type, TypeOrTypeVarTuple, TypeVarLike, Variance,
 };
 use crate::type_helpers::{
     is_private, Class, FirstParamProperties, Function, GeneratorType, Instance, TypeOrClass,
@@ -42,6 +44,33 @@ impl<'db> Inference<'db, '_, '_> {
         if let Some(index) = self.file.symbol_table.lookup_symbol("__getattribute__") {
             NodeRef::new(self.file, index)
                 .add_issue(self.i_s, IssueType::GetattributeInvalidAtModuleLevel)
+        }
+        if let Some(index) = self.file.symbol_table.lookup_symbol("__getattr__") {
+            let expected = Type::Callable(Rc::new(CallableContent {
+                name: None,
+                class_name: None,
+                defined_at: PointLink::new(self.file_index, index),
+                kind: FunctionKind::Function {
+                    had_first_self_or_class_annotation: true,
+                },
+                type_vars: self.i_s.db.python_state.empty_type_var_likes.clone(),
+                params: CallableParams::Simple(Rc::new([CallableParam::new_anonymous(
+                    ParamSpecific::PositionalOnly(self.i_s.db.python_state.str_type()),
+                )])),
+                result_type: Type::Any(AnyCause::Internal),
+            }));
+            let actual = self.infer_name_by_index(index);
+            if !expected
+                .is_simple_super_type_of(self.i_s, &actual.as_cow_type(self.i_s))
+                .bool()
+            {
+                NodeRef::new(self.file, index).add_issue(
+                    self.i_s,
+                    IssueType::InvalidGetattrSigantureAtModuleLevel {
+                        type_: actual.format_short(self.i_s),
+                    },
+                )
+            }
         }
     }
 

@@ -163,6 +163,7 @@ pub(crate) enum IssueType {
     MultipleInheritanceIncompatibility { name: Box<str>, class1: Box<str>, class2: Box<str> },
     NewMustReturnAnInstance { got: Box<str> },
     NewIncompatibleReturnType { returns: Box<str>, must_return: Box<str> },
+    InvalidGetattrSigantureAtModuleLevel { type_: Box<str> },
     GetattributeInvalidAtModuleLevel,
 
     BaseExceptionExpected,
@@ -915,6 +916,9 @@ impl<'db> Diagnostic<'db> {
             NewIncompatibleReturnType { returns, must_return } => format!(
                 "Incompatible return type for \"__new__\" (returns \
                  \"{returns}\", but must return a subtype of \"{must_return}\")"
+            ),
+            InvalidGetattrSigantureAtModuleLevel { type_ } => format!(
+                r#"Invalid signature "{type_}" for "__getattr__""#
             ),
             GetattributeInvalidAtModuleLevel =>
                 "__getattribute__ is not valid at the module level".to_string(),

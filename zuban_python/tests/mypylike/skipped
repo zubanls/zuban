@@ -2186,8 +2186,6 @@ testCheckDisallowAnyGenericsStubOnly
 
 # "Invalid signature "Callable[[int, str], str]" for "__getattr__""
 testModuleLevelGetattrInvalidSignature
-testModuleLevelGetattrNotCallable
-testModuleLevelGetattrAssignedBad
 testModuleLevelGetattrImportedBad
 # Module __getattr__
 testModuleGetattrInitIncremental
@@ -2197,7 +2195,6 @@ testModuleGetattrInit5
 testModuleGetattrInit5a
 testModuleGetattrInit8
 testModuleGetattrInit8a
-testModuleGetAttrAssignSubmoduleStrict
 testGetAttrImportAnnotation
 testGetAttrImportBaseClass
 testGetAttrDescriptor
