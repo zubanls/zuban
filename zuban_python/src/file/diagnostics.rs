@@ -21,8 +21,8 @@ use crate::matching::{
 };
 use crate::node_ref::NodeRef;
 use crate::type_::{
-    AnyCause, CallableContent, CallableParam, CallableParams, FunctionKind, GenericItem,
-    ParamSpecific, TupleTypeArguments, Type, TypeOrTypeVarTuple, TypeVarLike, Variance,
+    AnyCause, CallableContent, CallableParam, CallableParams, FunctionKind, GenericItem, ParamType,
+    TupleTypeArguments, Type, TypeOrTypeVarTuple, TypeVarLike, Variance,
 };
 use crate::type_helpers::{
     is_private, Class, FirstParamProperties, Function, GeneratorType, Instance, TypeOrClass,
@@ -55,7 +55,7 @@ impl<'db> Inference<'db, '_, '_> {
                 },
                 type_vars: self.i_s.db.python_state.empty_type_var_likes.clone(),
                 params: CallableParams::Simple(Rc::new([CallableParam::new_anonymous(
-                    ParamSpecific::PositionalOnly(self.i_s.db.python_state.str_type()),
+                    ParamType::PositionalOnly(self.i_s.db.python_state.str_type()),
                 )])),
                 result_type: Type::Any(AnyCause::Internal),
             }));

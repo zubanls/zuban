@@ -19,7 +19,7 @@ use crate::{
 
 use super::{
     tuple::lookup_tuple_magic_methods, AnyCause, CallableContent, CallableParam, CallableParams,
-    DbString, FormatStyle, FunctionKind, ParamSpecific, RecursiveAlias, StringSlice, Tuple, Type,
+    DbString, FormatStyle, FunctionKind, ParamType, RecursiveAlias, StringSlice, Tuple, Type,
     TypeOrTypeVarTuple,
 };
 
@@ -155,14 +155,14 @@ impl NamedTuple {
             "_replace" => Type::Callable({
                 let mut params = vec![];
                 if from_type {
-                    params.push(CallableParam::new_anonymous(ParamSpecific::PositionalOnly(
+                    params.push(CallableParam::new_anonymous(ParamType::PositionalOnly(
                         as_self.map(|as_self| as_self()).unwrap_or(Type::Self_),
                     )));
                 }
                 for param in self.params() {
                     let mut new_param = param.clone();
                     new_param.has_default = true;
-                    new_param.param_specific = ParamSpecific::KeywordOnly(
+                    new_param.param_specific = ParamType::KeywordOnly(
                         new_param.param_specific.expect_positional_type().clone(),
                     );
                     params.push(new_param);
@@ -182,7 +182,7 @@ impl NamedTuple {
             "_asdict" => Type::Callable({
                 let mut params = vec![];
                 if from_type {
-                    params.push(CallableParam::new_anonymous(ParamSpecific::PositionalOnly(
+                    params.push(CallableParam::new_anonymous(ParamType::PositionalOnly(
                         as_self.map(|as_self| as_self()).unwrap_or(Type::Self_),
                     )));
                 }
@@ -205,12 +205,12 @@ impl NamedTuple {
             "_make" => Type::Callable({
                 let mut params = vec![];
                 if as_self.is_none() {
-                    params.push(CallableParam::new_anonymous(ParamSpecific::PositionalOnly(
+                    params.push(CallableParam::new_anonymous(ParamType::PositionalOnly(
                         i_s.db.python_state.type_of_self.clone(),
                     )));
                 }
                 params.push(CallableParam {
-                    param_specific: ParamSpecific::PositionalOrKeyword(new_class!(
+                    param_specific: ParamType::PositionalOrKeyword(new_class!(
                         i_s.db.python_state.iterable_link(),
                         Type::Any(AnyCause::Explicit),
                     )),
@@ -436,7 +436,7 @@ pub fn new_collections_named_tuple(
 
     let mut add_param = |name| {
         params.push(CallableParam {
-            param_specific: ParamSpecific::PositionalOrKeyword(Type::Any(AnyCause::Todo)),
+            param_specific: ParamType::PositionalOrKeyword(Type::Any(AnyCause::Todo)),
             name: Some(name),
             has_default: false,
         })

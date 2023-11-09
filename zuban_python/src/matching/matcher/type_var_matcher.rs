@@ -10,8 +10,8 @@ use crate::inference_state::InferenceState;
 use crate::matching::Param;
 use crate::type_::{
     common_base_type_of_type_var_tuple_with_items, AnyCause, CallableParams, GenericItem,
-    ParamSpecArgument, ParamSpecific, Type, TypeArguments, TypeOrTypeVarTuple, TypeVar,
-    TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
+    ParamSpecArgument, ParamType, Type, TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarKind,
+    TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
 };
 use crate::type_helpers::{Callable, Class, Function};
 
@@ -86,8 +86,7 @@ impl<'db: 'a, 'a> FunctionOrCallable<'a> {
                         n.as_str(db) == name
                             && matches!(
                                 p.param_specific,
-                                ParamSpecific::PositionalOrKeyword(_)
-                                    | ParamSpecific::KeywordOnly(_)
+                                ParamType::PositionalOrKeyword(_) | ParamType::KeywordOnly(_)
                             )
                     })
                 }),

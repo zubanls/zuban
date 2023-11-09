@@ -22,7 +22,7 @@ use crate::{
 
 use super::{
     AnyCause, CallableContent, CallableParam, CallableParams, ClassGenerics, DbString,
-    FunctionKind, GenericClass, Literal, LiteralKind, ParamSpecific, StringSlice, Tuple, Type,
+    FunctionKind, GenericClass, Literal, LiteralKind, ParamType, StringSlice, Tuple, Type,
     TypeOrTypeVarTuple, TypeVar, TypeVarKind,
 };
 
@@ -133,7 +133,7 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
                 {
                     let mut new_param = param.clone();
                     let t = match &mut new_param.param_specific {
-                        ParamSpecific::PositionalOrKeyword(t) | ParamSpecific::KeywordOnly(t) => t,
+                        ParamType::PositionalOrKeyword(t) | ParamType::KeywordOnly(t) => t,
                         _ => unreachable!(),
                     };
                     *t = replace_class_type_vars(db, t, &cls, &|| {
@@ -231,8 +231,8 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
                         &mut params,
                         CallableParam {
                             param_specific: match kw_only {
-                                false => ParamSpecific::PositionalOrKeyword(t),
-                                true => ParamSpecific::KeywordOnly(t),
+                                false => ParamType::PositionalOrKeyword(t),
+                                true => ParamType::KeywordOnly(t),
                             },
                             name: Some(name.into()),
                             has_default: field_infos.has_default,
@@ -440,7 +440,7 @@ pub fn dataclasses_replace<'db>(
                     let mut params: Vec<_> = replace_func.expect_simple_params().into();
                     for param in params.iter_mut() {
                         let t = param.param_specific.maybe_type().unwrap();
-                        param.param_specific = ParamSpecific::KeywordOnly(t.clone());
+                        param.param_specific = ParamType::KeywordOnly(t.clone());
                         // All normal dataclass arguments are optional, because they can be
                         // overridden or just be left in place. However this is different for
                         // InitVars, which always need to be there. To check if something is an
@@ -460,9 +460,7 @@ pub fn dataclasses_replace<'db>(
                     params.insert(
                         0,
                         CallableParam {
-                            param_specific: ParamSpecific::PositionalOnly(Type::Any(
-                                AnyCause::Todo,
-                            )),
+                            param_specific: ParamType::PositionalOnly(Type::Any(AnyCause::Todo)),
                             name: None,
                             has_default: false,
                         },
@@ -688,7 +686,7 @@ fn order_func(self_: Rc<Dataclass>, i_s: &InferenceState, from_type: bool) -> Lo
             },
             type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
             params: CallableParams::Simple(Rc::new([CallableParam {
-                param_specific: ParamSpecific::PositionalOnly(Type::Dataclass(self_)),
+                param_specific: ParamType::PositionalOnly(Type::Dataclass(self_)),
                 name: None,
                 has_default: false,
             }])),

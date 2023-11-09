@@ -37,8 +37,8 @@ use crate::type_::{
     infer_typed_dict_total_argument, infer_value_on_member, AnyCause, CallableContent,
     CallableLike, CallableParam, CallableParams, ClassGenerics, Dataclass, DataclassOptions,
     DbString, Enum, EnumMemberDefinition, FormatStyle, FunctionKind, FunctionOverload,
-    GenericClass, GenericsList, NamedTuple, ParamSpecific, RecursiveAlias, StringSlice, Tuple,
-    Type, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember,
+    GenericClass, GenericsList, NamedTuple, ParamType, RecursiveAlias, StringSlice, Tuple, Type,
+    TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember,
     TypedDictMemberGatherer, Variance,
 };
 
@@ -2016,7 +2016,7 @@ fn find_stmt_named_tuple_types(
                         )
                     } else {
                         vec.push(CallableParam {
-                            param_specific: ParamSpecific::PositionalOrKeyword(t),
+                            param_specific: ParamType::PositionalOrKeyword(t),
                             has_default: default.is_some(),
                             name: Some(
                                 StringSlice::from_name(file.file_index(), name.name()).into(),
@@ -2202,7 +2202,7 @@ impl NewOrInitConstructor<'_> {
 
 pub fn start_namedtuple_params(db: &Database) -> Vec<CallableParam> {
     vec![CallableParam {
-        param_specific: ParamSpecific::PositionalOnly(db.python_state.type_of_self.clone()),
+        param_specific: ParamType::PositionalOnly(db.python_state.type_of_self.clone()),
         has_default: false,
         name: None,
     }]

@@ -8,8 +8,8 @@ use crate::{
 };
 
 use super::{
-    AnyCause, CallableContent, CallableParam, CallableParams, DoubleStarredParamSpecific,
-    ParamSpecific, StarredParamSpecific, Type,
+    AnyCause, CallableContent, CallableParam, CallableParams, ParamType, StarParamType,
+    StarStarParamType, Type,
 };
 
 impl Type {
@@ -149,14 +149,12 @@ fn common_sub_type_params(
             let new_t = t1.common_base_type(i_s, t2);
             new_params.push(CallableParam {
                 param_specific: match &p1.param_specific.param_kind() {
-                    ParamKind::PositionalOnly => ParamSpecific::PositionalOnly(new_t),
-                    ParamKind::PositionalOrKeyword => ParamSpecific::PositionalOrKeyword(new_t),
-                    ParamKind::KeywordOnly => ParamSpecific::KeywordOnly(new_t),
-                    ParamKind::Starred => {
-                        ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(new_t))
-                    }
+                    ParamKind::PositionalOnly => ParamType::PositionalOnly(new_t),
+                    ParamKind::PositionalOrKeyword => ParamType::PositionalOrKeyword(new_t),
+                    ParamKind::KeywordOnly => ParamType::KeywordOnly(new_t),
+                    ParamKind::Starred => ParamType::Starred(StarParamType::ArbitraryLength(new_t)),
                     ParamKind::DoubleStarred => {
-                        ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ValueType(new_t))
+                        ParamType::DoubleStarred(StarStarParamType::ValueType(new_t))
                     }
                 },
                 name: p1.name.clone(),

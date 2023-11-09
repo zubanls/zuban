@@ -21,7 +21,7 @@ use crate::inference_state::InferenceState;
 use crate::node_ref::NodeRef;
 use crate::type_::{
     AnyCause, CallableContent, CallableParam, CallableParams, GenericItem, GenericsList,
-    ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamSpecific, StarredParamSpecific,
+    ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamType, StarParamType,
     TupleTypeArguments, Type, TypeArguments, TypeOrTypeVarTuple, TypeVarKind, TypeVarLike,
     TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, TypedDict, TypedDictGenerics, Variance,
 };
@@ -370,11 +370,11 @@ impl<'a> Matcher<'a> {
         let mut matches = Match::new_true();
         for pre in pre_param_spec_types {
             let t = match params2_iterator.peek().map(|p| &p.param_specific) {
-                Some(ParamSpecific::PositionalOnly(t) | ParamSpecific::PositionalOrKeyword(t)) => {
+                Some(ParamType::PositionalOnly(t) | ParamType::PositionalOrKeyword(t)) => {
                     params2_iterator.next();
                     t
                 }
-                Some(ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(t))) => t,
+                Some(ParamType::Starred(StarParamType::ArbitraryLength(t))) => t,
                 _ => return Match::new_false(),
             };
             matches &= pre.matches(i_s, self, t, variance);

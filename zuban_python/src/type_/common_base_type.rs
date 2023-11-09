@@ -10,9 +10,9 @@ use crate::{
 };
 
 use super::{
-    CallableContent, CallableParam, CallableParams, ClassGenerics, DoubleStarredParamSpecific,
-    GenericItem, GenericsList, ParamSpecific, StarredParamSpecific, Tuple, TupleTypeArguments,
-    Type, TypeOrTypeVarTuple, TypeVarLike, Variance,
+    CallableContent, CallableParam, CallableParams, ClassGenerics, GenericItem, GenericsList,
+    ParamType, StarParamType, StarStarParamType, Tuple, TupleTypeArguments, Type,
+    TypeOrTypeVarTuple, TypeVarLike, Variance,
 };
 
 impl Type {
@@ -282,14 +282,12 @@ fn common_params(
             let new_t = t1.common_sub_type(i_s, t2)?;
             new_params.push(CallableParam {
                 param_specific: match &kind {
-                    ParamKind::PositionalOnly => ParamSpecific::PositionalOnly(new_t),
-                    ParamKind::PositionalOrKeyword => ParamSpecific::PositionalOrKeyword(new_t),
-                    ParamKind::KeywordOnly => ParamSpecific::KeywordOnly(new_t),
-                    ParamKind::Starred => {
-                        ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(new_t))
-                    }
+                    ParamKind::PositionalOnly => ParamType::PositionalOnly(new_t),
+                    ParamKind::PositionalOrKeyword => ParamType::PositionalOrKeyword(new_t),
+                    ParamKind::KeywordOnly => ParamType::KeywordOnly(new_t),
+                    ParamKind::Starred => ParamType::Starred(StarParamType::ArbitraryLength(new_t)),
                     ParamKind::DoubleStarred => {
-                        ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ValueType(new_t))
+                        ParamType::DoubleStarred(StarStarParamType::ValueType(new_t))
                     }
                 },
                 name: (p1_name == p2_name).then(|| p1.name.clone()).flatten(),

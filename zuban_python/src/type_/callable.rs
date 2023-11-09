@@ -7,7 +7,7 @@ use crate::{
     inference_state::InferenceState,
     matching::{
         maybe_class_usage,
-        params::{WrappedDoubleStarred, WrappedParamSpecific, WrappedStarred},
+        params::{WrappedParamType, WrappedStar, WrappedStarStar},
         FormatData, Param, ParamsStyle,
     },
     type_::{FormatStyle, TypeVarLikeUsage},
@@ -21,28 +21,28 @@ use super::{
 };
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum StarredParamSpecific {
+pub enum StarParamType {
     ArbitraryLength(Type),
     ParamSpecArgs(ParamSpecUsage),
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum DoubleStarredParamSpecific {
+pub enum StarStarParamType {
     ValueType(Type),
     ParamSpecKwargs(ParamSpecUsage),
     UnpackTypedDict(Rc<TypedDict>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum ParamSpecific {
+pub enum ParamType {
     PositionalOnly(Type),
     PositionalOrKeyword(Type),
     KeywordOnly(Type),
-    Starred(StarredParamSpecific),
-    DoubleStarred(DoubleStarredParamSpecific),
+    Starred(StarParamType),
+    DoubleStarred(StarStarParamType),
 }
 
-impl ParamSpecific {
+impl ParamType {
     pub fn param_kind(&self) -> ParamKind {
         match self {
             Self::PositionalOnly(_) => ParamKind::PositionalOnly,
@@ -79,22 +79,22 @@ impl ParamSpecific {
             Self::PositionalOnly(t)
             | Self::PositionalOrKeyword(t)
             | Self::KeywordOnly(t)
-            | Self::Starred(StarredParamSpecific::ArbitraryLength(t))
-            | Self::DoubleStarred(DoubleStarredParamSpecific::ValueType(t)) => Some(t),
-            Self::Starred(StarredParamSpecific::ParamSpecArgs(_)) | Self::DoubleStarred(_) => None,
+            | Self::Starred(StarParamType::ArbitraryLength(t))
+            | Self::DoubleStarred(StarStarParamType::ValueType(t)) => Some(t),
+            Self::Starred(StarParamType::ParamSpecArgs(_)) | Self::DoubleStarred(_) => None,
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CallableParam {
-    pub param_specific: ParamSpecific,
+    pub param_specific: ParamType,
     pub name: Option<DbString>,
     pub has_default: bool,
 }
 
 impl CallableParam {
-    pub fn new_anonymous(param_specific: ParamSpecific) -> Self {
+    pub fn new_anonymous(param_specific: ParamType) -> Self {
         CallableParam {
             param_specific,
             name: None,
@@ -103,33 +103,33 @@ impl CallableParam {
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
-        if !matches!(self.param_specific, ParamSpecific::PositionalOnly(_))
+        if !matches!(self.param_specific, ParamType::PositionalOnly(_))
             || format_data.verbose && self.has_default
         {
-            if let ParamSpecific::Starred(t) = &self.param_specific {
+            if let ParamType::Starred(t) = &self.param_specific {
                 return match t {
-                    StarredParamSpecific::ArbitraryLength(t) => {
+                    StarParamType::ArbitraryLength(t) => {
                         format!("VarArg({})", t.format(format_data))
                     }
-                    StarredParamSpecific::ParamSpecArgs(u) => unreachable!(),
+                    StarParamType::ParamSpecArgs(u) => unreachable!(),
                 }
                 .into();
-            } else if let ParamSpecific::DoubleStarred(t) = &self.param_specific {
+            } else if let ParamType::DoubleStarred(t) = &self.param_specific {
                 return match t {
-                    DoubleStarredParamSpecific::ValueType(t) => {
+                    StarStarParamType::ValueType(t) => {
                         format!("KwArg({})", t.format(format_data))
                     }
-                    DoubleStarredParamSpecific::UnpackTypedDict(_) => todo!(),
-                    DoubleStarredParamSpecific::ParamSpecKwargs(_) => todo!(),
+                    StarStarParamType::UnpackTypedDict(_) => todo!(),
+                    StarStarParamType::ParamSpecKwargs(_) => todo!(),
                 }
                 .into();
             } else if let Some(name) = self.name.as_ref() {
                 match format_data.style {
                     FormatStyle::MypyRevealType => {
                         let mut string = match &self.param_specific {
-                            ParamSpecific::PositionalOnly(t)
-                            | ParamSpecific::PositionalOrKeyword(t)
-                            | ParamSpecific::KeywordOnly(t) => {
+                            ParamType::PositionalOnly(t)
+                            | ParamType::PositionalOrKeyword(t)
+                            | ParamType::KeywordOnly(t) => {
                                 format!(
                                     "{}: {}",
                                     name.as_str(format_data.db),
@@ -137,23 +137,21 @@ impl CallableParam {
                                 )
                             }
                             // TODO these two cases are probably unreachable
-                            ParamSpecific::Starred(s) => format!(
+                            ParamType::Starred(s) => format!(
                                 "*{}: {}",
                                 name.as_str(format_data.db),
                                 match s {
-                                    StarredParamSpecific::ArbitraryLength(t) =>
-                                        t.format(format_data),
-                                    StarredParamSpecific::ParamSpecArgs(_) => todo!(),
+                                    StarParamType::ArbitraryLength(t) => t.format(format_data),
+                                    StarParamType::ParamSpecArgs(_) => todo!(),
                                 }
                             ),
-                            ParamSpecific::DoubleStarred(d) => format!(
+                            ParamType::DoubleStarred(d) => format!(
                                 "**{}: {}",
                                 name.as_str(format_data.db),
                                 match d {
-                                    DoubleStarredParamSpecific::ValueType(t) =>
-                                        t.format(format_data),
-                                    DoubleStarredParamSpecific::UnpackTypedDict(_) => todo!(),
-                                    DoubleStarredParamSpecific::ParamSpecKwargs(_) => todo!(),
+                                    StarStarParamType::ValueType(t) => t.format(format_data),
+                                    StarStarParamType::UnpackTypedDict(_) => todo!(),
+                                    StarStarParamType::ParamSpecKwargs(_) => todo!(),
                                 }
                             ),
                         };
@@ -164,8 +162,7 @@ impl CallableParam {
                     }
                     _ => {
                         return match &self.param_specific {
-                            ParamSpecific::PositionalOnly(t)
-                            | ParamSpecific::PositionalOrKeyword(t) => {
+                            ParamType::PositionalOnly(t) | ParamType::PositionalOrKeyword(t) => {
                                 let t = t.format(format_data);
                                 if !format_data.verbose {
                                     return t;
@@ -176,7 +173,7 @@ impl CallableParam {
                                 };
                                 format!("{default}Arg({t}, '{}')", name.as_str(format_data.db))
                             }
-                            ParamSpecific::KeywordOnly(t) => {
+                            ParamType::KeywordOnly(t) => {
                                 let default = match self.has_default {
                                     false => "",
                                     true => "Default",
@@ -187,7 +184,7 @@ impl CallableParam {
                                     name.as_str(format_data.db)
                                 )
                             }
-                            ParamSpecific::Starred(_) | ParamSpecific::DoubleStarred(_) => {
+                            ParamType::Starred(_) | ParamType::DoubleStarred(_) => {
                                 unreachable!()
                             }
                         }
@@ -196,9 +193,9 @@ impl CallableParam {
                 }
             } else if self.has_default {
                 return match &self.param_specific {
-                    ParamSpecific::PositionalOnly(t)
-                    | ParamSpecific::PositionalOrKeyword(t)
-                    | ParamSpecific::KeywordOnly(t) => {
+                    ParamType::PositionalOnly(t)
+                    | ParamType::PositionalOrKeyword(t)
+                    | ParamType::KeywordOnly(t) => {
                         format!("DefaultArg({})", t.format(format_data)).into()
                     }
                     _ => unreachable!(),
@@ -206,7 +203,7 @@ impl CallableParam {
             }
         }
         match &self.param_specific {
-            ParamSpecific::PositionalOnly(t) => t.format(format_data),
+            ParamType::PositionalOnly(t) => t.format(format_data),
             _ => unreachable!(),
         }
     }
@@ -227,9 +224,9 @@ impl CallableParams {
                 // Display a star only if we are displaying a "normal" function signature
                 let mut had_param_spec_args = false;
                 for (i, param) in params.iter().enumerate() {
-                    use DoubleStarredParamSpecific::ParamSpecKwargs;
-                    use ParamSpecific::{DoubleStarred, Starred};
-                    use StarredParamSpecific::ParamSpecArgs;
+                    use ParamType::{DoubleStarred, Starred};
+                    use StarParamType::ParamSpecArgs;
+                    use StarStarParamType::ParamSpecKwargs;
                     match &param.param_specific {
                         Starred(ParamSpecArgs(usage1)) => match params
                             .get(i + 1)
@@ -290,18 +287,16 @@ impl CallableParams {
     ) -> bool {
         match self {
             Self::Simple(params) => params.iter().any(|param| match &param.param_specific {
-                ParamSpecific::PositionalOnly(t)
-                | ParamSpecific::PositionalOrKeyword(t)
-                | ParamSpecific::KeywordOnly(t)
-                | ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(t))
-                | ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ValueType(t)) => {
+                ParamType::PositionalOnly(t)
+                | ParamType::PositionalOrKeyword(t)
+                | ParamType::KeywordOnly(t)
+                | ParamType::Starred(StarParamType::ArbitraryLength(t))
+                | ParamType::DoubleStarred(StarStarParamType::ValueType(t)) => {
                     t.has_any_internal(i_s, already_checked)
                 }
-                ParamSpecific::Starred(StarredParamSpecific::ParamSpecArgs(_)) => false,
-                ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ParamSpecKwargs(_)) => {
-                    false
-                }
-                ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::UnpackTypedDict(_)) => {
+                ParamType::Starred(StarParamType::ParamSpecArgs(_)) => false,
+                ParamType::DoubleStarred(StarStarParamType::ParamSpecKwargs(_)) => false,
+                ParamType::DoubleStarred(StarStarParamType::UnpackTypedDict(_)) => {
                     todo!()
                 }
             }),
@@ -387,7 +382,7 @@ impl CallableContent {
         match &self.params {
             CallableParams::Simple(params) => {
                 params.first().and_then(|p| match &p.param_specific {
-                    ParamSpecific::PositionalOnly(t) | ParamSpecific::PositionalOrKeyword(t) => {
+                    ParamType::PositionalOnly(t) | ParamType::PositionalOrKeyword(t) => {
                         Some(t.clone())
                     }
                     _ => todo!(),
@@ -410,7 +405,7 @@ impl CallableContent {
                         if !param.has_default
                             && !matches!(
                                 &param.param_specific,
-                                ParamSpecific::Starred(_) | ParamSpecific::DoubleStarred(_)
+                                ParamType::Starred(_) | ParamType::DoubleStarred(_)
                             )
                         {
                             return Some(WrongPositionalCount::TooMany);
@@ -434,30 +429,27 @@ impl CallableContent {
     }
 
     pub fn has_self_type(&self) -> bool {
-        self.result_type.has_self_type() || match &self.params {
-            CallableParams::Simple(params) => {
-                params.iter().any(|param| match &param.param_specific {
-                    ParamSpecific::PositionalOnly(t)
-                    | ParamSpecific::PositionalOrKeyword(t)
-                    | ParamSpecific::KeywordOnly(t)
-                    | ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(t))
-                    | ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ValueType(t)) => {
-                        t.has_self_type()
-                    }
-                    ParamSpecific::Starred(StarredParamSpecific::ParamSpecArgs(_)) => false,
-                    ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ParamSpecKwargs(
-                        _,
-                    )) => false,
-                    ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::UnpackTypedDict(
-                        _,
-                    )) => todo!(),
-                })
+        self.result_type.has_self_type()
+            || match &self.params {
+                CallableParams::Simple(params) => {
+                    params.iter().any(|param| match &param.param_specific {
+                        ParamType::PositionalOnly(t)
+                        | ParamType::PositionalOrKeyword(t)
+                        | ParamType::KeywordOnly(t)
+                        | ParamType::Starred(StarParamType::ArbitraryLength(t))
+                        | ParamType::DoubleStarred(StarStarParamType::ValueType(t)) => {
+                            t.has_self_type()
+                        }
+                        ParamType::Starred(StarParamType::ParamSpecArgs(_)) => false,
+                        ParamType::DoubleStarred(StarStarParamType::ParamSpecKwargs(_)) => false,
+                        ParamType::DoubleStarred(StarStarParamType::UnpackTypedDict(_)) => todo!(),
+                    })
+                }
+                CallableParams::Any(_) => false,
+                CallableParams::WithParamSpec(types, param_spec) => {
+                    todo!()
+                }
             }
-            CallableParams::Any(_) => false,
-            CallableParams::WithParamSpec(types, param_spec) => {
-                todo!()
-            }
-        }
     }
 
     pub fn format(&self, format_data: &FormatData) -> String {
@@ -624,18 +616,18 @@ pub fn format_callable_params<'db: 'x, 'x, P: Param<'x>>(
     let mut args = join_with_commas(params.enumerate().map(|(i, p)| {
         let specific = p.specific(db);
         let annotation_str = match &specific {
-            WrappedParamSpecific::PositionalOnly(t)
-            | WrappedParamSpecific::PositionalOrKeyword(t)
-            | WrappedParamSpecific::KeywordOnly(t)
-            | WrappedParamSpecific::Starred(WrappedStarred::ArbitraryLength(t))
-            | WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t)) => t
+            WrappedParamType::PositionalOnly(t)
+            | WrappedParamType::PositionalOrKeyword(t)
+            | WrappedParamType::KeywordOnly(t)
+            | WrappedParamType::Starred(WrappedStar::ArbitraryLength(t))
+            | WrappedParamType::DoubleStarred(WrappedStarStar::ValueType(t)) => t
                 .as_ref()
                 .map(|t| format_function_type(format_data, t, class)),
-            WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u)) => todo!(),
-            WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::UnpackTypedDict(u)) => {
+            WrappedParamType::Starred(WrappedStar::ParamSpecArgs(u)) => todo!(),
+            WrappedParamType::DoubleStarred(WrappedStarStar::UnpackTypedDict(u)) => {
                 todo!()
             }
-            WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(_)) => {
+            WrappedParamType::DoubleStarred(WrappedStarStar::ParamSpecKwargs(_)) => {
                 todo!()
             }
         };
@@ -667,11 +659,11 @@ pub fn format_callable_params<'db: 'x, 'x, P: Param<'x>>(
             }
             out
         };
-        if matches!(&specific, WrappedParamSpecific::KeywordOnly(_)) && !had_kwargs_separator {
+        if matches!(&specific, WrappedParamType::KeywordOnly(_)) && !had_kwargs_separator {
             had_kwargs_separator = true;
             out = format!("*, {out}");
         }
-        had_kwargs_separator |= matches!(specific, WrappedParamSpecific::Starred(_));
+        had_kwargs_separator |= matches!(specific, WrappedParamType::Starred(_));
         if p.has_default() {
             if show_additional_information {
                 out += " = ...";

@@ -21,10 +21,9 @@ use crate::matching::{
 };
 use crate::node_ref::NodeRef;
 use crate::type_::{
-    AnyCause, CallableContent, CallableParam, CallableParams, DoubleStarredParamSpecific,
-    FunctionKind, Literal, LiteralKind, Namespace, ParamSpecific, StarredParamSpecific,
-    StringSlice, Tuple, TupleTypeArguments, Type, TypeOrTypeVarTuple, UnionEntry, UnionType,
-    Variance,
+    AnyCause, CallableContent, CallableParam, CallableParams, FunctionKind, Literal, LiteralKind,
+    Namespace, ParamType, StarParamType, StarStarParamType, StringSlice, Tuple, TupleTypeArguments,
+    Type, TypeOrTypeVarTuple, UnionEntry, UnionType, Variance,
 };
 use crate::type_helpers::{
     lookup_in_namespace, Class, FirstParamKind, Function, GeneratorType, Instance, Module,
@@ -1515,20 +1514,18 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let to_callable_param = |param: Param| CallableParam {
             param_specific: match param.type_() {
                 ParamKind::PositionalOnly => {
-                    ParamSpecific::PositionalOnly(Type::Any(AnyCause::Unannotated))
+                    ParamType::PositionalOnly(Type::Any(AnyCause::Unannotated))
                 }
                 ParamKind::PositionalOrKeyword => {
-                    ParamSpecific::PositionalOrKeyword(Type::Any(AnyCause::Unannotated))
+                    ParamType::PositionalOrKeyword(Type::Any(AnyCause::Unannotated))
                 }
-                ParamKind::KeywordOnly => {
-                    ParamSpecific::KeywordOnly(Type::Any(AnyCause::Unannotated))
-                }
-                ParamKind::Starred => ParamSpecific::Starred(
-                    StarredParamSpecific::ArbitraryLength(Type::Any(AnyCause::Unannotated)),
-                ),
-                ParamKind::DoubleStarred => ParamSpecific::DoubleStarred(
-                    DoubleStarredParamSpecific::ValueType(Type::Any(AnyCause::Unannotated)),
-                ),
+                ParamKind::KeywordOnly => ParamType::KeywordOnly(Type::Any(AnyCause::Unannotated)),
+                ParamKind::Starred => ParamType::Starred(StarParamType::ArbitraryLength(
+                    Type::Any(AnyCause::Unannotated),
+                )),
+                ParamKind::DoubleStarred => ParamType::DoubleStarred(StarStarParamType::ValueType(
+                    Type::Any(AnyCause::Unannotated),
+                )),
             },
             name: Some(
                 StringSlice::from_name(self.file.file_index(), param.name_definition().name())
@@ -2250,7 +2247,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                             return match &current_callable.params {
                                                 CallableParams::Simple(ps) => {
                                                     if let Some(p2) = ps.get(i) {
-                                                        if let ParamSpecific::PositionalOnly(t) =
+                                                        if let ParamType::PositionalOnly(t) =
                                                             &p2.param_specific
                                                         {
                                                             if p.type_()

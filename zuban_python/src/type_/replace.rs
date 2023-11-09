@@ -7,11 +7,10 @@ use crate::{
 
 use super::{
     simplified_union_from_iterators, CallableContent, CallableParam, CallableParams, ClassGenerics,
-    Dataclass, DoubleStarredParamSpecific, GenericClass, GenericItem, GenericsList, NamedTuple,
-    ParamSpecArgument, ParamSpecTypeVars, ParamSpecific, RecursiveAlias, StarredParamSpecific,
-    Tuple, TupleTypeArguments, Type, TypeArguments, TypeOrTypeVarTuple, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypedDict, TypedDictGenerics, UnionEntry,
-    UnionType,
+    Dataclass, GenericClass, GenericItem, GenericsList, NamedTuple, ParamSpecArgument,
+    ParamSpecTypeVars, ParamType, RecursiveAlias, StarParamType, StarStarParamType, Tuple,
+    TupleTypeArguments, Type, TypeArguments, TypeOrTypeVarTuple, TypeVarLike, TypeVarLikeUsage,
+    TypeVarLikes, TypeVarManager, TypedDict, TypedDictGenerics, UnionEntry, UnionType,
 };
 
 pub type ReplaceTypeVarLike<'x> = &'x mut dyn FnMut(TypeVarLikeUsage) -> GenericItem;
@@ -235,11 +234,11 @@ impl Type {
                         .expect_simple_params()
                         .iter()
                         .map(|param| {
-                            let ParamSpecific::PositionalOrKeyword(t) = &param.param_specific else {
+                            let ParamType::PositionalOrKeyword(t) = &param.param_specific else {
                                 return param.clone()
                             };
                             CallableParam {
-                                param_specific: ParamSpecific::PositionalOrKeyword(
+                                param_specific: ParamType::PositionalOrKeyword(
                                     t.replace_type_var_likes_and_self(db, callable, replace_self),
                                 ),
                                 has_default: param.has_default,
@@ -323,40 +322,38 @@ impl Type {
                         .iter()
                         .map(|p| CallableParam {
                             param_specific: match &p.param_specific {
-                                ParamSpecific::PositionalOnly(t) => ParamSpecific::PositionalOnly(
+                                ParamType::PositionalOnly(t) => ParamType::PositionalOnly(
                                     t.rewrite_late_bound_callables(manager),
                                 ),
-                                ParamSpecific::PositionalOrKeyword(t) => {
-                                    ParamSpecific::PositionalOrKeyword(
+                                ParamType::PositionalOrKeyword(t) => {
+                                    ParamType::PositionalOrKeyword(
                                         t.rewrite_late_bound_callables(manager),
                                     )
                                 }
-                                ParamSpecific::KeywordOnly(t) => ParamSpecific::KeywordOnly(
-                                    t.rewrite_late_bound_callables(manager),
-                                ),
-                                ParamSpecific::Starred(s) => ParamSpecific::Starred(match s {
-                                    StarredParamSpecific::ArbitraryLength(t) => {
-                                        StarredParamSpecific::ArbitraryLength(
+                                ParamType::KeywordOnly(t) => {
+                                    ParamType::KeywordOnly(t.rewrite_late_bound_callables(manager))
+                                }
+                                ParamType::Starred(s) => ParamType::Starred(match s {
+                                    StarParamType::ArbitraryLength(t) => {
+                                        StarParamType::ArbitraryLength(
                                             t.rewrite_late_bound_callables(manager),
                                         )
                                     }
-                                    StarredParamSpecific::ParamSpecArgs(_) => todo!(),
+                                    StarParamType::ParamSpecArgs(_) => todo!(),
                                 }),
-                                ParamSpecific::DoubleStarred(d) => {
-                                    ParamSpecific::DoubleStarred(match d {
-                                        DoubleStarredParamSpecific::ValueType(t) => {
-                                            DoubleStarredParamSpecific::ValueType(
-                                                t.rewrite_late_bound_callables(manager),
-                                            )
-                                        }
-                                        DoubleStarredParamSpecific::UnpackTypedDict(_) => {
-                                            todo!()
-                                        }
-                                        DoubleStarredParamSpecific::ParamSpecKwargs(_) => {
-                                            todo!()
-                                        }
-                                    })
-                                }
+                                ParamType::DoubleStarred(d) => ParamType::DoubleStarred(match d {
+                                    StarStarParamType::ValueType(t) => {
+                                        StarStarParamType::ValueType(
+                                            t.rewrite_late_bound_callables(manager),
+                                        )
+                                    }
+                                    StarStarParamType::UnpackTypedDict(_) => {
+                                        todo!()
+                                    }
+                                    StarStarParamType::ParamSpecKwargs(_) => {
+                                        todo!()
+                                    }
+                                }),
                             },
                             has_default: p.has_default,
                             name: p.name.clone(),
@@ -391,20 +388,18 @@ impl Type {
                     .iter()
                     .map(|p| CallableParam {
                         param_specific: match &p.param_specific {
-                            ParamSpecific::PositionalOnly(t) => ParamSpecific::PositionalOnly(
+                            ParamType::PositionalOnly(t) => ParamType::PositionalOnly(
                                 t.replace_type_var_likes_and_self(db, callable, replace_self),
                             ),
-                            ParamSpecific::PositionalOrKeyword(t) => {
-                                ParamSpecific::PositionalOrKeyword(
-                                    t.replace_type_var_likes_and_self(db, callable, replace_self),
-                                )
-                            }
-                            ParamSpecific::KeywordOnly(t) => ParamSpecific::KeywordOnly(
+                            ParamType::PositionalOrKeyword(t) => ParamType::PositionalOrKeyword(
                                 t.replace_type_var_likes_and_self(db, callable, replace_self),
                             ),
-                            ParamSpecific::Starred(s) => ParamSpecific::Starred(match s {
-                                StarredParamSpecific::ArbitraryLength(t) => {
-                                    StarredParamSpecific::ArbitraryLength(
+                            ParamType::KeywordOnly(t) => ParamType::KeywordOnly(
+                                t.replace_type_var_likes_and_self(db, callable, replace_self),
+                            ),
+                            ParamType::Starred(s) => ParamType::Starred(match s {
+                                StarParamType::ArbitraryLength(t) => {
+                                    StarParamType::ArbitraryLength(
                                         t.replace_type_var_likes_and_self(
                                             db,
                                             callable,
@@ -412,27 +407,19 @@ impl Type {
                                         ),
                                     )
                                 }
-                                StarredParamSpecific::ParamSpecArgs(_) => todo!(),
+                                StarParamType::ParamSpecArgs(_) => todo!(),
                             }),
-                            ParamSpecific::DoubleStarred(d) => {
-                                ParamSpecific::DoubleStarred(match d {
-                                    DoubleStarredParamSpecific::ValueType(t) => {
-                                        DoubleStarredParamSpecific::ValueType(
-                                            t.replace_type_var_likes_and_self(
-                                                db,
-                                                callable,
-                                                replace_self,
-                                            ),
-                                        )
-                                    }
-                                    DoubleStarredParamSpecific::UnpackTypedDict(_) => {
-                                        todo!()
-                                    }
-                                    DoubleStarredParamSpecific::ParamSpecKwargs(_) => {
-                                        todo!()
-                                    }
-                                })
-                            }
+                            ParamType::DoubleStarred(d) => ParamType::DoubleStarred(match d {
+                                StarStarParamType::ValueType(t) => StarStarParamType::ValueType(
+                                    t.replace_type_var_likes_and_self(db, callable, replace_self),
+                                ),
+                                StarStarParamType::UnpackTypedDict(_) => {
+                                    todo!()
+                                }
+                                StarStarParamType::ParamSpecKwargs(_) => {
+                                    todo!()
+                                }
+                            }),
                         },
                         has_default: p.has_default,
                         name: p.name.clone(),
@@ -485,7 +472,7 @@ impl Type {
                             params.splice(
                                 0..0,
                                 types.iter().map(|t| CallableParam {
-                                    param_specific: ParamSpecific::PositionalOnly(
+                                    param_specific: ParamType::PositionalOnly(
                                         t.replace_type_var_likes_and_self(
                                             db,
                                             callable,

@@ -21,7 +21,7 @@ use crate::file::{
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::params::{
-    InferrableParamIterator, Param, WrappedDoubleStarred, WrappedParamSpecific, WrappedStarred,
+    InferrableParamIterator, Param, WrappedParamType, WrappedStar, WrappedStarStar,
 };
 use crate::matching::{
     calculate_function_type_vars_and_return, maybe_class_usage, CalculatedTypeArguments, Generic,
@@ -31,10 +31,10 @@ use crate::node_ref::NodeRef;
 use crate::python_state::NAME_TO_FUNCTION_DIFF;
 use crate::type_::{
     AnyCause, CallableContent, CallableLike, CallableParam, CallableParams, ClassGenerics,
-    DbString, DoubleStarredParamSpecific, FunctionKind, FunctionOverload, GenericClass,
-    GenericItem, ParamSpecUsage, ParamSpecific, ReplaceSelf, StarredParamSpecific, StringSlice,
-    TupleTypeArguments, Type, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
-    TypeVarManager, TypeVarName, TypeVarUsage, Variance, WrongPositionalCount,
+    DbString, FunctionKind, FunctionOverload, GenericClass, GenericItem, ParamSpecUsage, ParamType,
+    ReplaceSelf, StarParamType, StarStarParamType, StringSlice, TupleTypeArguments, Type, TypeVar,
+    TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarName,
+    TypeVarUsage, Variance, WrongPositionalCount,
 };
 use crate::type_helpers::{Class, Module};
 use crate::utils::rc_unwrap_or_clone;
@@ -1044,18 +1044,16 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 })
             };
             let param_specific = match specific {
-                WrappedParamSpecific::PositionalOnly(t) => ParamSpecific::PositionalOnly(as_t(t)),
-                WrappedParamSpecific::PositionalOrKeyword(t) => {
-                    ParamSpecific::PositionalOrKeyword(as_t(t))
+                WrappedParamType::PositionalOnly(t) => ParamType::PositionalOnly(as_t(t)),
+                WrappedParamType::PositionalOrKeyword(t) => ParamType::PositionalOrKeyword(as_t(t)),
+                WrappedParamType::KeywordOnly(t) => ParamType::KeywordOnly(as_t(t)),
+                WrappedParamType::Starred(WrappedStar::ArbitraryLength(t)) => {
+                    ParamType::Starred(StarParamType::ArbitraryLength(as_t(t)))
                 }
-                WrappedParamSpecific::KeywordOnly(t) => ParamSpecific::KeywordOnly(as_t(t)),
-                WrappedParamSpecific::Starred(WrappedStarred::ArbitraryLength(t)) => {
-                    ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(as_t(t)))
-                }
-                WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u1)) => {
+                WrappedParamType::Starred(WrappedStar::ParamSpecArgs(u1)) => {
                     match params.peek().map(|p| p.specific(i_s.db)) {
-                        Some(WrappedParamSpecific::DoubleStarred(
-                            WrappedDoubleStarred::ParamSpecKwargs(u2),
+                        Some(WrappedParamType::DoubleStarred(
+                            WrappedStarStar::ParamSpecKwargs(u2),
                         )) if u1 == u2 => {
                             had_param_spec_args = true;
                             continue;
@@ -1063,13 +1061,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         _ => todo!(),
                     }
                 }
-                WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t)) => {
-                    ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ValueType(as_t(t)))
+                WrappedParamType::DoubleStarred(WrappedStarStar::ValueType(t)) => {
+                    ParamType::DoubleStarred(StarStarParamType::ValueType(as_t(t)))
                 }
-                WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::UnpackTypedDict(u)) => {
+                WrappedParamType::DoubleStarred(WrappedStarStar::UnpackTypedDict(u)) => {
                     todo!()
                 }
-                WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(u)) => {
+                WrappedParamType::DoubleStarred(WrappedStarStar::ParamSpecKwargs(u)) => {
                     if !had_param_spec_args {
                         todo!()
                     }
@@ -1333,7 +1331,7 @@ impl<'x> Param<'x> for FunctionParam<'x> {
         Some(self.param.name_definition().as_code())
     }
 
-    fn specific<'db: 'x>(&self, db: &'db Database) -> WrappedParamSpecific<'x> {
+    fn specific<'db: 'x>(&self, db: &'db Database) -> WrappedParamType<'x> {
         let t = self
             .param
             .annotation()
@@ -1351,14 +1349,14 @@ impl<'x> Param<'x> for FunctionParam<'x> {
         }
 
         match self.kind(db) {
-            ParamKind::PositionalOnly => WrappedParamSpecific::PositionalOnly(t),
-            ParamKind::PositionalOrKeyword => WrappedParamSpecific::PositionalOrKeyword(t),
-            ParamKind::KeywordOnly => WrappedParamSpecific::KeywordOnly(t),
-            ParamKind::Starred => WrappedParamSpecific::Starred(match dbt(t.as_ref()) {
+            ParamKind::PositionalOnly => WrappedParamType::PositionalOnly(t),
+            ParamKind::PositionalOrKeyword => WrappedParamType::PositionalOrKeyword(t),
+            ParamKind::KeywordOnly => WrappedParamType::KeywordOnly(t),
+            ParamKind::Starred => WrappedParamType::Starred(match dbt(t.as_ref()) {
                 Some(Type::ParamSpecArgs(ref param_spec_usage)) => {
-                    WrappedStarred::ParamSpecArgs(param_spec_usage)
+                    WrappedStar::ParamSpecArgs(param_spec_usage)
                 }
-                _ => WrappedStarred::ArbitraryLength(t.map(|t| {
+                _ => WrappedStar::ArbitraryLength(t.map(|t| {
                     let Type::Tuple(t) = expect_borrowed(&t) else {
                         unreachable!()
                     };
@@ -1368,11 +1366,11 @@ impl<'x> Param<'x> for FunctionParam<'x> {
                     }
                 }))
             }),
-            ParamKind::DoubleStarred => WrappedParamSpecific::DoubleStarred(match dbt(t.as_ref()) {
+            ParamKind::DoubleStarred => WrappedParamType::DoubleStarred(match dbt(t.as_ref()) {
                 Some(Type::ParamSpecKwargs(param_spec_usage)) => {
-                    WrappedDoubleStarred::ParamSpecKwargs(param_spec_usage)
+                    WrappedStarStar::ParamSpecKwargs(param_spec_usage)
                 }
-                _ => WrappedDoubleStarred::ValueType(t.map(|t| {
+                _ => WrappedStarStar::ValueType(t.map(|t| {
                     let Type::Class(GenericClass {generics: ClassGenerics::List(generics), ..}) = expect_borrowed(&t) else {
                         unreachable!()
                     };

@@ -20,13 +20,13 @@ use crate::matching::{FormatData, Generics, ResultContext};
 use crate::node_ref::NodeRef;
 use crate::type_::{
     new_collections_named_tuple, new_typing_named_tuple, AnyCause, CallableContent, CallableParam,
-    CallableParams, CallableWithParent, ClassGenerics, Dataclass, DbString,
-    DoubleStarredParamSpecific, Enum, EnumMember, FunctionKind, GenericClass, GenericItem,
-    GenericsList, Literal, LiteralKind, NamedTuple, Namespace, NewType, ParamSpecArgument,
-    ParamSpecUsage, ParamSpecific, RecursiveAlias, StarredParamSpecific, StringSlice, Tuple, Type,
-    TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage,
-    TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, TypedDict, TypedDictGenerics,
-    TypedDictMember, UnionEntry, UnionType,
+    CallableParams, CallableWithParent, ClassGenerics, Dataclass, DbString, Enum, EnumMember,
+    FunctionKind, GenericClass, GenericItem, GenericsList, Literal, LiteralKind, NamedTuple,
+    Namespace, NewType, ParamSpecArgument, ParamSpecUsage, ParamType, RecursiveAlias,
+    StarParamType, StarStarParamType, StringSlice, Tuple, Type, TypeArguments, TypeOrTypeVarTuple,
+    TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
+    TypeVarTupleUsage, TypeVarUsage, TypedDict, TypedDictGenerics, TypedDictMember, UnionEntry,
+    UnionType,
 };
 use crate::type_helpers::{start_namedtuple_params, Class, Function, Module};
 use crate::{debug, new_class};
@@ -1894,7 +1894,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             p
         } else {
             CallableParam {
-                param_specific: ParamSpecific::PositionalOnly(
+                param_specific: ParamType::PositionalOnly(
                     self.as_type(t, NodeRef::new(self.inference.file, index)),
                 ),
                 has_default: false,
@@ -2186,13 +2186,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::InvalidVariable(InvalidVariableType::Ellipsis) => {
                 let mut params: Vec<_> = types
                     .into_iter()
-                    .map(|t| CallableParam::new_anonymous(ParamSpecific::PositionalOnly(t)))
+                    .map(|t| CallableParam::new_anonymous(ParamType::PositionalOnly(t)))
                     .collect();
-                params.push(CallableParam::new_anonymous(ParamSpecific::Starred(
-                    StarredParamSpecific::ArbitraryLength(Type::Any(AnyCause::Explicit)),
+                params.push(CallableParam::new_anonymous(ParamType::Starred(
+                    StarParamType::ArbitraryLength(Type::Any(AnyCause::Explicit)),
                 )));
-                params.push(CallableParam::new_anonymous(ParamSpecific::DoubleStarred(
-                    DoubleStarredParamSpecific::ValueType(Type::Any(AnyCause::Explicit)),
+                params.push(CallableParam::new_anonymous(ParamType::DoubleStarred(
+                    StarStarParamType::ValueType(Type::Any(AnyCause::Explicit)),
                 )));
                 TypeContent::Concatenate(CallableParams::Simple(params.into()))
             }
@@ -2671,14 +2671,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let type_ = type_.unwrap_or(Type::Any(AnyCause::Todo));
         TypeContent::SpecialType(SpecialType::CallableParam(CallableParam {
             param_specific: match param_kind {
-                ParamKind::PositionalOnly => ParamSpecific::PositionalOnly(type_),
-                ParamKind::PositionalOrKeyword => ParamSpecific::PositionalOrKeyword(type_),
-                ParamKind::KeywordOnly => ParamSpecific::KeywordOnly(type_),
-                ParamKind::Starred => {
-                    ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(type_))
-                }
+                ParamKind::PositionalOnly => ParamType::PositionalOnly(type_),
+                ParamKind::PositionalOrKeyword => ParamType::PositionalOrKeyword(type_),
+                ParamKind::KeywordOnly => ParamType::KeywordOnly(type_),
+                ParamKind::Starred => ParamType::Starred(StarParamType::ArbitraryLength(type_)),
                 ParamKind::DoubleStarred => {
-                    ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ValueType(type_))
+                    ParamType::DoubleStarred(StarStarParamType::ValueType(type_))
                 }
             },
             name: name.map(|s| s.into()),
@@ -2734,7 +2732,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             let name_str = name.as_str(self.inference.i_s.db);
             let t = self.compute_named_expr_type(type_expr);
             params.push(CallableParam {
-                param_specific: ParamSpecific::PositionalOrKeyword(t),
+                param_specific: ParamType::PositionalOrKeyword(t),
                 name: Some(name.into()),
                 has_default: false,
             });

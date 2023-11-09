@@ -1,8 +1,7 @@
 use parsa_python_ast::ParamKind;
 
 use super::super::params::{
-    InferrableParamIterator, Param, ParamArgument, WrappedDoubleStarred, WrappedParamSpecific,
-    WrappedStarred,
+    InferrableParamIterator, Param, ParamArgument, WrappedParamType, WrappedStar, WrappedStarStar,
 };
 use super::super::{
     ArgumentIndexWithParam, FormatData, Generics, Match, Matcher, MismatchReason, OnTypeError,
@@ -466,23 +465,17 @@ pub fn match_arguments_against_params<
             ParamArgument::Argument(argument) => {
                 let specific = p.param.specific(i_s.db);
                 let annotation_type = match specific {
-                    WrappedParamSpecific::PositionalOnly(t)
-                    | WrappedParamSpecific::PositionalOrKeyword(t)
-                    | WrappedParamSpecific::KeywordOnly(t)
-                    | WrappedParamSpecific::Starred(WrappedStarred::ArbitraryLength(t))
-                    | WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t)) => {
-                        match t {
-                            Some(t) => t,
-                            None => continue,
-                        }
-                    }
-                    WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(_))
-                    | WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::UnpackTypedDict(
-                        _,
-                    ))
-                    | WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(
-                        _,
-                    )) => {
+                    WrappedParamType::PositionalOnly(t)
+                    | WrappedParamType::PositionalOrKeyword(t)
+                    | WrappedParamType::KeywordOnly(t)
+                    | WrappedParamType::Starred(WrappedStar::ArbitraryLength(t))
+                    | WrappedParamType::DoubleStarred(WrappedStarStar::ValueType(t)) => match t {
+                        Some(t) => t,
+                        None => continue,
+                    },
+                    WrappedParamType::Starred(WrappedStar::ParamSpecArgs(_))
+                    | WrappedParamType::DoubleStarred(WrappedStarStar::UnpackTypedDict(_))
+                    | WrappedParamType::DoubleStarred(WrappedStarStar::ParamSpecKwargs(_)) => {
                         todo!()
                     }
                 };

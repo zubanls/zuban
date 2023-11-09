@@ -55,8 +55,8 @@ use crate::utils::{bytes_repr, str_repr};
 use crate::workspaces::Directory;
 
 pub use self::callable::{
-    format_callable_params, CallableContent, CallableParam, CallableParams,
-    DoubleStarredParamSpecific, ParamSpecific, StarredParamSpecific, WrongPositionalCount,
+    format_callable_params, CallableContent, CallableParam, CallableParams, ParamType,
+    StarParamType, StarStarParamType, WrongPositionalCount,
 };
 pub use self::dataclass::{
     check_dataclass_options, dataclass_init_func, dataclass_initialize, dataclasses_replace,
@@ -752,24 +752,20 @@ impl Type {
             CallableParams::Simple(params) => {
                 for param in params.iter() {
                     match &param.param_specific {
-                        ParamSpecific::PositionalOnly(t)
-                        | ParamSpecific::PositionalOrKeyword(t)
-                        | ParamSpecific::KeywordOnly(t)
-                        | ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(t))
-                        | ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ValueType(t)) => {
+                        ParamType::PositionalOnly(t)
+                        | ParamType::PositionalOrKeyword(t)
+                        | ParamType::KeywordOnly(t)
+                        | ParamType::Starred(StarParamType::ArbitraryLength(t))
+                        | ParamType::DoubleStarred(StarStarParamType::ValueType(t)) => {
                             t.search_type_vars(found_type_var)
                         }
-                        ParamSpecific::Starred(StarredParamSpecific::ParamSpecArgs(_)) => {
+                        ParamType::Starred(StarParamType::ParamSpecArgs(_)) => {
                             unreachable!()
                         }
-                        ParamSpecific::DoubleStarred(
-                            DoubleStarredParamSpecific::UnpackTypedDict(t),
-                        ) => {
+                        ParamType::DoubleStarred(StarStarParamType::UnpackTypedDict(t)) => {
                             todo!()
                         }
-                        ParamSpecific::DoubleStarred(
-                            DoubleStarredParamSpecific::ParamSpecKwargs(_),
-                        ) => {
+                        ParamType::DoubleStarred(StarStarParamType::ParamSpecKwargs(_)) => {
                             todo!()
                         }
                     }
