@@ -607,8 +607,8 @@ pub fn format_callable_params<'db: 'x, 'x, P: Param<'x>>(
                 .as_ref()
                 .map(|t| format_function_type(format_data, t, class)),
             WrappedParamType::Star(WrappedStar::ParamSpecArgs(u)) => todo!(),
-            WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(u)) => {
-                todo!()
+            WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(td)) => {
+                Some(format!("Unpack[{}]", td.format(format_data)).into())
             }
             WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(_)) => {
                 todo!()

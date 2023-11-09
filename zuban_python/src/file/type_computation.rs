@@ -608,6 +608,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     fn wrap_star(&mut self, t: TypeContent, expr: Expression) -> AnnotationReturn {
         let t = self.as_type(t, NodeRef::new(self.inference.file, expr.index()));
         match &t {
+            // TODO is this AnnotationReturn really needed??
             Type::ParamSpecArgs(_) => AnnotationReturn::Type(t),
             _ => AnnotationReturn::Type(Type::Tuple(Rc::new(Tuple::new_arbitrary_length(t)))),
         }
@@ -662,9 +663,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut type_ = match map_type_callback {
             Some(map_type_callback) => match map_type_callback(self, type_) {
                 AnnotationReturn::Type(t) => t,
-                AnnotationReturn::UnpackType(t) => {
-                    todo!()
-                }
+                AnnotationReturn::UnpackType(t) => t,
             },
             None => match type_ {
                 TypeContent::SimpleGeneric { .. } | TypeContent::Class { .. }

@@ -1065,7 +1065,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     ParamType::StarStar(StarStarParamType::ValueType(as_t(t)))
                 }
                 WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(u)) => {
-                    todo!()
+                    ParamType::StarStar(StarStarParamType::UnpackTypedDict(u))
                 }
                 WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(u)) => {
                     if !had_param_spec_args {
@@ -1364,22 +1364,29 @@ impl<'x> Param<'x> for FunctionParam<'x> {
                         TupleTypeArguments::FixedLength(..) => todo!(),
                         TupleTypeArguments::ArbitraryLength(t) => Cow::Borrowed(t.as_ref()),
                     }
-                }))
+                })),
             }),
             ParamKind::StarStar => WrappedParamType::StarStar(match dbt(t.as_ref()) {
                 Some(Type::ParamSpecKwargs(param_spec_usage)) => {
                     WrappedStarStar::ParamSpecKwargs(param_spec_usage)
                 }
-                _ => WrappedStarStar::ValueType(t.map(|t| {
-                    let Type::Class(GenericClass {generics: ClassGenerics::List(generics), ..}) = expect_borrowed(&t) else {
-                        unreachable!()
-                    };
-                    let GenericItem::TypeArgument(t) = &generics[1.into()] else {
-                        unreachable!();
-                    };
-                    Cow::Borrowed(t)
-                }))
-            })
+                _ => t
+                    .map(|t| match expect_borrowed(&t) {
+                        Type::Class(GenericClass {
+                            link,
+                            generics: ClassGenerics::List(generics),
+                        }) => {
+                            debug_assert_eq!(*link, db.python_state.dict_node_ref().as_link());
+                            let GenericItem::TypeArgument(t) = &generics[1.into()] else {
+                            unreachable!();
+                        };
+                            WrappedStarStar::ValueType(Some(Cow::Borrowed(t)))
+                        }
+                        Type::TypedDict(td) => WrappedStarStar::UnpackTypedDict(td.clone()),
+                        _ => unreachable!(),
+                    })
+                    .unwrap_or(WrappedStarStar::ValueType(None)),
+            }),
         }
     }
 
