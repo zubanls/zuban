@@ -751,7 +751,7 @@ impl Type {
         let search_params = |found_type_var: &mut C, params: &_| match params {
             CallableParams::Simple(params) => {
                 for param in params.iter() {
-                    match &param.param_specific {
+                    match &param.type_ {
                         ParamType::PositionalOnly(t)
                         | ParamType::PositionalOrKeyword(t)
                         | ParamType::KeywordOnly(t)

@@ -298,9 +298,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
                                 BoundKind::TypeVarTuple(ts) => ts.args.has_any(i_s),
                                 BoundKind::ParamSpecArgument(params) => match &params.params {
                                     CallableParams::Simple(params) => params.iter().any(|t| {
-                                        t.param_specific
-                                            .maybe_type()
-                                            .is_some_and(|t| t.has_any(i_s))
+                                        t.type_.maybe_type().is_some_and(|t| t.has_any(i_s))
                                     }),
                                     CallableParams::WithParamSpec(pre, _) => {
                                         pre.iter().any(|t| t.has_any(i_s))

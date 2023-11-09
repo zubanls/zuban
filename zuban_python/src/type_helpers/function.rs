@@ -310,7 +310,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             types.extend(
                 pre_params
                     .into_iter()
-                    .map(|p| p.param_specific.expect_positional_type()),
+                    .map(|p| p.type_.expect_positional_type()),
             );
             Rc::from(types)
         };
@@ -1075,7 +1075,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 }
             };
             new_params.push(CallableParam {
-                param_specific,
+                type_: param_specific,
                 has_default: p.has_default(),
                 name: Some({
                     let n = p.param.name_definition();

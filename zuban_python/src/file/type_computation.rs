@@ -1894,7 +1894,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             p
         } else {
             CallableParam {
-                param_specific: ParamType::PositionalOnly(
+                type_: ParamType::PositionalOnly(
                     self.as_type(t, NodeRef::new(self.inference.file, index)),
                 ),
                 has_default: false,
@@ -1906,8 +1906,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     fn add_param(&mut self, params: &mut Vec<CallableParam>, t: TypeContent, index: NodeIndex) {
         let p = self.check_param(t, index);
         if let Some(previous) = params.last() {
-            let prev_kind = previous.param_specific.param_kind();
-            let current_kind = p.param_specific.param_kind();
+            let prev_kind = previous.type_.param_kind();
+            let current_kind = p.type_.param_kind();
             let msg = match current_kind {
                 ParamKind::PositionalOnly
                     if current_kind < prev_kind || previous.has_default && !p.has_default =>
@@ -2670,7 +2670,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         };
         let type_ = type_.unwrap_or(Type::Any(AnyCause::Todo));
         TypeContent::SpecialType(SpecialType::CallableParam(CallableParam {
-            param_specific: match param_kind {
+            type_: match param_kind {
                 ParamKind::PositionalOnly => ParamType::PositionalOnly(type_),
                 ParamKind::PositionalOrKeyword => ParamType::PositionalOrKeyword(type_),
                 ParamKind::KeywordOnly => ParamType::KeywordOnly(type_),
@@ -2732,7 +2732,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             let name_str = name.as_str(self.inference.i_s.db);
             let t = self.compute_named_expr_type(type_expr);
             params.push(CallableParam {
-                param_specific: ParamType::PositionalOrKeyword(t),
+                type_: ParamType::PositionalOrKeyword(t),
                 name: Some(name.into()),
                 has_default: false,
             });

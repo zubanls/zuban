@@ -75,7 +75,7 @@ impl NamedTuple {
                         .iter()
                         .map(|t| {
                             TypeOrTypeVarTuple::Type(
-                                t.param_specific.expect_positional_type_as_ref().clone(),
+                                t.type_.expect_positional_type_as_ref().clone(),
                             )
                         })
                         .collect(),
@@ -109,7 +109,7 @@ impl NamedTuple {
         let types = match params.is_empty() {
             true => "()".into(),
             false => join_with_commas(params.iter().map(|p| {
-                let t = p.param_specific.expect_positional_type_as_ref();
+                let t = p.type_.expect_positional_type_as_ref();
                 match generics {
                     Generics::NotDefinedYet | Generics::None => t.format(format_data),
                     _ => t
@@ -162,9 +162,8 @@ impl NamedTuple {
                 for param in self.params() {
                     let mut new_param = param.clone();
                     new_param.has_default = true;
-                    new_param.param_specific = ParamType::KeywordOnly(
-                        new_param.param_specific.expect_positional_type().clone(),
-                    );
+                    new_param.type_ =
+                        ParamType::KeywordOnly(new_param.type_.expect_positional_type().clone());
                     params.push(new_param);
                 }
                 Rc::new(CallableContent {
@@ -210,7 +209,7 @@ impl NamedTuple {
                     )));
                 }
                 params.push(CallableParam {
-                    param_specific: ParamType::PositionalOrKeyword(new_class!(
+                    type_: ParamType::PositionalOrKeyword(new_class!(
                         i_s.db.python_state.iterable_link(),
                         Type::Any(AnyCause::Explicit),
                     )),
@@ -250,7 +249,7 @@ impl NamedTuple {
             }
             _ => {
                 if let Some(param) = self.search_param(i_s.db, name) {
-                    param.param_specific.expect_positional_type_as_ref().clone()
+                    param.type_.expect_positional_type_as_ref().clone()
                 } else {
                     return LookupResult::None;
                 }
@@ -436,7 +435,7 @@ pub fn new_collections_named_tuple(
 
     let mut add_param = |name| {
         params.push(CallableParam {
-            param_specific: ParamType::PositionalOrKeyword(Type::Any(AnyCause::Todo)),
+            type_: ParamType::PositionalOrKeyword(Type::Any(AnyCause::Todo)),
             name: Some(name),
             has_default: false,
         })

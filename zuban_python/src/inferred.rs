@@ -1971,7 +1971,7 @@ fn proper_classmethod_callable(
             // The first argument in a class param is not relevant if we execute descriptors.
             let first_param = vec.remove(0);
 
-            if let Some(t) = first_param.param_specific.maybe_positional_type() {
+            if let Some(t) = first_param.type_.maybe_positional_type() {
                 let mut matcher = Matcher::new_callable_matcher(&callable);
                 let instance_t = class.as_type_type(i_s);
                 let t = replace_class_type_vars(i_s.db, t, func_class, &|| class.as_type(i_s.db));

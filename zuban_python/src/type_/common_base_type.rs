@@ -260,8 +260,8 @@ fn common_params(
     if params1.len() == params2.len() {
         let mut new_params = vec![];
         for (p1, p2) in params1.iter().zip(params2.iter()) {
-            let mut kind = p1.param_specific.param_kind();
-            let p2_kind = p2.param_specific.param_kind();
+            let mut kind = p1.type_.param_kind();
+            let p2_kind = p2.type_.param_kind();
             let p1_name = p1.name.as_ref().map(|n| n.as_str(i_s.db));
             let p2_name = p2.name.as_ref().map(|n| n.as_str(i_s.db));
             if p1_name != p2_name {
@@ -277,11 +277,11 @@ fn common_params(
                     return None;
                 }
             }
-            let t1 = p1.param_specific.maybe_positional_type()?;
-            let t2 = p2.param_specific.maybe_positional_type()?;
+            let t1 = p1.type_.maybe_positional_type()?;
+            let t2 = p2.type_.maybe_positional_type()?;
             let new_t = t1.common_sub_type(i_s, t2)?;
             new_params.push(CallableParam {
-                param_specific: match &kind {
+                type_: match &kind {
                     ParamKind::PositionalOnly => ParamType::PositionalOnly(new_t),
                     ParamKind::PositionalOrKeyword => ParamType::PositionalOrKeyword(new_t),
                     ParamKind::KeywordOnly => ParamType::KeywordOnly(new_t),

@@ -88,25 +88,25 @@ impl ParamType {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CallableParam {
-    pub param_specific: ParamType,
+    pub type_: ParamType,
     pub name: Option<DbString>,
     pub has_default: bool,
 }
 
 impl CallableParam {
-    pub fn new_anonymous(param_specific: ParamType) -> Self {
+    pub fn new_anonymous(type_: ParamType) -> Self {
         CallableParam {
-            param_specific,
+            type_,
             name: None,
             has_default: false,
         }
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
-        if !matches!(self.param_specific, ParamType::PositionalOnly(_))
+        if !matches!(self.type_, ParamType::PositionalOnly(_))
             || format_data.verbose && self.has_default
         {
-            if let ParamType::Starred(t) = &self.param_specific {
+            if let ParamType::Starred(t) = &self.type_ {
                 return match t {
                     StarParamType::ArbitraryLength(t) => {
                         format!("VarArg({})", t.format(format_data))
@@ -114,7 +114,7 @@ impl CallableParam {
                     StarParamType::ParamSpecArgs(u) => unreachable!(),
                 }
                 .into();
-            } else if let ParamType::DoubleStarred(t) = &self.param_specific {
+            } else if let ParamType::DoubleStarred(t) = &self.type_ {
                 return match t {
                     StarStarParamType::ValueType(t) => {
                         format!("KwArg({})", t.format(format_data))
@@ -126,7 +126,7 @@ impl CallableParam {
             } else if let Some(name) = self.name.as_ref() {
                 match format_data.style {
                     FormatStyle::MypyRevealType => {
-                        let mut string = match &self.param_specific {
+                        let mut string = match &self.type_ {
                             ParamType::PositionalOnly(t)
                             | ParamType::PositionalOrKeyword(t)
                             | ParamType::KeywordOnly(t) => {
@@ -161,7 +161,7 @@ impl CallableParam {
                         return string.into();
                     }
                     _ => {
-                        return match &self.param_specific {
+                        return match &self.type_ {
                             ParamType::PositionalOnly(t) | ParamType::PositionalOrKeyword(t) => {
                                 let t = t.format(format_data);
                                 if !format_data.verbose {
@@ -192,7 +192,7 @@ impl CallableParam {
                     }
                 }
             } else if self.has_default {
-                return match &self.param_specific {
+                return match &self.type_ {
                     ParamType::PositionalOnly(t)
                     | ParamType::PositionalOrKeyword(t)
                     | ParamType::KeywordOnly(t) => {
@@ -202,7 +202,7 @@ impl CallableParam {
                 };
             }
         }
-        match &self.param_specific {
+        match &self.type_ {
             ParamType::PositionalOnly(t) => t.format(format_data),
             _ => unreachable!(),
         }
@@ -227,10 +227,8 @@ impl CallableParams {
                     use ParamType::{DoubleStarred, Starred};
                     use StarParamType::ParamSpecArgs;
                     use StarStarParamType::ParamSpecKwargs;
-                    match &param.param_specific {
-                        Starred(ParamSpecArgs(usage1)) => match params
-                            .get(i + 1)
-                            .map(|p| &p.param_specific)
+                    match &param.type_ {
+                        Starred(ParamSpecArgs(usage1)) => match params.get(i + 1).map(|p| &p.type_)
                         {
                             Some(DoubleStarred(ParamSpecKwargs(usage2))) if usage1 == usage2 => {
                                 had_param_spec_args = true;
@@ -286,7 +284,7 @@ impl CallableParams {
         already_checked: &mut Vec<Rc<RecursiveAlias>>,
     ) -> bool {
         match self {
-            Self::Simple(params) => params.iter().any(|param| match &param.param_specific {
+            Self::Simple(params) => params.iter().any(|param| match &param.type_ {
                 ParamType::PositionalOnly(t)
                 | ParamType::PositionalOrKeyword(t)
                 | ParamType::KeywordOnly(t)
@@ -380,14 +378,10 @@ impl CallableContent {
 
     pub fn first_positional_type(&self) -> Option<Type> {
         match &self.params {
-            CallableParams::Simple(params) => {
-                params.first().and_then(|p| match &p.param_specific {
-                    ParamType::PositionalOnly(t) | ParamType::PositionalOrKeyword(t) => {
-                        Some(t.clone())
-                    }
-                    _ => todo!(),
-                })
-            }
+            CallableParams::Simple(params) => params.first().and_then(|p| match &p.type_ {
+                ParamType::PositionalOnly(t) | ParamType::PositionalOrKeyword(t) => Some(t.clone()),
+                _ => todo!(),
+            }),
             CallableParams::WithParamSpec(pre, usage) => {
                 todo!()
             }
@@ -404,7 +398,7 @@ impl CallableContent {
                     for param in params.iter().skip(1) {
                         if !param.has_default
                             && !matches!(
-                                &param.param_specific,
+                                &param.type_,
                                 ParamType::Starred(_) | ParamType::DoubleStarred(_)
                             )
                         {
@@ -431,20 +425,18 @@ impl CallableContent {
     pub fn has_self_type(&self) -> bool {
         self.result_type.has_self_type()
             || match &self.params {
-                CallableParams::Simple(params) => {
-                    params.iter().any(|param| match &param.param_specific {
-                        ParamType::PositionalOnly(t)
-                        | ParamType::PositionalOrKeyword(t)
-                        | ParamType::KeywordOnly(t)
-                        | ParamType::Starred(StarParamType::ArbitraryLength(t))
-                        | ParamType::DoubleStarred(StarStarParamType::ValueType(t)) => {
-                            t.has_self_type()
-                        }
-                        ParamType::Starred(StarParamType::ParamSpecArgs(_)) => false,
-                        ParamType::DoubleStarred(StarStarParamType::ParamSpecKwargs(_)) => false,
-                        ParamType::DoubleStarred(StarStarParamType::UnpackTypedDict(_)) => todo!(),
-                    })
-                }
+                CallableParams::Simple(params) => params.iter().any(|param| match &param.type_ {
+                    ParamType::PositionalOnly(t)
+                    | ParamType::PositionalOrKeyword(t)
+                    | ParamType::KeywordOnly(t)
+                    | ParamType::Starred(StarParamType::ArbitraryLength(t))
+                    | ParamType::DoubleStarred(StarStarParamType::ValueType(t)) => {
+                        t.has_self_type()
+                    }
+                    ParamType::Starred(StarParamType::ParamSpecArgs(_)) => false,
+                    ParamType::DoubleStarred(StarStarParamType::ParamSpecKwargs(_)) => false,
+                    ParamType::DoubleStarred(StarStarParamType::UnpackTypedDict(_)) => todo!(),
+                }),
                 CallableParams::Any(_) => false,
                 CallableParams::WithParamSpec(types, param_spec) => {
                     todo!()
@@ -515,7 +507,7 @@ impl CallableContent {
     ) -> CallableContent {
         let mut needs_self_type_variable = self.result_type.has_self_type();
         for param in self.expect_simple_params().iter() {
-            if let Some(t) = param.param_specific.maybe_type() {
+            if let Some(t) = param.type_.maybe_type() {
                 needs_self_type_variable |= t.has_self_type();
             }
         }
@@ -584,13 +576,10 @@ impl CallableContent {
             return true;
         }
         match &self.params {
-            CallableParams::Simple(params) => {
-                !params.iter().skip(skip_first_param.into()).all(|t| {
-                    t.param_specific
-                        .maybe_type()
-                        .is_some_and(|t| has_unannotated(t))
-                })
-            }
+            CallableParams::Simple(params) => !params
+                .iter()
+                .skip(skip_first_param.into())
+                .all(|t| t.type_.maybe_type().is_some_and(|t| has_unannotated(t))),
             CallableParams::Any(cause) => !matches!(cause, AnyCause::Unannotated),
             // Should probably never happen?!
             CallableParams::WithParamSpec(..) => true,

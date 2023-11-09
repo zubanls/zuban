@@ -141,14 +141,14 @@ fn common_sub_type_params(
             if p1.name != p2.name || p1.has_default != p2.has_default {
                 return None;
             }
-            if p1.param_specific.param_kind() != p2.param_specific.param_kind() {
+            if p1.type_.param_kind() != p2.type_.param_kind() {
                 return None;
             }
-            let t1 = p1.param_specific.maybe_positional_type()?;
-            let t2 = p2.param_specific.maybe_positional_type()?;
+            let t1 = p1.type_.maybe_positional_type()?;
+            let t2 = p2.type_.maybe_positional_type()?;
             let new_t = t1.common_base_type(i_s, t2);
             new_params.push(CallableParam {
-                param_specific: match &p1.param_specific.param_kind() {
+                type_: match &p1.type_.param_kind() {
                     ParamKind::PositionalOnly => ParamType::PositionalOnly(new_t),
                     ParamKind::PositionalOrKeyword => ParamType::PositionalOrKeyword(new_t),
                     ParamKind::KeywordOnly => ParamType::KeywordOnly(new_t),

@@ -234,11 +234,11 @@ impl Type {
                         .expect_simple_params()
                         .iter()
                         .map(|param| {
-                            let ParamType::PositionalOrKeyword(t) = &param.param_specific else {
+                            let ParamType::PositionalOrKeyword(t) = &param.type_ else {
                                 return param.clone()
                             };
                             CallableParam {
-                                param_specific: ParamType::PositionalOrKeyword(
+                                type_: ParamType::PositionalOrKeyword(
                                     t.replace_type_var_likes_and_self(db, callable, replace_self),
                                 ),
                                 has_default: param.has_default,
@@ -321,7 +321,7 @@ impl Type {
                     params
                         .iter()
                         .map(|p| CallableParam {
-                            param_specific: match &p.param_specific {
+                            type_: match &p.type_ {
                                 ParamType::PositionalOnly(t) => ParamType::PositionalOnly(
                                     t.rewrite_late_bound_callables(manager),
                                 ),
@@ -387,7 +387,7 @@ impl Type {
                 params
                     .iter()
                     .map(|p| CallableParam {
-                        param_specific: match &p.param_specific {
+                        type_: match &p.type_ {
                             ParamType::PositionalOnly(t) => ParamType::PositionalOnly(
                                 t.replace_type_var_likes_and_self(db, callable, replace_self),
                             ),
@@ -472,7 +472,7 @@ impl Type {
                             params.splice(
                                 0..0,
                                 types.iter().map(|t| CallableParam {
-                                    param_specific: ParamType::PositionalOnly(
+                                    type_: ParamType::PositionalOnly(
                                         t.replace_type_var_likes_and_self(
                                             db,
                                             callable,

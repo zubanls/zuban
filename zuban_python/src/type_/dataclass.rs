@@ -94,8 +94,8 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
         let mut first_kwarg = None;
         for (i, param) in params.iter_mut().enumerate() {
             if first_kwarg.is_none()
-                && param.param_specific.param_kind() == ParamKind::KeywordOnly
-                && new_param.param_specific.param_kind() == ParamKind::PositionalOrKeyword
+                && param.type_.param_kind() == ParamKind::KeywordOnly
+                && new_param.type_.param_kind() == ParamKind::PositionalOrKeyword
             {
                 first_kwarg = Some(i);
             }
@@ -132,7 +132,7 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
                     .iter()
                 {
                     let mut new_param = param.clone();
-                    let t = match &mut new_param.param_specific {
+                    let t = match &mut new_param.type_ {
                         ParamType::PositionalOrKeyword(t) | ParamType::KeywordOnly(t) => t,
                         _ => unreachable!(),
                     };
@@ -230,7 +230,7 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
                     add_param(
                         &mut params,
                         CallableParam {
-                            param_specific: match kw_only {
+                            type_: match kw_only {
                                 false => ParamType::PositionalOrKeyword(t),
                                 true => ParamType::KeywordOnly(t),
                             },
@@ -244,7 +244,7 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
     }
     let mut latest_default_issue = None;
     for (prev_param, (i, next_param)) in params.iter().zip(params.iter().enumerate().skip(1)) {
-        if next_param.param_specific.param_kind() == ParamKind::PositionalOrKeyword
+        if next_param.type_.param_kind() == ParamKind::PositionalOrKeyword
             && prev_param.has_default
             && !next_param.has_default
         {
@@ -439,8 +439,8 @@ pub fn dataclasses_replace<'db>(
                     let mut replace_func = dataclass_init_func(dataclass, i_s.db).clone();
                     let mut params: Vec<_> = replace_func.expect_simple_params().into();
                     for param in params.iter_mut() {
-                        let t = param.param_specific.maybe_type().unwrap();
-                        param.param_specific = ParamType::KeywordOnly(t.clone());
+                        let t = param.type_.maybe_type().unwrap();
+                        param.type_ = ParamType::KeywordOnly(t.clone());
                         // All normal dataclass arguments are optional, because they can be
                         // overridden or just be left in place. However this is different for
                         // InitVars, which always need to be there. To check if something is an
@@ -460,7 +460,7 @@ pub fn dataclasses_replace<'db>(
                     params.insert(
                         0,
                         CallableParam {
-                            param_specific: ParamType::PositionalOnly(Type::Any(AnyCause::Todo)),
+                            type_: ParamType::PositionalOnly(Type::Any(AnyCause::Todo)),
                             name: None,
                             has_default: false,
                         },
@@ -648,7 +648,7 @@ pub fn lookup_on_dataclass(
             __init__
                 .expect_simple_params()
                 .iter()
-                .take_while(|p| p.param_specific.maybe_positional_type().is_some())
+                .take_while(|p| p.type_.maybe_positional_type().is_some())
                 .map(|p| {
                     TypeOrTypeVarTuple::Type(Type::Literal(Literal::new(LiteralKind::String(
                         p.name.clone().unwrap(),
@@ -686,7 +686,7 @@ fn order_func(self_: Rc<Dataclass>, i_s: &InferenceState, from_type: bool) -> Lo
             },
             type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
             params: CallableParams::Simple(Rc::new([CallableParam {
-                param_specific: ParamType::PositionalOnly(Type::Dataclass(self_)),
+                type_: ParamType::PositionalOnly(Type::Dataclass(self_)),
                 name: None,
                 has_default: false,
             }])),

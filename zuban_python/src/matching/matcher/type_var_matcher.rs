@@ -85,7 +85,7 @@ impl<'db: 'a, 'a> FunctionOrCallable<'a> {
                     p.name.as_ref().is_some_and(|n| {
                         n.as_str(db) == name
                             && matches!(
-                                p.param_specific,
+                                p.type_,
                                 ParamType::PositionalOrKeyword(_) | ParamType::KeywordOnly(_)
                             )
                     })

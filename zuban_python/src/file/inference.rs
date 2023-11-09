@@ -1512,7 +1512,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
         };
         let to_callable_param = |param: Param| CallableParam {
-            param_specific: match param.type_() {
+            type_: match param.type_() {
                 ParamKind::PositionalOnly => {
                     ParamType::PositionalOnly(Type::Any(AnyCause::Unannotated))
                 }
@@ -2248,7 +2248,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                 CallableParams::Simple(ps) => {
                                                     if let Some(p2) = ps.get(i) {
                                                         if let ParamType::PositionalOnly(t) =
-                                                            &p2.param_specific
+                                                            &p2.type_
                                                         {
                                                             if p.type_()
                                                                 == ParamKind::PositionalOrKeyword

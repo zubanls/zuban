@@ -74,7 +74,7 @@ pub fn matches_params(
         (Any(_), _) => Match::new_true(),
         (Simple(params1), Any(cause)) => {
             for p in params1.iter() {
-                if let Some(t) = p.param_specific.maybe_type() {
+                if let Some(t) = p.type_.maybe_type() {
                     matcher.set_all_contained_type_vars_to_any(i_s, t, *cause);
                 } else {
                     todo!()
@@ -493,7 +493,7 @@ impl<'x> Param<'x> for &'x CallableParam {
     }
 
     fn specific<'db: 'x>(&self, db: &Database) -> WrappedParamType<'x> {
-        match &self.param_specific {
+        match &self.type_ {
             ParamType::PositionalOnly(t) => {
                 WrappedParamType::PositionalOnly(Some(Cow::Borrowed(t)))
             }
@@ -520,7 +520,7 @@ impl<'x> Param<'x> for &'x CallableParam {
     }
 
     fn kind(&self, db: &Database) -> ParamKind {
-        self.param_specific.param_kind()
+        self.type_.param_kind()
     }
 }
 

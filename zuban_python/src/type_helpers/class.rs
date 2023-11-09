@@ -2016,7 +2016,7 @@ fn find_stmt_named_tuple_types(
                         )
                     } else {
                         vec.push(CallableParam {
-                            param_specific: ParamType::PositionalOrKeyword(t),
+                            type_: ParamType::PositionalOrKeyword(t),
                             has_default: default.is_some(),
                             name: Some(
                                 StringSlice::from_name(file.file_index(), name.name()).into(),
@@ -2202,7 +2202,7 @@ impl NewOrInitConstructor<'_> {
 
 pub fn start_namedtuple_params(db: &Database) -> Vec<CallableParam> {
     vec![CallableParam {
-        param_specific: ParamType::PositionalOnly(db.python_state.type_of_self.clone()),
+        type_: ParamType::PositionalOnly(db.python_state.type_of_self.clone()),
         has_default: false,
         name: None,
     }]
