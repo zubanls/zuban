@@ -924,6 +924,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 SpecialType::Optional => {
                     self.add_issue(node_ref, IssueType::OptionalMustHaveOneArgument);
                 }
+                SpecialType::Unpack => {
+                    self.add_issue(node_ref, IssueType::UnpackRequiresExactlyOneArgument);
+                }
                 _ => {
                     self.add_issue(node_ref, IssueType::InvalidType(Box::from("Invalid type")));
                 }
@@ -2152,7 +2155,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 t => TypeOrTypeVarTuple::Type(self.as_type(t, first.as_node_ref())),
             })
         } else {
-            todo!()
+            self.add_issue(
+                slice_type.as_node_ref(),
+                IssueType::UnpackRequiresExactlyOneArgument,
+            );
+            TypeContent::Unknown(AnyCause::FromError)
         }
     }
 

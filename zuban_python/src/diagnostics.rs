@@ -145,6 +145,7 @@ pub(crate) enum IssueType {
     UnexpectedComprehension,
     AmbigousClassVariableAccess,
     CannotInstantiateProtocol { name: Box<str> },
+    UnpackRequiresExactlyOneArgument,
 
     InvalidAssertType { actual: Box<str>, wanted: Box<str> },
 
@@ -877,6 +878,8 @@ impl<'db> Diagnostic<'db> {
             CannotInstantiateProtocol{name} => format!(
                 "Cannot instantiate protocol class \"{name}\""
             ),
+            UnpackRequiresExactlyOneArgument =>
+                "Unpack[...] requires exactly one type argument".to_string(),
 
             InvalidAssertType { actual, wanted } => format!(
                 r#"Expression is of type "{actual}", not "{wanted}""#

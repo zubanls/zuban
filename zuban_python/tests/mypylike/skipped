@@ -806,7 +806,6 @@ testUnpackKwargsOverload
 testUnpackKwargsJoin
 testUnpackKwargsParamSpec
 testUnpackKwargsUpdateFine
-testUnpackNoCrashOnEmpty
 testInvalidUnpackTypes
 testTupleWithStarExpr2
 testTupleWithStarExpr3
