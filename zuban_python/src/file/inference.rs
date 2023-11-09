@@ -232,8 +232,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let maybe_level_file = (level > 0)
             .then(|| {
                 find_ancestor(self.i_s.db, self.file, level).or_else(|| {
-                    NodeRef::new(self.file, imp.index())
-                        .add_issue(self.i_s, IssueType::NoParentModule);
+                    self.add_issue(imp.index(), IssueType::NoParentModule);
                     None
                 })
             })
@@ -273,8 +272,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 continue;
                             }
                             LookupResult::None => {
-                                NodeRef::new(self.file, import_name.index()).add_issue(
-                                    self.i_s,
+                                self.add_issue(
+                                    import_name.index(),
                                     IssueType::ImportAttributeError {
                                         module_name: Box::from(imp.qualified_name(self.i_s.db)),
                                         name: Box::from(import_name.as_str()),
@@ -336,9 +335,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 return result;
             }
             None => {
-                let node_ref = NodeRef::new(self.file, name.index());
-                node_ref.add_issue(
-                    self.i_s,
+                self.add_issue(
+                    name.index(),
                     IssueType::ModuleNotFound {
                         module_name: Box::from(name.as_str()),
                     },
@@ -362,7 +360,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         base: Option<ImportResult>,
     ) -> Option<ImportResult> {
         let file_index = self.file_index;
-        let infer_name = |import_result, name: Name| {
+        let infer_name = |self_: &Self, import_result, name: Name| {
             let mut in_stub_and_has_getattr = false;
             let result = match &import_result {
                 ImportResult::File(file_index) => {
@@ -406,28 +404,28 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     name.as_str()
                 );
             } else {
-                let node_ref = NodeRef::new(self.file, name.index());
                 let module_name = format!(
                     "{}.{}",
                     import_result.qualified_name(self.i_s.db),
                     name.as_str()
                 )
                 .into();
-                node_ref.add_issue(self.i_s, IssueType::ModuleNotFound { module_name });
+                self_.add_issue(name.index(), IssueType::ModuleNotFound { module_name });
             }
             result
         };
         match dotted.unpack() {
             DottedNameContent::Name(name) => {
                 if let Some(base) = base {
-                    infer_name(base, name)
+                    infer_name(self, base, name)
                 } else {
                     self.global_import(name, None)
                 }
             }
-            DottedNameContent::DottedName(dotted_name, name) => self
-                .infer_import_dotted_name(dotted_name, base)
-                .and_then(|result| infer_name(result, name)),
+            DottedNameContent::DottedName(dotted_name, name) => {
+                let result = self.infer_import_dotted_name(dotted_name, base)?;
+                infer_name(self, result, name)
+            }
         }
     }
 
@@ -474,23 +472,22 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     ) {
         let on_type_error = |got, expected| -> NodeRef {
             // In cases of stubs when an ellipsis is given, it's not an error.
-            let node_ref = NodeRef::new(self.file, right_side.index()).to_db_lifetime(self.i_s.db);
             if self.file.is_stub(self.i_s.db) {
                 // Right side always exists, because it was compared and there was an error because
                 // of it.
                 if let AssignmentRightSide::StarExpressions(star_exprs) = right_side {
                     if let StarExpressionContent::Expression(expr) = star_exprs.unpack() {
                         if expr.is_ellipsis_literal() {
-                            return node_ref;
+                            return NodeRef::new(self.file, right_side.index())
+                                .to_db_lifetime(self.i_s.db);
                         }
                     }
                 }
             }
-            node_ref.add_issue(
-                self.i_s,
+            self.add_issue(
+                right_side.index(),
                 IssueType::IncompatibleAssignment { got, expected },
-            );
-            node_ref
+            )
         };
         expected.error_if_not_matches(self.i_s, &right, on_type_error);
     }
@@ -874,8 +871,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 } else {
                     let i_s = self.i_s;
                     if is_definition {
-                        NodeRef::new(self.file, primary_target.index())
-                            .add_issue(i_s, IssueType::InvalidTypeDeclaration);
+                        self.add_issue(primary_target.index(), IssueType::InvalidTypeDeclaration);
                     }
                     let base = base.as_cow_type(i_s);
                     let node_ref = NodeRef::new(self.file, primary_target.index());
@@ -968,8 +964,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             Target::IndexExpression(primary_target) => {
                 let base = self.infer_primary_target_or_atom(primary_target.first());
                 if is_definition {
-                    NodeRef::new(self.file, primary_target.index())
-                        .add_issue(self.i_s, IssueType::UnexpectedTypeDeclaration);
+                    self.add_issue(primary_target.index(), IssueType::UnexpectedTypeDeclaration);
                 }
                 let PrimaryContent::GetItem(slice_type) = primary_target.second() else {
                     unreachable!();
@@ -1034,8 +1029,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             let (stars, normal) =
                                 targets.clone().remaining_stars_and_normal_count();
                             if stars > 0 {
-                                NodeRef::new(self.file, star_target.index()).add_issue(
-                                    self.i_s,
+                                self.add_issue(
+                                    star_target.index(),
                                     IssueType::MultipleStarredExpressionsInAssignment,
                                 );
                                 self.assign_targets(
@@ -1192,8 +1187,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
             }
             StarExpressionContent::StarExpression(expr) => {
-                NodeRef::new(self.file, expr.index())
-                    .add_issue(self.i_s, IssueType::StarredExpressionOnlyNoTarget);
+                self.add_issue(expr.index(), IssueType::StarredExpressionOnlyNoTarget);
                 Inferred::new_any_from_error()
             }
             StarExpressionContent::Tuple(tuple) => self
@@ -1265,12 +1259,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         if self.i_s.db.project.flags.disallow_any_expr && !self.file.is_stub(self.i_s.db) {
             let t = inferred.as_cow_type(self.i_s);
             if t.has_any(self.i_s) {
-                NodeRef::new(self.file, expr.index()).add_issue(
-                    self.i_s,
+                self.add_issue(
+                    expr.index(),
                     IssueType::DisallowedAnyExpr {
                         type_: t.format_short(self.i_s.db),
                     },
-                )
+                );
             }
         }
         inferred
@@ -1567,8 +1561,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             )
                             .bool()
                             {
-                                NodeRef::new(self.file, lambda.index())
-                                    .add_issue(self.i_s, IssueType::CannotInferLambdaParams);
+                                self.add_issue(lambda.index(), IssueType::CannotInferLambdaParams);
                                 c.params = CallableParams::Simple(params.into());
                             }
                         }
@@ -2053,8 +2046,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 return inf;
             }
             // TODO check star imports
-            NodeRef::new(self.file, name.index()).add_issue(
-                self.i_s,
+            self.add_issue(
+                name.index(),
                 IssueType::NameError {
                     name: Box::from(name.as_str()),
                 },
@@ -2068,8 +2061,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 .is_some()
             {
                 // TODO what about underscore or other vars?
-                NodeRef::new(self.file, name.index()).add_issue(
-                    self.i_s,
+                self.add_issue(
+                    name.index(),
                     IssueType::Note(
                         format!(
                             "Did you forget to import it from \"typing\"? \
@@ -2451,9 +2444,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 if expected_t.is_super_type_of(i_s, matcher, &t).bool() {
                     Some(t.into_owned())
                 } else {
-                    let from = NodeRef::new(self.file, expr.index());
-                    from.add_issue(
-                        i_s,
+                    self.add_issue(
+                        expr.index(),
                         IssueType::DictComprehensionMismatch {
                             part,
                             got: t.format_short(i_s.db),
@@ -2505,9 +2497,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     matcher,
                     &inf,
                     Some(|got, expected, _: &_| {
-                        let from = NodeRef::new(self.file, comp_expr.index());
-                        from.add_issue(i_s, on_mismatch(got, expected));
-                        from.to_db_lifetime(i_s.db)
+                        self.add_issue(comp_expr.index(), on_mismatch(got, expected))
                     }),
                 );
                 matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, &inner_expected)
@@ -2566,6 +2556,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             Type::None,
             Type::None,
         ))
+    }
+
+    fn add_issue(&self, node_index: NodeIndex, issue: IssueType) -> NodeRef<'db> {
+        let from = NodeRef::new(self.file, node_index);
+        from.add_issue(self.i_s, issue);
+        from.to_db_lifetime(self.i_s.db)
     }
 }
 

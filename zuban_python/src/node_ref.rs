@@ -47,6 +47,7 @@ impl<'file> NodeRef<'file> {
         Module::new(self.file)
     }
 
+    #[inline]
     pub fn to_db_lifetime(self, db: &Database) -> NodeRef {
         if std::cfg!(debug_assertions) {
             // Check that the file index is set, which means that it's in the database.
