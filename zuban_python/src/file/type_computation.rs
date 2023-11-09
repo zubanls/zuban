@@ -588,22 +588,35 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 annotation.index(),
                 expr,
                 false,
-                Some(&|slf, t| {
-                    wrap_starred(slf.as_type(t, NodeRef::new(self.inference.file, expr.index())))
-                }),
+                Some(&|slf, t| slf.wrap_starred(t, expr)),
             ),
             Some(SimpleParamKind::StarStar) => self.cache_annotation_or_type_comment(
                 annotation.index(),
                 expr,
                 false,
-                Some(&|slf, t| {
-                    wrap_double_starred(
-                        self.inference.i_s.db,
-                        slf.as_type(t, NodeRef::new(self.inference.file, expr.index())),
-                    )
-                }),
+                Some(&|slf, t| slf.wrap_double_starred(t, expr)),
             ),
         };
+    }
+
+    fn wrap_starred(&mut self, t: TypeContent, expr: Expression) -> Type {
+        let t = self.as_type(t, NodeRef::new(self.inference.file, expr.index()));
+        match &t {
+            Type::ParamSpecArgs(_) => t,
+            _ => Type::Tuple(Rc::new(Tuple::new_arbitrary_length(t))),
+        }
+    }
+
+    fn wrap_double_starred(&mut self, t: TypeContent, expr: Expression) -> Type {
+        let t = self.as_type(t, NodeRef::new(self.inference.file, expr.index()));
+        match &t {
+            Type::ParamSpecKwargs(_) => t,
+            _ => new_class!(
+                self.inference.i_s.db.python_state.dict_node_ref().as_link(),
+                self.inference.i_s.db.python_state.str_type(),
+                t,
+            ),
+        }
     }
 
     pub fn cache_return_annotation(&mut self, annotation: ReturnAnnotation) {
@@ -3751,24 +3764,6 @@ pub(super) fn cache_name_on_class(cls: Class, file: &PythonFile, name: Name) -> 
         },
     );
     cache_name_on_class(cls, file, name)
-}
-
-fn wrap_starred(t: Type) -> Type {
-    match &t {
-        Type::ParamSpecArgs(_) => t,
-        _ => Type::Tuple(Rc::new(Tuple::new_arbitrary_length(t))),
-    }
-}
-
-fn wrap_double_starred(db: &Database, t: Type) -> Type {
-    match &t {
-        Type::ParamSpecKwargs(_) => t,
-        _ => new_class!(
-            db.python_state.dict_node_ref().as_link(),
-            db.python_state.str_type(),
-            t,
-        ),
-    }
 }
 
 fn check_module_getattr_type(
