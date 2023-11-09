@@ -588,18 +588,18 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 annotation.index(),
                 expr,
                 false,
-                Some(&|slf, t| slf.wrap_starred(t, expr)),
+                Some(&|slf, t| slf.wrap_star(t, expr)),
             ),
             Some(SimpleParamKind::StarStar) => self.cache_annotation_or_type_comment(
                 annotation.index(),
                 expr,
                 false,
-                Some(&|slf, t| slf.wrap_double_starred(t, expr)),
+                Some(&|slf, t| slf.wrap_star_star(t, expr)),
             ),
         };
     }
 
-    fn wrap_starred(&mut self, t: TypeContent, expr: Expression) -> Type {
+    fn wrap_star(&mut self, t: TypeContent, expr: Expression) -> Type {
         let t = self.as_type(t, NodeRef::new(self.inference.file, expr.index()));
         match &t {
             Type::ParamSpecArgs(_) => t,
@@ -607,7 +607,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         }
     }
 
-    fn wrap_double_starred(&mut self, t: TypeContent, expr: Expression) -> Type {
+    fn wrap_star_star(&mut self, t: TypeContent, expr: Expression) -> Type {
         let t = self.as_type(t, NodeRef::new(self.inference.file, expr.index()));
         match &t {
             Type::ParamSpecKwargs(_) => t,
