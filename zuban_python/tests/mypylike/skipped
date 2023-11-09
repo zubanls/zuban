@@ -791,7 +791,6 @@ testTypeVarTupleRuntimeTypeApplication
 testTypeVarTupleErrors
 # typing_extensions.Unpack
 testRuntimeProtoTwoBases
-testUnpackOutsideOfKwargs
 testUnpackWithDuplicateKeywords
 testUnpackWithDuplicateKeywordKwargs
 testUnpackKwargsEmpty

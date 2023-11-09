@@ -583,6 +583,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 
     pub fn cache_annotation(&mut self, annotation: Annotation, is_implicit_optional: bool) {
         let expr = annotation.expression();
+        let from = NodeRef::new(self.inference.file, expr.index());
         match annotation.simple_param_kind() {
             Some(SimpleParamKind::Normal) | None => self.cache_annotation_or_type_comment(
                 annotation.index(),
@@ -594,7 +595,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 annotation.index(),
                 expr,
                 false,
-                Some(&|slf, t| slf.wrap_star(t, expr)),
+                Some(&|slf, t| slf.wrap_star(t, from)),
             ),
             Some(SimpleParamKind::StarStar) => self.cache_annotation_or_type_comment(
                 annotation.index(),
@@ -605,12 +606,26 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         };
     }
 
-    fn wrap_star(&mut self, t: TypeContent, expr: Expression) -> AnnotationReturn {
-        let t = self.as_type(t, NodeRef::new(self.inference.file, expr.index()));
-        match &t {
-            // TODO is this AnnotationReturn really needed??
-            Type::ParamSpecArgs(_) => AnnotationReturn::Type(t),
-            _ => AnnotationReturn::Type(Type::Tuple(Rc::new(Tuple::new_arbitrary_length(t)))),
+    fn wrap_star(&mut self, tc: TypeContent, from: NodeRef) -> AnnotationReturn {
+        match tc {
+            TypeContent::Unpacked(TypeOrTypeVarTuple::Type(t @ Type::Tuple(_))) => {
+                AnnotationReturn::UnpackType(t)
+            }
+            TypeContent::Unpacked(TypeOrTypeVarTuple::TypeVarTuple(_)) => todo!(),
+            TypeContent::Unpacked(TypeOrTypeVarTuple::Type(t)) => {
+                self.add_issue(
+                    from,
+                    IssueType::VariadicUnpackMustBeTupleLike {
+                        actual: t.format_short(self.inference.i_s.db),
+                    },
+                );
+                AnnotationReturn::Type(Type::Any(AnyCause::FromError))
+            }
+            _ => match self.as_type(tc, from) {
+                // TODO is this AnnotationReturn really needed??
+                t @ Type::ParamSpecArgs(_) => AnnotationReturn::Type(t),
+                t => AnnotationReturn::Type(Type::Tuple(Rc::new(Tuple::new_arbitrary_length(t)))),
+            },
         }
     }
 
@@ -975,7 +990,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     IssueType::Note(Box::from("You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'"))
                 );
             }
-            TypeContent::Unpacked(t) => todo!(),
+            TypeContent::Unpacked(t) => {
+                self.add_issue(node_ref, IssueType::UnpackOnlyValidInVariadicPosition);
+            }
             TypeContent::Concatenate(_) => {
                 self.add_issue(
                     node_ref,

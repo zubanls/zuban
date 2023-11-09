@@ -146,6 +146,9 @@ pub(crate) enum IssueType {
     AmbigousClassVariableAccess,
     CannotInstantiateProtocol { name: Box<str> },
     UnpackRequiresExactlyOneArgument,
+    UnpackOnlyValidInVariadicPosition,
+    VariadicUnpackMustBeTupleLike { actual: Box<str> },
+
 
     InvalidAssertType { actual: Box<str>, wanted: Box<str> },
 
@@ -880,6 +883,10 @@ impl<'db> Diagnostic<'db> {
             ),
             UnpackRequiresExactlyOneArgument =>
                 "Unpack[...] requires exactly one type argument".to_string(),
+            UnpackOnlyValidInVariadicPosition => "Unpack is only valid in a variadic position".to_string(),
+            VariadicUnpackMustBeTupleLike { actual } => format!(
+                r#""{actual}" cannot be unpacked (must be tuple or TypeVarTuple)"#
+            ),
 
             InvalidAssertType { actual, wanted } => format!(
                 r#"Expression is of type "{actual}", not "{wanted}""#
