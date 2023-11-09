@@ -1047,27 +1047,27 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 WrappedParamType::PositionalOnly(t) => ParamType::PositionalOnly(as_t(t)),
                 WrappedParamType::PositionalOrKeyword(t) => ParamType::PositionalOrKeyword(as_t(t)),
                 WrappedParamType::KeywordOnly(t) => ParamType::KeywordOnly(as_t(t)),
-                WrappedParamType::Starred(WrappedStar::ArbitraryLength(t)) => {
-                    ParamType::Starred(StarParamType::ArbitraryLength(as_t(t)))
+                WrappedParamType::Star(WrappedStar::ArbitraryLength(t)) => {
+                    ParamType::Star(StarParamType::ArbitraryLength(as_t(t)))
                 }
-                WrappedParamType::Starred(WrappedStar::ParamSpecArgs(u1)) => {
+                WrappedParamType::Star(WrappedStar::ParamSpecArgs(u1)) => {
                     match params.peek().map(|p| p.specific(i_s.db)) {
-                        Some(WrappedParamType::DoubleStarred(
-                            WrappedStarStar::ParamSpecKwargs(u2),
-                        )) if u1 == u2 => {
+                        Some(WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(u2)))
+                            if u1 == u2 =>
+                        {
                             had_param_spec_args = true;
                             continue;
                         }
                         _ => todo!(),
                     }
                 }
-                WrappedParamType::DoubleStarred(WrappedStarStar::ValueType(t)) => {
-                    ParamType::DoubleStarred(StarStarParamType::ValueType(as_t(t)))
+                WrappedParamType::StarStar(WrappedStarStar::ValueType(t)) => {
+                    ParamType::StarStar(StarStarParamType::ValueType(as_t(t)))
                 }
-                WrappedParamType::DoubleStarred(WrappedStarStar::UnpackTypedDict(u)) => {
+                WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(u)) => {
                     todo!()
                 }
-                WrappedParamType::DoubleStarred(WrappedStarStar::ParamSpecKwargs(u)) => {
+                WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(u)) => {
                     if !had_param_spec_args {
                         todo!()
                     }
@@ -1352,7 +1352,7 @@ impl<'x> Param<'x> for FunctionParam<'x> {
             ParamKind::PositionalOnly => WrappedParamType::PositionalOnly(t),
             ParamKind::PositionalOrKeyword => WrappedParamType::PositionalOrKeyword(t),
             ParamKind::KeywordOnly => WrappedParamType::KeywordOnly(t),
-            ParamKind::Starred => WrappedParamType::Starred(match dbt(t.as_ref()) {
+            ParamKind::Star => WrappedParamType::Star(match dbt(t.as_ref()) {
                 Some(Type::ParamSpecArgs(ref param_spec_usage)) => {
                     WrappedStar::ParamSpecArgs(param_spec_usage)
                 }
@@ -1366,7 +1366,7 @@ impl<'x> Param<'x> for FunctionParam<'x> {
                     }
                 }))
             }),
-            ParamKind::DoubleStarred => WrappedParamType::DoubleStarred(match dbt(t.as_ref()) {
+            ParamKind::StarStar => WrappedParamType::StarStar(match dbt(t.as_ref()) {
                 Some(Type::ParamSpecKwargs(param_spec_usage)) => {
                     WrappedStarStar::ParamSpecKwargs(param_spec_usage)
                 }

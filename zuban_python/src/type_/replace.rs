@@ -333,7 +333,7 @@ impl Type {
                                 ParamType::KeywordOnly(t) => {
                                     ParamType::KeywordOnly(t.rewrite_late_bound_callables(manager))
                                 }
-                                ParamType::Starred(s) => ParamType::Starred(match s {
+                                ParamType::Star(s) => ParamType::Star(match s {
                                     StarParamType::ArbitraryLength(t) => {
                                         StarParamType::ArbitraryLength(
                                             t.rewrite_late_bound_callables(manager),
@@ -341,7 +341,7 @@ impl Type {
                                     }
                                     StarParamType::ParamSpecArgs(_) => todo!(),
                                 }),
-                                ParamType::DoubleStarred(d) => ParamType::DoubleStarred(match d {
+                                ParamType::StarStar(d) => ParamType::StarStar(match d {
                                     StarStarParamType::ValueType(t) => {
                                         StarStarParamType::ValueType(
                                             t.rewrite_late_bound_callables(manager),
@@ -397,7 +397,7 @@ impl Type {
                             ParamType::KeywordOnly(t) => ParamType::KeywordOnly(
                                 t.replace_type_var_likes_and_self(db, callable, replace_self),
                             ),
-                            ParamType::Starred(s) => ParamType::Starred(match s {
+                            ParamType::Star(s) => ParamType::Star(match s {
                                 StarParamType::ArbitraryLength(t) => {
                                     StarParamType::ArbitraryLength(
                                         t.replace_type_var_likes_and_self(
@@ -409,7 +409,7 @@ impl Type {
                                 }
                                 StarParamType::ParamSpecArgs(_) => todo!(),
                             }),
-                            ParamType::DoubleStarred(d) => ParamType::DoubleStarred(match d {
+                            ParamType::StarStar(d) => ParamType::StarStar(match d {
                                 StarStarParamType::ValueType(t) => StarStarParamType::ValueType(
                                     t.replace_type_var_likes_and_self(db, callable, replace_self),
                                 ),

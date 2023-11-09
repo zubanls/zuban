@@ -38,8 +38,8 @@ pub enum ParamType {
     PositionalOnly(Type),
     PositionalOrKeyword(Type),
     KeywordOnly(Type),
-    Starred(StarParamType),
-    DoubleStarred(StarStarParamType),
+    Star(StarParamType),
+    StarStar(StarStarParamType),
 }
 
 impl ParamType {
@@ -48,8 +48,8 @@ impl ParamType {
             Self::PositionalOnly(_) => ParamKind::PositionalOnly,
             Self::PositionalOrKeyword(_) => ParamKind::PositionalOrKeyword,
             Self::KeywordOnly(_) => ParamKind::KeywordOnly,
-            Self::Starred(_) => ParamKind::Starred,
-            Self::DoubleStarred(_) => ParamKind::DoubleStarred,
+            Self::Star(_) => ParamKind::Star,
+            Self::StarStar(_) => ParamKind::StarStar,
         }
     }
 
@@ -79,9 +79,9 @@ impl ParamType {
             Self::PositionalOnly(t)
             | Self::PositionalOrKeyword(t)
             | Self::KeywordOnly(t)
-            | Self::Starred(StarParamType::ArbitraryLength(t))
-            | Self::DoubleStarred(StarStarParamType::ValueType(t)) => Some(t),
-            Self::Starred(StarParamType::ParamSpecArgs(_)) | Self::DoubleStarred(_) => None,
+            | Self::Star(StarParamType::ArbitraryLength(t))
+            | Self::StarStar(StarStarParamType::ValueType(t)) => Some(t),
+            Self::Star(StarParamType::ParamSpecArgs(_)) | Self::StarStar(_) => None,
         }
     }
 }
@@ -106,7 +106,7 @@ impl CallableParam {
         if !matches!(self.type_, ParamType::PositionalOnly(_))
             || format_data.verbose && self.has_default
         {
-            if let ParamType::Starred(t) = &self.type_ {
+            if let ParamType::Star(t) = &self.type_ {
                 return match t {
                     StarParamType::ArbitraryLength(t) => {
                         format!("VarArg({})", t.format(format_data))
@@ -114,7 +114,7 @@ impl CallableParam {
                     StarParamType::ParamSpecArgs(u) => unreachable!(),
                 }
                 .into();
-            } else if let ParamType::DoubleStarred(t) = &self.type_ {
+            } else if let ParamType::StarStar(t) = &self.type_ {
                 return match t {
                     StarStarParamType::ValueType(t) => {
                         format!("KwArg({})", t.format(format_data))
@@ -137,7 +137,7 @@ impl CallableParam {
                                 )
                             }
                             // TODO these two cases are probably unreachable
-                            ParamType::Starred(s) => format!(
+                            ParamType::Star(s) => format!(
                                 "*{}: {}",
                                 name.as_str(format_data.db),
                                 match s {
@@ -145,7 +145,7 @@ impl CallableParam {
                                     StarParamType::ParamSpecArgs(_) => todo!(),
                                 }
                             ),
-                            ParamType::DoubleStarred(d) => format!(
+                            ParamType::StarStar(d) => format!(
                                 "**{}: {}",
                                 name.as_str(format_data.db),
                                 match d {
@@ -184,7 +184,7 @@ impl CallableParam {
                                     name.as_str(format_data.db)
                                 )
                             }
-                            ParamType::Starred(_) | ParamType::DoubleStarred(_) => {
+                            ParamType::Star(_) | ParamType::StarStar(_) => {
                                 unreachable!()
                             }
                         }
@@ -224,18 +224,17 @@ impl CallableParams {
                 // Display a star only if we are displaying a "normal" function signature
                 let mut had_param_spec_args = false;
                 for (i, param) in params.iter().enumerate() {
-                    use ParamType::{DoubleStarred, Starred};
+                    use ParamType::{Star, StarStar};
                     use StarParamType::ParamSpecArgs;
                     use StarStarParamType::ParamSpecKwargs;
                     match &param.type_ {
-                        Starred(ParamSpecArgs(usage1)) => match params.get(i + 1).map(|p| &p.type_)
-                        {
-                            Some(DoubleStarred(ParamSpecKwargs(usage2))) if usage1 == usage2 => {
+                        Star(ParamSpecArgs(usage1)) => match params.get(i + 1).map(|p| &p.type_) {
+                            Some(StarStar(ParamSpecKwargs(usage2))) if usage1 == usage2 => {
                                 had_param_spec_args = true;
                             }
                             _ => todo!(),
                         },
-                        DoubleStarred(ParamSpecKwargs(usage)) => match had_param_spec_args {
+                        StarStar(ParamSpecKwargs(usage)) => match had_param_spec_args {
                             true => out_params.push(format_data.format_type_var_like(
                                 // TODO is this even reachable?
                                 &TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)),
@@ -288,13 +287,13 @@ impl CallableParams {
                 ParamType::PositionalOnly(t)
                 | ParamType::PositionalOrKeyword(t)
                 | ParamType::KeywordOnly(t)
-                | ParamType::Starred(StarParamType::ArbitraryLength(t))
-                | ParamType::DoubleStarred(StarStarParamType::ValueType(t)) => {
+                | ParamType::Star(StarParamType::ArbitraryLength(t))
+                | ParamType::StarStar(StarStarParamType::ValueType(t)) => {
                     t.has_any_internal(i_s, already_checked)
                 }
-                ParamType::Starred(StarParamType::ParamSpecArgs(_)) => false,
-                ParamType::DoubleStarred(StarStarParamType::ParamSpecKwargs(_)) => false,
-                ParamType::DoubleStarred(StarStarParamType::UnpackTypedDict(_)) => {
+                ParamType::Star(StarParamType::ParamSpecArgs(_)) => false,
+                ParamType::StarStar(StarStarParamType::ParamSpecKwargs(_)) => false,
+                ParamType::StarStar(StarStarParamType::UnpackTypedDict(_)) => {
                     todo!()
                 }
             }),
@@ -397,10 +396,7 @@ impl CallableContent {
                 _ => {
                     for param in params.iter().skip(1) {
                         if !param.has_default
-                            && !matches!(
-                                &param.type_,
-                                ParamType::Starred(_) | ParamType::DoubleStarred(_)
-                            )
+                            && !matches!(&param.type_, ParamType::Star(_) | ParamType::StarStar(_))
                         {
                             return Some(WrongPositionalCount::TooMany);
                         }
@@ -429,13 +425,11 @@ impl CallableContent {
                     ParamType::PositionalOnly(t)
                     | ParamType::PositionalOrKeyword(t)
                     | ParamType::KeywordOnly(t)
-                    | ParamType::Starred(StarParamType::ArbitraryLength(t))
-                    | ParamType::DoubleStarred(StarStarParamType::ValueType(t)) => {
-                        t.has_self_type()
-                    }
-                    ParamType::Starred(StarParamType::ParamSpecArgs(_)) => false,
-                    ParamType::DoubleStarred(StarStarParamType::ParamSpecKwargs(_)) => false,
-                    ParamType::DoubleStarred(StarStarParamType::UnpackTypedDict(_)) => todo!(),
+                    | ParamType::Star(StarParamType::ArbitraryLength(t))
+                    | ParamType::StarStar(StarStarParamType::ValueType(t)) => t.has_self_type(),
+                    ParamType::Star(StarParamType::ParamSpecArgs(_)) => false,
+                    ParamType::StarStar(StarStarParamType::ParamSpecKwargs(_)) => false,
+                    ParamType::StarStar(StarStarParamType::UnpackTypedDict(_)) => todo!(),
                 }),
                 CallableParams::Any(_) => false,
                 CallableParams::WithParamSpec(types, param_spec) => {
@@ -608,22 +602,22 @@ pub fn format_callable_params<'db: 'x, 'x, P: Param<'x>>(
             WrappedParamType::PositionalOnly(t)
             | WrappedParamType::PositionalOrKeyword(t)
             | WrappedParamType::KeywordOnly(t)
-            | WrappedParamType::Starred(WrappedStar::ArbitraryLength(t))
-            | WrappedParamType::DoubleStarred(WrappedStarStar::ValueType(t)) => t
+            | WrappedParamType::Star(WrappedStar::ArbitraryLength(t))
+            | WrappedParamType::StarStar(WrappedStarStar::ValueType(t)) => t
                 .as_ref()
                 .map(|t| format_function_type(format_data, t, class)),
-            WrappedParamType::Starred(WrappedStar::ParamSpecArgs(u)) => todo!(),
-            WrappedParamType::DoubleStarred(WrappedStarStar::UnpackTypedDict(u)) => {
+            WrappedParamType::Star(WrappedStar::ParamSpecArgs(u)) => todo!(),
+            WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(u)) => {
                 todo!()
             }
-            WrappedParamType::DoubleStarred(WrappedStarStar::ParamSpecKwargs(_)) => {
+            WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(_)) => {
                 todo!()
             }
         };
         let current_kind = p.kind(db);
         let stars = match current_kind {
-            ParamKind::Starred => "*",
-            ParamKind::DoubleStarred => "**",
+            ParamKind::Star => "*",
+            ParamKind::StarStar => "**",
             _ => "",
         };
         let mut out = if i == 0 && avoid_self_annotation && stars.is_empty() {
@@ -652,7 +646,7 @@ pub fn format_callable_params<'db: 'x, 'x, P: Param<'x>>(
             had_kwargs_separator = true;
             out = format!("*, {out}");
         }
-        had_kwargs_separator |= matches!(specific, WrappedParamType::Starred(_));
+        had_kwargs_separator |= matches!(specific, WrappedParamType::Star(_));
         if p.has_default() {
             if show_additional_information {
                 out += " = ...";

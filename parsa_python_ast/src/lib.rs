@@ -1864,14 +1864,11 @@ impl<'db> Iterator for ParamIterator<'db> {
                     } else if node.is_type(Nonterminal(starred_param))
                         || node.is_type(Nonterminal(lambda_starred_param))
                     {
-                        return Some(Self::Item::new(&mut node.iter_children().skip(1), Starred));
+                        return Some(Self::Item::new(&mut node.iter_children().skip(1), Star));
                     } else if node.is_type(Nonterminal(double_starred_param))
                         || node.is_type(Nonterminal(lambda_double_starred_param))
                     {
-                        return Some(Self::Item::new(
-                            &mut node.iter_children().skip(1),
-                            DoubleStarred,
-                        ));
+                        return Some(Self::Item::new(&mut node.iter_children().skip(1), StarStar));
                     } else {
                         debug_assert!(
                             [",", "*", "/"].contains(&node.as_code()),
@@ -1941,9 +1938,9 @@ impl<'db> Param<'db> {
 pub enum ParamKind {
     PositionalOnly,
     PositionalOrKeyword,
-    Starred,
+    Star,
     KeywordOnly,
-    DoubleStarred,
+    StarStar,
 }
 
 pub enum SimpleParamKind {

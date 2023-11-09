@@ -374,7 +374,7 @@ impl<'a> Matcher<'a> {
                     params2_iterator.next();
                     t
                 }
-                Some(ParamType::Starred(StarParamType::ArbitraryLength(t))) => t,
+                Some(ParamType::Star(StarParamType::ArbitraryLength(t))) => t,
                 _ => return Match::new_false(),
             };
             matches &= pre.matches(i_s, self, t, variance);

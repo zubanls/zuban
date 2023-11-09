@@ -285,10 +285,8 @@ fn common_params(
                     ParamKind::PositionalOnly => ParamType::PositionalOnly(new_t),
                     ParamKind::PositionalOrKeyword => ParamType::PositionalOrKeyword(new_t),
                     ParamKind::KeywordOnly => ParamType::KeywordOnly(new_t),
-                    ParamKind::Starred => ParamType::Starred(StarParamType::ArbitraryLength(new_t)),
-                    ParamKind::DoubleStarred => {
-                        ParamType::DoubleStarred(StarStarParamType::ValueType(new_t))
-                    }
+                    ParamKind::Star => ParamType::Star(StarParamType::ArbitraryLength(new_t)),
+                    ParamKind::StarStar => ParamType::StarStar(StarStarParamType::ValueType(new_t)),
                 },
                 name: (p1_name == p2_name).then(|| p1.name.clone()).flatten(),
                 has_default: p1.has_default & p2.has_default,

@@ -466,14 +466,14 @@ pub fn match_arguments_against_params<
                     WrappedParamType::PositionalOnly(t)
                     | WrappedParamType::PositionalOrKeyword(t)
                     | WrappedParamType::KeywordOnly(t)
-                    | WrappedParamType::Starred(WrappedStar::ArbitraryLength(t))
-                    | WrappedParamType::DoubleStarred(WrappedStarStar::ValueType(t)) => match t {
+                    | WrappedParamType::Star(WrappedStar::ArbitraryLength(t))
+                    | WrappedParamType::StarStar(WrappedStarStar::ValueType(t)) => match t {
                         Some(t) => t,
                         None => continue,
                     },
-                    WrappedParamType::Starred(WrappedStar::ParamSpecArgs(_))
-                    | WrappedParamType::DoubleStarred(WrappedStarStar::UnpackTypedDict(_))
-                    | WrappedParamType::DoubleStarred(WrappedStarStar::ParamSpecKwargs(_)) => {
+                    WrappedParamType::Star(WrappedStar::ParamSpecArgs(_))
+                    | WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(_))
+                    | WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(_)) => {
                         todo!()
                     }
                 };

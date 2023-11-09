@@ -1927,13 +1927,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         None
                     }
                 }
-                ParamKind::Starred if current_kind <= prev_kind => {
+                ParamKind::Star if current_kind <= prev_kind => {
                     Some("Var args may not appear after named or var args")
                 }
                 ParamKind::KeywordOnly if current_kind <= prev_kind => {
                     Some("A **kwargs argument must be the last argument")
                 }
-                ParamKind::DoubleStarred if current_kind == prev_kind => {
+                ParamKind::StarStar if current_kind == prev_kind => {
                     Some("You may only have one **kwargs argument")
                 }
                 _ => None,
@@ -2188,10 +2188,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     .into_iter()
                     .map(|t| CallableParam::new_anonymous(ParamType::PositionalOnly(t)))
                     .collect();
-                params.push(CallableParam::new_anonymous(ParamType::Starred(
+                params.push(CallableParam::new_anonymous(ParamType::Star(
                     StarParamType::ArbitraryLength(Type::Any(AnyCause::Explicit)),
                 )));
-                params.push(CallableParam::new_anonymous(ParamType::DoubleStarred(
+                params.push(CallableParam::new_anonymous(ParamType::StarStar(
                     StarStarParamType::ValueType(Type::Any(AnyCause::Explicit)),
                 )));
                 TypeContent::Concatenate(CallableParams::Simple(params.into()))
@@ -2664,8 +2664,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             Specific::MypyExtensionsNamedArg => ParamKind::KeywordOnly,
             Specific::MypyExtensionsDefaultNamedArg => ParamKind::KeywordOnly,
-            Specific::MypyExtensionsVarArg => ParamKind::Starred,
-            Specific::MypyExtensionsKwArg => ParamKind::DoubleStarred,
+            Specific::MypyExtensionsVarArg => ParamKind::Star,
+            Specific::MypyExtensionsKwArg => ParamKind::StarStar,
             _ => unreachable!(),
         };
         let type_ = type_.unwrap_or(Type::Any(AnyCause::Todo));
@@ -2674,10 +2674,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 ParamKind::PositionalOnly => ParamType::PositionalOnly(type_),
                 ParamKind::PositionalOrKeyword => ParamType::PositionalOrKeyword(type_),
                 ParamKind::KeywordOnly => ParamType::KeywordOnly(type_),
-                ParamKind::Starred => ParamType::Starred(StarParamType::ArbitraryLength(type_)),
-                ParamKind::DoubleStarred => {
-                    ParamType::DoubleStarred(StarStarParamType::ValueType(type_))
-                }
+                ParamKind::Star => ParamType::Star(StarParamType::ArbitraryLength(type_)),
+                ParamKind::StarStar => ParamType::StarStar(StarStarParamType::ValueType(type_)),
             },
             name: name.map(|s| s.into()),
             has_default: matches!(

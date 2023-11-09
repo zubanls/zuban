@@ -1520,10 +1520,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     ParamType::PositionalOrKeyword(Type::Any(AnyCause::Unannotated))
                 }
                 ParamKind::KeywordOnly => ParamType::KeywordOnly(Type::Any(AnyCause::Unannotated)),
-                ParamKind::Starred => ParamType::Starred(StarParamType::ArbitraryLength(
-                    Type::Any(AnyCause::Unannotated),
-                )),
-                ParamKind::DoubleStarred => ParamType::DoubleStarred(StarStarParamType::ValueType(
+                ParamKind::Star => ParamType::Star(StarParamType::ArbitraryLength(Type::Any(
+                    AnyCause::Unannotated,
+                ))),
+                ParamKind::StarStar => ParamType::StarStar(StarStarParamType::ValueType(
                     Type::Any(AnyCause::Unannotated),
                 )),
             },
@@ -2214,8 +2214,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                         for param in func_node.params().iter() {
                                             if param.name_definition().index() == name_def.index() {
                                                 return match param.type_() {
-                                                    ParamKind::Starred => todo!(),
-                                                    ParamKind::DoubleStarred => {
+                                                    ParamKind::Star => todo!(),
+                                                    ParamKind::StarStar => {
                                                         Inferred::from_type(new_class!(
                                                             self.i_s
                                                                 .db

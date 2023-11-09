@@ -142,7 +142,7 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                     | WrappedParamType::PositionalOrKeyword(t2) => {
                         matches &= match_(i_s, matcher, t1, t2)
                     }
-                    WrappedParamType::Starred(s2) => match s2 {
+                    WrappedParamType::Star(s2) => match s2 {
                         WrappedStar::ArbitraryLength(t2) => {
                             matches &= match_(i_s, matcher, t1, t2);
                             continue;
@@ -158,10 +158,10 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                         }
                         matches &= match_(i_s, matcher, t1, t2)
                     }
-                    WrappedParamType::Starred(WrappedStar::ArbitraryLength(s2)) => {
+                    WrappedParamType::Star(WrappedStar::ArbitraryLength(s2)) => {
                         params2.next();
                         match params2.next().map(|p| p.specific(i_s.db)) {
-                            Some(WrappedParamType::DoubleStarred(WrappedStarStar::ValueType(
+                            Some(WrappedParamType::StarStar(WrappedStarStar::ValueType(
                                 ref d2,
                             ))) => {
                                 matches &=
@@ -172,25 +172,25 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                                         WrappedParamType::PositionalOnly(t1)
                                         | WrappedParamType::PositionalOrKeyword(t1)
                                         | WrappedParamType::KeywordOnly(t1)
-                                        | WrappedParamType::Starred(
-                                            WrappedStar::ArbitraryLength(t1),
-                                        )
-                                        | WrappedParamType::DoubleStarred(
-                                            WrappedStarStar::ValueType(t1),
-                                        ) => {
+                                        | WrappedParamType::Star(WrappedStar::ArbitraryLength(
+                                            t1,
+                                        ))
+                                        | WrappedParamType::StarStar(WrappedStarStar::ValueType(
+                                            t1,
+                                        )) => {
                                             // Since this is a *args, **kwargs signature we
                                             // just check that all annotations are matching.
                                             // TODO do we need to check both?
                                             matches &= match_(i_s, matcher, t1, d2);
                                             matches &= match_(i_s, matcher, t1, s2);
                                         }
-                                        WrappedParamType::Starred(WrappedStar::ParamSpecArgs(
-                                            u,
-                                        )) => todo!(),
-                                        WrappedParamType::DoubleStarred(
+                                        WrappedParamType::Star(WrappedStar::ParamSpecArgs(u)) => {
+                                            todo!()
+                                        }
+                                        WrappedParamType::StarStar(
                                             WrappedStarStar::ParamSpecKwargs(u),
                                         ) => todo!(),
-                                        WrappedParamType::DoubleStarred(
+                                        WrappedParamType::StarStar(
                                             WrappedStarStar::UnpackTypedDict(u),
                                         ) => todo!(),
                                     }
@@ -203,11 +203,11 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                     _ => return Match::new_false(),
                 },
                 WrappedParamType::KeywordOnly(t1) => match &specific2 {
-                    WrappedParamType::DoubleStarred(WrappedStarStar::ValueType(t2)) => {
+                    WrappedParamType::StarStar(WrappedStarStar::ValueType(t2)) => {
                         matches &= match_(i_s, matcher, t1, t2);
                         continue;
                     }
-                    WrappedParamType::DoubleStarred(_) => return Match::new_false(),
+                    WrappedParamType::StarStar(_) => return Match::new_false(),
                     _ => {
                         let mut found = false;
                         for (i, p2) in unused_keyword_params.iter().enumerate() {
@@ -224,9 +224,10 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                             }
                         }
                         if !found {
-                            while params2.peek().is_some_and(|p2| {
-                                !matches!(p2.kind(i_s.db), ParamKind::DoubleStarred)
-                            }) {
+                            while params2
+                                .peek()
+                                .is_some_and(|p2| !matches!(p2.kind(i_s.db), ParamKind::StarStar))
+                            {
                                 param2 = *params2.peek().unwrap();
                                 if param1.name(i_s.db) == param2.name(i_s.db) {
                                     match &param2.specific(i_s.db) {
@@ -254,8 +255,8 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                         }
                     }
                 },
-                WrappedParamType::Starred(s1) => match &specific2 {
-                    WrappedParamType::Starred(s2) => match (s1, s2) {
+                WrappedParamType::Star(s1) => match &specific2 {
+                    WrappedParamType::Star(s2) => match (s1, s2) {
                         (WrappedStar::ArbitraryLength(t1), WrappedStar::ArbitraryLength(t2)) => {
                             matches &= match_(i_s, matcher, t1, t2)
                         }
@@ -269,8 +270,8 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                     },
                     _ => return Match::new_false(),
                 },
-                WrappedParamType::DoubleStarred(d1) => match &specific2 {
-                    WrappedParamType::DoubleStarred(d2) => match (d1, d2) {
+                WrappedParamType::StarStar(d1) => match &specific2 {
+                    WrappedParamType::StarStar(d2) => match (d1, d2) {
                         (WrappedStarStar::ValueType(t1), WrappedStarStar::ValueType(t2)) => {
                             matches &= match_(i_s, matcher, t1, t2)
                         }
@@ -296,10 +297,7 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
     }
     for param2 in params2 {
         if !param2.has_default()
-            && !matches!(
-                param2.kind(i_s.db),
-                ParamKind::Starred | ParamKind::DoubleStarred
-            )
+            && !matches!(param2.kind(i_s.db), ParamKind::Star | ParamKind::StarStar)
         {
             return Match::new_false();
         }
@@ -334,11 +332,11 @@ fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
         WrappedParamType::PositionalOnly(t2)
         | WrappedParamType::PositionalOrKeyword(t2)
         | WrappedParamType::KeywordOnly(t2)
-        | WrappedParamType::Starred(WrappedStar::ArbitraryLength(t2))
-        | WrappedParamType::DoubleStarred(WrappedStarStar::ValueType(t2)) => t2,
-        WrappedParamType::Starred(WrappedStar::ParamSpecArgs(u)) => todo!(),
-        WrappedParamType::DoubleStarred(WrappedStarStar::ParamSpecKwargs(u)) => todo!(),
-        WrappedParamType::DoubleStarred(WrappedStarStar::UnpackTypedDict(u)) => todo!(),
+        | WrappedParamType::Star(WrappedStar::ArbitraryLength(t2))
+        | WrappedParamType::StarStar(WrappedStarStar::ValueType(t2)) => t2,
+        WrappedParamType::Star(WrappedStar::ParamSpecArgs(u)) => todo!(),
+        WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(u)) => todo!(),
+        WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(u)) => todo!(),
     };
     let check_type = |i_s: &InferenceState<'db, '_>, t1: Option<&Type>, p2: P2| {
         if let Some(t1) = t1 {
@@ -381,8 +379,8 @@ fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                         ParamKind::KeywordOnly => {
                             todo!()
                         }
-                        ParamKind::Starred => (),
-                        ParamKind::DoubleStarred => (),
+                        ParamKind::Star => (),
+                        ParamKind::StarStar => (),
                     }
                 } else {
                     return false;
@@ -390,7 +388,7 @@ fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
             }
             WrappedParamType::KeywordOnly(t1) => {
                 if let Some(param2) = params2.peek() {
-                    if param2.kind(db) == ParamKind::Starred {
+                    if param2.kind(db) == ParamKind::Star {
                         params2.next();
                     }
                 }
@@ -430,7 +428,7 @@ fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                                 }
                             }
                         }
-                        ParamKind::DoubleStarred => (),
+                        ParamKind::StarStar => (),
                         _ => return false,
                     }
                     if !check_type(i_s, t1.as_deref(), param2) {
@@ -440,12 +438,9 @@ fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                     return false;
                 }
             }
-            WrappedParamType::Starred(WrappedStar::ArbitraryLength(t1)) => {
+            WrappedParamType::Star(WrappedStar::ArbitraryLength(t1)) => {
                 while match params2.peek() {
-                    Some(p) => !matches!(
-                        p.kind(db),
-                        ParamKind::KeywordOnly | ParamKind::DoubleStarred
-                    ),
+                    Some(p) => !matches!(p.kind(db), ParamKind::KeywordOnly | ParamKind::StarStar),
                     None => false,
                 } {
                     if let Some(param2) = params2.next() {
@@ -455,8 +450,8 @@ fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                     }
                 }
             }
-            WrappedParamType::Starred(WrappedStar::ParamSpecArgs(u)) => todo!(),
-            WrappedParamType::DoubleStarred(WrappedStarStar::ValueType(t1)) => {
+            WrappedParamType::Star(WrappedStar::ParamSpecArgs(u)) => todo!(),
+            WrappedParamType::StarStar(WrappedStarStar::ValueType(t1)) => {
                 for param2 in params2 {
                     if !check_type(i_s, t1.as_deref(), param2) {
                         return false;
@@ -464,19 +459,16 @@ fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                 }
                 return !had_any_fallback_with_default;
             }
-            WrappedParamType::DoubleStarred(WrappedStarStar::ParamSpecKwargs(u)) => {
+            WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(u)) => {
                 todo!()
             }
-            WrappedParamType::DoubleStarred(WrappedStarStar::UnpackTypedDict(u)) => {
+            WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(u)) => {
                 todo!()
             }
         }
     }
     for param2 in params2 {
-        if !matches!(
-            param2.kind(db),
-            ParamKind::Starred | ParamKind::DoubleStarred
-        ) {
+        if !matches!(param2.kind(db), ParamKind::Star | ParamKind::StarStar) {
             return false;
         }
     }
@@ -501,13 +493,13 @@ impl<'x> Param<'x> for &'x CallableParam {
                 WrappedParamType::PositionalOrKeyword(Some(Cow::Borrowed(t)))
             }
             ParamType::KeywordOnly(t) => WrappedParamType::KeywordOnly(Some(Cow::Borrowed(t))),
-            ParamType::Starred(s) => WrappedParamType::Starred(match s {
+            ParamType::Star(s) => WrappedParamType::Star(match s {
                 StarParamType::ArbitraryLength(t) => {
                     WrappedStar::ArbitraryLength(Some(Cow::Borrowed(t)))
                 }
                 StarParamType::ParamSpecArgs(u) => WrappedStar::ParamSpecArgs(u),
             }),
-            ParamType::DoubleStarred(s) => WrappedParamType::DoubleStarred(match s {
+            ParamType::StarStar(s) => WrappedParamType::StarStar(match s {
                 StarStarParamType::ValueType(t) => {
                     WrappedStarStar::ValueType(Some(Cow::Borrowed(t)))
                 }
@@ -716,11 +708,11 @@ where
                         }
                     }
                 }
-                ParamKind::Starred => match param.specific(self.db) {
-                    WrappedParamType::Starred(WrappedStar::ParamSpecArgs(u)) => {
+                ParamKind::Star => match param.specific(self.db) {
+                    WrappedParamType::Star(WrappedStar::ParamSpecArgs(u)) => {
                         debug_assert!(matches!(
                             self.params.next().unwrap().specific(self.db),
-                            WrappedParamType::DoubleStarred(WrappedStarStar::ParamSpecKwargs(u)),
+                            WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(u)),
                         ));
                         return Some(InferrableParam {
                             param,
@@ -735,7 +727,7 @@ where
                         return self.next();
                     }
                 },
-                ParamKind::DoubleStarred => {
+                ParamKind::StarStar => {
                     self.current_double_starred_param = Some(param);
                     return self.next();
                 }
@@ -773,8 +765,8 @@ pub enum WrappedParamType<'a> {
     PositionalOnly(Option<Cow<'a, Type>>),
     PositionalOrKeyword(Option<Cow<'a, Type>>),
     KeywordOnly(Option<Cow<'a, Type>>),
-    Starred(WrappedStar<'a>),
-    DoubleStarred(WrappedStarStar<'a>),
+    Star(WrappedStar<'a>),
+    StarStar(WrappedStarStar<'a>),
 }
 
 #[derive(Debug)]

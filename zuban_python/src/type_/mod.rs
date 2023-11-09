@@ -755,17 +755,17 @@ impl Type {
                         ParamType::PositionalOnly(t)
                         | ParamType::PositionalOrKeyword(t)
                         | ParamType::KeywordOnly(t)
-                        | ParamType::Starred(StarParamType::ArbitraryLength(t))
-                        | ParamType::DoubleStarred(StarStarParamType::ValueType(t)) => {
+                        | ParamType::Star(StarParamType::ArbitraryLength(t))
+                        | ParamType::StarStar(StarStarParamType::ValueType(t)) => {
                             t.search_type_vars(found_type_var)
                         }
-                        ParamType::Starred(StarParamType::ParamSpecArgs(_)) => {
+                        ParamType::Star(StarParamType::ParamSpecArgs(_)) => {
                             unreachable!()
                         }
-                        ParamType::DoubleStarred(StarStarParamType::UnpackTypedDict(t)) => {
+                        ParamType::StarStar(StarStarParamType::UnpackTypedDict(t)) => {
                             todo!()
                         }
-                        ParamType::DoubleStarred(StarStarParamType::ParamSpecKwargs(_)) => {
+                        ParamType::StarStar(StarStarParamType::ParamSpecKwargs(_)) => {
                             todo!()
                         }
                     }
