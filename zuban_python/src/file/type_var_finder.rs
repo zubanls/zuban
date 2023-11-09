@@ -52,7 +52,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
                         finder.find_in_expr(n.expression());
                     }
                     Argument::Keyword(_) => (), // Ignore for now -> part of meta class
-                    Argument::Starred(_) | Argument::DoubleStarred(_) => (), // Nobody probably cares about this
+                    Argument::Star(_) | Argument::StarStar(_) => (), // Nobody probably cares about this
                 }
             }
         }

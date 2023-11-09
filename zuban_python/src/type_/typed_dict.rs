@@ -421,7 +421,7 @@ fn new_typed_dict_internal<'db>(
                 }
                 key_value.key();
             }
-            DictElement::DictStarred(d) => {
+            DictElement::Star(d) => {
                 NodeRef::new(args_node_ref.file, d.index())
                     .add_issue(i_s, IssueType::TypedDictInvalidFieldName);
                 return None;

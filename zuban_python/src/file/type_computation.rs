@@ -584,7 +584,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 is_implicit_optional,
                 None,
             ),
-            Some(SimpleParamKind::Starred) => self.cache_annotation_or_type_comment(
+            Some(SimpleParamKind::Star) => self.cache_annotation_or_type_comment(
                 annotation.index(),
                 expr,
                 false,
@@ -592,7 +592,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     wrap_starred(slf.as_type(t, NodeRef::new(self.inference.file, expr.index())))
                 }),
             ),
-            Some(SimpleParamKind::DoubleStarred) => self.cache_annotation_or_type_comment(
+            Some(SimpleParamKind::StarStar) => self.cache_annotation_or_type_comment(
                 annotation.index(),
                 expr,
                 false,

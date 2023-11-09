@@ -272,7 +272,7 @@ create_nonterminal_structs!(
     StarExpression: star_expression
     StarNamedExpression: star_named_expression
     StarredExpression: starred_expression
-    DoubleStarredExpression: double_starred_expression
+    StarStarExpression: double_starred_expression
     Expression: expression
     Ternary: expression
     NamedExpression: named_expression
@@ -701,7 +701,7 @@ impl<'db> Iterator for DictElementIterator<'db> {
                 if node.is_type(Nonterminal(dict_key_value)) {
                     DictElement::KeyValue(DictKeyValue::new(node))
                 } else {
-                    DictElement::DictStarred(DictStarred::new(node))
+                    DictElement::Star(DictStarred::new(node))
                 }
             }),
             DictElementIterator::Empty => None,
@@ -711,7 +711,7 @@ impl<'db> Iterator for DictElementIterator<'db> {
 
 pub enum DictElement<'db> {
     KeyValue(DictKeyValue<'db>),
-    DictStarred(DictStarred<'db>),
+    Star(DictStarred<'db>),
 }
 
 impl<'db> DictKeyValue<'db> {
@@ -1945,8 +1945,8 @@ pub enum ParamKind {
 
 pub enum SimpleParamKind {
     Normal,
-    Starred,
-    DoubleStarred,
+    Star,
+    StarStar,
 }
 
 impl<'db> Annotation<'db> {
@@ -1959,11 +1959,11 @@ impl<'db> Annotation<'db> {
         if maybe_param.is_type(Nonterminal(starred_param))
             || maybe_param.is_type(Nonterminal(lambda_starred_param))
         {
-            Some(SimpleParamKind::Starred)
+            Some(SimpleParamKind::Star)
         } else if maybe_param.is_type(Nonterminal(double_starred_param))
             || maybe_param.is_type(Nonterminal(lambda_double_starred_param))
         {
-            Some(SimpleParamKind::DoubleStarred)
+            Some(SimpleParamKind::StarStar)
         } else if maybe_param.is_type(Nonterminal(assignment)) {
             None
         } else {
@@ -2902,9 +2902,9 @@ impl<'db> Iterator for ArgumentsIterator<'db> {
             } else if node.is_type(Nonterminal(kwarg)) {
                 return Some(Argument::Keyword(Kwarg::new(node)));
             } else if node.is_type(Nonterminal(starred_expression)) {
-                return Some(Argument::Starred(StarredExpression::new(node)));
+                return Some(Argument::Star(StarredExpression::new(node)));
             } else if node.is_type(Nonterminal(double_starred_expression)) {
-                return Some(Argument::DoubleStarred(DoubleStarredExpression::new(node)));
+                return Some(Argument::StarStar(StarStarExpression::new(node)));
             }
         }
         None
@@ -2915,8 +2915,8 @@ impl<'db> Iterator for ArgumentsIterator<'db> {
 pub enum Argument<'db> {
     Positional(NamedExpression<'db>),
     Keyword(Kwarg<'db>),
-    Starred(StarredExpression<'db>),
-    DoubleStarred(DoubleStarredExpression<'db>),
+    Star(StarredExpression<'db>),
+    StarStar(StarStarExpression<'db>),
 }
 
 impl<'db> Argument<'db> {
@@ -2924,8 +2924,8 @@ impl<'db> Argument<'db> {
         match self {
             Self::Positional(n) => n.index(),
             Self::Keyword(k) => k.index(),
-            Self::Starred(s) => s.index(),
-            Self::DoubleStarred(d) => d.index(),
+            Self::Star(s) => s.index(),
+            Self::StarStar(d) => d.index(),
         }
     }
 }
@@ -2947,7 +2947,7 @@ impl<'db> StarredExpression<'db> {
     }
 }
 
-impl<'db> DoubleStarredExpression<'db> {
+impl<'db> StarStarExpression<'db> {
     pub fn expression(&self) -> Expression<'db> {
         Expression::new(self.node.nth_child(1))
     }

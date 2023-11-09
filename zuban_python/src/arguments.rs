@@ -96,7 +96,7 @@ impl<'db: 'a, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
                 kwargs_before_star_args: {
                     let mut iterator = arguments.iter();
                     if iterator.any(|arg| matches!(arg, ASTArgument::Keyword(_))) {
-                        if iterator.any(|arg| matches!(arg, ASTArgument::Starred(_))) {
+                        if iterator.any(|arg| matches!(arg, ASTArgument::Star(_))) {
                             Some(vec![])
                         } else {
                             None
@@ -493,11 +493,11 @@ impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
                             prefix = format!("{}=", name.as_code());
                             inference.infer_expression(expr)
                         }
-                        ASTArgument::Starred(starred_expr) => {
+                        ASTArgument::Star(starred_expr) => {
                             prefix = "*".to_owned();
                             inference.infer_expression(starred_expr.expression())
                         }
-                        ASTArgument::DoubleStarred(double_starred_expr) => {
+                        ASTArgument::StarStar(double_starred_expr) => {
                             prefix = "*".to_owned();
                             inference.infer_expression(double_starred_expr.expression())
                         }
@@ -568,7 +568,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                 ));
                             }
                         }
-                        ASTArgument::Starred(starred_expr) => {
+                        ASTArgument::Star(starred_expr) => {
                             let inf = file
                                 .inference(i_s)
                                 .infer_expression(starred_expr.expression());
@@ -592,7 +592,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                 }
                             };
                         }
-                        ASTArgument::DoubleStarred(double_starred_expr) => {
+                        ASTArgument::StarStar(double_starred_expr) => {
                             let inf = file
                                 .inference(i_s)
                                 .infer_expression(double_starred_expr.expression());

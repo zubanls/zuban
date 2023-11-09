@@ -805,11 +805,11 @@ impl<'db: 'a, 'a> Class<'a> {
                             debug!("TODO shouldn't we handle this? In testNewAnalyzerClassKeywordsForward it's ignored...")
                         }
                     }
-                    Argument::Starred(starred) => {
+                    Argument::Star(starred) => {
                         NodeRef::new(self.node_ref.file, starred.index())
                             .add_issue(i_s, IssueType::InvalidBaseClass);
                     }
-                    Argument::DoubleStarred(double_starred) => {
+                    Argument::StarStar(double_starred) => {
                         NodeRef::new(self.node_ref.file, double_starred.index())
                             .add_issue(i_s, IssueType::InvalidBaseClass);
                     }

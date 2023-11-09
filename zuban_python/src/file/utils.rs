@@ -154,7 +154,7 @@ impl<'db> Inference<'db, '_, '_> {
                         }
                     }
                 }
-                DictElement::DictStarred(dict_starred) => {
+                DictElement::Star(dict_starred) => {
                     let inf = self.infer_expression_part(dict_starred.expression_part());
                     let node_ref =
                         NodeRef::new(self.file, dict_starred.index()).to_db_lifetime(i_s.db);
@@ -256,7 +256,7 @@ impl<'db> Inference<'db, '_, '_> {
                         );
                     }
                 }
-                DictElement::DictStarred(starred) => {
+                DictElement::Star(starred) => {
                     let mapping = self.infer_expression_part(starred.expression_part());
                     if let Some((key, value)) = unpack_star_star(i_s, &mapping.as_cow_type(i_s)) {
                         if !key_t.is_super_type_of(i_s, matcher, &key).bool()
@@ -380,7 +380,7 @@ impl<'db> Inference<'db, '_, '_> {
                             gather_keys(self.infer_expression(key_value.key()));
                             gather_values(self.infer_expression(key_value.value()));
                         }
-                        DictElement::DictStarred(starred) => {
+                        DictElement::Star(starred) => {
                             let mapping = self.infer_expression_part(starred.expression_part());
                             if let Some((key, value)) =
                                 unpack_star_star(i_s, &mapping.as_cow_type(i_s))
