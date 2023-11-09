@@ -41,7 +41,13 @@ pub enum TypeVarCallbackReturn {
     NotFound,
 }
 
-type MapAnnotationTypeCallback<'a> = Option<&'a dyn Fn(&mut TypeComputation, TypeContent) -> Type>;
+type MapAnnotationTypeCallback<'a> =
+    Option<&'a dyn Fn(&mut TypeComputation, TypeContent) -> AnnotationReturn>;
+
+enum AnnotationReturn {
+    Type(Type),
+    UnpackType(Type),
+}
 
 type TypeVarCallback<'db, 'x> = &'x mut dyn FnMut(
     &InferenceState<'db, '_>,
@@ -599,23 +605,27 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         };
     }
 
-    fn wrap_star(&mut self, t: TypeContent, expr: Expression) -> Type {
+    fn wrap_star(&mut self, t: TypeContent, expr: Expression) -> AnnotationReturn {
         let t = self.as_type(t, NodeRef::new(self.inference.file, expr.index()));
         match &t {
-            Type::ParamSpecArgs(_) => t,
-            _ => Type::Tuple(Rc::new(Tuple::new_arbitrary_length(t))),
+            Type::ParamSpecArgs(_) => AnnotationReturn::Type(t),
+            _ => AnnotationReturn::Type(Type::Tuple(Rc::new(Tuple::new_arbitrary_length(t)))),
         }
     }
 
-    fn wrap_star_star(&mut self, t: TypeContent, expr: Expression) -> Type {
-        let t = self.as_type(t, NodeRef::new(self.inference.file, expr.index()));
-        match &t {
-            Type::ParamSpecKwargs(_) => t,
-            _ => new_class!(
-                self.inference.i_s.db.python_state.dict_node_ref().as_link(),
-                self.inference.i_s.db.python_state.str_type(),
-                t,
-            ),
+    fn wrap_star_star(&mut self, tc: TypeContent, expr: Expression) -> AnnotationReturn {
+        match tc {
+            TypeContent::Unpacked(TypeOrTypeVarTuple::Type(t @ Type::TypedDict(_))) => {
+                AnnotationReturn::UnpackType(t)
+            }
+            _ => match self.as_type(tc, NodeRef::new(self.inference.file, expr.index())) {
+                t @ Type::ParamSpecKwargs(_) => AnnotationReturn::Type(t),
+                t => AnnotationReturn::Type(new_class!(
+                    self.inference.i_s.db.python_state.dict_node_ref().as_link(),
+                    self.inference.i_s.db.python_state.str_type(),
+                    t,
+                )),
+            },
         }
     }
 
@@ -650,7 +660,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let node_ref = NodeRef::new(self.inference.file, expr.index());
         let mut is_class_var = false;
         let mut type_ = match map_type_callback {
-            Some(map_type_callback) => map_type_callback(self, type_),
+            Some(map_type_callback) => match map_type_callback(self, type_) {
+                AnnotationReturn::Type(t) => t,
+                AnnotationReturn::UnpackType(t) => {
+                    todo!()
+                }
+            },
             None => match type_ {
                 TypeContent::SimpleGeneric { .. } | TypeContent::Class { .. }
                     if !is_implicit_optional =>
