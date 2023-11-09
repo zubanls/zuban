@@ -945,7 +945,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     IssueType::Note(Box::from("You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'"))
                 );
             }
-            TypeContent::Unpacked(t) => debug!("TODO Unpacked Should probably raise an error?"),
+            TypeContent::Unpacked(t) => todo!(),
             TypeContent::Concatenate(_) => {
                 self.add_issue(
                     node_ref,

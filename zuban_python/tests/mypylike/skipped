@@ -462,6 +462,9 @@ testDataclassFieldWithTypedDictUnpacking
 testUnpackKwargsOverridesTypedDict
 testUnpackGenericTypedDictImplicitAnyEnabled
 testUnpackTypedDictTotality
+testUnpackWithDuplicateNamePositionalOnly
+testUnpackGenericTypedDictImplicitAnyDisabled
+testTypeVarTupleCallable
 # "Unpack item in ** argument must be a TypedDict"
 testUnpackWithoutTypedDict
 # dict unpacking
