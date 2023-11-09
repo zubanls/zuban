@@ -1066,6 +1066,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t)) => {
                     ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ValueType(as_t(t)))
                 }
+                WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::UnpackTypedDict(u)) => {
+                    todo!()
+                }
                 WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(u)) => {
                     if !had_param_spec_args {
                         todo!()

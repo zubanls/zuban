@@ -763,9 +763,14 @@ impl Type {
                             unreachable!()
                         }
                         ParamSpecific::DoubleStarred(
+                            DoubleStarredParamSpecific::UnpackTypedDict(t),
+                        ) => {
+                            todo!()
+                        }
+                        ParamSpecific::DoubleStarred(
                             DoubleStarredParamSpecific::ParamSpecKwargs(_),
                         ) => {
-                            unreachable!()
+                            todo!()
                         }
                     }
                 }

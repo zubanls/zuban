@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::rc::Rc;
 
 use parsa_python_ast::ParamKind;
 
@@ -9,7 +10,7 @@ use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::type_::{
     CallableParam, CallableParams, DoubleStarredParamSpecific, ParamSpecUsage, ParamSpecific,
-    StarredParamSpecific, Type, TypeVarLikes, Variance,
+    StarredParamSpecific, Type, TypeVarLikes, TypedDict, Variance,
 };
 
 pub trait Param<'x>: Copy + std::fmt::Debug {
@@ -189,6 +190,9 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                                         WrappedParamSpecific::DoubleStarred(
                                             WrappedDoubleStarred::ParamSpecKwargs(u),
                                         ) => todo!(),
+                                        WrappedParamSpecific::DoubleStarred(
+                                            WrappedDoubleStarred::UnpackTypedDict(u),
+                                        ) => todo!(),
                                     }
                                 }
                                 return matches;
@@ -276,14 +280,7 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                             WrappedDoubleStarred::ParamSpecKwargs(u1),
                             WrappedDoubleStarred::ParamSpecKwargs(u2),
                         ) => todo!(),
-                        (
-                            WrappedDoubleStarred::ValueType(_),
-                            WrappedDoubleStarred::ParamSpecKwargs(_),
-                        )
-                        | (
-                            WrappedDoubleStarred::ParamSpecKwargs(_),
-                            WrappedDoubleStarred::ValueType(_),
-                        ) => todo!(),
+                        _ => todo!(),
                     },
                     _ => return Match::new_false(),
                 },
@@ -343,6 +340,7 @@ fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
         | WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t2)) => t2,
         WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u)) => todo!(),
         WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(u)) => todo!(),
+        WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::UnpackTypedDict(u)) => todo!(),
     };
     let check_type = |i_s: &InferenceState<'db, '_>, t1: Option<&Type>, p2: P2| {
         if let Some(t1) = t1 {
@@ -472,6 +470,9 @@ fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
             WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(u)) => {
                 todo!()
             }
+            WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::UnpackTypedDict(u)) => {
+                todo!()
+            }
         }
     }
     for param2 in params2 {
@@ -517,6 +518,9 @@ impl<'x> Param<'x> for &'x CallableParam {
                 }
                 DoubleStarredParamSpecific::ParamSpecKwargs(u) => {
                     WrappedDoubleStarred::ParamSpecKwargs(u)
+                }
+                DoubleStarredParamSpecific::UnpackTypedDict(u) => {
+                    WrappedDoubleStarred::UnpackTypedDict(u.clone())
                 }
             }),
         }
@@ -792,4 +796,5 @@ pub enum WrappedStarred<'a> {
 pub enum WrappedDoubleStarred<'a> {
     ValueType(Option<Cow<'a, Type>>),
     ParamSpecKwargs(&'a ParamSpecUsage),
+    UnpackTypedDict(Rc<TypedDict>),
 }

@@ -477,10 +477,13 @@ pub fn match_arguments_against_params<
                         }
                     }
                     WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(_))
+                    | WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::UnpackTypedDict(
+                        _,
+                    ))
                     | WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(
                         _,
                     )) => {
-                        unreachable!()
+                        todo!()
                     }
                 };
                 let value = if matcher.might_have_defined_type_vars() {

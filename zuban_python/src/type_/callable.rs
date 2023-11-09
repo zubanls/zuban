@@ -17,7 +17,7 @@ use crate::{
 
 use super::{
     AnyCause, DbString, FunctionKind, ParamSpecUsage, RecursiveAlias, StringSlice, Type, TypeVar,
-    TypeVarKind, TypeVarLike, TypeVarLikes, TypeVarName, TypeVarUsage, Variance,
+    TypeVarKind, TypeVarLike, TypeVarLikes, TypeVarName, TypeVarUsage, TypedDict, Variance,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -30,6 +30,7 @@ pub enum StarredParamSpecific {
 pub enum DoubleStarredParamSpecific {
     ValueType(Type),
     ParamSpecKwargs(ParamSpecUsage),
+    UnpackTypedDict(Rc<TypedDict>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -118,7 +119,8 @@ impl CallableParam {
                     DoubleStarredParamSpecific::ValueType(t) => {
                         format!("KwArg({})", t.format(format_data))
                     }
-                    DoubleStarredParamSpecific::ParamSpecKwargs(_) => unreachable!(),
+                    DoubleStarredParamSpecific::UnpackTypedDict(_) => todo!(),
+                    DoubleStarredParamSpecific::ParamSpecKwargs(_) => todo!(),
                 }
                 .into();
             } else if let Some(name) = self.name.as_ref() {
@@ -150,6 +152,7 @@ impl CallableParam {
                                 match d {
                                     DoubleStarredParamSpecific::ValueType(t) =>
                                         t.format(format_data),
+                                    DoubleStarredParamSpecific::UnpackTypedDict(_) => todo!(),
                                     DoubleStarredParamSpecific::ParamSpecKwargs(_) => todo!(),
                                 }
                             ),
@@ -298,6 +301,9 @@ impl CallableParams {
                 ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ParamSpecKwargs(_)) => {
                     false
                 }
+                ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::UnpackTypedDict(_)) => {
+                    todo!()
+                }
             }),
             Self::WithParamSpec(pre_types, usage) => pre_types
                 .iter()
@@ -442,6 +448,9 @@ impl CallableContent {
                     ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ParamSpecKwargs(
                         _,
                     )) => false,
+                    ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::UnpackTypedDict(
+                        _,
+                    )) => todo!(),
                 })
             }
             CallableParams::Any(_) => false,
@@ -623,7 +632,10 @@ pub fn format_callable_params<'db: 'x, 'x, P: Param<'x>>(
                 .as_ref()
                 .map(|t| format_function_type(format_data, t, class)),
             WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u)) => todo!(),
-            WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(u)) => {
+            WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::UnpackTypedDict(u)) => {
+                todo!()
+            }
+            WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(_)) => {
                 todo!()
             }
         };

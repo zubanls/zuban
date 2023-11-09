@@ -349,6 +349,9 @@ impl Type {
                                                 t.rewrite_late_bound_callables(manager),
                                             )
                                         }
+                                        DoubleStarredParamSpecific::UnpackTypedDict(_) => {
+                                            todo!()
+                                        }
                                         DoubleStarredParamSpecific::ParamSpecKwargs(_) => {
                                             todo!()
                                         }
@@ -421,6 +424,9 @@ impl Type {
                                                 replace_self,
                                             ),
                                         )
+                                    }
+                                    DoubleStarredParamSpecific::UnpackTypedDict(_) => {
+                                        todo!()
                                     }
                                     DoubleStarredParamSpecific::ParamSpecKwargs(_) => {
                                         todo!()
