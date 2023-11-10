@@ -459,7 +459,14 @@ testUnpackKwargsNonIdentifier
 testDataclassFieldWithTypedDictUnpacking
 testUnpackKwargsOverridesTypedDict
 testUnpackTypedDictTotality
-testTypeVarTupleCallable
+testUnpackWithDuplicateKeywords
+testUnpackWithDuplicateKeywordKwargs
+testUnpackKwargsOverrides
+testUnpackKwargsInference
+testUnpackKwargsOverload
+testUnpackKwargsJoin
+testUnpackKwargsParamSpec
+testUnpackInCallableType
 # "Unpack item in ** argument must be a TypedDict"
 testUnpackWithoutTypedDict
 # dict unpacking
@@ -785,17 +792,10 @@ testTypeVarTupleEmptySpecialCase
 testTypeVarTupleRuntimeTypeApplication
 testTypeVarTupleErrors
 # typing_extensions.Unpack
-testUnpackWithDuplicateKeywords
-testUnpackWithDuplicateKeywordKwargs
-testUnpackKwargsOverrides
-testUnpackKwargsInference
-testUnpackKwargsOverload
-testUnpackKwargsJoin
-testUnpackKwargsParamSpec
+testTypeVarTupleCallable
 testInvalidUnpackTypes
 testTupleWithStarExpr2
 testTupleWithStarExpr3
-testUnpackInCallableType
 testVariadicTupleIncrementalUpdateNoCrash
 # Unpack item in ** argument must be a TypedDict
 testTypeVarTuple
