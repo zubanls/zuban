@@ -471,8 +471,10 @@ pub fn match_arguments_against_params<
                         Some(t) => t,
                         None => continue,
                     },
+                    WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(td)) => {
+                        todo!()
+                    }
                     WrappedParamType::Star(WrappedStar::ParamSpecArgs(_))
-                    | WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(_))
                     | WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(_)) => {
                         todo!()
                     }

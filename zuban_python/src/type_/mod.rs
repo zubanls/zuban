@@ -69,7 +69,8 @@ pub use self::enum_::{
 };
 pub use self::operations::execute_type_of_type;
 pub use self::typed_dict::{
-    infer_typed_dict_total_argument, initialize_typed_dict, lookup_on_typed_dict, new_typed_dict,
+    check_typed_dict_call, infer_typed_dict_item, infer_typed_dict_total_argument,
+    initialize_typed_dict, lookup_on_typed_dict, maybe_add_extra_keys_issue, new_typed_dict,
     TypedDict, TypedDictGenerics, TypedDictMember, TypedDictMemberGatherer,
 };
 pub use self::union::simplified_union_from_iterators;

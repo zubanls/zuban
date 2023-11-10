@@ -14,7 +14,10 @@ use crate::inference_state::InferenceState;
 use crate::inferred::UnionValue;
 use crate::matching::{FormatData, Matcher, MismatchReason, ResultContext};
 use crate::node_ref::NodeRef;
-use crate::type_::{AnyCause, Literal, LiteralKind, LiteralValue, Type, TypedDict};
+use crate::type_::{
+    check_typed_dict_call, infer_typed_dict_item, maybe_add_extra_keys_issue, AnyCause, Literal,
+    LiteralKind, LiteralValue, Type, TypedDict,
+};
 use crate::utils::join_with_commas;
 use crate::{debug, new_class, Inferred};
 
@@ -302,63 +305,13 @@ impl<'db> Inference<'db, '_, '_> {
             .with_type_if_exists(|type_, matcher| {
                 let mut found = None;
                 type_.on_any_typed_dict(self.i_s, matcher, &mut |matcher, td| {
-                    found = self.check_typed_dict_call_with_context(matcher, td, args);
+                    found = check_typed_dict_call(self.i_s, matcher, td, args);
                     found.is_some()
                 });
                 // `found` might still be empty, because we matched Any.
                 found.map(Inferred::from_type)
             })
             .flatten()
-    }
-
-    pub fn check_typed_dict_call_with_context(
-        &mut self,
-        matcher: &mut Matcher,
-        typed_dict: Rc<TypedDict>,
-        args: &dyn Arguments<'db>,
-    ) -> Option<Type> {
-        let i_s = self.i_s;
-        let mut extra_keys = vec![];
-        for arg in args.iter() {
-            if let Some(key) = arg.keyword_name(i_s.db) {
-                infer_typed_dict_item(
-                    self.i_s,
-                    &typed_dict,
-                    matcher,
-                    arg.as_node_ref().to_db_lifetime(i_s.db),
-                    key,
-                    &mut extra_keys,
-                    |context| arg.infer(i_s, context),
-                );
-            } else {
-                todo!()
-            }
-        }
-        maybe_add_extra_keys_issue(i_s, &typed_dict, args.as_node_ref(), extra_keys);
-        let mut missing_keys: Vec<Box<str>> = vec![];
-        for member in typed_dict.members.iter() {
-            if member.required {
-                let expected_name = member.name.as_str(i_s.db);
-                if !args
-                    .iter()
-                    .any(|arg| arg.keyword_name(i_s.db) == Some(expected_name))
-                {
-                    missing_keys.push(expected_name.into())
-                }
-            }
-        }
-        if !missing_keys.is_empty() {
-            args.as_node_ref().add_issue(
-                i_s,
-                IssueType::TypedDictMissingKeys {
-                    typed_dict: typed_dict
-                        .name_or_fallback(&FormatData::new_short(i_s.db))
-                        .into(),
-                    keys: missing_keys.into(),
-                },
-            )
-        }
-        Some(Type::TypedDict(typed_dict))
     }
 
     pub fn dict_literal_without_context(&mut self, dict: Dict) -> Inferred {
@@ -581,39 +534,6 @@ pub fn infer_string_index(
     .unwrap_or_else(|| Inferred::new_any(AnyCause::Todo))
 }
 
-fn infer_typed_dict_item<'db>(
-    i_s: &InferenceState<'db, '_>,
-    typed_dict: &TypedDict,
-    matcher: &mut Matcher,
-    node_ref: NodeRef<'db>,
-    key: &str,
-    extra_keys: &mut Vec<String>,
-    infer: impl FnOnce(&mut ResultContext) -> Inferred,
-) {
-    if let Some(member) = typed_dict.find_member(i_s.db, key) {
-        let inferred = infer(&mut ResultContext::Known(&member.type_));
-
-        member.type_.error_if_not_matches_with_matcher(
-            i_s,
-            matcher,
-            &inferred,
-            Some(|got, expected, _: &MismatchReason| {
-                node_ref.add_issue(
-                    i_s,
-                    IssueType::TypedDictIncompatibleType {
-                        key: key.into(),
-                        got,
-                        expected,
-                    },
-                );
-                node_ref
-            }),
-        );
-    } else {
-        extra_keys.push(key.into())
-    }
-}
-
 pub fn infer_dict_like(
     i_s: &InferenceState,
     result_context: &mut ResultContext,
@@ -646,31 +566,6 @@ pub fn infer_dict_like(
                     }),
                 )
             }))
-        },
-    )
-}
-
-fn maybe_add_extra_keys_issue(
-    i_s: &InferenceState,
-    typed_dict: &TypedDict,
-    node_ref: NodeRef,
-    mut extra_keys: Vec<String>,
-) {
-    node_ref.add_issue(
-        i_s,
-        IssueType::TypedDictExtraKey {
-            key: match extra_keys.len() {
-                0 => return,
-                1 => format!("\"{}\"", extra_keys.remove(0)).into(),
-                _ => format!(
-                    "({})",
-                    join_with_commas(extra_keys.iter().map(|key| format!("\"{key}\"")))
-                )
-                .into(),
-            },
-            typed_dict: typed_dict
-                .name_or_fallback(&FormatData::new_short(i_s.db))
-                .into(),
         },
     )
 }
