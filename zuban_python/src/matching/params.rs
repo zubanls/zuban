@@ -615,14 +615,20 @@ where
             if let WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(td)) =
                 param.specific(self.db)
             {
-                while let Some(arg) = self.next_arg() {
-                    if let Some(key) = arg.keyword_name(self.db) {
+                while let Some(argument) = self.next_arg() {
+                    if let Some(key) = argument.keyword_name(self.db) {
                         if let Some(member) = td.find_member(self.db, key) {
-                            todo!()
+                            return Some(InferrableParam {
+                                param,
+                                argument: ParamArgument::MatchedUnpackedTypedDictMember {
+                                    argument,
+                                    type_: member.type_.clone(),
+                                },
+                            });
                         } else {
-                            self.unused_keyword_arguments.push(arg);
+                            self.unused_keyword_arguments.push(argument);
                         }
-                    } else if arg.in_args_or_kwargs_and_arbitrary_len() {
+                    } else if argument.in_args_or_kwargs_and_arbitrary_len() {
                         self.current_arg = None;
                     } else {
                         self.too_many_positional_arguments = true;
@@ -769,6 +775,10 @@ where
 pub enum ParamArgument<'db, 'a> {
     None,
     Argument(Argument<'db, 'a>),
+    MatchedUnpackedTypedDictMember {
+        argument: Argument<'db, 'a>,
+        type_: Type,
+    },
     ParamSpecArgs(ParamSpecUsage, Box<[Argument<'db, 'a>]>),
 }
 

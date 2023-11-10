@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use parsa_python_ast::ParamKind;
 
 use super::super::params::{
@@ -16,7 +18,7 @@ use crate::diagnostics::IssueType;
 use crate::inference_state::InferenceState;
 use crate::node_ref::NodeRef;
 use crate::type_::{
-    CallableParams, ClassGenerics, GenericItem, GenericsList, TypeVarLikeUsage, TypeVarLikes,
+    CallableParams, ClassGenerics, GenericItem, GenericsList, Type, TypeVarLikeUsage, TypeVarLikes,
 };
 use crate::type_helpers::{Callable, Class, Function};
 
@@ -459,10 +461,89 @@ pub fn match_arguments_against_params<
             debug!("Arguments for {:?} missing", p.param.name(i_s.db));
             continue;
         }
+        let mut match_arg = |argument: Argument<'db, '_>, expected: Cow<Type>| {
+            let value = if matcher.might_have_defined_type_vars() {
+                argument.infer(
+                    i_s,
+                    &mut ResultContext::WithMatcher {
+                        type_: &expected,
+                        matcher,
+                    },
+                )
+            } else {
+                argument.infer(i_s, &mut ResultContext::Known(&expected))
+            };
+            let m = expected.error_if_not_matches_with_matcher(
+                i_s,
+                matcher,
+                &value,
+                on_type_error.as_ref().map(|on_type_error| {
+                    |mut t1, t2, reason: &MismatchReason| {
+                        let node_ref = argument.as_node_ref().to_db_lifetime(i_s.db);
+                        if let Some(starred) = node_ref.maybe_starred_expression() {
+                            t1 = format!(
+                                "*{}",
+                                node_ref
+                                    .file
+                                    .inference(i_s)
+                                    .infer_expression(starred.expression())
+                                    .format_short(i_s)
+                            )
+                            .into()
+                        } else if let Some(double_starred) =
+                            node_ref.maybe_double_starred_expression()
+                        {
+                            // If we have a defined kwargs name, that's from a TypedDict and
+                            // shouldn't be formatted.
+                            if !matches!(
+                                &argument.kind,
+                                ArgumentKind::Inferred {
+                                    is_keyword: Some(Some(_)),
+                                    ..
+                                }
+                            ) {
+                                t1 = format!(
+                                    "**{}",
+                                    node_ref
+                                        .file
+                                        .inference(i_s)
+                                        .infer_expression(double_starred.expression())
+                                        .format_short(i_s)
+                                )
+                                .into()
+                            }
+                        }
+                        match reason {
+                            MismatchReason::ConstraintMismatch { expected, type_var } => {
+                                node_ref.add_issue(
+                                    i_s,
+                                    IssueType::InvalidTypeVarValue {
+                                        type_var_name: Box::from(type_var.name(i_s.db)),
+                                        of: diagnostic_string("").unwrap_or(Box::from("function")),
+                                        actual: expected.format(&FormatData::new_short(i_s.db)),
+                                    },
+                                );
+                            }
+                            _ => {
+                                (on_type_error.callback)(i_s, &diagnostic_string, &argument, t1, t2)
+                            }
+                        };
+                        node_ref
+                    }
+                }),
+            );
+            if matches!(m, Match::True { with_any: true }) {
+                argument_indices_with_any.push(ArgumentIndexWithParam {
+                    argument_index: argument.index,
+                    type_: expected.into_owned(),
+                })
+            }
+            matches &= m
+        };
         match p.argument {
             ParamArgument::Argument(argument) => {
                 let specific = p.param.specific(i_s.db);
-                let annotation_type = match specific {
+                let expected = match specific {
                     WrappedParamType::PositionalOnly(t)
                     | WrappedParamType::PositionalOrKeyword(t)
                     | WrappedParamType::KeywordOnly(t)
@@ -479,88 +560,7 @@ pub fn match_arguments_against_params<
                         todo!()
                     }
                 };
-                let value = if matcher.might_have_defined_type_vars() {
-                    argument.infer(
-                        i_s,
-                        &mut ResultContext::WithMatcher {
-                            type_: &annotation_type,
-                            matcher,
-                        },
-                    )
-                } else {
-                    argument.infer(i_s, &mut ResultContext::Known(&annotation_type))
-                };
-                let m = annotation_type.error_if_not_matches_with_matcher(
-                    i_s,
-                    matcher,
-                    &value,
-                    on_type_error.as_ref().map(|on_type_error| {
-                        |mut t1, t2, reason: &MismatchReason| {
-                            let node_ref = argument.as_node_ref().to_db_lifetime(i_s.db);
-                            if let Some(starred) = node_ref.maybe_starred_expression() {
-                                t1 = format!(
-                                    "*{}",
-                                    node_ref
-                                        .file
-                                        .inference(i_s)
-                                        .infer_expression(starred.expression())
-                                        .format_short(i_s)
-                                )
-                                .into()
-                            } else if let Some(double_starred) =
-                                node_ref.maybe_double_starred_expression()
-                            {
-                                // If we have a defined kwargs name, that's from a TypedDict and
-                                // shouldn't be formatted.
-                                if !matches!(
-                                    &argument.kind,
-                                    ArgumentKind::Inferred {
-                                        is_keyword: Some(Some(_)),
-                                        ..
-                                    }
-                                ) {
-                                    t1 = format!(
-                                        "**{}",
-                                        node_ref
-                                            .file
-                                            .inference(i_s)
-                                            .infer_expression(double_starred.expression())
-                                            .format_short(i_s)
-                                    )
-                                    .into()
-                                }
-                            }
-                            match reason {
-                                MismatchReason::ConstraintMismatch { expected, type_var } => {
-                                    node_ref.add_issue(
-                                        i_s,
-                                        IssueType::InvalidTypeVarValue {
-                                            type_var_name: Box::from(type_var.name(i_s.db)),
-                                            of: diagnostic_string("")
-                                                .unwrap_or(Box::from("function")),
-                                            actual: expected.format(&FormatData::new_short(i_s.db)),
-                                        },
-                                    );
-                                }
-                                _ => (on_type_error.callback)(
-                                    i_s,
-                                    &diagnostic_string,
-                                    &argument,
-                                    t1,
-                                    t2,
-                                ),
-                            };
-                            node_ref
-                        }
-                    }),
-                );
-                if matches!(m, Match::True { with_any: true }) {
-                    argument_indices_with_any.push(ArgumentIndexWithParam {
-                        argument_index: argument.index,
-                        type_: annotation_type.into_owned(),
-                    })
-                }
-                matches &= m
+                match_arg(argument, expected)
             }
             ParamArgument::ParamSpecArgs(param_spec, args) => {
                 matches &= match matcher.match_param_spec_arguments(
@@ -578,6 +578,9 @@ pub fn match_arguments_against_params<
                         reason: MismatchReason::None,
                     },
                 }
+            }
+            ParamArgument::MatchedUnpackedTypedDictMember { argument, type_ } => {
+                match_arg(argument, Cow::Owned(type_))
             }
             ParamArgument::None => (),
         }

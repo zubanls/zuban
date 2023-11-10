@@ -455,15 +455,10 @@ testRecursiveTypedDictWithList
 # TypedDict recursion with imports
 testNewImportCycleTypedDict
 # Unpack
-testUnpackKeywordTypesTypedDict
 testUnpackKwargsNonIdentifier
-testUnpackKwargsSerialize
 testDataclassFieldWithTypedDictUnpacking
 testUnpackKwargsOverridesTypedDict
-testUnpackGenericTypedDictImplicitAnyEnabled
 testUnpackTypedDictTotality
-testUnpackWithDuplicateNamePositionalOnly
-testUnpackGenericTypedDictImplicitAnyDisabled
 testTypeVarTupleCallable
 # "Unpack item in ** argument must be a TypedDict"
 testUnpackWithoutTypedDict
@@ -793,16 +788,11 @@ testTypeVarTupleErrors
 testRuntimeProtoTwoBases
 testUnpackWithDuplicateKeywords
 testUnpackWithDuplicateKeywordKwargs
-testUnpackUnexpectedKeyword
-testUnpackKeywordTypes
-testFunctionBodyWithUnpackedKwargs
 testUnpackKwargsOverrides
-testUnpackKwargsGeneric
 testUnpackKwargsInference
 testUnpackKwargsOverload
 testUnpackKwargsJoin
 testUnpackKwargsParamSpec
-testUnpackKwargsUpdateFine
 testInvalidUnpackTypes
 testTupleWithStarExpr2
 testTupleWithStarExpr3

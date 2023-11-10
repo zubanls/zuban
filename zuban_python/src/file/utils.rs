@@ -18,7 +18,6 @@ use crate::type_::{
     check_typed_dict_call, infer_typed_dict_item, maybe_add_extra_keys_issue, AnyCause, Literal,
     LiteralKind, LiteralValue, Type, TypedDict,
 };
-use crate::utils::join_with_commas;
 use crate::{debug, new_class, Inferred};
 
 impl<'db> Inference<'db, '_, '_> {
