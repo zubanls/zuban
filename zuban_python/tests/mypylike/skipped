@@ -456,7 +456,6 @@ testRecursiveTypedDictWithList
 testNewImportCycleTypedDict
 # Unpack
 testUnpackKwargsNonIdentifier
-testDataclassFieldWithTypedDictUnpacking
 testUnpackKwargsOverridesTypedDict
 testUnpackTypedDictTotality
 testUnpackWithDuplicateKeywords
