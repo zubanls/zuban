@@ -612,16 +612,34 @@ where
             }
         }
         if let Some(param) = self.current_double_starred_param {
-            if let Some(argument) = self
-                .maybe_exact_multi_arg(true)
-                .or_else(|| self.unused_keyword_arguments.pop())
+            if let WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(td)) =
+                param.specific(self.db)
             {
-                return Some(InferrableParam {
-                    param,
-                    argument: ParamArgument::Argument(argument),
-                });
+                while let Some(arg) = self.next_arg() {
+                    if let Some(key) = arg.keyword_name(self.db) {
+                        if let Some(member) = td.find_member(self.db, key) {
+                            todo!()
+                        } else {
+                            self.unused_keyword_arguments.push(arg);
+                        }
+                    } else if arg.in_args_or_kwargs_and_arbitrary_len() {
+                        self.current_arg = None;
+                    } else {
+                        self.too_many_positional_arguments = true;
+                    }
+                }
             } else {
-                self.current_double_starred_param = None;
+                if let Some(argument) = self
+                    .maybe_exact_multi_arg(true)
+                    .or_else(|| self.unused_keyword_arguments.pop())
+                {
+                    return Some(InferrableParam {
+                        param,
+                        argument: ParamArgument::Argument(argument),
+                    });
+                } else {
+                    self.current_double_starred_param = None;
+                }
             }
         }
         let check_unused = |self_: &mut Self, param: P| {

@@ -793,7 +793,6 @@ testTypeVarTupleErrors
 testRuntimeProtoTwoBases
 testUnpackWithDuplicateKeywords
 testUnpackWithDuplicateKeywordKwargs
-testUnpackKwargsEmpty
 testUnpackUnexpectedKeyword
 testUnpackKeywordTypes
 testFunctionBodyWithUnpackedKwargs
