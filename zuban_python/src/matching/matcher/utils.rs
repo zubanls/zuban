@@ -27,7 +27,7 @@ pub fn calculate_callable_init_type_vars_and_return<'db: 'a, 'a>(
     class: &Class,
     callable: Callable<'a>,
     args: impl Iterator<Item = Argument<'db, 'a>>,
-    args_node_ref: &impl Fn() -> NodeRef<'a>,
+    args_node_ref: NodeRef<'a>,
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> CalculatedTypeArguments {
@@ -47,7 +47,7 @@ pub fn calculate_class_init_type_vars_and_return<'db: 'a, 'a>(
     class: &Class,
     function: Function<'a, 'a>,
     args: impl Iterator<Item = Argument<'db, 'a>>,
-    args_node_ref: &impl Fn() -> NodeRef<'a>,
+    args_node_ref: NodeRef<'a>,
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> CalculatedTypeArguments {
@@ -67,7 +67,7 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
     class: &Class,
     func_or_callable: FunctionOrCallable<'a>,
     args: impl Iterator<Item = Argument<'db, 'a>>,
-    args_node_ref: &impl Fn() -> NodeRef<'a>,
+    args_node_ref: NodeRef<'a>,
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> CalculatedTypeArguments {
@@ -170,7 +170,7 @@ pub fn calculate_function_type_vars_and_return<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     function: Function<'a, 'a>,
     args: impl Iterator<Item = Argument<'db, 'a>>,
-    args_node_ref: &impl Fn() -> NodeRef<'a>,
+    args_node_ref: NodeRef<'a>,
     skip_first_param: bool,
     type_vars: &TypeVarLikes,
     match_in_definition: PointLink,
@@ -198,7 +198,7 @@ pub fn calculate_callable_type_vars_and_return<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     callable: Callable<'a>,
     args: impl Iterator<Item = Argument<'db, 'a>>,
-    args_node_ref: &impl Fn() -> NodeRef<'a>,
+    args_node_ref: NodeRef<'a>,
     skip_first_param: bool,
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
@@ -242,7 +242,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
     func_or_callable: FunctionOrCallable<'a>,
     return_class: Option<&Class>,
     mut args: impl Iterator<Item = Argument<'db, 'a>>,
-    args_node_ref: &impl Fn() -> NodeRef<'a>,
+    args_node_ref: NodeRef<'a>,
     skip_first_param: bool,
     type_vars: &TypeVarLikes,
     match_in_definition: PointLink,
@@ -440,7 +440,7 @@ pub fn match_arguments_against_params<
     i_s: &InferenceState<'db, '_>,
     matcher: &mut Matcher,
     func_or_callable: FunctionOrCallable,
-    args_node_ref: &impl Fn() -> NodeRef<'c>,
+    args_node_ref: NodeRef<'c>,
     on_type_error: Option<OnTypeError<'db, '_>>,
     mut args_with_params: InferrableParamIterator<'db, 'x, impl Iterator<Item = P>, P, AI>,
 ) -> SignatureMatch {
@@ -614,7 +614,7 @@ pub fn match_arguments_against_params<
             // TODO remove true and add test
             let mut s = "Too many positional arguments".to_owned();
             s += diagnostic_string(" for ").as_deref().unwrap_or("");
-            args_node_ref().add_issue(i_s, IssueType::ArgumentIssue(s.into()));
+            args_node_ref.add_issue(i_s, IssueType::ArgumentIssue(s.into()));
         } else {
             todo!()
         }
@@ -632,7 +632,7 @@ pub fn match_arguments_against_params<
             }
             if too_many {
                 let s = diagnostic_string(" for ").unwrap_or_else(|| Box::from(""));
-                args_node_ref().add_issue(i_s, IssueType::TooManyArguments(s));
+                args_node_ref.add_issue(i_s, IssueType::TooManyArguments(s));
             }
         } else {
             debug!("Too many arguments found");
@@ -659,13 +659,13 @@ pub fn match_arguments_against_params<
                 if param_kind == ParamKind::KeywordOnly {
                     let mut s = format!("Missing named argument {:?}", param_name);
                     s += diagnostic_string(" for ").as_deref().unwrap_or("");
-                    args_node_ref().add_issue(i_s, IssueType::ArgumentIssue(s.into()));
+                    args_node_ref.add_issue(i_s, IssueType::ArgumentIssue(s.into()));
                 } else {
                     missing_positional.push(format!("\"{param_name}\""));
                 }
             } else {
                 let s = diagnostic_string(" for ").unwrap_or_else(|| Box::from(""));
-                args_node_ref().add_issue(i_s, IssueType::TooFewArguments(s));
+                args_node_ref.add_issue(i_s, IssueType::TooFewArguments(s));
                 break;
             }
         }
@@ -681,7 +681,7 @@ pub fn match_arguments_against_params<
             )),
         } {
             s += diagnostic_string(" to ").as_deref().unwrap_or("");
-            args_node_ref().add_issue(i_s, IssueType::ArgumentIssue(s.into()));
+            args_node_ref.add_issue(i_s, IssueType::ArgumentIssue(s.into()));
         };
     }
     match matches {
@@ -705,7 +705,7 @@ fn calculate_type_vars_for_params<
     i_s: &InferenceState<'db, '_>,
     matcher: &mut Matcher,
     func_or_callable: FunctionOrCallable,
-    args_node_ref: &impl Fn() -> NodeRef<'c>,
+    args_node_ref: NodeRef<'c>,
     on_type_error: Option<OnTypeError<'db, '_>>,
     args_with_params: InferrableParamIterator<'db, 'x, impl Iterator<Item = P>, P, AI>,
 ) -> SignatureMatch {

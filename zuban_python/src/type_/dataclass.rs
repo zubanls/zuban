@@ -571,7 +571,7 @@ pub fn dataclass_initialize<'db>(
                 i_s,
                 Callable::new(__init__, Some(class)),
                 args.iter(),
-                &|| args.as_node_ref(),
+                args.as_node_ref(),
                 false,
                 result_context,
                 Some(on_type_error),

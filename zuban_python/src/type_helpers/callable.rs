@@ -65,7 +65,7 @@ impl<'a> Callable<'a> {
             i_s,
             *self,
             args.iter(),
-            &|| args.as_node_ref(),
+            args.as_node_ref(),
             skip_first_argument,
             result_context,
             Some(on_type_error),

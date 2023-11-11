@@ -436,7 +436,7 @@ impl<'a> Matcher<'a> {
         usage: &ParamSpecUsage,
         args: Box<[Argument<'db, 'b>]>,
         func_or_callable: FunctionOrCallable,
-        args_node_ref: &impl Fn() -> NodeRef<'c>,
+        args_node_ref: NodeRef<'c>,
         on_type_error: Option<OnTypeError<'db, '_>>,
     ) -> SignatureMatch {
         let func_class = self.func_or_callable.and_then(|f| f.class());
