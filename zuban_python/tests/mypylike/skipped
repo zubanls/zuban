@@ -1529,8 +1529,6 @@ testFinalAddFinalMethodOverride
 # : Final in dataclasses
 testFinalInDataclass
 # Final literal issues
-testLiteralWithFinalPropagation
-testLiteralWithFinalPropagationIsNotLeaking
 testEnumCreatedFromFinalValue
 # "Cannot inherit from final class "bool""
 testCannotExtendBoolUnlessIgnored
