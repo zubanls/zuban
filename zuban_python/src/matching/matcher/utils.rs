@@ -27,7 +27,7 @@ pub fn calculate_callable_init_type_vars_and_return<'db: 'a, 'a>(
     class: &Class,
     callable: Callable<'a>,
     args: impl Iterator<Item = Argument<'db, 'a>>,
-    args_node_ref: NodeRef<'a>,
+    args_node_ref: NodeRef,
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> CalculatedTypeArguments {
@@ -47,7 +47,7 @@ pub fn calculate_class_init_type_vars_and_return<'db: 'a, 'a>(
     class: &Class,
     function: Function<'a, 'a>,
     args: impl Iterator<Item = Argument<'db, 'a>>,
-    args_node_ref: NodeRef<'a>,
+    args_node_ref: NodeRef,
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> CalculatedTypeArguments {
@@ -67,7 +67,7 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
     class: &Class,
     func_or_callable: FunctionOrCallable<'a>,
     args: impl Iterator<Item = Argument<'db, 'a>>,
-    args_node_ref: NodeRef<'a>,
+    args_node_ref: NodeRef,
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> CalculatedTypeArguments {
@@ -170,7 +170,7 @@ pub fn calculate_function_type_vars_and_return<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     function: Function<'a, 'a>,
     args: impl Iterator<Item = Argument<'db, 'a>>,
-    args_node_ref: NodeRef<'a>,
+    args_node_ref: NodeRef,
     skip_first_param: bool,
     type_vars: &TypeVarLikes,
     match_in_definition: PointLink,
@@ -198,7 +198,7 @@ pub fn calculate_callable_type_vars_and_return<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     callable: Callable<'a>,
     args: impl Iterator<Item = Argument<'db, 'a>>,
-    args_node_ref: NodeRef<'a>,
+    args_node_ref: NodeRef,
     skip_first_param: bool,
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
@@ -242,7 +242,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
     func_or_callable: FunctionOrCallable<'a>,
     return_class: Option<&Class>,
     mut args: impl Iterator<Item = Argument<'db, 'a>>,
-    args_node_ref: NodeRef<'a>,
+    args_node_ref: NodeRef,
     skip_first_param: bool,
     type_vars: &TypeVarLikes,
     match_in_definition: PointLink,
@@ -433,14 +433,13 @@ fn calculate_type_vars<'db: 'a, 'a>(
 pub fn match_arguments_against_params<
     'db: 'x,
     'x,
-    'c,
     P: Param<'x>,
     AI: Iterator<Item = Argument<'db, 'x>>,
 >(
     i_s: &InferenceState<'db, '_>,
     matcher: &mut Matcher,
     func_or_callable: FunctionOrCallable,
-    args_node_ref: NodeRef<'c>,
+    args_node_ref: NodeRef,
     on_type_error: Option<OnTypeError<'db, '_>>,
     mut args_with_params: InferrableParamIterator<'db, 'x, impl Iterator<Item = P>, P, AI>,
 ) -> SignatureMatch {
@@ -698,14 +697,13 @@ pub fn match_arguments_against_params<
 fn calculate_type_vars_for_params<
     'db: 'x,
     'x,
-    'c,
     P: Param<'x>,
     AI: Iterator<Item = Argument<'db, 'x>>,
 >(
     i_s: &InferenceState<'db, '_>,
     matcher: &mut Matcher,
     func_or_callable: FunctionOrCallable,
-    args_node_ref: NodeRef<'c>,
+    args_node_ref: NodeRef,
     on_type_error: Option<OnTypeError<'db, '_>>,
     args_with_params: InferrableParamIterator<'db, 'x, impl Iterator<Item = P>, P, AI>,
 ) -> SignatureMatch {
