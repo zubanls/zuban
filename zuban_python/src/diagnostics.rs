@@ -148,6 +148,7 @@ pub(crate) enum IssueType {
     UnpackRequiresExactlyOneArgument,
     UnpackOnlyValidInVariadicPosition,
     VariadicUnpackMustBeTupleLike { actual: Box<str> },
+    UnpackItemInStarStarMustBeTypedDict,
 
 
     InvalidAssertType { actual: Box<str>, wanted: Box<str> },
@@ -890,6 +891,8 @@ impl<'db> Diagnostic<'db> {
             VariadicUnpackMustBeTupleLike { actual } => format!(
                 r#""{actual}" cannot be unpacked (must be tuple or TypeVarTuple)"#
             ),
+            UnpackItemInStarStarMustBeTypedDict =>
+                "Unpack item in ** argument must be a TypedDict".to_string(),
 
             InvalidAssertType { actual, wanted } => format!(
                 r#"Expression is of type "{actual}", not "{wanted}""#

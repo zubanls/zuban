@@ -463,8 +463,6 @@ testUnpackKwargsInference
 testUnpackKwargsOverload
 testUnpackKwargsJoin
 testUnpackKwargsParamSpec
-# "Unpack item in ** argument must be a TypedDict"
-testUnpackWithoutTypedDict
 # dict unpacking
 testTypedDictUnpackFromUnion
 testTypedDictUnpackUnionRequiredMissing

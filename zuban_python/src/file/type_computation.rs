@@ -630,11 +630,16 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     }
 
     fn wrap_star_star(&mut self, tc: TypeContent, expr: Expression) -> AnnotationReturn {
+        let from = NodeRef::new(self.inference.file, expr.index());
         match tc {
             TypeContent::Unpacked(TypeOrTypeVarTuple::Type(t @ Type::TypedDict(_))) => {
                 AnnotationReturn::UnpackType(t)
             }
-            _ => match self.as_type(tc, NodeRef::new(self.inference.file, expr.index())) {
+            TypeContent::Unpacked(_) => {
+                self.add_issue(from, IssueType::UnpackItemInStarStarMustBeTypedDict);
+                AnnotationReturn::Type(Type::Any(AnyCause::FromError))
+            }
+            _ => match self.as_type(tc, from) {
                 t @ Type::ParamSpecKwargs(_) => AnnotationReturn::Type(t),
                 t => AnnotationReturn::Type(new_class!(
                     self.inference.i_s.db.python_state.dict_node_ref().as_link(),
