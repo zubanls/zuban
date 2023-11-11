@@ -270,16 +270,35 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                     },
                     _ => return Match::new_false(),
                 },
-                WrappedParamType::StarStar(d1) => match &specific2 {
+                WrappedParamType::StarStar(d1) => match specific2 {
                     WrappedParamType::StarStar(d2) => match (d1, d2) {
                         (WrappedStarStar::ValueType(t1), WrappedStarStar::ValueType(t2)) => {
-                            matches &= match_(i_s, matcher, t1, t2)
+                            matches &= match_(i_s, matcher, t1, &t2)
                         }
                         (
                             WrappedStarStar::ParamSpecKwargs(u1),
                             WrappedStarStar::ParamSpecKwargs(u2),
                         ) => todo!(),
-                        _ => todo!(),
+                        (
+                            WrappedStarStar::UnpackTypedDict(td1),
+                            WrappedStarStar::UnpackTypedDict(td2),
+                        ) => {
+                            let td1 = td1.clone();
+                            matches &= Type::TypedDict(td1).matches(
+                                i_s,
+                                matcher,
+                                &Type::TypedDict(td2),
+                                variance,
+                            );
+                        }
+                        (WrappedStarStar::UnpackTypedDict(td1), WrappedStarStar::ValueType(t2)) => {
+                            if let Some(t2) = t2 {
+                                for member in td1.members.iter() {
+                                    matches &= member.type_.matches(i_s, matcher, &t2, variance)
+                                }
+                            }
+                        }
+                        (x, y) => todo!("{:?} {:?}", x, y),
                     },
                     _ => return Match::new_false(),
                 },
