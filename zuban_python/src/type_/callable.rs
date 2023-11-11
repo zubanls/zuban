@@ -111,7 +111,7 @@ impl CallableParam {
                     StarParamType::ArbitraryLength(t) => {
                         format!("VarArg({})", t.format(format_data))
                     }
-                    StarParamType::ParamSpecArgs(u) => unreachable!(),
+                    StarParamType::ParamSpecArgs(u) => todo!(),
                 }
                 .into();
             } else if let ParamType::StarStar(t) = &self.type_ {
@@ -119,7 +119,7 @@ impl CallableParam {
                     StarStarParamType::ValueType(t) => {
                         format!("KwArg({})", t.format(format_data))
                     }
-                    StarStarParamType::UnpackTypedDict(_) => todo!(),
+                    StarStarParamType::UnpackTypedDict(_) => format!("TODO format unpack TD"),
                     StarStarParamType::ParamSpecKwargs(_) => todo!(),
                 }
                 .into();

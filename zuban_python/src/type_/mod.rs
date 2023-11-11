@@ -953,15 +953,18 @@ impl Type {
     }
 
     pub fn has_self_type(&self) -> bool {
+        let generics_list_has_self_type = |generics: &GenericsList| {
+            generics.iter().any(|g| match g {
+                GenericItem::TypeArgument(t) => t.has_self_type(),
+                GenericItem::TypeArguments(_) => todo!(),
+                GenericItem::ParamSpecArgument(params) => todo!(),
+            })
+        };
         match self {
             Self::Class(GenericClass {
                 generics: ClassGenerics::List(generics),
                 ..
-            }) => generics.iter().any(|g| match g {
-                GenericItem::TypeArgument(t) => t.has_self_type(),
-                GenericItem::TypeArguments(_) => todo!(),
-                GenericItem::ParamSpecArgument(params) => todo!(),
-            }),
+            }) => generics_list_has_self_type(generics),
             Self::Union(u) => u.iter().any(|t| t.has_self_type()),
             Self::FunctionOverload(intersection) => {
                 intersection.iter_functions().any(|t| t.has_self_type())
@@ -977,7 +980,10 @@ impl Type {
             Self::Callable(content) => content.has_self_type(),
             Self::Self_ => true,
             Self::Dataclass(_) => todo!(),
-            Self::TypedDict(d) => todo!(),
+            Self::TypedDict(d) => match &d.generics {
+                TypedDictGenerics::Generics(g) => generics_list_has_self_type(g),
+                TypedDictGenerics::None | TypedDictGenerics::NotDefinedYet(_) => false,
+            },
             Self::NamedTuple(_) => {
                 debug!("TODO namedtuple has_self_type");
                 false
