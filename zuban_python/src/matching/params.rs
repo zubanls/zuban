@@ -10,7 +10,7 @@ use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::type_::{
     CallableParam, CallableParams, ParamSpecUsage, ParamType, StarParamType, StarStarParamType,
-    Type, TypeVarLikes, TypedDict, Variance,
+    StringSlice, Type, TypeVarLikes, TypedDict, Variance,
 };
 
 pub trait Param<'x>: Copy + std::fmt::Debug {
@@ -623,6 +623,7 @@ where
                                 argument: ParamArgument::MatchedUnpackedTypedDictMember {
                                     argument,
                                     type_: member.type_.clone(),
+                                    name: member.name,
                                 },
                             });
                         } else {
@@ -778,6 +779,7 @@ pub enum ParamArgument<'db, 'a> {
     MatchedUnpackedTypedDictMember {
         argument: Argument<'db, 'a>,
         type_: Type,
+        name: StringSlice,
     },
     ParamSpecArgs(ParamSpecUsage, Box<[Argument<'db, 'a>]>),
 }

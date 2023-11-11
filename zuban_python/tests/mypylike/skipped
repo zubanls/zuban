@@ -457,9 +457,7 @@ testNewImportCycleTypedDict
 # Unpack
 testUnpackKwargsNonIdentifier
 testUnpackKwargsOverridesTypedDict
-testUnpackTypedDictTotality
 testUnpackWithDuplicateKeywords
-testUnpackWithDuplicateKeywordKwargs
 testUnpackKwargsOverrides
 testUnpackKwargsInference
 testUnpackKwargsOverload

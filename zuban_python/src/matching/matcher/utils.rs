@@ -449,6 +449,7 @@ pub fn match_arguments_against_params<
     };
     let should_generate_errors = on_type_error.is_some();
     let mut missing_params = vec![];
+    let mut missing_unpacked_typed_dict_names: Option<Vec<_>> = None;
     let mut argument_indices_with_any = vec![];
     let mut matches = Match::new_true();
     for (i, p) in args_with_params.by_ref().enumerate() {
@@ -578,7 +579,28 @@ pub fn match_arguments_against_params<
                     },
                 }
             }
-            ParamArgument::MatchedUnpackedTypedDictMember { argument, type_ } => {
+            ParamArgument::MatchedUnpackedTypedDictMember {
+                argument,
+                type_,
+                name,
+            } => {
+                // Checking totality for **Unpack[<TypedDict>]
+                if let Some(m) = missing_unpacked_typed_dict_names.as_mut() {
+                    m.retain(|n| *n != name)
+                } else {
+                    let WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(td))
+                        = p.param.specific(i_s.db) else {
+                        unreachable!();
+                    };
+                    // Just fill the dict with all names and then remove them gradually.
+                    missing_unpacked_typed_dict_names = Some(
+                        td.members
+                            .iter()
+                            .filter(|m| m.name != name && m.required)
+                            .map(|m| m.name)
+                            .collect(),
+                    );
+                }
                 match_arg(argument, Cow::Owned(type_))
             }
             ParamArgument::None => (),
@@ -649,6 +671,11 @@ pub fn match_arguments_against_params<
         }
     } else if should_generate_errors {
         let mut missing_positional = vec![];
+        let add_missing_kw_issue = |param_name| {
+            let mut s = format!("Missing named argument {:?}", param_name);
+            s += diagnostic_string(" for ").as_deref().unwrap_or("");
+            args_node_ref.add_issue(i_s, IssueType::ArgumentIssue(s.into()));
+        };
         for param in &missing_params {
             let param_kind = param.kind(i_s.db);
             if let Some(param_name) = param
@@ -656,9 +683,7 @@ pub fn match_arguments_against_params<
                 .filter(|_| param_kind != ParamKind::PositionalOnly)
             {
                 if param_kind == ParamKind::KeywordOnly {
-                    let mut s = format!("Missing named argument {:?}", param_name);
-                    s += diagnostic_string(" for ").as_deref().unwrap_or("");
-                    args_node_ref.add_issue(i_s, IssueType::ArgumentIssue(s.into()));
+                    add_missing_kw_issue(param_name)
                 } else {
                     missing_positional.push(format!("\"{param_name}\""));
                 }
@@ -666,6 +691,11 @@ pub fn match_arguments_against_params<
                 let s = diagnostic_string(" for ").unwrap_or_else(|| Box::from(""));
                 args_node_ref.add_issue(i_s, IssueType::TooFewArguments(s));
                 break;
+            }
+        }
+        if let Some(missing_unpacked_typed_dict_names) = missing_unpacked_typed_dict_names {
+            for missing in missing_unpacked_typed_dict_names {
+                add_missing_kw_issue(missing.as_str(i_s.db))
             }
         }
         if let Some(mut s) = match &missing_positional[..] {
@@ -682,6 +712,8 @@ pub fn match_arguments_against_params<
             s += diagnostic_string(" to ").as_deref().unwrap_or("");
             args_node_ref.add_issue(i_s, IssueType::ArgumentIssue(s.into()));
         };
+    } else if missing_unpacked_typed_dict_names.is_some_and(|t| !t.is_empty()) {
+        matches = Match::new_false()
     }
     match matches {
         Match::True { with_any: false } => SignatureMatch::True {
