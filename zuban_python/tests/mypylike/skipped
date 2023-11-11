@@ -465,7 +465,6 @@ testUnpackKwargsInference
 testUnpackKwargsOverload
 testUnpackKwargsJoin
 testUnpackKwargsParamSpec
-testUnpackInCallableType
 # "Unpack item in ** argument must be a TypedDict"
 testUnpackWithoutTypedDict
 # dict unpacking

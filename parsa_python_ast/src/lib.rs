@@ -1562,6 +1562,7 @@ impl<'db> StarExpression<'db> {
 
 impl<'db> StarNamedExpression<'db> {
     pub fn expression_part(&self) -> ExpressionPart<'db> {
+        // TODO this is completely wrong.
         ExpressionPart::new(self.node.nth_child(1))
     }
 }

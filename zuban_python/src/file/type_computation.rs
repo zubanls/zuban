@@ -1934,16 +1934,19 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     }
 
     fn check_param(&mut self, t: TypeContent, index: NodeIndex) -> CallableParam {
-        if let TypeContent::SpecialType(SpecialType::CallableParam(p)) = t {
-            p
-        } else {
-            CallableParam {
-                type_: ParamType::PositionalOnly(
-                    self.as_type(t, NodeRef::new(self.inference.file, index)),
-                ),
-                has_default: false,
-                name: None,
+        let param_type = match t {
+            TypeContent::SpecialType(SpecialType::CallableParam(p)) => return p,
+            TypeContent::Unpacked(TypeOrTypeVarTuple::Type(Type::TypedDict(td))) => {
+                ParamType::StarStar(StarStarParamType::UnpackTypedDict(td))
             }
+            _ => {
+                ParamType::PositionalOnly(self.as_type(t, NodeRef::new(self.inference.file, index)))
+            }
+        };
+        CallableParam {
+            type_: param_type,
+            has_default: false,
+            name: None,
         }
     }
 
@@ -2047,11 +2050,32 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             Some(AtomContent::List(list)) => {
                 let mut params = vec![];
                 for i in list.unpack() {
-                    if let StarLikeExpression::NamedExpression(n) = i {
-                        let t = self.compute_type(n.expression());
-                        self.add_param(&mut params, t, n.index())
-                    } else {
-                        todo!()
+                    match i {
+                        StarLikeExpression::NamedExpression(n) => {
+                            let t = self.compute_type(n.expression());
+                            self.add_param(&mut params, t, n.index())
+                        }
+                        StarLikeExpression::StarNamedExpression(star_expr) => {
+                            let t = self.compute_type_expression_part(star_expr.expression_part());
+                            match t {
+                                TypeContent::TypeVarTuple(tvt) => todo!(),
+                                _ => {
+                                    let node_ref =
+                                        NodeRef::new(self.inference.file, star_expr.index());
+                                    let t = self.as_type(t, node_ref);
+                                    if matches!(t, Type::Tuple(_)) {
+                                        todo!()
+                                    }
+                                    self.add_issue(
+                                        node_ref,
+                                        IssueType::VariadicUnpackMustBeTupleLike {
+                                            actual: t.format_short(self.inference.i_s.db),
+                                        },
+                                    );
+                                }
+                            }
+                        }
+                        _ => unreachable!(),
                     }
                 }
                 CallableParams::Simple(Rc::from(params))
