@@ -382,7 +382,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 let members = self.enum_members(i_s);
                 if !members.is_empty() {
                     let enum_ = Enum::new(
-                        self.name_string_slice(),
+                        DbString::StringSlice(self.name_string_slice()),
                         self.node_ref.as_link(),
                         self.node_ref.as_link(),
                         self.class_storage.parent_scope,

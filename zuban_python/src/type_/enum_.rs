@@ -87,7 +87,7 @@ impl EnumMemberDefinition {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Enum {
-    pub name: StringSlice,
+    pub name: DbString,
     pub class: PointLink,
     defined_at: PointLink,
     parent_scope: ParentScope,
@@ -97,7 +97,7 @@ pub struct Enum {
 
 impl Enum {
     pub fn new(
-        name: StringSlice,
+        name: DbString,
         class: PointLink,
         defined_at: PointLink,
         parent_scope: ParentScope,
@@ -285,10 +285,10 @@ fn lookup_members_on_enum(
     }
 }
 
-pub fn execute_functional_enum(
-    i_s: &InferenceState,
+pub fn execute_functional_enum<'db>(
+    i_s: &InferenceState<'db, '_>,
     class: Class,
-    args: &dyn Arguments,
+    args: &dyn Arguments<'db>,
     result_context: &mut ResultContext,
 ) -> Option<Inferred> {
     let mut name_infos = None;
@@ -298,7 +298,7 @@ pub fn execute_functional_enum(
             ArgumentKind::Positional { node_ref, .. } => {
                 let expr = node_ref.as_named_expression().expression();
                 if name_infos.is_none() {
-                    name_infos = Some((node_ref, expr));
+                    name_infos = Some((node_ref, arg.infer(i_s, &mut ResultContext::Unknown)));
                 } else if fields_infos.is_none() {
                     fields_infos = Some((node_ref, expr));
                 }
@@ -311,7 +311,9 @@ pub fn execute_functional_enum(
                 expression,
                 ..
             } => match key {
-                "value" => name_infos = Some((node_ref, expression)),
+                "value" => {
+                    name_infos = Some((node_ref, arg.infer(i_s, &mut ResultContext::Unknown)))
+                }
                 "names" => fields_infos = Some((node_ref, expression)),
                 // Keyword names were checked by checking EnumMeta.__call__
                 _ => (),
@@ -330,12 +332,13 @@ pub fn execute_functional_enum(
     let name_infos = name_infos.unwrap();
     let fields_infos = fields_infos.unwrap();
 
-    let Some(name) = StringSlice::from_string_in_expression(name_infos.0.file_index(), name_infos.1) else {
+    let Type::Literal(Literal { kind: LiteralKind::String(name), .. }) = name_infos.1.as_type(i_s) else {
         name_infos.0.add_issue(i_s, IssueType::EnumFirstArgMustBeString);
         return None
     };
 
-    let members = gather_functional_enum_members(i_s, class, name, fields_infos.0, fields_infos.1)?;
+    let members =
+        gather_functional_enum_members(i_s, class, &name, fields_infos.0, fields_infos.1)?;
     if members.len() == 0 {
         fields_infos.0.add_issue(
             i_s,
@@ -365,7 +368,7 @@ impl EnumMembers {
     fn add_member(
         &mut self,
         i_s: &InferenceState,
-        enum_name: StringSlice,
+        enum_name: &DbString,
         node_ref: NodeRef,
         d: EnumMemberDefinition,
     ) {
@@ -391,7 +394,7 @@ impl EnumMembers {
 fn gather_functional_enum_members(
     i_s: &InferenceState,
     class: Class,
-    enum_name: StringSlice,
+    enum_name: &DbString,
     node_ref: NodeRef,
     expression: Expression,
 ) -> Option<Box<[EnumMemberDefinition]>> {
@@ -531,7 +534,7 @@ fn gather_functional_enum_members(
 
 fn split_enum_members(
     i_s: &InferenceState,
-    enum_name: StringSlice,
+    enum_name: &DbString,
     node_ref: NodeRef,
     members: &mut EnumMembers,
     s: &DbString,
