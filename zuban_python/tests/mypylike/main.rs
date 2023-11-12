@@ -8,9 +8,8 @@ use regex::{Captures, Regex, Replacer};
 
 use zuban_python::{DiagnosticConfig, Project, ProjectOptions, TypeCheckerFlags};
 
-const SKIP_MYPY_TEST_FILES: [&str; 38] = [
+const SKIP_MYPY_TEST_FILES: [&str; 37] = [
     "check-typevar-defaults.test",
-    "check-final.test",
     // Narrowing tests
     "check-narrowing.test",
     "check-isinstance.test",
