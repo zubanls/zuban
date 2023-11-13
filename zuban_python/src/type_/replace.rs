@@ -271,11 +271,11 @@ impl Type {
             callable,
             replace_self,
         );
-        let mut result_type =
-            c.result_type
+        let mut return_type =
+            c.return_type
                 .replace_type_var_likes_and_self(db, callable, replace_self);
         if let Some(remap_data) = remap_data {
-            result_type = result_type.replace_type_var_likes_and_self(
+            return_type = return_type.replace_type_var_likes_and_self(
                 db,
                 &mut |usage| {
                     Self::replace_param_spec_inner_type_var_likes_and_self(
@@ -296,7 +296,7 @@ impl Type {
                 .map(TypeVarLikes::from_vec)
                 .unwrap_or_else(|| db.python_state.empty_type_var_likes.clone()),
             params,
-            result_type,
+            return_type,
         }
     }
 
@@ -369,7 +369,7 @@ impl Type {
                     manager.remap_param_spec(param_spec),
                 ),
             },
-            result_type: c.result_type.rewrite_late_bound_callables(manager),
+            return_type: c.return_type.rewrite_late_bound_callables(manager),
         }
     }
 

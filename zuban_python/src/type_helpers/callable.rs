@@ -49,7 +49,7 @@ impl<'a> Callable<'a> {
         on_type_error: OnTypeError<'db, '_>,
         result_context: &mut ResultContext,
     ) -> Inferred {
-        let return_type = &self.content.result_type;
+        let return_type = &self.content.return_type;
         if result_context.expect_not_none(i_s) && matches!(&return_type, Type::None) {
             args.as_node_ref().add_issue(
                 i_s,

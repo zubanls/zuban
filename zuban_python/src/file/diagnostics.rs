@@ -57,7 +57,7 @@ impl<'db> Inference<'db, '_, '_> {
                 params: CallableParams::Simple(Rc::new([CallableParam::new_anonymous(
                     ParamType::PositionalOnly(self.i_s.db.python_state.str_type()),
                 )])),
-                result_type: Type::Any(AnyCause::Internal),
+                return_type: Type::Any(AnyCause::Internal),
             }));
             let actual = self.infer_name_by_index(index);
             if !expected
@@ -485,8 +485,8 @@ impl<'db> Inference<'db, '_, '_> {
                             },
                         );
                     } else if !c1
-                        .result_type
-                        .is_simple_sub_type_of(i_s, &c2.result_type)
+                        .return_type
+                        .is_simple_sub_type_of(i_s, &c2.return_type)
                         .bool()
                         && has_overlapping_params(i_s, &c1.params, &c2.params)
                     {
@@ -640,9 +640,9 @@ impl<'db> Inference<'db, '_, '_> {
             ) else {
                 todo!()
             };
-            match &callable.result_type {
+            match &callable.return_type {
                 Type::Class(_) => {
-                    let t = &callable.result_type;
+                    let t = &callable.return_type;
                     if !class.as_type(i_s.db).is_simple_super_type_of(i_s, t).bool() {
                         function.expect_return_annotation_node_ref().add_issue(
                             i_s,
@@ -686,8 +686,8 @@ impl<'db> Inference<'db, '_, '_> {
     ) {
         let issue_node_ref = NodeRef::from_link(self.i_s.db, implementation.function_link);
         let matcher = &mut Matcher::new_reverse_callable_matcher(&implementation.callable);
-        let implementation_result = &implementation.callable.result_type;
-        let item_result = &overload_item.result_type;
+        let implementation_result = &implementation.callable.return_type;
+        let item_result = &overload_item.return_type;
         if !item_result
             .is_sub_type_of(self.i_s, matcher, implementation_result)
             .bool()

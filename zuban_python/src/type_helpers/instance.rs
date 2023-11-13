@@ -130,7 +130,7 @@ impl<'a> Instance<'a> {
                             }
                         }
                         FunctionKind::Property { writable: true, .. } => {
-                            check_compatible(&c.result_type, value);
+                            check_compatible(&c.return_type, value);
                         }
                         _ => unreachable!(),
                     }

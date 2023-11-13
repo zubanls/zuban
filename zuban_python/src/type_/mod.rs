@@ -500,13 +500,13 @@ impl Type {
                         if d.class.generics != ClassGenerics::NotDefinedYet
                             || cls.use_cached_type_vars(i_s.db).is_empty()
                         {
-                            init.result_type = t.as_ref().clone();
+                            init.return_type = t.as_ref().clone();
                         } else {
                             let mut type_var_dataclass = (**d).clone();
                             type_var_dataclass.class =
                                 Class::with_self_generics(i_s.db, cls.node_ref)
                                     .as_generic_class(i_s.db);
-                            init.result_type = Type::Dataclass(Rc::new(type_var_dataclass));
+                            init.return_type = Type::Dataclass(Rc::new(type_var_dataclass));
                         }
                         return Some(CallableLike::Callable(Rc::new(init)));
                     }
@@ -517,13 +517,13 @@ impl Type {
                 }
                 Type::NamedTuple(nt) => {
                     let mut callable = nt.__new__.remove_first_param().unwrap();
-                    callable.result_type = (**t).clone();
+                    callable.return_type = (**t).clone();
                     return Some(CallableLike::Callable(Rc::new(callable)));
                 }
                 _ => {
                     /*
                     if matches!(&c1.params, CallableParams::Any) {
-                        c1.result_type.is_super_type_of(
+                        c1.return_type.is_super_type_of(
                             i_s,
                             matcher,
                             t2,
@@ -799,7 +799,7 @@ impl Type {
             Self::FunctionOverload(intersection) => {
                 for callable in intersection.iter_functions() {
                     search_params(found_type_var, &callable.params);
-                    callable.result_type.search_type_vars(found_type_var)
+                    callable.return_type.search_type_vars(found_type_var)
                 }
             }
             Self::TypeVar(t) => found_type_var(TypeVarLikeUsage::TypeVar(Cow::Borrowed(t))),
@@ -819,7 +819,7 @@ impl Type {
             },
             Self::Callable(content) => {
                 search_params(found_type_var, &content.params);
-                content.result_type.search_type_vars(found_type_var)
+                content.return_type.search_type_vars(found_type_var)
             }
             Self::Class(..)
             | Self::Any(_)

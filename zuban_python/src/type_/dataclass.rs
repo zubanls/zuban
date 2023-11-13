@@ -298,7 +298,7 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
             _ => i_s.db.python_state.empty_type_var_likes.clone(),
         },
         params: CallableParams::Simple(params.into()),
-        result_type: Type::Any(AnyCause::Todo),
+        return_type: Type::Any(AnyCause::Todo),
     }
 }
 
@@ -695,7 +695,7 @@ fn order_func(self_: Rc<Dataclass>, i_s: &InferenceState, from_type: bool) -> Lo
                 name: None,
                 has_default: false,
             }])),
-            result_type: i_s.db.python_state.bool_type(),
+            return_type: i_s.db.python_state.bool_type(),
         },
     ))));
 }

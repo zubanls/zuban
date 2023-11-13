@@ -38,7 +38,7 @@ impl Type {
             },
             Type::Callable(c1) => match other {
                 Type::Callable(c2) => {
-                    c1.result_type.overlaps(i_s, &c2.result_type)
+                    c1.return_type.overlaps(i_s, &c2.return_type)
                         && has_overlapping_params(i_s, &c1.params, &c2.params)
                 }
                 Type::Type(t2) => self.overlaps(i_s, &t2),
@@ -649,7 +649,7 @@ impl Type {
                 })
             }
             Type::Type(t2) if matches!(c1.params, CallableParams::Any(_)) => {
-                c1.result_type.is_super_type_of(i_s, matcher, t2)
+                c1.return_type.is_super_type_of(i_s, matcher, t2)
             }
             _ => match value_type.maybe_callable(i_s) {
                 Some(CallableLike::Callable(c2)) => Self::matches_callable(i_s, matcher, c1, &c2),
@@ -680,8 +680,8 @@ impl Type {
                 return Self::matches_callable(i_s, &mut matcher, c1, c2);
             }
         }
-        c1.result_type
-            .is_super_type_of(i_s, matcher, &c2.result_type)
+        c1.return_type
+            .is_super_type_of(i_s, matcher, &c2.return_type)
             & matches_params(
                 i_s,
                 matcher,

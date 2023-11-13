@@ -559,8 +559,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     type_comment.inferred
                 } else {
                     let inf = self.inferred_context_for_simple_assignment(targets.clone());
-                    let result_type = inf.as_ref().map(|inf| inf.as_cow_type(self.i_s));
-                    let mut result_context = match &result_type {
+                    let return_type = inf.as_ref().map(|inf| inf.as_cow_type(self.i_s));
+                    let mut result_context = match &return_type {
                         Some(t) => ResultContext::Known(t),
                         None => ResultContext::AssignmentNewDefinition,
                     };
@@ -1542,7 +1542,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     check_defaults(&mut inference);
                     let result = inference.infer_expression_without_cache(
                         expr,
-                        &mut ResultContext::Known(&c.result_type),
+                        &mut ResultContext::Known(&c.return_type),
                     );
                     let mut c = (**c).clone();
                     let params = params.map(to_callable_param);
@@ -1566,7 +1566,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             c.params = CallableParams::Simple(params.collect());
                         }
                     }
-                    c.result_type = result.as_type(&i_s);
+                    c.return_type = result.as_type(&i_s);
                     Some(Inferred::from_type(Type::Callable(Rc::new(c))))
                 } else {
                     None
@@ -1587,7 +1587,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     },
                     type_vars: self.i_s.db.python_state.empty_type_var_likes.clone(),
                     params: CallableParams::Simple(params.map(to_callable_param).collect()),
-                    result_type: result.as_type(self.i_s),
+                    return_type: result.as_type(self.i_s),
                 };
                 Inferred::from_type(Type::Callable(Rc::new(c)))
             })

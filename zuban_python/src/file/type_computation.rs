@@ -2105,7 +2105,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let content = if slice_type.iter().count() == 2 {
             let mut iterator = slice_type.iter();
             let params = self.calculate_callable_params(iterator.next().unwrap(), false, false);
-            let result_type = iterator
+            let return_type = iterator
                 .next()
                 .map(|slice_content| self.compute_slice_type(slice_content))
                 .unwrap_or(Type::Any(AnyCause::Todo));
@@ -2124,7 +2124,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     .empty_type_var_likes
                     .clone(),
                 params,
-                result_type,
+                return_type,
             })
         } else {
             self.add_issue(slice_type.as_node_ref(), IssueType::InvalidCallableArgCount);

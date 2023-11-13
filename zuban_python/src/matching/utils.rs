@@ -154,7 +154,7 @@ pub fn calculate_property_return(
     let mut matcher = Matcher::new_callable_matcher(callable);
     match_self_type(i_s, &mut matcher, instance, func_class, &first_type)?;
 
-    let t = replace_class_type_vars(i_s.db, &callable.result_type, func_class, &|| {
+    let t = replace_class_type_vars(i_s.db, &callable.return_type, func_class, &|| {
         instance.clone()
     });
 

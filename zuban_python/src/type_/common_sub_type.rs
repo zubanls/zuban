@@ -103,7 +103,7 @@ fn common_sub_type_for_callables(
         CallableParams::Simple(params1) => match &c2.params {
             CallableParams::Simple(params2) => {
                 if let Some(params) = common_sub_type_params(i_s, &params1, &params2) {
-                    if let Some(result_type) = c1.result_type.common_sub_type(i_s, &c2.result_type)
+                    if let Some(return_type) = c1.return_type.common_sub_type(i_s, &c2.return_type)
                     {
                         return Rc::new(CallableContent {
                             name: None,
@@ -112,7 +112,7 @@ fn common_sub_type_for_callables(
                             kind: c1.kind,
                             type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
                             params,
-                            result_type,
+                            return_type,
                         });
                     }
                 }

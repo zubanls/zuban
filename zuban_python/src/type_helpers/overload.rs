@@ -397,7 +397,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             return UnionMathResult::Match {
                                 result: callable
                                     .content
-                                    .result_type
+                                    .return_type
                                     .execute_and_resolve_type_vars(
                                         i_s,
                                         &calculated_type_args,
@@ -437,7 +437,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         &|| Type::Self_,
                     );
                     if let Some(init_cls) = init_cls {
-                        callable.result_type = init_cls.as_type(i_s.db)
+                        callable.return_type = init_cls.as_type(i_s.db)
                     }
                     callable.format_pretty(format_data)
                 } else {
@@ -450,7 +450,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
     fn fallback_type(&self, i_s: &InferenceState<'db, '_>) -> Inferred {
         let mut t: Option<Type> = None;
         for callable in self.overload.iter_functions() {
-            let f_t = &callable.result_type;
+            let f_t = &callable.return_type;
             if let Some(old_t) = t.take() {
                 t = Some(old_t.merge_matching_parts(i_s.db, f_t))
             } else {

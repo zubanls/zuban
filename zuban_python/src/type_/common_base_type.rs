@@ -221,7 +221,7 @@ fn common_base_for_callables(
                         // TODO why do we just remove type vars here???
                         type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
                         params,
-                        result_type: c1.result_type.common_base_type(i_s, &c2.result_type),
+                        return_type: c1.return_type.common_base_type(i_s, &c2.return_type),
                     }));
                 }
             }
@@ -241,7 +241,7 @@ fn common_base_for_callables(
                         kind: c1.kind,
                         type_vars: c1.type_vars.clone(),
                         params: CallableParams::WithParamSpec(pre1.clone(), spec1.clone()),
-                        result_type: c1.result_type.common_base_type(i_s, &c2.result_type),
+                        return_type: c1.return_type.common_base_type(i_s, &c2.return_type),
                     }));
                 }
             }

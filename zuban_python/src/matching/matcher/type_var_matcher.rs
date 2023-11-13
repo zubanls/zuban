@@ -22,10 +22,10 @@ pub enum FunctionOrCallable<'a> {
 }
 
 impl<'db: 'a, 'a> FunctionOrCallable<'a> {
-    pub fn result_type(&self, i_s: &InferenceState<'db, '_>) -> Cow<'a, Type> {
+    pub fn return_type(&self, i_s: &InferenceState<'db, '_>) -> Cow<'a, Type> {
         match self {
-            Self::Function(f) => f.result_type(i_s),
-            Self::Callable(c) => Cow::Borrowed(&c.content.result_type),
+            Self::Function(f) => f.return_type(i_s),
+            Self::Callable(c) => Cow::Borrowed(&c.content.return_type),
         }
     }
 

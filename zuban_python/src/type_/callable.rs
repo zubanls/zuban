@@ -313,7 +313,7 @@ pub struct CallableContent {
     pub kind: FunctionKind,
     pub type_vars: TypeVarLikes,
     pub params: CallableParams,
-    pub result_type: Type,
+    pub return_type: Type,
 }
 
 impl CallableContent {
@@ -338,7 +338,7 @@ impl CallableContent {
             },
             type_vars,
             params: CallableParams::Any(cause),
-            result_type: Type::Any(cause),
+            return_type: Type::Any(cause),
         }
     }
     pub fn new_any_with_defined_at(db: &Database, defined_at: PointLink, cause: AnyCause) -> Self {
@@ -414,12 +414,12 @@ impl CallableContent {
         i_s: &InferenceState,
         already_checked: &mut Vec<Rc<RecursiveAlias>>,
     ) -> bool {
-        self.result_type.has_any_internal(i_s, already_checked)
+        self.return_type.has_any_internal(i_s, already_checked)
             || self.params.has_any_internal(i_s, already_checked)
     }
 
     pub fn has_self_type(&self) -> bool {
-        self.result_type.has_self_type()
+        self.return_type.has_self_type()
             || match &self.params {
                 CallableParams::Simple(params) => params.iter().any(|param| match &param.type_ {
                     ParamType::PositionalOnly(t)
@@ -442,7 +442,7 @@ impl CallableContent {
         if format_data.style == FormatStyle::MypyRevealType {
             return self.format_pretty(format_data).into();
         }
-        let result = self.result_type.format(format_data);
+        let result = self.return_type.format(format_data);
         let params = self.params.format(format_data, ParamsStyle::CallableParams);
         format!("Callable[{params}, {result}]")
     }
@@ -465,7 +465,7 @@ impl CallableContent {
                     name,
                     &self.type_vars,
                     params.iter(),
-                    Some(&self.result_type),
+                    Some(&self.return_type),
                 )
             }
             CallableParams::WithParamSpec(pre_types, usage) => {
@@ -477,16 +477,16 @@ impl CallableContent {
                     format_data,
                     None,
                     &self.type_vars,
-                    Some(&self.result_type),
+                    Some(&self.return_type),
                     name,
                     &format!("*{spec}.args, **{spec}.kwargs"),
                 )
             }
             CallableParams::Any(_) => {
                 let mut s = format!("def {name}(*Any, **Any)");
-                if self.result_type != Type::None {
+                if self.return_type != Type::None {
                     s += " -> ";
-                    s += &self.result_type.format(format_data);
+                    s += &self.return_type.format(format_data);
                 }
                 s.into()
             }
@@ -499,7 +499,7 @@ impl CallableContent {
         class: Class,
         attribute_class: Class,
     ) -> CallableContent {
-        let mut needs_self_type_variable = self.result_type.has_self_type();
+        let mut needs_self_type_variable = self.return_type.has_self_type();
         for param in self.expect_simple_params().iter() {
             if let Some(t) = param.type_.maybe_type() {
                 needs_self_type_variable |= t.has_self_type();
@@ -566,7 +566,7 @@ impl CallableContent {
 
     pub fn is_typed(&self, skip_first_param: bool) -> bool {
         let has_unannotated = |t: &Type| matches!(t, Type::Any(AnyCause::Unannotated));
-        if !has_unannotated(&self.result_type) {
+        if !has_unannotated(&self.return_type) {
             return true;
         }
         match &self.params {

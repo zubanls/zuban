@@ -222,7 +222,7 @@ pub fn infer_value_on_member(
                                 inf.as_cow_type(i_s).maybe_callable(i_s)
                             })
                             .map(|callable| match callable {
-                                CallableLike::Callable(c) => c.result_type.clone(),
+                                CallableLike::Callable(c) => c.return_type.clone(),
                                 CallableLike::Overload(_) => todo!(),
                             })
                             .unwrap_or(i_s.db.python_state.int_type()),

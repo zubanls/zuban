@@ -1411,7 +1411,7 @@ impl<'db: 'a, 'a> Class<'a> {
             },
             type_vars: self.use_cached_type_vars(i_s.db).clone(),
             params: CallableParams::Simple(Rc::from(vec)),
-            result_type: Type::Self_,
+            return_type: Type::Self_,
         }
     }
 
@@ -2176,7 +2176,7 @@ impl NewOrInitConstructor<'_> {
                             &|| self_.clone(),
                         )
                     }
-                    c.result_type = self_;
+                    c.return_type = self_;
                     c.type_vars = cls.type_vars(i_s).clone();
                     c
                 })

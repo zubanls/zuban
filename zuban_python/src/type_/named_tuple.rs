@@ -175,7 +175,7 @@ impl NamedTuple {
                     },
                     type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
                     params: CallableParams::Simple(params.into()),
-                    result_type: as_self.map(|as_self| as_self()).unwrap_or(Type::Self_),
+                    return_type: as_self.map(|as_self| as_self()).unwrap_or(Type::Self_),
                 })
             }),
             "_asdict" => Type::Callable({
@@ -194,7 +194,7 @@ impl NamedTuple {
                     },
                     type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
                     params: CallableParams::Simple(params.into()),
-                    result_type: new_class!(
+                    return_type: new_class!(
                         i_s.db.python_state.dict_node_ref().as_link(),
                         i_s.db.python_state.str_type(),
                         Type::Any(AnyCause::Explicit),
@@ -225,7 +225,7 @@ impl NamedTuple {
                     },
                     type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
                     params: CallableParams::Simple(params.into()),
-                    result_type: as_self.map(|as_self| as_self()).unwrap_or(Type::Self_),
+                    return_type: as_self.map(|as_self| as_self()).unwrap_or(Type::Self_),
                 })
             }),
             "_fields" => Type::Tuple(Rc::new(Tuple::new_fixed_length(
@@ -415,7 +415,7 @@ pub fn new_typing_named_tuple(
             },
             type_vars: type_var_likes,
             params: CallableParams::Simple(Rc::from(params)),
-            result_type: Type::Self_,
+            return_type: Type::Self_,
         };
         Some(Rc::new(NamedTuple::new(name, callable)))
     } else {
@@ -526,7 +526,7 @@ pub fn new_collections_named_tuple(
         },
         type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
         params: CallableParams::Simple(Rc::from(params)),
-        result_type: Type::Self_,
+        return_type: Type::Self_,
     };
     Some(Rc::new(NamedTuple::new(name, callable)))
 }

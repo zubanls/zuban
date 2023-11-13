@@ -272,7 +272,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             }
         });
         if !unbound_type_vars.is_empty() {
-            if let Type::TypeVar(t) = self.result_type(i_s).as_ref() {
+            if let Type::TypeVar(t) = self.return_type(i_s).as_ref() {
                 if unbound_type_vars.contains(&TypeVarLike::TypeVar(t.type_var.clone())) {
                     let node_ref = self.expect_return_annotation_node_ref();
                     node_ref.add_issue(i_s, IssueType::TypeVarInReturnButNotArgument);
@@ -892,7 +892,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut type_vars = self.type_vars(i_s).as_vec();
         match first {
             FirstParamProperties::MethodAccessedOnClass => {
-                let mut needs_self_type_variable = self.result_type(i_s).has_self_type();
+                let mut needs_self_type_variable = self.return_type(i_s).has_self_type();
                 for param in self.iter_params().skip(1) {
                     if let Some(t) = param.annotation(i_s) {
                         needs_self_type_variable |= t.has_self_type();
@@ -985,14 +985,14 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 had_first_self_or_class_annotation: had_first_annotation,
             },
         };
-        let result_type = self.result_type(i_s);
-        let mut result_type = as_type(&result_type);
+        let return_type = self.return_type(i_s);
+        let mut return_type = as_type(&return_type);
         if self.is_async() && !self.is_generator() {
-            result_type = new_class!(
+            return_type = new_class!(
                 i_s.db.python_state.coroutine_link(),
                 Type::Any(AnyCause::Todo),
                 Type::Any(AnyCause::Todo),
-                result_type,
+                return_type,
             );
         }
 
@@ -1006,7 +1006,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             },
             params,
             type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
-            result_type,
+            return_type,
         };
 
         let mut new_params = vec![];
@@ -1217,7 +1217,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
-    pub fn result_type(&self, i_s: &InferenceState<'db, '_>) -> Cow<'a, Type> {
+    pub fn return_type(&self, i_s: &InferenceState<'db, '_>) -> Cow<'a, Type> {
         self.return_annotation()
             .map(|a| {
                 self.node_ref
