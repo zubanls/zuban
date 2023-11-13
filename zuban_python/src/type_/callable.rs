@@ -409,6 +409,24 @@ impl CallableContent {
         }
     }
 
+    pub fn erase_func_type_vars_for_type<'x>(
+        &self,
+        db: &Database,
+        type_: &'x Type,
+    ) -> Cow<'x, Type> {
+        if self.type_vars.is_empty() {
+            Cow::Borrowed(type_)
+        } else {
+            Cow::Owned(type_.replace_type_var_likes(db, &mut |usage| {
+                if usage.in_definition() == self.defined_at {
+                    usage.as_type_var_like().as_any_generic_item()
+                } else {
+                    usage.into_generic_item()
+                }
+            }))
+        }
+    }
+
     pub(super) fn has_any_internal(
         &self,
         i_s: &InferenceState,

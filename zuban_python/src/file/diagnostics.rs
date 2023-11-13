@@ -1096,12 +1096,13 @@ fn check_override(i_s: &InferenceState, from: NodeRef, class: Class, name: &str)
         let got = got.as_cow_type(i_s);
 
         let add_override_issues = || {
+            let db = i_s.db;
             if let Some(same_param_amount) = override_func_infos(&got, &expected) {
                 let mut emitted = false;
                 // Mypy helps the user a bit by formatting different error messages for similar
-                // signatures.
+                // signatures. Try to make this as similar as possible to Mypy.
                 if let Some((got_c, expected_c)) = same_param_amount {
-                    let supertype = defined_in.name(i_s.db);
+                    let supertype = defined_in.name(db);
 
                     // First check params
                     let CallableParams::Simple(params1) = &got_c.params else {
@@ -1117,12 +1118,14 @@ fn check_override(i_s: &InferenceState, from: NodeRef, class: Class, name: &str)
                         let Some(t2) = param2.type_.maybe_type() else {
                             continue;
                         };
-                        if !t1.is_simple_super_type_of(i_s, t2).bool() {
+                        let t1 = got_c.erase_func_type_vars_for_type(db, t1);
+                        let t2 = expected_c.erase_func_type_vars_for_type(db, t2);
+                        if !t1.is_simple_super_type_of(i_s, &t2).bool() {
                             from.add_issue(i_s, IssueType::ArgumentIncompatibleWithSupertype(
                                 format!(
                                     r#"Argument {} of "{name}" is incompatible with supertype "{supertype}"; supertype defines the argument type as "{}""#,
                                     i + 1,
-                                    t2.format_short(i_s.db),
+                                    t2.format_short(db),
                                 )
                             ));
                             emitted = true;
@@ -1130,23 +1133,24 @@ fn check_override(i_s: &InferenceState, from: NodeRef, class: Class, name: &str)
                     }
 
                     // Then the return type
-                    let got_ret = &got_c.return_type;
-                    let expected_ret = &expected_c.return_type;
+                    let got_ret = got_c.erase_func_type_vars_for_type(db, &got_c.return_type);
+                    let expected_ret =
+                        expected_c.erase_func_type_vars_for_type(db, &expected_c.return_type);
                     if !got_c
                         .return_type
                         .is_simple_sub_type_of(i_s, &expected_c.return_type)
                         .bool()
                     {
                         let mut async_note = None;
-                        if is_async_iterator_without_async(i_s, expected_ret, got_ret) {
+                        if is_async_iterator_without_async(i_s, &expected_ret, &got_ret) {
                             async_note = Some(format!(r#"Consider declaring "{name}" in supertype "{supertype}" without "async""#).into())
                         }
 
                         from.add_issue(i_s, IssueType::ReturnTypeIncompatibleWithSupertype{
                             message: format!(
                                 r#"Return type "{}" of "{name}" incompatible with return type "{}" in supertype "{supertype}""#,
-                                got_ret.format_short(i_s.db),
-                                expected_ret.format_short(i_s.db),
+                                got_ret.format_short(db),
+                                expected_ret.format_short(db),
                             ),
                             async_note
                         });
