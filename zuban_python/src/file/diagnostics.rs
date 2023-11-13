@@ -1094,13 +1094,14 @@ fn check_override(i_s: &InferenceState, from: NodeRef, class: Class, name: &str)
         let expected = inf.as_cow_type(i_s);
         let got = instance.full_lookup(i_s, from, name).into_inferred();
         let got = got.as_cow_type(i_s);
-        if !expected
-            .is_super_type_of(i_s, &mut Matcher::new_class_matcher(i_s, class), &got)
-            .bool()
-        {
-            from.add_issue(
-                i_s,
-                if got.is_func_or_overload() || expected.is_func_or_overload() {
+
+        let add_override_issues = || {
+            if let Some(same_param_amount) = override_func_infos(&got, &expected) {
+                let mut emitted = false;
+                if same_param_amount {
+                    // TODO
+                }
+                if !emitted {
                     let mut notes = vec![];
                     notes.push("     Superclass:".into());
                     try_pretty_format(
@@ -1122,19 +1123,42 @@ fn check_override(i_s: &InferenceState, from: NodeRef, class: Class, name: &str)
                         class.lookup(i_s, from, name, kind),
                     );
 
-                    IssueType::SignatureIncompatibleWithSupertype {
-                        name: name.into(),
-                        base_class: defined_in.name(i_s.db).into(),
-                        notes: notes.into(),
-                    }
-                } else {
+                    from.add_issue(
+                        i_s,
+                        IssueType::SignatureIncompatibleWithSupertype {
+                            name: name.into(),
+                            base_class: defined_in.name(i_s.db).into(),
+                            notes: notes.into(),
+                        },
+                    )
+                }
+            } else {
+                from.add_issue(
+                    i_s,
                     IssueType::IncompatibleAssignmentInSubclass {
                         got: got.format_short(i_s.db),
                         expected: expected.format_short(i_s.db),
                         base_class: defined_in.name(i_s.db).into(),
-                    }
-                },
-            )
+                    },
+                )
+            }
+        };
+
+        if !expected
+            .is_super_type_of(i_s, &mut Matcher::new_class_matcher(i_s, class), &got)
+            .bool()
+        {
+            add_override_issues()
         }
+    }
+}
+
+fn override_func_infos(t1: &Type, t2: &Type) -> Option<bool> {
+    match (t1, t2) {
+        (Type::Callable(c1), Type::Callable(c2)) => match (&c1.params, &c2.params) {
+            (CallableParams::Simple(p1), CallableParams::Simple(p2)) => Some(p1.len() == p2.len()),
+            _ => Some(false),
+        },
+        _ => (t1.is_func_or_overload() || t2.is_func_or_overload()).then_some(false),
     }
 }
