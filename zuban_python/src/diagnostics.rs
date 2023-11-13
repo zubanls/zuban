@@ -166,6 +166,7 @@ pub(crate) enum IssueType {
     IncompatibleAssignmentInSubclass { base_class: Box<str>, got: Box<str>, expected: Box<str> },
     SignatureIncompatibleWithSupertype { base_class: Box<str>, name: Box<str>, notes: Box<[Box<str>]> },
     ReturnTypeIncompatibleWithSupertype { message: String, async_note: Option<Box<str>> },
+    ArgumentIncompatibleWithSupertype(String),
     MultipleInheritanceIncompatibility { name: Box<str>, class1: Box<str>, class2: Box<str> },
     NewMustReturnAnInstance { got: Box<str> },
     NewIncompatibleReturnType { returns: Box<str>, must_return: Box<str> },
@@ -334,6 +335,7 @@ impl IssueType {
             OverloadMismatch { .. } => "call-overload",
             IncompatibleAssignmentInSubclass { .. }
             | SignatureIncompatibleWithSupertype { .. }
+            | ArgumentIncompatibleWithSupertype { .. }
             | ReturnTypeIncompatibleWithSupertype { .. } => "override",
             FunctionIsDynamic
             | FunctionMissingReturnAnnotation
@@ -930,6 +932,11 @@ impl<'db> Diagnostic<'db> {
                         "See https://mypy.readthedocs.io/en/stable/more_types.html#asynchronous-iterators".into()
                     )
                 }
+                message.clone()
+            }
+            ArgumentIncompatibleWithSupertype(message) => {
+                additional_notes.push("This violates the Liskov substitution principle".into());
+                additional_notes.push("See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides".into());
                 message.clone()
             }
             MultipleInheritanceIncompatibility { name, class1, class2 } => format!(

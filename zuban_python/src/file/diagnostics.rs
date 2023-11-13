@@ -1101,6 +1101,35 @@ fn check_override(i_s: &InferenceState, from: NodeRef, class: Class, name: &str)
                 // Mypy helps the user a bit by formatting different error messages for similar
                 // signatures.
                 if let Some((got_c, expected_c)) = same_param_amount {
+                    let supertype = defined_in.name(i_s.db);
+
+                    // First check params
+                    let CallableParams::Simple(params1) = &got_c.params else {
+                        unreachable!()
+                    };
+                    let CallableParams::Simple(params2) = &expected_c.params else {
+                        unreachable!()
+                    };
+                    for (i, (param1, param2)) in params1.iter().zip(params2.iter()).enumerate() {
+                        let Some(t1) = param1.type_.maybe_type() else {
+                            continue;
+                        };
+                        let Some(t2) = param2.type_.maybe_type() else {
+                            continue;
+                        };
+                        if !t1.is_simple_super_type_of(i_s, t2).bool() {
+                            from.add_issue(i_s, IssueType::ArgumentIncompatibleWithSupertype(
+                                format!(
+                                    r#"Argument {} of "{name}" is incompatible with supertype "{supertype}"; supertype defines the argument type as "{}""#,
+                                    i + 1,
+                                    t2.format_short(i_s.db),
+                                )
+                            ));
+                            emitted = true;
+                        }
+                    }
+
+                    // Then the return type
                     let got_ret = &got_c.return_type;
                     let expected_ret = &expected_c.return_type;
                     if !got_c
@@ -1109,7 +1138,6 @@ fn check_override(i_s: &InferenceState, from: NodeRef, class: Class, name: &str)
                         .bool()
                     {
                         let mut async_note = None;
-                        let supertype = defined_in.name(i_s.db);
                         if is_async_iterator_without_async(i_s, expected_ret, got_ret) {
                             async_note = Some(format!(r#"Consider declaring "{name}" in supertype "{supertype}" without "async""#).into())
                         }
