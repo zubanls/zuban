@@ -448,8 +448,6 @@ impl<'db> Inference<'db, '_, '_> {
                 });
             }
         }
-        let instance = Instance::new(c, None);
-        let kind = LookupKind::Normal;
         for table in [
             &c.class_storage.class_symbol_table,
             &c.class_storage.self_symbol_table,
@@ -460,61 +458,7 @@ impl<'db> Inference<'db, '_, '_> {
                 {
                     continue;
                 }
-                let from = NodeRef::new(self.file, *index);
-                let (defined_in, result) =
-                    instance.lookup_and_maybe_ignore_super_count(self.i_s, from, name, kind, 1);
-                if let Some(inf) = result.into_maybe_inferred() {
-                    let expected = inf.as_cow_type(self.i_s);
-                    let got = instance.full_lookup(self.i_s, from, name).into_inferred();
-                    let got = got.as_cow_type(self.i_s);
-                    if !expected
-                        .is_super_type_of(
-                            self.i_s,
-                            &mut Matcher::new_class_matcher(self.i_s, c),
-                            &got,
-                        )
-                        .bool()
-                    {
-                        from.add_issue(
-                            self.i_s,
-                            if got.is_func_or_overload() || expected.is_func_or_overload() {
-                                let mut notes = vec![];
-                                notes.push("     Superclass:".into());
-                                try_pretty_format(
-                                    &mut notes,
-                                    &self.i_s.with_class_context(&match defined_in {
-                                        TypeOrClass::Class(c) => c,
-                                        TypeOrClass::Type(_) => c,
-                                    }),
-                                    &expected,
-                                    c.lookup_and_class_and_maybe_ignore_self(
-                                        self.i_s, from, name, kind, true,
-                                    )
-                                    .0,
-                                );
-                                notes.push("     Subclass:".into());
-                                try_pretty_format(
-                                    &mut notes,
-                                    &self.i_s.with_class_context(&c),
-                                    &got,
-                                    c.lookup(self.i_s, from, name, kind),
-                                );
-
-                                IssueType::SignatureIncompatibleWithSupertype {
-                                    name: name.into(),
-                                    base_class: defined_in.name(db).into(),
-                                    notes: notes.into(),
-                                }
-                            } else {
-                                IssueType::IncompatibleAssignmentInSubclass {
-                                    got: got.format_short(db),
-                                    expected: expected.format_short(db),
-                                    base_class: defined_in.name(db).into(),
-                                }
-                            },
-                        )
-                    }
-                }
+                check_override(self.i_s, NodeRef::new(self.file, *index), c, name)
             }
         }
     }
@@ -1139,4 +1083,58 @@ fn is_overload_unmatchable(
         false,
     );
     matches!(result, Match::True { with_any: false })
+}
+
+fn check_override(i_s: &InferenceState, from: NodeRef, class: Class, name: &str) {
+    let kind = LookupKind::Normal;
+    let instance = Instance::new(class, None);
+    let (defined_in, result) =
+        instance.lookup_and_maybe_ignore_super_count(i_s, from, name, kind, 1);
+    if let Some(inf) = result.into_maybe_inferred() {
+        let expected = inf.as_cow_type(i_s);
+        let got = instance.full_lookup(i_s, from, name).into_inferred();
+        let got = got.as_cow_type(i_s);
+        if !expected
+            .is_super_type_of(i_s, &mut Matcher::new_class_matcher(i_s, class), &got)
+            .bool()
+        {
+            from.add_issue(
+                i_s,
+                if got.is_func_or_overload() || expected.is_func_or_overload() {
+                    let mut notes = vec![];
+                    notes.push("     Superclass:".into());
+                    try_pretty_format(
+                        &mut notes,
+                        &i_s.with_class_context(&match defined_in {
+                            TypeOrClass::Class(c) => c,
+                            TypeOrClass::Type(_) => class,
+                        }),
+                        &expected,
+                        class
+                            .lookup_and_class_and_maybe_ignore_self(i_s, from, name, kind, true)
+                            .0,
+                    );
+                    notes.push("     Subclass:".into());
+                    try_pretty_format(
+                        &mut notes,
+                        &i_s.with_class_context(&class),
+                        &got,
+                        class.lookup(i_s, from, name, kind),
+                    );
+
+                    IssueType::SignatureIncompatibleWithSupertype {
+                        name: name.into(),
+                        base_class: defined_in.name(i_s.db).into(),
+                        notes: notes.into(),
+                    }
+                } else {
+                    IssueType::IncompatibleAssignmentInSubclass {
+                        got: got.format_short(i_s.db),
+                        expected: expected.format_short(i_s.db),
+                        base_class: defined_in.name(i_s.db).into(),
+                    }
+                },
+            )
+        }
+    }
 }
