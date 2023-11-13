@@ -165,7 +165,7 @@ pub(crate) enum IssueType {
 
     IncompatibleAssignmentInSubclass { base_class: Box<str>, got: Box<str>, expected: Box<str> },
     SignatureIncompatibleWithSupertype { base_class: Box<str>, name: Box<str>, notes: Box<[Box<str>]> },
-    ReturnTypeIncompatibleWithSupertype(String),
+    ReturnTypeIncompatibleWithSupertype { message: String, async_note: Option<Box<str>> },
     MultipleInheritanceIncompatibility { name: Box<str>, class1: Box<str>, class2: Box<str> },
     NewMustReturnAnInstance { got: Box<str> },
     NewIncompatibleReturnType { returns: Box<str>, must_return: Box<str> },
@@ -923,7 +923,15 @@ impl<'db> Diagnostic<'db> {
                 }
                 format!(r#"Signature of "{name}" incompatible with supertype "{base_class}""#)
             }
-            ReturnTypeIncompatibleWithSupertype(s) => s.clone(),
+            ReturnTypeIncompatibleWithSupertype { message, async_note } => {
+                if let Some(async_note) = async_note {
+                    additional_notes.push(async_note.clone().into());
+                    additional_notes.push(
+                        "See https://mypy.readthedocs.io/en/stable/more_types.html#asynchronous-iterators".into()
+                    )
+                }
+                message.clone()
+            }
             MultipleInheritanceIncompatibility { name, class1, class2 } => format!(
                 "Definition of \"{name}\" in base class \"{class1}\" is incompatible \
                  with definition in base class \"{class2}\""

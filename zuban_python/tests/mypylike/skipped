@@ -1218,8 +1218,6 @@ testDataclassIncompatibleOverrides
 testDataclassIncompatibleFrozenOverride
 testDataclassInheritanceNoAnnotation2
 
-# "Return type "int" of "foo" incompatible with return type "str" in supertype "B""
-asyncIteratorInProtocol
 # Signatures of "__ior__" and "__or__" are incompatible
 testGenericOperatorMethodOverlapping
 testGenericOperatorMethodOverlapping2

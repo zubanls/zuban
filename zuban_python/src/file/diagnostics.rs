@@ -1101,17 +1101,27 @@ fn check_override(i_s: &InferenceState, from: NodeRef, class: Class, name: &str)
                 // Mypy helps the user a bit by formatting different error messages for similar
                 // signatures.
                 if let Some((got_c, expected_c)) = same_param_amount {
+                    let got_ret = &got_c.return_type;
+                    let expected_ret = &expected_c.return_type;
                     if !got_c
                         .return_type
                         .is_simple_sub_type_of(i_s, &expected_c.return_type)
                         .bool()
                     {
-                        from.add_issue(i_s, IssueType::ReturnTypeIncompatibleWithSupertype(format!(
-                            r#"Return type "{}" of "{name}" incompatible with return type "{}" in supertype "{}""#,
-                            got_c.return_type.format_short(i_s.db),
-                            expected_c.return_type.format_short(i_s.db),
-                            defined_in.name(i_s.db),
-                        )));
+                        let mut async_note = None;
+                        let supertype = defined_in.name(i_s.db);
+                        if is_async_iterator_without_async(i_s, expected_ret, got_ret) {
+                            async_note = Some(format!(r#"Consider declaring "{name}" in supertype "{supertype}" without "async""#).into())
+                        }
+
+                        from.add_issue(i_s, IssueType::ReturnTypeIncompatibleWithSupertype{
+                            message: format!(
+                                r#"Return type "{}" of "{name}" incompatible with return type "{}" in supertype "{supertype}""#,
+                                got_ret.format_short(i_s.db),
+                                expected_ret.format_short(i_s.db),
+                            ),
+                            async_note
+                        });
                         emitted = true
                     }
                 }
@@ -1164,6 +1174,24 @@ fn check_override(i_s: &InferenceState, from: NodeRef, class: Class, name: &str)
         {
             add_override_issues()
         }
+    }
+}
+
+fn is_async_iterator_without_async(
+    i_s: &InferenceState,
+    original: &Type,
+    override_: &Type,
+) -> bool {
+    let db = i_s.db;
+    match override_ {
+        Type::Class(c) if c.link == db.python_state.async_iterator_link() => match original {
+            Type::Class(c) if c.link == db.python_state.coroutine_link() => {
+                let check = c.class(db).nth_type_argument(db, 2);
+                override_.is_simple_same_type(i_s, &check).bool()
+            }
+            _ => false,
+        },
+        _ => false,
     }
 }
 
