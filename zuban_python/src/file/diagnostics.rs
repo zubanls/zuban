@@ -460,11 +460,12 @@ impl<'db> Inference<'db, '_, '_> {
                 {
                     continue;
                 }
+                let from = NodeRef::new(self.file, *index);
                 let (defined_in, result) =
-                    instance.lookup_and_maybe_ignore_super_count(self.i_s, hack, name, kind, 1);
+                    instance.lookup_and_maybe_ignore_super_count(self.i_s, from, name, kind, 1);
                 if let Some(inf) = result.into_maybe_inferred() {
                     let expected = inf.as_cow_type(self.i_s);
-                    let got = instance.full_lookup(self.i_s, hack, name).into_inferred();
+                    let got = instance.full_lookup(self.i_s, from, name).into_inferred();
                     let got = got.as_cow_type(self.i_s);
                     if !expected
                         .is_super_type_of(
@@ -474,7 +475,7 @@ impl<'db> Inference<'db, '_, '_> {
                         )
                         .bool()
                     {
-                        NodeRef::new(self.file, *index).add_issue(
+                        from.add_issue(
                             self.i_s,
                             if got.is_func_or_overload() || expected.is_func_or_overload() {
                                 let mut notes = vec![];
@@ -487,7 +488,7 @@ impl<'db> Inference<'db, '_, '_> {
                                     }),
                                     &expected,
                                     c.lookup_and_class_and_maybe_ignore_self(
-                                        self.i_s, hack, name, kind, true,
+                                        self.i_s, from, name, kind, true,
                                     )
                                     .0,
                                 );
@@ -496,7 +497,7 @@ impl<'db> Inference<'db, '_, '_> {
                                     &mut notes,
                                     &self.i_s.with_class_context(&c),
                                     &got,
-                                    c.lookup(self.i_s, hack, name, kind),
+                                    c.lookup(self.i_s, from, name, kind),
                                 );
 
                                 IssueType::SignatureIncompatibleWithSupertype {

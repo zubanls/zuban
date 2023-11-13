@@ -621,7 +621,7 @@ pub fn format_callable_params<'db: 'x, 'x, P: Param<'x>>(
             _ => "",
         };
         let mut out = if i == 0 && avoid_self_annotation && stars.is_empty() {
-            p.name(db).unwrap().to_owned()
+            p.name(db).unwrap_or("self").to_owned()
         } else {
             let mut out = if current_kind == ParamKind::PositionalOnly {
                 annotation_str.unwrap_or_else(|| Box::from("Any")).into()
