@@ -165,6 +165,7 @@ pub(crate) enum IssueType {
 
     IncompatibleAssignmentInSubclass { base_class: Box<str>, got: Box<str>, expected: Box<str> },
     SignatureIncompatibleWithSupertype { base_class: Box<str>, name: Box<str>, notes: Box<[Box<str>]> },
+    ReturnTypeIncompatibleWithSupertype(String),
     MultipleInheritanceIncompatibility { name: Box<str>, class1: Box<str>, class2: Box<str> },
     NewMustReturnAnInstance { got: Box<str> },
     NewIncompatibleReturnType { returns: Box<str>, must_return: Box<str> },
@@ -331,9 +332,9 @@ impl IssueType {
             NewTypeMustBeSubclassable { .. } => "valid-newtype",
             OverloadImplementationNeeded { .. } => "no-overload-impl",
             OverloadMismatch { .. } => "call-overload",
-            IncompatibleAssignmentInSubclass { .. } | SignatureIncompatibleWithSupertype { .. } => {
-                "override"
-            }
+            IncompatibleAssignmentInSubclass { .. }
+            | SignatureIncompatibleWithSupertype { .. }
+            | ReturnTypeIncompatibleWithSupertype { .. } => "override",
             FunctionIsDynamic
             | FunctionMissingReturnAnnotation
             | FunctionMissingParamAnnotations => "no-untyped-def",
@@ -922,6 +923,7 @@ impl<'db> Diagnostic<'db> {
                 }
                 format!(r#"Signature of "{name}" incompatible with supertype "{base_class}""#)
             }
+            ReturnTypeIncompatibleWithSupertype(s) => s.clone(),
             MultipleInheritanceIncompatibility { name, class1, class2 } => format!(
                 "Definition of \"{name}\" in base class \"{class1}\" is incompatible \
                  with definition in base class \"{class2}\""

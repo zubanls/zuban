@@ -1219,12 +1219,6 @@ testDataclassIncompatibleFrozenOverride
 testDataclassInheritanceNoAnnotation2
 
 # "Return type "int" of "foo" incompatible with return type "str" in supertype "B""
-testPreviousErrorInDecoratedMethodOverride
-testAddBaseClassMethodCausingInvalidOverride
-testModifyBaseClassMethodCausingInvalidOverride
-testSelfTypeBound
-testMethodOverridingAcrossDeepInheritanceHierarchy2
-testMethodOverridingWithVoidReturnValue
 testNewNamedTupleMethodInheritance
 asyncIteratorInProtocol
 # Signatures of "__ior__" and "__or__" are incompatible

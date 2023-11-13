@@ -1098,8 +1098,22 @@ fn check_override(i_s: &InferenceState, from: NodeRef, class: Class, name: &str)
         let add_override_issues = || {
             if let Some(same_param_amount) = override_func_infos(&got, &expected) {
                 let mut emitted = false;
-                if same_param_amount {
-                    // TODO
+                // Mypy helps the user a bit by formatting different error messages for similar
+                // signatures.
+                if let Some((got_c, expected_c)) = same_param_amount {
+                    if !got_c
+                        .return_type
+                        .is_simple_sub_type_of(i_s, &expected_c.return_type)
+                        .bool()
+                    {
+                        from.add_issue(i_s, IssueType::ReturnTypeIncompatibleWithSupertype(format!(
+                            r#"Return type "{}" of "{name}" incompatible with return type "{}" in supertype "{}""#,
+                            got_c.return_type.format_short(i_s.db),
+                            expected_c.return_type.format_short(i_s.db),
+                            defined_in.name(i_s.db),
+                        )));
+                        emitted = true
+                    }
                 }
                 if !emitted {
                     let mut notes = vec![];
@@ -1153,12 +1167,17 @@ fn check_override(i_s: &InferenceState, from: NodeRef, class: Class, name: &str)
     }
 }
 
-fn override_func_infos(t1: &Type, t2: &Type) -> Option<bool> {
+fn override_func_infos<'t1, 't2>(
+    t1: &'t1 Type,
+    t2: &'t2 Type,
+) -> Option<Option<(&'t1 CallableContent, &'t2 CallableContent)>> {
     match (t1, t2) {
-        (Type::Callable(c1), Type::Callable(c2)) => match (&c1.params, &c2.params) {
-            (CallableParams::Simple(p1), CallableParams::Simple(p2)) => Some(p1.len() == p2.len()),
-            _ => Some(false),
-        },
-        _ => (t1.is_func_or_overload() || t2.is_func_or_overload()).then_some(false),
+        (Type::Callable(c1), Type::Callable(c2)) => Some(match (&c1.params, &c2.params) {
+            (CallableParams::Simple(p1), CallableParams::Simple(p2)) => {
+                (p1.len() == p2.len()).then(|| (c1.as_ref(), c2.as_ref()))
+            }
+            _ => None,
+        }),
+        _ => (t1.is_func_or_overload() || t2.is_func_or_overload()).then_some(None),
     }
 }
