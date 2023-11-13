@@ -1219,7 +1219,6 @@ testDataclassIncompatibleFrozenOverride
 testDataclassInheritanceNoAnnotation2
 
 # "Return type "int" of "foo" incompatible with return type "str" in supertype "B""
-testNewNamedTupleMethodInheritance
 asyncIteratorInProtocol
 # Signatures of "__ior__" and "__or__" are incompatible
 testGenericOperatorMethodOverlapping
@@ -1291,6 +1290,8 @@ testOverrideClassVarManyBases
 testInferAttributeTypeAndAssignInInit
 testTypingSelfInternalSafe
 testTypingSelfClashInBodies
+# "Property "x" defined in "Base" is read-only"
+testNewNamedTupleMethodInheritance
 
 # subclass preferred over class for types
 testAddBaseClassAttributeCausingErrorInSubclass

@@ -355,6 +355,12 @@ impl Type {
                 slice_type,
                 result_context,
             ),
+            Type::Self_ => {
+                i_s.current_class()
+                    .unwrap()
+                    .instance()
+                    .get_item(i_s, slice_type, result_context)
+            }
             _ => todo!("get_item not implemented for {self:?}"),
         }
     }
