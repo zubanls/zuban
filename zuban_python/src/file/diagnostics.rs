@@ -1200,10 +1200,7 @@ fn check_override(i_s: &InferenceState, from: NodeRef, class: Class, name: &str)
             }
         };
 
-        if !expected
-            .is_super_type_of(i_s, &mut Matcher::new_class_matcher(i_s, class), &got)
-            .bool()
-        {
+        if !expected.is_simple_super_type_of(i_s, &got).bool() {
             add_override_issues()
         }
     }

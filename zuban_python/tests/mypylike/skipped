@@ -1135,7 +1135,6 @@ requireExplicitOverrideOverload
 requireExplicitOverrideMultipleInheritance
 # Liskov basics
 testOverrideAttributeWithMethod
-testAbstractGenericMethodInference
 testClassSpec
 testArgsKwargsInheritance
 # Liskov abstract

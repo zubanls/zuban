@@ -372,3 +372,17 @@ class X(TypedDict, A): # E: All bases of a new TypedDict must be TypedDict types
     x: int
 class Y(A, TypedDict): # E: All bases of a new TypedDict must be TypedDict types
     x: int
+
+[case liskov_inheritance_with_changed_type_vars]
+from typing import TypeVar, Generic, List
+T = TypeVar('T')
+
+class A(Generic[T]):
+    def x(self, t: T) -> None: ...
+class B(A[List[T]]):
+    def x(self, t: T) -> None: ...  # E: Argument 1 of "x" is incompatible with supertype "A"; supertype defines the argument type as "list[T]" \
+                                    # N: This violates the Liskov substitution principle \
+                                    # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+
+class C(A[List[T]]):
+    def x(self, t: List[T]) -> None: ...
