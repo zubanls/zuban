@@ -9,7 +9,7 @@ use crate::database::{
     Specific,
 };
 use crate::debug;
-use crate::diagnostics::IssueType;
+use crate::diagnostics::{Issue, IssueType};
 use crate::file::Inference;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
@@ -21,8 +21,8 @@ use crate::matching::{
 };
 use crate::node_ref::NodeRef;
 use crate::type_::{
-    AnyCause, CallableContent, CallableParam, CallableParams, FunctionKind, GenericItem, ParamType,
-    TupleTypeArguments, Type, TypeOrTypeVarTuple, TypeVarLike, Variance,
+    AnyCause, CallableContent, CallableParam, CallableParams, DbString, FunctionKind, GenericItem,
+    ParamType, TupleTypeArguments, Type, TypeOrTypeVarTuple, TypeVarLike, Variance,
 };
 use crate::type_helpers::{
     is_private, Class, FirstParamProperties, Function, GeneratorType, Instance, TypeOrClass,
@@ -1095,6 +1095,16 @@ fn check_override(i_s: &InferenceState, from: NodeRef, class: Class, name: &str)
         let got = instance.full_lookup(i_s, from, name).into_inferred();
         let got = got.as_cow_type(i_s);
 
+        let maybe_func = || match got.as_ref() {
+            Type::Callable(c) => {
+                let node_ref = NodeRef::from_link(i_s.db, c.defined_at);
+                node_ref
+                    .maybe_function()
+                    .map(|func| Function::new(node_ref, None))
+            }
+            _ => None,
+        };
+
         let add_override_issues = || {
             let db = i_s.db;
             if let Some(same_param_amount) = override_func_infos(&got, &expected) {
@@ -1121,13 +1131,28 @@ fn check_override(i_s: &InferenceState, from: NodeRef, class: Class, name: &str)
                         let t1 = got_c.erase_func_type_vars_for_type(db, t1);
                         let t2 = expected_c.erase_func_type_vars_for_type(db, t2);
                         if !t1.is_simple_super_type_of(i_s, &t2).bool() {
-                            from.add_issue(i_s, IssueType::ArgumentIncompatibleWithSupertype(
-                                format!(
-                                    r#"Argument {} of "{name}" is incompatible with supertype "{supertype}"; supertype defines the argument type as "{}""#,
-                                    i + 1,
-                                    t2.format_short(db),
-                                )
+                            let issue = IssueType::ArgumentIncompatibleWithSupertype(format!(
+                                r#"Argument {} of "{name}" is incompatible with supertype "{supertype}"; supertype defines the argument type as "{}""#,
+                                i + 1,
+                                t2.format_short(db),
                             ));
+                            if let CallableParam {
+                                name: Some(DbString::StringSlice(s)),
+                                ..
+                            } = param1
+                            {
+                                from.file.add_issue(
+                                    i_s,
+                                    Issue {
+                                        type_: issue,
+                                        start_position: s.start,
+                                        end_position: s.end,
+                                    },
+                                );
+                            } else {
+                                todo!()
+                                //from.add_issue(i_s, issue);
+                            }
                             emitted = true;
                         }
                     }
@@ -1146,14 +1171,19 @@ fn check_override(i_s: &InferenceState, from: NodeRef, class: Class, name: &str)
                             async_note = Some(format!(r#"Consider declaring "{name}" in supertype "{supertype}" without "async""#).into())
                         }
 
-                        from.add_issue(i_s, IssueType::ReturnTypeIncompatibleWithSupertype{
+                        let issue = IssueType::ReturnTypeIncompatibleWithSupertype {
                             message: format!(
                                 r#"Return type "{}" of "{name}" incompatible with return type "{}" in supertype "{supertype}""#,
                                 got_ret.format_short(db),
                                 expected_ret.format_short(db),
                             ),
-                            async_note
-                        });
+                            async_note,
+                        };
+                        if let Some(func) = maybe_func() {
+                            func.add_issue_for_declaration(i_s, issue)
+                        } else {
+                            from.add_issue(i_s, issue);
+                        }
                         emitted = true
                     }
                 }
@@ -1179,14 +1209,16 @@ fn check_override(i_s: &InferenceState, from: NodeRef, class: Class, name: &str)
                         class.lookup(i_s, from, name, kind),
                     );
 
-                    from.add_issue(
-                        i_s,
-                        IssueType::SignatureIncompatibleWithSupertype {
-                            name: name.into(),
-                            base_class: defined_in.name(i_s.db).into(),
-                            notes: notes.into(),
-                        },
-                    )
+                    let issue = IssueType::SignatureIncompatibleWithSupertype {
+                        name: name.into(),
+                        base_class: defined_in.name(i_s.db).into(),
+                        notes: notes.into(),
+                    };
+                    if let Some(func) = maybe_func() {
+                        func.add_issue_for_declaration(i_s, issue)
+                    } else {
+                        from.add_issue(i_s, issue)
+                    }
                 }
             } else {
                 from.add_issue(
