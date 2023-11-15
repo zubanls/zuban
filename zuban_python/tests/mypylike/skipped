@@ -1128,10 +1128,6 @@ testCyclicOverrideAny
 # "This violates the Liskov substitution principle"
 testOverrideGenericMethodInNonGenericClassGeneralize
 testErrorCodeBadOverride
-testMultiLineMethodOverridingWithIncompatibleTypesIgnorableAtDefinition
-testInstanceMethodOverwriteError
-testClassMethodOverwriteError
-# Liskov
 testOverrideAttributeWithMethod
 testClassSpec
 testArgsKwargsInheritance
@@ -2312,6 +2308,8 @@ testErrorCodeMissingMultiple
 testCannotIgnoreBlockingError
 # type: ignore on forward reference
 testErrorCodeSyntaxErrorIgnoreNote
+# type: ignore on call silences errors in call, even if not on same line?!
+testMultiLineMethodOverridingWithIncompatibleTypesIgnorableAtDefinition
 # mypy: ignore-errors=True
 testAsyncIteratorWithIgnoredErrorsAndYieldFrom
 

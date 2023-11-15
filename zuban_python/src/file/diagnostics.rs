@@ -1096,11 +1096,12 @@ fn check_override(i_s: &InferenceState, from: NodeRef, class: Class, name: &str)
         let got = got.as_cow_type(i_s);
 
         let maybe_func = || match got.as_ref() {
-            Type::Callable(c) => {
+            Type::Callable(c) if c.defined_at.file == from.file_index() => {
                 let node_ref = NodeRef::from_link(i_s.db, c.defined_at);
                 node_ref
                     .maybe_function()
                     .map(|func| Function::new(node_ref, None))
+                    .filter(|func| func.node().name().index() == from.node_index)
             }
             _ => None,
         };
@@ -1136,22 +1137,18 @@ fn check_override(i_s: &InferenceState, from: NodeRef, class: Class, name: &str)
                                 i + 1,
                                 t2.format_short(db),
                             ));
-                            if let CallableParam {
-                                name: Some(DbString::StringSlice(s)),
-                                ..
-                            } = param1
-                            {
-                                from.file.add_issue(
-                                    i_s,
-                                    Issue {
-                                        type_: issue,
-                                        start_position: s.start,
-                                        end_position: s.end,
-                                    },
-                                );
-                            } else {
-                                todo!()
-                                //from.add_issue(i_s, issue);
+                            match &param1.name {
+                                Some(DbString::StringSlice(s)) if maybe_func().is_some() => {
+                                    from.file.add_issue(
+                                        i_s,
+                                        Issue {
+                                            type_: issue,
+                                            start_position: s.start,
+                                            end_position: s.end,
+                                        },
+                                    );
+                                }
+                                _ => from.add_issue(i_s, issue),
                             }
                             emitted = true;
                         }
