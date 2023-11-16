@@ -1113,11 +1113,6 @@ explicitOverrideFromExtensions
 explicitOverrideOverloads
 explicitOverrideNotOnOverloadsImplementation
 explicitOverrideOnMultipleOverloads
-# @override
-requireExplicitOverrideMethod
-requireExplicitOverrideProperty
-requireExplicitOverrideOverload
-requireExplicitOverrideMultipleInheritance
 # Dynamic liskov overrides not checked
 testInvalidOverrideArgumentCountWithImplicitSignature1
 testInvalidOverrideWithImplicitSignatureAndClassMethod1
@@ -2598,6 +2593,12 @@ testUnimportedRevealType
 testUnimportedRevealTypePy311
 testUnimportedRevealTypeInUncheckedFunc
 testUnimportedRevealLocals
+
+# --enable-error-code explicit-override "Method "prop" is not using @override but is overriding a method in class "__main__.A""
+requireExplicitOverrideMethod
+requireExplicitOverrideProperty
+requireExplicitOverrideOverload
+requireExplicitOverrideMultipleInheritance
 
 # Not all modules are checked in mypy: `# cmd: mypy -m m`
 testTypeCheckNamedModule4
