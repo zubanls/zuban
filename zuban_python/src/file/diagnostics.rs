@@ -1151,7 +1151,6 @@ fn check_override(
                             continue;
                         };
                         let t1 = got_c.erase_func_type_vars_for_type(db, t1);
-                        let t2 = expected_c.erase_func_type_vars_for_type(db, t2);
                         if !t1.is_simple_super_type_of(i_s, &t2).bool() {
                             let issue = IssueType::ArgumentIncompatibleWithSupertype(format!(
                                 r#"Argument {} of "{name}" is incompatible with supertype "{supertype}"; supertype defines the argument type as "{}""#,

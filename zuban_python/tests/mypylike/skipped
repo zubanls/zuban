@@ -1095,6 +1095,7 @@ testOverloadStaticMethodMixingInheritance
 testOverloadStaticMethodImplementation
 testOverloadedStaticMethodOnInstance
 testUnsafeDunderOverlapInSubclass
+testErrorCodeBadOverride
 # "Read-only property cannot override read-write property"
 testColumnProperty
 testOnlyImplementGetterOfReadWriteAbstractProperty
@@ -1119,8 +1120,6 @@ testAbstractClassWithAllDynamicTypes2
 testAbstractClassWithImplementationUsingDynamicTypes
 # "This violates the Liskov substitution principle"
 # "Signature of "???" incompatible with supertype "???""
-testOverrideGenericMethodInNonGenericClassGeneralize
-testErrorCodeBadOverride
 testOverrideAttributeWithMethod
 testClassSpec
 testOverrideIncompatibleWithMultipleSupertypes
