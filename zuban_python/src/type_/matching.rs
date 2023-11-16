@@ -680,7 +680,7 @@ impl Type {
                 return Self::matches_callable(i_s, &mut matcher, c1, c2);
             }
         }
-        c1.return_type
+        (c1.return_type
             .is_super_type_of(i_s, matcher, &c2.return_type)
             & matches_params(
                 i_s,
@@ -690,7 +690,11 @@ impl Type {
                 (!c2.type_vars.is_empty()).then(|| (&c2.type_vars, c2.defined_at)),
                 Variance::Contravariant,
                 false,
-            )
+            ))
+        .or(|| {
+            // Mypy treats *args/**kwargs special
+            c1.params.is_any_args_and_kwargs().into()
+        })
     }
 
     fn matches_tuple(
