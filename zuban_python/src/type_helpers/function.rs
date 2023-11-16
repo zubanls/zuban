@@ -583,7 +583,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     );
                 }
                 InferredDecorator::Overload => is_overload = true,
-                InferredDecorator::Abstractmethod => (),
+                InferredDecorator::Abstractmethod
+                | InferredDecorator::Override
+                | InferredDecorator::Final => (),
             }
         }
         let overwrite_callable = |inferred: &mut _, mut callable: CallableContent| {
@@ -1485,6 +1487,12 @@ fn infer_decorator(
                     writable: true,
                 });
             }
+            if saved_link == i_s.db.python_state.typing_final().as_link() {
+                return InferredDecorator::Final;
+            }
+            if saved_link == i_s.db.python_state.typing_override().as_link() {
+                return InferredDecorator::Override;
+            }
         }
     }
     InferredDecorator::Inferred(redirect)
@@ -1495,6 +1503,8 @@ enum InferredDecorator {
     Inferred(Inferred),
     Overload,
     Abstractmethod,
+    Override,
+    Final,
 }
 
 struct FunctionDetails {

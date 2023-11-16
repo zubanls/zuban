@@ -105,6 +105,7 @@ pub struct PythonState {
     typing_supports_index_index: NodeIndex,
     typing_overload_index: NodeIndex,
     typing_override_index: NodeIndex,
+    typing_final_index: NodeIndex,
     typing_typed_dict_index: NodeIndex,
     typing_mapping_index: NodeIndex,
     typing_mapping_get_index: NodeIndex,
@@ -193,6 +194,7 @@ impl PythonState {
             typing_type_var: 0,
             typing_overload_index: 0,
             typing_override_index: 0,
+            typing_final_index: 0,
             typing_typed_dict_index: 0,
             typing_mapping_index: 0,
             typing_mapping_get_index: 0,
@@ -451,6 +453,14 @@ impl PythonState {
             .unwrap()
             - NAME_TO_FUNCTION_DIFF;
 
+        db.python_state.typing_final_index = db
+            .python_state
+            .typing()
+            .symbol_table
+            .lookup_symbol("final")
+            .unwrap()
+            - NAME_TO_FUNCTION_DIFF;
+
         db.python_state.typing_mapping_get_index = db
             .python_state
             .mapping_node_ref()
@@ -634,6 +644,7 @@ impl PythonState {
     attribute_node_ref!(typing, mapping_node_ref, typing_mapping_index);
     attribute_node_ref!(typing, mapping_get_node_ref, typing_mapping_get_index);
     attribute_node_ref!(typing, pub typing_override, typing_override_index);
+    attribute_node_ref!(typing, pub typing_final, typing_final_index);
     attribute_node_ref!(typing, pub generator_node_ref, typing_generator_index);
     attribute_node_ref!(typing, pub iterable_node_ref, typing_iterable_index);
     attribute_node_ref!(typing, pub typing_named_tuple_node_ref, typing_namedtuple_index);
