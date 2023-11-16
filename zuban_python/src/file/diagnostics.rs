@@ -1053,7 +1053,7 @@ fn try_pretty_format(
     let prefix = "         ";
     if let Some(inf) = class_lookup_result.into_maybe_inferred() {
         match inf.as_cow_type(i_s).as_ref() {
-            Type::Callable(c) => {
+            Type::Callable(c) if !matches!(c.kind, FunctionKind::Property { .. }) => {
                 notes.push(
                     format!(
                         "{prefix}{}",

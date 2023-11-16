@@ -1119,6 +1119,7 @@ testInvalidOverrideWithImplicitSignatureAndStaticMethod2
 testAbstractClassWithAllDynamicTypes2
 testAbstractClassWithImplementationUsingDynamicTypes
 # "This violates the Liskov substitution principle"
+# "Signature of "???" incompatible with supertype "???""
 testOverrideGenericMethodInNonGenericClassGeneralize
 testErrorCodeBadOverride
 testOverrideAttributeWithMethod
@@ -1130,9 +1131,6 @@ testOverridingMethodAcrossHierarchy
 testEqMethodsOverridingWithNonObjects
 testIntroducingInplaceOperatorInSubclass
 testMultipleInheritance_MethodDefinitionsIncompatibleOverride
-# Signature of "???" incompatible with supertype "???"
-testImplementAbstractPropertyViaPropertyInvalidType
-testOverridePropertyMethod
 testSelfTypeOverrideCompatibilityTypeVar
 # With overload
 testOverloadedMethodSupertype-only_when_cache
