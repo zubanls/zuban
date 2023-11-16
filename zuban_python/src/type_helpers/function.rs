@@ -513,7 +513,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             let inferred_dec =
                 infer_decorator(i_s, self.node_ref.file, decorator, had_first_annotation);
             if matches!(kind, FunctionKind::Property { .. })
-                && !matches!(inferred_dec, InferredDecorator::Final)
+                && !matches!(
+                    inferred_dec,
+                    InferredDecorator::Final | InferredDecorator::Override
+                )
             {
                 NodeRef::new(self.node_ref.file, decorator.index())
                     .add_issue(i_s, IssueType::DecoratorOnTopOfPropertyNotSupported);

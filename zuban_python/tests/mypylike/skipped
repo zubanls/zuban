@@ -1105,7 +1105,6 @@ testTypeAttributes
 testCantImplementAbstractPropertyViaInstanceVariable
 
 # @override  "Method "g" is marked as an override, but no base method was found with this name"
-explicitOverrideProperty
 explicitOverrideSettableProperty
 explicitOverrideOverloads
 explicitOverrideNotOnOverloadsImplementation
