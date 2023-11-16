@@ -458,7 +458,22 @@ impl<'db> Inference<'db, '_, '_> {
                 {
                     continue;
                 }
-                check_override(self.i_s, NodeRef::new(self.file, *index), c, name)
+
+                // Calculate if there is an @override decorator
+                let node_ref = NodeRef::new(self.file, *index - NAME_DEF_TO_NAME_DIFFERENCE);
+                let mut has_override_decorator = false;
+                if node_ref.point().calculated() {
+                    if let Some(redirected) = node_ref.maybe_redirect(db) {
+                        let p = redirected.point();
+                        if p.calculated() && p.maybe_specific() == Some(Specific::DecoratedFunction)
+                        {
+                            has_override_decorator = Function::new(redirected, Some(c))
+                                .has_precalculated_override_decorator(db);
+                        }
+                    }
+                }
+
+                check_override(self.i_s, node_ref, c, name, has_override_decorator)
             }
         }
     }
@@ -1085,7 +1100,13 @@ fn is_overload_unmatchable(
     matches!(result, Match::True { with_any: false })
 }
 
-fn check_override(i_s: &InferenceState, from: NodeRef, class: Class, name: &str) {
+fn check_override(
+    i_s: &InferenceState,
+    from: NodeRef,
+    class: Class,
+    name: &str,
+    has_override_decorator: bool,
+) {
     let kind = LookupKind::Normal;
     let instance = Instance::new(class, None);
     let (defined_in, result) =
@@ -1101,7 +1122,7 @@ fn check_override(i_s: &InferenceState, from: NodeRef, class: Class, name: &str)
                 node_ref
                     .maybe_function()
                     .map(|func| Function::new(node_ref, None))
-                    .filter(|func| func.node().name().index() == from.node_index)
+                    .filter(|func| func.node().name_definition().index() == from.node_index)
             }
             _ => None,
         };
@@ -1239,6 +1260,8 @@ fn check_override(i_s: &InferenceState, from: NodeRef, class: Class, name: &str)
         {
             add_override_issues()
         }
+    } else if has_override_decorator {
+        from.add_issue(i_s, IssueType::MissingBaseForOverride { name: name.into() });
     }
 }
 

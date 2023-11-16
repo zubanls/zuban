@@ -633,6 +633,7 @@ impl PythonState {
     attribute_node_ref!(typing, typed_dict_node_ref, typing_typed_dict_index);
     attribute_node_ref!(typing, mapping_node_ref, typing_mapping_index);
     attribute_node_ref!(typing, mapping_get_node_ref, typing_mapping_get_index);
+    attribute_node_ref!(typing, pub typing_override, typing_override_index);
     attribute_node_ref!(typing, pub generator_node_ref, typing_generator_index);
     attribute_node_ref!(typing, pub iterable_node_ref, typing_iterable_index);
     attribute_node_ref!(typing, pub typing_named_tuple_node_ref, typing_namedtuple_index);

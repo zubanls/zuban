@@ -168,6 +168,7 @@ pub(crate) enum IssueType {
     ReturnTypeIncompatibleWithSupertype { message: String, async_note: Option<Box<str>> },
     ArgumentIncompatibleWithSupertype(String),
     MultipleInheritanceIncompatibility { name: Box<str>, class1: Box<str>, class2: Box<str> },
+    MissingBaseForOverride { name: Box<str> },
     NewMustReturnAnInstance { got: Box<str> },
     NewIncompatibleReturnType { returns: Box<str>, must_return: Box<str> },
     InvalidGetattrSigantureAtModuleLevel { type_: Box<str> },
@@ -942,6 +943,9 @@ impl<'db> Diagnostic<'db> {
             MultipleInheritanceIncompatibility { name, class1, class2 } => format!(
                 "Definition of \"{name}\" in base class \"{class1}\" is incompatible \
                  with definition in base class \"{class2}\""
+            ),
+            MissingBaseForOverride { name } => format!(
+                r#"Method "{name}" is marked as an override, but no base method was found with this name"#
             ),
             NewMustReturnAnInstance { got } => format!(
                 "\"__new__\" must return a class instance (got \"{got}\")"

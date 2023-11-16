@@ -364,6 +364,8 @@ SelfTypeOverloadedClassMethod
 testStaticmethodAndNonMethod
 # "classmethod" used with a non-method"
 testClassmethodAndNonMethod
+# "override" used with a non-method"
+invalidExplicitOverride
 # Error for staticmethod: "Overloaded function implementation does not accept all possible arguments of signature 1"
 testOverloadWithSwappedDecorators2
 # "Static methods cannot use Self type"
@@ -1103,13 +1105,8 @@ testTypeAttributes
 testCantImplementAbstractPropertyViaInstanceVariable
 
 # @override  "Method "g" is marked as an override, but no base method was found with this name"
-explicitOverride
-explicitOverrideStaticmethod
-explicitOverrideClassmethod
 explicitOverrideProperty
 explicitOverrideSettableProperty
-invalidExplicitOverride
-explicitOverrideFromExtensions
 explicitOverrideOverloads
 explicitOverrideNotOnOverloadsImplementation
 explicitOverrideOnMultipleOverloads
