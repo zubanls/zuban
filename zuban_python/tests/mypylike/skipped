@@ -1099,13 +1099,13 @@ testUnsafeDunderOverlapInSubclass
 testColumnProperty
 testOnlyImplementGetterOfReadWriteAbstractProperty
 testReadWriteDeleteAbstractProperty
+explicitOverrideSettableProperty
 # Property access from class
 testTypeAttributes
 # Self definitions different from parent
 testCantImplementAbstractPropertyViaInstanceVariable
 
 # @override  "Method "g" is marked as an override, but no base method was found with this name"
-explicitOverrideSettableProperty
 explicitOverrideOverloads
 explicitOverrideNotOnOverloadsImplementation
 explicitOverrideOnMultipleOverloads
