@@ -1014,6 +1014,7 @@ testNestedAbstractClass
 testAbstractNewTypeAllowed
 testSubclassOfABCFromDictionary
 testAbstractPropertiesAllowed
+testInstantiatingAbstractClassWithMultipleBaseClasses
 # Cannot instantiate abstract class "A" with abstract attributes "a", "b", ... and "j" (7 methods suppressed)
 testInstantiatingClassWithInheritedAbstractMethodAndSuppression
 # Same but not from check-abstract.test
@@ -1123,6 +1124,8 @@ testInvalidOverrideWithImplicitSignatureAndClassMethod1
 testInvalidOverrideWithImplicitSignatureAndClassMethod2
 testInvalidOverrideWithImplicitSignatureAndStaticMethod1
 testInvalidOverrideWithImplicitSignatureAndStaticMethod2
+testAbstractClassWithAllDynamicTypes2
+testAbstractClassWithImplementationUsingDynamicTypes
 # Liskov weird
 testCyclicOverrideAny
 # "This violates the Liskov substitution principle"
@@ -1130,11 +1133,7 @@ testOverrideGenericMethodInNonGenericClassGeneralize
 testErrorCodeBadOverride
 testOverrideAttributeWithMethod
 testClassSpec
-testAbstractClassWithAllDynamicTypes2
-testAbstractClassWithImplementationUsingDynamicTypes
-testInstantiatingAbstractClassWithMultipleBaseClasses
 testOverrideIncompatibleWithMultipleSupertypes
-testPositionalOverridingArgumentNameInsensitivity
 testOverridingMethodInMultilevelHierarchyOfGenericTypes
 testOverridingMethodInGenericTypeInheritingGenericType
 testSubclassingGenericABCWithDeepHierarchy

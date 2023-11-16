@@ -1229,7 +1229,14 @@ fn check_override(i_s: &InferenceState, from: NodeRef, class: Class, name: &str)
             }
         };
 
-        if !expected.is_simple_super_type_of(i_s, &got).bool() {
+        if !expected
+            .is_super_type_of(
+                i_s,
+                &mut Matcher::with_ignore_positional_param_names(),
+                &got,
+            )
+            .bool()
+        {
             add_override_issues()
         }
     }

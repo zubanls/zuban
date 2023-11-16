@@ -123,6 +123,8 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
 
     let mut params2 = params2.peekable();
     let mut unused_keyword_params: Vec<P2> = vec![];
+    let mut mismatched_name_pos_params1: Vec<P1> = vec![];
+    let mut mismatched_name_pos_params2: Vec<P2> = vec![];
 
     let mut matches = Match::new_true();
     for param1 in params1.by_ref() {
@@ -153,8 +155,33 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                 },
                 WrappedParamType::PositionalOrKeyword(t1) => match &specific2 {
                     WrappedParamType::PositionalOrKeyword(t2) => {
-                        if param1.name(i_s.db) != param2.name(i_s.db) {
-                            return Match::new_false();
+                        let name1 = param1.name(i_s.db);
+                        let name2 = param2.name(i_s.db);
+                        if name1 != name2 {
+                            if matcher.ignore_positional_param_names() {
+                                // This logic is so weird in mypy, have a look at the tests:
+                                //
+                                // - testPositionalOverridingArgumentNameInsensitivity
+                                // - testPositionalOverridingArgumentNamesCheckedWhenMismatchingPos
+                                //
+                                // to see how this works.
+                                if mismatched_name_pos_params2
+                                    .iter()
+                                    .any(|p2| p2.name(i_s.db) == name1)
+                                {
+                                    return Match::new_false();
+                                }
+                                if mismatched_name_pos_params1
+                                    .iter()
+                                    .any(|p1| p1.name(i_s.db) == name2)
+                                {
+                                    return Match::new_false();
+                                }
+                                mismatched_name_pos_params1.push(param1);
+                                mismatched_name_pos_params2.push(param2);
+                            } else {
+                                return Match::new_false();
+                            }
                         }
                         matches &= match_(i_s, matcher, t1, t2)
                     }

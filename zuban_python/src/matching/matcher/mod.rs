@@ -45,7 +45,8 @@ pub struct Matcher<'a> {
     class: Option<&'a Class<'a>>,
     func_or_callable: Option<FunctionOrCallable<'a>>,
     ignore_promotions: bool,
-    match_reverse: bool, // For contravariance subtypes
+    ignore_positional_param_names: bool, // Matches `ignore_pos_arg_names` in Mypy
+    match_reverse: bool,                 // For contravariance subtypes
 }
 
 impl<'a> Matcher<'a> {
@@ -124,6 +125,17 @@ impl<'a> Matcher<'a> {
             ignore_promotions: true,
             ..Self::default()
         }
+    }
+
+    pub fn with_ignore_positional_param_names() -> Self {
+        Self {
+            ignore_positional_param_names: true,
+            ..Self::default()
+        }
+    }
+
+    pub fn ignore_positional_param_names(&self) -> bool {
+        self.ignore_positional_param_names
     }
 
     pub fn ignore_promotions(&self) -> bool {
@@ -681,6 +693,7 @@ impl<'a> Matcher<'a> {
             class: self.class,
             func_or_callable: self.func_or_callable,
             ignore_promotions: self.ignore_promotions,
+            ignore_positional_param_names: self.ignore_positional_param_names,
             match_reverse: self.match_reverse,
         };
         let result = callable(&mut inner_matcher);
