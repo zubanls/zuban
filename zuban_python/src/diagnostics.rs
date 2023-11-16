@@ -236,6 +236,7 @@ pub(crate) enum IssueType {
     OverloadedPropertyNotSupported,
 
     DecoratorOnTopOfPropertyNotSupported,
+    OnlyInstanceMethodsCanBeDecoratedWithProperty,
     OnlySupportedTopDecoratorSetter { name: Box<str> },
     UnexpectedDefinitionForProperty { name: Box<str> },
     PropertyIsReadOnly { class_name: Box<str>, property_name: Box<str> },
@@ -1108,6 +1109,8 @@ impl<'db> Diagnostic<'db> {
 
             DecoratorOnTopOfPropertyNotSupported =>
                 "Decorators on top of @property are not supported".to_string(),
+            OnlyInstanceMethodsCanBeDecoratedWithProperty =>
+                "Only instance methods can be decorated with @property".to_string(),
             OnlySupportedTopDecoratorSetter{name} =>
                 format!("Only supported top decorator is @{name}.setter"),
             UnexpectedDefinitionForProperty{name} =>

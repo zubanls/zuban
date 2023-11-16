@@ -510,13 +510,17 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         };
         let mut is_overload = false;
         for decorator in decorated.decorators().iter_reverse() {
-            if matches!(kind, FunctionKind::Property { .. }) {
+            let inferred_dec =
+                infer_decorator(i_s, self.node_ref.file, decorator, had_first_annotation);
+            if matches!(kind, FunctionKind::Property { .. })
+                && !matches!(inferred_dec, InferredDecorator::Final)
+            {
                 NodeRef::new(self.node_ref.file, decorator.index())
                     .add_issue(i_s, IssueType::DecoratorOnTopOfPropertyNotSupported);
                 break;
             }
 
-            match infer_decorator(i_s, self.node_ref.file, decorator, had_first_annotation) {
+            match inferred_dec {
                 InferredDecorator::FunctionKind(k) => {
                     match k {
                         FunctionKind::Property { .. } => {
@@ -528,6 +532,12 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                             if self.class.is_none() {
                                 used_with_a_non_method("property");
                                 return None;
+                            }
+                            if !matches!(kind, FunctionKind::Function { .. }) {
+                                NodeRef::new(self.node_ref.file, decorator.index()).add_issue(
+                                    i_s,
+                                    IssueType::OnlyInstanceMethodsCanBeDecoratedWithProperty,
+                                );
                             }
                         }
                         FunctionKind::Classmethod { .. } => {
@@ -1459,6 +1469,12 @@ fn infer_decorator(
         if saved_link == i_s.db.python_state.overload_link() {
             return InferredDecorator::Overload;
         }
+        if saved_link == i_s.db.python_state.typing_final().as_link() {
+            return InferredDecorator::Final;
+        }
+        if saved_link == i_s.db.python_state.typing_override().as_link() {
+            return InferredDecorator::Override;
+        }
         // All these cases are classes.
         if let Some(class_def) = node_ref.maybe_class() {
             if saved_link == i_s.db.python_state.classmethod_node_ref().as_link() {
@@ -1487,17 +1503,12 @@ fn infer_decorator(
                     writable: true,
                 });
             }
-            if saved_link == i_s.db.python_state.typing_final().as_link() {
-                return InferredDecorator::Final;
-            }
-            if saved_link == i_s.db.python_state.typing_override().as_link() {
-                return InferredDecorator::Override;
-            }
         }
     }
     InferredDecorator::Inferred(redirect)
 }
 
+#[derive(Debug)]
 enum InferredDecorator {
     FunctionKind(FunctionKind),
     Inferred(Inferred),

@@ -2082,9 +2082,6 @@ testAsyncDefReturnWithoutValue
 testNonEmptyReturnInNoneTypedGenerator
 testErrorCodeReturnValueNotExpected
 
-# "Decorators on top of @property are not supported"
-testDecoratedProperty
-
 # The type "Type[type]" is not generic and not indexable
 testTypeApplicationCrash
 # `class type` stuff
