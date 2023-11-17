@@ -1078,6 +1078,12 @@ testLiteralSubtypeContextGeneric
 testSetDescriptorOnClass
 testListObject
 testInheritanceFromGenericWithImplicitDynamic
+# Issues with overrides, because of self definitions 
+testVariableSubclassAssignment
+testClassOneErrorPerLine
+testAttributeDefOrder1
+testAttributeDefOrder2
+testChangeBaseClassAttributeType
 
 # keyword params do not matter, only order
 testSuperOutsideClass
@@ -1119,12 +1125,15 @@ testAbstractClassWithImplementationUsingDynamicTypes
 testOverrideAttributeWithMethod
 # Callable override
 testClassSpec
+testClassSpecError
 # Inheritance multiple issues?
 testOverrideIncompatibleWithMultipleSupertypes
 testSubclassingGenericABCWithDeepHierarchy
 testSubclassingGenericABCWithDeepHierarchy2
 testOverridingMethodAcrossHierarchy
 testMultipleInheritance_MethodDefinitionsIncompatibleOverride
+testClassIgnoreType_RedefinedAttributeAndGrandparentAttributeTypesNotIgnored
+testMultipleInheritance_NestedVariableOverriddenWithIncompatibleType1
 # "This violates the Liskov substitution principle"
 testEqMethodsOverridingWithNonObjects
 testIntroducingInplaceOperatorInSubclass
@@ -1174,21 +1183,10 @@ testOverlappingOperatorMethods
 testReverseOperatorMethodInvalid
 #  Incompatible types in assignment (expression has type "int", base class "BaseS" defined the type as "str")
 testTypingSelfOverrideVarMulti
-testOverrideMethodWithAttribute
-testVariableSubclassAssignment
-testClassSpecError
-testClassStaticMethod
-testClassStaticMethodIndirect
-testClassOrderOfError
-testClassOneErrorPerLine
-testClassIgnoreType_RedefinedAttributeAndGrandparentAttributeTypesNotIgnored
-testAttributeDefOrder1
-testAttributeDefOrder2
-testGenericOverrideGeneric
 testNamedTupleFallback
-testMultipleInheritance_NestedVariableOverriddenWithIncompatibleType1
 testErrorCodeAssignment
-testChangeBaseClassAttributeType
+# Read/Write
+testClassOrderOfError
 # Namedtuple bad overwrite of count etc
 testNewNamedTupleIllegalNames
 testNamedTupleIncompatibleRedefinition
