@@ -468,9 +468,9 @@ impl<'db> Inference<'db, '_, '_> {
                         if p.calculated() && p.maybe_specific() == Some(Specific::DecoratedFunction)
                         {
                             let f = Function::new(redirected, Some(c));
-                            // In Mypy the error is on the first @overload.
+                            // In Mypy the error is on the first decorator of an @overload.
                             has_override_decorator = f.has_precalculated_override_decorator(db);
-                            if let Some(new_node_ref) = f.maybe_first_overload_decorator(db) {
+                            if let Some(new_node_ref) = f.maybe_has_overload_decorator(db) {
                                 node_ref = new_node_ref;
                             }
                         }

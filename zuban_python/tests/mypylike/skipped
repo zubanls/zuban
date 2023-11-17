@@ -1146,7 +1146,6 @@ testSelfTypeOverrideCompatibilityTypeVar
 # @override  "Method "g" is marked as an override, but no base method was found with this name"
 explicitOverrideOverloads
 explicitOverrideNotOnOverloadsImplementation
-explicitOverrideOnMultipleOverloads
 # Overloaded operator methods cannot have wider argument types in overrides
 testOperatorMethodOverrideIntroducingOverloading
 testOverloadedOperatorMethodOverrideWithNewItem

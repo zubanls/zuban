@@ -897,12 +897,17 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         false
     }
 
-    pub fn maybe_first_overload_decorator(&self, db: &Database) -> Option<NodeRef<'a>> {
-        for decorator in self.expect_decorated_node().decorators().iter() {
+    pub fn maybe_has_overload_decorator(&self, db: &Database) -> Option<NodeRef<'a>> {
+        let decorators = self.expect_decorated_node().decorators();
+        for decorator in decorators.iter() {
             let decorator_ref = NodeRef::new(self.node_ref.file, decorator.index());
             if let Some(redirect) = decorator_ref.maybe_redirect(db) {
                 if redirect == db.python_state.typing_overload() {
-                    return Some(decorator_ref);
+                    // Issues are on the first decorator in Mypy...
+                    return Some(NodeRef::new(
+                        self.node_ref.file,
+                        decorators.iter().next().unwrap().named_expression().index(),
+                    ));
                 }
             }
         }
