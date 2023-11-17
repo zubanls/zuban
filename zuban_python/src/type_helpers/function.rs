@@ -897,6 +897,18 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         false
     }
 
+    pub fn maybe_first_overload_decorator(&self, db: &Database) -> Option<NodeRef<'a>> {
+        for decorator in self.expect_decorated_node().decorators().iter() {
+            let decorator_ref = NodeRef::new(self.node_ref.file, decorator.index());
+            if let Some(redirect) = decorator_ref.maybe_redirect(db) {
+                if redirect == db.python_state.typing_overload() {
+                    return Some(decorator_ref);
+                }
+            }
+        }
+        None
+    }
+
     pub(crate) fn add_issue_for_declaration(&self, i_s: &InferenceState, type_: IssueType) {
         let node = self.node();
         self.node_ref.file.add_issue(

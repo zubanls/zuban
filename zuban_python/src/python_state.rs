@@ -643,6 +643,7 @@ impl PythonState {
     attribute_node_ref!(typing, typed_dict_node_ref, typing_typed_dict_index);
     attribute_node_ref!(typing, mapping_node_ref, typing_mapping_index);
     attribute_node_ref!(typing, mapping_get_node_ref, typing_mapping_get_index);
+    attribute_node_ref!(typing, pub typing_overload, typing_overload_index);
     attribute_node_ref!(typing, pub typing_override, typing_override_index);
     attribute_node_ref!(typing, pub typing_final, typing_final_index);
     attribute_node_ref!(typing, pub generator_node_ref, typing_generator_index);
@@ -760,8 +761,7 @@ impl PythonState {
     }
 
     pub fn overload_link(&self) -> PointLink {
-        debug_assert!(self.typing_overload_index != 0);
-        PointLink::new(self.typing().file_index(), self.typing_overload_index)
+        self.typing_overload().as_link()
     }
 
     pub fn coroutine_link(&self) -> PointLink {

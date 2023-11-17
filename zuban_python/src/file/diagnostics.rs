@@ -460,15 +460,19 @@ impl<'db> Inference<'db, '_, '_> {
                 }
 
                 // Calculate if there is an @override decorator
-                let node_ref = NodeRef::new(self.file, *index - NAME_DEF_TO_NAME_DIFFERENCE);
+                let mut node_ref = NodeRef::new(self.file, *index - NAME_DEF_TO_NAME_DIFFERENCE);
                 let mut has_override_decorator = false;
                 if node_ref.point().calculated() {
                     if let Some(redirected) = node_ref.maybe_redirect(db) {
                         let p = redirected.point();
                         if p.calculated() && p.maybe_specific() == Some(Specific::DecoratedFunction)
                         {
-                            has_override_decorator = Function::new(redirected, Some(c))
-                                .has_precalculated_override_decorator(db);
+                            let f = Function::new(redirected, Some(c));
+                            // In Mypy the error is on the first @overload.
+                            has_override_decorator = f.has_precalculated_override_decorator(db);
+                            if let Some(new_node_ref) = f.maybe_first_overload_decorator(db) {
+                                node_ref = new_node_ref;
+                            }
                         }
                     }
                 }
