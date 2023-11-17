@@ -1184,7 +1184,6 @@ testReverseOperatorMethodInvalid
 #  Incompatible types in assignment (expression has type "int", base class "BaseS" defined the type as "str")
 testTypingSelfOverrideVarMulti
 testNamedTupleFallback
-testErrorCodeAssignment
 # Read/Write
 testClassOrderOfError
 # Namedtuple bad overwrite of count etc

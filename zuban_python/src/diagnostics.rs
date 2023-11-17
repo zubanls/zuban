@@ -315,6 +315,7 @@ impl IssueType {
             IncompatibleReturn { .. } => "return-value",
             IncompatibleDefaultArgument { .. }
             | IncompatibleAssignment { .. }
+            | IncompatibleAssignmentInSubclass { .. }
             | InvalidSetItemTarget { .. } => "assignment",
             InvalidGetItem { .. } | NotIndexable { .. } | UnsupportedSetItemTarget(_) => "index",
             TypeVarInReturnButNotArgument
@@ -336,8 +337,7 @@ impl IssueType {
             NewTypeMustBeSubclassable { .. } => "valid-newtype",
             OverloadImplementationNeeded { .. } => "no-overload-impl",
             OverloadMismatch { .. } => "call-overload",
-            IncompatibleAssignmentInSubclass { .. }
-            | SignatureIncompatibleWithSupertype { .. }
+            SignatureIncompatibleWithSupertype { .. }
             | ArgumentIncompatibleWithSupertype { .. }
             | ReturnTypeIncompatibleWithSupertype { .. } => "override",
             FunctionIsDynamic
