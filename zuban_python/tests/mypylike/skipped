@@ -1106,10 +1106,6 @@ testTypeAttributes
 # Self definitions different from parent
 testCantImplementAbstractPropertyViaInstanceVariable
 
-# @override  "Method "g" is marked as an override, but no base method was found with this name"
-explicitOverrideOverloads
-explicitOverrideNotOnOverloadsImplementation
-explicitOverrideOnMultipleOverloads
 # Dynamic liskov overrides not checked
 testInvalidOverrideArgumentCountWithImplicitSignature1
 testInvalidOverrideWithImplicitSignatureAndClassMethod1
@@ -1118,18 +1114,20 @@ testInvalidOverrideWithImplicitSignatureAndStaticMethod1
 testInvalidOverrideWithImplicitSignatureAndStaticMethod2
 testAbstractClassWithAllDynamicTypes2
 testAbstractClassWithImplementationUsingDynamicTypes
-# "This violates the Liskov substitution principle"
 # "Signature of "???" incompatible with supertype "???""
+# __hash__ None overrides
 testOverrideAttributeWithMethod
+# Callable override
 testClassSpec
+# Inheritance multiple issues?
 testOverrideIncompatibleWithMultipleSupertypes
 testSubclassingGenericABCWithDeepHierarchy
 testSubclassingGenericABCWithDeepHierarchy2
 testOverridingMethodAcrossHierarchy
+testMultipleInheritance_MethodDefinitionsIncompatibleOverride
+# "This violates the Liskov substitution principle"
 testEqMethodsOverridingWithNonObjects
 testIntroducingInplaceOperatorInSubclass
-testMultipleInheritance_MethodDefinitionsIncompatibleOverride
-testSelfTypeOverrideCompatibilityTypeVar
 # With overload
 testOverloadedMethodSupertype-only_when_cache
 testOverloadedMethodSupertype2-only_when_nocache
@@ -1137,6 +1135,11 @@ testOverloadedOperatorMethodOverrideWithSwitchedItemOrder
 testSelfTypeOverrideCompatibility
 testSubtypeOverloadWithOverlappingArgumentsButWrongReturnType
 testSelfTypeOverrideCompatibilityGeneric
+testSelfTypeOverrideCompatibilityTypeVar
+# @override  "Method "g" is marked as an override, but no base method was found with this name"
+explicitOverrideOverloads
+explicitOverrideNotOnOverloadsImplementation
+explicitOverrideOnMultipleOverloads
 # Overloaded operator methods cannot have wider argument types in overrides
 testOperatorMethodOverrideIntroducingOverloading
 testOverloadedOperatorMethodOverrideWithNewItem
