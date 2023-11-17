@@ -1078,6 +1078,8 @@ testLiteralSubtypeContextGeneric
 testSetDescriptorOnClass
 testListObject
 testInheritanceFromGenericWithImplicitDynamic
+testVariableTypeVarList
+testInWithInvalidArgs
 # Issues with overrides, because of self definitions 
 testVariableSubclassAssignment
 testClassOneErrorPerLine
@@ -1107,8 +1109,6 @@ testColumnProperty
 testOnlyImplementGetterOfReadWriteAbstractProperty
 testReadWriteDeleteAbstractProperty
 explicitOverrideSettableProperty
-# Property access from class
-testTypeAttributes
 # Self definitions different from parent
 testCantImplementAbstractPropertyViaInstanceVariable
 
@@ -1189,9 +1189,6 @@ testClassOrderOfError
 # Namedtuple bad overwrite of count etc
 testNewNamedTupleIllegalNames
 testNamedTupleIncompatibleRedefinition
-# List item 0 has incompatible type "str"; expected "int"
-testVariableTypeVarList
-testInWithInvalidArgs
  
 # Signature of __exit__ is wrong
 testWithStmtBoolExitReturnWithResultFalse
