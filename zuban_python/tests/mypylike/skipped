@@ -1090,6 +1090,7 @@ testChangeBaseClassAttributeType
 # keyword params do not matter, only order
 testSuperOutsideClass
 testSuperWithUnrelatedTypes
+
 #     Overload variants must be defined in the same order as they are in "Parent"
 testOverrideOverloadSwapped
 testOverrideOverloadSwappedWithExtraVariants
@@ -1113,14 +1114,6 @@ explicitOverrideSettableProperty
 # Self definitions different from parent
 testCantImplementAbstractPropertyViaInstanceVariable
 
-# Dynamic liskov overrides not checked
-testInvalidOverrideArgumentCountWithImplicitSignature1
-testInvalidOverrideWithImplicitSignatureAndClassMethod1
-testInvalidOverrideWithImplicitSignatureAndClassMethod2
-testInvalidOverrideWithImplicitSignatureAndStaticMethod1
-testInvalidOverrideWithImplicitSignatureAndStaticMethod2
-testAbstractClassWithAllDynamicTypes2
-testAbstractClassWithImplementationUsingDynamicTypes
 # "Signature of "???" incompatible with supertype "???""
 # __hash__ None overrides
 testOverrideAttributeWithMethod

@@ -89,12 +89,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     pub fn is_dynamic(&self) -> bool {
-        self.return_annotation().is_none()
-            && !self
-                .node()
-                .params()
-                .iter()
-                .any(|p| p.annotation().is_some())
+        !self.node().is_typed()
     }
 
     pub fn generator_return(&self, i_s: &InferenceState) -> Option<GeneratorType> {

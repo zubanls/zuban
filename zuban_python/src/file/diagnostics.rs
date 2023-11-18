@@ -466,6 +466,10 @@ impl<'db> Inference<'db, '_, '_> {
                 if let Some(func_def) =
                     NodeRef::new(self.file, index - NAME_TO_FUNCTION_DIFF).maybe_function()
                 {
+                    if !func_def.is_typed() {
+                        // Mypy completely ignores untyped functions.
+                        continue;
+                    }
                     if let Some(decorated) = func_def.maybe_decorated() {
                         let decorators = decorated.decorators();
                         for decorator in decorators.iter() {
