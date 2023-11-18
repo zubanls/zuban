@@ -270,6 +270,7 @@ pub(crate) enum IssueType {
     DataclassReplaceExpectedDataclassInTypeVarBound { got: Box<str> },
     DataclassContainsTypeAlias,
     DataclassUnpackingKwargsInField,
+    DataclassAttributeMayOnlyBeOverriddenByAnotherAttribute,
 
     // From --disallow-untyped-defs
     FunctionIsDynamic,
@@ -701,6 +702,8 @@ impl<'db> Diagnostic<'db> {
                 "Type aliases inside dataclass definitions are not supported at runtime".to_string(),
             DataclassUnpackingKwargsInField =>
                 r#"Unpacking **kwargs in "field()" is not supported"#.to_string(),
+            DataclassAttributeMayOnlyBeOverriddenByAnotherAttribute =>
+                "Dataclass attribute may only be overridden by another attribute".to_string(),
 
             FunctionIsDynamic => "Function is missing a type annotation".to_string(),
             FunctionMissingReturnAnnotation =>

@@ -1776,6 +1776,13 @@ impl<'db> FunctionDef<'db> {
         }
     }
 
+    pub fn maybe_decorated(&self) -> Option<Decorated<'db>> {
+        match self.parent() {
+            FunctionParent::Decorated(dec) | FunctionParent::DecoratedAsync(dec) => Some(dec),
+            _ => None,
+        }
+    }
+
     pub fn unpack(
         &self,
     ) -> (

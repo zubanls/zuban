@@ -479,12 +479,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     fn expect_decorated_node(&self) -> Decorated {
-        match self.node().parent() {
-            FunctionParent::Decorated(decorated) | FunctionParent::DecoratedAsync(decorated) => {
-                decorated
-            }
-            _ => unreachable!(),
-        }
+        self.node().maybe_decorated().unwrap()
     }
 
     fn calculate_decorated_function_details(
@@ -882,36 +877,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             functions: FunctionOverload::new(functions.into_boxed_slice()),
             implementation,
         })
-    }
-
-    pub fn has_precalculated_override_decorator(&self, db: &Database) -> bool {
-        for decorator in self.expect_decorated_node().decorators().iter() {
-            if let Some(redirect) =
-                NodeRef::new(self.node_ref.file, decorator.index()).maybe_redirect(db)
-            {
-                if redirect == db.python_state.typing_override() {
-                    return true;
-                }
-            }
-        }
-        false
-    }
-
-    pub fn maybe_has_overload_decorator(&self, db: &Database) -> Option<NodeRef<'a>> {
-        let decorators = self.expect_decorated_node().decorators();
-        for decorator in decorators.iter() {
-            let decorator_ref = NodeRef::new(self.node_ref.file, decorator.index());
-            if let Some(redirect) = decorator_ref.maybe_redirect(db) {
-                if redirect == db.python_state.typing_overload() {
-                    // Issues are on the first decorator in Mypy...
-                    return Some(NodeRef::new(
-                        self.node_ref.file,
-                        decorators.iter().next().unwrap().named_expression().index(),
-                    ));
-                }
-            }
-        }
-        None
     }
 
     pub(crate) fn add_issue_for_declaration(&self, i_s: &InferenceState, type_: IssueType) {

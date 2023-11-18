@@ -20,6 +20,7 @@ use crate::matching::{
     ResultContext,
 };
 use crate::node_ref::NodeRef;
+use crate::python_state::NAME_TO_FUNCTION_DIFF;
 use crate::type_::{
     AnyCause, CallableContent, CallableParam, CallableParams, DbString, FunctionKind, GenericItem,
     ParamType, TupleTypeArguments, Type, TypeOrTypeVarTuple, TypeVarLike, Variance,
@@ -462,16 +463,30 @@ impl<'db> Inference<'db, '_, '_> {
                 // Calculate if there is an @override decorator
                 let mut node_ref = NodeRef::new(self.file, *index - NAME_DEF_TO_NAME_DIFFERENCE);
                 let mut has_override_decorator = false;
-                if node_ref.point().calculated() {
-                    if let Some(redirected) = node_ref.maybe_redirect(db) {
-                        let p = redirected.point();
-                        if p.calculated() && p.maybe_specific() == Some(Specific::DecoratedFunction)
-                        {
-                            let f = Function::new(redirected, Some(c));
-                            // In Mypy the error is on the first decorator of an @overload.
-                            has_override_decorator = f.has_precalculated_override_decorator(db);
-                            if let Some(new_node_ref) = f.maybe_has_overload_decorator(db) {
-                                node_ref = new_node_ref;
+                if let Some(func_def) =
+                    NodeRef::new(self.file, index - NAME_TO_FUNCTION_DIFF).maybe_function()
+                {
+                    if let Some(decorated) = func_def.maybe_decorated() {
+                        let decorators = decorated.decorators();
+                        for decorator in decorators.iter() {
+                            if let Some(redirect) =
+                                NodeRef::new(self.file, decorator.index()).maybe_redirect(db)
+                            {
+                                if redirect == db.python_state.typing_override() {
+                                    has_override_decorator = true;
+                                }
+                                if redirect == db.python_state.typing_overload() {
+                                    // In Mypy the error is on the first decorator of an @overload.
+                                    node_ref = NodeRef::new(
+                                        self.file,
+                                        decorators
+                                            .iter()
+                                            .next()
+                                            .unwrap()
+                                            .named_expression()
+                                            .index(),
+                                    );
+                                }
                             }
                         }
                     }
