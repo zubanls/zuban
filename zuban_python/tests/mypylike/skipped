@@ -1087,10 +1087,6 @@ testAttributeDefOrder1
 testAttributeDefOrder2
 testChangeBaseClassAttributeType
 
-# keyword params do not matter, only order
-testSuperOutsideClass
-testSuperWithUnrelatedTypes
-
 #     Overload variants must be defined in the same order as they are in "Parent"
 testOverrideOverloadSwapped
 testOverrideOverloadSwappedWithExtraVariants
