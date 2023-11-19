@@ -17,6 +17,7 @@ use crate::{
         OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
+    python_state::NAME_TO_FUNCTION_DIFF,
     type_helpers::{Callable, Class, Function, Instance, TypeOrClass},
 };
 
@@ -113,6 +114,7 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
         }
     };
 
+    let class_symbol_table = &cls.class_storage.class_symbol_table;
     for (_, c) in cls.mro(db).rev() {
         if let TypeOrClass::Type(t) = c {
             if let Type::Dataclass(super_dataclass) = t.as_ref() {
@@ -139,17 +141,42 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
                     *t = replace_class_type_vars(db, t, &cls, &|| {
                         Type::Dataclass(dataclass.clone())
                     });
+                    if let Some(in_current_class) = class_symbol_table
+                        .lookup_symbol(new_param.name.as_ref().unwrap().as_str(db))
+                    {
+                        let mut n = NodeRef::new(file, in_current_class);
+                        if !n
+                            .as_name()
+                            .name_definition()
+                            .unwrap()
+                            .maybe_assignment_definition()
+                        {
+                            if let Some(funcdef) =
+                                NodeRef::new(file, in_current_class - NAME_TO_FUNCTION_DIFF)
+                                    .maybe_function()
+                            {
+                                if let Some(decorated) = funcdef.maybe_decorated() {
+                                    n = NodeRef::new(file, decorated.index());
+                                }
+                            }
+                            if n.point().calculated()
+                                && n.point().maybe_specific() == Some(Specific::DecoratedFunction)
+                            {
+                                // Mypy adds the issue to the decorator
+                            }
+                            n.add_issue(
+                                i_s,
+                                IssueType::DataclassAttributeMayOnlyBeOverriddenByAnotherAttribute,
+                            );
+                        }
+                    }
                     add_param(&mut params, new_param);
                 }
             }
         }
     }
 
-    for (_, name_index) in unsafe {
-        cls.class_storage
-            .class_symbol_table
-            .iter_on_finished_table()
-    } {
+    for (_, name_index) in unsafe { class_symbol_table.iter_on_finished_table() } {
         let name = NodeRef::new(file, *name_index).as_name();
         if let Some(assignment) = name.maybe_assignment_definition_name() {
             if let AssignmentContent::WithAnnotation(target, annotation, right_side) =

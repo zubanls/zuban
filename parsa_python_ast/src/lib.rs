@@ -3067,6 +3067,21 @@ impl<'db> NameDefinition<'db> {
         !self.node.parent().unwrap().is_type(Nonterminal(t_primary))
     }
 
+    pub fn maybe_assignment_definition(&self) -> bool {
+        let node = self
+            .node
+            .parent_until(&[
+                Nonterminal(assignment),
+                Nonterminal(comprehension),
+                Nonterminal(dict_comprehension),
+                Nonterminal(lambda),
+                Nonterminal(named_expression),
+                Nonterminal(stmt),
+            ])
+            .expect("There should always be a stmt");
+        node.is_type(Nonterminal(assignment))
+    }
+
     pub fn expect_stmt_like_ancestor(&self) -> StmtLike<'db> {
         let stmt_node = self
             .node

@@ -1107,6 +1107,7 @@ testColumnProperty
 testOnlyImplementGetterOfReadWriteAbstractProperty
 testReadWriteDeleteAbstractProperty
 explicitOverrideSettableProperty
+testDataclassIncompatibleOverrides
 # Self definitions different from parent
 testCantImplementAbstractPropertyViaInstanceVariable
 
@@ -1141,10 +1142,6 @@ testOverloadedOperatorMethodOverrideWithNewItem
 # classmethod/staticmethod Incompatible with superclass
 testClassMethodSubclassing
 testClassStaticMethodSubclassing
-# "Dataclass attribute may only be overridden by another attribute"
-testDataclassIncompatibleOverrides
-testDataclassIncompatibleFrozenOverride
-testDataclassInheritanceNoAnnotation2
 
 # Signatures of "__ior__" and "__or__" are incompatible
 testGenericOperatorMethodOverlapping
