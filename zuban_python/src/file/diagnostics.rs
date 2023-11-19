@@ -22,8 +22,9 @@ use crate::matching::{
 use crate::node_ref::NodeRef;
 use crate::python_state::NAME_TO_FUNCTION_DIFF;
 use crate::type_::{
-    AnyCause, CallableContent, CallableParam, CallableParams, DbString, FunctionKind, GenericItem,
-    ParamType, TupleTypeArguments, Type, TypeOrTypeVarTuple, TypeVarLike, Variance,
+    AnyCause, CallableContent, CallableParam, CallableParams, DbString, FunctionKind,
+    FunctionOverload, GenericItem, ParamType, TupleTypeArguments, Type, TypeOrTypeVarTuple,
+    TypeVarLike, Variance,
 };
 use crate::type_helpers::{
     is_private, Class, FirstParamProperties, Function, GeneratorType, Instance, TypeOrClass,
@@ -1152,11 +1153,11 @@ fn check_override(
 
         let add_override_issues = || {
             let db = i_s.db;
-            if let Some(same_param_amount) = override_func_infos(&got, &expected) {
-                let mut emitted = false;
-                // Mypy helps the user a bit by formatting different error messages for similar
-                // signatures. Try to make this as similar as possible to Mypy.
-                if let Some((got_c, expected_c)) = same_param_amount {
+            let mut emitted = false;
+            // Mypy helps the user a bit by formatting different error messages for similar
+            // signatures. Try to make this as similar as possible to Mypy.
+            match override_func_infos(&got, &expected) {
+                Some(OverrideFuncInfos::CallablesSameParamLength(got_c, expected_c)) => {
                     let supertype = defined_in.name(db);
 
                     // First check params
@@ -1227,48 +1228,52 @@ fn check_override(
                         emitted = true
                     }
                 }
-                if !emitted {
-                    let mut notes = vec![];
-                    notes.push("     Superclass:".into());
-                    try_pretty_format(
-                        &mut notes,
-                        &i_s.with_class_context(&match defined_in {
-                            TypeOrClass::Class(c) => c,
-                            TypeOrClass::Type(_) => class,
-                        }),
-                        &expected,
-                        class
-                            .lookup_and_class_and_maybe_ignore_self(i_s, from, name, kind, true)
-                            .0,
-                    );
-                    notes.push("     Subclass:".into());
-                    try_pretty_format(
-                        &mut notes,
-                        &i_s.with_class_context(&class),
-                        &got,
-                        class.lookup(i_s, from, name, kind),
-                    );
-
-                    let issue = IssueType::SignatureIncompatibleWithSupertype {
-                        name: name.into(),
-                        base_class: defined_in.name(i_s.db).into(),
-                        notes: notes.into(),
-                    };
-                    if let Some(func) = maybe_func() {
-                        func.add_issue_for_declaration(i_s, issue)
-                    } else {
-                        from.add_issue(i_s, issue)
-                    }
+                Some(OverrideFuncInfos::Mixed) => (),
+                Some(OverrideFuncInfos::BothOverloads(o1, o2)) => (),
+                None => {
+                    emitted = true;
+                    from.add_issue(
+                        i_s,
+                        IssueType::IncompatibleAssignmentInSubclass {
+                            got: got.format_short(i_s.db),
+                            expected: expected.format_short(i_s.db),
+                            base_class: defined_in.name(i_s.db).into(),
+                        },
+                    )
                 }
-            } else {
-                from.add_issue(
-                    i_s,
-                    IssueType::IncompatibleAssignmentInSubclass {
-                        got: got.format_short(i_s.db),
-                        expected: expected.format_short(i_s.db),
-                        base_class: defined_in.name(i_s.db).into(),
-                    },
-                )
+            }
+            if !emitted {
+                let mut notes = vec![];
+                notes.push("     Superclass:".into());
+                try_pretty_format(
+                    &mut notes,
+                    &i_s.with_class_context(&match defined_in {
+                        TypeOrClass::Class(c) => c,
+                        TypeOrClass::Type(_) => class,
+                    }),
+                    &expected,
+                    class
+                        .lookup_and_class_and_maybe_ignore_self(i_s, from, name, kind, true)
+                        .0,
+                );
+                notes.push("     Subclass:".into());
+                try_pretty_format(
+                    &mut notes,
+                    &i_s.with_class_context(&class),
+                    &got,
+                    class.lookup(i_s, from, name, kind),
+                );
+
+                let issue = IssueType::SignatureIncompatibleWithSupertype {
+                    name: name.into(),
+                    base_class: defined_in.name(i_s.db).into(),
+                    notes: notes.into(),
+                };
+                if let Some(func) = maybe_func() {
+                    func.add_issue_for_declaration(i_s, issue)
+                } else {
+                    from.add_issue(i_s, issue)
+                }
             }
         };
 
@@ -1305,17 +1310,27 @@ fn is_async_iterator_without_async(
     }
 }
 
+enum OverrideFuncInfos<'t1, 't2> {
+    CallablesSameParamLength(&'t1 CallableContent, &'t2 CallableContent),
+    BothOverloads(&'t1 FunctionOverload, &'t2 FunctionOverload),
+    Mixed,
+}
+
 fn override_func_infos<'t1, 't2>(
     t1: &'t1 Type,
     t2: &'t2 Type,
-) -> Option<Option<(&'t1 CallableContent, &'t2 CallableContent)>> {
+) -> Option<OverrideFuncInfos<'t1, 't2>> {
     match (t1, t2) {
         (Type::Callable(c1), Type::Callable(c2)) => Some(match (&c1.params, &c2.params) {
-            (CallableParams::Simple(p1), CallableParams::Simple(p2)) => {
-                (p1.len() == p2.len()).then(|| (c1.as_ref(), c2.as_ref()))
+            (CallableParams::Simple(p1), CallableParams::Simple(p2)) if p1.len() == p2.len() => {
+                OverrideFuncInfos::CallablesSameParamLength(c1, c2)
             }
-            _ => None,
+            _ => OverrideFuncInfos::Mixed,
         }),
-        _ => (t1.is_func_or_overload() || t2.is_func_or_overload()).then_some(None),
+        (Type::FunctionOverload(o1), Type::FunctionOverload(o2)) => {
+            Some(OverrideFuncInfos::BothOverloads(&o1, &o2))
+        }
+        _ => (t1.is_func_or_overload() || t2.is_func_or_overload())
+            .then_some(OverrideFuncInfos::Mixed),
     }
 }
