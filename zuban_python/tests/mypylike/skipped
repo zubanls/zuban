@@ -573,8 +573,16 @@ testNamedTupleNoBytes
 testInstantiationProtocolInTypeForAliases
 testInstantiationProtocolInTypeForFunctions
 testSelfTypeProtocolMetaclassMatch
+# Protocol classmethod
+testProtocolClassObjectClassMethod
+testProtocolClassObjectGenericClassMethod
+testProtocolClassObjectSelfTypeClassMethod
+testProtocolTypeTypeClassMethod
 # Protocol instantiations in classmethods
 testInstantiationProtocolInTypeForClassMethods
+# staticmethod/classmethod
+testStaticAndClassMethodsInProtocols
+testBuiltinClassMethod
 # "Can only assign concrete classes to a variable of type "Type[P]""
 testInstantiationProtocolInTypeForVariables
 # "NewType cannot be used with protocol classes"
@@ -618,9 +626,6 @@ testNamedTupleWithManyArgsCallableField
 testErrorsForProtocolsInDifferentPlaces
 testBasicNamedTupleStructuralSubtyping
 testClassVarProtocolImmutable
-# staticmethod/classmethod
-testStaticAndClassMethodsInProtocols
-testBuiltinClassMethod
 # Protocol with ClassVar
 testProtocolClassObjectAttribute
 testModuleAsProtocolImplementationClassVar
@@ -1088,7 +1093,6 @@ testAttributeDefOrder2
 testChangeBaseClassAttributeType
 
 #     Overload variants must be defined in the same order as they are in "Parent"
-testOverloadFaultyClassMethodInheritance
 testOverloadClassMethodMixingInheritance
 testOverloadFaultyStaticMethodInheritance
 testOverloadStaticMethodMixingInheritance

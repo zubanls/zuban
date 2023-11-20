@@ -499,13 +499,16 @@ impl CallableContent {
         match &self.params {
             CallableParams::Simple(params) => {
                 let avoid_self_annotation = !self.kind.had_first_self_or_class_annotation();
-                let params = format_callable_params(
+                let mut params = format_callable_params(
                     format_data,
                     None,
                     avoid_self_annotation && not_reveal_type,
                     params.iter(),
                     format_data.style != FormatStyle::MypyRevealType,
                 );
+                if matches!(self.kind, FunctionKind::Classmethod { .. }) && not_reveal_type {
+                    params = "cls, ".to_string() + &params;
+                }
                 format_pretty_function_with_params(
                     format_data,
                     None,
