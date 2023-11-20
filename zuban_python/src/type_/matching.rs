@@ -710,15 +710,44 @@ impl Type {
         overload1: &FunctionOverload,
         overload2: &FunctionOverload,
     ) -> Match {
-        let mut previous_match_right_index = 0;
+        let mut previous_match_right_index: isize = -1;
         let mut matches = Match::new_true();
         'outer: for c1 in overload1.iter_functions() {
             for (right_index, c2) in overload2.iter_functions().enumerate() {
+                let right_index = right_index as isize;
                 let m = Type::matches_callable(i_s, matcher, c1, c2);
-                if m.bool() && previous_match_right_index <= right_index {
+                if m.bool() && right_index >= previous_match_right_index {
                     previous_match_right_index = right_index;
                     matches &= m;
                     continue 'outer;
+                } else {
+                    // An overload only matches if a params + return type match. However if only
+                    // the return type differs and it's not a fallback, it might not match, see for
+                    // example testSubtypeOverloadWithOverlappingArgumentsButWrongReturnType.
+                    if right_index > previous_match_right_index
+                        && (matches_params(
+                            i_s,
+                            &mut Matcher::default(),
+                            &c1.params,
+                            &c2.params,
+                            None,
+                            Variance::Contravariant,
+                            false,
+                        )
+                        .bool()
+                            || matches_params(
+                                i_s,
+                                &mut Matcher::default(),
+                                &c2.params,
+                                &c1.params,
+                                None,
+                                Variance::Contravariant,
+                                false,
+                            )
+                            .bool())
+                    {
+                        return Match::new_false();
+                    }
                 }
             }
             return Match::new_false();

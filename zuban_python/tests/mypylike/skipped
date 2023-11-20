@@ -1125,7 +1125,6 @@ testIntroducingInplaceOperatorInSubclass
 # Self definitions different from parent
 testSelfTypeOverrideCompatibility
 testSelfTypeOverrideCompatibilityGeneric
-testSubtypeOverloadWithOverlappingArgumentsButWrongReturnType
 # @override  "Method "g" is marked as an override, but no base method was found with this name"
 explicitOverrideOverloads
 explicitOverrideNotOnOverloadsImplementation
