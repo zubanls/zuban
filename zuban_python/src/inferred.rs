@@ -830,9 +830,10 @@ impl<'db: 'slf, 'slf> Inferred {
                     PointType::Complex => {
                         match node_ref.complex().unwrap() {
                             ComplexPoint::FunctionOverload(o) => {
-                                let has_self_arguments = o
-                                    .iter_functions()
-                                    .any(|c| c.kind.had_first_self_or_class_annotation());
+                                let has_self_arguments = o.iter_functions().any(|c| {
+                                    !matches!(c.kind, FunctionKind::Staticmethod)
+                                        && c.kind.had_first_self_or_class_annotation()
+                                });
                                 if has_self_arguments {
                                     let results: Vec<_> = o
                                         .iter_functions()
