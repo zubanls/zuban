@@ -1094,10 +1094,8 @@ testChangeBaseClassAttributeType
 
 #     Overload variants must be defined in the same order as they are in "Parent"
 testOverloadClassMethodMixingInheritance
-testOverloadFaultyStaticMethodInheritance
 testOverloadStaticMethodMixingInheritance
 testOverloadStaticMethodImplementation
-testOverloadedStaticMethodOnInstance
 testUnsafeDunderOverlapInSubclass
 # "Read-only property cannot override read-write property"
 testColumnProperty
