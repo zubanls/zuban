@@ -499,14 +499,20 @@ impl CallableContent {
         match &self.params {
             CallableParams::Simple(params) => {
                 let avoid_self_annotation = !self.kind.had_first_self_or_class_annotation();
-                format_pretty_function_like(
+                let params = format_callable_params(
                     format_data,
                     None,
                     avoid_self_annotation && not_reveal_type,
-                    name,
-                    &self.type_vars,
                     params.iter(),
+                    format_data.style != FormatStyle::MypyRevealType,
+                );
+                format_pretty_function_with_params(
+                    format_data,
+                    None,
+                    &self.type_vars,
                     Some(&self.return_type),
+                    name,
+                    &params,
                 )
             }
             CallableParams::WithParamSpec(pre_types, usage) => {
@@ -702,25 +708,6 @@ pub fn format_callable_params<'db: 'x, 'x, P: Param<'x>>(
         args += ", /";
     }
     args
-}
-
-fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
-    format_data: &FormatData<'db, '_, '_, '_>,
-    class: Option<Class>,
-    avoid_self_annotation: bool,
-    name: &str,
-    type_vars: &TypeVarLikes,
-    params: impl Iterator<Item = P>,
-    return_type: Option<&Type>,
-) -> Box<str> {
-    let params = format_callable_params(
-        format_data,
-        class,
-        avoid_self_annotation,
-        params,
-        format_data.style != FormatStyle::MypyRevealType,
-    );
-    format_pretty_function_with_params(format_data, class, type_vars, return_type, name, &params)
 }
 
 fn format_pretty_function_with_params(

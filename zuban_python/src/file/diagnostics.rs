@@ -1090,6 +1090,15 @@ fn try_pretty_format(
             Type::FunctionOverload(overloads) => {
                 for c in overloads.iter_functions() {
                     notes.push(format!("{prefix}@overload").into());
+                    match c.kind {
+                        FunctionKind::Classmethod { .. } => {
+                            notes.push(format!("{prefix}@classmethod").into())
+                        }
+                        FunctionKind::Staticmethod { .. } => {
+                            notes.push(format!("{prefix}@staticmethod").into())
+                        }
+                        _ => (),
+                    }
                     notes.push(
                         format!(
                             "{prefix}{}",
