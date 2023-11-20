@@ -1092,12 +1092,19 @@ testAttributeDefOrder1
 testAttributeDefOrder2
 testChangeBaseClassAttributeType
 
+# More information needed
 # "Read-only property cannot override read-write property"
 testColumnProperty
 testOnlyImplementGetterOfReadWriteAbstractProperty
 testReadWriteDeleteAbstractProperty
 explicitOverrideSettableProperty
 testDataclassIncompatibleOverrides
+# classmethod/staticmethod Incompatible with superclass
+testClassMethodSubclassing
+testClassStaticMethodSubclassing
+testOverloadClassMethodMixingInheritance
+testOverloadStaticMethodMixingInheritance
+
 # Self definitions different from parent
 testCantImplementAbstractPropertyViaInstanceVariable
 # "Signature of "???" incompatible with supertype "???""
@@ -1129,11 +1136,6 @@ explicitOverrideNotOnOverloadsImplementation
 testOperatorMethodOverrideIntroducingOverloading
 testOverloadedOperatorMethodOverrideWithNewItem
 testUnsafeDunderOverlapInSubclass
-# classmethod/staticmethod Incompatible with superclass
-testClassMethodSubclassing
-testClassStaticMethodSubclassing
-testOverloadClassMethodMixingInheritance
-testOverloadStaticMethodMixingInheritance
 # Signatures of "__ior__" and "__or__" are incompatible
 testGenericOperatorMethodOverlapping
 testGenericOperatorMethodOverlapping2
