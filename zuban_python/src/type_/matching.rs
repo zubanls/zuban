@@ -8,7 +8,9 @@ use crate::{
     type_helpers::{Class, TypeOrClass},
 };
 
-use super::{CallableContent, ClassGenerics, Tuple, Type, TypeVarKind, UnionType};
+use super::{
+    CallableContent, ClassGenerics, FunctionOverload, Tuple, Type, TypeVarKind, UnionType,
+};
 
 impl Type {
     pub fn overlaps(&self, i_s: &InferenceState, other: &Self) -> bool {
@@ -136,9 +138,14 @@ impl Type {
             Type::FunctionOverload(overload) if variance == Variance::Invariant => self
                 .matches_internal(i_s, matcher, value_type, Variance::Covariant)
                 .or(|| value_type.matches_internal(i_s, matcher, self, Variance::Covariant)),
-            Type::FunctionOverload(overload) => Match::all(overload.iter_functions(), |c1| {
-                Self::matches_callable_against_arbitrary(i_s, matcher, c1, value_type, variance)
-            }),
+            Type::FunctionOverload(overload1) => match value_type {
+                Type::FunctionOverload(overload2) => {
+                    Self::matches_overload(i_s, matcher, overload1, overload2)
+                }
+                _ => Match::all(overload1.iter_functions(), |c1| {
+                    Self::matches_callable_against_arbitrary(i_s, matcher, c1, value_type, variance)
+                }),
+            },
             Type::Literal(literal1) => match value_type {
                 Type::Literal(literal2) => {
                     (literal1.value(i_s.db) == literal2.value(i_s.db)).into()
@@ -695,6 +702,28 @@ impl Type {
             // Mypy treats *args/**kwargs special
             c1.params.is_any_args_and_kwargs().into()
         })
+    }
+
+    fn matches_overload(
+        i_s: &InferenceState,
+        matcher: &mut Matcher,
+        overload1: &FunctionOverload,
+        overload2: &FunctionOverload,
+    ) -> Match {
+        let mut previous_match_right_index = 0;
+        let mut matches = Match::new_true();
+        'outer: for c1 in overload1.iter_functions() {
+            for (right_index, c2) in overload2.iter_functions().enumerate() {
+                let m = Type::matches_callable(i_s, matcher, c1, c2);
+                if m.bool() && previous_match_right_index <= right_index {
+                    previous_match_right_index = right_index;
+                    matches &= m;
+                    continue 'outer;
+                }
+            }
+            return Match::new_false();
+        }
+        matches
     }
 
     fn matches_tuple(
