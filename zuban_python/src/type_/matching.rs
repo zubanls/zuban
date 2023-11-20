@@ -674,7 +674,7 @@ impl Type {
         }
     }
 
-    fn matches_callable(
+    pub fn matches_callable(
         i_s: &InferenceState,
         matcher: &mut Matcher,
         c1: &CallableContent,

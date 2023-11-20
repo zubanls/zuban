@@ -1151,7 +1151,13 @@ fn check_override(
             _ => None,
         };
 
-        let add_override_issues = || {
+        let match_ = expected.is_super_type_of(
+            i_s,
+            &mut Matcher::with_ignore_positional_param_names(),
+            &got,
+        );
+
+        if !match_.bool() {
             let db = i_s.db;
             let mut emitted = false;
             // Mypy helps the user a bit by formatting different error messages for similar
@@ -1229,7 +1235,31 @@ fn check_override(
                     }
                 }
                 Some(OverrideFuncInfos::Mixed) => (),
-                Some(OverrideFuncInfos::BothOverloads(o1, o2)) => (),
+                Some(OverrideFuncInfos::BothOverloads(got, expected)) => {
+                    let mut previous_match_right_index = 0;
+                    'outer: for c1 in expected.iter_functions() {
+                        for (right_index, c2) in got.iter_functions().enumerate() {
+                            let m = Type::matches_callable(i_s, &mut Matcher::default(), c1, c2);
+                            if m.bool() {
+                                if previous_match_right_index <= right_index {
+                                    previous_match_right_index = right_index;
+                                    continue 'outer;
+                                } else {
+                                    emitted = true;
+                                    from.add_issue(
+                                        i_s,
+                                        IssueType::OverloadOrderMustMatchSupertype {
+                                            name: name.into(),
+                                            base_class: defined_in.name(db).into(),
+                                        },
+                                    );
+                                    break 'outer;
+                                }
+                            }
+                        }
+                        break;
+                    }
+                }
                 None => {
                     emitted = true;
                     from.add_issue(
@@ -1275,17 +1305,6 @@ fn check_override(
                     from.add_issue(i_s, issue)
                 }
             }
-        };
-
-        if !expected
-            .is_super_type_of(
-                i_s,
-                &mut Matcher::with_ignore_positional_param_names(),
-                &got,
-            )
-            .bool()
-        {
-            add_override_issues()
         }
     } else if has_override_decorator {
         from.add_issue(i_s, IssueType::MissingBaseForOverride { name: name.into() });

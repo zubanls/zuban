@@ -165,6 +165,7 @@ pub(crate) enum IssueType {
 
     IncompatibleAssignmentInSubclass { base_class: Box<str>, got: Box<str>, expected: Box<str> },
     SignatureIncompatibleWithSupertype { base_class: Box<str>, name: Box<str>, notes: Box<[Box<str>]> },
+    OverloadOrderMustMatchSupertype { name: Box<str>, base_class: Box<str> },
     ReturnTypeIncompatibleWithSupertype { message: String, async_note: Option<Box<str>> },
     ArgumentIncompatibleWithSupertype(String),
     MultipleInheritanceIncompatibility { name: Box<str>, class1: Box<str>, class2: Box<str> },
@@ -340,6 +341,7 @@ impl IssueType {
             OverloadMismatch { .. } => "call-overload",
             SignatureIncompatibleWithSupertype { .. }
             | ArgumentIncompatibleWithSupertype { .. }
+            | OverloadOrderMustMatchSupertype { .. }
             | ReturnTypeIncompatibleWithSupertype { .. } => "override",
             FunctionIsDynamic
             | FunctionMissingReturnAnnotation
@@ -929,6 +931,12 @@ impl<'db> Diagnostic<'db> {
                 for note in notes.iter() {
                     additional_notes.push(note.to_string());
                 }
+                format!(r#"Signature of "{name}" incompatible with supertype "{base_class}""#)
+            }
+            OverloadOrderMustMatchSupertype { name, base_class } => {
+                additional_notes.push(format!(
+                    r#"Overload variants must be defined in the same order as they are in "{base_class}""#
+                ));
                 format!(r#"Signature of "{name}" incompatible with supertype "{base_class}""#)
             }
             ReturnTypeIncompatibleWithSupertype { message, async_note } => {
