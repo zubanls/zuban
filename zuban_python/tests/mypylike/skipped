@@ -1092,11 +1092,6 @@ testAttributeDefOrder1
 testAttributeDefOrder2
 testChangeBaseClassAttributeType
 
-#     Overload variants must be defined in the same order as they are in "Parent"
-testOverloadClassMethodMixingInheritance
-testOverloadStaticMethodMixingInheritance
-testOverloadStaticMethodImplementation
-testUnsafeDunderOverlapInSubclass
 # "Read-only property cannot override read-write property"
 testColumnProperty
 testOnlyImplementGetterOfReadWriteAbstractProperty
@@ -1105,7 +1100,6 @@ explicitOverrideSettableProperty
 testDataclassIncompatibleOverrides
 # Self definitions different from parent
 testCantImplementAbstractPropertyViaInstanceVariable
-
 # "Signature of "???" incompatible with supertype "???""
 # __hash__ None overrides
 testOverrideAttributeWithMethod
@@ -1134,10 +1128,12 @@ explicitOverrideNotOnOverloadsImplementation
 # Overloaded operator methods cannot have wider argument types in overrides
 testOperatorMethodOverrideIntroducingOverloading
 testOverloadedOperatorMethodOverrideWithNewItem
+testUnsafeDunderOverlapInSubclass
 # classmethod/staticmethod Incompatible with superclass
 testClassMethodSubclassing
 testClassStaticMethodSubclassing
-
+testOverloadClassMethodMixingInheritance
+testOverloadStaticMethodMixingInheritance
 # Signatures of "__ior__" and "__or__" are incompatible
 testGenericOperatorMethodOverlapping
 testGenericOperatorMethodOverlapping2
@@ -1167,11 +1163,9 @@ testClassOrderOfError
 # Namedtuple bad overwrite of count etc
 testNewNamedTupleIllegalNames
 testNamedTupleIncompatibleRedefinition
- 
 # Signature of __exit__ is wrong
 testWithStmtBoolExitReturnWithResultFalse
 testErrorCode__exit__Return
-
 # "Definition of "f" in base class "A" is incompatible with definition in base class "B""
 # Defintition mismatch in classes lower than first classes
 testGenericMultipleOverrideReplace

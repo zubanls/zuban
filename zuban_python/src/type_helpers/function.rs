@@ -886,6 +886,19 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         )
     }
 
+    pub(crate) fn add_issue_onto_start_including_decorator(
+        &self,
+        i_s: &InferenceState,
+        type_: IssueType,
+    ) {
+        let node = self.node();
+        if let Some(decorated) = node.maybe_decorated() {
+            NodeRef::new(self.node_ref.file, decorated.index()).add_issue(i_s, type_)
+        } else {
+            self.add_issue_for_declaration(i_s, type_)
+        }
+    }
+
     pub fn as_callable(
         &self,
         i_s: &InferenceState,

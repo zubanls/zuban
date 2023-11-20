@@ -23,7 +23,7 @@ use crate::type_::FunctionKind;
 use crate::type_::TypeVarLike;
 use crate::type_::TypeVarLikes;
 use crate::type_::{FunctionOverload, NamedTuple, NewType, Tuple, Type};
-use crate::type_helpers::{Class, Module};
+use crate::type_helpers::{Class, Function, Module};
 use crate::utils::{InsertOnlyVec, SymbolTable};
 use crate::workspaces::{
     Directory, DirectoryEntry, FileEntry, Invalidations, WorkspaceFileIndex, Workspaces,
@@ -455,6 +455,16 @@ pub enum ComplexPoint {
 pub struct OverloadImplementation {
     pub function_link: PointLink,
     pub callable: CallableContent,
+}
+
+impl OverloadImplementation {
+    pub fn function<'db, 'class>(
+        &self,
+        db: &'db Database,
+        class: Option<Class<'class>>,
+    ) -> Function<'db, 'class> {
+        Function::new(NodeRef::from_link(db, self.function_link), class)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

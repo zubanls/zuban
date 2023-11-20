@@ -723,7 +723,6 @@ impl<'db> Inference<'db, '_, '_> {
         implementation: &OverloadImplementation,
         signature_index: usize,
     ) {
-        let issue_node_ref = NodeRef::from_link(self.i_s.db, implementation.function_link);
         let matcher = &mut Matcher::new_reverse_callable_matcher(&implementation.callable);
         let implementation_result = &implementation.callable.return_type;
         let item_result = &overload_item.return_type;
@@ -734,10 +733,12 @@ impl<'db> Inference<'db, '_, '_> {
                 .is_super_type_of(self.i_s, matcher, implementation_result)
                 .bool()
         {
-            issue_node_ref.add_issue(
-                self.i_s,
-                IssueType::OverloadImplementationReturnTypeIncomplete { signature_index },
-            );
+            implementation
+                .function(self.i_s.db, None)
+                .add_issue_onto_start_including_decorator(
+                    self.i_s,
+                    IssueType::OverloadImplementationReturnTypeIncomplete { signature_index },
+                );
         }
 
         let match_ = matches_params(
@@ -750,10 +751,12 @@ impl<'db> Inference<'db, '_, '_> {
             false,
         );
         if !match_.bool() {
-            issue_node_ref.add_issue(
-                self.i_s,
-                IssueType::OverloadImplementationArgumentsNotBroadEnough { signature_index },
-            );
+            implementation
+                .function(self.i_s.db, None)
+                .add_issue_onto_start_including_decorator(
+                    self.i_s,
+                    IssueType::OverloadImplementationArgumentsNotBroadEnough { signature_index },
+                );
         }
     }
 
