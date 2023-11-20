@@ -1105,8 +1105,6 @@ testClassStaticMethodSubclassing
 testOverloadClassMethodMixingInheritance
 testOverloadStaticMethodMixingInheritance
 
-# Self definitions different from parent
-testCantImplementAbstractPropertyViaInstanceVariable
 # "Signature of "???" incompatible with supertype "???""
 # __hash__ None overrides
 testOverrideAttributeWithMethod
@@ -1124,11 +1122,10 @@ testMultipleInheritance_NestedVariableOverriddenWithIncompatibleType1
 # "This violates the Liskov substitution principle"
 testEqMethodsOverridingWithNonObjects
 testIntroducingInplaceOperatorInSubclass
-# With overload
+# Self definitions different from parent
 testSelfTypeOverrideCompatibility
-testSubtypeOverloadWithOverlappingArgumentsButWrongReturnType
 testSelfTypeOverrideCompatibilityGeneric
-testSelfTypeOverrideCompatibilityTypeVar
+testSubtypeOverloadWithOverlappingArgumentsButWrongReturnType
 # @override  "Method "g" is marked as an override, but no base method was found with this name"
 explicitOverrideOverloads
 explicitOverrideNotOnOverloadsImplementation
@@ -1188,6 +1185,7 @@ testTypingSelfInternalSafe
 testTypingSelfClashInBodies
 # "Property "x" defined in "Base" is read-only"
 testNewNamedTupleMethodInheritance
+testCantImplementAbstractPropertyViaInstanceVariable
 
 # subclass preferred over class for types
 testAddBaseClassAttributeCausingErrorInSubclass
