@@ -3,6 +3,7 @@ use parsa_python_ast::{CodeIndex, NodeIndex, Tree};
 use crate::database::Database;
 use crate::file::File;
 use crate::file::PythonFile;
+use crate::file::OVERLAPPING_REVERSE_TO_NORMAL_METHODS;
 use crate::name::TreePosition;
 use crate::type_::{FunctionKind, StringSlice, TypeVarLike};
 use crate::utils::{join_with_commas, InsertOnlyVec};
@@ -170,6 +171,7 @@ pub(crate) enum IssueType {
     ArgumentIncompatibleWithSupertype(String),
     MultipleInheritanceIncompatibility { name: Box<str>, class1: Box<str>, class2: Box<str> },
     MissingBaseForOverride { name: Box<str> },
+    OperatorSignaturesAreUnsafelyOverlapping { reverse_name: Box<str>, reverse_class: Box<str>, forward_class: Box<str> },
     NewMustReturnAnInstance { got: Box<str> },
     NewIncompatibleReturnType { returns: Box<str>, must_return: Box<str> },
     InvalidGetattrSigantureAtModuleLevel { type_: Box<str> },
@@ -960,6 +962,10 @@ impl<'db> Diagnostic<'db> {
             MissingBaseForOverride { name } => format!(
                 r#"Method "{name}" is marked as an override, but no base method was found with this name"#
             ),
+            OperatorSignaturesAreUnsafelyOverlapping { reverse_name, reverse_class, forward_class } => {
+                let normal_name = OVERLAPPING_REVERSE_TO_NORMAL_METHODS[reverse_name.as_ref()];
+                format!(r#"Signatures of "__{reverse_name}__" of "{reverse_class}" and "{normal_name}" of "{forward_class}" are unsafely overlapping"#)
+            }
             NewMustReturnAnInstance { got } => format!(
                 "\"__new__\" must return a class instance (got \"{got}\")"
             ),

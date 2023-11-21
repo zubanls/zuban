@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use parsa_python_ast::*;
@@ -14,10 +15,10 @@ use crate::file::Inference;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{infer_class_method, Inferred};
-use crate::matching::params::has_overlapping_params;
+use crate::matching::params::{has_overlapping_params, WrappedParamType};
 use crate::matching::{
     matches_params, FormatData, Generics, LookupKind, LookupResult, Match, Matcher, OnTypeError,
-    ResultContext,
+    Param, ResultContext,
 };
 use crate::node_ref::NodeRef;
 use crate::python_state::NAME_TO_FUNCTION_DIFF;
@@ -32,6 +33,75 @@ use crate::type_helpers::{
 
 use super::inference::await_;
 use super::on_argument_type_error;
+
+lazy_static::lazy_static! {
+    /* TODO currently unused
+    static ref REVERSE_OP_METHODS: HashMap<&'static str, &'static str> = HashMap::from([
+        ("add", "__radd__"),
+        ("sub", "__rsub__"),
+        ("mul", "__rmul__"),
+        ("truediv", "__rtruediv__"),
+        ("mod", "__rmod__"),
+        ("divmod", "__rdivmod__"),
+        ("floordiv", "__rfloordiv__"),
+        ("pow", "__rpow__"),
+        ("matmul", "__rmatmul__"),
+        ("and", "__rand__"),
+        ("or", "__ror__"),
+        ("xor", "__rxor__"),
+        ("lshift", "__rlshift__"),
+        ("rshift", "__rrshift__"),
+        ("eq", "__eq__"),
+        ("ne", "__ne__"),
+        ("lt", "__gt__"),
+        ("ge", "__le__"),
+        ("gt", "__lt__"),
+        ("le", "__ge__"),
+    ]);
+    */
+    static ref REVERSE_OP_METHODS: HashSet<&'static str> = HashSet::from([
+        "radd",
+        "rsub",
+        "rmul",
+        "rtruediv",
+        "rmod",
+        "rdivmod",
+        "rfloordiv",
+        "rpow",
+        "rmatmul",
+        "rand",
+        "ror",
+        "rxor",
+        "rlshift",
+        "rrshift",
+        "eq",
+        "ne",
+        "lt",
+        "ge",
+        "gt",
+        "le",
+    ]);
+    pub static ref OVERLAPPING_REVERSE_TO_NORMAL_METHODS: HashMap<&'static str, &'static str> = HashMap::from([
+        ("radd", "__add__"),
+        ("rsub", "__sub__"),
+        ("rmul", "__mul__"),
+        ("rtruediv", "__truediv__"),
+        ("rmod", "__mod__"),
+        ("rdivmod", "__divmod__"),
+        ("rfloordiv", "__floordiv__"),
+        ("rpow", "__pow__"),
+        ("rmatmul", "__matmul__"),
+        ("rand", "__and__"),
+        ("ror", "__or__"),
+        ("rxor", "__xor__"),
+        ("rlshift", "__lshift__"),
+        ("rrshift", "__rshift__"),
+        ("lt", "__gt__"),
+        ("ge", "__le__"),
+        ("gt", "__lt__"),
+        ("le", "__ge__"),
+    ]);
+}
 
 impl<'db> Inference<'db, '_, '_> {
     pub fn calculate_diagnostics(&mut self) {
@@ -715,6 +785,17 @@ impl<'db> Inference<'db, '_, '_> {
                 }
             }
         }
+
+        if class.is_some() {
+            if let Some(magic_name) = name
+                .as_code()
+                .strip_prefix("__")
+                .and_then(|n| n.strip_suffix("__"))
+            {
+                // Check reverse magic methods like __rmul__
+                self.check_overlapping_op_methods(function, magic_name)
+            }
+        }
     }
 
     fn calc_overload_implementation_diagnostics(
@@ -958,6 +1039,55 @@ impl<'db> Inference<'db, '_, '_> {
             }
             Target::Starred(_) => unreachable!(),
         }
+    }
+
+    pub fn check_overlapping_op_methods(&self, func: Function, short_reverse_name: &str) {
+        let i_s = self.i_s;
+        let return_type = func.return_type(i_s);
+        let Some(normal_magic) = OVERLAPPING_REVERSE_TO_NORMAL_METHODS.get(short_reverse_name) else {
+            return
+        };
+        let from = func.node_ref; // TODO this NodeRef shouldn't be used.
+        let Some(param) = func.iter_params().skip(1).next() else {
+            todo!()
+        };
+        let forward_type = match param.specific(i_s.db) {
+            WrappedParamType::PositionalOnly(Some(t))
+            | WrappedParamType::PositionalOrKeyword(Some(t)) => t,
+            _ => todo!(),
+        };
+        forward_type.run_after_lookup_on_each_union_member(
+            i_s,
+            None,
+            from,
+            normal_magic,
+            LookupKind::OnlyType,
+            &mut ResultContext::Unknown,
+            &mut |t, lookup| {
+                let add_issue = |forward_class| {
+                    from.add_issue(
+                        i_s,
+                        IssueType::OperatorSignaturesAreUnsafelyOverlapping {
+                            reverse_name: short_reverse_name.into(),
+                            reverse_class: func.class.unwrap().format_short(i_s.db),
+                            forward_class,
+                        },
+                    )
+                };
+                match lookup.into_inferred().as_type(i_s) {
+                    Type::Callable(c) => {
+                        if !c.return_type.is_simple_same_type(i_s, &return_type).bool() {
+                            add_issue(t.format_short(i_s.db))
+                        }
+                    }
+                    Type::FunctionOverload(overload) => {
+                        // TODO
+                    }
+                    Type::Any(_) => (),
+                    _ => debug!("TODO implement other cases of reverse lookups"),
+                }
+            },
+        )
     }
 }
 
