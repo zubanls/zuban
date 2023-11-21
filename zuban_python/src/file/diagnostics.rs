@@ -1054,7 +1054,9 @@ impl<'db> Inference<'db, '_, '_> {
         let forward_type = match param.specific(i_s.db) {
             WrappedParamType::PositionalOnly(Some(t))
             | WrappedParamType::PositionalOrKeyword(Some(t)) => t,
-            _ => todo!(),
+            WrappedParamType::PositionalOnly(None)
+            | WrappedParamType::PositionalOrKeyword(None) => return,
+            x => todo!("{x:?}"),
         };
         forward_type.run_after_lookup_on_each_union_member(
             i_s,
@@ -1074,14 +1076,21 @@ impl<'db> Inference<'db, '_, '_> {
                         },
                     )
                 };
-                match lookup.into_inferred().as_type(i_s) {
-                    Type::Callable(c) => {
-                        if !c.return_type.is_simple_same_type(i_s, &return_type).bool() {
-                            add_issue(t.format_short(i_s.db))
-                        }
+                let check = |callable: &CallableContent| {
+                    if !callable
+                        .return_type
+                        .is_simple_same_type(i_s, &return_type)
+                        .bool()
+                    {
+                        add_issue(t.format_short(i_s.db))
                     }
+                };
+                match lookup.into_inferred().as_type(i_s) {
+                    Type::Callable(c) => check(&c),
                     Type::FunctionOverload(overload) => {
-                        // TODO
+                        for c in overload.iter_functions() {
+                            check(c)
+                        }
                     }
                     Type::Any(_) => (),
                     _ => debug!("TODO implement other cases of reverse lookups"),
