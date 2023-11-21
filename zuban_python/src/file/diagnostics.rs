@@ -1077,6 +1077,15 @@ impl<'db> Inference<'db, '_, '_> {
                     )
                 };
                 let check = |callable: &CallableContent| {
+                    // Can only overlap if the classes differ. On the same class __radd__ will
+                    // never be called if there's a __add__ as well, because in that case __add__
+                    // will be preferred.
+                    if t.is_simple_same_type(i_s, &func.class.unwrap().as_type(i_s.db))
+                        .bool()
+                    {
+                        return;
+                    }
+
                     if !callable
                         .return_type
                         .is_simple_same_type(i_s, &return_type)

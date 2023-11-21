@@ -1143,7 +1143,6 @@ testOverloadedNormalAndInplaceOperatorMethod
 testUnsafeOverlappingWithOperatorMethodsAndOverloading2
 testReverseComparisonOperator
 testAbstractOperatorMethods2
-testReverseOperatorOrderingCase5
 testReverseOperatorStar
 testOperatorDoubleUnionNoRelationship2
 testOperatorDoubleUnionInterwovenUnionAdd
@@ -1154,10 +1153,8 @@ testReverseBinaryOperator
 testReverseBinaryOperator2
 testReverseBinaryOperator3
 testTypeInferenceSpecialCaseWithOverloading
-testUnionOperatorMethodSpecialCase
 testNotImplemented
 testMetaclassOpAccess
-testReverseOperatorMethodArgumentTypeAndOverloadedMethod
 testOperatorMethodsAndOverloadingSpecialCase
 # __rmul__ etc. Invalid signature "Callable[[B], A]"
 testReverseOperatorMethodInvalid
