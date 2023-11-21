@@ -49,6 +49,8 @@ testReverseOperatorOrderingCase7
 testReverseOperatorWithOverloads2
 testFlattenTypeAliasWhenAliasedAsUnion
 testOperatorDoubleUnionStandardSubtyping
+testReverseOperatorTypeVar1
+testReverseOperatorTypeVar2a
 # "Forward operator "__add__" is not callable"
 testReverseOperatorMethodForwardIsAny3
 # Formatting?
@@ -1138,13 +1140,8 @@ testGenericOperatorMethodOverlapping2
 testOverlappingNormalAndInplaceOperatorMethod
 testOverloadedNormalAndInplaceOperatorMethod
 # "Signatures of "__radd__" of "Fraction" and "__add__" of "T" are unsafely overlapping"
-testReverseOperatorTypeVar1
-testReverseOperatorTypeVar2a
-testReverseOperatorTypeVar2b
-testReverseOperatorTypeVar3
 testUnsafeOverlappingWithOperatorMethodsAndOverloading2
 testReverseComparisonOperator
-
 testAbstractOperatorMethods2
 testReverseOperatorOrderingCase5
 testReverseOperatorStar
@@ -1348,7 +1345,7 @@ testInferNonOptionalDictType
 # OrderedDict = _Alias()
 testTypingExtensionsOrderedDictAlias
 
-# Type Var Value in func
+# TypeVar Values in func
 testErrorCodeInvalidTypeArg
 testCheckGenericFunctionBodyWithTypeVarValues
 testCheckGenericFunctionBodyWithTypeVarValues2
@@ -1380,6 +1377,7 @@ testInnerFunctionMutualRecursionWithTypevarValues
 testNestedDecoratedCoroutineAndTypeVarValues
 testAnyStr
 testTypeVarWithTypedDictValueInIndexExpression
+testReverseOperatorTypeVar2b
 
 # - Overload does not consistently use the "@classmethod" decorator on all function signatures
 # - Overload does not consistently use the "@staticmethod" decorator on all function signatures
