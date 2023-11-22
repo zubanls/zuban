@@ -1075,16 +1075,6 @@ impl<'db> Inference<'db, '_, '_> {
             LookupKind::OnlyType,
             &mut ResultContext::Unknown,
             &mut |forward, _, lookup| {
-                let add_issue = |forward_class| {
-                    from.add_issue(
-                        i_s,
-                        IssueType::OperatorSignaturesAreUnsafelyOverlapping {
-                            reverse_name: short_reverse_name.into(),
-                            reverse_class: func.class.unwrap().format_short(i_s.db),
-                            forward_class,
-                        },
-                    )
-                };
                 let check = |callable: &CallableContent| {
                     // Can only overlap if the classes differ. On the same class __radd__ will
                     // never be called if there's a __add__ as well, because in that case __add__
@@ -1107,7 +1097,14 @@ impl<'db> Inference<'db, '_, '_> {
                         .is_simple_same_type(i_s, &return_type)
                         .bool()
                     {
-                        add_issue(forward.format_short(i_s.db))
+                        from.add_issue(
+                            i_s,
+                            IssueType::OperatorSignaturesAreUnsafelyOverlapping {
+                                reverse_name: short_reverse_name.into(),
+                                reverse_class: func.class.unwrap().format_short(i_s.db),
+                                forward_class: forward.format_short(i_s.db),
+                            },
+                        )
                     }
                 };
                 match lookup.into_inferred().as_type(i_s) {
