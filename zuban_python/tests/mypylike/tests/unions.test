@@ -7,3 +7,16 @@ def get(default: T) -> Union[int, T]: ...
 
 reveal_type(get(None)) # N: Revealed type is "int | None"
 reveal_type(get("")) # N: Revealed type is "int | str"
+
+[case merge_nested_unions]
+# This is copied from testFlattenTypeAliasWhenAliasedAsUnion, because we he had
+# issues with union definitions.
+from typing import Union
+
+T1 = int
+T2 = T1 | float
+T3 = T2 | complex
+T4 = T3 | int
+
+def bar(a: T4, b: T4) -> T4:
+    return a + b

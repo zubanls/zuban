@@ -2149,18 +2149,30 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             let t = self.as_type(t, s.as_node_ref());
             TypeContent::Type(t)
         } else {
-            let mut t = UnionType::new(
-                iterator
-                    .enumerate()
-                    .map(|(format_index, slice_or_simple)| {
-                        let t = self.compute_slice_type_content(slice_or_simple);
-                        UnionEntry {
-                            type_: self.as_type(t, slice_or_simple.as_node_ref()),
-                            format_index,
+            let mut entries = vec![];
+            let mut format_index = 0;
+            for slice_or_simple in iterator {
+                let t = self.compute_slice_type_content(slice_or_simple);
+                let type_ = self.as_type(t, slice_or_simple.as_node_ref());
+                match type_ {
+                    Type::Union(u) => {
+                        let length = u.entries.len();
+                        for mut new_entry in u.entries.into_vec() {
+                            new_entry.format_index += format_index;
+                            entries.push(new_entry);
                         }
-                    })
-                    .collect(),
-            );
+                        format_index += length;
+                    }
+                    _ => {
+                        entries.push(UnionEntry {
+                            type_,
+                            format_index,
+                        });
+                        format_index += 1;
+                    }
+                }
+            }
+            let mut t = UnionType::new(entries);
             t.sort_for_priority();
             TypeContent::Type(Type::Union(t))
         }

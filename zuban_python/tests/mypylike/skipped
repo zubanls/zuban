@@ -42,8 +42,6 @@ testSelfTypeRestrictedMethodOverloadInitBadTypeNoCrash
 testAsyncForComprehensionErrors
 # TODO ^ also clean up dataclass field calculation
 
-# In A + B, if B is a subclass of A, __radd__ on B is called first
-testFlattenTypeAliasWhenAliasedAsUnion
 # "Forward operator "__add__" is not callable"
 testReverseOperatorMethodForwardIsAny3
 # functools.total_ordering
