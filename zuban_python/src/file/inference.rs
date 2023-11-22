@@ -1606,6 +1606,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             ShortCircuit,
             BothSidesError,
         }
+        enum LookupStrategy {
+            ShortCircuit,
+            NormalThanReverse,
+            ReverseThanNormal,
+        }
 
         let right = self.infer_expression_part(op.right);
         let node_ref = NodeRef::new(self.file, op.index);
@@ -1620,6 +1625,27 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 &mut |l_type, lookup_result| {
                     let left_op_method = lookup_result.into_maybe_inferred();
                     for r_type in right.as_cow_type(i_s).iter_with_unpacked_unions() {
+                        let get_strategy = || {
+                            // Check for shortcuts first (in Mypy it's called
+                            // `op_methods_that_shortcut`)
+                            if op.shortcut_when_same_type {
+                                if let Some(left_instance) = l_type.maybe_class(i_s.db) {
+                                    if let Some(right_instance) = r_type.maybe_class(i_s.db) {
+                                        if left_instance.node_ref == right_instance.node_ref {
+                                            return LookupStrategy::ShortCircuit;
+                                        }
+                                    }
+                                }
+                            }
+                            // If right is a sub type of left, Python and Mypy execute right first
+                            if r_type.is_simple_sub_type_of(i_s, l_type).bool() {
+                                LookupStrategy::ReverseThanNormal
+                            } else {
+                                LookupStrategy::NormalThanReverse
+                            }
+                        };
+
+                        let strategy = get_strategy();
                         let error = Cell::new(LookupError::NoError);
                         if let Some(left) = left_op_method.as_ref() {
                             let had_left_error = Cell::new(false);
@@ -1638,16 +1664,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 continue;
                             }
                         }
-                        if op.shortcut_when_same_type {
-                            if let Some(left_instance) = l_type.maybe_class(i_s.db) {
-                                if let Some(right_instance) = r_type.maybe_class(i_s.db) {
-                                    if left_instance.node_ref == right_instance.node_ref {
-                                        error.set(LookupError::ShortCircuit);
-                                    }
-                                }
-                            }
-                        }
-                        let result = if error.get() != LookupError::ShortCircuit {
+                        let result = if matches!(strategy, LookupStrategy::ShortCircuit) {
+                            error.set(LookupError::ShortCircuit);
+                            Inferred::new_any_from_error()
+                        } else {
                             let left_inf = Inferred::execute_type_allocation_todo(i_s, l_type);
                             r_type
                                 .lookup(
@@ -1674,8 +1694,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                         Some(&|| error.set(LookupError::BothSidesError)),
                                     ),
                                 )
-                        } else {
-                            Inferred::new_any_from_error()
                         };
                         add_to_union(match error.get() {
                             LookupError::NoError => result,
