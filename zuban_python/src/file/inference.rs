@@ -1604,7 +1604,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         enum LookupError {
             NoError,
             LeftError,
-            ShortCircuit,
             BothSidesError,
         }
         enum LookupStrategy {
@@ -1704,16 +1703,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             }
                         }
                         let result = if matches!(strategy, LookupStrategy::ShortCircuit) {
-                            error.set(LookupError::ShortCircuit);
+                            error.set(LookupError::LeftError);
                             Inferred::new_any_from_error()
                         } else {
-                            if had_right_error.get() {
-                                if left_op_method.as_ref().is_some() {
-                                    error.set(LookupError::BothSidesError);
-                                } else {
-                                    error.set(LookupError::LeftError);
-                                }
-                            }
                             let left_inf = Inferred::execute_type_allocation_todo(i_s, l_type);
                             right_op_method.execute_with_details(
                                 i_s,
@@ -1721,10 +1713,17 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 &mut ResultContext::Unknown,
                                 OnTypeError::with_overload_mismatch(
                                     &|_, _, _, _, _| error.set(LookupError::BothSidesError),
-                                    Some(&|| error.set(LookupError::BothSidesError)),
+                                    Some(&|| had_right_error.set(true)),
                                 ),
                             )
                         };
+                        if had_right_error.get() {
+                            if left_op_method.as_ref().is_some() {
+                                error.set(LookupError::BothSidesError);
+                            } else {
+                                error.set(LookupError::LeftError);
+                            }
+                        }
                         add_to_union(match error.get() {
                             LookupError::NoError => result,
                             LookupError::BothSidesError => {
@@ -1737,7 +1736,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 from.add_issue(i_s, t);
                                 Inferred::new_any_from_error()
                             }
-                            LookupError::LeftError | LookupError::ShortCircuit => {
+                            LookupError::LeftError => {
                                 had_error = true;
                                 let left = l_type.format_short(i_s.db);
                                 from.add_issue(
