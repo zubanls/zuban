@@ -1043,7 +1043,6 @@ impl<'db> Inference<'db, '_, '_> {
 
     pub fn check_overlapping_op_methods(&self, func: Function, short_reverse_name: &str) {
         let i_s = self.i_s;
-        let return_type = func.return_type(i_s);
         let Some(normal_magic) = OVERLAPPING_REVERSE_TO_NORMAL_METHODS.get(short_reverse_name) else {
             return
         };
@@ -1065,7 +1064,7 @@ impl<'db> Inference<'db, '_, '_> {
             normal_magic,
             LookupKind::OnlyType,
             &mut ResultContext::Unknown,
-            &mut |t, lookup| {
+            &mut |forward, lookup| {
                 let add_issue = |forward_class| {
                     from.add_issue(
                         i_s,
@@ -1080,18 +1079,25 @@ impl<'db> Inference<'db, '_, '_> {
                     // Can only overlap if the classes differ. On the same class __radd__ will
                     // never be called if there's a __add__ as well, because in that case __add__
                     // will be preferred.
-                    if t.is_simple_same_type(i_s, &func.class.unwrap().as_type(i_s.db))
-                        .bool()
-                    {
+                    let reverse = func.class.unwrap().as_type(i_s.db);
+                    if forward.is_simple_same_type(i_s, &reverse).bool() {
+                        return;
+                    }
+
+                    let Some(reverse_param_type) = callable.first_positional_type() else {
+                        todo!()
+                    };
+                    // The params must cycle for it to be an unsafe overlap.
+                    if !reverse.is_simple_same_type(i_s, &reverse_param_type).bool() {
                         return;
                     }
 
                     if !callable
                         .return_type
-                        .is_simple_same_type(i_s, &return_type)
+                        .is_simple_same_type(i_s, &func.return_type(i_s))
                         .bool()
                     {
-                        add_issue(t.format_short(i_s.db))
+                        add_issue(forward.format_short(i_s.db))
                     }
                 };
                 match lookup.into_inferred().as_type(i_s) {
