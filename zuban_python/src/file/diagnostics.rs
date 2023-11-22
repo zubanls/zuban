@@ -15,7 +15,7 @@ use crate::file::Inference;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{infer_class_method, Inferred};
-use crate::matching::params::{has_overlapping_params, WrappedParamType};
+use crate::matching::params::{has_overlapping_params, WrappedParamType, WrappedStar};
 use crate::matching::{
     matches_params, FormatData, Generics, LookupKind, LookupResult, Match, Matcher, OnTypeError,
     Param, ResultContext,
@@ -1054,15 +1054,18 @@ impl<'db> Inference<'db, '_, '_> {
         }
 
         let from = func.node_ref; // TODO this NodeRef shouldn't be used.
-        let Some(param) = func.iter_params().skip(1).next() else {
+        let Some(param) = func.iter_params().skip(1).next().or_else(|| {
+            func.iter_params().next().filter(|first_param| {
+                first_param.kind(i_s.db) == ParamKind::Star
+            })
+        }) else {
             todo!()
         };
         let forward_type = match param.specific(i_s.db) {
             WrappedParamType::PositionalOnly(Some(t))
-            | WrappedParamType::PositionalOrKeyword(Some(t)) => t,
-            WrappedParamType::PositionalOnly(None)
-            | WrappedParamType::PositionalOrKeyword(None) => return,
-            x => todo!("{x:?}"),
+            | WrappedParamType::PositionalOrKeyword(Some(t))
+            | WrappedParamType::Star(WrappedStar::ArbitraryLength(Some(t))) => t,
+            _ => return, // Any is always fine and invalid signatures are checked elsewhere.
         };
         forward_type.run_after_lookup_on_each_union_member(
             i_s,
