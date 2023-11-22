@@ -386,3 +386,11 @@ class B(A[List[T]]):
 
 class C(A[List[T]]):
     def x(self, t: List[T]) -> None: ...
+
+[case operator_shortcut_type_error]
+
+class A:
+    def __add__(self, x: int) -> str:
+        return ""
+
+A() + A()  # E: Unsupported operand types for + ("A" and "A")

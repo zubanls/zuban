@@ -1704,8 +1704,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         let result = match strategy {
                             LookupStrategy::ShortCircuit => {
                                 if let Some(left) = left_op_method.as_ref() {
-                                    let (_, result) = run(left, r_type);
-                                    // TODO why is there no error handling here?
+                                    let (had_error, result) = run(left, r_type);
+                                    if had_error {
+                                        error.set(LookupError::BothSidesError);
+                                    }
                                     result
                                 } else {
                                     error.set(LookupError::LeftError);
