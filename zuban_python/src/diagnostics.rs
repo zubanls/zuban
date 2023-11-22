@@ -172,6 +172,7 @@ pub(crate) enum IssueType {
     MultipleInheritanceIncompatibility { name: Box<str>, class1: Box<str>, class2: Box<str> },
     MissingBaseForOverride { name: Box<str> },
     OperatorSignaturesAreUnsafelyOverlapping { reverse_name: Box<str>, reverse_class: Box<str>, forward_class: Box<str> },
+    ForwardOperatorIsNotCallable { forward_name: &'static str },
     NewMustReturnAnInstance { got: Box<str> },
     NewIncompatibleReturnType { returns: Box<str>, must_return: Box<str> },
     InvalidGetattrSigantureAtModuleLevel { type_: Box<str> },
@@ -966,6 +967,9 @@ impl<'db> Diagnostic<'db> {
                 let normal_name = OVERLAPPING_REVERSE_TO_NORMAL_METHODS[reverse_name.as_ref()];
                 format!(r#"Signatures of "__{reverse_name}__" of "{reverse_class}" and "{normal_name}" of "{forward_class}" are unsafely overlapping"#)
             }
+            ForwardOperatorIsNotCallable { forward_name } => format!(
+                r#"Forward operator "{forward_name}" is not callable"#
+            ),
             NewMustReturnAnInstance { got } => format!(
                 "\"__new__\" must return a class instance (got \"{got}\")"
             ),

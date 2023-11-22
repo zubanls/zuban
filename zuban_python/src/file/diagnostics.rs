@@ -1117,8 +1117,13 @@ impl<'db> Inference<'db, '_, '_> {
                             check(c)
                         }
                     }
-                    Type::Any(_) => (),
-                    _ => debug!("TODO implement other cases of reverse lookups"),
+                    Type::Any(_) | Type::CustomBehavior(_) => (),
+                    _ => from.add_issue(
+                        i_s,
+                        IssueType::ForwardOperatorIsNotCallable {
+                            forward_name: normal_magic,
+                        },
+                    ),
                 }
             },
         )
