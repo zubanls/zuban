@@ -1709,7 +1709,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     &KnownArguments::new(&left_inf, from),
                                     &mut ResultContext::Unknown,
                                     OnTypeError::with_overload_mismatch(
-                                        &|_, _, _, _, _| error.set(LookupError::BothSidesError),
+                                        &|_, _, _, _, _| had_right_error.set(true),
                                         Some(&|| had_right_error.set(true)),
                                     ),
                                 )
@@ -1722,12 +1722,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             LookupStrategy::ShortCircuit => {
                                 if left_op_method.is_some() {
                                     let result = run_left();
-                                    if had_left_error.get() {
-                                        error.set(LookupError::LeftError)
-                                    } else {
-                                        add_to_union(result);
-                                        continue;
-                                    }
                                     result
                                 } else {
                                     error.set(LookupError::LeftError);
@@ -1749,7 +1743,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 todo!()
                             }
                         };
-                        if had_right_error.get() {
+                        if had_right_error.get()
+                            && !matches!(strategy, LookupStrategy::ShortCircuit)
+                        {
                             if left_op_method.as_ref().is_some() {
                                 error.set(LookupError::BothSidesError);
                             } else {
