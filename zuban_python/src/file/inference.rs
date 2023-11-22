@@ -1716,7 +1716,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     ),
                                 )
                             } else {
-                                had_right_error.set(true);
                                 Inferred::new_any_from_error()
                             }
                         };
