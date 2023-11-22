@@ -1046,6 +1046,13 @@ impl<'db> Inference<'db, '_, '_> {
         let Some(normal_magic) = OVERLAPPING_REVERSE_TO_NORMAL_METHODS.get(short_reverse_name) else {
             return
         };
+
+        let return_type = func.return_type(i_s);
+        if return_type.as_ref() == &i_s.db.python_state.object_type() {
+            // According to Mypy object is always fine, see also check_reverse_op_method in Mypy.
+            return;
+        }
+
         let from = func.node_ref; // TODO this NodeRef shouldn't be used.
         let Some(param) = func.iter_params().skip(1).next() else {
             todo!()
@@ -1094,7 +1101,7 @@ impl<'db> Inference<'db, '_, '_> {
 
                     if !callable
                         .return_type
-                        .is_simple_same_type(i_s, &func.return_type(i_s))
+                        .is_simple_same_type(i_s, &return_type)
                         .bool()
                     {
                         add_issue(forward.format_short(i_s.db))

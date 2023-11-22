@@ -1140,7 +1140,6 @@ testGenericOperatorMethodOverlapping2
 testOverlappingNormalAndInplaceOperatorMethod
 testOverloadedNormalAndInplaceOperatorMethod
 # "Signatures of "__radd__" of "Fraction" and "__add__" of "T" are unsafely overlapping"
-testReverseComparisonOperator
 testReverseOperatorStar
 testReverseOperatorTypeVar3
 testReverseOperatorTypeType

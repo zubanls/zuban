@@ -133,7 +133,7 @@ pub struct PythonState {
     dataclasses_field_index: NodeIndex,
     dataclasses_capital_field_index: NodeIndex,
     dataclasses_replace_index: NodeIndex,
-    pub type_of_object: Type,
+    pub type_of_object: Type, // TODO currently unused
     pub type_of_any: Type,
     pub type_of_self: Type,
     pub type_of_arbitrary_tuple: Type,
