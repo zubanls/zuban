@@ -1687,21 +1687,19 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
                         let error = Cell::new(LookupError::NoError);
 
-                        let run_left = || {
-                            if let Some(left) = left_op_method.as_ref() {
-                                let right_inf = Inferred::from_type(r_type.clone());
-                                left.execute_with_details(
-                                    i_s,
-                                    &KnownArguments::new(&right_inf, from),
-                                    &mut ResultContext::Unknown,
-                                    OnTypeError::with_overload_mismatch(
-                                        &|_, _, _, _, _| had_left_error.set(true),
-                                        Some(&|| had_left_error.set(true)),
-                                    ),
-                                )
-                            } else {
-                                Inferred::new_any_from_error()
-                            }
+                        let run = |first: &Inferred, second_type: &Type| {
+                            let second = Inferred::from_type(second_type.clone());
+                            let had_error = Cell::new(false);
+                            let result = first.execute_with_details(
+                                i_s,
+                                &KnownArguments::new(&second, from),
+                                &mut ResultContext::Unknown,
+                                OnTypeError::with_overload_mismatch(
+                                    &|_, _, _, _, _| had_error.set(true),
+                                    Some(&|| had_error.set(true)),
+                                ),
+                            );
+                            (had_error.get(), result)
                         };
                         let run_right = || {
                             let left_inf = Inferred::from_type(l_type.clone());
@@ -1721,8 +1719,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         };
                         let result = match strategy {
                             LookupStrategy::ShortCircuit => {
-                                if left_op_method.is_some() {
-                                    let result = run_left();
+                                if let Some(left) = left_op_method.as_ref() {
+                                    let (_, result) = run(left, r_type);
+                                    // TODO why is there no error handling here?
                                     result
                                 } else {
                                     error.set(LookupError::LeftError);
@@ -1731,9 +1730,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             }
                             LookupStrategy::NormalThenReverse
                             | LookupStrategy::ReverseThenNormal => {
-                                if left_op_method.is_some() {
-                                    let result = run_left();
-                                    if !had_left_error.get() {
+                                if let Some(left) = left_op_method.as_ref() {
+                                    let (had_error, result) = run(left, r_type);
+                                    if !had_error {
                                         add_to_union(result);
                                         continue;
                                     }
