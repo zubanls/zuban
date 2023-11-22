@@ -1600,12 +1600,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     fn infer_detailed_operation(&mut self, op: Operation, left: Inferred) -> Inferred {
-        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-        enum LookupError {
-            NoError,
-            LeftError,
-            BothSidesError,
-        }
         enum LookupStrategy {
             ShortCircuit,
             NormalThenReverse,
@@ -1697,8 +1691,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             LookupStrategy::ShortCircuit => {
                                 left_op_method.as_ref().and_then(|left| run(left, r_type))
                             }
-                            LookupStrategy::NormalThenReverse
-                            | LookupStrategy::ReverseThenNormal => left_op_method
+                            LookupStrategy::NormalThenReverse => left_op_method
                                 .as_ref()
                                 .and_then(|left| run(left, r_type))
                                 .or_else(|| {
@@ -1706,9 +1699,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                         .as_ref()
                                         .and_then(|right| run(right, l_type))
                                 }),
-                            LookupStrategy::ReverseThenNormal => {
-                                todo!()
-                            }
+                            LookupStrategy::ReverseThenNormal => right_op_method
+                                .as_ref()
+                                .and_then(|right| run(right, l_type))
+                                .or_else(|| {
+                                    left_op_method.as_ref().and_then(|left| run(left, r_type))
+                                }),
                         };
                         add_to_union(result.unwrap_or_else(|| {
                             had_error = true;
