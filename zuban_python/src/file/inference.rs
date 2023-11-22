@@ -1689,7 +1689,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
                         let run_left = || {
                             if let Some(left) = left_op_method.as_ref() {
-                                let right_inf = Inferred::execute_type_allocation_todo(i_s, r_type);
+                                let right_inf = Inferred::from_type(r_type.clone());
                                 left.execute_with_details(
                                     i_s,
                                     &KnownArguments::new(&right_inf, from),
@@ -1704,7 +1704,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             }
                         };
                         let run_right = || {
-                            let left_inf = Inferred::execute_type_allocation_todo(i_s, l_type);
+                            let left_inf = Inferred::from_type(l_type.clone());
                             if let Some(right) = right_op_method.as_ref() {
                                 right.execute_with_details(
                                     i_s,
