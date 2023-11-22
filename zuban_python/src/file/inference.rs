@@ -1625,7 +1625,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 &mut |l_type, l_defined_in, lookup_result| {
                     let left_op_method = lookup_result.into_maybe_inferred();
                     for r_type in right.as_cow_type(i_s).iter_with_unpacked_unions() {
-                        let had_right_error = Cell::new(false);
                         let instance;
                         let (r_defined_in, right_op_method) = match r_type {
                             Type::Class(r_class) => {
@@ -1636,9 +1635,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     op.reverse_magic_method,
                                     LookupKind::OnlyType,
                                 );
-                                if !lookup.is_some() {
-                                    had_right_error.set(true);
-                                }
                                 (Some(defined_in), lookup.into_maybe_inferred())
                             }
                             _ => (
@@ -1650,9 +1646,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                         op.reverse_magic_method,
                                         LookupKind::OnlyType,
                                         &mut ResultContext::Unknown,
-                                        &|_| {
-                                            had_right_error.set(true);
-                                        },
+                                        &|_| {},
                                     )
                                     .into_maybe_inferred(),
                             ),
@@ -1684,8 +1678,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         };
                         let strategy = get_strategy();
 
-                        let error = Cell::new(LookupError::NoError);
-
                         let run = |first: &Inferred, second_type: &Type| {
                             let second = Inferred::from_type(second_type.clone());
                             let local_error = Cell::new(false);
@@ -1698,77 +1690,46 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     Some(&|| local_error.set(true)),
                                 ),
                             );
-                            (local_error.get(), result)
+                            (!local_error.get()).then_some(result)
                         };
 
                         let result = match strategy {
                             LookupStrategy::ShortCircuit => {
-                                if let Some(left) = left_op_method.as_ref() {
-                                    let (local_error, result) = run(left, r_type);
-                                    if local_error {
-                                        error.set(LookupError::BothSidesError);
-                                    }
-                                    result
-                                } else {
-                                    error.set(LookupError::LeftError);
-                                    Inferred::new_any_from_error()
-                                }
+                                left_op_method.as_ref().and_then(|left| run(left, r_type))
                             }
                             LookupStrategy::NormalThenReverse
-                            | LookupStrategy::ReverseThenNormal => {
-                                if let Some(left) = left_op_method.as_ref() {
-                                    let (local_error, result) = run(left, r_type);
-                                    if !local_error {
-                                        add_to_union(result);
-                                        continue;
-                                    }
-                                }
-                                if let Some(right) = right_op_method.as_ref() {
-                                    let (local_error, result) = run(right, l_type);
-                                    if local_error {
-                                        had_right_error.set(true);
-                                    }
-                                    result
-                                } else {
-                                    Inferred::new_any_from_error()
-                                }
-                            }
+                            | LookupStrategy::ReverseThenNormal => left_op_method
+                                .as_ref()
+                                .and_then(|left| run(left, r_type))
+                                .or_else(|| {
+                                    right_op_method
+                                        .as_ref()
+                                        .and_then(|right| run(right, l_type))
+                                }),
                             LookupStrategy::ReverseThenNormal => {
                                 todo!()
                             }
                         };
-                        if !matches!(strategy, LookupStrategy::ShortCircuit) {
-                            if left_op_method.is_none() && right_op_method.is_none() {
-                                error.set(LookupError::LeftError);
-                            } else if had_right_error.get() {
-                                error.set(LookupError::BothSidesError);
-                            }
-                        }
-                        add_to_union(match error.get() {
-                            LookupError::NoError => result,
-                            LookupError::BothSidesError => {
-                                had_error = true;
-                                let t = IssueType::UnsupportedOperand {
+                        add_to_union(result.unwrap_or_else(|| {
+                            had_error = true;
+                            let issue = if left_op_method.is_none()
+                                && (right_op_method.is_none()
+                                    || matches!(strategy, LookupStrategy::ShortCircuit))
+                            {
+                                IssueType::UnsupportedLeftOperand {
+                                    operand: Box::from(op.operand),
+                                    left: l_type.format_short(i_s.db),
+                                }
+                            } else {
+                                IssueType::UnsupportedOperand {
                                     operand: Box::from(op.operand),
                                     left: l_type.format_short(i_s.db),
                                     right: r_type.format_short(i_s.db),
-                                };
-                                from.add_issue(i_s, t);
-                                Inferred::new_any_from_error()
-                            }
-                            LookupError::LeftError => {
-                                had_error = true;
-                                let left = l_type.format_short(i_s.db);
-                                from.add_issue(
-                                    i_s,
-                                    IssueType::UnsupportedLeftOperand {
-                                        operand: Box::from(op.operand),
-                                        left,
-                                    },
-                                );
-                                Inferred::new_any_from_error()
-                            }
-                        })
+                                }
+                            };
+                            from.add_issue(i_s, issue);
+                            Inferred::new_any_from_error()
+                        }))
                     }
                 },
             )
