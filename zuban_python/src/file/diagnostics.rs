@@ -1047,12 +1047,6 @@ impl<'db> Inference<'db, '_, '_> {
             return
         };
 
-        let return_type = func.return_type(i_s);
-        if return_type.as_ref() == &i_s.db.python_state.object_type() {
-            // According to Mypy object is always fine, see also check_reverse_op_method in Mypy.
-            return;
-        }
-
         let from = func.node_ref; // TODO this NodeRef shouldn't be used.
         let Some(param) = func.iter_params().skip(1).next().or_else(|| {
             func.iter_params().next().filter(|first_param| {
@@ -1091,6 +1085,9 @@ impl<'db> Inference<'db, '_, '_> {
                     if !reverse
                         .is_simple_sub_type_of(i_s, &reverse_param_type)
                         .bool()
+                        && !reverse
+                            .is_simple_super_type_of(i_s, &reverse_param_type)
+                            .bool()
                     {
                         return;
                     }
@@ -1104,7 +1101,12 @@ impl<'db> Inference<'db, '_, '_> {
                     };
                     if !callable
                         .return_type
-                        .matches(i_s, &mut Matcher::default(), &return_type, variance)
+                        .matches(
+                            i_s,
+                            &mut Matcher::default(),
+                            &func.return_type(i_s),
+                            variance,
+                        )
                         .bool()
                     {
                         from.add_issue(
