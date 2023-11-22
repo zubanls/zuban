@@ -27,6 +27,7 @@ use crate::type_::{
 };
 use crate::type_helpers::{
     lookup_in_namespace, Class, FirstParamKind, Function, GeneratorType, Instance, Module,
+    TypeOrClass,
 };
 use crate::utils::debug_indent;
 use crate::{debug, new_class};
@@ -1608,34 +1609,55 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
         enum LookupStrategy {
             ShortCircuit,
-            NormalThanReverse,
-            ReverseThanNormal,
+            NormalThenReverse,
+            ReverseThenNormal,
         }
 
         let right = self.infer_expression_part(op.right);
-        let node_ref = NodeRef::new(self.file, op.index);
+        let from = NodeRef::new(self.file, op.index);
         let mut had_error = false;
         let i_s = self.i_s;
         let result = Inferred::gather_simplified_union(i_s, |add_to_union| {
             left.run_after_lookup_on_each_union_member(
                 i_s,
-                node_ref,
+                from,
                 op.magic_method,
                 LookupKind::OnlyType,
                 &mut |l_type, l_defined_in, lookup_result| {
                     let left_op_method = lookup_result.into_maybe_inferred();
                     for r_type in right.as_cow_type(i_s).iter_with_unpacked_unions() {
-                        let mut had_right_error = Cell::new(false);
-                        let r_lookup = r_type.lookup(
-                            i_s,
-                            node_ref,
-                            op.reverse_magic_method,
-                            LookupKind::OnlyType,
-                            &mut ResultContext::Unknown,
-                            &|_| {
-                                had_right_error.set(true);
-                            },
-                        );
+                        let had_right_error = Cell::new(false);
+                        let instance;
+                        let (r_defined_in, right_op_method) = match r_type {
+                            Type::Class(r_class) => {
+                                instance = r_class.class(i_s.db).instance();
+                                let (defined_in, lookup) = instance.lookup_and_defined_in(
+                                    i_s,
+                                    from,
+                                    op.reverse_magic_method,
+                                    LookupKind::OnlyType,
+                                );
+                                if !lookup.is_some() {
+                                    had_right_error.set(true);
+                                }
+                                (Some(defined_in), lookup.into_inferred())
+                            }
+                            _ => (
+                                None,
+                                r_type
+                                    .lookup(
+                                        i_s,
+                                        from,
+                                        op.reverse_magic_method,
+                                        LookupKind::OnlyType,
+                                        &mut ResultContext::Unknown,
+                                        &|_| {
+                                            had_right_error.set(true);
+                                        },
+                                    )
+                                    .into_inferred(),
+                            ),
+                        };
 
                         let get_strategy = || {
                             // Check for shortcuts first (in Mypy it's called
@@ -1651,20 +1673,25 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             }
                             // If right is a sub type of left, Python and Mypy execute right first
                             if r_type.is_simple_sub_type_of(i_s, l_type).bool() {
-                                LookupStrategy::ReverseThanNormal
-                            } else {
-                                LookupStrategy::NormalThanReverse
+                                if let Some(TypeOrClass::Class(l_class)) = l_defined_in {
+                                    if let Some(TypeOrClass::Class(r_class)) = r_defined_in {
+                                        if l_class.node_ref != r_class.node_ref {
+                                            return LookupStrategy::ReverseThenNormal;
+                                        }
+                                    }
+                                }
                             }
+                            LookupStrategy::NormalThenReverse
                         };
-
                         let strategy = get_strategy();
+
                         let error = Cell::new(LookupError::NoError);
                         if let Some(left) = left_op_method.as_ref() {
                             let had_left_error = Cell::new(false);
                             let right_inf = Inferred::execute_type_allocation_todo(i_s, r_type);
                             let result = left.execute_with_details(
                                 i_s,
-                                &KnownArguments::new(&right_inf, node_ref),
+                                &KnownArguments::new(&right_inf, from),
                                 &mut ResultContext::Unknown,
                                 OnTypeError::with_overload_mismatch(
                                     &|_, _, _, _, _| had_left_error.set(true),
@@ -1688,9 +1715,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 }
                             }
                             let left_inf = Inferred::execute_type_allocation_todo(i_s, l_type);
-                            r_lookup.into_inferred().execute_with_details(
+                            right_op_method.execute_with_details(
                                 i_s,
-                                &KnownArguments::new(&left_inf, node_ref),
+                                &KnownArguments::new(&left_inf, from),
                                 &mut ResultContext::Unknown,
                                 OnTypeError::with_overload_mismatch(
                                     &|_, _, _, _, _| error.set(LookupError::BothSidesError),
@@ -1707,13 +1734,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     left: l_type.format_short(i_s.db),
                                     right: r_type.format_short(i_s.db),
                                 };
-                                node_ref.add_issue(i_s, t);
+                                from.add_issue(i_s, t);
                                 Inferred::new_any_from_error()
                             }
                             LookupError::LeftError | LookupError::ShortCircuit => {
                                 had_error = true;
                                 let left = l_type.format_short(i_s.db);
-                                node_ref.add_issue(
+                                from.add_issue(
                                     i_s,
                                     IssueType::UnsupportedLeftOperand {
                                         operand: Box::from(op.operand),
@@ -1740,7 +1767,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 .into(),
                 (true, true) => Box::from("Both left and right operands are unions"),
             };
-            node_ref.add_issue(self.i_s, IssueType::Note(note));
+            from.add_issue(self.i_s, IssueType::Note(note));
         }
         debug!(
             "Operation between {} and {} results in {}",
