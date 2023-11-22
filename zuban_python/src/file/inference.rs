@@ -1625,7 +1625,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 &mut |l_type, l_defined_in, lookup_result| {
                     let left_op_method = lookup_result.into_maybe_inferred();
                     for r_type in right.as_cow_type(i_s).iter_with_unpacked_unions() {
-                        let had_left_error = Cell::new(false);
                         let had_right_error = Cell::new(false);
                         let instance;
                         let (r_defined_in, right_op_method) = match r_type {
@@ -1701,22 +1700,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             );
                             (had_error.get(), result)
                         };
-                        let run_right = || {
-                            let left_inf = Inferred::from_type(l_type.clone());
-                            if let Some(right) = right_op_method.as_ref() {
-                                right.execute_with_details(
-                                    i_s,
-                                    &KnownArguments::new(&left_inf, from),
-                                    &mut ResultContext::Unknown,
-                                    OnTypeError::with_overload_mismatch(
-                                        &|_, _, _, _, _| had_right_error.set(true),
-                                        Some(&|| had_right_error.set(true)),
-                                    ),
-                                )
-                            } else {
-                                Inferred::new_any_from_error()
-                            }
-                        };
+
                         let result = match strategy {
                             LookupStrategy::ShortCircuit => {
                                 if let Some(left) = left_op_method.as_ref() {
@@ -1737,7 +1721,15 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                         continue;
                                     }
                                 }
-                                run_right()
+                                if let Some(right) = right_op_method.as_ref() {
+                                    let (had_error, result) = run(right, l_type);
+                                    if had_error {
+                                        had_right_error.set(true);
+                                    }
+                                    result
+                                } else {
+                                    Inferred::new_any_from_error()
+                                }
                             }
                             LookupStrategy::ReverseThenNormal => {
                                 todo!()
