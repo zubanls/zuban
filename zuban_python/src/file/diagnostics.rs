@@ -1095,9 +1095,16 @@ impl<'db> Inference<'db, '_, '_> {
                         return;
                     }
 
+                    // I'm not 100% sure why this variance calculation is necessary, but I believe
+                    // it's because Python calls the reverse methods before the normal methods when
+                    // the right type is a subtype of the left.
+                    let variance = match reverse.is_simple_sub_type_of(i_s, forward).bool() {
+                        true => Variance::Covariant,
+                        false => Variance::Contravariant,
+                    };
                     if !callable
                         .return_type
-                        .is_simple_super_type_of(i_s, &return_type)
+                        .matches(i_s, &mut Matcher::default(), &return_type, variance)
                         .bool()
                     {
                         from.add_issue(

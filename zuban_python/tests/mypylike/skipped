@@ -1129,7 +1129,6 @@ testOverloadedNormalAndInplaceOperatorMethod
 # "Signatures of "__radd__" of "Fraction" and "__add__" of "T" are unsafely overlapping"
 testReverseOperatorTypeVar3
 testReverseOperatorTypeType
-testReverseComparisonOperator
 # __rmul__ etc. Invalid signature "Callable[[B], A]"
 testReverseOperatorMethodInvalid
 #  Incompatible types in assignment (expression has type "int", base class "BaseS" defined the type as "str")
