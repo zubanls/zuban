@@ -1084,17 +1084,20 @@ impl<'db> Inference<'db, '_, '_> {
                         return;
                     }
 
+                    // The params must cycle for it to be an unsafe overlap.
                     let Some(reverse_param_type) = callable.first_positional_type() else {
                         todo!()
                     };
-                    // The params must cycle for it to be an unsafe overlap.
-                    if !reverse.is_simple_same_type(i_s, &reverse_param_type).bool() {
+                    if !reverse
+                        .is_simple_sub_type_of(i_s, &reverse_param_type)
+                        .bool()
+                    {
                         return;
                     }
 
                     if !callable
                         .return_type
-                        .is_simple_same_type(i_s, &return_type)
+                        .is_simple_super_type_of(i_s, &return_type)
                         .bool()
                     {
                         from.add_issue(
