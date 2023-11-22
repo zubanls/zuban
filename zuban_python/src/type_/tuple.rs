@@ -286,20 +286,14 @@ pub fn lookup_on_tuple(
 pub fn lookup_tuple_magic_methods(tuple: Rc<Tuple>, name: &str) -> LookupResult {
     match name {
         "__mul__" | "__rmul__" => {
-            return LookupResult::UnknownName {
-                inf: Inferred::from_type(Type::CustomBehavior(CustomBehavior::new_method(
-                    tuple_mul,
-                    Some(Rc::new(Type::Tuple(tuple))),
-                ))),
-            };
+            return LookupResult::UnknownName(Inferred::from_type(Type::CustomBehavior(
+                CustomBehavior::new_method(tuple_mul, Some(Rc::new(Type::Tuple(tuple)))),
+            )));
         }
         "__add__" => {
-            return LookupResult::UnknownName {
-                inf: Inferred::from_type(Type::CustomBehavior(CustomBehavior::new_method(
-                    tuple_add,
-                    Some(Rc::new(Type::Tuple(tuple))),
-                ))),
-            };
+            return LookupResult::UnknownName(Inferred::from_type(Type::CustomBehavior(
+                CustomBehavior::new_method(tuple_add, Some(Rc::new(Type::Tuple(tuple)))),
+            )));
         }
         _ => LookupResult::None,
     }

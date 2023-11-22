@@ -637,11 +637,9 @@ pub fn lookup_dataclass_symbol<'db: 'a, 'a>(
     if self_.options.init && name == "__init__" {
         return (
             None,
-            LookupResult::UnknownName {
-                inf: Inferred::from_type(Type::Callable(Rc::new(
-                    dataclass_init_func(self_, i_s.db).clone(),
-                ))),
-            },
+            LookupResult::UnknownName(Inferred::from_type(Type::Callable(Rc::new(
+                dataclass_init_func(self_, i_s.db).clone(),
+            )))),
         );
     }
     let class = self_.class(i_s.db);
@@ -656,9 +654,9 @@ pub fn lookup_on_dataclass_type(
     kind: LookupKind,
 ) -> LookupResult {
     if name == "__dataclass_fields__" && kind == LookupKind::Normal {
-        return LookupResult::UnknownName {
-            inf: Inferred::from_type(i_s.db.python_state.dataclass_fields_type.clone()),
-        };
+        return LookupResult::UnknownName(Inferred::from_type(
+            i_s.db.python_state.dataclass_fields_type.clone(),
+        ));
     }
     if self_.options.order && ORDER_METHOD_NAMES.contains(&name) && kind == LookupKind::Normal {
         return order_func(self_, i_s, true);
@@ -673,9 +671,9 @@ pub fn lookup_on_dataclass(
     name: &str,
 ) -> LookupResult {
     if name == "__dataclass_fields__" {
-        return LookupResult::UnknownName {
-            inf: Inferred::from_type(i_s.db.python_state.dataclass_fields_type.clone()),
-        };
+        return LookupResult::UnknownName(Inferred::from_type(
+            i_s.db.python_state.dataclass_fields_type.clone(),
+        ));
     } else if name == "__match_args__" && self_.options.match_args {
         let __init__ = dataclass_init_func(&self_, i_s.db);
         let tup = Rc::new(Tuple::new_fixed_length(
@@ -690,9 +688,7 @@ pub fn lookup_on_dataclass(
                 })
                 .collect(),
         ));
-        return LookupResult::UnknownName {
-            inf: Inferred::from_type(Type::Tuple(tup)),
-        };
+        return LookupResult::UnknownName(Inferred::from_type(Type::Tuple(tup)));
     }
     if self_.options.order && ORDER_METHOD_NAMES.contains(&name) {
         return order_func(self_, i_s, false);
@@ -712,8 +708,8 @@ pub fn lookup_on_dataclass(
 }
 
 fn order_func(self_: Rc<Dataclass>, i_s: &InferenceState, from_type: bool) -> LookupResult {
-    return LookupResult::UnknownName {
-        inf: Inferred::from_type(Type::Callable(Rc::new(CallableContent {
+    return LookupResult::UnknownName(Inferred::from_type(Type::Callable(Rc::new(
+        CallableContent {
             name: None,
             class_name: None,
             defined_at: self_.class.link,
@@ -727,6 +723,6 @@ fn order_func(self_: Rc<Dataclass>, i_s: &InferenceState, from_type: bool) -> Lo
                 has_default: false,
             }])),
             return_type: i_s.db.python_state.bool_type(),
-        }))),
-    };
+        },
+    ))));
 }

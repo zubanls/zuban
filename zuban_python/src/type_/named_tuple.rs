@@ -150,114 +150,111 @@ impl NamedTuple {
         from_type: bool,
         as_self: Option<&dyn Fn() -> Type>,
     ) -> LookupResult {
-        LookupResult::UnknownName {
-            inf: Inferred::from_type(match name {
-                "__new__" => Type::Callable(self.__new__.clone()),
-                "_replace" => Type::Callable({
-                    let mut params = vec![];
-                    if from_type {
-                        params.push(CallableParam::new_anonymous(ParamType::PositionalOnly(
-                            as_self.map(|as_self| as_self()).unwrap_or(Type::Self_),
-                        )));
-                    }
-                    for param in self.params() {
-                        let mut new_param = param.clone();
-                        new_param.has_default = true;
-                        new_param.type_ = ParamType::KeywordOnly(
-                            new_param.type_.expect_positional_type().clone(),
-                        );
-                        params.push(new_param);
-                    }
-                    Rc::new(CallableContent {
-                        name: Some(DbString::Static("_replace")),
-                        class_name: Some(self.name),
-                        defined_at: PointLink::new(FileIndex(0), 0),
-                        kind: FunctionKind::Function {
-                            had_first_self_or_class_annotation: true,
-                        },
-                        type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
-                        params: CallableParams::Simple(params.into()),
-                        return_type: as_self.map(|as_self| as_self()).unwrap_or(Type::Self_),
-                    })
-                }),
-                "_asdict" => Type::Callable({
-                    let mut params = vec![];
-                    if from_type {
-                        params.push(CallableParam::new_anonymous(ParamType::PositionalOnly(
-                            as_self.map(|as_self| as_self()).unwrap_or(Type::Self_),
-                        )));
-                    }
-                    Rc::new(CallableContent {
-                        name: Some(DbString::Static("_as_dict")),
-                        class_name: Some(self.name),
-                        defined_at: PointLink::new(FileIndex(0), 0),
-                        kind: FunctionKind::Function {
-                            had_first_self_or_class_annotation: true,
-                        },
-                        type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
-                        params: CallableParams::Simple(params.into()),
-                        return_type: new_class!(
-                            i_s.db.python_state.dict_node_ref().as_link(),
-                            i_s.db.python_state.str_type(),
-                            Type::Any(AnyCause::Explicit),
-                        ),
-                    })
-                }),
-                "_make" => Type::Callable({
-                    let mut params = vec![];
-                    if as_self.is_none() {
-                        params.push(CallableParam::new_anonymous(ParamType::PositionalOnly(
-                            i_s.db.python_state.type_of_self.clone(),
-                        )));
-                    }
-                    params.push(CallableParam {
-                        type_: ParamType::PositionalOrKeyword(new_class!(
-                            i_s.db.python_state.iterable_link(),
-                            Type::Any(AnyCause::Explicit),
-                        )),
-                        name: Some(DbString::Static("iterable")),
-                        has_default: false,
-                    });
-                    Rc::new(CallableContent {
-                        name: Some(DbString::Static("_make")),
-                        class_name: Some(self.name),
-                        defined_at: PointLink::new(FileIndex(0), 0),
-                        kind: FunctionKind::Classmethod {
-                            had_first_self_or_class_annotation: true,
-                        },
-                        type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
-                        params: CallableParams::Simple(params.into()),
-                        return_type: as_self.map(|as_self| as_self()).unwrap_or(Type::Self_),
-                    })
-                }),
-                "_fields" => Type::Tuple(Rc::new(Tuple::new_fixed_length(
-                    std::iter::repeat(TypeOrTypeVarTuple::Type(i_s.db.python_state.str_type()))
-                        .take(self.params().len())
-                        .collect(),
-                ))),
-                "_field_defaults" => new_class!(
-                    i_s.db.python_state.dict_node_ref().as_link(),
-                    i_s.db.python_state.str_type(),
-                    Type::Any(AnyCause::Explicit),
-                ),
-                "_field_types" => new_class!(
-                    i_s.db.python_state.dict_node_ref().as_link(),
-                    i_s.db.python_state.str_type(),
-                    Type::Any(AnyCause::Explicit),
-                ),
-                "_source" => i_s.db.python_state.str_type(),
-                "__mul__" | "__rmul__" | "__add__" => {
-                    return lookup_tuple_magic_methods(self.as_tuple(), name)
+        LookupResult::UnknownName(Inferred::from_type(match name {
+            "__new__" => Type::Callable(self.__new__.clone()),
+            "_replace" => Type::Callable({
+                let mut params = vec![];
+                if from_type {
+                    params.push(CallableParam::new_anonymous(ParamType::PositionalOnly(
+                        as_self.map(|as_self| as_self()).unwrap_or(Type::Self_),
+                    )));
                 }
-                _ => {
-                    if let Some(param) = self.search_param(i_s.db, name) {
-                        param.type_.expect_positional_type_as_ref().clone()
-                    } else {
-                        return LookupResult::None;
-                    }
+                for param in self.params() {
+                    let mut new_param = param.clone();
+                    new_param.has_default = true;
+                    new_param.type_ =
+                        ParamType::KeywordOnly(new_param.type_.expect_positional_type().clone());
+                    params.push(new_param);
                 }
+                Rc::new(CallableContent {
+                    name: Some(DbString::Static("_replace")),
+                    class_name: Some(self.name),
+                    defined_at: PointLink::new(FileIndex(0), 0),
+                    kind: FunctionKind::Function {
+                        had_first_self_or_class_annotation: true,
+                    },
+                    type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
+                    params: CallableParams::Simple(params.into()),
+                    return_type: as_self.map(|as_self| as_self()).unwrap_or(Type::Self_),
+                })
             }),
-        }
+            "_asdict" => Type::Callable({
+                let mut params = vec![];
+                if from_type {
+                    params.push(CallableParam::new_anonymous(ParamType::PositionalOnly(
+                        as_self.map(|as_self| as_self()).unwrap_or(Type::Self_),
+                    )));
+                }
+                Rc::new(CallableContent {
+                    name: Some(DbString::Static("_as_dict")),
+                    class_name: Some(self.name),
+                    defined_at: PointLink::new(FileIndex(0), 0),
+                    kind: FunctionKind::Function {
+                        had_first_self_or_class_annotation: true,
+                    },
+                    type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
+                    params: CallableParams::Simple(params.into()),
+                    return_type: new_class!(
+                        i_s.db.python_state.dict_node_ref().as_link(),
+                        i_s.db.python_state.str_type(),
+                        Type::Any(AnyCause::Explicit),
+                    ),
+                })
+            }),
+            "_make" => Type::Callable({
+                let mut params = vec![];
+                if as_self.is_none() {
+                    params.push(CallableParam::new_anonymous(ParamType::PositionalOnly(
+                        i_s.db.python_state.type_of_self.clone(),
+                    )));
+                }
+                params.push(CallableParam {
+                    type_: ParamType::PositionalOrKeyword(new_class!(
+                        i_s.db.python_state.iterable_link(),
+                        Type::Any(AnyCause::Explicit),
+                    )),
+                    name: Some(DbString::Static("iterable")),
+                    has_default: false,
+                });
+                Rc::new(CallableContent {
+                    name: Some(DbString::Static("_make")),
+                    class_name: Some(self.name),
+                    defined_at: PointLink::new(FileIndex(0), 0),
+                    kind: FunctionKind::Classmethod {
+                        had_first_self_or_class_annotation: true,
+                    },
+                    type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
+                    params: CallableParams::Simple(params.into()),
+                    return_type: as_self.map(|as_self| as_self()).unwrap_or(Type::Self_),
+                })
+            }),
+            "_fields" => Type::Tuple(Rc::new(Tuple::new_fixed_length(
+                std::iter::repeat(TypeOrTypeVarTuple::Type(i_s.db.python_state.str_type()))
+                    .take(self.params().len())
+                    .collect(),
+            ))),
+            "_field_defaults" => new_class!(
+                i_s.db.python_state.dict_node_ref().as_link(),
+                i_s.db.python_state.str_type(),
+                Type::Any(AnyCause::Explicit),
+            ),
+            "_field_types" => new_class!(
+                i_s.db.python_state.dict_node_ref().as_link(),
+                i_s.db.python_state.str_type(),
+                Type::Any(AnyCause::Explicit),
+            ),
+            "_source" => i_s.db.python_state.str_type(),
+            "__mul__" | "__rmul__" | "__add__" => {
+                return lookup_tuple_magic_methods(self.as_tuple(), name)
+            }
+            _ => {
+                if let Some(param) = self.search_param(i_s.db, name) {
+                    param.type_.expect_positional_type_as_ref().clone()
+                } else {
+                    return LookupResult::None;
+                }
+            }
+        }))
     }
 
     pub fn type_lookup(

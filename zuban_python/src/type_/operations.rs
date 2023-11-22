@@ -47,11 +47,10 @@ impl Type {
                     on_lookup_error(t);
                 }
                 result = Some(if let Some(l) = result.take() {
-                    LookupResult::UnknownName {
-                        inf: l
-                            .into_inferred()
+                    LookupResult::UnknownName(
+                        l.into_inferred()
                             .simplified_union(i_s, lookup_result.into_inferred()),
-                    }
+                    )
                 } else {
                     lookup_result
                 })
@@ -212,9 +211,7 @@ impl Type {
                     from.add_issue(i_s, IssueType::UndefinedInSuperclass { name: name.into() });
                     callable(
                         self,
-                        LookupResult::UnknownName {
-                            inf: Inferred::new_any_from_error(),
-                        },
+                        LookupResult::UnknownName(Inferred::new_any_from_error()),
                     );
                     return;
                 }

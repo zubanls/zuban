@@ -266,7 +266,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             LookupResult::FileReference(file_index) => {
                                 Point::new_file_reference(file_index, Locality::Todo)
                             }
-                            LookupResult::UnknownName { inf } => {
+                            LookupResult::UnknownName(inf) => {
                                 inf.save_redirect(self.i_s, self.file, name_def.index());
                                 continue;
                             }

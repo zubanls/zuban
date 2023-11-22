@@ -11,15 +11,13 @@ pub enum LookupResult {
     // Locality is part of Inferred
     GotoName { name: PointLink, inf: Inferred },
     FileReference(FileIndex),
-    UnknownName { inf: Inferred },
+    UnknownName(Inferred),
     None,
 }
 
 impl LookupResult {
     pub fn any(cause: AnyCause) -> Self {
-        Self::UnknownName {
-            inf: Inferred::new_any(cause),
-        }
+        Self::UnknownName(Inferred::new_any(cause))
     }
 
     pub fn is_some(&self) -> bool {
@@ -29,7 +27,7 @@ impl LookupResult {
     pub fn into_maybe_inferred(self) -> Option<Inferred> {
         // TODO is it ok that map does not include FileReference(_)? (probably not)
         match self {
-            Self::GotoName { inf, .. } | Self::UnknownName { inf } => Some(inf),
+            Self::GotoName { inf, .. } | Self::UnknownName(inf) => Some(inf),
             Self::FileReference(f) => Some(Inferred::new_file_reference(f)),
             Self::None => None,
         }
@@ -43,10 +41,8 @@ impl LookupResult {
     pub fn union(self, i_s: &InferenceState, other: Self) -> Self {
         match self.into_maybe_inferred() {
             Some(self_) => match other.into_maybe_inferred() {
-                Some(other) => LookupResult::UnknownName {
-                    inf: self_.simplified_union(i_s, other),
-                },
-                None => LookupResult::UnknownName { inf: self_ },
+                Some(other) => LookupResult::UnknownName(self_.simplified_union(i_s, other)),
+                None => LookupResult::UnknownName(self_),
             },
             None => other,
         }
@@ -73,7 +69,7 @@ impl LookupResult {
                     Point::new_file_reference(*file_index, Locality::Todo),
                 );
             }
-            LookupResult::UnknownName { .. } | LookupResult::None => (),
+            LookupResult::UnknownName(_) | LookupResult::None => (),
         };
         self.into_maybe_inferred()
     }
@@ -93,7 +89,7 @@ impl LookupResult {
     pub fn and_then(self, c: impl FnOnce(Inferred) -> Option<Inferred>) -> Option<Self> {
         match self {
             Self::GotoName { name, inf } => c(inf).map(|inf| Self::GotoName { name, inf }),
-            Self::UnknownName { inf } => c(inf).map(|inf| Self::UnknownName { inf }),
+            Self::UnknownName(inf) => c(inf).map(|inf| Self::UnknownName(inf)),
             // TODO is it ok that map does not include FileReference(_)?
             _ => Some(self),
         }

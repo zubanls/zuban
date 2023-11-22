@@ -171,13 +171,13 @@ pub fn lookup_on_enum_instance(
     result_context: &mut ResultContext,
 ) -> LookupResult {
     match name {
-        "value" | "_value_" => LookupResult::UnknownName {
-            inf: Inferred::gather_simplified_union(i_s, |add| {
+        "value" | "_value_" => {
+            LookupResult::UnknownName(Inferred::gather_simplified_union(i_s, |add| {
                 for member in enum_.members.iter() {
                     add(infer_value_on_member(i_s, enum_, member.value))
                 }
-            }),
-        },
+            }))
+        }
         "_ignore_" => LookupResult::None,
         _ => lookup_members_on_enum(i_s, enum_, name, result_context).or_else(|| {
             Instance::new(enum_.class(i_s.db), None).lookup(i_s, from, name, LookupKind::Normal)
@@ -251,12 +251,10 @@ pub fn lookup_on_enum_member_instance(
     if is_enum {
         match name {
             "name" | "_name_" => {
-                return LookupResult::UnknownName {
-                    inf: Inferred::from_type(Type::Literal(Literal {
-                        implicit: true,
-                        kind: LiteralKind::String(DbString::RcStr(member.name(i_s.db).into())),
-                    })),
-                }
+                return LookupResult::UnknownName(Inferred::from_type(Type::Literal(Literal {
+                    implicit: true,
+                    kind: LiteralKind::String(DbString::RcStr(member.name(i_s.db).into())),
+                })))
             }
             "value" | "_value_" => {
                 let value = member.value();
@@ -266,9 +264,7 @@ pub fn lookup_on_enum_member_instance(
                         return result;
                     }
                 }
-                return LookupResult::UnknownName {
-                    inf: infer_value_on_member(i_s, &member.enum_, value),
-                };
+                return LookupResult::UnknownName(infer_value_on_member(i_s, &member.enum_, value));
             }
             "_ignore_" => return LookupResult::None,
             _ => (),
@@ -284,9 +280,7 @@ fn lookup_members_on_enum(
     result_context: &mut ResultContext,
 ) -> LookupResult {
     match Enum::lookup(enum_, i_s.db, name, true) {
-        Some(m) => LookupResult::UnknownName {
-            inf: Inferred::from_type(Type::EnumMember(m)),
-        },
+        Some(m) => LookupResult::UnknownName(Inferred::from_type(Type::EnumMember(m))),
         None => LookupResult::None,
     }
 }

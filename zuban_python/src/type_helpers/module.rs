@@ -102,7 +102,7 @@ impl<'a> Module<'a> {
             };
             LookupResult::GotoName { name: link, inf }
         } else if let Some(inf) = self.maybe_execute_getattr(i_s, from) {
-            LookupResult::UnknownName { inf }
+            LookupResult::UnknownName(inf)
         } else if name == "__getattr__" {
             // There is a weird (and wrong) definition in typeshed that defines __getattr__ on
             // ModuleType:
@@ -139,9 +139,9 @@ pub fn lookup_in_namespace(
 ) -> LookupResult {
     match python_import(db, from_file, &namespace.path, &namespace.content, name) {
         Some(ImportResult::File(file_index)) => LookupResult::FileReference(file_index),
-        Some(ImportResult::Namespace(namespace)) => LookupResult::UnknownName {
-            inf: Inferred::from_type(Type::Namespace(namespace)),
-        },
+        Some(ImportResult::Namespace(namespace)) => {
+            LookupResult::UnknownName(Inferred::from_type(Type::Namespace(namespace)))
+        }
         None => {
             debug!("TODO namespace basic lookups");
             LookupResult::None
