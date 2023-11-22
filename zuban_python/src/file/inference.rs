@@ -260,13 +260,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
                     let point = match &from_first_part {
                         Some(imp) => match self.lookup_import_from_target(imp, import_name) {
-                            LookupResult::GotoName(link, ..) => {
+                            LookupResult::GotoName { name: link, .. } => {
                                 link.into_redirect_point(Locality::Todo)
                             }
                             LookupResult::FileReference(file_index) => {
                                 Point::new_file_reference(file_index, Locality::Todo)
                             }
-                            LookupResult::UnknownName(inf) => {
+                            LookupResult::UnknownName { inf } => {
                                 inf.save_redirect(self.i_s, self.file, name_def.index());
                                 continue;
                             }

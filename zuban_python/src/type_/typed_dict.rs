@@ -747,16 +747,20 @@ pub fn lookup_on_typed_dict(
     kind: LookupKind,
 ) -> LookupResult {
     let bound = || Rc::new(Type::TypedDict(typed_dict.clone()));
-    LookupResult::UnknownName(Inferred::from_type(Type::CustomBehavior(match name {
-        "get" | "pop" | "setdefault" => CustomBehavior::new_method(typed_dict_get, Some(bound())),
-        "__setitem__" => CustomBehavior::new_method(typed_dict_setitem, Some(bound())),
-        "__delitem__" => CustomBehavior::new_method(typed_dict_delitem, Some(bound())),
-        "update" => CustomBehavior::new_method(typed_dict_update, Some(bound())),
-        _ => {
-            return Instance::new(i_s.db.python_state.typed_dict_class(), None)
-                .lookup(i_s, from, name, kind)
-        }
-    })))
+    LookupResult::UnknownName {
+        inf: Inferred::from_type(Type::CustomBehavior(match name {
+            "get" | "pop" | "setdefault" => {
+                CustomBehavior::new_method(typed_dict_get, Some(bound()))
+            }
+            "__setitem__" => CustomBehavior::new_method(typed_dict_setitem, Some(bound())),
+            "__delitem__" => CustomBehavior::new_method(typed_dict_delitem, Some(bound())),
+            "update" => CustomBehavior::new_method(typed_dict_update, Some(bound())),
+            _ => {
+                return Instance::new(i_s.db.python_state.typed_dict_class(), None)
+                    .lookup(i_s, from, name, kind)
+            }
+        })),
+    }
 }
 
 pub fn infer_typed_dict_item<'db>(

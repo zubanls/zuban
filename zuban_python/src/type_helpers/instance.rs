@@ -274,14 +274,15 @@ impl<'a> Instance<'a> {
                         let i_s = i_s.with_class_context(&c);
                         return (
                             class,
-                            LookupResult::GotoName(
-                                PointLink::new(c.node_ref.file.file_index(), self_symbol),
-                                c.node_ref
+                            LookupResult::GotoName {
+                                name: PointLink::new(c.node_ref.file.file_index(), self_symbol),
+                                inf: c
+                                    .node_ref
                                     .file
                                     .inference(&i_s)
                                     .infer_name_by_index(self_symbol)
                                     .resolve_class_type_vars(&i_s, &self.class, &c),
-                            ),
+                            },
                         );
                     }
                 }

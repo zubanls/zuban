@@ -1117,10 +1117,10 @@ impl<'db: 'a, 'a> Class<'a> {
                     .file
                     .inference(&i_s.with_class_context(self))
                     .infer_name_by_index(node_index);
-                LookupResult::GotoName(
-                    PointLink::new(self.node_ref.file.file_index(), node_index),
+                LookupResult::GotoName {
+                    name: PointLink::new(self.node_ref.file.file_index(), node_index),
                     inf,
-                )
+                }
             }
         }
     }
