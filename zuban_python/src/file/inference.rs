@@ -1361,7 +1361,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     from,
                                     "__contains__",
                                     LookupKind::OnlyType,
-                                    &mut |r_type, lookup_result| {
+                                    &mut |r_type, _, lookup_result| {
                                         if let Some(method) = lookup_result.into_maybe_inferred() {
                                             method.execute_with_details(
                                                 self.i_s,
@@ -1622,9 +1622,21 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 node_ref,
                 op.magic_method,
                 LookupKind::OnlyType,
-                &mut |l_type, lookup_result| {
+                &mut |l_type, l_defined_in, lookup_result| {
                     let left_op_method = lookup_result.into_maybe_inferred();
                     for r_type in right.as_cow_type(i_s).iter_with_unpacked_unions() {
+                        let mut had_right_error = Cell::new(false);
+                        let r_lookup = r_type.lookup(
+                            i_s,
+                            node_ref,
+                            op.reverse_magic_method,
+                            LookupKind::OnlyType,
+                            &mut ResultContext::Unknown,
+                            &|_| {
+                                had_right_error.set(true);
+                            },
+                        );
+
                         let get_strategy = || {
                             // Check for shortcuts first (in Mypy it's called
                             // `op_methods_that_shortcut`)
@@ -1668,32 +1680,23 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             error.set(LookupError::ShortCircuit);
                             Inferred::new_any_from_error()
                         } else {
+                            if had_right_error.get() {
+                                if left_op_method.as_ref().is_some() {
+                                    error.set(LookupError::BothSidesError);
+                                } else {
+                                    error.set(LookupError::LeftError);
+                                }
+                            }
                             let left_inf = Inferred::execute_type_allocation_todo(i_s, l_type);
-                            r_type
-                                .lookup(
-                                    i_s,
-                                    node_ref,
-                                    op.reverse_magic_method,
-                                    LookupKind::OnlyType,
-                                    &mut ResultContext::Unknown,
-                                    &|_| {
-                                        if left_op_method.as_ref().is_some() {
-                                            error.set(LookupError::BothSidesError);
-                                        } else {
-                                            error.set(LookupError::LeftError);
-                                        }
-                                    },
-                                )
-                                .into_inferred()
-                                .execute_with_details(
-                                    i_s,
-                                    &KnownArguments::new(&left_inf, node_ref),
-                                    &mut ResultContext::Unknown,
-                                    OnTypeError::with_overload_mismatch(
-                                        &|_, _, _, _, _| error.set(LookupError::BothSidesError),
-                                        Some(&|| error.set(LookupError::BothSidesError)),
-                                    ),
-                                )
+                            r_lookup.into_inferred().execute_with_details(
+                                i_s,
+                                &KnownArguments::new(&left_inf, node_ref),
+                                &mut ResultContext::Unknown,
+                                OnTypeError::with_overload_mismatch(
+                                    &|_, _, _, _, _| error.set(LookupError::BothSidesError),
+                                    Some(&|| error.set(LookupError::BothSidesError)),
+                                ),
+                            )
                         };
                         add_to_union(match error.get() {
                             LookupError::NoError => result,

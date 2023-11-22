@@ -318,19 +318,27 @@ impl<'a> Instance<'a> {
         name: &str,
         kind: LookupKind,
     ) -> LookupResult {
+        self.lookup_and_defined_in(i_s, node_ref, name, kind).1
+    }
+
+    pub fn lookup_and_defined_in(
+        &self,
+        i_s: &'a InferenceState,
+        node_ref: NodeRef,
+        name: &str,
+        kind: LookupKind,
+    ) -> (TypeOrClass, LookupResult) {
         self.lookup_and_maybe_ignore_super_count(i_s, node_ref, name, kind, 0)
-            .1
     }
 
     pub fn lookup_on_self(
         &self,
-        i_s: &InferenceState,
+        i_s: &'a InferenceState,
         node_ref: NodeRef,
         name: &str,
         kind: LookupKind,
-    ) -> LookupResult {
+    ) -> (TypeOrClass, LookupResult) {
         self.lookup_with_explicit_self_binding(i_s, node_ref, name, kind, 0, || Type::Self_)
-            .1
     }
 
     pub fn full_lookup(&self, i_s: &InferenceState, node_ref: NodeRef, name: &str) -> LookupResult {

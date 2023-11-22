@@ -1074,7 +1074,7 @@ impl<'db> Inference<'db, '_, '_> {
             normal_magic,
             LookupKind::OnlyType,
             &mut ResultContext::Unknown,
-            &mut |forward, lookup| {
+            &mut |forward, _, lookup| {
                 let add_issue = |forward_class| {
                     from.add_issue(
                         i_s,
