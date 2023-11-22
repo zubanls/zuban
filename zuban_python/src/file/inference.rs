@@ -1640,20 +1640,22 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 if !lookup.is_some() {
                                     had_right_error.set(true);
                                 }
-                                (Some(defined_in), lookup)
+                                (Some(defined_in), lookup.into_maybe_inferred())
                             }
                             _ => (
                                 None,
-                                r_type.lookup(
-                                    i_s,
-                                    from,
-                                    op.reverse_magic_method,
-                                    LookupKind::OnlyType,
-                                    &mut ResultContext::Unknown,
-                                    &|_| {
-                                        had_right_error.set(true);
-                                    },
-                                ),
+                                r_type
+                                    .lookup(
+                                        i_s,
+                                        from,
+                                        op.reverse_magic_method,
+                                        LookupKind::OnlyType,
+                                        &mut ResultContext::Unknown,
+                                        &|_| {
+                                            had_right_error.set(true);
+                                        },
+                                    )
+                                    .into_maybe_inferred(),
                             ),
                         };
 
@@ -1703,7 +1705,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         };
                         let run_right = || {
                             let left_inf = Inferred::execute_type_allocation_todo(i_s, l_type);
-                            if let Some(right) = right_op_method.into_maybe_inferred() {
+                            if let Some(right) = right_op_method.as_ref() {
                                 right.execute_with_details(
                                     i_s,
                                     &KnownArguments::new(&left_inf, from),
@@ -1743,13 +1745,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 todo!()
                             }
                         };
-                        if had_right_error.get()
-                            && !matches!(strategy, LookupStrategy::ShortCircuit)
-                        {
-                            if left_op_method.as_ref().is_some() {
-                                error.set(LookupError::BothSidesError);
-                            } else {
+                        if !matches!(strategy, LookupStrategy::ShortCircuit) {
+                            if left_op_method.is_none() && right_op_method.is_none() {
                                 error.set(LookupError::LeftError);
+                            } else if had_right_error.get() {
+                                error.set(LookupError::BothSidesError);
                             }
                         }
                         add_to_union(match error.get() {
