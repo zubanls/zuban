@@ -1688,24 +1688,24 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
                         let run = |first: &Inferred, second_type: &Type| {
                             let second = Inferred::from_type(second_type.clone());
-                            let had_error = Cell::new(false);
+                            let local_error = Cell::new(false);
                             let result = first.execute_with_details(
                                 i_s,
                                 &KnownArguments::new(&second, from),
                                 &mut ResultContext::Unknown,
                                 OnTypeError::with_overload_mismatch(
-                                    &|_, _, _, _, _| had_error.set(true),
-                                    Some(&|| had_error.set(true)),
+                                    &|_, _, _, _, _| local_error.set(true),
+                                    Some(&|| local_error.set(true)),
                                 ),
                             );
-                            (had_error.get(), result)
+                            (local_error.get(), result)
                         };
 
                         let result = match strategy {
                             LookupStrategy::ShortCircuit => {
                                 if let Some(left) = left_op_method.as_ref() {
-                                    let (had_error, result) = run(left, r_type);
-                                    if had_error {
+                                    let (local_error, result) = run(left, r_type);
+                                    if local_error {
                                         error.set(LookupError::BothSidesError);
                                     }
                                     result
@@ -1717,15 +1717,15 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             LookupStrategy::NormalThenReverse
                             | LookupStrategy::ReverseThenNormal => {
                                 if let Some(left) = left_op_method.as_ref() {
-                                    let (had_error, result) = run(left, r_type);
-                                    if !had_error {
+                                    let (local_error, result) = run(left, r_type);
+                                    if !local_error {
                                         add_to_union(result);
                                         continue;
                                     }
                                 }
                                 if let Some(right) = right_op_method.as_ref() {
-                                    let (had_error, result) = run(right, l_type);
-                                    if had_error {
+                                    let (local_error, result) = run(right, l_type);
+                                    if local_error {
                                         had_right_error.set(true);
                                     }
                                     result
