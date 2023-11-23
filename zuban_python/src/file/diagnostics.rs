@@ -101,6 +101,21 @@ lazy_static::lazy_static! {
         ("gt", "__lt__"),
         ("le", "__ge__"),
     ]);
+    pub static ref INPLACE_TO_NORMAL_METHODS: HashMap<&'static str, &'static str> = HashMap::from([
+        ("iadd", "__add__"),
+        ("isub", "__sub__"),
+        ("imul", "__mul__"),
+        ("itruediv", "__truediv__"),
+        ("imod", "__mod__"),
+        ("ifloordiv", "__floordiv__"),
+        ("ipow", "__pow__"),
+        ("imatmul", "__matmul__"),
+        ("iand", "__and__"),
+        ("ior", "__or__"),
+        ("ixor", "__xor__"),
+        ("ilshift", "__lshift__"),
+        ("irshift", "__rshift__"),
+    ]);
 }
 
 impl<'db> Inference<'db, '_, '_> {
@@ -793,7 +808,8 @@ impl<'db> Inference<'db, '_, '_> {
                 .and_then(|n| n.strip_suffix("__"))
             {
                 // Check reverse magic methods like __rmul__
-                self.check_overlapping_op_methods(function, magic_name)
+                self.check_overlapping_op_methods(function, magic_name);
+                self.check_inplace_methods(function, magic_name);
             }
         }
     }
@@ -1041,7 +1057,7 @@ impl<'db> Inference<'db, '_, '_> {
         }
     }
 
-    pub fn check_overlapping_op_methods(&self, func: Function, short_reverse_name: &str) {
+    fn check_overlapping_op_methods(&self, func: Function, short_reverse_name: &str) {
         let i_s = self.i_s;
         let Some(normal_magic) = OVERLAPPING_REVERSE_TO_NORMAL_METHODS.get(short_reverse_name) else {
             return
@@ -1139,6 +1155,37 @@ impl<'db> Inference<'db, '_, '_> {
                 }
             },
         )
+    }
+
+    fn check_inplace_methods(&self, func: Function, inplace_magic_name: &str) {
+        let i_s = self.i_s;
+        let Some(normal_magic_name) = INPLACE_TO_NORMAL_METHODS.get(inplace_magic_name) else {
+            return
+        };
+        let normal_method = func
+            .class
+            .unwrap()
+            .lookup_without_descriptors(i_s, func.node_ref, normal_magic_name)
+            .0;
+        let inplace_method = func
+            .class
+            .unwrap()
+            .lookup_without_descriptors(i_s, func.node_ref, func.name())
+            .0;
+        if !normal_method
+            .into_inferred()
+            .as_cow_type(i_s)
+            .is_simple_super_type_of(i_s, &inplace_method.into_inferred().as_cow_type(i_s))
+            .bool()
+        {
+            func.add_issue_for_declaration(
+                self.i_s,
+                IssueType::SignaturesAreIncompatible {
+                    name1: func.name().into(),
+                    name2: normal_magic_name,
+                },
+            )
+        }
     }
 }
 

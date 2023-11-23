@@ -1115,11 +1115,6 @@ explicitOverrideNotOnOverloadsImplementation
 testOperatorMethodOverrideIntroducingOverloading
 testOverloadedOperatorMethodOverrideWithNewItem
 testUnsafeDunderOverlapInSubclass
-# Signatures of "__ior__" and "__or__" are incompatible
-testGenericOperatorMethodOverlapping
-testGenericOperatorMethodOverlapping2
-testOverlappingNormalAndInplaceOperatorMethod
-testOverloadedNormalAndInplaceOperatorMethod
 # __rmul__ etc. Invalid signature "Callable[[B], A]"
 testReverseOperatorMethodInvalid
 #  Incompatible types in assignment (expression has type "int", base class "BaseS" defined the type as "str")
@@ -2697,6 +2692,10 @@ testErrorCodeUnsafeOverloadError
 
 # Note ""<Foo>.__call__" has type "Callable[[Arg(str, 'x'), VarArg(int)], None]"
 # Curently ignored
+
+# Additional questionable cases of "Signatures of "__ior__" and "__or__" are incompatible"
+testGenericOperatorMethodOverlapping2
+testOverloadedNormalAndInplaceOperatorMethod
 
 # Mypy is probably wrong here, but we might need to revisit
 testConstructorJoinsWithCustomMetaclass
