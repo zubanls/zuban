@@ -1087,6 +1087,11 @@ testClassMethodSubclassing
 testClassStaticMethodSubclassing
 testOverloadClassMethodMixingInheritance
 testOverloadStaticMethodMixingInheritance
+# "Cannot override class variable (previously declared on base class "A") with instance variable"
+testOverrideWithNormalAttribute
+# "Cannot override instance variable (previously declared on base class "A") with class variable"
+testOverrideWithAttributeWithClassVar
+testOverrideClassVarManyBases
 
 # "Signature of "???" incompatible with supertype "???""
 # __hash__ None overrides
@@ -1123,9 +1128,6 @@ testClassOrderOfError
 # Namedtuple bad overwrite of count etc
 testNewNamedTupleIllegalNames
 testNamedTupleIncompatibleRedefinition
-# Signature of __exit__ is wrong
-testWithStmtBoolExitReturnWithResultFalse
-testErrorCode__exit__Return
 # "Definition of "f" in base class "A" is incompatible with definition in base class "B""
 # Defintition mismatch in classes lower than first classes
 testGenericMultipleOverrideReplace
@@ -1134,11 +1136,6 @@ testMultipleInheritanceAndDifferentButCompatibleSignatures
 # with decorator
 testMultipleInheritanceOverridingOfFunctionsWithCallableInstances
 testMixinTypedPropertyReversed
-# "Cannot override class variable (previously declared on base class "A") with instance variable"
-testOverrideWithNormalAttribute
-# "Cannot override instance variable (previously declared on base class "A") with class variable"
-testOverrideWithAttributeWithClassVar
-testOverrideClassVarManyBases
 
 # verify class definitions when setting self
 testInferAttributeTypeAndAssignInInit

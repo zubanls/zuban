@@ -24,8 +24,8 @@ use crate::node_ref::NodeRef;
 use crate::python_state::NAME_TO_FUNCTION_DIFF;
 use crate::type_::{
     AnyCause, CallableContent, CallableParam, CallableParams, DbString, FunctionKind,
-    FunctionOverload, GenericItem, ParamType, TupleTypeArguments, Type, TypeOrTypeVarTuple,
-    TypeVarLike, Variance,
+    FunctionOverload, GenericItem, Literal, LiteralKind, ParamType, TupleTypeArguments, Type,
+    TypeOrTypeVarTuple, TypeVarLike, Variance,
 };
 use crate::type_helpers::{
     is_private, Class, FirstParamProperties, Function, GeneratorType, Instance, TypeOrClass,
@@ -807,22 +807,29 @@ impl<'db> Inference<'db, '_, '_> {
                 .strip_prefix("__")
                 .and_then(|n| n.strip_suffix("__"))
             {
-                // Check reverse magic methods like __rmul__
-                self.check_overlapping_op_methods(function, magic_name);
-                self.check_inplace_methods(function, magic_name);
-
-                if matches!(magic_name, "init" | "init_subclass") {
-                    if let Some(return_annotation) = function.return_annotation() {
-                        if !matches!(function.return_type(i_s).as_ref(), Type::None) {
-                            // __init__ and __init_subclass__ must return None
-                            NodeRef::new(self.file, return_annotation.expression().index())
-                                .add_issue(
-                                    i_s,
-                                    IssueType::MustReturnNone {
-                                        function_name: function.name().into(),
-                                    },
-                                )
+                match magic_name {
+                    "init" | "init_subclass" => {
+                        if let Some(return_annotation) = function.return_annotation() {
+                            if !matches!(function.return_type(i_s).as_ref(), Type::None) {
+                                // __init__ and __init_subclass__ must return None
+                                NodeRef::new(self.file, return_annotation.expression().index())
+                                    .add_issue(
+                                        i_s,
+                                        IssueType::MustReturnNone {
+                                            function_name: function.name().into(),
+                                        },
+                                    )
+                            }
                         }
+                    }
+                    "exit" => {
+                        // Check the return type of __exit__
+                        self.check_magic_exit(function)
+                    }
+                    _ => {
+                        // Check reverse magic methods like __rmul__
+                        self.check_overlapping_op_methods(function, magic_name);
+                        self.check_inplace_methods(function, magic_name);
                     }
                 }
             }
@@ -1219,6 +1226,41 @@ impl<'db> Inference<'db, '_, '_> {
                     name2: normal_magic_name,
                 },
             )
+        }
+    }
+
+    fn check_magic_exit(&mut self, function: Function) {
+        // Check if __exit__ has the return type bool and raise an error if all returns return
+        // False.
+        if !function
+            .return_type(self.i_s)
+            .iter_with_unpacked_unions()
+            .any(|t| t == &self.i_s.db.python_state.bool_type())
+        {
+            return;
+        }
+        let mut had_return = false;
+        for return_or_yield in function.iter_return_or_yield() {
+            let ReturnOrYield::Return(return_) = return_or_yield else {
+                continue
+            };
+            had_return = true;
+            if let Some(star_expressions) = return_.star_expressions() {
+                let inf =
+                    self.infer_star_expressions(star_expressions, &mut ResultContext::Unknown);
+                if !matches!(
+                    inf.as_cow_type(self.i_s).as_ref(),
+                    Type::Literal(Literal {
+                        kind: LiteralKind::Bool(false),
+                        ..
+                    })
+                ) {
+                    return;
+                }
+            }
+        }
+        if had_return {
+            function.add_issue_for_declaration(self.i_s, IssueType::IncorrectExitReturn);
         }
     }
 }

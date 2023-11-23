@@ -168,7 +168,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         Inferred::new_none()
     }
 
-    fn iter_return_or_yield(&self) -> ReturnOrYieldIterator<'a> {
+    pub fn iter_return_or_yield(&self) -> ReturnOrYieldIterator<'a> {
         let def_point = self.node_ref.file.points.get(self.node_ref.node_index + 1);
         let first_return_or_yield = def_point.node_index();
         ReturnOrYieldIterator {
@@ -1307,7 +1307,7 @@ pub enum FirstParamProperties<'a> {
     None,
 }
 
-struct ReturnOrYieldIterator<'a> {
+pub struct ReturnOrYieldIterator<'a> {
     file: &'a PythonFile,
     next_node_index: NodeIndex,
 }
