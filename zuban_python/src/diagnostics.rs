@@ -171,6 +171,7 @@ pub(crate) enum IssueType {
     ArgumentIncompatibleWithSupertype(String),
     MultipleInheritanceIncompatibility { name: Box<str>, class1: Box<str>, class2: Box<str> },
     MissingBaseForOverride { name: Box<str> },
+    InvalidSignature { signature: Box<str> },
     OperatorSignaturesAreUnsafelyOverlapping { reverse_name: Box<str>, reverse_class: Box<str>, forward_class: Box<str> },
     ForwardOperatorIsNotCallable { forward_name: &'static str },
     SignaturesAreIncompatible { name1: Box<str>, name2: &'static str },
@@ -964,6 +965,7 @@ impl<'db> Diagnostic<'db> {
             MissingBaseForOverride { name } => format!(
                 r#"Method "{name}" is marked as an override, but no base method was found with this name"#
             ),
+            InvalidSignature { signature } => format!(r#"Invalid signature "{signature}""#),
             OperatorSignaturesAreUnsafelyOverlapping { reverse_name, reverse_class, forward_class } => {
                 let normal_name = OVERLAPPING_REVERSE_TO_NORMAL_METHODS[reverse_name.as_ref()];
                 format!(r#"Signatures of "__{reverse_name}__" of "{reverse_class}" and "{normal_name}" of "{forward_class}" are unsafely overlapping"#)

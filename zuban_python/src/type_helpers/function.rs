@@ -1338,6 +1338,10 @@ impl<'db: 'x, 'x> FunctionParam<'x> {
             .annotation()
             .map(|annotation| use_cached_annotation_type(i_s.db, self.file, annotation))
     }
+
+    pub fn has_default_or_stars(&self, db: &Database) -> bool {
+        self.has_default() || matches!(self.kind(db), ParamKind::Star | ParamKind::StarStar)
+    }
 }
 
 impl<'x> Param<'x> for FunctionParam<'x> {

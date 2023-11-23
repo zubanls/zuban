@@ -1063,20 +1063,39 @@ impl<'db> Inference<'db, '_, '_> {
             return
         };
 
+        let invalid_signature = || {
+            func.add_issue_for_declaration(
+                i_s,
+                IssueType::InvalidSignature {
+                    signature: func
+                        .as_type(i_s, FirstParamProperties::None)
+                        .format_short(i_s.db),
+                },
+            )
+        };
+
         let from = func.node_ref; // TODO this NodeRef shouldn't be used.
-        let Some(param) = func.iter_params().skip(1).next().or_else(|| {
-            func.iter_params().next().filter(|first_param| {
+        let mut param_iterator = func.iter_params();
+        let first_param = param_iterator.next();
+        let Some(param) = param_iterator.next().or_else(|| {
+            first_param.filter(|first_param| {
                 first_param.kind(i_s.db) == ParamKind::Star
             })
         }) else {
             // If there is param, the signature is invalid and should be checked elsewhere.
-            return
+            return invalid_signature()
         };
+        if param_iterator.any(|param| !param.has_default_or_stars(i_s.db)) {
+            return invalid_signature();
+        }
         let forward_type = match param.specific(i_s.db) {
-            WrappedParamType::PositionalOnly(Some(t))
-            | WrappedParamType::PositionalOrKeyword(Some(t))
-            | WrappedParamType::Star(WrappedStar::ArbitraryLength(Some(t))) => t,
-            _ => return, // Any is always fine and invalid signatures are checked elsewhere.
+            WrappedParamType::PositionalOnly(t)
+            | WrappedParamType::PositionalOrKeyword(t)
+            | WrappedParamType::Star(WrappedStar::ArbitraryLength(t)) => t,
+            _ => return invalid_signature(),
+        };
+        let Some(forward_type) = forward_type else {
+            return  // If the type is Any, we do not need to check.
         };
         forward_type.run_after_lookup_on_each_union_member(
             i_s,

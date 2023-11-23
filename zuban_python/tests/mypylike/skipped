@@ -1115,8 +1115,6 @@ explicitOverrideNotOnOverloadsImplementation
 testOperatorMethodOverrideIntroducingOverloading
 testOverloadedOperatorMethodOverrideWithNewItem
 testUnsafeDunderOverlapInSubclass
-# __rmul__ etc. Invalid signature "Callable[[B], A]"
-testReverseOperatorMethodInvalid
 #  Incompatible types in assignment (expression has type "int", base class "BaseS" defined the type as "str")
 testTypingSelfOverrideVarMulti
 testNamedTupleFallback
