@@ -1156,21 +1156,11 @@ testMultipleAssignmentAndGenericSubtyping
 
 # __init_subclass__
 testOverride__init_subclass__WithDifferentSignature
-# "The return type of "__init_subclass__" must be None"
-testInitSubclassWithReturnValueType
-testInitSubclassWithAnyReturnValueType
-testDecoratedInitSubclassWithAnyReturnValueType
-testOverloadedInitSubclassWithAnyReturnValueType
 testInitSubclassWrongType
 testInitSubclassTooFewArgs
 testInitSubclassTooFewArgs2
-testInitSubclassOK
-testInitSubclassWithMetaclassOK
-testInitSubclassWithCustomMetaclassOK
 testInitSubclassWithImports
-testInitSubclassWithImportsOK
 testInitSubclassUnannotated
-testInitSubclassUnannotatedMulti
 testTooManyArgsForObject
 
 # __getattribute__
@@ -1228,12 +1218,6 @@ testSlotsDefinitionWithTwoPasses2
 testSlotsDefinitionWithTwoPasses3
 testSlotsDefinitionWithTwoPasses4
 
-# "The return type of "__init__" must be None"
-testConstructorWithReturnValueType
-testConstructorWithAnyReturnValueType
-testDecoratedConstructorWithAnyReturnValueType
-testOverloadedConstructorWithAnyReturnValueType
-testErrorCodeUnclassifiedError
 # "Accessing "__init__" on an instance is unsound, since instance.__init__ could be from an incompatible subclass"
 testAccessingInit
 # Decorated constructors

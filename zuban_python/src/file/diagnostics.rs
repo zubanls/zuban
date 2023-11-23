@@ -810,6 +810,21 @@ impl<'db> Inference<'db, '_, '_> {
                 // Check reverse magic methods like __rmul__
                 self.check_overlapping_op_methods(function, magic_name);
                 self.check_inplace_methods(function, magic_name);
+
+                if matches!(magic_name, "init" | "init_subclass") {
+                    if let Some(return_annotation) = function.return_annotation() {
+                        if !matches!(function.return_type(i_s).as_ref(), Type::None) {
+                            // __init__ and __init_subclass__ must return None
+                            NodeRef::new(self.file, return_annotation.expression().index())
+                                .add_issue(
+                                    i_s,
+                                    IssueType::MustReturnNone {
+                                        function_name: function.name().into(),
+                                    },
+                                )
+                        }
+                    }
+                }
             }
         }
     }

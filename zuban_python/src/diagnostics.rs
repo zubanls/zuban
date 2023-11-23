@@ -177,6 +177,7 @@ pub(crate) enum IssueType {
     SignaturesAreIncompatible { name1: Box<str>, name2: &'static str },
     NewMustReturnAnInstance { got: Box<str> },
     NewIncompatibleReturnType { returns: Box<str>, must_return: Box<str> },
+    MustReturnNone { function_name: Box<str> },
     InvalidGetattrSigantureAtModuleLevel { type_: Box<str> },
     GetattributeInvalidAtModuleLevel,
 
@@ -982,6 +983,9 @@ impl<'db> Diagnostic<'db> {
             NewIncompatibleReturnType { returns, must_return } => format!(
                 "Incompatible return type for \"__new__\" (returns \
                  \"{returns}\", but must return a subtype of \"{must_return}\")"
+            ),
+            MustReturnNone { function_name } => format!(
+                r#"The return type of "{function_name}" must be None"#
             ),
             InvalidGetattrSigantureAtModuleLevel { type_ } => format!(
                 r#"Invalid signature "{type_}" for "__getattr__""#
