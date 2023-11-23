@@ -1053,7 +1053,8 @@ impl<'db> Inference<'db, '_, '_> {
                 first_param.kind(i_s.db) == ParamKind::Star
             })
         }) else {
-            todo!()
+            // If there is param, the signature is invalid and should be checked elsewhere.
+            return
         };
         let forward_type = match param.specific(i_s.db) {
             WrappedParamType::PositionalOnly(Some(t))
@@ -1080,7 +1081,9 @@ impl<'db> Inference<'db, '_, '_> {
 
                     // The params must cycle for it to be an unsafe overlap.
                     let Some(reverse_param_type) = callable.first_positional_type() else {
-                        todo!()
+                        // If there is no positional type, the signature is invalid and should be
+                        // checked elsewhere.
+                        return
                     };
                     if !reverse
                         .is_simple_sub_type_of(i_s, &reverse_param_type)
