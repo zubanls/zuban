@@ -56,10 +56,6 @@ testUnpackIterableClassWithOverloadedIter2
 overload_union_math_on_class_init_constrained
 # union math for None vs. TypeVar
 testOverloadDetectsPossibleMatchesWithGenerics
-# overload __new__ variants formatting cls type should be Class not any
-testOverloaded__new__
-testGenericClassInGenericFunctionOverloadedConstructor-skip
-testIOTypes
 # overload *args should be used if a list of never/any is given?
 testOverloadVarargsSelection
 # overload x should be preferred over an *x alternative

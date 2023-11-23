@@ -103,6 +103,12 @@ pub fn create_signature_without_self(
 ) -> Option<CallableContent> {
     match_self_type(i_s, &mut matcher, instance, func_class, first_type)?;
     let mut callable = get_callable();
+
+    // Since self was removed, there is no self without annotation anymore.
+    callable
+        .kind
+        .update_had_first_self_or_class_annotation(true);
+
     if !callable.type_vars.is_empty() {
         let calculated = matcher.unwrap_calculated_type_args();
         callable = Type::replace_type_var_likes_and_self_for_callable(
