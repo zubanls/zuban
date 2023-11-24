@@ -35,30 +35,28 @@ use super::inference::await_;
 use super::on_argument_type_error;
 
 lazy_static::lazy_static! {
-    /* TODO currently unused
-    static ref REVERSE_OP_METHODS: HashMap<&'static str, &'static str> = HashMap::from([
-        ("add", "__radd__"),
-        ("sub", "__rsub__"),
-        ("mul", "__rmul__"),
-        ("truediv", "__rtruediv__"),
-        ("mod", "__rmod__"),
-        ("divmod", "__rdivmod__"),
-        ("floordiv", "__rfloordiv__"),
-        ("pow", "__rpow__"),
-        ("matmul", "__rmatmul__"),
-        ("and", "__rand__"),
-        ("or", "__ror__"),
-        ("xor", "__rxor__"),
-        ("lshift", "__rlshift__"),
-        ("rshift", "__rrshift__"),
-        ("eq", "__eq__"),
-        ("ne", "__ne__"),
-        ("lt", "__gt__"),
-        ("ge", "__le__"),
-        ("gt", "__lt__"),
-        ("le", "__ge__"),
+    static ref FORWARD_OP_METHODS: HashSet<&'static str> = HashSet::from([
+        "__add__",
+        "__sub__",
+        "__mul__",
+        "__truediv__",
+        "__mod__",
+        "__divmod__",
+        "__floordiv__",
+        "__pow__",
+        "__matmul__",
+        "__and__",
+        "__or__",
+        "__xor__",
+        "__lshift__",
+        "__rshift__",
+        "__eq__",
+        "__ne__",
+        "__lt__",
+        "__ge__",
+        "__gt__",
+        "__le__",
     ]);
-    */
     static ref REVERSE_OP_METHODS: HashSet<&'static str> = HashSet::from([
         "radd",
         "rsub",
@@ -1467,12 +1465,27 @@ fn check_override(
             _ => None,
         };
 
-        let match_ = expected.is_super_type_of(
+        let mut match_ = expected.is_super_type_of(
             i_s,
             &mut Matcher::with_ignore_positional_param_names(),
             &got,
         );
 
+        let mut op_method_wider_note = false;
+        if match_.bool()
+            && FORWARD_OP_METHODS.contains(name)
+            && matches!(got.as_ref(), Type::FunctionOverload(_))
+        {
+            let m = expected.is_sub_type_of(
+                i_s,
+                &mut Matcher::with_ignore_positional_param_names(),
+                &got,
+            );
+            if !m.bool() {
+                op_method_wider_note = true;
+                match_ = m;
+            }
+        }
         if !match_.bool() {
             let db = i_s.db;
             let mut emitted = false;
@@ -1609,6 +1622,13 @@ fn check_override(
                     &got,
                     class.lookup(i_s, from, name, kind),
                 );
+
+                if op_method_wider_note {
+                    notes.push(
+                        "Overloaded operator methods can't have wider argument types in overrides"
+                            .into(),
+                    )
+                }
 
                 let issue = IssueType::SignatureIncompatibleWithSupertype {
                     name: name.into(),
