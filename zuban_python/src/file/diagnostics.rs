@@ -1498,11 +1498,11 @@ fn check_override(
                         };
                         let t1 = got_c.erase_func_type_vars_for_type(db, t1);
                         if !t1.is_simple_super_type_of(i_s, &t2).bool() {
-                            let issue = IssueType::ArgumentIncompatibleWithSupertype(format!(
+                            let issue = IssueType::ArgumentIncompatibleWithSupertype { message: format!(
                                 r#"Argument {} of "{name}" is incompatible with supertype "{supertype}"; supertype defines the argument type as "{}""#,
                                 i + 1,
                                 t2.format_short(db),
-                            ));
+                            ).into(), eq_class: (name == "__eq__").then(|| class.name().into()) };
                             match &param1.name {
                                 Some(DbString::StringSlice(s)) if maybe_func().is_some() => {
                                     from.file.add_issue(
