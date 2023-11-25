@@ -227,6 +227,11 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                             _ => return Match::new_false(),
                         }
                     }
+                    WrappedParamType::PositionalOnly(t2)
+                        if matcher.ignore_positional_param_names() =>
+                    {
+                        matches &= match_(i_s, matcher, t1, t2)
+                    }
                     _ => return Match::new_false(),
                 },
                 WrappedParamType::KeywordOnly(t1) => match &specific2 {

@@ -127,11 +127,9 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    pub fn with_ignore_positional_param_names() -> Self {
-        Self {
-            ignore_positional_param_names: true,
-            ..Self::default()
-        }
+    pub fn with_ignore_positional_param_names(mut self) -> Self {
+        self.ignore_positional_param_names = true;
+        self
     }
 
     pub fn ignore_positional_param_names(&self) -> bool {

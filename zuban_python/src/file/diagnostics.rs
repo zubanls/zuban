@@ -513,7 +513,7 @@ impl<'db> Inference<'db, '_, '_> {
                         if !first
                             .is_sub_type_of(
                                 self.i_s,
-                                &mut Matcher::new_class_matcher(self.i_s, c),
+                                &mut Matcher::new_class_matcher(self.i_s, c).with_ignore_positional_param_names(),
                                 &second,
                             )
                             .bool()
@@ -1467,7 +1467,7 @@ fn check_override(
 
         let mut match_ = expected.is_super_type_of(
             i_s,
-            &mut Matcher::with_ignore_positional_param_names(),
+            &mut Matcher::default().with_ignore_positional_param_names(),
             &got,
         );
 

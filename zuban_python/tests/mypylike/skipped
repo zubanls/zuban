@@ -1126,7 +1126,6 @@ testGenericMultipleOverrideReplace
 # method checks (variances) seem to be wrong
 testMultipleInheritanceAndDifferentButCompatibleSignatures
 # with decorator
-testMultipleInheritanceOverridingOfFunctionsWithCallableInstances
 testMixinTypedPropertyReversed
 
 # verify class definitions when setting self
