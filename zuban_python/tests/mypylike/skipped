@@ -159,6 +159,7 @@ testUnpackInExpression2-only_when_nocache
 testCallerVarArgsListWithTypeInference
 # Self is confused. matcher needs to know Self from both sides.
 testOverloadWithDerivedFromAny
+testTypingSelfOverrideVarMulti
 # Any base class now matches everything for union simplification
 testUnionSimplificationSpecialCases2
 # EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
@@ -1068,6 +1069,9 @@ testListObject
 testInheritanceFromGenericWithImplicitDynamic
 testVariableTypeVarList
 testInWithInvalidArgs
+testClassOrderOfError
+# subclass preferred over class for types
+testAddBaseClassAttributeCausingErrorInSubclass
 # Issues with overrides, because of self definitions 
 testVariableSubclassAssignment
 testClassOneErrorPerLine
@@ -1082,6 +1086,10 @@ testOnlyImplementGetterOfReadWriteAbstractProperty
 testReadWriteDeleteAbstractProperty
 explicitOverrideSettableProperty
 testDataclassIncompatibleOverrides
+testMixinTypedPropertyReversed
+# "Property "x" defined in "Base" is read-only"
+testNewNamedTupleMethodInheritance
+testCantImplementAbstractPropertyViaInstanceVariable
 # classmethod/staticmethod Incompatible with superclass
 testClassMethodSubclassing
 testClassStaticMethodSubclassing
@@ -1095,6 +1103,9 @@ testOverrideClassVarManyBases
 # @override  "Method "g" is marked as an override, but no base method was found with this name"
 explicitOverrideOverloads
 explicitOverrideNotOnOverloadsImplementation
+# Self definitions different from parent
+testSelfTypeOverrideCompatibility
+testSelfTypeOverrideCompatibilityGeneric
 
 # "Signature of "???" incompatible with supertype "???""
 # __hash__ None overrides
@@ -1107,37 +1118,18 @@ testOverridingMethodAcrossHierarchy
 testMultipleInheritance_MethodDefinitionsIncompatibleOverride
 testClassIgnoreType_RedefinedAttributeAndGrandparentAttributeTypesNotIgnored
 testMultipleInheritance_NestedVariableOverriddenWithIncompatibleType1
+testGenericMultipleOverrideReplace
 # "This violates the Liskov substitution principle"
 testIntroducingInplaceOperatorInSubclass
-# Self definitions different from parent
-testSelfTypeOverrideCompatibility
-testSelfTypeOverrideCompatibilityGeneric
-#  Incompatible types in assignment (expression has type "int", base class "BaseS" defined the type as "str")
-testTypingSelfOverrideVarMulti
-testNamedTupleFallback
-# Read/Write
-testClassOrderOfError
 # Namedtuple bad overwrite of count etc
 testNewNamedTupleIllegalNames
+testNamedTupleFallback
 testNamedTupleIncompatibleRedefinition
-# "Definition of "f" in base class "A" is incompatible with definition in base class "B""
-# Defintition mismatch in classes lower than first classes
-testGenericMultipleOverrideReplace
-# method checks (variances) seem to be wrong
-testMultipleInheritanceAndDifferentButCompatibleSignatures
-# with decorator
-testMixinTypedPropertyReversed
-
 # verify class definitions when setting self
 testInferAttributeTypeAndAssignInInit
 testTypingSelfInternalSafe
 testTypingSelfClashInBodies
-# "Property "x" defined in "Base" is read-only"
-testNewNamedTupleMethodInheritance
-testCantImplementAbstractPropertyViaInstanceVariable
 
-# subclass preferred over class for types
-testAddBaseClassAttributeCausingErrorInSubclass
 # Dynamic functions are ignored in classes and the super class is used?
 testInferringTypesFromIterable
 testMultipleAssignmentAndGenericSubtyping
