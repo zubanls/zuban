@@ -1472,18 +1472,15 @@ fn check_override(
         );
 
         let mut op_method_wider_note = false;
-        if match_.bool()
-            && FORWARD_OP_METHODS.contains(name)
-            && matches!(got.as_ref(), Type::FunctionOverload(_))
-        {
-            let m = expected.is_sub_type_of(
-                i_s,
-                &mut Matcher::with_ignore_positional_param_names(),
-                &got,
-            );
-            if !m.bool() {
+        if let Type::FunctionOverload(override_overload) = got.as_ref() {
+            if match_.bool()
+                && FORWARD_OP_METHODS.contains(name)
+                && operator_domain_is_widened(i_s, override_overload, &expected)
+            {
+                // Reverse operators lead to weird behavior when overloads widen. If you want to
+                // understand why this is an issue, please look at testUnsafeDunderOverlapInSubclass.
                 op_method_wider_note = true;
-                match_ = m;
+                match_ = Match::new_false();
             }
         }
         if !match_.bool() {
@@ -1688,4 +1685,30 @@ fn override_func_infos<'t1, 't2>(
         _ => (t1.is_func_or_overload() || t2.is_func_or_overload())
             .then_some(OverrideFuncInfos::Mixed),
     }
+}
+
+fn operator_domain_is_widened(
+    i_s: &InferenceState,
+    override_overload: &FunctionOverload,
+    original: &Type,
+) -> bool {
+    override_overload.iter_functions().any(|overload_func| {
+        let widens_callable = |original: &CallableContent| {
+            let Some(original_domain) = original.first_positional_type() else {
+                return false
+            };
+            if let Some(override_domain) = overload_func.first_positional_type() {
+                !original_domain
+                    .is_simple_super_type_of(i_s, &override_domain)
+                    .bool()
+            } else {
+                false
+            }
+        };
+        match original {
+            Type::Callable(c) => widens_callable(c),
+            Type::FunctionOverload(o) => o.iter_functions().all(widens_callable),
+            _ => unreachable!(),
+        }
+    })
 }

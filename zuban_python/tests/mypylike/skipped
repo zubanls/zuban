@@ -1112,9 +1112,6 @@ testIntroducingInplaceOperatorInSubclass
 # Self definitions different from parent
 testSelfTypeOverrideCompatibility
 testSelfTypeOverrideCompatibilityGeneric
-# Overloaded operator methods cannot have wider argument types in overrides
-testReverseOperatorWithOverloads2
-testSafeDunderOverlapInSubclass
 #  Incompatible types in assignment (expression has type "int", base class "BaseS" defined the type as "str")
 testTypingSelfOverrideVarMulti
 testNamedTupleFallback
