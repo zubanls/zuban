@@ -288,6 +288,24 @@ impl<'a> Instance<'a> {
                 }
             }
         }
+        if kind == LookupKind::Normal && super_count == 0 {
+            for method_name in ["__getattr__", "__getattribute__"] {
+                let (defined_in, lookup) =
+                    self.lookup_and_defined_in(i_s, node_ref, method_name, LookupKind::OnlyType);
+                if matches!(defined_in, TypeOrClass::Class(c) if c.node_ref == i_s.db.python_state.object_node_ref())
+                {
+                    // object defines a __getattribute__ that returns Any
+                    continue;
+                }
+                if let Some(inf) = lookup.into_maybe_inferred() {
+                    let result = LookupResult::UnknownName(inf.execute(
+                        i_s,
+                        &KnownArguments::new(&Inferred::new_any(AnyCause::Internal), node_ref),
+                    ));
+                    return (TypeOrClass::Class(self.class), result);
+                }
+            }
+        }
         if self.class.incomplete_mro(i_s.db) {
             (
                 TypeOrClass::Class(self.class),

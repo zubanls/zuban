@@ -598,6 +598,7 @@ testTypingNamedTupleAttributesAreReadOnly
 testPropertyInProtocols
 testSettablePropertyInProtocols
 testNotManyFlagConflitsShownInProtocols
+testClassesGetattrWithProtocols
 # Protocol properties
 testProtocolMethodVsAttributeErrors2
 testMutuallyRecursiveProtocolsTypesWithSubteMismatch
@@ -690,6 +691,10 @@ testOnlyMethodProtocolUsableWithIsSubclass
 testPartialAttributeNoneType
 testPartialAttributeNoneTypeStrictOptional
 testProtocolSlotsAndRuntimeCheckable
+# __getattr__/__getattribute__ issues with protocols
+testModuleAsProtocolImplementationSerialize
+testModuleAsProtocolImplementation
+testModuleAsProtocolImplementationFine
 
 # TypeVarTuple
 testTypeVarTupleMixed
@@ -1129,6 +1134,10 @@ testNamedTupleIncompatibleRedefinition
 testInferAttributeTypeAndAssignInInit
 testTypingSelfInternalSafe
 testTypingSelfClashInBodies
+# __getattribute__
+testGetattributeSignature
+# __getattr__
+testGetattrSignature
 
 # Dynamic functions are ignored in classes and the super class is used?
 testInferringTypesFromIterable
@@ -1142,22 +1151,6 @@ testInitSubclassTooFewArgs2
 testInitSubclassWithImports
 testInitSubclassUnannotated
 testTooManyArgsForObject
-
-# __getattribute__
-testGetattribute
-testDecoratedGetAttribute
-testGetattributeSignature
-
-# __getattr__
-testGetattr
-testDecoratedGetattr
-testGetattrWithCall
-testGetattrSignature
-testIterableUnpackingWithGetAttr
-testProtocolAttrAccessDecoratedGetAttrDunder
-testClassesGetattrWithProtocols
-testModuleLevelGetAttrInStub
-testGetAttrDescriptor
 
 # __setattr__
 testSetattr
