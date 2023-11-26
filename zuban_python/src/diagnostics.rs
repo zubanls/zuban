@@ -39,6 +39,7 @@ pub(crate) enum IssueType {
     YieldValueExpected,
     IncompatibleAssignment { got: Box<str>, expected: Box<str> },
     CannotAssignToClassVarViaInstance { name: Box<str> },
+    AssigningToNameOutsideOfSlots { name: Box<str>, class: Box<str> },
     ListItemMismatch { item: usize, got: Box<str>, expected: Box<str> },
     ListComprehensionMismatch { got: Box<str>, expected: Box<str> },
     SetComprehensionMismatch { got: Box<str>, expected: Box<str> },
@@ -150,7 +151,6 @@ pub(crate) enum IssueType {
     UnpackOnlyValidInVariadicPosition,
     VariadicUnpackMustBeTupleLike { actual: Box<str> },
     UnpackItemInStarStarMustBeTypedDict,
-
 
     InvalidAssertType { actual: Box<str>, wanted: Box<str> },
 
@@ -533,6 +533,9 @@ impl<'db> Diagnostic<'db> {
             }
             CannotAssignToClassVarViaInstance { name } => format!(
                 "Cannot assign to class variable \"{name}\" via instance"
+            ),
+            AssigningToNameOutsideOfSlots { name, class } => format!(
+                r#"Trying to assign name "{name}" that is not in "__slots__" of type "{class}""#
             ),
             ListItemMismatch{item, got, expected} => format!(
                 "List item {item} has incompatible type \"{got}\"; expected \"{expected}\"",

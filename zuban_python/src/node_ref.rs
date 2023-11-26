@@ -203,6 +203,10 @@ impl<'file> NodeRef<'file> {
         ImportFrom::by_index(&self.file.tree, self.node_index)
     }
 
+    pub fn expect_atom(&self) -> Atom<'file> {
+        Atom::by_index(&self.file.tree, self.node_index)
+    }
+
     pub fn expect_class_storage(&self) -> &'file ClassStorage {
         let complex = self
             .complex()

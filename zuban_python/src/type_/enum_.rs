@@ -428,6 +428,7 @@ fn gather_functional_enum_members(
             };
             let expression = ne.expression();
             let name = match expression.maybe_unpacked_atom() {
+                // Enums can be defined like Enum("Foo", [('CYAN', 4), ('MAGENTA', 5)])
                 Some(AtomContent::List(list)) => get_tuple_like(list.unpack())?,
                 Some(AtomContent::Tuple(tup)) => get_tuple_like(tup.iter())?,
                 _ => {

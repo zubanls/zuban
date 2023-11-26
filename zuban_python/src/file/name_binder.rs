@@ -11,11 +11,11 @@ use crate::file::ComplexValues;
 use crate::utils::SymbolTable;
 use parsa_python_ast::{
     AssignmentContentWithSimpleTargets, AssignmentRightSide, AsyncStmtContent, Block, BlockContent,
-    ClassDef, Comprehension, Decoratee, DictComprehension, ExceptExpression, Expression, File,
-    ForIfClause, ForIfClauseIterator, ForStmt, FunctionDef, IfBlockType, IfStmt, ImportFromTargets,
-    InterestingNode, InterestingNodeSearcher, Lambda, MatchStmt, Name, NameDefinition, NameParent,
-    NodeIndex, SimpleStmts, StmtContent, StmtIterator, StmtOrError, Tree, TryBlockType, TryStmt,
-    WhileStmt, WithStmt, YieldExprContent,
+    ClassDef, Comprehension, Decoratee, DictComprehension, ExceptExpression, Expression,
+    ExpressionContent, ExpressionPart, File, ForIfClause, ForIfClauseIterator, ForStmt,
+    FunctionDef, IfBlockType, IfStmt, ImportFromTargets, InterestingNode, InterestingNodeSearcher,
+    Lambda, MatchStmt, Name, NameDefinition, NameParent, NodeIndex, SimpleStmts, StmtContent,
+    StmtIterator, StmtOrError, Tree, TryBlockType, TryStmt, WhileStmt, WithStmt, YieldExprContent,
 };
 
 #[derive(PartialEq, Debug)]
@@ -628,6 +628,20 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             },
         );
         self.unresolved_self_vars.push(class);
+        let mut slots_atom_index = None;
+        if let Some(slots_index) = class_symbol_table.lookup_symbol("__slots__") {
+            if let Some(assignment) =
+                Name::by_index(self.tree, slots_index).maybe_assignment_definition_name()
+            {
+                if let Some((_, _, expr)) = assignment.maybe_simple_type_expression_assignment() {
+                    if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) =
+                        expr.unpack()
+                    {
+                        slots_atom_index = Some(atom.index());
+                    }
+                }
+            }
+        }
         self.complex_points.insert(
             self.points,
             class.index(),
@@ -641,6 +655,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                     _ => unreachable!(),
                 },
                 promote_to: Default::default(),
+                slots_atom_index,
             })),
             Locality::File,
         );

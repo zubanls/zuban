@@ -933,6 +933,7 @@ pub struct ClassStorage {
     pub self_symbol_table: SymbolTable,
     pub parent_scope: ParentScope,
     pub promote_to: Cell<Option<PointLink>>,
+    pub slots_atom_index: Option<NodeIndex>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -1024,11 +1025,11 @@ mod tests {
         use std::mem::size_of;
         assert_eq!(size_of::<ClassGenerics>(), 24);
         assert_eq!(size_of::<UnionType>(), 24);
-        assert_eq!(size_of::<Tuple>(), 40);
+        assert_eq!(size_of::<Tuple>(), 32);
         assert_eq!(size_of::<Type>(), 40); // TODO Would like it to be 32, but ClassGenerics is 24
         assert_eq!(size_of::<ComplexPoint>(), size_of::<Type>());
         assert_eq!(size_of::<ClassStorage>(), 120);
-        assert_eq!(size_of::<ClassInfos>(), 48);
+        assert_eq!(size_of::<ClassInfos>(), 32);
         assert_eq!(size_of::<PointLink>(), 8);
         assert_eq!(size_of::<StringSlice>(), 12);
     }

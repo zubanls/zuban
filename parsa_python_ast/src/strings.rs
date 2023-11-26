@@ -94,6 +94,14 @@ impl<'db> PythonString<'db> {
             Self::FString => Self::FString,
         }
     }
+
+    pub fn as_str(&self) -> Option<&str> {
+        match self {
+            Self::Ref(_, s) => Some(s),
+            Self::String(_, s) => Some(s),
+            Self::FString => None,
+        }
+    }
 }
 
 fn parse_hex<'x, I: Iterator<Item = (usize, &'x u8)>>(count: usize, iterator: I) -> char {

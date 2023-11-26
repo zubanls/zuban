@@ -842,21 +842,22 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         is_definition: bool,
         save: impl FnOnce(NodeIndex),
     ) {
+        let i_s = self.i_s;
         match target {
             Target::Name(name_def) => {
                 let current_index = name_def.name_index();
                 if let Some(first_index) = first_defined_name(self.file, current_index) {
                     if current_index != first_index {
                         let inferred = self.infer_name_by_index(first_index);
-                        inferred.as_cow_type(self.i_s).error_if_not_matches(
-                            self.i_s,
+                        inferred.as_cow_type(i_s).error_if_not_matches(
+                            i_s,
                             value,
                             |got, expected| {
                                 from.add_issue(
-                                    self.i_s,
+                                    i_s,
                                     IssueType::IncompatibleAssignment { got, expected },
                                 );
-                                from.to_db_lifetime(self.i_s.db)
+                                from.to_db_lifetime(i_s.db)
                             },
                         );
                         return;
@@ -866,10 +867,16 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
             Target::NameExpression(primary_target, name_definition) => {
                 let base = self.infer_primary_target_or_atom(primary_target.first());
-                if base.maybe_saved_specific(self.i_s.db) == Some(Specific::MaybeSelfParam) {
+                if base.maybe_saved_specific(i_s.db) == Some(Specific::MaybeSelfParam) {
                     // TODO we should probably check if we are in a staticmethod/classmethod
+                    let PrimaryContent::Attribute(name) = primary_target.second() else {
+                        unreachable!();
+                    };
+                    // TODO The class should ALWAYS exist, this is just a bug at the moment.
+                    if let Some(class) = i_s.current_class() {
+                        class.instance().check_slots(i_s, from, name.as_str());
+                    }
                 } else {
-                    let i_s = self.i_s;
                     if is_definition {
                         self.add_issue(primary_target.index(), IssueType::InvalidTypeDeclaration);
                     }
@@ -938,7 +945,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     &mut ResultContext::Unknown,
                                     &|t| {
                                         add_attribute_error(
-                                            self.i_s,
+                                            i_s,
                                             node_ref,
                                             &base,
                                             t,
@@ -970,7 +977,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     unreachable!();
                 };
                 base.type_check_set_item(
-                    self.i_s,
+                    i_s,
                     SliceType::new(self.file, primary_target.index(), slice_type),
                     value,
                 )

@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::rc::Rc;
 
-use parsa_python_ast::Name;
+use parsa_python_ast::{AtomContent, DictElement, Name};
 
 use super::class::TypeOrClass;
 use super::{Class, MroIterator};
@@ -13,9 +13,13 @@ use crate::file::{on_argument_type_error, File};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{add_attribute_error, Inferred};
-use crate::matching::{IteratorContent, LookupKind, LookupResult, OnTypeError, ResultContext};
+use crate::matching::{
+    FormatData, IteratorContent, LookupKind, LookupResult, OnTypeError, ResultContext,
+};
 use crate::node_ref::NodeRef;
-use crate::type_::{AnyCause, CallableLike, FunctionKind, GenericClass, Type, TypeVarKind};
+use crate::type_::{
+    AnyCause, CallableLike, FormatStyle, FunctionKind, GenericClass, Type, TypeVarKind,
+};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Instance<'a> {
@@ -44,33 +48,33 @@ impl<'a> Instance<'a> {
         name: Name,
         value: &Inferred,
     ) {
+        let name_str = name.as_str();
         let property_is_read_only = |class_name| {
             from.add_issue(
                 i_s,
                 IssueType::PropertyIsReadOnly {
                     class_name,
-                    property_name: name.as_str().into(),
+                    property_name: name_str.into(),
                 },
             );
         };
         let cached_class_infos = self.class.use_cached_class_infos(i_s.db);
         if let Some(nt) = cached_class_infos.maybe_named_tuple() {
-            if nt.search_param(i_s.db, name.as_code()).is_some() {
+            if nt.search_param(i_s.db, name_str).is_some() {
                 property_is_read_only(nt.name(i_s.db).into());
                 return;
             }
         }
         let check_compatible = |t: &Type, value: &_| {
+            self.check_slots(i_s, from, name_str);
             t.error_if_not_matches(i_s, value, |got, expected| {
                 from.add_issue(i_s, IssueType::IncompatibleAssignment { got, expected });
                 from.to_db_lifetime(i_s.db)
             });
         };
 
-        let (result, class) = self
-            .class
-            .lookup_without_descriptors(i_s, from, name.as_str());
-        let result = result.or_else(|| self.lookup(i_s, from, name.as_str(), LookupKind::Normal));
+        let (result, class) = self.class.lookup_without_descriptors(i_s, from, name_str);
+        let result = result.or_else(|| self.lookup(i_s, from, name_str, LookupKind::Normal));
         let Some(inf) = result.into_maybe_inferred() else {
             let t = self.class.as_type(i_s.db);
             let (defined_in, lookup) = self.lookup_and_defined_in(i_s, from, "__setattr__", LookupKind::OnlyType);
@@ -96,7 +100,7 @@ impl<'a> Instance<'a> {
                 from,
                 &t,
                 &t,
-                name.as_code(),
+                name_str,
             );
             return
         };
@@ -104,7 +108,7 @@ impl<'a> Instance<'a> {
             from.add_issue(
                 i_s,
                 IssueType::CannotAssignToClassVarViaInstance {
-                    name: name.as_str().into(),
+                    name: name_str.into(),
                 },
             );
         }
@@ -159,6 +163,28 @@ impl<'a> Instance<'a> {
 
             check_compatible(t, value)
         }
+    }
+
+    pub fn check_slots(&self, i_s: &InferenceState, from: NodeRef, name: &str) {
+        let storage = &self.class.class_storage;
+        let Some(slots_atom_index) = storage.slots_atom_index else {
+            return
+        };
+        if is_in_slots(
+            NodeRef::new(self.class.node_ref.file, slots_atom_index),
+            name,
+        ) {
+            return;
+        }
+        from.add_issue(
+            i_s,
+            IssueType::AssigningToNameOutsideOfSlots {
+                name: name.into(),
+                class: self
+                    .class
+                    .format(&FormatData::with_style(i_s.db, FormatStyle::Qualified)),
+            },
+        )
     }
 
     pub fn bind_dunder_get(
@@ -620,4 +646,31 @@ fn get_relevant_type_for_super(db: &Database, t: &Type) -> Type {
         return get_relevant_type_for_super(db, bound);
     }
     t.clone()
+}
+
+fn is_in_slots(slots_atom_node_ref: NodeRef, name: &str) -> bool {
+    match slots_atom_node_ref.expect_atom().unpack() {
+        AtomContent::Dict(dict) => {
+            for dict_element in dict.iter_elements() {
+                match dict_element {
+                    DictElement::KeyValue(key_value) => {
+                        let Some(s) = key_value.key().maybe_single_string_literal() else {
+                            return true
+                        };
+                        let string = s.as_python_string();
+                        let Some(s) = string.as_str() else  {
+                            return true;
+                        };
+                        if s == name {
+                            return true;
+                        }
+                    }
+                    DictElement::Star(_) => todo!(),
+                }
+            }
+            false
+        }
+        // Invalid __slots__ will be checked elsewhere.
+        _ => true,
+    }
 }
