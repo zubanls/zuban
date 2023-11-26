@@ -83,12 +83,12 @@ impl<'a> Instance<'a> {
                         Some(CallableLike::Callable(c)) => {
                             if let Some(second) = c.second_positional_type() {
                                 check_compatible(&second, value);
+                                return;
                             }
                         }
                         Some(CallableLike::Overload(_)) => todo!(),
                         None => (),
                     };
-                    return;
                 }
             }
             add_attribute_error(

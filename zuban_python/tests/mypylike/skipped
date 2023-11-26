@@ -1130,15 +1130,11 @@ testIntroducingInplaceOperatorInSubclass
 testNewNamedTupleIllegalNames
 testNamedTupleFallback
 testNamedTupleIncompatibleRedefinition
-# verify class definitions when setting self
+
+# verify class definitions when setting self.foo
 testInferAttributeTypeAndAssignInInit
 testTypingSelfInternalSafe
 testTypingSelfClashInBodies
-# __getattribute__
-testGetattributeSignature
-# __setattr__
-testSetattrSignature
-testSetattr
 
 # Dynamic functions are ignored in classes and the super class is used?
 testInferringTypesFromIterable
