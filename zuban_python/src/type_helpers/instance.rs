@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::rc::Rc;
 
-use parsa_python_ast::{AtomContent, DictElement, Name};
+use parsa_python_ast::{AtomContent, DictElement, Expression, Name, StarLikeExpression};
 
 use super::class::TypeOrClass;
 use super::{Class, MroIterator};
@@ -649,23 +649,43 @@ fn get_relevant_type_for_super(db: &Database, t: &Type) -> Type {
 }
 
 fn is_in_slots(slots_atom_node_ref: NodeRef, name: &str) -> bool {
+    let check_expr = |expr: Expression| {
+        let Some(s) = expr.maybe_single_string_literal() else {
+            return true
+        };
+        let string = s.as_python_string();
+        let Some(s) = string.as_str() else  {
+            return true;
+        };
+        if s == name {
+            return true;
+        }
+        false
+    };
     match slots_atom_node_ref.expect_atom().unpack() {
         AtomContent::Dict(dict) => {
             for dict_element in dict.iter_elements() {
                 match dict_element {
                     DictElement::KeyValue(key_value) => {
-                        let Some(s) = key_value.key().maybe_single_string_literal() else {
-                            return true
-                        };
-                        let string = s.as_python_string();
-                        let Some(s) = string.as_str() else  {
-                            return true;
-                        };
-                        if s == name {
+                        if check_expr(key_value.key()) {
                             return true;
                         }
                     }
                     DictElement::Star(_) => return true,
+                }
+            }
+            false
+        }
+        AtomContent::Set(set) => {
+            for element in set.unpack() {
+                let result = match element {
+                    StarLikeExpression::Expression(expr) => check_expr(expr),
+                    StarLikeExpression::NamedExpression(n) => check_expr(n.expression()),
+                    StarLikeExpression::StarNamedExpression(_)
+                    | StarLikeExpression::StarExpression(_) => todo!(),
+                };
+                if result {
+                    return true;
                 }
             }
             false

@@ -1157,7 +1157,6 @@ testSlotsSerialization
 testProtocolSlotsIsNotProtocolMember
 testInvalidSlots
 testSlotsDefinitionWithStrAndListAndTuple
-testSlotsDefinitionWithSet
 testSlotsDefinitionWithClassVar
 testSlotsAssignmentEmptySlots
 testSlotsAssignmentWithSuper
