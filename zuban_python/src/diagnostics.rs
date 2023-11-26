@@ -179,7 +179,7 @@ pub(crate) enum IssueType {
     NewIncompatibleReturnType { returns: Box<str>, must_return: Box<str> },
     MustReturnNone { function_name: Box<str> },
     IncorrectExitReturn,
-    InvalidGetattrSignature { type_: Box<str> },
+    InvalidSpecialMethodSignature { type_: Box<str>, special_method: &'static str },
     GetattributeInvalidAtModuleLevel,
 
     BaseExceptionExpected,
@@ -1001,8 +1001,8 @@ impl<'db> Diagnostic<'db> {
                 additional_notes.push(r#"If return type of "__exit__" implies that it may return True, the context manager may swallow exceptions"#.to_string());
                 r#""bool" is invalid as return type for "__exit__" that always returns False"#.to_owned()
             }
-            InvalidGetattrSignature { type_ } => format!(
-                r#"Invalid signature "{type_}" for "__getattr__""#
+            InvalidSpecialMethodSignature { type_, special_method } => format!(
+                r#"Invalid signature "{type_}" for "{special_method}""#
             ),
             GetattributeInvalidAtModuleLevel =>
                 "__getattribute__ is not valid at the module level".to_string(),

@@ -142,8 +142,9 @@ impl<'db> Inference<'db, '_, '_> {
             {
                 NodeRef::new(self.file, index).add_issue(
                     self.i_s,
-                    IssueType::InvalidGetattrSignature {
+                    IssueType::InvalidSpecialMethodSignature {
                         type_: actual.format_short(self.i_s.db),
+                        special_method: "__getattr__",
                     },
                 )
             }
@@ -828,8 +829,9 @@ impl<'db> Inference<'db, '_, '_> {
                         {
                             function.add_issue_for_declaration(
                                 self.i_s,
-                                IssueType::InvalidGetattrSignature {
+                                IssueType::InvalidSpecialMethodSignature {
                                     type_: func_type.format_short(self.i_s.db),
+                                    special_method: "__getattr__",
                                 },
                             )
                         }
