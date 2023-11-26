@@ -662,7 +662,22 @@ fn is_in_slots(slots_atom_node_ref: NodeRef, name: &str) -> bool {
         }
         false
     };
-    match slots_atom_node_ref.expect_atom().unpack() {
+    let check_expressions = |expressions| {
+        for element in expressions {
+            let result = match element {
+                StarLikeExpression::Expression(expr) => check_expr(expr),
+                StarLikeExpression::NamedExpression(n) => check_expr(n.expression()),
+                StarLikeExpression::StarNamedExpression(_)
+                | StarLikeExpression::StarExpression(_) => todo!(),
+            };
+            if result {
+                return true;
+            }
+        }
+        false
+    };
+    let atom = slots_atom_node_ref.expect_atom();
+    match atom.unpack() {
         AtomContent::Dict(dict) => {
             for dict_element in dict.iter_elements() {
                 match dict_element {
@@ -676,19 +691,17 @@ fn is_in_slots(slots_atom_node_ref: NodeRef, name: &str) -> bool {
             }
             false
         }
-        AtomContent::Set(set) => {
-            for element in set.unpack() {
-                let result = match element {
-                    StarLikeExpression::Expression(expr) => check_expr(expr),
-                    StarLikeExpression::NamedExpression(n) => check_expr(n.expression()),
-                    StarLikeExpression::StarNamedExpression(_)
-                    | StarLikeExpression::StarExpression(_) => todo!(),
-                };
-                if result {
-                    return true;
-                }
+        AtomContent::Tuple(set) => check_expressions(set.iter()),
+        AtomContent::List(list) => check_expressions(list.unpack()),
+        AtomContent::Set(tuple) => check_expressions(tuple.unpack()),
+        AtomContent::Strings(s) => {
+            if name.chars().count() != 1 {
+                return false;
             }
-            false
+            match s.as_python_string().as_str() {
+                Some(s) => s.contains(name),
+                None => true,
+            }
         }
         // Invalid __slots__ will be checked elsewhere.
         _ => true,
