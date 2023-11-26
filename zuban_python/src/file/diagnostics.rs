@@ -6,8 +6,7 @@ use parsa_python_ast::*;
 
 use crate::arguments::{CombinedArguments, KnownArguments, NoArguments};
 use crate::database::{
-    ClassKind, ComplexPoint, Locality, OverloadImplementation, Point, PointLink, PointType,
-    Specific,
+    ClassKind, ComplexPoint, Locality, OverloadImplementation, Point, PointType, Specific,
 };
 use crate::debug;
 use crate::diagnostics::{Issue, IssueType};
@@ -23,9 +22,9 @@ use crate::matching::{
 use crate::node_ref::NodeRef;
 use crate::python_state::NAME_TO_FUNCTION_DIFF;
 use crate::type_::{
-    AnyCause, CallableContent, CallableParam, CallableParams, DbString, FunctionKind,
-    FunctionOverload, GenericItem, Literal, LiteralKind, ParamType, TupleTypeArguments, Type,
-    TypeOrTypeVarTuple, TypeVarLike, Variance,
+    AnyCause, CallableContent, CallableParams, DbString, FunctionKind, FunctionOverload,
+    GenericItem, Literal, LiteralKind, TupleTypeArguments, Type, TypeOrTypeVarTuple, TypeVarLike,
+    Variance,
 };
 use crate::type_helpers::{
     is_private, Class, FirstParamProperties, Function, GeneratorType, Instance, TypeOrClass,
@@ -131,28 +130,20 @@ impl<'db> Inference<'db, '_, '_> {
                 .add_issue(self.i_s, IssueType::GetattributeInvalidAtModuleLevel)
         }
         if let Some(index) = self.file.symbol_table.lookup_symbol("__getattr__") {
-            let expected = Type::Callable(Rc::new(CallableContent {
-                name: None,
-                class_name: None,
-                defined_at: PointLink::new(self.file_index, index),
-                kind: FunctionKind::Function {
-                    had_first_self_or_class_annotation: true,
-                },
-                type_vars: self.i_s.db.python_state.empty_type_var_likes.clone(),
-                params: CallableParams::Simple(Rc::new([CallableParam::new_anonymous(
-                    ParamType::PositionalOnly(self.i_s.db.python_state.str_type()),
-                )])),
-                return_type: Type::Any(AnyCause::Internal),
-            }));
             let actual = self.infer_name_by_index(index);
-            if !expected
-                .is_simple_super_type_of(self.i_s, &actual.as_cow_type(self.i_s))
+            let actual = actual.as_cow_type(self.i_s);
+            let Type::Callable(callable) = &self.i_s.db.python_state.valid_getattr_supertype else {
+                unreachable!();
+            };
+
+            if !Type::Callable(Rc::new(callable.remove_first_param().unwrap()))
+                .is_simple_super_type_of(self.i_s, &actual)
                 .bool()
             {
                 NodeRef::new(self.file, index).add_issue(
                     self.i_s,
-                    IssueType::InvalidGetattrSigantureAtModuleLevel {
-                        type_: actual.format_short(self.i_s),
+                    IssueType::InvalidGetattrSignature {
+                        type_: actual.format_short(self.i_s.db),
                     },
                 )
             }
@@ -799,12 +790,12 @@ impl<'db> Inference<'db, '_, '_> {
             }
         }
 
-        if class.is_some() {
-            if let Some(magic_name) = name
-                .as_code()
-                .strip_prefix("__")
-                .and_then(|n| n.strip_suffix("__"))
-            {
+        if let Some(magic_name) = name
+            .as_code()
+            .strip_prefix("__")
+            .and_then(|n| n.strip_suffix("__"))
+        {
+            if class.is_some() {
                 match magic_name {
                     "init" | "init_subclass" => {
                         if let Some(return_annotation) = function.return_annotation() {
@@ -823,6 +814,25 @@ impl<'db> Inference<'db, '_, '_> {
                     "exit" => {
                         // Check the return type of __exit__
                         self.check_magic_exit(function)
+                    }
+                    "getattr" => {
+                        let func_type = function.as_type(self.i_s, FirstParamProperties::None);
+                        if !self
+                            .i_s
+                            .db
+                            .python_state
+                            .valid_getattr_supertype
+                            .clone()
+                            .is_simple_super_type_of(self.i_s, &func_type)
+                            .bool()
+                        {
+                            function.add_issue_for_declaration(
+                                self.i_s,
+                                IssueType::InvalidGetattrSignature {
+                                    type_: func_type.format_short(self.i_s.db),
+                                },
+                            )
+                        }
                     }
                     _ => {
                         // Check reverse magic methods like __rmul__

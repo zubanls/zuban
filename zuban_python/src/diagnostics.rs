@@ -179,7 +179,7 @@ pub(crate) enum IssueType {
     NewIncompatibleReturnType { returns: Box<str>, must_return: Box<str> },
     MustReturnNone { function_name: Box<str> },
     IncorrectExitReturn,
-    InvalidGetattrSigantureAtModuleLevel { type_: Box<str> },
+    InvalidGetattrSignature { type_: Box<str> },
     GetattributeInvalidAtModuleLevel,
 
     BaseExceptionExpected,
@@ -1001,7 +1001,7 @@ impl<'db> Diagnostic<'db> {
                 additional_notes.push(r#"If return type of "__exit__" implies that it may return True, the context manager may swallow exceptions"#.to_string());
                 r#""bool" is invalid as return type for "__exit__" that always returns False"#.to_owned()
             }
-            InvalidGetattrSigantureAtModuleLevel { type_ } => format!(
+            InvalidGetattrSignature { type_ } => format!(
                 r#"Invalid signature "{type_}" for "__getattr__""#
             ),
             GetattributeInvalidAtModuleLevel =>

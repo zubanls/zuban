@@ -3,7 +3,7 @@ use std::ptr::null;
 use std::rc::Rc;
 
 use crate::database::{
-    BaseClass, ComplexPoint, Database, Locality, Point, PointLink, PointType, Specific,
+    BaseClass, ComplexPoint, Database, FileIndex, Locality, Point, PointLink, PointType, Specific,
 };
 use crate::file::File;
 use crate::file::PythonFile;
@@ -11,8 +11,8 @@ use crate::inferred::Inferred;
 use crate::matching::Generics;
 use crate::node_ref::NodeRef;
 use crate::type_::{
-    dataclasses_replace, AnyCause, CallableContent, ClassGenerics, CustomBehavior, LiteralKind,
-    Tuple, Type, TypeVarLikes,
+    dataclasses_replace, AnyCause, CallableContent, CallableParam, CallableParams, ClassGenerics,
+    CustomBehavior, FunctionKind, LiteralKind, ParamType, Tuple, Type, TypeVarLikes,
 };
 use crate::type_helpers::{Class, Function, Instance};
 use crate::{new_class, InferenceState};
@@ -140,6 +140,7 @@ pub struct PythonState {
     pub any_callable_from_error: Rc<CallableContent>,
     pub generator_with_any_generics: Type,
     pub async_generator_with_any_generics: Type,
+    pub valid_getattr_supertype: Type,
     pub empty_type_var_likes: TypeVarLikes,
     pub dataclass_fields_type: Type,
 }
@@ -238,6 +239,7 @@ impl PythonState {
             )),
             generator_with_any_generics: Type::None, // Will be set later
             async_generator_with_any_generics: Type::None, // Will be set later
+            valid_getattr_supertype: Type::None,     // Will be set later
             empty_type_var_likes,
             dataclass_fields_type: Type::None, // Will be set later
         }
@@ -490,6 +492,22 @@ impl PythonState {
             Type::Any(AnyCause::Internal),
             Type::Any(AnyCause::Internal),
         );
+        s.valid_getattr_supertype = Type::Callable(Rc::new(CallableContent {
+            name: None,
+            class_name: None,
+            defined_at: PointLink::new(FileIndex(0), 0),
+            kind: FunctionKind::Function {
+                had_first_self_or_class_annotation: true,
+            },
+            type_vars: s.empty_type_var_likes.clone(),
+            params: CallableParams::Simple(Rc::new([
+                CallableParam::new_anonymous(ParamType::PositionalOnly(Type::Any(
+                    AnyCause::Internal,
+                ))),
+                CallableParam::new_anonymous(ParamType::PositionalOnly(s.str_type())),
+            ])),
+            return_type: Type::Any(AnyCause::Internal),
+        }));
 
         // Set promotions
         s.int()

@@ -1136,8 +1136,6 @@ testTypingSelfInternalSafe
 testTypingSelfClashInBodies
 # __getattribute__
 testGetattributeSignature
-# __getattr__
-testGetattrSignature
 # __setattr__
 testSetattrSignature
 testSetattr
