@@ -665,7 +665,7 @@ fn is_in_slots(slots_atom_node_ref: NodeRef, name: &str) -> bool {
                             return true;
                         }
                     }
-                    DictElement::Star(_) => todo!(),
+                    DictElement::Star(_) => return true,
                 }
             }
             false
