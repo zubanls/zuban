@@ -4,9 +4,10 @@ use std::fmt;
 use std::rc::Rc;
 
 use parsa_python_ast::{
-    Argument, Arguments as ASTArguments, AssignmentContent, AsyncStmtContent, BlockContent,
-    ClassDef, Decoratee, ExpressionContent, ExpressionPart, PrimaryContent, SimpleStmtContent,
-    SimpleStmts, StmtContent, StmtOrError, Target,
+    Argument, Arguments as ASTArguments, AssignmentContent, AsyncStmtContent, AtomContent,
+    BlockContent, ClassDef, Decoratee, DictElement, Expression, ExpressionContent, ExpressionPart,
+    PrimaryContent, SimpleStmtContent, SimpleStmts, StarLikeExpression, StmtContent, StmtOrError,
+    Target,
 };
 
 use super::overload::OverloadResult;
@@ -1691,6 +1692,29 @@ impl<'db: 'a, 'a> Class<'a> {
                 matches!(result_context, ResultContext::AssignmentNewDefinition),
             )
     }
+
+    pub fn check_slots(&self, i_s: &InferenceState, from: NodeRef, name: &str) {
+        for (_, type_or_class) in self.mro_maybe_without_object(i_s.db, true) {
+            match type_or_class {
+                TypeOrClass::Type(_) => (),
+                TypeOrClass::Class(class) => {
+                    let Some(slots_atom_index) = class.class_storage.slots_atom_index else {
+                        return
+                    };
+                    if is_in_slots(NodeRef::new(class.node_ref.file, slots_atom_index), name) {
+                        return;
+                    }
+                }
+            }
+        }
+        from.add_issue(
+            i_s,
+            IssueType::AssigningToNameOutsideOfSlots {
+                name: name.into(),
+                class: self.format(&FormatData::with_style(i_s.db, FormatStyle::Qualified)),
+            },
+        )
+    }
 }
 
 impl fmt::Debug for Class<'_> {
@@ -2210,4 +2234,64 @@ pub fn start_namedtuple_params(db: &Database) -> Vec<CallableParam> {
         has_default: false,
         name: None,
     }]
+}
+
+fn is_in_slots(slots_atom_node_ref: NodeRef, name: &str) -> bool {
+    let check_expr = |expr: Expression| {
+        let Some(s) = expr.maybe_single_string_literal() else {
+            return true
+        };
+        let string = s.as_python_string();
+        let Some(s) = string.as_str() else  {
+            return true;
+        };
+        if s == name {
+            return true;
+        }
+        false
+    };
+    let check_expressions = |expressions| {
+        for element in expressions {
+            let result = match element {
+                StarLikeExpression::Expression(expr) => check_expr(expr),
+                StarLikeExpression::NamedExpression(n) => check_expr(n.expression()),
+                StarLikeExpression::StarNamedExpression(_)
+                | StarLikeExpression::StarExpression(_) => todo!(),
+            };
+            if result {
+                return true;
+            }
+        }
+        false
+    };
+    let atom = slots_atom_node_ref.expect_atom();
+    match atom.unpack() {
+        AtomContent::Dict(dict) => {
+            for dict_element in dict.iter_elements() {
+                match dict_element {
+                    DictElement::KeyValue(key_value) => {
+                        if check_expr(key_value.key()) {
+                            return true;
+                        }
+                    }
+                    DictElement::Star(_) => return true,
+                }
+            }
+            false
+        }
+        AtomContent::Tuple(set) => check_expressions(set.iter()),
+        AtomContent::List(list) => check_expressions(list.unpack()),
+        AtomContent::Set(tuple) => check_expressions(tuple.unpack()),
+        AtomContent::Strings(s) => {
+            if name.chars().count() != 1 {
+                return false;
+            }
+            match s.as_python_string().as_str() {
+                Some(s) => s.contains(name),
+                None => true,
+            }
+        }
+        // Invalid __slots__ will be checked elsewhere.
+        _ => true,
+    }
 }

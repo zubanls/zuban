@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::rc::Rc;
 
-use parsa_python_ast::{AtomContent, DictElement, Expression, Name, StarLikeExpression};
+use parsa_python_ast::Name;
 
 use super::class::TypeOrClass;
 use super::{Class, MroIterator};
@@ -13,13 +13,9 @@ use crate::file::{on_argument_type_error, File};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{add_attribute_error, Inferred};
-use crate::matching::{
-    FormatData, IteratorContent, LookupKind, LookupResult, OnTypeError, ResultContext,
-};
+use crate::matching::{IteratorContent, LookupKind, LookupResult, OnTypeError, ResultContext};
 use crate::node_ref::NodeRef;
-use crate::type_::{
-    AnyCause, CallableLike, FormatStyle, FunctionKind, GenericClass, Type, TypeVarKind,
-};
+use crate::type_::{AnyCause, CallableLike, FunctionKind, GenericClass, Type, TypeVarKind};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Instance<'a> {
@@ -66,7 +62,7 @@ impl<'a> Instance<'a> {
             }
         }
         let check_compatible = |t: &Type, value: &_| {
-            self.check_slots(i_s, from, name_str);
+            self.class.check_slots(i_s, from, name_str);
             t.error_if_not_matches(i_s, value, |got, expected| {
                 from.add_issue(i_s, IssueType::IncompatibleAssignment { got, expected });
                 from.to_db_lifetime(i_s.db)
@@ -163,28 +159,6 @@ impl<'a> Instance<'a> {
 
             check_compatible(t, value)
         }
-    }
-
-    pub fn check_slots(&self, i_s: &InferenceState, from: NodeRef, name: &str) {
-        let storage = &self.class.class_storage;
-        let Some(slots_atom_index) = storage.slots_atom_index else {
-            return
-        };
-        if is_in_slots(
-            NodeRef::new(self.class.node_ref.file, slots_atom_index),
-            name,
-        ) {
-            return;
-        }
-        from.add_issue(
-            i_s,
-            IssueType::AssigningToNameOutsideOfSlots {
-                name: name.into(),
-                class: self
-                    .class
-                    .format(&FormatData::with_style(i_s.db, FormatStyle::Qualified)),
-            },
-        )
     }
 
     pub fn bind_dunder_get(
@@ -646,64 +620,4 @@ fn get_relevant_type_for_super(db: &Database, t: &Type) -> Type {
         return get_relevant_type_for_super(db, bound);
     }
     t.clone()
-}
-
-fn is_in_slots(slots_atom_node_ref: NodeRef, name: &str) -> bool {
-    let check_expr = |expr: Expression| {
-        let Some(s) = expr.maybe_single_string_literal() else {
-            return true
-        };
-        let string = s.as_python_string();
-        let Some(s) = string.as_str() else  {
-            return true;
-        };
-        if s == name {
-            return true;
-        }
-        false
-    };
-    let check_expressions = |expressions| {
-        for element in expressions {
-            let result = match element {
-                StarLikeExpression::Expression(expr) => check_expr(expr),
-                StarLikeExpression::NamedExpression(n) => check_expr(n.expression()),
-                StarLikeExpression::StarNamedExpression(_)
-                | StarLikeExpression::StarExpression(_) => todo!(),
-            };
-            if result {
-                return true;
-            }
-        }
-        false
-    };
-    let atom = slots_atom_node_ref.expect_atom();
-    match atom.unpack() {
-        AtomContent::Dict(dict) => {
-            for dict_element in dict.iter_elements() {
-                match dict_element {
-                    DictElement::KeyValue(key_value) => {
-                        if check_expr(key_value.key()) {
-                            return true;
-                        }
-                    }
-                    DictElement::Star(_) => return true,
-                }
-            }
-            false
-        }
-        AtomContent::Tuple(set) => check_expressions(set.iter()),
-        AtomContent::List(list) => check_expressions(list.unpack()),
-        AtomContent::Set(tuple) => check_expressions(tuple.unpack()),
-        AtomContent::Strings(s) => {
-            if name.chars().count() != 1 {
-                return false;
-            }
-            match s.as_python_string().as_str() {
-                Some(s) => s.contains(name),
-                None => true,
-            }
-        }
-        // Invalid __slots__ will be checked elsewhere.
-        _ => true,
-    }
 }
