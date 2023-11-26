@@ -15,7 +15,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{add_attribute_error, Inferred};
 use crate::matching::{IteratorContent, LookupKind, LookupResult, OnTypeError, ResultContext};
 use crate::node_ref::NodeRef;
-use crate::type_::{AnyCause, FunctionKind, GenericClass, Type, TypeVarKind};
+use crate::type_::{AnyCause, CallableLike, FunctionKind, GenericClass, Type, TypeVarKind};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Instance<'a> {
@@ -60,12 +60,37 @@ impl<'a> Instance<'a> {
                 return;
             }
         }
+        let check_compatible = |t: &Type, value: &_| {
+            t.error_if_not_matches(i_s, value, |got, expected| {
+                from.add_issue(i_s, IssueType::IncompatibleAssignment { got, expected });
+                from.to_db_lifetime(i_s.db)
+            });
+        };
+
         let (result, class) = self
             .class
             .lookup_without_descriptors(i_s, from, name.as_str());
         let result = result.or_else(|| self.lookup(i_s, from, name.as_str(), LookupKind::Normal));
         let Some(inf) = result.into_maybe_inferred() else {
             let t = self.class.as_type(i_s.db);
+            let (defined_in, lookup) = self.lookup_and_defined_in(i_s, from, "__setattr__", LookupKind::OnlyType);
+            if let Some(setattr) = lookup.into_maybe_inferred() {
+                // object defines a __getattribute__ that returns Any
+                if !defined_in.is_object(i_s.db) {
+                    // If it's not a callable with the correct signature, diagnostics will be raised
+                    // elsewhere.
+                    match setattr.as_cow_type(i_s).maybe_callable(i_s) {
+                        Some(CallableLike::Callable(c)) => {
+                            if let Some(second) = c.second_positional_type() {
+                                check_compatible(&second, value);
+                            }
+                        }
+                        Some(CallableLike::Overload(_)) => todo!(),
+                        None => (),
+                    };
+                    return;
+                }
+            }
             add_attribute_error(
                 i_s,
                 from,
@@ -83,13 +108,6 @@ impl<'a> Instance<'a> {
                 },
             );
         }
-
-        let check_compatible = |t: &Type, value: &_| {
-            t.error_if_not_matches(i_s, value, |got, expected| {
-                from.add_issue(i_s, IssueType::IncompatibleAssignment { got, expected });
-                from.to_db_lifetime(i_s.db)
-            });
-        };
 
         for t in inf.as_cow_type(i_s).iter_with_unpacked_unions() {
             match t {
@@ -292,8 +310,7 @@ impl<'a> Instance<'a> {
             for method_name in ["__getattr__", "__getattribute__"] {
                 let (defined_in, lookup) =
                     self.lookup_and_defined_in(i_s, node_ref, method_name, LookupKind::OnlyType);
-                if matches!(defined_in, TypeOrClass::Class(c) if c.node_ref == i_s.db.python_state.object_node_ref())
-                {
+                if defined_in.is_object(i_s.db) {
                     // object defines a __getattribute__ that returns Any
                     continue;
                 }

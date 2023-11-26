@@ -411,6 +411,29 @@ impl CallableContent {
         }
     }
 
+    pub fn second_positional_type(&self) -> Option<Type> {
+        match &self.params {
+            CallableParams::Simple(params) => {
+                let mut iterator = params.iter();
+                if let Some(first) = iterator.next() {
+                    if let ParamType::Star(StarParamType::ArbitraryLength(t)) = &first.type_ {
+                        return Some(t.clone());
+                    }
+                }
+                iterator.next().and_then(|second| match &second.type_ {
+                    ParamType::PositionalOnly(t)
+                    | ParamType::PositionalOrKeyword(t)
+                    | ParamType::Star(StarParamType::ArbitraryLength(t)) => Some(t.clone()),
+                    _ => None,
+                })
+            }
+            CallableParams::WithParamSpec(pre, usage) => {
+                todo!()
+            }
+            CallableParams::Any(cause) => Some(Type::Any(*cause)),
+        }
+    }
+
     pub fn has_exactly_one_positional_parameter(&self) -> Option<WrongPositionalCount> {
         match &self.params {
             CallableParams::Simple(params) => match params.len() {

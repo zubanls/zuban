@@ -1909,6 +1909,10 @@ impl<'a> TypeOrClass<'a> {
             },
         }
     }
+
+    pub fn is_object(&self, db: &Database) -> bool {
+        matches!(self, TypeOrClass::Class(c) if c.node_ref == db.python_state.object_node_ref())
+    }
 }
 
 impl<'db: 'a, 'a> Iterator for MroIterator<'db, 'a> {
