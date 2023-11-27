@@ -1111,6 +1111,9 @@ explicitOverrideNotOnOverloadsImplementation
 # Self definitions different from parent
 testSelfTypeOverrideCompatibility
 testSelfTypeOverrideCompatibilityGeneric
+# "Cannot assign to a method" should not error
+testDataclassCallableFieldAssignment
+testDataclassesCallableFrozen
 
 # "Signature of "???" incompatible with supertype "???""
 # __hash__ None overrides
@@ -1174,12 +1177,6 @@ testAccessingInit
 testDecoratedConstructors
 # "Unsupported decorated constructor type"
 testDecoratedConstructorsBad
-
-# "Cannot assign to a method"
-testAssignToMethodViaInstance
-testAssignClassMethodOnInstance
-testAssignStaticMethodOnInstance
-testNewAnalyzerNoCrashOnCustomProperty
 
 # "Cannot assign to a type"
 testAssignToNestedClassViaClass

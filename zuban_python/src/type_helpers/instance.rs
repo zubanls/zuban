@@ -153,10 +153,7 @@ impl<'a> Instance<'a> {
                     }
                     continue;
                 }
-                Type::Callable(c) => {
-                    // TODO enable
-                    //from.add_issue(i_s, IssueType::CannotAssignToAMethod)
-                }
+                Type::Callable(c) => from.add_issue(i_s, IssueType::CannotAssignToAMethod),
                 _ => {}
             }
 
