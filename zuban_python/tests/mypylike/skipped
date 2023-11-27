@@ -1158,7 +1158,6 @@ testInvalidSlots
 testSlotsAssignmentWithUnionProps
 testSlotsAssignmentWithExplicitSetattr
 testSlotsAssignmentWithParentSetattr
-testSlotsAssignmentWithProps
 testSlotsAssignmentWithMethodReassign
 testSlotsWithClassVar
 # dataclasses __slots__

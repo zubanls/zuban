@@ -62,7 +62,6 @@ impl<'a> Instance<'a> {
             }
         }
         let check_compatible = |t: &Type, value: &_| {
-            self.class.check_slots(i_s, from, name_str);
             t.error_if_not_matches(i_s, value, |got, expected| {
                 from.add_issue(i_s, IssueType::IncompatibleAssignment { got, expected });
                 from.to_db_lifetime(i_s.db)
@@ -157,6 +156,9 @@ impl<'a> Instance<'a> {
                 _ => {}
             }
 
+            if !matches!(t, Type::Any(_)) {
+                self.class.check_slots(i_s, from, name_str);
+            }
             check_compatible(t, value)
         }
     }
