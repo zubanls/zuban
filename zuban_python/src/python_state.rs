@@ -141,6 +141,7 @@ pub struct PythonState {
     pub generator_with_any_generics: Type,
     pub async_generator_with_any_generics: Type,
     pub valid_getattr_supertype: Type,
+    pub iterable_of_str: Type,
     pub empty_type_var_likes: TypeVarLikes,
     pub dataclass_fields_type: Type,
 }
@@ -240,6 +241,7 @@ impl PythonState {
             generator_with_any_generics: Type::None, // Will be set later
             async_generator_with_any_generics: Type::None, // Will be set later
             valid_getattr_supertype: Type::None,     // Will be set later
+            iterable_of_str: Type::None,             // Will be set later
             empty_type_var_likes,
             dataclass_fields_type: Type::None, // Will be set later
         }
@@ -508,6 +510,7 @@ impl PythonState {
             ])),
             return_type: Type::Any(AnyCause::Internal),
         }));
+        s.iterable_of_str = new_class!(s.iterable_link(), s.str_type(),);
 
         // Set promotions
         s.int()

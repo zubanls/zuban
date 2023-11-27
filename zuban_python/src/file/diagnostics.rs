@@ -575,6 +575,25 @@ impl<'db> Inference<'db, '_, '_> {
                 check_override(self.i_s, node_ref, c, name, has_override_decorator)
             }
         }
+        if let Some(node_index) = c
+            .class_storage
+            .class_symbol_table
+            .lookup_symbol("__slots__")
+        {
+            let inf = self.infer_name_by_index(node_index);
+            let t = inf.as_cow_type(&i_s);
+            if !t
+                .is_simple_sub_type_of(&i_s, &i_s.db.python_state.iterable_of_str)
+                .bool()
+            {
+                NodeRef::new(self.file, node_index).add_issue(
+                    &i_s,
+                    IssueType::InvalidSlotsDefinition {
+                        actual: t.format_short(i_s.db),
+                    },
+                )
+            }
+        }
     }
 
     fn calc_function_diagnostics(&mut self, f: FunctionDef, class: Option<Class>) {

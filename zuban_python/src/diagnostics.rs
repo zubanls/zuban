@@ -182,6 +182,7 @@ pub(crate) enum IssueType {
     IncorrectExitReturn,
     InvalidSpecialMethodSignature { type_: Box<str>, special_method: &'static str },
     GetattributeInvalidAtModuleLevel,
+    InvalidSlotsDefinition { actual: Box<str> },
 
     BaseExceptionExpected,
     BaseExceptionExpectedForRaise,
@@ -1013,6 +1014,9 @@ impl<'db> Diagnostic<'db> {
             ),
             GetattributeInvalidAtModuleLevel =>
                 "__getattribute__ is not valid at the module level".to_string(),
+            InvalidSlotsDefinition { actual } => format!(
+                r#"Invalid type for "__slots__" (actual type "{actual}", expected type "str | Iterable[str]")"#
+            ),
 
             BaseExceptionExpected =>
                 "Exception type must be derived from BaseException (or be a \

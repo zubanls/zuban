@@ -695,6 +695,8 @@ testProtocolSlotsAndRuntimeCheckable
 testModuleAsProtocolImplementationSerialize
 testModuleAsProtocolImplementation
 testModuleAsProtocolImplementationFine
+# __slots__
+testProtocolSlotsIsNotProtocolMember
 
 # TypeVarTuple
 testTypeVarTupleMixed
@@ -1156,8 +1158,6 @@ testTooManyArgsForObject
 testGetattrAndSetattr
 
 # __slots__
-testProtocolSlotsIsNotProtocolMember
-testInvalidSlots
 testSlotsAssignmentWithUnionProps
 testSlotsAssignmentWithExplicitSetattr
 testSlotsAssignmentWithParentSetattr
