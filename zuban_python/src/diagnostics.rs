@@ -39,6 +39,7 @@ pub(crate) enum IssueType {
     YieldValueExpected,
     IncompatibleAssignment { got: Box<str>, expected: Box<str> },
     CannotAssignToClassVarViaInstance { name: Box<str> },
+    CannotAssignToAMethod,
     AssigningToNameOutsideOfSlots { name: Box<str>, class: Box<str> },
     ListItemMismatch { item: usize, got: Box<str>, expected: Box<str> },
     ListComprehensionMismatch { got: Box<str>, expected: Box<str> },
@@ -534,6 +535,7 @@ impl<'db> Diagnostic<'db> {
             CannotAssignToClassVarViaInstance { name } => format!(
                 "Cannot assign to class variable \"{name}\" via instance"
             ),
+            CannotAssignToAMethod => "Cannot assign to a method".to_owned(),
             AssigningToNameOutsideOfSlots { name, class } => format!(
                 r#"Trying to assign name "{name}" that is not in "__slots__" of type "{class}""#
             ),
