@@ -2245,7 +2245,7 @@ fn is_in_slots(slots_atom_node_ref: NodeRef, name: &str) -> bool {
         let Some(s) = string.as_str() else  {
             return true;
         };
-        if s == name {
+        if s == name || s == "__dict__" {
             return true;
         }
         false
