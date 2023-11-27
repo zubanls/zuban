@@ -935,6 +935,15 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 )
                                 .0
                                 .into_maybe_inferred()
+                                .map(|inf| {
+                                    if matches!(
+                                        inf.as_cow_type(i_s).as_ref(),
+                                        Type::Callable(_) | Type::FunctionOverload(_)
+                                    ) {
+                                        from.add_issue(i_s, IssueType::CannotAssignToAMethod);
+                                    }
+                                    inf
+                                })
                             })
                             .unwrap_or_else(|| {
                                 t.lookup(

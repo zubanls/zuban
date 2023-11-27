@@ -327,6 +327,7 @@ impl IssueType {
             | IncompatibleAssignment { .. }
             | IncompatibleAssignmentInSubclass { .. }
             | InvalidSetItemTarget { .. } => "assignment",
+            CannotAssignToAMethod => "method-assign",
             InvalidGetItem { .. } | NotIndexable { .. } | UnsupportedSetItemTarget(_) => "index",
             TypeVarInReturnButNotArgument
             | TypeVarCovariantInParamType
@@ -380,6 +381,7 @@ impl IssueType {
         use IssueType::*;
         match &self {
             TypedDictExtraKey { .. } | TypedDictHasNoKey { .. } => Some("typeddict-item"),
+            CannotAssignToAMethod => Some("assignment"),
             _ => None,
         }
     }
