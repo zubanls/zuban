@@ -1159,8 +1159,6 @@ testGetattrAndSetattr
 
 # __slots__
 testSlotsAssignmentWithUnionProps
-testSlotsAssignmentWithExplicitSetattr
-testSlotsAssignmentWithParentSetattr
 testSlotsAssignmentWithMethodReassign
 testSlotsWithClassVar
 # dataclasses __slots__

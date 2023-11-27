@@ -1701,6 +1701,9 @@ impl<'db: 'a, 'a> Class<'a> {
                     let Some(slots_atom_index) = class.class_storage.slots_atom_index else {
                         return
                     };
+                    if class.lookup_symbol(i_s, "__setattr__").is_some() {
+                        return;
+                    }
                     if is_in_slots(NodeRef::new(class.node_ref.file, slots_atom_index), name) {
                         return;
                     }
