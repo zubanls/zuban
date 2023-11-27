@@ -1707,6 +1707,17 @@ impl<'db: 'a, 'a> Class<'a> {
                     if is_in_slots(NodeRef::new(class.node_ref.file, slots_atom_index), name) {
                         return;
                     }
+                    if let Some(on_class) = class.lookup_symbol(i_s, name).into_maybe_inferred() {
+                        if matches!(
+                            on_class
+                                .as_cow_type(&i_s.with_class_context(&class))
+                                .as_ref(),
+                            Type::Callable(_) | Type::FunctionOverload(_)
+                        ) {
+                            // Adds IssueType::CannotAssignToAMethod in other places.
+                            return;
+                        }
+                    }
                 }
             }
         }
