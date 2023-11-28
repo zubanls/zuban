@@ -1,4 +1,4 @@
-use std::{cell::OnceCell, rc::Rc};
+use std::{cell::OnceCell, iter::repeat_with, rc::Rc};
 
 use parsa_python_ast::{
     AssignmentContent, AssignmentRightSide, ExpressionContent, ExpressionPart, ParamKind,
@@ -660,6 +660,19 @@ pub fn lookup_on_dataclass_type(
     }
     if self_.options.order && ORDER_METHOD_NAMES.contains(&name) && kind == LookupKind::Normal {
         return order_func(self_, i_s, true);
+    }
+    if name == "__slots__" && self_.options.slots {
+        return LookupResult::UnknownName(Inferred::from_type(Type::Tuple(Rc::new(
+            Tuple::new_fixed_length(
+                repeat_with(|| TypeOrTypeVarTuple::Type(i_s.db.python_state.str_type()))
+                    .take(
+                        dataclass_init_func(&self_, i_s.db)
+                            .expect_simple_params()
+                            .len(),
+                    )
+                    .collect(),
+            ),
+        ))));
     }
     self_.class(i_s.db).lookup(i_s, from, name, kind)
 }

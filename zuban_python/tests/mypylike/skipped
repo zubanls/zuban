@@ -372,6 +372,8 @@ testPostInitIsNotAFunction
 testPostInitClassMethod
 testPostInitStaticMethod
 testDataclassesInitVarNoOverride
+# dataclasses __slots__
+testDataclassWithSlotsArg
 # dataclass classmethod
 testDataclassesClassmethods
 testClassmethodShadowingFieldDoesNotCrash
@@ -1156,13 +1158,6 @@ testTooManyArgsForObject
 
 # __setattr__ and __getattr__
 testGetattrAndSetattr
-
-# dataclasses __slots__
-testDataclassWithSlotsArg
-testDataclassWithSlotsArgBefore310
-testDataclassWithSlotsRuntimeAttr
-testSlotsDefinitionWithTwoPasses2
-testSlotsDefinitionWithTwoPasses3
 
 # "Accessing "__init__" on an instance is unsound, since instance.__init__ could be from an incompatible subclass"
 testAccessingInit
@@ -2800,6 +2795,7 @@ testDataclassWithMatchArgsOldVersion
 
 # Won't support list/dict/tuple "is not subscriptable" (python <3.10)
 testNoSubscriptionOfBuiltinAliases
+testDataclassWithSlotsArgBefore310
 
 # Won't support --disable-recursive-aliases
 testNewAnalyzerAliasToNotReadyDirectBase
