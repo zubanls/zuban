@@ -1159,7 +1159,6 @@ testGetattrAndSetattr
 
 # dataclasses __slots__
 testDataclassWithSlotsArg
-testDataclassWithSlotsConflict
 testDataclassWithSlotsArgBefore310
 testDataclassWithSlotsRuntimeAttr
 testSlotsDefinitionWithTwoPasses2

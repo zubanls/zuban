@@ -358,6 +358,15 @@ impl<'db: 'a, 'a> Class<'a> {
                     dataclass_options,
                 );
                 was_dataclass = Some(dataclass.clone());
+                let class = dataclass.class(i_s.db);
+                if dataclass.options.slots && class.lookup_symbol(i_s, "__slots__").is_some() {
+                    class.node_ref.add_issue(
+                        i_s,
+                        IssueType::DataclassPlusExplicitSlots {
+                            class_name: class.name().into(),
+                        },
+                    )
+                }
                 let new_t = Type::Type(Rc::new(Type::Dataclass(dataclass)));
                 Inferred::from_type(new_t).save_redirect(i_s, name_def.file, name_def.node_index);
             }

@@ -282,6 +282,7 @@ pub(crate) enum IssueType {
     DataclassContainsTypeAlias,
     DataclassUnpackingKwargsInField,
     DataclassAttributeMayOnlyBeOverriddenByAnotherAttribute,
+    DataclassPlusExplicitSlots { class_name: Box<str> },
 
     // From --disallow-untyped-defs
     FunctionIsDynamic,
@@ -723,6 +724,9 @@ impl<'db> Diagnostic<'db> {
                 r#"Unpacking **kwargs in "field()" is not supported"#.to_string(),
             DataclassAttributeMayOnlyBeOverriddenByAnotherAttribute =>
                 "Dataclass attribute may only be overridden by another attribute".to_string(),
+            DataclassPlusExplicitSlots { class_name } => format!(
+                r#""{class_name}" both defines "__slots__" and is used with "slots=True""#
+            ),
 
             FunctionIsDynamic => "Function is missing a type annotation".to_string(),
             FunctionMissingReturnAnnotation =>
