@@ -147,6 +147,7 @@ pub(crate) enum IssueType {
     UsedWithANonMethod { name: &'static str },
     UnexpectedComprehension,
     AmbigousClassVariableAccess,
+    SlotsConflictWithClassVariableAccess { name: Box<str> },
     CannotInstantiateProtocol { name: Box<str> },
     UnpackRequiresExactlyOneArgument,
     UnpackOnlyValidInVariadicPosition,
@@ -909,6 +910,9 @@ impl<'db> Diagnostic<'db> {
             UnexpectedComprehension => "Unexpected comprehension".to_string(),
             AmbigousClassVariableAccess =>
                 "Access to generic instance variables via class is ambiguous".to_string(),
+            SlotsConflictWithClassVariableAccess { name } => format!(
+                r#""{name}" in __slots__ conflicts with class variable access"#
+            ),
             CannotInstantiateProtocol{name} => format!(
                 "Cannot instantiate protocol class \"{name}\""
             ),

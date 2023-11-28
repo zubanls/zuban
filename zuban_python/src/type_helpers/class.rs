@@ -550,6 +550,7 @@ impl<'db: 'a, 'a> Class<'a> {
         let mut had_new_typed_dict = false;
         let mut is_new_named_tuple = false;
         let mut metaclass = MetaclassState::None;
+        let mut has_slots = self.class_storage.slots.is_some();
         let arguments = self.node().arguments();
         if let Some(arguments) = arguments {
             // Check metaclass before checking all the arguments, because it has a preference over
@@ -708,6 +709,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                     } else {
                                         let cached_class_infos = class.use_cached_class_infos(db);
                                         incomplete_mro |= cached_class_infos.incomplete_mro;
+                                        has_slots |= cached_class_infos.has_slots;
                                         Self::update_metaclass(
                                             i_s,
                                             NodeRef::new(self.node_ref.file, n.index()),
@@ -859,6 +861,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 metaclass,
                 incomplete_mro,
                 class_kind,
+                has_slots,
             }),
             was_typed_dict,
         )
@@ -1196,6 +1199,16 @@ impl<'db: 'a, 'a> Class<'a> {
                 self.lookup_and_class_and_maybe_ignore_self_internal(i_s, name, ignore_self);
             let result = lookup_result.and_then(|inf| {
                 if let Some(in_class) = in_class {
+                    if class_infos.has_slots {
+                        if self.in_slots(i_s.db, name) {
+                            node_ref.add_issue(
+                                i_s,
+                                IssueType::SlotsConflictWithClassVariableAccess {
+                                    name: name.into(),
+                                },
+                            )
+                        }
+                    }
                     let i_s = i_s.with_class_context(&in_class);
                     inf.bind_class_descriptors(&i_s, self, in_class, node_ref, use_descriptors)
                 } else {
@@ -1690,6 +1703,25 @@ impl<'db: 'a, 'a> Class<'a> {
                 *slice_type,
                 matches!(result_context, ResultContext::AssignmentNewDefinition),
             )
+    }
+
+    pub fn in_slots(&self, db: &Database, name: &str) -> bool {
+        for (_, type_or_class) in self.mro_maybe_without_object(db, true) {
+            match type_or_class {
+                TypeOrClass::Type(_) => (),
+                TypeOrClass::Class(class) => {
+                    if let Some(slots) = &class.class_storage.slots {
+                        if slots.iter().any(|slot| {
+                            let s = slot.as_str(db);
+                            s == name || s == "__dict__"
+                        }) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        false
     }
 
     pub fn check_slots(&self, i_s: &InferenceState, from: NodeRef, name: &str) {

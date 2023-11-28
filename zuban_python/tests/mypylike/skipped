@@ -1160,7 +1160,6 @@ testGetattrAndSetattr
 # __slots__
 testSlotsAssignmentWithUnionProps
 testSlotsAssignmentWithMethodReassign
-testSlotsWithClassVar
 # dataclasses __slots__
 testDataclassWithSlotsArg
 testDataclassWithSlotsConflict
