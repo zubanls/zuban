@@ -579,7 +579,7 @@ impl<'db> Inference<'db, '_, '_> {
                     }
                 }
 
-                check_override(self.i_s, node_ref, c, name, has_override_decorator)
+                find_and_check_override(self.i_s, node_ref, c, name, has_override_decorator)
             }
         }
         if let Some(node_index) = c
@@ -1476,209 +1476,220 @@ fn is_overload_unmatchable(
     matches!(result, Match::True { with_any: false })
 }
 
-fn check_override(
+fn find_and_check_override(
     i_s: &InferenceState,
     from: NodeRef,
     class: Class,
     name: &str,
     has_override_decorator: bool,
 ) {
-    let kind = LookupKind::Normal;
     let instance = Instance::new(class, None);
     let (defined_in, result) =
-        instance.lookup_and_maybe_ignore_super_count(i_s, from, name, kind, 1);
+        instance.lookup_and_maybe_ignore_super_count(i_s, from, name, LookupKind::Normal, 1);
     if let Some(inf) = result.into_maybe_inferred() {
         let expected = inf.as_cow_type(i_s);
         let got = instance.full_lookup(i_s, from, name).into_inferred();
         let got = got.as_cow_type(i_s);
-
-        let maybe_func = || match got.as_ref() {
-            Type::Callable(c) if c.defined_at.file == from.file_index() => {
-                let node_ref = NodeRef::from_link(i_s.db, c.defined_at);
-                node_ref
-                    .maybe_function()
-                    .map(|func| Function::new(node_ref, None))
-                    .filter(|func| func.node().name_definition().index() == from.node_index)
-            }
-            _ => None,
-        };
-
-        let mut match_ = expected.is_super_type_of(
-            i_s,
-            &mut Matcher::default().with_ignore_positional_param_names(),
-            &got,
-        );
-
-        let mut op_method_wider_note = false;
-        if let Type::FunctionOverload(override_overload) = got.as_ref() {
-            if match_.bool()
-                && FORWARD_OP_METHODS.contains(name)
-                && operator_domain_is_widened(i_s, override_overload, &expected)
-            {
-                // Reverse operators lead to weird behavior when overloads widen. If you want to
-                // understand why this is an issue, please look at testUnsafeDunderOverlapInSubclass.
-                op_method_wider_note = true;
-                match_ = Match::new_false();
-            }
-        }
-        if !match_.bool() {
-            let db = i_s.db;
-            let mut emitted = false;
-            // Mypy helps the user a bit by formatting different error messages for similar
-            // signatures. Try to make this as similar as possible to Mypy.
-            match override_func_infos(&got, &expected) {
-                Some(OverrideFuncInfos::CallablesSameParamLength(got_c, expected_c)) => {
-                    let supertype = defined_in.name(db);
-
-                    // First check params
-                    let CallableParams::Simple(params1) = &got_c.params else {
-                        unreachable!()
-                    };
-                    let CallableParams::Simple(params2) = &expected_c.params else {
-                        unreachable!()
-                    };
-                    for (i, (param1, param2)) in params1.iter().zip(params2.iter()).enumerate() {
-                        let Some(t1) = param1.type_.maybe_type() else {
-                            continue;
-                        };
-                        let Some(t2) = param2.type_.maybe_type() else {
-                            continue;
-                        };
-                        let t1 = got_c.erase_func_type_vars_for_type(db, t1);
-                        if !t1.is_simple_super_type_of(i_s, &t2).bool() {
-                            let issue = IssueType::ArgumentIncompatibleWithSupertype { message: format!(
-                                r#"Argument {} of "{name}" is incompatible with supertype "{supertype}"; supertype defines the argument type as "{}""#,
-                                i + 1,
-                                t2.format_short(db),
-                            ).into(), eq_class: (name == "__eq__").then(|| class.name().into()) };
-                            match &param1.name {
-                                Some(DbString::StringSlice(s)) if maybe_func().is_some() => {
-                                    from.file.add_issue(
-                                        i_s,
-                                        Issue {
-                                            type_: issue,
-                                            start_position: s.start,
-                                            end_position: s.end,
-                                        },
-                                    );
-                                }
-                                _ => from.add_issue(i_s, issue),
-                            }
-                            emitted = true;
-                        }
-                    }
-
-                    // Then the return type
-                    let got_ret = got_c.erase_func_type_vars_for_type(db, &got_c.return_type);
-                    let expected_ret =
-                        expected_c.erase_func_type_vars_for_type(db, &expected_c.return_type);
-                    if !got_c
-                        .return_type
-                        .is_simple_sub_type_of(i_s, &expected_c.return_type)
-                        .bool()
-                    {
-                        let mut async_note = None;
-                        if is_async_iterator_without_async(i_s, &expected_ret, &got_ret) {
-                            async_note = Some(format!(r#"Consider declaring "{name}" in supertype "{supertype}" without "async""#).into())
-                        }
-
-                        let issue = IssueType::ReturnTypeIncompatibleWithSupertype {
-                            message: format!(
-                                r#"Return type "{}" of "{name}" incompatible with return type "{}" in supertype "{supertype}""#,
-                                got_ret.format_short(db),
-                                expected_ret.format_short(db),
-                            ),
-                            async_note,
-                        };
-                        if let Some(func) = maybe_func() {
-                            func.add_issue_for_declaration(i_s, issue)
-                        } else {
-                            from.add_issue(i_s, issue);
-                        }
-                        emitted = true
-                    }
-                }
-                Some(OverrideFuncInfos::Mixed) => (),
-                Some(OverrideFuncInfos::BothOverloads(got, expected)) => {
-                    let mut previous_match_right_index = 0;
-                    'outer: for c1 in expected.iter_functions() {
-                        for (right_index, c2) in got.iter_functions().enumerate() {
-                            let m = Type::matches_callable(i_s, &mut Matcher::default(), c1, c2);
-                            if m.bool() {
-                                if previous_match_right_index <= right_index {
-                                    previous_match_right_index = right_index;
-                                    continue 'outer;
-                                } else {
-                                    emitted = true;
-                                    from.add_issue(
-                                        i_s,
-                                        IssueType::OverloadOrderMustMatchSupertype {
-                                            name: name.into(),
-                                            base_class: defined_in.name(db).into(),
-                                        },
-                                    );
-                                    break 'outer;
-                                }
-                            }
-                        }
-                        break;
-                    }
-                }
-                None => {
-                    emitted = true;
-                    from.add_issue(
-                        i_s,
-                        IssueType::IncompatibleAssignmentInSubclass {
-                            got: got.format_short(i_s.db),
-                            expected: expected.format_short(i_s.db),
-                            base_class: defined_in.name(i_s.db).into(),
-                        },
-                    )
-                }
-            }
-            if !emitted {
-                let mut notes = vec![];
-                notes.push("     Superclass:".into());
-                try_pretty_format(
-                    &mut notes,
-                    &i_s.with_class_context(&match defined_in {
-                        TypeOrClass::Class(c) => c,
-                        TypeOrClass::Type(_) => class,
-                    }),
-                    &expected,
-                    class
-                        .lookup_and_class_and_maybe_ignore_self(i_s, from, name, kind, true)
-                        .0,
-                );
-                notes.push("     Subclass:".into());
-                try_pretty_format(
-                    &mut notes,
-                    &i_s.with_class_context(&class),
-                    &got,
-                    class.lookup(i_s, from, name, kind),
-                );
-
-                if op_method_wider_note {
-                    notes.push(
-                        "Overloaded operator methods can't have wider argument types in overrides"
-                            .into(),
-                    )
-                }
-
-                let issue = IssueType::SignatureIncompatibleWithSupertype {
-                    name: name.into(),
-                    base_class: defined_in.name(i_s.db).into(),
-                    notes: notes.into(),
-                };
-                if let Some(func) = maybe_func() {
-                    func.add_issue_for_declaration(i_s, issue)
-                } else {
-                    from.add_issue(i_s, issue)
-                }
-            }
-        }
+        check_override(i_s, from, defined_in, class, name, &got, &expected)
     } else if has_override_decorator {
         from.add_issue(i_s, IssueType::MissingBaseForOverride { name: name.into() });
+    }
+}
+
+fn check_override(
+    i_s: &InferenceState,
+    from: NodeRef,
+    defined_in: TypeOrClass,
+    class: Class,
+    name: &str,
+    got: &Type,
+    expected: &Type,
+) {
+    let kind = LookupKind::Normal;
+    let maybe_func = || match got {
+        Type::Callable(c) if c.defined_at.file == from.file_index() => {
+            let node_ref = NodeRef::from_link(i_s.db, c.defined_at);
+            node_ref
+                .maybe_function()
+                .map(|func| Function::new(node_ref, None))
+                .filter(|func| func.node().name_definition().index() == from.node_index)
+        }
+        _ => None,
+    };
+
+    let mut match_ = expected.is_super_type_of(
+        i_s,
+        &mut Matcher::default().with_ignore_positional_param_names(),
+        &got,
+    );
+
+    let mut op_method_wider_note = false;
+    if let Type::FunctionOverload(override_overload) = got {
+        if match_.bool()
+            && FORWARD_OP_METHODS.contains(name)
+            && operator_domain_is_widened(i_s, override_overload, &expected)
+        {
+            // Reverse operators lead to weird behavior when overloads widen. If you want to
+            // understand why this is an issue, please look at testUnsafeDunderOverlapInSubclass.
+            op_method_wider_note = true;
+            match_ = Match::new_false();
+        }
+    }
+    if !match_.bool() {
+        let db = i_s.db;
+        let mut emitted = false;
+        // Mypy helps the user a bit by formatting different error messages for similar
+        // signatures. Try to make this as similar as possible to Mypy.
+        match override_func_infos(&got, &expected) {
+            Some(OverrideFuncInfos::CallablesSameParamLength(got_c, expected_c)) => {
+                let supertype = defined_in.name(db);
+
+                // First check params
+                let CallableParams::Simple(params1) = &got_c.params else {
+                    unreachable!()
+                };
+                let CallableParams::Simple(params2) = &expected_c.params else {
+                    unreachable!()
+                };
+                for (i, (param1, param2)) in params1.iter().zip(params2.iter()).enumerate() {
+                    let Some(t1) = param1.type_.maybe_type() else {
+                        continue;
+                    };
+                    let Some(t2) = param2.type_.maybe_type() else {
+                        continue;
+                    };
+                    let t1 = got_c.erase_func_type_vars_for_type(db, t1);
+                    if !t1.is_simple_super_type_of(i_s, &t2).bool() {
+                        let issue = IssueType::ArgumentIncompatibleWithSupertype { message: format!(
+                            r#"Argument {} of "{name}" is incompatible with supertype "{supertype}"; supertype defines the argument type as "{}""#,
+                            i + 1,
+                            t2.format_short(db),
+                        ).into(), eq_class: (name == "__eq__").then(|| class.name().into()) };
+                        match &param1.name {
+                            Some(DbString::StringSlice(s)) if maybe_func().is_some() => {
+                                from.file.add_issue(
+                                    i_s,
+                                    Issue {
+                                        type_: issue,
+                                        start_position: s.start,
+                                        end_position: s.end,
+                                    },
+                                );
+                            }
+                            _ => from.add_issue(i_s, issue),
+                        }
+                        emitted = true;
+                    }
+                }
+
+                // Then the return type
+                let got_ret = got_c.erase_func_type_vars_for_type(db, &got_c.return_type);
+                let expected_ret =
+                    expected_c.erase_func_type_vars_for_type(db, &expected_c.return_type);
+                if !got_c
+                    .return_type
+                    .is_simple_sub_type_of(i_s, &expected_c.return_type)
+                    .bool()
+                {
+                    let mut async_note = None;
+                    if is_async_iterator_without_async(i_s, &expected_ret, &got_ret) {
+                        async_note = Some(format!(r#"Consider declaring "{name}" in supertype "{supertype}" without "async""#).into())
+                    }
+
+                    let issue = IssueType::ReturnTypeIncompatibleWithSupertype {
+                        message: format!(
+                            r#"Return type "{}" of "{name}" incompatible with return type "{}" in supertype "{supertype}""#,
+                            got_ret.format_short(db),
+                            expected_ret.format_short(db),
+                        ),
+                        async_note,
+                    };
+                    if let Some(func) = maybe_func() {
+                        func.add_issue_for_declaration(i_s, issue)
+                    } else {
+                        from.add_issue(i_s, issue);
+                    }
+                    emitted = true
+                }
+            }
+            Some(OverrideFuncInfos::Mixed) => (),
+            Some(OverrideFuncInfos::BothOverloads(got, expected)) => {
+                let mut previous_match_right_index = 0;
+                'outer: for c1 in expected.iter_functions() {
+                    for (right_index, c2) in got.iter_functions().enumerate() {
+                        let m = Type::matches_callable(i_s, &mut Matcher::default(), c1, c2);
+                        if m.bool() {
+                            if previous_match_right_index <= right_index {
+                                previous_match_right_index = right_index;
+                                continue 'outer;
+                            } else {
+                                emitted = true;
+                                from.add_issue(
+                                    i_s,
+                                    IssueType::OverloadOrderMustMatchSupertype {
+                                        name: name.into(),
+                                        base_class: defined_in.name(db).into(),
+                                    },
+                                );
+                                break 'outer;
+                            }
+                        }
+                    }
+                    break;
+                }
+            }
+            None => {
+                emitted = true;
+                from.add_issue(
+                    i_s,
+                    IssueType::IncompatibleAssignmentInSubclass {
+                        got: got.format_short(i_s.db),
+                        expected: expected.format_short(i_s.db),
+                        base_class: defined_in.name(i_s.db).into(),
+                    },
+                )
+            }
+        }
+        if !emitted {
+            let mut notes = vec![];
+            notes.push("     Superclass:".into());
+            try_pretty_format(
+                &mut notes,
+                &i_s.with_class_context(&match defined_in {
+                    TypeOrClass::Class(c) => c,
+                    TypeOrClass::Type(_) => class,
+                }),
+                &expected,
+                class
+                    .lookup_and_class_and_maybe_ignore_self(i_s, from, name, kind, true)
+                    .0,
+            );
+            notes.push("     Subclass:".into());
+            try_pretty_format(
+                &mut notes,
+                &i_s.with_class_context(&class),
+                &got,
+                class.lookup(i_s, from, name, kind),
+            );
+
+            if op_method_wider_note {
+                notes.push(
+                    "Overloaded operator methods can't have wider argument types in overrides"
+                        .into(),
+                )
+            }
+
+            let issue = IssueType::SignatureIncompatibleWithSupertype {
+                name: name.into(),
+                base_class: defined_in.name(i_s.db).into(),
+                notes: notes.into(),
+            };
+            if let Some(func) = maybe_func() {
+                func.add_issue_for_declaration(i_s, issue)
+            } else {
+                from.add_issue(i_s, issue)
+            }
+        }
     }
 }
 
