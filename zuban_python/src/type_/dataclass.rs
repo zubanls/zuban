@@ -1,8 +1,8 @@
 use std::{cell::OnceCell, iter::repeat_with, rc::Rc};
 
 use parsa_python_ast::{
-    AssignmentContent, AssignmentRightSide, ExpressionContent, ExpressionPart, ParamKind,
-    PrimaryContent, StarExpressionContent,
+    AssignmentContent, AssignmentRightSide, ExpressionContent, ExpressionPart, NodeIndex,
+    ParamKind, PrimaryContent, StarExpressionContent,
 };
 
 use crate::{
@@ -60,6 +60,7 @@ impl Default for DataclassOptions {
 pub struct Dataclass {
     pub class: GenericClass,
     __init__: OnceCell<CallableContent>,
+    __post_init__: OnceCell<CallableContent>,
     pub options: DataclassOptions,
 }
 
@@ -68,6 +69,7 @@ impl Dataclass {
         Rc::new(Self {
             class,
             __init__: OnceCell::new(),
+            __post_init__: OnceCell::new(),
             options,
         })
     }
@@ -81,7 +83,12 @@ impl Dataclass {
     }
 }
 
-pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> CallableContent {
+struct InitResult {
+    __init__: CallableContent,
+    __post_init__: CallableContent,
+}
+
+fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> InitResult {
     let cls = dataclass.class(db);
     let mut with_indexes = vec![];
     let i_s = &InferenceState::new(db);
@@ -90,6 +97,7 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
     let mut inference = file.inference(&cls_i_s);
 
     let mut params: Vec<CallableParam> = vec![];
+    let mut post_init_params: Vec<CallableParam> = vec![];
 
     let add_param = |params: &mut Vec<CallableParam>, new_param: CallableParam| {
         let mut first_kwarg = None;
@@ -176,6 +184,13 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
         }
     }
 
+    struct Annotated {
+        name_index: NodeIndex,
+        t: Type,
+        name: StringSlice,
+        field_options: FieldOptions,
+    }
+
     for (_, name_index) in unsafe { class_symbol_table.iter_on_finished_table() } {
         let name = NodeRef::new(file, *name_index).as_name();
         if let Some(assignment) = name.maybe_assignment_definition_name() {
@@ -183,7 +198,7 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
                 assignment.unpack()
             {
                 inference.ensure_cached_annotation(annotation);
-                let field_infos = calculate_field_arg(i_s, file, right_side);
+                let field_options = calculate_field_arg(i_s, file, right_side);
                 let point = file.points.get(annotation.index());
                 match point.maybe_specific() {
                     Some(Specific::AnnotationOrTypeCommentClassVar) => {
@@ -224,45 +239,46 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
                     file.points
                         .set(assignment.index(), Point::new_node_analysis(Locality::Todo));
                 }
-                with_indexes.push((
-                    *name_index,
+                with_indexes.push(Annotated {
+                    name_index: *name_index,
                     t,
-                    StringSlice::from_name(cls.node_ref.file_index(), name),
-                    field_infos,
-                ));
+                    name: StringSlice::from_name(cls.node_ref.file_index(), name),
+                    field_options,
+                });
             }
         }
     }
 
     // The name indexes are not guarantueed to be sorted by its order in the tree. We however
     // want the original order in an enum.
-    with_indexes.sort_by_key(|w| w.0);
+    with_indexes.sort_by_key(|w| w.name_index);
 
     let mut had_kw_only_marker = false;
-    for (node_index, t, name, field_infos) in with_indexes.into_iter() {
-        match t {
+    for infos in with_indexes.into_iter() {
+        match infos.t {
             Type::Class(c) if c.link == db.python_state.dataclasses_kw_only_link() => {
                 if had_kw_only_marker {
-                    NodeRef::new(file, node_index)
+                    NodeRef::new(file, infos.name_index)
                         .add_issue(i_s, IssueType::DataclassMultipleKwOnly);
                 } else {
                     had_kw_only_marker = true;
                 }
             }
             _ => {
-                let kw_only = field_infos
+                let kw_only = infos
+                    .field_options
                     .kw_only
                     .unwrap_or_else(|| dataclass.options.kw_only || had_kw_only_marker);
-                if field_infos.init {
+                if infos.field_options.init {
                     add_param(
                         &mut params,
                         CallableParam {
                             type_: match kw_only {
-                                false => ParamType::PositionalOrKeyword(t),
-                                true => ParamType::KeywordOnly(t),
+                                false => ParamType::PositionalOrKeyword(infos.t),
+                                true => ParamType::KeywordOnly(infos.t),
                             },
-                            name: Some(name.into()),
-                            has_default: field_infos.has_default,
+                            name: Some(infos.name.into()),
+                            has_default: infos.field_options.has_default,
                         },
                     );
                 }
@@ -313,19 +329,32 @@ pub fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> 
             }
         }
     }
-    CallableContent {
-        name: Some(DbString::StringSlice(cls.name_string_slice())),
-        class_name: None,
-        defined_at: cls.node_ref.as_link(),
-        kind: FunctionKind::Function {
-            had_first_self_or_class_annotation: true,
+    InitResult {
+        __init__: CallableContent {
+            name: Some(DbString::StringSlice(cls.name_string_slice())),
+            class_name: None,
+            defined_at: cls.node_ref.as_link(),
+            kind: FunctionKind::Function {
+                had_first_self_or_class_annotation: true,
+            },
+            type_vars: match &dataclass.class.generics {
+                ClassGenerics::NotDefinedYet => cls.use_cached_type_vars(db).clone(),
+                _ => i_s.db.python_state.empty_type_var_likes.clone(),
+            },
+            params: CallableParams::Simple(params.into()),
+            return_type: Type::Any(AnyCause::Todo),
         },
-        type_vars: match &dataclass.class.generics {
-            ClassGenerics::NotDefinedYet => cls.use_cached_type_vars(db).clone(),
-            _ => i_s.db.python_state.empty_type_var_likes.clone(),
+        __post_init__: CallableContent {
+            name: Some(DbString::Static("__post_init__")),
+            class_name: None,
+            defined_at: cls.node_ref.as_link(),
+            kind: FunctionKind::Function {
+                had_first_self_or_class_annotation: true,
+            },
+            type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
+            params: CallableParams::Simple(post_init_params.into()),
+            return_type: Type::None,
         },
-        params: CallableParams::Simple(params.into()),
-        return_type: Type::Any(AnyCause::Todo),
     }
 }
 
@@ -621,10 +650,8 @@ pub fn dataclass_init_func<'a>(self_: &'a Rc<Dataclass>, db: &Database) -> &'a C
     if self_.__init__.get().is_none() {
         // Cannot use get_or_init, because this might cycle ones for some reasons (see for
         // example the test testDeferredDataclassInitSignatureSubclass)
-        self_
-            .__init__
-            .set(calculate_init_of_dataclass(db, self_))
-            .ok();
+        let result = calculate_init_of_dataclass(db, self_);
+        self_.__init__.set(result.__init__).ok();
     }
     self_.__init__.get().unwrap()
 }
