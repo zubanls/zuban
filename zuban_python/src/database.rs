@@ -12,17 +12,16 @@ use std::cell::OnceCell;
 use parsa_python_ast::NodeIndex;
 
 use crate::debug;
-use crate::file::PythonFile;
 use crate::file::{
-    File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, PythonFileLoader, Vfs,
+    File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, PythonFile,
+    PythonFileLoader, Vfs,
 };
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
-use crate::type_::CallableContent;
-use crate::type_::FunctionKind;
-use crate::type_::TypeVarLike;
-use crate::type_::TypeVarLikes;
-use crate::type_::{FunctionOverload, NamedTuple, NewType, Tuple, Type};
+use crate::type_::{
+    CallableContent, FunctionKind, FunctionOverload, NamedTuple, NewType, StringSlice, Tuple, Type,
+    TypeVarLike, TypeVarLikes,
+};
 use crate::type_helpers::{Class, Function, Module};
 use crate::utils::{InsertOnlyVec, SymbolTable};
 use crate::workspaces::{
@@ -933,7 +932,7 @@ pub struct ClassStorage {
     pub self_symbol_table: SymbolTable,
     pub parent_scope: ParentScope,
     pub promote_to: Cell<Option<PointLink>>,
-    pub slots_atom_index: Option<NodeIndex>,
+    pub slots: Option<Box<[StringSlice]>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

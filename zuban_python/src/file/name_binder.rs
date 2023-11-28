@@ -8,14 +8,16 @@ use crate::debug;
 use crate::diagnostics::{Diagnostics, Issue, IssueType};
 use crate::file::python_file::StarImport;
 use crate::file::ComplexValues;
+use crate::type_::StringSlice;
 use crate::utils::SymbolTable;
 use parsa_python_ast::{
-    AssignmentContentWithSimpleTargets, AssignmentRightSide, AsyncStmtContent, Block, BlockContent,
-    ClassDef, Comprehension, Decoratee, DictComprehension, ExceptExpression, Expression,
-    ExpressionContent, ExpressionPart, File, ForIfClause, ForIfClauseIterator, ForStmt,
-    FunctionDef, IfBlockType, IfStmt, ImportFromTargets, InterestingNode, InterestingNodeSearcher,
-    Lambda, MatchStmt, Name, NameDefinition, NameParent, NodeIndex, SimpleStmts, StmtContent,
-    StmtIterator, StmtOrError, Tree, TryBlockType, TryStmt, WhileStmt, WithStmt, YieldExprContent,
+    Assignment, AssignmentContentWithSimpleTargets, AssignmentRightSide, AsyncStmtContent,
+    AtomContent, Block, BlockContent, ClassDef, Comprehension, Decoratee, DictComprehension,
+    DictElement, ExceptExpression, Expression, ExpressionContent, ExpressionPart, File,
+    ForIfClause, ForIfClauseIterator, ForStmt, FunctionDef, IfBlockType, IfStmt, ImportFromTargets,
+    InterestingNode, InterestingNodeSearcher, Lambda, MatchStmt, Name, NameDefinition, NameParent,
+    NodeIndex, SimpleStmts, StarLikeExpression, StmtContent, StmtIterator, StmtOrError, Tree,
+    TryBlockType, TryStmt, WhileStmt, WithStmt, YieldExprContent,
 };
 
 #[derive(PartialEq, Debug)]
@@ -628,18 +630,12 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             },
         );
         self.unresolved_self_vars.push(class);
-        let mut slots_atom_index = None;
+        let mut slots = None;
         if let Some(slots_index) = class_symbol_table.lookup_symbol("__slots__") {
             if let Some(assignment) =
                 Name::by_index(self.tree, slots_index).maybe_assignment_definition_name()
             {
-                if let Some((_, _, expr)) = assignment.maybe_simple_type_expression_assignment() {
-                    if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) =
-                        expr.unpack()
-                    {
-                        slots_atom_index = Some(atom.index());
-                    }
-                }
+                slots = gather_slots(self.file_index, assignment);
             }
         }
         self.complex_points.insert(
@@ -655,7 +651,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                     _ => unreachable!(),
                 },
                 promote_to: Default::default(),
-                slots_atom_index,
+                slots,
             })),
             Locality::File,
         );
@@ -1041,6 +1037,49 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         }
         self.unordered_references.truncate(0);
     }
+}
+
+fn gather_slots(file_index: FileIndex, assignment: Assignment) -> Option<Box<[StringSlice]>> {
+    if let Some((_, _, expr)) = assignment.maybe_simple_type_expression_assignment() {
+        if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) = expr.unpack() {
+            let maybe_str =
+                |expr: Expression| StringSlice::from_string_in_expression(file_index, expr);
+            let check_expressions = |expressions| {
+                let mut slots = vec![];
+                for element in expressions {
+                    let expr = match element {
+                        StarLikeExpression::Expression(expr) => expr,
+                        StarLikeExpression::NamedExpression(n) => n.expression(),
+                        StarLikeExpression::StarNamedExpression(_)
+                        | StarLikeExpression::StarExpression(_) => todo!(),
+                    };
+                    slots.push(maybe_str(expr)?);
+                }
+                Some(slots.into())
+            };
+            return match atom.unpack() {
+                AtomContent::Dict(dict) => {
+                    let mut slots = vec![];
+                    for dict_element in dict.iter_elements() {
+                        match dict_element {
+                            DictElement::KeyValue(key_value) => {
+                                slots.push(maybe_str(key_value.key())?);
+                            }
+                            DictElement::Star(_) => return None,
+                        }
+                    }
+                    Some(slots.into())
+                }
+                AtomContent::Tuple(set) => check_expressions(set.iter()),
+                AtomContent::List(list) => check_expressions(list.unpack()),
+                AtomContent::Set(tuple) => check_expressions(tuple.unpack()),
+                AtomContent::Strings(s) => Some(Box::new([maybe_str(expr)?])),
+                // Invalid __slots__ will be checked elsewhere.
+                _ => None,
+            };
+        }
+    }
+    None
 }
 
 #[inline]
