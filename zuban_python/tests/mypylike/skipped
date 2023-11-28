@@ -361,8 +361,6 @@ testSelfTypeNew
 testSelfTypeNew_explicit
 
 # __post_init__
-testPostInitSubclassing
-testPostInitNotADataclassCheck
 testPostInitMissingParam
 testPostInitWrongTypeAndName
 testPostInitExtraParam

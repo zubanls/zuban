@@ -530,7 +530,14 @@ impl<'db> Inference<'db, '_, '_> {
             &c.class_storage.self_symbol_table,
         ] {
             for (name, index) in unsafe { table.iter_on_finished_table() } {
-                if ["__init__", "__new__", "__init_subclass__", "__slots__"].contains(&name)
+                if [
+                    "__init__",
+                    "__new__",
+                    "__init_subclass__",
+                    "__slots__",
+                    "__post_init__",
+                ]
+                .contains(&name)
                     || is_private(name)
                 {
                     continue;
