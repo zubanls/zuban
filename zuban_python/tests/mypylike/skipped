@@ -360,6 +360,8 @@ testSelfTypeNonsensical
 testSelfTypeNew
 testSelfTypeNew_explicit
 
+testPostInitCorrectSignature
+testPostInitSubclassing
 # __post_init__
 testPostInitMissingParam
 testPostInitWrongTypeAndName

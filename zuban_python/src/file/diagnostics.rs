@@ -530,21 +530,33 @@ impl<'db> Inference<'db, '_, '_> {
             &c.class_storage.self_symbol_table,
         ] {
             for (name, index) in unsafe { table.iter_on_finished_table() } {
-                if [
-                    "__init__",
-                    "__new__",
-                    "__init_subclass__",
-                    "__slots__",
-                    "__post_init__",
-                ]
-                .contains(&name)
+                if ["__init__", "__new__", "__init_subclass__", "__slots__"].contains(&name)
                     || is_private(name)
                 {
                     continue;
                 }
+                let mut node_ref = NodeRef::new(self.file, *index - NAME_DEF_TO_NAME_DIFFERENCE);
+                if name == "__post_init__" {
+                    if let Some(dataclass) = c.maybe_dataclass() {
+                        let f = Instance::new(c, None)
+                            .full_lookup(self.i_s, node_ref, name)
+                            .into_inferred();
+                        check_override(
+                            self.i_s,
+                            node_ref,
+                            TypeOrClass::Type(Cow::Owned(Type::Dataclass(dataclass.clone()))),
+                            c,
+                            &Type::Callable(Rc::new(
+                                dataclass.expect_calculated_post_init().clone(),
+                            )),
+                            &f.as_cow_type(&i_s),
+                            name,
+                        );
+                        continue;
+                    }
+                }
 
                 // Calculate if there is an @override decorator
-                let mut node_ref = NodeRef::new(self.file, *index - NAME_DEF_TO_NAME_DIFFERENCE);
                 let mut has_override_decorator = false;
                 if let Some(func_def) =
                     NodeRef::new(self.file, index - NAME_TO_FUNCTION_DIFF).maybe_function()

@@ -1781,6 +1781,19 @@ impl<'db: 'a, 'a> Class<'a> {
         }
         self.check_slots(i_s, from, name)
     }
+
+    pub fn maybe_dataclass(&self) -> Option<Rc<Dataclass>> {
+        // TODO this should probably not be needed.
+        NodeRef::new(self.node_ref.file, self.node().name_definition().index())
+            .complex()
+            .and_then(|c| match c {
+                ComplexPoint::TypeInstance(Type::Type(t)) => match t.as_ref() {
+                    Type::Dataclass(d) => Some(d.clone()),
+                    _ => None,
+                },
+                _ => None,
+            })
+    }
 }
 
 impl fmt::Debug for Class<'_> {

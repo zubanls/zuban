@@ -81,6 +81,10 @@ impl Dataclass {
     pub fn has_defined_generics(&self) -> bool {
         !matches!(self.class.generics, ClassGenerics::NotDefinedYet)
     }
+
+    pub fn expect_calculated_post_init(&self) -> &CallableContent {
+        self.__post_init__.get().unwrap()
+    }
 }
 
 struct InitResult {
