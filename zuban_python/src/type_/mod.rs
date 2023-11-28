@@ -554,7 +554,20 @@ impl Type {
     }
 
     pub fn is_func_or_overload(&self) -> bool {
-        matches!(self, Type::Callable(_) | Type::FunctionOverload(_))
+        match self {
+            Type::Callable(_) | Type::FunctionOverload(_) => true,
+            Type::Union(u) => u.iter().any(|t| t.is_func_or_overload()),
+            _ => false,
+        }
+    }
+
+    pub fn is_func_or_overload_not_any_callable(&self) -> bool {
+        match self {
+            Type::Callable(c) => !matches!(&c.params, CallableParams::Any(_)),
+            Type::FunctionOverload(_) => true,
+            Type::Union(u) => u.iter().any(|t| t.is_func_or_overload_not_any_callable()),
+            _ => false,
+        }
     }
 
     pub fn union(self, db: &Database, other: Type) -> Self {

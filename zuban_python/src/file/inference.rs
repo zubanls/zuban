@@ -936,7 +936,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 .0
                                 .into_maybe_inferred()
                                 .map(|inf| {
-                                    if inf.as_cow_type(i_s).is_func_or_overload() {
+                                    if inf.as_cow_type(i_s).is_func_or_overload_not_any_callable() {
                                         from.add_issue(i_s, IssueType::CannotAssignToAMethod);
                                     }
                                     inf

@@ -1765,7 +1765,7 @@ impl<'db: 'a, 'a> Class<'a> {
     pub fn check_self_definition(&self, i_s: &InferenceState, from: NodeRef, name: &str) {
         let (lookup, _, _) = self.lookup_and_class_and_maybe_ignore_self_internal(i_s, name, false);
         if let Some(inf) = lookup.into_maybe_inferred() {
-            if inf.as_cow_type(i_s).is_func_or_overload() {
+            if inf.as_cow_type(i_s).is_func_or_overload_not_any_callable() {
                 // See testSlotsAssignmentWithMethodReassign
                 //from.add_issue(i_s, IssueType::CannotAssignToAMethod);
             }

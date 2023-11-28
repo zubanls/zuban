@@ -15,7 +15,9 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{add_attribute_error, Inferred};
 use crate::matching::{IteratorContent, LookupKind, LookupResult, OnTypeError, ResultContext};
 use crate::node_ref::NodeRef;
-use crate::type_::{AnyCause, CallableLike, FunctionKind, GenericClass, Type, TypeVarKind};
+use crate::type_::{
+    AnyCause, CallableLike, CallableParams, FunctionKind, GenericClass, Type, TypeVarKind,
+};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Instance<'a> {
@@ -153,7 +155,11 @@ impl<'a> Instance<'a> {
                     }
                     continue;
                 }
-                Type::Callable(c) => from.add_issue(i_s, IssueType::CannotAssignToAMethod),
+                Type::Callable(c) => {
+                    if !matches!(&c.params, CallableParams::Any(_)) {
+                        from.add_issue(i_s, IssueType::CannotAssignToAMethod);
+                    }
+                }
                 _ => {}
             }
 

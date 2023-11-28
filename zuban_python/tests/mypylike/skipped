@@ -1157,8 +1157,6 @@ testTooManyArgsForObject
 # __setattr__ and __getattr__
 testGetattrAndSetattr
 
-# __slots__
-testSlotsAssignmentWithUnionProps
 # dataclasses __slots__
 testDataclassWithSlotsArg
 testDataclassWithSlotsConflict
