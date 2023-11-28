@@ -1742,12 +1742,10 @@ impl<'db: 'a, 'a> Class<'a> {
                         return;
                     }
                     if let Some(on_class) = class.lookup_symbol(i_s, name).into_maybe_inferred() {
-                        if matches!(
-                            on_class
-                                .as_cow_type(&i_s.with_class_context(&class))
-                                .as_ref(),
-                            Type::Callable(_) | Type::FunctionOverload(_)
-                        ) {
+                        if on_class
+                            .as_cow_type(&i_s.with_class_context(&class))
+                            .is_func_or_overload()
+                        {
                             // Adds IssueType::CannotAssignToAMethod in other places.
                             return;
                         }
@@ -1762,6 +1760,17 @@ impl<'db: 'a, 'a> Class<'a> {
                 class: self.format(&FormatData::with_style(i_s.db, FormatStyle::Qualified)),
             },
         )
+    }
+
+    pub fn check_self_definition(&self, i_s: &InferenceState, from: NodeRef, name: &str) {
+        let (lookup, _, _) = self.lookup_and_class_and_maybe_ignore_self_internal(i_s, name, false);
+        if let Some(inf) = lookup.into_maybe_inferred() {
+            if inf.as_cow_type(i_s).is_func_or_overload() {
+                // See testSlotsAssignmentWithMethodReassign
+                //from.add_issue(i_s, IssueType::CannotAssignToAMethod);
+            }
+        }
+        self.check_slots(i_s, from, name)
     }
 }
 

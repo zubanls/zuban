@@ -874,7 +874,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     };
                     // TODO The class should ALWAYS exist, this is just a bug at the moment.
                     if let Some(class) = i_s.current_class() {
-                        class.check_slots(i_s, from, name.as_str());
+                        class.check_self_definition(i_s, from, name.as_str());
                     }
                 } else {
                     if is_definition {
@@ -936,10 +936,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 .0
                                 .into_maybe_inferred()
                                 .map(|inf| {
-                                    if matches!(
-                                        inf.as_cow_type(i_s).as_ref(),
-                                        Type::Callable(_) | Type::FunctionOverload(_)
-                                    ) {
+                                    if inf.as_cow_type(i_s).is_func_or_overload() {
                                         from.add_issue(i_s, IssueType::CannotAssignToAMethod);
                                     }
                                     inf

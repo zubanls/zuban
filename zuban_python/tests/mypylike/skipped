@@ -1159,7 +1159,6 @@ testGetattrAndSetattr
 
 # __slots__
 testSlotsAssignmentWithUnionProps
-testSlotsAssignmentWithMethodReassign
 # dataclasses __slots__
 testDataclassWithSlotsArg
 testDataclassWithSlotsConflict
@@ -1669,6 +1668,8 @@ testOptionalDescriptorsBinder
 testUnionDescriptorsBinder
 testSubclassDescriptorsBinder
 testPropertyGetterBody
+# self assignment validation
+testSlotsAssignmentWithMethodReassign
 # "NamedTuple type as an attribute is not supported"
 testAssignNamedTupleAsAttribute
 testNoCrashUnsupportedNamedTuple
