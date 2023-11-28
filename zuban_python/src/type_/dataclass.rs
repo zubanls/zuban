@@ -137,10 +137,9 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                     );
                 }
                 let cls = super_dataclass.class(db);
-                for param in dataclass_init_func(super_dataclass, db)
-                    .expect_simple_params()
-                    .iter()
-                {
+                let init = dataclass_init_func(super_dataclass, db);
+                let post_init = super_dataclass.__post_init__.get().unwrap();
+                for param in init.expect_simple_params().iter() {
                     let mut new_param = param.clone();
                     let t = match &mut new_param.type_ {
                         ParamType::PositionalOrKeyword(t) | ParamType::KeywordOnly(t) => t,
@@ -149,9 +148,8 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                     *t = replace_class_type_vars(db, t, &cls, &|| {
                         Type::Dataclass(dataclass.clone())
                     });
-                    if let Some(in_current_class) = class_symbol_table
-                        .lookup_symbol(new_param.name.as_ref().unwrap().as_str(db))
-                    {
+                    let param_name = new_param.name.as_ref().unwrap().as_str(db);
+                    if let Some(in_current_class) = class_symbol_table.lookup_symbol(param_name) {
                         let mut n = NodeRef::new(file, in_current_class);
                         if !n
                             .as_name()
@@ -178,6 +176,12 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                             );
                         }
                     }
+                    for p in post_init.expect_simple_params() {
+                        if p.name.as_ref().unwrap().as_str(db) == param_name {
+                            post_init_params.push(p.clone());
+                            break;
+                        }
+                    }
                     add_param(&mut params, new_param);
                 }
             }
@@ -189,6 +193,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
         t: Type,
         name: StringSlice,
         field_options: FieldOptions,
+        is_init_var: bool, // e.g. InitVar[int]
     }
 
     for (_, name_index) in unsafe { class_symbol_table.iter_on_finished_table() } {
@@ -215,9 +220,11 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                 let mut t = inference
                     .use_cached_annotation_type(annotation)
                     .into_owned();
+                let mut is_init_var = false;
                 if let Type::Class(c) = &t {
                     if c.link == db.python_state.dataclasses_init_var_link() {
                         t = c.class(db).nth_type_argument(db, 0);
+                        is_init_var = true;
                     }
                 }
                 /*
@@ -244,6 +251,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                     t,
                     name: StringSlice::from_name(cls.node_ref.file_index(), name),
                     field_options,
+                    is_init_var,
                 });
             }
         }
@@ -269,6 +277,14 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                     .field_options
                     .kw_only
                     .unwrap_or_else(|| dataclass.options.kw_only || had_kw_only_marker);
+                if infos.is_init_var {
+                    post_init_params.push(CallableParam {
+                        // This is what Mypy uses, apparently for practical reasons.
+                        type_: ParamType::PositionalOrKeyword(infos.t.clone()),
+                        name: Some(infos.name.into()),
+                        has_default: false,
+                    })
+                }
                 if infos.field_options.init {
                     add_param(
                         &mut params,
@@ -652,6 +668,7 @@ pub fn dataclass_init_func<'a>(self_: &'a Rc<Dataclass>, db: &Database) -> &'a C
         // example the test testDeferredDataclassInitSignatureSubclass)
         let result = calculate_init_of_dataclass(db, self_);
         self_.__init__.set(result.__init__).ok();
+        self_.__post_init__.set(result.__post_init__).ok();
     }
     self_.__init__.get().unwrap()
 }
