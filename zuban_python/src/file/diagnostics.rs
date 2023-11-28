@@ -1479,18 +1479,26 @@ fn is_overload_unmatchable(
 fn find_and_check_override(
     i_s: &InferenceState,
     from: NodeRef,
-    class: Class,
+    override_class: Class,
     name: &str,
     has_override_decorator: bool,
 ) {
-    let instance = Instance::new(class, None);
-    let (defined_in, result) =
+    let instance = Instance::new(override_class, None);
+    let (original_class, result) =
         instance.lookup_and_maybe_ignore_super_count(i_s, from, name, LookupKind::Normal, 1);
     if let Some(inf) = result.into_maybe_inferred() {
-        let expected = inf.as_cow_type(i_s);
-        let got = instance.full_lookup(i_s, from, name).into_inferred();
-        let got = got.as_cow_type(i_s);
-        check_override(i_s, from, defined_in, class, name, &got, &expected)
+        let original_t = inf.as_cow_type(i_s);
+        let override_ = instance.full_lookup(i_s, from, name).into_inferred();
+        let override_t = override_.as_cow_type(i_s);
+        check_override(
+            i_s,
+            from,
+            original_class,
+            override_class,
+            &original_t,
+            &override_t,
+            name,
+        )
     } else if has_override_decorator {
         from.add_issue(i_s, IssueType::MissingBaseForOverride { name: name.into() });
     }
@@ -1499,14 +1507,14 @@ fn find_and_check_override(
 fn check_override(
     i_s: &InferenceState,
     from: NodeRef,
-    defined_in: TypeOrClass,
-    class: Class,
+    original_class: TypeOrClass,
+    override_class: Class,
+    original_t: &Type,
+    override_t: &Type,
     name: &str,
-    got: &Type,
-    expected: &Type,
 ) {
     let kind = LookupKind::Normal;
-    let maybe_func = || match got {
+    let maybe_func = || match override_t {
         Type::Callable(c) if c.defined_at.file == from.file_index() => {
             let node_ref = NodeRef::from_link(i_s.db, c.defined_at);
             node_ref
@@ -1517,17 +1525,17 @@ fn check_override(
         _ => None,
     };
 
-    let mut match_ = expected.is_super_type_of(
+    let mut match_ = original_t.is_super_type_of(
         i_s,
         &mut Matcher::default().with_ignore_positional_param_names(),
-        &got,
+        &override_t,
     );
 
     let mut op_method_wider_note = false;
-    if let Type::FunctionOverload(override_overload) = got {
+    if let Type::FunctionOverload(override_overload) = override_t {
         if match_.bool()
             && FORWARD_OP_METHODS.contains(name)
-            && operator_domain_is_widened(i_s, override_overload, &expected)
+            && operator_domain_is_widened(i_s, override_overload, &original_t)
         {
             // Reverse operators lead to weird behavior when overloads widen. If you want to
             // understand why this is an issue, please look at testUnsafeDunderOverlapInSubclass.
@@ -1540,9 +1548,9 @@ fn check_override(
         let mut emitted = false;
         // Mypy helps the user a bit by formatting different error messages for similar
         // signatures. Try to make this as similar as possible to Mypy.
-        match override_func_infos(&got, &expected) {
+        match override_func_infos(&override_t, &original_t) {
             Some(OverrideFuncInfos::CallablesSameParamLength(got_c, expected_c)) => {
-                let supertype = defined_in.name(db);
+                let supertype = original_class.name(db);
 
                 // First check params
                 let CallableParams::Simple(params1) = &got_c.params else {
@@ -1564,7 +1572,7 @@ fn check_override(
                             r#"Argument {} of "{name}" is incompatible with supertype "{supertype}"; supertype defines the argument type as "{}""#,
                             i + 1,
                             t2.format_short(db),
-                        ).into(), eq_class: (name == "__eq__").then(|| class.name().into()) };
+                        ).into(), eq_class: (name == "__eq__").then(|| override_class.name().into()) };
                         match &param1.name {
                             Some(DbString::StringSlice(s)) if maybe_func().is_some() => {
                                 from.file.add_issue(
@@ -1628,7 +1636,7 @@ fn check_override(
                                     i_s,
                                     IssueType::OverloadOrderMustMatchSupertype {
                                         name: name.into(),
-                                        base_class: defined_in.name(db).into(),
+                                        base_class: original_class.name(db).into(),
                                     },
                                 );
                                 break 'outer;
@@ -1643,9 +1651,9 @@ fn check_override(
                 from.add_issue(
                     i_s,
                     IssueType::IncompatibleAssignmentInSubclass {
-                        got: got.format_short(i_s.db),
-                        expected: expected.format_short(i_s.db),
-                        base_class: defined_in.name(i_s.db).into(),
+                        got: override_t.format_short(i_s.db),
+                        expected: original_t.format_short(i_s.db),
+                        base_class: original_class.name(i_s.db).into(),
                     },
                 )
             }
@@ -1655,21 +1663,21 @@ fn check_override(
             notes.push("     Superclass:".into());
             try_pretty_format(
                 &mut notes,
-                &i_s.with_class_context(&match defined_in {
+                &i_s.with_class_context(&match original_class {
                     TypeOrClass::Class(c) => c,
-                    TypeOrClass::Type(_) => class,
+                    TypeOrClass::Type(_) => override_class,
                 }),
-                &expected,
-                class
+                &original_t,
+                override_class
                     .lookup_and_class_and_maybe_ignore_self(i_s, from, name, kind, true)
                     .0,
             );
             notes.push("     Subclass:".into());
             try_pretty_format(
                 &mut notes,
-                &i_s.with_class_context(&class),
-                &got,
-                class.lookup(i_s, from, name, kind),
+                &i_s.with_class_context(&override_class),
+                &override_t,
+                override_class.lookup(i_s, from, name, kind),
             );
 
             if op_method_wider_note {
@@ -1681,7 +1689,7 @@ fn check_override(
 
             let issue = IssueType::SignatureIncompatibleWithSupertype {
                 name: name.into(),
-                base_class: defined_in.name(i_s.db).into(),
+                base_class: original_class.name(i_s.db).into(),
                 notes: notes.into(),
             };
             if let Some(func) = maybe_func() {
