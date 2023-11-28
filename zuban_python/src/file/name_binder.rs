@@ -10,15 +10,7 @@ use crate::file::python_file::StarImport;
 use crate::file::ComplexValues;
 use crate::type_::StringSlice;
 use crate::utils::SymbolTable;
-use parsa_python_ast::{
-    Assignment, AssignmentContentWithSimpleTargets, AssignmentRightSide, AsyncStmtContent,
-    AtomContent, Block, BlockContent, ClassDef, Comprehension, Decoratee, DictComprehension,
-    DictElement, ExceptExpression, Expression, ExpressionContent, ExpressionPart, File,
-    ForIfClause, ForIfClauseIterator, ForStmt, FunctionDef, IfBlockType, IfStmt, ImportFromTargets,
-    InterestingNode, InterestingNodeSearcher, Lambda, MatchStmt, Name, NameDefinition, NameParent,
-    NodeIndex, SimpleStmts, StarLikeExpression, StmtContent, StmtIterator, StmtOrError, Tree,
-    TryBlockType, TryStmt, WhileStmt, WithStmt, YieldExprContent,
-};
+use parsa_python_ast::*;
 
 #[derive(PartialEq, Debug)]
 enum NameBinderType {
@@ -1040,46 +1032,70 @@ impl<'db, 'a> NameBinder<'db, 'a> {
 }
 
 fn gather_slots(file_index: FileIndex, assignment: Assignment) -> Option<Box<[StringSlice]>> {
-    if let Some((_, _, expr)) = assignment.maybe_simple_type_expression_assignment() {
-        if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) = expr.unpack() {
-            let maybe_str =
-                |expr: Expression| StringSlice::from_string_in_expression(file_index, expr);
-            let check_expressions = |expressions| {
-                let mut slots = vec![];
-                for element in expressions {
-                    let expr = match element {
-                        StarLikeExpression::Expression(expr) => expr,
-                        StarLikeExpression::NamedExpression(n) => n.expression(),
-                        StarLikeExpression::StarNamedExpression(_)
-                        | StarLikeExpression::StarExpression(_) => todo!(),
-                    };
-                    slots.push(maybe_str(expr)?);
-                }
-                Some(slots.into())
+    let right_side = match assignment.unpack() {
+        AssignmentContent::Normal(targets, right_side) => right_side,
+        AssignmentContent::WithAnnotation(_, _, right_side) => right_side?,
+        AssignmentContent::AugAssign(..) => todo!(),
+    };
+    let AssignmentRightSide::StarExpressions(star_exprs) = right_side else {
+        return None;
+    };
+    let maybe_str = |expr: Expression| StringSlice::from_string_in_expression(file_index, expr);
+    let check_expressions = |expressions| {
+        let mut slots = vec![];
+        for element in expressions {
+            let expr = match element {
+                StarLikeExpression::Expression(expr) => expr,
+                StarLikeExpression::NamedExpression(n) => n.expression(),
+                StarLikeExpression::StarNamedExpression(_)
+                | StarLikeExpression::StarExpression(_) => todo!(),
             };
-            return match atom.unpack() {
-                AtomContent::Dict(dict) => {
-                    let mut slots = vec![];
-                    for dict_element in dict.iter_elements() {
-                        match dict_element {
-                            DictElement::KeyValue(key_value) => {
-                                slots.push(maybe_str(key_value.key())?);
-                            }
-                            DictElement::Star(_) => return None,
-                        }
-                    }
-                    Some(slots.into())
-                }
-                AtomContent::Tuple(set) => check_expressions(set.iter()),
-                AtomContent::List(list) => check_expressions(list.unpack()),
-                AtomContent::Set(tuple) => check_expressions(tuple.unpack()),
-                AtomContent::Strings(s) => Some(Box::new([maybe_str(expr)?])),
-                // Invalid __slots__ will be checked elsewhere.
-                _ => None,
-            };
+            slots.push(maybe_str(expr)?);
         }
+        Some(slots.into())
+    };
+    match star_exprs.unpack() {
+        StarExpressionContent::Expression(expr) => {
+            if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) = expr.unpack() {
+                match atom.unpack() {
+                    AtomContent::Dict(dict) => {
+                        let mut slots = vec![];
+                        for dict_element in dict.iter_elements() {
+                            match dict_element {
+                                DictElement::KeyValue(key_value) => {
+                                    slots.push(maybe_str(key_value.key())?);
+                                }
+                                DictElement::Star(_) => return None,
+                            }
+                        }
+                        Some(slots.into())
+                    }
+                    AtomContent::Tuple(set) => check_expressions(set.iter()),
+                    AtomContent::List(list) => check_expressions(list.unpack()),
+                    AtomContent::Set(tuple) => check_expressions(tuple.unpack()),
+                    AtomContent::Strings(s) => Some(Box::new([maybe_str(expr)?])),
+                    // Invalid __slots__ will be checked elsewhere.
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        }
+        StarExpressionContent::Tuple(tup) => {
+            let mut slots = vec![];
+            for element in tup.iter() {
+                let expr = match element {
+                    StarLikeExpression::Expression(expr) => expr,
+                    StarLikeExpression::NamedExpression(n) => n.expression(),
+                    StarLikeExpression::StarNamedExpression(_)
+                    | StarLikeExpression::StarExpression(_) => return None,
+                };
+                slots.push(maybe_str(expr)?);
+            }
+            Some(slots.into())
+        }
+        StarExpressionContent::StarExpression(_) => None,
     }
-    None
 }
 
 #[inline]

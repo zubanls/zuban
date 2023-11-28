@@ -168,3 +168,12 @@ async def f2() -> Any:
     yield from []  # E: "yield from" in async function
 async def g2() -> Any:
     x = yield from []  # E: "yield from" in async function
+
+[case slots_implicit_tuple]
+class Foo:
+    __slots__ = 'a', 'b'
+
+    def __init__(self) -> None:
+        self.a = 3
+        self.b = 4
+        self.c = 5 # E: Trying to assign name "c" that is not in "__slots__" of type "__main__.Foo"
