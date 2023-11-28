@@ -185,3 +185,22 @@ class Foo:
     def __init__(self) -> None:
         self.foo = 3
         self.bar = 3 # E: Trying to assign name "bar" that is not in "__slots__" of type "__main__.Foo"
+
+[case __slots___star_ignored]
+class Foo:
+    __slots__ = *'foo', "bar"
+
+    def __init__(self) -> None:
+        self.foo = 3
+        self.bar = 3
+        self.f = 3
+        self.other = 3
+
+class Bar:
+    __slots__ = (*('foo',),)
+
+    def __init__(self) -> None:
+        self.foo = 3
+        self.bar = 3
+        self.f = 3
+        self.other = 3

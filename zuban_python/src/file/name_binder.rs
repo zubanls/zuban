@@ -1054,7 +1054,7 @@ fn gather_slots(file_index: FileIndex, assignment: Assignment) -> Option<Box<[St
                 StarLikeExpression::Expression(expr) => expr,
                 StarLikeExpression::NamedExpression(n) => n.expression(),
                 StarLikeExpression::StarNamedExpression(_)
-                | StarLikeExpression::StarExpression(_) => todo!(),
+                | StarLikeExpression::StarExpression(_) => return None,
             };
             slots.push(maybe_str(expr)?);
         }
