@@ -1160,8 +1160,6 @@ testGetattrAndSetattr
 # __slots__
 testSlotsAssignmentWithUnionProps
 testSlotsAssignmentWithMethodReassign
-testSlotsDefinitionMultipleVars1
-testSlotsDefinitionMultipleVars2
 testSlotsWithClassVar
 # dataclasses __slots__
 testDataclassWithSlotsArg

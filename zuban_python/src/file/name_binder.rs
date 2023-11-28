@@ -1033,9 +1033,15 @@ impl<'db, 'a> NameBinder<'db, 'a> {
 
 fn gather_slots(file_index: FileIndex, assignment: Assignment) -> Option<Box<[StringSlice]>> {
     let right_side = match assignment.unpack() {
-        AssignmentContent::Normal(targets, right_side) => right_side,
+        AssignmentContent::Normal(targets, right_side) => {
+            if targets.count() > 1 {
+                // Apparently multi assignments are currently invalid.
+                return None;
+            }
+            right_side
+        }
         AssignmentContent::WithAnnotation(_, _, right_side) => right_side?,
-        AssignmentContent::AugAssign(..) => todo!(),
+        AssignmentContent::AugAssign(..) => return None,
     };
     let AssignmentRightSide::StarExpressions(star_exprs) = right_side else {
         return None;
