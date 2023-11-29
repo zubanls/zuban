@@ -170,7 +170,7 @@ pub(crate) enum IssueType {
     SignatureIncompatibleWithSupertype { base_class: Box<str>, name: Box<str>, notes: Box<[Box<str>]> },
     OverloadOrderMustMatchSupertype { name: Box<str>, base_class: Box<str> },
     ReturnTypeIncompatibleWithSupertype { message: String, async_note: Option<Box<str>> },
-    ArgumentIncompatibleWithSupertype { message: Box<str>, eq_class: Option<Box<str>> },
+    ArgumentIncompatibleWithSupertype { message: Box<str>, eq_class: Option<Box<str>>, add_liskov_note: bool },
     MultipleInheritanceIncompatibility { name: Box<str>, class1: Box<str>, class2: Box<str> },
     MissingBaseForOverride { name: Box<str> },
     InvalidSignature { signature: Box<str> },
@@ -972,9 +972,11 @@ impl<'db> Diagnostic<'db> {
                 }
                 message.clone()
             }
-            ArgumentIncompatibleWithSupertype { message, eq_class } => {
-                additional_notes.push("This violates the Liskov substitution principle".into());
-                additional_notes.push("See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides".into());
+            ArgumentIncompatibleWithSupertype { message, eq_class, add_liskov_note } => {
+                if *add_liskov_note {
+                    additional_notes.push("This violates the Liskov substitution principle".into());
+                    additional_notes.push("See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides".into());
+                }
                 if let Some(class_name) = eq_class {
                     additional_notes.push(r#"It is recommended for "__eq__" to work with arbitrary objects, for example:"#.into());
                     additional_notes.push(r#"    def __eq__(self, other: object) -> bool:"#.into());

@@ -17,14 +17,14 @@ use crate::inferred::{infer_class_method, Inferred};
 use crate::matching::params::{has_overlapping_params, WrappedParamType, WrappedStar};
 use crate::matching::{
     matches_params, FormatData, Generics, LookupKind, LookupResult, Match, Matcher, OnTypeError,
-    Param, ParamsStyle, ResultContext,
+    Param, ResultContext,
 };
 use crate::node_ref::NodeRef;
 use crate::python_state::NAME_TO_FUNCTION_DIFF;
 use crate::type_::{
-    AnyCause, CallableContent, CallableParams, DbString, FunctionKind, FunctionOverload,
-    GenericItem, Literal, LiteralKind, TupleTypeArguments, Type, TypeOrTypeVarTuple, TypeVarLike,
-    Variance,
+    format_callable_params, AnyCause, CallableContent, CallableParams, DbString, FunctionKind,
+    FunctionOverload, GenericItem, Literal, LiteralKind, TupleTypeArguments, Type,
+    TypeOrTypeVarTuple, TypeVarLike, Variance,
 };
 use crate::type_helpers::{
     is_private, Class, FirstParamProperties, Function, GeneratorType, Instance, TypeOrClass,
@@ -552,11 +552,14 @@ impl<'db> Inference<'db, '_, '_> {
                             &f.as_cow_type(&i_s),
                             name,
                             Some(&|| {
-                                let params = __post_init__.params.format(
+                                let params = format_callable_params(
                                     &FormatData::new_short(i_s.db),
-                                    ParamsStyle::Unreachable,
+                                    None,
+                                    false,
+                                    __post_init__.expect_simple_params().iter(),
+                                    false,
                                 );
-                                format!("def __post_init__(self, {params})")
+                                format!("def __post_init__(self, {params}) -> None")
                             }),
                         );
                         continue;
@@ -1591,11 +1594,15 @@ fn check_override(
                     };
                     let t1 = got_c.erase_func_type_vars_for_type(db, t1);
                     if !t1.is_simple_super_type_of(i_s, &t2).bool() {
-                        let issue = IssueType::ArgumentIncompatibleWithSupertype { message: format!(
-                            r#"Argument {} of "{name}" is incompatible with supertype "{supertype}"; supertype defines the argument type as "{}""#,
-                            i + 1,
-                            t2.format_short(db),
-                        ).into(), eq_class: (name == "__eq__").then(|| override_class.name().into()) };
+                        let issue = IssueType::ArgumentIncompatibleWithSupertype {
+                            message: format!(
+                                r#"Argument {} of "{name}" is incompatible with supertype "{supertype}"; supertype defines the argument type as "{}""#,
+                                i + 1,
+                                t2.format_short(db),
+                            ).into(),
+                            eq_class: (name == "__eq__").then(|| override_class.name().into()),
+                            add_liskov_note: name != "__post_init__",
+                        };
                         match &param1.name {
                             Some(DbString::StringSlice(s)) if maybe_func().is_some() => {
                                 from.file.add_issue(
@@ -1685,7 +1692,7 @@ fn check_override(
             let mut notes = vec![];
             notes.push("     Superclass:".into());
             if let Some(original_formatter) = original_formatter {
-                notes.push(format!("        {}", original_formatter()).into());
+                notes.push(format!("         {}", original_formatter()).into());
             } else {
                 try_pretty_format(
                     &mut notes,

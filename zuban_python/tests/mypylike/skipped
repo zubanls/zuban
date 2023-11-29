@@ -360,17 +360,10 @@ testSelfTypeNonsensical
 testSelfTypeNew
 testSelfTypeNew_explicit
 
+# __post_init__
 testPostInitCorrectSignature
 testPostInitSubclassing
-# __post_init__
-testPostInitMissingParam
-testPostInitWrongTypeAndName
-testPostInitExtraParam
-testPostInitReturnType
-testPostInitDecoratedMethodError
-testPostInitIsNotAFunction
 testPostInitClassMethod
-testPostInitStaticMethod
 testDataclassesInitVarNoOverride
 # dataclasses __slots__
 testDataclassWithSlotsArg
