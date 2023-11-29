@@ -116,7 +116,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                 == new_param.name.as_ref().unwrap().as_str(db)
             {
                 *param = new_param;
-                return;
+                return false;
             }
         }
         if let Some(index) = first_kwarg {
@@ -124,6 +124,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
         } else {
             params.push(new_param)
         }
+        true
     };
 
     let class_symbol_table = &cls.class_storage.class_symbol_table;
@@ -152,7 +153,8 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                     *t = replace_class_type_vars(db, t, &cls, &|| {
                         Type::Dataclass(dataclass.clone())
                     });
-                    let param_name = new_param.name.as_ref().unwrap().as_str(db);
+                    let cloned_name = new_param.name.clone().unwrap();
+                    let param_name = cloned_name.as_str(db);
                     if let Some(in_current_class) = class_symbol_table.lookup_symbol(param_name) {
                         let mut n = NodeRef::new(file, in_current_class);
                         if !n
@@ -180,13 +182,14 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                             );
                         }
                     }
-                    for p in post_init.expect_simple_params() {
-                        if p.name.as_ref().unwrap().as_str(db) == param_name {
-                            post_init_params.push(p.clone());
-                            break;
+                    if add_param(&mut params, new_param) {
+                        for p in post_init.expect_simple_params() {
+                            if p.name.as_ref().unwrap().as_str(db) == param_name {
+                                post_init_params.push(p.clone());
+                                break;
+                            }
                         }
                     }
-                    add_param(&mut params, new_param);
                 }
             }
         }
