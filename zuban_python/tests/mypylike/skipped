@@ -369,8 +369,6 @@ testDeferredDataclassInitSignature
 # dataclass order
 testIncrementalDataclassesDunder
 testDataclassUpdate6
-# any base class
-testDataclassesAnyInherit
 # InitVar set default
 testDataclassInitVarCannotBeSet
 # dataclass transform

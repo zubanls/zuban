@@ -18,6 +18,7 @@ use crate::{
     },
     node_ref::NodeRef,
     python_state::NAME_TO_FUNCTION_DIFF,
+    type_::{StarParamType, StarStarParamType},
     type_helpers::{Callable, Class, Function, Instance, TypeOrClass},
 };
 
@@ -351,6 +352,18 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                 );
             }
         }
+    }
+    if cls.incomplete_mro(i_s.db) {
+        params.push(CallableParam {
+            type_: ParamType::Star(StarParamType::ArbitraryLength(Type::Any(AnyCause::Todo))),
+            name: None,
+            has_default: false,
+        });
+        params.push(CallableParam {
+            type_: ParamType::StarStar(StarStarParamType::ValueType(Type::Any(AnyCause::Todo))),
+            name: None,
+            has_default: false,
+        });
     }
     InitResult {
         __init__: CallableContent {
