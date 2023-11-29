@@ -530,7 +530,11 @@ impl CallableContent {
                     format_data.style != FormatStyle::MypyRevealType,
                 );
                 if matches!(self.kind, FunctionKind::Classmethod { .. }) && not_reveal_type {
-                    params = "cls, ".to_string() + &params;
+                    if params.is_empty() {
+                        params = "cls".to_string();
+                    } else {
+                        params = "cls, ".to_string() + &params;
+                    }
                 }
                 format_pretty_function_with_params(
                     format_data,
