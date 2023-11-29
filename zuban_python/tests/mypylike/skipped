@@ -367,7 +367,6 @@ testDataclassesClassmethods
 testClassmethodShadowingFieldDoesNotCrash
 testDeferredDataclassInitSignature
 # dataclass order
-testIncrementalDataclassesDunder
 testDataclassUpdate6
 # InitVar set default
 testDataclassInitVarCannotBeSet

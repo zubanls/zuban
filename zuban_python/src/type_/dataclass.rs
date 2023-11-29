@@ -25,7 +25,8 @@ use crate::{
 use super::{
     AnyCause, CallableContent, CallableParam, CallableParams, ClassGenerics, DbString,
     FunctionKind, GenericClass, Literal, LiteralKind, ParamType, StringSlice, Tuple, Type,
-    TypeOrTypeVarTuple, TypeVar, TypeVarKind,
+    TypeOrTypeVarTuple, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikes, TypeVarName, TypeVarUsage,
+    Variance,
 };
 
 const ORDER_METHOD_NAMES: [&'static str; 4] = ["__lt__", "__gt__", "__le__", "__ge__"];
@@ -725,7 +726,7 @@ pub fn lookup_on_dataclass_type(
         ));
     }
     if self_.options.order && ORDER_METHOD_NAMES.contains(&name) && kind == LookupKind::Normal {
-        return order_func(self_, i_s, true);
+        return type_order_func(self_, i_s);
     }
     if name == "__slots__" && self_.options.slots {
         return LookupResult::UnknownName(Inferred::from_type(Type::Tuple(Rc::new(
@@ -770,7 +771,7 @@ pub fn lookup_on_dataclass(
         return LookupResult::UnknownName(Inferred::from_type(Type::Tuple(tup)));
     }
     if self_.options.order && ORDER_METHOD_NAMES.contains(&name) {
-        return order_func(self_, i_s, false);
+        return order_func(self_, i_s);
     }
     if self_.options.slots {
         todo!()
@@ -786,7 +787,7 @@ pub fn lookup_on_dataclass(
         .unwrap_or(LookupResult::None)
 }
 
-fn order_func(self_: Rc<Dataclass>, i_s: &InferenceState, from_type: bool) -> LookupResult {
+fn order_func(self_: Rc<Dataclass>, i_s: &InferenceState) -> LookupResult {
     return LookupResult::UnknownName(Inferred::from_type(Type::Callable(Rc::new(
         CallableContent {
             name: None,
@@ -801,6 +802,43 @@ fn order_func(self_: Rc<Dataclass>, i_s: &InferenceState, from_type: bool) -> Lo
                 name: None,
                 has_default: false,
             }])),
+            return_type: i_s.db.python_state.bool_type(),
+        },
+    ))));
+}
+
+fn type_order_func(self_: Rc<Dataclass>, i_s: &InferenceState) -> LookupResult {
+    let type_var = Rc::new(TypeVar {
+        name_string: TypeVarName::Self_,
+        kind: TypeVarKind::Unrestricted,
+        variance: Variance::Invariant,
+    });
+    let tv_usage = TypeVarUsage {
+        type_var: type_var.clone(),
+        index: 0.into(),
+        in_definition: self_.class.link,
+    };
+    return LookupResult::UnknownName(Inferred::from_type(Type::Callable(Rc::new(
+        CallableContent {
+            name: None,
+            class_name: None,
+            defined_at: self_.class.link,
+            kind: FunctionKind::Function {
+                had_first_self_or_class_annotation: false,
+            },
+            type_vars: TypeVarLikes::new(Rc::new([TypeVarLike::TypeVar(type_var)])),
+            params: CallableParams::Simple(Rc::new([
+                CallableParam {
+                    type_: ParamType::PositionalOnly(Type::TypeVar(tv_usage.clone())),
+                    name: Some(DbString::Static("self")),
+                    has_default: false,
+                },
+                CallableParam {
+                    type_: ParamType::PositionalOnly(Type::TypeVar(tv_usage)),
+                    name: Some(DbString::Static("other")),
+                    has_default: false,
+                },
+            ])),
             return_type: i_s.db.python_state.bool_type(),
         },
     ))));
