@@ -2272,7 +2272,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 } else if specific == Specific::MaybeSelfParam {
                                     Inferred::new_saved(self.file, node_index)
                                 } else {
-                                    todo!("{:?} {:?}", self.i_s, specific)
+                                    Inferred::new_any(AnyCause::Unannotated)
                                 }
                             }
                             FunctionOrLambda::Lambda(lambda) => {
