@@ -994,8 +994,14 @@ impl<'db: 'slf, 'slf> Inferred {
                     ));
                 }
                 FunctionKind::Classmethod { .. } => {
-                    let Type::Class(instance_cls) = &instance else {
-                        todo!("Is this always the case?")
+                    let tmp;
+                    let instance_cls = match &instance {
+                        Type::Class(c) => c,
+                        Type::Self_ => {
+                            tmp = i_s.current_class().unwrap().as_generic_class(i_s.db);
+                            &tmp
+                        }
+                        _ => todo!("Is this always the case?"),
                     };
                     let instance_cls = instance_cls.class(i_s.db);
                     let result = infer_class_method(i_s, instance_cls, attribute_class, c);
