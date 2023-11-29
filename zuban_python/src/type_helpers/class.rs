@@ -2001,7 +2001,7 @@ impl<'a> TypeOrClass<'a> {
         }
     }
 
-    pub fn name<'db: 'a>(&self, db: &'a Database) -> &str {
+    pub fn name(&self, db: &'a Database) -> &str {
         match self {
             Self::Class(class) => class.name(),
             Self::Type(t) => match t.as_ref() {

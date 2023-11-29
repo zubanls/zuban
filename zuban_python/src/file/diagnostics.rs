@@ -6,7 +6,7 @@ use parsa_python_ast::*;
 
 use crate::arguments::{CombinedArguments, KnownArguments, NoArguments};
 use crate::database::{
-    ClassKind, ComplexPoint, Locality, OverloadImplementation, Point, PointType, Specific,
+    ClassKind, ComplexPoint, Database, Locality, OverloadImplementation, Point, PointType, Specific,
 };
 use crate::debug;
 use crate::diagnostics::{Issue, IssueType};
@@ -17,7 +17,7 @@ use crate::inferred::{infer_class_method, Inferred};
 use crate::matching::params::{has_overlapping_params, WrappedParamType, WrappedStar};
 use crate::matching::{
     matches_params, FormatData, Generics, LookupKind, LookupResult, Match, Matcher, OnTypeError,
-    Param, ResultContext,
+    Param, ParamsStyle, ResultContext,
 };
 use crate::node_ref::NodeRef;
 use crate::python_state::NAME_TO_FUNCTION_DIFF;
@@ -541,16 +541,23 @@ impl<'db> Inference<'db, '_, '_> {
                         let f = Instance::new(c, None)
                             .full_lookup(self.i_s, node_ref, name)
                             .into_inferred();
+                        let __post_init__ = dataclass.expect_calculated_post_init();
                         check_override(
                             self.i_s,
                             node_ref,
                             TypeOrClass::Type(Cow::Owned(Type::Dataclass(dataclass.clone()))),
+                            |_, _| "dataclass",
                             c,
-                            &Type::Callable(Rc::new(
-                                dataclass.expect_calculated_post_init().clone(),
-                            )),
+                            &Type::Callable(Rc::new(__post_init__.clone())),
                             &f.as_cow_type(&i_s),
                             name,
+                            Some(&|| {
+                                let params = __post_init__.params.format(
+                                    &FormatData::new_short(i_s.db),
+                                    ParamsStyle::Unreachable,
+                                );
+                                format!("def __post_init__(self, {params})")
+                            }),
                         );
                         continue;
                     }
@@ -1431,8 +1438,16 @@ fn try_pretty_format(
 ) {
     let prefix = "         ";
     if let Some(inf) = class_lookup_result.into_maybe_inferred() {
+        let add_kind_info = |notes: &mut Vec<Box<str>>, kind| match kind {
+            FunctionKind::Classmethod { .. } => notes.push(format!("{prefix}@classmethod").into()),
+            FunctionKind::Staticmethod { .. } => {
+                notes.push(format!("{prefix}@staticmethod").into())
+            }
+            _ => (),
+        };
         match inf.as_cow_type(i_s).as_ref() {
             Type::Callable(c) if !matches!(c.kind, FunctionKind::Property { .. }) => {
+                add_kind_info(notes, c.kind);
                 notes.push(
                     format!(
                         "{prefix}{}",
@@ -1445,15 +1460,7 @@ fn try_pretty_format(
             Type::FunctionOverload(overloads) => {
                 for c in overloads.iter_functions() {
                     notes.push(format!("{prefix}@overload").into());
-                    match c.kind {
-                        FunctionKind::Classmethod { .. } => {
-                            notes.push(format!("{prefix}@classmethod").into())
-                        }
-                        FunctionKind::Staticmethod { .. } => {
-                            notes.push(format!("{prefix}@staticmethod").into())
-                        }
-                        _ => (),
-                    }
+                    add_kind_info(notes, c.kind);
                     notes.push(
                         format!(
                             "{prefix}{}",
@@ -1506,10 +1513,12 @@ fn find_and_check_override(
             i_s,
             from,
             original_class,
+            |db, c| c.name(db),
             override_class,
             &original_t,
             &override_t,
             name,
+            None,
         )
     } else if has_override_decorator {
         from.add_issue(i_s, IssueType::MissingBaseForOverride { name: name.into() });
@@ -1520,10 +1529,12 @@ fn check_override(
     i_s: &InferenceState,
     from: NodeRef,
     original_class: TypeOrClass,
+    original_class_name: impl for<'x> Fn(&'x Database, &'x TypeOrClass) -> &'x str,
     override_class: Class,
     original_t: &Type,
     override_t: &Type,
     name: &str,
+    original_formatter: Option<&dyn Fn() -> String>,
 ) {
     let kind = LookupKind::Normal;
     let maybe_func = || match override_t {
@@ -1562,7 +1573,7 @@ fn check_override(
         // signatures. Try to make this as similar as possible to Mypy.
         match override_func_infos(&override_t, &original_t) {
             Some(OverrideFuncInfos::CallablesSameParamLength(got_c, expected_c)) => {
-                let supertype = original_class.name(db);
+                let supertype = original_class_name(db, &original_class);
 
                 // First check params
                 let CallableParams::Simple(params1) = &got_c.params else {
@@ -1648,7 +1659,7 @@ fn check_override(
                                     i_s,
                                     IssueType::OverloadOrderMustMatchSupertype {
                                         name: name.into(),
-                                        base_class: original_class.name(db).into(),
+                                        base_class: original_class_name(db, &original_class).into(),
                                     },
                                 );
                                 break 'outer;
@@ -1665,7 +1676,7 @@ fn check_override(
                     IssueType::IncompatibleAssignmentInSubclass {
                         got: override_t.format_short(i_s.db),
                         expected: original_t.format_short(i_s.db),
-                        base_class: original_class.name(i_s.db).into(),
+                        base_class: original_class_name(i_s.db, &original_class).into(),
                     },
                 )
             }
@@ -1673,17 +1684,21 @@ fn check_override(
         if !emitted {
             let mut notes = vec![];
             notes.push("     Superclass:".into());
-            try_pretty_format(
-                &mut notes,
-                &i_s.with_class_context(&match original_class {
-                    TypeOrClass::Class(c) => c,
-                    TypeOrClass::Type(_) => override_class,
-                }),
-                &original_t,
-                override_class
-                    .lookup_and_class_and_maybe_ignore_self(i_s, from, name, kind, true)
-                    .0,
-            );
+            if let Some(original_formatter) = original_formatter {
+                notes.push(format!("        {}", original_formatter()).into());
+            } else {
+                try_pretty_format(
+                    &mut notes,
+                    &i_s.with_class_context(&match original_class {
+                        TypeOrClass::Class(c) => c,
+                        TypeOrClass::Type(_) => override_class,
+                    }),
+                    &original_t,
+                    override_class
+                        .lookup_and_class_and_maybe_ignore_self(i_s, from, name, kind, true)
+                        .0,
+                );
+            }
             notes.push("     Subclass:".into());
             try_pretty_format(
                 &mut notes,
@@ -1701,7 +1716,7 @@ fn check_override(
 
             let issue = IssueType::SignatureIncompatibleWithSupertype {
                 name: name.into(),
-                base_class: original_class.name(i_s.db).into(),
+                base_class: original_class_name(i_s.db, &original_class).into(),
                 notes: notes.into(),
             };
             if let Some(func) = maybe_func() {
