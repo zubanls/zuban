@@ -361,7 +361,7 @@ testSelfTypeNew
 testSelfTypeNew_explicit
 
 # __post_init__
-testPostInitCorrectSignature
+testPostInitClassMethod
 # dataclasses __slots__
 testDataclassWithSlotsArg
 # dataclass classmethod

@@ -539,7 +539,8 @@ impl<'db> Inference<'db, '_, '_> {
                 if name == "__post_init__" {
                     if let Some(dataclass) = c.maybe_dataclass() {
                         let f = Instance::new(c, None)
-                            .full_lookup(self.i_s, node_ref, name)
+                            .lookup_on_self(self.i_s, node_ref, name, LookupKind::OnlyType)
+                            .1
                             .into_inferred();
                         let __post_init__ = dataclass.expect_calculated_post_init();
                         check_override(
