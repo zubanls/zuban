@@ -1,0 +1,17 @@
+[case dataclass_any_inherited_nested]
+# Checks issues of testDataclassesAnyInherit but with additional inheritance
+from dataclasses import dataclass
+from typing import Any
+A: Any
+@dataclass
+class B(A):
+    a: int
+
+@dataclass
+class C(B):
+    b: str
+
+reveal_type(C) # N: Revealed type is "def (a: int, b: str, *Any, **Any) -> __main__.C"
+C(a=1, b="", c=2)
+C(1, 1)  # E: Argument 2 to "C" has incompatible type "int"; expected "str"
+C(a="foo", b="")  # E: Argument "a" to "C" has incompatible type "str"; expected "int"

@@ -149,6 +149,8 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                     let mut new_param = param.clone();
                     let t = match &mut new_param.type_ {
                         ParamType::PositionalOrKeyword(t) | ParamType::KeywordOnly(t) => t,
+                        // Comes from an incomplete_mro
+                        ParamType::Star(_) | ParamType::StarStar(_) => continue,
                         _ => unreachable!(),
                     };
                     *t = replace_class_type_vars(db, t, &cls, &|| {
