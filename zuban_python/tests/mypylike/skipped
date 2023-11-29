@@ -374,9 +374,6 @@ updateDataclassTransformParameterViaParentClass
 updateBaseClassToUseDataclassTransform
 frozenInheritanceViaDefault
 testDataclassReplaceOptional
-# dataclass replace changes
-testReplaceNotDataclass
-testReplaceIsDataclass
 
 # Enum is also a NamedTuple. wtf?
 testNamedTupleEnum
@@ -1637,6 +1634,7 @@ testSerializeTypeGuardFunction
 testTypeGuardWithPositionalOnlyArg
 testTypeGuardKeywordFollowingWalrus
 testWalrusTypeGuard
+testReplaceIsDataclass
 
 # Function local self attribute name binding
 testOptionalDescriptorsBinder
