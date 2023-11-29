@@ -366,8 +366,6 @@ testDataclassWithSlotsArg
 testDataclassesClassmethods
 testClassmethodShadowingFieldDoesNotCrash
 testDeferredDataclassInitSignature
-# dataclass order
-testDataclassUpdate6
 # InitVar set default
 testDataclassInitVarCannotBeSet
 # dataclass transform

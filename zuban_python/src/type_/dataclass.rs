@@ -696,23 +696,6 @@ pub fn dataclass_init_func<'a>(self_: &'a Rc<Dataclass>, db: &Database) -> &'a C
     self_.__init__.get().unwrap()
 }
 
-pub fn lookup_dataclass_symbol<'db: 'a, 'a>(
-    self_: &'a Rc<Dataclass>,
-    i_s: &InferenceState<'db, '_>,
-    name: &str,
-) -> (Option<Class<'a>>, LookupResult) {
-    if self_.options.init && name == "__init__" {
-        return (
-            None,
-            LookupResult::UnknownName(Inferred::from_type(Type::Callable(Rc::new(
-                dataclass_init_func(self_, i_s.db).clone(),
-            )))),
-        );
-    }
-    let class = self_.class(i_s.db);
-    (Some(class), class.lookup_symbol(i_s, name))
-}
-
 pub fn lookup_on_dataclass_type(
     self_: Rc<Dataclass>,
     i_s: &InferenceState,
@@ -744,10 +727,9 @@ pub fn lookup_on_dataclass_type(
     self_.class(i_s.db).lookup(i_s, from, name, kind)
 }
 
-pub fn lookup_on_dataclass(
+pub fn lookup_symbol_internal(
     self_: Rc<Dataclass>,
-    i_s: &InferenceState,
-    from: NodeRef,
+    i_s: &InferenceState<'_, '_>,
     name: &str,
 ) -> LookupResult {
     if name == "__dataclass_fields__" {
@@ -771,10 +753,41 @@ pub fn lookup_on_dataclass(
         return LookupResult::UnknownName(Inferred::from_type(Type::Tuple(tup)));
     }
     if self_.options.order && ORDER_METHOD_NAMES.contains(&name) {
-        return order_func(self_, i_s);
+        return order_func(self_.clone(), i_s);
     }
     if self_.options.slots {
         todo!()
+    }
+    if self_.options.init && name == "__init__" {
+        return LookupResult::UnknownName(Inferred::from_type(Type::Callable(Rc::new(
+            dataclass_init_func(&self_, i_s.db).clone(),
+        ))));
+    }
+    LookupResult::None
+}
+
+pub fn lookup_dataclass_symbol<'db: 'a, 'a>(
+    self_: &'a Rc<Dataclass>,
+    i_s: &InferenceState<'db, '_>,
+    name: &str,
+) -> (Option<Class<'a>>, LookupResult) {
+    let result = lookup_symbol_internal(self_.clone(), i_s, name);
+    if result.is_some() {
+        return (None, result);
+    }
+    let class = self_.class(i_s.db);
+    (Some(class), class.lookup_symbol(i_s, name))
+}
+
+pub fn lookup_on_dataclass(
+    self_: Rc<Dataclass>,
+    i_s: &InferenceState,
+    from: NodeRef,
+    name: &str,
+) -> LookupResult {
+    let result = lookup_symbol_internal(self_.clone(), i_s, name);
+    if result.is_some() {
+        return result;
     }
     Instance::new(self_.class(i_s.db), None)
         .lookup(i_s, from, name, LookupKind::Normal)
