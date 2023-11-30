@@ -37,7 +37,7 @@ use crate::type_::{
     infer_typed_dict_total_argument, infer_value_on_member, AnyCause, CallableContent,
     CallableLike, CallableParam, CallableParams, ClassGenerics, Dataclass, DataclassOptions,
     DbString, Enum, EnumMemberDefinition, FormatStyle, FunctionKind, FunctionOverload,
-    GenericClass, GenericsList, NamedTuple, ParamType, RecursiveAlias, StringSlice, Tuple, Type,
+    GenericClass, GenericsList, NamedTuple, ParamType, RecursiveType, StringSlice, Tuple, Type,
     TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember,
     TypedDictMemberGatherer, Variance,
 };
@@ -1335,7 +1335,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     for (_, type_or_class) in self.mro(format_data.db) {
                         if let TypeOrClass::Type(t) = type_or_class {
                             if let Type::Tuple(tup) = t.as_ref() {
-                                let rec = RecursiveAlias::new(self.node_ref.as_link(), None);
+                                let rec = RecursiveType::new(self.node_ref.as_link(), None);
                                 if format_data.has_already_seen_recursive_alias(&rec) {
                                     return "...".into();
                                 }

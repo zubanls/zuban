@@ -16,7 +16,7 @@ use crate::{
 };
 
 use super::{
-    AnyCause, DbString, FunctionKind, ParamSpecUsage, RecursiveAlias, StringSlice, Type, TypeVar,
+    AnyCause, DbString, FunctionKind, ParamSpecUsage, RecursiveType, StringSlice, Type, TypeVar,
     TypeVarKind, TypeVarLike, TypeVarLikes, TypeVarName, TypeVarUsage, TypedDict, Variance,
 };
 
@@ -280,7 +280,7 @@ impl CallableParams {
     pub(super) fn has_any_internal(
         &self,
         i_s: &InferenceState,
-        already_checked: &mut Vec<Rc<RecursiveAlias>>,
+        already_checked: &mut Vec<Rc<RecursiveType>>,
     ) -> bool {
         match self {
             Self::Simple(params) => params.iter().any(|param| match &param.type_ {
@@ -476,7 +476,7 @@ impl CallableContent {
     pub(super) fn has_any_internal(
         &self,
         i_s: &InferenceState,
-        already_checked: &mut Vec<Rc<RecursiveAlias>>,
+        already_checked: &mut Vec<Rc<RecursiveType>>,
     ) -> bool {
         self.return_type.has_any_internal(i_s, already_checked)
             || self.params.has_any_internal(i_s, already_checked)

@@ -1,17 +1,17 @@
 use super::Matcher;
 use crate::{
     database::Database,
-    type_::{FormatStyle, RecursiveAlias, TypeVarLikeUsage},
+    type_::{FormatStyle, RecursiveType, TypeVarLikeUsage},
 };
 
 #[derive(Clone, Copy)]
 struct DisplayedRecursive<'a> {
-    current: &'a RecursiveAlias,
+    current: &'a RecursiveType,
     parent: Option<&'a DisplayedRecursive<'a>>,
 }
 
 impl DisplayedRecursive<'_> {
-    fn has_already_seen_recursive_alias(&self, rec: &RecursiveAlias) -> bool {
+    fn has_already_seen_recursive_alias(&self, rec: &RecursiveType) -> bool {
         self.current == rec
             || self
                 .parent
@@ -86,7 +86,7 @@ impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
 
     pub fn with_seen_recursive_alias<'x: 'c>(
         &'x self,
-        rec: &'x RecursiveAlias,
+        rec: &'x RecursiveType,
     ) -> FormatData<'db, 'a, 'b, 'x> {
         Self {
             db: self.db,
@@ -112,7 +112,7 @@ impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
         }
     }
 
-    pub fn has_already_seen_recursive_alias(&self, rec: &RecursiveAlias) -> bool {
+    pub fn has_already_seen_recursive_alias(&self, rec: &RecursiveType) -> bool {
         if let Some(displayed_recursive) = &self.displayed_recursive {
             displayed_recursive.has_already_seen_recursive_alias(rec)
         } else {

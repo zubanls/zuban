@@ -69,7 +69,7 @@ impl Type {
             Type::Union(union) => union.iter().any(|t| t.overlaps(i_s, other)),
             Type::FunctionOverload(intersection) => todo!(),
             Type::NewType(_) => todo!(),
-            Type::RecursiveAlias(_) => todo!(),
+            Type::RecursiveType(_) => todo!(),
             Type::Self_ => false, // TODO this is wrong
             Type::ParamSpecArgs(usage) => todo!(),
             Type::ParamSpecKwargs(usage) => todo!(),
@@ -156,7 +156,7 @@ impl Type {
                 Type::NewType(new_type2) => (new_type1 == new_type2).into(),
                 _ => Match::new_false(),
             },
-            t1 @ Type::RecursiveAlias(rec1) => {
+            t1 @ Type::RecursiveType(rec1) => {
                 match value_type {
                     t2 @ Type::Class(_) => {
                         // Classes like aliases can also be recursive in mypy, like `class B(List[B])`.
@@ -165,7 +165,7 @@ impl Type {
                             g.matches_internal(i_s, matcher, value_type, variance)
                         })
                     }
-                    t @ Type::RecursiveAlias(rec2) => matcher.avoid_recursion(t1, t, |matcher| {
+                    t @ Type::RecursiveType(rec2) => matcher.avoid_recursion(t1, t, |matcher| {
                         let t1 = rec1.calculated_type(i_s.db);
                         let t2 = rec2.calculated_type(i_s.db);
                         t1.matches_internal(i_s, matcher, &t2, variance)

@@ -19,7 +19,7 @@ use crate::{
 };
 
 use super::{
-    utils::method_with_fallback, CustomBehavior, FormatStyle, GenericsList, RecursiveAlias,
+    utils::method_with_fallback, CustomBehavior, FormatStyle, GenericsList, RecursiveType,
     StringSlice, Type, TypeVarLikes,
 };
 
@@ -185,7 +185,7 @@ impl TypedDict {
     }
 
     pub fn format_full(&self, format_data: &FormatData, name: Option<&str>) -> String {
-        let rec = RecursiveAlias::new(self.defined_at, None);
+        let rec = RecursiveType::new(self.defined_at, None);
         if format_data.has_already_seen_recursive_alias(&rec) {
             return "...".to_string();
         }

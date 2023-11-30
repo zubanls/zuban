@@ -22,7 +22,7 @@ use crate::python_state::PythonState;
 use crate::type_::GenericItem;
 use crate::type_::GenericsList;
 use crate::type_::ParamSpecUsage;
-use crate::type_::RecursiveAlias;
+use crate::type_::RecursiveType;
 use crate::type_::TypeVarLikeUsage;
 use crate::type_::TypeVarTupleUsage;
 use crate::type_::TypeVarUsage;
@@ -589,7 +589,7 @@ impl TypeAlias {
 
     pub fn as_type_and_set_type_vars_any(&self, db: &Database) -> Type {
         if self.is_recursive() {
-            return Type::RecursiveAlias(Rc::new(RecursiveAlias::new(
+            return Type::RecursiveType(Rc::new(RecursiveType::new(
                 self.location,
                 (!self.type_vars.is_empty()).then(|| {
                     GenericsList::new_generics(
@@ -619,7 +619,7 @@ impl TypeAlias {
         callable: &mut impl FnMut(TypeVarLikeUsage) -> GenericItem,
     ) -> Cow<Type> {
         if self.is_recursive() && !remove_recursive_wrapper {
-            return Cow::Owned(Type::RecursiveAlias(Rc::new(RecursiveAlias::new(
+            return Cow::Owned(Type::RecursiveType(Rc::new(RecursiveType::new(
                 self.location,
                 (!self.type_vars.is_empty()).then(|| {
                     GenericsList::new_generics(

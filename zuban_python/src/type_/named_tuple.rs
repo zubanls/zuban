@@ -19,7 +19,7 @@ use crate::{
 
 use super::{
     tuple::lookup_tuple_magic_methods, AnyCause, CallableContent, CallableParam, CallableParams,
-    DbString, FormatStyle, FunctionKind, ParamType, RecursiveAlias, StringSlice, Tuple, Type,
+    DbString, FormatStyle, FunctionKind, ParamType, RecursiveType, StringSlice, Tuple, Type,
     TypeOrTypeVarTuple,
 };
 
@@ -101,7 +101,7 @@ impl NamedTuple {
         let params = self.params();
         // We need to check recursions here, because for class definitions of named tuples can
         // recurse with their attributes.
-        let rec = RecursiveAlias::new(self.__new__.defined_at, None);
+        let rec = RecursiveType::new(self.__new__.defined_at, None);
         if format_data.has_already_seen_recursive_alias(&rec) {
             return Box::from(name);
         }

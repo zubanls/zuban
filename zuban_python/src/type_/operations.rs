@@ -253,7 +253,7 @@ impl Type {
                 None,
                 lookup_on_enum_member_instance(i_s, from, member, name),
             ),
-            Type::RecursiveAlias(r) => r
+            Type::RecursiveType(r) => r
                 .calculated_type(i_s.db)
                 .run_after_lookup_on_each_union_member(
                     i_s,
@@ -346,7 +346,7 @@ impl Type {
                     .type_(i_s)
                     .get_item(i_s, None, slice_type, result_context)
             }
-            Type::RecursiveAlias(r) => {
+            Type::RecursiveType(r) => {
                 r.calculated_type(i_s.db)
                     .get_item(i_s, None, slice_type, result_context)
             }

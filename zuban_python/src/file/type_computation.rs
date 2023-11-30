@@ -22,11 +22,10 @@ use crate::type_::{
     new_collections_named_tuple, new_typing_named_tuple, AnyCause, CallableContent, CallableParam,
     CallableParams, CallableWithParent, ClassGenerics, Dataclass, DbString, Enum, EnumMember,
     FunctionKind, GenericClass, GenericItem, GenericsList, Literal, LiteralKind, NamedTuple,
-    Namespace, NewType, ParamSpecArgument, ParamSpecUsage, ParamType, RecursiveAlias,
-    StarParamType, StarStarParamType, StringSlice, Tuple, Type, TypeArguments, TypeOrTypeVarTuple,
-    TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
-    TypeVarTupleUsage, TypeVarUsage, TypedDict, TypedDictGenerics, TypedDictMember, UnionEntry,
-    UnionType,
+    Namespace, NewType, ParamSpecArgument, ParamSpecUsage, ParamType, RecursiveType, StarParamType,
+    StarStarParamType, StringSlice, Tuple, Type, TypeArguments, TypeOrTypeVarTuple, TypeVar,
+    TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage,
+    TypeVarUsage, TypedDict, TypedDictGenerics, TypedDictMember, UnionEntry, UnionType,
 };
 use crate::type_helpers::{start_namedtuple_params, Class, Function, Module};
 use crate::{debug, new_class};
@@ -1013,9 +1012,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             // TODO here we would need to check if the generics are actually valid.
             TypeContent::RecursiveAlias(link) => {
                 self.is_recursive_alias = true;
-                return Some(Type::RecursiveAlias(Rc::new(RecursiveAlias::new(
-                    link, None,
-                ))));
+                return Some(Type::RecursiveType(Rc::new(RecursiveType::new(link, None))));
             }
             TypeContent::Unknown(cause) => (),
             TypeContent::ClassVar(t) => {
@@ -1310,7 +1307,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             .unwrap()
                             .type_vars;
                         let generics = self.compute_generics_for_alias(s, type_vars);
-                        TypeContent::Type(Type::RecursiveAlias(Rc::new(RecursiveAlias::new(
+                        TypeContent::Type(Type::RecursiveType(Rc::new(RecursiveType::new(
                             link,
                             Some(generics),
                         ))))

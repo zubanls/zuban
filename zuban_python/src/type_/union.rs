@@ -75,14 +75,14 @@ fn merge_simplified_union_type(
             continue;
         }
         match &additional.type_ {
-            Type::RecursiveAlias(r1) if r1.generics.is_some() => {
+            Type::RecursiveType(r1) if r1.generics.is_some() => {
                 // Recursive aliases need special handling, because the normal subtype
                 // checking will call this function again if generics are available to
                 // cache the type. In that case we just avoid complex matching and use
                 // a simple heuristic. This won't affect correctness, it might just
                 // display a bigger union than necessary.
                 for entry in new_types.iter() {
-                    if let Type::RecursiveAlias(r2) = &entry.type_ {
+                    if let Type::RecursiveType(r2) = &entry.type_ {
                         if r1 == r2 {
                             continue 'outer;
                         }
@@ -95,7 +95,7 @@ fn merge_simplified_union_type(
                         continue;
                     }
                     match &current.type_ {
-                        Type::RecursiveAlias(r) if r.generics.is_some() => (),
+                        Type::RecursiveType(r) if r.generics.is_some() => (),
                         t => {
                             if let Type::Class(c) = t {
                                 if c.class(i_s.db).is_calculating_class_infos() {

@@ -25,7 +25,6 @@ use parsa_python_ast::PythonString;
 use std::cell::OnceCell;
 
 use crate::arguments::Arguments;
-use crate::database::ComplexPoint;
 use crate::database::Database;
 use crate::database::FileIndex;
 use crate::database::PointLink;
@@ -396,7 +395,7 @@ pub enum Type {
     Type(Rc<Type>),
     Tuple(Rc<Tuple>),
     Callable(Rc<CallableContent>),
-    RecursiveAlias(Rc<RecursiveAlias>),
+    RecursiveType(Rc<RecursiveType>),
     NewType(Rc<NewType>),
     ParamSpecArgs(ParamSpecUsage),
     ParamSpecKwargs(ParamSpecUsage),
@@ -683,7 +682,7 @@ impl Type {
             Self::Never => Box::from("Never"),
             Self::Literal(literal) => literal.format(format_data),
             Self::NewType(n) => n.format(format_data),
-            Self::RecursiveAlias(rec) => {
+            Self::RecursiveType(rec) => {
                 if let Some(generics) = &rec.generics {
                     if format_data.style != FormatStyle::MypyRevealType {
                         return format!(
@@ -845,7 +844,7 @@ impl Type {
             | Self::Enum(_)
             | Self::EnumMember(_)
             | Self::NewType(_) => (),
-            Self::RecursiveAlias(rec) => {
+            Self::RecursiveType(rec) => {
                 if let Some(generics) = rec.generics.as_ref() {
                     search_in_generics(found_type_var, generics)
                 }
@@ -880,7 +879,7 @@ impl Type {
     fn has_any_internal(
         &self,
         i_s: &InferenceState,
-        already_checked: &mut Vec<Rc<RecursiveAlias>>,
+        already_checked: &mut Vec<Rc<RecursiveType>>,
     ) -> bool {
         let search_in_generics = |generics: &GenericsList, already_checked: &mut _| {
             generics.iter().any(|g| match g {
@@ -920,7 +919,7 @@ impl Type {
             | Self::Literal { .. } => false,
             Self::Any(_) => true,
             Self::NewType(n) => n.type_(i_s).has_any(i_s),
-            Self::RecursiveAlias(recursive_alias) => {
+            Self::RecursiveType(recursive_alias) => {
                 if let Some(generics) = &recursive_alias.generics {
                     if search_in_generics(generics, already_checked) {
                         return true;
@@ -1009,7 +1008,7 @@ impl Type {
             | Self::NewType(_)
             | Self::ParamSpecArgs(_)
             | Self::ParamSpecKwargs(_)
-            | Self::RecursiveAlias(_)
+            | Self::RecursiveType(_)
             | Self::Module(_)
             | Self::Namespace(_)
             | Self::CustomBehavior(_)
@@ -1264,7 +1263,7 @@ impl Type {
             Type::Union(union_type) => union_type
                 .iter()
                 .any(|t| t.on_any_resolved_context_type(i_s, matcher, callable)),
-            Type::RecursiveAlias(r) => r
+            Type::RecursiveType(r) => r
                 .calculated_type(i_s.db)
                 .on_any_resolved_context_type(i_s, matcher, callable),
             type_ @ Type::TypeVar(_) => {
@@ -1302,7 +1301,7 @@ impl Type {
         let mut found = Err(UniqueInUnpackedUnionError::None);
         for t in self.iter_with_unpacked_unions() {
             let new = match t {
-                Type::RecursiveAlias(r) => r
+                Type::RecursiveType(r) => r
                     .calculated_type(db)
                     .find_unique_type_in_unpacked_union(db, matcher, find),
                 Type::TypeVar(_) if matcher.might_have_defined_type_vars() => matcher
@@ -1630,13 +1629,13 @@ impl Literal {
 }
 
 #[derive(Debug, Clone)]
-pub struct RecursiveAlias {
+pub struct RecursiveType {
     pub link: PointLink,
     pub generics: Option<GenericsList>,
     pub calculated_type: OnceCell<Type>,
 }
 
-impl RecursiveAlias {
+impl RecursiveType {
     pub fn new(link: PointLink, generics: Option<GenericsList>) -> Self {
         Self {
             link,
@@ -1673,7 +1672,7 @@ impl RecursiveAlias {
     }
 }
 
-impl std::cmp::PartialEq for RecursiveAlias {
+impl std::cmp::PartialEq for RecursiveType {
     fn eq(&self, other: &Self) -> bool {
         self.link == other.link && self.generics == other.generics
     }

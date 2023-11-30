@@ -152,7 +152,7 @@ fn common_base_class(i_s: &InferenceState, c1: Class, c2: Class) -> Option<Type>
 }
 
 fn class_against_non_class(i_s: &InferenceState, c1: Class, t2: &Type) -> Option<Type> {
-    if let Type::RecursiveAlias(r2) = t2 {
+    if let Type::RecursiveType(r2) = t2 {
         if let Type::Class(c2) = r2.calculated_type(i_s.db) {
             return common_base_class(i_s, c1, c2.class(i_s.db));
         }

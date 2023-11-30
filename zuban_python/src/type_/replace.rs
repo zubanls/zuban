@@ -8,7 +8,7 @@ use crate::{
 use super::{
     simplified_union_from_iterators, CallableContent, CallableParam, CallableParams, ClassGenerics,
     Dataclass, GenericClass, GenericItem, GenericsList, NamedTuple, ParamSpecArgument,
-    ParamSpecTypeVars, ParamType, RecursiveAlias, StarParamType, StarStarParamType, Tuple,
+    ParamSpecTypeVars, ParamType, RecursiveType, StarParamType, StarStarParamType, Tuple,
     TupleTypeArguments, Type, TypeArguments, TypeOrTypeVarTuple, TypeVarLike, TypeVarLikeUsage,
     TypeVarLikes, TypeVarManager, TypedDict, TypedDictGenerics, UnionEntry, UnionType,
 };
@@ -181,7 +181,7 @@ impl Type {
             }
             Type::Literal { .. } => self.clone(),
             Type::NewType(t) => Type::NewType(t.clone()),
-            Type::RecursiveAlias(rec) => Type::RecursiveAlias(Rc::new(RecursiveAlias::new(
+            Type::RecursiveType(rec) => Type::RecursiveType(Rc::new(RecursiveType::new(
                 rec.link,
                 rec.generics.as_ref().map(replace_generics),
             ))),
@@ -602,8 +602,8 @@ impl Type {
                 Self::rewrite_late_bound_callables_for_callable(content, manager),
             )),
             Type::NewType(_) => todo!(),
-            Type::RecursiveAlias(recursive_alias) => {
-                Type::RecursiveAlias(Rc::new(RecursiveAlias::new(
+            Type::RecursiveType(recursive_alias) => {
+                Type::RecursiveType(Rc::new(RecursiveType::new(
                     recursive_alias.link,
                     recursive_alias.generics.as_ref().map(rewrite_generics),
                 )))

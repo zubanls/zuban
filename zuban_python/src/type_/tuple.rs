@@ -17,7 +17,7 @@ use crate::{
 
 use super::{
     common_base_type, simplified_union_from_iterators, utils::method_with_fallback, CustomBehavior,
-    FormatStyle, GenericItem, GenericsList, RecursiveAlias, TypeOrTypeVarTuple,
+    FormatStyle, GenericItem, GenericsList, RecursiveType, TypeOrTypeVarTuple,
 };
 
 thread_local! {
@@ -220,7 +220,7 @@ impl TupleTypeArguments {
     pub(super) fn has_any_internal(
         &self,
         i_s: &InferenceState,
-        already_checked: &mut Vec<Rc<RecursiveAlias>>,
+        already_checked: &mut Vec<Rc<RecursiveType>>,
     ) -> bool {
         match self {
             Self::FixedLength(ts) => ts.iter().any(|t| match t {
