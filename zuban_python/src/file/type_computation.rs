@@ -3713,7 +3713,6 @@ fn check_type_name<'db: 'file, 'file>(
                 },
                 _ => (),
             }
-            // Classes can be defined recursive, so use the NamedTuple stuff here.
             TypeNameLookup::Class {
                 node_ref: NodeRef::new(name_node_ref.file, c.index()),
             }
