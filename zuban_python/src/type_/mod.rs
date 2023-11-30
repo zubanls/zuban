@@ -686,10 +686,9 @@ impl Type {
             Self::RecursiveAlias(rec) => {
                 if let Some(generics) = &rec.generics {
                     if format_data.style != FormatStyle::MypyRevealType {
-                        let alias = rec.type_alias(format_data.db);
                         return format!(
                             "{}[{}]",
-                            alias.name(format_data.db).unwrap(),
+                            rec.name(format_data.db),
                             generics.format(format_data)
                         )
                         .into();
@@ -700,8 +699,7 @@ impl Type {
                     if format_data.style == FormatStyle::MypyRevealType {
                         "...".into()
                     } else {
-                        let alias = rec.type_alias(format_data.db);
-                        Box::from(alias.name(format_data.db).unwrap())
+                        rec.name(format_data.db).into()
                     }
                 } else {
                     let format_data = format_data.with_seen_recursive_alias(rec);
@@ -1645,6 +1643,11 @@ impl RecursiveAlias {
             generics,
             calculated_type: OnceCell::new(),
         }
+    }
+
+    fn name<'x>(&'x self, db: &'x Database) -> &str {
+        let alias = self.type_alias(db);
+        alias.name(db).unwrap()
     }
 
     pub fn type_alias<'db>(&self, db: &'db Database) -> &'db TypeAlias {
