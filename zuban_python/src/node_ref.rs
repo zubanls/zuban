@@ -8,6 +8,7 @@ use parsa_python_ast::{
 
 use crate::database::{
     ClassStorage, ComplexPoint, Database, FileIndex, Locality, Point, PointLink, PointType,
+    TypeAlias,
 };
 use crate::diagnostics::{Issue, IssueType};
 use crate::file::File;
@@ -101,6 +102,13 @@ impl<'file> NodeRef<'file> {
             Some(self.file.complex_points.get(point.complex_index()))
         } else {
             None
+        }
+    }
+
+    pub fn maybe_alias(&self) -> Option<&'file TypeAlias> {
+        match self.complex() {
+            Some(ComplexPoint::TypeAlias(alias)) => Some(alias),
+            _ => None,
         }
     }
 

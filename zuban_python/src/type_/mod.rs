@@ -1651,11 +1651,7 @@ impl RecursiveAlias {
     }
 
     pub fn type_alias<'db>(&self, db: &'db Database) -> &'db TypeAlias {
-        let node_ref = NodeRef::from_link(db, self.link);
-        match node_ref.complex() {
-            Some(ComplexPoint::TypeAlias(alias)) => alias,
-            _ => unreachable!(),
-        }
+        NodeRef::from_link(db, self.link).maybe_alias().unwrap()
     }
 
     pub fn calculated_type<'db: 'slf, 'slf>(&'slf self, db: &'db Database) -> &'slf Type {
