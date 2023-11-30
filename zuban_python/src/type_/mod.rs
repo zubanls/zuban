@@ -1630,9 +1630,9 @@ impl Literal {
 
 #[derive(Debug, Clone)]
 pub struct RecursiveType {
-    pub link: PointLink,
-    pub generics: Option<GenericsList>,
-    pub calculated_type: OnceCell<Type>,
+    link: PointLink,
+    generics: Option<GenericsList>,
+    calculated_type: OnceCell<Type>,
 }
 
 impl RecursiveType {
@@ -1653,7 +1653,7 @@ impl RecursiveType {
         NodeRef::from_link(db, self.link).maybe_alias().unwrap()
     }
 
-    pub fn calculated_type<'db: 'slf, 'slf>(&'slf self, db: &'db Database) -> &'slf Type {
+    fn calculated_type<'db: 'slf, 'slf>(&'slf self, db: &'db Database) -> &'slf Type {
         let alias = self.type_alias(db);
         if self.generics.is_none() {
             alias.type_if_valid()
