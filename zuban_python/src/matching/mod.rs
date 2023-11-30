@@ -6,7 +6,6 @@ mod match_;
 mod matcher;
 pub mod params;
 mod result_context;
-mod type_;
 mod utils;
 
 use std::rc::Rc;
@@ -23,7 +22,6 @@ pub use matcher::{
 };
 pub use params::{matches_params, matches_simple_params, Param};
 pub use result_context::{CouldBeALiteral, ResultContext};
-pub use type_::LookupKind;
 pub use utils::{
     calculate_property_return, create_signature_without_self,
     create_signature_without_self_for_callable, maybe_class_usage, replace_class_type_vars,
@@ -195,4 +193,13 @@ impl IteratorContent {
             Self::Empty => todo!(),
         }
     }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum LookupKind {
+    Normal,
+    // In CPython there is PyTypeObject (for documentation see CPython's `Doc/c-api/typeobj.rst`).
+    // This type object is used to access __and__, when a user types `int & int`. Note that int
+    // defines __and__ as well, but the type of int does not, hence it should lead to an error.
+    OnlyType,
 }

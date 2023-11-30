@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::cell::Cell;
 use std::collections::HashMap;
 use std::fmt;
@@ -18,6 +19,13 @@ use crate::file::{
 };
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
+use crate::type_::GenericItem;
+use crate::type_::GenericsList;
+use crate::type_::ParamSpecUsage;
+use crate::type_::RecursiveAlias;
+use crate::type_::TypeVarLikeUsage;
+use crate::type_::TypeVarTupleUsage;
+use crate::type_::TypeVarUsage;
 use crate::type_::{
     CallableContent, FunctionKind, FunctionOverload, NamedTuple, NewType, StringSlice, Tuple, Type,
     TypeVarLike, TypeVarLikes,
@@ -577,6 +585,81 @@ impl TypeAlias {
                 Type::Class(_) | Type::TypedDict(_) | Type::Dataclass(_) => true,
                 _ => false,
             }
+    }
+
+    pub fn as_type_and_set_type_vars_any(&self, db: &Database) -> Type {
+        if self.is_recursive() {
+            return Type::RecursiveAlias(Rc::new(RecursiveAlias::new(
+                self.location,
+                (!self.type_vars.is_empty()).then(|| {
+                    GenericsList::new_generics(
+                        self.type_vars
+                            .iter()
+                            .map(|tv| tv.as_any_generic_item())
+                            .collect(),
+                    )
+                }),
+            )));
+        }
+        let type_ = self.type_if_valid();
+        if self.type_vars.is_empty() {
+            type_.clone()
+        } else {
+            type_.replace_type_var_likes(db, &mut |t| match t.in_definition() == self.location {
+                true => t.as_type_var_like().as_any_generic_item(),
+                false => t.into_generic_item(),
+            })
+        }
+    }
+
+    pub fn replace_type_var_likes(
+        &self,
+        db: &Database,
+        remove_recursive_wrapper: bool,
+        callable: &mut impl FnMut(TypeVarLikeUsage) -> GenericItem,
+    ) -> Cow<Type> {
+        if self.is_recursive() && !remove_recursive_wrapper {
+            return Cow::Owned(Type::RecursiveAlias(Rc::new(RecursiveAlias::new(
+                self.location,
+                (!self.type_vars.is_empty()).then(|| {
+                    GenericsList::new_generics(
+                        self.type_vars
+                            .iter()
+                            .enumerate()
+                            .map(|(i, type_var_like)| match type_var_like {
+                                TypeVarLike::TypeVar(type_var) => {
+                                    callable(TypeVarLikeUsage::TypeVar(Cow::Owned(TypeVarUsage {
+                                        type_var: type_var.clone(),
+                                        index: i.into(),
+                                        in_definition: self.location,
+                                    })))
+                                }
+                                TypeVarLike::TypeVarTuple(t) => callable(
+                                    TypeVarLikeUsage::TypeVarTuple(Cow::Owned(TypeVarTupleUsage {
+                                        type_var_tuple: t.clone(),
+                                        index: i.into(),
+                                        in_definition: self.location,
+                                    })),
+                                ),
+                                TypeVarLike::ParamSpec(p) => callable(TypeVarLikeUsage::ParamSpec(
+                                    Cow::Owned(ParamSpecUsage {
+                                        param_spec: p.clone(),
+                                        index: i.into(),
+                                        in_definition: self.location,
+                                    }),
+                                )),
+                            })
+                            .collect(),
+                    )
+                }),
+            ))));
+        }
+        let type_ = self.type_if_valid();
+        if self.type_vars.is_empty() {
+            Cow::Borrowed(type_)
+        } else {
+            Cow::Owned(type_.replace_type_var_likes(db, callable))
+        }
     }
 }
 

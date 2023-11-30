@@ -1654,6 +1654,24 @@ impl RecursiveAlias {
             _ => unreachable!(),
         }
     }
+
+    pub fn calculated_type<'db: 'slf, 'slf>(&'slf self, db: &'db Database) -> &'slf Type {
+        let alias = self.type_alias(db);
+        if self.generics.is_none() {
+            alias.type_if_valid()
+        } else {
+            self.calculated_type.get_or_init(|| {
+                self.type_alias(db)
+                    .replace_type_var_likes(db, true, &mut |t| {
+                        self.generics
+                            .as_ref()
+                            .map(|g| g.nth(t.index()).unwrap().clone())
+                            .unwrap()
+                    })
+                    .into_owned()
+            })
+        }
+    }
 }
 
 impl std::cmp::PartialEq for RecursiveAlias {
