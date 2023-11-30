@@ -1305,8 +1305,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     },
                     TypeContent::RecursiveAlias(link) => {
                         self.is_recursive_alias = true;
-                        let type_vars = &RecursiveAlias::new(link, None)
-                            .type_alias(self.inference.i_s.db)
+                        let type_vars = &NodeRef::from_link(self.inference.i_s.db, link)
+                            .maybe_alias()
+                            .unwrap()
                             .type_vars;
                         let generics = self.compute_generics_for_alias(s, type_vars);
                         TypeContent::Type(Type::RecursiveAlias(Rc::new(RecursiveAlias::new(

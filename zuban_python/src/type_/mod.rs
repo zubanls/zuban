@@ -1650,7 +1650,7 @@ impl RecursiveAlias {
         alias.name(db).unwrap()
     }
 
-    pub fn type_alias<'db>(&self, db: &'db Database) -> &'db TypeAlias {
+    fn type_alias<'db>(&self, db: &'db Database) -> &'db TypeAlias {
         NodeRef::from_link(db, self.link).maybe_alias().unwrap()
     }
 
