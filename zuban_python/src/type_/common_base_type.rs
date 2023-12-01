@@ -24,9 +24,6 @@ impl Type {
             }
             */
             Type::None | Type::Union(_) => return Some(self.simplified_union(i_s, other)),
-            Type::Class(c) if c.class(i_s.db).is_calculating_class_infos() => {
-                Some(t1.clone().union(i_s.db, t2.clone()))
-            }
             Type::Any(cause) => return Some(Type::Any(*cause)),
             Type::Never => return Some(t2.clone()),
             _ => None,
@@ -152,11 +149,6 @@ fn common_base_class(i_s: &InferenceState, c1: Class, c2: Class) -> Option<Type>
 }
 
 fn class_against_non_class(i_s: &InferenceState, c1: Class, t2: &Type) -> Option<Type> {
-    if let Type::RecursiveType(r2) = t2 {
-        if let Type::Class(c2) = r2.calculated_type(i_s.db) {
-            return common_base_class(i_s, c1, c2.class(i_s.db));
-        }
-    }
     None
 }
 

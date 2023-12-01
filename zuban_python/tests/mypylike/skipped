@@ -4,12 +4,9 @@ testInvalidNamedTupleWithinFunction
 
 # Recursive Class issues
 testDataclassGenericInheritanceSpecialCase1
-testSelfRefNTIncremental4
 testNewAnalyzerBaseClassSelfReference
-testRecursiveRegularTupleClass
 testRecursiveTupleClassesNewType
 testMutuallyRecursiveNamedTuples
-testMutuallyRecursiveNamedTuplesClasses
 testNamedTupleUpdate5
 
 # 3.12 type var syntax

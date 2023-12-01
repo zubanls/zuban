@@ -1128,10 +1128,10 @@ impl Type {
             }
             Type::RecursiveType(r) => {
                 match r.origin(db) {
-                    RecursiveTypeOrigin::Class(c) => c.mro(db),
+                    RecursiveTypeOrigin::Class(c) if !c.is_calculating_class_infos() => c.mro(db),
                     // TODO this is probably wrong. We should calculate the type and then run on
                     // top of that.
-                    RecursiveTypeOrigin::TypeAlias(_) => MroIterator::new(
+                    _ => MroIterator::new(
                         db,
                         TypeOrClass::Type(Cow::Borrowed(self)),
                         Generics::None,
