@@ -159,9 +159,8 @@ impl RevealTypeFunction {
 
 fn reveal_type_info(i_s: &InferenceState, t: &Type) -> Box<str> {
     let format_data = FormatData::with_style(i_s.db, FormatStyle::MypyRevealType);
-    match t {
-        Type::RecursiveType(r) => return reveal_type_info(i_s, r.calculated_type(i_s.db)),
-        Type::Type(type_) => match type_.as_ref() {
+    if let Type::Type(type_) = t {
+        match type_.as_ref() {
             Type::Class(c) if c.generics != ClassGenerics::NotDefinedYet => (),
             Type::TypedDict(td) => {
                 let tvs = match &td.generics {
@@ -191,8 +190,7 @@ fn reveal_type_info(i_s: &InferenceState, t: &Type) -> Box<str> {
                     return callable.format(&format_data).into();
                 }
             }
-        },
-        _ => (),
+        }
     }
     t.format(&format_data)
 }
