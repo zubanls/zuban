@@ -77,7 +77,6 @@ testOrOperationInferredFromContext
 testDataclassGenericInheritanceSpecialCase1
 testMutuallyRecursiveNamedTuples
 # No recursion tests
-testRecursiveDoubleUnionNoCrash
 testNoRecursiveExpandInstanceUnionCrashGeneric
 # recursive limits missing for joins / unions
 testRecursiveAliasGenericInferenceNested
