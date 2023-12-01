@@ -4,7 +4,7 @@ use crate::{
     type_::{FormatStyle, RecursiveType, TypeVarLikeUsage},
 };
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 struct DisplayedRecursive<'a> {
     current: &'a RecursiveType,
     parent: Option<&'a DisplayedRecursive<'a>>,
@@ -26,6 +26,7 @@ pub enum ParamsStyle {
     Unreachable,
 }
 
+#[derive(Debug)]
 pub struct FormatData<'db, 'a, 'b, 'c> {
     pub db: &'db Database,
     matcher: Option<&'b Matcher<'a>>,

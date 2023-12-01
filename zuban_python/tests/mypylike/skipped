@@ -5,7 +5,6 @@ testInvalidNamedTupleWithinFunction
 # Recursive Class issues
 testDataclassGenericInheritanceSpecialCase1
 testNewAnalyzerBaseClassSelfReference
-testRecursiveTupleClassesNewType
 testMutuallyRecursiveNamedTuples
 testNamedTupleUpdate5
 
