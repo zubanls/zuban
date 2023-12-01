@@ -32,7 +32,7 @@ impl RecursiveType {
         }
     }
 
-    pub fn origin<'x>(&'x self, db: &'x Database) -> RecursiveTypeOrigin<'x> {
+    pub(super) fn origin<'x>(&'x self, db: &'x Database) -> RecursiveTypeOrigin<'x> {
         let from = NodeRef::from_link(db, self.link);
         match from.maybe_alias() {
             Some(alias) => RecursiveTypeOrigin::TypeAlias(alias),
@@ -44,13 +44,6 @@ impl RecursiveType {
                 },
                 None,
             )),
-        }
-    }
-
-    pub fn maybe_class<'x>(&'x self, db: &'x Database) -> Option<Class<'x>> {
-        match self.origin(db) {
-            RecursiveTypeOrigin::Class(c) => Some(c),
-            RecursiveTypeOrigin::TypeAlias(_) => None,
         }
     }
 

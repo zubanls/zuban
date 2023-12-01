@@ -464,7 +464,6 @@ impl Type {
     pub fn maybe_class<'a>(&'a self, db: &'a Database) -> Option<Class<'a>> {
         match self {
             Type::Class(c) => Some(c.class(db)),
-            Type::RecursiveType(r) => r.maybe_class(db),
             _ => None,
         }
     }
