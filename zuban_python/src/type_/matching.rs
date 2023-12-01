@@ -491,6 +491,12 @@ impl Type {
                     return self.simple_matches(i_s, &cls.as_type(i_s.db), variance);
                 }
             }
+            Type::RecursiveType(rec2) => {
+                return matcher.avoid_recursion(self, value_type, |matcher| {
+                    let t2 = rec2.calculated_type(i_s.db);
+                    self.matches(i_s, matcher, t2, variance)
+                })
+            }
             Type::Module(_) => {
                 m = m.or(|| {
                     self.matches(

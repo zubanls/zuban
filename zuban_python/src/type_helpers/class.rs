@@ -37,9 +37,8 @@ use crate::type_::{
     infer_typed_dict_total_argument, infer_value_on_member, AnyCause, CallableContent,
     CallableLike, CallableParam, CallableParams, ClassGenerics, Dataclass, DataclassOptions,
     DbString, Enum, EnumMemberDefinition, FormatStyle, FunctionKind, FunctionOverload,
-    GenericClass, GenericsList, NamedTuple, ParamType, RecursiveType, StringSlice, Tuple, Type,
-    TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember,
-    TypedDictMemberGatherer, Variance,
+    GenericClass, GenericsList, NamedTuple, ParamType, StringSlice, Tuple, Type, TypeVarLike,
+    TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember, TypedDictMemberGatherer, Variance,
 };
 
 #[derive(Clone, Copy)]
