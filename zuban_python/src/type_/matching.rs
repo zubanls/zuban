@@ -492,10 +492,12 @@ impl Type {
                 }
             }
             Type::RecursiveType(rec2) => {
-                return matcher.avoid_recursion(self, value_type, |matcher| {
-                    let t2 = rec2.calculated_type(i_s.db);
-                    self.matches(i_s, matcher, t2, variance)
-                })
+                if !rec2.calculating(i_s.db) {
+                    return matcher.avoid_recursion(self, value_type, |matcher| {
+                        let t2 = rec2.calculated_type(i_s.db);
+                        self.matches(i_s, matcher, t2, variance)
+                    });
+                }
             }
             Type::Module(_) => {
                 m = m.or(|| {
