@@ -68,6 +68,7 @@ pub use self::enum_::{
 };
 pub use self::operations::execute_type_of_type;
 pub use self::recursive_type::RecursiveType;
+use self::recursive_type::RecursiveTypeOrigin;
 pub use self::typed_dict::{
     check_typed_dict_call, infer_typed_dict_item, infer_typed_dict_total_argument,
     initialize_typed_dict, lookup_on_typed_dict, maybe_add_extra_keys_issue, new_typed_dict,
@@ -930,10 +931,12 @@ impl Type {
                     false
                 } else {
                     already_checked.push(recursive_alias.clone());
-                    recursive_alias
-                        .type_alias(i_s.db)
-                        .type_if_valid()
-                        .has_any_internal(i_s, already_checked)
+                    match recursive_alias.origin(i_s.db) {
+                        RecursiveTypeOrigin::TypeAlias(type_alias) => type_alias
+                            .type_if_valid()
+                            .has_any_internal(i_s, already_checked),
+                        RecursiveTypeOrigin::Class(_) => false,
+                    }
                 }
             }
             Self::Self_ => {

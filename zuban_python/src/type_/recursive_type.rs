@@ -2,10 +2,12 @@ use std::cell::OnceCell;
 
 use crate::{
     database::{Database, PointLink, TypeAlias},
+    matching::Generics,
     node_ref::NodeRef,
+    type_helpers::Class,
 };
 
-use super::{GenericsList, Type};
+use super::{ClassGenerics, GenericsList, Type};
 
 #[derive(Debug, Clone)]
 pub struct RecursiveType {
@@ -24,29 +26,52 @@ impl RecursiveType {
     }
 
     pub(super) fn name<'x>(&'x self, db: &'x Database) -> &str {
-        let alias = self.type_alias(db);
-        alias.name(db).unwrap()
+        match self.origin(db) {
+            RecursiveTypeOrigin::TypeAlias(alias) => alias.name(db).unwrap(),
+            RecursiveTypeOrigin::Class(class) => class.name(),
+        }
     }
 
-    pub(super) fn type_alias<'db>(&self, db: &'db Database) -> &'db TypeAlias {
-        NodeRef::from_link(db, self.link).maybe_alias().unwrap()
+    pub(super) fn origin<'x>(&'x self, db: &'x Database) -> RecursiveTypeOrigin<'x> {
+        let from = NodeRef::from_link(db, self.link);
+        match from.maybe_alias() {
+            Some(alias) => RecursiveTypeOrigin::TypeAlias(alias),
+            None => RecursiveTypeOrigin::Class(Class::from_position(
+                from,
+                Generics::NotDefinedYet,
+                None,
+            )),
+        }
     }
 
     pub(super) fn calculated_type<'db: 'slf, 'slf>(&'slf self, db: &'db Database) -> &'slf Type {
-        let alias = self.type_alias(db);
-        if self.generics.is_none() {
-            alias.type_if_valid()
-        } else {
-            self.calculated_type.get_or_init(|| {
-                self.type_alias(db)
-                    .replace_type_var_likes(db, true, &mut |t| {
-                        self.generics
-                            .as_ref()
-                            .map(|g| g.nth(t.index()).unwrap().clone())
-                            .unwrap()
+        let alias = self.origin(db);
+        match self.origin(db) {
+            RecursiveTypeOrigin::TypeAlias(alias) => {
+                if self.generics.is_none() {
+                    alias.type_if_valid()
+                } else {
+                    self.calculated_type.get_or_init(|| {
+                        alias
+                            .replace_type_var_likes(db, true, &mut |t| {
+                                self.generics
+                                    .as_ref()
+                                    .map(|g| g.nth(t.index()).unwrap().clone())
+                                    .unwrap()
+                            })
+                            .into_owned()
                     })
-                    .into_owned()
-            })
+                }
+            }
+            RecursiveTypeOrigin::Class(class) => self.calculated_type.get_or_init(|| {
+                Type::new_class(self.link, {
+                    if let Some(generics) = &self.generics {
+                        ClassGenerics::List(generics.clone())
+                    } else {
+                        ClassGenerics::None
+                    }
+                })
+            }),
         }
     }
 }
@@ -55,4 +80,9 @@ impl std::cmp::PartialEq for RecursiveType {
     fn eq(&self, other: &Self) -> bool {
         self.link == other.link && self.generics == other.generics
     }
+}
+
+pub(super) enum RecursiveTypeOrigin<'x> {
+    TypeAlias(&'x TypeAlias),
+    Class(Class<'x>),
 }
