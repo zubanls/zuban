@@ -81,7 +81,6 @@ testOrOperationInferredFromContext
 # No recursion tests
 testRecursiveDoubleUnionNoCrash
 testNoRecursiveExpandInstanceUnionCrashGeneric
-testNoRecursiveExpandInstanceUnionCrashInference
 # recursive limits missing for joins / unions
 testRecursiveAliasGenericInferenceNested
 testRecursiveAliasTopUnion
@@ -89,7 +88,6 @@ testCrashInJoinOfSelfRecursiveNamedTuples
 testGenericJoinRecursiveTypes
 testRecursiveAliasWithRecursiveInstance
 testBasicRecursiveGenericNamedTuple
-class_generics_recursion
 # Invalid recursive aliases --enable-recursive-aliases
 testRecursiveAliasesProhibitBadAliases
 # Recursive Alias wrong type var inference --enable-recursive-aliases
