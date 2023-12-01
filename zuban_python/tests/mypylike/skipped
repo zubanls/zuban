@@ -6,6 +6,8 @@ testInvalidNamedTupleWithinFunction
 testDataclassGenericInheritanceSpecialCase1
 testMutuallyRecursiveNamedTuples
 testNamedTupleUpdate5
+testRecursiveAliasesSimplifiedUnion
+recursive_alias_union_simplifying_with_generics
 
 # 3.12 type var syntax
 test695TypeAlias

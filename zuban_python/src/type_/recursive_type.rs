@@ -47,6 +47,13 @@ impl RecursiveType {
         }
     }
 
+    pub(super) fn calculating(&self, db: &Database) -> bool {
+        match self.origin(db) {
+            RecursiveTypeOrigin::TypeAlias(alias) => alias.calculating(),
+            RecursiveTypeOrigin::Class(class) => class.is_calculating_class_infos(),
+        }
+    }
+
     pub fn calculated_type<'db: 'slf, 'slf>(&'slf self, db: &'db Database) -> &'slf Type {
         let alias = self.origin(db);
         match self.origin(db) {
