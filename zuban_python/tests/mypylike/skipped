@@ -2,12 +2,6 @@
 testBadEnumLoading
 testInvalidNamedTupleWithinFunction
 
-# Recursive Class issues
-testDataclassGenericInheritanceSpecialCase1
-testMutuallyRecursiveNamedTuples
-testRecursiveAliasesSimplifiedUnion
-recursive_alias_union_simplifying_with_generics
-
 # 3.12 type var syntax
 test695TypeAlias
 test695Class
@@ -79,6 +73,9 @@ testOperatorWithEmptyListAndSum
 testOrOperationWithGenericOperands
 testOrOperationInferredFromContext
 
+# Recursive Class issues
+testDataclassGenericInheritanceSpecialCase1
+testMutuallyRecursiveNamedTuples
 # No recursion tests
 testRecursiveDoubleUnionNoCrash
 testNoRecursiveExpandInstanceUnionCrashGeneric

@@ -1125,7 +1125,11 @@ impl Type {
                     false,
                 )
             }
-            Type::RecursiveType(r) if !r.calculating(db) => r.calculated_type(db).mro(db),
+            Type::RecursiveType(r) if !r.calculating(db) => {
+                let mut mro = r.calculated_type(db).mro(db);
+                mro.class = Some(TypeOrClass::Type(Cow::Borrowed(self)));
+                mro
+            }
             _ => MroIterator::new(
                 db,
                 TypeOrClass::Type(Cow::Borrowed(self)),
