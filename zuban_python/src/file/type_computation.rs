@@ -529,34 +529,46 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             _ => {
                 let type_ =
                     self.as_type(calculated, NodeRef::new(self.inference.file, expr.index()));
-                match type_ {
-                    Type::Class(..) | Type::Tuple(_) | Type::TypedDict(_) | Type::Dataclass(_) => {
-                        CalculatedBaseClass::Type(type_)
-                    }
-                    Type::Type(t) if matches!(t.as_ref(), Type::Any(_)) => {
-                        CalculatedBaseClass::Type(Type::new_class(
-                            self.inference
-                                .i_s
-                                .db
-                                .python_state
-                                .bare_type_node_ref()
-                                .as_link(),
-                            ClassGenerics::None,
-                        ))
-                    }
-                    Type::NamedTuple(nt) => {
-                        // TODO performance: this is already an Rc and should not need to be
-                        // duplicated.
-                        CalculatedBaseClass::NamedTuple(nt)
-                    }
-                    Type::Any(_) => CalculatedBaseClass::Unknown,
-                    Type::NewType(_) => {
-                        self.add_issue_for_index(expr.index(), IssueType::CannotSubclassNewType);
-                        CalculatedBaseClass::Unknown
-                    }
-                    _ => CalculatedBaseClass::Invalid,
-                }
+                self.compute_base_class_for_type(expr, type_)
             }
+        }
+    }
+
+    fn compute_base_class_for_type(
+        &mut self,
+        expr: Expression,
+        type_: Type,
+    ) -> CalculatedBaseClass {
+        match type_ {
+            Type::Class(..) | Type::Tuple(_) | Type::TypedDict(_) | Type::Dataclass(_) => {
+                CalculatedBaseClass::Type(type_)
+            }
+            Type::Type(t) if matches!(t.as_ref(), Type::Any(_)) => {
+                CalculatedBaseClass::Type(Type::new_class(
+                    self.inference
+                        .i_s
+                        .db
+                        .python_state
+                        .bare_type_node_ref()
+                        .as_link(),
+                    ClassGenerics::None,
+                ))
+            }
+            Type::NamedTuple(nt) => {
+                // TODO performance: this is already an Rc and should not need to be
+                // duplicated.
+                CalculatedBaseClass::NamedTuple(nt)
+            }
+            Type::Any(_) => CalculatedBaseClass::Unknown,
+            Type::NewType(_) => {
+                self.add_issue_for_index(expr.index(), IssueType::CannotSubclassNewType);
+                CalculatedBaseClass::Unknown
+            }
+            Type::RecursiveType(t) => self.compute_base_class_for_type(
+                expr,
+                t.calculated_type(self.inference.i_s.db).clone(),
+            ),
+            _ => CalculatedBaseClass::Invalid,
         }
     }
 

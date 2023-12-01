@@ -3,22 +3,14 @@ testBadEnumLoading
 testInvalidNamedTupleWithinFunction
 
 # Recursive Class issues
-testMetaclassSubclassSelf
 testDataclassGenericInheritanceSpecialCase1
 testSelfRefNTIncremental4
 testNewAnalyzerBaseClassSelfReference
-testNewAnalyzerReportLoopInMRO
-testNewAnalyzerReportLoopInMRO2
-testRecursiveAliasViaBaseClass
-testRecursiveAliasViaBaseClass3
-testRecursiveAliasViaBaseClassImported
 testRecursiveRegularTupleClass
 testRecursiveTupleClassesNewType
 testMutuallyRecursiveNamedTuples
 testMutuallyRecursiveNamedTuplesClasses
 testNamedTupleUpdate5
-testCyclicInheritance1
-testCyclicInheritance2
 
 # 3.12 type var syntax
 test695TypeAlias
