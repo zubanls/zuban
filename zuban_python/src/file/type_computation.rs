@@ -232,6 +232,7 @@ enum TypeContent<'db, 'a> {
     Type(Type),
     SpecialType(SpecialType),
     RecursiveAlias(PointLink),
+    RecursiveClass(NodeRef<'db>),
     InvalidVariable(InvalidVariableType<'a>),
     TypeVarTuple(TypeVarTupleUsage),
     ParamSpec(ParamSpecUsage),
@@ -268,6 +269,7 @@ pub(super) enum TypeNameLookup<'db, 'a> {
     Enum(Rc<Enum>),
     Dataclass(Rc<Dataclass>),
     RecursiveAlias(PointLink),
+    RecursiveClass(NodeRef<'db>),
     Unknown(AnyCause),
 }
 
@@ -1014,6 +1016,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 self.is_recursive_alias = true;
                 return Some(Type::RecursiveType(Rc::new(RecursiveType::new(link, None))));
             }
+            // TODO here we would need to check if the generics are actually valid.
+            TypeContent::RecursiveClass(node_ref) => {
+                self.is_recursive_alias = true;
+                return Some(Type::RecursiveType(Rc::new(RecursiveType::new(
+                    node_ref.as_link(),
+                    None,
+                ))));
+            }
             TypeContent::Unknown(cause) => (),
             TypeContent::ClassVar(t) => {
                 self.add_issue(node_ref, IssueType::ClassVarNestedInsideOtherType);
@@ -1312,6 +1322,23 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             Some(generics),
                         ))))
                     }
+                    TypeContent::RecursiveClass(node_ref) => {
+                        let class = Class::with_undefined_generics(node_ref);
+                        let type_var_likes = class.type_vars(self.inference.i_s);
+                        let mut generics = vec![];
+                        self.compute_get_item_generics_on_class(
+                            s,
+                            s.iter(),
+                            class.name(),
+                            type_var_likes,
+                            &mut generics,
+                        );
+                        TypeContent::Type(Type::RecursiveType(Rc::new(RecursiveType::new(
+                            node_ref.as_link(),
+                            (!type_var_likes.is_empty())
+                                .then(|| GenericsList::generics_from_vec(generics)),
+                        ))))
+                    }
                     TypeContent::InvalidVariable(t) => {
                         t.add_issue(
                             self.inference.i_s.db,
@@ -1434,7 +1461,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 },
                 _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
             },
-            TypeContent::TypeAlias(_) | TypeContent::RecursiveAlias(_) => todo!(),
+            TypeContent::TypeAlias(_)
+            | TypeContent::RecursiveAlias(_)
+            | TypeContent::RecursiveClass(_) => todo!(),
             TypeContent::SpecialType(m) => todo!(),
             TypeContent::TypeVarTuple(_) => todo!(),
             TypeContent::ParamSpec(param_spec) => match name.as_code() {
@@ -1707,22 +1736,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 iterator = slice_type.iter();
             }
         };
-        self.calculate_type_arguments(
+        self.compute_get_item_generics_on_class(
             slice_type,
-            &mut generics,
             iterator,
+            class.name(),
             type_var_likes,
-            &|| Box::from(class.name()),
-            |slf: &mut Self, given_count, expected_count| {
-                slf.add_issue(
-                    slice_type.as_node_ref(),
-                    IssueType::TypeArgumentIssue {
-                        class: Box::from(class.name()),
-                        given_count,
-                        expected_count,
-                    },
-                );
-            },
+            &mut generics,
         );
         ClassGetItemResult::GenericClass(GenericClass {
             link: class.node_ref.as_link(),
@@ -1731,6 +1750,33 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 false => ClassGenerics::List(GenericsList::generics_from_vec(generics)),
             },
         })
+    }
+
+    fn compute_get_item_generics_on_class(
+        &mut self,
+        slice_type: SliceType,
+        iterator: SliceTypeIterator,
+        class_name: &str,
+        type_var_likes: &TypeVarLikes,
+        generics: &mut Vec<GenericItem>,
+    ) {
+        self.calculate_type_arguments(
+            slice_type,
+            generics,
+            iterator,
+            type_var_likes,
+            &|| Box::from(class_name),
+            |slf: &mut Self, given_count, expected_count| {
+                slf.add_issue(
+                    slice_type.as_node_ref(),
+                    IssueType::TypeArgumentIssue {
+                        class: Box::from(class_name),
+                        given_count,
+                        expected_count,
+                    },
+                );
+            },
+        );
     }
 
     #[inline]
@@ -2668,6 +2714,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 TypeContent::SpecialType(special)
             }
             TypeNameLookup::RecursiveAlias(link) => TypeContent::RecursiveAlias(link),
+            TypeNameLookup::RecursiveClass(node_ref) => TypeContent::RecursiveClass(node_ref),
         }
     }
 
@@ -3700,6 +3747,10 @@ fn check_type_name<'db: 'file, 'file>(
                 name_node_ref.file,
                 new_name.name_definition().unwrap().index(),
             );
+            let from = NodeRef::new(name_node_ref.file, c.index());
+            if Class::with_undefined_generics(from).is_calculating_class_infos() {
+                return TypeNameLookup::RecursiveClass(from);
+            }
             name_def.file.inference(i_s).cache_class(name_def, c);
             match name_def.complex() {
                 Some(ComplexPoint::TypeInstance(Type::Type(t))) => match t.as_ref() {

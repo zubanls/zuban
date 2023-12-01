@@ -2084,6 +2084,8 @@ fn apply_generics_to_base_class<'a>(
                 ClassGenerics::NotDefinedYet => unreachable!(),
             })
         }
+        // TODO is this needed?
+        //Type::RecursiveType(r) if matches!(r.origin(db), RecursiveTypeOrigin::Class(_)) => TypeOrClass::Class(Class::from_position(NodeRef::from_link(db, r.link), generics, r.generics.as_ref())),
         // TODO this is wrong, because it does not use generics.
         _ if matches!(generics, Generics::None | Generics::NotDefinedYet) => {
             TypeOrClass::Type(Cow::Borrowed(t))

@@ -67,8 +67,7 @@ pub use self::enum_::{
     lookup_on_enum_member_instance, Enum, EnumMember, EnumMemberDefinition,
 };
 pub use self::operations::execute_type_of_type;
-pub use self::recursive_type::RecursiveType;
-use self::recursive_type::RecursiveTypeOrigin;
+pub use self::recursive_type::{RecursiveType, RecursiveTypeOrigin};
 pub use self::typed_dict::{
     check_typed_dict_call, infer_typed_dict_item, infer_typed_dict_total_argument,
     initialize_typed_dict, lookup_on_typed_dict, maybe_add_extra_keys_issue, new_typed_dict,
@@ -465,6 +464,7 @@ impl Type {
     pub fn maybe_class<'a>(&'a self, db: &'a Database) -> Option<Class<'a>> {
         match self {
             Type::Class(c) => Some(c.class(db)),
+            Type::RecursiveType(r) => r.maybe_class(db),
             _ => None,
         }
     }
@@ -1125,6 +1125,20 @@ impl Type {
                     class.use_cached_class_infos(db).mro.iter(),
                     false,
                 )
+            }
+            Type::RecursiveType(r) => {
+                match r.origin(db) {
+                    RecursiveTypeOrigin::Class(c) => c.mro(db),
+                    // TODO this is probably wrong. We should calculate the type and then run on
+                    // top of that.
+                    RecursiveTypeOrigin::TypeAlias(_) => MroIterator::new(
+                        db,
+                        TypeOrClass::Type(Cow::Borrowed(self)),
+                        Generics::None,
+                        [].iter(),
+                        false,
+                    ),
+                }
             }
             _ => MroIterator::new(
                 db,

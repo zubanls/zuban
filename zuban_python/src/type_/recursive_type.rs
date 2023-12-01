@@ -11,8 +11,8 @@ use super::{ClassGenerics, GenericsList, Type};
 
 #[derive(Debug, Clone)]
 pub struct RecursiveType {
-    pub(super) link: PointLink,
-    pub(super) generics: Option<GenericsList>,
+    pub link: PointLink,
+    pub generics: Option<GenericsList>,
     calculated_type: OnceCell<Type>,
 }
 
@@ -32,15 +32,25 @@ impl RecursiveType {
         }
     }
 
-    pub(super) fn origin<'x>(&'x self, db: &'x Database) -> RecursiveTypeOrigin<'x> {
+    pub fn origin<'x>(&'x self, db: &'x Database) -> RecursiveTypeOrigin<'x> {
         let from = NodeRef::from_link(db, self.link);
         match from.maybe_alias() {
             Some(alias) => RecursiveTypeOrigin::TypeAlias(alias),
             None => RecursiveTypeOrigin::Class(Class::from_position(
                 from,
-                Generics::NotDefinedYet,
+                match &self.generics {
+                    Some(list) => Generics::List(list, None),
+                    None => Generics::None,
+                },
                 None,
             )),
+        }
+    }
+
+    pub fn maybe_class<'x>(&'x self, db: &'x Database) -> Option<Class<'x>> {
+        match self.origin(db) {
+            RecursiveTypeOrigin::Class(c) => Some(c),
+            RecursiveTypeOrigin::TypeAlias(_) => None,
         }
     }
 
@@ -82,7 +92,7 @@ impl std::cmp::PartialEq for RecursiveType {
     }
 }
 
-pub(super) enum RecursiveTypeOrigin<'x> {
+pub enum RecursiveTypeOrigin<'x> {
     TypeAlias(&'x TypeAlias),
     Class(Class<'x>),
 }
