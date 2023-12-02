@@ -47,7 +47,11 @@ impl RecursiveType {
         }
     }
 
-    pub(super) fn calculating(&self, db: &Database) -> bool {
+    pub fn has_alias_origin(&self, db: &Database) -> bool {
+        NodeRef::from_link(db, self.link).maybe_alias().is_some()
+    }
+
+    pub fn calculating(&self, db: &Database) -> bool {
         match self.origin(db) {
             RecursiveTypeOrigin::TypeAlias(alias) => alias.calculating(),
             RecursiveTypeOrigin::Class(class) => class.is_calculating_class_infos(),

@@ -2,10 +2,6 @@
 testBadEnumLoading
 testInvalidNamedTupleWithinFunction
 
-testNewAnalyzerAliasToNotReadyMixed
-testRecursiveAliasesMutual
-testNoRecursiveExpandInstanceUnionCrashInference
-
 # 3.12 type var syntax
 test695TypeAlias
 test695Class
