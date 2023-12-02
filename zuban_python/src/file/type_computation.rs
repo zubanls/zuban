@@ -3286,7 +3286,36 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                         let node_ref = NodeRef::new(file, expr.index());
                         let type_ = comp.as_type(t, node_ref);
                         debug_assert!(!comp.type_var_manager.has_type_vars());
-                        alias.set_valid(type_, comp.is_recursive_alias);
+                        let mut had_error = false;
+                        if is_invalid_recursive_alias(
+                            self.i_s.db,
+                            PreviousAlias {
+                                link: in_definition,
+                                previous: None,
+                            },
+                            &type_,
+                        ) {
+                            node_ref.add_issue(
+                                self.i_s,
+                                IssueType::InvalidRecursiveTypeAliasUnionOfItself {
+                                    target: "union",
+                                },
+                            );
+                            had_error = true;
+                        }
+                        // This is called detect_diverging_alias in Mypy as well.
+                        if detect_diverging_alias(&type_) {
+                            node_ref.add_issue(
+                                self.i_s,
+                                IssueType::InvalidRecursiveTypeAliasTypeVarNesting,
+                            );
+                            had_error = true;
+                        }
+                        if had_error {
+                            alias.set_valid(Type::Any(AnyCause::FromError), false);
+                        } else {
+                            alias.set_valid(type_, comp.is_recursive_alias);
+                        }
                     }
                 };
                 load_cached_type(cached_type_node_ref)
@@ -3615,6 +3644,38 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             }
         }
     }
+}
+
+struct PreviousAlias<'a> {
+    link: PointLink,
+    previous: Option<&'a PreviousAlias<'a>>,
+}
+
+impl PreviousAlias<'_> {
+    fn contains_link(&self, link: PointLink) -> bool {
+        self.link == link || self.previous.is_some_and(|prev| prev.contains_link(link))
+    }
+}
+
+fn is_invalid_recursive_alias(db: &Database, previous_alias: PreviousAlias, t: &Type) -> bool {
+    t.iter_with_unpacked_unions().any(|t| match t {
+        Type::RecursiveType(rec) => {
+            previous_alias.contains_link(rec.link)
+                || is_invalid_recursive_alias(
+                    db,
+                    PreviousAlias {
+                        link: rec.link,
+                        previous: Some(&previous_alias),
+                    },
+                    t, //rec.calculated_type(db),
+                )
+        }
+        _ => false,
+    })
+}
+
+fn detect_diverging_alias(t: &Type) -> bool {
+    false
 }
 
 pub(super) fn assignment_type_node_ref<'x>(
