@@ -326,6 +326,37 @@ impl CallableParams {
             ParamType::StarStar(StarStarParamType::ValueType(Type::Any(_)))
         )
     }
+
+    pub(super) fn search_type_vars<C: FnMut(TypeVarLikeUsage)>(&self, found_type_var: &mut C) {
+        match self {
+            CallableParams::Simple(params) => {
+                for param in params.iter() {
+                    match &param.type_ {
+                        ParamType::PositionalOnly(t)
+                        | ParamType::PositionalOrKeyword(t)
+                        | ParamType::KeywordOnly(t)
+                        | ParamType::Star(StarParamType::ArbitraryLength(t))
+                        | ParamType::StarStar(StarStarParamType::ValueType(t)) => {
+                            t.search_type_vars(found_type_var)
+                        }
+                        ParamType::Star(StarParamType::ParamSpecArgs(_)) => {
+                            unreachable!()
+                        }
+                        ParamType::StarStar(StarStarParamType::UnpackTypedDict(t)) => {
+                            todo!()
+                        }
+                        ParamType::StarStar(StarStarParamType::ParamSpecKwargs(_)) => {
+                            todo!()
+                        }
+                    }
+                }
+            }
+            CallableParams::Any(_) => (),
+            CallableParams::WithParamSpec(_, spec) => {
+                found_type_var(TypeVarLikeUsage::ParamSpec(Cow::Borrowed(spec)))
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

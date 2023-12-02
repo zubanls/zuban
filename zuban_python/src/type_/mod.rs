@@ -760,40 +760,12 @@ impl Type {
     }
 
     pub fn search_type_vars<C: FnMut(TypeVarLikeUsage)>(&self, found_type_var: &mut C) {
-        let search_params = |found_type_var: &mut C, params: &_| match params {
-            CallableParams::Simple(params) => {
-                for param in params.iter() {
-                    match &param.type_ {
-                        ParamType::PositionalOnly(t)
-                        | ParamType::PositionalOrKeyword(t)
-                        | ParamType::KeywordOnly(t)
-                        | ParamType::Star(StarParamType::ArbitraryLength(t))
-                        | ParamType::StarStar(StarStarParamType::ValueType(t)) => {
-                            t.search_type_vars(found_type_var)
-                        }
-                        ParamType::Star(StarParamType::ParamSpecArgs(_)) => {
-                            unreachable!()
-                        }
-                        ParamType::StarStar(StarStarParamType::UnpackTypedDict(t)) => {
-                            todo!()
-                        }
-                        ParamType::StarStar(StarStarParamType::ParamSpecKwargs(_)) => {
-                            todo!()
-                        }
-                    }
-                }
-            }
-            CallableParams::Any(_) => (),
-            CallableParams::WithParamSpec(_, spec) => {
-                found_type_var(TypeVarLikeUsage::ParamSpec(Cow::Borrowed(spec)))
-            }
-        };
         let search_in_generics = |found_type_var: &mut C, generics: &GenericsList| {
             for g in generics.iter() {
                 match g {
                     GenericItem::TypeArgument(t) => t.search_type_vars(found_type_var),
                     GenericItem::TypeArguments(_) => todo!(),
-                    GenericItem::ParamSpecArgument(p) => search_params(found_type_var, &p.params),
+                    GenericItem::ParamSpecArgument(p) => p.params.search_type_vars(found_type_var),
                 }
             }
         };
@@ -809,7 +781,7 @@ impl Type {
             }
             Self::FunctionOverload(intersection) => {
                 for callable in intersection.iter_functions() {
-                    search_params(found_type_var, &callable.params);
+                    callable.params.search_type_vars(found_type_var);
                     callable.return_type.search_type_vars(found_type_var)
                 }
             }
@@ -829,7 +801,7 @@ impl Type {
                 TupleTypeArguments::ArbitraryLength(t) => t.search_type_vars(found_type_var),
             },
             Self::Callable(content) => {
-                search_params(found_type_var, &content.params);
+                content.params.search_type_vars(found_type_var);
                 content.return_type.search_type_vars(found_type_var)
             }
             Self::Class(..)
