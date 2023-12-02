@@ -271,6 +271,16 @@ impl GenericsList {
         )
         .into()
     }
+
+    pub(super) fn search_type_vars<C: FnMut(TypeVarLikeUsage)>(&self, found_type_var: &mut C) {
+        for g in self.iter() {
+            match g {
+                GenericItem::TypeArgument(t) => t.search_type_vars(found_type_var),
+                GenericItem::TypeArguments(_) => todo!(),
+                GenericItem::ParamSpecArgument(p) => p.params.search_type_vars(found_type_var),
+            }
+        }
+    }
 }
 
 impl std::ops::Index<TypeVarIndex> for GenericsList {
@@ -760,20 +770,11 @@ impl Type {
     }
 
     pub fn search_type_vars<C: FnMut(TypeVarLikeUsage)>(&self, found_type_var: &mut C) {
-        let search_in_generics = |found_type_var: &mut C, generics: &GenericsList| {
-            for g in generics.iter() {
-                match g {
-                    GenericItem::TypeArgument(t) => t.search_type_vars(found_type_var),
-                    GenericItem::TypeArguments(_) => todo!(),
-                    GenericItem::ParamSpecArgument(p) => p.params.search_type_vars(found_type_var),
-                }
-            }
-        };
         match self {
             Self::Class(GenericClass {
                 generics: ClassGenerics::List(generics),
                 ..
-            }) => search_in_generics(found_type_var, generics),
+            }) => generics.search_type_vars(found_type_var),
             Self::Union(u) => {
                 for t in u.iter() {
                     t.search_type_vars(found_type_var);
@@ -819,13 +820,13 @@ impl Type {
             | Self::NewType(_) => (),
             Self::RecursiveType(rec) => {
                 if let Some(generics) = rec.generics.as_ref() {
-                    search_in_generics(found_type_var, generics)
+                    generics.search_type_vars(found_type_var)
                 }
             }
             Self::ParamSpecArgs(usage) => todo!(),
             Self::ParamSpecKwargs(usage) => todo!(),
             Self::Dataclass(d) => match &d.class.generics {
-                ClassGenerics::List(generics) => search_in_generics(found_type_var, generics),
+                ClassGenerics::List(generics) => generics.search_type_vars(found_type_var),
                 _ => (),
             },
             Self::TypedDict(d) => {
