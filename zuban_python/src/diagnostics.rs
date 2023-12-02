@@ -106,6 +106,8 @@ pub(crate) enum IssueType {
     NewTypeInvalidType,
     NewTypeMustBeSubclassable { got: Box<str> },
     OptionalMustHaveOneArgument,
+    InvalidRecursiveTypeAliasUnionOfItself,
+    InvalidRecursiveTypeAliasTypeVarNesting,
 
     DuplicateTypeVar,
     UnboundTypeVarLike { type_var_like: TypeVarLike },
@@ -825,6 +827,10 @@ impl<'db> Diagnostic<'db> {
             ),
             NewTypeInvalidType => "Argument 2 to NewType(...) must be a valid type".to_string(),
             OptionalMustHaveOneArgument => "Optional[...] must have exactly one type argument".to_string(),
+            InvalidRecursiveTypeAliasUnionOfItself =>
+                "Invalid recursive alias: a union item of itself".to_string(),
+            InvalidRecursiveTypeAliasTypeVarNesting =>
+                "Invalid recursive alias: type variable nesting on right hand side".to_string(),
 
             DuplicateTypeVar =>
                 "Duplicate type variables in Generic[...] or Protocol[...]".to_string(),

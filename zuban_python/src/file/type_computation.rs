@@ -3286,12 +3286,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                         let node_ref = NodeRef::new(file, expr.index());
                         let type_ = comp.as_type(t, node_ref);
                         debug_assert!(!comp.type_var_manager.has_type_vars());
-                        let is_recursive = comp.is_recursive_alias;
-                        let type_var_likes = type_var_manager.into_type_vars();
-                        let ComplexPoint::TypeAlias(alias) = cached_type_node_ref.complex().unwrap() else {
-                            unreachable!()
-                        };
-                        alias.set_valid(type_, is_recursive);
+                        alias.set_valid(type_, comp.is_recursive_alias);
                     }
                 };
                 load_cached_type(cached_type_node_ref)
