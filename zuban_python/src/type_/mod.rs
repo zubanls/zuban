@@ -965,10 +965,26 @@ impl Type {
         }
     }
 
+    fn is_self_type(&self) -> bool {
+        match self {
+            Self::Self_ => true,
+            Self::Dataclass(_) => todo!(),
+            Self::NamedTuple(_) => {
+                debug!("TODO namedtuple has_self_type");
+                false
+            }
+            _ => false,
+        }
+    }
+
     pub fn has_self_type(&self) -> bool {
-        let generics_list_has_self_type = |generics: &GenericsList| {
+        self.find_in_type(&Self::is_self_type)
+    }
+
+    fn find_in_type(&self, check: &impl Fn(&Type) -> bool) -> bool {
+        let check_generics_list = |generics: &GenericsList| {
             generics.iter().any(|g| match g {
-                GenericItem::TypeArgument(t) => t.has_self_type(),
+                GenericItem::TypeArgument(t) => check(t),
                 GenericItem::TypeArguments(_) => todo!(),
                 GenericItem::ParamSpecArgument(params) => todo!(),
             })
@@ -977,46 +993,25 @@ impl Type {
             Self::Class(GenericClass {
                 generics: ClassGenerics::List(generics),
                 ..
-            }) => generics_list_has_self_type(generics),
-            Self::Union(u) => u.iter().any(|t| t.has_self_type()),
+            }) => check(self) || check_generics_list(generics),
+            Self::Union(u) => u.iter().any(|t| check(t)),
             Self::FunctionOverload(intersection) => {
-                intersection.iter_functions().any(|t| t.has_self_type())
+                intersection.iter_functions().any(|c| c.find_in_type(check))
             }
-            Self::Type(t) => t.has_self_type(),
+            Self::Type(t) => check(self) || check(t),
             Self::Tuple(content) => match &content.args {
                 TupleTypeArguments::FixedLength(ts) => ts.iter().any(|t| match t {
-                    TypeOrTypeVarTuple::Type(t) => t.has_self_type(),
+                    TypeOrTypeVarTuple::Type(t) => check(t),
                     TypeOrTypeVarTuple::TypeVarTuple(_) => false,
                 }),
-                TupleTypeArguments::ArbitraryLength(t) => t.has_self_type(),
+                TupleTypeArguments::ArbitraryLength(t) => check(t),
             },
-            Self::Callable(content) => content.has_self_type(),
-            Self::Self_ => true,
-            Self::Dataclass(_) => todo!(),
+            Self::Callable(content) => content.find_in_type(check),
             Self::TypedDict(d) => match &d.generics {
-                TypedDictGenerics::Generics(g) => generics_list_has_self_type(g),
+                TypedDictGenerics::Generics(g) => check_generics_list(g),
                 TypedDictGenerics::None | TypedDictGenerics::NotDefinedYet(_) => false,
             },
-            Self::NamedTuple(_) => {
-                debug!("TODO namedtuple has_self_type");
-                false
-            }
-            Self::EnumMember(_) => todo!(),
-            Self::Class(..)
-            | Self::None
-            | Self::Never
-            | Self::Literal { .. }
-            | Self::Any(_)
-            | Self::Enum(_)
-            | Self::NewType(_)
-            | Self::ParamSpecArgs(_)
-            | Self::ParamSpecKwargs(_)
-            | Self::RecursiveType(_)
-            | Self::Module(_)
-            | Self::Namespace(_)
-            | Self::CustomBehavior(_)
-            | Self::TypeVar(_) => false,
-            Self::Super { .. } => todo!(),
+            _ => check(self),
         }
     }
 

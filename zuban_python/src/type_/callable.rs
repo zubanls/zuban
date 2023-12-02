@@ -483,14 +483,18 @@ impl CallableContent {
     }
 
     pub fn has_self_type(&self) -> bool {
-        self.return_type.has_self_type()
+        self.return_type.has_self_type() || self.find_in_type(&Type::is_self_type)
+    }
+
+    pub(super) fn find_in_type(&self, check: &impl Fn(&Type) -> bool) -> bool {
+        self.return_type.find_in_type(check)
             || match &self.params {
                 CallableParams::Simple(params) => params.iter().any(|param| match &param.type_ {
                     ParamType::PositionalOnly(t)
                     | ParamType::PositionalOrKeyword(t)
                     | ParamType::KeywordOnly(t)
                     | ParamType::Star(StarParamType::ArbitraryLength(t))
-                    | ParamType::StarStar(StarStarParamType::ValueType(t)) => t.has_self_type(),
+                    | ParamType::StarStar(StarStarParamType::ValueType(t)) => check(t),
                     ParamType::Star(StarParamType::ParamSpecArgs(_)) => false,
                     ParamType::StarStar(StarStarParamType::ParamSpecKwargs(_)) => false,
                     ParamType::StarStar(StarStarParamType::UnpackTypedDict(_)) => todo!(),
