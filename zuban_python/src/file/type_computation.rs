@@ -3244,9 +3244,10 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             debug_assert!(file.points.get(name_def.index()).calculated() || annotation.is_some());
             let in_definition = cached_type_node_ref.as_link();
 
-            let check_for_alias = |self_: &mut _| {
+            let check_for_alias = |self_: &mut Inference| {
                 cached_type_node_ref.set_point(Point::new_calculating());
-                let type_var_likes = TypeVarFinder::find_alias_type_vars(self_, expr);
+                let type_var_likes =
+                    TypeVarFinder::find_alias_type_vars(self_.i_s, self.file, expr);
                 let complex = ComplexPoint::TypeAlias(Box::new(TypeAlias::new(
                     type_var_likes,
                     in_definition,

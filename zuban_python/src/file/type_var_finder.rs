@@ -6,8 +6,9 @@ use super::type_computation::{
 use crate::database::{Locality, Point, PointLink, PointType};
 use crate::diagnostics::IssueType;
 use crate::file::file_state::File;
-use crate::file::{Inference, PythonFile};
+use crate::file::PythonFile;
 use crate::getitem::{SliceOrSimple, SliceType};
+use crate::inference_state::InferenceState;
 use crate::node_ref::NodeRef;
 use crate::type_::{TypeVarIndex, TypeVarLike, TypeVarLikes, TypeVarManager};
 use crate::type_helpers::Class;
@@ -23,7 +24,8 @@ enum BaseLookup<'file> {
 }
 
 pub struct TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
-    inference: &'c mut Inference<'db, 'file, 'i_s>,
+    i_s: &'i_s InferenceState<'db, 'i_s>,
+    file: &'file PythonFile,
     class: Option<&'c Class<'c>>,
     type_var_manager: TypeVarManager,
     generic_or_protocol_slice: Option<SliceType<'d>>,
@@ -33,11 +35,12 @@ pub struct TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
 
 impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
     pub fn find_class_type_vars(
-        inference: &'c mut Inference<'db, 'file, 'i_s>,
-        class: &'c Class<'d>,
+        i_s: &'i_s InferenceState<'db, 'i_s>,
+        class: &'c Class<'file>,
     ) -> TypeVarLikes {
         let mut finder = Self {
-            inference,
+            i_s,
+            file: class.node_ref.file,
             class: Some(class),
             type_var_manager: TypeVarManager::default(),
             generic_or_protocol_slice: None,
@@ -65,11 +68,13 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
     }
 
     pub fn find_alias_type_vars(
-        inference: &'c mut Inference<'db, 'file, 'i_s>,
+        i_s: &'i_s InferenceState<'db, 'i_s>,
+        file: &'file PythonFile,
         expr: Expression<'d>,
     ) -> TypeVarLikes {
         let mut finder = Self {
-            inference,
+            i_s,
+            file,
             class: None,
             type_var_manager: TypeVarManager::default(),
             generic_or_protocol_slice: None,
@@ -115,7 +120,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
                     BaseLookup::Module(f) => {
                         // TODO this is a bit weird. shouldn't this just do a goto?
                         if let Some(index) = f.symbol_table.lookup_symbol(name.as_str()) {
-                            self.inference.file.points.set(
+                            self.file.points.set(
                                 name.index(),
                                 Point::new_redirect(f.file_index(), index, Locality::Todo),
                             );
@@ -125,8 +130,8 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
                         }
                     }
                     BaseLookup::Class(link) => {
-                        let cls = Class::from_non_generic_link(self.inference.i_s.db, link);
-                        let point_type = cache_name_on_class(cls, self.inference.file, name);
+                        let cls = Class::from_non_generic_link(self.i_s.db, link);
+                        let point_type = cache_name_on_class(cls, self.file, name);
                         if point_type == PointType::Redirect {
                             self.find_in_name(name)
                         } else {
@@ -138,21 +143,16 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
             }
             PrimaryContent::Execution(details) => BaseLookup::Other,
             PrimaryContent::GetItem(slice_type) => {
-                let s = SliceType::new(self.inference.file, primary.index(), slice_type);
+                let s = SliceType::new(self.file, primary.index(), slice_type);
                 match base {
                     BaseLookup::Protocol | BaseLookup::Generic => {
                         if self.generic_or_protocol_slice.is_some() {
                             self.had_generic_or_protocol_issue = true;
-                            NodeRef::new(self.inference.file, primary.index()).add_issue(
-                                self.inference.i_s,
-                                IssueType::EnsureSingleGenericOrProtocol,
-                            );
+                            NodeRef::new(self.file, primary.index())
+                                .add_issue(self.i_s, IssueType::EnsureSingleGenericOrProtocol);
                         }
-                        self.generic_or_protocol_slice = Some(SliceType::new(
-                            self.inference.file,
-                            primary.index(),
-                            slice_type,
-                        ));
+                        self.generic_or_protocol_slice =
+                            Some(SliceType::new(self.file, primary.index(), slice_type));
                         for (i, slice_or_simple) in s.iter().enumerate() {
                             self.current_generic_or_protocol_index = Some(i.into());
                             if let SliceOrSimple::Simple(s) = slice_or_simple {
@@ -178,7 +178,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
     fn find_in_atom(&mut self, atom: Atom) -> BaseLookup<'db> {
         match atom.unpack() {
             AtomContent::Name(n) => {
-                self.inference.infer_name_reference(n);
+                self.file.inference(self.i_s).infer_name_reference(n);
                 self.find_in_name(n)
             }
             AtomContent::Strings(s_o_b) => match s_o_b.as_python_string() {
@@ -196,13 +196,13 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
 
     fn find_in_name(&mut self, name: Name) -> BaseLookup<'db> {
         // TODO this whole check is way too hacky.
-        let point = self.inference.file.points.get(name.index());
+        let point = self.file.points.get(name.index());
         if point.calculated() && point.type_() == PointType::Redirect {
-            let node_ref = point.as_redirected_node_ref(self.inference.i_s.db);
-            if node_ref.file_index() == self.inference.file_index {
+            let node_ref = point.as_redirected_node_ref(self.i_s.db);
+            if node_ref.file_index() == self.file.file_index() {
                 let redirected_name = node_ref.as_name();
                 if let TypeLike::Assignment(assignment) = redirected_name.expect_type() {
-                    let node_ref = assignment_type_node_ref(self.inference.file, assignment);
+                    let node_ref = assignment_type_node_ref(self.file, assignment);
                     if node_ref.point().calculating() {
                         // This means that this is probably a recursive type alias being calculated. Just
                         // ignore.
@@ -211,31 +211,27 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
                 }
             }
         }
-        match self.inference.lookup_type_name(name) {
+        match self.file.inference(self.i_s).lookup_type_name(name) {
             TypeNameLookup::Module(f) => BaseLookup::Module(f),
             TypeNameLookup::Class { node_ref } => BaseLookup::Class(node_ref.as_link()),
             TypeNameLookup::TypeVarLike(type_var_like) => {
                 if self
                     .class
-                    .and_then(|c| {
-                        c.maybe_type_var_like_in_parent(self.inference.i_s, &type_var_like)
-                    })
+                    .and_then(|c| c.maybe_type_var_like_in_parent(self.i_s, &type_var_like))
                     .is_none()
                 {
                     if let TypeVarLike::TypeVarTuple(t) = &type_var_like {
                         if self.type_var_manager.has_type_var_tuples() {
-                            NodeRef::new(self.inference.file, name.index()).add_issue(
-                                self.inference.i_s,
-                                IssueType::MultipleTypeVarTuplesInClassDef,
-                            )
+                            NodeRef::new(self.file, name.index())
+                                .add_issue(self.i_s, IssueType::MultipleTypeVarTuplesInClassDef)
                             // TODO this type var tuple should probably not be added
                         }
                     }
                     let old_index = self.type_var_manager.add(type_var_like, None);
                     if let Some(force_index) = self.current_generic_or_protocol_index {
                         if old_index < force_index {
-                            NodeRef::new(self.inference.file, name.index())
-                                .add_issue(self.inference.i_s, IssueType::DuplicateTypeVar)
+                            NodeRef::new(self.file, name.index())
+                                .add_issue(self.i_s, IssueType::DuplicateTypeVar)
                         } else if old_index != force_index {
                             self.type_var_manager.move_index(old_index, force_index);
                         }
@@ -284,10 +280,9 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
     fn check_generic_or_protocol_length(&self, slice_type: SliceType) {
         // Reorder slices
         if slice_type.iter().count() < self.type_var_manager.len() {
-            slice_type.as_node_ref().add_issue(
-                self.inference.i_s,
-                IssueType::IncompleteGenericOrProtocolTypeVars,
-            )
+            slice_type
+                .as_node_ref()
+                .add_issue(self.i_s, IssueType::IncompleteGenericOrProtocolTypeVars)
         }
     }
 }

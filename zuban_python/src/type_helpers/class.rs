@@ -243,8 +243,7 @@ impl<'db: 'a, 'a> Class<'a> {
             return Self::get_calculated_type_vars(i_s.db, node_ref, point);
         }
 
-        let type_vars =
-            TypeVarFinder::find_class_type_vars(&mut self.node_ref.file.inference(i_s), self);
+        let type_vars = TypeVarFinder::find_class_type_vars(i_s, self);
         if type_vars.is_empty() {
             self.type_vars_node_ref()
                 .set_point(Point::new_node_analysis(Locality::Todo));
