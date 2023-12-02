@@ -3278,12 +3278,12 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 let ComplexPoint::TypeAlias(alias) = cached_type_node_ref.complex().unwrap() else {
                     unreachable!()
                 };
+                let node_ref = NodeRef::new(file, expr.index());
                 match t {
                     TypeContent::InvalidVariable(t) if !is_explicit => {
                         alias.set_invalid();
                     }
                     _ => {
-                        let node_ref = NodeRef::new(file, expr.index());
                         let type_ = comp.as_type(t, node_ref);
                         debug_assert!(!comp.type_var_manager.has_type_vars());
                         let mut had_error = false;
@@ -3297,7 +3297,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                             had_error = true;
                         }
                         // This is called detect_diverging_alias in Mypy as well.
-                        if detect_diverging_alias(&type_) {
+                        if detect_diverging_alias(self.i_s.db, &alias.type_vars, &type_) {
                             node_ref.add_issue(
                                 self.i_s,
                                 IssueType::InvalidRecursiveTypeAliasTypeVarNesting,
@@ -3311,6 +3311,12 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                         }
                     }
                 };
+                debug!(
+                    "Alias {:?} on #{} is valid? {}",
+                    assignment.as_code(),
+                    node_ref.line(),
+                    alias.is_valid()
+                );
                 load_cached_type(cached_type_node_ref)
             };
 
@@ -3643,8 +3649,28 @@ fn is_invalid_recursive_alias(db: &Database, t: &Type) -> bool {
     t.iter_with_unpacked_unions().any(|t| matches!(t, Type::RecursiveType(rec) if rec.has_alias_origin(db) && rec.calculating(db)))
 }
 
-fn detect_diverging_alias(t: &Type) -> bool {
-    false
+fn detect_diverging_alias(db: &Database, type_var_likes: &TypeVarLikes, t: &Type) -> bool {
+    !type_var_likes.is_empty()
+        && t.find_in_type(&|t| match t {
+            Type::RecursiveType(rec) if rec.has_alias_origin(db) && rec.generics.is_some() => {
+                if rec.calculating(db) {
+                    rec.generics.as_ref().is_some_and(|generics| {
+                        let has_direct_type_var_like = generics.iter().any(|g| match g {
+                            GenericItem::TypeArgument(t) => matches!(t, Type::TypeVar(_)),
+                            GenericItem::TypeArguments(ts) => todo!(),
+                            GenericItem::ParamSpecArgument(p) => {
+                                matches!(p.params, CallableParams::WithParamSpec(_, _))
+                            }
+                        });
+                        !has_direct_type_var_like && generics.has_type_vars()
+                    })
+                } else {
+                    dbg!(rec);
+                    false
+                }
+            }
+            _ => false,
+        })
 }
 
 pub(super) fn assignment_type_node_ref<'x>(
@@ -3701,7 +3727,7 @@ fn load_cached_type(node_ref: NodeRef) -> TypeNameLookup {
                 if a.calculating() {
                     // This means it's a recursive type definition.
                     TypeNameLookup::RecursiveAlias(node_ref.as_link())
-                } else if a.is_invalid() {
+                } else if !a.is_valid() {
                     let assignment = NodeRef::new(
                         node_ref.file,
                         node_ref.node_index - ASSIGNMENT_TYPE_CACHE_OFFSET,

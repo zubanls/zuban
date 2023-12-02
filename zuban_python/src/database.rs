@@ -547,8 +547,8 @@ impl TypeAlias {
         }
     }
 
-    pub fn is_invalid(&self) -> bool {
-        matches!(self.state.get().unwrap(), TypeAliasState::Invalid)
+    pub fn is_valid(&self) -> bool {
+        !matches!(self.state.get().unwrap(), TypeAliasState::Invalid)
     }
 
     pub fn type_if_valid(&self) -> &Type {
@@ -580,7 +580,7 @@ impl TypeAlias {
     }
 
     pub fn application_allowed(&self) -> bool {
-        !self.is_invalid()
+        self.is_valid()
             && match self.type_if_valid() {
                 Type::Class(_) | Type::TypedDict(_) | Type::Dataclass(_) => true,
                 _ => false,

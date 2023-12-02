@@ -272,7 +272,7 @@ impl GenericsList {
         .into()
     }
 
-    pub(super) fn search_type_vars<C: FnMut(TypeVarLikeUsage)>(&self, found_type_var: &mut C) {
+    fn search_type_vars<C: FnMut(TypeVarLikeUsage)>(&self, found_type_var: &mut C) {
         for g in self.iter() {
             match g {
                 GenericItem::TypeArgument(t) => t.search_type_vars(found_type_var),
@@ -280,6 +280,12 @@ impl GenericsList {
                 GenericItem::ParamSpecArgument(p) => p.params.search_type_vars(found_type_var),
             }
         }
+    }
+
+    pub fn has_type_vars(&self) -> bool {
+        let mut result = false;
+        self.search_type_vars(&mut |_| result = true);
+        result
     }
 }
 
@@ -954,12 +960,18 @@ impl Type {
         self.find_in_type(&Self::is_self_type)
     }
 
-    fn find_in_type(&self, check: &impl Fn(&Type) -> bool) -> bool {
+    pub fn find_in_type(&self, check: &impl Fn(&Type) -> bool) -> bool {
         let check_generics_list = |generics: &GenericsList| {
             generics.iter().any(|g| match g {
                 GenericItem::TypeArgument(t) => check(t),
-                GenericItem::TypeArguments(_) => todo!(),
-                GenericItem::ParamSpecArgument(params) => todo!(),
+                GenericItem::TypeArguments(ts) => match &ts.args {
+                    TupleTypeArguments::FixedLength(ts) => ts.iter().any(|x| match x {
+                        TypeOrTypeVarTuple::Type(t) => check(t),
+                        TypeOrTypeVarTuple::TypeVarTuple(tvt) => false,
+                    }),
+                    TupleTypeArguments::ArbitraryLength(t) => check(t),
+                },
+                GenericItem::ParamSpecArgument(a) => todo!(),
             })
         };
         match self {

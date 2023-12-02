@@ -531,9 +531,7 @@ impl CallableContent {
                     ParamType::StarStar(StarStarParamType::UnpackTypedDict(_)) => todo!(),
                 }),
                 CallableParams::Any(_) => false,
-                CallableParams::WithParamSpec(types, param_spec) => {
-                    todo!()
-                }
+                CallableParams::WithParamSpec(types, param_spec) => types.iter().any(|t| check(t)),
             }
     }
 
