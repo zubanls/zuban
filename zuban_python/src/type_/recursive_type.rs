@@ -1,6 +1,6 @@
 use std::cell::OnceCell;
 
-use super::{ClassGenerics, GenericsList, Type};
+use super::{ClassGenerics, Dataclass, GenericClass, GenericsList, Type};
 use crate::{
     database::{Database, PointLink, TypeAlias},
     matching::Generics,
@@ -77,13 +77,22 @@ impl RecursiveType {
                 }
             }
             RecursiveTypeOrigin::Class(class) => self.calculated_type.get_or_init(|| {
-                Type::new_class(self.link, {
-                    if let Some(generics) = &self.generics {
-                        ClassGenerics::List(generics.clone())
-                    } else {
-                        ClassGenerics::None
-                    }
-                })
+                let class_generics = if let Some(generics) = &self.generics {
+                    ClassGenerics::List(generics.clone())
+                } else {
+                    ClassGenerics::None
+                };
+                if let Some(dataclass) = class.maybe_dataclass() {
+                    Type::Dataclass(Dataclass::new(
+                        GenericClass {
+                            link: self.link,
+                            generics: class_generics,
+                        },
+                        dataclass.options,
+                    ))
+                } else {
+                    Type::new_class(self.link, class_generics)
+                }
             }),
         }
     }

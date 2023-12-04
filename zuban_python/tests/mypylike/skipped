@@ -74,7 +74,6 @@ testOrOperationWithGenericOperands
 testOrOperationInferredFromContext
 
 # Recursive Class issues
-testDataclassGenericInheritanceSpecialCase1
 testMutuallyRecursiveNamedTuples
 # No recursion tests
 testNoRecursiveExpandInstanceUnionCrashGeneric
