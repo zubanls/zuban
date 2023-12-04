@@ -106,8 +106,10 @@ pub(crate) enum IssueType {
     NewTypeInvalidType,
     NewTypeMustBeSubclassable { got: Box<str> },
     OptionalMustHaveOneArgument,
+    TypeCannotContainAnotherType,
     InvalidRecursiveTypeAliasUnionOfItself { target: &'static str },
     InvalidRecursiveTypeAliasTypeVarNesting,
+    RecursiveTypesNotAllowedInFunctionScope,
 
     DuplicateTypeVar,
     UnboundTypeVarLike { type_var_like: TypeVarLike },
@@ -826,12 +828,17 @@ impl<'db> Diagnostic<'db> {
                 "Argument 2 to NewType(...) must be subclassable (got \"{got}\")"
             ),
             NewTypeInvalidType => "Argument 2 to NewType(...) must be a valid type".to_string(),
-            OptionalMustHaveOneArgument => "Optional[...] must have exactly one type argument".to_string(),
+            OptionalMustHaveOneArgument =>
+                "Optional[...] must have exactly one type argument".to_string(),
+            TypeCannotContainAnotherType =>
+                "Type[...] can't contain another Type[...]".to_string(),
             InvalidRecursiveTypeAliasUnionOfItself { target } => format!(
                 "Invalid recursive alias: a {target} item of itself"
             ),
             InvalidRecursiveTypeAliasTypeVarNesting =>
                 "Invalid recursive alias: type variable nesting on right hand side".to_string(),
+            RecursiveTypesNotAllowedInFunctionScope =>
+                "Recursive types are not allowed at function scope".to_string(),
 
             DuplicateTypeVar =>
                 "Duplicate type variables in Generic[...] or Protocol[...]".to_string(),

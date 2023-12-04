@@ -3290,6 +3290,13 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                         let type_ = comp.as_type(t, node_ref);
                         debug_assert!(!comp.type_var_manager.has_type_vars());
                         let mut had_error = false;
+                        if comp.is_recursive_alias && self.i_s.current_function().is_some() {
+                            node_ref.add_issue(
+                                self.i_s,
+                                IssueType::RecursiveTypesNotAllowedInFunctionScope,
+                            );
+                            had_error = true;
+                        }
                         if is_invalid_recursive_alias(self.i_s.db, &type_) {
                             node_ref.add_issue(
                                 self.i_s,
