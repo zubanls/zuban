@@ -1,8 +1,6 @@
 use parsa_python_ast::*;
 
-use super::type_computation::{
-    assignment_type_node_ref, cache_name_on_class, SpecialType, TypeNameLookup,
-};
+use super::type_computation::cache_name_on_class;
 use crate::database::{Locality, Point, PointLink, PointType, Specific};
 use crate::diagnostics::IssueType;
 use crate::file::file_state::File;
@@ -228,53 +226,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
                 Err(lookup) => lookup,
             };
         }
-        if point.calculated() && point.type_() == PointType::Redirect {
-            let node_ref = point.as_redirected_node_ref(self.i_s.db);
-            if node_ref.file_index() == self.file.file_index() {
-                let redirected_name = node_ref.as_name();
-                if let TypeLike::Assignment(assignment) = redirected_name.expect_type() {
-                    let node_ref = assignment_type_node_ref(self.file, assignment);
-                    if node_ref.point().calculating() {
-                        // This means that this is probably a recursive type alias being calculated. Just
-                        // ignore.
-                        return BaseLookup::Other;
-                    }
-                }
-            }
-        }
-        match self.file.inference(self.i_s).lookup_type_name(name) {
-            TypeNameLookup::Module(f) => BaseLookup::Module(f),
-            TypeNameLookup::Class { node_ref } => BaseLookup::Class(node_ref.as_link()),
-            TypeNameLookup::TypeVarLike(type_var_like) => {
-                if self
-                    .class
-                    .and_then(|c| c.maybe_type_var_like_in_parent(self.i_s, &type_var_like))
-                    .is_none()
-                {
-                    if let TypeVarLike::TypeVarTuple(t) = &type_var_like {
-                        if self.type_var_manager.has_type_var_tuples() {
-                            NodeRef::new(self.file, name.index())
-                                .add_issue(self.i_s, IssueType::MultipleTypeVarTuplesInClassDef)
-                            // TODO this type var tuple should probably not be added
-                        }
-                    }
-                    let old_index = self.type_var_manager.add(type_var_like, None);
-                    if let Some(force_index) = self.current_generic_or_protocol_index {
-                        if old_index < force_index {
-                            NodeRef::new(self.file, name.index())
-                                .add_issue(self.i_s, IssueType::DuplicateTypeVar)
-                        } else if old_index != force_index {
-                            self.type_var_manager.move_index(old_index, force_index);
-                        }
-                    }
-                }
-                BaseLookup::Other
-            }
-            TypeNameLookup::SpecialType(SpecialType::Generic) => BaseLookup::Generic,
-            TypeNameLookup::SpecialType(SpecialType::Protocol) => BaseLookup::Protocol,
-            TypeNameLookup::SpecialType(SpecialType::Callable) => BaseLookup::Callable,
-            _ => BaseLookup::Other,
-        }
+        BaseLookup::Other
     }
 
     fn find_in_primary_or_atom(&mut self, p: PrimaryOrAtom<'d>) -> BaseLookup<'db> {
