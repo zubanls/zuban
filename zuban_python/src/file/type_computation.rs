@@ -3226,6 +3226,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         if let Some((name_def, annotation, expr)) =
             assignment.maybe_simple_type_expression_assignment()
         {
+            debug!("Started type alias calculation: {}", name_def.as_code());
             if let Some(type_comment) = self.check_for_type_comment(assignment) {
                 // This case is a bit weird in Mypy, but it makes it possible to use a type
                 // definition like:
@@ -3327,7 +3328,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             }
 
             let inferred = self.check_point_cache(name_def.index()).unwrap();
-            if let Some(tv) = inferred.maybe_type_var_like(self.i_s) {
+            let result = if let Some(tv) = inferred.maybe_type_var_like(self.i_s) {
                 TypeNameLookup::TypeVarLike(tv)
             } else if let Some(n) = inferred.maybe_new_type(self.i_s) {
                 TypeNameLookup::NewType(n)
@@ -3340,7 +3341,9 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 TypeNameLookup::Enum(t)
             } else {
                 check_for_alias(self)
-            }
+            };
+            debug!("Finished type alias calculation: {}", name_def.as_code());
+            result
         } else {
             if let Some(annotation) = assignment.maybe_annotation() {
                 self.cache_assignment_nodes(assignment);

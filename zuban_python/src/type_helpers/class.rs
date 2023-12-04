@@ -302,6 +302,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
 
         debug_assert!(!name_def.point().calculated());
+        debug!("Calculate class infos for {}", self.name());
 
         node_ref.set_point(Point::new_calculating());
         // TODO it is questionable that we are just marking this as OK, because it could be an
@@ -512,6 +513,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 }
             }
         }
+        debug!("Finished calculating class infos for {}", self.name());
     }
 
     pub fn use_cached_class_infos(&self, db: &'db Database) -> &'db ClassInfos {
@@ -549,7 +551,6 @@ impl<'db: 'a, 'a> Class<'a> {
         i_s: &InferenceState<'db, '_>,
         type_vars: &TypeVarLikes,
     ) -> (Box<ClassInfos>, Option<Rc<TypedDict>>) {
-        debug!("Calculate class infos for {}", self.name());
         // Calculate all type vars beforehand
         let db = i_s.db;
 
