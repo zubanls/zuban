@@ -1,3 +1,6 @@
+use super::{
+    CallableContent, ClassGenerics, FunctionOverload, Tuple, Type, TypeVarKind, UnionType,
+};
 use crate::{
     database::{ComplexPoint, MetaclassState},
     debug,
@@ -6,10 +9,6 @@ use crate::{
     node_ref::NodeRef,
     type_::{CallableLike, CallableParams, TupleTypeArguments, TypeOrTypeVarTuple, Variance},
     type_helpers::{Class, TypeOrClass},
-};
-
-use super::{
-    CallableContent, ClassGenerics, FunctionOverload, Tuple, Type, TypeVarKind, UnionType,
 };
 
 impl Type {

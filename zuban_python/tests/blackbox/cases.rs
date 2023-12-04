@@ -1,6 +1,6 @@
 #![allow(dead_code)]
-use std::collections::HashSet;
-use std::path::PathBuf;
+use std::{collections::HashSet, path::PathBuf};
+
 use zuban_python::Script;
 
 use crate::Filter;

@@ -1,8 +1,10 @@
-use std::collections::{HashMap, HashSet};
-use std::fmt;
-use std::hash::BuildHasherDefault;
-use std::iter::repeat;
-use std::pin::Pin;
+use std::{
+    collections::{HashMap, HashSet},
+    fmt,
+    hash::BuildHasherDefault,
+    iter::repeat,
+    pin::Pin,
+};
 
 use fnv::FnvHashMap;
 

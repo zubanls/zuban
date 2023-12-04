@@ -1,22 +1,22 @@
-use std::borrow::Cow;
-use std::rc::Rc;
+use std::{borrow::Cow, rc::Rc};
 
 use parsa_python_ast::Name;
 
-use super::class::TypeOrClass;
-use super::{Class, MroIterator};
-use crate::arguments::{Arguments, CombinedArguments, KnownArguments, NoArguments};
-use crate::database::{Database, PointLink, Specific};
-use crate::debug;
-use crate::diagnostics::IssueType;
-use crate::file::{on_argument_type_error, File};
-use crate::getitem::SliceType;
-use crate::inference_state::InferenceState;
-use crate::inferred::{add_attribute_error, Inferred};
-use crate::matching::{IteratorContent, LookupKind, LookupResult, OnTypeError, ResultContext};
-use crate::node_ref::NodeRef;
-use crate::type_::{
-    AnyCause, CallableLike, CallableParams, FunctionKind, GenericClass, Type, TypeVarKind,
+use super::{class::TypeOrClass, Class, MroIterator};
+use crate::{
+    arguments::{Arguments, CombinedArguments, KnownArguments, NoArguments},
+    database::{Database, PointLink, Specific},
+    debug,
+    diagnostics::IssueType,
+    file::{on_argument_type_error, File},
+    getitem::SliceType,
+    inference_state::InferenceState,
+    inferred::{add_attribute_error, Inferred},
+    matching::{IteratorContent, LookupKind, LookupResult, OnTypeError, ResultContext},
+    node_ref::NodeRef,
+    type_::{
+        AnyCause, CallableLike, CallableParams, FunctionKind, GenericClass, Type, TypeVarKind,
+    },
 };
 
 #[derive(Debug, Clone, Copy)]

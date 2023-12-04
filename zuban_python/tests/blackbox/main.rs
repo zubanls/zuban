@@ -1,9 +1,11 @@
 mod cases;
 
-use std::env;
-use std::fs::{read_dir, read_to_string};
-use std::path::PathBuf;
-use std::time::Instant;
+use std::{
+    env,
+    fs::{read_dir, read_to_string},
+    path::PathBuf,
+    time::Instant,
+};
 
 use zuban_python::{Project, ProjectOptions, TypeCheckerFlags};
 

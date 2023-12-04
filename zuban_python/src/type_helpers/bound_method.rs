@@ -1,9 +1,11 @@
 use super::{FirstParamProperties, Function, OverloadedFunction};
-use crate::arguments::Arguments;
-use crate::inference_state::InferenceState;
-use crate::inferred::Inferred;
-use crate::matching::{OnTypeError, ResultContext};
-use crate::type_::Type;
+use crate::{
+    arguments::Arguments,
+    inference_state::InferenceState,
+    inferred::Inferred,
+    matching::{OnTypeError, ResultContext},
+    type_::Type,
+};
 
 #[derive(Debug)]
 pub enum BoundMethodFunction<'a> {

@@ -1,18 +1,17 @@
 #![allow(dead_code)] // TODO remove this
-use std::any::Any;
-use std::fmt;
-use std::fs;
-use std::pin::Pin;
-use std::rc::Rc;
+use std::{any::Any, fmt, fs, pin::Pin, rc::Rc};
 
-use crate::database::{Database, FileIndex};
-use crate::diagnostics::{Diagnostic, DiagnosticConfig};
-use crate::file::PythonFile;
-use crate::inferred::Inferred;
-use crate::name::{Name, Names, TreePosition};
-use crate::workspaces::{FileEntry, Invalidations};
-use crate::PythonProject;
 use parsa_python_ast::{CodeIndex, Keyword, NodeIndex};
+
+use crate::{
+    database::{Database, FileIndex},
+    diagnostics::{Diagnostic, DiagnosticConfig},
+    file::PythonFile,
+    inferred::Inferred,
+    name::{Name, Names, TreePosition},
+    workspaces::{FileEntry, Invalidations},
+    PythonProject,
+};
 
 type InvalidatedDependencies = Vec<FileIndex>;
 type LoadFileFunction<F> = &'static dyn Fn(String) -> F;

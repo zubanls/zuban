@@ -1,11 +1,10 @@
 use std::borrow::Cow;
 
+use super::{FormatStyle, Type};
 use crate::{
     inference_state::InferenceState,
     matching::{FormatData, Matcher},
 };
-
-use super::{FormatStyle, Type};
 
 impl Type {
     pub fn simplified_union(&self, i_s: &InferenceState, other: &Self) -> Type {

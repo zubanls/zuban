@@ -1,12 +1,15 @@
 #![allow(dead_code)] // TODO remove this
 
-use crate::database::Database;
-use crate::file::File;
-use crate::file::PythonFile;
-use crate::inference_state::InferenceState;
-use crate::inferred::Inferred;
-use parsa_python_ast::{CodeIndex, Name as ASTName};
 use std::fmt;
+
+use parsa_python_ast::{CodeIndex, Name as ASTName};
+
+use crate::{
+    database::Database,
+    file::{File, PythonFile},
+    inference_state::InferenceState,
+    inferred::Inferred,
+};
 
 type Signatures = Vec<()>;
 pub type Names<'db> = Vec<Box<dyn Name<'db>>>;

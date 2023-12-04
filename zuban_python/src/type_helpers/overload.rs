@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use super::{Callable, Class};
 use crate::{
     arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments},
     database::Database,
@@ -15,8 +16,6 @@ use crate::{
     node_ref::NodeRef,
     type_::{AnyCause, FunctionOverload, ReplaceSelf, Type},
 };
-
-use super::{Callable, Class};
 
 #[derive(Debug)]
 pub struct OverloadedFunction<'a> {

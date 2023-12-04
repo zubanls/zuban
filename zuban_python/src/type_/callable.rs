@@ -2,6 +2,10 @@ use std::{borrow::Cow, rc::Rc};
 
 use parsa_python_ast::ParamKind;
 
+use super::{
+    AnyCause, DbString, FunctionKind, ParamSpecUsage, RecursiveType, StringSlice, Type, TypeVar,
+    TypeVarKind, TypeVarLike, TypeVarLikes, TypeVarName, TypeVarUsage, TypedDict, Variance,
+};
 use crate::{
     database::{Database, FileIndex, PointLink},
     inference_state::InferenceState,
@@ -13,11 +17,6 @@ use crate::{
     type_::{FormatStyle, TypeVarLikeUsage},
     type_helpers::Class,
     utils::join_with_commas,
-};
-
-use super::{
-    AnyCause, DbString, FunctionKind, ParamSpecUsage, RecursiveType, StringSlice, Type, TypeVar,
-    TypeVarKind, TypeVarLike, TypeVarLikes, TypeVarName, TypeVarUsage, TypedDict, Variance,
 };
 
 #[derive(Debug, Clone, PartialEq)]

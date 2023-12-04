@@ -5,16 +5,18 @@ use parsa_python_ast::{
     SliceType as ASTSliceType, Slices as ASTSlices,
 };
 
-use crate::arguments::{ArgumentIterator, Arguments, ArgumentsType};
-use crate::database::PointsBackup;
-use crate::debug;
-use crate::diagnostics::IssueType;
-use crate::file::{infer_index, PythonFile};
-use crate::inference_state::InferenceState;
-use crate::inferred::Inferred;
-use crate::matching::ResultContext;
-use crate::node_ref::NodeRef;
-use crate::type_::{Tuple, Type, TypeOrTypeVarTuple};
+use crate::{
+    arguments::{ArgumentIterator, Arguments, ArgumentsType},
+    database::PointsBackup,
+    debug,
+    diagnostics::IssueType,
+    file::{infer_index, PythonFile},
+    inference_state::InferenceState,
+    inferred::Inferred,
+    matching::ResultContext,
+    node_ref::NodeRef,
+    type_::{Tuple, Type, TypeOrTypeVarTuple},
+};
 
 #[derive(Debug, Copy, Clone)]
 pub struct SliceType<'file> {

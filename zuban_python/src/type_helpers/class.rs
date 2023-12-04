@@ -1,7 +1,9 @@
-use std::borrow::Cow;
-use std::cell::{Cell, OnceCell};
-use std::fmt;
-use std::rc::Rc;
+use std::{
+    borrow::Cow,
+    cell::{Cell, OnceCell},
+    fmt,
+    rc::Rc,
+};
 
 use parsa_python_ast::{
     Argument, Arguments as ASTArguments, AssignmentContent, AsyncStmtContent, BlockContent,
@@ -9,36 +11,38 @@ use parsa_python_ast::{
     SimpleStmts, StmtContent, StmtOrError, Target,
 };
 
-use super::overload::OverloadResult;
-use super::{Callable, Instance, Module};
-use crate::arguments::{Arguments, KnownArguments, SimpleArguments};
-use crate::database::{
-    BaseClass, ClassInfos, ClassKind, ClassStorage, ComplexPoint, Database, Locality,
-    MetaclassState, ParentScope, Point, PointLink, PointType,
-};
-use crate::debug;
-use crate::diagnostics::IssueType;
-use crate::file::{
-    use_cached_annotation_type, CalculatedBaseClass, File, PythonFile, TypeComputation,
-    TypeComputationOrigin, TypeVarCallbackReturn, TypeVarFinder,
-};
-use crate::getitem::SliceType;
-use crate::inference_state::InferenceState;
-use crate::inferred::{FunctionOrOverload, Inferred, MroIndex};
-use crate::matching::{
-    calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
-    calculate_class_init_type_vars_and_return, FormatData, FunctionOrCallable, Generics,
-    LookupKind, LookupResult, Match, Matcher, MismatchReason, OnTypeError, ResultContext,
-};
-use crate::node_ref::NodeRef;
-use crate::python_state::NAME_TO_FUNCTION_DIFF;
-use crate::type_::{
-    check_dataclass_options, dataclass_init_func, execute_functional_enum,
-    infer_typed_dict_total_argument, infer_value_on_member, AnyCause, CallableContent,
-    CallableLike, CallableParam, CallableParams, ClassGenerics, Dataclass, DataclassOptions,
-    DbString, Enum, EnumMemberDefinition, FormatStyle, FunctionKind, FunctionOverload,
-    GenericClass, GenericsList, NamedTuple, ParamType, StringSlice, Tuple, Type, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember, TypedDictMemberGatherer, Variance,
+use super::{overload::OverloadResult, Callable, Instance, Module};
+use crate::{
+    arguments::{Arguments, KnownArguments, SimpleArguments},
+    database::{
+        BaseClass, ClassInfos, ClassKind, ClassStorage, ComplexPoint, Database, Locality,
+        MetaclassState, ParentScope, Point, PointLink, PointType,
+    },
+    debug,
+    diagnostics::IssueType,
+    file::{
+        use_cached_annotation_type, CalculatedBaseClass, File, PythonFile, TypeComputation,
+        TypeComputationOrigin, TypeVarCallbackReturn, TypeVarFinder,
+    },
+    getitem::SliceType,
+    inference_state::InferenceState,
+    inferred::{FunctionOrOverload, Inferred, MroIndex},
+    matching::{
+        calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
+        calculate_class_init_type_vars_and_return, FormatData, FunctionOrCallable, Generics,
+        LookupKind, LookupResult, Match, Matcher, MismatchReason, OnTypeError, ResultContext,
+    },
+    node_ref::NodeRef,
+    python_state::NAME_TO_FUNCTION_DIFF,
+    type_::{
+        check_dataclass_options, dataclass_init_func, execute_functional_enum,
+        infer_typed_dict_total_argument, infer_value_on_member, AnyCause, CallableContent,
+        CallableLike, CallableParam, CallableParams, ClassGenerics, Dataclass, DataclassOptions,
+        DbString, Enum, EnumMemberDefinition, FormatStyle, FunctionKind, FunctionOverload,
+        GenericClass, GenericsList, NamedTuple, ParamType, StringSlice, Tuple, Type, TypeVarLike,
+        TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember, TypedDictMemberGatherer,
+        Variance,
+    },
 };
 
 #[derive(Clone, Copy)]

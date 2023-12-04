@@ -2,25 +2,31 @@ use std::borrow::Cow;
 
 use parsa_python_ast::ParamKind;
 
-use super::super::params::{
-    InferrableParamIterator, Param, ParamArgument, WrappedParamType, WrappedStar, WrappedStarStar,
+use super::{
+    super::{
+        params::{
+            InferrableParamIterator, Param, ParamArgument, WrappedParamType, WrappedStar,
+            WrappedStarStar,
+        },
+        ArgumentIndexWithParam, FormatData, Generics, Match, Matcher, MismatchReason, OnTypeError,
+        ResultContext, SignatureMatch,
+    },
+    bound::TypeVarBound,
+    type_var_matcher::{BoundKind, FunctionOrCallable, TypeVarMatcher},
 };
-use super::super::{
-    ArgumentIndexWithParam, FormatData, Generics, Match, Matcher, MismatchReason, OnTypeError,
-    ResultContext, SignatureMatch,
+use crate::{
+    arguments::{Argument, ArgumentKind},
+    database::PointLink,
+    debug,
+    diagnostics::IssueType,
+    inference_state::InferenceState,
+    node_ref::NodeRef,
+    type_::{
+        CallableParams, ClassGenerics, GenericItem, GenericsList, Type, TypeVarLikeUsage,
+        TypeVarLikes,
+    },
+    type_helpers::{Callable, Class, Function},
 };
-use super::bound::TypeVarBound;
-use super::type_var_matcher::{BoundKind, FunctionOrCallable, TypeVarMatcher};
-use crate::arguments::{Argument, ArgumentKind};
-use crate::database::PointLink;
-use crate::debug;
-use crate::diagnostics::IssueType;
-use crate::inference_state::InferenceState;
-use crate::node_ref::NodeRef;
-use crate::type_::{
-    CallableParams, ClassGenerics, GenericItem, GenericsList, Type, TypeVarLikeUsage, TypeVarLikes,
-};
-use crate::type_helpers::{Callable, Class, Function};
 
 pub fn calculate_callable_init_type_vars_and_return<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,

@@ -1,11 +1,12 @@
-use std::collections::HashMap;
-use std::env;
-use std::fs::{read_dir, read_to_string};
-use std::path::PathBuf;
-use std::time::Instant;
+use std::{
+    collections::HashMap,
+    env,
+    fs::{read_dir, read_to_string},
+    path::PathBuf,
+    time::Instant,
+};
 
 use regex::{Captures, Regex, Replacer};
-
 use zuban_python::{DiagnosticConfig, Project, ProjectOptions, TypeCheckerFlags};
 
 const SKIP_MYPY_TEST_FILES: [&str; 37] = [

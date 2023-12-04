@@ -5,12 +5,7 @@ mod automaton;
 mod backtracking;
 mod grammar;
 
-#[macro_export]
-pub use lazy_static::lazy_static;
-pub use std::collections::HashSet;
-pub use std::io::Bytes;
-pub use std::marker::PhantomData;
-pub use std::mem;
+pub use std::{collections::HashSet, io::Bytes, marker::PhantomData, mem};
 
 pub use automaton::{
     new_fast_hash_map, FastHashMap, InternalNonterminalType, InternalSquashedType,
@@ -19,6 +14,8 @@ pub use automaton::{
 pub use grammar::{
     CodeIndex, CodeLength, Grammar, InternalNode, InternalTree, NodeIndex, Token, Tokenizer,
 };
+#[macro_export]
+pub use lazy_static::lazy_static;
 
 #[macro_export]
 macro_rules! __filter_labels_and_create_node_set {

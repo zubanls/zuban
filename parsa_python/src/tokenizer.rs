@@ -4,10 +4,10 @@
 extern crate lazy_static;
 extern crate regex;
 
+use std::{collections::HashSet, str};
+
 use parsa::{create_terminals, CodeIndex};
 use regex::Regex;
-use std::collections::HashSet;
-use std::str;
 
 const FORM_FEED: char = '\x0C';
 const HEX_NUMBER: &str = r"0[xX](_?[0-9a-fA-F])+";
@@ -601,9 +601,10 @@ fn code_from_start(code: &str, index: usize) -> &str {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use parsa::Tokenizer;
     use TerminalType::*;
+
+    use super::*;
     #[allow(non_upper_case_globals)]
     const Op: TerminalType = Operator;
 

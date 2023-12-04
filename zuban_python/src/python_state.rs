@@ -1,21 +1,25 @@
-use parsa_python_ast::{NodeIndex, TypeLike, NAME_DEF_TO_NAME_DIFFERENCE};
-use std::ptr::null;
-use std::rc::Rc;
+use std::{ptr::null, rc::Rc};
 
-use crate::database::{
-    BaseClass, ComplexPoint, Database, FileIndex, Locality, Point, PointLink, PointType, Specific,
+use parsa_python_ast::{NodeIndex, TypeLike, NAME_DEF_TO_NAME_DIFFERENCE};
+
+use crate::{
+    database::{
+        BaseClass, ComplexPoint, Database, FileIndex, Locality, Point, PointLink, PointType,
+        Specific,
+    },
+    file::{File, PythonFile},
+    inferred::Inferred,
+    matching::Generics,
+    new_class,
+    node_ref::NodeRef,
+    type_::{
+        dataclasses_replace, AnyCause, CallableContent, CallableParam, CallableParams,
+        ClassGenerics, CustomBehavior, FunctionKind, LiteralKind, ParamType, Tuple, Type,
+        TypeVarLikes,
+    },
+    type_helpers::{Class, Function, Instance},
+    InferenceState,
 };
-use crate::file::File;
-use crate::file::PythonFile;
-use crate::inferred::Inferred;
-use crate::matching::Generics;
-use crate::node_ref::NodeRef;
-use crate::type_::{
-    dataclasses_replace, AnyCause, CallableContent, CallableParam, CallableParams, ClassGenerics,
-    CustomBehavior, FunctionKind, LiteralKind, ParamType, Tuple, Type, TypeVarLikes,
-};
-use crate::type_helpers::{Class, Function, Instance};
-use crate::{new_class, InferenceState};
 
 // This is a bit hacky, but I'm sure the tests will fail somewhere if this constant is
 // wrong. Basically it goes three nodes back: name_def class literal and then the actual

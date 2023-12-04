@@ -1,17 +1,12 @@
-use std::borrow::Cow;
-use std::ops::AddAssign;
-use std::rc::Rc;
+use std::{borrow::Cow, ops::AddAssign, rc::Rc};
 
-use crate::database::{Database, PointLink};
-
-use crate::matching::{FormatData, ParamsStyle};
-use crate::node_ref::NodeRef;
-use crate::utils::join_with_commas;
-
-use super::GenericsList;
-use super::TypeArguments;
-use super::{AnyCause, GenericItem};
-use super::{CallableParams, Type};
+use super::{AnyCause, CallableParams, GenericItem, GenericsList, Type, TypeArguments};
+use crate::{
+    database::{Database, PointLink},
+    matching::{FormatData, ParamsStyle},
+    node_ref::NodeRef,
+    utils::join_with_commas,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]
 pub struct TypeVarIndex(pub(super) u32);

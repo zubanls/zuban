@@ -1,16 +1,17 @@
-use std::borrow::Cow;
-use std::rc::Rc;
+use std::{borrow::Cow, rc::Rc};
 
 use parsa_python_ast::ParamKind;
 
 use super::{Match, Matcher};
-use crate::arguments::{Argument, ArgumentKind};
-use crate::database::{Database, PointLink};
-use crate::debug;
-use crate::inference_state::InferenceState;
-use crate::type_::{
-    CallableParam, CallableParams, ParamSpecUsage, ParamType, StarParamType, StarStarParamType,
-    StringSlice, Type, TypeVarLikes, TypedDict, Variance,
+use crate::{
+    arguments::{Argument, ArgumentKind},
+    database::{Database, PointLink},
+    debug,
+    inference_state::InferenceState,
+    type_::{
+        CallableParam, CallableParams, ParamSpecUsage, ParamType, StarParamType, StarStarParamType,
+        StringSlice, Type, TypeVarLikes, TypedDict, Variance,
+    },
 };
 
 pub trait Param<'x>: Copy + std::fmt::Debug {

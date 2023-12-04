@@ -2,6 +2,10 @@ use std::rc::Rc;
 
 use parsa_python_ast::{AtomContent, DictElement};
 
+use super::{
+    utils::method_with_fallback, CustomBehavior, FormatStyle, GenericsList, RecursiveType,
+    StringSlice, Type, TypeVarLikes,
+};
 use crate::{
     arguments::{ArgumentKind, Arguments},
     database::{ComplexPoint, Database, PointLink},
@@ -16,11 +20,6 @@ use crate::{
     node_ref::NodeRef,
     type_helpers::{Instance, Module},
     utils::join_with_commas,
-};
-
-use super::{
-    utils::method_with_fallback, CustomBehavior, FormatStyle, GenericsList, RecursiveType,
-    StringSlice, Type, TypeVarLikes,
 };
 
 #[derive(Debug, Clone, PartialEq)]

@@ -1,10 +1,12 @@
 use parsa_python_ast::Name;
 
-use crate::database::{FileIndex, Locality, Point, PointLink};
-use crate::file::PythonFile;
-use crate::inference_state::InferenceState;
-use crate::inferred::Inferred;
-use crate::type_::AnyCause;
+use crate::{
+    database::{FileIndex, Locality, Point, PointLink},
+    file::PythonFile,
+    inference_state::InferenceState,
+    inferred::Inferred,
+    type_::AnyCause,
+};
 
 #[derive(Debug, Clone)]
 pub enum LookupResult {

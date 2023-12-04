@@ -1,11 +1,16 @@
-use std::cell::{Cell, RefCell, RefMut};
-use std::path::PathBuf;
-use std::rc::{Rc, Weak};
+use std::{
+    cell::{Cell, RefCell, RefMut},
+    path::PathBuf,
+    rc::{Rc, Weak},
+};
+
 use walkdir::WalkDir;
 
-use crate::database::FileIndex;
-use crate::file::{FileStateLoader, Vfs};
-use crate::utils::{rc_unwrap_or_clone, VecRefWrapper};
+use crate::{
+    database::FileIndex,
+    file::{FileStateLoader, Vfs},
+    utils::{rc_unwrap_or_clone, VecRefWrapper},
+};
 
 #[derive(Debug, Default)]
 pub struct Workspaces(Vec<Workspace>);

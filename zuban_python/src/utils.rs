@@ -1,10 +1,12 @@
-use std::borrow::Cow;
-use std::cell::{Cell, Ref, UnsafeCell};
-use std::collections::HashMap;
-use std::fmt;
-use std::hash::{Hash, Hasher};
-use std::pin::Pin;
-use std::rc::Rc;
+use std::{
+    borrow::Cow,
+    cell::{Cell, Ref, UnsafeCell},
+    collections::HashMap,
+    fmt,
+    hash::{Hash, Hasher},
+    pin::Pin,
+    rc::Rc,
+};
 
 use parsa_python_ast::{Name, NodeIndex};
 

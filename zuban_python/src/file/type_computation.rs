@@ -1,34 +1,35 @@
-use std::borrow::Cow;
-use std::rc::Rc;
+use std::{borrow::Cow, rc::Rc};
 
-use parsa_python_ast::SliceType as ASTSliceType;
-use parsa_python_ast::*;
+use parsa_python_ast::{SliceType as ASTSliceType, *};
 
 use super::TypeVarFinder;
-use crate::arguments::SimpleArguments;
-use crate::database::{
-    ComplexPoint, Database, Locality, Point, PointLink, PointType, Specific, TypeAlias,
+use crate::{
+    arguments::SimpleArguments,
+    database::{
+        ComplexPoint, Database, Locality, Point, PointLink, PointType, Specific, TypeAlias,
+    },
+    debug,
+    diagnostics::{Issue, IssueType},
+    file::{File, Inference, PythonFile},
+    getitem::{SliceOrSimple, SliceType, SliceTypeIterator},
+    imports::{python_import, ImportResult},
+    inference_state::InferenceState,
+    inferred::Inferred,
+    matching::{FormatData, Generics, ResultContext},
+    new_class,
+    node_ref::NodeRef,
+    type_::{
+        new_collections_named_tuple, new_typing_named_tuple, AnyCause, CallableContent,
+        CallableParam, CallableParams, CallableWithParent, ClassGenerics, Dataclass, DbString,
+        Enum, EnumMember, FunctionKind, GenericClass, GenericItem, GenericsList, Literal,
+        LiteralKind, NamedTuple, Namespace, NewType, ParamSpecArgument, ParamSpecUsage, ParamType,
+        RecursiveType, StarParamType, StarStarParamType, StringSlice, Tuple, Type, TypeArguments,
+        TypeOrTypeVarTuple, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
+        TypeVarManager, TypeVarTupleUsage, TypeVarUsage, TypedDict, TypedDictGenerics,
+        TypedDictMember, UnionEntry, UnionType,
+    },
+    type_helpers::{start_namedtuple_params, Class, Function, Module},
 };
-use crate::diagnostics::{Issue, IssueType};
-use crate::file::File;
-use crate::file::{Inference, PythonFile};
-use crate::getitem::{SliceOrSimple, SliceType, SliceTypeIterator};
-use crate::imports::{python_import, ImportResult};
-use crate::inference_state::InferenceState;
-use crate::inferred::Inferred;
-use crate::matching::{FormatData, Generics, ResultContext};
-use crate::node_ref::NodeRef;
-use crate::type_::{
-    new_collections_named_tuple, new_typing_named_tuple, AnyCause, CallableContent, CallableParam,
-    CallableParams, CallableWithParent, ClassGenerics, Dataclass, DbString, Enum, EnumMember,
-    FunctionKind, GenericClass, GenericItem, GenericsList, Literal, LiteralKind, NamedTuple,
-    Namespace, NewType, ParamSpecArgument, ParamSpecUsage, ParamType, RecursiveType, StarParamType,
-    StarStarParamType, StringSlice, Tuple, Type, TypeArguments, TypeOrTypeVarTuple, TypeVar,
-    TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage,
-    TypeVarUsage, TypedDict, TypedDictGenerics, TypedDictMember, UnionEntry, UnionType,
-};
-use crate::type_helpers::{start_namedtuple_params, Class, Function, Module};
-use crate::{debug, new_class};
 
 const ASSIGNMENT_TYPE_CACHE_OFFSET: u32 = 1;
 const ANNOTATION_TO_EXPR_DIFFERENCE: u32 = 2;

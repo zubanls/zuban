@@ -1,38 +1,40 @@
-use parsa_python_ast::{NodeIndex, PrimaryContent, PythonString, SliceType as ASTSliceType};
-use std::borrow::Cow;
-use std::cell::RefCell;
-use std::rc::Rc;
+use std::{borrow::Cow, cell::RefCell, rc::Rc};
 
-use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
-use crate::database::{
-    ComplexPoint, Database, FileIndex, Locality, OverloadDefinition, Point, PointLink, PointType,
-    Specific,
-};
-use crate::debug;
-use crate::diagnostics::IssueType;
-use crate::file::{
-    maybe_saved_annotation, on_argument_type_error, use_cached_annotation_or_type_comment, File,
-    PythonFile,
-};
-use crate::getitem::{SliceType, SliceTypeContent};
-use crate::inference_state::InferenceState;
-use crate::matching::{
-    calculate_property_return, create_signature_without_self,
-    create_signature_without_self_for_callable, maybe_class_usage, replace_class_type_vars,
-    FormatData, Generics, IteratorContent, LookupKind, LookupResult, Matcher, OnLookupError,
-    OnTypeError, ResultContext,
-};
-use crate::node_ref::NodeRef;
-use crate::type_::{
-    execute_collections_named_tuple, execute_type_of_type, execute_typing_named_tuple,
-    new_typed_dict, AnyCause, CallableContent, CallableParams, ClassGenerics, DbString, Enum,
-    FunctionKind, FunctionOverload, GenericItem, GenericsList, Literal as DbLiteral, LiteralKind,
-    LiteralValue, NewType, Type, TypeVarKind, TypeVarLike, TypeVarLikes, TypedDict,
-};
-use crate::type_helpers::{
-    execute_assert_type, execute_super, execute_type, BoundMethod, BoundMethodFunction, Class,
-    FirstParamProperties, Function, Instance, NewTypeClass, OverloadedFunction, ParamSpecClass,
-    RevealTypeFunction, TypeOrClass, TypeVarClass, TypeVarTupleClass, TypingCast,
+use parsa_python_ast::{NodeIndex, PrimaryContent, PythonString, SliceType as ASTSliceType};
+
+use crate::{
+    arguments::{Arguments, CombinedArguments, KnownArguments},
+    database::{
+        ComplexPoint, Database, FileIndex, Locality, OverloadDefinition, Point, PointLink,
+        PointType, Specific,
+    },
+    debug,
+    diagnostics::IssueType,
+    file::{
+        maybe_saved_annotation, on_argument_type_error, use_cached_annotation_or_type_comment,
+        File, PythonFile,
+    },
+    getitem::{SliceType, SliceTypeContent},
+    inference_state::InferenceState,
+    matching::{
+        calculate_property_return, create_signature_without_self,
+        create_signature_without_self_for_callable, maybe_class_usage, replace_class_type_vars,
+        FormatData, Generics, IteratorContent, LookupKind, LookupResult, Matcher, OnLookupError,
+        OnTypeError, ResultContext,
+    },
+    node_ref::NodeRef,
+    type_::{
+        execute_collections_named_tuple, execute_type_of_type, execute_typing_named_tuple,
+        new_typed_dict, AnyCause, CallableContent, CallableParams, ClassGenerics, DbString, Enum,
+        FunctionKind, FunctionOverload, GenericItem, GenericsList, Literal as DbLiteral,
+        LiteralKind, LiteralValue, NewType, Type, TypeVarKind, TypeVarLike, TypeVarLikes,
+        TypedDict,
+    },
+    type_helpers::{
+        execute_assert_type, execute_super, execute_type, BoundMethod, BoundMethodFunction, Class,
+        FirstParamProperties, Function, Instance, NewTypeClass, OverloadedFunction, ParamSpecClass,
+        RevealTypeFunction, TypeOrClass, TypeVarClass, TypeVarTupleClass, TypingCast,
+    },
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]

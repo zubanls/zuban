@@ -2,34 +2,35 @@ mod bound;
 mod type_var_matcher;
 mod utils;
 
-pub use type_var_matcher::FunctionOrCallable;
+use std::{borrow::Cow, rc::Rc};
+
+use type_var_matcher::{BoundKind, TypeVarMatcher};
+pub use type_var_matcher::{CalculatedTypeVarLike, FunctionOrCallable};
+use utils::match_arguments_against_params;
 pub use utils::{
     calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
     calculate_class_init_type_vars_and_return, calculate_function_type_vars_and_return,
     CalculatedTypeArguments,
 };
 
-use std::borrow::Cow;
-use std::rc::Rc;
-
-use super::params::{matches_simple_params, InferrableParamIterator};
-use super::{FormatData, Match, OnTypeError, ParamsStyle, ResultContext, SignatureMatch};
-use crate::arguments::{Argument, ArgumentKind};
-use crate::database::{Database, PointLink};
-use crate::debug;
-use crate::inference_state::InferenceState;
-use crate::node_ref::NodeRef;
-use crate::type_::{
-    AnyCause, CallableContent, CallableParam, CallableParams, GenericItem, GenericsList,
-    ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamType, StarParamType,
-    TupleTypeArguments, Type, TypeArguments, TypeOrTypeVarTuple, TypeVarKind, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, TypedDict, TypedDictGenerics, Variance,
+use super::{
+    params::{matches_simple_params, InferrableParamIterator},
+    FormatData, Match, OnTypeError, ParamsStyle, ResultContext, SignatureMatch,
 };
-use crate::type_helpers::{Callable, Class, Function};
-use type_var_matcher::{BoundKind, TypeVarMatcher};
-use utils::match_arguments_against_params;
-
-pub use type_var_matcher::CalculatedTypeVarLike;
+use crate::{
+    arguments::{Argument, ArgumentKind},
+    database::{Database, PointLink},
+    debug,
+    inference_state::InferenceState,
+    node_ref::NodeRef,
+    type_::{
+        AnyCause, CallableContent, CallableParam, CallableParams, GenericItem, GenericsList,
+        ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamType, StarParamType,
+        TupleTypeArguments, Type, TypeArguments, TypeOrTypeVarTuple, TypeVarKind, TypeVarLike,
+        TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, TypedDict, TypedDictGenerics, Variance,
+    },
+    type_helpers::{Callable, Class, Function},
+};
 
 #[derive(Debug)]
 struct CheckedTypeRecursion<'a> {

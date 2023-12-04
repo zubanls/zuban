@@ -1,6 +1,6 @@
-use parsa_python::NonterminalType::fstring;
-use parsa_python::PyNodeType::Nonterminal;
-use parsa_python::{CodeIndex, PyNode, SiblingIterator};
+use parsa_python::{
+    CodeIndex, NonterminalType::fstring, PyNode, PyNodeType::Nonterminal, SiblingIterator,
+};
 
 #[derive(Debug)]
 pub enum PythonString<'db> {

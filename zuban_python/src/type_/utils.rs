@@ -1,11 +1,10 @@
+use super::Instance;
 use crate::{
     arguments::Arguments,
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{LookupKind, OnTypeError, ResultContext},
 };
-
-use super::Instance;
 
 pub fn method_with_fallback<'db, 'x, T>(
     i_s: &InferenceState<'db, '_>,

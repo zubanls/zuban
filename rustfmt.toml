@@ -1,0 +1,3 @@
+# Both options are currently unstable, but we might enable them in the future.
+# imports_granularity = "Crate"
+# group_imports = "StdExternalCrate"

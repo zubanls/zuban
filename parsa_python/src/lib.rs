@@ -4,10 +4,11 @@
 #![recursion_limit = "2048"]
 mod tokenizer;
 
-pub use crate::tokenizer::TerminalType;
-use crate::tokenizer::{PyTerminal, PythonTokenizer};
 use parsa::{create_grammar, Grammar};
 pub use parsa::{CodeIndex, NodeIndex};
+
+pub use crate::tokenizer::TerminalType;
+use crate::tokenizer::{PyTerminal, PythonTokenizer};
 
 create_grammar!(
     static PYTHON_GRAMMAR, struct PythonGrammar, struct PyTree, struct PyNode,

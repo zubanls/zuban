@@ -1,9 +1,11 @@
 mod strings;
 
-use std::borrow::Cow;
-use std::iter::{Skip, StepBy};
-use std::ops::Range;
-use std::str::from_utf8;
+use std::{
+    borrow::Cow,
+    iter::{Skip, StepBy},
+    ops::Range,
+    str::from_utf8,
+};
 
 use parsa_python::{
     parse,

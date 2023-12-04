@@ -6,17 +6,18 @@ use parsa_python_ast::{
     PythonString, Slices, StarStarExpression, StarredExpression, StringLiteral,
 };
 
-use crate::database::{
-    ClassStorage, ComplexPoint, Database, FileIndex, Locality, Point, PointLink, PointType,
-    TypeAlias,
+use crate::{
+    database::{
+        ClassStorage, ComplexPoint, Database, FileIndex, Locality, Point, PointLink, PointType,
+        TypeAlias,
+    },
+    diagnostics::{Issue, IssueType},
+    file::{File, PythonFile},
+    inference_state::InferenceState,
+    inferred::Inferred,
+    type_::Type,
+    type_helpers::Module,
 };
-use crate::diagnostics::{Issue, IssueType};
-use crate::file::File;
-use crate::file::PythonFile;
-use crate::inference_state::InferenceState;
-use crate::inferred::Inferred;
-use crate::type_::Type;
-use crate::type_helpers::Module;
 
 #[derive(Clone, Copy)]
 pub struct NodeRef<'file> {

@@ -1,7 +1,9 @@
 use super::super::{FormatData, Match};
-use crate::database::Database;
-use crate::inference_state::InferenceState;
-use crate::type_::{FormatStyle, Type, TypeVar, TypeVarKind, Variance};
+use crate::{
+    database::Database,
+    inference_state::InferenceState,
+    type_::{FormatStyle, Type, TypeVar, TypeVarKind, Variance},
+};
 
 #[derive(Debug, Clone)]
 pub enum TypeVarBound {

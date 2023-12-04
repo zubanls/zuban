@@ -1,13 +1,12 @@
 use std::cell::OnceCell;
 
+use super::{ClassGenerics, GenericsList, Type};
 use crate::{
     database::{Database, PointLink, TypeAlias},
     matching::Generics,
     node_ref::NodeRef,
     type_helpers::Class,
 };
-
-use super::{ClassGenerics, GenericsList, Type};
 
 #[derive(Debug, Clone)]
 pub struct RecursiveType {

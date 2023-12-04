@@ -1,37 +1,41 @@
-use std::borrow::Cow;
-use std::collections::{HashMap, HashSet};
-use std::rc::Rc;
+use std::{
+    borrow::Cow,
+    collections::{HashMap, HashSet},
+    rc::Rc,
+};
 
 use parsa_python_ast::*;
 
-use crate::arguments::{CombinedArguments, KnownArguments, NoArguments};
-use crate::database::{
-    ClassKind, ComplexPoint, Database, Locality, OverloadImplementation, Point, PointType, Specific,
+use super::{inference::await_, on_argument_type_error};
+use crate::{
+    arguments::{CombinedArguments, KnownArguments, NoArguments},
+    database::{
+        ClassKind, ComplexPoint, Database, Locality, OverloadImplementation, Point, PointType,
+        Specific,
+    },
+    debug,
+    diagnostics::{Issue, IssueType},
+    file::Inference,
+    getitem::SliceType,
+    inference_state::InferenceState,
+    inferred::{infer_class_method, Inferred},
+    matching::{
+        matches_params,
+        params::{has_overlapping_params, WrappedParamType, WrappedStar},
+        FormatData, Generics, LookupKind, LookupResult, Match, Matcher, OnTypeError, Param,
+        ResultContext,
+    },
+    node_ref::NodeRef,
+    python_state::NAME_TO_FUNCTION_DIFF,
+    type_::{
+        format_callable_params, AnyCause, CallableContent, CallableParams, DbString, FunctionKind,
+        FunctionOverload, GenericItem, Literal, LiteralKind, TupleTypeArguments, Type,
+        TypeOrTypeVarTuple, TypeVarLike, Variance,
+    },
+    type_helpers::{
+        is_private, Class, FirstParamProperties, Function, GeneratorType, Instance, TypeOrClass,
+    },
 };
-use crate::debug;
-use crate::diagnostics::{Issue, IssueType};
-use crate::file::Inference;
-use crate::getitem::SliceType;
-use crate::inference_state::InferenceState;
-use crate::inferred::{infer_class_method, Inferred};
-use crate::matching::params::{has_overlapping_params, WrappedParamType, WrappedStar};
-use crate::matching::{
-    matches_params, FormatData, Generics, LookupKind, LookupResult, Match, Matcher, OnTypeError,
-    Param, ResultContext,
-};
-use crate::node_ref::NodeRef;
-use crate::python_state::NAME_TO_FUNCTION_DIFF;
-use crate::type_::{
-    format_callable_params, AnyCause, CallableContent, CallableParams, DbString, FunctionKind,
-    FunctionOverload, GenericItem, Literal, LiteralKind, TupleTypeArguments, Type,
-    TypeOrTypeVarTuple, TypeVarLike, Variance,
-};
-use crate::type_helpers::{
-    is_private, Class, FirstParamProperties, Function, GeneratorType, Instance, TypeOrClass,
-};
-
-use super::inference::await_;
-use super::on_argument_type_error;
 
 lazy_static::lazy_static! {
     static ref FORWARD_OP_METHODS: HashSet<&'static str> = HashSet::from([

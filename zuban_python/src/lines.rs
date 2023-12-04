@@ -1,6 +1,7 @@
+use std::cell::OnceCell;
+
 use parsa_python_ast::CodeIndex;
 use regex::Regex;
-use std::cell::OnceCell;
 
 lazy_static::lazy_static! {
     static ref NEWLINES: Regex = Regex::new(r"\n|\r\n|\r").unwrap();

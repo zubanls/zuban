@@ -5,6 +5,12 @@ use parsa_python_ast::{
     ParamKind, PrimaryContent, StarExpressionContent,
 };
 
+use super::{
+    AnyCause, CallableContent, CallableParam, CallableParams, ClassGenerics, DbString,
+    FunctionKind, GenericClass, Literal, LiteralKind, ParamType, StringSlice, Tuple, Type,
+    TypeOrTypeVarTuple, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikes, TypeVarName, TypeVarUsage,
+    Variance,
+};
 use crate::{
     arguments::{Argument, ArgumentKind, Arguments, SimpleArguments},
     database::{Database, Locality, Point, Specific},
@@ -20,13 +26,6 @@ use crate::{
     python_state::NAME_TO_FUNCTION_DIFF,
     type_::{StarParamType, StarStarParamType},
     type_helpers::{Callable, Class, Function, Instance, TypeOrClass},
-};
-
-use super::{
-    AnyCause, CallableContent, CallableParam, CallableParams, ClassGenerics, DbString,
-    FunctionKind, GenericClass, Literal, LiteralKind, ParamType, StringSlice, Tuple, Type,
-    TypeOrTypeVarTuple, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikes, TypeVarName, TypeVarUsage,
-    Variance,
 };
 
 const ORDER_METHOD_NAMES: [&'static str; 4] = ["__lt__", "__gt__", "__le__", "__ge__"];

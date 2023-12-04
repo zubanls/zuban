@@ -1,44 +1,43 @@
+use std::{borrow::Cow, cell::Cell, fmt, rc::Rc};
+
 use parsa_python_ast::{
     Decorated, Decorator, ExpressionContent, ExpressionPart, FunctionDef, FunctionParent,
     NodeIndex, Param as ASTParam, ParamKind, PrimaryContent, PrimaryOrAtom, ReturnAnnotation,
     ReturnOrYield,
 };
-use std::borrow::Cow;
-use std::cell::Cell;
-use std::fmt;
-use std::rc::Rc;
 
-use crate::arguments::{Argument, Arguments, KnownArguments};
-use crate::database::{
-    ComplexPoint, Database, Locality, OverloadDefinition, OverloadImplementation, Point, PointType,
-    Specific,
+use crate::{
+    arguments::{Argument, Arguments, KnownArguments},
+    database::{
+        ComplexPoint, Database, Locality, OverloadDefinition, OverloadImplementation, Point,
+        PointType, Specific,
+    },
+    debug,
+    diagnostics::{Issue, IssueType},
+    file::{
+        first_defined_name, use_cached_annotation_type, PythonFile, TypeComputation,
+        TypeComputationOrigin, TypeVarCallbackReturn,
+    },
+    inference_state::InferenceState,
+    inferred::Inferred,
+    matching::{
+        calculate_function_type_vars_and_return, maybe_class_usage,
+        params::{InferrableParamIterator, Param, WrappedParamType, WrappedStar, WrappedStarStar},
+        CalculatedTypeArguments, Generic, LookupResult, OnTypeError, ResultContext,
+    },
+    new_class,
+    node_ref::NodeRef,
+    python_state::NAME_TO_FUNCTION_DIFF,
+    type_::{
+        AnyCause, CallableContent, CallableLike, CallableParam, CallableParams, ClassGenerics,
+        DbString, FunctionKind, FunctionOverload, GenericClass, GenericItem, ParamSpecUsage,
+        ParamType, ReplaceSelf, StarParamType, StarStarParamType, StringSlice, TupleTypeArguments,
+        Type, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
+        TypeVarName, TypeVarUsage, Variance, WrongPositionalCount,
+    },
+    type_helpers::{Class, Module},
+    utils::rc_unwrap_or_clone,
 };
-use crate::diagnostics::{Issue, IssueType};
-use crate::file::{
-    first_defined_name, use_cached_annotation_type, PythonFile, TypeComputation,
-    TypeComputationOrigin, TypeVarCallbackReturn,
-};
-use crate::inference_state::InferenceState;
-use crate::inferred::Inferred;
-use crate::matching::params::{
-    InferrableParamIterator, Param, WrappedParamType, WrappedStar, WrappedStarStar,
-};
-use crate::matching::{
-    calculate_function_type_vars_and_return, maybe_class_usage, CalculatedTypeArguments, Generic,
-    LookupResult, OnTypeError, ResultContext,
-};
-use crate::node_ref::NodeRef;
-use crate::python_state::NAME_TO_FUNCTION_DIFF;
-use crate::type_::{
-    AnyCause, CallableContent, CallableLike, CallableParam, CallableParams, ClassGenerics,
-    DbString, FunctionKind, FunctionOverload, GenericClass, GenericItem, ParamSpecUsage, ParamType,
-    ReplaceSelf, StarParamType, StarStarParamType, StringSlice, TupleTypeArguments, Type, TypeVar,
-    TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarName,
-    TypeVarUsage, Variance, WrongPositionalCount,
-};
-use crate::type_helpers::{Class, Module};
-use crate::utils::rc_unwrap_or_clone;
-use crate::{debug, new_class};
 
 #[derive(Clone, Copy)]
 pub struct Function<'a, 'class> {

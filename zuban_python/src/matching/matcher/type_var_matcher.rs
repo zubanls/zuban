@@ -1,19 +1,22 @@
-use std::borrow::Cow;
-use std::rc::Rc;
+use std::{borrow::Cow, rc::Rc};
 
 use parsa_python_ast::ParamKind;
 
-use super::super::{Generic, Match, MismatchReason};
-use super::bound::TypeVarBound;
-use crate::database::{Database, PointLink};
-use crate::inference_state::InferenceState;
-use crate::matching::Param;
-use crate::type_::{
-    common_base_type_of_type_var_tuple_with_items, AnyCause, CallableParams, GenericItem,
-    ParamSpecArgument, ParamType, Type, TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarKind,
-    TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
+use super::{
+    super::{Generic, Match, MismatchReason},
+    bound::TypeVarBound,
 };
-use crate::type_helpers::{Callable, Class, Function};
+use crate::{
+    database::{Database, PointLink},
+    inference_state::InferenceState,
+    matching::Param,
+    type_::{
+        common_base_type_of_type_var_tuple_with_items, AnyCause, CallableParams, GenericItem,
+        ParamSpecArgument, ParamType, Type, TypeArguments, TypeOrTypeVarTuple, TypeVar,
+        TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
+    },
+    type_helpers::{Callable, Class, Function},
+};
 
 #[derive(Debug, Clone, Copy)]
 pub enum FunctionOrCallable<'a> {

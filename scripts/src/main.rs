@@ -1,6 +1,5 @@
 #![allow(unreachable_code, unused_imports)]
-use std::fs;
-use std::path::PathBuf;
+use std::{fs, path::PathBuf};
 
 fn main() -> std::io::Result<()> {
     /*

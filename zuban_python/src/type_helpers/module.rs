@@ -1,17 +1,16 @@
-use crate::arguments::KnownArguments;
-use crate::database::{Database, FileIndex, PointLink};
-use crate::type_::{Namespace, Type};
-
-use crate::debug;
-use crate::file::File;
-use crate::file::PythonFile;
-use crate::imports::{python_import, ImportResult};
-use crate::inference_state::InferenceState;
-use crate::node_ref::NodeRef;
-
-use crate::inferred::Inferred;
-use crate::matching::LookupResult;
-use crate::workspaces::{Directory, Parent};
+use crate::{
+    arguments::KnownArguments,
+    database::{Database, FileIndex, PointLink},
+    debug,
+    file::{File, PythonFile},
+    imports::{python_import, ImportResult},
+    inference_state::InferenceState,
+    inferred::Inferred,
+    matching::LookupResult,
+    node_ref::NodeRef,
+    type_::{Namespace, Type},
+    workspaces::{Directory, Parent},
+};
 
 #[derive(Copy, Clone)]
 pub struct Module<'a> {

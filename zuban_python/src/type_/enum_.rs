@@ -5,6 +5,9 @@ use parsa_python_ast::{
     StarLikeExpression, StarLikeExpressionIterator,
 };
 
+use super::{
+    AnyCause, CallableLike, DbString, FormatStyle, Literal, LiteralKind, StringSlice, Type,
+};
 use crate::{
     arguments::{ArgumentKind, Arguments},
     database::{Database, ParentScope, PointLink},
@@ -15,10 +18,6 @@ use crate::{
     matching::{FormatData, LookupKind, LookupResult, ResultContext},
     node_ref::NodeRef,
     type_helpers::{Class, Instance, TypeOrClass},
-};
-
-use super::{
-    AnyCause, CallableLike, DbString, FormatStyle, Literal, LiteralKind, StringSlice, Type,
 };
 
 #[derive(Debug, PartialEq, Clone)]

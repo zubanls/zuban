@@ -2,17 +2,16 @@ use std::{borrow::Cow, rc::Rc};
 
 use parsa_python_ast::ParamKind;
 
+use super::{
+    CallableContent, CallableParam, CallableParams, ClassGenerics, GenericItem, GenericsList,
+    ParamType, StarParamType, StarStarParamType, Tuple, TupleTypeArguments, Type,
+    TypeOrTypeVarTuple, TypeVarLike, Variance,
+};
 use crate::{
     inference_state::InferenceState,
     matching::Match,
     type_::CallableLike,
     type_helpers::{Class, TypeOrClass},
-};
-
-use super::{
-    CallableContent, CallableParam, CallableParams, ClassGenerics, GenericItem, GenericsList,
-    ParamType, StarParamType, StarStarParamType, Tuple, TupleTypeArguments, Type,
-    TypeOrTypeVarTuple, TypeVarLike, Variance,
 };
 
 impl Type {

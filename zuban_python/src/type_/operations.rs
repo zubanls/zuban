@@ -1,5 +1,12 @@
 use std::rc::Rc;
 
+use super::{
+    dataclass_initialize, initialize_typed_dict, lookup_dataclass_symbol, lookup_on_dataclass,
+    lookup_on_dataclass_type, lookup_on_enum_class, lookup_on_enum_instance,
+    lookup_on_enum_member_instance, lookup_on_typed_dict,
+    tuple::{lookup_on_tuple, lookup_tuple_magic_methods},
+    AnyCause, Type, TypeVarKind,
+};
 use crate::{
     arguments::{Arguments, NoArguments},
     debug,
@@ -16,14 +23,6 @@ use crate::{
     type_helpers::{
         lookup_in_namespace, Callable, Class, Instance, Module, OverloadedFunction, TypeOrClass,
     },
-};
-
-use super::{
-    dataclass_initialize, initialize_typed_dict, lookup_dataclass_symbol, lookup_on_dataclass,
-    lookup_on_dataclass_type, lookup_on_enum_class, lookup_on_enum_instance,
-    lookup_on_enum_member_instance, lookup_on_typed_dict,
-    tuple::{lookup_on_tuple, lookup_tuple_magic_methods},
-    AnyCause, Type, TypeVarKind,
 };
 
 impl Type {

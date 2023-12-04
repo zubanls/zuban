@@ -1,10 +1,12 @@
 use std::cell::Cell;
 
-use crate::arguments::Arguments;
-use crate::database::{Database, ParentScope};
-use crate::file::TypeVarCallbackReturn;
-use crate::type_::{CallableContent, TypeVarLike};
-use crate::type_helpers::{Class, Function};
+use crate::{
+    arguments::Arguments,
+    database::{Database, ParentScope},
+    file::TypeVarCallbackReturn,
+    type_::{CallableContent, TypeVarLike},
+    type_helpers::{Class, Function},
+};
 
 #[derive(Debug, Copy, Clone)]
 enum Context<'db, 'a> {

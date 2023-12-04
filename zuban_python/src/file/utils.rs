@@ -5,20 +5,24 @@ use parsa_python_ast::{
     StarLikeExpressionIterator,
 };
 
-use crate::arguments::{unpack_star_star, Argument, Arguments};
-use crate::database::Database;
-use crate::diagnostics::IssueType;
-use crate::file::{Inference, PythonFile};
-use crate::getitem::Simple;
-use crate::inference_state::InferenceState;
-use crate::inferred::UnionValue;
-use crate::matching::{FormatData, Matcher, MismatchReason, ResultContext};
-use crate::node_ref::NodeRef;
-use crate::type_::{
-    check_typed_dict_call, infer_typed_dict_item, maybe_add_extra_keys_issue, AnyCause, Literal,
-    LiteralKind, LiteralValue, Type, TypedDict,
+use crate::{
+    arguments::{unpack_star_star, Argument, Arguments},
+    database::Database,
+    debug,
+    diagnostics::IssueType,
+    file::{Inference, PythonFile},
+    getitem::Simple,
+    inference_state::InferenceState,
+    inferred::UnionValue,
+    matching::{FormatData, Matcher, MismatchReason, ResultContext},
+    new_class,
+    node_ref::NodeRef,
+    type_::{
+        check_typed_dict_call, infer_typed_dict_item, maybe_add_extra_keys_issue, AnyCause,
+        Literal, LiteralKind, LiteralValue, Type, TypedDict,
+    },
+    Inferred,
 };
-use crate::{debug, new_class, Inferred};
 
 impl<'db> Inference<'db, '_, '_> {
     pub fn create_list_or_set_generics<'x>(

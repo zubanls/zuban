@@ -2,6 +2,11 @@ use std::{cell::OnceCell, rc::Rc};
 
 use parsa_python_ast::{AtomContent, CodeIndex, StarLikeExpression};
 
+use super::{
+    tuple::lookup_tuple_magic_methods, AnyCause, CallableContent, CallableParam, CallableParams,
+    DbString, FormatStyle, FunctionKind, ParamType, RecursiveType, StringSlice, Tuple, Type,
+    TypeOrTypeVarTuple,
+};
 use crate::{
     arguments::{ArgumentIterator, ArgumentKind, Arguments},
     database::{ComplexPoint, Database, FileIndex, PointLink},
@@ -15,12 +20,6 @@ use crate::{
     node_ref::NodeRef,
     type_helpers::{start_namedtuple_params, Module},
     utils::join_with_commas,
-};
-
-use super::{
-    tuple::lookup_tuple_magic_methods, AnyCause, CallableContent, CallableParam, CallableParams,
-    DbString, FormatStyle, FunctionKind, ParamType, RecursiveType, StringSlice, Tuple, Type,
-    TypeOrTypeVarTuple,
 };
 
 #[derive(Debug, PartialEq, Clone)]

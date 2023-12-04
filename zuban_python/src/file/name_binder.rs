@@ -1,16 +1,18 @@
 use std::cell::RefCell;
 
-use crate::database::{
-    ClassStorage, ComplexPoint, FileIndex, Locality, ParentScope, Point, PointType, Points,
-    Specific,
-};
-use crate::debug;
-use crate::diagnostics::{Diagnostics, Issue, IssueType};
-use crate::file::python_file::StarImport;
-use crate::file::ComplexValues;
-use crate::type_::StringSlice;
-use crate::utils::SymbolTable;
 use parsa_python_ast::*;
+
+use crate::{
+    database::{
+        ClassStorage, ComplexPoint, FileIndex, Locality, ParentScope, Point, PointType, Points,
+        Specific,
+    },
+    debug,
+    diagnostics::{Diagnostics, Issue, IssueType},
+    file::{python_file::StarImport, ComplexValues},
+    type_::StringSlice,
+    utils::SymbolTable,
+};
 
 #[derive(PartialEq, Debug)]
 enum NameBinderType {

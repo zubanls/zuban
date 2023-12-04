@@ -1,36 +1,39 @@
-use std::cell::Cell;
-use std::rc::Rc;
+use std::{cell::Cell, rc::Rc};
 
 use parsa_python_ast::*;
 
-use super::diagnostics::await_aiter_and_next;
-use super::utils::infer_dict_like;
-use super::{on_argument_type_error, File, PythonFile};
-use crate::arguments::{KnownArguments, NoArguments, SimpleArguments};
-use crate::database::{
-    ComplexPoint, Database, FileIndex, Locality, Point, PointLink, PointType, Specific,
+use super::{
+    diagnostics::await_aiter_and_next, on_argument_type_error, utils::infer_dict_like, File,
+    PythonFile,
 };
-use crate::diagnostics::IssueType;
-use crate::getitem::SliceType;
-use crate::imports::{find_ancestor, global_import, python_import, ImportResult};
-use crate::inference_state::InferenceState;
-use crate::inferred::{add_attribute_error, specific_to_type, Inferred, UnionValue};
-use crate::matching::{
-    matches_simple_params, CouldBeALiteral, FormatData, Generics, LookupKind, LookupResult,
-    Matcher, OnTypeError, ResultContext,
+use crate::{
+    arguments::{KnownArguments, NoArguments, SimpleArguments},
+    database::{
+        ComplexPoint, Database, FileIndex, Locality, Point, PointLink, PointType, Specific,
+    },
+    debug,
+    diagnostics::IssueType,
+    getitem::SliceType,
+    imports::{find_ancestor, global_import, python_import, ImportResult},
+    inference_state::InferenceState,
+    inferred::{add_attribute_error, specific_to_type, Inferred, UnionValue},
+    matching::{
+        matches_simple_params, CouldBeALiteral, FormatData, Generics, LookupKind, LookupResult,
+        Matcher, OnTypeError, ResultContext,
+    },
+    new_class,
+    node_ref::NodeRef,
+    type_::{
+        AnyCause, CallableContent, CallableParam, CallableParams, FunctionKind, Literal,
+        LiteralKind, Namespace, ParamType, StarParamType, StarStarParamType, StringSlice, Tuple,
+        TupleTypeArguments, Type, TypeOrTypeVarTuple, UnionEntry, UnionType, Variance,
+    },
+    type_helpers::{
+        lookup_in_namespace, Class, FirstParamKind, Function, GeneratorType, Instance, Module,
+        TypeOrClass,
+    },
+    utils::debug_indent,
 };
-use crate::node_ref::NodeRef;
-use crate::type_::{
-    AnyCause, CallableContent, CallableParam, CallableParams, FunctionKind, Literal, LiteralKind,
-    Namespace, ParamType, StarParamType, StarStarParamType, StringSlice, Tuple, TupleTypeArguments,
-    Type, TypeOrTypeVarTuple, UnionEntry, UnionType, Variance,
-};
-use crate::type_helpers::{
-    lookup_in_namespace, Class, FirstParamKind, Function, GeneratorType, Instance, Module,
-    TypeOrClass,
-};
-use crate::utils::debug_indent;
-use crate::{debug, new_class};
 
 pub struct Inference<'db: 'file, 'file, 'i_s> {
     pub(super) file: &'file PythonFile,

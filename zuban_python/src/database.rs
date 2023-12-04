@@ -1,41 +1,36 @@
-use std::borrow::Cow;
-use std::cell::Cell;
-use std::collections::HashMap;
-use std::fmt;
-use std::mem;
-use std::ops::Range;
-use std::path::Path;
-use std::pin::Pin;
-use std::rc::Rc;
-
-use std::cell::OnceCell;
+use std::{
+    borrow::Cow,
+    cell::{Cell, OnceCell},
+    collections::HashMap,
+    fmt, mem,
+    ops::Range,
+    path::Path,
+    pin::Pin,
+    rc::Rc,
+};
 
 use parsa_python_ast::NodeIndex;
 
-use crate::debug;
-use crate::file::{
-    File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, PythonFile,
-    PythonFileLoader, Vfs,
+use crate::{
+    debug,
+    file::{
+        File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, PythonFile,
+        PythonFileLoader, Vfs,
+    },
+    node_ref::NodeRef,
+    python_state::PythonState,
+    type_::{
+        CallableContent, FunctionKind, FunctionOverload, GenericItem, GenericsList, NamedTuple,
+        NewType, ParamSpecUsage, RecursiveType, StringSlice, Tuple, Type, TypeVarLike,
+        TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage,
+    },
+    type_helpers::{Class, Function, Module},
+    utils::{InsertOnlyVec, SymbolTable},
+    workspaces::{
+        Directory, DirectoryEntry, FileEntry, Invalidations, WorkspaceFileIndex, Workspaces,
+    },
+    TypeCheckerFlags,
 };
-use crate::node_ref::NodeRef;
-use crate::python_state::PythonState;
-use crate::type_::GenericItem;
-use crate::type_::GenericsList;
-use crate::type_::ParamSpecUsage;
-use crate::type_::RecursiveType;
-use crate::type_::TypeVarLikeUsage;
-use crate::type_::TypeVarTupleUsage;
-use crate::type_::TypeVarUsage;
-use crate::type_::{
-    CallableContent, FunctionKind, FunctionOverload, NamedTuple, NewType, StringSlice, Tuple, Type,
-    TypeVarLike, TypeVarLikes,
-};
-use crate::type_helpers::{Class, Function, Module};
-use crate::utils::{InsertOnlyVec, SymbolTable};
-use crate::workspaces::{
-    Directory, DirectoryEntry, FileEntry, Invalidations, WorkspaceFileIndex, Workspaces,
-};
-use crate::TypeCheckerFlags;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileIndex(pub u32);
@@ -1103,9 +1098,10 @@ impl std::cmp::PartialEq for ClassStorage {
 mod tests {
     #[test]
     fn test_sizes() {
+        use std::mem::size_of;
+
         use super::*;
         use crate::type_::{ClassGenerics, StringSlice, UnionType};
-        use std::mem::size_of;
         assert_eq!(size_of::<ClassGenerics>(), 24);
         assert_eq!(size_of::<UnionType>(), 24);
         assert_eq!(size_of::<Tuple>(), 32);

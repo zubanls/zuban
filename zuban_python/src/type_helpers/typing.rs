@@ -1,19 +1,20 @@
-use std::borrow::Cow;
-use std::rc::Rc;
+use std::{borrow::Cow, rc::Rc};
 
-use crate::arguments::{ArgumentKind, Arguments};
-use crate::database::{ComplexPoint, PointLink};
-use crate::debug;
-use crate::diagnostics::IssueType;
-use crate::inference_state::InferenceState;
-use crate::inferred::Inferred;
-use crate::matching::{CouldBeALiteral, FormatData, OnTypeError, ResultContext};
-use crate::node_ref::NodeRef;
-use crate::type_::{
-    ClassGenerics, FormatStyle, NewType, ParamSpec, Type, TypeVar, TypeVarKind, TypeVarLike,
-    TypeVarName, TypeVarTuple, TypedDictGenerics, Variance,
+use crate::{
+    arguments::{ArgumentKind, Arguments},
+    database::{ComplexPoint, PointLink},
+    debug,
+    diagnostics::IssueType,
+    inference_state::InferenceState,
+    inferred::Inferred,
+    matching::{CouldBeALiteral, FormatData, OnTypeError, ResultContext},
+    node_ref::NodeRef,
+    type_::{
+        ClassGenerics, FormatStyle, NewType, ParamSpec, Type, TypeVar, TypeVarKind, TypeVarLike,
+        TypeVarName, TypeVarTuple, TypedDictGenerics, Variance,
+    },
+    utils::join_with_commas,
 };
-use crate::utils::join_with_commas;
 
 pub fn execute_type<'db>(
     i_s: &InferenceState<'db, '_>,

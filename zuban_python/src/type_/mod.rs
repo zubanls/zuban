@@ -14,79 +14,62 @@ mod typed_dict;
 mod union;
 mod utils;
 
-use std::borrow::Cow;
-use std::fmt;
-use std::mem;
-use std::rc::Rc;
+use std::{borrow::Cow, cell::OnceCell, fmt, mem, rc::Rc};
 
-use parsa_python_ast::CodeIndex;
-use parsa_python_ast::Expression;
-use parsa_python_ast::Name;
-use parsa_python_ast::PythonString;
-use std::cell::OnceCell;
-
-use crate::arguments::Arguments;
-use crate::database::Database;
-use crate::database::FileIndex;
-use crate::database::PointLink;
-use crate::debug;
-use crate::diagnostics::IssueType;
-use crate::inference_state::InferenceState;
-use crate::inferred::Inferred;
-use crate::matching::maybe_class_usage;
-use crate::matching::CalculatedTypeArguments;
-use crate::matching::Generics;
-use crate::matching::Match;
-use crate::matching::Matcher;
-use crate::matching::MismatchReason;
-use crate::matching::OnTypeError;
-use crate::matching::ResultContext;
-
-use crate::matching::{FormatData, Generic, ParamsStyle};
-use crate::node_ref::NodeRef;
-use crate::type_helpers::dotted_path_from_dir;
-use crate::type_helpers::Class;
-use crate::type_helpers::Instance;
-use crate::type_helpers::MroIterator;
-use crate::type_helpers::TypeOrClass;
-use crate::utils::join_with_commas;
-use crate::utils::{bytes_repr, str_repr};
-use crate::workspaces::Directory;
-
-pub use self::callable::{
-    format_callable_params, CallableContent, CallableParam, CallableParams, ParamType,
-    StarParamType, StarStarParamType, WrongPositionalCount,
-};
-pub use self::dataclass::{
-    check_dataclass_options, dataclass_init_func, dataclass_initialize, dataclasses_replace,
-    lookup_dataclass_symbol, lookup_on_dataclass, lookup_on_dataclass_type, Dataclass,
-    DataclassOptions,
-};
-pub use self::enum_::{
-    execute_functional_enum, infer_value_on_member, lookup_on_enum_class, lookup_on_enum_instance,
-    lookup_on_enum_member_instance, Enum, EnumMember, EnumMemberDefinition,
-};
-pub use self::operations::execute_type_of_type;
-pub use self::recursive_type::{RecursiveType, RecursiveTypeOrigin};
-pub use self::typed_dict::{
-    check_typed_dict_call, infer_typed_dict_item, infer_typed_dict_total_argument,
-    initialize_typed_dict, lookup_on_typed_dict, maybe_add_extra_keys_issue, new_typed_dict,
-    TypedDict, TypedDictGenerics, TypedDictMember, TypedDictMemberGatherer,
-};
-pub use self::union::simplified_union_from_iterators;
-pub use self::union::{UnionEntry, UnionType};
 pub use common_base_type::{common_base_type, common_base_type_of_type_var_tuple_with_items};
 pub use matching::match_tuple_type_arguments;
 pub use named_tuple::{
     execute_collections_named_tuple, execute_typing_named_tuple, new_collections_named_tuple,
     new_typing_named_tuple, NamedTuple,
 };
+use parsa_python_ast::{CodeIndex, Expression, Name, PythonString};
 pub use replace::ReplaceSelf;
 pub use tuple::{Tuple, TupleTypeArguments};
 pub use type_var_likes::{
     CallableWithParent, ParamSpec, ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, TypeVar,
     TypeVarIndex, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
     TypeVarName, TypeVarTuple, TypeVarTupleUsage, TypeVarUsage, Variance,
+};
+
+pub use self::{
+    callable::{
+        format_callable_params, CallableContent, CallableParam, CallableParams, ParamType,
+        StarParamType, StarStarParamType, WrongPositionalCount,
+    },
+    dataclass::{
+        check_dataclass_options, dataclass_init_func, dataclass_initialize, dataclasses_replace,
+        lookup_dataclass_symbol, lookup_on_dataclass, lookup_on_dataclass_type, Dataclass,
+        DataclassOptions,
+    },
+    enum_::{
+        execute_functional_enum, infer_value_on_member, lookup_on_enum_class,
+        lookup_on_enum_instance, lookup_on_enum_member_instance, Enum, EnumMember,
+        EnumMemberDefinition,
+    },
+    operations::execute_type_of_type,
+    recursive_type::{RecursiveType, RecursiveTypeOrigin},
+    typed_dict::{
+        check_typed_dict_call, infer_typed_dict_item, infer_typed_dict_total_argument,
+        initialize_typed_dict, lookup_on_typed_dict, maybe_add_extra_keys_issue, new_typed_dict,
+        TypedDict, TypedDictGenerics, TypedDictMember, TypedDictMemberGatherer,
+    },
+    union::{simplified_union_from_iterators, UnionEntry, UnionType},
+};
+use crate::{
+    arguments::Arguments,
+    database::{Database, FileIndex, PointLink},
+    debug,
+    diagnostics::IssueType,
+    inference_state::InferenceState,
+    inferred::Inferred,
+    matching::{
+        maybe_class_usage, CalculatedTypeArguments, FormatData, Generic, Generics, Match, Matcher,
+        MismatchReason, OnTypeError, ParamsStyle, ResultContext,
+    },
+    node_ref::NodeRef,
+    type_helpers::{dotted_path_from_dir, Class, Instance, MroIterator, TypeOrClass},
+    utils::{bytes_repr, join_with_commas, str_repr},
+    workspaces::Directory,
 };
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]

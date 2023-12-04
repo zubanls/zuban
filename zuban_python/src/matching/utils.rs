@@ -1,11 +1,10 @@
-use crate::database::Database;
-use crate::inference_state::InferenceState;
-use crate::type_::{
-    CallableContent, GenericItem, ReplaceSelf, Type, TypeVarLikeUsage, TypeVarLikes,
-};
-use crate::type_helpers::Class;
-
 use super::Matcher;
+use crate::{
+    database::Database,
+    inference_state::InferenceState,
+    type_::{CallableContent, GenericItem, ReplaceSelf, Type, TypeVarLikeUsage, TypeVarLikes},
+    type_helpers::Class,
+};
 
 pub fn replace_class_type_vars(
     db: &Database,

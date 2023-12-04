@@ -1,27 +1,33 @@
-use std::cell::{Cell, RefCell};
-use std::collections::HashMap;
-use std::fmt;
-use std::rc::Rc;
+use std::{
+    cell::{Cell, RefCell},
+    collections::HashMap,
+    fmt,
+    rc::Rc,
+};
 
 use parsa_python_ast::*;
 
-use super::file_state::{File, Leaf};
-use super::inference::Inference;
-use super::name_binder::NameBinder;
-use crate::database::{
-    ComplexPoint, Database, FileIndex, Locality, LocalityLink, Point, Points, PythonProject,
-    Specific,
+use super::{
+    file_state::{File, Leaf},
+    inference::Inference,
+    name_binder::NameBinder,
 };
-use crate::debug;
-use crate::diagnostics::{Diagnostic, DiagnosticConfig, Diagnostics, Issue};
-use crate::inference_state::InferenceState;
-use crate::inferred::Inferred;
-use crate::lines::NewlineIndices;
-use crate::matching::ResultContext;
-use crate::name::{Names, TreeName, TreePosition};
-use crate::node_ref::NodeRef;
-use crate::utils::{InsertOnlyVec, SymbolTable};
-use crate::workspaces::FileEntry;
+use crate::{
+    database::{
+        ComplexPoint, Database, FileIndex, Locality, LocalityLink, Point, Points, PythonProject,
+        Specific,
+    },
+    debug,
+    diagnostics::{Diagnostic, DiagnosticConfig, Diagnostics, Issue},
+    inference_state::InferenceState,
+    inferred::Inferred,
+    lines::NewlineIndices,
+    matching::ResultContext,
+    name::{Names, TreeName, TreePosition},
+    node_ref::NodeRef,
+    utils::{InsertOnlyVec, SymbolTable},
+    workspaces::FileEntry,
+};
 
 #[derive(Default, Debug)]
 pub struct ComplexValues(InsertOnlyVec<ComplexPoint>);

@@ -1,18 +1,21 @@
-use std::mem;
-use std::rc::Rc;
+use std::{mem, rc::Rc};
 
-use crate::database::{Database, PointsBackup};
-use crate::diagnostics::IssueType;
-use crate::file::PythonFile;
-use crate::getitem::{SliceType, SliceTypeContent, Slices};
-use crate::inferred::Inferred;
-use crate::matching::{IteratorContent, Matcher, ResultContext};
-use crate::node_ref::NodeRef;
-use crate::type_::{AnyCause, GenericItem, ParamSpecUsage, StringSlice, Type, TypedDict, Variance};
-use crate::{debug, InferenceState};
 use parsa_python_ast::{
     Argument as ASTArgument, ArgumentsDetails, ArgumentsIterator, Comprehension, Expression,
     NodeIndex, Primary, PrimaryContent,
+};
+
+use crate::{
+    database::{Database, PointsBackup},
+    debug,
+    diagnostics::IssueType,
+    file::PythonFile,
+    getitem::{SliceType, SliceTypeContent, Slices},
+    inferred::Inferred,
+    matching::{IteratorContent, Matcher, ResultContext},
+    node_ref::NodeRef,
+    type_::{AnyCause, GenericItem, ParamSpecUsage, StringSlice, Type, TypedDict, Variance},
+    InferenceState,
 };
 
 pub enum ArgumentsType<'a> {

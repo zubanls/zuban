@@ -1,5 +1,9 @@
 use std::{cell::OnceCell, rc::Rc};
 
+use super::{
+    common_base_type, simplified_union_from_iterators, utils::method_with_fallback, CustomBehavior,
+    FormatStyle, GenericItem, GenericsList, RecursiveType, TypeOrTypeVarTuple,
+};
 use crate::{
     arguments::Arguments,
     database::Database,
@@ -13,11 +17,6 @@ use crate::{
     type_::{AnyCause, Type},
     type_helpers::{Instance, TypeOrClass},
     utils::join_with_commas,
-};
-
-use super::{
-    common_base_type, simplified_union_from_iterators, utils::method_with_fallback, CustomBehavior,
-    FormatStyle, GenericItem, GenericsList, RecursiveType, TypeOrTypeVarTuple,
 };
 
 thread_local! {

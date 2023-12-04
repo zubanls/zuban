@@ -1,10 +1,13 @@
 use std::fmt;
 
 use super::{CalculatedTypeVarLike, Matcher};
-use crate::node_ref::NodeRef;
-use crate::type_::{AnyCause, TupleTypeArguments, Type, TypeOrTypeVarTuple};
-use crate::type_helpers::Class;
-use crate::{debug, InferenceState};
+use crate::{
+    debug,
+    node_ref::NodeRef,
+    type_::{AnyCause, TupleTypeArguments, Type, TypeOrTypeVarTuple},
+    type_helpers::Class,
+    InferenceState,
+};
 
 pub enum ResultContext<'a, 'b> {
     Known(&'a Type),

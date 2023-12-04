@@ -1,16 +1,15 @@
 use std::{borrow::Cow, rc::Rc};
 
-use crate::{
-    database::{Database, PointLink},
-    inference_state::InferenceState,
-};
-
 use super::{
     simplified_union_from_iterators, CallableContent, CallableParam, CallableParams, ClassGenerics,
     Dataclass, GenericClass, GenericItem, GenericsList, NamedTuple, ParamSpecArgument,
     ParamSpecTypeVars, ParamType, RecursiveType, StarParamType, StarStarParamType, Tuple,
     TupleTypeArguments, Type, TypeArguments, TypeOrTypeVarTuple, TypeVarLike, TypeVarLikeUsage,
     TypeVarLikes, TypeVarManager, TypedDict, TypedDictGenerics, UnionEntry, UnionType,
+};
+use crate::{
+    database::{Database, PointLink},
+    inference_state::InferenceState,
 };
 
 pub type ReplaceTypeVarLike<'x> = &'x mut dyn FnMut(TypeVarLikeUsage) -> GenericItem;

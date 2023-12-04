@@ -1,13 +1,14 @@
-use std::cell::UnsafeCell;
-use std::marker::PhantomData;
+use std::{cell::UnsafeCell, fmt, marker::PhantomData};
 
-use crate::automaton::{
-    generate_automatons, Automatons, DFAState, FastHashMap, InternalNonterminalType,
-    InternalSquashedType, InternalStrToNode, InternalStrToToken, InternalTerminalType, Keywords,
-    Plan, PlanMode, Rule, RuleAutomaton, RuleMap, SoftKeywords, Squashable, StackMode,
+use crate::{
+    automaton::{
+        generate_automatons, Automatons, DFAState, FastHashMap, InternalNonterminalType,
+        InternalSquashedType, InternalStrToNode, InternalStrToToken, InternalTerminalType,
+        Keywords, Plan, PlanMode, Rule, RuleAutomaton, RuleMap, SoftKeywords, Squashable,
+        StackMode,
+    },
+    backtracking::BacktrackingTokenizer,
 };
-use crate::backtracking::BacktrackingTokenizer;
-use std::fmt;
 
 pub type NodeIndex = u32;
 pub type CodeIndex = u32;
@@ -56,8 +57,9 @@ struct CompressedNode {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::mem::{align_of, size_of};
+
+    use super::*;
 
     #[test]
     fn sizes() {

@@ -1,12 +1,12 @@
 use parsa_python_ast::{CodeIndex, NodeIndex, Tree};
 
-use crate::database::Database;
-use crate::file::File;
-use crate::file::PythonFile;
-use crate::file::OVERLAPPING_REVERSE_TO_NORMAL_METHODS;
-use crate::name::TreePosition;
-use crate::type_::{FunctionKind, StringSlice, TypeVarLike};
-use crate::utils::{join_with_commas, InsertOnlyVec};
+use crate::{
+    database::Database,
+    file::{File, PythonFile, OVERLAPPING_REVERSE_TO_NORMAL_METHODS},
+    name::TreePosition,
+    type_::{FunctionKind, StringSlice, TypeVarLike},
+    utils::{join_with_commas, InsertOnlyVec},
+};
 
 #[derive(Debug)]
 #[allow(dead_code)]  // TODO remove this
@@ -1325,8 +1325,9 @@ impl Diagnostics {
 mod tests {
     #[test]
     fn test_sizes() {
-        use super::*;
         use std::mem::size_of;
+
+        use super::*;
         assert_eq!(size_of::<IssueType>(), 56);
     }
 }

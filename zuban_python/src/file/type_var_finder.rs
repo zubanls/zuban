@@ -1,15 +1,16 @@
 use parsa_python_ast::*;
 
 use super::type_computation::cache_name_on_class;
-use crate::database::{Locality, Point, PointLink, PointType, Specific};
-use crate::diagnostics::IssueType;
-use crate::file::file_state::File;
-use crate::file::PythonFile;
-use crate::getitem::{SliceOrSimple, SliceType};
-use crate::inference_state::InferenceState;
-use crate::node_ref::NodeRef;
-use crate::type_::{TypeVarIndex, TypeVarLike, TypeVarLikes, TypeVarManager};
-use crate::type_helpers::Class;
+use crate::{
+    database::{Locality, Point, PointLink, PointType, Specific},
+    diagnostics::IssueType,
+    file::{file_state::File, PythonFile},
+    getitem::{SliceOrSimple, SliceType},
+    inference_state::InferenceState,
+    node_ref::NodeRef,
+    type_::{TypeVarIndex, TypeVarLike, TypeVarLikes, TypeVarManager},
+    type_helpers::Class,
+};
 
 #[derive(Debug, Clone)]
 enum BaseLookup<'file> {

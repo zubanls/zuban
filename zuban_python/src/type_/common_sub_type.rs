@@ -2,14 +2,13 @@ use std::rc::Rc;
 
 use parsa_python_ast::ParamKind;
 
-use crate::{
-    inference_state::InferenceState,
-    type_::{Tuple, TupleTypeArguments, TypeOrTypeVarTuple},
-};
-
 use super::{
     AnyCause, CallableContent, CallableParam, CallableParams, ParamType, StarParamType,
     StarStarParamType, Type,
+};
+use crate::{
+    inference_state::InferenceState,
+    type_::{Tuple, TupleTypeArguments, TypeOrTypeVarTuple},
 };
 
 impl Type {

@@ -1,5 +1,7 @@
-use std::ops::{BitAnd, BitAndAssign};
-use std::rc::Rc;
+use std::{
+    ops::{BitAnd, BitAndAssign},
+    rc::Rc,
+};
 
 use crate::type_::{Type, TypeVar};
 
