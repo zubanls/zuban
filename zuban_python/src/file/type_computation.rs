@@ -2259,7 +2259,17 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         if iterator.count() > 0 {
             todo!()
         }
-        TypeContent::Type(Type::Type(Rc::new(self.compute_slice_type(content))))
+        let mut t = self.compute_slice_type(content);
+        if t.iter_with_unpacked_unions()
+            .any(|t| matches!(t, Type::Type(_)))
+        {
+            t = Type::Any(AnyCause::FromError);
+            self.add_issue(
+                slice_type.as_node_ref(),
+                IssueType::TypeCannotContainAnotherType,
+            )
+        }
+        TypeContent::Type(Type::Type(Rc::new(t)))
     }
 
     fn compute_type_get_item_on_alias(

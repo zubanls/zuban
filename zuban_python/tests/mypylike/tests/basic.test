@@ -204,3 +204,7 @@ class Bar:
         self.bar = 3
         self.f = 3
         self.other = 3
+
+[case type_type_annotation]
+# No such test exists in Mypy (only for recursive aliases
+foo: type[type[int]]  # E: Type[...] can't contain another Type[...]
