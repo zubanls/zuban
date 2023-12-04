@@ -313,11 +313,12 @@ fn follow_name<'db>(
             }
             TypeLike::ImportFromAsName(import_from_as_name) => {
                 // TODO this can probably still recurses with module __getattr__
+                /*
                 node_ref
                     .file
                     .inference(i_s)
                     .cache_import_from(import_from_as_name.import_from());
-                let (new_name, _) = import_from_as_name.unpack();
+                */
                 let p = node_ref
                     .add_to_node_index(-(NAME_DEF_TO_NAME_DIFFERENCE as i64))
                     .point();
