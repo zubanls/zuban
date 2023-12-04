@@ -300,15 +300,10 @@ fn follow_name<'db>(
                 )));
             }
             TypeLike::Assignment(assignment) => {
-                // TODO do proper TypeVar detection.
-                let c = assignment.as_code();
-                if c.contains("TypeVar(") || c.contains("ParamSpec(") || c.contains("TypeVarTuple(")
-                {
-                    let mut inference = node_ref.file.inference(i_s);
-                    let inf = inference.infer_name(name);
-                    if let Some(tv) = inf.maybe_type_var_like(i_s) {
-                        return Ok(tv);
-                    }
+                let mut inference = node_ref.file.inference(i_s);
+                let inf = inference.infer_name(name);
+                if let Some(tv) = inf.maybe_type_var_like(i_s) {
+                    return Ok(tv);
                 }
             }
             TypeLike::ImportFromAsName(import_from_as_name) => {
