@@ -206,5 +206,9 @@ class Bar:
         self.other = 3
 
 [case type_type_annotation]
-# No such test exists in Mypy (only for recursive aliases
+# No such test exists in Mypy (only for recursive aliases)
 foo: type[type[int]]  # E: Type[...] can't contain another Type[...]
+
+[case type_type_alias_circular]
+A = type["B"]  # E: Type[...] can't contain another Type[...]
+B = list[type[A]]

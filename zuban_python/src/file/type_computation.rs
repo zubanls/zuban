@@ -3254,18 +3254,20 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 ));
             }
             debug_assert!(file.points.get(name_def.index()).calculated() || annotation.is_some());
-            let in_definition = cached_type_node_ref.as_link();
 
             let check_for_alias = |self_: &mut Inference| {
                 cached_type_node_ref.set_point(Point::new_calculating());
                 let type_var_likes =
                     TypeVarFinder::find_alias_type_vars(self_.i_s, self.file, expr);
-                let complex = ComplexPoint::TypeAlias(Box::new(TypeAlias::new(
+
+                let in_definition = cached_type_node_ref.as_link();
+                let alias = TypeAlias::new(
                     type_var_likes,
                     in_definition,
                     Some(PointLink::new(file.file_index(), name_def.name().index())),
-                )));
-                cached_type_node_ref.insert_complex(complex, Locality::Todo);
+                );
+                save_alias(cached_type_node_ref, alias);
+
                 let mut type_var_manager = TypeVarManager::default();
                 let mut type_var_callback =
                     |_: &InferenceState, _: &_, type_var_like: TypeVarLike, _| {
@@ -3298,12 +3300,15 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                     }
                     _ => {
                         let type_ = comp.as_type(t, node_ref);
+                        let is_recursive_alias = comp.is_recursive_alias;
                         debug_assert!(!comp.type_var_manager.has_type_vars());
                         let mut had_error = false;
-                        if comp.is_recursive_alias && self.i_s.current_function().is_some() {
+                        if is_recursive_alias && self.i_s.current_function().is_some() {
                             node_ref.add_issue(
                                 self.i_s,
-                                IssueType::RecursiveTypesNotAllowedInFunctionScope,
+                                IssueType::RecursiveTypesNotAllowedInFunctionScope {
+                                    alias_name: name_def.as_code().into(),
+                                },
                             );
                             had_error = true;
                         }
@@ -3327,7 +3332,18 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                         if had_error {
                             alias.set_valid(Type::Any(AnyCause::FromError), false);
                         } else {
-                            alias.set_valid(type_, comp.is_recursive_alias);
+                            alias.set_valid(type_, is_recursive_alias);
+                        }
+                        if is_recursive_alias {
+                            // Since the type aliases are not finished at the time of the type
+                            // calculation, we need to recheck for Type[Type[...]]. It is however
+                            // very important that this happens after setting the alias, otherwise
+                            // something like X = Type[X] is not recognized.
+                            check_for_and_replace_type_type_in_finished_alias(
+                                self.i_s,
+                                cached_type_node_ref,
+                                alias,
+                            );
                         }
                     }
                 };
@@ -3693,6 +3709,45 @@ fn detect_diverging_alias(db: &Database, type_var_likes: &TypeVarLikes, t: &Type
             }
             _ => false,
         })
+}
+
+fn check_for_and_replace_type_type_in_finished_alias(
+    i_s: &InferenceState,
+    alias_origin: NodeRef,
+    alias: &TypeAlias,
+) {
+    // TODO this is not complete now. This only properly checks aliases that are self-recursive.
+    // Something like:
+    //
+    //     A = Type[B]
+    //     B = List[Type[A]]
+    //
+    //  will probably just be ignored and should need additional logic to be recognized.
+    //  see also the test type_type_alias_circular
+    if alias.type_if_valid().find_in_type(&|t| match t {
+        Type::Type(t) => t.iter_with_unpacked_unions().any(|t| match t {
+            Type::RecursiveType(recursive_alias) => {
+                !recursive_alias.calculating(i_s.db)
+                    && recursive_alias.has_alias_origin(i_s.db)
+                    && recursive_alias
+                        .calculated_type(i_s.db)
+                        .iter_with_unpacked_unions()
+                        .any(|t| matches!(t, Type::Type(_)))
+            }
+            _ => false,
+        }),
+        _ => false,
+    }) {
+        alias_origin.add_issue(i_s, IssueType::TypeCannotContainAnotherType);
+        let alias = TypeAlias::new(alias.type_vars.clone(), alias.location, alias.name);
+        alias.set_valid(Type::Any(AnyCause::FromError), false);
+        save_alias(alias_origin, alias)
+    }
+}
+
+fn save_alias(alias_origin: NodeRef, alias: TypeAlias) {
+    let complex = ComplexPoint::TypeAlias(Box::new(alias));
+    alias_origin.insert_complex(complex, Locality::Todo);
 }
 
 pub(super) fn assignment_type_node_ref<'x>(

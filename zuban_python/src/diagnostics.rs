@@ -109,7 +109,7 @@ pub(crate) enum IssueType {
     TypeCannotContainAnotherType,
     InvalidRecursiveTypeAliasUnionOfItself { target: &'static str },
     InvalidRecursiveTypeAliasTypeVarNesting,
-    RecursiveTypesNotAllowedInFunctionScope,
+    RecursiveTypesNotAllowedInFunctionScope { alias_name: Box<str> },
 
     DuplicateTypeVar,
     UnboundTypeVarLike { type_var_like: TypeVarLike },
@@ -837,8 +837,10 @@ impl<'db> Diagnostic<'db> {
             ),
             InvalidRecursiveTypeAliasTypeVarNesting =>
                 "Invalid recursive alias: type variable nesting on right hand side".to_string(),
-            RecursiveTypesNotAllowedInFunctionScope =>
-                "Recursive types are not allowed at function scope".to_string(),
+            RecursiveTypesNotAllowedInFunctionScope { alias_name } => {
+                additional_notes.push("Recursive types are not allowed at function scope".to_string());
+                format!(r#"Cannot resolve name "{alias_name}" (possible cyclic definition)"#)
+            }
 
             DuplicateTypeVar =>
                 "Duplicate type variables in Generic[...] or Protocol[...]".to_string(),

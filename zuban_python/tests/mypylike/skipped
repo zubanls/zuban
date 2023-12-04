@@ -87,8 +87,6 @@ testCrashInJoinOfSelfRecursiveNamedTuples
 testGenericJoinRecursiveTypes
 testRecursiveAliasWithRecursiveInstance
 testBasicRecursiveGenericNamedTuple
-# Invalid recursive aliases --enable-recursive-aliases
-testRecursiveAliasesProhibitBadAliases
 # Recursive Alias wrong type var inference --enable-recursive-aliases
 testRecursiveAliasesJoins
 # Recursive alias union type var inference --enable-recursive-aliases
@@ -2643,6 +2641,7 @@ class_context_super_class
 namedtuple__new__
 generic_method_on_class_access_no_overload
 generic_method_on_class_access_overload
+type_type_alias_circular
 
 # Weird native types of mypy like `from mypy_extensions import i64, i32`
 testNativeIntTypes
