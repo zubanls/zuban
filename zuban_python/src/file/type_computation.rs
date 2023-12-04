@@ -2259,7 +2259,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         if iterator.count() > 0 {
             todo!()
         }
-        let mut t = self.compute_slice_type(content);
+        let mut t = match self.compute_slice_type_content(content) {
+            TypeContent::SpecialType(SpecialType::Type) => {
+                self.inference.i_s.db.python_state.bare_type_type()
+            }
+            t => self.as_type(t, content.as_node_ref()),
+        };
         if t.iter_with_unpacked_unions()
             .any(|t| matches!(t, Type::Type(_)))
         {

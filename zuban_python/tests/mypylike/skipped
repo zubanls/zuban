@@ -2,9 +2,6 @@
 testBadEnumLoading
 testInvalidNamedTupleWithinFunction
 
-# type[type] questionable?
-testTypeLowercaseSettingOff
-
 # 3.12 type var syntax
 test695TypeAlias
 test695Class
