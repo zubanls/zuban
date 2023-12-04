@@ -415,10 +415,10 @@ impl<'db> Name<'db> {
             TypeLike::Function(FunctionDef::new(node))
         } else if node.is_type(Nonterminal(stmt)) {
             TypeLike::Other
-        } else if node.is_type(Nonterminal(import_from_as_name))
-            || node.is_type(Nonterminal(dotted_as_name))
-        {
-            TypeLike::Import
+        } else if node.is_type(Nonterminal(import_from_as_name)) {
+            TypeLike::ImportFromAsName(ImportFromAsName::new(node))
+        } else if node.is_type(Nonterminal(dotted_as_name)) {
+            TypeLike::DottedAsName(DottedAsName::new(node))
         } else {
             TypeLike::ParamName(node.iter_children().nth(1).map(Annotation::new))
         }
@@ -544,7 +544,8 @@ pub enum TypeLike<'db> {
     ClassDef(ClassDef<'db>),
     Function(FunctionDef<'db>),
     ParamName(Option<Annotation<'db>>),
-    Import,
+    ImportFromAsName(ImportFromAsName<'db>),
+    DottedAsName(DottedAsName<'db>),
     Other,
 }
 
@@ -2285,6 +2286,14 @@ impl<'db> ImportFromAsName<'db> {
             (Name::new(first), NameDefinition::new(def))
         }
     }
+
+    pub fn import_from(&self) -> ImportFrom<'db> {
+        let import_from_node = self
+            .node
+            .parent_until(&[Nonterminal(import_from)])
+            .expect("There should always be an import_from");
+        ImportFrom::new(import_from_node)
+    }
 }
 
 impl<'db> DottedName<'db> {
@@ -2347,6 +2356,14 @@ impl<'db> DottedAsName<'db> {
                 NameDefinition::new(maybe_second.unwrap().next_sibling().unwrap()),
             )
         }
+    }
+
+    pub fn import(&self) -> ImportName<'db> {
+        let n = self
+            .node
+            .parent_until(&[Nonterminal(import_name)])
+            .expect("There should always be an import_name");
+        ImportName::new(n)
     }
 }
 

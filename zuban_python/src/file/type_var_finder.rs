@@ -3,7 +3,7 @@ use parsa_python_ast::*;
 use super::type_computation::{
     assignment_type_node_ref, cache_name_on_class, SpecialType, TypeNameLookup,
 };
-use crate::database::{Locality, Point, PointLink, PointType};
+use crate::database::{Locality, Point, PointLink, PointType, Specific};
 use crate::diagnostics::IssueType;
 use crate::file::file_state::File;
 use crate::file::PythonFile;
@@ -199,6 +199,37 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
         let point = self.file.points.get(name.index());
         if point.calculated() && point.type_() == PointType::Redirect {
             let node_ref = point.as_redirected_node_ref(self.i_s.db);
+            return match follow_name(self.i_s, node_ref) {
+                Ok(type_var_like) => {
+                    if self
+                        .class
+                        .and_then(|c| c.maybe_type_var_like_in_parent(self.i_s, &type_var_like))
+                        .is_none()
+                    {
+                        if let TypeVarLike::TypeVarTuple(t) = &type_var_like {
+                            if self.type_var_manager.has_type_var_tuples() {
+                                NodeRef::new(self.file, name.index())
+                                    .add_issue(self.i_s, IssueType::MultipleTypeVarTuplesInClassDef)
+                                // TODO this type var tuple should probably not be added
+                            }
+                        }
+                        let old_index = self.type_var_manager.add(type_var_like, None);
+                        if let Some(force_index) = self.current_generic_or_protocol_index {
+                            if old_index < force_index {
+                                NodeRef::new(self.file, name.index())
+                                    .add_issue(self.i_s, IssueType::DuplicateTypeVar)
+                            } else if old_index != force_index {
+                                self.type_var_manager.move_index(old_index, force_index);
+                            }
+                        }
+                    }
+                    BaseLookup::Other
+                }
+                Err(lookup) => lookup,
+            };
+        }
+        if point.calculated() && point.type_() == PointType::Redirect {
+            let node_ref = point.as_redirected_node_ref(self.i_s.db);
             if node_ref.file_index() == self.file.file_index() {
                 let redirected_name = node_ref.as_name();
                 if let TypeLike::Assignment(assignment) = redirected_name.expect_type() {
@@ -285,4 +316,84 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
                 .add_issue(self.i_s, IssueType::IncompleteGenericOrProtocolTypeVars)
         }
     }
+}
+
+fn follow_name<'db>(
+    i_s: &InferenceState<'db, '_>,
+    node_ref: NodeRef<'db>,
+) -> Result<TypeVarLike, BaseLookup<'db>> {
+    let p = node_ref.point();
+    if p.calculated() {
+        if let Some(specific) = p.maybe_specific() {
+            return Err(match specific {
+                Specific::TypingGeneric => BaseLookup::Generic,
+                Specific::TypingProtocol => BaseLookup::Protocol,
+                Specific::TypingCallable => BaseLookup::Callable,
+                _ => BaseLookup::Other,
+            });
+        }
+    }
+    if let Some(name) = node_ref.maybe_name() {
+        match name.expect_type() {
+            TypeLike::ClassDef(c) => {
+                let name_def_node_ref =
+                    NodeRef::new(node_ref.file, name.name_definition().unwrap().index());
+                node_ref
+                    .file
+                    .inference(i_s)
+                    .cache_class(name_def_node_ref, c);
+                return Err(BaseLookup::Class(PointLink::new(
+                    node_ref.file_index(),
+                    c.index(),
+                )));
+            }
+            TypeLike::Assignment(assignment) => {
+                // TODO do proper TypeVar detection.
+                let c = assignment.as_code();
+                if c.contains("TypeVar(") || c.contains("ParamSpec(") || c.contains("TypeVarTuple(")
+                {
+                    let mut inference = node_ref.file.inference(i_s);
+                    let inf = inference.infer_name(name);
+                    if let Some(tv) = inf.maybe_type_var_like(i_s) {
+                        return Ok(tv);
+                    }
+                }
+            }
+            TypeLike::ImportFromAsName(import_from_as_name) => {
+                // TODO this can probably still recurses with module __getattr__
+                node_ref
+                    .file
+                    .inference(i_s)
+                    .cache_import_from(import_from_as_name.import_from());
+                let (new_name, _) = import_from_as_name.unpack();
+                let p = node_ref
+                    .add_to_node_index(-(NAME_DEF_TO_NAME_DIFFERENCE as i64))
+                    .point();
+                if p.calculated() && p.type_() == PointType::Redirect {
+                    let new = p.as_redirected_node_ref(i_s.db);
+                    if new.maybe_name().is_some() {
+                        return follow_name(i_s, new);
+                    }
+                }
+            }
+            TypeLike::DottedAsName(d) => {
+                let p = node_ref
+                    .add_to_node_index(-(NAME_DEF_TO_NAME_DIFFERENCE as i64))
+                    .point();
+                if p.calculated() {
+                    if p.type_() == PointType::Redirect {
+                        let new = p.as_redirected_node_ref(i_s.db);
+                        if new.maybe_name().is_some() {
+                            return follow_name(i_s, new);
+                        }
+                    } else if p.type_() == PointType::FileReference {
+                        let file = i_s.db.loaded_python_file(p.file_index());
+                        return Err(BaseLookup::Module(file));
+                    }
+                }
+            }
+            _ => (),
+        }
+    }
+    Err(BaseLookup::Other)
 }

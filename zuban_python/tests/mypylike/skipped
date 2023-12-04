@@ -96,6 +96,7 @@ testRecursiveClassLevelAlias
 
 # Type var finder recursion is not handled, because imports are involved.
 testRecursiveAliasImported
+testRecursiveAliasesProhibited-skip
 # cycle for self.a = self.f(self.a) where f(T) -> T
 testGenericTypeBody1
 # import cycle

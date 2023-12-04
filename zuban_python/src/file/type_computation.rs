@@ -3763,7 +3763,7 @@ fn load_cached_type(node_ref: NodeRef) -> TypeNameLookup {
     }
 }
 
-fn check_type_name<'db: 'file, 'file>(
+pub(super) fn check_type_name<'db: 'file, 'file>(
     i_s: &InferenceState<'db, '_>,
     name_node_ref: NodeRef<'file>,
 ) -> TypeNameLookup<'file, 'file> {
@@ -3856,7 +3856,7 @@ fn check_type_name<'db: 'file, 'file>(
             }
             Function::new(NodeRef::new(name_node_ref.file, f.index()), None)
         })),
-        TypeLike::Import => {
+        TypeLike::ImportFromAsName(_) | TypeLike::DottedAsName(_) => {
             let name_def_ref =
                 name_node_ref.add_to_node_index(-(NAME_DEF_TO_NAME_DIFFERENCE as i64));
             let p = name_def_ref.point();
