@@ -606,7 +606,10 @@ fn main() {
             {
                 continue;
             }
-            if skipped.iter().any(|s| s.is_skip(&case.name)) {
+            if skipped
+                .iter()
+                .any(|s| s.is_skip(&case.name) && !filters.contains(&case.name))
+            {
                 println!("Skipped: {}", case.name);
                 continue;
             }
