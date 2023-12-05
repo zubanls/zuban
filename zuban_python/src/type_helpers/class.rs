@@ -1816,6 +1816,18 @@ impl<'db: 'a, 'a> Class<'a> {
                 _ => None,
             })
     }
+
+    pub fn maybe_typed_dict(&self) -> Option<Rc<TypedDict>> {
+        NodeRef::new(self.node_ref.file, self.node().name_definition().index())
+            .complex()
+            .and_then(|c| match c {
+                ComplexPoint::TypeInstance(Type::Type(t)) => match t.as_ref() {
+                    Type::TypedDict(d) => Some(d.clone()),
+                    _ => None,
+                },
+                _ => None,
+            })
+    }
 }
 
 impl fmt::Debug for Class<'_> {

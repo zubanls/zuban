@@ -6,7 +6,8 @@ use super::TypeVarFinder;
 use crate::{
     arguments::SimpleArguments,
     database::{
-        ComplexPoint, Database, Locality, Point, PointLink, PointType, Specific, TypeAlias,
+        ClassKind, ComplexPoint, Database, Locality, Point, PointLink, PointType, Specific,
+        TypeAlias,
     },
     debug,
     diagnostics::{Issue, IssueType},
@@ -3893,9 +3894,11 @@ pub(super) fn check_type_name<'db: 'file, 'file>(
                 new_name.name_definition().unwrap().index(),
             );
             let from = NodeRef::new(name_node_ref.file, c.index());
-            if Class::with_undefined_generics(from).is_calculating_class_infos() {
+            let class = Class::with_undefined_generics(from);
+            if class.is_calculating_class_infos() {
                 return TypeNameLookup::RecursiveClass(from);
             }
+
             name_def.file.inference(i_s).cache_class(name_def, c);
             match name_def.complex() {
                 Some(ComplexPoint::TypeInstance(Type::Type(t))) => match t.as_ref() {
@@ -3908,6 +3911,10 @@ pub(super) fn check_type_name<'db: 'file, 'file>(
                     _ => unreachable!(),
                 },
                 _ => (),
+            }
+            if class.use_cached_class_infos(i_s.db).class_kind == ClassKind::TypedDict {
+                // TypedDicts members might not be calculated at this point.
+                return TypeNameLookup::RecursiveClass(from);
             }
             TypeNameLookup::Class {
                 node_ref: NodeRef::new(name_node_ref.file, c.index()),
