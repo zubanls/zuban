@@ -403,7 +403,11 @@ testAssignEnumAsAttribute
 # "TypedDict type as attribute is not supported"
 testAssignTypedDictAsAttribute
 
-# TypedDict recursions
+# TypedDict Regressions
+testCanCreateTypedDictWithClassOldVersion
+testCanCreateTypedDictWithClassOverwriting
+# TypedDict Recursions
+testBasicRecursiveTypedDictClass
 testBasicRecursiveTypedDictExtending
 testRecursiveGenericTypedDictExtending
 testRecursiveTypedDictCreation

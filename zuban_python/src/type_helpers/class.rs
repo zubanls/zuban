@@ -375,15 +375,9 @@ impl<'db: 'a, 'a> Class<'a> {
             }
         }
 
-        let (mut class_infos, was_typed_dict) = self.calculate_class_infos(i_s, type_vars);
+        let (mut class_infos, typed_dict_total) = self.calculate_class_infos(i_s, type_vars);
         let mut was_enum = None;
         let mut was_enum_base = false;
-        if let Some(td) = was_typed_dict {
-            name_def.insert_complex(
-                ComplexPoint::TypedDictDefinition(Rc::new(Type::TypedDict(td.clone()))),
-                Locality::ImplicitExtern,
-            );
-        }
         if let MetaclassState::Some(link) = class_infos.metaclass {
             if link == i_s.db.python_state.enum_meta_link() {
                 was_enum_base = true;
@@ -439,6 +433,44 @@ impl<'db: 'a, 'a> Class<'a> {
         if let Some(dataclass) = was_dataclass {
             dataclass_init_func(&dataclass, i_s.db);
         }
+        if let Some(typed_dict_total) = typed_dict_total {
+            let mut typed_dict_members = TypedDictMemberGatherer::default();
+            if let Some(args) = self.node().arguments() {
+                for (type_or_class, arg) in self.bases(i_s.db).zip(args.iter()) {
+                    match type_or_class {
+                        TypeOrClass::Type(t) => match t.as_ref() {
+                            Type::TypedDict(td) => {
+                                typed_dict_members.merge(
+                                    i_s,
+                                    NodeRef::new(self.node_ref.file, arg.index()),
+                                    &td.members,
+                                );
+                            }
+                            _ => (),
+                        },
+                        TypeOrClass::Class(c) => {
+                            if c.use_cached_class_infos(i_s.db).class_kind == ClassKind::TypedDict {
+                            }
+                        }
+                    }
+                }
+            }
+            self.initialize_typed_dict_members(
+                &i_s.with_class_context(self),
+                &mut typed_dict_members,
+                typed_dict_total,
+            );
+            let td = TypedDict::new_definition(
+                self.name_string_slice(),
+                typed_dict_members.into_boxed_slice(),
+                self.node_ref.as_link(),
+                self.type_vars(i_s).clone(),
+            );
+            name_def.insert_complex(
+                ComplexPoint::TypedDictDefinition(Rc::new(Type::TypedDict(td.clone()))),
+                Locality::ImplicitExtern,
+            );
+        };
 
         if let Some(enum_) = was_enum {
             let c = ComplexPoint::TypeInstance(Type::Type(Rc::new(Type::Enum(enum_.clone()))));
@@ -550,14 +582,13 @@ impl<'db: 'a, 'a> Class<'a> {
         &self,
         i_s: &InferenceState<'db, '_>,
         type_vars: &TypeVarLikes,
-    ) -> (Box<ClassInfos>, Option<Rc<TypedDict>>) {
+    ) -> (Box<ClassInfos>, Option<bool>) {
         // Calculate all type vars beforehand
         let db = i_s.db;
 
         let mut bases: Vec<Type> = vec![];
         let mut incomplete_mro = false;
         let mut class_kind = ClassKind::Normal;
-        let mut typed_dict_members = TypedDictMemberGatherer::default();
         let mut typed_dict_total = None;
         let mut had_new_typed_dict = false;
         let mut is_new_named_tuple = false;
@@ -688,25 +719,13 @@ impl<'db: 'a, 'a> Class<'a> {
                                     }
                                     Type::Dataclass(d) => Some(d.class(db)),
                                     Type::TypedDict(typed_dict) => {
-                                        if matches!(
-                                            class_kind,
-                                            ClassKind::Normal | ClassKind::TypedDict
-                                        ) {
-                                            if typed_dict_total.is_none() {
-                                                typed_dict_total =
-                                                    Some(self.check_total_typed_dict_argument(
-                                                        i_s, arguments,
-                                                    ))
-                                            }
-                                            typed_dict_members.merge(
-                                                i_s,
-                                                NodeRef::new(self.node_ref.file, n.index()),
-                                                &typed_dict.members,
-                                            );
-                                            class_kind = ClassKind::TypedDict;
-                                        } else {
-                                            todo!()
+                                        if typed_dict_total.is_none() {
+                                            typed_dict_total =
+                                                Some(self.check_total_typed_dict_argument(
+                                                    i_s, arguments,
+                                                ))
                                         }
+                                        class_kind = ClassKind::TypedDict;
                                         continue;
                                     }
                                     _ => unreachable!(),
@@ -740,7 +759,14 @@ impl<'db: 'a, 'a> Class<'a> {
                                                 }
                                             }
                                             ClassKind::TypedDict => {
-                                                unreachable!()
+                                                // Happens with recursive TypedDicts
+                                                class_kind = ClassKind::TypedDict;
+                                                if typed_dict_total.is_none() {
+                                                    typed_dict_total =
+                                                        Some(self.check_total_typed_dict_argument(
+                                                            i_s, arguments,
+                                                        ))
+                                                }
                                             }
                                             _ => (),
                                         }
@@ -830,23 +856,20 @@ impl<'db: 'a, 'a> Class<'a> {
                 }
             }
         }
-        let was_typed_dict = (class_kind == ClassKind::TypedDict).then(|| {
-            if bases.iter().any(|t| !matches!(t, Type::TypedDict(_))) {
+        if class_kind == ClassKind::TypedDict {
+            if bases.iter().any(|t| match t {
+                Type::TypedDict(_) => false,
+                // Happens with recursive TypedDicts
+                Type::Class(c) => {
+                    c.class(i_s.db).use_cached_class_infos(i_s.db).class_kind
+                        != ClassKind::TypedDict
+                }
+                _ => true,
+            }) {
                 NodeRef::new(self.node_ref.file, arguments.unwrap().index())
-                    .add_issue(i_s, IssueType::TypedDictBasesMustBeTypedKeys);
+                    .add_issue(i_s, IssueType::TypedDictBasesMustBeTypedDicts);
             }
-            self.initialize_typed_dict_members(
-                &i_s.with_class_context(self),
-                &mut typed_dict_members,
-                typed_dict_total.unwrap(),
-            );
-            TypedDict::new_definition(
-                self.name_string_slice(),
-                typed_dict_members.into_boxed_slice(),
-                self.node_ref.as_link(),
-                self.type_vars(i_s).clone(),
-            )
-        });
+        }
         if is_new_named_tuple && bases.len() > 1 {
             NodeRef::new(self.node_ref.file, arguments.unwrap().index())
                 .add_issue(i_s, IssueType::NamedTupleShouldBeASingleBase);
@@ -875,7 +898,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 class_kind,
                 has_slots,
             }),
-            was_typed_dict,
+            typed_dict_total,
         )
     }
 
