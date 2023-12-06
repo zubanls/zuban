@@ -489,13 +489,15 @@ impl OverloadDefinition {
 pub struct TypedDictDefinition {
     pub type_: Rc<Type>,
     pub deferred_subclass_member_initializations: Box<RefCell<Vec<Rc<TypedDict>>>>,
+    pub total: bool,
 }
 
 impl TypedDictDefinition {
-    pub fn new(typed_dict: Rc<TypedDict>) -> Self {
+    pub fn new(typed_dict: Rc<TypedDict>, total: bool) -> Self {
         Self {
             type_: Rc::new(Type::TypedDict(typed_dict)),
             deferred_subclass_member_initializations: Default::default(),
+            total,
         }
     }
 }

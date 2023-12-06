@@ -88,6 +88,28 @@ impl TypedDict {
         })
     }
 
+    pub fn new_class_definition(
+        name: StringSlice,
+        defined_at: PointLink,
+        type_var_likes: TypeVarLikes,
+    ) -> Rc<Self> {
+        let generics = if type_var_likes.is_empty() {
+            TypedDictGenerics::None
+        } else {
+            TypedDictGenerics::NotDefinedYet(type_var_likes)
+        };
+        Rc::new(Self {
+            name: Some(name),
+            members: OnceCell::new(),
+            defined_at,
+            generics,
+        })
+    }
+
+    pub fn late_initialization_of_members(&self, members: Box<[TypedDictMember]>) {
+        self.members.set(members).unwrap()
+    }
+
     pub fn apply_generics(&self, db: &Database, generics: GenericsList) -> Rc<Self> {
         let members = if let Some(members) = self.members.get() {
             OnceCell::from(
@@ -111,6 +133,10 @@ impl TypedDict {
             defined_at: self.defined_at,
             generics: TypedDictGenerics::Generics(generics),
         })
+    }
+
+    pub fn maybe_calculated_members(&self) -> Option<&[TypedDictMember]> {
+        self.members.get().map(|m| m.as_ref())
     }
 
     pub fn members(&self) -> &[TypedDictMember] {
@@ -442,12 +468,15 @@ fn new_typed_dict_internal<'db>(
 
     let type_var_likes = comp.into_type_vars(|_, _| ());
     Some(Inferred::new_unsaved_complex(
-        ComplexPoint::TypedDictDefinition(TypedDictDefinition::new(TypedDict::new_definition(
-            name,
-            members.into_boxed_slice(),
-            args_node_ref.as_link(),
-            type_var_likes,
-        ))),
+        ComplexPoint::TypedDictDefinition(TypedDictDefinition::new(
+            TypedDict::new_definition(
+                name,
+                members.into_boxed_slice(),
+                args_node_ref.as_link(),
+                type_var_likes,
+            ),
+            total,
+        )),
     ))
 }
 

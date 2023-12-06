@@ -1426,12 +1426,33 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     fn insert_typed_dict_definition(&self, i_s: &InferenceState, name_def: NodeRef, total: bool) {
+        let td = TypedDict::new_class_definition(
+            self.name_string_slice(),
+            self.node_ref.as_link(),
+            self.type_vars(i_s).clone(),
+        );
+        name_def.insert_complex(
+            ComplexPoint::TypedDictDefinition(TypedDictDefinition::new(td.clone(), total)),
+            Locality::ImplicitExtern,
+        );
+        self.initialize_typed_dict_members(i_s, td);
+    }
+
+    fn initialize_typed_dict_members(&self, i_s: &InferenceState, typed_dict: Rc<TypedDict>) {
+        let typed_dict_definition = self.maybe_typed_dict_definition().unwrap();
+        let i_s = &i_s.with_class_context(self);
         let mut typed_dict_members = TypedDictMemberGatherer::default();
         if let Some(args) = self.node().arguments() {
             for (type_or_class, arg) in self.bases(i_s.db).zip(args.iter()) {
                 match type_or_class {
                     TypeOrClass::Type(t) => match t.as_ref() {
                         Type::TypedDict(td) => {
+                            let Some(super_class_members) = td.maybe_calculated_members() else {
+                                let cls = Class::from_non_generic_link(i_s.db, td.defined_at);
+                                let tdd = cls.maybe_typed_dict_definition().unwrap();
+                                tdd.deferred_subclass_member_initializations.borrow_mut().push(typed_dict.clone());
+                                return
+                            };
                             typed_dict_members.merge(
                                 i_s,
                                 NodeRef::new(self.node_ref.file, arg.index()),
@@ -1446,29 +1467,6 @@ impl<'db: 'a, 'a> Class<'a> {
                 }
             }
         }
-        self.initialize_typed_dict_members(
-            &i_s.with_class_context(self),
-            &mut typed_dict_members,
-            total,
-        );
-        let td = TypedDict::new_definition(
-            self.name_string_slice(),
-            typed_dict_members.into_boxed_slice(),
-            self.node_ref.as_link(),
-            self.type_vars(i_s).clone(),
-        );
-        name_def.insert_complex(
-            ComplexPoint::TypedDictDefinition(TypedDictDefinition::new(td)),
-            Locality::ImplicitExtern,
-        );
-    }
-
-    fn initialize_typed_dict_members(
-        &self,
-        i_s: &InferenceState,
-        vec: &mut TypedDictMemberGatherer,
-        total: bool,
-    ) {
         let file = self.node_ref.file;
         match self.node().block().unpack() {
             BlockContent::Indented(stmts) => {
@@ -1477,9 +1475,13 @@ impl<'db: 'a, 'a> Class<'a> {
                         continue
                     };
                     match stmt.unpack() {
-                        StmtContent::SimpleStmts(simple) => {
-                            find_stmt_typed_dict_types(i_s, file, vec, simple, total)
-                        }
+                        StmtContent::SimpleStmts(simple) => find_stmt_typed_dict_types(
+                            i_s,
+                            file,
+                            &mut typed_dict_members,
+                            simple,
+                            typed_dict_definition.total,
+                        ),
                         _ => NodeRef::new(file, stmt.index())
                             .add_issue(i_s, IssueType::TypedDictInvalidMember),
                     }
@@ -1487,7 +1489,15 @@ impl<'db: 'a, 'a> Class<'a> {
             }
             BlockContent::OneLine(simple) => todo!(), //find_stmt_typed_dict_types(i_s, file, &mut vec, simple),
         }
-        let tvls = self.use_cached_type_vars(i_s.db);
+        typed_dict.late_initialization_of_members(typed_dict_members.into_boxed_slice());
+        while let Some(deferred) = typed_dict_definition
+            .deferred_subclass_member_initializations
+            .borrow_mut()
+            .pop()
+        {
+            let cls = Class::from_non_generic_link(i_s.db, deferred.defined_at);
+            cls.initialize_typed_dict_members(i_s, deferred)
+        }
     }
 
     fn enum_members(&self, i_s: &InferenceState) -> Box<[EnumMemberDefinition]> {
@@ -1829,6 +1839,15 @@ impl<'db: 'a, 'a> Class<'a> {
                     Type::TypedDict(d) => Some(d.clone()),
                     _ => None,
                 },
+                _ => None,
+            })
+    }
+
+    pub fn maybe_typed_dict_definition(&self) -> Option<&TypedDictDefinition> {
+        NodeRef::new(self.node_ref.file, self.node().name_definition().index())
+            .complex()
+            .and_then(|c| match c {
+                ComplexPoint::TypedDictDefinition(tdd) => Some(tdd),
                 _ => None,
             })
     }
