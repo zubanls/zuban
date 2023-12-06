@@ -433,43 +433,9 @@ impl<'db: 'a, 'a> Class<'a> {
         if let Some(dataclass) = was_dataclass {
             dataclass_init_func(&dataclass, i_s.db);
         }
-        if let Some(typed_dict_total) = typed_dict_total {
-            let mut typed_dict_members = TypedDictMemberGatherer::default();
-            if let Some(args) = self.node().arguments() {
-                for (type_or_class, arg) in self.bases(i_s.db).zip(args.iter()) {
-                    match type_or_class {
-                        TypeOrClass::Type(t) => match t.as_ref() {
-                            Type::TypedDict(td) => {
-                                typed_dict_members.merge(
-                                    i_s,
-                                    NodeRef::new(self.node_ref.file, arg.index()),
-                                    &td.members,
-                                );
-                            }
-                            _ => (),
-                        },
-                        TypeOrClass::Class(c) => {
-                            if c.use_cached_class_infos(i_s.db).class_kind == ClassKind::TypedDict {
-                            }
-                        }
-                    }
-                }
-            }
-            self.initialize_typed_dict_members(
-                &i_s.with_class_context(self),
-                &mut typed_dict_members,
-                typed_dict_total,
-            );
-            let td = TypedDict::new_definition(
-                self.name_string_slice(),
-                typed_dict_members.into_boxed_slice(),
-                self.node_ref.as_link(),
-                self.type_vars(i_s).clone(),
-            );
-            name_def.insert_complex(
-                ComplexPoint::TypedDictDefinition(Rc::new(Type::TypedDict(td.clone()))),
-                Locality::ImplicitExtern,
-            );
+
+        if let Some(total) = typed_dict_total {
+            self.insert_typed_dict_definition(i_s, name_def, total)
         };
 
         if let Some(enum_) = was_enum {
@@ -1457,6 +1423,44 @@ impl<'db: 'a, 'a> Class<'a> {
             params: CallableParams::Simple(Rc::from(vec)),
             return_type: Type::Self_,
         }
+    }
+
+    fn insert_typed_dict_definition(&self, i_s: &InferenceState, name_def: NodeRef, total: bool) {
+        let mut typed_dict_members = TypedDictMemberGatherer::default();
+        if let Some(args) = self.node().arguments() {
+            for (type_or_class, arg) in self.bases(i_s.db).zip(args.iter()) {
+                match type_or_class {
+                    TypeOrClass::Type(t) => match t.as_ref() {
+                        Type::TypedDict(td) => {
+                            typed_dict_members.merge(
+                                i_s,
+                                NodeRef::new(self.node_ref.file, arg.index()),
+                                &td.members,
+                            );
+                        }
+                        _ => (),
+                    },
+                    TypeOrClass::Class(c) => {
+                        if c.use_cached_class_infos(i_s.db).class_kind == ClassKind::TypedDict {}
+                    }
+                }
+            }
+        }
+        self.initialize_typed_dict_members(
+            &i_s.with_class_context(self),
+            &mut typed_dict_members,
+            total,
+        );
+        let td = TypedDict::new_definition(
+            self.name_string_slice(),
+            typed_dict_members.into_boxed_slice(),
+            self.node_ref.as_link(),
+            self.type_vars(i_s).clone(),
+        );
+        name_def.insert_complex(
+            ComplexPoint::TypedDictDefinition(Rc::new(Type::TypedDict(td.clone()))),
+            Locality::ImplicitExtern,
+        );
     }
 
     fn initialize_typed_dict_members(
