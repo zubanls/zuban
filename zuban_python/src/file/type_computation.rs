@@ -3912,10 +3912,6 @@ pub(super) fn check_type_name<'db: 'file, 'file>(
                 },
                 _ => (),
             }
-            if class.use_cached_class_infos(i_s.db).class_kind == ClassKind::TypedDict {
-                // TypedDicts members might not be calculated at this point.
-                return TypeNameLookup::RecursiveClass(from);
-            }
             TypeNameLookup::Class {
                 node_ref: NodeRef::new(name_node_ref.file, c.index()),
             }

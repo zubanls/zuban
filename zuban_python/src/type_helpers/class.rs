@@ -724,16 +724,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                                     todo!()
                                                 }
                                             }
-                                            ClassKind::TypedDict => {
-                                                // Happens with recursive TypedDicts
-                                                class_kind = ClassKind::TypedDict;
-                                                if typed_dict_total.is_none() {
-                                                    typed_dict_total =
-                                                        Some(self.check_total_typed_dict_argument(
-                                                            i_s, arguments,
-                                                        ))
-                                                }
-                                            }
+                                            ClassKind::TypedDict => unreachable!(),
                                             _ => (),
                                         }
                                     }
@@ -823,15 +814,7 @@ impl<'db: 'a, 'a> Class<'a> {
             }
         }
         if class_kind == ClassKind::TypedDict {
-            if bases.iter().any(|t| match t {
-                Type::TypedDict(_) => false,
-                // Happens with recursive TypedDicts
-                Type::Class(c) => {
-                    c.class(i_s.db).use_cached_class_infos(i_s.db).class_kind
-                        != ClassKind::TypedDict
-                }
-                _ => true,
-            }) {
+            if bases.iter().any(|t| !matches!(t, Type::TypedDict(_))) {
                 NodeRef::new(self.node_ref.file, arguments.unwrap().index())
                     .add_issue(i_s, IssueType::TypedDictBasesMustBeTypedDicts);
             }
@@ -1462,7 +1445,9 @@ impl<'db: 'a, 'a> Class<'a> {
                         _ => (),
                     },
                     TypeOrClass::Class(c) => {
-                        if c.use_cached_class_infos(i_s.db).class_kind == ClassKind::TypedDict {}
+                        if c.use_cached_class_infos(i_s.db).class_kind == ClassKind::TypedDict {
+                            unreachable!()
+                        }
                     }
                 }
             }
