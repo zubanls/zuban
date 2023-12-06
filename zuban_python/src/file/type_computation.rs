@@ -3906,7 +3906,7 @@ pub(super) fn check_type_name<'db: 'file, 'file>(
                     Type::Enum(e) => return TypeNameLookup::Enum(e.clone()),
                     _ => (),
                 },
-                Some(ComplexPoint::TypedDictDefinition(t)) => match t.as_ref() {
+                Some(ComplexPoint::TypedDictDefinition(t)) => match t.type_.as_ref() {
                     Type::TypedDict(td) => return TypeNameLookup::TypedDictDefinition(td.clone()),
                     _ => unreachable!(),
                 },

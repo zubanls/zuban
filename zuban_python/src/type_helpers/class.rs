@@ -16,7 +16,7 @@ use crate::{
     arguments::{Arguments, KnownArguments, SimpleArguments},
     database::{
         BaseClass, ClassInfos, ClassKind, ClassStorage, ComplexPoint, Database, Locality,
-        MetaclassState, ParentScope, Point, PointLink, PointType,
+        MetaclassState, ParentScope, Point, PointLink, PointType, TypedDictDefinition,
     },
     debug,
     diagnostics::IssueType,
@@ -1458,7 +1458,7 @@ impl<'db: 'a, 'a> Class<'a> {
             self.type_vars(i_s).clone(),
         );
         name_def.insert_complex(
-            ComplexPoint::TypedDictDefinition(Rc::new(Type::TypedDict(td.clone()))),
+            ComplexPoint::TypedDictDefinition(TypedDictDefinition::new(td)),
             Locality::ImplicitExtern,
         );
     }

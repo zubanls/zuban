@@ -1,6 +1,6 @@
 use std::{
     borrow::Cow,
-    cell::{Cell, OnceCell},
+    cell::{Cell, OnceCell, RefCell},
     collections::HashMap,
     fmt, mem,
     ops::Range,
@@ -22,7 +22,7 @@ use crate::{
     type_::{
         CallableContent, FunctionKind, FunctionOverload, GenericItem, GenericsList, NamedTuple,
         NewType, ParamSpecUsage, RecursiveType, StringSlice, Tuple, Type, TypeVarLike,
-        TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage,
+        TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict,
     },
     type_helpers::{Class, Function, Module},
     utils::{InsertOnlyVec, SymbolTable},
@@ -446,7 +446,7 @@ pub enum ComplexPoint {
     // e.g. X = NamedTuple('X', []), does not include classes.
     NamedTupleDefinition(Rc<Type>),
     // e.g. X = TypedDict('X', {'x': int}), does not include classes.
-    TypedDictDefinition(Rc<Type>),
+    TypedDictDefinition(TypedDictDefinition),
 
     // Relevant for types only (not inference)
     TypeVarLike(TypeVarLike),
@@ -482,6 +482,21 @@ impl OverloadDefinition {
 
     pub fn kind(&self) -> FunctionKind {
         self.functions.kind()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TypedDictDefinition {
+    pub type_: Rc<Type>,
+    pub deferred_subclass_member_initializations: Box<RefCell<Vec<Rc<TypedDict>>>>,
+}
+
+impl TypedDictDefinition {
+    pub fn new(typed_dict: Rc<TypedDict>) -> Self {
+        Self {
+            type_: Rc::new(Type::TypedDict(typed_dict)),
+            deferred_subclass_member_initializations: Default::default(),
+        }
     }
 }
 

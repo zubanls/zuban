@@ -243,7 +243,7 @@ impl<'db: 'slf, 'slf> Inferred {
         if let InferredState::Saved(definition) = self.state {
             let node_ref = NodeRef::from_link(i_s.db, definition);
             if let Some(ComplexPoint::TypedDictDefinition(t)) = node_ref.complex() {
-                let Type::TypedDict(td) = t.as_ref() else {
+                let Type::TypedDict(td) = t.type_.as_ref() else {
                     unreachable!();
                 };
                 return Some(td.clone());
@@ -2121,7 +2121,7 @@ fn type_of_complex<'db: 'x, 'x>(
             Cow::Owned(Type::Type(Rc::new(Type::NewType(n.clone()))))
         }
         ComplexPoint::NamedTupleDefinition(n) => Cow::Owned(Type::Type(n.clone())),
-        ComplexPoint::TypedDictDefinition(t) => Cow::Owned(Type::Type(t.clone())),
+        ComplexPoint::TypedDictDefinition(t) => Cow::Owned(Type::Type(t.type_.clone())),
         _ => {
             unreachable!("Classes are handled earlier {complex:?}")
         }
