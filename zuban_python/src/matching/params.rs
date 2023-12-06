@@ -326,7 +326,7 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                         }
                         (WrappedStarStar::UnpackTypedDict(td1), WrappedStarStar::ValueType(t2)) => {
                             if let Some(t2) = t2 {
-                                for member in td1.members.iter() {
+                                for member in td1.members().iter() {
                                     matches &= member.type_.matches(i_s, matcher, &t2, variance)
                                 }
                             }

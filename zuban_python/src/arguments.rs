@@ -858,7 +858,7 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
             } => {
                 let index = self.counter;
                 self.counter += 1;
-                let Some((name, t)) = typed_dict.members.get(iterator_index).map(|member| {
+                let Some((name, t)) = typed_dict.members().get(iterator_index).map(|member| {
                     (
                         member.name,
                         member.type_.clone(),

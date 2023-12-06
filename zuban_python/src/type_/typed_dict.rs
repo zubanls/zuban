@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{cell::OnceCell, rc::Rc};
 
 use parsa_python_ast::{AtomContent, DictElement};
 
@@ -49,7 +49,7 @@ pub enum TypedDictGenerics {
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypedDict {
     pub name: Option<StringSlice>,
-    pub members: Box<[TypedDictMember]>,
+    members: OnceCell<Box<[TypedDictMember]>>,
     pub defined_at: PointLink,
     pub generics: TypedDictGenerics,
 }
@@ -63,7 +63,7 @@ impl TypedDict {
     ) -> Rc<Self> {
         Rc::new(Self {
             name,
-            members,
+            members: OnceCell::from(members),
             defined_at,
             generics,
         })
@@ -82,33 +82,43 @@ impl TypedDict {
         };
         Rc::new(Self {
             name: Some(name),
-            members,
+            members: OnceCell::from(members),
             defined_at,
             generics,
         })
     }
 
-    pub fn replace_type_var_likes(&self, db: &Database, generics: GenericsList) -> Rc<Self> {
-        let members = self
-            .members
-            .iter()
-            .map(|m| {
-                m.replace_type(|t| {
-                    m.type_
-                        .replace_type_var_likes(db, &mut |usage| generics[usage.index()].clone())
-                })
-            })
-            .collect::<Box<[_]>>();
-        TypedDict::new(
-            self.name,
+    pub fn apply_generics(&self, db: &Database, generics: GenericsList) -> Rc<Self> {
+        let members = if let Some(members) = self.members.get() {
+            OnceCell::from(
+                members
+                    .iter()
+                    .map(|m| {
+                        m.replace_type(|t| {
+                            m.type_.replace_type_var_likes(db, &mut |usage| {
+                                generics[usage.index()].clone()
+                            })
+                        })
+                    })
+                    .collect::<Box<[_]>>(),
+            )
+        } else {
+            OnceCell::new()
+        };
+        Rc::new(TypedDict {
+            name: self.name,
             members,
-            self.defined_at,
-            TypedDictGenerics::Generics(generics),
-        )
+            defined_at: self.defined_at,
+            generics: TypedDictGenerics::Generics(generics),
+        })
+    }
+
+    pub fn members(&self) -> &[TypedDictMember] {
+        self.members.get().unwrap()
     }
 
     pub fn find_member(&self, db: &Database, name: &str) -> Option<&TypedDictMember> {
-        self.members.iter().find(|p| p.name.as_str(db) == name)
+        self.members().iter().find(|p| p.name.as_str(db) == name)
     }
 
     fn qualified_name(&self, db: &Database) -> Option<String> {
@@ -120,8 +130,8 @@ impl TypedDict {
     }
 
     pub fn union(&self, i_s: &InferenceState, other: &Self) -> Type {
-        let mut members = self.members.clone().into_vec();
-        'outer: for m2 in other.members.iter() {
+        let mut members: Vec<_> = self.members().clone().into();
+        'outer: for m2 in other.members().iter() {
             for m1 in members.iter() {
                 if m1.name.as_str(i_s.db) == m2.name.as_str(i_s.db) {
                     if m1.required != m2.required
@@ -144,8 +154,8 @@ impl TypedDict {
 
     pub fn intersection(&self, i_s: &InferenceState, other: &Self) -> Rc<TypedDict> {
         let mut new_members = vec![];
-        for m1 in self.members.iter() {
-            for m2 in other.members.iter() {
+        for m1 in self.members().iter() {
+            for m2 in other.members().iter() {
                 if m1.name.as_str(i_s.db) == m2.name.as_str(i_s.db) {
                     if m1.required == m2.required
                         && m1.type_.is_simple_same_type(i_s, &m2.type_).bool()
@@ -189,7 +199,7 @@ impl TypedDict {
             return "...".to_string();
         }
         let format_data = &format_data.with_seen_recursive_alias(&rec);
-        let params = join_with_commas(self.members.iter().map(|p| {
+        let params = join_with_commas(self.members().iter().map(|p| {
             format!(
                 "'{}'{}: {}",
                 p.name.as_str(format_data.db),
@@ -301,7 +311,7 @@ fn add_access_key_must_be_string_literal_issue(
         i_s,
         IssueType::TypedDictAccessKeyMustBeStringLiteral {
             keys: join_with_commas(
-                td.members
+                td.members()
                     .iter()
                     .map(|member| format!("\"{}\"", member.name.as_str(i_s.db))),
             )
@@ -687,7 +697,7 @@ fn typed_dict_update_internal<'db>(
     td: &TypedDict,
     args: &dyn Arguments<'db>,
 ) -> Option<Inferred> {
-    let mut members = td.members.clone().into_vec();
+    let mut members: Vec<_> = td.members().clone().into();
     for member in members.iter_mut() {
         member.required = false;
     }
@@ -730,7 +740,7 @@ pub fn initialize_typed_dict<'db>(
                 unreachable!();
             };
             let generics = matcher.into_generics_list(i_s.db, type_var_likes).unwrap();
-            typed_dict.replace_type_var_likes(i_s.db, generics)
+            typed_dict.apply_generics(i_s.db, generics)
         } else {
             typed_dict.clone()
         }
@@ -815,7 +825,7 @@ pub fn check_typed_dict_call<'db>(
     }
     maybe_add_extra_keys_issue(i_s, &typed_dict, args.as_node_ref(), extra_keys);
     let mut missing_keys: Vec<Box<str>> = vec![];
-    for member in typed_dict.members.iter() {
+    for member in typed_dict.members().iter() {
         if member.required {
             let expected_name = member.name.as_str(i_s.db);
             if !args

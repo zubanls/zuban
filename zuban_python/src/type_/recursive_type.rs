@@ -93,7 +93,7 @@ impl RecursiveType {
                 } else if let Some(td) = class.maybe_typed_dict() {
                     todo!();
                     Type::TypedDict(match self.generics.clone() {
-                        Some(list) => td.replace_type_var_likes(db, list),
+                        Some(list) => td.apply_generics(db, list),
                         None => td,
                     })
                 } else {

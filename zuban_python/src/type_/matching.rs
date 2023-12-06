@@ -198,7 +198,7 @@ impl Type {
             Type::TypedDict(d1) => match value_type {
                 Type::TypedDict(d2) => {
                     let mut matches = Match::new_true();
-                    for m1 in d1.members.iter() {
+                    for m1 in d1.members().iter() {
                         if let Some(m2) = d2.find_member(i_s.db, m1.name.as_str(i_s.db)) {
                             if m1.required != m2.required {
                                 return Match::new_false().similar_if_false();

@@ -1684,7 +1684,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 },
             );
             let generics = GenericsList::generics_from_vec(generics);
-            let new_td = typed_dict.replace_type_var_likes(db, generics);
+            let new_td = typed_dict.apply_generics(db, generics);
             TypeContent::Type(Type::TypedDict(new_td))
         } else {
             todo!()

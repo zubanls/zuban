@@ -819,7 +819,7 @@ impl Type {
                 _ => (),
             },
             Self::TypedDict(d) => {
-                for member in d.members.iter() {
+                for member in d.members().iter() {
                     member.type_.search_type_vars(found_type_var);
                 }
             }
@@ -917,7 +917,7 @@ impl Type {
             },
             Self::TypedDict(d) => {
                 debug!("TODO this should not be ");
-                d.members
+                d.members()
                     .iter()
                     .any(|m| m.type_.has_any_internal(i_s, already_checked))
             }

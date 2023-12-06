@@ -214,7 +214,7 @@ impl Type {
                 };
                 Type::TypedDict(TypedDict::new(
                     td.name,
-                    td.members
+                    td.members()
                         .iter()
                         .map(|m| {
                             m.replace_type(|t| {

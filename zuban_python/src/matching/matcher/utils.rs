@@ -600,7 +600,7 @@ pub fn match_arguments_against_params<
                     };
                     // Just fill the dict with all names and then remove them gradually.
                     missing_unpacked_typed_dict_names = Some(
-                        td.members
+                        td.members()
                             .iter()
                             .filter(|m| m.name != name && m.required)
                             .map(|m| m.name)

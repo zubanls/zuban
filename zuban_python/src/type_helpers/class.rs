@@ -1435,7 +1435,7 @@ impl<'db: 'a, 'a> Class<'a> {
                             typed_dict_members.merge(
                                 i_s,
                                 NodeRef::new(self.node_ref.file, arg.index()),
-                                &td.members,
+                                &td.members(),
                             );
                         }
                         _ => (),
