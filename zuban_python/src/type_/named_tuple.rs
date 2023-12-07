@@ -4,8 +4,7 @@ use parsa_python_ast::{AtomContent, CodeIndex, StarLikeExpression};
 
 use super::{
     tuple::lookup_tuple_magic_methods, AnyCause, CallableContent, CallableParam, CallableParams,
-    DbString, FormatStyle, FunctionKind, ParamType, RecursiveType, StringSlice, Tuple, Type,
-    TypeOrTypeVarTuple,
+    DbString, FormatStyle, FunctionKind, ParamType, StringSlice, Tuple, Type, TypeOrTypeVarTuple,
 };
 use crate::{
     arguments::{ArgumentIterator, ArgumentKind, Arguments},
@@ -103,8 +102,7 @@ impl NamedTuple {
         let params = self.params();
         // We need to check recursions here, because for class definitions of named tuples can
         // recurse with their attributes.
-        let rec = RecursiveType::new(self.__new__.defined_at, None);
-        let avoid = AvoidRecursionFor::RecursiveType(&rec);
+        let avoid = AvoidRecursionFor::NamedTuple(self.__new__.defined_at);
         if format_data.has_already_seen_recursive_type(avoid) {
             return Box::from("...");
         }

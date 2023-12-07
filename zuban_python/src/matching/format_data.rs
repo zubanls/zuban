@@ -8,6 +8,7 @@ use crate::{
 pub enum AvoidRecursionFor<'a> {
     RecursiveType(&'a RecursiveType),
     TypedDict(PointLink),
+    NamedTuple(PointLink),
 }
 
 #[derive(Clone, Copy, Debug)]

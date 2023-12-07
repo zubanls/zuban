@@ -73,8 +73,6 @@ testOperatorWithEmptyListAndSum
 testOrOperationWithGenericOperands
 testOrOperationInferredFromContext
 
-# Recursive Class issues
-testMutuallyRecursiveNamedTuples
 # No recursion tests
 testNoRecursiveExpandInstanceUnionCrashGeneric
 # recursive limits missing for joins / unions
