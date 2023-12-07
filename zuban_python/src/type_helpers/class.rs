@@ -1475,11 +1475,14 @@ impl<'db: 'a, 'a> Class<'a> {
             BlockContent::OneLine(simple) => todo!(), //find_stmt_typed_dict_types(i_s, file, &mut vec, simple),
         }
         typed_dict.late_initialization_of_members(typed_dict_members.into_boxed_slice());
-        while let Some(deferred) = typed_dict_definition
-            .deferred_subclass_member_initializations
-            .borrow_mut()
-            .pop()
-        {
+        loop {
+            let mut borrowed = typed_dict_definition
+                .deferred_subclass_member_initializations
+                .borrow_mut();
+            let Some(deferred) = borrowed.pop() else {
+                break
+            };
+            drop(borrowed);
             let cls = Class::from_non_generic_link(i_s.db, deferred.defined_at);
             cls.initialize_typed_dict_members(i_s, deferred)
         }
