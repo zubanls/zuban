@@ -406,7 +406,6 @@ testAssignTypedDictAsAttribute
 # TypedDict Regressions
 testCanCreateTypedDictWithClassOverwriting
 # TypedDict Recursions
-testRecursiveTypedDictMethods
 testRecursiveTypedDictJoin
 testBasicRecursiveGenericTypedDict
 testCorrectJoinOfSelfRecursiveTypedDicts

@@ -1,17 +1,23 @@
 use super::Matcher;
 use crate::{
-    database::Database,
+    database::{Database, PointLink},
     type_::{FormatStyle, RecursiveType, TypeVarLikeUsage},
 };
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum AvoidRecursionFor<'a> {
+    RecursiveType(&'a RecursiveType),
+    TypedDict(PointLink),
+}
+
 #[derive(Clone, Copy, Debug)]
 struct DisplayedRecursive<'a> {
-    current: &'a RecursiveType,
+    current: AvoidRecursionFor<'a>,
     parent: Option<&'a DisplayedRecursive<'a>>,
 }
 
 impl DisplayedRecursive<'_> {
-    fn has_already_seen_recursive_type(&self, rec: &RecursiveType) -> bool {
+    fn has_already_seen_recursive_type(&self, rec: AvoidRecursionFor) -> bool {
         self.current == rec
             || self
                 .parent
@@ -87,7 +93,7 @@ impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
 
     pub fn with_seen_recursive_type<'x: 'c>(
         &'x self,
-        rec: &'x RecursiveType,
+        rec: AvoidRecursionFor<'x>,
     ) -> FormatData<'db, 'a, 'b, 'x> {
         Self {
             db: self.db,
@@ -113,7 +119,7 @@ impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
         }
     }
 
-    pub fn has_already_seen_recursive_type(&self, rec: &RecursiveType) -> bool {
+    pub fn has_already_seen_recursive_type(&self, rec: AvoidRecursionFor) -> bool {
         if let Some(displayed_recursive) = &self.displayed_recursive {
             displayed_recursive.has_already_seen_recursive_type(rec)
         } else {

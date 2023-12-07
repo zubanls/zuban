@@ -10,7 +10,7 @@ mod utils;
 
 use std::rc::Rc;
 
-pub use format_data::{FormatData, ParamsStyle};
+pub use format_data::{AvoidRecursionFor, FormatData, ParamsStyle};
 pub use generic::Generic;
 pub use generics::{Generics, GenericsIterator};
 pub use lookup_result::LookupResult;

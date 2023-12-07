@@ -4,7 +4,7 @@ use parsa_python_ast::{AtomContent, DictElement};
 
 use super::{
     replace::ReplaceTypeVarLike, utils::method_with_fallback, CustomBehavior, FormatStyle,
-    GenericsList, RecursiveType, ReplaceSelf, StringSlice, Type, TypeVarLikes,
+    GenericsList, ReplaceSelf, StringSlice, Type, TypeVarLikes,
 };
 use crate::{
     arguments::{ArgumentKind, Arguments},
@@ -15,7 +15,8 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{
-        FormatData, LookupKind, LookupResult, Matcher, MismatchReason, OnTypeError, ResultContext,
+        AvoidRecursionFor, FormatData, LookupKind, LookupResult, Matcher, MismatchReason,
+        OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
     type_helpers::{Class, Instance, Module},
@@ -257,11 +258,11 @@ impl TypedDict {
     }
 
     pub fn format_full(&self, format_data: &FormatData, name: Option<&str>) -> String {
-        let rec = RecursiveType::new(self.defined_at, None);
-        if format_data.has_already_seen_recursive_type(&rec) {
+        let rec = AvoidRecursionFor::TypedDict(self.defined_at);
+        if format_data.has_already_seen_recursive_type(rec) {
             return "...".to_string();
         }
-        let format_data = &format_data.with_seen_recursive_type(&rec);
+        let format_data = &format_data.with_seen_recursive_type(rec);
         let params = join_with_commas(self.members(format_data.db).iter().map(|p| {
             format!(
                 "'{}'{}: {}",

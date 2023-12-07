@@ -63,8 +63,8 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{
-        maybe_class_usage, CalculatedTypeArguments, FormatData, Generic, Generics, Match, Matcher,
-        MismatchReason, OnTypeError, ParamsStyle, ResultContext,
+        maybe_class_usage, AvoidRecursionFor, CalculatedTypeArguments, FormatData, Generic,
+        Generics, Match, Matcher, MismatchReason, OnTypeError, ParamsStyle, ResultContext,
     },
     node_ref::NodeRef,
     type_helpers::{dotted_path_from_dir, Class, Instance, MroIterator, TypeOrClass},
@@ -694,14 +694,15 @@ impl Type {
                     }
                 }
 
-                if format_data.has_already_seen_recursive_type(rec) {
+                let avoid = AvoidRecursionFor::RecursiveType(rec);
+                if format_data.has_already_seen_recursive_type(avoid) {
                     if format_data.style == FormatStyle::MypyRevealType {
                         "...".into()
                     } else {
                         rec.name(format_data.db).into()
                     }
                 } else {
-                    let format_data = format_data.with_seen_recursive_type(rec);
+                    let format_data = format_data.with_seen_recursive_type(avoid);
                     rec.calculated_type(format_data.db).format(&format_data)
                 }
             }
