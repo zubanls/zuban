@@ -694,7 +694,7 @@ impl Type {
                     }
                 }
 
-                if format_data.has_already_seen_recursive_alias(rec) {
+                if format_data.has_already_seen_recursive_type(rec) {
                     if format_data.style == FormatStyle::MypyRevealType {
                         "...".into()
                     } else {

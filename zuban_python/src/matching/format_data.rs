@@ -11,11 +11,11 @@ struct DisplayedRecursive<'a> {
 }
 
 impl DisplayedRecursive<'_> {
-    fn has_already_seen_recursive_alias(&self, rec: &RecursiveType) -> bool {
+    fn has_already_seen_recursive_type(&self, rec: &RecursiveType) -> bool {
         self.current == rec
             || self
                 .parent
-                .is_some_and(|d| d.has_already_seen_recursive_alias(rec))
+                .is_some_and(|d| d.has_already_seen_recursive_type(rec))
     }
 }
 
@@ -113,9 +113,9 @@ impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
         }
     }
 
-    pub fn has_already_seen_recursive_alias(&self, rec: &RecursiveType) -> bool {
+    pub fn has_already_seen_recursive_type(&self, rec: &RecursiveType) -> bool {
         if let Some(displayed_recursive) = &self.displayed_recursive {
-            displayed_recursive.has_already_seen_recursive_alias(rec)
+            displayed_recursive.has_already_seen_recursive_type(rec)
         } else {
             false
         }

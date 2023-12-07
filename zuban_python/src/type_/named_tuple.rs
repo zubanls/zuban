@@ -101,7 +101,7 @@ impl NamedTuple {
         // We need to check recursions here, because for class definitions of named tuples can
         // recurse with their attributes.
         let rec = RecursiveType::new(self.__new__.defined_at, None);
-        if format_data.has_already_seen_recursive_alias(&rec) {
+        if format_data.has_already_seen_recursive_type(&rec) {
             return Box::from("...");
         }
         let format_data = &format_data.with_seen_recursive_type(&rec);
