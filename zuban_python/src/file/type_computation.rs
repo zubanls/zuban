@@ -6,8 +6,7 @@ use super::TypeVarFinder;
 use crate::{
     arguments::SimpleArguments,
     database::{
-        ClassKind, ComplexPoint, Database, Locality, Point, PointLink, PointType, Specific,
-        TypeAlias,
+        ComplexPoint, Database, Locality, Point, PointLink, PointType, Specific, TypeAlias,
     },
     debug,
     diagnostics::{Issue, IssueType},
@@ -3709,7 +3708,6 @@ fn detect_diverging_alias(db: &Database, type_var_likes: &TypeVarLikes, t: &Type
                         !has_direct_type_var_like && generics.has_type_vars()
                     })
                 } else {
-                    dbg!(rec);
                     false
                 }
             }

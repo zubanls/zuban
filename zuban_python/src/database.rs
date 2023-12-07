@@ -500,6 +500,13 @@ impl TypedDictDefinition {
             total,
         }
     }
+
+    pub fn typed_dict(&self) -> Rc<TypedDict> {
+        match self.type_.as_ref() {
+            Type::TypedDict(typed_dict) => typed_dict.clone(),
+            _ => unreachable!(),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]

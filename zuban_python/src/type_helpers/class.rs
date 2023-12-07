@@ -1426,29 +1426,29 @@ impl<'db: 'a, 'a> Class<'a> {
         let i_s = &i_s.with_class_context(self);
         let mut typed_dict_members = TypedDictMemberGatherer::default();
         if let Some(args) = self.node().arguments() {
-            for (type_or_class, arg) in self.bases(i_s.db).zip(args.iter()) {
-                match type_or_class {
-                    TypeOrClass::Type(t) => match t.as_ref() {
-                        Type::TypedDict(td) => {
-                            let Some(super_class_members) = td.maybe_calculated_members() else {
-                                let cls = Class::from_non_generic_link(i_s.db, td.defined_at);
-                                let tdd = cls.maybe_typed_dict_definition().unwrap();
-                                tdd.deferred_subclass_member_initializations.borrow_mut().push(typed_dict.clone());
-                                return
-                            };
-                            typed_dict_members.merge(
-                                i_s,
-                                NodeRef::new(self.node_ref.file, arg.index()),
-                                &td.members(),
-                            );
-                        }
-                        _ => (),
-                    },
-                    TypeOrClass::Class(c) => {
-                        if c.use_cached_class_infos(i_s.db).class_kind == ClassKind::TypedDict {
-                            unreachable!()
-                        }
+            for (i, base) in self
+                .use_cached_class_infos(i_s.db)
+                .mro
+                .iter()
+                .rev()
+                .filter(|t| t.is_direct_base)
+                .enumerate()
+            {
+                match &base.type_ {
+                    Type::TypedDict(td) => {
+                        let Some(super_class_members) = td.maybe_calculated_members() else {
+                            let cls = Class::from_non_generic_link(i_s.db, td.defined_at);
+                            let tdd = cls.maybe_typed_dict_definition().unwrap();
+                            tdd.deferred_subclass_member_initializations.borrow_mut().push(typed_dict.clone());
+                            return
+                        };
+                        typed_dict_members.merge(
+                            i_s,
+                            NodeRef::new(self.node_ref.file, args.iter().nth(i).unwrap().index()),
+                            td.members(),
+                        );
                     }
+                    _ => (),
                 }
             }
         }
@@ -1817,15 +1817,8 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn maybe_typed_dict(&self) -> Option<Rc<TypedDict>> {
-        NodeRef::new(self.node_ref.file, self.node().name_definition().index())
-            .complex()
-            .and_then(|c| match c {
-                ComplexPoint::TypeInstance(Type::Type(t)) => match t.as_ref() {
-                    Type::TypedDict(d) => Some(d.clone()),
-                    _ => None,
-                },
-                _ => None,
-            })
+        self.maybe_typed_dict_definition()
+            .map(|tdd| tdd.typed_dict())
     }
 
     pub fn maybe_typed_dict_definition(&self) -> Option<&TypedDictDefinition> {
@@ -1860,7 +1853,7 @@ enum BaseKind {
     Class(PointLink),
     Dataclass(PointLink),
     NamedTuple(Rc<NamedTuple>),
-    TypedDict,
+    TypedDict(Rc<TypedDict>),
     Tuple(Rc<Tuple>),
     Type,
     Enum,
@@ -1872,7 +1865,7 @@ fn to_base_kind(t: &Type) -> BaseKind {
         Type::Type(_) => BaseKind::Type,
         Type::Tuple(tup) => BaseKind::Tuple(tup.clone()),
         Type::Dataclass(d) => BaseKind::Dataclass(d.class.link),
-        Type::TypedDict(d) => BaseKind::TypedDict,
+        Type::TypedDict(d) => BaseKind::TypedDict(d.clone()),
         Type::NamedTuple(nt) => BaseKind::NamedTuple(nt.clone()),
         Type::Enum(_) => BaseKind::Enum,
         _ => unreachable!("{t:?}"),
