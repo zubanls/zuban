@@ -701,7 +701,7 @@ impl Type {
                         rec.name(format_data.db).into()
                     }
                 } else {
-                    let format_data = format_data.with_seen_recursive_alias(rec);
+                    let format_data = format_data.with_seen_recursive_type(rec);
                     rec.calculated_type(format_data.db).format(&format_data)
                 }
             }

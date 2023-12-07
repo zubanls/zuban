@@ -85,7 +85,7 @@ impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
         }
     }
 
-    pub fn with_seen_recursive_alias<'x: 'c>(
+    pub fn with_seen_recursive_type<'x: 'c>(
         &'x self,
         rec: &'x RecursiveType,
     ) -> FormatData<'db, 'a, 'b, 'x> {

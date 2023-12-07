@@ -104,7 +104,7 @@ impl NamedTuple {
         if format_data.has_already_seen_recursive_alias(&rec) {
             return Box::from("...");
         }
-        let format_data = &format_data.with_seen_recursive_alias(&rec);
+        let format_data = &format_data.with_seen_recursive_type(&rec);
         let types = match params.is_empty() {
             true => "()".into(),
             false => join_with_commas(params.iter().map(|p| {
