@@ -604,6 +604,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                             if let Some(typed_dict) = type_.maybe_typed_dict(i_s.db) {
                                 return Some(BaseArgumentReturn::ArgsKwargs(
                                     ArgsKwargsIterator::TypedDict {
+                                        db: i_s.db,
                                         typed_dict,
                                         iterator_index: 0,
                                         node_ref,
@@ -851,6 +852,7 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
                 })
             }
             ArgsKwargsIterator::TypedDict {
+                db,
                 node_ref,
                 position,
                 typed_dict,
@@ -858,7 +860,7 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
             } => {
                 let index = self.counter;
                 self.counter += 1;
-                let Some((name, t)) = typed_dict.members().get(iterator_index).map(|member| {
+                let Some((name, t)) = typed_dict.members(db).get(iterator_index).map(|member| {
                     (
                         member.name,
                         member.type_.clone(),
@@ -867,6 +869,7 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
                     return self.next()
                 };
                 self.args_kwargs_iterator = ArgsKwargsIterator::TypedDict {
+                    db,
                     node_ref,
                     position,
                     typed_dict,
@@ -900,6 +903,7 @@ enum ArgsKwargsIterator<'a> {
         node_ref: NodeRef<'a>,
     },
     TypedDict {
+        db: &'a Database,
         typed_dict: Rc<TypedDict>,
         iterator_index: usize,
         position: usize,

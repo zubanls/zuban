@@ -407,7 +407,6 @@ testAssignTypedDictAsAttribute
 testCanCreateTypedDictWithClassOldVersion
 testCanCreateTypedDictWithClassOverwriting
 # TypedDict Recursions
-testRecursiveGenericTypedDictExtending
 testRecursiveTypedDictCreation
 testRecursiveTypedDictMethods
 testRecursiveTypedDictSubtyping

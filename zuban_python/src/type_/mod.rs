@@ -819,9 +819,16 @@ impl Type {
                 _ => (),
             },
             Self::TypedDict(d) => {
+                if let TypedDictGenerics::Generics(list) = &d.generics {
+                    list.search_type_vars(found_type_var)
+                }
+
+                /*
+                 * TODO is this necessary?
                 for member in d.members().iter() {
                     member.type_.search_type_vars(found_type_var);
                 }
+                */
             }
             Self::NamedTuple(_) => {
                 debug!("TODO do we need to support namedtuple searching for type vars?");
@@ -917,7 +924,7 @@ impl Type {
             },
             Self::TypedDict(d) => {
                 debug!("TODO this should not be ");
-                d.members()
+                d.members(i_s.db)
                     .iter()
                     .any(|m| m.type_.has_any_internal(i_s, already_checked))
             }

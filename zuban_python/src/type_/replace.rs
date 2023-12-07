@@ -5,7 +5,7 @@ use super::{
     Dataclass, GenericClass, GenericItem, GenericsList, NamedTuple, ParamSpecArgument,
     ParamSpecTypeVars, ParamType, RecursiveType, StarParamType, StarStarParamType, Tuple,
     TupleTypeArguments, Type, TypeArguments, TypeOrTypeVarTuple, TypeVarLike, TypeVarLikeUsage,
-    TypeVarLikes, TypeVarManager, TypedDict, TypedDictGenerics, UnionEntry, UnionType,
+    TypeVarLikes, TypeVarManager, TypedDictGenerics, UnionEntry, UnionType,
 };
 use crate::{
     database::{Database, PointLink},
@@ -212,18 +212,11 @@ impl Type {
                         TypedDictGenerics::Generics(replace_generics(generics))
                     }
                 };
-                Type::TypedDict(TypedDict::new(
-                    td.name,
-                    td.members()
-                        .iter()
-                        .map(|m| {
-                            m.replace_type(|t| {
-                                t.replace_type_var_likes_and_self(db, callable, replace_self)
-                            })
-                        })
-                        .collect(),
-                    td.defined_at,
+                Type::TypedDict(td.replace_type_var_likes_and_self(
+                    db,
                     generics,
+                    callable,
+                    replace_self,
                 ))
             }
             Type::NamedTuple(nt) => {

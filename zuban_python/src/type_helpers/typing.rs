@@ -171,7 +171,7 @@ fn reveal_type_info(i_s: &InferenceState, t: &Type) -> Box<str> {
                 return format!(
                     "def {}(*, {}) -> {}",
                     tvs.as_deref().unwrap_or(""),
-                    join_with_commas(td.members().iter().map(|member| {
+                    join_with_commas(td.members(i_s.db).iter().map(|member| {
                         let mut s = format!(
                             "{}: {}",
                             member.name.as_str(i_s.db),

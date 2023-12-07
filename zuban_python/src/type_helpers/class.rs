@@ -1436,22 +1436,28 @@ impl<'db: 'a, 'a> Class<'a> {
             {
                 match &base.type_ {
                     Type::TypedDict(td) => {
-                        let Some(super_class_members) = td.maybe_calculated_members() else {
-                            let cls = Class::from_non_generic_link(i_s.db, td.defined_at);
-                            let tdd = cls.maybe_typed_dict_definition().unwrap();
+                        let Some(super_class_members) = td.maybe_calculated_members(i_s.db) else {
+                            let super_cls = Class::from_non_generic_link(i_s.db, td.defined_at);
+                            let tdd = super_cls.maybe_typed_dict_definition().unwrap();
                             tdd.deferred_subclass_member_initializations.borrow_mut().push(typed_dict.clone());
+                            debug!(
+                                "Defer typed dict member initialization for {:?} after {:?}",
+                                self.name(),
+                                super_cls.name(),
+                            );
                             return
                         };
                         typed_dict_members.merge(
                             i_s,
                             NodeRef::new(self.node_ref.file, args.iter().nth(i).unwrap().index()),
-                            td.members(),
+                            td.members(i_s.db),
                         );
                     }
                     _ => (),
                 }
             }
         }
+        debug!("Start TypedDict members calculation for {:?}", self.name());
         let file = self.node_ref.file;
         match self.node().block().unpack() {
             BlockContent::Indented(stmts) => {
@@ -1474,6 +1480,7 @@ impl<'db: 'a, 'a> Class<'a> {
             }
             BlockContent::OneLine(simple) => todo!(), //find_stmt_typed_dict_types(i_s, file, &mut vec, simple),
         }
+        debug!("End TypedDict members calculation for {:?}", self.name());
         typed_dict.late_initialization_of_members(typed_dict_members.into_boxed_slice());
         loop {
             let mut borrowed = typed_dict_definition
@@ -1484,6 +1491,10 @@ impl<'db: 'a, 'a> Class<'a> {
             };
             drop(borrowed);
             let cls = Class::from_non_generic_link(i_s.db, deferred.defined_at);
+            debug!(
+                "Calculate TypedDict members for deferred subclass {:?}",
+                cls.name()
+            );
             cls.initialize_typed_dict_members(i_s, deferred)
         }
     }
