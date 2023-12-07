@@ -404,12 +404,9 @@ testAssignEnumAsAttribute
 testAssignTypedDictAsAttribute
 
 # TypedDict Regressions
-testCanCreateTypedDictWithClassOldVersion
 testCanCreateTypedDictWithClassOverwriting
 # TypedDict Recursions
-testRecursiveTypedDictCreation
 testRecursiveTypedDictMethods
-testRecursiveTypedDictSubtyping
 testRecursiveTypedDictJoin
 testBasicRecursiveGenericTypedDict
 testCorrectJoinOfSelfRecursiveTypedDicts

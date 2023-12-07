@@ -155,6 +155,10 @@ impl TypedDict {
         members
     }
 
+    pub fn calculating(&self) -> bool {
+        self.members.get().is_none()
+    }
+
     pub fn members(&self, db: &Database) -> &[TypedDictMember] {
         self.members.get().unwrap_or_else(|| {
             let TypedDictGenerics::Generics(list) = &self.generics else {
@@ -170,7 +174,8 @@ impl TypedDict {
                 original_typed_dict.members.get().unwrap(),
                 list,
             );
-            debug_assert_eq!(self.members.set(new_members), Ok(()));
+            let result = self.members.set(new_members);
+            debug_assert_eq!(result, Ok(()));
             self.members.get().unwrap()
         })
     }

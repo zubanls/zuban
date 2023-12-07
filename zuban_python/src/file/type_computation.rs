@@ -3905,7 +3905,16 @@ pub(super) fn check_type_name<'db: 'file, 'file>(
                     _ => (),
                 },
                 Some(ComplexPoint::TypedDictDefinition(t)) => match t.type_.as_ref() {
-                    Type::TypedDict(td) => return TypeNameLookup::TypedDictDefinition(td.clone()),
+                    Type::TypedDict(td) => {
+                        if td.calculating() {
+                            return TypeNameLookup::RecursiveClass(NodeRef::from_link(
+                                i_s.db,
+                                td.defined_at,
+                            ));
+                        } else {
+                            return TypeNameLookup::TypedDictDefinition(td.clone());
+                        }
+                    }
                     _ => unreachable!(),
                 },
                 _ => (),
