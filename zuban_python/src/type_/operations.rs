@@ -349,7 +349,7 @@ impl Type {
                 r.calculated_type(i_s.db)
                     .get_item(i_s, None, slice_type, result_context)
             }
-            Type::TypedDict(d) => d.get_item(i_s, slice_type, result_context),
+            Type::TypedDict(d) => d.get_item(i_s, slice_type, result_context, true),
             Type::Callable(_) => not_possible(),
             Type::FunctionOverload(_) => {
                 not_possible();
@@ -373,6 +373,19 @@ impl Type {
                     .get_item(i_s, slice_type, result_context)
             }
             _ => todo!("get_item not implemented for {self:?}"),
+        }
+    }
+
+    pub fn setitem_context(
+        &self,
+        i_s: &InferenceState,
+        slice_type: &SliceType,
+    ) -> Option<Inferred> {
+        match self {
+            Type::TypedDict(td) => {
+                Some(td.get_item(i_s, slice_type, &mut ResultContext::Unknown, false))
+            }
+            _ => None,
         }
     }
 

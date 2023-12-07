@@ -438,7 +438,18 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     ) -> Option<Inferred> {
         for target in targets {
             match target {
-                Target::IndexExpression(t) => debug!("TODO enable context for index expr"),
+                Target::IndexExpression(t) => {
+                    let base = self.infer_primary_target_or_atom(t.first());
+                    let PrimaryContent::GetItem(slice) = t.second() else {
+                        unreachable!();
+                    };
+                    let result = base
+                        .as_cow_type(self.i_s)
+                        .setitem_context(self.i_s, &SliceType::new(self.file, t.index(), slice));
+                    if result.is_some() {
+                        return result;
+                    }
+                }
                 _ => {
                     if let Some(inferred) = self.infer_target(target, false) {
                         return Some(inferred);

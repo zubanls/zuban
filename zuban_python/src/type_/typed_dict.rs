@@ -285,6 +285,7 @@ impl TypedDict {
         i_s: &InferenceState,
         slice_type: &SliceType,
         result_context: &mut ResultContext,
+        add_errors: bool,
     ) -> Inferred {
         match slice_type.unpack() {
             SliceTypeContent::Simple(simple) => infer_string_index(
@@ -295,18 +296,30 @@ impl TypedDict {
                         if let Some(member) = self.find_member(i_s.db, key) {
                             Inferred::from_type(member.type_.clone())
                         } else {
-                            simple.as_node_ref().add_issue(
-                                i_s,
-                                IssueType::TypedDictHasNoKeyForGet {
-                                    typed_dict: self.format(&FormatData::new_short(i_s.db)).into(),
-                                    key: key.into(),
-                                },
-                            );
+                            if add_errors {
+                                simple.as_node_ref().add_issue(
+                                    i_s,
+                                    IssueType::TypedDictHasNoKeyForGet {
+                                        typed_dict: self
+                                            .format(&FormatData::new_short(i_s.db))
+                                            .into(),
+                                        key: key.into(),
+                                    },
+                                );
+                            }
                             Inferred::new_any_from_error()
                         }
                     })
                 },
-                || add_access_key_must_be_string_literal_issue(i_s, self, slice_type.as_node_ref()),
+                || {
+                    if add_errors {
+                        add_access_key_must_be_string_literal_issue(
+                            i_s,
+                            self,
+                            slice_type.as_node_ref(),
+                        )
+                    }
+                },
             ),
             SliceTypeContent::Slice(_) => todo!(),
             SliceTypeContent::Slices(_) => todo!(),
