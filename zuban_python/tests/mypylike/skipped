@@ -423,9 +423,6 @@ testUnpackKwargsParamSpec
 testTypedDictUnpackFromUnion
 testTypedDictUnpackUnionRequiredMissing
 testTypedDictUnpackIncompatible
-# Foo(**bar)
-testTypedDictUnpackInference
-testTypedDictUnpackSame
 # __getitem__ as a protocol
 testTypedDictWithSimpleProtocol
 testTypedDictWithSimpleProtocolInference
@@ -440,7 +437,6 @@ testTypedDictAsStarStarAndDictAsStarStar
 testTypedDictPopMethod
 testTypedDictNonMappingMethods
 # TypedDict .get() special case
-testLiteralIntelligentIndexingUsingFinal
 testLiteralIntelligentIndexingTypedDict
 testLiteralIntelligentIndexingTypedDictUnions
 testLiteralIntelligentIndexingMultiTypedDict
@@ -457,9 +453,6 @@ testParamSpecPrefixSubtypingInvalidStrict
 # Anonymous TypedDicts for join
 testJoinOfTypedDictWithCompatibleMappingSupertypeIsSupertype
 testCannotGetItemOfAnonymousTypedDictWithInvalidStringLiteralKey
-# Match mapping
-testMeetOfTypedDictWithCompatibleMappingIsUninhabitedForNow
-testMeetOfTypedDictWithIncompatibleMappingIsUninhabited
 # unions
 testTypedDictChainedGetWithEmptyDictDefault
 testPluginUnionsOfTypedDictsNonTotal
