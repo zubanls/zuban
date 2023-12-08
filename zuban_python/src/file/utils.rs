@@ -19,7 +19,7 @@ use crate::{
     node_ref::NodeRef,
     type_::{
         check_typed_dict_call, infer_typed_dict_item, maybe_add_extra_keys_issue, AnyCause,
-        Literal, LiteralKind, LiteralValue, Type, TypedDict,
+        Literal, LiteralKind, LiteralValue, Type, TypedDict, TypedDictGenerics,
     },
     Inferred,
 };
@@ -209,7 +209,12 @@ impl<'db> Inference<'db, '_, '_> {
                 },
             )
         }
-        Some(Type::TypedDict(typed_dict))
+        Some(if matches!(&typed_dict.generics, TypedDictGenerics::None) {
+            Type::TypedDict(typed_dict)
+        } else {
+            matcher
+                .replace_type_var_likes_for_unknown_type_vars(i_s.db, &Type::TypedDict(typed_dict))
+        })
     }
 
     fn check_dict_literal_with_context(
