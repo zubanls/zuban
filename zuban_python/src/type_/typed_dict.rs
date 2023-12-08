@@ -239,7 +239,13 @@ impl TypedDict {
 
     pub fn name_or_fallback(&self, format_data: &FormatData) -> String {
         if let Some(name) = self.name {
-            name.as_str(format_data.db).into()
+            let name = name.as_str(format_data.db);
+            match &self.generics {
+                TypedDictGenerics::Generics(list) => {
+                    format!("{name}[{}]", list.format(format_data))
+                }
+                _ => name.into(),
+            }
         } else {
             self.format_full(format_data, None)
         }
@@ -886,7 +892,10 @@ pub fn infer_typed_dict_item<'db>(
     infer: impl FnOnce(&mut ResultContext) -> Inferred,
 ) {
     if let Some(member) = typed_dict.find_member(i_s.db, key) {
-        let inferred = infer(&mut ResultContext::Known(&member.type_));
+        let inferred = infer(&mut ResultContext::WithMatcher {
+            type_: &member.type_,
+            matcher,
+        });
 
         member.type_.error_if_not_matches_with_matcher(
             i_s,
