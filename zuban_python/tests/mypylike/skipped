@@ -103,6 +103,7 @@ testNewAnalyzerTypeAnnotationCycle4
 testBoundGenericMethodFine
 testNewImportCycleTypeVarBound
 testNewImportCycleTupleBase
+testNewImportCycleTypedDict
 # C = C Cycle
 testOverrideByIdemAliasCorrectType
 testOverrideByIdemAliasCorrectTypeReversed
@@ -112,6 +113,10 @@ testSelfReferentialSubscriptExpression
 testNewAnalyzerMemberNameMatchesNamedTuple
 testVariableTypeWithQualifiedName
 testNewAnalyzerMemberNameMatchesTypedDict
+# TypedDict definition circle: A = TypedDict('A', {'a': 'A'})
+testCrashOnSelfRecursiveTypedDictVar
+testBasicRecursiveTypedDictCall
+testRecursiveTypedDictWithList
 # dataclass circles with bound
 testDataclassGenericWithBound
 testNoCrashOnSelfWithForwardRefGenericDataclass
@@ -407,12 +412,6 @@ testCanCreateTypedDictWithClassOverwriting
 testRecursiveTypedDictJoin
 testBasicRecursiveGenericTypedDict
 testCorrectJoinOfSelfRecursiveTypedDicts
-testCrashOnSelfRecursiveTypedDictVar
-# Recursive type dict calls
-testBasicRecursiveTypedDictCall
-testRecursiveTypedDictWithList
-# TypedDict recursion with imports
-testNewImportCycleTypedDict
 # Unpack
 testUnpackKwargsNonIdentifier
 testUnpackKwargsOverridesTypedDict
