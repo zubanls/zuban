@@ -406,8 +406,6 @@ testAssignEnumAsAttribute
 # "TypedDict type as attribute is not supported"
 testAssignTypedDictAsAttribute
 
-# TypedDict Regressions
-testCanCreateTypedDictWithClassOverwriting
 # TypedDict Recursions
 testRecursiveTypedDictJoin
 testCorrectJoinOfSelfRecursiveTypedDicts
