@@ -946,7 +946,10 @@ pub fn lookup_on_typed_dict(
         }
         _ => {
             return Instance::new(i_s.db.python_state.typed_dict_class(), None)
-                .lookup(i_s, from, name, kind)
+                .lookup_with_explicit_self_binding(i_s, from, name, kind, 0, || {
+                    Type::TypedDict(typed_dict.clone())
+                })
+                .1
         }
     })))
 }

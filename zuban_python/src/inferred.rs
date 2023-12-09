@@ -192,6 +192,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 _ => unreachable!(),
             },
             Type::Self_ => *i_s.current_class().unwrap(),
+            Type::TypedDict(_) => i_s.db.python_state.typed_dict_class(),
             _ => unreachable!(),
         };
         let class_t = instance_class

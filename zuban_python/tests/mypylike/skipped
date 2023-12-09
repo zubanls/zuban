@@ -427,8 +427,8 @@ testTypedDictWithSimpleProtocol
 testTypedDictWithSimpleProtocolInference
 # __iter__ protocol mismatches
 testCachedBadProtocolNote
-# Lookups
 testCanConvertTypedDictToAnySuperclassOfMapping
+# Lookups
 testTypedDictMappingMethods
 testTypedDictAsStarStarArgCalleeKwargs
 testTypedDictAsStarStarAndDictAsStarStar
