@@ -326,9 +326,8 @@ impl IssueType {
             | NotIterable { .. } => "attr-defined",
             NameError { .. } => "name-defined",
             UnionAttributeError { .. } | UnionAttributeErrorOfUpperBound(..) => "union-attr",
-            ArgumentTypeIssue(s) => "arg-type",
-            ArgumentIssue { .. } | TooManyArguments { .. } => "call-arg",
-            TooFewArguments { .. } => "call-arg",
+            ArgumentTypeIssue(_) | SuperArgument1MustBeTypeObject => "arg-type",
+            ArgumentIssue { .. } | TooManyArguments { .. } | TooFewArguments { .. } => "call-arg",
             InvalidType(_) => "valid-type",
             IncompatibleReturn { .. } => "return-value",
             IncompatibleDefaultArgument { .. }

@@ -628,7 +628,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                             } else {
                                 node_ref.add_issue(
                                     i_s,
-                                    IssueType::ArgumentIssue(
+                                    IssueType::ArgumentTypeIssue(
                                         format!(
                                             "Argument after ** must be a mapping, not \"{}\"",
                                             type_.format_short(i_s.db),

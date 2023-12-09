@@ -941,7 +941,9 @@ pub fn lookup_on_typed_dict(
         "pop" => CustomBehavior::new_method(typed_dict_pop, Some(bound())),
         "__setitem__" => CustomBehavior::new_method(typed_dict_setitem, Some(bound())),
         "__delitem__" => CustomBehavior::new_method(typed_dict_delitem, Some(bound())),
-        "update" => CustomBehavior::new_method(typed_dict_update, Some(bound())),
+        "update" | "__or__" | "__ror__" | "__ior__" => {
+            CustomBehavior::new_method(typed_dict_update, Some(bound()))
+        }
         _ => {
             return Instance::new(i_s.db.python_state.typed_dict_class(), None)
                 .lookup(i_s, from, name, kind)
