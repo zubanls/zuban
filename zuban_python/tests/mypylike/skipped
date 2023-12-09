@@ -414,7 +414,6 @@ testCorrectJoinOfSelfRecursiveTypedDicts
 # Unpack
 testUnpackKwargsNonIdentifier
 testUnpackKwargsOverridesTypedDict
-testUnpackWithDuplicateKeywords
 testUnpackKwargsOverrides
 testUnpackKwargsInference
 testUnpackKwargsJoin

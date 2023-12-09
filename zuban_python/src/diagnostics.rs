@@ -237,6 +237,7 @@ pub(crate) enum IssueType {
     TypedDictMissingKeys { typed_dict: Box<str>, keys: Box<[Box<str>]> },
     TypedDictNonRequired { key: Box<str> },
     TypedDictUnsupportedTypeInStarStar { type_: Box<str> },
+    TypedDictArgumentNameOverlapWithUnpack { names: Box<str> },
 
     OverloadMismatch { name: Box<str>, args: Box<[Box<str>]>, variants: Box<[Box<str>]> },
     OverloadImplementationNotLast,
@@ -1153,6 +1154,9 @@ impl<'db> Diagnostic<'db> {
             ),
             TypedDictUnsupportedTypeInStarStar { type_ } => format!(
                 r#"Unsupported type "{type_}" for ** expansion in TypedDict"#
+            ),
+            TypedDictArgumentNameOverlapWithUnpack { names } => format!(
+                r#"Overlap between argument names and ** TypedDict items: {names}"#
             ),
 
             OverloadImplementationNotLast =>

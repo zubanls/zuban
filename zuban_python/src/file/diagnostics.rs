@@ -731,6 +731,33 @@ impl<'db> Inference<'db, '_, '_> {
                             .add_issue(i_s, IssueType::TypeVarCovariantInParamType);
                     }
                 }
+
+                if param.type_() == ParamKind::StarStar {
+                    if let Type::TypedDict(td) = t.as_ref() {
+                        let mut overlapping_names = vec![];
+                        for member in td.members(i_s.db) {
+                            for p in params.iter() {
+                                let name = member.name.as_str(i_s.db);
+                                if matches!(
+                                    p.type_(),
+                                    ParamKind::PositionalOrKeyword | ParamKind::KeywordOnly
+                                ) && name == p.name_definition().as_code()
+                                {
+                                    overlapping_names.push(format!("\"{name}\""));
+                                    break;
+                                }
+                            }
+                        }
+                        if !overlapping_names.is_empty() {
+                            function.add_issue_for_declaration(
+                                i_s,
+                                IssueType::TypedDictArgumentNameOverlapWithUnpack {
+                                    names: overlapping_names.join(", ").into(),
+                                },
+                            );
+                        }
+                    }
+                }
             } else if flags.disallow_incomplete_defs {
                 had_missing_annotation = true;
             }
