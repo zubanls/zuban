@@ -431,8 +431,6 @@ testTypedDictMappingMethods
 testTypedDictAsStarStarArgCalleeKwargs
 testTypedDictAsStarStarAndDictAsStarStar
 testTypedDictNonMappingMethods
-# TypedDict .get() special case
-testLiteralIntelligentIndexingTypedDictUnions
 # generics
 testGenericTypedDictInference
 # Nested typed dict formatting

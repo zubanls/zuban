@@ -579,6 +579,79 @@ pub fn infer_typed_dict_total_argument(
     }
 }
 
+pub fn typed_dict_setdefault<'db>(
+    i_s: &InferenceState<'db, '_>,
+    args: &dyn Arguments<'db>,
+    result_context: &mut ResultContext,
+    on_type_error: OnTypeError<'db, '_>,
+    bound: Option<&Type>,
+) -> Inferred {
+    let Type::TypedDict(td) = bound.unwrap() else {
+        unreachable!();
+    };
+    typed_dict_method_with_fallback(
+        i_s,
+        args,
+        result_context,
+        on_type_error,
+        td,
+        "setdefault",
+        typed_dict_setdefault_internal,
+    )
+}
+
+fn typed_dict_setdefault_internal<'db>(
+    i_s: &InferenceState<'db, '_>,
+    td: &TypedDict,
+    args: &dyn Arguments<'db>,
+) -> Option<Inferred> {
+    let mut iterator = args.iter();
+    let first_arg = iterator.next()?;
+    let second_arg = iterator.next();
+    if iterator.next().is_some() {
+        return None;
+    }
+    let default = match &second_arg {
+        Some(second) => match &second.kind {
+            ArgumentKind::Positional { .. } | ArgumentKind::Keyword { key: "default", .. } => {
+                second.infer(i_s, &mut ResultContext::Unknown)
+            }
+            _ => return None,
+        },
+        None => Inferred::new_none(),
+    };
+
+    let inferred_name = first_arg.maybe_positional_arg(i_s, &mut ResultContext::Unknown)?;
+    let maybe_had_literals = inferred_name.run_on_str_literals(i_s, |key| {
+        Some(Inferred::from_type({
+            if let Some(member) = td.find_member(i_s.db, key) {
+                if !member
+                    .type_
+                    .is_simple_super_type_of(i_s, &default.as_cow_type(i_s))
+                    .bool()
+                {
+                    args.as_node_ref().add_issue(
+                        i_s,
+                        IssueType::TypedDictSetdefaultWrongDefaultType {
+                            got: default.format_short(i_s),
+                            expected: member.type_.format_short(i_s.db),
+                        },
+                    )
+                }
+                member.type_.clone()
+            } else {
+                i_s.db.python_state.object_type()
+            }
+        }))
+    });
+
+    if let Some(maybe_had_literals) = maybe_had_literals {
+        Some(maybe_had_literals.simplified_union(i_s, default))
+    } else {
+        Some(Inferred::from_type(i_s.db.python_state.object_type()))
+    }
+}
+
 pub fn typed_dict_get<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Arguments<'db>,
@@ -913,7 +986,8 @@ pub fn lookup_on_typed_dict(
 ) -> LookupResult {
     let bound = || Rc::new(Type::TypedDict(typed_dict.clone()));
     LookupResult::UnknownName(Inferred::from_type(Type::CustomBehavior(match name {
-        "get" | "setdefault" => CustomBehavior::new_method(typed_dict_get, Some(bound())),
+        "get" => CustomBehavior::new_method(typed_dict_get, Some(bound())),
+        "setdefault" => CustomBehavior::new_method(typed_dict_setdefault, Some(bound())),
         "pop" => CustomBehavior::new_method(typed_dict_pop, Some(bound())),
         "__setitem__" => CustomBehavior::new_method(typed_dict_setitem, Some(bound())),
         "__delitem__" => CustomBehavior::new_method(typed_dict_delitem, Some(bound())),

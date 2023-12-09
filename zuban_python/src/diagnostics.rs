@@ -156,7 +156,6 @@ pub(crate) enum IssueType {
     UnpackRequiresExactlyOneArgument,
     UnpackOnlyValidInVariadicPosition,
     VariadicUnpackMustBeTupleLike { actual: Box<str> },
-    UnpackItemInStarStarMustBeTypedDict,
 
     InvalidAssertType { actual: Box<str>, wanted: Box<str> },
 
@@ -238,6 +237,8 @@ pub(crate) enum IssueType {
     TypedDictNonRequired { key: Box<str> },
     TypedDictUnsupportedTypeInStarStar { type_: Box<str> },
     TypedDictArgumentNameOverlapWithUnpack { names: Box<str> },
+    UnpackItemInStarStarMustBeTypedDict,
+    TypedDictSetdefaultWrongDefaultType { got: Box<str>, expected: Box<str> },
 
     OverloadMismatch { name: Box<str>, args: Box<[Box<str>]>, variants: Box<[Box<str>]> },
     OverloadImplementationNotLast,
@@ -373,6 +374,7 @@ impl IssueType {
             TypedDictMissingKeys { .. }
             | TypedDictIncompatibleType { .. }
             | TypedDictKeySetItemIncompatibleType { .. }
+            | TypedDictSetdefaultWrongDefaultType { .. }
             | TypedDictHasNoKeyForGet { .. } => "typeddict-item",
             TypedDictExtraKey { .. } | TypedDictHasNoKey { .. } => "typeddict-unknown-key",
 
@@ -942,8 +944,6 @@ impl<'db> Diagnostic<'db> {
             VariadicUnpackMustBeTupleLike { actual } => format!(
                 r#""{actual}" cannot be unpacked (must be tuple or TypeVarTuple)"#
             ),
-            UnpackItemInStarStarMustBeTypedDict =>
-                "Unpack item in ** argument must be a TypedDict".to_string(),
 
             InvalidAssertType { actual, wanted } => format!(
                 r#"Expression is of type "{actual}", not "{wanted}""#
@@ -1156,6 +1156,11 @@ impl<'db> Diagnostic<'db> {
             ),
             TypedDictArgumentNameOverlapWithUnpack { names } => format!(
                 r#"Overlap between argument names and ** TypedDict items: {names}"#
+            ),
+            UnpackItemInStarStarMustBeTypedDict =>
+                "Unpack item in ** argument must be a TypedDict".to_string(),
+            TypedDictSetdefaultWrongDefaultType { got, expected } => format!(
+                r#"Argument 2 to "setdefault" of "TypedDict" has incompatible type "{got}"; expected "{expected}""#,
             ),
 
             OverloadImplementationNotLast =>
