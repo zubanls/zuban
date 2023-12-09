@@ -457,6 +457,39 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
+    pub fn run_on_str_literals(
+        &self,
+        i_s: &InferenceState,
+        callable: impl Fn(&str) -> Option<Inferred>,
+    ) -> Option<Inferred> {
+        let infer = |i_s: &InferenceState, literal: DbLiteral| {
+            if !matches!(literal.kind, LiteralKind::String(_)) {
+                return None;
+            }
+            let LiteralValue::String(s) = literal.value(i_s.db) else {
+                unreachable!();
+            };
+            callable(s)
+        };
+        match self.maybe_literal(i_s.db) {
+            UnionValue::Single(literal) => infer(i_s, literal),
+            UnionValue::Multiple(mut literals) => literals
+                .next()
+                .and_then(|l| infer(i_s, l))
+                .and_then(|mut inferred| {
+                    for literal in literals {
+                        if let Some(new_inf) = infer(i_s, literal) {
+                            inferred = inferred.simplified_union(i_s, new_inf);
+                        } else {
+                            return None;
+                        }
+                    }
+                    Some(inferred)
+                }),
+            UnionValue::Any => None,
+        }
+    }
+
     pub fn maybe_str(&self, db: &'db Database) -> Option<PythonString<'db>> {
         if let InferredState::Saved(link) = self.state {
             let node_ref = NodeRef::from_link(db, link);

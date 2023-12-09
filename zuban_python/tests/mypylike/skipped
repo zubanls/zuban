@@ -433,7 +433,6 @@ testTypedDictAsStarStarAndDictAsStarStar
 testTypedDictNonMappingMethods
 # TypedDict .get() special case
 testLiteralIntelligentIndexingTypedDictUnions
-testLiteralIntelligentIndexingMultiTypedDict
 # generics
 testGenericTypedDictInference
 # Nested typed dict formatting

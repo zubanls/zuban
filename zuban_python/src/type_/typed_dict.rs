@@ -620,20 +620,19 @@ fn typed_dict_get_or_pop_internal<'db>(
     if iterator.next().is_some() {
         return None;
     }
-    let infer_default = |context| match &second_arg {
+    let infer_default = |context: &mut _| match &second_arg {
         Some(second) => match &second.kind {
             ArgumentKind::Positional { .. } | ArgumentKind::Keyword { key: "default", .. } => {
-                Some(second.infer(i_s, context).as_type(i_s))
+                Some(second.infer(i_s, context))
             }
             _ => return None,
         },
-        None => Some(Type::None),
+        None => Some(Inferred::new_none()),
     };
 
     let inferred_name = first_arg.maybe_positional_arg(i_s, &mut ResultContext::Unknown)?;
-    Some(Inferred::from_type(
-        if let Some(name) = inferred_name.maybe_string_literal(i_s) {
-            let key = name.as_str(i_s.db);
+    let maybe_had_literals = inferred_name.run_on_str_literals(i_s, |key| {
+        Some(Inferred::from_type({
             if let Some(member) = td.find_member(i_s.db, key) {
                 if is_pop && member.required {
                     args.as_node_ref().add_issue(
@@ -644,13 +643,7 @@ fn typed_dict_get_or_pop_internal<'db>(
                         },
                     )
                 }
-                let t = &member.type_;
-                let default = infer_default(&mut ResultContext::Known(&t))?;
-                if is_pop && second_arg.is_none() {
-                    t.clone()
-                } else {
-                    t.simplified_union(i_s, &default)
-                }
+                member.type_.clone()
             } else {
                 if is_pop {
                     args.as_node_ref().add_issue(
@@ -661,18 +654,28 @@ fn typed_dict_get_or_pop_internal<'db>(
                         },
                     );
                 }
-                infer_default(&mut ResultContext::Unknown)?;
                 i_s.db.python_state.object_type()
             }
+        }))
+    });
+
+    if let Some(maybe_had_literals) = maybe_had_literals {
+        let default = infer_default(&mut ResultContext::Known(
+            &maybe_had_literals.as_cow_type(i_s),
+        ))?;
+        if is_pop && second_arg.is_none() {
+            Some(maybe_had_literals)
         } else {
-            if is_pop {
-                args.as_node_ref()
-                    .add_issue(i_s, IssueType::TypedDictKeysMustBeStringLiteral);
-            }
-            infer_default(&mut ResultContext::Unknown)?;
-            i_s.db.python_state.object_type()
-        },
-    ))
+            Some(maybe_had_literals.simplified_union(i_s, default))
+        }
+    } else {
+        if is_pop {
+            args.as_node_ref()
+                .add_issue(i_s, IssueType::TypedDictKeysMustBeStringLiteral);
+        }
+        infer_default(&mut ResultContext::Unknown)?;
+        Some(Inferred::from_type(i_s.db.python_state.object_type()))
+    }
 }
 
 fn typed_dict_pop_internal<'db>(
@@ -821,34 +824,7 @@ fn typed_dict_delitem_internal<'db>(
     td: &TypedDict,
     args: &dyn Arguments<'db>,
 ) -> Option<Inferred> {
-    let inf_key = args.maybe_single_positional_arg(i_s, &mut ResultContext::Unknown)?;
-
-    if let Some(key) = inf_key.maybe_string_literal(i_s) {
-        let key = key.as_str(i_s.db);
-        if let Some(member) = td.find_member(i_s.db, key) {
-            if member.required {
-                args.as_node_ref().add_issue(
-                    i_s,
-                    IssueType::TypedDictKeyCannotBeDeleted {
-                        typed_dict: td.format(&FormatData::new_short(i_s.db)).into(),
-                        key: key.into(),
-                    },
-                );
-            }
-        } else {
-            args.as_node_ref().add_issue(
-                i_s,
-                IssueType::TypedDictHasNoKey {
-                    typed_dict: td.format(&FormatData::new_short(i_s.db)).into(),
-                    key: key.into(),
-                },
-            );
-        }
-    } else {
-        args.as_node_ref()
-            .add_issue(i_s, IssueType::TypedDictKeysMustBeStringLiteral);
-    }
-    Some(Inferred::from_type(Type::None))
+    typed_dict_get_or_pop_internal(i_s, td, args, true).map(|_| Inferred::new_none())
 }
 
 fn typed_dict_update<'db>(
