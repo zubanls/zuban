@@ -605,13 +605,22 @@ fn typed_dict_get_internal<'db>(
     td: &TypedDict,
     args: &dyn Arguments<'db>,
 ) -> Option<Inferred> {
+    typed_dict_get_or_pop_internal(i_s, td, args, false)
+}
+
+fn typed_dict_get_or_pop_internal<'db>(
+    i_s: &InferenceState<'db, '_>,
+    td: &TypedDict,
+    args: &dyn Arguments<'db>,
+    is_pop: bool,
+) -> Option<Inferred> {
     let mut iterator = args.iter();
     let first_arg = iterator.next()?;
     let second_arg = iterator.next();
     if iterator.next().is_some() {
         return None;
     }
-    let infer_default = |context| match second_arg {
+    let infer_default = |context| match &second_arg {
         Some(second) => match &second.kind {
             ArgumentKind::Positional { .. } | ArgumentKind::Keyword { key: "default", .. } => {
                 Some(second.infer(i_s, context).as_type(i_s))
@@ -624,19 +633,75 @@ fn typed_dict_get_internal<'db>(
     let inferred_name = first_arg.maybe_positional_arg(i_s, &mut ResultContext::Unknown)?;
     Some(Inferred::from_type(
         if let Some(name) = inferred_name.maybe_string_literal(i_s) {
-            if let Some(member) = td.find_member(i_s.db, name.as_str(i_s.db)) {
+            let key = name.as_str(i_s.db);
+            if let Some(member) = td.find_member(i_s.db, key) {
+                if is_pop && member.required {
+                    args.as_node_ref().add_issue(
+                        i_s,
+                        IssueType::TypedDictKeyCannotBeDeleted {
+                            typed_dict: td.format(&FormatData::new_short(i_s.db)).into(),
+                            key: key.into(),
+                        },
+                    )
+                }
                 let t = &member.type_;
                 let default = infer_default(&mut ResultContext::Known(&t))?;
-                t.simplified_union(i_s, &default)
+                if is_pop && second_arg.is_none() {
+                    t.clone()
+                } else {
+                    t.simplified_union(i_s, &default)
+                }
             } else {
+                if is_pop {
+                    args.as_node_ref().add_issue(
+                        i_s,
+                        IssueType::TypedDictHasNoKey {
+                            typed_dict: td.format(&FormatData::new_short(i_s.db)).into(),
+                            key: key.into(),
+                        },
+                    );
+                }
                 infer_default(&mut ResultContext::Unknown)?;
                 i_s.db.python_state.object_type()
             }
         } else {
+            if is_pop {
+                args.as_node_ref()
+                    .add_issue(i_s, IssueType::TypedDictKeysMustBeStringLiteral);
+            }
             infer_default(&mut ResultContext::Unknown)?;
             i_s.db.python_state.object_type()
         },
     ))
+}
+
+fn typed_dict_pop_internal<'db>(
+    i_s: &InferenceState<'db, '_>,
+    td: &TypedDict,
+    args: &dyn Arguments<'db>,
+) -> Option<Inferred> {
+    typed_dict_get_or_pop_internal(i_s, td, args, true)
+}
+
+pub fn typed_dict_pop<'db>(
+    i_s: &InferenceState<'db, '_>,
+    args: &dyn Arguments<'db>,
+    result_context: &mut ResultContext,
+    on_type_error: OnTypeError<'db, '_>,
+    bound: Option<&Type>,
+) -> Inferred {
+    let Type::TypedDict(td) = bound.unwrap() else {
+        unreachable!();
+    };
+    typed_dict_method_with_fallback(
+        i_s,
+        args,
+        result_context,
+        on_type_error,
+        td,
+        "pop",
+        typed_dict_pop_internal,
+    )
 }
 
 fn typed_dict_method_with_fallback<'db>(
@@ -872,7 +937,8 @@ pub fn lookup_on_typed_dict(
 ) -> LookupResult {
     let bound = || Rc::new(Type::TypedDict(typed_dict.clone()));
     LookupResult::UnknownName(Inferred::from_type(Type::CustomBehavior(match name {
-        "get" | "pop" | "setdefault" => CustomBehavior::new_method(typed_dict_get, Some(bound())),
+        "get" | "setdefault" => CustomBehavior::new_method(typed_dict_get, Some(bound())),
+        "pop" => CustomBehavior::new_method(typed_dict_pop, Some(bound())),
         "__setitem__" => CustomBehavior::new_method(typed_dict_setitem, Some(bound())),
         "__delitem__" => CustomBehavior::new_method(typed_dict_delitem, Some(bound())),
         "update" => CustomBehavior::new_method(typed_dict_update, Some(bound())),

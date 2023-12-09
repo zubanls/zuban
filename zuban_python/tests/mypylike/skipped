@@ -433,10 +433,8 @@ testCanConvertTypedDictToAnySuperclassOfMapping
 testTypedDictMappingMethods
 testTypedDictAsStarStarArgCalleeKwargs
 testTypedDictAsStarStarAndDictAsStarStar
-testTypedDictPopMethod
 testTypedDictNonMappingMethods
 # TypedDict .get() special case
-testLiteralIntelligentIndexingTypedDict
 testLiteralIntelligentIndexingTypedDictUnions
 testLiteralIntelligentIndexingMultiTypedDict
 # generics
