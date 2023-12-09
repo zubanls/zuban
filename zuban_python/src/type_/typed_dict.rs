@@ -392,15 +392,16 @@ impl TypedDictMemberGatherer {
     pub fn merge(&mut self, i_s: &InferenceState, node_ref: NodeRef, slice: &[TypedDictMember]) {
         for to_add in slice.iter() {
             let key = to_add.name.as_str(i_s.db);
-            if self
+            if let Some(current) = self
                 .members
                 .iter_mut()
-                .any(|m| m.name.as_str(i_s.db) == key)
+                .find(|m| m.name.as_str(i_s.db) == key)
             {
                 node_ref.add_issue(
                     i_s,
                     IssueType::TypedDictOverwritingKeyWhileMerging { key: key.into() },
                 );
+                *current = to_add.clone(); // Mypy prioritizes this...
             } else {
                 self.members.push(to_add.clone());
             }
