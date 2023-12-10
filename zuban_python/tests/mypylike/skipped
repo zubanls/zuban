@@ -426,6 +426,7 @@ testTypedDictWithSimpleProtocolInference
 # __iter__ protocol mismatches
 testCachedBadProtocolNote
 testCanConvertTypedDictToAnySuperclassOfMapping
+testJoinOfTypedDictWithCompatibleMappingSupertypeIsSupertype
 # Lookups
 testTypedDictMappingMethods
 testTypedDictAsStarStarArgCalleeKwargs
@@ -442,7 +443,6 @@ testTypedDictFlexibleUpdateUnionStrict
 testParamSpecConcatenateNamedArgs
 testParamSpecPrefixSubtypingInvalidStrict
 # Anonymous TypedDicts for join
-testJoinOfTypedDictWithCompatibleMappingSupertypeIsSupertype
 testCannotGetItemOfAnonymousTypedDictWithInvalidStringLiteralKey
 # unions
 testTypedDictChainedGetWithEmptyDictDefault
