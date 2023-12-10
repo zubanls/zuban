@@ -3,8 +3,8 @@ use std::{cell::OnceCell, rc::Rc};
 use parsa_python_ast::{AtomContent, DictElement};
 
 use super::{
-    replace::ReplaceTypeVarLike, utils::method_with_fallback, CustomBehavior, FormatStyle,
-    GenericsList, ReplaceSelf, StringSlice, Type, TypeVarLikes,
+    replace::ReplaceTypeVarLike, utils::method_with_fallback, AnyCause, CustomBehavior,
+    FormatStyle, GenericsList, ReplaceSelf, StringSlice, Type, TypeVarLikes,
 };
 use crate::{
     arguments::{ArgumentKind, Arguments},
@@ -726,8 +726,10 @@ fn typed_dict_get_or_pop_internal<'db>(
                             key: key.into(),
                         },
                     );
+                    Type::Any(AnyCause::FromError)
+                } else {
+                    i_s.db.python_state.object_type()
                 }
-                i_s.db.python_state.object_type()
             }
         }))
     });

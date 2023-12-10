@@ -446,7 +446,6 @@ testJoinOfTypedDictWithCompatibleMappingSupertypeIsSupertype
 testCannotGetItemOfAnonymousTypedDictWithInvalidStringLiteralKey
 # unions
 testTypedDictChainedGetWithEmptyDictDefault
-testPluginUnionsOfTypedDictsNonTotal
 # "Type of TypedDict is ambiguous, none of ("A", "B") matches cleanly"
 testUnionOfEquivalentTypedDictsDistinct
 testUnionOfEquivalentTypedDictsNested
