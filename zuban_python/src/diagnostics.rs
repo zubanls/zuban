@@ -162,6 +162,7 @@ pub(crate) enum IssueType {
 
     InvalidAssertType { actual: Box<str>, wanted: Box<str> },
 
+
     SuperUsedOutsideClass,
     SuperWithSingleArgumentNotSupported,
     SuperVarargsNotSupported,
@@ -190,6 +191,7 @@ pub(crate) enum IssueType {
     InvalidSpecialMethodSignature { type_: Box<str>, special_method: &'static str },
     GetattributeInvalidAtModuleLevel,
     InvalidSlotsDefinition { actual: Box<str> },
+    ProtocolMembersMustHaveExplicitlyDeclaredTypes,
 
     BaseExceptionExpected,
     BaseExceptionExpectedForRaise,
@@ -1051,6 +1053,8 @@ impl<'db> Diagnostic<'db> {
             InvalidSlotsDefinition { actual } => format!(
                 r#"Invalid type for "__slots__" (actual type "{actual}", expected type "str | Iterable[str]")"#
             ),
+            ProtocolMembersMustHaveExplicitlyDeclaredTypes =>
+                "All protocol members must have explicitly declared types".to_string(),
 
             BaseExceptionExpected =>
                 "Exception type must be derived from BaseException (or be a \

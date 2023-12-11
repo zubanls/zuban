@@ -164,6 +164,32 @@ impl<'db> Inference<'db, '_, '_> {
         for simple_stmt in simple_stmts.iter() {
             match simple_stmt.unpack() {
                 SimpleStmtContent::Assignment(assignment) => {
+                    // Check if protocol assignment is invalid
+                    if class.is_some_and(|cls| {
+                        cls.is_protocol(self.i_s.db)
+                            && match assignment.unpack() {
+                                AssignmentContent::WithAnnotation(..) => false,
+                                AssignmentContent::Normal(mut targets, _) => {
+                                    let first_target = targets.next().unwrap();
+                                    match first_target {
+                                        Target::Name(n)
+                                            if targets.next().is_none()
+                                                && n.as_code() == "__slots__" =>
+                                        {
+                                            false
+                                        }
+                                        _ => self.check_for_type_comment(assignment).is_none(),
+                                    }
+                                }
+                                AssignmentContent::AugAssign(..) => true,
+                            }
+                    }) {
+                        NodeRef::new(self.file, assignment.index()).add_issue(
+                            self.i_s,
+                            IssueType::ProtocolMembersMustHaveExplicitlyDeclaredTypes,
+                        );
+                    }
+
                     self.cache_assignment_nodes(assignment);
                 }
                 SimpleStmtContent::StarExpressions(star_exprs) => {

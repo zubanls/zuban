@@ -520,8 +520,6 @@ testProtocolVarianceWithCallableAndList
 testProtocolVarianceWithUnusedVariable
 testSubtleBadVarianceInProtocols
 testAutomaticProtocolVariance
-# "All protocol members must have explicitly declared types"
-testImplicitTypesInProtocols
 # "Type aliases are prohibited in protocol bodies"
 testTypeAliasInProtocolBody
 # ... has no attribute "__iter__" (not iterable)
