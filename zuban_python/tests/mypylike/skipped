@@ -522,9 +522,6 @@ testSubtleBadVarianceInProtocols
 testAutomaticProtocolVariance
 # "Type aliases are prohibited in protocol bodies"
 testTypeAliasInProtocolBody
-# ... has no attribute "__iter__" (not iterable)
-testWeAreCarefulWithBuiltinProtocols
-testWeAreCarefullWithBuiltinProtocolsBase
 # "Protocol member PPS.attr expected settable variable, got read-only attribute"
 testFinalAttributeProtocol
 testModuleAsProtocolImplementationFinal
