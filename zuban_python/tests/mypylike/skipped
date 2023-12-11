@@ -497,10 +497,6 @@ testProtocolConcreteUpdateTypeMethodGeneric
 testProtocolUpdateBaseGeneric
 testProtocolConcreteUpdateBaseGeneric
 testProtocolChangeGeneric
-# Namedtuple issues with protocols
-testNamedTupleWithInvalidItems
-testNamedTupleWithInvalidItems2
-testNamedTupleNoBytes
 # "Cannot instantiate protocol class "P""
 testInstantiationProtocolInTypeForAliases
 testInstantiationProtocolInTypeForFunctions
