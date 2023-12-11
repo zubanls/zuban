@@ -106,6 +106,7 @@ pub(crate) enum IssueType {
     NewTypeInvalidType,
     NewTypeMustBeSubclassable { got: Box<str> },
     NewTypeCannotUseProtocols,
+    BasesOfProtocolMustBeProtocol,
     OptionalMustHaveOneArgument,
     TypeCannotContainAnotherType,
     InvalidRecursiveTypeAliasUnionOfItself { target: &'static str },
@@ -828,11 +829,12 @@ impl<'db> Diagnostic<'db> {
             InvalidParamSpecGenerics{got} => format!(
                 "Can only replace ParamSpec with a parameter types list or another ParamSpec, got \"{got}\""
             ),
+            NewTypeInvalidType => "Argument 2 to NewType(...) must be a valid type".to_string(),
             NewTypeMustBeSubclassable{got} => format!(
                 "Argument 2 to NewType(...) must be subclassable (got \"{got}\")"
             ),
             NewTypeCannotUseProtocols => "NewType cannot be used with protocol classes".to_string(),
-            NewTypeInvalidType => "Argument 2 to NewType(...) must be a valid type".to_string(),
+            BasesOfProtocolMustBeProtocol => "All bases of a protocol must be protocols".to_string(),
             OptionalMustHaveOneArgument =>
                 "Optional[...] must have exactly one type argument".to_string(),
             TypeCannotContainAnotherType =>

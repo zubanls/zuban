@@ -515,8 +515,6 @@ testSelfTypesWithProtocolsBehaveAsWithNominal
 testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
 # "Protocol members cannot be defined via assignment to self"
 testProhibitSelfDefinitionInProtocols
-# "All bases of a protocol must be protocols"
-testProtocolsCannotInheritFromNormal
 # "Invariant type variable "T" used in protocol where covariant one is expected"
 testProtocolVarianceWithCallableAndList
 testProtocolVarianceWithUnusedVariable

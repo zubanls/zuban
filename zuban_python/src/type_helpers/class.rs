@@ -816,11 +816,25 @@ impl<'db: 'a, 'a> Class<'a> {
                 }
             }
         }
-        if class_kind == ClassKind::TypedDict {
-            if bases.iter().any(|t| !matches!(t, Type::TypedDict(_))) {
-                NodeRef::new(self.node_ref.file, arguments.unwrap().index())
-                    .add_issue(i_s, IssueType::TypedDictBasesMustBeTypedDicts);
+        match class_kind {
+            ClassKind::TypedDict => {
+                if bases.iter().any(|t| !matches!(t, Type::TypedDict(_))) {
+                    NodeRef::new(self.node_ref.file, arguments.unwrap().index())
+                        .add_issue(i_s, IssueType::TypedDictBasesMustBeTypedDicts);
+                }
             }
+            ClassKind::Protocol => {
+                if bases.iter().any(|t| {
+                    t.maybe_class(i_s.db).map_or(true, |cls| {
+                        !cls.is_protocol(i_s.db)
+                            && cls.node_ref != i_s.db.python_state.object_node_ref()
+                    })
+                }) {
+                    NodeRef::new(self.node_ref.file, arguments.unwrap().index())
+                        .add_issue(i_s, IssueType::BasesOfProtocolMustBeProtocol);
+                }
+            }
+            _ => (),
         }
         if is_new_named_tuple && bases.len() > 1 {
             NodeRef::new(self.node_ref.file, arguments.unwrap().index())
