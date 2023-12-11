@@ -963,13 +963,20 @@ impl<'db: 'a, 'a> Class<'a> {
             for (name, _) in unsafe { symbol_table.iter_on_finished_table() } {
                 // It is possible to match a Callable against a Protocol that only implements
                 // __call__.
-                if name == "__call__" && !matches!(other, Type::Class(_)) {
-                    let inf1 = Instance::new(c, None)
-                        .type_lookup(i_s, hack, name)
-                        .into_inferred();
-                    let t1 = inf1.as_cow_type(i_s);
-                    if t1.matches(i_s, matcher, other, variance).bool() {
-                        continue;
+                let is_call = name == "__call__";
+                if is_call {
+                    // __call__ matching doesn't ignore param names, matching all other methods
+                    // does.
+                    matcher.ignore_positional_param_names = false;
+                    if !matches!(other, Type::Class(_)) {
+                        let inf1 = Instance::new(c, None)
+                            .type_lookup(i_s, hack, name)
+                            .into_inferred();
+                        let t1 = inf1.as_cow_type(i_s);
+                        if t1.matches(i_s, matcher, other, variance).bool() {
+                            matcher.ignore_positional_param_names = true;
+                            continue;
+                        }
                     }
                 }
 
@@ -1036,6 +1043,9 @@ impl<'db: 'a, 'a> Class<'a> {
                     }
                 } else {
                     missing_members.push(name);
+                }
+                if is_call {
+                    matcher.ignore_positional_param_names = true;
                 }
             }
         }
