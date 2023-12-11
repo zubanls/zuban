@@ -497,9 +497,6 @@ testProtocolConcreteUpdateTypeMethodGeneric
 testProtocolUpdateBaseGeneric
 testProtocolConcreteUpdateBaseGeneric
 testProtocolChangeGeneric
-# "Cannot instantiate protocol class "P""
-testInstantiationProtocolInTypeForAliases
-testInstantiationProtocolInTypeForFunctions
 # Protocol classmethod
 testProtocolClassObjectClassMethod
 testProtocolClassObjectGenericClassMethod

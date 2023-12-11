@@ -153,6 +153,7 @@ pub(crate) enum IssueType {
     AmbigousClassVariableAccess,
     SlotsConflictWithClassVariableAccess { name: Box<str> },
     CannotInstantiateProtocol { name: Box<str> },
+    OnlyConcreteClassAllowedWhereTypeExpected { type_: Box<str> },
     UnpackRequiresExactlyOneArgument,
     UnpackOnlyValidInVariadicPosition,
     VariadicUnpackMustBeTupleLike { actual: Box<str> },
@@ -937,6 +938,9 @@ impl<'db> Diagnostic<'db> {
             ),
             CannotInstantiateProtocol{name} => format!(
                 "Cannot instantiate protocol class \"{name}\""
+            ),
+            OnlyConcreteClassAllowedWhereTypeExpected { type_ } => format!(
+                r#"Only concrete class can be given where "{type_}" is expected"#
             ),
             UnpackRequiresExactlyOneArgument =>
                 "Unpack[...] requires exactly one type argument".to_string(),
