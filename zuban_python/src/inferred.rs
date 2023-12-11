@@ -1623,7 +1623,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     .db
                                     .python_state
                                     .tuple_class_with_generics_to_be_defined()
-                                    .execute(i_s, args, result_context, on_type_error)
+                                    .execute(i_s, args, result_context, on_type_error, true)
                             }
                             Specific::TypingCast => {
                                 return TypingCast().execute(
@@ -1689,7 +1689,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             }
                             ComplexPoint::Class(cls) => {
                                 return Class::new(node_ref, cls, Generics::NotDefinedYet, None)
-                                    .execute(i_s, args, result_context, on_type_error)
+                                    .execute(i_s, args, result_context, on_type_error, false)
                             }
                             ComplexPoint::TypeAlias(alias) => {
                                 if alias.application_allowed() {

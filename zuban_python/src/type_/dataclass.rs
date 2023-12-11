@@ -658,7 +658,7 @@ pub fn dataclass_initialize<'db>(
     let class_generics =
         if !dataclass.options.init || class.lookup_symbol(i_s, "__init__").is_some() {
             // If the class has an __init__ method defined, the class itself wins.
-            class.execute(i_s, args, result_context, on_type_error);
+            class.execute(i_s, args, result_context, on_type_error, true);
             return Inferred::from_type(Type::Dataclass(dataclass.clone()));
         } else {
             calculate_callable_type_vars_and_return(

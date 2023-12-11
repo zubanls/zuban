@@ -127,12 +127,15 @@ impl<'db: 'a, 'a> Class<'a> {
         args: &dyn Arguments<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
+        from_type_type: bool, // Errors are different for Cls() vs. Type[Cls] that is instantiated
     ) -> Option<ClassGenerics> {
         let Some(inf) = __init__.into_maybe_inferred() else {
             if self.is_protocol(i_s.db) {
-                args.as_node_ref().add_issue(i_s, IssueType::CannotInstantiateProtocol {
-                    name: self.name().into()
-                })
+                if !from_type_type {
+                    args.as_node_ref().add_issue(i_s, IssueType::CannotInstantiateProtocol {
+                        name: self.name().into()
+                    })
+                }
             } else {
                 debug_assert!(self.incomplete_mro(i_s.db));
             }
@@ -1600,6 +1603,7 @@ impl<'db: 'a, 'a> Class<'a> {
         args: &dyn Arguments<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
+        from_type_type: bool,
     ) -> Inferred {
         if self.node_ref == original_i_s.db.python_state.dict_node_ref() {
             // This is a special case where we intercept the call to dict(..) when used with
@@ -1613,7 +1617,13 @@ impl<'db: 'a, 'a> Class<'a> {
                 return inf;
             }
         }
-        match self.execute_and_return_generics(original_i_s, args, result_context, on_type_error) {
+        match self.execute_and_return_generics(
+            original_i_s,
+            args,
+            result_context,
+            on_type_error,
+            from_type_type,
+        ) {
             ClassExecutionResult::ClassGenerics(generics) => {
                 let result = Inferred::from_type(Type::Class(GenericClass {
                     link: self.node_ref.as_link(),
@@ -1632,6 +1642,7 @@ impl<'db: 'a, 'a> Class<'a> {
         args: &dyn Arguments<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
+        from_type_type: bool,
     ) -> ClassExecutionResult {
         let i_s = &original_i_s.with_class_context(self);
         let had_type_error = Cell::new(false);
@@ -1701,6 +1712,7 @@ impl<'db: 'a, 'a> Class<'a> {
             args,
             result_context,
             on_type_error,
+            from_type_type,
         ) {
             Some(generics) => ClassExecutionResult::ClassGenerics(generics),
             None => ClassExecutionResult::Inferred(Inferred::new_any_from_error()),

@@ -617,7 +617,7 @@ pub fn execute_type_of_type<'db>(
         }
         Type::Class(c) => c
             .class(i_s.db)
-            .execute(i_s, args, result_context, on_type_error),
+            .execute(i_s, args, result_context, on_type_error, true),
         Type::TypeVar(t) => match &t.type_var.kind {
             TypeVarKind::Bound(bound) => {
                 execute_type_of_type(i_s, args, result_context, on_type_error, bound);
@@ -641,7 +641,7 @@ pub fn execute_type_of_type<'db>(
         Type::Self_ => {
             i_s.current_class()
                 .unwrap()
-                .execute(i_s, args, result_context, on_type_error);
+                .execute(i_s, args, result_context, on_type_error, true);
             Inferred::from_type(Type::Self_)
         }
         Type::Any(cause) => Inferred::new_any(*cause),

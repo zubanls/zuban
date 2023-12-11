@@ -500,7 +500,6 @@ testProtocolChangeGeneric
 # "Cannot instantiate protocol class "P""
 testInstantiationProtocolInTypeForAliases
 testInstantiationProtocolInTypeForFunctions
-testSelfTypeProtocolMetaclassMatch
 # Protocol classmethod
 testProtocolClassObjectClassMethod
 testProtocolClassObjectGenericClassMethod

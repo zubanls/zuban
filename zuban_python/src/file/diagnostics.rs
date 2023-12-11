@@ -1375,6 +1375,7 @@ fn valid_raise_type(i_s: &InferenceState, from: NodeRef, t: &Type, allow_none: b
                             "Type errors should not be possible, because there are no params"
                         )
                     }),
+                    false,
                 );
                 check(cls)
             }
