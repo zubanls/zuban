@@ -948,6 +948,9 @@ impl<'db: 'a, 'a> Class<'a> {
         let mut notes = vec![];
         let mut had_conflict_note = false;
 
+        let ignore_positional_param_names_old = matcher.ignore_positional_param_names;
+        matcher.ignore_positional_param_names = true;
+
         let mut protocol_member_count = 0;
         debug!("TODO this from is completely wrong and should never be used.");
         let hack = self.node_ref;
@@ -1069,6 +1072,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 notes.push(format!("    {name}").into());
             }
         }
+        matcher.ignore_positional_param_names = ignore_positional_param_names_old;
         if notes.is_empty() && missing_members_empty {
             Match::new_true()
         } else {
@@ -2256,8 +2260,12 @@ fn add_protocol_mismatch(
 ) {
     match (full1, full2) {
         (Type::Callable(c1), Type::Callable(c2)) => {
-            let s1 = c1.format_pretty(&FormatData::new_short(i_s.db));
-            let s2 = c2.format_pretty(&FormatData::new_short(i_s.db));
+            let avoid_self_annotation = !c1.kind.had_first_self_or_class_annotation()
+                && !c1.kind.had_first_self_or_class_annotation();
+            let s1 =
+                c1.format_pretty_detailed(&FormatData::new_short(i_s.db), avoid_self_annotation);
+            let s2 =
+                c2.format_pretty_detailed(&FormatData::new_short(i_s.db), avoid_self_annotation);
             notes.push("    Expected:".into());
             notes.push(format!("        {s1}").into());
             notes.push("    Got:".into());

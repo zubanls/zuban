@@ -46,8 +46,8 @@ pub struct Matcher<'a> {
     class: Option<&'a Class<'a>>,
     func_or_callable: Option<FunctionOrCallable<'a>>,
     ignore_promotions: bool,
-    ignore_positional_param_names: bool, // Matches `ignore_pos_arg_names` in Mypy
-    match_reverse: bool,                 // For contravariance subtypes
+    pub ignore_positional_param_names: bool, // Matches `ignore_pos_arg_names` in Mypy
+    match_reverse: bool,                     // For contravariance subtypes
 }
 
 impl<'a> Matcher<'a> {

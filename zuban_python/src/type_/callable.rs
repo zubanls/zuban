@@ -544,6 +544,15 @@ impl CallableContent {
     }
 
     pub fn format_pretty(&self, format_data: &FormatData) -> Box<str> {
+        let avoid_self_annotation = !self.kind.had_first_self_or_class_annotation();
+        self.format_pretty_detailed(format_data, avoid_self_annotation)
+    }
+
+    pub fn format_pretty_detailed(
+        &self,
+        format_data: &FormatData,
+        avoid_self_annotation: bool,
+    ) -> Box<str> {
         let db = format_data.db;
         let not_reveal_type = format_data.style != FormatStyle::MypyRevealType;
         let name = self
@@ -553,7 +562,6 @@ impl CallableContent {
             .unwrap_or("");
         match &self.params {
             CallableParams::Simple(params) => {
-                let avoid_self_annotation = !self.kind.had_first_self_or_class_annotation();
                 let mut params = format_callable_params(
                     format_data,
                     None,
