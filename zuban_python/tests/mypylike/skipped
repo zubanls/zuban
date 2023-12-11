@@ -509,8 +509,6 @@ testStaticAndClassMethodsInProtocols
 testBuiltinClassMethod
 # "Can only assign concrete classes to a variable of type "Type[P]""
 testInstantiationProtocolInTypeForVariables
-# "NewType cannot be used with protocol classes"
-testCannotUseNewTypeWithProtocols
 # Recursion error
 testSelfTypeProtocolClassmethodMatch
 testSelfTypesWithProtocolsBehaveAsWithNominal

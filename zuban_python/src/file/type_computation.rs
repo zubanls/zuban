@@ -3682,6 +3682,11 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                         },
                     );
                 }
+                if t.maybe_class(self.i_s.db)
+                    .is_some_and(|cls| cls.is_protocol(self.i_s.db))
+                {
+                    node_ref.add_issue(self.i_s, IssueType::NewTypeCannotUseProtocols);
+                }
                 t
             }
         }
