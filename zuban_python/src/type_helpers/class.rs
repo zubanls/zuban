@@ -2298,10 +2298,16 @@ fn add_protocol_mismatch(
         (Type::Callable(c1), Type::Callable(c2)) => {
             let avoid_self_annotation = !c1.kind.had_first_self_or_class_annotation()
                 && !c1.kind.had_first_self_or_class_annotation();
-            let s1 =
-                c1.format_pretty_detailed(&FormatData::new_short(i_s.db), avoid_self_annotation);
-            let s2 =
-                c2.format_pretty_detailed(&FormatData::new_short(i_s.db), avoid_self_annotation);
+            let s1 = c1.format_pretty_detailed(
+                &FormatData::new_short(i_s.db),
+                avoid_self_annotation,
+                false,
+            );
+            let s2 = c2.format_pretty_detailed(
+                &FormatData::new_short(i_s.db),
+                avoid_self_annotation,
+                false,
+            );
             notes.push("    Expected:".into());
             notes.push(format!("        {s1}").into());
             notes.push("    Got:".into());

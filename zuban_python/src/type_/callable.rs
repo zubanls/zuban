@@ -545,13 +545,14 @@ impl CallableContent {
 
     pub fn format_pretty(&self, format_data: &FormatData) -> Box<str> {
         let avoid_self_annotation = !self.kind.had_first_self_or_class_annotation();
-        self.format_pretty_detailed(format_data, avoid_self_annotation)
+        self.format_pretty_detailed(format_data, avoid_self_annotation, true)
     }
 
     pub fn format_pretty_detailed(
         &self,
         format_data: &FormatData,
         avoid_self_annotation: bool,
+        add_classmethod_param: bool,
     ) -> Box<str> {
         let db = format_data.db;
         let not_reveal_type = format_data.style != FormatStyle::MypyRevealType;
@@ -569,7 +570,10 @@ impl CallableContent {
                     params.iter(),
                     format_data.style != FormatStyle::MypyRevealType,
                 );
-                if matches!(self.kind, FunctionKind::Classmethod { .. }) && not_reveal_type {
+                if add_classmethod_param
+                    && matches!(self.kind, FunctionKind::Classmethod { .. })
+                    && not_reveal_type
+                {
                     if params.is_empty() {
                         params = "cls".to_string();
                     } else {
