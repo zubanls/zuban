@@ -74,6 +74,16 @@ impl Type {
                 }
             }
         }
+        if let Some(second) = other.maybe_class(i_s.db) {
+            if second.is_protocol(i_s.db) {
+                if second
+                    .check_protocol_match(i_s, &mut Matcher::default(), self, Variance::Invariant)
+                    .bool()
+                {
+                    return other.clone();
+                }
+            }
+        }
         // Needed for protocols, because they don't inherit from object.
         i_s.db.python_state.object_type()
     }

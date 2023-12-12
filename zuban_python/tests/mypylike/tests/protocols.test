@@ -84,3 +84,25 @@ def bar(x: Iterable[T]) -> Tuple[T]: ...
 
 x: int = foo(reveal_type([]))  # N: Revealed type is "list[int]"
 y: Tuple[int] = bar(reveal_type([]))  # N: Revealed type is "list[int]"
+
+[case join_protocol_both_sides]
+# Like testJoinProtocolWithProtocol, but with additional tests
+from typing import Protocol
+
+class P(Protocol):
+    attr: int
+class P2(Protocol):
+    attr: int
+    attr2: str
+
+x: P
+y: P2
+
+l0 = [x, x]
+l1 = [y, y]
+l = [x, y]
+k = [y, x]
+reveal_type(l0) # N: Revealed type is "builtins.list[__main__.P]"
+reveal_type(l1) # N: Revealed type is "builtins.list[__main__.P2]"
+reveal_type(l) # N: Revealed type is "builtins.list[__main__.P]"
+reveal_type(k) # N: Revealed type is "builtins.list[__main__.P]"

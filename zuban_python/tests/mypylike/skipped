@@ -255,6 +255,11 @@ testNoCrashOnLambdaGenerator
 # wtf?
 testEllipsisContextForLambda2
 
+# better meet
+testJoinProtocolCallback
+testMeetOfIncompatibleProtocols
+testMeetProtocolCallback
+
 # Nested type vars
 testFunctionInGenericInnerClassTypeVariable-skip
 testConstraintsBetweenConcatenatePrefixes
@@ -562,10 +567,6 @@ protocol_class_object_callable_possible
 testInvalidTypeForKeywordVarArg
 # regressions
 testUnionsOfNormalClassesWithProtocols
-# meet/join protocol
-testJoinProtocolCallback
-testMeetOfIncompatibleProtocols
-testMeetProtocolCallback
 # no class in i_s
 testProtocolsWithIncompatibleOverloads
 testOverloadedMethodsInProtocols
