@@ -500,7 +500,7 @@ impl Type {
             }
             Type::Module(_) => {
                 m = m.or(|| {
-                    self.matches(
+                    self.matches_internal(
                         i_s,
                         matcher,
                         &i_s.db.python_state.module_type().into(),

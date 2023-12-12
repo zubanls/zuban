@@ -568,8 +568,6 @@ protocol_class_object_callable_possible
 testInvalidTypeForKeywordVarArg
 # regressions
 testUnionsOfNormalClassesWithProtocols
-# no class in i_s
-testMatchProtocolAgainstOverloadWithAmbiguity
 # param order ignored?
 testProtocolClassObjectSelfTypeInstanceMethod
 testProtocolTypeTypeSelfTypeInstanceMethod
@@ -579,6 +577,7 @@ testDivmod
 testGenericSubProtocolsExtensionInvariant
 testWeirdRecursiveInferenceForProtocols-skip
 testProtocolWithClassGetItem
+testMatchProtocolAgainstOverloadWithAmbiguity
 # Protocol inference
 testInferenceViaTypeTypeMetaclass
 # Import in Protocol
@@ -592,10 +591,6 @@ testSimpleRuntimeProtocolCheck
 testConcreteClassesInProtocolsIsInstance
 testConcreteClassesUnionInProtocolsIsInstance
 testOnlyMethodProtocolUsableWithIsSubclass
-# __getattr__/__getattribute__ issues with protocols
-testModuleAsProtocolImplementationSerialize
-testModuleAsProtocolImplementation
-testModuleAsProtocolImplementationFine
 # __slots__
 testProtocolSlotsIsNotProtocolMember
 
