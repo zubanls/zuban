@@ -656,14 +656,10 @@ pub fn match_arguments_against_params<
     };
     if args_with_params.too_many_positional_arguments {
         matches = Match::new_false();
-        #[allow(clippy::overly_complex_bool_expr)]
         if should_generate_errors {
-            // TODO remove true and add test
             let mut s = "Too many positional arguments".to_owned();
             s += diagnostic_string(" for ").as_deref().unwrap_or("");
             args_node_ref.add_issue(i_s, IssueType::ArgumentIssue(s.into()));
-        } else {
-            todo!()
         }
     } else if args_with_params.has_unused_arguments() {
         matches = Match::new_false();

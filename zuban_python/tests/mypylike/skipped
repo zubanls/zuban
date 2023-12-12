@@ -570,7 +570,6 @@ testInvalidTypeForKeywordVarArg
 testUnionsOfNormalClassesWithProtocols
 # no class in i_s
 testMatchProtocolAgainstOverloadWithAmbiguity
-testDataclassFieldWithPositionalArguments
 # param order ignored?
 testProtocolClassObjectSelfTypeInstanceMethod
 testProtocolTypeTypeSelfTypeInstanceMethod
