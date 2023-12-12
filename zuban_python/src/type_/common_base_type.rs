@@ -9,7 +9,7 @@ use super::{
 };
 use crate::{
     inference_state::InferenceState,
-    matching::Match,
+    matching::{Match, Matcher},
     type_::CallableLike,
     type_helpers::{Class, TypeOrClass},
 };
@@ -64,7 +64,18 @@ impl Type {
                 }
             }
         }
-        unreachable!("object is always a common base class")
+        if let Some(first) = self.maybe_class(i_s.db) {
+            if first.is_protocol(i_s.db) {
+                if first
+                    .check_protocol_match(i_s, &mut Matcher::default(), other, Variance::Invariant)
+                    .bool()
+                {
+                    return self.clone();
+                }
+            }
+        }
+        // Needed for protocols, because they don't inherit from object.
+        i_s.db.python_state.object_type()
     }
 }
 

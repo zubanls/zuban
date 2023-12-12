@@ -563,9 +563,6 @@ testInvalidTypeForKeywordVarArg
 # regressions
 testUnionsOfNormalClassesWithProtocols
 # meet/join protocol
-testJoinProtocolWithProtocol
-testJoinOfIncompatibleProtocols
-testJoinProtocolWithNormal
 testJoinProtocolCallback
 testMeetOfIncompatibleProtocols
 testMeetProtocolCallback
