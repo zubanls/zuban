@@ -995,6 +995,8 @@ impl<'db: 'a, 'a> Class<'a> {
                             continue;
                         }
                     }
+                } else if name == "__slots__" {
+                    continue;
                 }
 
                 if let Some(l) = other

@@ -591,8 +591,6 @@ testSimpleRuntimeProtocolCheck
 testConcreteClassesInProtocolsIsInstance
 testConcreteClassesUnionInProtocolsIsInstance
 testOnlyMethodProtocolUsableWithIsSubclass
-# __slots__
-testProtocolSlotsIsNotProtocolMember
 
 # TypeVarTuple
 testTypeVarTupleMixed
