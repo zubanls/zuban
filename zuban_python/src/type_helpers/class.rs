@@ -1016,7 +1016,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     let t1 = inf1.as_cow_type(i_s);
                     let t2 = l.as_cow_type(i_s);
                     let m = t1.matches(i_s, matcher, &t2, variance);
-                    if !m.bool() {
+                    if !m.bool() || is_call && !matches!(other, Type::Class(_)) {
                         if !had_conflict_note {
                             had_conflict_note = true;
                             notes.push(
@@ -1055,7 +1055,24 @@ impl<'db: 'a, 'a> Class<'a> {
                                         .as_cow_type(i_s),
                                 ),
                                 None => {
-                                    add_protocol_mismatch(i_s, &mut notes, name, &t1, &t2, &t1, &t2)
+                                    let full_other = match other {
+                                        Type::Type(t) if is_call => {
+                                            t.maybe_class(i_s.db).and_then(|cls| {
+                                                notes.push(format!(r#""{}" has constructor incompatible with "__call__" of "{}""#, cls.name(), self.name()).into());
+                                                cls.find_relevant_constructor(i_s).as_type(i_s, cls)
+                                            })
+                                        }
+                                        _ => None,
+                                    };
+                                    add_protocol_mismatch(
+                                        i_s,
+                                        &mut notes,
+                                        name,
+                                        &t1,
+                                        &t2,
+                                        &t1,
+                                        &full_other.as_ref().unwrap_or(&t2),
+                                    )
                                 }
                             }
                         }
@@ -2428,6 +2445,13 @@ impl NewOrInitConstructor<'_> {
                 }
             })
         }
+    }
+
+    fn as_type(self, i_s: &InferenceState, cls: Class) -> Option<Type> {
+        self.maybe_callable(i_s, cls).map(|x| match x {
+            CallableLike::Callable(c) => Type::Callable(c),
+            CallableLike::Overload(o) => Type::FunctionOverload(o),
+        })
     }
 }
 
