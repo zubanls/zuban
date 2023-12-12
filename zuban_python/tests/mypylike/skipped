@@ -542,8 +542,6 @@ testModuleAsProtocolImplementationClassVar
 testProtocolClassVarSelfType
 testProtocolTypeTypeAttribute
 testProtocolClassObjectAttributeAndCall
-# small protocol formatting issues
-testParamSpecPrefixSubtypingProtocolInvalid
 # Protocol Override inheritance
 testNoneDisablesProtocolSubclassingWithStrictOptional
 # Context inference for protocols
@@ -555,6 +553,9 @@ testModuleAsProtocolRedefinitionImportFrom
 testProtocolIncompatibilityWithManyConflicts
 # ""C" has constructor incompatible with "__call__" of "P""
 testProtocolClassObjectPureCallback
+# small protocol formatting issues
+testParamSpecPrefixSubtypingProtocolInvalid
+testProtocolClassObjectInstanceMethodOverloaded
 # Too much? error output, but otherwise correct
 testSimpleProtocolOneMethodOverride
 testSimpleProtocolTwoMethodsMerge
@@ -568,11 +569,7 @@ testInvalidTypeForKeywordVarArg
 # regressions
 testUnionsOfNormalClassesWithProtocols
 # no class in i_s
-testProtocolsWithIncompatibleOverloads
-testOverloadedMethodsInProtocols
-testProtocolIncompatibilityWithManyOverloads
 testMatchProtocolAgainstOverloadWithAmbiguity
-testProtocolClassObjectInstanceMethodOverloaded
 testDataclassFieldWithPositionalArguments
 # param order ignored?
 testProtocolClassObjectSelfTypeInstanceMethod

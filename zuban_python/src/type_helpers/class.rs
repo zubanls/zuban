@@ -2295,23 +2295,14 @@ fn add_protocol_mismatch(
     full2: &Type,
 ) {
     match (full1, full2) {
-        (Type::Callable(c1), Type::Callable(c2)) => {
-            let avoid_self_annotation = !c1.kind.had_first_self_or_class_annotation()
-                && !c2.kind.had_first_self_or_class_annotation();
-            let s1 = c1.format_pretty_detailed(
-                &FormatData::new_short(i_s.db),
-                avoid_self_annotation,
-                false,
-            );
-            let s2 = c2.format_pretty_detailed(
-                &FormatData::new_short(i_s.db),
-                avoid_self_annotation,
-                false,
-            );
+        (
+            Type::Callable(_) | Type::FunctionOverload(_),
+            Type::Callable(_) | Type::FunctionOverload(_),
+        ) => {
             notes.push("    Expected:".into());
-            notes.push(format!("        {s1}").into());
+            format_callable_like(i_s.db, notes, full1, full2);
             notes.push("    Got:".into());
-            notes.push(format!("        {s2}").into());
+            format_callable_like(i_s.db, notes, full2, full1);
         }
         _ => notes.push(
             format!(
@@ -2321,6 +2312,36 @@ fn add_protocol_mismatch(
             )
             .into(),
         ),
+    }
+}
+
+fn format_callable_like(db: &Database, notes: &mut Vec<Box<str>>, t: &Type, other: &Type) {
+    let other_avoid_self_annotation = match other {
+        Type::Callable(c) => !c.kind.had_first_self_or_class_annotation(),
+        Type::FunctionOverload(o) => !o.kind().had_first_self_or_class_annotation(),
+        _ => unreachable!(),
+    };
+    let prefix = "        ";
+    let format_callable = |c: &CallableContent| {
+        format!(
+            "{prefix}{}",
+            c.format_pretty_detailed(
+                &FormatData::new_short(db),
+                !c.kind.had_first_self_or_class_annotation() && other_avoid_self_annotation,
+                false,
+            )
+        )
+    };
+
+    match t {
+        Type::Callable(c) => notes.push(format_callable(&c).into()),
+        Type::FunctionOverload(o) => {
+            for c in o.iter_functions() {
+                notes.push(format!("{prefix}@overload").into());
+                notes.push(format_callable(&c).into());
+            }
+        }
+        _ => unreachable!(),
     }
 }
 
