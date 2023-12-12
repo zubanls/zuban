@@ -2297,7 +2297,7 @@ fn add_protocol_mismatch(
     match (full1, full2) {
         (Type::Callable(c1), Type::Callable(c2)) => {
             let avoid_self_annotation = !c1.kind.had_first_self_or_class_annotation()
-                && !c1.kind.had_first_self_or_class_annotation();
+                && !c2.kind.had_first_self_or_class_annotation();
             let s1 = c1.format_pretty_detailed(
                 &FormatData::new_short(i_s.db),
                 avoid_self_annotation,
