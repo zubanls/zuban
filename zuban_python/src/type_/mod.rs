@@ -1694,6 +1694,13 @@ impl CallableLike {
                 .all(|c| c.is_typed(skip_first_param)),
         }
     }
+
+    pub fn had_first_self_or_class_annotation(&self) -> bool {
+        match self {
+            Self::Callable(c) => !c.kind.had_first_self_or_class_annotation(),
+            Self::Overload(o) => !o.kind().had_first_self_or_class_annotation(),
+        }
+    }
 }
 
 enum UniqueInUnpackedUnionError {

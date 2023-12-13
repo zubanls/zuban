@@ -2334,12 +2334,14 @@ fn add_protocol_mismatch(
     match (full1, full2) {
         (
             Type::Callable(_) | Type::FunctionOverload(_),
-            Type::Callable(_) | Type::FunctionOverload(_),
+            Type::Callable(_) | Type::FunctionOverload(_) | Type::Type(_),
         ) => {
             notes.push("    Expected:".into());
-            format_callable_like(i_s.db, notes, full1, full2);
+            let c1 = full1.maybe_callable(i_s).unwrap();
+            let c2 = full2.maybe_callable(i_s).unwrap();
+            format_callable_like(i_s.db, notes, &c1, &c2);
             notes.push("    Got:".into());
-            format_callable_like(i_s.db, notes, full2, full1);
+            format_callable_like(i_s.db, notes, &c2, &c1);
         }
         _ => notes.push(
             format!(
@@ -2352,12 +2354,13 @@ fn add_protocol_mismatch(
     }
 }
 
-fn format_callable_like(db: &Database, notes: &mut Vec<Box<str>>, t: &Type, other: &Type) {
-    let other_avoid_self_annotation = match other {
-        Type::Callable(c) => !c.kind.had_first_self_or_class_annotation(),
-        Type::FunctionOverload(o) => !o.kind().had_first_self_or_class_annotation(),
-        _ => unreachable!(),
-    };
+fn format_callable_like(
+    db: &Database,
+    notes: &mut Vec<Box<str>>,
+    c: &CallableLike,
+    other: &CallableLike,
+) {
+    let other_avoid_self_annotation = other.had_first_self_or_class_annotation();
     let prefix = "        ";
     let format_callable = |c: &CallableContent| {
         format!(
@@ -2370,15 +2373,14 @@ fn format_callable_like(db: &Database, notes: &mut Vec<Box<str>>, t: &Type, othe
         )
     };
 
-    match t {
-        Type::Callable(c) => notes.push(format_callable(&c).into()),
-        Type::FunctionOverload(o) => {
+    match c {
+        CallableLike::Callable(c) => notes.push(format_callable(&c).into()),
+        CallableLike::Overload(o) => {
             for c in o.iter_functions() {
                 notes.push(format!("{prefix}@overload").into());
                 notes.push(format_callable(&c).into());
             }
         }
-        _ => unreachable!(),
     }
 }
 
