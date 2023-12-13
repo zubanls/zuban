@@ -978,6 +978,7 @@ impl<'db: 'a, 'a> Class<'a> {
         let mut mismatches = 0;
         let mut notes = vec![];
         let mut had_conflict_note = false;
+        let mut had_at_least_one_member_with_same_name = false;
 
         let ignore_positional_param_names_old = matcher.ignore_positional_param_names;
         matcher.ignore_positional_param_names = true;
@@ -1006,6 +1007,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         let t1 = inf1.as_cow_type(i_s);
                         if t1.matches(i_s, matcher, other, variance).bool() {
                             matcher.ignore_positional_param_names = true;
+                            had_at_least_one_member_with_same_name = true;
                             continue;
                         }
                     }
@@ -1022,6 +1024,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     )
                     .into_maybe_inferred()
                 {
+                    had_at_least_one_member_with_same_name = true;
                     let inf1 = Instance::new(c, None)
                         .full_lookup(i_s, hack, name)
                         .into_inferred();
@@ -1102,6 +1105,9 @@ impl<'db: 'a, 'a> Class<'a> {
                     matcher.ignore_positional_param_names = true;
                 }
             }
+        }
+        if !had_at_least_one_member_with_same_name && !missing_members.is_empty() {
+            return Match::new_false();
         }
         if mismatches > SHOW_MAX_MISMATCHES {
             notes.push(

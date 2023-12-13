@@ -52,6 +52,7 @@ class C:
 
 p: P = C  # E: Incompatible types in assignment (expression has type "Type[C]", variable has type "P") \
           # N: Following member(s) of "C" have conflicts: \
+          # N: "C" has constructor incompatible with "__call__" of "P" \
           # N:     Expected: \
           # N:         def __call__(app: int) -> Callable[[str], None] \
           # N:     Got: \
@@ -59,6 +60,7 @@ p: P = C  # E: Incompatible types in assignment (expression has type "Type[C]", 
 q: Q = C
 r: R = C  # E: Incompatible types in assignment (expression has type "Type[C]", variable has type "R") \
           # N: Following member(s) of "C" have conflicts: \
+          # N: "C" has constructor incompatible with "__call__" of "R" \
           # N:     Expected: \
           # N:         def __call__(app: str) -> Callable[[int], None] \
           # N:     Got: \
