@@ -571,7 +571,6 @@ testProtocolClassObjectSelfTypeInstanceMethod
 testProtocolTypeTypeSelfTypeInstanceMethod
 testProtocolIncompatibilityWithUnionType
 # random protocol tests
-testDivmod
 testGenericSubProtocolsExtensionInvariant
 testWeirdRecursiveInferenceForProtocols-skip
 testProtocolWithClassGetItem
@@ -1935,6 +1934,8 @@ testNewTypeInMultipleFiles
 testLiteralWithEnumsSimilarDefinitions
 # qualified name for TypedDict for different module
 testGenericTypedDictWithError
+# qualified name for Type[cls] for different module (when format short)
+testProtocolWithNestedClass
 # NewType formatting instead of internal type
 testNewTypeDependencies3
 # Formatting C.__init__() call as "C" instead of "__init__" of "C"
@@ -2733,6 +2734,8 @@ testIncrementalBustedFineGrainedCache1
 testIncrementalBustedFineGrainedCache3
 testInvalidateCachePart
 
+# Won't do, because too many differences because of different stubs
+testDivmod
 # xfail
 testOpWithInheritedFromAny-xfail
 # Skips
