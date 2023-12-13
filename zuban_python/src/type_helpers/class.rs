@@ -45,6 +45,20 @@ use crate::{
     },
 };
 
+const EXCLUDED_PROTOCOL_ATTRIBUTES: [&'static str; 11] = [
+    "__abstractmethods__",
+    "__annotations__",
+    "__dict__",
+    "__doc__",
+    "__init__",
+    "__module__",
+    "__new__",
+    "__slots__",
+    "__subclasshook__",
+    "__weakref__",
+    "__class_getitem__",
+];
+
 #[derive(Clone, Copy)]
 pub struct Class<'a> {
     pub node_ref: NodeRef<'a>,
@@ -995,8 +1009,6 @@ impl<'db: 'a, 'a> Class<'a> {
                             continue;
                         }
                     }
-                } else if name == "__slots__" {
-                    continue;
                 }
 
                 if let Some(l) = other
@@ -1017,6 +1029,9 @@ impl<'db: 'a, 'a> Class<'a> {
                     let t2 = l.as_cow_type(i_s);
                     let m = t1.matches(i_s, matcher, &t2, variance);
                     if !m.bool() || is_call && !matches!(other, Type::Class(_)) {
+                        if EXCLUDED_PROTOCOL_ATTRIBUTES.contains(&name) {
+                            continue;
+                        }
                         if !had_conflict_note {
                             had_conflict_note = true;
                             notes.push(
@@ -1078,6 +1093,9 @@ impl<'db: 'a, 'a> Class<'a> {
                         }
                     }
                 } else {
+                    if EXCLUDED_PROTOCOL_ATTRIBUTES.contains(&name) {
+                        continue;
+                    }
                     missing_members.push(name);
                 }
                 if is_call {

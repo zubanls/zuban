@@ -573,7 +573,6 @@ testProtocolIncompatibilityWithUnionType
 # random protocol tests
 testGenericSubProtocolsExtensionInvariant
 testWeirdRecursiveInferenceForProtocols-skip
-testProtocolWithClassGetItem
 testMatchProtocolAgainstOverloadWithAmbiguity
 # Protocol inference
 testInferenceViaTypeTypeMetaclass
