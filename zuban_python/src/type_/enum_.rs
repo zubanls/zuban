@@ -155,9 +155,13 @@ pub fn lookup_on_enum_class(
     match name {
         "_ignore_" => LookupResult::None,
         _ => lookup_members_on_enum(i_s, enum_, name, result_context).or_else(|| {
-            enum_
-                .class(i_s.db)
-                .lookup(i_s, from, name, LookupKind::Normal)
+            enum_.class(i_s.db).lookup_with_custom_self_type(
+                i_s,
+                from,
+                name,
+                LookupKind::Normal,
+                || Type::Type(Rc::new(Type::Enum(enum_.clone()))),
+            )
         }),
     }
 }

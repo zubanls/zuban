@@ -1239,7 +1239,19 @@ impl<'db: 'a, 'a> Class<'a> {
         )
     }
 
-    pub fn lookup_with_or_without_descriptors_internal(
+    pub fn lookup_with_custom_self_type(
+        &'a self,
+        i_s: &InferenceState<'db, '_>,
+        node_ref: NodeRef,
+        name: &str,
+        kind: LookupKind,
+        as_type_type: impl Fn() -> Type,
+    ) -> LookupResult {
+        self.lookup_internal_detailed(i_s, node_ref, name, kind, true, false, as_type_type)
+            .0
+    }
+
+    fn lookup_with_or_without_descriptors_internal(
         &'a self,
         i_s: &InferenceState<'db, '_>,
         node_ref: NodeRef,
@@ -1247,6 +1259,27 @@ impl<'db: 'a, 'a> Class<'a> {
         kind: LookupKind,
         use_descriptors: bool,
         ignore_self: bool,
+    ) -> (LookupResult, Option<Class>) {
+        self.lookup_internal_detailed(
+            i_s,
+            node_ref,
+            name,
+            kind,
+            use_descriptors,
+            ignore_self,
+            || self.as_type_type(i_s),
+        )
+    }
+
+    fn lookup_internal_detailed(
+        &'a self,
+        i_s: &InferenceState<'db, '_>,
+        node_ref: NodeRef,
+        name: &str,
+        kind: LookupKind,
+        use_descriptors: bool,
+        ignore_self: bool,
+        as_type_type: impl Fn() -> Type,
     ) -> (LookupResult, Option<Class>) {
         let class_infos = self.use_cached_class_infos(i_s.db);
         let (result, in_class) = if kind == LookupKind::Normal {
@@ -1290,7 +1323,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                 name,
                                 LookupKind::Normal,
                                 0,
-                                || self.as_type_type(i_s),
+                                as_type_type,
                             )
                             .1
                     }
