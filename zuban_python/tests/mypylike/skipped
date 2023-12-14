@@ -383,8 +383,7 @@ testDataclassReplaceOptional
 # int | str leads to object instead of Any when using Enum().value?
 testEnumValueInhomogenous
 # Enum binding IntEnum instead of the enum class, because it's not an actual class
-testEnumFlag
-testEnumIntFlag
+testEnumNameWorkCorrectlyOn311
 # All members in a union lead to the enum again
 testEnumTypeCompatibleWithLiteralUnion
 # Enum Dict value inferred is int instead of Literal[1]

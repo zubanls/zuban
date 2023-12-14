@@ -183,7 +183,11 @@ pub fn lookup_on_enum_instance(
         }
         "_ignore_" => LookupResult::None,
         _ => lookup_members_on_enum(i_s, enum_, name, result_context).or_else(|| {
-            Instance::new(enum_.class(i_s.db), None).lookup(i_s, from, name, LookupKind::Normal)
+            Instance::new(enum_.class(i_s.db), None)
+                .lookup_with_explicit_self_binding(i_s, from, name, LookupKind::Normal, 0, || {
+                    Type::Enum(enum_.clone())
+                })
+                .1
         }),
     }
 }

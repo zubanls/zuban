@@ -193,6 +193,7 @@ impl<'db: 'slf, 'slf> Inferred {
             },
             Type::Self_ => *i_s.current_class().unwrap(),
             Type::TypedDict(_) => i_s.db.python_state.typed_dict_class(),
+            Type::Enum(enum_) => enum_.class(i_s.db),
             _ => unreachable!(),
         };
         let class_t = instance_class
