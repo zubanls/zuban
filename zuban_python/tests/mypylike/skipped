@@ -180,6 +180,8 @@ testTypeVarTupleIsNotValidAliasTarget
 testGenericTypeAliasesWrongAliases
 # Type var used in bound, defined in class body, bound to that class
 testGenericClassAlternativeConstructorPreciseOverloaded
+# current_class in i_s should probably be a type and not a class
+testEnumNameWorkCorrectlyOn311
 
 # Callable remapping over overload leads to a mapped overload
 testRegularGenericDecoratorOverload
@@ -382,8 +384,6 @@ testDataclassReplaceOptional
 
 # int | str leads to object instead of Any when using Enum().value?
 testEnumValueInhomogenous
-# Enum binding IntEnum instead of the enum class, because it's not an actual class
-testEnumNameWorkCorrectlyOn311
 # All members in a union lead to the enum again
 testEnumTypeCompatibleWithLiteralUnion
 # Enum Dict value inferred is int instead of Literal[1]

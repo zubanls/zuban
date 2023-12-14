@@ -182,14 +182,22 @@ pub fn lookup_on_enum_instance(
             }))
         }
         "_ignore_" => LookupResult::None,
-        _ => lookup_members_on_enum(i_s, enum_, name, result_context).or_else(|| {
-            Instance::new(enum_.class(i_s.db), None)
-                .lookup_with_explicit_self_binding(i_s, from, name, LookupKind::Normal, 0, || {
-                    Type::Enum(enum_.clone())
-                })
-                .1
-        }),
+        _ => lookup_members_on_enum(i_s, enum_, name, result_context)
+            .or_else(|| lookup_on_enum_instance_fallback(i_s, from, enum_, name)),
     }
+}
+
+fn lookup_on_enum_instance_fallback(
+    i_s: &InferenceState,
+    from: NodeRef,
+    enum_: &Rc<Enum>,
+    name: &str,
+) -> LookupResult {
+    Instance::new(enum_.class(i_s.db), None)
+        .lookup_with_explicit_self_binding(i_s, from, name, LookupKind::Normal, 0, || {
+            Type::Enum(enum_.clone())
+        })
+        .1
 }
 
 pub fn infer_value_on_member(
@@ -277,7 +285,7 @@ pub fn lookup_on_enum_member_instance(
             _ => (),
         }
     }
-    Instance::new(enum_class, None).full_lookup(i_s, from, name)
+    lookup_on_enum_instance_fallback(i_s, from, &member.enum_, name)
 }
 
 fn lookup_members_on_enum(
