@@ -22,8 +22,8 @@ use crate::{
     inference_state::InferenceState,
     node_ref::NodeRef,
     type_::{
-        CallableParams, ClassGenerics, GenericItem, GenericsList, Type, TypeVarLikeUsage,
-        TypeVarLikes,
+        CallableParams, ClassGenerics, GenericItem, GenericsList, ReplaceSelf, Type,
+        TypeVarLikeUsage, TypeVarLikes,
     },
     type_helpers::{Callable, Class, Function},
 };
@@ -91,11 +91,12 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
             Some(class),
             func_or_callable,
             match_in_definition,
+            None,
             func_type_vars,
         )
     } else {
         match_in_definition = class.node_ref.as_link();
-        get_matcher(None, func_or_callable, match_in_definition, type_vars)
+        get_matcher(None, func_or_callable, match_in_definition, None, type_vars)
     };
 
     if has_generics {
@@ -180,6 +181,7 @@ pub fn calculate_function_type_vars_and_return<'db: 'a, 'a>(
     skip_first_param: bool,
     type_vars: &TypeVarLikes,
     match_in_definition: PointLink,
+    replace_self: ReplaceSelf,
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> CalculatedTypeArguments {
@@ -187,7 +189,13 @@ pub fn calculate_function_type_vars_and_return<'db: 'a, 'a>(
     let func_or_callable = FunctionOrCallable::Function(function);
     calculate_type_vars(
         i_s,
-        get_matcher(None, func_or_callable, match_in_definition, type_vars),
+        get_matcher(
+            None,
+            func_or_callable,
+            match_in_definition,
+            Some(replace_self),
+            type_vars,
+        ),
         func_or_callable,
         None,
         args,
@@ -217,6 +225,7 @@ pub fn calculate_callable_type_vars_and_return<'db: 'a, 'a>(
             None,
             func_or_callable,
             callable.content.defined_at,
+            None,
             type_vars,
         ),
         func_or_callable,
@@ -235,11 +244,12 @@ fn get_matcher<'a>(
     class: Option<&'a Class>,
     func_or_callable: FunctionOrCallable<'a>,
     match_in_definition: PointLink,
+    replace_self: Option<ReplaceSelf<'a>>,
     type_vars: &TypeVarLikes,
 ) -> Matcher<'a> {
     let matcher =
         (!type_vars.is_empty()).then(|| TypeVarMatcher::new(match_in_definition, type_vars.len()));
-    Matcher::new(class, func_or_callable, matcher)
+    Matcher::new(class, func_or_callable, matcher, replace_self)
 }
 
 fn calculate_type_vars<'db: 'a, 'a>(

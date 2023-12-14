@@ -1137,6 +1137,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             skip_first_argument,
             self.type_vars(i_s),
             self.node_ref.as_link(),
+            replace_self_type,
             result_context,
             Some(on_type_error),
         );

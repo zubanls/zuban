@@ -2,6 +2,7 @@ mod bound;
 mod type_var_matcher;
 mod utils;
 
+use core::fmt;
 use std::{borrow::Cow, rc::Rc};
 
 use type_var_matcher::{BoundKind, TypeVarMatcher};
@@ -25,9 +26,10 @@ use crate::{
     node_ref::NodeRef,
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, GenericItem, GenericsList,
-        ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamType, StarParamType,
-        TupleTypeArguments, Type, TypeArguments, TypeOrTypeVarTuple, TypeVarKind, TypeVarLike,
-        TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, TypedDict, TypedDictGenerics, Variance,
+        ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamType, ReplaceSelf,
+        StarParamType, TupleTypeArguments, Type, TypeArguments, TypeOrTypeVarTuple, TypeVarKind,
+        TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, TypedDict, TypedDictGenerics,
+        Variance,
     },
     type_helpers::{Callable, Class, Function},
 };
@@ -39,13 +41,14 @@ struct CheckedTypeRecursion<'a> {
     previously_checked: Option<&'a CheckedTypeRecursion<'a>>,
 }
 
-#[derive(Default, Debug)]
+#[derive(Default)]
 pub struct Matcher<'a> {
     pub(super) type_var_matcher: Option<TypeVarMatcher>,
     checking_type_recursion: Option<CheckedTypeRecursion<'a>>,
     class: Option<&'a Class<'a>>,
     func_or_callable: Option<FunctionOrCallable<'a>>,
     ignore_promotions: bool,
+    replace_self: Option<ReplaceSelf<'a>>,
     pub ignore_positional_param_names: bool, // Matches `ignore_pos_arg_names` in Mypy
     match_reverse: bool,                     // For contravariance subtypes
 }
@@ -55,11 +58,13 @@ impl<'a> Matcher<'a> {
         class: Option<&'a Class<'a>>,
         func_or_callable: FunctionOrCallable<'a>,
         type_var_matcher: Option<TypeVarMatcher>,
+        replace_self: Option<ReplaceSelf<'a>>,
     ) -> Self {
         Self {
             class,
             func_or_callable: Some(func_or_callable),
             type_var_matcher,
+            replace_self,
             ..Self::default()
         }
     }
@@ -160,6 +165,22 @@ impl<'a> Matcher<'a> {
         let result = callable(self);
         self.match_reverse = !self.match_reverse;
         result
+    }
+
+    pub fn match_self(
+        &mut self,
+        i_s: &InferenceState,
+        value_type: &Type,
+        variance: Variance,
+    ) -> Match {
+        if matches!(self.func_or_callable, Some(FunctionOrCallable::Function(_))) {
+            // In case we are working within a function, Self is bound already.
+            return self.replace_self.unwrap()().matches(i_s, self, value_type, variance);
+        }
+        match value_type {
+            Type::Self_ => Match::new_true(),
+            _ => Match::new_false(),
+        }
     }
 
     pub fn match_or_add_type_var(
@@ -693,6 +714,7 @@ impl<'a> Matcher<'a> {
             func_or_callable: self.func_or_callable,
             ignore_promotions: self.ignore_promotions,
             ignore_positional_param_names: self.ignore_positional_param_names,
+            replace_self: self.replace_self,
             match_reverse: self.match_reverse,
         };
         let result = callable(&mut inner_matcher);
@@ -720,5 +742,23 @@ impl<'a> Matcher<'a> {
                     .collect(),
             )
         })
+    }
+}
+
+impl fmt::Debug for Matcher<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Matcher")
+            .field("type_var_matcher", &self.type_var_matcher)
+            .field("checking_type_recursion", &self.checking_type_recursion)
+            .field("class", &self.class)
+            .field("func_or_callable", &self.func_or_callable)
+            .field("ignore_promotions", &self.ignore_promotions)
+            .field("replace_self", &self.replace_self.map(|_| "..."))
+            .field(
+                "ignore_positional_param_names",
+                &self.ignore_positional_param_names,
+            )
+            .field("match_reverse", &self.match_reverse)
+            .finish()
     }
 }

@@ -157,3 +157,14 @@ class Foo():
 
 reveal_type(Foo().meth()) # N: Revealed type is "__main__.Foo"
 reveal_type(Foo().meth2()) # N: Revealed type is "__main__.Foo"
+
+[case self_param_in_method]
+from typing import Self
+
+class X:
+    def foo(self, other: Self) -> None: ...
+    def bar(self, other: Self) -> Self:
+        return other
+
+X().foo(X())
+reveal_type(X().bar(X()))  # N: Revealed type is "__main__.X"
