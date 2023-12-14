@@ -168,3 +168,22 @@ class X:
 
 X().foo(X())
 reveal_type(X().bar(X()))  # N: Revealed type is "__main__.X"
+
+[case self_param_in_method_inherited]
+from typing import Self
+
+class Base:
+    def foo(self, other: Self) -> None: ...
+    def bar(self, other: Self) -> Self:
+        return other
+    def baz(self: Self, other: Self) -> Self:
+        return other
+
+class X(Base): ...
+
+X().foo(X())
+reveal_type(X().bar(X()))  # N: Revealed type is "__main__.X"
+reveal_type(X().baz(X()))  # N: Revealed type is "__main__.X"
+
+X().bar(Base())  # E: Argument 1 to "bar" of "Base" has incompatible type "Base"; expected "Self"
+X().baz(Base())  # E: Argument 1 to "baz" of "Base" has incompatible type "Base"; expected "X"
