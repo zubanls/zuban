@@ -776,7 +776,11 @@ impl<'db: 'slf, 'slf> Inferred {
                             return if let Some(first_type) = func.first_param_annotation_type(i_s) {
                                 if let Some(t) = create_signature_without_self(
                                     i_s,
-                                    Matcher::new_function_matcher(func, func.type_vars(i_s)),
+                                    Matcher::new_function_matcher(
+                                        func,
+                                        func.type_vars(i_s),
+                                        &|| instance.clone(),
+                                    ),
                                     || {
                                         func.as_callable(
                                             i_s,

@@ -101,12 +101,17 @@ impl<'a> Matcher<'a> {
         m
     }
 
-    pub fn new_function_matcher(function: Function<'a, 'a>, type_vars: &TypeVarLikes) -> Self {
+    pub fn new_function_matcher(
+        function: Function<'a, 'a>,
+        type_vars: &TypeVarLikes,
+        replace_self: ReplaceSelf<'a>,
+    ) -> Self {
         let type_var_matcher = (!type_vars.is_empty())
             .then(|| TypeVarMatcher::new(function.node_ref.as_link(), type_vars.len()));
         Self {
             type_var_matcher,
             func_or_callable: Some(FunctionOrCallable::Function(function)),
+            replace_self: Some(replace_self),
             ..Self::default()
         }
     }
@@ -173,13 +178,16 @@ impl<'a> Matcher<'a> {
         value_type: &Type,
         variance: Variance,
     ) -> Match {
-        if matches!(self.func_or_callable, Some(FunctionOrCallable::Function(_))) {
-            // In case we are working within a function, Self is bound already.
-            return self.replace_self.unwrap()().matches(i_s, self, value_type, variance);
-        }
         match value_type {
             Type::Self_ => Match::new_true(),
-            _ => Match::new_false(),
+            _ => {
+                if matches!(self.func_or_callable, Some(FunctionOrCallable::Function(_))) {
+                    // In case we are working within a function, Self is bound already.
+                    return self.replace_self.unwrap()().matches(i_s, self, value_type, variance);
+                } else {
+                    Match::new_false()
+                }
+            }
         }
     }
 
