@@ -163,3 +163,27 @@ class Baz(Bar):
     def bar(self, other: X) -> None: ...  # E: Argument 1 of "bar" is incompatible with supertype "Bar"; supertype defines the argument type as "P" \
                                           # N: This violates the Liskov substitution principle \
                                           # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+
+[case protocol_contravariant_against_class]
+from typing import Protocol
+
+class X():
+    def m(self) -> None: ...
+    def n(self) -> None: ...
+    def o(self) -> None: ...
+class P(Protocol):
+    def m(self) -> None: ...
+    def n(self) -> None: ...
+class Q():
+    def m(self) -> None: ...
+
+class Bar:
+    def foo(self, other: P) -> None: ...
+    def bar(self, other: P) -> None: ...
+class Baz(Bar):
+    def foo(self, other: Q) -> None: ...  # E: Argument 1 of "foo" is incompatible with supertype "Bar"; supertype defines the argument type as "P" \
+                                          # N: This violates the Liskov substitution principle \
+                                          # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
+    def bar(self, other: X) -> None: ...  # E: Argument 1 of "bar" is incompatible with supertype "Bar"; supertype defines the argument type as "P" \
+                                          # N: This violates the Liskov substitution principle \
+                                          # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
