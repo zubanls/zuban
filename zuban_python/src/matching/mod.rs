@@ -8,7 +8,7 @@ pub mod params;
 mod result_context;
 mod utils;
 
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
 
 pub use format_data::{AvoidRecursionFor, FormatData, ParamsStyle};
 pub use generic::Generic;
@@ -35,6 +35,25 @@ use crate::{
     inferred::Inferred,
     type_::{AnyCause, Type, TypeOrTypeVarTuple},
 };
+
+thread_local! {
+    static PROTOCOL_RECURSION_AVOIDANCE: RefCell<Vec<(Type, Type)>> = const { RefCell::new(vec![]) };
+}
+
+pub fn avoid_protocol_mismatch(t1: &Type, t2: &Type, callable: impl FnOnce() -> Match) -> Match {
+    PROTOCOL_RECURSION_AVOIDANCE.with(|vec| {
+        let mut current = vec.borrow_mut();
+        if current.iter().any(|(x1, x2)| x1 == t1 && x2 == t2) {
+            Match::new_true()
+        } else {
+            current.push((t1.clone(), t2.clone()));
+            drop(current);
+            let result = callable();
+            vec.borrow_mut().pop();
+            result
+        }
+    })
+}
 
 type OnOverloadMismatch<'db, 'a> = Option<&'a dyn Fn()>;
 type GenerateDiagnosticString<'a> = &'a dyn Fn(&FunctionOrCallable, &Database) -> Option<String>;

@@ -5,7 +5,10 @@ use crate::{
     database::{ComplexPoint, MetaclassState},
     debug,
     inference_state::InferenceState,
-    matching::{matches_params, params::has_overlapping_params, Match, Matcher, MismatchReason},
+    matching::{
+        avoid_protocol_mismatch, matches_params, params::has_overlapping_params, Match, Matcher,
+        MismatchReason,
+    },
     node_ref::NodeRef,
     type_::{CallableLike, CallableParams, TupleTypeArguments, TypeOrTypeVarTuple, Variance},
     type_helpers::{Class, TypeOrClass},
@@ -424,7 +427,14 @@ impl Type {
             // TODO this should probably be checked before normal mro checking?!
             if class1.is_protocol(i_s.db) {
                 m = matcher.avoid_recursion(self, value_type, |matcher| {
-                    class1.check_protocol_match(i_s, matcher, value_type, variance)
+                    // TODO we probably don't need to avoid recursions twice here.
+
+                    // We need to avoid protocols recursions in a different way than
+                    // Matcher::avoid_recursion, because the matcher is not always passed when
+                    // checking protocol members (e.g. for self types).
+                    avoid_protocol_mismatch(self, value_type, || {
+                        class1.check_protocol_match(i_s, matcher, value_type, variance)
+                    })
                 });
                 if m.bool() {
                     return m;
