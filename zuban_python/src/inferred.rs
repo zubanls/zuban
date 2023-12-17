@@ -1719,7 +1719,8 @@ impl<'db: 'slf, 'slf> Inferred {
                                 if let Some(first_arg) = iterator.next() {
                                     let t = new_type.type_(i_s);
                                     let inf = first_arg.infer(i_s, &mut ResultContext::Known(t));
-                                    t.error_if_not_matches(i_s, &inf, |t1, t2| {
+                                    let other = inf.as_cow_type(i_s);
+                                    if !t.is_simple_super_type_of(i_s, &other).bool() {
                                         (on_type_error.callback)(
                                             i_s,
                                             &|_| {
@@ -1729,11 +1730,10 @@ impl<'db: 'slf, 'slf> Inferred {
                                                 )
                                             },
                                             &first_arg,
-                                            t1,
-                                            t2,
+                                            other.format_short(i_s.db),
+                                            t.format_short(i_s.db),
                                         );
-                                        args.as_node_ref()
-                                    });
+                                    }
                                 } else {
                                     args.add_issue(
                                         i_s,
