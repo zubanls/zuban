@@ -19,8 +19,8 @@ use crate::{
     matching::{
         calculate_property_return, create_signature_without_self,
         create_signature_without_self_for_callable, maybe_class_usage, replace_class_type_vars,
-        FormatData, Generics, IteratorContent, LookupKind, LookupResult, Matcher, OnLookupError,
-        OnTypeError, ResultContext,
+        FormatData, Generics, GotType, IteratorContent, LookupKind, LookupResult, Matcher,
+        OnLookupError, OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
     type_::{
@@ -1730,7 +1730,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                                 )
                                             },
                                             &first_arg,
-                                            other.format_short(i_s.db),
+                                            GotType::Type(&other),
                                             t.format_short(i_s.db),
                                         );
                                     }
@@ -1892,6 +1892,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 )
             },
             OnTypeError::new(&|i_s, function, arg, got, expected| {
+                let got = got.as_string(i_s.db).into();
                 let type_ = if arg.index == 1 {
                     IssueType::InvalidGetItem {
                         actual: got,

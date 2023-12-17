@@ -15,8 +15,8 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{
-        calculate_callable_type_vars_and_return, IteratorContent, LookupKind, LookupResult,
-        OnLookupError, OnTypeError, ResultContext,
+        calculate_callable_type_vars_and_return, GotType, IteratorContent, LookupKind,
+        LookupResult, OnLookupError, OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
     type_::NamedTuple,
@@ -615,7 +615,7 @@ pub(crate) fn execute_type_of_type<'db>(
                     i_s,
                     &|_| todo!(),
                     &arg,
-                    tuple.format_short(i_s.db),
+                    GotType::Type(tuple),
                     other.format_short(i_s.db),
                 );
             }

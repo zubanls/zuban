@@ -107,11 +107,27 @@ fn func_or_callable_diagnostic_string(f: &FunctionOrCallable, db: &Database) -> 
     f.diagnostic_string(db)
 }
 
+pub enum GotType<'a> {
+    Type(&'a Type),
+    Starred(Type),
+    DoubleStarred(Type),
+}
+
+impl GotType<'_> {
+    pub fn as_string(&self, db: &Database) -> String {
+        match self {
+            GotType::Type(t) => t.format_short(db).into(),
+            GotType::Starred(t) => format!("\"*{}\"", t.format_short(db)),
+            GotType::DoubleStarred(t) => format!("\"**{}\"", t.format_short(db)),
+        }
+    }
+}
+
 pub type OnTypeErrorCallback<'db, 'a> = &'a dyn Fn(
     &InferenceState<'db, '_>,
     &dyn Fn(&str) -> Option<Box<str>>, // error_text; argument is a prefix
     &Argument,
-    Box<str>,
+    GotType,
     Box<str>,
 );
 pub type OnLookupError<'a> = &'a dyn Fn(&Type);

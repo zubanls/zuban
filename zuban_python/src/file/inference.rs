@@ -1400,7 +1400,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                         i_s,
                                                         IssueType::UnsupportedOperand {
                                                             operand: Box::from("in"),
-                                                            left: got,
+                                                            left: got.as_string(i_s.db).into(),
                                                             right,
                                                         },
                                                     );

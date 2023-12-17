@@ -14,7 +14,7 @@ use crate::{
     getitem::Simple,
     inference_state::InferenceState,
     inferred::UnionValue,
-    matching::{FormatData, Matcher, MismatchReason, ResultContext},
+    matching::{FormatData, GotType, Matcher, MismatchReason, ResultContext},
     new_class,
     node_ref::NodeRef,
     type_::{
@@ -464,18 +464,19 @@ pub fn on_argument_type_error(
     i_s: &InferenceState,
     error_text: &dyn Fn(&str) -> Option<Box<str>>,
     arg: &Argument,
-    t1: Box<str>,
-    t2: Box<str>,
+    got: GotType,
+    expected: Box<str>,
 ) {
-    let t1 = match t1.as_ref() {
+    let got = got.as_string(i_s.db);
+    let got = match got.as_ref() {
         "ModuleType" => "Module".to_string(),
-        t1 => format!("\"{t1}\""),
+        got => format!("\"{got}\""),
     };
     arg.as_node_ref().add_issue(
         i_s,
         IssueType::ArgumentTypeIssue(
             format!(
-                "Argument {}{} has incompatible type {t1}; expected \"{t2}\"",
+                "Argument {}{} has incompatible type {got}; expected \"{expected}\"",
                 arg.human_readable_index(i_s.db),
                 error_text(" to ").as_deref().unwrap_or(""),
             )

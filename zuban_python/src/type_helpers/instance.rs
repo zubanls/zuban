@@ -438,7 +438,7 @@ impl<'a> Instance<'a> {
                             arg.as_node_ref().add_issue(
                                 i_s,
                                 IssueType::InvalidGetItem {
-                                    actual,
+                                    actual: actual.as_string(i_s.db).into(),
                                     type_: self.class.format_short(i_s.db),
                                     expected,
                                 },
@@ -480,7 +480,13 @@ fn calculate_descriptor(
         &mut ResultContext::ExpectUnused,
         OnTypeError::new(&|i_s, error_text, argument, got, expected| {
             if argument.index == 2 {
-                from.add_issue(i_s, IssueType::IncompatibleAssignment { got, expected });
+                from.add_issue(
+                    i_s,
+                    IssueType::IncompatibleAssignment {
+                        got: got.as_string(i_s.db).into(),
+                        expected,
+                    },
+                );
             } else {
                 on_argument_type_error(i_s, error_text, argument, got, expected)
             }

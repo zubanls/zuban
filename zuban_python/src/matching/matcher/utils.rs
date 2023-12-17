@@ -20,6 +20,7 @@ use crate::{
     debug,
     diagnostics::IssueType,
     inference_state::InferenceState,
+    matching::GotType,
     node_ref::NodeRef,
     type_::{
         CallableParams, ClassGenerics, GenericItem, GenericsList, ReplaceSelf, Type,
@@ -497,15 +498,13 @@ pub fn match_arguments_against_params<
                     |mut t1, t2, reason: &MismatchReason| {
                         let node_ref = argument.as_node_ref();
                         if let Some(starred) = node_ref.maybe_starred_expression() {
-                            t1 = format!(
-                                "*{}",
+                            t1 = GotType::Starred(
                                 node_ref
                                     .file
                                     .inference(i_s)
                                     .infer_expression(starred.expression())
-                                    .format_short(i_s)
+                                    .as_type(i_s),
                             )
-                            .into()
                         } else if let Some(double_starred) =
                             node_ref.maybe_double_starred_expression()
                         {
@@ -518,15 +517,13 @@ pub fn match_arguments_against_params<
                                     ..
                                 }
                             ) {
-                                t1 = format!(
-                                    "**{}",
+                                t1 = GotType::DoubleStarred(
                                     node_ref
                                         .file
                                         .inference(i_s)
                                         .infer_expression(double_starred.expression())
-                                        .format_short(i_s)
+                                        .as_type(i_s),
                                 )
-                                .into()
                             }
                         }
                         match reason {
