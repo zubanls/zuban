@@ -66,7 +66,7 @@ impl<'a> Instance<'a> {
         let check_compatible = |t: &Type, value: &_| {
             t.error_if_not_matches(i_s, value, |got, expected| {
                 from.add_issue(i_s, IssueType::IncompatibleAssignment { got, expected });
-                from.to_db_lifetime(i_s.db)
+                from
             });
         };
 

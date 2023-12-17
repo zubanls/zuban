@@ -856,7 +856,7 @@ fn typed_dict_setitem_internal<'db>(
                             expected,
                         },
                     );
-                    node_ref.to_db_lifetime(i_s.db)
+                    node_ref
                 });
         } else {
             args.add_issue(
@@ -1004,11 +1004,11 @@ pub fn lookup_on_typed_dict(
     })))
 }
 
-pub fn infer_typed_dict_item<'db>(
-    i_s: &InferenceState<'db, '_>,
+pub fn infer_typed_dict_item(
+    i_s: &InferenceState,
     typed_dict: &TypedDict,
     matcher: &mut Matcher,
-    node_ref: NodeRef<'db>,
+    node_ref: NodeRef,
     key: &str,
     extra_keys: &mut Vec<String>,
     infer: impl FnOnce(&mut ResultContext) -> Inferred,
@@ -1053,7 +1053,7 @@ pub(crate) fn check_typed_dict_call<'db>(
                 i_s,
                 &typed_dict,
                 matcher,
-                arg.as_node_ref().to_db_lifetime(i_s.db),
+                arg.as_node_ref(),
                 key,
                 &mut extra_keys,
                 |context| arg.infer(i_s, context),

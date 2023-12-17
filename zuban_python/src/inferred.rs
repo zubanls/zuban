@@ -1732,7 +1732,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                             t1,
                                             t2,
                                         );
-                                        args.as_node_ref().to_db_lifetime(i_s.db)
+                                        args.as_node_ref()
                                     });
                                 } else {
                                     args.add_issue(

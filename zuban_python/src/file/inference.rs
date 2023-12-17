@@ -492,8 +492,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 if let AssignmentRightSide::StarExpressions(star_exprs) = right_side {
                     if let StarExpressionContent::Expression(expr) = star_exprs.unpack() {
                         if expr.is_ellipsis_literal() {
-                            return NodeRef::new(self.file, right_side.index())
-                                .to_db_lifetime(self.i_s.db);
+                            return NodeRef::new(self.file, right_side.index());
                         }
                     }
                 }
@@ -741,7 +740,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 expected,
                             },
                         );
-                        from.to_db_lifetime(i_s.db)
+                        from
                     });
             }
             YieldExprContent::YieldFrom(yield_from) => {
@@ -782,7 +781,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 expected,
                             },
                         );
-                        from.to_db_lifetime(i_s.db)
+                        from
                     });
                 return if let Some(other) =
                     GeneratorType::from_type(i_s.db, iter_result.as_cow_type(i_s))
@@ -871,7 +870,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     i_s,
                                     IssueType::IncompatibleAssignment { got, expected },
                                 );
-                                from.to_db_lifetime(i_s.db)
+                                from
                             },
                         );
                         return;
@@ -981,7 +980,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     i_s,
                                     IssueType::IncompatibleAssignment { got, expected },
                                 );
-                                from.to_db_lifetime(i_s.db)
+                                from
                             });
                     }
                 }
@@ -1443,7 +1442,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                             right: r_type.format_short(self.i_s.db),
                                                         };
                                                         from.add_issue(self.i_s, t);
-                                                        from.to_db_lifetime(self.i_s.db)
+                                                        from
                                                     },
                                                 );
                                         }
@@ -2606,10 +2605,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         ))
     }
 
-    fn add_issue(&self, node_index: NodeIndex, issue: IssueType) -> NodeRef<'db> {
+    fn add_issue(&self, node_index: NodeIndex, issue: IssueType) -> NodeRef<'file> {
         let from = NodeRef::new(self.file, node_index);
         from.add_issue(self.i_s, issue);
-        from.to_db_lifetime(self.i_s.db)
+        from
     }
 }
 

@@ -719,8 +719,7 @@ impl<'db> Inference<'db, '_, '_> {
                         let inf = self
                             .infer_expression_with_context(default, &mut ResultContext::Known(&t));
                         t.error_if_not_matches(i_s, &inf, |got, expected| {
-                            let node_ref =
-                                NodeRef::new(self.file, default.index()).to_db_lifetime(i_s.db);
+                            let node_ref = NodeRef::new(self.file, default.index());
                             if self.file.is_stub_or_in_protocol(i_s)
                                 && default.is_ellipsis_literal()
                             {
@@ -1033,7 +1032,7 @@ impl<'db> Inference<'db, '_, '_> {
                     t.error_if_not_matches(i_s, &inf, |got, expected| {
                         let node_ref = NodeRef::new(self.file, star_expressions.index());
                         node_ref.add_issue(i_s, IssueType::IncompatibleReturn { got, expected });
-                        node_ref.to_db_lifetime(i_s.db)
+                        node_ref
                     });
                 } else {
                     debug!("TODO what about an implicit None?");

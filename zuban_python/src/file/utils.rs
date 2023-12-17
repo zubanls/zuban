@@ -136,8 +136,7 @@ impl<'db> Inference<'db, '_, '_> {
             match element {
                 DictElement::KeyValue(key_value) => {
                     let inf = self.infer_expression(key_value.key());
-                    let node_ref =
-                        NodeRef::new(self.file, key_value.index()).to_db_lifetime(i_s.db);
+                    let node_ref = NodeRef::new(self.file, key_value.index());
                     match inf.maybe_string_literal(i_s) {
                         Some(literal) => {
                             let key = literal.as_str(i_s.db);
@@ -162,8 +161,7 @@ impl<'db> Inference<'db, '_, '_> {
                 }
                 DictElement::Star(dict_starred) => {
                     let inf = self.infer_expression_part(dict_starred.expression_part());
-                    let node_ref =
-                        NodeRef::new(self.file, dict_starred.index()).to_db_lifetime(i_s.db);
+                    let node_ref = NodeRef::new(self.file, dict_starred.index());
                     match inf.as_cow_type(i_s).as_ref() {
                         Type::TypedDict(td) => {
                             for member in td.members(i_s.db).iter() {
@@ -418,7 +416,7 @@ fn check_list_with_context<'db>(
                 matcher,
                 &inferred,
                 Some(|got, expected, _: &MismatchReason| {
-                    let node_ref = NodeRef::new(file, index).to_db_lifetime(i_s.db);
+                    let node_ref = NodeRef::new(file, index);
                     node_ref.add_issue(
                         i_s,
                         IssueType::ListItemMismatch {

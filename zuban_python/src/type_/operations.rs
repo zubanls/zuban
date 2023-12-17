@@ -611,7 +611,7 @@ pub(crate) fn execute_type_of_type<'db>(
             }
             tuple.error_if_not_matches(i_s, &inferred_tup, |t1, t2| {
                 (on_type_error.callback)(i_s, &|_| todo!(), &arg, t1, t2);
-                args.as_node_ref().to_db_lifetime(i_s.db)
+                args.as_node_ref()
             });
             Inferred::from_type(tuple.clone())
         }
