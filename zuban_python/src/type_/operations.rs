@@ -609,10 +609,16 @@ pub(crate) fn execute_type_of_type<'db>(
             if args_iterator.next().is_some() {
                 todo!()
             }
-            tuple.error_if_not_matches(i_s, &inferred_tup, |t1, t2| {
-                (on_type_error.callback)(i_s, &|_| todo!(), &arg, t1, t2);
-                args.as_node_ref()
-            });
+            let other = inferred_tup.as_cow_type(i_s);
+            if !tuple.is_simple_super_type_of(i_s, &other).bool() {
+                (on_type_error.callback)(
+                    i_s,
+                    &|_| todo!(),
+                    &arg,
+                    tuple.format_short(i_s.db),
+                    other.format_short(i_s.db),
+                );
+            }
             Inferred::from_type(tuple.clone())
         }
         Type::Class(c) => c
