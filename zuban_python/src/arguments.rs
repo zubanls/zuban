@@ -22,12 +22,15 @@ pub enum ArgumentsType<'a> {
     Normal(&'a PythonFile, NodeIndex),
 }
 
-pub trait Arguments<'db>: std::fmt::Debug {
+pub(crate) trait Arguments<'db>: std::fmt::Debug {
     // Returns an iterator of arguments, where args are returned before kw args.
     // This is not the case in the grammar, but here we want that.
     fn iter(&self) -> ArgumentIterator<'db, '_>;
     fn type_(&self) -> ArgumentsType;
     fn as_node_ref(&self) -> NodeRef;
+    fn add_issue(&self, i_s: &InferenceState, issue: IssueType) {
+        self.as_node_ref().add_issue(i_s, issue)
+    }
     fn points_backup(&self) -> Option<PointsBackup> {
         None
     }
@@ -230,7 +233,7 @@ impl<'db, 'a> Arguments<'db> for CombinedArguments<'db, 'a> {
 }
 
 impl<'db, 'a> CombinedArguments<'db, 'a> {
-    pub fn new(args1: &'a dyn Arguments<'db>, args2: &'a dyn Arguments<'db>) -> Self {
+    pub(crate) fn new(args1: &'a dyn Arguments<'db>, args2: &'a dyn Arguments<'db>) -> Self {
         Self { args1, args2 }
     }
 }

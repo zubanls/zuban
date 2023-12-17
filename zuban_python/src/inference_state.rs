@@ -41,7 +41,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         }
     }
 
-    pub fn with_func_and_args(
+    pub(crate) fn with_func_and_args(
         &self,
         func: &'a Function<'a, 'a>,
         args: &'a dyn Arguments<'db>,
@@ -53,7 +53,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         }
     }
 
-    pub fn with_diagnostic_func_and_args(
+    pub(crate) fn with_diagnostic_func_and_args(
         &self,
         func: &'a Function<'a, 'a>,
         args: &'a dyn Arguments<'db>,
@@ -134,7 +134,9 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         }
     }
 
-    pub fn current_execution(&self) -> Option<(&'a Function<'a, 'a>, &'a dyn Arguments<'db>)> {
+    pub(crate) fn current_execution(
+        &self,
+    ) -> Option<(&'a Function<'a, 'a>, &'a dyn Arguments<'db>)> {
         match &self.context {
             Context::DiagnosticExecution(f, a) | Context::Execution(f, a) => Some((f, *a)),
             _ => None,

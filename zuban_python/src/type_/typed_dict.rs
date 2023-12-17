@@ -432,7 +432,10 @@ fn add_access_key_must_be_string_literal_issue(
     )
 }
 
-pub fn new_typed_dict<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Arguments<'db>) -> Inferred {
+pub(crate) fn new_typed_dict<'db>(
+    i_s: &InferenceState<'db, '_>,
+    args: &dyn Arguments<'db>,
+) -> Inferred {
     new_typed_dict_internal(i_s, args).unwrap_or_else(Inferred::new_any_from_error)
 }
 
@@ -579,7 +582,7 @@ pub fn infer_typed_dict_total_argument(
     }
 }
 
-pub fn typed_dict_setdefault<'db>(
+pub(crate) fn typed_dict_setdefault<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Arguments<'db>,
     result_context: &mut ResultContext,
@@ -652,7 +655,7 @@ fn typed_dict_setdefault_internal<'db>(
     }
 }
 
-pub fn typed_dict_get<'db>(
+pub(crate) fn typed_dict_get<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Arguments<'db>,
     result_context: &mut ResultContext,
@@ -761,7 +764,7 @@ fn typed_dict_pop_internal<'db>(
     typed_dict_get_or_pop_internal(i_s, td, args, true)
 }
 
-pub fn typed_dict_pop<'db>(
+pub(crate) fn typed_dict_pop<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Arguments<'db>,
     result_context: &mut ResultContext,
@@ -943,7 +946,7 @@ fn typed_dict_update_internal<'db>(
     Some(Inferred::new_none())
 }
 
-pub fn initialize_typed_dict<'db>(
+pub(crate) fn initialize_typed_dict<'db>(
     typed_dict: Rc<TypedDict>,
     i_s: &InferenceState<'db, '_>,
     args: &dyn Arguments<'db>,
@@ -1040,7 +1043,7 @@ pub fn infer_typed_dict_item<'db>(
     }
 }
 
-pub fn check_typed_dict_call<'db>(
+pub(crate) fn check_typed_dict_call<'db>(
     i_s: &InferenceState<'db, '_>,
     matcher: &mut Matcher,
     typed_dict: Rc<TypedDict>,

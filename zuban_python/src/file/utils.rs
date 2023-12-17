@@ -304,7 +304,7 @@ impl<'db> Inference<'db, '_, '_> {
     }
 
     // For dict(..)
-    pub fn infer_dict_call_from_context(
+    pub(crate) fn infer_dict_call_from_context(
         &mut self,
         args: &dyn Arguments<'db>,
         result_context: &mut ResultContext,

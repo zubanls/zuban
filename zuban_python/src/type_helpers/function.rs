@@ -1246,7 +1246,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             .unwrap_or_else(|| Cow::Borrowed(&Type::Any(AnyCause::Unannotated)))
     }
 
-    pub fn execute(
+    pub(crate) fn execute(
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,

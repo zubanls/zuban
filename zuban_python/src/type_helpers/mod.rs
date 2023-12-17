@@ -11,10 +11,10 @@ pub use bound_method::{BoundMethod, BoundMethodFunction};
 pub use callable::Callable;
 pub use class::{start_namedtuple_params, Class, MroIterator, TypeOrClass};
 pub use function::{is_private, FirstParamKind, FirstParamProperties, Function, GeneratorType};
-pub use instance::{execute_super, Instance};
+pub(crate) use instance::{execute_super, Instance};
 pub use module::{dotted_path_from_dir, lookup_in_namespace, Module};
 pub use overload::OverloadedFunction;
-pub use typing::{
+pub(crate) use typing::{
     execute_assert_type, execute_type, NewTypeClass, ParamSpecClass, RevealTypeFunction,
     TypeVarClass, TypeVarTupleClass, TypingCast,
 };

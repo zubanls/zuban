@@ -483,7 +483,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         }
     }
 
-    pub fn execute(
+    pub(crate) fn execute(
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,

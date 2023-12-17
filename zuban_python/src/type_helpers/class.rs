@@ -1693,7 +1693,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    pub fn execute(
+    pub(crate) fn execute(
         &self,
         original_i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,

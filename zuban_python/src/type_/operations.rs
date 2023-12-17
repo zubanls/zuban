@@ -389,7 +389,7 @@ impl Type {
         }
     }
 
-    pub fn execute<'db>(
+    pub(crate) fn execute<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
         inferred_from: Option<&Inferred>,
@@ -584,7 +584,7 @@ pub fn attribute_access_of_type(
     callable(&Type::Type(in_type.clone()), None, lookup_result)
 }
 
-pub fn execute_type_of_type<'db>(
+pub(crate) fn execute_type_of_type<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Arguments<'db>,
     result_context: &mut ResultContext,

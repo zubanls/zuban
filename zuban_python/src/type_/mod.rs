@@ -18,7 +18,7 @@ use std::{borrow::Cow, cell::OnceCell, fmt, mem, rc::Rc};
 
 pub use common_base_type::{common_base_type, common_base_type_of_type_var_tuple_with_items};
 pub use matching::match_tuple_type_arguments;
-pub use named_tuple::{
+pub(crate) use named_tuple::{
     execute_collections_named_tuple, execute_typing_named_tuple, new_collections_named_tuple,
     new_typing_named_tuple, NamedTuple,
 };
@@ -31,7 +31,7 @@ pub use type_var_likes::{
     TypeVarName, TypeVarTuple, TypeVarTupleUsage, TypeVarUsage, Variance,
 };
 
-pub use self::{
+pub(crate) use self::{
     callable::{
         format_callable_params, CallableContent, CallableParam, CallableParams, ParamType,
         StarParamType, StarStarParamType, WrongPositionalCount,
@@ -1628,14 +1628,14 @@ pub struct CustomBehavior {
 }
 
 impl CustomBehavior {
-    pub fn new_function(callback: CustomBehaviorCallback) -> Self {
+    pub(crate) fn new_function(callback: CustomBehaviorCallback) -> Self {
         Self {
             callback,
             kind: CustomBehaviorKind::Function,
         }
     }
 
-    pub fn new_method(callback: CustomBehaviorCallback, bound: Option<Rc<Type>>) -> Self {
+    pub(crate) fn new_method(callback: CustomBehaviorCallback, bound: Option<Rc<Type>>) -> Self {
         Self {
             callback,
             kind: CustomBehaviorKind::Method { bound },
@@ -1654,7 +1654,7 @@ impl CustomBehavior {
         }
     }
 
-    pub fn execute<'db>(
+    pub(crate) fn execute<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,

@@ -517,7 +517,7 @@ pub fn check_dataclass_options<'db>(
     options
 }
 
-pub fn dataclasses_replace<'db>(
+pub(crate) fn dataclasses_replace<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Arguments<'db>,
     result_context: &mut ResultContext,
@@ -646,7 +646,7 @@ fn run_on_dataclass(
     }
 }
 
-pub fn dataclass_initialize<'db>(
+pub(crate) fn dataclass_initialize<'db>(
     dataclass: &Rc<Dataclass>,
     i_s: &InferenceState<'db, '_>,
     args: &dyn Arguments<'db>,

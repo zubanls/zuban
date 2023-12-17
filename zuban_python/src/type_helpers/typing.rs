@@ -16,7 +16,7 @@ use crate::{
     utils::join_with_commas,
 };
 
-pub fn execute_type<'db>(
+pub(crate) fn execute_type<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Arguments<'db>,
     on_type_error: OnTypeError<'db, '_>,
@@ -38,7 +38,7 @@ pub fn execute_type<'db>(
 pub struct TypingCast();
 
 impl<'db> TypingCast {
-    pub fn execute(
+    pub(crate) fn execute(
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
@@ -115,7 +115,7 @@ impl<'db> TypingCast {
 pub struct RevealTypeFunction();
 
 impl RevealTypeFunction {
-    pub fn execute<'db>(
+    pub(crate) fn execute<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
@@ -196,7 +196,7 @@ fn reveal_type_info(i_s: &InferenceState, t: &Type) -> Box<str> {
     t.format(&format_data)
 }
 
-pub fn execute_assert_type<'db>(
+pub(crate) fn execute_assert_type<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Arguments<'db>,
     result_context: &mut ResultContext,
@@ -261,7 +261,7 @@ pub fn execute_assert_type<'db>(
 pub struct TypeVarClass();
 
 impl TypeVarClass {
-    pub fn execute(
+    pub(crate) fn execute(
         &self,
         i_s: &InferenceState,
         args: &dyn Arguments,
@@ -466,7 +466,7 @@ fn maybe_type_var(
 pub struct TypeVarTupleClass();
 
 impl TypeVarTupleClass {
-    pub fn execute(
+    pub(crate) fn execute(
         &self,
         i_s: &InferenceState,
         args: &dyn Arguments,
@@ -598,7 +598,7 @@ fn maybe_type_var_tuple(
 pub struct ParamSpecClass();
 
 impl ParamSpecClass {
-    pub fn execute(
+    pub(crate) fn execute(
         &self,
         i_s: &InferenceState,
         args: &dyn Arguments,
@@ -719,7 +719,7 @@ fn maybe_param_spec(
 pub struct NewTypeClass();
 
 impl NewTypeClass {
-    pub fn execute<'db>(
+    pub(crate) fn execute<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,

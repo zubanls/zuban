@@ -300,7 +300,7 @@ fn lookup_members_on_enum(
     }
 }
 
-pub fn execute_functional_enum<'db>(
+pub(crate) fn execute_functional_enum<'db>(
     i_s: &InferenceState<'db, '_>,
     class: Class,
     args: &dyn Arguments<'db>,

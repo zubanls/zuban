@@ -1481,7 +1481,7 @@ impl<'db: 'slf, 'slf> Inferred {
         })
     }
 
-    pub fn type_lookup_and_execute(
+    pub(crate) fn type_lookup_and_execute(
         &self,
         i_s: &InferenceState<'db, '_>,
         from: NodeRef,
@@ -1499,7 +1499,7 @@ impl<'db: 'slf, 'slf> Inferred {
         )
     }
 
-    pub fn type_lookup_and_execute_with_attribute_error(
+    pub(crate) fn type_lookup_and_execute_with_attribute_error(
         &self,
         i_s: &InferenceState<'db, '_>,
         from: NodeRef,
@@ -1511,7 +1511,7 @@ impl<'db: 'slf, 'slf> Inferred {
         })
     }
 
-    pub fn type_lookup_and_execute_with_details(
+    pub(crate) fn type_lookup_and_execute_with_details(
         &self,
         i_s: &InferenceState<'db, '_>,
         from: NodeRef,
@@ -1546,7 +1546,7 @@ impl<'db: 'slf, 'slf> Inferred {
         result.unwrap_or_else(|| todo!())
     }
 
-    pub fn execute(&self, i_s: &InferenceState<'db, '_>, args: &dyn Arguments<'db>) -> Self {
+    pub(crate) fn execute(&self, i_s: &InferenceState<'db, '_>, args: &dyn Arguments<'db>) -> Self {
         self.execute_with_details(
             i_s,
             args,
@@ -1555,7 +1555,7 @@ impl<'db: 'slf, 'slf> Inferred {
         )
     }
 
-    pub fn execute_with_details(
+    pub(crate) fn execute_with_details(
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,

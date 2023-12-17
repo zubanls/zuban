@@ -277,7 +277,7 @@ impl NamedTuple {
     }
 }
 
-pub fn execute_typing_named_tuple(i_s: &InferenceState, args: &dyn Arguments) -> Inferred {
+pub(crate) fn execute_typing_named_tuple(i_s: &InferenceState, args: &dyn Arguments) -> Inferred {
     match new_typing_named_tuple(i_s, args, false) {
         Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(Rc::new(
             Type::NamedTuple(rc),
@@ -286,7 +286,7 @@ pub fn execute_typing_named_tuple(i_s: &InferenceState, args: &dyn Arguments) ->
     }
 }
 
-pub fn execute_collections_named_tuple<'db>(
+pub(crate) fn execute_collections_named_tuple<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Arguments<'db>,
     result_context: &mut ResultContext,
@@ -361,7 +361,7 @@ fn check_named_tuple_name<'x, 'y>(
     Some((string_slice, node_ref, atom_content, iterator))
 }
 
-pub fn new_typing_named_tuple(
+pub(crate) fn new_typing_named_tuple(
     i_s: &InferenceState,
     args: &dyn Arguments,
     in_type_definition: bool,
@@ -424,7 +424,7 @@ pub fn new_typing_named_tuple(
     }
 }
 
-pub fn new_collections_named_tuple(
+pub(crate) fn new_collections_named_tuple(
     i_s: &InferenceState,
     args: &dyn Arguments,
 ) -> Option<Rc<NamedTuple>> {

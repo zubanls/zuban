@@ -6,7 +6,7 @@ use crate::{
     matching::{LookupKind, OnTypeError, ResultContext},
 };
 
-pub fn method_with_fallback<'db, 'x, T>(
+pub(crate) fn method_with_fallback<'db, 'x, T>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Arguments<'db>,
     result_context: &mut ResultContext,

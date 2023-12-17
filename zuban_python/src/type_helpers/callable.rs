@@ -33,7 +33,7 @@ impl<'a> Callable<'a> {
         })
     }
 
-    pub fn execute<'db>(
+    pub(crate) fn execute<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
@@ -43,7 +43,7 @@ impl<'a> Callable<'a> {
         self.execute_internal(i_s, args, false, on_type_error, result_context)
     }
 
-    pub fn execute_internal<'db>(
+    pub(crate) fn execute_internal<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,

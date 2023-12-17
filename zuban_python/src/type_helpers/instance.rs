@@ -190,7 +190,7 @@ impl<'a> Instance<'a> {
             })
     }
 
-    pub fn execute<'db>(
+    pub(crate) fn execute<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
@@ -534,7 +534,10 @@ impl<'db: 'a, 'a> Iterator for ClassMroFinder<'db, 'a, '_> {
     }
 }
 
-pub fn execute_super<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Arguments<'db>) -> Inferred {
+pub(crate) fn execute_super<'db>(
+    i_s: &InferenceState<'db, '_>,
+    args: &dyn Arguments<'db>,
+) -> Inferred {
     match execute_super_internal(i_s, args) {
         Ok(inf) => inf,
         Err(issue) => {

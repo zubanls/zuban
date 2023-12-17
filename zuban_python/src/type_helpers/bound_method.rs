@@ -24,7 +24,7 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
         Self { instance, function }
     }
 
-    pub fn execute<'db>(
+    pub(crate) fn execute<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
