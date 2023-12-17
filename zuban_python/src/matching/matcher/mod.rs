@@ -545,6 +545,8 @@ impl<'a> Matcher<'a> {
                             SignatureMatch::new_true()
                         } else {
                             if let Some(on_type_error) = on_type_error {
+                                debug!("TODO should add an error for param spec mismatches");
+                                /*
                                 (on_type_error.callback)(
                                     i_s,
                                     &|_| todo!(),
@@ -552,6 +554,7 @@ impl<'a> Matcher<'a> {
                                     Box::from("TODO X"),
                                     Box::from("TODO Y"),
                                 )
+                                */
                             }
                             SignatureMatch::False { similar: false }
                         }
