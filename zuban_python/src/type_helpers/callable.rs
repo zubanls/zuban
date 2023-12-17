@@ -53,7 +53,7 @@ impl<'a> Callable<'a> {
     ) -> Inferred {
         let return_type = &self.content.return_type;
         if result_context.expect_not_none(i_s) && matches!(&return_type, Type::None) {
-            args.as_node_ref().add_issue(
+            args.add_issue(
                 i_s,
                 IssueType::DoesNotReturnAValue(
                     self.diagnostic_string(i_s.db)

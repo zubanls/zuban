@@ -541,7 +541,7 @@ pub(crate) fn execute_super<'db>(
     match execute_super_internal(i_s, args) {
         Ok(inf) => inf,
         Err(issue) => {
-            args.as_node_ref().add_issue(i_s, issue);
+            args.add_issue(i_s, issue);
             Inferred::new_any_from_error()
         }
     }

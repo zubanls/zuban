@@ -146,7 +146,7 @@ impl<'db: 'a, 'a> Class<'a> {
         let Some(inf) = __init__.into_maybe_inferred() else {
             if self.is_protocol(i_s.db) {
                 if !from_type_type {
-                    args.as_node_ref().add_issue(i_s, IssueType::CannotInstantiateProtocol {
+                    args.add_issue(i_s, IssueType::CannotInstantiateProtocol {
                         name: self.name().into()
                     })
                 }

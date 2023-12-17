@@ -511,8 +511,7 @@ pub fn check_dataclass_options<'db>(
     }
     if !options.eq && options.order {
         options.eq = true;
-        args.as_node_ref()
-            .add_issue(i_s, IssueType::DataclassOrderEnabledButNotEq);
+        args.add_issue(i_s, IssueType::DataclassOrderEnabledButNotEq);
     }
     options
 }

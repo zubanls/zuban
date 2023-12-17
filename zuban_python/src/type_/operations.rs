@@ -438,7 +438,7 @@ impl Type {
             }
             _ => {
                 let t = self.format_short(i_s.db);
-                args.as_node_ref().add_issue(
+                args.add_issue(
                     i_s,
                     IssueType::NotCallable {
                         type_: format!("\"{}\"", t).into(),

@@ -348,7 +348,7 @@ fn check_named_tuple_name<'x, 'y>(
     let Some(second_arg) = iterator.next() else {
         if executable_name != "namedtuple" {
             // For namedtuple this is already handled by type checking.
-            args.as_node_ref().add_issue(i_s, IssueType::TooFewArguments(r#" for "NamedTuple()""#.into()));
+            args.add_issue(i_s, IssueType::TooFewArguments(r#" for "NamedTuple()""#.into()));
         }
         return None
     };
@@ -370,7 +370,7 @@ pub(crate) fn new_typing_named_tuple(
         return None
     };
     if iterator.next().is_some() {
-        args.as_node_ref().add_issue(
+        args.add_issue(
             i_s,
             IssueType::TooManyArguments(" for \"NamedTuple()\"".into()),
         );
@@ -403,8 +403,7 @@ pub(crate) fn new_typing_named_tuple(
         check_named_tuple_has_no_fields_with_underscore(i_s, "NamedTuple", args, &params);
         let type_var_likes = comp.into_type_vars(|_, _| ());
         if in_type_definition && !type_var_likes.is_empty() {
-            args.as_node_ref()
-                .add_issue(i_s, IssueType::NamedTupleGenericInClassDefinition);
+            args.add_issue(i_s, IssueType::NamedTupleGenericInClassDefinition);
             return None;
         }
         let callable = CallableContent {
@@ -548,7 +547,7 @@ fn check_named_tuple_has_no_fields_with_underscore(
         })
         .collect();
     if !field_names_with_underscore.is_empty() {
-        args.as_node_ref().add_issue(
+        args.add_issue(
             i_s,
             IssueType::NamedTupleNamesCannotStartWithUnderscore {
                 name,

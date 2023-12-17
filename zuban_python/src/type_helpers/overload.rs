@@ -256,7 +256,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 args: args.iter().into_argument_types(i_s),
                 variants: self.variants(i_s, class.filter(|_| search_init)),
             };
-            args.as_node_ref().add_issue(i_s, t);
+            args.add_issue(i_s, t);
         }
         debug!("Decided overload as not found");
         if let Some(callable) = had_error_in_func {

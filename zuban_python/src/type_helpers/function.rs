@@ -1152,7 +1152,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             )
         } else {
             if i_s.db.project.flags.disallow_untyped_calls && self.is_dynamic() {
-                args.as_node_ref().add_issue(
+                args.add_issue(
                     i_s,
                     IssueType::CallToUntypedFunction {
                         name: self.name().into(),
@@ -1191,7 +1191,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             && matches!(return_type.as_ref(), Type::None)
             && !self.is_async()
         {
-            args.as_node_ref().add_issue(
+            args.add_issue(
                 i_s,
                 IssueType::DoesNotReturnAValue(self.diagnostic_string().into()),
             );

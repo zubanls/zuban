@@ -448,7 +448,7 @@ fn new_typed_dict_internal<'db>(
         todo!()
     };
     let ArgumentKind::Positional { node_ref, .. } = first_arg.kind else {
-        args.as_node_ref()
+        args
             .add_issue(i_s, IssueType::UnexpectedArgumentsToTypedDict);
         return None
     };
@@ -478,7 +478,7 @@ fn new_typed_dict_internal<'db>(
     }
 
     let Some(second_arg) = iterator.next() else {
-        args.as_node_ref().add_issue(i_s, IssueType::TooFewArguments(" for TypedDict()".into()));
+        args.add_issue(i_s, IssueType::TooFewArguments(" for TypedDict()".into()));
         return None
     };
     let ArgumentKind::Positional { node_ref: second_node_ref, .. } = second_arg.kind else {
@@ -503,15 +503,13 @@ fn new_typed_dict_internal<'db>(
                 return None;
             }
             _ => {
-                args.as_node_ref()
-                    .add_issue(i_s, IssueType::UnexpectedArgumentsToTypedDict);
+                args.add_issue(i_s, IssueType::UnexpectedArgumentsToTypedDict);
                 return None;
             }
         };
     }
     if iterator.next().is_some() {
-        args.as_node_ref()
-            .add_issue(i_s, IssueType::TooManyArguments(" for \"TODO()\"".into()));
+        args.add_issue(i_s, IssueType::TooManyArguments(" for \"TODO()\"".into()));
         return None;
     }
     let dct_iterator = match atom_content {
@@ -633,7 +631,7 @@ fn typed_dict_setdefault_internal<'db>(
                     .is_simple_super_type_of(i_s, &default.as_cow_type(i_s))
                     .bool()
                 {
-                    args.as_node_ref().add_issue(
+                    args.add_issue(
                         i_s,
                         IssueType::TypedDictSetdefaultWrongDefaultType {
                             got: default.format_short(i_s),
@@ -711,7 +709,7 @@ fn typed_dict_get_or_pop_internal<'db>(
         Some(Inferred::from_type({
             if let Some(member) = td.find_member(i_s.db, key) {
                 if is_pop && member.required {
-                    args.as_node_ref().add_issue(
+                    args.add_issue(
                         i_s,
                         IssueType::TypedDictKeyCannotBeDeleted {
                             typed_dict: td.format(&FormatData::new_short(i_s.db)).into(),
@@ -722,7 +720,7 @@ fn typed_dict_get_or_pop_internal<'db>(
                 member.type_.clone()
             } else {
                 if is_pop {
-                    args.as_node_ref().add_issue(
+                    args.add_issue(
                         i_s,
                         IssueType::TypedDictHasNoKey {
                             typed_dict: td.format(&FormatData::new_short(i_s.db)).into(),
@@ -748,8 +746,7 @@ fn typed_dict_get_or_pop_internal<'db>(
         }
     } else {
         if is_pop {
-            args.as_node_ref()
-                .add_issue(i_s, IssueType::TypedDictKeysMustBeStringLiteral);
+            args.add_issue(i_s, IssueType::TypedDictKeysMustBeStringLiteral);
         }
         infer_default(&mut ResultContext::Unknown)?;
         Some(Inferred::from_type(i_s.db.python_state.object_type()))
@@ -862,7 +859,7 @@ fn typed_dict_setitem_internal<'db>(
                     node_ref.to_db_lifetime(i_s.db)
                 });
         } else {
-            args.as_node_ref().add_issue(
+            args.add_issue(
                 i_s,
                 IssueType::TypedDictHasNoKey {
                     typed_dict: td.format(&FormatData::new_short(i_s.db)).into(),
@@ -1079,7 +1076,7 @@ pub(crate) fn check_typed_dict_call<'db>(
         }
     }
     if !missing_keys.is_empty() {
-        args.as_node_ref().add_issue(
+        args.add_issue(
             i_s,
             IssueType::TypedDictMissingKeys {
                 typed_dict: typed_dict

@@ -1663,7 +1663,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 )
                             }
                             Specific::TypingAny => {
-                                args.as_node_ref().add_issue(i_s, IssueType::AnyNotCallable);
+                                args.add_issue(i_s, IssueType::AnyNotCallable);
                                 args.iter().calculate_diagnostics(i_s);
                                 return Inferred::new_any_from_error();
                             }
@@ -1706,7 +1706,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                         &alias.as_type_and_set_type_vars_any(i_s.db),
                                     );
                                 }
-                                args.as_node_ref().add_issue(
+                                args.add_issue(
                                     i_s,
                                     IssueType::NotCallable {
                                         type_: Box::from("\"<typing special form>\""),
@@ -1735,7 +1735,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                         args.as_node_ref().to_db_lifetime(i_s.db)
                                     });
                                 } else {
-                                    args.as_node_ref().add_issue(
+                                    args.add_issue(
                                         i_s,
                                         IssueType::TooFewArguments(
                                             format!(" for \"{}\"", new_type.name(i_s.db)).into(),
@@ -1743,7 +1743,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     );
                                 }
                                 if iterator.next().is_some() {
-                                    args.as_node_ref().add_issue(
+                                    args.add_issue(
                                         i_s,
                                         IssueType::TooManyArguments(
                                             format!(" for \"{}\"", new_type.name(i_s.db)).into(),
@@ -1756,7 +1756,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         }
                     }
                     PointType::FileReference => {
-                        args.as_node_ref().add_issue(
+                        args.add_issue(
                             i_s,
                             IssueType::NotCallable {
                                 type_: Box::from("Module"),
