@@ -34,6 +34,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     type_::{AnyCause, Type, TypeOrTypeVarTuple},
+    utils::debug_indent,
 };
 
 thread_local! {
@@ -48,7 +49,7 @@ pub fn avoid_protocol_mismatch(t1: &Type, t2: &Type, callable: impl FnOnce() -> 
         } else {
             current.push((t1.clone(), t2.clone()));
             drop(current);
-            let result = callable();
+            let result = debug_indent(|| callable());
             vec.borrow_mut().pop();
             result
         }

@@ -983,6 +983,11 @@ impl<'db: 'a, 'a> Class<'a> {
         let ignore_positional_param_names_old = matcher.ignore_positional_param_names;
         matcher.ignore_positional_param_names = true;
 
+        debug!(
+            r#"Match protocol "{}" against "{}""#,
+            self.format_short(i_s.db),
+            other.format_short(i_s.db)
+        );
         let mut protocol_member_count = 0;
         debug!("TODO this from is completely wrong and should never be used.");
         let hack = self.node_ref;
@@ -1013,23 +1018,24 @@ impl<'db: 'a, 'a> Class<'a> {
                     }
                 }
 
-                if let Some(l) = other
-                    .lookup(
-                        i_s,
-                        hack,
-                        name,
-                        LookupKind::Normal,
-                        &mut ResultContext::Unknown,
-                        &|_| (),
-                    )
-                    .into_maybe_inferred()
-                {
+                let had_lookup_error = Cell::new(false);
+                let lookup = other.lookup(
+                    i_s,
+                    hack,
+                    name,
+                    LookupKind::Normal,
+                    &mut ResultContext::Unknown,
+                    &|_| had_lookup_error.set(true),
+                );
+                // We cannot just use lookup.into_maybe_inferred, because unions can be involved.
+                if !had_lookup_error.get() {
                     had_at_least_one_member_with_same_name = true;
                     let inf1 = Instance::new(c, None)
                         .full_lookup(i_s, hack, name)
                         .into_inferred();
                     let t1 = inf1.as_cow_type(i_s);
-                    let t2 = l.as_cow_type(i_s);
+                    let lookup = lookup.into_inferred();
+                    let t2 = lookup.as_cow_type(i_s);
                     let m = t1.matches(i_s, matcher, &t2, variance);
                     if !m.bool() || is_call && !matches!(other, Type::Class(_)) {
                         if EXCLUDED_PROTOCOL_ATTRIBUTES.contains(&name) {

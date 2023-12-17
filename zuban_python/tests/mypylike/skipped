@@ -503,7 +503,6 @@ testInstantiationProtocolInTypeForVariables
 # Recursion error
 testSelfTypeProtocolClassmethodMatch
 testSelfTypesWithProtocolsBehaveAsWithNominal
-testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
 # "Protocol members cannot be defined via assignment to self"
 testProhibitSelfDefinitionInProtocols
 # "Invariant type variable "T" used in protocol where covariant one is expected"
@@ -1444,6 +1443,9 @@ testGenericMatch
 testTypedDictUpdate3
 testReModuleBytes
 testReModuleString
+testNoCrashForwardRefToBrokenDoubleNewType
+testNoCrashForwardRefToBrokenDoubleNewTypeClass
+testNewAnalyzerNoCrashForwardRefToBrokenDoubleNewTypeClass
 # narrowing with in
 testOperatorContainsNarrowsTypedDicts_unionWithList
 testOperatorContainsNarrowsTypedDicts_total
