@@ -13,7 +13,6 @@ use crate::{
         replace_class_type_vars_in_callable, ArgumentIndexWithParam, FormatData,
         FunctionOrCallable, OnTypeError, ResultContext, SignatureMatch,
     },
-    node_ref::NodeRef,
     type_::{AnyCause, FunctionOverload, ReplaceSelf, Type},
 };
 
@@ -63,7 +62,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     class.unwrap(),
                     callable,
                     args.iter(),
-                    args.as_node_ref(),
+                    |issue| args.add_issue(i_s, issue),
                     result_context,
                     None,
                 )
@@ -72,7 +71,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     i_s,
                     callable,
                     args.iter(),
-                    args.as_node_ref(),
+                    |issue| args.add_issue(i_s, issue),
                     skip_first_argument,
                     result_context,
                     None,
@@ -191,7 +190,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 args.iter(),
                 skip_first_argument,
                 &mut non_union_args,
-                args.as_node_ref(),
+                &|issue| args.add_issue(i_s, issue),
                 search_init,
                 class,
             ) {
@@ -274,7 +273,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         mut args: ArgumentIterator<'db, 'x>,
         skip_first_argument: bool,
         non_union_args: &mut Vec<Argument<'db, 'x>>,
-        args_node_ref: NodeRef,
+        add_issue: &impl Fn(IssueType),
         search_init: bool,
         class: Option<&Class>,
     ) -> UnionMathResult {
@@ -308,7 +307,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         args.clone(),
                         skip_first_argument,
                         non_union_args,
-                        args_node_ref,
+                        add_issue,
                         search_init,
                         class,
                     );
@@ -353,7 +352,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     args,
                     skip_first_argument,
                     non_union_args,
-                    args_node_ref,
+                    add_issue,
                     search_init,
                     class,
                 )
@@ -369,7 +368,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             class.unwrap(),
                             callable,
                             non_union_args.clone().into_iter(),
-                            args_node_ref,
+                            |issue| add_issue(issue),
                             result_context,
                             None,
                         )
@@ -378,7 +377,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             i_s,
                             callable,
                             non_union_args.clone().into_iter(),
-                            args_node_ref,
+                            |issue| add_issue(issue),
                             skip_first_argument,
                             result_context,
                             None,

@@ -64,10 +64,12 @@ impl<'a> Instance<'a> {
             }
         }
         let check_compatible = |t: &Type, value: &_| {
-            t.error_if_not_matches(i_s, value, |got, expected| {
-                from.add_issue(i_s, IssueType::IncompatibleAssignment { got, expected });
-                from
-            });
+            t.error_if_not_matches(
+                i_s,
+                value,
+                |issue| from.add_issue(i_s, issue),
+                |got, expected| Some(IssueType::IncompatibleAssignment { got, expected }),
+            )
         };
 
         let (result, class) = self.class.lookup_without_descriptors(i_s, from, name_str);
@@ -434,13 +436,14 @@ impl<'a> Instance<'a> {
                         i_s,
                         &args,
                         &mut ResultContext::Unknown,
-                        OnTypeError::new(&|i_s, function, arg, actual, expected| {
-                            arg.as_node_ref().add_issue(
+                        OnTypeError::new(&|i_s, function, arg, types| {
+                            let strs = types.as_boxed_strs(i_s);
+                            arg.add_issue(
                                 i_s,
                                 IssueType::InvalidGetItem {
-                                    actual,
                                     type_: self.class.format_short(i_s.db),
-                                    expected,
+                                    actual: strs.got,
+                                    expected: strs.expected,
                                 },
                             )
                         }),
@@ -478,11 +481,18 @@ fn calculate_descriptor(
             &KnownArguments::new(value, from),
         ),
         &mut ResultContext::ExpectUnused,
-        OnTypeError::new(&|i_s, error_text, argument, got, expected| {
+        OnTypeError::new(&|i_s, error_text, argument, types| {
             if argument.index == 2 {
-                from.add_issue(i_s, IssueType::IncompatibleAssignment { got, expected });
+                let strs = types.as_boxed_strs(i_s);
+                from.add_issue(
+                    i_s,
+                    IssueType::IncompatibleAssignment {
+                        got: strs.got,
+                        expected: strs.expected,
+                    },
+                );
             } else {
-                on_argument_type_error(i_s, error_text, argument, got, expected)
+                on_argument_type_error(i_s, error_text, argument, types)
             }
         }),
     );

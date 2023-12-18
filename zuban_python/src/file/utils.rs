@@ -14,7 +14,7 @@ use crate::{
     getitem::Simple,
     inference_state::InferenceState,
     inferred::UnionValue,
-    matching::{FormatData, Matcher, MismatchReason, ResultContext},
+    matching::{ErrorTypes, FormatData, Matcher, MismatchReason, ResultContext},
     new_class,
     node_ref::NodeRef,
     type_::{
@@ -145,7 +145,7 @@ impl<'db> Inference<'db, '_, '_> {
                                 self.i_s,
                                 &typed_dict,
                                 matcher,
-                                node_ref,
+                                |issue| node_ref.add_issue(i_s, issue),
                                 key,
                                 &mut extra_keys,
                                 |context| {
@@ -176,7 +176,7 @@ impl<'db> Inference<'db, '_, '_> {
                                     self.i_s,
                                     &typed_dict,
                                     matcher,
-                                    node_ref,
+                                    |issue| node_ref.add_issue(i_s, issue),
                                     key,
                                     &mut extra_keys,
                                     |_| Inferred::from_type(member.type_.clone()),
@@ -411,26 +411,20 @@ fn check_list_with_context<'db>(
     let mut had_error = false;
     for (item, element) in iterator.enumerate() {
         let mut check_item = |i_s: &InferenceState<'db, '_>, inferred: Inferred, index| {
-            let m = generic_t.error_if_not_matches_with_matcher(
+            generic_t.error_if_not_matches_with_matcher(
                 i_s,
                 matcher,
                 &inferred,
-                Some(|got, expected, _: &MismatchReason| {
-                    let node_ref = NodeRef::new(file, index);
-                    node_ref.add_issue(
-                        i_s,
-                        IssueType::ListItemMismatch {
-                            item,
-                            got,
-                            expected,
-                        },
-                    );
-                    node_ref
-                }),
+                |issue| NodeRef::new(file, index).add_issue(i_s, issue),
+                |got, expected, _: &MismatchReason| {
+                    had_error = true;
+                    Some(IssueType::ListItemMismatch {
+                        item,
+                        got,
+                        expected,
+                    })
+                },
             );
-            if !m.bool() {
-                had_error = true;
-            }
         };
         let mut inference = file.inference(i_s);
         match element {
@@ -464,24 +458,26 @@ pub fn on_argument_type_error(
     i_s: &InferenceState,
     error_text: &dyn Fn(&str) -> Option<Box<str>>,
     arg: &Argument,
-    t1: Box<str>,
-    t2: Box<str>,
+    types: ErrorTypes,
 ) {
-    let t1 = match t1.as_ref() {
+    let strings = types.as_boxed_strs(i_s);
+    let got = match strings.got.as_ref() {
         "ModuleType" => "Module".to_string(),
-        t1 => format!("\"{t1}\""),
+        got => format!("\"{got}\""),
     };
-    arg.as_node_ref().add_issue(
+    arg.add_issue(
         i_s,
         IssueType::ArgumentTypeIssue(
             format!(
-                "Argument {}{} has incompatible type {t1}; expected \"{t2}\"",
+                "Argument {}{} has incompatible type {got}; expected \"{}\"",
                 arg.human_readable_index(i_s.db),
                 error_text(" to ").as_deref().unwrap_or(""),
+                strings.expected,
             )
             .into(),
         ),
-    )
+    );
+    types.add_mismatch_notes(|issue| arg.add_issue(i_s, issue))
 }
 
 pub fn infer_index(

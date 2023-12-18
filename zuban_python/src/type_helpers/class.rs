@@ -166,7 +166,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     self,
                     func,
                     args.iter(),
-                    args.as_node_ref(),
+                    |issue| args.add_issue(i_s, issue),
                     result_context,
                     Some(on_type_error),
                 );
@@ -188,7 +188,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         i_s,
                         Callable::new(&callable_content, Some(*self)),
                         args.iter(),
-                        args.as_node_ref(),
+                        |issue| args.add_issue(i_s, issue),
                         false,
                         result_context,
                         Some(on_type_error),
@@ -213,7 +213,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         self,
                         callable,
                         args.iter(),
-                        args.as_node_ref(),
+                        |issue| args.add_issue(i_s, issue),
                         result_context,
                         Some(on_type_error),
                     );
@@ -926,11 +926,9 @@ impl<'db: 'a, 'a> Class<'a> {
                 let (name, expr) = kwarg.unpack();
                 if name.as_code() == "total" {
                     let inf = inference.infer_expression(expr);
-                    total = infer_typed_dict_total_argument(
-                        i_s,
-                        inf,
-                        NodeRef::new(self.node_ref.file, expr.index()),
-                    )
+                    total = infer_typed_dict_total_argument(i_s, inf, |issue| {
+                        NodeRef::new(self.node_ref.file, expr.index()).add_issue(i_s, issue)
+                    })
                     .unwrap_or(true);
                 }
             }

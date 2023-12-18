@@ -15,7 +15,7 @@ pub use generic::Generic;
 pub use generics::{Generics, GenericsIterator};
 pub use lookup_result::LookupResult;
 pub use match_::{ArgumentIndexWithParam, Match, MismatchReason, SignatureMatch};
-pub use matcher::{
+pub(crate) use matcher::{
     calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
     calculate_class_init_type_vars_and_return, calculate_function_type_vars_and_return,
     CalculatedTypeArguments, CalculatedTypeVarLike, FunctionOrCallable, Matcher,
@@ -31,6 +31,7 @@ pub use utils::{
 use crate::{
     arguments::Argument,
     database::Database,
+    diagnostics::IssueType,
     inference_state::InferenceState,
     inferred::Inferred,
     type_::{AnyCause, Type, TypeOrTypeVarTuple},
@@ -107,12 +108,89 @@ fn func_or_callable_diagnostic_string(f: &FunctionOrCallable, db: &Database) -> 
     f.diagnostic_string(db)
 }
 
+pub enum GotType<'a> {
+    Type(&'a Type),
+    Starred(Type),
+    DoubleStarred(Type),
+}
+
+impl GotType<'_> {
+    pub fn as_string(&self, db: &Database) -> String {
+        self.format(&FormatData::new_short(db))
+    }
+
+    pub fn format(&self, format_data: &FormatData) -> String {
+        match self {
+            GotType::Type(t) => t.format(format_data).into(),
+            GotType::Starred(t) => format!("*{}", t.format(format_data)),
+            GotType::DoubleStarred(t) => format!("**{}", t.format(format_data)),
+        }
+    }
+}
+
+pub struct ErrorTypes<'a> {
+    pub matcher: &'a Matcher<'a>,
+    pub got: GotType<'a>,
+    pub expected: &'a Type,
+    pub reason: &'a MismatchReason,
+}
+
+pub struct ErrorStrs {
+    pub got: Box<str>,
+    pub expected: Box<str>,
+}
+
+impl ErrorTypes<'_> {
+    pub fn as_boxed_strs(&self, i_s: &InferenceState) -> ErrorStrs {
+        let mut fmt_got = FormatData::new_short(i_s.db);
+        let mut fmt_expected = FormatData::with_matcher(i_s.db, self.matcher);
+        if self.expected.is_literal_or_literal_in_tuple() {
+            fmt_got.hide_implicit_literals = false;
+            fmt_expected.hide_implicit_literals = false;
+        }
+        let mut got = self.got.format(&fmt_got);
+        let mut expected = self.expected.format(&fmt_expected);
+        if got.as_str() == expected.as_ref() {
+            fmt_got.enable_verbose();
+            fmt_expected.enable_verbose();
+            got = self.got.format(&fmt_got);
+            expected = self.expected.format(&fmt_expected);
+        }
+        ErrorStrs {
+            got: got.into(),
+            expected,
+        }
+    }
+
+    pub(crate) fn add_mismatch_notes(&self, add_issue: impl Fn(IssueType)) {
+        match self.reason {
+            MismatchReason::SequenceInsteadOfListNeeded => {
+                add_issue(IssueType::InvariantNote {
+                    actual: "List",
+                    maybe: "Sequence",
+                });
+            }
+            MismatchReason::MappingInsteadOfDictNeeded => {
+                add_issue(IssueType::InvariantNote {
+                    actual: "Dict",
+                    maybe: "Mapping",
+                });
+            }
+            MismatchReason::ProtocolMismatches { notes } => {
+                for note in notes.iter() {
+                    add_issue(IssueType::Note(note.clone()));
+                }
+            }
+            _ => (),
+        }
+    }
+}
+
 pub type OnTypeErrorCallback<'db, 'a> = &'a dyn Fn(
     &InferenceState<'db, '_>,
     &dyn Fn(&str) -> Option<Box<str>>, // error_text; argument is a prefix
     &Argument,
-    Box<str>,
-    Box<str>,
+    ErrorTypes,
 );
 pub type OnLookupError<'a> = &'a dyn Fn(&Type);
 

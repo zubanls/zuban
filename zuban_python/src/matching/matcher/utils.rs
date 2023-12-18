@@ -20,6 +20,7 @@ use crate::{
     debug,
     diagnostics::IssueType,
     inference_state::InferenceState,
+    matching::{ErrorTypes, GotType},
     node_ref::NodeRef,
     type_::{
         CallableParams, ClassGenerics, GenericItem, GenericsList, ReplaceSelf, Type,
@@ -28,12 +29,12 @@ use crate::{
     type_helpers::{Callable, Class, Function},
 };
 
-pub fn calculate_callable_init_type_vars_and_return<'db: 'a, 'a>(
+pub(crate) fn calculate_callable_init_type_vars_and_return<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     class: &Class,
     callable: Callable<'a>,
     args: impl Iterator<Item = Argument<'db, 'a>>,
-    args_node_ref: NodeRef,
+    add_issue: impl Fn(IssueType),
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> CalculatedTypeArguments {
@@ -42,18 +43,18 @@ pub fn calculate_callable_init_type_vars_and_return<'db: 'a, 'a>(
         class,
         FunctionOrCallable::Callable(callable),
         args,
-        args_node_ref,
+        add_issue,
         result_context,
         on_type_error,
     )
 }
 
-pub fn calculate_class_init_type_vars_and_return<'db: 'a, 'a>(
+pub(crate) fn calculate_class_init_type_vars_and_return<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     class: &Class,
     function: Function<'a, 'a>,
     args: impl Iterator<Item = Argument<'db, 'a>>,
-    args_node_ref: NodeRef,
+    add_issue: impl Fn(IssueType),
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> CalculatedTypeArguments {
@@ -62,7 +63,7 @@ pub fn calculate_class_init_type_vars_and_return<'db: 'a, 'a>(
         class,
         FunctionOrCallable::Function(function),
         args,
-        args_node_ref,
+        add_issue,
         result_context,
         on_type_error,
     )
@@ -73,7 +74,7 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
     class: &Class,
     func_or_callable: FunctionOrCallable<'a>,
     args: impl Iterator<Item = Argument<'db, 'a>>,
-    args_node_ref: NodeRef,
+    add_issue: impl Fn(IssueType),
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> CalculatedTypeArguments {
@@ -106,7 +107,7 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
             func_or_callable,
             None,
             args,
-            args_node_ref,
+            add_issue,
             true,
             func_type_vars,
             match_in_definition,
@@ -128,7 +129,7 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
             func_or_callable,
             Some(class),
             args,
-            args_node_ref,
+            add_issue,
             true,
             type_vars,
             match_in_definition,
@@ -173,11 +174,11 @@ impl CalculatedTypeArguments {
     }
 }
 
-pub fn calculate_function_type_vars_and_return<'db: 'a, 'a>(
+pub(crate) fn calculate_function_type_vars_and_return<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     function: Function<'a, 'a>,
     args: impl Iterator<Item = Argument<'db, 'a>>,
-    args_node_ref: NodeRef,
+    add_issue: impl Fn(IssueType),
     skip_first_param: bool,
     type_vars: &TypeVarLikes,
     match_in_definition: PointLink,
@@ -199,7 +200,7 @@ pub fn calculate_function_type_vars_and_return<'db: 'a, 'a>(
         func_or_callable,
         None,
         args,
-        args_node_ref,
+        add_issue,
         skip_first_param,
         type_vars,
         match_in_definition,
@@ -208,11 +209,11 @@ pub fn calculate_function_type_vars_and_return<'db: 'a, 'a>(
     )
 }
 
-pub fn calculate_callable_type_vars_and_return<'db: 'a, 'a>(
+pub(crate) fn calculate_callable_type_vars_and_return<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     callable: Callable<'a>,
     args: impl Iterator<Item = Argument<'db, 'a>>,
-    args_node_ref: NodeRef,
+    add_issue: impl Fn(IssueType),
     skip_first_param: bool,
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
@@ -231,7 +232,7 @@ pub fn calculate_callable_type_vars_and_return<'db: 'a, 'a>(
         func_or_callable,
         None,
         args,
-        args_node_ref,
+        add_issue,
         skip_first_param,
         type_vars,
         callable.content.defined_at,
@@ -258,7 +259,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
     func_or_callable: FunctionOrCallable<'a>,
     return_class: Option<&Class>,
     mut args: impl Iterator<Item = Argument<'db, 'a>>,
-    args_node_ref: NodeRef,
+    add_issue: impl Fn(IssueType),
     skip_first_param: bool,
     type_vars: &TypeVarLikes,
     match_in_definition: PointLink,
@@ -384,7 +385,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
             i_s,
             &mut matcher,
             func_or_callable,
-            args_node_ref,
+            &add_issue,
             on_type_error,
             function.iter_args_with_params(i_s.db, args, skip_first_param),
         ),
@@ -393,7 +394,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
                 i_s,
                 &mut matcher,
                 func_or_callable,
-                args_node_ref,
+                &add_issue,
                 on_type_error,
                 InferrableParamIterator::new(
                     i_s.db,
@@ -446,7 +447,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
     }
 }
 
-pub fn match_arguments_against_params<
+pub(crate) fn match_arguments_against_params<
     'db: 'x,
     'x,
     P: Param<'x>,
@@ -455,7 +456,7 @@ pub fn match_arguments_against_params<
     i_s: &InferenceState<'db, '_>,
     matcher: &mut Matcher,
     func_or_callable: FunctionOrCallable,
-    args_node_ref: NodeRef,
+    add_issue: &impl Fn(IssueType),
     on_type_error: Option<OnTypeError<'db, '_>>,
     mut args_with_params: InferrableParamIterator<'db, 'x, impl Iterator<Item = P>, P, AI>,
 ) -> SignatureMatch {
@@ -489,65 +490,74 @@ pub fn match_arguments_against_params<
             } else {
                 argument.infer(i_s, &mut ResultContext::Known(&expected))
             };
-            let m = expected.error_if_not_matches_with_matcher(
-                i_s,
-                matcher,
-                &value,
-                on_type_error.as_ref().map(|on_type_error| {
-                    |mut t1, t2, reason: &MismatchReason| {
-                        let node_ref = argument.as_node_ref();
-                        if let Some(starred) = node_ref.maybe_starred_expression() {
-                            t1 = format!(
-                                "*{}",
+            let value_t = value.as_cow_type(i_s);
+            let m = expected.is_super_type_of(i_s, matcher, &value_t);
+            if let Match::False { reason, .. } = &m {
+                debug!(
+                    "Mismatch between {:?} and {:?} -> {:?}",
+                    value_t.format_short(i_s.db),
+                    expected.format_short(i_s.db),
+                    &matches
+                );
+                if let Some(on_type_error) = on_type_error {
+                    let node_ref = argument.as_node_ref();
+                    let mut got = GotType::Type(&value_t);
+                    if let Some(starred) = node_ref.maybe_starred_expression() {
+                        got = GotType::Starred(
+                            node_ref
+                                .file
+                                .inference(i_s)
+                                .infer_expression(starred.expression())
+                                .as_type(i_s),
+                        )
+                    } else if let Some(double_starred) = node_ref.maybe_double_starred_expression()
+                    {
+                        // If we have a defined kwargs name, that's from a TypedDict and
+                        // shouldn't be formatted.
+                        if !matches!(
+                            &argument.kind,
+                            ArgumentKind::Inferred {
+                                is_keyword: Some(Some(_)),
+                                ..
+                            }
+                        ) {
+                            got = GotType::DoubleStarred(
                                 node_ref
                                     .file
                                     .inference(i_s)
-                                    .infer_expression(starred.expression())
-                                    .format_short(i_s)
+                                    .infer_expression(double_starred.expression())
+                                    .as_type(i_s),
                             )
-                            .into()
-                        } else if let Some(double_starred) =
-                            node_ref.maybe_double_starred_expression()
-                        {
-                            // If we have a defined kwargs name, that's from a TypedDict and
-                            // shouldn't be formatted.
-                            if !matches!(
-                                &argument.kind,
-                                ArgumentKind::Inferred {
-                                    is_keyword: Some(Some(_)),
-                                    ..
-                                }
-                            ) {
-                                t1 = format!(
-                                    "**{}",
-                                    node_ref
-                                        .file
-                                        .inference(i_s)
-                                        .infer_expression(double_starred.expression())
-                                        .format_short(i_s)
-                                )
-                                .into()
-                            }
                         }
-                        match reason {
-                            MismatchReason::ConstraintMismatch { expected, type_var } => {
-                                node_ref.add_issue(
-                                    i_s,
-                                    IssueType::InvalidTypeVarValue {
-                                        type_var_name: Box::from(type_var.name(i_s.db)),
-                                        of: diagnostic_string("").unwrap_or(Box::from("function")),
-                                        actual: expected.format(&FormatData::new_short(i_s.db)),
-                                    },
-                                );
-                            }
-                            _ => {
-                                (on_type_error.callback)(i_s, &diagnostic_string, &argument, t1, t2)
-                            }
-                        };
-                        node_ref
                     }
-                }),
-            );
+                    match reason {
+                        MismatchReason::ConstraintMismatch { expected, type_var } => {
+                            node_ref.add_issue(
+                                i_s,
+                                IssueType::InvalidTypeVarValue {
+                                    type_var_name: Box::from(type_var.name(i_s.db)),
+                                    of: diagnostic_string("").unwrap_or(Box::from("function")),
+                                    actual: expected.format(&FormatData::new_short(i_s.db)),
+                                },
+                            );
+                        }
+                        _ => {
+                            let error_types = ErrorTypes {
+                                matcher,
+                                reason,
+                                got,
+                                expected: &expected,
+                            };
+                            (on_type_error.callback)(
+                                i_s,
+                                &diagnostic_string,
+                                &argument,
+                                error_types,
+                            )
+                        }
+                    };
+                }
+            }
             if let Type::Type(type_) = expected.as_ref() {
                 if let Some(cls) = type_.maybe_class(i_s.db) {
                     if cls.is_protocol(i_s.db) {
@@ -556,8 +566,7 @@ pub fn match_arguments_against_params<
                             if node_ref.maybe_class().is_some() {
                                 let cls2 = Class::from_non_generic_node_ref(node_ref);
                                 if cls2.is_protocol(i_s.db) {
-                                    args_node_ref.add_issue(
-                                        i_s,
+                                    add_issue(
                                         IssueType::OnlyConcreteClassAllowedWhereTypeExpected {
                                             type_: expected.format_short(i_s.db),
                                         },
@@ -604,7 +613,7 @@ pub fn match_arguments_against_params<
                     &param_spec,
                     args,
                     func_or_callable,
-                    args_node_ref,
+                    add_issue,
                     on_type_error,
                 ) {
                     SignatureMatch::True { .. } => Match::new_true(),
@@ -669,7 +678,7 @@ pub fn match_arguments_against_params<
         if should_generate_errors {
             let mut s = "Too many positional arguments".to_owned();
             s += diagnostic_string(" for ").as_deref().unwrap_or("");
-            args_node_ref.add_issue(i_s, IssueType::ArgumentIssue(s.into()));
+            add_issue(IssueType::ArgumentIssue(s.into()));
         }
     } else if args_with_params.has_unused_arguments() {
         matches = Match::new_false();
@@ -685,7 +694,7 @@ pub fn match_arguments_against_params<
             }
             if too_many {
                 let s = diagnostic_string(" for ").unwrap_or_else(|| Box::from(""));
-                args_node_ref.add_issue(i_s, IssueType::TooManyArguments(s));
+                add_issue(IssueType::TooManyArguments(s));
             }
         } else {
             debug!("Too many arguments found");
@@ -706,7 +715,7 @@ pub fn match_arguments_against_params<
         let add_missing_kw_issue = |param_name| {
             let mut s = format!("Missing named argument {:?}", param_name);
             s += diagnostic_string(" for ").as_deref().unwrap_or("");
-            args_node_ref.add_issue(i_s, IssueType::ArgumentIssue(s.into()));
+            add_issue(IssueType::ArgumentIssue(s.into()));
         };
         for param in &missing_params {
             let param_kind = param.kind(i_s.db);
@@ -721,7 +730,7 @@ pub fn match_arguments_against_params<
                 }
             } else {
                 let s = diagnostic_string(" for ").unwrap_or_else(|| Box::from(""));
-                args_node_ref.add_issue(i_s, IssueType::TooFewArguments(s));
+                add_issue(IssueType::TooFewArguments(s));
                 break;
             }
         }
@@ -742,7 +751,7 @@ pub fn match_arguments_against_params<
             )),
         } {
             s += diagnostic_string(" to ").as_deref().unwrap_or("");
-            args_node_ref.add_issue(i_s, IssueType::ArgumentIssue(s.into()));
+            add_issue(IssueType::ArgumentIssue(s.into()));
         };
     } else if missing_unpacked_typed_dict_names.is_some_and(|t| !t.is_empty()) {
         matches = Match::new_false()
@@ -767,7 +776,7 @@ fn calculate_type_vars_for_params<
     i_s: &InferenceState<'db, '_>,
     matcher: &mut Matcher,
     func_or_callable: FunctionOrCallable,
-    args_node_ref: NodeRef,
+    add_issue: &impl Fn(IssueType),
     on_type_error: Option<OnTypeError<'db, '_>>,
     args_with_params: InferrableParamIterator<'db, 'x, impl Iterator<Item = P>, P, AI>,
 ) -> SignatureMatch {
@@ -775,7 +784,7 @@ fn calculate_type_vars_for_params<
         i_s,
         matcher,
         func_or_callable,
-        args_node_ref,
+        add_issue,
         on_type_error,
         args_with_params,
     )

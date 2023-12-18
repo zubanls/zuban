@@ -15,8 +15,8 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{
-        calculate_callable_type_vars_and_return, IteratorContent, LookupKind, LookupResult,
-        OnLookupError, OnTypeError, ResultContext,
+        calculate_callable_type_vars_and_return, ErrorTypes, GotType, IteratorContent, LookupKind,
+        LookupResult, Match, Matcher, OnLookupError, OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
     type_::NamedTuple,
@@ -610,14 +610,14 @@ pub(crate) fn execute_type_of_type<'db>(
                 todo!()
             }
             let other = inferred_tup.as_cow_type(i_s);
-            if !tuple.is_simple_super_type_of(i_s, &other).bool() {
-                (on_type_error.callback)(
-                    i_s,
-                    &|_| todo!(),
-                    &arg,
-                    tuple.format_short(i_s.db),
-                    other.format_short(i_s.db),
-                );
+            if let Match::False { ref reason, .. } = tuple.is_simple_super_type_of(i_s, &other) {
+                let error_types = ErrorTypes {
+                    matcher: &Matcher::default(),
+                    reason,
+                    got: GotType::Type(tuple),
+                    expected: &other,
+                };
+                (on_type_error.callback)(i_s, &|_| todo!(), &arg, error_types);
             }
             Inferred::from_type(tuple.clone())
         }
@@ -660,7 +660,7 @@ pub(crate) fn execute_type_of_type<'db>(
                 i_s,
                 Callable::new(&nt.__new__, None),
                 args.iter(),
-                args.as_node_ref(),
+                |issue| args.add_issue(i_s, issue),
                 true,
                 &mut ResultContext::Unknown,
                 Some(on_type_error),

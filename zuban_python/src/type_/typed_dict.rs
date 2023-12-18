@@ -494,7 +494,7 @@ fn new_typed_dict_internal<'db>(
                 total = infer_typed_dict_total_argument(
                     i_s,
                     next.infer(i_s, &mut ResultContext::Unknown),
-                    next.as_node_ref(),
+                    |issue| next.add_issue(i_s, issue),
                 )?;
             }
             ArgumentKind::Keyword { key, node_ref, .. } => {
@@ -567,15 +567,15 @@ fn new_typed_dict_internal<'db>(
     ))
 }
 
-pub fn infer_typed_dict_total_argument(
+pub(crate) fn infer_typed_dict_total_argument(
     i_s: &InferenceState,
     inf: Inferred,
-    node_ref: NodeRef,
+    add_issue: impl Fn(IssueType),
 ) -> Option<bool> {
     if let Some(total) = inf.maybe_bool_literal(i_s) {
         Some(total)
     } else {
-        node_ref.add_issue(i_s, IssueType::TypedDictTotalMustBeTrueOrFalse);
+        add_issue(IssueType::TypedDictTotalMustBeTrueOrFalse);
         None
     }
 }
@@ -844,20 +844,18 @@ fn typed_dict_setitem_internal<'db>(
     if let Some(literal) = inf_key.maybe_string_literal(i_s) {
         let key = literal.as_str(i_s.db);
         if let Some(member) = td.find_member(i_s.db, key) {
-            member
-                .type_
-                .error_if_not_matches(i_s, &value, |got, expected| {
-                    let node_ref = args.as_node_ref();
-                    node_ref.add_issue(
-                        i_s,
-                        IssueType::TypedDictKeySetItemIncompatibleType {
-                            key: key.into(),
-                            got,
-                            expected,
-                        },
-                    );
-                    node_ref
-                });
+            member.type_.error_if_not_matches(
+                i_s,
+                &value,
+                |issue| args.add_issue(i_s, issue),
+                |got, expected| {
+                    Some(IssueType::TypedDictKeySetItemIncompatibleType {
+                        key: key.into(),
+                        got,
+                        expected,
+                    })
+                },
+            );
         } else {
             args.add_issue(
                 i_s,
@@ -953,9 +951,7 @@ pub(crate) fn initialize_typed_dict<'db>(
     let mut iterator = args.iter();
     let td = if let Some(first_arg) = iterator.next().filter(|arg| !arg.is_keyword_argument()) {
         if let Some(next_arg) = iterator.next() {
-            next_arg
-                .as_node_ref()
-                .add_issue(i_s, IssueType::TypedDictWrongArgumentsInConstructor);
+            next_arg.add_issue(i_s, IssueType::TypedDictWrongArgumentsInConstructor);
             return Inferred::new_any_from_error();
         }
         first_arg.infer(
@@ -1004,11 +1000,11 @@ pub fn lookup_on_typed_dict(
     })))
 }
 
-pub fn infer_typed_dict_item(
+pub(crate) fn infer_typed_dict_item(
     i_s: &InferenceState,
     typed_dict: &TypedDict,
     matcher: &mut Matcher,
-    node_ref: NodeRef,
+    add_issue: impl Fn(IssueType),
     key: &str,
     extra_keys: &mut Vec<String>,
     infer: impl FnOnce(&mut ResultContext) -> Inferred,
@@ -1023,17 +1019,14 @@ pub fn infer_typed_dict_item(
             i_s,
             matcher,
             &inferred,
-            Some(|got, expected, _: &MismatchReason| {
-                node_ref.add_issue(
-                    i_s,
-                    IssueType::TypedDictIncompatibleType {
-                        key: key.into(),
-                        got,
-                        expected,
-                    },
-                );
-                node_ref
-            }),
+            add_issue,
+            |got, expected, _: &MismatchReason| {
+                Some(IssueType::TypedDictIncompatibleType {
+                    key: key.into(),
+                    got,
+                    expected,
+                })
+            },
         );
     } else {
         extra_keys.push(key.into())
@@ -1053,7 +1046,7 @@ pub(crate) fn check_typed_dict_call<'db>(
                 i_s,
                 &typed_dict,
                 matcher,
-                arg.as_node_ref(),
+                |issue| arg.add_issue(i_s, issue),
                 key,
                 &mut extra_keys,
                 |context| arg.infer(i_s, context),

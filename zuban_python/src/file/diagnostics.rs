@@ -718,25 +718,25 @@ impl<'db> Inference<'db, '_, '_> {
                         let t = self.use_cached_annotation_type(annotation);
                         let inf = self
                             .infer_expression_with_context(default, &mut ResultContext::Known(&t));
-                        t.error_if_not_matches(i_s, &inf, |got, expected| {
-                            let node_ref = NodeRef::new(self.file, default.index());
-                            if self.file.is_stub_or_in_protocol(i_s)
-                                && default.is_ellipsis_literal()
-                            {
-                                // In stubs it is allowed to do stuff like:
-                                // def foo(x: int = ...) -> int: ...
-                                return node_ref;
-                            }
-                            node_ref.add_issue(
-                                i_s,
-                                IssueType::IncompatibleDefaultArgument {
+                        t.error_if_not_matches(
+                            i_s,
+                            &inf,
+                            |issue| NodeRef::new(self.file, default.index()).add_issue(i_s, issue),
+                            |got, expected| {
+                                if self.file.is_stub_or_in_protocol(i_s)
+                                    && default.is_ellipsis_literal()
+                                {
+                                    // In stubs it is allowed to do stuff like:
+                                    // def foo(x: int = ...) -> int: ...
+                                    return None;
+                                }
+                                Some(IssueType::IncompatibleDefaultArgument {
                                     argument_name: Box::from(param.name_definition().as_code()),
                                     got,
                                     expected,
-                                },
-                            );
-                            node_ref
-                        });
+                                })
+                            },
+                        );
                     }
                 }
             }
@@ -1029,11 +1029,14 @@ impl<'db> Inference<'db, '_, '_> {
                             },
                         )
                     }
-                    t.error_if_not_matches(i_s, &inf, |got, expected| {
-                        let node_ref = NodeRef::new(self.file, star_expressions.index());
-                        node_ref.add_issue(i_s, IssueType::IncompatibleReturn { got, expected });
-                        node_ref
-                    });
+                    t.error_if_not_matches(
+                        i_s,
+                        &inf,
+                        |issue| {
+                            NodeRef::new(self.file, star_expressions.index()).add_issue(i_s, issue)
+                        },
+                        |got, expected| Some(IssueType::IncompatibleReturn { got, expected }),
+                    );
                 } else {
                     debug!("TODO what about an implicit None?");
                 }
@@ -1395,7 +1398,7 @@ fn valid_raise_type(i_s: &InferenceState, from: NodeRef, t: &Type, allow_none: b
                     i_s,
                     &NoArguments::new(from),
                     &mut ResultContext::Unknown,
-                    OnTypeError::new(&|_, _, _, _, _| {
+                    OnTypeError::new(&|_, _, _, _| {
                         unreachable!(
                             "Type errors should not be possible, because there are no params"
                         )
