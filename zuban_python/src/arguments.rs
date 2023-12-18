@@ -383,6 +383,10 @@ impl<'db, 'a> Argument<'db, 'a> {
         }
     }
 
+    pub(crate) fn add_issue(&self, i_s: &InferenceState, issue: IssueType) {
+        self.as_node_ref().add_issue(i_s, issue)
+    }
+
     pub fn human_readable_index(&self, db: &Database) -> String {
         match &self.kind {
             ArgumentKind::Inferred {

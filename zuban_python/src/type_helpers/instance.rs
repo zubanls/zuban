@@ -436,7 +436,7 @@ impl<'a> Instance<'a> {
                         &mut ResultContext::Unknown,
                         OnTypeError::new(&|i_s, function, arg, types| {
                             let strs = types.as_boxed_strs(i_s);
-                            arg.as_node_ref().add_issue(
+                            arg.add_issue(
                                 i_s,
                                 IssueType::InvalidGetItem {
                                     type_: self.class.format_short(i_s.db),

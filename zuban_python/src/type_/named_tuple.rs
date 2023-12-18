@@ -319,7 +319,7 @@ fn check_named_tuple_name<'x, 'y>(
         todo!()
     };
     let ArgumentKind::Positional { node_ref, .. } = first_arg.kind else {
-        first_arg.as_node_ref().add_issue(i_s, IssueType::UnexpectedArgumentsTo { name: "namedtuple" });
+        first_arg.add_issue(i_s, IssueType::UnexpectedArgumentsTo { name: "namedtuple" });
         return None
     };
     let expr = node_ref.as_named_expression().expression();
@@ -496,16 +496,14 @@ pub(crate) fn new_collections_named_tuple(
                 Some(AtomContent::List(list)) => list.unpack(),
                 Some(AtomContent::Tuple(tuple)) => tuple.iter(),
                 _ => {
-                    arg.as_node_ref()
-                        .add_issue(i_s, IssueType::NamedTupleDefaultsShouldBeListOrTuple);
+                    arg.add_issue(i_s, IssueType::NamedTupleDefaultsShouldBeListOrTuple);
                     return None;
                 }
             };
             let member_count = params.len() - 1;
             let defaults_count = defaults_iterator.count();
             let skip = if defaults_count > member_count {
-                arg.as_node_ref()
-                    .add_issue(i_s, IssueType::NamedTupleToManyDefaults);
+                arg.add_issue(i_s, IssueType::NamedTupleToManyDefaults);
                 0
             } else {
                 member_count - defaults_count

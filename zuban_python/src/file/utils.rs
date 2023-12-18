@@ -471,7 +471,7 @@ pub fn on_argument_type_error(
         "ModuleType" => "Module".to_string(),
         got => format!("\"{got}\""),
     };
-    arg.as_node_ref().add_issue(
+    arg.add_issue(
         i_s,
         IssueType::ArgumentTypeIssue(
             format!(
@@ -483,7 +483,7 @@ pub fn on_argument_type_error(
             .into(),
         ),
     );
-    types.add_mismatch_notes(|issue| arg.as_node_ref().add_issue(i_s, issue))
+    types.add_mismatch_notes(|issue| arg.add_issue(i_s, issue))
 }
 
 pub fn infer_index(

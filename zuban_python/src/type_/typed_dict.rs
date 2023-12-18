@@ -494,7 +494,7 @@ fn new_typed_dict_internal<'db>(
                 total = infer_typed_dict_total_argument(
                     i_s,
                     next.infer(i_s, &mut ResultContext::Unknown),
-                    next.as_node_ref(),
+                    |issue| next.add_issue(i_s, issue),
                 )?;
             }
             ArgumentKind::Keyword { key, node_ref, .. } => {
@@ -567,15 +567,15 @@ fn new_typed_dict_internal<'db>(
     ))
 }
 
-pub fn infer_typed_dict_total_argument(
+pub(crate) fn infer_typed_dict_total_argument(
     i_s: &InferenceState,
     inf: Inferred,
-    node_ref: NodeRef,
+    add_issue: impl Fn(IssueType),
 ) -> Option<bool> {
     if let Some(total) = inf.maybe_bool_literal(i_s) {
         Some(total)
     } else {
-        node_ref.add_issue(i_s, IssueType::TypedDictTotalMustBeTrueOrFalse);
+        add_issue(IssueType::TypedDictTotalMustBeTrueOrFalse);
         None
     }
 }
@@ -953,9 +953,7 @@ pub(crate) fn initialize_typed_dict<'db>(
     let mut iterator = args.iter();
     let td = if let Some(first_arg) = iterator.next().filter(|arg| !arg.is_keyword_argument()) {
         if let Some(next_arg) = iterator.next() {
-            next_arg
-                .as_node_ref()
-                .add_issue(i_s, IssueType::TypedDictWrongArgumentsInConstructor);
+            next_arg.add_issue(i_s, IssueType::TypedDictWrongArgumentsInConstructor);
             return Inferred::new_any_from_error();
         }
         first_arg.infer(

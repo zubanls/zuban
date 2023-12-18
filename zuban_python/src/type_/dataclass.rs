@@ -450,8 +450,7 @@ fn field_options_from_args<'db>(
     };
     for arg in args.iter() {
         if matches!(arg.kind, ArgumentKind::Inferred { .. }) {
-            arg.as_node_ref()
-                .add_issue(i_s, IssueType::DataclassUnpackingKwargsInField);
+            arg.add_issue(i_s, IssueType::DataclassUnpackingKwargsInField);
             continue;
         }
         if let Some(key) = arg.keyword_name(i_s.db) {

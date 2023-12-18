@@ -147,7 +147,7 @@ impl RevealTypeFunction {
             }
             .as_ref(),
         );
-        arg.as_node_ref().add_issue(
+        arg.add_issue(
             i_s,
             IssueType::Note(format!("Revealed type is \"{s}\"").into()),
         );
@@ -299,7 +299,7 @@ fn maybe_type_var(
         let (name_node, py_string) = match result {
             Some(result) => result,
             None => {
-                first_arg.as_node_ref().add_issue(
+                first_arg.add_issue(
                     i_s,
                     IssueType::TypeVarLikeFirstArgMustBeString {
                         class_name: "TypeVar",
@@ -407,16 +407,14 @@ fn maybe_type_var(
                     }
                 },
                 ArgumentKind::Comprehension { .. } => {
-                    arg.as_node_ref()
-                        .add_issue(i_s, IssueType::UnexpectedComprehension);
+                    arg.add_issue(i_s, IssueType::UnexpectedComprehension);
                     return None;
                 }
                 ArgumentKind::Inferred { .. }
                 | ArgumentKind::SlicesTuple { .. }
                 | ArgumentKind::Overridden { .. }
                 | ArgumentKind::ParamSpec { .. } => {
-                    arg.as_node_ref()
-                        .add_issue(i_s, IssueType::UnexpectedArgumentTo { name: "TypeVar" });
+                    arg.add_issue(i_s, IssueType::UnexpectedArgumentTo { name: "TypeVar" });
                 }
             }
         }
@@ -501,7 +499,7 @@ fn maybe_type_var_tuple(
         let (name_node, py_string) = match result {
             Some(result) => result,
             None => {
-                first_arg.as_node_ref().add_issue(
+                first_arg.add_issue(
                     i_s,
                     IssueType::TypeVarLikeFirstArgMustBeString {
                         class_name: "TypeVarTuple",
@@ -562,8 +560,7 @@ fn maybe_type_var_tuple(
                     }
                 },
                 ArgumentKind::Comprehension { .. } => {
-                    arg.as_node_ref()
-                        .add_issue(i_s, IssueType::UnexpectedComprehension);
+                    arg.add_issue(i_s, IssueType::UnexpectedComprehension);
                     return None;
                 }
                 ArgumentKind::Inferred { .. }
@@ -632,7 +629,7 @@ fn maybe_param_spec(
         let (name_node, py_string) = match result {
             Some(result) => result,
             None => {
-                first_arg.as_node_ref().add_issue(
+                first_arg.add_issue(
                     i_s,
                     IssueType::TypeVarLikeFirstArgMustBeString {
                         class_name: "ParamSpec",
@@ -678,7 +675,7 @@ fn maybe_param_spec(
                 | ArgumentKind::SlicesTuple { .. }
                 | ArgumentKind::ParamSpec { .. } => unreachable!(),
                 ArgumentKind::Positional { .. } => {
-                    arg.as_node_ref().add_issue(
+                    arg.add_issue(
                         i_s,
                         IssueType::ArgumentIssue(
                             "Too many positional arguments for \"ParamSpec\"".into(),
@@ -687,8 +684,7 @@ fn maybe_param_spec(
                     return None;
                 }
                 _ => {
-                    arg.as_node_ref()
-                        .add_issue(i_s, IssueType::ParamSpecTooManyKeywordArguments);
+                    arg.add_issue(i_s, IssueType::ParamSpecTooManyKeywordArguments);
                     return None;
                 }
             }
