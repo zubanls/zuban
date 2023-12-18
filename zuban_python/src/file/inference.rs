@@ -1656,7 +1656,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 instance = r_class.class(i_s.db).instance();
                                 let (defined_in, lookup) = instance.lookup_and_defined_in(
                                     i_s,
-                                    from,
+                                    |issue| from.add_issue(i_s, issue),
                                     op.reverse_magic_method,
                                     LookupKind::OnlyType,
                                 );
@@ -2090,7 +2090,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 .module_instance()
                 .type_lookup(
                     self.i_s,
-                    NodeRef::new(self.file, name.index()),
+                    |issue| NodeRef::new(self.file, name.index()).add_issue(self.i_s, issue),
                     name.as_code(),
                 )
                 .save_name(self.i_s, self.file, name)

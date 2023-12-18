@@ -975,10 +975,10 @@ pub(crate) fn initialize_typed_dict<'db>(
     Inferred::from_type(Type::TypedDict(td))
 }
 
-pub fn lookup_on_typed_dict(
+pub(crate) fn lookup_on_typed_dict(
     typed_dict: Rc<TypedDict>,
     i_s: &InferenceState,
-    from: NodeRef,
+    add_issue: impl Fn(IssueType),
     name: &str,
     kind: LookupKind,
 ) -> LookupResult {
@@ -992,7 +992,7 @@ pub fn lookup_on_typed_dict(
         "update" => CustomBehavior::new_method(typed_dict_update, Some(bound())),
         _ => {
             return Instance::new(i_s.db.python_state.typed_dict_class(), None)
-                .lookup_with_explicit_self_binding(i_s, from, name, kind, 0, || {
+                .lookup_with_explicit_self_binding(i_s, add_issue, name, kind, 0, || {
                     Type::TypedDict(typed_dict.clone())
                 })
                 .1

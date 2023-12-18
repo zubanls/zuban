@@ -39,22 +39,21 @@ impl<'a> Instance<'a> {
         }
     }
 
-    pub fn check_set_descriptor(
+    pub(crate) fn check_set_descriptor(
         &self,
         i_s: &InferenceState,
         from: NodeRef,
         name: Name,
         value: &Inferred,
     ) {
+        let add_issue = |issue| from.add_issue(i_s, issue);
+
         let name_str = name.as_str();
         let property_is_read_only = |class_name| {
-            from.add_issue(
-                i_s,
-                IssueType::PropertyIsReadOnly {
-                    class_name,
-                    property_name: name_str.into(),
-                },
-            );
+            add_issue(IssueType::PropertyIsReadOnly {
+                class_name,
+                property_name: name_str.into(),
+            });
         };
         let cached_class_infos = self.class.use_cached_class_infos(i_s.db);
         if let Some(nt) = cached_class_infos.maybe_named_tuple() {
@@ -64,19 +63,16 @@ impl<'a> Instance<'a> {
             }
         }
         let check_compatible = |t: &Type, value: &_| {
-            t.error_if_not_matches(
-                i_s,
-                value,
-                |issue| from.add_issue(i_s, issue),
-                |got, expected| Some(IssueType::IncompatibleAssignment { got, expected }),
-            )
+            t.error_if_not_matches(i_s, value, add_issue, |got, expected| {
+                Some(IssueType::IncompatibleAssignment { got, expected })
+            })
         };
 
         let (result, class) = self.class.lookup_without_descriptors(i_s, from, name_str);
-        let result = result.or_else(|| self.lookup(i_s, from, name_str, LookupKind::Normal));
+        let result = result.or_else(|| self.lookup(i_s, add_issue, name_str, LookupKind::Normal));
         let Some(inf) = result.into_maybe_inferred() else {
             let t = self.class.as_type(i_s.db);
-            let (defined_in, lookup) = self.lookup_and_defined_in(i_s, from, "__setattr__", LookupKind::OnlyType);
+            let (defined_in, lookup) = self.lookup_and_defined_in(i_s, add_issue, "__setattr__", LookupKind::OnlyType);
             if let Some(setattr) = lookup.into_maybe_inferred() {
                 // object defines a __getattribute__ that returns Any
                 if !defined_in.is_object(i_s.db) {
@@ -104,12 +100,9 @@ impl<'a> Instance<'a> {
             return
         };
         if inf.maybe_saved_specific(i_s.db) == Some(Specific::AnnotationOrTypeCommentClassVar) {
-            from.add_issue(
-                i_s,
-                IssueType::CannotAssignToClassVarViaInstance {
-                    name: name_str.into(),
-                },
-            );
+            add_issue(IssueType::CannotAssignToClassVarViaInstance {
+                name: name_str.into(),
+            });
         }
 
         for t in inf.as_cow_type(i_s).iter_with_unpacked_unions() {
@@ -117,7 +110,7 @@ impl<'a> Instance<'a> {
                 Type::Class(c) => {
                     let descriptor = c.class(i_s.db);
                     if let Some(__set__) = Instance::new(descriptor, None)
-                        .type_lookup(i_s, from, "__set__")
+                        .type_lookup(i_s, add_issue, "__set__")
                         .into_maybe_inferred()
                     {
                         let inst = self.as_inferred(i_s);
@@ -125,7 +118,7 @@ impl<'a> Instance<'a> {
                         continue;
                     } else if let Some(inf) = Instance::new(descriptor, None).bind_dunder_get(
                         i_s,
-                        from,
+                        add_issue,
                         self.class.as_type(i_s.db),
                     ) {
                         // It feels weird that a descriptor that only defines __get__ should
@@ -159,27 +152,26 @@ impl<'a> Instance<'a> {
                 }
                 Type::Callable(c) => {
                     if !matches!(&c.params, CallableParams::Any(_)) {
-                        from.add_issue(i_s, IssueType::CannotAssignToAMethod);
+                        add_issue(IssueType::CannotAssignToAMethod);
                     }
                 }
                 _ => {}
             }
 
             if !matches!(t, Type::Any(_)) {
-                self.class
-                    .check_slots(i_s, |issue| from.add_issue(i_s, issue), name_str);
+                self.class.check_slots(i_s, add_issue, name_str);
             }
             check_compatible(t, value)
         }
     }
 
-    pub fn bind_dunder_get(
+    pub(crate) fn bind_dunder_get(
         &self,
         i_s: &InferenceState,
-        from: NodeRef,
+        add_issue: impl Fn(IssueType),
         instance: Type,
     ) -> Option<Inferred> {
-        self.type_lookup(i_s, from, "__get__")
+        self.type_lookup(i_s, add_issue, "__get__")
             .into_maybe_inferred()
             .map(|inf| {
                 let c_t = Type::Type(Rc::new(instance.clone()));
@@ -202,7 +194,7 @@ impl<'a> Instance<'a> {
     ) -> Inferred {
         let node_ref = args.as_node_ref();
         if let Some(inf) = self
-            .type_lookup(i_s, node_ref, "__call__")
+            .type_lookup(i_s, |issue| node_ref.add_issue(i_s, issue), "__call__")
             .into_maybe_inferred()
         {
             inf.execute_with_details(i_s, args, result_context, on_type_error)
@@ -269,10 +261,10 @@ impl<'a> Instance<'a> {
         IteratorContent::Any(AnyCause::Todo)
     }
 
-    pub fn lookup_with_explicit_self_binding(
+    pub(crate) fn lookup_with_explicit_self_binding(
         &self,
         i_s: &'a InferenceState,
-        node_ref: NodeRef,
+        add_issue: impl Fn(IssueType),
         name: &str,
         kind: LookupKind,
         super_count: usize,
@@ -284,7 +276,7 @@ impl<'a> Instance<'a> {
             let result = lookup.and_then(|inf| {
                 if let Some(c) = class_of_lookup {
                     let i_s = i_s.with_class_context(&self.class);
-                    inf.bind_instance_descriptors(&i_s, as_self_instance(), c, node_ref, mro_index)
+                    inf.bind_instance_descriptors(&i_s, as_self_instance(), c, add_issue, mro_index)
                 } else {
                     Some(inf)
                 }
@@ -321,7 +313,7 @@ impl<'a> Instance<'a> {
         if kind == LookupKind::Normal && super_count == 0 {
             for method_name in ["__getattr__", "__getattribute__"] {
                 let (defined_in, lookup) =
-                    self.lookup_and_defined_in(i_s, node_ref, method_name, LookupKind::OnlyType);
+                    self.lookup_and_defined_in(i_s, add_issue, method_name, LookupKind::OnlyType);
                 if defined_in.is_object(i_s.db) {
                     // object defines a __getattribute__ that returns Any
                     continue;
@@ -345,55 +337,77 @@ impl<'a> Instance<'a> {
         }
     }
 
-    pub fn lookup_and_maybe_ignore_super_count(
+    pub(crate) fn lookup_and_maybe_ignore_super_count(
         &self,
         i_s: &'a InferenceState,
-        node_ref: NodeRef,
+        add_issue: impl Fn(IssueType),
         name: &str,
         kind: LookupKind,
         super_count: usize,
     ) -> (TypeOrClass, LookupResult) {
-        self.lookup_with_explicit_self_binding(i_s, node_ref, name, kind, super_count, || {
+        self.lookup_with_explicit_self_binding(i_s, add_issue, name, kind, super_count, || {
             self.class.as_type(i_s.db)
         })
     }
 
-    pub fn lookup(
+    pub(crate) fn lookup(
+        &self,
+        i_s: &InferenceState,
+        add_issue: impl Fn(IssueType),
+        name: &str,
+        kind: LookupKind,
+    ) -> LookupResult {
+        self.lookup_and_defined_in(i_s, add_issue, name, kind).1
+    }
+
+    pub(crate) fn lookup_and_defined_in(
+        &self,
+        i_s: &'a InferenceState,
+        add_issue: impl Fn(IssueType),
+        name: &str,
+        kind: LookupKind,
+    ) -> (TypeOrClass, LookupResult) {
+        self.lookup_and_maybe_ignore_super_count(i_s, add_issue, name, kind, 0)
+    }
+
+    pub(crate) fn lookup_on_self(
+        &self,
+        i_s: &'a InferenceState,
+        node_ref: NodeRef,
+        name: &str,
+        kind: LookupKind,
+    ) -> (TypeOrClass, LookupResult) {
+        self.lookup_with_explicit_self_binding(
+            i_s,
+            |issue| node_ref.add_issue(i_s, issue),
+            name,
+            kind,
+            0,
+            || Type::Self_,
+        )
+    }
+
+    pub(crate) fn full_lookup(
         &self,
         i_s: &InferenceState,
         node_ref: NodeRef,
         name: &str,
-        kind: LookupKind,
     ) -> LookupResult {
-        self.lookup_and_defined_in(i_s, node_ref, name, kind).1
+        self.lookup(
+            i_s,
+            |issue| node_ref.add_issue(i_s, issue),
+            name,
+            LookupKind::Normal,
+        )
     }
 
-    pub fn lookup_and_defined_in(
+    pub(crate) fn type_lookup(
         &self,
-        i_s: &'a InferenceState,
-        node_ref: NodeRef,
+        i_s: &InferenceState,
+        add_issue: impl Fn(IssueType),
         name: &str,
-        kind: LookupKind,
-    ) -> (TypeOrClass, LookupResult) {
-        self.lookup_and_maybe_ignore_super_count(i_s, node_ref, name, kind, 0)
-    }
-
-    pub fn lookup_on_self(
-        &self,
-        i_s: &'a InferenceState,
-        node_ref: NodeRef,
-        name: &str,
-        kind: LookupKind,
-    ) -> (TypeOrClass, LookupResult) {
-        self.lookup_with_explicit_self_binding(i_s, node_ref, name, kind, 0, || Type::Self_)
-    }
-
-    pub fn full_lookup(&self, i_s: &InferenceState, node_ref: NodeRef, name: &str) -> LookupResult {
-        self.lookup(i_s, node_ref, name, LookupKind::Normal)
-    }
-
-    pub fn type_lookup(&self, i_s: &InferenceState, node_ref: NodeRef, name: &str) -> LookupResult {
-        self.lookup(i_s, node_ref, name, LookupKind::OnlyType)
+    ) -> LookupResult {
+        self.lookup(i_s, add_issue, name, LookupKind::OnlyType)
     }
 
     pub fn run_on_symbols(&self, mut callable: impl FnMut(&str)) {
@@ -526,7 +540,7 @@ impl<'db: 'a, 'a> Iterator for ClassMroFinder<'db, 'a, '_> {
                                 self.i_s,
                                 self.instance.class.as_type(self.i_s.db),
                                 class,
-                                self.from,
+                                |issue| self.from.add_issue(self.i_s, issue),
                                 mro_index,
                             )
                         })

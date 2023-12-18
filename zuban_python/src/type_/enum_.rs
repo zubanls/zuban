@@ -168,7 +168,7 @@ pub fn lookup_on_enum_class(
 
 pub fn lookup_on_enum_instance(
     i_s: &InferenceState,
-    from: NodeRef,
+    add_issue: impl Fn(IssueType),
     enum_: &Rc<Enum>,
     name: &str,
     result_context: &mut ResultContext,
@@ -183,18 +183,18 @@ pub fn lookup_on_enum_instance(
         }
         "_ignore_" => LookupResult::None,
         _ => lookup_members_on_enum(i_s, enum_, name, result_context)
-            .or_else(|| lookup_on_enum_instance_fallback(i_s, from, enum_, name)),
+            .or_else(|| lookup_on_enum_instance_fallback(i_s, add_issue, enum_, name)),
     }
 }
 
 fn lookup_on_enum_instance_fallback(
     i_s: &InferenceState,
-    from: NodeRef,
+    add_issue: impl Fn(IssueType),
     enum_: &Rc<Enum>,
     name: &str,
 ) -> LookupResult {
     Instance::new(enum_.class(i_s.db), None)
-        .lookup_with_explicit_self_binding(i_s, from, name, LookupKind::Normal, 0, || {
+        .lookup_with_explicit_self_binding(i_s, add_issue, name, LookupKind::Normal, 0, || {
             Type::Enum(enum_.clone())
         })
         .1
@@ -252,7 +252,7 @@ pub fn infer_value_on_member(
 
 pub fn lookup_on_enum_member_instance(
     i_s: &InferenceState,
-    from: NodeRef,
+    add_issue: impl Fn(IssueType),
     member: &EnumMember,
     name: &str,
 ) -> LookupResult {
@@ -274,7 +274,7 @@ pub fn lookup_on_enum_member_instance(
             "value" | "_value_" => {
                 let value = member.value();
                 if value.is_none() {
-                    let result = Instance::new(enum_class, None).type_lookup(i_s, from, name);
+                    let result = Instance::new(enum_class, None).type_lookup(i_s, add_issue, name);
                     if result.is_some() {
                         return result;
                     }
@@ -285,7 +285,7 @@ pub fn lookup_on_enum_member_instance(
             _ => (),
         }
     }
-    lookup_on_enum_instance_fallback(i_s, from, &member.enum_, name)
+    lookup_on_enum_instance_fallback(i_s, add_issue, &member.enum_, name)
 }
 
 fn lookup_members_on_enum(

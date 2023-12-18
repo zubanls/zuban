@@ -541,10 +541,8 @@ impl Type {
             )))),
             Type::Class(c) => {
                 let cls = c.class(i_s.db);
-                debug!("TODO this from is completely wrong and should never be used.");
-                let hack = cls.node_ref;
                 Instance::new(cls, None)
-                    .type_lookup(i_s, hack, "__call__")
+                    .type_lookup(i_s, |issue| todo!(), "__call__")
                     .into_maybe_inferred()
                     .and_then(|i| i.as_cow_type(i_s).maybe_callable(i_s))
             }

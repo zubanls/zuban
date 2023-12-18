@@ -1005,7 +1005,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     matcher.ignore_positional_param_names = false;
                     if !matches!(other, Type::Class(_)) {
                         let inf1 = Instance::new(c, None)
-                            .type_lookup(i_s, hack, name)
+                            .type_lookup(i_s, |issue| todo!(), name)
                             .into_inferred();
                         let t1 = inf1.as_cow_type(i_s);
                         if t1.matches(i_s, matcher, other, variance).bool() {
@@ -1323,7 +1323,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         instance
                             .lookup_with_explicit_self_binding(
                                 i_s,
-                                node_ref,
+                                |issue| node_ref.add_issue(i_s, issue),
                                 name,
                                 LookupKind::Normal,
                                 0,
@@ -1754,7 +1754,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     Class::from_non_generic_link(i_s.db, i_s.db.python_state.enum_meta_link())
                         .instance();
                 let call = metaclass
-                    .type_lookup(i_s, args.as_node_ref(), "__call__")
+                    .type_lookup(i_s, |issue| args.add_issue(i_s, issue), "__call__")
                     .into_inferred();
                 let Type::FunctionOverload(o) = call.as_type(i_s) else {
                     todo!()

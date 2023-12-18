@@ -108,10 +108,11 @@ impl<'a> Module<'a> {
             // https://github.com/python/typeshed/blob/516f6655051b061652f086445ea54e8e82232349/stdlib/types.pyi#L352
             LookupResult::None
         } else {
-            i_s.db
-                .python_state
-                .module_instance()
-                .type_lookup(i_s, from, name)
+            i_s.db.python_state.module_instance().type_lookup(
+                i_s,
+                |issue| from.add_issue(i_s, issue),
+                name,
+            )
         }
     }
 

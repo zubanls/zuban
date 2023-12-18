@@ -738,19 +738,19 @@ impl<'db: 'slf, 'slf> Inferred {
         )
     }
 
-    pub fn bind_instance_descriptors(
+    pub(crate) fn bind_instance_descriptors(
         self,
         i_s: &InferenceState<'db, '_>,
         instance: Type,
         func_class: Class,
-        from: NodeRef,
+        add_issue: impl Fn(IssueType),
         mro_index: MroIndex,
     ) -> Option<Self> {
         self.bind_instance_descriptors_internal(
             i_s,
             instance,
             func_class,
-            from,
+            add_issue,
             mro_index,
             ApplyDescriptorsKind::All,
         )
@@ -761,7 +761,7 @@ impl<'db: 'slf, 'slf> Inferred {
         i_s: &InferenceState<'db, '_>,
         instance: Type,
         attribute_class: Class,
-        from: NodeRef,
+        add_issue: impl Fn(IssueType),
         mro_index: MroIndex,
         apply_descriptors_kind: ApplyDescriptorsKind,
     ) -> Option<Self> {
@@ -804,7 +804,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                             .as_type(i_s, FirstParamProperties::None)
                                             .format_short(i_s.db),
                                     };
-                                    from.add_issue(i_s, t);
+                                    add_issue(t);
                                     Some(Self::new_any_from_error())
                                 }
                             } else {
@@ -817,7 +817,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 i_s,
                                 instance,
                                 attribute_class,
-                                from,
+                                add_issue,
                                 mro_index,
                                 // Class vars are remapped separatly
                                 apply_descriptors_kind,
@@ -835,7 +835,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 i_s,
                                 instance,
                                 attribute_class,
-                                from,
+                                add_issue,
                                 mro_index,
                                 ApplyDescriptorsKind::NoBoundMethod,
                             );
@@ -849,7 +849,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 i_s,
                                 instance,
                                 attribute_class,
-                                from,
+                                add_issue,
                                 mro_index,
                                 &t,
                                 if specific == Specific::AnnotationOrTypeCommentClassVar {
@@ -909,7 +909,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                                     .format(&FormatData::new_short(i_s.db))
                                                     .into(),
                                             };
-                                            from.add_issue(i_s, t);
+                                            add_issue(t);
                                             return Some(Self::new_any_from_error());
                                         }
                                         1 => {
@@ -937,7 +937,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     i_s,
                                     instance,
                                     attribute_class,
-                                    from,
+                                    add_issue,
                                     mro_index,
                                     t,
                                     apply_descriptors_kind,
@@ -966,7 +966,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         i_s,
                         instance,
                         attribute_class,
-                        from,
+                        add_issue,
                         mro_index,
                         t,
                         apply_descriptors_kind,
@@ -986,7 +986,7 @@ impl<'db: 'slf, 'slf> Inferred {
         i_s: &InferenceState<'db, '_>,
         instance: Type,
         attribute_class: Class,
-        from: NodeRef,
+        add_issue: impl Fn(IssueType),
         mro_index: MroIndex,
         t: &Type,
         apply_descriptors_kind: ApplyDescriptorsKind,
@@ -1022,14 +1022,13 @@ impl<'db: 'slf, 'slf> Inferred {
                         {
                             Inferred::from_type(t)
                         } else {
-                            let inv = IssueType::InvalidSelfArgument {
+                            add_issue(IssueType::InvalidSelfArgument {
                                 argument_type: instance.format_short(i_s.db),
                                 function_name: Box::from(
                                     c.name.as_ref().map(|n| n.as_str(i_s.db)).unwrap_or(""),
                                 ),
                                 callable: c.format(&FormatData::new_short(i_s.db)).into(),
-                            };
-                            from.add_issue(i_s, inv);
+                            });
                             Inferred::new_any_from_error()
                         },
                     ));
@@ -1052,7 +1051,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             function_name: c.name(i_s.db).into(),
                             callable: t.format_short(i_s.db),
                         };
-                        from.add_issue(i_s, t);
+                        add_issue(t);
                         return Some(Some(Self::new_any_from_error()));
                     }
                     return Some(result.map(callable_into_inferred));
@@ -1085,7 +1084,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 Generics::from_class_generics(i_s.db, &c.generics),
                 None,
             );
-            if let Some(inf) = potential_descriptor.bind_dunder_get(i_s, from, instance) {
+            if let Some(inf) = potential_descriptor.bind_dunder_get(i_s, add_issue, instance) {
                 return Some(Some(inf));
             }
         }
@@ -1288,7 +1287,10 @@ impl<'db: 'slf, 'slf> Inferred {
                     Generics::from_class_generics(i_s.db, &c.generics),
                     None,
                 );
-                if let Some(inf) = inst.type_lookup(i_s, from, "__get__").into_maybe_inferred() {
+                if let Some(inf) = inst
+                    .type_lookup(i_s, |issue| from.add_issue(i_s, issue), "__get__")
+                    .into_maybe_inferred()
+                {
                     let class_as_inferred = class.as_inferred(i_s);
                     return Some(Some(inf.execute(
                         i_s,

@@ -546,7 +546,7 @@ pub(crate) fn dataclasses_replace<'db>(
                         if lookup_on_dataclass(
                             dataclass.clone(),
                             i_s,
-                            args.as_node_ref(),
+                            |issue| args.add_issue(i_s, issue),
                             param.name.as_ref().unwrap().as_str(i_s.db),
                         )
                         .is_some()
@@ -776,10 +776,10 @@ pub fn lookup_dataclass_symbol<'db: 'a, 'a>(
     (Some(class), class.lookup_symbol(i_s, name))
 }
 
-pub fn lookup_on_dataclass(
+pub(crate) fn lookup_on_dataclass(
     self_: Rc<Dataclass>,
     i_s: &InferenceState,
-    from: NodeRef,
+    add_issue: impl Fn(IssueType),
     name: &str,
 ) -> LookupResult {
     let result = lookup_symbol_internal(self_.clone(), i_s, name);
@@ -787,7 +787,7 @@ pub fn lookup_on_dataclass(
         return result;
     }
     Instance::new(self_.class(i_s.db), None)
-        .lookup(i_s, from, name, LookupKind::Normal)
+        .lookup(i_s, add_issue, name, LookupKind::Normal)
         .and_then(|inf| match inf.as_cow_type(i_s).as_ref() {
             // Init vars are not actually available on the class. They are just passed to __init__
             // and are not class members.
