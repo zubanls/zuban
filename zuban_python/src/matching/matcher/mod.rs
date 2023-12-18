@@ -8,7 +8,7 @@ use std::{borrow::Cow, rc::Rc};
 use type_var_matcher::{BoundKind, TypeVarMatcher};
 pub use type_var_matcher::{CalculatedTypeVarLike, FunctionOrCallable};
 use utils::match_arguments_against_params;
-pub use utils::{
+pub(crate) use utils::{
     calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
     calculate_class_init_type_vars_and_return, calculate_function_type_vars_and_return,
     CalculatedTypeArguments,
@@ -22,8 +22,8 @@ use crate::{
     arguments::{Argument, ArgumentKind},
     database::{Database, PointLink},
     debug,
+    diagnostics::IssueType,
     inference_state::InferenceState,
-    node_ref::NodeRef,
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, GenericItem, GenericsList,
         ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamType, ReplaceSelf,
@@ -470,13 +470,13 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    pub fn match_param_spec_arguments<'db, 'b, 'c>(
+    pub(crate) fn match_param_spec_arguments<'db, 'b, 'c>(
         &self,
         i_s: &InferenceState<'db, '_>,
         usage: &ParamSpecUsage,
         args: Box<[Argument<'db, 'b>]>,
         func_or_callable: FunctionOrCallable,
-        args_node_ref: NodeRef<'c>,
+        add_issue: &dyn Fn(IssueType),
         on_type_error: Option<OnTypeError<'db, '_>>,
     ) -> SignatureMatch {
         let func_class = self.func_or_callable.and_then(|f| f.class());
@@ -507,7 +507,7 @@ impl<'a> Matcher<'a> {
                     i_s,
                     &mut Matcher::default(),
                     func_or_callable,
-                    args_node_ref,
+                    &add_issue,
                     on_type_error,
                     iter,
                 )

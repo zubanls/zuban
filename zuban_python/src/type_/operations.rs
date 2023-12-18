@@ -660,7 +660,7 @@ pub(crate) fn execute_type_of_type<'db>(
                 i_s,
                 Callable::new(&nt.__new__, None),
                 args.iter(),
-                args.as_node_ref(),
+                |issue| args.add_issue(i_s, issue),
                 true,
                 &mut ResultContext::Unknown,
                 Some(on_type_error),

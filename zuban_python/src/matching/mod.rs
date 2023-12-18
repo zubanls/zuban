@@ -15,7 +15,7 @@ pub use generic::Generic;
 pub use generics::{Generics, GenericsIterator};
 pub use lookup_result::LookupResult;
 pub use match_::{ArgumentIndexWithParam, Match, MismatchReason, SignatureMatch};
-pub use matcher::{
+pub(crate) use matcher::{
     calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
     calculate_class_init_type_vars_and_return, calculate_function_type_vars_and_return,
     CalculatedTypeArguments, CalculatedTypeVarLike, FunctionOrCallable, Matcher,

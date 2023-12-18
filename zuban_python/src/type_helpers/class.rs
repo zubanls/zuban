@@ -166,7 +166,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     self,
                     func,
                     args.iter(),
-                    args.as_node_ref(),
+                    |issue| args.add_issue(i_s, issue),
                     result_context,
                     Some(on_type_error),
                 );
@@ -188,7 +188,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         i_s,
                         Callable::new(&callable_content, Some(*self)),
                         args.iter(),
-                        args.as_node_ref(),
+                        |issue| args.add_issue(i_s, issue),
                         false,
                         result_context,
                         Some(on_type_error),
@@ -213,7 +213,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         self,
                         callable,
                         args.iter(),
-                        args.as_node_ref(),
+                        |issue| args.add_issue(i_s, issue),
                         result_context,
                         Some(on_type_error),
                     );
