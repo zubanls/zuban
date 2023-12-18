@@ -131,6 +131,7 @@ pub struct ErrorTypes<'a> {
     pub matcher: &'a Matcher<'a>,
     pub got: GotType<'a>,
     pub expected: &'a Type,
+    pub reason: &'a MismatchReason,
 }
 
 pub struct ErrorStrs {

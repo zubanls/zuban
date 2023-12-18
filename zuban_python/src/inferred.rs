@@ -20,7 +20,7 @@ use crate::{
         calculate_property_return, create_signature_without_self,
         create_signature_without_self_for_callable, maybe_class_usage, replace_class_type_vars,
         ErrorStrs, ErrorTypes, FormatData, Generics, GotType, IteratorContent, LookupKind,
-        LookupResult, Matcher, OnLookupError, OnTypeError, ResultContext,
+        LookupResult, Match, Matcher, OnLookupError, OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
     type_::{
@@ -1720,7 +1720,9 @@ impl<'db: 'slf, 'slf> Inferred {
                                     let t = new_type.type_(i_s);
                                     let inf = first_arg.infer(i_s, &mut ResultContext::Known(t));
                                     let other = inf.as_cow_type(i_s);
-                                    if !t.is_simple_super_type_of(i_s, &other).bool() {
+                                    if let Match::False { ref reason, .. } =
+                                        t.is_simple_super_type_of(i_s, &other)
+                                    {
                                         (on_type_error.callback)(
                                             i_s,
                                             &|_| {
@@ -1732,6 +1734,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                             &first_arg,
                                             ErrorTypes {
                                                 matcher: &Matcher::default(),
+                                                reason,
                                                 got: GotType::Type(&other),
                                                 expected: t,
                                             },

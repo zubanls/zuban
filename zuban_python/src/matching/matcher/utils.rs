@@ -544,6 +544,7 @@ pub fn match_arguments_against_params<
                         _ => {
                             let error_types = ErrorTypes {
                                 matcher,
+                                reason,
                                 got,
                                 expected: &expected,
                             };
