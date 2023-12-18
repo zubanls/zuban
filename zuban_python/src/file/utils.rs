@@ -482,7 +482,8 @@ pub fn on_argument_type_error(
             )
             .into(),
         ),
-    )
+    );
+    types.add_mismatch_notes(|issue| arg.as_node_ref().add_issue(i_s, issue))
 }
 
 pub fn infer_index(
