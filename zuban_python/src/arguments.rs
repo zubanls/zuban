@@ -131,7 +131,7 @@ impl<'db: 'a, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
     }
 
     fn points_backup(&self) -> Option<PointsBackup> {
-        let primary = self.as_node_ref().as_primary();
+        let primary = NodeRef::new(self.file, self.primary_node_index).as_primary();
         let start = primary.index();
         let end = primary.expect_closing_bracket_index();
         Some(self.file.points.backup(start..end))

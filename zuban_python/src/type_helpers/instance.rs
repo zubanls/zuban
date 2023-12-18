@@ -192,15 +192,14 @@ impl<'a> Instance<'a> {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
-        let node_ref = args.as_node_ref();
         if let Some(inf) = self
-            .type_lookup(i_s, |issue| node_ref.add_issue(i_s, issue), "__call__")
+            .type_lookup(i_s, |issue| args.add_issue(i_s, issue), "__call__")
             .into_maybe_inferred()
         {
             inf.execute_with_details(i_s, args, result_context, on_type_error)
         } else {
             let t = self.class.format_short(i_s.db);
-            node_ref.add_issue(
+            args.add_issue(
                 i_s,
                 if self.class.node_ref == i_s.db.python_state.function_node_ref() {
                     IssueType::UnknownFunctionNotCallable

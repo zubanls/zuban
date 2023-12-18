@@ -334,7 +334,7 @@ pub(crate) fn execute_functional_enum<'db>(
                 _ => (),
             },
             _ => {
-                args.as_node_ref().add_issue(
+                args.add_issue(
                     i_s,
                     IssueType::EnumUnexpectedArguments {
                         name: class.name().into(),
