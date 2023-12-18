@@ -387,19 +387,18 @@ pub(crate) fn new_typing_named_tuple(
             return None;
         }
     };
-    let args_node_ref = args.as_node_ref();
     let on_type_var = &mut |i_s: &InferenceState, _: &_, type_var_like, _| {
         i_s.find_parent_type_var(&type_var_like)
             .unwrap_or(TypeVarCallbackReturn::NotFound)
     };
-    let mut inference = args_node_ref.file.inference(i_s);
+    let mut inference = second_node_ref.file.inference(i_s);
     let mut comp = TypeComputation::new(
         &mut inference,
-        args.as_node_ref().as_link(),
+        second_node_ref.as_link(),
         on_type_var,
         TypeComputationOrigin::NamedTupleMember,
     );
-    if let Some(params) = comp.compute_named_tuple_initializer(args_node_ref, list_iterator) {
+    if let Some(params) = comp.compute_named_tuple_initializer(second_node_ref, list_iterator) {
         check_named_tuple_has_no_fields_with_underscore(i_s, "NamedTuple", args, &params);
         let type_var_likes = comp.into_type_vars(|_, _| ());
         if in_type_definition && !type_var_likes.is_empty() {
@@ -409,7 +408,7 @@ pub(crate) fn new_typing_named_tuple(
         let callable = CallableContent {
             name: Some(DbString::StringSlice(name)),
             class_name: None,
-            defined_at: args_node_ref.as_link(),
+            defined_at: second_node_ref.as_link(),
             kind: FunctionKind::Function {
                 had_first_self_or_class_annotation: true,
             },
@@ -430,7 +429,6 @@ pub(crate) fn new_collections_named_tuple(
     let Some((name, second_node_ref, atom_content, _)) = check_named_tuple_name(i_s, "namedtuple", args) else {
         return None
     };
-    let args_node_ref = args.as_node_ref();
     let mut params = start_namedtuple_params(i_s.db);
 
     let mut add_param = |name| {
@@ -446,7 +444,7 @@ pub(crate) fn new_collections_named_tuple(
             let StarLikeExpression::NamedExpression(ne) = element else {
             todo!()
         };
-            let Some(string_slice) = StringSlice::from_string_in_expression(args_node_ref.file.file_index(), ne.expression()) else {
+            let Some(string_slice) = StringSlice::from_string_in_expression(second_node_ref.file.file_index(), ne.expression()) else {
                 NodeRef::new(second_node_ref.file, ne.index())
                     .add_issue(i_s, IssueType::StringLiteralExpectedAsNamedTupleItem);
                 continue
@@ -464,7 +462,7 @@ pub(crate) fn new_collections_named_tuple(
                 for part in s.content().split(&[',', ' ']) {
                     add_param(
                         StringSlice::new(
-                            args_node_ref.file_index(),
+                            second_node_ref.file_index(),
                             start,
                             start + part.len() as CodeIndex,
                         )
@@ -518,7 +516,7 @@ pub(crate) fn new_collections_named_tuple(
     let callable = CallableContent {
         name: Some(DbString::StringSlice(name)),
         class_name: None,
-        defined_at: args_node_ref.as_link(),
+        defined_at: second_node_ref.as_link(),
         kind: FunctionKind::Function {
             had_first_self_or_class_annotation: true,
         },

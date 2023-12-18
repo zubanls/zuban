@@ -27,12 +27,17 @@ pub(crate) trait Arguments<'db>: std::fmt::Debug {
     // This is not the case in the grammar, but here we want that.
     fn iter(&self) -> ArgumentIterator<'db, '_>;
     fn type_(&self) -> ArgumentsType;
-    fn as_node_ref(&self) -> NodeRef;
+    fn as_node_ref(&self) -> Option<NodeRef>;
     fn add_issue(&self, i_s: &InferenceState, issue: IssueType) {
-        self.as_node_ref().add_issue(i_s, issue)
+        self.as_node_ref()
+            .expect("Otherwise add_issue should be implemented")
+            .add_issue(i_s, issue)
     }
     fn starting_line(&self) -> String {
-        self.as_node_ref().line().to_string()
+        let Some(node_ref) = self.as_node_ref() else {
+            return "<unkown line>".into()
+        };
+        node_ref.line().to_string()
     }
     fn points_backup(&self) -> Option<PointsBackup> {
         None
@@ -126,8 +131,8 @@ impl<'db: 'a, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
         ArgumentsType::Normal(self.file, self.primary_node_index)
     }
 
-    fn as_node_ref(&self) -> NodeRef {
-        NodeRef::new(self.file, self.primary_node_index)
+    fn as_node_ref(&self) -> Option<NodeRef> {
+        Some(NodeRef::new(self.file, self.primary_node_index))
     }
 
     fn points_backup(&self) -> Option<PointsBackup> {
@@ -191,8 +196,8 @@ impl<'db, 'a> Arguments<'db> for KnownArguments<'a> {
         todo!()
     }
 
-    fn as_node_ref(&self) -> NodeRef {
-        self.node_ref
+    fn as_node_ref(&self) -> Option<NodeRef> {
+        Some(self.node_ref)
     }
 }
 
@@ -229,8 +234,12 @@ impl<'db, 'a> Arguments<'db> for KnownArgumentsWithCustomAddIssue<'a> {
         todo!()
     }
 
-    fn as_node_ref(&self) -> NodeRef {
-        todo!("Should return None")
+    fn add_issue(&self, i_s: &InferenceState, issue: IssueType) {
+        self.add_issue.0(issue)
+    }
+
+    fn as_node_ref(&self) -> Option<NodeRef> {
+        None
     }
 }
 
@@ -252,8 +261,16 @@ impl<'db, 'a> Arguments<'db> for CombinedArguments<'db, 'a> {
         todo!()
     }
 
-    fn as_node_ref(&self) -> NodeRef {
+    fn as_node_ref(&self) -> Option<NodeRef> {
         self.args2.as_node_ref()
+    }
+
+    fn starting_line(&self) -> String {
+        self.args2.starting_line()
+    }
+
+    fn add_issue(&self, i_s: &InferenceState, issue: IssueType) {
+        self.args2.add_issue(i_s, issue)
     }
 
     fn points_backup(&self) -> Option<PointsBackup> {
@@ -408,41 +425,47 @@ impl<'db, 'a> Argument<'db, 'a> {
         }
     }
 
-    fn as_node_ref(&self) -> NodeRef {
+    fn as_node_ref(&self) -> Result<NodeRef, CustomAddIssue> {
         match &self.kind {
             ArgumentKind::Positional { node_ref, .. }
             | ArgumentKind::Keyword { node_ref, .. }
             | ArgumentKind::ParamSpec { node_ref, .. }
-            | ArgumentKind::Inferred { node_ref, .. } => *node_ref,
+            | ArgumentKind::Inferred { node_ref, .. } => Ok(*node_ref),
             ArgumentKind::Comprehension {
                 file,
                 comprehension,
                 ..
-            } => NodeRef::new(file, comprehension.index()),
+            } => Ok(NodeRef::new(file, comprehension.index())),
             ArgumentKind::SlicesTuple { slices, .. } => todo!(),
             ArgumentKind::Overridden { original, .. } => original.as_node_ref(),
-            ArgumentKind::InferredWithCustomAddIssue { .. } => todo!(),
+            ArgumentKind::InferredWithCustomAddIssue { add_issue, .. } => Err(add_issue.clone()),
         }
     }
 
     pub(crate) fn add_issue(&self, i_s: &InferenceState, issue: IssueType) {
-        self.as_node_ref().add_issue(i_s, issue)
+        match self.as_node_ref() {
+            Ok(node_ref) => node_ref.add_issue(i_s, issue),
+            Err(add_issue) => add_issue.0(issue),
+        }
     }
 
     pub fn maybe_star_type(&self, i_s: &InferenceState) -> Option<Type> {
-        self.as_node_ref()
-            .maybe_starred_expression()
-            .map(|starred| {
-                self.as_node_ref()
-                    .file
-                    .inference(i_s)
-                    .infer_expression(starred.expression())
-                    .as_type(i_s)
-            })
+        let Ok(node_ref) = self.as_node_ref() else {
+            return None
+        };
+        node_ref.maybe_starred_expression().map(|starred| {
+            node_ref
+                .file
+                .inference(i_s)
+                .infer_expression(starred.expression())
+                .as_type(i_s)
+        })
     }
 
     pub fn maybe_star_star_type(&self, i_s: &InferenceState) -> Option<Type> {
-        let node_ref = self.as_node_ref();
+        let Ok(node_ref) = self.as_node_ref() else {
+            return None
+        };
         node_ref
             .maybe_double_starred_expression()
             .and_then(|star_star| {
@@ -469,8 +492,10 @@ impl<'db, 'a> Argument<'db, 'a> {
     }
 
     pub fn is_from_star_star_args(&self) -> bool {
-        let reference = self.as_node_ref();
-        reference.maybe_double_starred_expression().is_some()
+        let Ok(node_ref) = self.as_node_ref() else {
+            return false
+        };
+        node_ref.maybe_double_starred_expression().is_some()
     }
 
     pub fn human_readable_index(&self, db: &Database) -> String {
@@ -1075,8 +1100,8 @@ impl<'db, 'a> Arguments<'db> for NoArguments<'a> {
         todo!()
     }
 
-    fn as_node_ref(&self) -> NodeRef {
-        self.0
+    fn as_node_ref(&self) -> Option<NodeRef> {
+        Some(self.0)
     }
 }
 

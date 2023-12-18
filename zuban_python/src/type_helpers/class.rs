@@ -1702,13 +1702,14 @@ impl<'db: 'a, 'a> Class<'a> {
         if self.node_ref == original_i_s.db.python_state.dict_node_ref() {
             // This is a special case where we intercept the call to dict(..) when used with
             // TypedDict.
-            if let Some(inf) = args
-                .as_node_ref()
-                .file
-                .inference(original_i_s)
-                .infer_dict_call_from_context(args, result_context)
-            {
-                return inf;
+            if let Some(args_node_ref) = args.as_node_ref() {
+                if let Some(inf) = args_node_ref
+                    .file
+                    .inference(original_i_s)
+                    .infer_dict_call_from_context(args, result_context)
+                {
+                    return inf;
+                }
             }
         }
         match self.execute_and_return_generics(

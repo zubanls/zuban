@@ -195,7 +195,12 @@ impl<'db> Inference<'db, '_, '_> {
             }
         }
         let dict_node_ref = NodeRef::new(self.file, dict.index());
-        maybe_add_extra_keys_issue(i_s, &typed_dict, dict_node_ref, extra_keys);
+        maybe_add_extra_keys_issue(
+            i_s.db,
+            &typed_dict,
+            |issue| dict_node_ref.add_issue(i_s, issue),
+            extra_keys,
+        );
         if !missing_keys.is_empty() {
             dict_node_ref.add_issue(
                 i_s,

@@ -368,7 +368,7 @@ pub(crate) fn execute_functional_enum<'db>(
         Enum::new(
             name,
             class.node_ref.as_link(),
-            args.as_node_ref().as_link(),
+            name_infos.0.as_link(),
             i_s.parent_scope(),
             members,
             class.has_customized_enum_new(i_s).into(),
