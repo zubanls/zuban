@@ -1323,7 +1323,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         instance
                             .lookup_with_explicit_self_binding(
                                 i_s,
-                                |issue| node_ref.add_issue(i_s, issue),
+                                &|issue| node_ref.add_issue(i_s, issue),
                                 name,
                                 LookupKind::Normal,
                                 0,

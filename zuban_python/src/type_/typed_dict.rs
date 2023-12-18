@@ -992,7 +992,7 @@ pub(crate) fn lookup_on_typed_dict(
         "update" => CustomBehavior::new_method(typed_dict_update, Some(bound())),
         _ => {
             return Instance::new(i_s.db.python_state.typed_dict_class(), None)
-                .lookup_with_explicit_self_binding(i_s, add_issue, name, kind, 0, || {
+                .lookup_with_explicit_self_binding(i_s, &add_issue, name, kind, 0, || {
                     Type::TypedDict(typed_dict.clone())
                 })
                 .1

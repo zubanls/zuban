@@ -166,7 +166,7 @@ pub fn lookup_on_enum_class(
     }
 }
 
-pub fn lookup_on_enum_instance(
+pub(crate) fn lookup_on_enum_instance(
     i_s: &InferenceState,
     add_issue: impl Fn(IssueType),
     enum_: &Rc<Enum>,
@@ -194,7 +194,7 @@ fn lookup_on_enum_instance_fallback(
     name: &str,
 ) -> LookupResult {
     Instance::new(enum_.class(i_s.db), None)
-        .lookup_with_explicit_self_binding(i_s, add_issue, name, LookupKind::Normal, 0, || {
+        .lookup_with_explicit_self_binding(i_s, &add_issue, name, LookupKind::Normal, 0, || {
             Type::Enum(enum_.clone())
         })
         .1
@@ -250,7 +250,7 @@ pub fn infer_value_on_member(
     }
 }
 
-pub fn lookup_on_enum_member_instance(
+pub(crate) fn lookup_on_enum_member_instance(
     i_s: &InferenceState,
     add_issue: impl Fn(IssueType),
     member: &EnumMember,

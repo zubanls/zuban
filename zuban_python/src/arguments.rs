@@ -202,6 +202,38 @@ impl<'a> KnownArguments<'a> {
     }
 }
 
+impl<'a> KnownArgumentsWithCustomAddIssue<'a> {
+    pub(crate) fn new(inferred: &'a Inferred, add_issue: &'a dyn Fn(IssueType)) -> Self {
+        Self {
+            inferred,
+            add_issue: CustomAddIssue(add_issue),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct KnownArgumentsWithCustomAddIssue<'a> {
+    inferred: &'a Inferred,
+    add_issue: CustomAddIssue<'a>,
+}
+
+impl<'db, 'a> Arguments<'db> for KnownArgumentsWithCustomAddIssue<'a> {
+    fn iter(&self) -> ArgumentIterator<'db, '_> {
+        ArgumentIterator::new(ArgumentIteratorBase::InferredWithCustomAddIssue {
+            inferred: self.inferred,
+            add_issue: self.add_issue,
+        })
+    }
+
+    fn type_(&self) -> ArgumentsType {
+        todo!()
+    }
+
+    fn as_node_ref(&self) -> NodeRef {
+        todo!("Should return None")
+    }
+}
+
 #[derive(Debug)]
 pub struct CombinedArguments<'db, 'a> {
     args1: &'a dyn Arguments<'db>,
@@ -256,6 +288,11 @@ pub enum ArgumentKind<'db, 'a> {
         node_ref: NodeRef<'a>,
         in_args_or_kwargs_and_arbitrary_len: bool,
         is_keyword: Option<Option<StringSlice>>,
+    },
+    InferredWithCustomAddIssue {
+        inferred: Inferred,
+        position: usize, // The position as a 1-based index
+        add_issue: CustomAddIssue<'a>,
     },
     Positional {
         i_s: InferenceState<'db, 'a>,
@@ -335,7 +372,8 @@ impl<'db, 'a> Argument<'db, 'a> {
         result_context: &mut ResultContext,
     ) -> Inferred {
         match &self.kind {
-            ArgumentKind::Inferred { inferred, .. } => (*inferred).clone(),
+            ArgumentKind::Inferred { inferred, .. }
+            | ArgumentKind::InferredWithCustomAddIssue { inferred, .. } => (*inferred).clone(),
             ArgumentKind::Positional { i_s, node_ref, .. } => {
                 node_ref
                     .file
@@ -383,6 +421,7 @@ impl<'db, 'a> Argument<'db, 'a> {
             } => NodeRef::new(file, comprehension.index()),
             ArgumentKind::SlicesTuple { slices, .. } => todo!(),
             ArgumentKind::Overridden { original, .. } => original.as_node_ref(),
+            ArgumentKind::InferredWithCustomAddIssue { .. } => todo!(),
         }
     }
 
@@ -442,6 +481,7 @@ impl<'db, 'a> Argument<'db, 'a> {
             } => format!("\"{}\"", s.as_str(db)),
             ArgumentKind::Positional { position, .. }
             | ArgumentKind::Inferred { position, .. }
+            | ArgumentKind::InferredWithCustomAddIssue { position, .. }
             | ArgumentKind::ParamSpec { position, .. } => {
                 format!("{position}")
             }
@@ -488,7 +528,8 @@ impl<'db, 'a> Argument<'db, 'a> {
                 in_args_or_kwargs_and_arbitrary_len: false,
                 is_keyword: None,
                 ..
-            } => Some(inferred),
+            }
+            | ArgumentKind::InferredWithCustomAddIssue { inferred, .. } => Some(inferred),
             ArgumentKind::ParamSpec { .. } => todo!(),
             ArgumentKind::Overridden { original, inferred } => original
                 .clone()
@@ -512,6 +553,10 @@ enum ArgumentIteratorBase<'db, 'a> {
         inferred: &'a Inferred,
         node_ref: NodeRef<'a>,
     },
+    InferredWithCustomAddIssue {
+        inferred: &'a Inferred,
+        add_issue: CustomAddIssue<'a>,
+    },
     SliceType(InferenceState<'db, 'a>, SliceType<'a>),
     Finished,
 }
@@ -531,7 +576,9 @@ impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
     }
     fn into_argument_types(self, i_s: &InferenceState) -> Vec<Box<str>> {
         match self {
-            Self::Inferred { inferred, .. } => vec![inferred.as_cow_type(i_s).format_short(i_s.db)],
+            Self::Inferred { inferred, .. } | Self::InferredWithCustomAddIssue { inferred, .. } => {
+                vec![inferred.as_cow_type(i_s).format_short(i_s.db)]
+            }
             Self::Iterator {
                 i_s,
                 file,
@@ -765,6 +812,26 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                             is_keyword: None,
                         }))
                     }
+                }
+            }
+            Self::InferredWithCustomAddIssue {
+                inferred,
+                add_issue,
+            } => {
+                if let Self::InferredWithCustomAddIssue {
+                    inferred,
+                    add_issue,
+                } = mem::replace(self, Self::Finished)
+                {
+                    Some(BaseArgumentReturn::Argument(
+                        ArgumentKind::InferredWithCustomAddIssue {
+                            inferred: inferred.clone(),
+                            position: 1,
+                            add_issue,
+                        },
+                    ))
+                } else {
+                    unreachable!()
                 }
             }
         }
@@ -1010,5 +1077,14 @@ impl<'db, 'a> Arguments<'db> for NoArguments<'a> {
 
     fn as_node_ref(&self) -> NodeRef {
         self.0
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct CustomAddIssue<'a>(&'a dyn Fn(IssueType));
+
+impl std::fmt::Debug for CustomAddIssue<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.debug_struct("ArgumentsWithCustomAddIssue").finish()
     }
 }

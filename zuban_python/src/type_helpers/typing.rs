@@ -410,6 +410,7 @@ fn maybe_type_var(
                     return None;
                 }
                 ArgumentKind::Inferred { .. }
+                | ArgumentKind::InferredWithCustomAddIssue { .. }
                 | ArgumentKind::SlicesTuple { .. }
                 | ArgumentKind::Overridden { .. }
                 | ArgumentKind::ParamSpec { .. } => {
@@ -563,6 +564,7 @@ fn maybe_type_var_tuple(
                     return None;
                 }
                 ArgumentKind::Inferred { .. }
+                | ArgumentKind::InferredWithCustomAddIssue { .. }
                 | ArgumentKind::SlicesTuple { .. }
                 | ArgumentKind::Overridden { .. }
                 | ArgumentKind::ParamSpec { .. } => unreachable!(),

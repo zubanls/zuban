@@ -4,7 +4,9 @@ use parsa_python_ast::Name;
 
 use super::{class::TypeOrClass, Class, MroIterator};
 use crate::{
-    arguments::{Arguments, CombinedArguments, KnownArguments, NoArguments},
+    arguments::{
+        Arguments, CombinedArguments, KnownArguments, KnownArgumentsWithCustomAddIssue, NoArguments,
+    },
     database::{Database, PointLink, Specific},
     debug,
     diagnostics::IssueType,
@@ -171,15 +173,21 @@ impl<'a> Instance<'a> {
         add_issue: impl Fn(IssueType),
         instance: Type,
     ) -> Option<Inferred> {
-        self.type_lookup(i_s, add_issue, "__get__")
+        self.type_lookup(i_s, &add_issue, "__get__")
             .into_maybe_inferred()
             .map(|inf| {
                 let c_t = Type::Type(Rc::new(instance.clone()));
                 inf.execute(
                     i_s,
                     &CombinedArguments::new(
-                        &KnownArguments::new(&Inferred::from_type(instance), from),
-                        &KnownArguments::new(&Inferred::from_type(c_t), from),
+                        &KnownArgumentsWithCustomAddIssue::new(
+                            &Inferred::from_type(instance),
+                            &add_issue,
+                        ),
+                        &KnownArgumentsWithCustomAddIssue::new(
+                            &Inferred::from_type(c_t),
+                            &add_issue,
+                        ),
                     ),
                 )
             })
@@ -263,7 +271,7 @@ impl<'a> Instance<'a> {
     pub(crate) fn lookup_with_explicit_self_binding(
         &self,
         i_s: &'a InferenceState,
-        add_issue: impl Fn(IssueType),
+        add_issue: &dyn Fn(IssueType),
         name: &str,
         kind: LookupKind,
         super_count: usize,
@@ -275,7 +283,13 @@ impl<'a> Instance<'a> {
             let result = lookup.and_then(|inf| {
                 if let Some(c) = class_of_lookup {
                     let i_s = i_s.with_class_context(&self.class);
-                    inf.bind_instance_descriptors(&i_s, as_self_instance(), c, add_issue, mro_index)
+                    inf.bind_instance_descriptors(
+                        &i_s,
+                        as_self_instance(),
+                        c,
+                        &add_issue,
+                        mro_index,
+                    )
                 } else {
                     Some(inf)
                 }
@@ -312,7 +326,7 @@ impl<'a> Instance<'a> {
         if kind == LookupKind::Normal && super_count == 0 {
             for method_name in ["__getattr__", "__getattribute__"] {
                 let (defined_in, lookup) =
-                    self.lookup_and_defined_in(i_s, add_issue, method_name, LookupKind::OnlyType);
+                    self.lookup_and_defined_in(i_s, &add_issue, method_name, LookupKind::OnlyType);
                 if defined_in.is_object(i_s.db) {
                     // object defines a __getattribute__ that returns Any
                     continue;
@@ -320,7 +334,10 @@ impl<'a> Instance<'a> {
                 if let Some(inf) = lookup.into_maybe_inferred() {
                     let result = LookupResult::UnknownName(inf.execute(
                         i_s,
-                        &KnownArguments::new(&Inferred::new_any(AnyCause::Internal), node_ref),
+                        &KnownArgumentsWithCustomAddIssue::new(
+                            &Inferred::new_any(AnyCause::Internal),
+                            &add_issue,
+                        ),
                     ));
                     return (TypeOrClass::Class(self.class), result);
                 }
@@ -344,7 +361,7 @@ impl<'a> Instance<'a> {
         kind: LookupKind,
         super_count: usize,
     ) -> (TypeOrClass, LookupResult) {
-        self.lookup_with_explicit_self_binding(i_s, add_issue, name, kind, super_count, || {
+        self.lookup_with_explicit_self_binding(i_s, &add_issue, name, kind, super_count, || {
             self.class.as_type(i_s.db)
         })
     }
@@ -378,7 +395,7 @@ impl<'a> Instance<'a> {
     ) -> (TypeOrClass, LookupResult) {
         self.lookup_with_explicit_self_binding(
             i_s,
-            |issue| node_ref.add_issue(i_s, issue),
+            &|issue| node_ref.add_issue(i_s, issue),
             name,
             kind,
             0,
