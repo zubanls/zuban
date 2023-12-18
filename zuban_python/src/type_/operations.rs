@@ -15,7 +15,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{
-        calculate_callable_type_vars_and_return, GotType, IteratorContent, LookupKind,
+        calculate_callable_type_vars_and_return, ErrorTypes, GotType, IteratorContent, LookupKind,
         LookupResult, OnLookupError, OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
@@ -611,7 +611,11 @@ pub(crate) fn execute_type_of_type<'db>(
             }
             let other = inferred_tup.as_cow_type(i_s);
             if !tuple.is_simple_super_type_of(i_s, &other).bool() {
-                (on_type_error.callback)(i_s, &|_| todo!(), &arg, GotType::Type(tuple), &other);
+                let error_types = ErrorTypes {
+                    got: GotType::Type(tuple),
+                    expected: &other,
+                };
+                (on_type_error.callback)(i_s, &|_| todo!(), &arg, error_types);
             }
             Inferred::from_type(tuple.clone())
         }

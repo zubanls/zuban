@@ -123,12 +123,30 @@ impl GotType<'_> {
     }
 }
 
+pub struct ErrorTypes<'a> {
+    pub got: GotType<'a>,
+    pub expected: &'a Type,
+}
+
+pub struct ErrorStrs {
+    pub got: Box<str>,
+    pub expected: Box<str>,
+}
+
+impl ErrorTypes<'_> {
+    pub fn as_boxed_strs(&self, i_s: &InferenceState) -> ErrorStrs {
+        ErrorStrs {
+            got: self.got.as_string(i_s.db).into(),
+            expected: self.expected.format_short(i_s.db),
+        }
+    }
+}
+
 pub type OnTypeErrorCallback<'db, 'a> = &'a dyn Fn(
     &InferenceState<'db, '_>,
     &dyn Fn(&str) -> Option<Box<str>>, // error_text; argument is a prefix
     &Argument,
-    GotType,
-    &Type,
+    ErrorTypes,
 );
 pub type OnLookupError<'a> = &'a dyn Fn(&Type);
 

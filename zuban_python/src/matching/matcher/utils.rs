@@ -20,7 +20,7 @@ use crate::{
     debug,
     diagnostics::IssueType,
     inference_state::InferenceState,
-    matching::GotType,
+    matching::{ErrorTypes, GotType},
     node_ref::NodeRef,
     type_::{
         CallableParams, ClassGenerics, GenericItem, GenericsList, ReplaceSelf, Type,
@@ -541,13 +541,18 @@ pub fn match_arguments_against_params<
                                 },
                             );
                         }
-                        _ => (on_type_error.callback)(
-                            i_s,
-                            &diagnostic_string,
-                            &argument,
-                            got,
-                            &expected,
-                        ),
+                        _ => {
+                            let error_types = ErrorTypes {
+                                got,
+                                expected: &expected,
+                            };
+                            (on_type_error.callback)(
+                                i_s,
+                                &diagnostic_string,
+                                &argument,
+                                error_types,
+                            )
+                        }
                     };
                 }
             }

@@ -434,13 +434,14 @@ impl<'a> Instance<'a> {
                         i_s,
                         &args,
                         &mut ResultContext::Unknown,
-                        OnTypeError::new(&|i_s, function, arg, actual, expected| {
+                        OnTypeError::new(&|i_s, function, arg, types| {
+                            let strs = types.as_boxed_strs(i_s);
                             arg.as_node_ref().add_issue(
                                 i_s,
                                 IssueType::InvalidGetItem {
-                                    actual: actual.as_string(i_s.db).into(),
                                     type_: self.class.format_short(i_s.db),
-                                    expected: expected.format_short(i_s.db),
+                                    actual: strs.got,
+                                    expected: strs.expected,
                                 },
                             )
                         }),
@@ -478,17 +479,18 @@ fn calculate_descriptor(
             &KnownArguments::new(value, from),
         ),
         &mut ResultContext::ExpectUnused,
-        OnTypeError::new(&|i_s, error_text, argument, got, expected| {
+        OnTypeError::new(&|i_s, error_text, argument, types| {
             if argument.index == 2 {
+                let strs = types.as_boxed_strs(i_s);
                 from.add_issue(
                     i_s,
                     IssueType::IncompatibleAssignment {
-                        got: got.as_string(i_s.db).into(),
-                        expected: expected.format_short(i_s.db),
+                        got: strs.got,
+                        expected: strs.expected,
                     },
                 );
             } else {
-                on_argument_type_error(i_s, error_text, argument, got, expected)
+                on_argument_type_error(i_s, error_text, argument, types)
             }
         }),
     );

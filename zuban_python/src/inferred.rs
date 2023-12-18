@@ -19,8 +19,8 @@ use crate::{
     matching::{
         calculate_property_return, create_signature_without_self,
         create_signature_without_self_for_callable, maybe_class_usage, replace_class_type_vars,
-        FormatData, Generics, GotType, IteratorContent, LookupKind, LookupResult, Matcher,
-        OnLookupError, OnTypeError, ResultContext,
+        ErrorStrs, ErrorTypes, FormatData, Generics, GotType, IteratorContent, LookupKind,
+        LookupResult, Matcher, OnLookupError, OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
     type_::{
@@ -1730,8 +1730,10 @@ impl<'db: 'slf, 'slf> Inferred {
                                                 )
                                             },
                                             &first_arg,
-                                            GotType::Type(&other),
-                                            t,
+                                            ErrorTypes {
+                                                got: GotType::Type(&other),
+                                                expected: t,
+                                            },
                                         );
                                     }
                                 } else {
@@ -1891,13 +1893,12 @@ impl<'db: 'slf, 'slf> Inferred {
                     IssueType::UnsupportedSetItemTarget(self.format_short(i_s)),
                 )
             },
-            OnTypeError::new(&|i_s, function, arg, got, expected| {
-                let got = got.as_string(i_s.db).into();
-                let expected = expected.format_short(i_s.db);
+            OnTypeError::new(&|i_s, function, arg, types| {
+                let ErrorStrs { got, expected } = types.as_boxed_strs(i_s);
                 let type_ = if arg.index == 1 {
                     IssueType::InvalidGetItem {
-                        actual: got,
                         type_: self.format_short(i_s),
+                        actual: got,
                         expected,
                     }
                 } else {
