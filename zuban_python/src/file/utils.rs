@@ -411,7 +411,7 @@ fn check_list_with_context<'db>(
     let mut had_error = false;
     for (item, element) in iterator.enumerate() {
         let mut check_item = |i_s: &InferenceState<'db, '_>, inferred: Inferred, index| {
-            let m = generic_t.error_if_not_matches_with_matcher(
+            generic_t.error_if_not_matches_with_matcher(
                 i_s,
                 matcher,
                 &inferred,
@@ -425,12 +425,10 @@ fn check_list_with_context<'db>(
                             expected,
                         },
                     );
+                    had_error = true;
                     node_ref
                 }),
             );
-            if !m.bool() {
-                had_error = true;
-            }
         };
         let mut inference = file.inference(i_s);
         match element {

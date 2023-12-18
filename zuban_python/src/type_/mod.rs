@@ -1131,7 +1131,7 @@ impl Type {
         matcher: &mut Matcher,
         value: &Inferred,
         callback: Option<impl FnOnce(Box<str>, Box<str>, &MismatchReason) -> NodeRef<'x>>,
-    ) -> Match {
+    ) {
         let value_type = value.as_cow_type(i_s);
         let matches = self.is_super_type_of(i_s, matcher, &value_type);
         if let Match::False { ref reason, .. } = matches {
@@ -1183,7 +1183,6 @@ impl Type {
                 }
             }
         }
-        matches
     }
 
     pub fn execute_and_resolve_type_vars(
