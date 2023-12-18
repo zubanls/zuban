@@ -63,8 +63,9 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{
-        maybe_class_usage, AvoidRecursionFor, CalculatedTypeArguments, FormatData, Generic,
-        Generics, Match, Matcher, MismatchReason, OnTypeError, ParamsStyle, ResultContext,
+        maybe_class_usage, AvoidRecursionFor, CalculatedTypeArguments, ErrorStrs, ErrorTypes,
+        FormatData, Generic, Generics, GotType, Match, Matcher, MismatchReason, OnTypeError,
+        ParamsStyle, ResultContext,
     },
     node_ref::NodeRef,
     type_helpers::{dotted_path_from_dir, Class, Instance, MroIterator, TypeOrClass},
@@ -1135,52 +1136,20 @@ impl Type {
         let value_type = value.as_cow_type(i_s);
         let matches = self.is_super_type_of(i_s, matcher, &value_type);
         if let Match::False { ref reason, .. } = matches {
-            let mut fmt1 = FormatData::new_short(i_s.db);
-            let mut fmt2 = FormatData::with_matcher(i_s.db, matcher);
-            if self.is_literal_or_literal_in_tuple() {
-                fmt1.hide_implicit_literals = false;
-                fmt2.hide_implicit_literals = false;
-            }
-            let mut input = value_type.format(&fmt1);
-            let mut wanted = self.format(&fmt2);
-            if input == wanted {
-                fmt1.enable_verbose();
-                fmt2.enable_verbose();
-                input = value_type.format(&fmt1);
-                wanted = self.format(&fmt2);
-            }
+            let error_types = ErrorTypes {
+                expected: self,
+                got: GotType::Type(&value_type),
+                matcher,
+                reason,
+            };
+            let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s);
             debug!(
-                "Mismatch between {input:?} and {wanted:?} -> {:?}",
+                "Mismatch between {expected:?} and {got:?} -> {:?}",
                 &matches
             );
             if let Some(callback) = callback {
-                let node_ref = callback(input, wanted, reason);
-                match reason {
-                    MismatchReason::SequenceInsteadOfListNeeded => {
-                        node_ref.add_issue(
-                            i_s,
-                            IssueType::InvariantNote {
-                                actual: "List",
-                                maybe: "Sequence",
-                            },
-                        );
-                    }
-                    MismatchReason::MappingInsteadOfDictNeeded => {
-                        node_ref.add_issue(
-                            i_s,
-                            IssueType::InvariantNote {
-                                actual: "Dict",
-                                maybe: "Mapping",
-                            },
-                        );
-                    }
-                    MismatchReason::ProtocolMismatches { notes } => {
-                        for note in notes.iter() {
-                            node_ref.add_issue(i_s, IssueType::Note(note.clone()));
-                        }
-                    }
-                    _ => (),
-                }
+                let node_ref = callback(got, expected, reason);
+                error_types.add_mismatch_notes(|issue| node_ref.add_issue(i_s, issue))
             }
         }
     }
