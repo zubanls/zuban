@@ -115,15 +115,20 @@ pub enum GotType<'a> {
 
 impl GotType<'_> {
     pub fn as_string(&self, db: &Database) -> String {
+        self.format(&FormatData::new_short(db))
+    }
+
+    pub fn format(&self, format_data: &FormatData) -> String {
         match self {
-            GotType::Type(t) => t.format_short(db).into(),
-            GotType::Starred(t) => format!("\"*{}\"", t.format_short(db)),
-            GotType::DoubleStarred(t) => format!("\"**{}\"", t.format_short(db)),
+            GotType::Type(t) => t.format(format_data).into(),
+            GotType::Starred(t) => format!("*{}", t.format(format_data)),
+            GotType::DoubleStarred(t) => format!("**{}", t.format(format_data)),
         }
     }
 }
 
 pub struct ErrorTypes<'a> {
+    pub matcher: &'a Matcher<'a>,
     pub got: GotType<'a>,
     pub expected: &'a Type,
 }
@@ -135,9 +140,23 @@ pub struct ErrorStrs {
 
 impl ErrorTypes<'_> {
     pub fn as_boxed_strs(&self, i_s: &InferenceState) -> ErrorStrs {
+        let mut fmt_got = FormatData::new_short(i_s.db);
+        let mut fmt_expected = FormatData::with_matcher(i_s.db, self.matcher);
+        if self.expected.is_literal_or_literal_in_tuple() {
+            fmt_got.hide_implicit_literals = false;
+            fmt_expected.hide_implicit_literals = false;
+        }
+        let mut got = self.got.format(&fmt_got);
+        let mut expected = self.expected.format(&fmt_expected);
+        if got.as_str() == expected.as_ref() {
+            fmt_got.enable_verbose();
+            fmt_expected.enable_verbose();
+            got = self.got.format(&fmt_got);
+            expected = self.expected.format(&fmt_expected);
+        }
         ErrorStrs {
-            got: self.got.as_string(i_s.db).into(),
-            expected: self.expected.format_short(i_s.db),
+            got: got.into(),
+            expected,
         }
     }
 }
