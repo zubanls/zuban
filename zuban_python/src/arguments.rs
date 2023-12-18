@@ -31,6 +31,9 @@ pub(crate) trait Arguments<'db>: std::fmt::Debug {
     fn add_issue(&self, i_s: &InferenceState, issue: IssueType) {
         self.as_node_ref().add_issue(i_s, issue)
     }
+    fn starting_line(&self) -> String {
+        self.as_node_ref().line().to_string()
+    }
     fn points_backup(&self) -> Option<PointsBackup> {
         None
     }
