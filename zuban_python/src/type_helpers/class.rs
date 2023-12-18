@@ -1750,10 +1750,9 @@ impl<'db: 'a, 'a> Class<'a> {
             ClassKind::Enum if self.node_ref.as_link() != i_s.db.python_state.enum_auto_link() => {
                 // For whatever reason, auto is special, because it is somehow defined as an enum as
                 // well, which is very weird.
-                let metaclass = Instance::new(
-                    Class::from_non_generic_link(i_s.db, i_s.db.python_state.enum_meta_link()),
-                    None,
-                );
+                let metaclass =
+                    Class::from_non_generic_link(i_s.db, i_s.db.python_state.enum_meta_link())
+                        .instance();
                 let call = metaclass
                     .type_lookup(i_s, args.as_node_ref(), "__call__")
                     .into_inferred();
