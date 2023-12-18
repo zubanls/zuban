@@ -145,7 +145,7 @@ impl<'db> Inference<'db, '_, '_> {
                                 self.i_s,
                                 &typed_dict,
                                 matcher,
-                                node_ref,
+                                |issue| node_ref.add_issue(i_s, issue),
                                 key,
                                 &mut extra_keys,
                                 |context| {
@@ -176,7 +176,7 @@ impl<'db> Inference<'db, '_, '_> {
                                     self.i_s,
                                     &typed_dict,
                                     matcher,
-                                    node_ref,
+                                    |issue| node_ref.add_issue(i_s, issue),
                                     key,
                                     &mut extra_keys,
                                     |_| Inferred::from_type(member.type_.clone()),
@@ -415,19 +415,15 @@ fn check_list_with_context<'db>(
                 i_s,
                 matcher,
                 &inferred,
-                Some(|got, expected, _: &MismatchReason| {
-                    let node_ref = NodeRef::new(file, index);
-                    node_ref.add_issue(
-                        i_s,
-                        IssueType::ListItemMismatch {
-                            item,
-                            got,
-                            expected,
-                        },
-                    );
+                |issue| NodeRef::new(file, index).add_issue(i_s, issue),
+                |got, expected, _: &MismatchReason| {
                     had_error = true;
-                    node_ref
-                }),
+                    Some(IssueType::ListItemMismatch {
+                        item,
+                        got,
+                        expected,
+                    })
+                },
             );
         };
         let mut inference = file.inference(i_s);

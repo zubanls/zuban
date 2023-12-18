@@ -484,7 +484,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         right: Inferred,
         right_side: AssignmentRightSide,
     ) {
-        let on_type_error = |got, expected| -> NodeRef {
+        let on_type_error = |got, expected| {
             // In cases of stubs when an ellipsis is given, it's not an error.
             if self.file.is_stub(self.i_s.db) {
                 // Right side always exists, because it was compared and there was an error because
@@ -492,17 +492,19 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 if let AssignmentRightSide::StarExpressions(star_exprs) = right_side {
                     if let StarExpressionContent::Expression(expr) = star_exprs.unpack() {
                         if expr.is_ellipsis_literal() {
-                            return NodeRef::new(self.file, right_side.index());
+                            return None;
                         }
                     }
                 }
             }
-            self.add_issue(
-                right_side.index(),
-                IssueType::IncompatibleAssignment { got, expected },
-            )
+            Some(IssueType::IncompatibleAssignment { got, expected })
         };
-        expected.error_if_not_matches(self.i_s, &right, on_type_error);
+        expected.error_if_not_matches(
+            self.i_s,
+            &right,
+            |issue| self.add_issue(right_side.index(), issue),
+            on_type_error,
+        );
     }
 
     pub fn check_right_side_against_annotation(
@@ -731,17 +733,18 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let inf = self.infer_star_expressions(s, &mut ResultContext::Unknown);
                 Inferred::from_type(generator.yield_type)
                     .as_cow_type(i_s)
-                    .error_if_not_matches(i_s, &inf, |got, expected| {
-                        from.add_issue(
-                            i_s,
-                            IssueType::IncompatibleTypes {
+                    .error_if_not_matches(
+                        i_s,
+                        &inf,
+                        |issue| from.add_issue(i_s, issue),
+                        |got, expected| {
+                            Some(IssueType::IncompatibleTypes {
                                 cause: "\"yield\"",
                                 got,
                                 expected,
-                            },
-                        );
-                        from
-                    });
+                            })
+                        },
+                    );
             }
             YieldExprContent::YieldFrom(yield_from) => {
                 if current_function.is_async() {
@@ -770,19 +773,18 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     &NoArguments::new(from),
                     &|_| todo!(),
                 );
-                generator
-                    .yield_type
-                    .error_if_not_matches(i_s, &yields, |got, expected| {
-                        from.add_issue(
-                            i_s,
-                            IssueType::IncompatibleTypes {
-                                cause: "\"yield from\"",
-                                got,
-                                expected,
-                            },
-                        );
-                        from
-                    });
+                generator.yield_type.error_if_not_matches(
+                    i_s,
+                    &yields,
+                    |issue| from.add_issue(i_s, issue),
+                    |got, expected| {
+                        Some(IssueType::IncompatibleTypes {
+                            cause: "\"yield from\"",
+                            got,
+                            expected,
+                        })
+                    },
+                );
                 return if let Some(other) =
                     GeneratorType::from_type(i_s.db, iter_result.as_cow_type(i_s))
                 {
@@ -865,12 +867,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         inferred.as_cow_type(i_s).error_if_not_matches(
                             i_s,
                             value,
+                            |issue| from.add_issue(i_s, issue),
                             |got, expected| {
-                                from.add_issue(
-                                    i_s,
-                                    IssueType::IncompatibleAssignment { got, expected },
-                                );
-                                from
+                                Some(IssueType::IncompatibleAssignment { got, expected })
                             },
                         );
                         return;
@@ -974,14 +973,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 )
                                 .into_inferred()
                             });
-                        inf.as_cow_type(i_s)
-                            .error_if_not_matches(i_s, value, |got, expected| {
-                                from.add_issue(
-                                    i_s,
-                                    IssueType::IncompatibleAssignment { got, expected },
-                                );
-                                from
-                            });
+                        inf.as_cow_type(i_s).error_if_not_matches(
+                            i_s,
+                            value,
+                            |issue| from.add_issue(i_s, issue),
+                            |got, expected| {
+                                Some(IssueType::IncompatibleAssignment { got, expected })
+                            },
+                        );
                     }
                 }
                 // This mostly needs to be saved for self names
@@ -1438,14 +1437,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                 .error_if_not_matches(
                                                     self.i_s,
                                                     &first,
+                                                    |issue| from.add_issue(self.i_s, issue),
                                                     |got, _| {
-                                                        let t = IssueType::UnsupportedOperand {
+                                                        Some(IssueType::UnsupportedOperand {
                                                             operand: Box::from("in"),
                                                             left: got,
                                                             right: r_type.format_short(self.i_s.db),
-                                                        };
-                                                        from.add_issue(self.i_s, t);
-                                                        from
+                                                        })
                                                     },
                                                 );
                                         }
@@ -2546,9 +2544,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     i_s,
                     matcher,
                     &inf,
-                    Some(|got, expected, _: &_| {
-                        self.add_issue(comp_expr.index(), on_mismatch(got, expected))
-                    }),
+                    |issue| self.add_issue(comp_expr.index(), issue),
+                    |got, expected, _: &_| Some(on_mismatch(got, expected)),
                 );
                 matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, &inner_expected)
             })
@@ -2608,10 +2605,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         ))
     }
 
-    fn add_issue(&self, node_index: NodeIndex, issue: IssueType) -> NodeRef<'file> {
+    fn add_issue(&self, node_index: NodeIndex, issue: IssueType) {
         let from = NodeRef::new(self.file, node_index);
         from.add_issue(self.i_s, issue);
-        from
     }
 }
 

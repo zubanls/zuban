@@ -1112,26 +1112,30 @@ impl Type {
         }
     }
 
-    pub fn error_if_not_matches<'x>(
+    pub(crate) fn error_if_not_matches<'x>(
         &self,
         i_s: &InferenceState,
         value: &Inferred,
-        callback: impl FnOnce(Box<str>, Box<str>) -> NodeRef<'x>,
+        add_issue: impl Fn(IssueType),
+        on_error: impl Fn(Box<str>, Box<str>) -> Option<IssueType>,
     ) {
         self.error_if_not_matches_with_matcher(
             i_s,
             &mut Matcher::default(),
             value,
-            Some(|t1, t2, reason: &MismatchReason| callback(t1, t2)),
+            add_issue,
+            |t1, t2, reason: &MismatchReason| on_error(t1, t2),
         );
     }
 
-    pub fn error_if_not_matches_with_matcher<'x>(
+    pub(crate) fn error_if_not_matches_with_matcher<'x>(
         &self,
         i_s: &InferenceState,
         matcher: &mut Matcher,
         value: &Inferred,
-        callback: Option<impl FnOnce(Box<str>, Box<str>, &MismatchReason) -> NodeRef<'x>>,
+        //callback: Option<impl FnOnce(Box<str>, Box<str>, &MismatchReason) -> NodeRef<'x>>,
+        add_issue: impl Fn(IssueType),
+        on_error: impl FnOnce(Box<str>, Box<str>, &MismatchReason) -> Option<IssueType>,
     ) {
         let value_type = value.as_cow_type(i_s);
         let matches = self.is_super_type_of(i_s, matcher, &value_type);
@@ -1147,9 +1151,9 @@ impl Type {
                 "Mismatch between {expected:?} and {got:?} -> {:?}",
                 &matches
             );
-            if let Some(callback) = callback {
-                let node_ref = callback(got, expected, reason);
-                error_types.add_mismatch_notes(|issue| node_ref.add_issue(i_s, issue))
+            if let Some(error) = on_error(got, expected, reason) {
+                add_issue(error);
+                error_types.add_mismatch_notes(|issue| add_issue(issue))
             }
         }
     }
