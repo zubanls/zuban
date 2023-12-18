@@ -128,7 +128,7 @@ pub type OnTypeErrorCallback<'db, 'a> = &'a dyn Fn(
     &dyn Fn(&str) -> Option<Box<str>>, // error_text; argument is a prefix
     &Argument,
     GotType,
-    Box<str>,
+    &Type,
 );
 pub type OnLookupError<'a> = &'a dyn Fn(&Type);
 

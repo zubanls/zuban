@@ -440,7 +440,7 @@ impl<'a> Instance<'a> {
                                 IssueType::InvalidGetItem {
                                     actual: actual.as_string(i_s.db).into(),
                                     type_: self.class.format_short(i_s.db),
-                                    expected,
+                                    expected: expected.format_short(i_s.db),
                                 },
                             )
                         }),
@@ -484,7 +484,7 @@ fn calculate_descriptor(
                     i_s,
                     IssueType::IncompatibleAssignment {
                         got: got.as_string(i_s.db).into(),
-                        expected,
+                        expected: expected.format_short(i_s.db),
                     },
                 );
             } else {

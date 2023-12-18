@@ -611,13 +611,7 @@ pub(crate) fn execute_type_of_type<'db>(
             }
             let other = inferred_tup.as_cow_type(i_s);
             if !tuple.is_simple_super_type_of(i_s, &other).bool() {
-                (on_type_error.callback)(
-                    i_s,
-                    &|_| todo!(),
-                    &arg,
-                    GotType::Type(tuple),
-                    other.format_short(i_s.db),
-                );
+                (on_type_error.callback)(i_s, &|_| todo!(), &arg, GotType::Type(tuple), &other);
             }
             Inferred::from_type(tuple.clone())
         }

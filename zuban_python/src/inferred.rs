@@ -1731,7 +1731,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                             },
                                             &first_arg,
                                             GotType::Type(&other),
-                                            t.format_short(i_s.db),
+                                            t,
                                         );
                                     }
                                 } else {
@@ -1893,6 +1893,7 @@ impl<'db: 'slf, 'slf> Inferred {
             },
             OnTypeError::new(&|i_s, function, arg, got, expected| {
                 let got = got.as_string(i_s.db).into();
+                let expected = expected.format_short(i_s.db);
                 let type_ = if arg.index == 1 {
                     IssueType::InvalidGetItem {
                         actual: got,

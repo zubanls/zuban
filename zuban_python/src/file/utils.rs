@@ -465,13 +465,14 @@ pub fn on_argument_type_error(
     error_text: &dyn Fn(&str) -> Option<Box<str>>,
     arg: &Argument,
     got: GotType,
-    expected: Box<str>,
+    expected: &Type,
 ) {
     let got = got.as_string(i_s.db);
     let got = match got.as_ref() {
         "ModuleType" => "Module".to_string(),
         got => format!("\"{got}\""),
     };
+    let expected = expected.format_short(i_s.db);
     arg.as_node_ref().add_issue(
         i_s,
         IssueType::ArgumentTypeIssue(
