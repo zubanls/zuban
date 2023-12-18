@@ -651,7 +651,8 @@ pub(crate) fn match_arguments_against_params<
             ParamArgument::None => (),
         }
     }
-    let add_keyword_argument_issue = |reference: NodeRef, name: &str| {
+    let add_keyword_argument_issue = |arg: &Argument, name: &str| {
+        let reference = arg.as_node_ref();
         let s = match func_or_callable.has_keyword_param_with_name(i_s.db, name) {
             true => format!(
                 "{} gets multiple values for keyword argument \"{name}\"",
@@ -671,7 +672,7 @@ pub(crate) fn match_arguments_against_params<
                 }
             }
         };
-        reference.add_issue(i_s, IssueType::ArgumentIssue(s.into()));
+        arg.add_issue(i_s, IssueType::ArgumentIssue(s.into()));
     };
     if args_with_params.too_many_positional_arguments {
         matches = Match::new_false();
@@ -686,7 +687,7 @@ pub(crate) fn match_arguments_against_params<
             let mut too_many = false;
             while let Some(arg) = args_with_params.next_arg() {
                 if let Some(key) = arg.keyword_name(i_s.db) {
-                    add_keyword_argument_issue(arg.as_node_ref(), key)
+                    add_keyword_argument_issue(&arg, key)
                 } else {
                     too_many = true;
                     break;
@@ -704,7 +705,7 @@ pub(crate) fn match_arguments_against_params<
         if should_generate_errors {
             for unused in &args_with_params.unused_keyword_arguments {
                 if let Some(key) = unused.keyword_name(i_s.db) {
-                    add_keyword_argument_issue(unused.as_node_ref(), key)
+                    add_keyword_argument_issue(unused, key)
                 } else {
                     unreachable!();
                 }

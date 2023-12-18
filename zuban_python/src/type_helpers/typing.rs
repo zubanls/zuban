@@ -61,8 +61,7 @@ impl<'db> TypingCast {
                     position, node_ref, ..
                 } => {
                     if position == 1 {
-                        result = arg
-                            .as_node_ref()
+                        result = node_ref
                             .file
                             .inference(i_s)
                             .compute_cast_target(node_ref)
