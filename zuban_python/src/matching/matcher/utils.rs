@@ -500,39 +500,15 @@ pub(crate) fn match_arguments_against_params<
                     &matches
                 );
                 if let Some(on_type_error) = on_type_error {
-                    let node_ref = argument.as_node_ref();
                     let mut got = GotType::Type(&value_t);
-                    if let Some(starred) = node_ref.maybe_starred_expression() {
-                        got = GotType::Starred(
-                            node_ref
-                                .file
-                                .inference(i_s)
-                                .infer_expression(starred.expression())
-                                .as_type(i_s),
-                        )
-                    } else if let Some(double_starred) = node_ref.maybe_double_starred_expression()
-                    {
-                        // If we have a defined kwargs name, that's from a TypedDict and
-                        // shouldn't be formatted.
-                        if !matches!(
-                            &argument.kind,
-                            ArgumentKind::Inferred {
-                                is_keyword: Some(Some(_)),
-                                ..
-                            }
-                        ) {
-                            got = GotType::DoubleStarred(
-                                node_ref
-                                    .file
-                                    .inference(i_s)
-                                    .infer_expression(double_starred.expression())
-                                    .as_type(i_s),
-                            )
-                        }
+                    if let Some(star_t) = argument.maybe_star_type(i_s) {
+                        got = GotType::Starred(star_t)
+                    } else if let Some(double_star_t) = argument.maybe_star_star_type(i_s) {
+                        got = GotType::DoubleStarred(double_star_t)
                     }
                     match reason {
                         MismatchReason::ConstraintMismatch { expected, type_var } => {
-                            node_ref.add_issue(
+                            argument.add_issue(
                                 i_s,
                                 IssueType::InvalidTypeVarValue {
                                     type_var_name: Box::from(type_var.name(i_s.db)),
@@ -652,14 +628,13 @@ pub(crate) fn match_arguments_against_params<
         }
     }
     let add_keyword_argument_issue = |arg: &Argument, name: &str| {
-        let reference = arg.as_node_ref();
         let s = match func_or_callable.has_keyword_param_with_name(i_s.db, name) {
             true => format!(
                 "{} gets multiple values for keyword argument \"{name}\"",
                 diagnostic_string("").as_deref().unwrap_or("function"),
             ),
             false => {
-                if reference.maybe_double_starred_expression().is_some() {
+                if arg.is_from_star_star_args() {
                     format!(
                         "Extra argument \"{name}\" from **args{}",
                         diagnostic_string(" for ").as_deref().unwrap_or(""),

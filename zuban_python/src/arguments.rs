@@ -367,7 +367,7 @@ impl<'db, 'a> Argument<'db, 'a> {
         }
     }
 
-    pub fn as_node_ref(&self) -> NodeRef {
+    fn as_node_ref(&self) -> NodeRef {
         match &self.kind {
             ArgumentKind::Positional { node_ref, .. }
             | ArgumentKind::Keyword { node_ref, .. }
@@ -385,6 +385,50 @@ impl<'db, 'a> Argument<'db, 'a> {
 
     pub(crate) fn add_issue(&self, i_s: &InferenceState, issue: IssueType) {
         self.as_node_ref().add_issue(i_s, issue)
+    }
+
+    pub fn maybe_star_type(&self, i_s: &InferenceState) -> Option<Type> {
+        self.as_node_ref()
+            .maybe_starred_expression()
+            .map(|starred| {
+                self.as_node_ref()
+                    .file
+                    .inference(i_s)
+                    .infer_expression(starred.expression())
+                    .as_type(i_s)
+            })
+    }
+
+    pub fn maybe_star_star_type(&self, i_s: &InferenceState) -> Option<Type> {
+        let node_ref = self.as_node_ref();
+        node_ref
+            .maybe_double_starred_expression()
+            .and_then(|star_star| {
+                // If we have a defined kwargs name, that's from a TypedDict and
+                // shouldn't be formatted.
+                if matches!(
+                    &self.kind,
+                    ArgumentKind::Inferred {
+                        is_keyword: Some(Some(_)),
+                        ..
+                    }
+                ) {
+                    None
+                } else {
+                    Some(
+                        node_ref
+                            .file
+                            .inference(i_s)
+                            .infer_expression(star_star.expression())
+                            .as_type(i_s),
+                    )
+                }
+            })
+    }
+
+    pub fn is_from_star_star_args(&self) -> bool {
+        let reference = self.as_node_ref();
+        reference.maybe_double_starred_expression().is_some()
     }
 
     pub fn human_readable_index(&self, db: &Database) -> String {
