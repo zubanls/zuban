@@ -886,7 +886,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     };
                     // TODO The class should ALWAYS exist, this is just a bug at the moment.
                     if let Some(class) = i_s.current_class() {
-                        class.check_self_definition(i_s, from, name.as_str());
+                        class.check_self_definition(
+                            i_s,
+                            |issue| from.add_issue(i_s, issue),
+                            name.as_str(),
+                        );
                     }
                 } else {
                     if is_definition {

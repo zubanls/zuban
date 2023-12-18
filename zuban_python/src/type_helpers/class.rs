@@ -1887,7 +1887,12 @@ impl<'db: 'a, 'a> Class<'a> {
         false
     }
 
-    pub fn check_slots(&self, i_s: &InferenceState, from: NodeRef, name: &str) {
+    pub(crate) fn check_slots(
+        &self,
+        i_s: &InferenceState,
+        add_issue: impl Fn(IssueType),
+        name: &str,
+    ) {
         for (_, type_or_class) in self.mro_maybe_without_object(i_s.db, true) {
             match type_or_class {
                 TypeOrClass::Type(_) => (),
@@ -1916,24 +1921,26 @@ impl<'db: 'a, 'a> Class<'a> {
                 }
             }
         }
-        from.add_issue(
-            i_s,
-            IssueType::AssigningToNameOutsideOfSlots {
-                name: name.into(),
-                class: self.format(&FormatData::with_style(i_s.db, FormatStyle::Qualified)),
-            },
-        )
+        add_issue(IssueType::AssigningToNameOutsideOfSlots {
+            name: name.into(),
+            class: self.format(&FormatData::with_style(i_s.db, FormatStyle::Qualified)),
+        })
     }
 
-    pub fn check_self_definition(&self, i_s: &InferenceState, from: NodeRef, name: &str) {
+    pub(crate) fn check_self_definition(
+        &self,
+        i_s: &InferenceState,
+        add_issue: impl Fn(IssueType),
+        name: &str,
+    ) {
         let (lookup, _, _) = self.lookup_and_class_and_maybe_ignore_self_internal(i_s, name, false);
         if let Some(inf) = lookup.into_maybe_inferred() {
             if inf.as_cow_type(i_s).is_func_or_overload_not_any_callable() {
                 // See testSlotsAssignmentWithMethodReassign
-                //from.add_issue(i_s, IssueType::CannotAssignToAMethod);
+                //add_issue(IssueType::CannotAssignToAMethod);
             }
         }
-        self.check_slots(i_s, from, name)
+        self.check_slots(i_s, add_issue, name)
     }
 
     pub fn maybe_dataclass(&self) -> Option<Rc<Dataclass>> {

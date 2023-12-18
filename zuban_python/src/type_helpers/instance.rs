@@ -166,7 +166,8 @@ impl<'a> Instance<'a> {
             }
 
             if !matches!(t, Type::Any(_)) {
-                self.class.check_slots(i_s, from, name_str);
+                self.class
+                    .check_slots(i_s, |issue| from.add_issue(i_s, issue), name_str);
             }
             check_compatible(t, value)
         }
