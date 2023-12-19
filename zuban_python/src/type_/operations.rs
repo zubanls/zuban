@@ -158,7 +158,11 @@ impl Type {
                     )
                 }
             },
-            Type::Tuple(tup) => callable(self, None, lookup_on_tuple(tup.clone(), i_s, from, name)),
+            Type::Tuple(tup) => callable(
+                self,
+                None,
+                lookup_on_tuple(tup.clone(), i_s, add_issue, name),
+            ),
             Type::Union(union) => {
                 for t in union.iter() {
                     t.run_after_lookup_on_each_union_member(
@@ -213,7 +217,7 @@ impl Type {
                     mro_index + 1,
                 );
                 if matches!(&result, LookupResult::None) {
-                    from.add_issue(i_s, IssueType::UndefinedInSuperclass { name: name.into() });
+                    add_issue(IssueType::UndefinedInSuperclass { name: name.into() });
                     callable(
                         self,
                         None,

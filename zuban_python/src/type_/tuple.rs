@@ -248,10 +248,10 @@ impl TupleTypeArguments {
     }
 }
 
-pub fn lookup_on_tuple(
+pub(crate) fn lookup_on_tuple(
     tuple: Rc<Tuple>,
     i_s: &InferenceState,
-    node_ref: NodeRef,
+    add_issue: impl Fn(IssueType),
     name: &str,
 ) -> LookupResult {
     lookup_tuple_magic_methods(tuple.clone(), name).or_else(|| {
@@ -267,7 +267,7 @@ pub fn lookup_on_tuple(
                     i_s,
                     tuple_cls.as_type(i_s.db),
                     cls,
-                    |issue| node_ref.add_issue(i_s, issue),
+                    |issue| add_issue(issue),
                     mro_index,
                 )
             });
