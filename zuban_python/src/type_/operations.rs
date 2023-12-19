@@ -94,7 +94,7 @@ impl Type {
         match self {
             Type::Class(c) => {
                 let inst = Instance::new(c.class(i_s.db), from_inferred);
-                let l = inst.lookup_and_defined_in(i_s, add_issue, name, kind);
+                let l = inst.lookup_with_details(i_s, add_issue, name, kind);
                 callable(self, Some(l.class), l.lookup)
             }
             Type::Any(cause) => callable(self, None, LookupResult::any(*cause)),
@@ -108,7 +108,7 @@ impl Type {
             ),
             Type::Literal(literal) => {
                 let instance = i_s.db.python_state.literal_instance(&literal.kind);
-                let l = instance.lookup_and_defined_in(i_s, add_issue, name, kind);
+                let l = instance.lookup_with_details(i_s, add_issue, name, kind);
                 callable(self, Some(l.class), l.lookup)
             }
             t @ Type::TypeVar(usage) => match &usage.type_var.kind {

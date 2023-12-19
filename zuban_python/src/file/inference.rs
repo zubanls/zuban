@@ -1654,7 +1654,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         let (r_defined_in, right_op_method) = match r_type {
                             Type::Class(r_class) => {
                                 instance = r_class.class(i_s.db).instance();
-                                let l = instance.lookup_and_defined_in(
+                                let l = instance.lookup_with_details(
                                     i_s,
                                     |issue| from.add_issue(i_s, issue),
                                     op.reverse_magic_method,

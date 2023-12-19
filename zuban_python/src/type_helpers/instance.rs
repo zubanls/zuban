@@ -74,7 +74,7 @@ impl<'a> Instance<'a> {
         let result = result.or_else(|| self.lookup(i_s, add_issue, name_str, LookupKind::Normal));
         let Some(inf) = result.into_maybe_inferred() else {
             let t = self.class.as_type(i_s.db);
-            let l = self.lookup_and_defined_in(i_s, add_issue, "__setattr__", LookupKind::OnlyType);
+            let l = self.lookup_with_details(i_s, add_issue, "__setattr__", LookupKind::OnlyType);
             if let Some(setattr) = l.lookup.into_maybe_inferred() {
                 // object defines a __getattribute__ that returns Any
                 if !l.class.is_object(i_s.db) {
@@ -344,7 +344,7 @@ impl<'a> Instance<'a> {
         if kind == LookupKind::Normal && super_count == 0 {
             for method_name in ["__getattr__", "__getattribute__"] {
                 let l =
-                    self.lookup_and_defined_in(i_s, &add_issue, method_name, LookupKind::OnlyType);
+                    self.lookup_with_details(i_s, &add_issue, method_name, LookupKind::OnlyType);
                 if l.class.is_object(i_s.db) {
                     // object defines a __getattribute__ that returns Any
                     continue;
@@ -400,11 +400,10 @@ impl<'a> Instance<'a> {
         name: &str,
         kind: LookupKind,
     ) -> LookupResult {
-        self.lookup_and_defined_in(i_s, add_issue, name, kind)
-            .lookup
+        self.lookup_with_details(i_s, add_issue, name, kind).lookup
     }
 
-    pub(crate) fn lookup_and_defined_in(
+    pub(crate) fn lookup_with_details(
         &self,
         i_s: &'a InferenceState,
         add_issue: impl Fn(IssueType),
