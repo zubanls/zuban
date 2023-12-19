@@ -959,10 +959,6 @@ testChangeBaseClassAttributeType
 
 # More information needed
 # "Read-only property cannot override read-write property"
-testColumnProperty
-testOnlyImplementGetterOfReadWriteAbstractProperty
-testReadWriteDeleteAbstractProperty
-explicitOverrideSettableProperty
 testDataclassIncompatibleOverrides
 testMixinTypedPropertyReversed
 # "Property "x" defined in "Base" is read-only"

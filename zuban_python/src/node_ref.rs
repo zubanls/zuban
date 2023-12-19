@@ -15,6 +15,7 @@ use crate::{
     file::{File, PythonFile},
     inference_state::InferenceState,
     inferred::Inferred,
+    python_state::NAME_TO_FUNCTION_DIFF,
     type_::Type,
     type_helpers::Module,
 };
@@ -248,6 +249,10 @@ impl<'file> NodeRef<'file> {
     pub(crate) fn add_issue(&self, i_s: &InferenceState, issue_type: IssueType) {
         let issue = Issue::from_node_index(&self.file.tree, self.node_index, issue_type);
         self.file.add_issue(i_s, issue)
+    }
+
+    pub fn maybe_name_of_function(&self) -> Option<FunctionDef<'file>> {
+        NodeRef::new(self.file, self.node_index - NAME_TO_FUNCTION_DIFF).maybe_function()
     }
 
     pub fn node_start_position(self) -> CodeIndex {

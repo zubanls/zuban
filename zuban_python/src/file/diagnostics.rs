@@ -26,7 +26,6 @@ use crate::{
         ResultContext,
     },
     node_ref::NodeRef,
-    python_state::NAME_TO_FUNCTION_DIFF,
     type_::{
         format_callable_params, AnyCause, CallableContent, CallableParams, DbString, FunctionKind,
         FunctionOverload, GenericItem, Literal, LiteralKind, TupleTypeArguments, Type,
@@ -609,9 +608,7 @@ impl<'db> Inference<'db, '_, '_> {
 
                 // Calculate if there is an @override decorator
                 let mut has_override_decorator = false;
-                if let Some(func_def) =
-                    NodeRef::new(self.file, index - NAME_TO_FUNCTION_DIFF).maybe_function()
-                {
+                if let Some(func_def) = NodeRef::new(self.file, *index).maybe_name_of_function() {
                     if !func_def.is_typed() {
                         // Mypy completely ignores untyped functions.
                         continue;
@@ -1653,6 +1650,32 @@ fn check_override(
             op_method_wider_note = true;
             match_ = Match::new_false();
         }
+    }
+    match (
+        original_lookup_details.attr_kind,
+        override_lookup_details.attr_kind,
+    ) {
+        (
+            AttributeKind::Property {
+                writable: writable1,
+            },
+            AttributeKind::Property {
+                writable: writable2,
+            },
+        ) => {
+            if writable1 && !writable2 {
+                let func = from
+                    .add_to_node_index(NAME_DEF_TO_NAME_DIFFERENCE as i64)
+                    .maybe_name_of_function()
+                    .unwrap();
+                Function::new(NodeRef::new(from.file, func.index()), None)
+                    .add_issue_onto_start_including_decorator(
+                        i_s,
+                        IssueType::ReadOnlyPropertyCannotOverwriteReadWriteProperty,
+                    );
+            }
+        }
+        _ => (),
     }
     if !match_.bool() {
         let db = i_s.db;
