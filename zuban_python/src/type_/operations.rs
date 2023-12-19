@@ -90,10 +90,11 @@ impl Type {
         result_context: &mut ResultContext,
         callable: &mut impl FnMut(&Type, Option<TypeOrClass>, LookupResult),
     ) {
+        let add_issue = |issue| from.add_issue(i_s, issue);
         match self {
             Type::Class(c) => {
                 let inst = Instance::new(c.class(i_s.db), from_inferred);
-                let (defined_in, lookup) = inst.lookup_and_defined_in(i_s, from, name, kind);
+                let (defined_in, lookup) = inst.lookup_and_defined_in(i_s, add_issue, name, kind);
                 callable(self, Some(defined_in), lookup)
             }
             Type::Any(cause) => callable(self, None, LookupResult::any(*cause)),
@@ -103,11 +104,12 @@ impl Type {
                 i_s.db
                     .python_state
                     .none_instance()
-                    .lookup(i_s, from, name, kind),
+                    .lookup(i_s, add_issue, name, kind),
             ),
             Type::Literal(literal) => {
                 let instance = i_s.db.python_state.literal_instance(&literal.kind);
-                let (defined_in, result) = instance.lookup_and_defined_in(i_s, from, name, kind);
+                let (defined_in, result) =
+                    instance.lookup_and_defined_in(i_s, add_issue, name, kind);
                 callable(self, Some(defined_in), result)
             }
             t @ Type::TypeVar(usage) => match &usage.type_var.kind {
@@ -142,7 +144,7 @@ impl Type {
                     callable(
                         self,
                         None,
-                        Instance::new(s.object_class(), None).lookup(i_s, from, name, kind),
+                        Instance::new(s.object_class(), None).lookup(i_s, add_issue, name, kind),
                     )
                 }
                 TypeVarKind::Unrestricted => {
@@ -152,7 +154,7 @@ impl Type {
                     callable(
                         self,
                         None,
-                        Instance::new(s.object_class(), None).lookup(i_s, from, name, kind),
+                        Instance::new(s.object_class(), None).lookup(i_s, add_issue, name, kind),
                     )
                 }
             },
@@ -177,7 +179,7 @@ impl Type {
                 self,
                 None,
                 Instance::new(i_s.db.python_state.function_class(), None)
-                    .lookup(i_s, from, name, kind),
+                    .lookup(i_s, add_issue, name, kind),
             ),
             Type::Module(file_index) => {
                 let module = Module::from_file_index(i_s.db, *file_index);
@@ -205,7 +207,7 @@ impl Type {
                 let instance = Instance::new(class.class(i_s.db), None);
                 let (defined_in, result) = instance.lookup_and_maybe_ignore_super_count(
                     i_s,
-                    from,
+                    add_issue,
                     name,
                     LookupKind::OnlyType,
                     mro_index + 1,
@@ -221,13 +223,15 @@ impl Type {
                 }
                 callable(self, Some(defined_in), result)
             }
-            Type::Dataclass(d) => {
-                callable(self, None, lookup_on_dataclass(d.clone(), i_s, from, name))
-            }
+            Type::Dataclass(d) => callable(
+                self,
+                None,
+                lookup_on_dataclass(d.clone(), i_s, add_issue, name),
+            ),
             Type::TypedDict(td) => callable(
                 self,
                 None,
-                lookup_on_typed_dict(td.clone(), i_s, from, name, kind),
+                lookup_on_typed_dict(td.clone(), i_s, add_issue, name, kind),
             ),
             Type::NamedTuple(nt) => {
                 callable(self, None, nt.lookup(i_s, name, Some(&|| self.clone())))
@@ -245,12 +249,12 @@ impl Type {
             Type::Enum(e) => callable(
                 self,
                 None,
-                lookup_on_enum_instance(i_s, from, e, name, result_context),
+                lookup_on_enum_instance(i_s, add_issue, e, name, result_context),
             ),
             Type::EnumMember(member) => callable(
                 self,
                 None,
-                lookup_on_enum_member_instance(i_s, from, member, name),
+                lookup_on_enum_member_instance(i_s, add_issue, member, name),
             ),
             Type::RecursiveType(r) => r
                 .calculated_type(i_s.db)
@@ -559,7 +563,7 @@ pub fn attribute_access_of_type(
             .python_state
             .bare_type_class()
             .instance()
-            .lookup(i_s, from, name, kind)
+            .lookup(i_s, |issue| from.add_issue(i_s, issue), name, kind)
             .or_else(|| LookupResult::any(*cause)),
         t @ Type::Enum(e) => lookup_on_enum_class(i_s, from, e, name, result_context),
         Type::Dataclass(d) => lookup_on_dataclass_type(d.clone(), i_s, from, name, kind),

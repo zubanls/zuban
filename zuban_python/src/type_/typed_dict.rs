@@ -320,11 +320,9 @@ impl TypedDict {
                 },
                 || {
                     if add_errors {
-                        add_access_key_must_be_string_literal_issue(
-                            i_s,
-                            self,
-                            slice_type.as_node_ref(),
-                        )
+                        add_access_key_must_be_string_literal_issue(i_s.db, self, |issue| {
+                            slice_type.as_node_ref().add_issue(i_s, issue)
+                        })
                     }
                 },
             ),
@@ -415,21 +413,18 @@ impl TypedDictMemberGatherer {
 }
 
 fn add_access_key_must_be_string_literal_issue(
-    i_s: &InferenceState,
+    db: &Database,
     td: &TypedDict,
-    node_ref: NodeRef,
+    add_issue: impl FnOnce(IssueType),
 ) {
-    node_ref.add_issue(
-        i_s,
-        IssueType::TypedDictAccessKeyMustBeStringLiteral {
-            keys: join_with_commas(
-                td.members(i_s.db)
-                    .iter()
-                    .map(|member| format!("\"{}\"", member.name.as_str(i_s.db))),
-            )
-            .into(),
-        },
-    )
+    add_issue(IssueType::TypedDictAccessKeyMustBeStringLiteral {
+        keys: join_with_commas(
+            td.members(db)
+                .iter()
+                .map(|member| format!("\"{}\"", member.name.as_str(db))),
+        )
+        .into(),
+    })
 }
 
 pub(crate) fn new_typed_dict<'db>(
@@ -519,12 +514,11 @@ fn new_typed_dict_internal<'db>(
             return None;
         }
     };
-    let args_node_ref = args.as_node_ref();
     let on_type_var = &mut |i_s: &InferenceState, _: &_, _, _| TypeVarCallbackReturn::NotFound;
-    let mut inference = args_node_ref.file.inference(i_s);
+    let mut inference = node_ref.file.inference(i_s);
     let mut comp = TypeComputation::new(
         &mut inference,
-        args.as_node_ref().as_link(),
+        node_ref.as_link(),
         on_type_var,
         TypeComputationOrigin::TypedDictMember,
     );
@@ -532,8 +526,8 @@ fn new_typed_dict_internal<'db>(
     for element in dct_iterator {
         match element {
             DictElement::KeyValue(key_value) => {
-                let Some(name) = StringSlice::from_string_in_expression(args_node_ref.file_index(), key_value.key()) else {
-                    NodeRef::new(args_node_ref.file, key_value.key().index())
+                let Some(name) = StringSlice::from_string_in_expression(node_ref.file_index(), key_value.key()) else {
+                    NodeRef::new(node_ref.file, key_value.key().index())
                         .add_issue(i_s, IssueType::TypedDictInvalidFieldName);
                     return None
                 };
@@ -541,12 +535,12 @@ fn new_typed_dict_internal<'db>(
                     i_s.db,
                     comp.compute_typed_dict_member(name, key_value.value(), total),
                 ) {
-                    NodeRef::new(args_node_ref.file, key_value.key().index()).add_issue(i_s, issue);
+                    NodeRef::new(node_ref.file, key_value.key().index()).add_issue(i_s, issue);
                 }
                 key_value.key();
             }
             DictElement::Star(d) => {
-                NodeRef::new(args_node_ref.file, d.index())
+                NodeRef::new(node_ref.file, d.index())
                     .add_issue(i_s, IssueType::TypedDictInvalidFieldName);
                 return None;
             }
@@ -559,7 +553,7 @@ fn new_typed_dict_internal<'db>(
             TypedDict::new_definition(
                 name,
                 members.into_boxed_slice(),
-                args_node_ref.as_link(),
+                node_ref.as_link(),
                 type_var_likes,
             ),
             total,
@@ -866,7 +860,7 @@ fn typed_dict_setitem_internal<'db>(
             );
         }
     } else {
-        add_access_key_must_be_string_literal_issue(i_s, td, args.as_node_ref())
+        add_access_key_must_be_string_literal_issue(i_s.db, td, |issue| args.add_issue(i_s, issue))
     }
     Some(Inferred::new_none())
 }
@@ -975,10 +969,10 @@ pub(crate) fn initialize_typed_dict<'db>(
     Inferred::from_type(Type::TypedDict(td))
 }
 
-pub fn lookup_on_typed_dict(
+pub(crate) fn lookup_on_typed_dict(
     typed_dict: Rc<TypedDict>,
     i_s: &InferenceState,
-    from: NodeRef,
+    add_issue: impl Fn(IssueType),
     name: &str,
     kind: LookupKind,
 ) -> LookupResult {
@@ -992,7 +986,7 @@ pub fn lookup_on_typed_dict(
         "update" => CustomBehavior::new_method(typed_dict_update, Some(bound())),
         _ => {
             return Instance::new(i_s.db.python_state.typed_dict_class(), None)
-                .lookup_with_explicit_self_binding(i_s, from, name, kind, 0, || {
+                .lookup_with_explicit_self_binding(i_s, &add_issue, name, kind, 0, || {
                     Type::TypedDict(typed_dict.clone())
                 })
                 .1
@@ -1055,7 +1049,12 @@ pub(crate) fn check_typed_dict_call<'db>(
             todo!()
         }
     }
-    maybe_add_extra_keys_issue(i_s, &typed_dict, args.as_node_ref(), extra_keys);
+    maybe_add_extra_keys_issue(
+        i_s.db,
+        &typed_dict,
+        |issue| args.add_issue(i_s, issue),
+        extra_keys,
+    );
     let mut missing_keys: Vec<Box<str>> = vec![];
     for member in typed_dict.members(i_s.db).iter() {
         if member.required {
@@ -1082,27 +1081,24 @@ pub(crate) fn check_typed_dict_call<'db>(
     Some(Type::TypedDict(typed_dict))
 }
 
-pub fn maybe_add_extra_keys_issue(
-    i_s: &InferenceState,
+pub(crate) fn maybe_add_extra_keys_issue(
+    db: &Database,
     typed_dict: &TypedDict,
-    node_ref: NodeRef,
+    add_issue: impl Fn(IssueType),
     mut extra_keys: Vec<String>,
 ) {
-    node_ref.add_issue(
-        i_s,
-        IssueType::TypedDictExtraKey {
-            key: match extra_keys.len() {
-                0 => return,
-                1 => format!("\"{}\"", extra_keys.remove(0)).into(),
-                _ => format!(
-                    "({})",
-                    join_with_commas(extra_keys.iter().map(|key| format!("\"{key}\"")))
-                )
-                .into(),
-            },
-            typed_dict: typed_dict
-                .name_or_fallback(&FormatData::new_short(i_s.db))
-                .into(),
+    add_issue(IssueType::TypedDictExtraKey {
+        key: match extra_keys.len() {
+            0 => return,
+            1 => format!("\"{}\"", extra_keys.remove(0)).into(),
+            _ => format!(
+                "({})",
+                join_with_commas(extra_keys.iter().map(|key| format!("\"{key}\"")))
+            )
+            .into(),
         },
-    )
+        typed_dict: typed_dict
+            .name_or_fallback(&FormatData::new_short(db))
+            .into(),
+    })
 }

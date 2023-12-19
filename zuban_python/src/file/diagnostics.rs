@@ -1567,8 +1567,13 @@ fn find_and_check_override(
     has_override_decorator: bool,
 ) {
     let instance = Instance::new(override_class, None);
-    let (original_class, result) =
-        instance.lookup_and_maybe_ignore_super_count(i_s, from, name, LookupKind::Normal, 1);
+    let (original_class, result) = instance.lookup_and_maybe_ignore_super_count(
+        i_s,
+        |issue| from.add_issue(i_s, issue),
+        name,
+        LookupKind::Normal,
+        1,
+    );
     if let Some(inf) = result.into_maybe_inferred() {
         let original_t = inf.as_cow_type(i_s);
         let override_ = instance.full_lookup(i_s, from, name).into_inferred();

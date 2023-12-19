@@ -316,8 +316,8 @@ impl<'db> Arguments<'db> for SliceArguments<'db, '_> {
         todo!()
     }
 
-    fn as_node_ref(&self) -> NodeRef {
-        self.slice_type.as_argument_node_ref()
+    fn as_node_ref(&self) -> Option<NodeRef> {
+        Some(self.slice_type.as_argument_node_ref())
     }
 
     fn points_backup(&self) -> Option<PointsBackup> {

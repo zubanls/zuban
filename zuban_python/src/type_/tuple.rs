@@ -106,7 +106,7 @@ impl Tuple {
                     Instance::new(i_s.db.python_state.tuple_class(i_s.db, self), None)
                         .lookup(
                             i_s,
-                            slice_type.as_node_ref(),
+                            |issue| slice_type.as_node_ref().add_issue(i_s, issue),
                             "__getitem__",
                             LookupKind::OnlyType,
                         )
@@ -267,7 +267,7 @@ pub fn lookup_on_tuple(
                     i_s,
                     tuple_cls.as_type(i_s.db),
                     cls,
-                    node_ref,
+                    |issue| node_ref.add_issue(i_s, issue),
                     mro_index,
                 )
             });

@@ -22,7 +22,12 @@ pub(crate) fn method_with_fallback<'db, 'x, T>(
 ) -> Inferred {
     handler(i_s, td, args).unwrap_or_else(|| {
         fallback_instance()
-            .lookup(i_s, args.as_node_ref(), name, LookupKind::OnlyType)
+            .lookup(
+                i_s,
+                |issue| args.add_issue(i_s, issue),
+                name,
+                LookupKind::OnlyType,
+            )
             .into_inferred()
             .execute_with_details(i_s, args, result_context, on_type_error)
     })

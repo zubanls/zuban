@@ -27,12 +27,17 @@ pub(crate) trait Arguments<'db>: std::fmt::Debug {
     // This is not the case in the grammar, but here we want that.
     fn iter(&self) -> ArgumentIterator<'db, '_>;
     fn type_(&self) -> ArgumentsType;
-    fn as_node_ref(&self) -> NodeRef;
+    fn as_node_ref(&self) -> Option<NodeRef>;
     fn add_issue(&self, i_s: &InferenceState, issue: IssueType) {
-        self.as_node_ref().add_issue(i_s, issue)
+        self.as_node_ref()
+            .expect("Otherwise add_issue should be implemented")
+            .add_issue(i_s, issue)
     }
     fn starting_line(&self) -> String {
-        self.as_node_ref().line().to_string()
+        let Some(node_ref) = self.as_node_ref() else {
+            return "<unkown line>".into()
+        };
+        node_ref.line().to_string()
     }
     fn points_backup(&self) -> Option<PointsBackup> {
         None
@@ -126,12 +131,12 @@ impl<'db: 'a, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
         ArgumentsType::Normal(self.file, self.primary_node_index)
     }
 
-    fn as_node_ref(&self) -> NodeRef {
-        NodeRef::new(self.file, self.primary_node_index)
+    fn as_node_ref(&self) -> Option<NodeRef> {
+        Some(NodeRef::new(self.file, self.primary_node_index))
     }
 
     fn points_backup(&self) -> Option<PointsBackup> {
-        let primary = self.as_node_ref().as_primary();
+        let primary = NodeRef::new(self.file, self.primary_node_index).as_primary();
         let start = primary.index();
         let end = primary.expect_closing_bracket_index();
         Some(self.file.points.backup(start..end))
@@ -191,14 +196,50 @@ impl<'db, 'a> Arguments<'db> for KnownArguments<'a> {
         todo!()
     }
 
-    fn as_node_ref(&self) -> NodeRef {
-        self.node_ref
+    fn as_node_ref(&self) -> Option<NodeRef> {
+        Some(self.node_ref)
     }
 }
 
 impl<'a> KnownArguments<'a> {
     pub fn new(inferred: &'a Inferred, node_ref: NodeRef<'a>) -> Self {
         Self { inferred, node_ref }
+    }
+}
+
+impl<'a> KnownArgumentsWithCustomAddIssue<'a> {
+    pub(crate) fn new(inferred: &'a Inferred, add_issue: &'a dyn Fn(IssueType)) -> Self {
+        Self {
+            inferred,
+            add_issue: CustomAddIssue(add_issue),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct KnownArgumentsWithCustomAddIssue<'a> {
+    inferred: &'a Inferred,
+    add_issue: CustomAddIssue<'a>,
+}
+
+impl<'db, 'a> Arguments<'db> for KnownArgumentsWithCustomAddIssue<'a> {
+    fn iter(&self) -> ArgumentIterator<'db, '_> {
+        ArgumentIterator::new(ArgumentIteratorBase::InferredWithCustomAddIssue {
+            inferred: self.inferred,
+            add_issue: self.add_issue,
+        })
+    }
+
+    fn type_(&self) -> ArgumentsType {
+        todo!()
+    }
+
+    fn add_issue(&self, i_s: &InferenceState, issue: IssueType) {
+        self.add_issue.0(issue)
+    }
+
+    fn as_node_ref(&self) -> Option<NodeRef> {
+        None
     }
 }
 
@@ -220,8 +261,16 @@ impl<'db, 'a> Arguments<'db> for CombinedArguments<'db, 'a> {
         todo!()
     }
 
-    fn as_node_ref(&self) -> NodeRef {
+    fn as_node_ref(&self) -> Option<NodeRef> {
         self.args2.as_node_ref()
+    }
+
+    fn starting_line(&self) -> String {
+        self.args2.starting_line()
+    }
+
+    fn add_issue(&self, i_s: &InferenceState, issue: IssueType) {
+        self.args2.add_issue(i_s, issue)
     }
 
     fn points_backup(&self) -> Option<PointsBackup> {
@@ -256,6 +305,11 @@ pub enum ArgumentKind<'db, 'a> {
         node_ref: NodeRef<'a>,
         in_args_or_kwargs_and_arbitrary_len: bool,
         is_keyword: Option<Option<StringSlice>>,
+    },
+    InferredWithCustomAddIssue {
+        inferred: Inferred,
+        position: usize, // The position as a 1-based index
+        add_issue: CustomAddIssue<'a>,
     },
     Positional {
         i_s: InferenceState<'db, 'a>,
@@ -335,7 +389,8 @@ impl<'db, 'a> Argument<'db, 'a> {
         result_context: &mut ResultContext,
     ) -> Inferred {
         match &self.kind {
-            ArgumentKind::Inferred { inferred, .. } => (*inferred).clone(),
+            ArgumentKind::Inferred { inferred, .. }
+            | ArgumentKind::InferredWithCustomAddIssue { inferred, .. } => (*inferred).clone(),
             ArgumentKind::Positional { i_s, node_ref, .. } => {
                 node_ref
                     .file
@@ -370,40 +425,47 @@ impl<'db, 'a> Argument<'db, 'a> {
         }
     }
 
-    fn as_node_ref(&self) -> NodeRef {
+    fn as_node_ref(&self) -> Result<NodeRef, CustomAddIssue> {
         match &self.kind {
             ArgumentKind::Positional { node_ref, .. }
             | ArgumentKind::Keyword { node_ref, .. }
             | ArgumentKind::ParamSpec { node_ref, .. }
-            | ArgumentKind::Inferred { node_ref, .. } => *node_ref,
+            | ArgumentKind::Inferred { node_ref, .. } => Ok(*node_ref),
             ArgumentKind::Comprehension {
                 file,
                 comprehension,
                 ..
-            } => NodeRef::new(file, comprehension.index()),
+            } => Ok(NodeRef::new(file, comprehension.index())),
             ArgumentKind::SlicesTuple { slices, .. } => todo!(),
             ArgumentKind::Overridden { original, .. } => original.as_node_ref(),
+            ArgumentKind::InferredWithCustomAddIssue { add_issue, .. } => Err(add_issue.clone()),
         }
     }
 
     pub(crate) fn add_issue(&self, i_s: &InferenceState, issue: IssueType) {
-        self.as_node_ref().add_issue(i_s, issue)
+        match self.as_node_ref() {
+            Ok(node_ref) => node_ref.add_issue(i_s, issue),
+            Err(add_issue) => add_issue.0(issue),
+        }
     }
 
     pub fn maybe_star_type(&self, i_s: &InferenceState) -> Option<Type> {
-        self.as_node_ref()
-            .maybe_starred_expression()
-            .map(|starred| {
-                self.as_node_ref()
-                    .file
-                    .inference(i_s)
-                    .infer_expression(starred.expression())
-                    .as_type(i_s)
-            })
+        let Ok(node_ref) = self.as_node_ref() else {
+            return None
+        };
+        node_ref.maybe_starred_expression().map(|starred| {
+            node_ref
+                .file
+                .inference(i_s)
+                .infer_expression(starred.expression())
+                .as_type(i_s)
+        })
     }
 
     pub fn maybe_star_star_type(&self, i_s: &InferenceState) -> Option<Type> {
-        let node_ref = self.as_node_ref();
+        let Ok(node_ref) = self.as_node_ref() else {
+            return None
+        };
         node_ref
             .maybe_double_starred_expression()
             .and_then(|star_star| {
@@ -430,8 +492,10 @@ impl<'db, 'a> Argument<'db, 'a> {
     }
 
     pub fn is_from_star_star_args(&self) -> bool {
-        let reference = self.as_node_ref();
-        reference.maybe_double_starred_expression().is_some()
+        let Ok(node_ref) = self.as_node_ref() else {
+            return false
+        };
+        node_ref.maybe_double_starred_expression().is_some()
     }
 
     pub fn human_readable_index(&self, db: &Database) -> String {
@@ -442,6 +506,7 @@ impl<'db, 'a> Argument<'db, 'a> {
             } => format!("\"{}\"", s.as_str(db)),
             ArgumentKind::Positional { position, .. }
             | ArgumentKind::Inferred { position, .. }
+            | ArgumentKind::InferredWithCustomAddIssue { position, .. }
             | ArgumentKind::ParamSpec { position, .. } => {
                 format!("{position}")
             }
@@ -488,7 +553,8 @@ impl<'db, 'a> Argument<'db, 'a> {
                 in_args_or_kwargs_and_arbitrary_len: false,
                 is_keyword: None,
                 ..
-            } => Some(inferred),
+            }
+            | ArgumentKind::InferredWithCustomAddIssue { inferred, .. } => Some(inferred),
             ArgumentKind::ParamSpec { .. } => todo!(),
             ArgumentKind::Overridden { original, inferred } => original
                 .clone()
@@ -512,6 +578,10 @@ enum ArgumentIteratorBase<'db, 'a> {
         inferred: &'a Inferred,
         node_ref: NodeRef<'a>,
     },
+    InferredWithCustomAddIssue {
+        inferred: &'a Inferred,
+        add_issue: CustomAddIssue<'a>,
+    },
     SliceType(InferenceState<'db, 'a>, SliceType<'a>),
     Finished,
 }
@@ -531,7 +601,9 @@ impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
     }
     fn into_argument_types(self, i_s: &InferenceState) -> Vec<Box<str>> {
         match self {
-            Self::Inferred { inferred, .. } => vec![inferred.as_cow_type(i_s).format_short(i_s.db)],
+            Self::Inferred { inferred, .. } | Self::InferredWithCustomAddIssue { inferred, .. } => {
+                vec![inferred.as_cow_type(i_s).format_short(i_s.db)]
+            }
             Self::Iterator {
                 i_s,
                 file,
@@ -767,6 +839,26 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                     }
                 }
             }
+            Self::InferredWithCustomAddIssue {
+                inferred,
+                add_issue,
+            } => {
+                if let Self::InferredWithCustomAddIssue {
+                    inferred,
+                    add_issue,
+                } = mem::replace(self, Self::Finished)
+                {
+                    Some(BaseArgumentReturn::Argument(
+                        ArgumentKind::InferredWithCustomAddIssue {
+                            inferred: inferred.clone(),
+                            position: 1,
+                            add_issue,
+                        },
+                    ))
+                } else {
+                    unreachable!()
+                }
+            }
         }
     }
 }
@@ -826,7 +918,9 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
             ArgsKwargsIterator::None => match self.current.next() {
                 Some(BaseArgumentReturn::Argument(mut kind)) => {
                     let index = self.counter;
-                    if let ArgumentKind::Inferred { position, .. } = &mut kind {
+                    if let ArgumentKind::Inferred { position, .. }
+                    | ArgumentKind::InferredWithCustomAddIssue { position, .. } = &mut kind
+                    {
                         // This is a bit of a special case where 0 means that we're on a bound self
                         // argument. In that case we do not want to increase the counter, because
                         // the bound argument is not counted as an argument.
@@ -1008,7 +1102,16 @@ impl<'db, 'a> Arguments<'db> for NoArguments<'a> {
         todo!()
     }
 
-    fn as_node_ref(&self) -> NodeRef {
-        self.0
+    fn as_node_ref(&self) -> Option<NodeRef> {
+        Some(self.0)
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct CustomAddIssue<'a>(&'a dyn Fn(IssueType));
+
+impl std::fmt::Debug for CustomAddIssue<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.debug_struct("ArgumentsWithCustomAddIssue").finish()
     }
 }
