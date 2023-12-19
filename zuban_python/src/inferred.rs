@@ -745,7 +745,7 @@ impl<'db: 'slf, 'slf> Inferred {
         func_class: Class,
         add_issue: impl Fn(IssueType),
         mro_index: MroIndex,
-    ) -> Option<Self> {
+    ) -> Option<(Self, AttributeKind)> {
         self.bind_instance_descriptors_internal(
             i_s,
             instance,
@@ -764,7 +764,7 @@ impl<'db: 'slf, 'slf> Inferred {
         add_issue: impl Fn(IssueType),
         mro_index: MroIndex,
         apply_descriptors_kind: ApplyDescriptorsKind,
-    ) -> Option<Self> {
+    ) -> Option<(Self, AttributeKind)> {
         match &self.state {
             InferredState::Saved(definition) => {
                 let node_ref = NodeRef::from_link(i_s.db, *definition);
@@ -773,6 +773,16 @@ impl<'db: 'slf, 'slf> Inferred {
                     PointType::Specific => match point.specific() {
                         Specific::Function => {
                             let func = prepare_func(i_s, *definition, attribute_class);
+                            let attr_kind = AttributeKind::Attribute;
+                            /*
+                             * TODO use something like this
+                            let attr_kind = match o.kind() {
+                                FunctionKind::Staticmethod => InstanceAttributeKind::Staticmethod,
+                                FunctionKind::Function { .. } => InstanceAttributeKind::DefMethod,
+                                FunctionKind::Classmethod { .. } => InstanceAttributeKind::Classmethod,
+                                FunctionKind::Property { .. } => unreachable!()
+                            };
+                            */
                             return if let Some(first_type) = func.first_param_annotation_type(i_s) {
                                 if let Some(t) = create_signature_without_self(
                                     i_s,
@@ -793,9 +803,12 @@ impl<'db: 'slf, 'slf> Inferred {
                                     &attribute_class,
                                     &first_type,
                                 ) {
-                                    Some(Self::new_unsaved_complex(ComplexPoint::TypeInstance(
-                                        Type::Callable(Rc::new(t)),
-                                    )))
+                                    Some((
+                                        Self::new_unsaved_complex(ComplexPoint::TypeInstance(
+                                            Type::Callable(Rc::new(t)),
+                                        )),
+                                        attr_kind,
+                                    ))
                                 } else {
                                     let t = IssueType::InvalidSelfArgument {
                                         argument_type: instance.format_short(i_s.db),
@@ -805,10 +818,13 @@ impl<'db: 'slf, 'slf> Inferred {
                                             .format_short(i_s.db),
                                     };
                                     add_issue(t);
-                                    Some(Self::new_any_from_error())
+                                    Some((Self::new_any_from_error(), attr_kind))
                                 }
                             } else {
-                                Some(Self::new_bound_method(instance, mro_index, *definition))
+                                Some((
+                                    Self::new_bound_method(instance, mro_index, *definition),
+                                    attr_kind,
+                                ))
                             };
                         }
                         Specific::DecoratedFunction => {
@@ -845,7 +861,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         | Specific::AnnotationOrTypeCommentSimpleClassInstance
                         | Specific::AnnotationOrTypeCommentClassVar) => {
                             let t = use_cached_annotation_or_type_comment(i_s, node_ref);
-                            if let Some(inf) = Self::bind_instance_descriptors_for_type(
+                            if let Some(r) = Self::bind_instance_descriptors_for_type(
                                 i_s,
                                 instance,
                                 attribute_class,
@@ -858,7 +874,11 @@ impl<'db: 'slf, 'slf> Inferred {
                                     ApplyDescriptorsKind::NoBoundMethod
                                 },
                             ) {
-                                return inf;
+                                if specific == Specific::AnnotationOrTypeCommentClassVar {
+                                    return r.map(|(inf, _)| (inf, AttributeKind::ClassVar));
+                                } else {
+                                    return r;
+                                }
                             }
                         }
                         _ => (),
@@ -866,9 +886,14 @@ impl<'db: 'slf, 'slf> Inferred {
                     PointType::Complex => {
                         match node_ref.complex().unwrap() {
                             ComplexPoint::FunctionOverload(o) => {
-                                if matches!(o.kind(), FunctionKind::Staticmethod) {
-                                    return Some(self);
-                                }
+                                let attr_kind = match o.kind() {
+                                    FunctionKind::Staticmethod => {
+                                        return Some((self, AttributeKind::Staticmethod))
+                                    }
+                                    FunctionKind::Function { .. } => AttributeKind::DefMethod,
+                                    FunctionKind::Classmethod { .. } => AttributeKind::Classmethod,
+                                    FunctionKind::Property { .. } => unreachable!(),
+                                };
 
                                 let has_self_arguments = o
                                     .iter_functions()
@@ -910,26 +935,31 @@ impl<'db: 'slf, 'slf> Inferred {
                                                     .into(),
                                             };
                                             add_issue(t);
-                                            return Some(Self::new_any_from_error());
+                                            return Some((Self::new_any_from_error(), attr_kind));
                                         }
                                         1 => {
-                                            return Some(Inferred::from_type(Type::Callable(
-                                                Rc::new(results.into_iter().next().unwrap()),
-                                            )));
+                                            return Some((
+                                                Inferred::from_type(Type::Callable(Rc::new(
+                                                    results.into_iter().next().unwrap(),
+                                                ))),
+                                                attr_kind,
+                                            ));
                                         }
                                         _ => {
-                                            return Some(Inferred::from_type(
-                                                Type::FunctionOverload(FunctionOverload::new(
-                                                    results.into_iter().collect(),
+                                            return Some((
+                                                Inferred::from_type(Type::FunctionOverload(
+                                                    FunctionOverload::new(
+                                                        results.into_iter().collect(),
+                                                    ),
                                                 )),
+                                                attr_kind,
                                             ));
                                         }
                                     }
                                 }
-                                return Some(Self::new_bound_method(
-                                    instance,
-                                    mro_index,
-                                    *definition,
+                                return Some((
+                                    Self::new_bound_method(instance, mro_index, *definition),
+                                    attr_kind,
                                 ));
                             }
                             ComplexPoint::TypeInstance(t) => {
@@ -979,7 +1009,7 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::UnsavedFileReference(file_index) => todo!(),
             InferredState::BoundMethod { .. } => todo!(),
         }
-        Some(self)
+        Some((self, AttributeKind::Attribute))
     }
 
     fn bind_instance_descriptors_for_type(
@@ -990,7 +1020,7 @@ impl<'db: 'slf, 'slf> Inferred {
         mro_index: MroIndex,
         t: &Type,
         apply_descriptors_kind: ApplyDescriptorsKind,
-    ) -> Option<Option<Self>> {
+    ) -> Option<Option<(Self, AttributeKind)>> {
         let mut t = t; // Weird lifetime issue
         match t {
             Type::Callable(c) => match c.kind {
@@ -1007,20 +1037,25 @@ impl<'db: 'slf, 'slf> Inferred {
                                 &attribute_class,
                                 &f,
                             )
-                            .map(|c| Inferred::from_type(Type::Callable(Rc::new(c)))),
+                            .map(|c| {
+                                (
+                                    Inferred::from_type(Type::Callable(Rc::new(c))),
+                                    AttributeKind::DefMethod,
+                                )
+                            }),
                         );
                     } else {
                         todo!()
                     }
                 }
                 FunctionKind::Function { .. } => (),
-                FunctionKind::Property { .. } => {
+                FunctionKind::Property { writable, .. } => {
                     let first = c.first_positional_type();
                     return Some(Some(
                         if let Some(t) =
                             calculate_property_return(i_s, &instance, &attribute_class, c)
                         {
-                            Inferred::from_type(t)
+                            (Inferred::from_type(t), AttributeKind::Property { writable })
                         } else {
                             add_issue(IssueType::InvalidSelfArgument {
                                 argument_type: instance.format_short(i_s.db),
@@ -1029,7 +1064,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 ),
                                 callable: c.format(&FormatData::new_short(i_s.db)).into(),
                             });
-                            Inferred::new_any_from_error()
+                            (Inferred::new_any_from_error(), AttributeKind::Attribute)
                         },
                     ));
                 }
@@ -1052,17 +1087,20 @@ impl<'db: 'slf, 'slf> Inferred {
                             callable: t.format_short(i_s.db),
                         };
                         add_issue(t);
-                        return Some(Some(Self::new_any_from_error()));
+                        return Some(Some((Self::new_any_from_error(), AttributeKind::Attribute)));
                     }
-                    return Some(result.map(callable_into_inferred));
+                    return Some(
+                        result.map(|c| (callable_into_inferred(c), AttributeKind::Classmethod)),
+                    );
                 }
                 // Static methods can be passed out without any remapping.
                 FunctionKind::Staticmethod => (),
             },
             Type::CustomBehavior(custom) => {
-                return Some(Some(Inferred::from_type(Type::CustomBehavior(
-                    custom.bind(Rc::new(instance)),
-                ))))
+                return Some(Some((
+                    Inferred::from_type(Type::CustomBehavior(custom.bind(Rc::new(instance)))),
+                    AttributeKind::DefMethod,
+                )))
             }
             _ => (),
         }
@@ -1085,11 +1123,11 @@ impl<'db: 'slf, 'slf> Inferred {
                 None,
             );
             if let Some(inf) = potential_descriptor.bind_dunder_get(i_s, add_issue, instance) {
-                return Some(Some(inf));
+                return Some(Some((inf, AttributeKind::Attribute)));
             }
         }
         if let Some(new) = new {
-            return Some(Some(Inferred::from_type(new)));
+            return Some(Some((Inferred::from_type(new), AttributeKind::Attribute)));
         }
         None
     }
@@ -2328,4 +2366,13 @@ pub fn add_attribute_error(
             },
         },
     );
+}
+
+pub enum AttributeKind {
+    Attribute,
+    ClassVar,
+    Property { writable: bool },
+    Classmethod,
+    Staticmethod,
+    DefMethod,
 }

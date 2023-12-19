@@ -290,6 +290,7 @@ impl<'a> Instance<'a> {
                         &add_issue,
                         mro_index,
                     )
+                    .map(|inf| inf.0)
                 } else {
                     Some(inf)
                 }
@@ -559,6 +560,7 @@ impl<'db: 'a, 'a> Iterator for ClassMroFinder<'db, 'a, '_> {
                                 |issue| self.from.add_issue(self.i_s, issue),
                                 mro_index,
                             )
+                            .map(|inf| inf.0)
                         })
                         .and_then(|lookup_result| lookup_result.into_maybe_inferred());
                     if let Some(result) = result {

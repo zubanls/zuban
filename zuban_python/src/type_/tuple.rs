@@ -270,6 +270,7 @@ pub(crate) fn lookup_on_tuple(
                     |issue| add_issue(issue),
                     mro_index,
                 )
+                .map(|inf| inf.0)
             });
             match result {
                 Some(LookupResult::None) => (),
