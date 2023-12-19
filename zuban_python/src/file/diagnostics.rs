@@ -18,7 +18,7 @@ use crate::{
     file::Inference,
     getitem::SliceType,
     inference_state::InferenceState,
-    inferred::{infer_class_method, Inferred},
+    inferred::{infer_class_method, AttributeKind, Inferred},
     matching::{
         matches_params,
         params::{has_overlapping_params, WrappedParamType, WrappedStar},
@@ -33,7 +33,8 @@ use crate::{
         TypeOrTypeVarTuple, TypeVarLike, Variance,
     },
     type_helpers::{
-        is_private, Class, FirstParamProperties, Function, GeneratorType, Instance, TypeOrClass,
+        is_private, Class, FirstParamProperties, Function, GeneratorType, Instance, LookupDetails,
+        TypeOrClass,
     },
 };
 
@@ -568,20 +569,29 @@ impl<'db> Inference<'db, '_, '_> {
                 let mut node_ref = NodeRef::new(self.file, *index - NAME_DEF_TO_NAME_DIFFERENCE);
                 if name == "__post_init__" {
                     if let Some(dataclass) = c.maybe_dataclass() {
-                        let f = Instance::new(c, None)
-                            .lookup_on_self(self.i_s, node_ref, name, LookupKind::OnlyType)
-                            .lookup
-                            .into_inferred();
-                        let __post_init__ = dataclass.expect_calculated_post_init();
-                        check_override(
+                        let override_details = Instance::new(c, None).lookup_on_self(
                             self.i_s,
                             node_ref,
-                            TypeOrClass::Type(Cow::Owned(Type::Dataclass(dataclass.clone()))),
-                            |_, _| "dataclass",
-                            c,
-                            &Type::Callable(Rc::new(__post_init__.clone())),
-                            &f.as_cow_type(&i_s),
                             name,
+                            LookupKind::OnlyType,
+                        );
+                        let __post_init__ = dataclass.expect_calculated_post_init();
+                        let original_details = LookupDetails {
+                            class: TypeOrClass::Type(Cow::Owned(Type::Dataclass(
+                                dataclass.clone(),
+                            ))),
+                            lookup: LookupResult::UnknownName(Inferred::from_type(Type::Callable(
+                                Rc::new(__post_init__.clone()),
+                            ))),
+                            attr_kind: AttributeKind::DefMethod,
+                        };
+                        check_override(
+                            &i_s,
+                            node_ref,
+                            original_details,
+                            override_details,
+                            name,
+                            |_, _| "dataclass",
                             Some(&|| {
                                 let params = format_callable_params(
                                     &FormatData::new_short(i_s.db),
@@ -1567,26 +1577,27 @@ fn find_and_check_override(
     has_override_decorator: bool,
 ) {
     let instance = Instance::new(override_class, None);
-    let l = instance.lookup_and_maybe_ignore_super_count(
+    let original_details = instance.lookup_and_maybe_ignore_super_count(
         i_s,
         |issue| from.add_issue(i_s, issue),
         name,
         LookupKind::Normal,
         1,
     );
-    if let Some(inf) = l.lookup.into_maybe_inferred() {
-        let original_t = inf.as_cow_type(i_s);
-        let override_ = instance.full_lookup(i_s, from, name).into_inferred();
-        let override_t = override_.as_cow_type(i_s);
+    if original_details.lookup.is_some() {
+        let override_details = instance.lookup_with_details(
+            i_s,
+            |issue| from.add_issue(i_s, issue),
+            name,
+            LookupKind::Normal,
+        );
         check_override(
             i_s,
             from,
-            l.class,
-            |db, c| c.name(db),
-            override_class,
-            &original_t,
-            &override_t,
+            original_details,
+            override_details,
             name,
+            |db, c| c.name(db),
             None,
         )
     } else if has_override_decorator {
@@ -1597,14 +1608,22 @@ fn find_and_check_override(
 fn check_override(
     i_s: &InferenceState,
     from: NodeRef,
-    original_class: TypeOrClass,
-    original_class_name: impl for<'x> Fn(&'x Database, &'x TypeOrClass) -> &'x str,
-    override_class: Class,
-    original_t: &Type,
-    override_t: &Type,
+    original_lookup_details: LookupDetails,
+    override_lookup_details: LookupDetails,
     name: &str,
+    original_class_name: impl for<'x> Fn(&'x Database, &'x TypeOrClass) -> &'x str,
     original_formatter: Option<&dyn Fn() -> String>,
 ) {
+    let original_inf = original_lookup_details.lookup.into_inferred();
+    let original_t = original_inf.as_cow_type(i_s);
+    let original_class = original_lookup_details.class;
+    let override_inf = override_lookup_details.lookup.into_inferred();
+    let override_t = override_inf.as_cow_type(i_s);
+    let override_t = override_t.as_ref();
+    let TypeOrClass::Class(override_class) = override_lookup_details.class else {
+        unreachable!();
+    };
+
     let kind = LookupKind::Normal;
     let maybe_func = || match override_t {
         Type::Callable(c) if c.defined_at.file == from.file_index() => {

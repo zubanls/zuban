@@ -276,7 +276,7 @@ impl<'a> Instance<'a> {
         kind: LookupKind,
         super_count: usize,
         as_self_instance: impl Fn() -> Type,
-    ) -> LookupDetails {
+    ) -> LookupDetails<'a> {
         let mut attr_kind = AttributeKind::Attribute;
         for (mro_index, class) in self.class.mro(i_s.db).skip(super_count) {
             let (class_of_lookup, lookup) = class.lookup_symbol(i_s, name);
@@ -387,7 +387,7 @@ impl<'a> Instance<'a> {
         name: &str,
         kind: LookupKind,
         super_count: usize,
-    ) -> LookupDetails {
+    ) -> LookupDetails<'a> {
         self.lookup_with_explicit_self_binding(i_s, &add_issue, name, kind, super_count, || {
             self.class.as_type(i_s.db)
         })
@@ -409,7 +409,7 @@ impl<'a> Instance<'a> {
         add_issue: impl Fn(IssueType),
         name: &str,
         kind: LookupKind,
-    ) -> LookupDetails {
+    ) -> LookupDetails<'a> {
         self.lookup_and_maybe_ignore_super_count(i_s, add_issue, name, kind, 0)
     }
 
@@ -419,7 +419,7 @@ impl<'a> Instance<'a> {
         node_ref: NodeRef,
         name: &str,
         kind: LookupKind,
-    ) -> LookupDetails {
+    ) -> LookupDetails<'a> {
         self.lookup_with_explicit_self_binding(
             i_s,
             &|issue| node_ref.add_issue(i_s, issue),
