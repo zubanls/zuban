@@ -2,10 +2,6 @@
 testBadEnumLoading
 testInvalidNamedTupleWithinFunction
 
-testDescriptorDunderGetWrongArgTypeForOwner
-testProtocolAttrAccessDecoratedGetAttrDunder
-descriptor_with_wrong_annotations
-
 # 3.12 type var syntax
 test695TypeAlias
 test695Class
@@ -524,6 +520,7 @@ testPropertyInProtocols
 testSettablePropertyInProtocols
 testNotManyFlagConflitsShownInProtocols
 testClassesGetattrWithProtocols
+testProtocolAttrAccessDecoratedGetAttrDunder
 testErrorsForProtocolsInDifferentPlaces
 # Protocol properties
 testMutuallyRecursiveProtocolsTypesWithSubteMismatchWriteable

@@ -918,7 +918,9 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
             ArgsKwargsIterator::None => match self.current.next() {
                 Some(BaseArgumentReturn::Argument(mut kind)) => {
                     let index = self.counter;
-                    if let ArgumentKind::Inferred { position, .. } = &mut kind {
+                    if let ArgumentKind::Inferred { position, .. }
+                    | ArgumentKind::InferredWithCustomAddIssue { position, .. } = &mut kind
+                    {
                         // This is a bit of a special case where 0 means that we're on a bound self
                         // argument. In that case we do not want to increase the counter, because
                         // the bound argument is not counted as an argument.
