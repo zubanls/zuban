@@ -13,7 +13,7 @@ use crate::{
     file::{on_argument_type_error, File},
     getitem::SliceType,
     inference_state::InferenceState,
-    inferred::{add_attribute_error, Inferred},
+    inferred::{add_attribute_error, AttributeKind, Inferred},
     matching::{IteratorContent, LookupKind, LookupResult, OnTypeError, ResultContext},
     node_ref::NodeRef,
     type_::{
@@ -277,6 +277,7 @@ impl<'a> Instance<'a> {
         super_count: usize,
         as_self_instance: impl Fn() -> Type,
     ) -> LookupDetails {
+        let mut attr_kind = AttributeKind::Attribute;
         for (mro_index, class) in self.class.mro(i_s.db).skip(super_count) {
             let (class_of_lookup, lookup) = class.lookup_symbol(i_s, name);
             // First check class infos
@@ -290,7 +291,10 @@ impl<'a> Instance<'a> {
                         &add_issue,
                         mro_index,
                     )
-                    .map(|inf| inf.0)
+                    .map(|inf| {
+                        attr_kind = inf.1;
+                        inf.0
+                    })
                 } else {
                     Some(inf)
                 }
@@ -302,10 +306,17 @@ impl<'a> Instance<'a> {
                 None => {
                     return LookupDetails {
                         class,
+                        attr_kind,
                         lookup: LookupResult::None,
                     }
                 }
-                Some(lookup) => return LookupDetails { class, lookup },
+                Some(lookup) => {
+                    return LookupDetails {
+                        class,
+                        attr_kind,
+                        lookup,
+                    }
+                }
             }
             if kind == LookupKind::Normal {
                 // Then check self attributes
@@ -315,6 +326,7 @@ impl<'a> Instance<'a> {
                         let i_s = i_s.with_class_context(&c);
                         return LookupDetails {
                             class,
+                            attr_kind,
                             lookup: LookupResult::GotoName {
                                 name: PointLink::new(c.node_ref.file.file_index(), self_symbol),
                                 inf: c
@@ -347,6 +359,7 @@ impl<'a> Instance<'a> {
                     ));
                     return LookupDetails {
                         class: TypeOrClass::Class(self.class),
+                        attr_kind,
                         lookup,
                     };
                 }
@@ -356,11 +369,13 @@ impl<'a> Instance<'a> {
             LookupDetails {
                 class: TypeOrClass::Class(self.class),
                 lookup: LookupResult::any(AnyCause::Todo),
+                attr_kind,
             }
         } else {
             LookupDetails {
                 class: TypeOrClass::Class(self.class),
                 lookup: LookupResult::None,
+                attr_kind,
             }
         }
     }
@@ -692,4 +707,5 @@ fn get_relevant_type_for_super(db: &Database, t: &Type) -> Type {
 pub struct LookupDetails<'a> {
     pub class: TypeOrClass<'a>,
     pub lookup: LookupResult,
+    pub attr_kind: AttributeKind,
 }
