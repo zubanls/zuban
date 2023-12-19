@@ -94,8 +94,8 @@ impl Type {
         match self {
             Type::Class(c) => {
                 let inst = Instance::new(c.class(i_s.db), from_inferred);
-                let (defined_in, lookup) = inst.lookup_and_defined_in(i_s, add_issue, name, kind);
-                callable(self, Some(defined_in), lookup)
+                let l = inst.lookup_and_defined_in(i_s, add_issue, name, kind);
+                callable(self, Some(l.class), l.lookup)
             }
             Type::Any(cause) => callable(self, None, LookupResult::any(*cause)),
             Type::None => callable(
@@ -108,9 +108,8 @@ impl Type {
             ),
             Type::Literal(literal) => {
                 let instance = i_s.db.python_state.literal_instance(&literal.kind);
-                let (defined_in, result) =
-                    instance.lookup_and_defined_in(i_s, add_issue, name, kind);
-                callable(self, Some(defined_in), result)
+                let l = instance.lookup_and_defined_in(i_s, add_issue, name, kind);
+                callable(self, Some(l.class), l.lookup)
             }
             t @ Type::TypeVar(usage) => match &usage.type_var.kind {
                 TypeVarKind::Bound(bound) => {
@@ -204,19 +203,19 @@ impl Type {
                     ),
                     from_inferred,
                 );
-                let (defined_in, lookup) = inst.lookup_on_self(i_s, from, name, kind);
-                callable(self, Some(defined_in), lookup)
+                let l = inst.lookup_on_self(i_s, from, name, kind);
+                callable(self, Some(l.class), l.lookup)
             }
             Type::Super { class, mro_index } => {
                 let instance = Instance::new(class.class(i_s.db), None);
-                let (defined_in, result) = instance.lookup_and_maybe_ignore_super_count(
+                let l = instance.lookup_and_maybe_ignore_super_count(
                     i_s,
                     add_issue,
                     name,
                     LookupKind::OnlyType,
                     mro_index + 1,
                 );
-                if matches!(&result, LookupResult::None) {
+                if matches!(&l.lookup, LookupResult::None) {
                     add_issue(IssueType::UndefinedInSuperclass { name: name.into() });
                     callable(
                         self,
@@ -225,7 +224,7 @@ impl Type {
                     );
                     return;
                 }
-                callable(self, Some(defined_in), result)
+                callable(self, Some(l.class), l.lookup)
             }
             Type::Dataclass(d) => callable(
                 self,

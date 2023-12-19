@@ -989,7 +989,7 @@ pub(crate) fn lookup_on_typed_dict(
                 .lookup_with_explicit_self_binding(i_s, &add_issue, name, kind, 0, || {
                     Type::TypedDict(typed_dict.clone())
                 })
-                .1
+                .lookup
         }
     })))
 }

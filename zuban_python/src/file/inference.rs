@@ -1654,13 +1654,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         let (r_defined_in, right_op_method) = match r_type {
                             Type::Class(r_class) => {
                                 instance = r_class.class(i_s.db).instance();
-                                let (defined_in, lookup) = instance.lookup_and_defined_in(
+                                let l = instance.lookup_and_defined_in(
                                     i_s,
                                     |issue| from.add_issue(i_s, issue),
                                     op.reverse_magic_method,
                                     LookupKind::OnlyType,
                                 );
-                                (Some(defined_in), lookup.into_maybe_inferred())
+                                (Some(l.class), l.lookup.into_maybe_inferred())
                             }
                             _ => (
                                 None,

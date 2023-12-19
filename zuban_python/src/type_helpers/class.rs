@@ -1329,7 +1329,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                 0,
                                 as_type_type,
                             )
-                            .1
+                            .lookup
                     }
                 };
                 if matches!(result, LookupResult::None) && self.incomplete_mro(i_s.db) {

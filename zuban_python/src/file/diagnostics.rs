@@ -570,7 +570,7 @@ impl<'db> Inference<'db, '_, '_> {
                     if let Some(dataclass) = c.maybe_dataclass() {
                         let f = Instance::new(c, None)
                             .lookup_on_self(self.i_s, node_ref, name, LookupKind::OnlyType)
-                            .1
+                            .lookup
                             .into_inferred();
                         let __post_init__ = dataclass.expect_calculated_post_init();
                         check_override(
@@ -1567,21 +1567,21 @@ fn find_and_check_override(
     has_override_decorator: bool,
 ) {
     let instance = Instance::new(override_class, None);
-    let (original_class, result) = instance.lookup_and_maybe_ignore_super_count(
+    let l = instance.lookup_and_maybe_ignore_super_count(
         i_s,
         |issue| from.add_issue(i_s, issue),
         name,
         LookupKind::Normal,
         1,
     );
-    if let Some(inf) = result.into_maybe_inferred() {
+    if let Some(inf) = l.lookup.into_maybe_inferred() {
         let original_t = inf.as_cow_type(i_s);
         let override_ = instance.full_lookup(i_s, from, name).into_inferred();
         let override_t = override_.as_cow_type(i_s);
         check_override(
             i_s,
             from,
-            original_class,
+            l.class,
             |db, c| c.name(db),
             override_class,
             &original_t,

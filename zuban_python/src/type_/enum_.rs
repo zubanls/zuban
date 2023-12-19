@@ -197,7 +197,7 @@ fn lookup_on_enum_instance_fallback(
         .lookup_with_explicit_self_binding(i_s, &add_issue, name, LookupKind::Normal, 0, || {
             Type::Enum(enum_.clone())
         })
-        .1
+        .lookup
 }
 
 pub fn infer_value_on_member(

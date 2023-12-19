@@ -74,10 +74,10 @@ impl<'a> Instance<'a> {
         let result = result.or_else(|| self.lookup(i_s, add_issue, name_str, LookupKind::Normal));
         let Some(inf) = result.into_maybe_inferred() else {
             let t = self.class.as_type(i_s.db);
-            let (defined_in, lookup) = self.lookup_and_defined_in(i_s, add_issue, "__setattr__", LookupKind::OnlyType);
-            if let Some(setattr) = lookup.into_maybe_inferred() {
+            let l = self.lookup_and_defined_in(i_s, add_issue, "__setattr__", LookupKind::OnlyType);
+            if let Some(setattr) = l.lookup.into_maybe_inferred() {
                 // object defines a __getattribute__ that returns Any
-                if !defined_in.is_object(i_s.db) {
+                if !l.class.is_object(i_s.db) {
                     // If it's not a callable with the correct signature, diagnostics will be raised
                     // elsewhere.
                     match setattr.as_cow_type(i_s).maybe_callable(i_s) {
@@ -276,7 +276,7 @@ impl<'a> Instance<'a> {
         kind: LookupKind,
         super_count: usize,
         as_self_instance: impl Fn() -> Type,
-    ) -> (TypeOrClass, LookupResult) {
+    ) -> LookupDetails {
         for (mro_index, class) in self.class.mro(i_s.db).skip(super_count) {
             let (class_of_lookup, lookup) = class.lookup_symbol(i_s, name);
             // First check class infos
@@ -299,8 +299,13 @@ impl<'a> Instance<'a> {
                 Some(LookupResult::None) => (),
                 // TODO we should add tests for this. This is currently only None if the self
                 // annotation does not match and the node_ref is empty.
-                None => return (class, LookupResult::None),
-                Some(x) => return (class, x),
+                None => {
+                    return LookupDetails {
+                        class,
+                        lookup: LookupResult::None,
+                    }
+                }
+                Some(lookup) => return LookupDetails { class, lookup },
             }
             if kind == LookupKind::Normal {
                 // Then check self attributes
@@ -308,9 +313,9 @@ impl<'a> Instance<'a> {
                     if let Some(self_symbol) = c.class_storage.self_symbol_table.lookup_symbol(name)
                     {
                         let i_s = i_s.with_class_context(&c);
-                        return (
+                        return LookupDetails {
                             class,
-                            LookupResult::GotoName {
+                            lookup: LookupResult::GotoName {
                                 name: PointLink::new(c.node_ref.file.file_index(), self_symbol),
                                 inf: c
                                     .node_ref
@@ -319,38 +324,44 @@ impl<'a> Instance<'a> {
                                     .infer_name_by_index(self_symbol)
                                     .resolve_class_type_vars(&i_s, &self.class, &c),
                             },
-                        );
+                        };
                     }
                 }
             }
         }
         if kind == LookupKind::Normal && super_count == 0 {
             for method_name in ["__getattr__", "__getattribute__"] {
-                let (defined_in, lookup) =
+                let l =
                     self.lookup_and_defined_in(i_s, &add_issue, method_name, LookupKind::OnlyType);
-                if defined_in.is_object(i_s.db) {
+                if l.class.is_object(i_s.db) {
                     // object defines a __getattribute__ that returns Any
                     continue;
                 }
-                if let Some(inf) = lookup.into_maybe_inferred() {
-                    let result = LookupResult::UnknownName(inf.execute(
+                if let Some(inf) = l.lookup.into_maybe_inferred() {
+                    let lookup = LookupResult::UnknownName(inf.execute(
                         i_s,
                         &KnownArgumentsWithCustomAddIssue::new(
                             &Inferred::new_any(AnyCause::Internal),
                             &add_issue,
                         ),
                     ));
-                    return (TypeOrClass::Class(self.class), result);
+                    return LookupDetails {
+                        class: TypeOrClass::Class(self.class),
+                        lookup,
+                    };
                 }
             }
         }
         if self.class.incomplete_mro(i_s.db) {
-            (
-                TypeOrClass::Class(self.class),
-                LookupResult::any(AnyCause::Todo),
-            )
+            LookupDetails {
+                class: TypeOrClass::Class(self.class),
+                lookup: LookupResult::any(AnyCause::Todo),
+            }
         } else {
-            (TypeOrClass::Class(self.class), LookupResult::None)
+            LookupDetails {
+                class: TypeOrClass::Class(self.class),
+                lookup: LookupResult::None,
+            }
         }
     }
 
@@ -361,7 +372,7 @@ impl<'a> Instance<'a> {
         name: &str,
         kind: LookupKind,
         super_count: usize,
-    ) -> (TypeOrClass, LookupResult) {
+    ) -> LookupDetails {
         self.lookup_with_explicit_self_binding(i_s, &add_issue, name, kind, super_count, || {
             self.class.as_type(i_s.db)
         })
@@ -374,7 +385,8 @@ impl<'a> Instance<'a> {
         name: &str,
         kind: LookupKind,
     ) -> LookupResult {
-        self.lookup_and_defined_in(i_s, add_issue, name, kind).1
+        self.lookup_and_defined_in(i_s, add_issue, name, kind)
+            .lookup
     }
 
     pub(crate) fn lookup_and_defined_in(
@@ -383,7 +395,7 @@ impl<'a> Instance<'a> {
         add_issue: impl Fn(IssueType),
         name: &str,
         kind: LookupKind,
-    ) -> (TypeOrClass, LookupResult) {
+    ) -> LookupDetails {
         self.lookup_and_maybe_ignore_super_count(i_s, add_issue, name, kind, 0)
     }
 
@@ -393,7 +405,7 @@ impl<'a> Instance<'a> {
         node_ref: NodeRef,
         name: &str,
         kind: LookupKind,
-    ) -> (TypeOrClass, LookupResult) {
+    ) -> LookupDetails {
         self.lookup_with_explicit_self_binding(
             i_s,
             &|issue| node_ref.add_issue(i_s, issue),
@@ -675,4 +687,9 @@ fn get_relevant_type_for_super(db: &Database, t: &Type) -> Type {
         return get_relevant_type_for_super(db, bound);
     }
     t.clone()
+}
+
+pub struct LookupDetails<'a> {
+    pub class: TypeOrClass<'a>,
+    pub lookup: LookupResult,
 }
