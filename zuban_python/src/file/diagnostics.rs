@@ -1687,6 +1687,12 @@ fn check_override(
                 base_class: original_class_name(i_s.db, &original_class).into(),
             },
         ),
+        (AnnotatedAttribute, ClassVar) => from.add_issue(
+            i_s,
+            IssueType::CannotOverrideInstanceVariableWithClassVariable {
+                base_class: original_class_name(i_s.db, &original_class).into(),
+            },
+        ),
         _ => (),
     }
     if !match_.bool() {

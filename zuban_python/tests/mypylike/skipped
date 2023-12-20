@@ -964,9 +964,6 @@ testMixinTypedPropertyReversed
 # "Property "x" defined in "Base" is read-only"
 testNewNamedTupleMethodInheritance
 testCantImplementAbstractPropertyViaInstanceVariable
-# "Cannot override instance variable (previously declared on base class "A") with class variable"
-testOverrideWithAttributeWithClassVar
-testOverrideClassVarManyBases
 # @override  "Method "g" is marked as an override, but no base method was found with this name"
 explicitOverrideOverloads
 explicitOverrideNotOnOverloadsImplementation
@@ -981,6 +978,7 @@ testDataclassesCallableFrozen
 # __hash__ None overrides
 testOverrideAttributeWithMethod
 # Inheritance multiple issues?
+testOverrideClassVarManyBases
 testOverrideIncompatibleWithMultipleSupertypes
 testSubclassingGenericABCWithDeepHierarchy
 testSubclassingGenericABCWithDeepHierarchy2

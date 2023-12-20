@@ -193,6 +193,7 @@ pub(crate) enum IssueType {
     InvalidSlotsDefinition { actual: Box<str> },
     ProtocolMembersMustHaveExplicitlyDeclaredTypes,
     CannotOverrideClassVariableWithInstanceVariable { base_class: Box<str> },
+    CannotOverrideInstanceVariableWithClassVariable { base_class: Box<str> },
 
     BaseExceptionExpected,
     BaseExceptionExpectedForRaise,
@@ -1058,6 +1059,9 @@ impl<'db> Diagnostic<'db> {
                 "All protocol members must have explicitly declared types".to_string(),
             CannotOverrideClassVariableWithInstanceVariable { base_class } => format!(
                 r#"Cannot override class variable (previously declared on base class "{base_class}") with instance variable"#
+            ),
+            CannotOverrideInstanceVariableWithClassVariable { base_class } => format!(
+                r#"Cannot override instance variable (previously declared on base class "{base_class}") with class variable"#
             ),
 
             BaseExceptionExpected =>
