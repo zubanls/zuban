@@ -1681,6 +1681,12 @@ fn check_override(
             // and instance, others not.
             match_ = Match::new_false();
         }
+        (ClassVar, AnnotatedAttribute) => from.add_issue(
+            i_s,
+            IssueType::CannotOverrideClassVariableWithInstanceVariable {
+                base_class: original_class_name(i_s.db, &original_class).into(),
+            },
+        ),
         _ => (),
     }
     if !match_.bool() {

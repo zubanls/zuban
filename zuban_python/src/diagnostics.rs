@@ -192,6 +192,7 @@ pub(crate) enum IssueType {
     GetattributeInvalidAtModuleLevel,
     InvalidSlotsDefinition { actual: Box<str> },
     ProtocolMembersMustHaveExplicitlyDeclaredTypes,
+    CannotOverrideClassVariableWithInstanceVariable { base_class: Box<str> },
 
     BaseExceptionExpected,
     BaseExceptionExpectedForRaise,
@@ -1055,6 +1056,9 @@ impl<'db> Diagnostic<'db> {
             ),
             ProtocolMembersMustHaveExplicitlyDeclaredTypes =>
                 "All protocol members must have explicitly declared types".to_string(),
+            CannotOverrideClassVariableWithInstanceVariable { base_class } => format!(
+                r#"Cannot override class variable (previously declared on base class "{base_class}") with instance variable"#
+            ),
 
             BaseExceptionExpected =>
                 "Exception type must be derived from BaseException (or be a \

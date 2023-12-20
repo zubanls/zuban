@@ -862,6 +862,13 @@ impl<'db: 'slf, 'slf> Inferred {
                         | Specific::AnnotationOrTypeCommentSimpleClassInstance
                         | Specific::AnnotationOrTypeCommentClassVar) => {
                             let t = use_cached_annotation_or_type_comment(i_s, node_ref);
+                            let is_class_var =
+                                specific == Specific::AnnotationOrTypeCommentClassVar;
+                            let attr_kind = if is_class_var {
+                                AttributeKind::ClassVar
+                            } else {
+                                AttributeKind::AnnotatedAttribute
+                            };
                             if let Some(r) = Self::bind_instance_descriptors_for_type(
                                 i_s,
                                 instance,
@@ -869,18 +876,15 @@ impl<'db: 'slf, 'slf> Inferred {
                                 add_issue,
                                 mro_index,
                                 &t,
-                                if specific == Specific::AnnotationOrTypeCommentClassVar {
+                                if is_class_var {
                                     ApplyDescriptorsKind::All
                                 } else {
                                     ApplyDescriptorsKind::NoBoundMethod
                                 },
                             ) {
-                                if specific == Specific::AnnotationOrTypeCommentClassVar {
-                                    return r.map(|(inf, _)| (inf, AttributeKind::ClassVar));
-                                } else {
-                                    return r;
-                                }
+                                return r.map(|(inf, _)| (inf, attr_kind));
                             }
+                            return Some((self, attr_kind));
                         }
                         _ => (),
                     },
@@ -2371,6 +2375,7 @@ pub fn add_attribute_error(
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum AttributeKind {
+    AnnotatedAttribute,
     Attribute,
     ClassVar,
     Property { writable: bool },
