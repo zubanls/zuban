@@ -9,6 +9,7 @@ use super::{
 };
 use crate::{
     arguments::{Arguments, NoArguments},
+    database::FileIndex,
     debug,
     diagnostics::IssueType,
     getitem::SliceType,
@@ -26,23 +27,25 @@ use crate::{
 };
 
 impl Type {
-    pub fn lookup(
+    pub(crate) fn lookup(
         &self,
         i_s: &InferenceState,
-        from: NodeRef,
+        from_file: FileIndex,
         name: &str,
         lookup_kind: LookupKind,
         result_context: &mut ResultContext,
+        add_issue: &dyn Fn(IssueType),
         on_lookup_error: OnLookupError,
     ) -> LookupResult {
         let mut result: Option<LookupResult> = None;
         self.run_after_lookup_on_each_union_member(
             i_s,
             None,
-            from,
+            from_file,
             name,
             lookup_kind,
             result_context,
+            add_issue,
             &mut |t, _, lookup_result| {
                 if matches!(lookup_result, LookupResult::None) {
                     on_lookup_error(t);
@@ -80,17 +83,17 @@ impl Type {
     }
 
     #[inline]
-    pub fn run_after_lookup_on_each_union_member(
+    pub(crate) fn run_after_lookup_on_each_union_member(
         &self,
         i_s: &InferenceState,
         from_inferred: Option<&Inferred>,
-        from: NodeRef,
+        from_file: FileIndex,
         name: &str,
         kind: LookupKind,
         result_context: &mut ResultContext,
+        add_issue: &dyn Fn(IssueType),
         callable: &mut impl FnMut(&Type, Option<TypeOrClass>, LookupResult),
     ) {
-        let add_issue = |issue| from.add_issue(i_s, issue);
         match self {
             Type::Class(c) => {
                 let inst = Instance::new(c.class(i_s.db), from_inferred);
@@ -116,10 +119,11 @@ impl Type {
                     bound.run_after_lookup_on_each_union_member(
                         i_s,
                         None,
-                        from,
+                        from_file,
                         name,
                         kind,
                         result_context,
+                        add_issue,
                         callable,
                     );
                 }
@@ -167,10 +171,11 @@ impl Type {
                     t.run_after_lookup_on_each_union_member(
                         i_s,
                         None,
-                        from,
+                        from_file,
                         name,
                         kind,
                         result_context,
+                        &add_issue,
                         callable,
                     )
                 }
@@ -197,7 +202,7 @@ impl Type {
             Type::Namespace(namespace) => callable(
                 self,
                 None,
-                lookup_in_namespace(i_s.db, from.file_index(), namespace, name),
+                lookup_in_namespace(i_s.db, from_file, namespace, name),
             ),
             Type::Self_ => {
                 let current_class = i_s.current_class().unwrap();
@@ -216,7 +221,7 @@ impl Type {
                 let instance = Instance::new(class.class(i_s.db), None);
                 let l = instance.lookup_and_maybe_ignore_super_count(
                     i_s,
-                    add_issue,
+                    &add_issue,
                     name,
                     LookupKind::OnlyType,
                     mro_index + 1,
@@ -249,10 +254,11 @@ impl Type {
             Type::NewType(new_type) => new_type.type_(i_s).run_after_lookup_on_each_union_member(
                 i_s,
                 None,
-                from,
+                from_file,
                 name,
                 kind,
                 result_context,
+                add_issue,
                 callable,
             ),
             Type::Enum(e) => callable(
@@ -270,10 +276,11 @@ impl Type {
                 .run_after_lookup_on_each_union_member(
                     i_s,
                     None,
-                    from,
+                    from_file,
                     name,
                     kind,
                     result_context,
+                    add_issue,
                     callable,
                 ),
             _ => todo!("{self:?}"),
@@ -495,10 +502,11 @@ impl Type {
             _ => IteratorContent::Inferred(
                 self.lookup(
                     i_s,
-                    from,
+                    from.file_index(),
                     "__iter__",
                     LookupKind::OnlyType,
                     &mut ResultContext::Unknown,
+                    &|issue| from.add_issue(i_s, issue),
                     &|t| {
                         on_error(t);
                     },

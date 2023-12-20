@@ -1247,10 +1247,11 @@ impl<'db> Inference<'db, '_, '_> {
         forward_type.run_after_lookup_on_each_union_member(
             i_s,
             None,
-            from,
+            from.file_index(),
             normal_magic,
             LookupKind::OnlyType,
             &mut ResultContext::Unknown,
+            &|issue| todo!(),
             &mut |forward, _, lookup| {
                 let check = |callable: &CallableContent| {
                     // Can only overlap if the classes differ. On the same class __radd__ will

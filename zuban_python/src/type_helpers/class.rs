@@ -1019,10 +1019,11 @@ impl<'db: 'a, 'a> Class<'a> {
                 let had_lookup_error = Cell::new(false);
                 let lookup = other.lookup(
                     i_s,
-                    hack,
+                    self.node_ref.file_index(),
                     name,
                     LookupKind::Normal,
                     &mut ResultContext::Unknown,
+                    &|_| todo!(),
                     &|_| had_lookup_error.set(true),
                 );
                 // We cannot just use lookup.into_maybe_inferred, because unions can be involved.

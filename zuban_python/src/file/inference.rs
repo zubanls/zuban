@@ -958,10 +958,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             .unwrap_or_else(|| {
                                 t.lookup(
                                     i_s,
-                                    node_ref,
+                                    node_ref.file_index(),
                                     name_definition.as_code(),
                                     LookupKind::Normal,
                                     &mut ResultContext::Unknown,
+                                    &|issue| node_ref.add_issue(i_s, issue),
                                     &|t| {
                                         add_attribute_error(
                                             i_s,
@@ -1413,10 +1414,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                             r_type
                                                 .lookup(
                                                     self.i_s,
-                                                    from,
+                                                    from.file_index(),
                                                     "__iter__",
                                                     LookupKind::OnlyType,
                                                     &mut ResultContext::Unknown,
+                                                    &|issue| from.add_issue(self.i_s, issue),
                                                     &|_| {
                                                         let right = second.format_short(self.i_s);
                                                         from.add_issue(
@@ -1664,10 +1666,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 r_type
                                     .lookup(
                                         i_s,
-                                        from,
+                                        from.file_index(),
                                         op.reverse_magic_method,
                                         LookupKind::OnlyType,
                                         &mut ResultContext::Unknown,
+                                        &|_| todo!(),
                                         &|_| {},
                                     )
                                     .into_maybe_inferred(),

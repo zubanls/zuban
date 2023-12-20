@@ -1497,10 +1497,11 @@ impl<'db: 'slf, 'slf> Inferred {
         self.as_cow_type(i_s).run_after_lookup_on_each_union_member(
             i_s,
             Some(self),
-            from,
+            from.file_index(),
             name,
             kind,
             &mut ResultContext::Unknown,
+            &|issue| todo!(),
             callable,
         )
     }
@@ -1518,15 +1519,21 @@ impl<'db: 'slf, 'slf> Inferred {
     pub fn lookup_with_result_context(
         &self,
         i_s: &InferenceState<'db, '_>,
-        node_ref: NodeRef,
+        from: NodeRef,
         name: &str,
         kind: LookupKind,
         result_context: &mut ResultContext,
     ) -> LookupResult {
         let base_type = self.as_cow_type(i_s);
-        base_type.lookup(i_s, node_ref, name, kind, result_context, &|t| {
-            add_attribute_error(i_s, node_ref, &base_type, t, name)
-        })
+        base_type.lookup(
+            i_s,
+            from.file_index(),
+            name,
+            kind,
+            result_context,
+            &|issue| from.add_issue(i_s, issue),
+            &|t| add_attribute_error(i_s, from, &base_type, t, name),
+        )
     }
 
     pub(crate) fn type_lookup_and_execute(
