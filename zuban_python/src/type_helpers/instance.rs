@@ -416,18 +416,11 @@ impl<'a> Instance<'a> {
     pub(crate) fn lookup_on_self(
         &self,
         i_s: &'a InferenceState,
-        node_ref: NodeRef,
+        add_issue: &dyn Fn(IssueType),
         name: &str,
         kind: LookupKind,
     ) -> LookupDetails<'a> {
-        self.lookup_with_explicit_self_binding(
-            i_s,
-            &|issue| node_ref.add_issue(i_s, issue),
-            name,
-            kind,
-            0,
-            || Type::Self_,
-        )
+        self.lookup_with_explicit_self_binding(i_s, add_issue, name, kind, 0, || Type::Self_)
     }
 
     pub(crate) fn full_lookup(

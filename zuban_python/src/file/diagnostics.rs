@@ -570,7 +570,7 @@ impl<'db> Inference<'db, '_, '_> {
                     if let Some(dataclass) = c.maybe_dataclass() {
                         let override_details = Instance::new(c, None).lookup_on_self(
                             self.i_s,
-                            node_ref,
+                            &|issue| todo!(),
                             name,
                             LookupKind::OnlyType,
                         );

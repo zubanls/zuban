@@ -203,7 +203,7 @@ impl Type {
                     ),
                     from_inferred,
                 );
-                let l = inst.lookup_on_self(i_s, from, name, kind);
+                let l = inst.lookup_on_self(i_s, &add_issue, name, kind);
                 callable(self, Some(l.class), l.lookup)
             }
             Type::Super { class, mro_index } => {
