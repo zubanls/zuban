@@ -1651,6 +1651,7 @@ fn check_override(
             match_ = Match::new_false();
         }
     }
+    use AttributeKind::*;
     match (
         original_lookup_details.attr_kind,
         override_lookup_details.attr_kind,
@@ -1674,6 +1675,11 @@ fn check_override(
                         IssueType::ReadOnlyPropertyCannotOverwriteReadWriteProperty,
                     );
             }
+        }
+        (Classmethod | Staticmethod, DefMethod) => {
+            // Some method types may be overridden, because they still work the same way on class
+            // and instance, others not.
+            match_ = Match::new_false();
         }
         _ => (),
     }

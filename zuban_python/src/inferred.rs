@@ -773,16 +773,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     PointType::Specific => match point.specific() {
                         Specific::Function => {
                             let func = prepare_func(i_s, *definition, attribute_class);
-                            let attr_kind = AttributeKind::Attribute;
-                            /*
-                             * TODO use something like this
-                            let attr_kind = match o.kind() {
-                                FunctionKind::Staticmethod => InstanceAttributeKind::Staticmethod,
-                                FunctionKind::Function { .. } => InstanceAttributeKind::DefMethod,
-                                FunctionKind::Classmethod { .. } => InstanceAttributeKind::Classmethod,
-                                FunctionKind::Property { .. } => unreachable!()
-                            };
-                            */
+                            let attr_kind = AttributeKind::DefMethod;
                             return if let Some(first_type) = func.first_param_annotation_type(i_s) {
                                 if let Some(t) = create_signature_without_self(
                                     i_s,
@@ -829,15 +820,25 @@ impl<'db: 'slf, 'slf> Inferred {
                         }
                         Specific::DecoratedFunction => {
                             let func = prepare_func(i_s, *definition, attribute_class);
-                            return func.decorated(i_s).bind_instance_descriptors_internal(
-                                i_s,
-                                instance,
-                                attribute_class,
-                                add_issue,
-                                mro_index,
-                                // Class vars are remapped separatly
-                                apply_descriptors_kind,
-                            );
+                            let mut result =
+                                func.decorated(i_s).bind_instance_descriptors_internal(
+                                    i_s,
+                                    instance,
+                                    attribute_class,
+                                    add_issue,
+                                    mro_index,
+                                    // Class vars are remapped separatly
+                                    apply_descriptors_kind,
+                                );
+                            result.as_mut().map(|result| {
+                                result.1 = match func.kind(i_s) {
+                                    FunctionKind::Staticmethod => AttributeKind::Staticmethod,
+                                    FunctionKind::Function { .. } => AttributeKind::DefMethod,
+                                    FunctionKind::Classmethod { .. } => AttributeKind::Classmethod,
+                                    FunctionKind::Property { .. } => result.1,
+                                };
+                            });
+                            return result;
                         }
                         // TODO this should have the case of Specific::AnnotationOrTypeCommentClassVar as well
                         Specific::AnnotationOrTypeCommentWithTypeVars
@@ -2368,6 +2369,7 @@ pub fn add_attribute_error(
     );
 }
 
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum AttributeKind {
     Attribute,
     ClassVar,

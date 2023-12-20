@@ -964,11 +964,6 @@ testMixinTypedPropertyReversed
 # "Property "x" defined in "Base" is read-only"
 testNewNamedTupleMethodInheritance
 testCantImplementAbstractPropertyViaInstanceVariable
-# classmethod/staticmethod Incompatible with superclass
-testClassMethodSubclassing
-testClassStaticMethodSubclassing
-testOverloadClassMethodMixingInheritance
-testOverloadStaticMethodMixingInheritance
 # "Cannot override class variable (previously declared on base class "A") with instance variable"
 testOverrideWithNormalAttribute
 # "Cannot override instance variable (previously declared on base class "A") with class variable"
