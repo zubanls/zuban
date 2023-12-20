@@ -1073,10 +1073,10 @@ impl<'db: 'a, 'a> Class<'a> {
                                     name,
                                     &t1,
                                     &t2,
-                                    &c.lookup(i_s, hack, name, LookupKind::Normal)
+                                    &c.lookup(i_s, |_| todo!(), name, LookupKind::Normal)
                                         .into_inferred()
                                         .as_cow_type(i_s),
-                                    &cls.lookup(i_s, hack, name, LookupKind::Normal)
+                                    &cls.lookup(i_s, |_| todo!(), name, LookupKind::Normal)
                                         .into_inferred()
                                         .as_cow_type(i_s),
                                 ),
@@ -1220,15 +1220,22 @@ impl<'db: 'a, 'a> Class<'a> {
         (LookupResult::None, None, 0.into())
     }
 
-    pub fn lookup_and_class_and_maybe_ignore_self(
+    pub(crate) fn lookup_and_class_and_maybe_ignore_self(
         &self,
         i_s: &InferenceState<'db, '_>,
-        hack: NodeRef,
+        add_issue: impl Fn(IssueType),
         name: &str,
         kind: LookupKind,
         ignore_self: bool,
     ) -> (LookupResult, Option<Class>) {
-        self.lookup_with_or_without_descriptors_internal(i_s, hack, name, kind, false, ignore_self)
+        self.lookup_with_or_without_descriptors_internal(
+            i_s,
+            add_issue,
+            name,
+            kind,
+            false,
+            ignore_self,
+        )
     }
 
     pub fn lookup_without_descriptors(
@@ -1239,7 +1246,7 @@ impl<'db: 'a, 'a> Class<'a> {
     ) -> (LookupResult, Option<Class>) {
         self.lookup_with_or_without_descriptors_internal(
             i_s,
-            node_ref,
+            |issue| node_ref.add_issue(i_s, issue),
             name,
             LookupKind::Normal,
             false,
@@ -1247,22 +1254,22 @@ impl<'db: 'a, 'a> Class<'a> {
         )
     }
 
-    pub fn lookup_with_custom_self_type(
+    pub(crate) fn lookup_with_custom_self_type(
         &'a self,
         i_s: &InferenceState<'db, '_>,
-        node_ref: NodeRef,
+        add_issue: impl Fn(IssueType),
         name: &str,
         kind: LookupKind,
         as_type_type: impl Fn() -> Type,
     ) -> LookupResult {
-        self.lookup_internal_detailed(i_s, node_ref, name, kind, true, false, as_type_type)
+        self.lookup_internal_detailed(i_s, add_issue, name, kind, true, false, as_type_type)
             .0
     }
 
     fn lookup_with_or_without_descriptors_internal(
         &'a self,
         i_s: &InferenceState<'db, '_>,
-        node_ref: NodeRef,
+        add_issue: impl Fn(IssueType),
         name: &str,
         kind: LookupKind,
         use_descriptors: bool,
@@ -1270,7 +1277,7 @@ impl<'db: 'a, 'a> Class<'a> {
     ) -> (LookupResult, Option<Class>) {
         self.lookup_internal_detailed(
             i_s,
-            node_ref,
+            add_issue,
             name,
             kind,
             use_descriptors,
@@ -1282,7 +1289,7 @@ impl<'db: 'a, 'a> Class<'a> {
     fn lookup_internal_detailed(
         &'a self,
         i_s: &InferenceState<'db, '_>,
-        node_ref: NodeRef,
+        add_issue: impl Fn(IssueType),
         name: &str,
         kind: LookupKind,
         use_descriptors: bool,
@@ -1300,16 +1307,13 @@ impl<'db: 'a, 'a> Class<'a> {
                 if let Some(in_class) = in_class {
                     if class_infos.has_slots {
                         if self.in_slots(i_s.db, name) {
-                            node_ref.add_issue(
-                                i_s,
-                                IssueType::SlotsConflictWithClassVariableAccess {
-                                    name: name.into(),
-                                },
-                            )
+                            add_issue(IssueType::SlotsConflictWithClassVariableAccess {
+                                name: name.into(),
+                            })
                         }
                     }
                     let i_s = i_s.with_class_context(&in_class);
-                    inf.bind_class_descriptors(&i_s, self, in_class, node_ref, use_descriptors)
+                    inf.bind_class_descriptors(&i_s, self, in_class, &add_issue, use_descriptors)
                 } else {
                     Some(inf)
                 }
@@ -1327,7 +1331,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         instance
                             .lookup_with_explicit_self_binding(
                                 i_s,
-                                &|issue| node_ref.add_issue(i_s, issue),
+                                &|issue| add_issue(issue),
                                 name,
                                 LookupKind::Normal,
                                 0,
@@ -1817,14 +1821,14 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    pub fn lookup(
+    pub(crate) fn lookup(
         &self,
         i_s: &InferenceState,
-        node_ref: NodeRef,
+        add_issue: impl Fn(IssueType),
         name: &str,
         kind: LookupKind,
     ) -> LookupResult {
-        self.lookup_with_or_without_descriptors_internal(i_s, node_ref, name, kind, true, false)
+        self.lookup_with_or_without_descriptors_internal(i_s, add_issue, name, kind, true, false)
             .0
     }
 
@@ -1849,7 +1853,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 if let Some(__getitem__) = self
                     .lookup(
                         i_s,
-                        slice_type.as_node_ref(),
+                        |issue| slice_type.as_node_ref().add_issue(i_s, issue),
                         "__getitem__",
                         LookupKind::OnlyType,
                     )

@@ -693,10 +693,10 @@ pub fn dataclass_init_func<'a>(self_: &'a Rc<Dataclass>, db: &Database) -> &'a C
     self_.__init__.get().unwrap()
 }
 
-pub fn lookup_on_dataclass_type(
+pub(crate) fn lookup_on_dataclass_type(
     self_: Rc<Dataclass>,
     i_s: &InferenceState,
-    from: NodeRef,
+    add_issue: impl Fn(IssueType),
     name: &str,
     kind: LookupKind,
 ) -> LookupResult {
@@ -721,7 +721,7 @@ pub fn lookup_on_dataclass_type(
             ),
         ))));
     }
-    self_.class(i_s.db).lookup(i_s, from, name, kind)
+    self_.class(i_s.db).lookup(i_s, add_issue, name, kind)
 }
 
 pub fn lookup_symbol_internal(

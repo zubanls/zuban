@@ -3,7 +3,7 @@ use std::{borrow::Cow, cell::RefCell, rc::Rc};
 use parsa_python_ast::{NodeIndex, PrimaryContent, PythonString, SliceType as ASTSliceType};
 
 use crate::{
-    arguments::{Arguments, CombinedArguments, KnownArguments},
+    arguments::{Arguments, CombinedArguments, KnownArguments, KnownArgumentsWithCustomAddIssue},
     database::{
         ComplexPoint, Database, FileIndex, Locality, OverloadDefinition, Point, PointLink,
         PointType, Specific,
@@ -1137,12 +1137,12 @@ impl<'db: 'slf, 'slf> Inferred {
         None
     }
 
-    pub fn bind_class_descriptors(
+    pub(crate) fn bind_class_descriptors(
         self,
         i_s: &InferenceState<'db, '_>,
         class: &Class,
         attribute_class: Class, // The (sub-)class in which an attribute is defined
-        from: NodeRef,
+        add_issue: impl Fn(IssueType),
         apply_descriptor: bool,
     ) -> Option<Self> {
         match &self.state {
@@ -1163,7 +1163,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     i_s,
                                     class,
                                     attribute_class,
-                                    from,
+                                    add_issue,
                                     apply_descriptor,
                                 );
                         }
@@ -1174,7 +1174,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             if specific == Specific::AnnotationOrTypeCommentWithTypeVars
                                 && apply_descriptor
                             {
-                                from.add_issue(i_s, IssueType::AmbigousClassVariableAccess);
+                                add_issue(IssueType::AmbigousClassVariableAccess);
                             }
                             let mut t = use_cached_annotation_or_type_comment(
                                 i_s,
@@ -1193,7 +1193,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 i_s,
                                 class,
                                 attribute_class,
-                                from,
+                                add_issue,
                                 apply_descriptor,
                                 &t,
                             ) {
@@ -1238,7 +1238,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 i_s,
                                 class,
                                 attribute_class,
-                                from,
+                                add_issue,
                                 apply_descriptor,
                                 t,
                             ) {
@@ -1256,7 +1256,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         i_s,
                         class,
                         attribute_class,
-                        from,
+                        add_issue,
                         apply_descriptor,
                         t,
                     ) {
@@ -1271,11 +1271,11 @@ impl<'db: 'slf, 'slf> Inferred {
         Some(self)
     }
 
-    pub fn bind_class_descriptors_for_type(
+    pub(crate) fn bind_class_descriptors_for_type(
         i_s: &InferenceState<'db, '_>,
         class: &Class,
         attribute_class: Class, // The (sub-)class in which an attribute is defined
-        from: NodeRef,
+        add_issue: impl Fn(IssueType),
         apply_descriptor: bool,
         t: &Type,
     ) -> Option<Option<Self>> {
@@ -1300,7 +1300,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             function_name: c.name(i_s.db).into(),
                             callable: t.format_short(i_s.db),
                         };
-                        from.add_issue(i_s, inv);
+                        add_issue(inv);
                         return Some(Some(Self::new_any_from_error()));
                     }
                     return Some(result.map(callable_into_inferred));
@@ -1331,15 +1331,18 @@ impl<'db: 'slf, 'slf> Inferred {
                     None,
                 );
                 if let Some(inf) = inst
-                    .type_lookup(i_s, |issue| from.add_issue(i_s, issue), "__get__")
+                    .type_lookup(i_s, |issue| add_issue(issue), "__get__")
                     .into_maybe_inferred()
                 {
                     let class_as_inferred = class.as_inferred(i_s);
                     return Some(Some(inf.execute(
                         i_s,
                         &CombinedArguments::new(
-                            &KnownArguments::new(&Inferred::new_none(), from),
-                            &KnownArguments::new(&class_as_inferred, from),
+                            &KnownArgumentsWithCustomAddIssue::new(
+                                &Inferred::new_none(),
+                                &add_issue,
+                            ),
+                            &KnownArgumentsWithCustomAddIssue::new(&class_as_inferred, &add_issue),
                         ),
                     )));
                 }

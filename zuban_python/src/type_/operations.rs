@@ -175,9 +175,15 @@ impl Type {
                     )
                 }
             }
-            Type::Type(t) => {
-                attribute_access_of_type(i_s, from, name, kind, result_context, callable, t.clone())
-            }
+            Type::Type(t) => attribute_access_of_type(
+                i_s,
+                &add_issue,
+                name,
+                kind,
+                result_context,
+                callable,
+                t.clone(),
+            ),
             Type::Callable(_) | Type::FunctionOverload(_) => callable(
                 self,
                 None,
@@ -511,9 +517,9 @@ impl Type {
     }
 }
 
-pub fn attribute_access_of_type(
+pub(crate) fn attribute_access_of_type(
     i_s: &InferenceState,
-    from: NodeRef,
+    add_issue: &dyn Fn(IssueType),
     name: &str,
     kind: LookupKind,
     result_context: &mut ResultContext,
@@ -526,7 +532,7 @@ pub fn attribute_access_of_type(
             for t in union.iter() {
                 attribute_access_of_type(
                     i_s,
-                    from,
+                    &add_issue,
                     name,
                     kind,
                     result_context,
@@ -540,7 +546,7 @@ pub fn attribute_access_of_type(
             match &t.type_var.kind {
                 TypeVarKind::Bound(bound) => attribute_access_of_type(
                     i_s,
-                    from,
+                    add_issue,
                     name,
                     kind,
                     result_context,
@@ -552,40 +558,43 @@ pub fn attribute_access_of_type(
             }
             return;
         }
-        Type::Class(g) => g.class(i_s.db).lookup(i_s, from, name, kind),
+        Type::Class(g) => g.class(i_s.db).lookup(i_s, add_issue, name, kind),
         Type::Literal(l) => i_s
             .db
             .python_state
             .literal_instance(&l.kind)
             .class
-            .lookup(i_s, from, name, kind),
+            .lookup(i_s, add_issue, name, kind),
         Type::Callable(_) => LookupResult::None,
-        Type::Self_ => i_s.current_class().unwrap().lookup(i_s, from, name, kind),
+        Type::Self_ => i_s
+            .current_class()
+            .unwrap()
+            .lookup(i_s, add_issue, name, kind),
         Type::Any(cause) => i_s
             .db
             .python_state
             .bare_type_class()
             .instance()
-            .lookup(i_s, |issue| from.add_issue(i_s, issue), name, kind)
+            .lookup(i_s, |issue| add_issue(issue), name, kind)
             .or_else(|| LookupResult::any(*cause)),
-        t @ Type::Enum(e) => lookup_on_enum_class(i_s, from, e, name, result_context),
-        Type::Dataclass(d) => lookup_on_dataclass_type(d.clone(), i_s, from, name, kind),
+        t @ Type::Enum(e) => lookup_on_enum_class(i_s, add_issue, e, name, result_context),
+        Type::Dataclass(d) => lookup_on_dataclass_type(d.clone(), i_s, add_issue, name, kind),
         Type::TypedDict(d) => i_s
             .db
             .python_state
             .typed_dict_class()
-            .lookup(i_s, from, name, kind),
+            .lookup(i_s, add_issue, name, kind),
         Type::NamedTuple(nt) => nt.type_lookup(i_s, name, Some(&|| (*in_type).clone())),
         Type::Tuple(tup) => i_s
             .db
             .python_state
             .tuple_class(i_s.db, tup)
-            .lookup(i_s, from, name, kind),
+            .lookup(i_s, add_issue, name, kind),
         Type::Type(_) => i_s
             .db
             .python_state
             .bare_type_class()
-            .lookup(i_s, from, name, kind),
+            .lookup(i_s, add_issue, name, kind),
         t => todo!("{name} on {t:?}"),
     };
     callable(&Type::Type(in_type.clone()), None, lookup_result)

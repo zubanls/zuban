@@ -145,9 +145,9 @@ impl Enum {
     }
 }
 
-pub fn lookup_on_enum_class(
+pub(crate) fn lookup_on_enum_class(
     i_s: &InferenceState,
-    from: NodeRef,
+    add_issue: impl Fn(IssueType),
     enum_: &Rc<Enum>,
     name: &str,
     result_context: &mut ResultContext,
@@ -157,7 +157,7 @@ pub fn lookup_on_enum_class(
         _ => lookup_members_on_enum(i_s, enum_, name, result_context).or_else(|| {
             enum_.class(i_s.db).lookup_with_custom_self_type(
                 i_s,
-                from,
+                add_issue,
                 name,
                 LookupKind::Normal,
                 || Type::Type(Rc::new(Type::Enum(enum_.clone()))),
@@ -224,7 +224,12 @@ pub fn infer_value_on_member(
                     Inferred::from_type(
                         enum_
                             .class(i_s.db)
-                            .lookup(i_s, node_ref, "_generate_next_value_", LookupKind::Normal)
+                            .lookup(
+                                i_s,
+                                |issue| node_ref.add_issue(i_s, issue),
+                                "_generate_next_value_",
+                                LookupKind::Normal,
+                            )
                             .into_maybe_inferred()
                             .and_then(|inf| {
                                 // Check We have a proper callable that is not part of the enum module

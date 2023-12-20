@@ -1828,7 +1828,7 @@ fn check_override(
                     }),
                     &original_t,
                     override_class
-                        .lookup_and_class_and_maybe_ignore_self(i_s, from, name, kind, true)
+                        .lookup_and_class_and_maybe_ignore_self(i_s, |_| todo!(), name, kind, true)
                         .0,
                 );
             }
@@ -1837,7 +1837,7 @@ fn check_override(
                 &mut notes,
                 &i_s.with_class_context(&override_class),
                 &override_t,
-                override_class.lookup(i_s, from, name, kind),
+                override_class.lookup(i_s, |_| todo!(), name, kind),
             );
 
             if op_method_wider_note {
