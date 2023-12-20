@@ -311,7 +311,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let import_file = self.i_s.db.loaded_python_file(*file_index);
                 Module::new(import_file).lookup_with_is_import(
                     self.i_s,
-                    NodeRef::new(self.file, import_name.index()),
+                    |issue| NodeRef::new(self.file, import_name.index()).add_issue(self.i_s, issue),
                     import_name.as_str(),
                     true,
                 )
@@ -364,21 +364,22 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     ) -> Option<ImportResult> {
         let file_index = self.file_index;
         let infer_name = |self_: &Self, import_result, name: Name| {
+            let i_s = self_.i_s;
             let mut in_stub_and_has_getattr = false;
             let result = match &import_result {
                 ImportResult::File(file_index) => {
-                    let module = Module::from_file_index(self.i_s.db, *file_index);
-                    let r = module.sub_module(self.i_s.db, name.as_str());
+                    let module = Module::from_file_index(i_s.db, *file_index);
+                    let r = module.sub_module(i_s.db, name.as_str());
 
                     // This is such weird logic. I don't understand at all why Mypy is doing this.
                     // It seems to come from here:
                     // https://github.com/python/mypy/blob/bc591c756a453bb6a78a31e734b1f0aa475e90e0/mypy/semanal_pass1.py#L87-L96
                     if r.is_none()
-                        && module.file.is_stub(self.i_s.db)
+                        && module.file.is_stub(i_s.db)
                         && module
                             .lookup(
-                                self.i_s,
-                                NodeRef::new(self.file, name.index()),
+                                i_s,
+                                |issue| NodeRef::new(self.file, name.index()).add_issue(i_s, issue),
                                 "__getattr__",
                             )
                             .is_some()
@@ -388,7 +389,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     r
                 }
                 ImportResult::Namespace(namespace) => python_import(
-                    self.i_s.db,
+                    i_s.db,
                     file_index,
                     &namespace.path,
                     &namespace.content,
@@ -398,7 +399,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             if let Some(imported) = &result {
                 debug!(
                     "Imported {:?} for {:?}",
-                    imported.path(self.i_s.db),
+                    imported.path(i_s.db),
                     dotted.as_code(),
                 );
             } else if in_stub_and_has_getattr {
@@ -407,12 +408,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     name.as_str()
                 );
             } else {
-                let module_name = format!(
-                    "{}.{}",
-                    import_result.qualified_name(self.i_s.db),
-                    name.as_str()
-                )
-                .into();
+                let module_name =
+                    format!("{}.{}", import_result.qualified_name(i_s.db), name.as_str()).into();
                 self_.add_issue(name.index(), IssueType::ModuleNotFound { module_name });
             }
             result

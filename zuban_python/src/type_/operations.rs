@@ -186,7 +186,7 @@ impl Type {
             ),
             Type::Module(file_index) => {
                 let module = Module::from_file_index(i_s.db, *file_index);
-                callable(self, None, module.lookup(i_s, from, name))
+                callable(self, None, module.lookup(i_s, add_issue, name))
             }
             Type::Namespace(namespace) => callable(
                 self,

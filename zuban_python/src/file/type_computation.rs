@@ -1402,8 +1402,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         Some(ImportResult::Namespace { .. }) => todo!(),
                         None => {
                             let node_ref = NodeRef::new(self.inference.file, primary.index());
-                            if let Some(inf) =
-                                module.maybe_execute_getattr(self.inference.i_s, node_ref)
+                            if let Some(inf) = module
+                                .maybe_execute_getattr(self.inference.i_s, &|issue| {
+                                    node_ref.add_issue(self.inference.i_s, issue)
+                                })
                             {
                                 // If a module contains a __getattr__, the type can be part of that
                                 // (which is typically just an Any that propagates).

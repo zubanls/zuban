@@ -776,6 +776,7 @@ where
                             | ArgumentKind::Inferred {
                                 is_keyword: None, ..
                             }
+                            | ArgumentKind::InferredWithCustomAddIssue { .. }
                             | ArgumentKind::Comprehension { .. } => argument_with_index = Some(arg),
                             _ => {
                                 if arg.keyword_name(self.db).is_some() {

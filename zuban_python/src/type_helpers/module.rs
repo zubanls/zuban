@@ -1,13 +1,13 @@
 use crate::{
-    arguments::KnownArguments,
+    arguments::KnownArgumentsWithCustomAddIssue,
     database::{Database, FileIndex, PointLink},
     debug,
+    diagnostics::IssueType,
     file::{File, PythonFile},
     imports::{python_import, ImportResult},
     inference_state::InferenceState,
     inferred::Inferred,
     matching::LookupResult,
-    node_ref::NodeRef,
     type_::{Namespace, Type},
     workspaces::{Directory, Parent},
 };
@@ -60,14 +60,19 @@ impl<'a> Module<'a> {
         }
     }
 
-    pub fn lookup(&self, i_s: &InferenceState, from: NodeRef, name: &str) -> LookupResult {
-        self.lookup_with_is_import(i_s, from, name, false)
-    }
-
-    pub fn lookup_with_is_import(
+    pub(crate) fn lookup(
         &self,
         i_s: &InferenceState,
-        from: NodeRef,
+        add_issue: impl Fn(IssueType),
+        name: &str,
+    ) -> LookupResult {
+        self.lookup_with_is_import(i_s, add_issue, name, false)
+    }
+
+    pub(crate) fn lookup_with_is_import(
+        &self,
+        i_s: &InferenceState,
+        add_issue: impl Fn(IssueType),
         name: &str,
         is_import: bool,
     ) -> LookupResult {
@@ -100,7 +105,7 @@ impl<'a> Module<'a> {
                     .infer_name_by_index(link.node_index)
             };
             LookupResult::GotoName { name: link, inf }
-        } else if let Some(inf) = self.maybe_execute_getattr(i_s, from) {
+        } else if let Some(inf) = self.maybe_execute_getattr(i_s, &add_issue) {
             LookupResult::UnknownName(inf)
         } else if name == "__getattr__" {
             // There is a weird (and wrong) definition in typeshed that defines __getattr__ on
@@ -108,15 +113,18 @@ impl<'a> Module<'a> {
             // https://github.com/python/typeshed/blob/516f6655051b061652f086445ea54e8e82232349/stdlib/types.pyi#L352
             LookupResult::None
         } else {
-            i_s.db.python_state.module_instance().type_lookup(
-                i_s,
-                |issue| from.add_issue(i_s, issue),
-                name,
-            )
+            i_s.db
+                .python_state
+                .module_instance()
+                .type_lookup(i_s, |issue| add_issue(issue), name)
         }
     }
 
-    pub fn maybe_execute_getattr(&self, i_s: &InferenceState, from: NodeRef) -> Option<Inferred> {
+    pub(crate) fn maybe_execute_getattr(
+        &self,
+        i_s: &InferenceState,
+        add_issue: &'a dyn Fn(IssueType),
+    ) -> Option<Inferred> {
         self.file.lookup_global("__getattr__").map(|link| {
             let inf = i_s
                 .db
@@ -125,7 +133,10 @@ impl<'a> Module<'a> {
                 .infer_name_by_index(link.node_index);
             inf.execute(
                 i_s,
-                &KnownArguments::new(&Inferred::from_type(i_s.db.python_state.str_type()), from),
+                &KnownArgumentsWithCustomAddIssue::new(
+                    &Inferred::from_type(i_s.db.python_state.str_type()),
+                    add_issue,
+                ),
             )
         })
     }
