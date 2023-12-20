@@ -1028,9 +1028,13 @@ impl<'db: 'a, 'a> Class<'a> {
                 // We cannot just use lookup.into_maybe_inferred, because unions can be involved.
                 if !had_lookup_error.get() {
                     had_at_least_one_member_with_same_name = true;
-                    let inf1 = Instance::new(c, None)
-                        .full_lookup(i_s, hack, name)
-                        .into_inferred();
+                    let protocol_lookup_details = Instance::new(c, None).lookup_with_details(
+                        i_s,
+                        |issue| todo!(),
+                        name,
+                        LookupKind::Normal,
+                    );
+                    let inf1 = protocol_lookup_details.lookup.into_inferred();
                     let t1 = inf1.as_cow_type(i_s);
                     let lookup = lookup.into_inferred();
                     let t2 = lookup.as_cow_type(i_s);
