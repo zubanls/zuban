@@ -228,11 +228,7 @@ impl Type {
                 );
                 if matches!(&l.lookup, LookupResult::None) {
                     add_issue(IssueType::UndefinedInSuperclass { name: name.into() });
-                    callable(
-                        self,
-                        None,
-                        LookupResult::UnknownName(Inferred::new_any_from_error()),
-                    );
+                    callable(self, None, LookupResult::any(AnyCause::FromError));
                     return;
                 }
                 callable(self, Some(l.class), l.lookup)
