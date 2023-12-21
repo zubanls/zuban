@@ -525,8 +525,9 @@ testProtocolClassObjectPropertyRejected
 testNamedTupleWithNoArgsCallableField
 # Protocol with ClassVar
 testProtocolClassObjectAttribute
-testModuleAsProtocolImplementationClassVar
 testProtocolTypeTypeAttribute
+testDataclassCheckTypeVarBounds
+testDataclassCheckTypeVarBoundsInReprocess
 # Protocol Override inheritance
 testNoneDisablesProtocolSubclassingWithStrictOptional
 # Context inference for protocols
