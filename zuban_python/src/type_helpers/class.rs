@@ -1053,7 +1053,11 @@ impl<'db: 'a, 'a> Class<'a> {
                             let lookup = lookup_details.lookup.into_inferred();
                             let t2 = lookup.as_cow_type(i_s);
                             let m = t1.matches(i_s, matcher, &t2, variance);
-                            if !m.bool() || is_call && !matches!(other, Type::Class(_)) {
+                            if m.bool() && !(is_call && !matches!(other, Type::Class(_))) {
+                                if lookup_details.attr_kind.is_read_only_property() && !protocol_lookup_details.attr_kind.is_read_only_property() {
+                                    notes.push(format!("Protocol member {}.{name} expected settable variable, got read-only attribute", self.name()).into());
+                                }
+                            } else {
                                 if EXCLUDED_PROTOCOL_ATTRIBUTES.contains(&name) {
                                     return;
                                 }

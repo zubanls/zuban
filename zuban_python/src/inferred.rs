@@ -2394,3 +2394,9 @@ pub enum AttributeKind {
     Staticmethod,
     DefMethod,
 }
+
+impl AttributeKind {
+    pub fn is_read_only_property(&self) -> bool {
+        matches!(self, Self::Property { writable: false })
+    }
+}
