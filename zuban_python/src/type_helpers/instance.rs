@@ -701,3 +701,36 @@ pub struct LookupDetails<'a> {
     pub lookup: LookupResult,
     pub attr_kind: AttributeKind,
 }
+
+impl LookupDetails<'_> {
+    pub fn any(cause: AnyCause) -> Self {
+        Self {
+            class: TypeOrClass::Type(Cow::Owned(Type::Any(cause))),
+            lookup: LookupResult::any(cause),
+            attr_kind: AttributeKind::Attribute,
+        }
+    }
+
+    pub fn new(type_: Type, lookup: LookupResult, attr_kind: AttributeKind) -> Self {
+        Self {
+            class: TypeOrClass::Type(Cow::Owned(type_)),
+            lookup,
+            attr_kind,
+        }
+    }
+
+    pub fn none() -> Self {
+        Self::new(
+            Type::Any(AnyCause::Internal),
+            LookupResult::None,
+            AttributeKind::Attribute,
+        )
+    }
+
+    pub fn or_else(self, c: impl FnOnce() -> Self) -> Self {
+        match self.lookup {
+            LookupResult::None => c(),
+            _ => self,
+        }
+    }
+}

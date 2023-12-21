@@ -14,10 +14,10 @@ use crate::{
     diagnostics::IssueType,
     file::File,
     inference_state::InferenceState,
-    inferred::Inferred,
+    inferred::{AttributeKind, Inferred},
     matching::{FormatData, LookupKind, LookupResult, ResultContext},
     node_ref::NodeRef,
-    type_helpers::{Class, Instance, TypeOrClass},
+    type_helpers::{Class, Instance, LookupDetails, TypeOrClass},
 };
 
 #[derive(Debug, PartialEq, Clone)]
@@ -166,38 +166,49 @@ pub(crate) fn lookup_on_enum_class(
     }
 }
 
-pub(crate) fn lookup_on_enum_instance(
-    i_s: &InferenceState,
+pub(crate) fn lookup_on_enum_instance<'a>(
+    i_s: &'a InferenceState,
     add_issue: impl Fn(IssueType),
-    enum_: &Rc<Enum>,
+    enum_: &'a Rc<Enum>,
     name: &str,
     result_context: &mut ResultContext,
-) -> LookupResult {
+) -> LookupDetails<'a> {
     match name {
-        "value" | "_value_" => {
+        "value" | "_value_" => LookupDetails::new(
+            Type::Enum(enum_.clone()),
             LookupResult::UnknownName(Inferred::gather_simplified_union(i_s, |add| {
                 for member in enum_.members.iter() {
                     add(infer_value_on_member(i_s, enum_, member.value))
                 }
-            }))
+            })),
+            AttributeKind::Attribute,
+        ),
+        "_ignore_" => LookupDetails::none(),
+        _ => {
+            let lookup = lookup_members_on_enum(i_s, enum_, name, result_context);
+            if lookup.is_some() {
+                LookupDetails::new(Type::Enum(enum_.clone()), lookup, AttributeKind::Attribute)
+            } else {
+                lookup_on_enum_instance_fallback(i_s, add_issue, enum_, name)
+            }
         }
-        "_ignore_" => LookupResult::None,
-        _ => lookup_members_on_enum(i_s, enum_, name, result_context)
-            .or_else(|| lookup_on_enum_instance_fallback(i_s, add_issue, enum_, name)),
     }
 }
 
-fn lookup_on_enum_instance_fallback(
-    i_s: &InferenceState,
+fn lookup_on_enum_instance_fallback<'a>(
+    i_s: &'a InferenceState,
     add_issue: impl Fn(IssueType),
-    enum_: &Rc<Enum>,
+    enum_: &'a Rc<Enum>,
     name: &str,
-) -> LookupResult {
-    Instance::new(enum_.class(i_s.db), None)
-        .lookup_with_explicit_self_binding(i_s, &add_issue, name, LookupKind::Normal, 0, || {
-            Type::Enum(enum_.clone())
-        })
-        .lookup
+) -> LookupDetails<'a> {
+    Instance::new(enum_.class(i_s.db), None).lookup_with_explicit_self_binding(
+        i_s,
+        &add_issue,
+        name,
+        LookupKind::Normal,
+        0,
+        || Type::Enum(enum_.clone()),
+    )
 }
 
 pub fn infer_value_on_member(
@@ -255,12 +266,12 @@ pub fn infer_value_on_member(
     }
 }
 
-pub(crate) fn lookup_on_enum_member_instance(
-    i_s: &InferenceState,
+pub(crate) fn lookup_on_enum_member_instance<'a>(
+    i_s: &'a InferenceState,
     add_issue: impl Fn(IssueType),
-    member: &EnumMember,
+    member: &'a EnumMember,
     name: &str,
-) -> LookupResult {
+) -> LookupDetails<'a> {
     let enum_class = member.enum_.class(i_s.db);
     let is_enum = enum_class.mro(i_s.db).any(|(_, base)| match base {
         TypeOrClass::Class(c) => c.node_ref == i_s.db.python_state.enum_node_ref(),
@@ -271,22 +282,35 @@ pub(crate) fn lookup_on_enum_member_instance(
     if is_enum {
         match name {
             "name" | "_name_" => {
-                return LookupResult::UnknownName(Inferred::from_type(Type::Literal(Literal {
-                    implicit: true,
-                    kind: LiteralKind::String(DbString::RcStr(member.name(i_s.db).into())),
-                })))
+                return LookupDetails::new(
+                    Type::Enum(member.enum_.clone()),
+                    LookupResult::UnknownName(Inferred::from_type(Type::Literal(Literal {
+                        implicit: true,
+                        kind: LiteralKind::String(DbString::RcStr(member.name(i_s.db).into())),
+                    }))),
+                    AttributeKind::Attribute,
+                )
             }
             "value" | "_value_" => {
                 let value = member.value();
                 if value.is_none() {
-                    let result = Instance::new(enum_class, None).type_lookup(i_s, add_issue, name);
-                    if result.is_some() {
+                    let result = Instance::new(enum_class, None).lookup_with_details(
+                        i_s,
+                        add_issue,
+                        name,
+                        LookupKind::OnlyType,
+                    );
+                    if result.lookup.is_some() {
                         return result;
                     }
                 }
-                return LookupResult::UnknownName(infer_value_on_member(i_s, &member.enum_, value));
+                return LookupDetails::new(
+                    Type::Enum(member.enum_.clone()),
+                    LookupResult::UnknownName(infer_value_on_member(i_s, &member.enum_, value)),
+                    AttributeKind::DefMethod,
+                );
             }
-            "_ignore_" => return LookupResult::None,
+            "_ignore_" => return LookupDetails::none(),
             _ => (),
         }
     }

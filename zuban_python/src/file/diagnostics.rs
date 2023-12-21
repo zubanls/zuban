@@ -1252,7 +1252,7 @@ impl<'db> Inference<'db, '_, '_> {
             LookupKind::OnlyType,
             &mut ResultContext::Unknown,
             &|issue| todo!(),
-            &mut |forward, _, lookup| {
+            &mut |forward, _, lookup_details| {
                 let check = |callable: &CallableContent| {
                     // Can only overlap if the classes differ. On the same class __radd__ will
                     // never be called if there's a __add__ as well, because in that case __add__
@@ -1305,7 +1305,7 @@ impl<'db> Inference<'db, '_, '_> {
                         )
                     }
                 };
-                match lookup.into_inferred().as_type(i_s) {
+                match lookup_details.lookup.into_inferred().as_type(i_s) {
                     Type::Callable(c) => check(&c),
                     Type::FunctionOverload(overload) => {
                         for c in overload.iter_functions() {

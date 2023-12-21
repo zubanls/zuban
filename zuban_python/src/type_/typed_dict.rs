@@ -13,13 +13,13 @@ use crate::{
     file::{infer_string_index, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn},
     getitem::{SliceType, SliceTypeContent},
     inference_state::InferenceState,
-    inferred::Inferred,
+    inferred::{AttributeKind, Inferred},
     matching::{
         AvoidRecursionFor, FormatData, LookupKind, LookupResult, Matcher, MismatchReason,
         OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
-    type_helpers::{Class, Instance, Module},
+    type_helpers::{Class, Instance, LookupDetails, Module},
     utils::join_with_commas,
 };
 
@@ -969,15 +969,15 @@ pub(crate) fn initialize_typed_dict<'db>(
     Inferred::from_type(Type::TypedDict(td))
 }
 
-pub(crate) fn lookup_on_typed_dict(
+pub(crate) fn lookup_on_typed_dict<'a>(
     typed_dict: Rc<TypedDict>,
-    i_s: &InferenceState,
+    i_s: &'a InferenceState,
     add_issue: impl Fn(IssueType),
     name: &str,
     kind: LookupKind,
-) -> LookupResult {
+) -> LookupDetails<'a> {
     let bound = || Rc::new(Type::TypedDict(typed_dict.clone()));
-    LookupResult::UnknownName(Inferred::from_type(Type::CustomBehavior(match name {
+    let lookup = LookupResult::UnknownName(Inferred::from_type(Type::CustomBehavior(match name {
         "get" => CustomBehavior::new_method(typed_dict_get, Some(bound())),
         "setdefault" => CustomBehavior::new_method(typed_dict_setdefault, Some(bound())),
         "pop" => CustomBehavior::new_method(typed_dict_pop, Some(bound())),
@@ -989,9 +989,13 @@ pub(crate) fn lookup_on_typed_dict(
                 .lookup_with_explicit_self_binding(i_s, &add_issue, name, kind, 0, || {
                     Type::TypedDict(typed_dict.clone())
                 })
-                .lookup
         }
-    })))
+    })));
+    LookupDetails::new(
+        Type::TypedDict(typed_dict),
+        lookup,
+        AttributeKind::DefMethod,
+    )
 }
 
 pub(crate) fn infer_typed_dict_item(

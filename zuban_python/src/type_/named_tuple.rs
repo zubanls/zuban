@@ -13,14 +13,14 @@ use crate::{
     file::{File, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn},
     getitem::SliceType,
     inference_state::InferenceState,
-    inferred::Inferred,
+    inferred::{AttributeKind, Inferred},
     matching::{
         AvoidRecursionFor, FormatData, Generics, IteratorContent, LookupResult, OnTypeError,
         ResultContext,
     },
     new_class,
     node_ref::NodeRef,
-    type_helpers::{start_namedtuple_params, Module},
+    type_helpers::{start_namedtuple_params, LookupDetails, Module},
     utils::join_with_commas,
 };
 
@@ -150,10 +150,12 @@ impl NamedTuple {
         name: &str,
         from_type: bool,
         as_self: Option<&dyn Fn() -> Type>,
-    ) -> LookupResult {
-        LookupResult::UnknownName(Inferred::from_type(match name {
+    ) -> LookupDetails {
+        let mut attr_kind = AttributeKind::Attribute;
+        let type_ = match name {
             "__new__" => Type::Callable(self.__new__.clone()),
             "_replace" => Type::Callable({
+                attr_kind = AttributeKind::DefMethod;
                 let mut params = vec![];
                 if from_type {
                     params.push(CallableParam::new_anonymous(ParamType::PositionalOnly(
@@ -180,6 +182,7 @@ impl NamedTuple {
                 })
             }),
             "_asdict" => Type::Callable({
+                attr_kind = AttributeKind::DefMethod;
                 let mut params = vec![];
                 if from_type {
                     params.push(CallableParam::new_anonymous(ParamType::PositionalOnly(
@@ -203,6 +206,7 @@ impl NamedTuple {
                 })
             }),
             "_make" => Type::Callable({
+                attr_kind = AttributeKind::Classmethod;
                 let mut params = vec![];
                 if as_self.is_none() {
                     params.push(CallableParam::new_anonymous(ParamType::PositionalOnly(
@@ -252,10 +256,15 @@ impl NamedTuple {
                 if let Some(param) = self.search_param(i_s.db, name) {
                     param.type_.expect_positional_type_as_ref().clone()
                 } else {
-                    return LookupResult::None;
+                    return LookupDetails::none();
                 }
             }
-        }))
+        };
+        LookupDetails::new(
+            Type::Any(AnyCause::Internal), // TODO is this Any ok?
+            LookupResult::UnknownName(Inferred::from_type(type_)),
+            attr_kind,
+        )
     }
 
     pub fn type_lookup(
@@ -263,7 +272,7 @@ impl NamedTuple {
         i_s: &InferenceState,
         name: &str,
         as_self: Option<&dyn Fn() -> Type>,
-    ) -> LookupResult {
+    ) -> LookupDetails {
         self.lookup_internal(i_s, name, true, as_self)
     }
 
@@ -272,7 +281,7 @@ impl NamedTuple {
         i_s: &InferenceState,
         name: &str,
         as_self: Option<&dyn Fn() -> Type>,
-    ) -> LookupResult {
+    ) -> LookupDetails {
         self.lookup_internal(i_s, name, false, as_self)
     }
 }

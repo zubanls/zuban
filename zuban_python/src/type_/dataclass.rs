@@ -17,7 +17,7 @@ use crate::{
     diagnostics::{Issue, IssueType},
     file::{File, PythonFile},
     inference_state::InferenceState,
-    inferred::Inferred,
+    inferred::{AttributeKind, Inferred},
     matching::{
         calculate_callable_type_vars_and_return, replace_class_type_vars, LookupKind, LookupResult,
         OnTypeError, ResultContext,
@@ -25,7 +25,7 @@ use crate::{
     node_ref::NodeRef,
     python_state::NAME_TO_FUNCTION_DIFF,
     type_::{StarParamType, StarStarParamType},
-    type_helpers::{Callable, Class, Function, Instance, TypeOrClass},
+    type_helpers::{Callable, Class, Function, Instance, LookupDetails, TypeOrClass},
 };
 
 const ORDER_METHOD_NAMES: [&'static str; 4] = ["__lt__", "__gt__", "__le__", "__ge__"];
@@ -544,11 +544,12 @@ pub(crate) fn dataclasses_replace<'db>(
                         // InitVar, we use this hack and check if the attribute exists on the
                         // dataclass. If not, it's an InitVar.
                         if lookup_on_dataclass(
-                            dataclass.clone(),
+                            dataclass,
                             i_s,
                             |issue| args.add_issue(i_s, issue),
                             param.name.as_ref().unwrap().as_str(i_s.db),
                         )
+                        .lookup
                         .is_some()
                         {
                             param.has_default = true;
@@ -776,25 +777,36 @@ pub fn lookup_dataclass_symbol<'db: 'a, 'a>(
     (Some(class), class.lookup_symbol(i_s, name))
 }
 
-pub(crate) fn lookup_on_dataclass(
-    self_: Rc<Dataclass>,
-    i_s: &InferenceState,
+pub(crate) fn lookup_on_dataclass<'a>(
+    self_: &'a Rc<Dataclass>,
+    i_s: &'a InferenceState,
     add_issue: impl Fn(IssueType),
     name: &str,
-) -> LookupResult {
+) -> LookupDetails<'a> {
     let result = lookup_symbol_internal(self_.clone(), i_s, name);
     if result.is_some() {
-        return result;
+        return LookupDetails::new(
+            Type::Dataclass(self_.clone()),
+            result,
+            AttributeKind::Attribute,
+        );
     }
-    Instance::new(self_.class(i_s.db), None)
-        .lookup(i_s, add_issue, name, LookupKind::Normal)
+    let mut lookup_details = Instance::new(self_.class(i_s.db), None).lookup_with_details(
+        i_s,
+        add_issue,
+        name,
+        LookupKind::Normal,
+    );
+    lookup_details.lookup = lookup_details
+        .lookup
         .and_then(|inf| match inf.as_cow_type(i_s).as_ref() {
             // Init vars are not actually available on the class. They are just passed to __init__
             // and are not class members.
             Type::Class(c) if c.link == i_s.db.python_state.dataclasses_init_var_link() => None,
             _ => Some(inf),
         })
-        .unwrap_or(LookupResult::None)
+        .unwrap_or(LookupResult::None);
+    lookup_details
 }
 
 fn order_func(self_: Rc<Dataclass>, i_s: &InferenceState) -> LookupResult {

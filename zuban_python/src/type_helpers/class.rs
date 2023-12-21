@@ -2168,7 +2168,7 @@ impl<'db, 'a> MroIterator<'db, 'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TypeOrClass<'a> {
     Type(Cow<'a, Type>),
     Class(Class<'a>),

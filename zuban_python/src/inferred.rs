@@ -1502,7 +1502,7 @@ impl<'db: 'slf, 'slf> Inferred {
             kind,
             &mut ResultContext::Unknown,
             &|issue| todo!(),
-            callable,
+            &mut |t, c, details| callable(t, c, details.lookup),
         )
     }
 

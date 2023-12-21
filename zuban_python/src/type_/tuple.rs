@@ -11,11 +11,11 @@ use crate::{
     diagnostics::IssueType,
     getitem::{SliceType, SliceTypeContent},
     inference_state::InferenceState,
-    inferred::Inferred,
+    inferred::{AttributeKind, Inferred},
     matching::{FormatData, IteratorContent, LookupKind, LookupResult, OnTypeError, ResultContext},
     node_ref::NodeRef,
     type_::{AnyCause, Type},
-    type_helpers::{Instance, TypeOrClass},
+    type_helpers::{Instance, LookupDetails, TypeOrClass},
     utils::join_with_commas,
 };
 
@@ -248,55 +248,62 @@ impl TupleTypeArguments {
     }
 }
 
-pub(crate) fn lookup_on_tuple(
-    tuple: Rc<Tuple>,
-    i_s: &InferenceState,
+pub(crate) fn lookup_on_tuple<'x>(
+    tuple: &'x Rc<Tuple>,
+    i_s: &'x InferenceState,
     add_issue: impl Fn(IssueType),
     name: &str,
-) -> LookupResult {
+) -> LookupDetails<'x> {
     lookup_tuple_magic_methods(tuple.clone(), name).or_else(|| {
         let tuple_cls = i_s.db.python_state.tuple_class(i_s.db, &tuple);
         let tuple_instance = Instance::new(tuple_cls, None);
         for (mro_index, class_or_type) in tuple_cls.mro(i_s.db) {
             let (cls, lookup) = class_or_type.lookup_symbol(i_s, name);
-            let result = lookup.and_then(|inf| {
+            if let Some(inf) = lookup.into_maybe_inferred() {
                 let Some(cls) = cls else {
                     unreachable!();
                 };
-                inf.bind_instance_descriptors(
+                let Some((lookup, attr_kind)) = inf.bind_instance_descriptors(
                     i_s,
                     tuple_cls.as_type(i_s.db),
                     cls,
                     |issue| add_issue(issue),
                     mro_index,
-                )
-                .map(|inf| inf.0)
-            });
-            match result {
-                Some(LookupResult::None) => (),
-                None => return LookupResult::None,
-                Some(x) => return x,
+                ) else {
+                    return LookupDetails::none()
+                };
+                return LookupDetails {
+                    class: class_or_type,
+                    lookup: LookupResult::UnknownName(lookup),
+                    attr_kind,
+                };
             }
         }
         debug!("TODO tuple object lookups");
-        LookupResult::None
+        LookupDetails::new(
+            Type::Tuple(tuple.clone()),
+            LookupResult::None,
+            AttributeKind::Attribute,
+        )
     })
 }
 
-pub fn lookup_tuple_magic_methods(tuple: Rc<Tuple>, name: &str) -> LookupResult {
-    match name {
-        "__mul__" | "__rmul__" => {
-            return LookupResult::UnknownName(Inferred::from_type(Type::CustomBehavior(
-                CustomBehavior::new_method(tuple_mul, Some(Rc::new(Type::Tuple(tuple)))),
-            )));
-        }
-        "__add__" => {
-            return LookupResult::UnknownName(Inferred::from_type(Type::CustomBehavior(
+pub fn lookup_tuple_magic_methods(tuple: Rc<Tuple>, name: &str) -> LookupDetails<'static> {
+    LookupDetails::new(
+        Type::Tuple(tuple.clone()),
+        match name {
+            "__mul__" | "__rmul__" => {
+                LookupResult::UnknownName(Inferred::from_type(Type::CustomBehavior(
+                    CustomBehavior::new_method(tuple_mul, Some(Rc::new(Type::Tuple(tuple)))),
+                )))
+            }
+            "__add__" => LookupResult::UnknownName(Inferred::from_type(Type::CustomBehavior(
                 CustomBehavior::new_method(tuple_add, Some(Rc::new(Type::Tuple(tuple)))),
-            )));
-        }
-        _ => LookupResult::None,
-    }
+            ))),
+            _ => LookupResult::None,
+        },
+        AttributeKind::DefMethod,
+    )
 }
 
 fn simplified_union_of_tuple_entries(i_s: &InferenceState, entries: &[TypeOrTypeVarTuple]) -> Type {
