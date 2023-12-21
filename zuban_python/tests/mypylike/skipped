@@ -543,8 +543,6 @@ testProtocolClassObjectInstanceMethodOverloaded
 testRecursiveProtocolSubtleMismatch
 testBasicTupleStructuralSubtyping
 testCallableProtocolVsProtocol
-# Protocol issues with unions
-testInvalidTypeForKeywordVarArg
 # regressions
 testUnionsOfNormalClassesWithProtocols
 # param order ignored?
