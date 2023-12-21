@@ -1016,18 +1016,6 @@ impl<'db: 'a, 'a> Class<'a> {
                     }
                 }
 
-                /*
-                let had_lookup_error = Cell::new(false);
-                let lookup = other.lookup(
-                    i_s,
-                    self.node_ref.file_index(),
-                    name,
-                    LookupKind::Normal,
-                    &mut ResultContext::Unknown,
-                    &|_| todo!(),
-                    &|_| had_lookup_error.set(true),
-                );
-                */
                 let mut had_lookup_error = false;
                 other.run_after_lookup_on_each_union_member(
                     i_s,
