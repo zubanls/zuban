@@ -1027,7 +1027,12 @@ impl<'db: 'a, 'a> Class<'a> {
                     &|_| had_lookup_error.set(true),
                 );
                 // We cannot just use lookup.into_maybe_inferred, because unions can be involved.
-                if !had_lookup_error.get() {
+                if had_lookup_error.get() {
+                    if EXCLUDED_PROTOCOL_ATTRIBUTES.contains(&name) {
+                        continue;
+                    }
+                    missing_members.push(name);
+                } else {
                     had_at_least_one_member_with_same_name = true;
                     let protocol_lookup_details = Instance::new(c, None).lookup_with_details(
                         i_s,
@@ -1104,11 +1109,6 @@ impl<'db: 'a, 'a> Class<'a> {
                             }
                         }
                     }
-                } else {
-                    if EXCLUDED_PROTOCOL_ATTRIBUTES.contains(&name) {
-                        continue;
-                    }
-                    missing_members.push(name);
                 }
                 if is_call {
                     matcher.ignore_positional_param_names = true;
