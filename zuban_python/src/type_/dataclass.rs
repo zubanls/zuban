@@ -729,11 +729,14 @@ pub fn lookup_symbol_internal(
     self_: Rc<Dataclass>,
     i_s: &InferenceState<'_, '_>,
     name: &str,
-) -> LookupResult {
+) -> (LookupResult, AttributeKind) {
     if name == "__dataclass_fields__" {
-        return LookupResult::UnknownName(Inferred::from_type(
-            i_s.db.python_state.dataclass_fields_type.clone(),
-        ));
+        return (
+            LookupResult::UnknownName(Inferred::from_type(
+                i_s.db.python_state.dataclass_fields_type.clone(),
+            )),
+            AttributeKind::ClassVar,
+        );
     } else if name == "__match_args__" && self_.options.match_args {
         let __init__ = dataclass_init_func(&self_, i_s.db);
         let tup = Rc::new(Tuple::new_fixed_length(
@@ -748,20 +751,26 @@ pub fn lookup_symbol_internal(
                 })
                 .collect(),
         ));
-        return LookupResult::UnknownName(Inferred::from_type(Type::Tuple(tup)));
+        return (
+            LookupResult::UnknownName(Inferred::from_type(Type::Tuple(tup))),
+            AttributeKind::DefMethod,
+        );
     }
     if self_.options.order && ORDER_METHOD_NAMES.contains(&name) {
-        return order_func(self_.clone(), i_s);
+        return (order_func(self_.clone(), i_s), AttributeKind::DefMethod);
     }
     if self_.options.slots {
         todo!()
     }
     if self_.options.init && name == "__init__" {
-        return LookupResult::UnknownName(Inferred::from_type(Type::Callable(Rc::new(
-            dataclass_init_func(&self_, i_s.db).clone(),
-        ))));
+        return (
+            LookupResult::UnknownName(Inferred::from_type(Type::Callable(Rc::new(
+                dataclass_init_func(&self_, i_s.db).clone(),
+            )))),
+            AttributeKind::DefMethod,
+        );
     }
-    LookupResult::None
+    (LookupResult::None, AttributeKind::Attribute)
 }
 
 pub fn lookup_dataclass_symbol<'db: 'a, 'a>(
@@ -769,7 +778,7 @@ pub fn lookup_dataclass_symbol<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     name: &str,
 ) -> (Option<Class<'a>>, LookupResult) {
-    let result = lookup_symbol_internal(self_.clone(), i_s, name);
+    let result = lookup_symbol_internal(self_.clone(), i_s, name).0;
     if result.is_some() {
         return (None, result);
     }
@@ -783,13 +792,9 @@ pub(crate) fn lookup_on_dataclass<'a>(
     add_issue: impl Fn(IssueType),
     name: &str,
 ) -> LookupDetails<'a> {
-    let result = lookup_symbol_internal(self_.clone(), i_s, name);
+    let (result, attr_kind) = lookup_symbol_internal(self_.clone(), i_s, name);
     if result.is_some() {
-        return LookupDetails::new(
-            Type::Dataclass(self_.clone()),
-            result,
-            AttributeKind::Attribute,
-        );
+        return LookupDetails::new(Type::Dataclass(self_.clone()), result, attr_kind);
     }
     let mut lookup_details = Instance::new(self_.class(i_s.db), None).lookup_with_details(
         i_s,

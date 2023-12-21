@@ -526,8 +526,6 @@ testNamedTupleWithNoArgsCallableField
 # Protocol with ClassVar
 testProtocolClassObjectAttribute
 testProtocolTypeTypeAttribute
-testDataclassCheckTypeVarBounds
-testDataclassCheckTypeVarBoundsInReprocess
 # Protocol Override inheritance
 testNoneDisablesProtocolSubclassingWithStrictOptional
 # Context inference for protocols
