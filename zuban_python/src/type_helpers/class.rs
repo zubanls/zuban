@@ -1054,10 +1054,14 @@ impl<'db: 'a, 'a> Class<'a> {
                             let t2 = lookup.as_cow_type(i_s);
                             let m = t1.matches(i_s, matcher, &t2, variance);
                             if m.bool() && !(is_call && !matches!(other, Type::Class(_))) {
-                                if lookup_details.attr_kind.is_read_only_property() && !protocol_lookup_details.attr_kind.is_read_only_property() {
+                                if lookup_details.attr_kind.is_read_only_property()
+                                    && !protocol_lookup_details.attr_kind.is_read_only_property()
+                                {
                                     notes.push(format!("Protocol member {}.{name} expected settable variable, got read-only attribute", self.name()).into());
                                 }
-                                if matches!(protocol_lookup_details.attr_kind, AttributeKind::ClassVar) && !matches!(lookup_details.attr_kind, AttributeKind::ClassVar) {
+                                if matches!(protocol_lookup_details.attr_kind, AttributeKind::ClassVar)
+                                    && !matches!(lookup_details.attr_kind, AttributeKind::ClassVar)
+                                {
                                     notes.push(format!("Protocol member {}.{name} expected class variable, got instance variable", self.name()).into());
                                 }
                             } else {
