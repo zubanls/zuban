@@ -1016,6 +1016,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     }
                 }
 
+                /*
                 let had_lookup_error = Cell::new(false);
                 let lookup = other.lookup(
                     i_s,
@@ -1026,72 +1027,88 @@ impl<'db: 'a, 'a> Class<'a> {
                     &|_| todo!(),
                     &|_| had_lookup_error.set(true),
                 );
-                // We cannot just use lookup.into_maybe_inferred, because unions can be involved.
-                if had_lookup_error.get() {
-                    if EXCLUDED_PROTOCOL_ATTRIBUTES.contains(&name) {
-                        continue;
-                    }
-                    missing_members.push(name);
-                } else {
-                    had_at_least_one_member_with_same_name = true;
-                    let protocol_lookup_details = Instance::new(c, None).lookup_with_details(
-                        i_s,
-                        |issue| todo!(),
-                        name,
-                        LookupKind::Normal,
-                    );
-                    let inf1 = protocol_lookup_details.lookup.into_inferred();
-                    let t1 = inf1.as_cow_type(i_s);
-                    let lookup = lookup.into_inferred();
-                    let t2 = lookup.as_cow_type(i_s);
-                    let m = t1.matches(i_s, matcher, &t2, variance);
-                    if !m.bool() || is_call && !matches!(other, Type::Class(_)) {
-                        if EXCLUDED_PROTOCOL_ATTRIBUTES.contains(&name) {
-                            continue;
-                        }
-                        if !had_conflict_note {
-                            had_conflict_note = true;
-                            notes.push(protocol_conflict_note(i_s.db, other));
-                        }
-                        mismatches += 1;
-                        if mismatches <= SHOW_MAX_MISMATCHES {
-                            match other.maybe_class(i_s.db) {
-                                Some(cls) => add_protocol_mismatch(
-                                    i_s,
-                                    &mut notes,
-                                    name,
-                                    &t1,
-                                    &t2,
-                                    &c.lookup(i_s, |_| todo!(), name, LookupKind::Normal)
-                                        .into_inferred()
-                                        .as_cow_type(i_s),
-                                    &cls.lookup(i_s, |_| todo!(), name, LookupKind::Normal)
-                                        .into_inferred()
-                                        .as_cow_type(i_s),
-                                ),
-                                None => {
-                                    let full_other = match other {
-                                        Type::Type(t) if is_call => {
-                                            t.maybe_class(i_s.db).and_then(|cls| {
-                                                notes.push(format!(r#""{}" has constructor incompatible with "__call__" of "{}""#, cls.name(), self.name()).into());
-                                                cls.find_relevant_constructor(i_s).as_type(i_s, cls)
-                                            })
+                */
+                let mut had_lookup_error = false;
+                other.run_after_lookup_on_each_union_member(
+                    i_s,
+                    None,
+                    self.node_ref.file_index(),
+                    name,
+                    LookupKind::Normal,
+                    &mut ResultContext::Unknown,
+                    &|issue| todo!(),
+                    &mut |_, lookup_details| {
+                        if matches!(lookup_details.lookup, LookupResult::None) {
+                            had_lookup_error = true;
+                        } else {
+                            had_at_least_one_member_with_same_name = true;
+                            let protocol_lookup_details = Instance::new(c, None).lookup_with_details(
+                                i_s,
+                                |issue| todo!(),
+                                name,
+                                LookupKind::Normal,
+                            );
+                            let inf1 = protocol_lookup_details.lookup.into_inferred();
+                            let t1 = inf1.as_cow_type(i_s);
+                            let lookup = lookup_details.lookup.into_inferred();
+                            let t2 = lookup.as_cow_type(i_s);
+                            let m = t1.matches(i_s, matcher, &t2, variance);
+                            if !m.bool() || is_call && !matches!(other, Type::Class(_)) {
+                                if EXCLUDED_PROTOCOL_ATTRIBUTES.contains(&name) {
+                                    return;
+                                }
+                                if !had_conflict_note {
+                                    had_conflict_note = true;
+                                    notes.push(protocol_conflict_note(i_s.db, other));
+                                }
+                                mismatches += 1;
+                                if mismatches <= SHOW_MAX_MISMATCHES {
+                                    match other.maybe_class(i_s.db) {
+                                        Some(cls) => add_protocol_mismatch(
+                                            i_s,
+                                            &mut notes,
+                                            name,
+                                            &t1,
+                                            &t2,
+                                            &c.lookup(i_s, |_| todo!(), name, LookupKind::Normal)
+                                                .into_inferred()
+                                                .as_cow_type(i_s),
+                                            &cls.lookup(i_s, |_| todo!(), name, LookupKind::Normal)
+                                                .into_inferred()
+                                                .as_cow_type(i_s),
+                                        ),
+                                        None => {
+                                            let full_other = match other {
+                                                Type::Type(t) if is_call => {
+                                                    t.maybe_class(i_s.db).and_then(|cls| {
+                                                        notes.push(format!(r#""{}" has constructor incompatible with "__call__" of "{}""#, cls.name(), self.name()).into());
+                                                        cls.find_relevant_constructor(i_s).as_type(i_s, cls)
+                                                    })
+                                                }
+                                                _ => None,
+                                            };
+                                            add_protocol_mismatch(
+                                                i_s,
+                                                &mut notes,
+                                                name,
+                                                &t1,
+                                                &t2,
+                                                &t1,
+                                                &full_other.as_ref().unwrap_or(&t2),
+                                            )
                                         }
-                                        _ => None,
-                                    };
-                                    add_protocol_mismatch(
-                                        i_s,
-                                        &mut notes,
-                                        name,
-                                        &t1,
-                                        &t2,
-                                        &t1,
-                                        &full_other.as_ref().unwrap_or(&t2),
-                                    )
+                                    }
                                 }
                             }
                         }
                     }
+                );
+                // We cannot just use lookup.into_maybe_inferred, because unions can be involved.
+                if had_lookup_error {
+                    if EXCLUDED_PROTOCOL_ATTRIBUTES.contains(&name) {
+                        continue;
+                    }
+                    missing_members.push(name);
                 }
                 if is_call {
                     matcher.ignore_positional_param_names = true;
