@@ -1390,7 +1390,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     "__contains__",
                                     LookupKind::OnlyType,
                                     &mut |r_type, _, lookup_result| {
-                                        if let Some(method) = lookup_result.into_maybe_inferred() {
+                                        if let Some(method) =
+                                            lookup_result.lookup.into_maybe_inferred()
+                                        {
                                             method.execute_with_details(
                                                 self.i_s,
                                                 &KnownArguments::new(&first, from),
@@ -1647,7 +1649,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 op.magic_method,
                 LookupKind::OnlyType,
                 &mut |l_type, l_defined_in, lookup_result| {
-                    let left_op_method = lookup_result.into_maybe_inferred();
+                    let left_op_method = lookup_result.lookup.into_maybe_inferred();
                     for r_type in right.as_cow_type(i_s).iter_with_unpacked_unions() {
                         let instance;
                         let (r_defined_in, right_op_method) = match r_type {

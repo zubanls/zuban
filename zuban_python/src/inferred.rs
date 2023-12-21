@@ -32,8 +32,9 @@ use crate::{
     },
     type_helpers::{
         execute_assert_type, execute_super, execute_type, BoundMethod, BoundMethodFunction, Class,
-        FirstParamProperties, Function, Instance, NewTypeClass, OverloadedFunction, ParamSpecClass,
-        RevealTypeFunction, TypeOrClass, TypeVarClass, TypeVarTupleClass, TypingCast,
+        FirstParamProperties, Function, Instance, LookupDetails, NewTypeClass, OverloadedFunction,
+        ParamSpecClass, RevealTypeFunction, TypeOrClass, TypeVarClass, TypeVarTupleClass,
+        TypingCast,
     },
 };
 
@@ -1492,7 +1493,7 @@ impl<'db: 'slf, 'slf> Inferred {
         from: NodeRef,
         name: &str,
         kind: LookupKind,
-        callable: &mut impl FnMut(&Type, Option<TypeOrClass>, LookupResult),
+        callable: &mut impl FnMut(&Type, Option<TypeOrClass>, LookupDetails),
     ) {
         self.as_cow_type(i_s).run_after_lookup_on_each_union_member(
             i_s,
@@ -1502,7 +1503,7 @@ impl<'db: 'slf, 'slf> Inferred {
             kind,
             &mut ResultContext::Unknown,
             &|issue| todo!(),
-            &mut |t, c, details| callable(t, c, details.lookup),
+            callable,
         )
     }
 
@@ -1582,10 +1583,10 @@ impl<'db: 'slf, 'slf> Inferred {
             name,
             LookupKind::OnlyType,
             &mut |_, _, lookup_result| {
-                if matches!(lookup_result, LookupResult::None) {
+                if matches!(lookup_result.lookup, LookupResult::None) {
                     on_lookup_error(&self.as_cow_type(i_s));
                 }
-                let inf = lookup_result.into_inferred().execute_with_details(
+                let inf = lookup_result.lookup.into_inferred().execute_with_details(
                     i_s,
                     args,
                     &mut ResultContext::ExpectUnused,
