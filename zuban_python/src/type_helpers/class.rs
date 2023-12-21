@@ -1051,24 +1051,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         }
                         if !had_conflict_note {
                             had_conflict_note = true;
-                            notes.push(
-                                match other {
-                                    Type::Module(file_index) => format!(
-                                        "Following member(s) of Module \"{}\" have conflicts:",
-                                        Module::from_file_index(i_s.db, *file_index)
-                                            .qualified_name(i_s.db)
-                                    ),
-                                    Type::Type(t) => format!(
-                                        "Following member(s) of \"{}\" have conflicts:",
-                                        t.format_short(i_s.db)
-                                    ),
-                                    _ => format!(
-                                        "Following member(s) of \"{}\" have conflicts:",
-                                        other.format_short(i_s.db)
-                                    ),
-                                }
-                                .into(),
-                            );
+                            notes.push(protocol_conflict_note(i_s.db, other));
                         }
                         mismatches += 1;
                         if mismatches <= SHOW_MAX_MISMATCHES {
@@ -2411,6 +2394,24 @@ fn add_protocol_mismatch(
             .into(),
         ),
     }
+}
+
+fn protocol_conflict_note(db: &Database, other: &Type) -> Box<str> {
+    match other {
+        Type::Module(file_index) => format!(
+            "Following member(s) of Module \"{}\" have conflicts:",
+            Module::from_file_index(db, *file_index).qualified_name(db)
+        ),
+        Type::Type(t) => format!(
+            "Following member(s) of \"{}\" have conflicts:",
+            t.format_short(db)
+        ),
+        _ => format!(
+            "Following member(s) of \"{}\" have conflicts:",
+            other.format_short(db)
+        ),
+    }
+    .into()
 }
 
 fn format_callable_like(
