@@ -1252,7 +1252,7 @@ impl<'db> Inference<'db, '_, '_> {
             LookupKind::OnlyType,
             &mut ResultContext::Unknown,
             &|issue| todo!(),
-            &mut |forward, _, lookup_details| {
+            &mut |forward, lookup_details| {
                 let check = |callable: &CallableContent| {
                     // Can only overlap if the classes differ. On the same class __radd__ will
                     // never be called if there's a __add__ as well, because in that case __add__

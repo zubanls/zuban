@@ -23,7 +23,6 @@ use crate::{
     type_::NamedTuple,
     type_helpers::{
         lookup_in_namespace, Callable, Class, Instance, LookupDetails, Module, OverloadedFunction,
-        TypeOrClass,
     },
 };
 
@@ -47,7 +46,7 @@ impl Type {
             lookup_kind,
             result_context,
             add_issue,
-            &mut |t, _, lookup_result| {
+            &mut |t, lookup_result| {
                 if matches!(lookup_result.lookup, LookupResult::None) {
                     on_lookup_error(t);
                 }
@@ -93,18 +92,17 @@ impl Type {
         kind: LookupKind,
         result_context: &mut ResultContext,
         add_issue: &dyn Fn(IssueType),
-        callable: &mut impl FnMut(&Type, Option<TypeOrClass>, LookupDetails),
+        callable: &mut impl FnMut(&Type, LookupDetails),
     ) {
         match self {
             Type::Class(c) => {
                 let inst = Instance::new(c.class(i_s.db), from_inferred);
                 let l = inst.lookup_with_details(i_s, add_issue, name, kind);
-                callable(self, Some(l.class.clone()), l)
+                callable(self, l)
             }
-            Type::Any(cause) => callable(self, None, LookupDetails::any(*cause)),
+            Type::Any(cause) => callable(self, LookupDetails::any(*cause)),
             Type::None => callable(
                 self,
-                None,
                 i_s.db
                     .python_state
                     .none_instance()
@@ -113,7 +111,7 @@ impl Type {
             Type::Literal(literal) => {
                 let instance = i_s.db.python_state.literal_instance(&literal.kind);
                 let l = instance.lookup_with_details(i_s, add_issue, name, kind);
-                callable(self, Some(l.class.clone()), l)
+                callable(self, l)
             }
             t @ Type::TypeVar(usage) => match &usage.type_var.kind {
                 TypeVarKind::Bound(bound) => {
@@ -147,7 +145,6 @@ impl Type {
                     // should just use a precreated object() from somewhere.
                     callable(
                         self,
-                        None,
                         Instance::new(s.object_class(), None)
                             .lookup_with_details(i_s, add_issue, name, kind),
                     )
@@ -158,13 +155,12 @@ impl Type {
                     // should just use a precreated object() from somewhere.
                     callable(
                         self,
-                        None,
                         Instance::new(s.object_class(), None)
                             .lookup_with_details(i_s, add_issue, name, kind),
                     )
                 }
             },
-            Type::Tuple(tup) => callable(self, None, lookup_on_tuple(tup, i_s, add_issue, name)),
+            Type::Tuple(tup) => callable(self, lookup_on_tuple(tup, i_s, add_issue, name)),
             Type::Union(union) => {
                 for t in union.iter() {
                     t.run_after_lookup_on_each_union_member(
@@ -190,7 +186,6 @@ impl Type {
             ),
             Type::Callable(_) | Type::FunctionOverload(_) => callable(
                 self,
-                None,
                 Instance::new(i_s.db.python_state.function_class(), None)
                     .lookup_with_details(i_s, add_issue, name, kind),
             ),
@@ -199,13 +194,11 @@ impl Type {
                 let lookup = module.lookup(i_s, add_issue, name);
                 callable(
                     self,
-                    None,
                     LookupDetails::new(self.clone(), lookup, AttributeKind::Attribute),
                 )
             }
             Type::Namespace(namespace) => callable(
                 self,
-                None,
                 LookupDetails::new(
                     self.clone(),
                     lookup_in_namespace(i_s.db, from_file, namespace, name),
@@ -223,7 +216,7 @@ impl Type {
                     from_inferred,
                 );
                 let l = inst.lookup_on_self(i_s, &add_issue, name, kind);
-                callable(self, Some(l.class.clone()), l)
+                callable(self, l)
             }
             Type::Super { class, mro_index } => {
                 let instance = Instance::new(class.class(i_s.db), None);
@@ -236,22 +229,17 @@ impl Type {
                 );
                 if matches!(&l.lookup, LookupResult::None) {
                     add_issue(IssueType::UndefinedInSuperclass { name: name.into() });
-                    callable(self, None, LookupDetails::any(AnyCause::FromError));
+                    callable(self, LookupDetails::any(AnyCause::FromError));
                     return;
                 }
-                callable(self, Some(l.class.clone()), l)
+                callable(self, l)
             }
-            Type::Dataclass(d) => {
-                callable(self, None, lookup_on_dataclass(d, i_s, add_issue, name))
-            }
+            Type::Dataclass(d) => callable(self, lookup_on_dataclass(d, i_s, add_issue, name)),
             Type::TypedDict(td) => callable(
                 self,
-                None,
                 lookup_on_typed_dict(td.clone(), i_s, add_issue, name, kind),
             ),
-            Type::NamedTuple(nt) => {
-                callable(self, None, nt.lookup(i_s, name, Some(&|| self.clone())))
-            }
+            Type::NamedTuple(nt) => callable(self, nt.lookup(i_s, name, Some(&|| self.clone()))),
             Type::Never => (),
             Type::NewType(new_type) => new_type.type_(i_s).run_after_lookup_on_each_union_member(
                 i_s,
@@ -265,12 +253,10 @@ impl Type {
             ),
             Type::Enum(e) => callable(
                 self,
-                None,
                 lookup_on_enum_instance(i_s, add_issue, e, name, result_context),
             ),
             Type::EnumMember(member) => callable(
                 self,
-                None,
                 lookup_on_enum_member_instance(i_s, add_issue, member, name),
             ),
             Type::RecursiveType(r) => r
@@ -533,7 +519,7 @@ pub(crate) fn attribute_access_of_type(
     name: &str,
     kind: LookupKind,
     result_context: &mut ResultContext,
-    callable: &mut impl FnMut(&Type, Option<TypeOrClass>, LookupDetails),
+    callable: &mut impl FnMut(&Type, LookupDetails),
     in_type: Rc<Type>,
 ) {
     let lookup_result = match in_type.as_ref() {
@@ -615,7 +601,7 @@ pub(crate) fn attribute_access_of_type(
         lookup_result,
         AttributeKind::Attribute,
     );
-    callable(&Type::Type(in_type), None, details)
+    callable(&Type::Type(in_type), details)
 }
 
 pub(crate) fn execute_type_of_type<'db>(

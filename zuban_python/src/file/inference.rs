@@ -1389,7 +1389,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     from,
                                     "__contains__",
                                     LookupKind::OnlyType,
-                                    &mut |r_type, _, lookup_result| {
+                                    &mut |r_type, lookup_result| {
                                         if let Some(method) =
                                             lookup_result.lookup.into_maybe_inferred()
                                         {
@@ -1648,7 +1648,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 from,
                 op.magic_method,
                 LookupKind::OnlyType,
-                &mut |l_type, l_defined_in, lookup_result| {
+                &mut |l_type, lookup_result| {
                     let left_op_method = lookup_result.lookup.into_maybe_inferred();
                     for r_type in right.as_cow_type(i_s).iter_with_unpacked_unions() {
                         let instance;
@@ -1679,6 +1679,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             ),
                         };
 
+                        let l_defined_in = Some(&lookup_result.class);
                         let get_strategy = || {
                             // Check for shortcuts first (in Mypy it's called
                             // `op_methods_that_shortcut`)

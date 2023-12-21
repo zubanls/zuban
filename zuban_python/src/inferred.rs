@@ -1493,7 +1493,7 @@ impl<'db: 'slf, 'slf> Inferred {
         from: NodeRef,
         name: &str,
         kind: LookupKind,
-        callable: &mut impl FnMut(&Type, Option<TypeOrClass>, LookupDetails),
+        callable: &mut impl FnMut(&Type, LookupDetails),
     ) {
         self.as_cow_type(i_s).run_after_lookup_on_each_union_member(
             i_s,
@@ -1582,7 +1582,7 @@ impl<'db: 'slf, 'slf> Inferred {
             from,
             name,
             LookupKind::OnlyType,
-            &mut |_, _, lookup_result| {
+            &mut |_, lookup_result| {
                 if matches!(lookup_result.lookup, LookupResult::None) {
                     on_lookup_error(&self.as_cow_type(i_s));
                 }
