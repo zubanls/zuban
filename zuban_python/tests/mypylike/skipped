@@ -528,10 +528,6 @@ testModuleAsProtocolRedefinitionImportFrom
 testParamSpecPrefixSubtypingProtocolInvalid
 testProtocolClassObjectInstanceMethodOverloaded
 testTypedDictOverloading2
-# Too much? error output, but otherwise correct
-testRecursiveProtocolSubtleMismatch
-testBasicTupleStructuralSubtyping
-testCallableProtocolVsProtocol
 # Protocols mypy might be wrong?
 testMutuallyRecursiveProtocolsTypesWithSubteMismatchWriteable
 # param order ignored?
