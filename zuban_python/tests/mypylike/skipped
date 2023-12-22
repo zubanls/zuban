@@ -525,8 +525,6 @@ testTupleContextFromIterable2
 testModuleAsProtocolRedefinitionTopLevel
 testModuleAsProtocolRedefinitionImportFrom
 # Flaky because of dict ordering
-testProtocolIncompatibilityWithManyConflicts
-testNotManyFlagConflitsShownInProtocols
 testErrorsForProtocolsInDifferentPlaces
 # small protocol formatting issues
 testParamSpecPrefixSubtypingProtocolInvalid
