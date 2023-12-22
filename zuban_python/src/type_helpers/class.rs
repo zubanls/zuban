@@ -2473,14 +2473,14 @@ fn format_callable_like(
     c: &CallableLike,
     other: &CallableLike,
 ) {
-    let other_avoid_self_annotation = other.had_first_self_or_class_annotation();
+    let other_had_first_annotation = other.had_first_self_or_class_annotation();
     let prefix = "        ";
     let format_callable = |c: &CallableContent| {
         format!(
             "{prefix}{}",
             c.format_pretty_detailed(
                 &FormatData::new_short(db),
-                !c.kind.had_first_self_or_class_annotation() && other_avoid_self_annotation,
+                !c.kind.had_first_self_or_class_annotation() && !other_had_first_annotation,
                 false,
             )
         )
