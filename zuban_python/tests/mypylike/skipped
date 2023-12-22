@@ -2,15 +2,6 @@
 testBadEnumLoading
 testInvalidNamedTupleWithinFunction
 
-testIncrementalSubmoduleParentBackreferenceComplex
-testTreeShadowingViaParentPackage
-testModuleGetattrInit8a
-testNewAnalyzerConfusingImportConflictingNames
-testChangeInPackage__init__
-testTriggerTargetInPackage__init__
-testImportModuleTwice
-testImportTwice
-
 # 3.12 type var syntax
 test695TypeAlias
 test695Class

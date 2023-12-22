@@ -242,7 +242,9 @@ impl Type {
                 Type::EnumMember(m2) => (m1.is_same_member(m2)).into(),
                 _ => Match::new_false(),
             },
-            Type::Module(file_index) => Match::new_false(),
+            Type::Module(file_index1) => {
+                matches!(value_type, Type::Module(file_index2) if file_index1 == file_index2).into()
+            }
             Type::Namespace(file_index) => todo!(),
             Type::Super { .. } => todo!(),
             Type::CustomBehavior(_) => Match::new_false(),
