@@ -1051,30 +1051,6 @@ impl<'db: 'a, 'a> Class<'a> {
                             let t2 = lookup.as_cow_type(i_s);
                             let m = t1.matches(i_s, matcher, &t2, variance);
                             if m.bool() && !(is_call && !matches!(other, Type::Class(_))) {
-                                if lookup_details.attr_kind.is_read_only_property()
-                                    && !protocol_lookup_details.attr_kind.is_read_only_property()
-                                {
-                                    mismatch = true;
-                                    if mismatches < SHOW_MAX_MISMATCHES {
-                                        notes.push(format!("Protocol member {}.{name} expected settable variable, got read-only attribute", self.name()).into());
-                                    }
-                                }
-                                if matches!(protocol_lookup_details.attr_kind, AttributeKind::ClassVar)
-                                    && !matches!(lookup_details.attr_kind, AttributeKind::ClassVar)
-                                {
-                                    mismatch = true;
-                                    if mismatches < SHOW_MAX_MISMATCHES {
-                                        notes.push(format!("Protocol member {}.{name} expected class variable, got instance variable", self.name()).into());
-                                    }
-                                }
-                                if protocol_lookup_details.attr_kind.classmethod_or_staticmethod()
-                                    && !lookup_details.attr_kind.classmethod_or_staticmethod()
-                                {
-                                    mismatch = true;
-                                    if mismatches < SHOW_MAX_MISMATCHES {
-                                        notes.push(format!("Protocol member {}.{name} expected class or static method", self.name()).into());
-                                    }
-                                }
                             } else {
                                 if !had_conflict_note {
                                     had_conflict_note = true;
@@ -1117,6 +1093,30 @@ impl<'db: 'a, 'a> Class<'a> {
                                             )
                                         }
                                     }
+                                }
+                            }
+                            if lookup_details.attr_kind.is_read_only_property()
+                                && !protocol_lookup_details.attr_kind.is_read_only_property()
+                            {
+                                mismatch = true;
+                                if mismatches < SHOW_MAX_MISMATCHES {
+                                    notes.push(format!("Protocol member {}.{name} expected settable variable, got read-only attribute", self.name()).into());
+                                }
+                            }
+                            if matches!(protocol_lookup_details.attr_kind, AttributeKind::ClassVar)
+                                && !matches!(lookup_details.attr_kind, AttributeKind::ClassVar)
+                            {
+                                mismatch = true;
+                                if mismatches < SHOW_MAX_MISMATCHES {
+                                    notes.push(format!("Protocol member {}.{name} expected class variable, got instance variable", self.name()).into());
+                                }
+                            }
+                            if protocol_lookup_details.attr_kind.classmethod_or_staticmethod()
+                                && !lookup_details.attr_kind.classmethod_or_staticmethod()
+                            {
+                                mismatch = true;
+                                if mismatches < SHOW_MAX_MISMATCHES {
+                                    notes.push(format!("Protocol member {}.{name} expected class or static method", self.name()).into());
                                 }
                             }
                         }
