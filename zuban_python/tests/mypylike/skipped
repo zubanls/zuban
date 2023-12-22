@@ -488,15 +488,12 @@ testNoTypeCheckDecoratorSemanticError
 # Random protocol issues
 testDerivedEnumIterable
 testEnumIterMetaInference
-testTypedDictOverloading2
 # Protocol invalid "Access to generic instance variables via class is ambiguous"
 testGenericSubProtocols
 testProtocolConcreteUpdateTypeMethodGeneric
 testProtocolUpdateBaseGeneric
 testProtocolConcreteUpdateBaseGeneric
 testProtocolChangeGeneric
-# staticmethod/classmethod
-testBuiltinClassMethod
 # "Can only assign concrete classes to a variable of type "Type[P]""
 testInstantiationProtocolInTypeForVariables
 # Recursion error
@@ -509,15 +506,11 @@ testProtocolVarianceWithCallableAndList
 testProtocolVarianceWithUnusedVariable
 testSubtleBadVarianceInProtocols
 testAutomaticProtocolVariance
-# "Type aliases are prohibited in protocol bodies"
-testTypeAliasInProtocolBody
 # "Protocol member PPS.attr expected settable variable, got read-only attribute"
 testFinalAttributeProtocol
 testModuleAsProtocolImplementationFinal
 testTypingNamedTupleAttributesAreReadOnly
-testNotManyFlagConflitsShownInProtocols
 testClassesGetattrWithProtocols
-testErrorsForProtocolsInDifferentPlaces
 # Protocol properties
 testProtocolClassObjectPropertyRejected
 testNamedTupleWithNoArgsCallableField
@@ -533,17 +526,18 @@ testModuleAsProtocolRedefinitionTopLevel
 testModuleAsProtocolRedefinitionImportFrom
 # Flaky because of dict ordering
 testProtocolIncompatibilityWithManyConflicts
+testNotManyFlagConflitsShownInProtocols
+testErrorsForProtocolsInDifferentPlaces
 # small protocol formatting issues
 testParamSpecPrefixSubtypingProtocolInvalid
 testProtocolClassObjectInstanceMethodOverloaded
+testTypedDictOverloading2
 # Too much? error output, but otherwise correct
 testRecursiveProtocolSubtleMismatch
 testBasicTupleStructuralSubtyping
 testCallableProtocolVsProtocol
 # Protocols mypy might be wrong?
 testMutuallyRecursiveProtocolsTypesWithSubteMismatchWriteable
-# regressions
-testUnionsOfNormalClassesWithProtocols
 # param order ignored?
 testProtocolClassObjectSelfTypeInstanceMethod
 testProtocolTypeTypeSelfTypeInstanceMethod
@@ -558,6 +552,8 @@ testInferenceViaTypeTypeMetaclass
 testProtocolImportNotMember
 # TypeVar in Protocol Body
 testTypeVarInProtocolBody
+# "Type aliases are prohibited in protocol bodies"
+testTypeAliasInProtocolBody
 # typing_extensions.runtime_checkable
 testProtocolAndRuntimeAreDefinedAlsoInTypingExtensions
 testOverloadOnProtocol
