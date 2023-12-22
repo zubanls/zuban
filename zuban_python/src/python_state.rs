@@ -998,8 +998,9 @@ fn typing_changes(
     set_typing_inference(t, "ParamSpec", Specific::TypingParamSpecClass);
     set_typing_inference(t, "TypeVar", Specific::TypingTypeVarClass);
     set_typing_inference(t, "TypeVarTuple", Specific::TypingTypeVarTupleClass);
-    set_typing_inference(t, "Concatenate", Specific::TypingConcatenateClass);
-    set_typing_inference(t, "TypeAlias", Specific::TypingTypeAlias);
+    // Not needed, because there's an import?
+    //set_typing_inference(t, "Concatenate", Specific::TypingConcatenateClass);
+    //set_typing_inference(t, "TypeAlias", Specific::TypingTypeAlias);
     set_typing_inference(t, "Self", Specific::TypingSelf);
     set_typing_inference(t, "Annotated", Specific::TypingAnnotated);
     set_typing_inference(t, "reveal_type", Specific::RevealTypeFunction);

@@ -318,6 +318,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     };
 
                     self.file.points.set(name_def.index(), point);
+                    self.check_import_type(name_def);
                 }
             }
         }

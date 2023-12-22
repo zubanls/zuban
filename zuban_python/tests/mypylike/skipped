@@ -521,8 +521,6 @@ testProtocolTypeTypeAttribute
 testNoneDisablesProtocolSubclassingWithStrictOptional
 # Context inference for protocols
 testTupleContextFromIterable2
-# Module reassignments in import as
-testModuleAsProtocolRedefinitionImportFrom
 # small protocol formatting issues
 testParamSpecPrefixSubtypingProtocolInvalid
 testTypedDictOverloading2

@@ -733,7 +733,7 @@ impl Type {
                 .python_state
                 .module_type()
                 .format(format_data),
-            Self::Namespace(_) => "object".into(),
+            Self::Namespace(_) => "ModuleType".into(),
             Self::Super { .. } => "TODO super".into(),
             Self::CustomBehavior(_) => "TODO custombehavior".into(),
         }
