@@ -1002,7 +1002,7 @@ impl<'db: 'a, 'a> Class<'a> {
             let protocol_members = &c.use_cached_class_infos(i_s.db).protocol_members;
             protocol_member_count += protocol_members.len();
             for name_index in protocol_members.iter() {
-                let name = NodeRef::new(self.node_ref.file, *name_index).as_code();
+                let name = NodeRef::new(c.node_ref.file, *name_index).as_code();
                 // It is possible to match a Callable against a Protocol that only implements
                 // __call__.
                 let is_call = name == "__call__";
