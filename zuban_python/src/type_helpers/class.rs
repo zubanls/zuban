@@ -1074,9 +1074,6 @@ impl<'db: 'a, 'a> Class<'a> {
                                     }
                                 }
                             } else {
-                                if EXCLUDED_PROTOCOL_ATTRIBUTES.contains(&name) {
-                                    return;
-                                }
                                 if !had_conflict_note {
                                     had_conflict_note = true;
                                     notes.push(protocol_conflict_note(i_s.db, other));
@@ -1123,11 +1120,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         }
                     }
                 );
-                // We cannot just use lookup.into_maybe_inferred, because unions can be involved.
                 if had_lookup_error {
-                    if EXCLUDED_PROTOCOL_ATTRIBUTES.contains(&name) {
-                        continue;
-                    }
                     missing_members.push(name);
                 }
                 if is_call {
