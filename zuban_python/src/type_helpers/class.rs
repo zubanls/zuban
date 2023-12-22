@@ -1006,6 +1006,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 // It is possible to match a Callable against a Protocol that only implements
                 // __call__.
                 let is_call = name == "__call__";
+                let mut mismatch = false;
                 if is_call {
                     // __call__ matching doesn't ignore param names, matching all other methods
                     // does.
@@ -1020,6 +1021,7 @@ impl<'db: 'a, 'a> Class<'a> {
                             had_at_least_one_member_with_same_name = true;
                             continue;
                         }
+                        mismatch = true;
                     }
                 }
 
@@ -1052,24 +1054,24 @@ impl<'db: 'a, 'a> Class<'a> {
                                 if lookup_details.attr_kind.is_read_only_property()
                                     && !protocol_lookup_details.attr_kind.is_read_only_property()
                                 {
-                                    mismatches += 1;
-                                    if mismatches <= SHOW_MAX_MISMATCHES {
+                                    mismatch = true;
+                                    if mismatches < SHOW_MAX_MISMATCHES {
                                         notes.push(format!("Protocol member {}.{name} expected settable variable, got read-only attribute", self.name()).into());
                                     }
                                 }
                                 if matches!(protocol_lookup_details.attr_kind, AttributeKind::ClassVar)
                                     && !matches!(lookup_details.attr_kind, AttributeKind::ClassVar)
                                 {
-                                    mismatches += 1;
-                                    if mismatches <= SHOW_MAX_MISMATCHES {
+                                    mismatch = true;
+                                    if mismatches < SHOW_MAX_MISMATCHES {
                                         notes.push(format!("Protocol member {}.{name} expected class variable, got instance variable", self.name()).into());
                                     }
                                 }
                                 if protocol_lookup_details.attr_kind.classmethod_or_staticmethod()
                                     && !lookup_details.attr_kind.classmethod_or_staticmethod()
                                 {
-                                    mismatches += 1;
-                                    if mismatches <= SHOW_MAX_MISMATCHES {
+                                    mismatch = true;
+                                    if mismatches < SHOW_MAX_MISMATCHES {
                                         notes.push(format!("Protocol member {}.{name} expected class or static method", self.name()).into());
                                     }
                                 }
@@ -1078,8 +1080,8 @@ impl<'db: 'a, 'a> Class<'a> {
                                     had_conflict_note = true;
                                     notes.push(protocol_conflict_note(i_s.db, other));
                                 }
-                                mismatches += 1;
-                                if mismatches <= SHOW_MAX_MISMATCHES {
+                                mismatch = true;
+                                if mismatches < SHOW_MAX_MISMATCHES {
                                     match other.maybe_class(i_s.db) {
                                         Some(cls) => add_protocol_mismatch(
                                             i_s,
@@ -1126,6 +1128,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 if is_call {
                     matcher.ignore_positional_param_names = true;
                 }
+                mismatches += mismatch as usize;
             }
         }
         if !had_at_least_one_member_with_same_name && !missing_members.is_empty() {
