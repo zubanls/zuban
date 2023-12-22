@@ -974,6 +974,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut callable =
             self.internal_as_type(i_s, params, self_type_var_usage.is_some(), as_type);
         callable.type_vars = TypeVarLikes::from_vec(type_vars);
+        if matches!(first, FirstParamProperties::Skip { .. }) {
+            // Now the first param was removed, so everything is considered as having an
+            // annotation (even if it's an implicit Any).
+            callable
+                .kind
+                .update_had_first_self_or_class_annotation(true);
+        }
         callable
     }
 
