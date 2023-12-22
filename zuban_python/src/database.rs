@@ -1066,6 +1066,7 @@ pub struct ClassInfos {
     pub metaclass: MetaclassState,
     pub class_kind: ClassKind,
     pub incomplete_mro: bool,
+    pub protocol_members: Box<[NodeIndex]>,
     pub has_slots: bool,
 }
 

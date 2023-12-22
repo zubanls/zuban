@@ -2,6 +2,13 @@
 testBadEnumLoading
 testInvalidNamedTupleWithinFunction
 
+testTupleIterable
+testInvalidateProtocolViaSuperClass
+testProtocolVsProtocolSuperUpdated
+testProtocolVsProtocolSuperUpdated2
+testProtocolVsProtocolSuperUpdated3
+testProtocolMultipleUpdates
+
 # 3.12 type var syntax
 test695TypeAlias
 test695Class

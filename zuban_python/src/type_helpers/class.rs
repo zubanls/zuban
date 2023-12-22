@@ -7,8 +7,8 @@ use std::{
 
 use parsa_python_ast::{
     Argument, Arguments as ASTArguments, AssignmentContent, AsyncStmtContent, BlockContent,
-    ClassDef, Decoratee, ExpressionContent, ExpressionPart, PrimaryContent, SimpleStmtContent,
-    SimpleStmts, StmtContent, StmtOrError, Target,
+    ClassDef, Decoratee, ExpressionContent, ExpressionPart, NodeIndex, PrimaryContent,
+    SimpleStmtContent, SimpleStmts, StmtContent, StmtOrError, Target,
 };
 
 use super::{overload::OverloadResult, Callable, Instance, Module};
@@ -870,6 +870,11 @@ impl<'db: 'a, 'a> Class<'a> {
                 }
             }
         }
+        let protocol_members = if class_kind == ClassKind::Protocol {
+            self.gather_protocol_members()
+        } else {
+            Default::default()
+        };
         (
             Box::new(ClassInfos {
                 mro,
@@ -877,6 +882,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 incomplete_mro,
                 class_kind,
                 has_slots,
+                protocol_members,
             }),
             typed_dict_total,
         )
@@ -993,9 +999,10 @@ impl<'db: 'a, 'a> Class<'a> {
             let TypeOrClass::Class(c) = c else {
                 todo!()
             };
-            protocol_member_count += c.class_storage.class_symbol_table.len();
-            let symbol_table = &c.class_storage.class_symbol_table;
-            for (name, _) in unsafe { symbol_table.iter_on_finished_table() } {
+            let protocol_members = &c.use_cached_class_infos(i_s.db).protocol_members;
+            protocol_member_count += protocol_members.len();
+            for name_index in protocol_members.iter() {
+                let name = NodeRef::new(self.node_ref.file, *name_index).as_code();
                 // It is possible to match a Callable against a Protocol that only implements
                 // __call__.
                 let is_call = name == "__call__";
@@ -1686,6 +1693,25 @@ impl<'db: 'a, 'a> Class<'a> {
             }
         }
         members.into_boxed_slice()
+    }
+
+    fn gather_protocol_members(&self) -> Box<[NodeIndex]> {
+        let mut protocol_members = vec![];
+        for (name, name_index) in unsafe {
+            self.class_storage
+                .class_symbol_table
+                .iter_on_finished_table()
+        } {
+            if EXCLUDED_PROTOCOL_ATTRIBUTES.contains(&name) {
+                continue;
+            }
+            let name_node_ref = NodeRef::new(self.node_ref.file, *name_index);
+            match name_node_ref.as_name().expect_type() {
+                _ => protocol_members.push(*name_index),
+            }
+        }
+        protocol_members.sort();
+        protocol_members.into()
     }
 
     pub fn find_relevant_constructor(
