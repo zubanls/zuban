@@ -2399,4 +2399,8 @@ impl AttributeKind {
     pub fn is_read_only_property(&self) -> bool {
         matches!(self, Self::Property { writable: false })
     }
+
+    pub fn classmethod_or_staticmethod(&self) -> bool {
+        matches!(self, Self::Classmethod | Self::Staticmethod)
+    }
 }

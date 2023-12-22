@@ -496,7 +496,6 @@ testProtocolUpdateBaseGeneric
 testProtocolConcreteUpdateBaseGeneric
 testProtocolChangeGeneric
 # staticmethod/classmethod
-testStaticAndClassMethodsInProtocols
 testBuiltinClassMethod
 # "Can only assign concrete classes to a variable of type "Type[P]""
 testInstantiationProtocolInTypeForVariables
@@ -520,7 +519,6 @@ testNotManyFlagConflitsShownInProtocols
 testClassesGetattrWithProtocols
 testErrorsForProtocolsInDifferentPlaces
 # Protocol properties
-testMutuallyRecursiveProtocolsTypesWithSubteMismatchWriteable
 testProtocolClassObjectPropertyRejected
 testNamedTupleWithNoArgsCallableField
 # Protocol with ClassVar
@@ -542,6 +540,8 @@ testProtocolClassObjectInstanceMethodOverloaded
 testRecursiveProtocolSubtleMismatch
 testBasicTupleStructuralSubtyping
 testCallableProtocolVsProtocol
+# Protocols mypy might be wrong?
+testMutuallyRecursiveProtocolsTypesWithSubteMismatchWriteable
 # regressions
 testUnionsOfNormalClassesWithProtocols
 # param order ignored?

@@ -1058,6 +1058,14 @@ impl<'db: 'a, 'a> Class<'a> {
                                         notes.push(format!("Protocol member {}.{name} expected class variable, got instance variable", self.name()).into());
                                     }
                                 }
+                                if protocol_lookup_details.attr_kind.classmethod_or_staticmethod()
+                                    && !lookup_details.attr_kind.classmethod_or_staticmethod()
+                                {
+                                    mismatches += 1;
+                                    if mismatches <= SHOW_MAX_MISMATCHES {
+                                        notes.push(format!("Protocol member {}.{name} expected class or static method", self.name()).into());
+                                    }
+                                }
                             } else {
                                 if EXCLUDED_PROTOCOL_ATTRIBUTES.contains(&name) {
                                     return;
