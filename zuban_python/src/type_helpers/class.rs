@@ -8,7 +8,7 @@ use std::{
 use parsa_python_ast::{
     Argument, Arguments as ASTArguments, AssignmentContent, AsyncStmtContent, BlockContent,
     ClassDef, Decoratee, ExpressionContent, ExpressionPart, NodeIndex, PrimaryContent,
-    SimpleStmtContent, SimpleStmts, StmtContent, StmtOrError, Target,
+    SimpleStmtContent, SimpleStmts, StmtContent, StmtOrError, Target, TypeLike,
 };
 
 use super::{overload::OverloadResult, Callable, Instance, Module};
@@ -1703,6 +1703,7 @@ impl<'db: 'a, 'a> Class<'a> {
             }
             let name_node_ref = NodeRef::new(self.node_ref.file, *name_index);
             match name_node_ref.as_name().expect_type() {
+                TypeLike::ImportFromAsName(_) | TypeLike::DottedAsName(_) => (),
                 _ => protocol_members.push(*name_index),
             }
         }

@@ -544,8 +544,6 @@ testWeirdRecursiveInferenceForProtocols-skip
 testMatchProtocolAgainstOverloadWithAmbiguity
 # Protocol inference
 testInferenceViaTypeTypeMetaclass
-# Import in Protocol
-testProtocolImportNotMember
 # TypeVar in Protocol Body
 testTypeVarInProtocolBody
 # "Type aliases are prohibited in protocol bodies"
