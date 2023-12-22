@@ -2,6 +2,15 @@
 testBadEnumLoading
 testInvalidNamedTupleWithinFunction
 
+testIncrementalSubmoduleParentBackreferenceComplex
+testTreeShadowingViaParentPackage
+testModuleGetattrInit8a
+testNewAnalyzerConfusingImportConflictingNames
+testChangeInPackage__init__
+testTriggerTargetInPackage__init__
+testImportModuleTwice
+testImportTwice
+
 # 3.12 type var syntax
 test695TypeAlias
 test695Class
@@ -522,7 +531,6 @@ testNoneDisablesProtocolSubclassingWithStrictOptional
 # Context inference for protocols
 testTupleContextFromIterable2
 # Module reassignments in import as
-testModuleAsProtocolRedefinitionTopLevel
 testModuleAsProtocolRedefinitionImportFrom
 # small protocol formatting issues
 testParamSpecPrefixSubtypingProtocolInvalid

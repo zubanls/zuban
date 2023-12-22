@@ -195,6 +195,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             match dotted_as_name.unpack() {
                 DottedAsNameContent::Simple(name_def, rest) => {
                     let result = self.global_import(name_def.name(), Some(name_def));
+                    self.check_import_type(name_def);
                     if let Some(rest) = rest {
                         if result.is_some() {
                             self.infer_import_dotted_name(rest, result);
@@ -217,6 +218,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         }
                     };
                     self.file.points.set(as_name_def.index(), point);
+                    self.check_import_type(as_name_def);
                 }
             }
         }
@@ -224,6 +226,30 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         self.file
             .points
             .set(imp.index(), Point::new_node_analysis(Locality::Todo));
+    }
+
+    fn check_import_type(&mut self, name_def: NameDefinition) {
+        // Check stuff like
+        //     foo: str
+        //     import foo
+        if let Some(original_name_index) = first_defined_name(self.file, name_def.name().index()) {
+            let from = NodeRef::new(self.file, name_def.index());
+            let import_inferred = self.infer_name_definition(name_def);
+            self.infer_name_by_index(original_name_index)
+                .as_cow_type(self.i_s)
+                .error_if_not_matches(
+                    self.i_s,
+                    &import_inferred,
+                    |issue| from.add_issue(self.i_s, issue),
+                    |got, expected| {
+                        Some(IssueType::IncompatibleImportAssignment {
+                            name: name_def.as_code().into(),
+                            got,
+                            expected,
+                        })
+                    },
+                )
+        }
     }
 
     pub(super) fn cache_import_from(&mut self, imp: ImportFrom) {
@@ -820,7 +846,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     fn infer_target(&mut self, target: Target, infer_index_expression: bool) -> Option<Inferred> {
         match target {
             // TODO it's a bit weird that we cannot just call self.infer_name_definition here
-            Target::Name(name_def) => first_defined_name(self.file, name_def.name().index())
+            Target::Name(name_def) => first_defined_name(self.file, name_def.name_index())
                 .map(|i| self.infer_name_by_index(i)),
             Target::NameExpression(primary_target, name_def_node) => {
                 debug!("TODO enable context for named expr");

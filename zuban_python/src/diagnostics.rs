@@ -38,6 +38,7 @@ pub(crate) enum IssueType {
     YieldFromCannotBeApplied { to: Box<str> },
     YieldValueExpected,
     IncompatibleAssignment { got: Box<str>, expected: Box<str> },
+    IncompatibleImportAssignment { name: Box<str>, got: Box<str>, expected: Box<str> },
     CannotAssignToClassVarViaInstance { name: Box<str> },
     CannotAssignToAMethod,
     AssigningToNameOutsideOfSlots { name: Box<str>, class: Box<str> },
@@ -341,6 +342,7 @@ impl IssueType {
             IncompatibleDefaultArgument { .. }
             | IncompatibleAssignment { .. }
             | IncompatibleAssignmentInSubclass { .. }
+            | IncompatibleImportAssignment { .. }
             | InvalidSetItemTarget { .. } => "assignment",
             CannotAssignToAMethod => "method-assign",
             InvalidGetItem { .. } | NotIndexable { .. } | UnsupportedSetItemTarget(_) => "index",
@@ -545,10 +547,19 @@ impl<'db> Diagnostic<'db> {
                 r#"The return type of an async generator function should be "AsyncGenerator" or one of its supertypes"#.to_string(),
             YieldFromCannotBeApplied { to } => format!(r#""yield from" can't be applied to "{to}""#),
             YieldValueExpected => "Yield value expected".to_string(),
-            IncompatibleAssignment{got, expected} => {
-                format!(
-                    "Incompatible types in assignment (expression has type \"{got}\", variable has type \"{expected}\")",
-                )
+            IncompatibleAssignment{got, expected} => format!(
+                r#"Incompatible types in assignment (expression has type "{got}", variable has type "{expected}")"#,
+            ),
+            IncompatibleImportAssignment { name, got, expected } => {
+                if got.as_ref() == "ModuleType" {
+                    format!(
+                        r#"Incompatible import of "{name}" (imported name has type Module, local name has type "{expected}")"#,
+                    )
+                } else {
+                    format!(
+                        r#"Incompatible import of "{name}" (imported name has type {got}, local name has type "{expected}")"#,
+                    )
+                }
             }
             CannotAssignToClassVarViaInstance { name } => format!(
                 "Cannot assign to class variable \"{name}\" via instance"
