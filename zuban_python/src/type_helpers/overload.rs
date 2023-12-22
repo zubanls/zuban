@@ -468,12 +468,16 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 self.overload
                     .iter_functions()
                     .map(|callable| {
-                        replace_class_type_vars_in_callable(
+                        let mut callable = replace_class_type_vars_in_callable(
                             i_s.db,
                             &callable.remove_first_param().unwrap(),
                             self.class.as_ref(),
                             replace_self_type,
-                        )
+                        );
+                        callable
+                            .kind
+                            .update_had_first_self_or_class_annotation(true);
+                        callable
                     })
                     .collect(),
             ))

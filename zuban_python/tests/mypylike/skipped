@@ -526,7 +526,6 @@ testModuleAsProtocolRedefinitionTopLevel
 testModuleAsProtocolRedefinitionImportFrom
 # small protocol formatting issues
 testParamSpecPrefixSubtypingProtocolInvalid
-testProtocolClassObjectInstanceMethodOverloaded
 testTypedDictOverloading2
 # Protocols mypy might be wrong?
 testMutuallyRecursiveProtocolsTypesWithSubteMismatchWriteable
