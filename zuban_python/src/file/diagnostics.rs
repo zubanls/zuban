@@ -27,9 +27,9 @@ use crate::{
     },
     node_ref::NodeRef,
     type_::{
-        format_callable_params, AnyCause, CallableContent, CallableParams, DbString, FunctionKind,
-        FunctionOverload, GenericItem, Literal, LiteralKind, TupleTypeArguments, Type,
-        TypeOrTypeVarTuple, TypeVarLike, Variance,
+        format_callable_params, AnyCause, CallableContent, CallableParams, ClassGenerics, DbString,
+        FunctionKind, FunctionOverload, GenericItem, GenericsList, Literal, LiteralKind,
+        TupleTypeArguments, Type, TypeOrTypeVarTuple, TypeVarLike, Variance,
     },
     type_helpers::{
         is_private, Class, FirstParamProperties, Function, GeneratorType, Instance, LookupDetails,
@@ -683,6 +683,7 @@ impl<'db> Inference<'db, '_, '_> {
                     )
                 }
             }
+            check_protocol_type_var_variances(self.i_s, c)
         }
     }
 
@@ -1952,4 +1953,60 @@ fn operator_domain_is_widened(
             _ => unreachable!(),
         }
     })
+}
+
+fn check_protocol_type_var_variances(i_s: &InferenceState, class: Class) {
+    for (i, tv_like) in class.type_vars(i_s).iter().enumerate() {
+        let TypeVarLike::TypeVar(tv) = tv_like else {
+            continue
+        };
+        let replace_protocol = |is_upper: bool| {
+            Type::new_class(
+                class.node_ref.as_link(),
+                ClassGenerics::List(GenericsList::new_generics(
+                    class
+                        .type_vars(i_s)
+                        .iter()
+                        .enumerate()
+                        .map(|(j, tv_like)| {
+                            if i == j {
+                                GenericItem::TypeArgument(if is_upper {
+                                    i_s.db.python_state.object_type()
+                                } else {
+                                    Type::Never
+                                })
+                            } else {
+                                tv_like.as_any_generic_item()
+                            }
+                        })
+                        .collect(),
+                )),
+            )
+        };
+        let p_upper_bound = replace_protocol(true);
+        let p_lower_bound = replace_protocol(false);
+
+        let match_protocol = |t1: &Type, t2| {
+            t1.maybe_class(i_s.db)
+                .unwrap()
+                .check_protocol_match(i_s, &mut Matcher::default(), t2, Variance::Covariant)
+                .bool()
+        };
+        let mut expected_variance = Variance::Invariant;
+        if match_protocol(&p_upper_bound, &p_lower_bound) {
+            expected_variance = Variance::Covariant
+        } else if match_protocol(&p_lower_bound, &p_upper_bound) {
+            expected_variance = Variance::Contravariant
+        }
+        if tv.variance != expected_variance {
+            NodeRef::new(class.node_ref.file, class.node().name().index()).add_issue(
+                i_s,
+                IssueType::ProtocolWrongVariance {
+                    type_var_name: tv.name(i_s.db).into(),
+                    actual_variance: tv.variance,
+                    expected_variance,
+                },
+            )
+        }
+    }
 }

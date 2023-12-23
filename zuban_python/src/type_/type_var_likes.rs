@@ -238,6 +238,14 @@ pub enum Variance {
 }
 
 impl Variance {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Invariant => "Invariant",
+            Self::Covariant => "Covariant",
+            Self::Contravariant => "Contravariant",
+        }
+    }
+
     pub fn invert(self) -> Self {
         match self {
             Variance::Covariant => Variance::Contravariant,

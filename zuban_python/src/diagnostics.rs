@@ -4,7 +4,7 @@ use crate::{
     database::Database,
     file::{File, PythonFile, OVERLAPPING_REVERSE_TO_NORMAL_METHODS},
     name::TreePosition,
-    type_::{FunctionKind, StringSlice, TypeVarLike},
+    type_::{FunctionKind, StringSlice, TypeVarLike, Variance},
     utils::{join_with_commas, InsertOnlyVec},
 };
 
@@ -194,6 +194,7 @@ pub(crate) enum IssueType {
     InvalidSlotsDefinition { actual: Box<str> },
     ProtocolMembersMustHaveExplicitlyDeclaredTypes,
     ProtocolMembersCannotHaveSelfVariableDefinitions,
+    ProtocolWrongVariance { type_var_name: Box<str>, actual_variance: Variance, expected_variance: Variance },
     CannotOverrideClassVariableWithInstanceVariable { base_class: Box<str> },
     CannotOverrideInstanceVariableWithClassVariable { base_class: Box<str> },
 
@@ -1071,6 +1072,11 @@ impl<'db> Diagnostic<'db> {
                 "All protocol members must have explicitly declared types".to_string(),
             ProtocolMembersCannotHaveSelfVariableDefinitions =>
                 "Protocol members cannot be defined via assignment to self".to_string(),
+            ProtocolWrongVariance { type_var_name, actual_variance, expected_variance } => format!(
+                r#"{} type variable "{type_var_name}" used in protocol where {} one is expected"#,
+                actual_variance.name(),
+                expected_variance.name(),
+            ),
             CannotOverrideClassVariableWithInstanceVariable { base_class } => format!(
                 r#"Cannot override class variable (previously declared on base class "{base_class}") with instance variable"#
             ),
