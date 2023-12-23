@@ -420,13 +420,6 @@ testUnpackKwargsParamSpec
 testTypedDictUnpackFromUnion
 testTypedDictUnpackUnionRequiredMissing
 testTypedDictUnpackIncompatible
-# __getitem__ as a protocol
-testTypedDictWithSimpleProtocol
-testTypedDictWithSimpleProtocolInference
-# __iter__ protocol mismatches
-testCachedBadProtocolNote
-testCanConvertTypedDictToAnySuperclassOfMapping
-testJoinOfTypedDictWithCompatibleMappingSupertypeIsSupertype
 # Lookups
 testTypedDictMappingMethods
 testTypedDictAsStarStarArgCalleeKwargs
@@ -509,6 +502,8 @@ testTupleContextFromIterable2
 # small protocol formatting issues
 testParamSpecPrefixSubtypingProtocolInvalid
 testTypedDictOverloading2
+testCachedBadProtocolNote
+testCanConvertTypedDictToAnySuperclassOfMapping
 # Protocols mypy might be wrong?
 testMutuallyRecursiveProtocolsTypesWithSubteMismatchWriteable
 # param order ignored?
