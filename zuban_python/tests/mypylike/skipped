@@ -488,8 +488,6 @@ testNoTypeCheckDecoratorSemanticError
 # Random protocol issues
 testDerivedEnumIterable
 testEnumIterMetaInference
-# "Can only assign concrete classes to a variable of type "Type[P]""
-testInstantiationProtocolInTypeForVariables
 # Recursion error
 testSelfTypeProtocolClassmethodMatch
 testSelfTypesWithProtocolsBehaveAsWithNominal
@@ -835,6 +833,7 @@ testDedicatedErrorCodeTypeAbstract
 testAbstractTypeInADict
 # "Can only assign concrete classes to a variable of type "Type[A]""
 testInstantiationAbstractsInTypeForVariables
+testInstantiationProtocolInTypeForVariables
 # "Overloaded method has both abstract and non-abstract variants"
 testOverloadedAbstractMethodVariantMissingDecorator0
 testOverloadedAbstractMethodVariantMissingDecorator1
