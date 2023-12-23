@@ -1065,10 +1065,10 @@ impl<'db: 'a, 'a> Class<'a> {
                                             name,
                                             &t1,
                                             &t2,
-                                            &c.lookup(i_s, |_| todo!(), name, LookupKind::Normal)
+                                            &c.lookup(i_s, |_| (), name, LookupKind::Normal)
                                                 .into_inferred()
                                                 .as_cow_type(i_s),
-                                            &cls.lookup(i_s, |_| todo!(), name, LookupKind::Normal)
+                                            &cls.lookup(i_s, |_| (), name, LookupKind::Normal)
                                                 .into_inferred()
                                                 .as_cow_type(i_s),
                                         ),

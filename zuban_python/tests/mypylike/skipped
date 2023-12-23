@@ -488,12 +488,6 @@ testNoTypeCheckDecoratorSemanticError
 # Random protocol issues
 testDerivedEnumIterable
 testEnumIterMetaInference
-# Protocol invalid "Access to generic instance variables via class is ambiguous"
-testGenericSubProtocols
-testProtocolConcreteUpdateTypeMethodGeneric
-testProtocolUpdateBaseGeneric
-testProtocolConcreteUpdateBaseGeneric
-testProtocolChangeGeneric
 # "Can only assign concrete classes to a variable of type "Type[P]""
 testInstantiationProtocolInTypeForVariables
 # Recursion error
