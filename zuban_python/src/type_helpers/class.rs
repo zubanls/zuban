@@ -974,7 +974,6 @@ impl<'db: 'a, 'a> Class<'a> {
         i_s: &InferenceState<'db, '_>,
         matcher: &mut Matcher,
         other: &Type,
-        variance: Variance,
     ) -> Match {
         const SHOW_MAX_MISMATCHES: usize = 2;
         const MAX_MISSING_MEMBERS: usize = 2;
@@ -1007,6 +1006,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 // __call__.
                 let is_call = name == "__call__";
                 let mut mismatch = false;
+                let variance = Variance::Covariant;
                 if is_call {
                     // __call__ matching doesn't ignore param names, matching all other methods
                     // does.

@@ -1989,7 +1989,7 @@ fn check_protocol_type_var_variances(i_s: &InferenceState, class: Class) {
         let match_protocol = |t1: &Type, t2| {
             t1.maybe_class(i_s.db)
                 .unwrap()
-                .check_protocol_match(i_s, &mut Matcher::default(), t2, Variance::Covariant)
+                .check_protocol_match(i_s, &mut Matcher::default(), t2)
                 .bool()
         };
         let mut expected_variance = Variance::Invariant;

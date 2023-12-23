@@ -14,7 +14,7 @@ use crate::{
     inferred::Inferred,
     matching::{IteratorContent, Matcher, ResultContext},
     node_ref::NodeRef,
-    type_::{AnyCause, GenericItem, ParamSpecUsage, StringSlice, Type, TypedDict, Variance},
+    type_::{AnyCause, GenericItem, ParamSpecUsage, StringSlice, Type, TypedDict},
     InferenceState,
 };
 
@@ -1064,7 +1064,7 @@ pub fn unpack_star_star(i_s: &InferenceState, t: &Type) -> Option<(Type, Type)> 
     let wanted_cls = i_s.db.python_state.supports_keys_and_get_item_class(i_s.db);
     let mut matcher = Matcher::new_class_matcher(i_s, wanted_cls);
     let matches = wanted_cls
-        .check_protocol_match(i_s, &mut matcher, &t, Variance::Covariant)
+        .check_protocol_match(i_s, &mut matcher, &t)
         .bool();
     matches.then(|| {
         let mut iter = matcher

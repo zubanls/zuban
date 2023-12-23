@@ -435,7 +435,7 @@ impl Type {
                     // Matcher::avoid_recursion, because the matcher is not always passed when
                     // checking protocol members (e.g. for self types).
                     avoid_protocol_mismatch(self, value_type, || {
-                        class1.check_protocol_match(i_s, matcher, value_type, variance)
+                        class1.check_protocol_match(i_s, matcher, value_type)
                     })
                 });
                 if m.bool() {

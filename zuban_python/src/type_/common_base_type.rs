@@ -67,7 +67,7 @@ impl Type {
         if let Some(first) = self.maybe_class(i_s.db) {
             if first.is_protocol(i_s.db) {
                 if first
-                    .check_protocol_match(i_s, &mut Matcher::default(), other, Variance::Invariant)
+                    .check_protocol_match(i_s, &mut Matcher::default(), other)
                     .bool()
                 {
                     return self.clone();
@@ -77,7 +77,7 @@ impl Type {
         if let Some(second) = other.maybe_class(i_s.db) {
             if second.is_protocol(i_s.db) {
                 if second
-                    .check_protocol_match(i_s, &mut Matcher::default(), self, Variance::Invariant)
+                    .check_protocol_match(i_s, &mut Matcher::default(), self)
                     .bool()
                 {
                     return other.clone();
