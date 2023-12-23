@@ -491,18 +491,6 @@ testEnumIterMetaInference
 # Recursion error
 testSelfTypeProtocolClassmethodMatch
 testSelfTypesWithProtocolsBehaveAsWithNominal
-# "Invariant type variable "T" used in protocol where covariant one is expected"
-testAutomaticProtocolVariance
-testProtocolGenericInference2
-testGenericSubProtocols
-testInferProtocolFromProtocol
-testAnyWithProtocols
-testCallbackProtocolFunctionAttributesInference
-testRuntimeProtoTwoBases
-testProtocolConcreteUpdateTypeMethodGeneric
-testProtocolUpdateBaseGeneric
-testProtocolChangeGeneric
-single_generic
 # "Protocol member PPS.attr expected settable variable, got read-only attribute"
 testFinalAttributeProtocol
 testModuleAsProtocolImplementationFinal
@@ -528,7 +516,6 @@ testProtocolClassObjectSelfTypeInstanceMethod
 testProtocolTypeTypeSelfTypeInstanceMethod
 testProtocolIncompatibilityWithUnionType
 # random protocol tests
-testGenericSubProtocolsExtensionInvariant
 testWeirdRecursiveInferenceForProtocols-skip
 testMatchProtocolAgainstOverloadWithAmbiguity
 # Protocol inference

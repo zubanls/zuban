@@ -7,8 +7,8 @@ use std::{
 
 use parsa_python_ast::{
     Argument, Arguments as ASTArguments, AssignmentContent, AsyncStmtContent, BlockContent,
-    ClassDef, Decoratee, ExpressionContent, ExpressionPart, NodeIndex, PrimaryContent,
-    SimpleStmtContent, SimpleStmts, StmtContent, StmtOrError, Target, TypeLike,
+    ClassDef, Decoratee, ExpressionContent, ExpressionPart, PrimaryContent, SimpleStmtContent,
+    SimpleStmts, StmtContent, StmtOrError, Target, TypeLike,
 };
 
 use super::{overload::OverloadResult, Callable, Instance, Module};
@@ -16,7 +16,8 @@ use crate::{
     arguments::{Arguments, KnownArguments, SimpleArguments},
     database::{
         BaseClass, ClassInfos, ClassKind, ClassStorage, ComplexPoint, Database, Locality,
-        MetaclassState, ParentScope, Point, PointLink, PointType, TypedDictDefinition,
+        MetaclassState, ParentScope, Point, PointLink, PointType, ProtocolMember,
+        TypedDictDefinition,
     },
     debug,
     diagnostics::IssueType,
@@ -1000,13 +1001,12 @@ impl<'db: 'a, 'a> Class<'a> {
             };
             let protocol_members = &c.use_cached_class_infos(i_s.db).protocol_members;
             protocol_member_count += protocol_members.len();
-            for name_index in protocol_members.iter() {
-                let name = NodeRef::new(c.node_ref.file, *name_index).as_code();
+            for protocol_member in protocol_members.iter() {
+                let name = NodeRef::new(c.node_ref.file, protocol_member.name_index).as_code();
                 // It is possible to match a Callable against a Protocol that only implements
                 // __call__.
                 let is_call = name == "__call__";
                 let mut mismatch = false;
-                let variance = Variance::Covariant;
                 if is_call {
                     // __call__ matching doesn't ignore param names, matching all other methods
                     // does.
@@ -1016,7 +1016,10 @@ impl<'db: 'a, 'a> Class<'a> {
                             .type_lookup(i_s, |issue| todo!(), name)
                             .into_inferred();
                         let t1 = inf1.as_cow_type(i_s);
-                        if t1.matches(i_s, matcher, other, variance).bool() {
+                        if t1
+                            .matches(i_s, matcher, other, protocol_member.variance)
+                            .bool()
+                        {
                             matcher.ignore_positional_param_names = true;
                             had_at_least_one_member_with_same_name = true;
                             continue;
@@ -1049,7 +1052,7 @@ impl<'db: 'a, 'a> Class<'a> {
                             let t1 = inf1.as_cow_type(i_s);
                             let lookup = lookup_details.lookup.into_inferred();
                             let t2 = lookup.as_cow_type(i_s);
-                            let m = t1.matches(i_s, matcher, &t2, variance);
+                            let m = t1.matches(i_s, matcher, &t2, protocol_member.variance);
                             if m.bool() && !(is_call && !matches!(other, Type::Class(_))) {
                             } else {
                                 if !had_conflict_note {
@@ -1691,7 +1694,7 @@ impl<'db: 'a, 'a> Class<'a> {
         members.into_boxed_slice()
     }
 
-    fn gather_protocol_members(&self) -> Box<[NodeIndex]> {
+    fn gather_protocol_members(&self) -> Box<[ProtocolMember]> {
         let mut protocol_members = vec![];
         for (name, name_index) in unsafe {
             self.class_storage
@@ -1702,12 +1705,16 @@ impl<'db: 'a, 'a> Class<'a> {
                 continue;
             }
             let name_node_ref = NodeRef::new(self.node_ref.file, *name_index);
-            match name_node_ref.as_name().expect_type() {
-                TypeLike::ImportFromAsName(_) | TypeLike::DottedAsName(_) => (),
-                _ => protocol_members.push(*name_index),
-            }
+            protocol_members.push(ProtocolMember {
+                name_index: *name_index,
+                variance: match name_node_ref.as_name().expect_type() {
+                    TypeLike::ImportFromAsName(_) | TypeLike::DottedAsName(_) => continue,
+                    TypeLike::Function(_) => Variance::Covariant,
+                    _ => Variance::Invariant,
+                },
+            })
         }
-        protocol_members.sort();
+        protocol_members.sort_by_key(|member| member.name_index);
         protocol_members.into()
     }
 

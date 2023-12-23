@@ -13,19 +13,26 @@ class P1(Generic[T], Generic[S]): # E: Only single Generic[...] or Protocol[...]
     pass
 
 class P2(Generic[T], Protocol[S]): # E: Only single Generic[...] or Protocol[...] can be in bases
-    pass
+    x: S
+    y: T
 
 class P3(Protocol[T], Generic[S]): # E: Only single Generic[...] or Protocol[...] can be in bases
-    pass
+    x: S
+    y: T
 
 class P4(Protocol[T], Protocol[S]): # E: Only single Generic[...] or Protocol[...] can be in bases
-    pass
+    x: S
+    y: T
 
 class P5(Generic[T], Generic[S], Protocol[U]): # E: Only single Generic[...] or Protocol[...] can be in bases # E: Only single Generic[...] or Protocol[...] can be in bases
-    pass
+    x: S
+    y: T
+    z: U
 
 class P6(Generic[T], Protocol[S], Protocol[U]): # E: Only single Generic[...] or Protocol[...] can be in bases # E: Only single Generic[...] or Protocol[...] can be in bases
-    pass
+    x: S
+    y: T
+    z: U
 
 [builtins fixtures/list.pyi]
 [out]

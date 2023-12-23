@@ -22,7 +22,7 @@ use crate::{
     type_::{
         CallableContent, FunctionKind, FunctionOverload, GenericItem, GenericsList, NamedTuple,
         NewType, ParamSpecUsage, RecursiveType, StringSlice, Tuple, Type, TypeVarLike,
-        TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict,
+        TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict, Variance,
     },
     type_helpers::{Class, Function, Module},
     utils::{InsertOnlyVec, SymbolTable},
@@ -1060,13 +1060,19 @@ pub struct BaseClass {
     pub is_direct_base: bool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ProtocolMember {
+    pub name_index: NodeIndex,
+    pub variance: Variance,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct ClassInfos {
     pub mro: Box<[BaseClass]>, // Does never include `object`
     pub metaclass: MetaclassState,
     pub class_kind: ClassKind,
     pub incomplete_mro: bool,
-    pub protocol_members: Box<[NodeIndex]>,
+    pub protocol_members: Box<[ProtocolMember]>,
     pub has_slots: bool,
 }
 
