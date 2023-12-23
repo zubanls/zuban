@@ -472,10 +472,8 @@ impl<'db> Inference<'db, '_, '_> {
         let class_node_ref = NodeRef::new(self.file, class.index());
         let db = self.i_s.db;
         let c = Class::with_self_generics(db, class_node_ref);
-        if matches!(
-            c.use_cached_class_infos(db).class_kind,
-            ClassKind::TypedDict
-        ) {
+        let class_infos = c.use_cached_class_infos(db);
+        if matches!(class_infos.class_kind, ClassKind::TypedDict) {
             // TypedDicts are special, because they really only contain annotations and no methods.
             // We skip all of this logic, because there's custom logic for TypedDicts.
             return;
@@ -659,6 +657,31 @@ impl<'db> Inference<'db, '_, '_> {
                         actual: t.format_short(i_s.db),
                     },
                 )
+            }
+        }
+        if matches!(class_infos.class_kind, ClassKind::Protocol) {
+            for (name, name_index) in
+                unsafe { c.class_storage.self_symbol_table.iter_on_finished_table() }
+            {
+                if c.class_storage
+                    .class_symbol_table
+                    .lookup_symbol(name)
+                    .is_none()
+                {
+                    let from = NodeRef::new(self.file, *name_index);
+                    // Apparently Mypy raises two issues here.
+                    from.add_issue(
+                        self.i_s,
+                        IssueType::ProtocolMembersCannotHaveSelfVariableDefinitions,
+                    );
+                    from.add_issue(
+                        self.i_s,
+                        IssueType::AttributeError {
+                            object: format!("\"{}\"", c.name()).into(),
+                            name: name.into(),
+                        },
+                    )
+                }
             }
         }
     }

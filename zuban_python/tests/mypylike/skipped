@@ -499,8 +499,6 @@ testInstantiationProtocolInTypeForVariables
 # Recursion error
 testSelfTypeProtocolClassmethodMatch
 testSelfTypesWithProtocolsBehaveAsWithNominal
-# "Protocol members cannot be defined via assignment to self"
-testProhibitSelfDefinitionInProtocols
 # "Invariant type variable "T" used in protocol where covariant one is expected"
 testProtocolVarianceWithCallableAndList
 testProtocolVarianceWithUnusedVariable

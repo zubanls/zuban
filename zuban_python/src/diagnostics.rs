@@ -193,6 +193,7 @@ pub(crate) enum IssueType {
     GetattributeInvalidAtModuleLevel,
     InvalidSlotsDefinition { actual: Box<str> },
     ProtocolMembersMustHaveExplicitlyDeclaredTypes,
+    ProtocolMembersCannotHaveSelfVariableDefinitions,
     CannotOverrideClassVariableWithInstanceVariable { base_class: Box<str> },
     CannotOverrideInstanceVariableWithClassVariable { base_class: Box<str> },
 
@@ -1068,6 +1069,8 @@ impl<'db> Diagnostic<'db> {
             ),
             ProtocolMembersMustHaveExplicitlyDeclaredTypes =>
                 "All protocol members must have explicitly declared types".to_string(),
+            ProtocolMembersCannotHaveSelfVariableDefinitions =>
+                "Protocol members cannot be defined via assignment to self".to_string(),
             CannotOverrideClassVariableWithInstanceVariable { base_class } => format!(
                 r#"Cannot override class variable (previously declared on base class "{base_class}") with instance variable"#
             ),
