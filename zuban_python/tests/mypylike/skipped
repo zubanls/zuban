@@ -501,9 +501,6 @@ testNoneDisablesProtocolSubclassingWithStrictOptional
 testTupleContextFromIterable2
 # small protocol formatting issues
 testParamSpecPrefixSubtypingProtocolInvalid
-testTypedDictOverloading2
-testCachedBadProtocolNote
-testCanConvertTypedDictToAnySuperclassOfMapping
 # Protocols mypy might be wrong?
 testMutuallyRecursiveProtocolsTypesWithSubteMismatchWriteable
 # param order ignored?
