@@ -522,7 +522,7 @@ pub(crate) fn attribute_access_of_type(
     callable: &mut impl FnMut(&Type, LookupDetails),
     in_type: Rc<Type>,
 ) {
-    let lookup_result = match in_type.as_ref() {
+    let details = match in_type.as_ref() {
         Type::Union(union) => {
             debug_assert!(union.entries.len() > 1);
             for t in union.iter() {
@@ -554,54 +554,48 @@ pub(crate) fn attribute_access_of_type(
             }
             return;
         }
-        Type::Class(g) => g.class(i_s.db).lookup(i_s, add_issue, name, kind),
+        Type::Class(g) => g
+            .class(i_s.db)
+            .lookup_with_details(i_s, add_issue, name, kind),
         Type::Literal(l) => i_s
             .db
             .python_state
             .literal_instance(&l.kind)
             .class
-            .lookup(i_s, add_issue, name, kind),
-        Type::Callable(_) => LookupResult::None,
+            .lookup_with_details(i_s, add_issue, name, kind),
+        Type::Callable(_) => LookupDetails::none(),
         Type::Self_ => i_s
             .current_class()
             .unwrap()
-            .lookup(i_s, add_issue, name, kind),
+            .lookup_with_details(i_s, add_issue, name, kind),
         Type::Any(cause) => i_s
             .db
             .python_state
             .bare_type_class()
             .instance()
-            .lookup(i_s, |issue| add_issue(issue), name, kind)
-            .or_else(|| LookupResult::any(*cause)),
+            .lookup_with_details(i_s, |issue| add_issue(issue), name, kind)
+            .or_else(|| LookupDetails::any(*cause)),
         t @ Type::Enum(e) => lookup_on_enum_class(i_s, add_issue, e, name, result_context),
-        Type::Dataclass(d) => lookup_on_dataclass_type(d.clone(), i_s, add_issue, name, kind),
+        Type::Dataclass(d) => lookup_on_dataclass_type(d, i_s, add_issue, name, kind),
         Type::TypedDict(d) => i_s
             .db
             .python_state
             .typed_dict_class()
-            .lookup(i_s, add_issue, name, kind),
-        Type::NamedTuple(nt) => {
-            nt.type_lookup(i_s, name, Some(&|| (*in_type).clone()))
-                .lookup
-        }
+            .lookup_with_details(i_s, add_issue, name, kind),
+        Type::NamedTuple(nt) => nt.type_lookup(i_s, name, Some(&|| (*in_type).clone())),
         Type::Tuple(tup) => i_s
             .db
             .python_state
             .tuple_class(i_s.db, tup)
-            .lookup(i_s, add_issue, name, kind),
+            .lookup_with_details(i_s, add_issue, name, kind),
         Type::Type(_) => i_s
             .db
             .python_state
             .bare_type_class()
-            .lookup(i_s, add_issue, name, kind),
+            .lookup_with_details(i_s, add_issue, name, kind),
         t => todo!("{name} on {t:?}"),
     };
-    let details = LookupDetails::new(
-        Type::Type(in_type.clone()),
-        lookup_result,
-        AttributeKind::Attribute,
-    );
-    callable(&Type::Type(in_type), details)
+    callable(&Type::Type(in_type.clone()), details)
 }
 
 pub(crate) fn execute_type_of_type<'db>(

@@ -145,16 +145,21 @@ impl Enum {
     }
 }
 
-pub(crate) fn lookup_on_enum_class(
-    i_s: &InferenceState,
+pub(crate) fn lookup_on_enum_class<'a>(
+    i_s: &InferenceState<'a, '_>,
     add_issue: impl Fn(IssueType),
     enum_: &Rc<Enum>,
     name: &str,
     result_context: &mut ResultContext,
-) -> LookupResult {
+) -> LookupDetails<'a> {
     match name {
-        "_ignore_" => LookupResult::None,
-        _ => lookup_members_on_enum(i_s, enum_, name, result_context).or_else(|| {
+        "_ignore_" => LookupDetails::none(),
+        _ => LookupDetails::new(
+            Type::Enum(enum_.clone()),
+            lookup_members_on_enum(i_s, enum_, name, result_context),
+            AttributeKind::Attribute,
+        )
+        .or_else(|| {
             enum_.class(i_s.db).lookup_with_custom_self_type(
                 i_s,
                 add_issue,

@@ -694,35 +694,49 @@ pub fn dataclass_init_func<'a>(self_: &'a Rc<Dataclass>, db: &Database) -> &'a C
     self_.__init__.get().unwrap()
 }
 
-pub(crate) fn lookup_on_dataclass_type(
-    self_: Rc<Dataclass>,
-    i_s: &InferenceState,
+pub(crate) fn lookup_on_dataclass_type<'a>(
+    self_: &'a Rc<Dataclass>,
+    i_s: &'a InferenceState,
     add_issue: impl Fn(IssueType),
     name: &str,
     kind: LookupKind,
-) -> LookupResult {
+) -> LookupDetails<'a> {
     if name == "__dataclass_fields__" && kind == LookupKind::Normal {
-        return LookupResult::UnknownName(Inferred::from_type(
-            i_s.db.python_state.dataclass_fields_type.clone(),
-        ));
+        return LookupDetails::new(
+            Type::Dataclass(self_.clone()),
+            LookupResult::UnknownName(Inferred::from_type(
+                i_s.db.python_state.dataclass_fields_type.clone(),
+            )),
+            AttributeKind::Attribute,
+        );
     }
     if self_.options.order && ORDER_METHOD_NAMES.contains(&name) && kind == LookupKind::Normal {
-        return type_order_func(self_, i_s);
+        return LookupDetails::new(
+            Type::Dataclass(self_.clone()),
+            type_order_func(self_.clone(), i_s),
+            AttributeKind::Attribute,
+        );
     }
     if name == "__slots__" && self_.options.slots {
-        return LookupResult::UnknownName(Inferred::from_type(Type::Tuple(Rc::new(
-            Tuple::new_fixed_length(
-                repeat_with(|| TypeOrTypeVarTuple::Type(i_s.db.python_state.str_type()))
-                    .take(
-                        dataclass_init_func(&self_, i_s.db)
-                            .expect_simple_params()
-                            .len(),
-                    )
-                    .collect(),
-            ),
-        ))));
+        return LookupDetails::new(
+            Type::Dataclass(self_.clone()),
+            LookupResult::UnknownName(Inferred::from_type(Type::Tuple(Rc::new(
+                Tuple::new_fixed_length(
+                    repeat_with(|| TypeOrTypeVarTuple::Type(i_s.db.python_state.str_type()))
+                        .take(
+                            dataclass_init_func(&self_, i_s.db)
+                                .expect_simple_params()
+                                .len(),
+                        )
+                        .collect(),
+                ),
+            )))),
+            AttributeKind::Attribute,
+        );
     }
-    self_.class(i_s.db).lookup(i_s, add_issue, name, kind)
+    self_
+        .class(i_s.db)
+        .lookup_with_details(i_s, add_issue, name, kind)
 }
 
 pub fn lookup_symbol_internal(

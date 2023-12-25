@@ -1284,9 +1284,8 @@ impl<'db: 'a, 'a> Class<'a> {
         name: &str,
         kind: LookupKind,
         as_type_type: impl Fn() -> Type,
-    ) -> LookupResult {
+    ) -> LookupDetails<'a> {
         self.lookup_internal_detailed(i_s, add_issue, name, kind, true, false, as_type_type)
-            .lookup
     }
 
     fn lookup_with_or_without_descriptors_internal(
@@ -1893,8 +1892,17 @@ impl<'db: 'a, 'a> Class<'a> {
         name: &str,
         kind: LookupKind,
     ) -> LookupResult {
+        self.lookup_with_details(i_s, add_issue, name, kind).lookup
+    }
+
+    pub(crate) fn lookup_with_details(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        add_issue: impl Fn(IssueType),
+        name: &str,
+        kind: LookupKind,
+    ) -> LookupDetails<'a> {
         self.lookup_with_or_without_descriptors_internal(i_s, add_issue, name, kind, true, false)
-            .lookup
     }
 
     pub fn qualified_name(&self, db: &Database) -> String {
