@@ -495,8 +495,6 @@ testNamedTupleWithNoArgsCallableField
 # Protocol with ClassVar
 testProtocolClassObjectAttribute
 testProtocolTypeTypeAttribute
-# Protocol Override inheritance
-testNoneDisablesProtocolSubclassingWithStrictOptional
 # Context inference for protocols
 testTupleContextFromIterable2
 # small protocol formatting issues
