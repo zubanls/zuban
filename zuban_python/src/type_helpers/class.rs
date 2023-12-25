@@ -1378,8 +1378,11 @@ impl<'db: 'a, 'a> Class<'a> {
                 {
                     LookupDetails::any(AnyCause::Todo)
                 } else {
-                    // TODO hack
-                    unsafe { std::mem::transmute(metaclass_result) }
+                    LookupDetails {
+                        class: TypeOrClass::Class(*self),
+                        lookup: metaclass_result.lookup,
+                        attr_kind: metaclass_result.attr_kind,
+                    }
                 }
             }
             Some(result) => result,
