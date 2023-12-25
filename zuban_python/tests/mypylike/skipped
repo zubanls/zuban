@@ -169,6 +169,7 @@ testRegression12258
 testNoCrashOnNestedGenericCallable
 testSubtypingGenericTypeObject
 testParamSpecNoCrashOnUnificationPrefix
+testProtocolTypeTypeSelfTypeInstanceMethod
 # dict questionable decisions
 testDictWithStarStarExpr
 testDictFromIterableAndStarStarArgs
@@ -478,42 +479,34 @@ testCallingNoTypeCheckFunction
 testCallingNoTypeCheckFunction2
 testNoTypeCheckDecoratorSemanticError
 
-# Random protocol issues
-testDerivedEnumIterable
-testEnumIterMetaInference
-# Recursion error
-testSelfTypeProtocolClassmethodMatch
-testSelfTypesWithProtocolsBehaveAsWithNominal
-# "Protocol member PPS.attr expected settable variable, got read-only attribute"
-testFinalAttributeProtocol
-testModuleAsProtocolImplementationFinal
-testTypingNamedTupleAttributesAreReadOnly
-testClassesGetattrWithProtocols
-# Protocol properties
-testProtocolClassObjectPropertyRejected
-testNamedTupleWithNoArgsCallableField
-# Protocol with ClassVar
+# "Only class variables allowed for class object access on protocols, foo is an instance variable of "D""
 testProtocolClassObjectAttribute
 testProtocolTypeTypeAttribute
+testProtocolClassObjectPropertyRejected
 # Context inference for protocols
 testTupleContextFromIterable2
-# small protocol formatting issues
-testParamSpecPrefixSubtypingProtocolInvalid
-# Protocols mypy might be wrong?
-testMutuallyRecursiveProtocolsTypesWithSubteMismatchWriteable
-# param order ignored?
-testProtocolClassObjectSelfTypeInstanceMethod
-testProtocolTypeTypeSelfTypeInstanceMethod
-testProtocolIncompatibilityWithUnionType
 # random protocol tests
+testTypingNamedTupleAttributesAreReadOnly
+testNamedTupleWithNoArgsCallableField
+testClassesGetattrWithProtocols
+testProtocolIncompatibilityWithUnionType
 testWeirdRecursiveInferenceForProtocols-skip
 testMatchProtocolAgainstOverloadWithAmbiguity
-# Protocol inference
+testDerivedEnumIterable
+testEnumIterMetaInference
+# Self binding
+testProtocolClassObjectSelfTypeInstanceMethod
+testSelfTypesWithProtocolsBehaveAsWithNominal
 testInferenceViaTypeTypeMetaclass
+testSelfTypeProtocolClassmethodMatch
 # TypeVar in Protocol Body
 testTypeVarInProtocolBody
 # "Type aliases are prohibited in protocol bodies"
 testTypeAliasInProtocolBody
+# small protocol formatting issues
+testParamSpecPrefixSubtypingProtocolInvalid
+# Protocols mypy might be wrong?
+testMutuallyRecursiveProtocolsTypesWithSubteMismatchWriteable
 # typing_extensions.runtime_checkable
 testProtocolAndRuntimeAreDefinedAlsoInTypingExtensions
 testOverloadOnProtocol
@@ -1161,6 +1154,9 @@ testFinalClassNoInheritanceMulti
 testCannotExtendBoolUnlessIgnored
 # "Cannot access final instance attribute "x" on class object"
 testFinalDefiningTypevarsImplicit
+# Final "Protocol member PPS.attr expected settable variable, got read-only attribute"
+testFinalAttributeProtocol
+testModuleAsProtocolImplementationFinal
 # Final issues
 testFinalBadDefinitionTooManyArgs
 testFinalInvalidDefinitions
