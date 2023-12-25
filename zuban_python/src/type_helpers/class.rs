@@ -1329,6 +1329,7 @@ impl<'db: 'a, 'a> Class<'a> {
             }
             let (lookup_result, in_class, _) =
                 self.lookup_and_class_and_maybe_ignore_self_internal(i_s, name, ignore_self);
+            let mut attr_kind = AttributeKind::Attribute;
             let result = lookup_result.and_then(|inf| {
                 if let TypeOrClass::Class(in_class) = in_class {
                     if class_infos.has_slots {
@@ -1339,7 +1340,17 @@ impl<'db: 'a, 'a> Class<'a> {
                         }
                     }
                     let i_s = i_s.with_class_context(&in_class);
-                    inf.bind_class_descriptors(&i_s, self, in_class, &add_issue, use_descriptors)
+                    let result = inf.bind_class_descriptors(
+                        &i_s,
+                        self,
+                        in_class,
+                        &add_issue,
+                        use_descriptors,
+                    );
+                    if let Some((_, k)) = &result {
+                        attr_kind = *k;
+                    }
+                    result.map(|inf| inf.0)
                 } else {
                     Some(inf)
                 }
@@ -1347,7 +1358,7 @@ impl<'db: 'a, 'a> Class<'a> {
             result.map(|lookup| LookupDetails {
                 class: in_class,
                 lookup,
-                attr_kind: AttributeKind::Attribute,
+                attr_kind,
             })
         } else {
             None

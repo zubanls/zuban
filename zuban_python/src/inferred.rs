@@ -1145,7 +1145,7 @@ impl<'db: 'slf, 'slf> Inferred {
         attribute_class: Class, // The (sub-)class in which an attribute is defined
         add_issue: impl Fn(IssueType),
         apply_descriptor: bool,
-    ) -> Option<Self> {
+    ) -> Option<(Self, AttributeKind)> {
         match &self.state {
             InferredState::Saved(definition) => {
                 let node_ref = NodeRef::from_link(i_s.db, *definition);
@@ -1155,7 +1155,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         Specific::Function => {
                             let func = Function::new(node_ref, Some(attribute_class));
                             let t = func.as_type(i_s, FirstParamProperties::MethodAccessedOnClass);
-                            return Some(Inferred::from_type(t));
+                            return Some((Inferred::from_type(t), AttributeKind::Attribute));
                         }
                         Specific::DecoratedFunction => {
                             return Function::new(node_ref, Some(attribute_class))
@@ -1190,6 +1190,12 @@ impl<'db: 'slf, 'slf> Inferred {
                                     &|| class.as_type(i_s.db),
                                 ));
                             }
+                            let attr_kind = if specific == Specific::AnnotationOrTypeCommentClassVar
+                            {
+                                AttributeKind::ClassVar
+                            } else {
+                                AttributeKind::Attribute
+                            };
                             if let Some(r) = Self::bind_class_descriptors_for_type(
                                 i_s,
                                 class,
@@ -1198,10 +1204,10 @@ impl<'db: 'slf, 'slf> Inferred {
                                 apply_descriptor,
                                 &t,
                             ) {
-                                return r;
+                                return r.map(|inf| (inf, attr_kind));
                             }
                             if has_explicit_self {
-                                return Some(Inferred::from_type(t.into_owned()));
+                                return Some((Inferred::from_type(t.into_owned()), attr_kind));
                             }
                         }
                         _ => (),
@@ -1209,27 +1215,28 @@ impl<'db: 'slf, 'slf> Inferred {
                     PointType::Complex => match node_ref.complex().unwrap() {
                         ComplexPoint::FunctionOverload(o) => match o.kind() {
                             FunctionKind::Function { .. } => {
-                                return Some(Inferred::from_type(Type::FunctionOverload(
-                                    FunctionOverload::new(
-                                        o.iter_functions()
-                                            .map(|c| {
-                                                c.merge_class_type_vars(
-                                                    i_s.db,
-                                                    *class,
-                                                    attribute_class,
-                                                )
-                                            })
-                                            .collect(),
-                                    ),
-                                )))
+                                return Some((
+                                    Inferred::from_type(Type::FunctionOverload(
+                                        FunctionOverload::new(
+                                            o.iter_functions()
+                                                .map(|c| {
+                                                    c.merge_class_type_vars(
+                                                        i_s.db,
+                                                        *class,
+                                                        attribute_class,
+                                                    )
+                                                })
+                                                .collect(),
+                                        ),
+                                    )),
+                                    AttributeKind::Attribute,
+                                ))
                             }
                             FunctionKind::Property { .. } => unreachable!(),
                             FunctionKind::Classmethod { .. } => {
-                                return Some(infer_overloaded_class_method(
-                                    i_s,
-                                    *class,
-                                    attribute_class,
-                                    o,
+                                return Some((
+                                    infer_overloaded_class_method(i_s, *class, attribute_class, o),
+                                    AttributeKind::Attribute,
                                 ))
                             }
                             FunctionKind::Staticmethod => (),
@@ -1243,7 +1250,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 apply_descriptor,
                                 t,
                             ) {
-                                return r;
+                                return r.map(|inf| (inf, AttributeKind::Attribute));
                             }
                         }
                         _ => (),
@@ -1261,7 +1268,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         apply_descriptor,
                         t,
                     ) {
-                        return inf;
+                        return inf.map(|inf| (inf, AttributeKind::Attribute));
                     }
                 }
             }
@@ -1269,7 +1276,7 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::UnsavedFileReference(file_index) => todo!(),
             InferredState::BoundMethod { .. } => todo!(),
         }
-        Some(self)
+        Some((self, AttributeKind::Attribute))
     }
 
     pub(crate) fn bind_class_descriptors_for_type(
