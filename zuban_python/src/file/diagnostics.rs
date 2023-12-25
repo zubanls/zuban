@@ -1357,12 +1357,12 @@ impl<'db> Inference<'db, '_, '_> {
             .class
             .unwrap()
             .lookup_without_descriptors(i_s, func.node_ref, normal_magic_name)
-            .0;
+            .lookup;
         let inplace_method = func
             .class
             .unwrap()
             .lookup_without_descriptors(i_s, func.node_ref, func.name())
-            .0;
+            .lookup;
         if !normal_method
             .into_inferred()
             .as_cow_type(i_s)
@@ -1854,7 +1854,7 @@ fn check_override(
                     &original_t,
                     override_class
                         .lookup_and_class_and_maybe_ignore_self(i_s, |_| todo!(), name, kind, true)
-                        .0,
+                        .lookup,
                 );
             }
             notes.push("     Subclass:".into());

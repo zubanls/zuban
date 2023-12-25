@@ -70,8 +70,10 @@ impl<'a> Instance<'a> {
             })
         };
 
-        let (result, class) = self.class.lookup_without_descriptors(i_s, from, name_str);
-        let result = result.or_else(|| self.lookup(i_s, add_issue, name_str, LookupKind::Normal));
+        let lookup_details = self.class.lookup_without_descriptors(i_s, from, name_str);
+        let result = lookup_details
+            .lookup
+            .or_else(|| self.lookup(i_s, add_issue, name_str, LookupKind::Normal));
         let Some(inf) = result.into_maybe_inferred() else {
             let t = self.class.as_type(i_s.db);
             let l = self.lookup_with_details(i_s, add_issue, "__setattr__", LookupKind::OnlyType);
@@ -139,7 +141,7 @@ impl<'a> Instance<'a> {
                         FunctionKind::Property {
                             writable: false, ..
                         } => {
-                            if let Some(class) = class {
+                            if let TypeOrClass::Class(class) = lookup_details.class {
                                 property_is_read_only(class.name().into())
                             } else {
                                 todo!()

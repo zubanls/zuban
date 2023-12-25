@@ -11,7 +11,7 @@ use parsa_python_ast::{
     SimpleStmts, StmtContent, StmtOrError, Target, TypeLike,
 };
 
-use super::{overload::OverloadResult, Callable, Instance, Module};
+use super::{overload::OverloadResult, Callable, Instance, LookupDetails, Module};
 use crate::{
     arguments::{Arguments, KnownArguments, SimpleArguments},
     database::{
@@ -1219,7 +1219,7 @@ impl<'db: 'a, 'a> Class<'a> {
         i_s: &InferenceState<'db, '_>,
         name: &str,
         ignore_self: bool,
-    ) -> (LookupResult, Option<Class>, MroIndex) {
+    ) -> (LookupResult, TypeOrClass<'a>, MroIndex) {
         for (mro_index, c) in self
             .mro_maybe_without_object(i_s.db, self.incomplete_mro(i_s.db))
             .skip(ignore_self as usize)
@@ -1227,17 +1227,21 @@ impl<'db: 'a, 'a> Class<'a> {
             let (_, result) = c.lookup_symbol(i_s, name);
             if !matches!(result, LookupResult::None) {
                 return match c {
-                    TypeOrClass::Class(c) => (result, Some(c), mro_index),
+                    // TODO why?
                     TypeOrClass::Type(t) if matches!(t.as_ref(), Type::NamedTuple(_)) => (
                         result,
-                        Some(i_s.db.python_state.typing_named_tuple_class()),
+                        TypeOrClass::Class(i_s.db.python_state.typing_named_tuple_class()),
                         mro_index,
                     ),
-                    _ => (result, None, mro_index),
+                    _ => (result, c, mro_index),
                 };
             }
         }
-        (LookupResult::None, None, 0.into())
+        (
+            LookupResult::None,
+            TypeOrClass::Type(Cow::Owned(Type::Any(AnyCause::Internal))),
+            0.into(),
+        )
     }
 
     pub(crate) fn lookup_and_class_and_maybe_ignore_self(
@@ -1247,7 +1251,7 @@ impl<'db: 'a, 'a> Class<'a> {
         name: &str,
         kind: LookupKind,
         ignore_self: bool,
-    ) -> (LookupResult, Option<Class>) {
+    ) -> LookupDetails {
         self.lookup_with_or_without_descriptors_internal(
             i_s,
             add_issue,
@@ -1263,7 +1267,7 @@ impl<'db: 'a, 'a> Class<'a> {
         i_s: &InferenceState<'db, '_>,
         node_ref: NodeRef,
         name: &str,
-    ) -> (LookupResult, Option<Class>) {
+    ) -> LookupDetails {
         self.lookup_with_or_without_descriptors_internal(
             i_s,
             |issue| node_ref.add_issue(i_s, issue),
@@ -1283,7 +1287,7 @@ impl<'db: 'a, 'a> Class<'a> {
         as_type_type: impl Fn() -> Type,
     ) -> LookupResult {
         self.lookup_internal_detailed(i_s, add_issue, name, kind, true, false, as_type_type)
-            .0
+            .lookup
     }
 
     fn lookup_with_or_without_descriptors_internal(
@@ -1294,7 +1298,7 @@ impl<'db: 'a, 'a> Class<'a> {
         kind: LookupKind,
         use_descriptors: bool,
         ignore_self: bool,
-    ) -> (LookupResult, Option<Class>) {
+    ) -> LookupDetails<'a> {
         self.lookup_internal_detailed(
             i_s,
             add_issue,
@@ -1315,16 +1319,20 @@ impl<'db: 'a, 'a> Class<'a> {
         use_descriptors: bool,
         ignore_self: bool,
         as_type_type: impl Fn() -> Type,
-    ) -> (LookupResult, Option<Class>) {
+    ) -> LookupDetails<'a> {
         let class_infos = self.use_cached_class_infos(i_s.db);
-        let (result, in_class) = if kind == LookupKind::Normal {
+        let result = if kind == LookupKind::Normal {
             if class_infos.class_kind == ClassKind::Enum && use_descriptors && name == "_ignore_" {
-                return (LookupResult::None, Some(*self));
+                return LookupDetails {
+                    lookup: LookupResult::None,
+                    class: TypeOrClass::Class(*self),
+                    attr_kind: AttributeKind::Attribute,
+                };
             }
             let (lookup_result, in_class, _) =
                 self.lookup_and_class_and_maybe_ignore_self_internal(i_s, name, ignore_self);
             let result = lookup_result.and_then(|inf| {
-                if let Some(in_class) = in_class {
+                if let TypeOrClass::Class(in_class) = in_class {
                     if class_infos.has_slots {
                         if self.in_slots(i_s.db, name) {
                             add_issue(IssueType::SlotsConflictWithClassVariableAccess {
@@ -1338,35 +1346,44 @@ impl<'db: 'a, 'a> Class<'a> {
                     Some(inf)
                 }
             });
-            (result, in_class)
+            result.map(|lookup| LookupDetails {
+                class: in_class,
+                lookup,
+                attr_kind: AttributeKind::Attribute,
+            })
         } else {
-            (None, None)
+            None
         };
         match result {
-            Some(LookupResult::None) | None => {
-                let result = match class_infos.metaclass {
-                    MetaclassState::Unknown => LookupResult::any(AnyCause::Todo),
+            Some(LookupDetails {
+                lookup: LookupResult::None,
+                ..
+            })
+            | None => {
+                let metaclass_result = match class_infos.metaclass {
+                    MetaclassState::Unknown => LookupDetails::any(AnyCause::Todo),
                     _ => {
                         let instance = Instance::new(class_infos.metaclass(i_s.db), None);
-                        instance
-                            .lookup_with_explicit_self_binding(
-                                i_s,
-                                &|issue| add_issue(issue),
-                                name,
-                                LookupKind::Normal,
-                                0,
-                                as_type_type,
-                            )
-                            .lookup
+                        instance.lookup_with_explicit_self_binding(
+                            i_s,
+                            &|issue| add_issue(issue),
+                            name,
+                            LookupKind::Normal,
+                            0,
+                            as_type_type,
+                        )
                     }
                 };
-                if matches!(result, LookupResult::None) && self.incomplete_mro(i_s.db) {
-                    (LookupResult::any(AnyCause::Todo), in_class)
+                if matches!(&metaclass_result.lookup, LookupResult::None)
+                    && self.incomplete_mro(i_s.db)
+                {
+                    LookupDetails::any(AnyCause::Todo)
                 } else {
-                    (result, in_class)
+                    // TODO hack
+                    unsafe { std::mem::transmute(metaclass_result) }
                 }
             }
-            Some(x) => (x, in_class),
+            Some(result) => result,
         }
     }
 
@@ -1736,10 +1753,12 @@ impl<'db: 'a, 'a> Class<'a> {
             constructor: match is_new {
                 false => __init__,
                 true => __new__
-                    .and_then(|inf| Some(inf.bind_new_descriptors(i_s, self, new_class)))
+                    .and_then(|inf| {
+                        Some(inf.bind_new_descriptors(i_s, self, new_class.into_maybe_class()))
+                    })
                     .unwrap(),
             },
-            init_class,
+            init_class: init_class.into_maybe_class(),
         }
     }
 
@@ -1873,7 +1892,7 @@ impl<'db: 'a, 'a> Class<'a> {
         kind: LookupKind,
     ) -> LookupResult {
         self.lookup_with_or_without_descriptors_internal(i_s, add_issue, name, kind, true, false)
-            .0
+            .lookup
     }
 
     pub fn qualified_name(&self, db: &Database) -> String {
@@ -2238,6 +2257,13 @@ impl<'a> TypeOrClass<'a> {
                 Type::Tuple(_) => "Tuple",
                 _ => todo!(),
             },
+        }
+    }
+
+    pub fn into_maybe_class(self) -> Option<Class<'a>> {
+        match self {
+            TypeOrClass::Class(c) => Some(c),
+            TypeOrClass::Type(_) => None,
         }
     }
 

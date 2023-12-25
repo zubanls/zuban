@@ -973,7 +973,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     node_ref,
                                     name_definition.as_code(),
                                 )
-                                .0
+                                .lookup
                                 .into_maybe_inferred()
                                 .map(|inf| {
                                     if inf.as_cow_type(i_s).is_func_or_overload_not_any_callable() {
