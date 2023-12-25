@@ -1279,7 +1279,7 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub(crate) fn lookup_with_custom_self_type(
-        &'a self,
+        &self,
         i_s: &InferenceState<'db, '_>,
         add_issue: impl Fn(IssueType),
         name: &str,
@@ -1291,7 +1291,7 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     fn lookup_with_or_without_descriptors_internal(
-        &'a self,
+        &self,
         i_s: &InferenceState<'db, '_>,
         add_issue: impl Fn(IssueType),
         name: &str,
@@ -1311,7 +1311,7 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     fn lookup_internal_detailed(
-        &'a self,
+        &self,
         i_s: &InferenceState<'db, '_>,
         add_issue: impl Fn(IssueType),
         name: &str,
