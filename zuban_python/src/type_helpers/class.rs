@@ -1121,6 +1121,19 @@ impl<'db: 'a, 'a> Class<'a> {
                                     notes.push(format!("Protocol member {}.{name} expected class or static method", self.name()).into());
                                 }
                             }
+                            if lookup_details.attr_kind == AttributeKind::AnnotatedAttribute {
+                                if let Type::Type(t) = other {
+                                    mismatch = true;
+                                    if mismatches < SHOW_MAX_MISMATCHES {
+                                        notes.push(format!(
+                                            "Only class variables allowed for class object access \
+                                             on protocols, {} is an instance variable of \"{}\"",
+                                            name,
+                                            t.format_short(i_s.db),
+                                        ).into());
+                                    }
+                                }
+                            }
                         }
                     }
                 );

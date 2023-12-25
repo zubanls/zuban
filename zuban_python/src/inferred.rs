@@ -1146,6 +1146,7 @@ impl<'db: 'slf, 'slf> Inferred {
         add_issue: impl Fn(IssueType),
         apply_descriptor: bool,
     ) -> Option<(Self, AttributeKind)> {
+        let mut attr_kind = AttributeKind::Attribute;
         match &self.state {
             InferredState::Saved(definition) => {
                 let node_ref = NodeRef::from_link(i_s.db, *definition);
@@ -1190,11 +1191,10 @@ impl<'db: 'slf, 'slf> Inferred {
                                     &|| class.as_type(i_s.db),
                                 ));
                             }
-                            let attr_kind = if specific == Specific::AnnotationOrTypeCommentClassVar
-                            {
-                                AttributeKind::ClassVar
+                            if specific == Specific::AnnotationOrTypeCommentClassVar {
+                                attr_kind = AttributeKind::ClassVar
                             } else {
-                                AttributeKind::Attribute
+                                attr_kind = AttributeKind::AnnotatedAttribute
                             };
                             if let Some(r) = Self::bind_class_descriptors_for_type(
                                 i_s,
@@ -1276,7 +1276,7 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::UnsavedFileReference(file_index) => todo!(),
             InferredState::BoundMethod { .. } => todo!(),
         }
-        Some((self, AttributeKind::Attribute))
+        Some((self, attr_kind))
     }
 
     pub(crate) fn bind_class_descriptors_for_type(

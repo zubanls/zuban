@@ -479,10 +479,6 @@ testCallingNoTypeCheckFunction
 testCallingNoTypeCheckFunction2
 testNoTypeCheckDecoratorSemanticError
 
-# "Only class variables allowed for class object access on protocols, foo is an instance variable of "D""
-testProtocolClassObjectAttribute
-testProtocolTypeTypeAttribute
-testProtocolClassObjectPropertyRejected
 # Context inference for protocols
 testTupleContextFromIterable2
 # random protocol tests
