@@ -361,8 +361,18 @@ impl<'a> Instance<'a> {
                     ));
                     return LookupDetails {
                         class: TypeOrClass::Class(self.class),
-                        attr_kind,
                         lookup,
+                        attr_kind: AttributeKind::Property {
+                            writable: {
+                                let details = self.lookup_with_details(
+                                    i_s,
+                                    add_issue,
+                                    "__setattr__",
+                                    LookupKind::OnlyType,
+                                );
+                                details.lookup.is_some() && !details.class.is_object(i_s.db)
+                            },
+                        },
                     };
                 }
             }
