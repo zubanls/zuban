@@ -767,7 +767,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         t
                     }
                 }
-                TypeContent::Final(t) => t,
+                TypeContent::Final(t)
+                    if matches!(
+                        self.origin,
+                        TypeComputationOrigin::AssignmentTypeCommentOrAnnotation
+                    ) =>
+                {
+                    t
+                }
                 _ => self.as_type(type_, node_ref),
             },
         };
