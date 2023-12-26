@@ -613,7 +613,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
             }
             AssignmentContent::WithAnnotation(target, annotation, right_side) => {
-                self.ensure_cached_annotation(annotation);
+                self.ensure_cached_annotation(annotation, right_side.is_some());
                 match self.file.points.get(annotation.index()).maybe_specific() {
                     Some(Specific::TypingTypeAlias) => {
                         let inf = self.compute_explicit_type_assignment(assignment);

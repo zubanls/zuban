@@ -212,7 +212,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
             if let AssignmentContent::WithAnnotation(target, annotation, right_side) =
                 assignment.unpack()
             {
-                inference.ensure_cached_annotation(annotation);
+                inference.ensure_cached_annotation(annotation, right_side.is_some());
                 let field_options = calculate_field_arg(i_s, file, right_side);
                 let point = file.points.get(annotation.index());
                 match point.maybe_specific() {

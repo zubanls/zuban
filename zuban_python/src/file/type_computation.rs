@@ -105,7 +105,7 @@ pub(super) enum InvalidVariableType<'a> {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum TypeComputationOrigin {
-    AssignmentTypeCommentOrAnnotation,
+    AssignmentTypeCommentOrAnnotation { is_initialized: bool },
     ParamTypeCommentOrAnnotation,
     TypedDictMember,
     TypeApplication,
@@ -713,7 +713,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
                 TypeContent::SpecialType(
                     special @ (SpecialType::TypeAlias | SpecialType::Final),
-                ) if self.origin == TypeComputationOrigin::AssignmentTypeCommentOrAnnotation => {
+                ) if matches!(
+                    self.origin,
+                    TypeComputationOrigin::AssignmentTypeCommentOrAnnotation { .. }
+                ) =>
+                {
                     debug_assert!(!is_implicit_optional);
                     annotation_node_ref.set_point(Point::new_simple_specific(
                         match special {
@@ -727,8 +731,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
                 TypeContent::SpecialType(SpecialType::ClassVar) => {
                     let i_s = self.inference.i_s;
-                    if self.origin == TypeComputationOrigin::AssignmentTypeCommentOrAnnotation
-                        && i_s.current_class().is_some()
+                    if matches!(
+                        self.origin,
+                        TypeComputationOrigin::AssignmentTypeCommentOrAnnotation { .. }
+                    ) && i_s.current_class().is_some()
                         && i_s.current_function().is_none()
                     {
                         todo!()
@@ -739,7 +745,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
                 TypeContent::ClassVar(t) => {
                     is_class_var = true;
-                    if self.origin != TypeComputationOrigin::AssignmentTypeCommentOrAnnotation {
+                    if !matches!(
+                        self.origin,
+                        TypeComputationOrigin::AssignmentTypeCommentOrAnnotation { .. }
+                    ) {
                         self.add_issue(node_ref, IssueType::ClassVarOnlyInAssignmentsInClass);
                         Type::Any(AnyCause::FromError)
                     } else if self.has_type_vars_or_self {
@@ -767,13 +776,21 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         t
                     }
                 }
-                TypeContent::Final(t)
-                    if matches!(
-                        self.origin,
-                        TypeComputationOrigin::AssignmentTypeCommentOrAnnotation
-                    ) =>
-                {
-                    t
+                TypeContent::Final(t) => {
+                    if let TypeComputationOrigin::AssignmentTypeCommentOrAnnotation {
+                        is_initialized,
+                    } = self.origin
+                    {
+                        if !is_initialized && !self.inference.file.is_stub(self.inference.i_s.db) {
+                            self.add_issue(
+                                node_ref,
+                                IssueType::FinalNameMustBeInitializedWithValue,
+                            );
+                        }
+                        t
+                    } else {
+                        self.as_type(TypeContent::Final(t), node_ref)
+                    }
                 }
                 _ => self.as_type(type_, node_ref),
             },
@@ -2706,7 +2723,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             matches!(
                                 self.origin,
                                 TypeComputationOrigin::ParamTypeCommentOrAnnotation
-                                    | TypeComputationOrigin::AssignmentTypeCommentOrAnnotation
+                                    | TypeComputationOrigin::AssignmentTypeCommentOrAnnotation { .. }
                                     | TypeComputationOrigin::CastTarget
                             )
                         }),
@@ -2973,10 +2990,10 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    pub fn ensure_cached_annotation(&mut self, annotation: Annotation) {
+    pub fn ensure_cached_annotation(&mut self, annotation: Annotation, is_initialized: bool) {
         self.ensure_cached_annotation_internal(
             annotation,
-            TypeComputationOrigin::AssignmentTypeCommentOrAnnotation,
+            TypeComputationOrigin::AssignmentTypeCommentOrAnnotation { is_initialized },
         )
     }
 
@@ -3465,7 +3482,9 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                             &mut inference,
                             assignment_node_ref.as_link(),
                             &mut x,
-                            TypeComputationOrigin::AssignmentTypeCommentOrAnnotation,
+                            TypeComputationOrigin::AssignmentTypeCommentOrAnnotation {
+                                is_initialized: true,
+                            },
                         );
                         comp.cache_annotation_or_type_comment(index, expr, false, None);
                         let type_vars = comp.into_type_vars(|inf, recalculate_type_vars| {
@@ -3548,7 +3567,9 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                         self,
                         assignment_node_ref.as_link(),
                         &mut x,
-                        TypeComputationOrigin::AssignmentTypeCommentOrAnnotation,
+                        TypeComputationOrigin::AssignmentTypeCommentOrAnnotation {
+                            is_initialized: true,
+                        },
                     );
                     let t = comp.compute_type(expr);
                     let mut type_ = comp.as_type(t, expr_node_ref);
