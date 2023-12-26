@@ -242,6 +242,7 @@ enum TypeContent<'db, 'a> {
     ClassVar(Type),
     EnumMember(EnumMember),
     Required(Type),
+    Final(Type),
     NotRequired(Type),
     Unknown(AnyCause),
 }
@@ -766,6 +767,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         t
                     }
                 }
+                TypeContent::Final(t) => t,
                 _ => self.as_type(type_, node_ref),
             },
         };
@@ -988,6 +990,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 SpecialType::Unpack => {
                     self.add_issue(node_ref, IssueType::UnpackRequiresExactlyOneArgument);
                 }
+                SpecialType::Final => self.add_issue(node_ref, IssueType::FinalInWrongPlace),
                 _ => {
                     self.add_issue(node_ref, IssueType::InvalidType(Box::from("Invalid type")));
                 }
@@ -1054,6 +1057,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     ),
                 );
             }
+            TypeContent::Final(_) => self.add_issue(node_ref, IssueType::FinalInWrongPlace),
             TypeContent::InvalidVariable(t) => {
                 t.add_issue(
                     self.inference.i_s.db,
@@ -1368,6 +1372,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     TypeContent::EnumMember(_) => todo!(),
                     TypeContent::Required(_) => todo!(),
                     TypeContent::NotRequired(_) => todo!(),
+                    TypeContent::Final(_) => todo!(),
                     TypeContent::Unknown(cause) => TypeContent::Unknown(cause),
                 }
             }
@@ -1493,6 +1498,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::EnumMember(_) => todo!(),
             TypeContent::Required(_) => todo!(),
             TypeContent::NotRequired(_) => todo!(),
+            TypeContent::Final(_) => todo!(),
             TypeContent::Unknown(cause) => TypeContent::Unknown(cause),
         }
     }
@@ -2301,7 +2307,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         if iterator.count() != 0 {
             self.add_issue(slice_type.as_node_ref(), IssueType::FinalTooManyArguments);
         }
-        TypeContent::Type(self.compute_slice_type(first))
+        TypeContent::Final(self.compute_slice_type(first))
     }
 
     fn compute_type_get_item_on_unpack(&mut self, slice_type: SliceType) -> TypeContent<'db, 'db> {

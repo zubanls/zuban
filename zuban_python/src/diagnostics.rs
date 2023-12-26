@@ -116,6 +116,7 @@ pub(crate) enum IssueType {
 
     FinalTooManyArguments,
     FinalNameMustBeInitializedWithValue,
+    FinalInWrongPlace,
 
     DuplicateTypeVar,
     UnboundTypeVarLike { type_var_like: TypeVarLike },
@@ -871,6 +872,8 @@ impl<'db> Diagnostic<'db> {
 
             FinalTooManyArguments => "Final[...] takes at most one type argument".to_string(),
             FinalNameMustBeInitializedWithValue => "Final name must be initialized with a value".to_string(),
+            FinalInWrongPlace =>
+                "Final can be only used as an outermost qualifier in a variable annotation".to_string(),
 
             DuplicateTypeVar =>
                 "Duplicate type variables in Generic[...] or Protocol[...]".to_string(),
