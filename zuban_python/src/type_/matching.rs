@@ -284,7 +284,10 @@ impl Type {
             )
         };
         let mut m = Match::new_false();
-        for (_, t2) in value_type.mro(i_s.db) {
+        let mut mro = value_type.mro(i_s.db);
+        // Protocols contain no object in its MRO, therefore we add that here.
+        mro.returned_object = false;
+        for (_, t2) in mro {
             m = match t2 {
                 TypeOrClass::Class(c2) => match self.maybe_class(i_s.db) {
                     Some(c1) => Self::matches_class(i_s, matcher, &c1, &c2, Variance::Covariant),

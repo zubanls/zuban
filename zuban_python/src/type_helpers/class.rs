@@ -2242,7 +2242,7 @@ pub struct MroIterator<'db, 'a> {
     pub class: Option<TypeOrClass<'a>>,
     iterator: std::slice::Iter<'a, BaseClass>,
     mro_index: u32,
-    returned_object: bool,
+    pub returned_object: bool,
 }
 
 impl<'db, 'a> MroIterator<'db, 'a> {

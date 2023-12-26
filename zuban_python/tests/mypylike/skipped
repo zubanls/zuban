@@ -479,11 +479,10 @@ testCallingNoTypeCheckFunction
 testCallingNoTypeCheckFunction2
 testNoTypeCheckDecoratorSemanticError
 
-# Context inference for protocols
-testTupleContextFromIterable2
-# random protocol tests
+# NamedTuple field issues
 testTypingNamedTupleAttributesAreReadOnly
 testNamedTupleWithNoArgsCallableField
+# random protocol tests
 testClassesGetattrWithProtocols
 testProtocolIncompatibilityWithUnionType
 testWeirdRecursiveInferenceForProtocols-skip
