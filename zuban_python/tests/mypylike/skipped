@@ -1154,7 +1154,6 @@ testModuleAsProtocolImplementationFinal
 # Final issues
 testFinalBadDefinitionTooManyArgs
 testFinalInvalidDefinitions
-testFinalDefiningInstanceVarStubs
 testFinalDefiningNoRhs
 testFinalDefiningNoRhsSubclass
 testFinalDefiningNoTypevarsExplicit

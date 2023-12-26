@@ -622,23 +622,30 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         });
                     }
                     Some(Specific::TypingFinal) => {
-                        if let Some(right_side) = right_side {
-                            let right = self.infer_assignment_right_side(
-                                right_side,
-                                &mut ResultContext::Unknown,
-                            );
-                            self.assign_single_target(
-                                target,
-                                NodeRef::new(self.file, right_side.index()),
-                                &right.clone(),
-                                true,
-                                |index| {
-                                    right.save_redirect(self.i_s, self.file, index);
-                                },
-                            );
+                        let (right, index) = if let Some(right_side) = right_side {
+                            (
+                                self.infer_assignment_right_side(
+                                    right_side,
+                                    &mut ResultContext::Unknown,
+                                ),
+                                right_side.index(),
+                            )
                         } else {
-                            todo!()
-                        }
+                            self.add_issue(
+                                annotation.index(),
+                                IssueType::FinalWithoutInitializerAndType,
+                            );
+                            (Inferred::new_any_from_error(), annotation.index())
+                        };
+                        self.assign_single_target(
+                            target,
+                            NodeRef::new(self.file, index),
+                            &right.clone(),
+                            true,
+                            |index| {
+                                right.save_redirect(self.i_s, self.file, index);
+                            },
+                        );
                     }
                     _ => {
                         if let Some(right_side) = right_side {
