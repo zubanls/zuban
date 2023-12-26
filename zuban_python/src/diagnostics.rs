@@ -114,6 +114,9 @@ pub(crate) enum IssueType {
     InvalidRecursiveTypeAliasTypeVarNesting,
     RecursiveTypesNotAllowedInFunctionScope { alias_name: Box<str> },
 
+    FinalTooManyArguments,
+    FinalNameMustBeInitializedWithValue,
+
     DuplicateTypeVar,
     UnboundTypeVarLike { type_var_like: TypeVarLike },
     IncompleteGenericOrProtocolTypeVars,
@@ -865,6 +868,9 @@ impl<'db> Diagnostic<'db> {
                 additional_notes.push("Recursive types are not allowed at function scope".to_string());
                 format!(r#"Cannot resolve name "{alias_name}" (possible cyclic definition)"#)
             }
+
+            FinalTooManyArguments => "Final[...] takes at most one type argument".to_string(),
+            FinalNameMustBeInitializedWithValue => "Final name must be initialized with a value".to_string(),
 
             DuplicateTypeVar =>
                 "Duplicate type variables in Generic[...] or Protocol[...]".to_string(),

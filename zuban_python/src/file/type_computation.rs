@@ -2298,11 +2298,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     fn compute_type_get_item_on_final(&mut self, slice_type: SliceType) -> TypeContent<'db, 'db> {
         let mut iterator = slice_type.iter();
         let first = iterator.next().unwrap();
-        if iterator.count() == 0 {
-            TypeContent::Type(self.compute_slice_type(first))
-        } else {
-            todo!()
+        if iterator.count() != 0 {
+            self.add_issue(slice_type.as_node_ref(), IssueType::FinalTooManyArguments);
         }
+        TypeContent::Type(self.compute_slice_type(first))
     }
 
     fn compute_type_get_item_on_unpack(&mut self, slice_type: SliceType) -> TypeContent<'db, 'db> {
