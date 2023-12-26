@@ -485,10 +485,10 @@ testCallingNoTypeCheckFunction
 testCallingNoTypeCheckFunction2
 testNoTypeCheckDecoratorSemanticError
 
-# NamedTuple field issues
+# Protocol NamedTuple field issues
 testTypingNamedTupleAttributesAreReadOnly
 testNamedTupleWithNoArgsCallableField
-# Self binding
+# Protocol Self binding
 testProtocolClassObjectSelfTypeInstanceMethod
 testSelfTypesWithProtocolsBehaveAsWithNominal
 testInferenceViaTypeTypeMetaclass
@@ -1114,6 +1114,7 @@ testFinalWorksWithComplexTargets
 testFinalInplaceAssign
 testFinalCanUseTypingExtensions
 testFinalCanUseTypingExtensionsAliased
+testFinalDefiningNoRhsSubclass
 # Overrides
 testFinalOverridingVarClassBody
 testFinalOverridingVarClassBodyExplicit
@@ -1153,14 +1154,14 @@ testFinalAttributeProtocol
 testModuleAsProtocolImplementationFinal
 # Final issues
 testFinalMultiassignAllowed
-testFinalInvalidDefinitions
-testFinalDefiningNoRhsSubclass
 testFinalDefiningNoTypevarsExplicit
 testFinalDefiningNotInOtherMethod
 testFinalDefiningOnlyOnSelf
 testFinalNotInLoops
 testFinalInDeferredMethod
 testFinalUsedWithClassVar
+# "Unexpected type declaration"
+testFinalInvalidDefinitions
 
 # callable()
 testFineGrainedCallable
