@@ -214,7 +214,9 @@ impl Type {
                             }
                             matches &= m1.type_.is_same_type(i_s, matcher, &m2.type_);
                         } else {
-                            return Match::new_false().similar_if_false();
+                            if m1.required {
+                                return Match::new_false().similar_if_false();
+                            }
                         }
                     }
                     matches.similar_if_false()

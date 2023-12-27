@@ -321,8 +321,7 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                             WrappedStarStar::UnpackTypedDict(td1),
                             WrappedStarStar::UnpackTypedDict(td2),
                         ) => {
-                            let td1 = td1.clone();
-                            matches &= Type::TypedDict(td1).matches(
+                            matches &= Type::TypedDict(td1.clone()).matches(
                                 i_s,
                                 matcher,
                                 &Type::TypedDict(td2),
