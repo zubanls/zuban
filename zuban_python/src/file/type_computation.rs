@@ -695,6 +695,16 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 
         let node_ref = NodeRef::new(self.inference.file, expr.index());
         let mut is_class_var = false;
+        let i_s = self.inference.i_s;
+        let uses_class_generics = |class: &Class, t: &Type| {
+            let mut uses_class_generics = false;
+            t.search_type_vars(&mut |usage| {
+                if usage.in_definition() == class.node_ref.as_link() {
+                    uses_class_generics = true
+                }
+            });
+            uses_class_generics
+        };
         let mut type_ = match map_type_callback {
             Some(map_type_callback) => match map_type_callback(self, type_) {
                 AnnotationReturn::Type(t) => t,
@@ -730,7 +740,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     return;
                 }
                 TypeContent::SpecialType(SpecialType::ClassVar) => {
-                    let i_s = self.inference.i_s;
                     if matches!(
                         self.origin,
                         TypeComputationOrigin::AssignmentTypeCommentOrAnnotation { .. }
@@ -754,13 +763,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     } else if self.has_type_vars_or_self {
                         let i_s = self.inference.i_s;
                         let class = i_s.current_class().unwrap();
-                        let mut uses_class_generics = false;
-                        t.search_type_vars(&mut |usage| {
-                            if usage.in_definition() == class.node_ref.as_link() {
-                                uses_class_generics = true
-                            }
-                        });
-                        if uses_class_generics {
+                        if uses_class_generics(class, &t) {
                             self.add_issue(node_ref, IssueType::ClassVarCannotContainTypeVariables);
                             Type::Any(AnyCause::FromError)
                         } else if !class.type_vars(i_s).is_empty() && t.has_self_type() {
@@ -781,13 +784,24 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         is_initialized,
                     } = self.origin
                     {
-                        if !is_initialized && !self.inference.file.is_stub(self.inference.i_s.db) {
+                        if !is_initialized && !self.inference.file.is_stub(i_s.db) {
                             self.add_issue(
                                 node_ref,
                                 IssueType::FinalNameMustBeInitializedWithValue,
                             );
                         }
-                        t
+                        if i_s
+                            .current_class()
+                            .is_some_and(|class| uses_class_generics(class, &t))
+                        {
+                            self.add_issue(
+                                node_ref,
+                                IssueType::FinalInClassBodyCannotDependOnTypeVariables,
+                            );
+                            Type::Any(AnyCause::FromError)
+                        } else {
+                            t
+                        }
                     } else {
                         self.as_type(TypeContent::Final(t), node_ref)
                     }
@@ -796,7 +810,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             },
         };
         if is_implicit_optional {
-            type_.make_optional(self.inference.i_s.db)
+            type_.make_optional(i_s.db)
         }
         node_ref.insert_complex(ComplexPoint::TypeInstance(type_), Locality::Todo);
         annotation_node_ref.set_point(Point::new_simple_specific(

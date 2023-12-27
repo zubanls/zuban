@@ -118,6 +118,7 @@ pub(crate) enum IssueType {
     FinalNameMustBeInitializedWithValue,
     FinalInWrongPlace,
     FinalWithoutInitializerAndType,
+    FinalInClassBodyCannotDependOnTypeVariables,
 
     DuplicateTypeVar,
     UnboundTypeVarLike { type_var_like: TypeVarLike },
@@ -877,6 +878,8 @@ impl<'db> Diagnostic<'db> {
                 "Final can be only used as an outermost qualifier in a variable annotation".to_string(),
             FinalWithoutInitializerAndType =>
                 "Type in Final[...] can only be omitted if there is an initializer".to_string(),
+            FinalInClassBodyCannotDependOnTypeVariables =>
+                "Final name declared in class body cannot depend on type variables".to_string(),
 
             DuplicateTypeVar =>
                 "Duplicate type variables in Generic[...] or Protocol[...]".to_string(),

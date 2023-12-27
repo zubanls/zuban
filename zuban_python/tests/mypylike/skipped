@@ -1154,7 +1154,6 @@ testFinalAttributeProtocol
 testModuleAsProtocolImplementationFinal
 # Final issues
 testFinalMultiassignAllowed
-testFinalDefiningNoTypevarsExplicit
 testFinalDefiningNotInOtherMethod
 testFinalDefiningOnlyOnSelf
 testFinalNotInLoops
