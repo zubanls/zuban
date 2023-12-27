@@ -3203,21 +3203,24 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
     ) -> Cow<'file, Type> {
         let point = self.file.points.get(annotation_index);
         assert!(point.calculated(), "Expr: {:?}", expr);
-        if point.specific() == Specific::AnnotationOrTypeCommentSimpleClassInstance {
-            return self
+        match point.specific() {
+            Specific::AnnotationOrTypeCommentSimpleClassInstance => self
                 .infer_expression(expr)
-                .expect_class_or_simple_generic(self.i_s);
-        }
-        debug_assert!(matches!(
-            point.specific(),
-            Specific::AnnotationOrTypeCommentWithTypeVars
-                | Specific::AnnotationOrTypeCommentWithoutTypeVars
-                | Specific::AnnotationOrTypeCommentClassVar
-        ));
-        let complex_index = self.file.points.get(expr.index()).complex_index();
-        match self.file.complex_points.get(complex_index) {
-            ComplexPoint::TypeInstance(t) => Cow::Borrowed(t),
-            _ => unreachable!(),
+                .expect_class_or_simple_generic(self.i_s),
+            Specific::TypingFinal => todo!(),
+            _ => {
+                debug_assert!(matches!(
+                    point.specific(),
+                    Specific::AnnotationOrTypeCommentWithTypeVars
+                        | Specific::AnnotationOrTypeCommentWithoutTypeVars
+                        | Specific::AnnotationOrTypeCommentClassVar
+                ));
+                let complex_index = self.file.points.get(expr.index()).complex_index();
+                match self.file.complex_points.get(complex_index) {
+                    ComplexPoint::TypeInstance(t) => Cow::Borrowed(t),
+                    _ => unreachable!(),
+                }
+            }
         }
     }
 
