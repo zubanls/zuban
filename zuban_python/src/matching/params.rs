@@ -1,4 +1,4 @@
-use std::{borrow::Cow, rc::Rc};
+use std::{borrow::Cow, iter::Peekable, rc::Rc};
 
 use parsa_python_ast::ParamKind;
 
@@ -10,7 +10,7 @@ use crate::{
     inference_state::InferenceState,
     type_::{
         CallableParam, CallableParams, ParamSpecUsage, ParamType, StarParamType, StarStarParamType,
-        StringSlice, Type, TypeVarLikes, TypedDict, Variance,
+        StringSlice, Type, TypeVarLikes, TypedDict, TypedDictMember, Variance,
     },
 };
 
@@ -57,11 +57,17 @@ pub fn matches_params(
                     i_s,
                     matcher,
                     params1.iter(),
-                    params2.iter().skip(1),
+                    params2.iter().skip(1).peekable(),
                     variance,
                 )
             } else {
-                matches_simple_params(i_s, matcher, params1.iter(), params2.iter(), variance)
+                matches_simple_params(
+                    i_s,
+                    matcher,
+                    params1.iter(),
+                    params2.iter().peekable(),
+                    variance,
+                )
             }
         }
         (WithParamSpec(pre1, usage1), WithParamSpec(pre2, usage2)) => {
@@ -105,7 +111,7 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
     i_s: &InferenceState<'db, '_>,
     matcher: &mut Matcher,
     mut params1: impl Iterator<Item = P1>,
-    params2: impl Iterator<Item = P2>,
+    mut params2: Peekable<impl Iterator<Item = P2>>,
     variance: Variance,
 ) -> Match {
     let match_with_variance =
@@ -122,7 +128,6 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
         match_with_variance(i_s, matcher, a, b, variance)
     };
 
-    let mut params2 = params2.peekable();
     let mut unused_keyword_params: Vec<P2> = vec![];
     let mut mismatched_name_pos_params1: Vec<P1> = vec![];
     let mut mismatched_name_pos_params2: Vec<P2> = vec![];
@@ -332,6 +337,19 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                             }
                         }
                         (x, y) => todo!("{:?} {:?}", x, y),
+                    },
+                    WrappedParamType::PositionalOrKeyword(t2)
+                    | WrappedParamType::KeywordOnly(t2) => match d1 {
+                        WrappedStarStar::UnpackTypedDict(td1) => {
+                            return matches_simple_params(
+                                i_s,
+                                matcher,
+                                td1.members(i_s.db).iter().map(TypedDictMemberParam),
+                                params2,
+                                variance,
+                            )
+                        }
+                        _ => return Match::new_false(),
                     },
                     _ => return Match::new_false(),
                 },
@@ -822,6 +840,27 @@ where
                     }),
             )
         })
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+struct TypedDictMemberParam<'member>(&'member TypedDictMember);
+
+impl<'member> Param<'member> for TypedDictMemberParam<'member> {
+    fn has_default(&self) -> bool {
+        !self.0.required
+    }
+
+    fn name(&self, db: &'member Database) -> Option<&str> {
+        Some(self.0.name.as_str(db))
+    }
+
+    fn specific<'db: 'member>(&self, db: &'db Database) -> WrappedParamType<'member> {
+        WrappedParamType::KeywordOnly(Some(Cow::Borrowed(&self.0.type_)))
+    }
+
+    fn kind(&self, db: &Database) -> ParamKind {
+        ParamKind::KeywordOnly
     }
 }
 

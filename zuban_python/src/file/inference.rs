@@ -1620,7 +1620,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 self.i_s,
                                 &mut Matcher::default(),
                                 expected_params.iter(),
-                                params.iter(),
+                                params.iter().peekable(),
                                 Variance::Invariant,
                             )
                             .bool()
