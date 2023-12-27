@@ -608,8 +608,6 @@ testTypeVarTuplePep646CallableNewSyntax
 
 # import order
 testTypeAliasesToNamedTuple
-# __builtins__ object
-testBuiltinsUsingModule
 # future imports (future is not part of stubs)
 testNewAnalyzerMetaclassFuture1
 testNewAnalyzerMetaclassFuture3

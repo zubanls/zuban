@@ -3467,8 +3467,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             }
             PointType::FileReference => {
                 let file = self.i_s.db.loaded_python_file(point.file_index());
-                //TypeNameLookup::Module(file)
-                todo!();
+                TypeNameLookup::Module(file)
             }
             _ => todo!("{point:?}"),
         }

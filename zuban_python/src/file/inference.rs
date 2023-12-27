@@ -2102,66 +2102,65 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             );
             return self.infer_name_reference(name);
         }
-        let point = if name_str == "reveal_type" {
-            Point::new_simple_specific(Specific::RevealTypeFunction, Locality::Stmt)
-        } else if let Some(link) = self
-            .i_s
-            .db
-            .python_state
-            .builtins()
-            .lookup_global(name.as_str())
-        {
-            debug_assert!(link.file != self.file_index || link.node_index != name.index());
-            link.into_point_redirect()
-        } else {
-            // The builtin module should really not have any issues.
-            debug_assert!(
-                self.file_index != self.i_s.db.python_state.builtins().file_index(),
-                "{:?}",
-                name
-            );
-            if let Some(inf) = self
-                .i_s
-                .db
-                .python_state
-                .module_instance()
-                .type_lookup(
-                    self.i_s,
-                    |issue| NodeRef::new(self.file, name.index()).add_issue(self.i_s, issue),
-                    name.as_code(),
-                )
-                .save_name(self.i_s, self.file, name)
-            {
-                return inf;
+        let builtins = self.i_s.db.python_state.builtins();
+        let point = match name_str {
+            "reveal_type" => {
+                Point::new_simple_specific(Specific::RevealTypeFunction, Locality::Stmt)
             }
-            // TODO check star imports
-            self.add_issue(
-                name.index(),
-                IssueType::NameError {
-                    name: Box::from(name.as_str()),
-                },
-            );
-            if self
-                .i_s
-                .db
-                .python_state
-                .typing()
-                .lookup_global(name_str)
-                .is_some()
-            {
-                // TODO what about underscore or other vars?
-                self.add_issue(
-                    name.index(),
-                    IssueType::Note(
-                        format!(
-                            "Did you forget to import it from \"typing\"? \
-                         (Suggestion: \"from typing import {name_str}\")",
+            "__builtins__" => Point::new_file_reference(builtins.file_index(), Locality::Todo),
+            _ => {
+                if let Some(link) = builtins.lookup_global(name.as_str()) {
+                    debug_assert!(link.file != self.file_index || link.node_index != name.index());
+                    link.into_point_redirect()
+                } else {
+                    // The builtin module should really not have any issues.
+                    debug_assert!(self.file_index != builtins.file_index(), "{:?}", name);
+                    if let Some(inf) = self
+                        .i_s
+                        .db
+                        .python_state
+                        .module_instance()
+                        .type_lookup(
+                            self.i_s,
+                            |issue| {
+                                NodeRef::new(self.file, name.index()).add_issue(self.i_s, issue)
+                            },
+                            name.as_code(),
                         )
-                        .into(),
-                    ),
-                );
+                        .save_name(self.i_s, self.file, name)
+                    {
+                        return inf;
+                    }
+                    // TODO check star imports
+                    self.add_issue(
+                        name.index(),
+                        IssueType::NameError {
+                            name: Box::from(name.as_str()),
+                        },
+                    );
+                    if self
+                        .i_s
+                        .db
+                        .python_state
+                        .typing()
+                        .lookup_global(name_str)
+                        .is_some()
+                    {
+                        // TODO what about underscore or other vars?
+                        self.add_issue(
+                            name.index(),
+                            IssueType::Note(
+                                format!(
+                                    "Did you forget to import it from \"typing\"? \
+                             (Suggestion: \"from typing import {name_str}\")",
+                                )
+                                .into(),
+                            ),
+                        );
+                    }
+                    Point::new_simple_specific(Specific::AnyDueToError, Locality::Todo)
+                }
             }
-            Point::new_simple_specific(Specific::AnyDueToError, Locality::Todo)
         };
         self.file.points.set(name.index(), point);
         debug_assert!(self.file.points.get(name.index()).calculated());
