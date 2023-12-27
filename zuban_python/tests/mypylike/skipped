@@ -1158,7 +1158,6 @@ testFinalDefiningNotInOtherMethod
 testFinalDefiningOnlyOnSelf
 testFinalNotInLoops
 testFinalInDeferredMethod
-testFinalUsedWithClassVar
 # "Unexpected type declaration"
 testFinalInvalidDefinitions
 

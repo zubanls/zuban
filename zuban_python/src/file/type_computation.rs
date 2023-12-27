@@ -2345,7 +2345,15 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         if iterator.count() != 0 {
             self.add_issue(slice_type.as_node_ref(), IssueType::FinalTooManyArguments);
         }
-        TypeContent::Final(self.compute_slice_type(first))
+        match self.compute_slice_type_content(first) {
+            TypeContent::ClassVar(_) => {
+                slice_type
+                    .as_node_ref()
+                    .add_issue(self.inference.i_s, IssueType::FinalAndClassVarUsedBoth);
+                TypeContent::Unknown(AnyCause::FromError)
+            }
+            t => TypeContent::Final(self.as_type(t, slice_type.as_node_ref())),
+        }
     }
 
     fn compute_type_get_item_on_unpack(&mut self, slice_type: SliceType) -> TypeContent<'db, 'db> {
