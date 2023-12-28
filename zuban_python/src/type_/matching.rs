@@ -205,20 +205,7 @@ impl Type {
                 _ => Match::new_false(),
             },
             Type::TypedDict(d1) => match value_type {
-                Type::TypedDict(d2) => {
-                    let mut matches = Match::new_true();
-                    for m1 in d1.members(i_s.db).iter() {
-                        if let Some(m2) = d2.find_member(i_s.db, m1.name.as_str(i_s.db)) {
-                            if m1.required != m2.required {
-                                return Match::new_false().similar_if_false();
-                            }
-                            matches &= m1.type_.is_same_type(i_s, matcher, &m2.type_);
-                        } else {
-                            return Match::new_false().similar_if_false();
-                        }
-                    }
-                    matches.similar_if_false()
-                }
+                Type::TypedDict(d2) => d1.matches(i_s, matcher, d2).similar_if_false(),
                 _ => Match::new_false(),
             },
             Type::NamedTuple(nt1) => match value_type {

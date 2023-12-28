@@ -15,7 +15,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
     matching::{
-        AvoidRecursionFor, FormatData, LookupKind, LookupResult, Matcher, MismatchReason,
+        AvoidRecursionFor, FormatData, LookupKind, LookupResult, Match, Matcher, MismatchReason,
         OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
@@ -357,6 +357,21 @@ impl TypedDict {
             defined_at: self.defined_at,
             generics,
         })
+    }
+
+    pub fn matches(&self, i_s: &InferenceState, matcher: &mut Matcher, other: &Self) -> Match {
+        let mut matches = Match::new_true();
+        for m1 in self.members(i_s.db).iter() {
+            if let Some(m2) = other.find_member(i_s.db, m1.name.as_str(i_s.db)) {
+                if m1.required != m2.required {
+                    return Match::new_false();
+                }
+                matches &= m1.type_.is_same_type(i_s, matcher, &m2.type_);
+            } else {
+                return Match::new_false();
+            }
+        }
+        matches
     }
 }
 
