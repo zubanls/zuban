@@ -205,7 +205,7 @@ impl Type {
                 _ => Match::new_false(),
             },
             Type::TypedDict(d1) => match value_type {
-                Type::TypedDict(d2) => d1.matches(i_s, matcher, d2).similar_if_false(),
+                Type::TypedDict(d2) => d1.matches(i_s, matcher, d2, false).similar_if_false(),
                 _ => Match::new_false(),
             },
             Type::NamedTuple(nt1) => match value_type {

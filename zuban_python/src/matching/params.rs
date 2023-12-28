@@ -322,12 +322,14 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                             WrappedStarStar::UnpackTypedDict(td2),
                         ) => {
                             let td1 = td1.clone();
-                            matches &= Type::TypedDict(td1).matches(
-                                i_s,
-                                matcher,
-                                &Type::TypedDict(td2),
-                                variance,
-                            );
+                            let mut check = |td_x: &TypedDict, td_y: &TypedDict| {
+                                td_x.matches(i_s, matcher, &td_y, true)
+                            };
+                            matches &= match variance {
+                                Variance::Contravariant => check(&td2, &td1),
+                                Variance::Covariant => todo!(),
+                                Variance::Invariant => todo!(),
+                            }
                         }
                         (WrappedStarStar::UnpackTypedDict(td1), WrappedStarStar::ValueType(t2)) => {
                             if let Some(t2) = t2 {
