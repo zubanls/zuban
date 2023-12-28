@@ -3,8 +3,9 @@ use std::{cell::OnceCell, rc::Rc};
 use parsa_python_ast::{AtomContent, DictElement};
 
 use super::{
-    replace::ReplaceTypeVarLike, utils::method_with_fallback, AnyCause, CustomBehavior,
-    FormatStyle, GenericsList, ReplaceSelf, StringSlice, Type, TypeVarLikes,
+    replace::ReplaceTypeVarLike, utils::method_with_fallback, AnyCause, CallableParam,
+    CustomBehavior, DbString, FormatStyle, GenericsList, ParamType, ReplaceSelf, StringSlice, Type,
+    TypeVarLikes,
 };
 use crate::{
     arguments::{ArgumentKind, Arguments},
@@ -36,6 +37,14 @@ impl TypedDictMember {
             name: self.name,
             type_: callable(&self.type_),
             required: self.required,
+        }
+    }
+
+    pub fn as_keyword_param(&self) -> CallableParam {
+        CallableParam {
+            type_: ParamType::KeywordOnly(self.type_.clone()),
+            name: Some(DbString::StringSlice(self.name)),
+            has_default: !self.required,
         }
     }
 }

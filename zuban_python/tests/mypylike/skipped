@@ -413,12 +413,8 @@ testAssignEnumAsAttribute
 # "TypedDict type as attribute is not supported"
 testAssignTypedDictAsAttribute
 
-# TypedDict Recursions
-testRecursiveTypedDictJoin
-testCorrectJoinOfSelfRecursiveTypedDicts
 # Unpack
 testUnpackKwargsInference
-testUnpackKwargsJoin
 testUnpackKwargsParamSpec
 # dict unpacking
 testTypedDictUnpackFromUnion
@@ -439,8 +435,6 @@ testTypedDictStrictUpdate
 testTypedDictFlexibleUpdateUnionStrict
 testParamSpecConcatenateNamedArgs
 testParamSpecPrefixSubtypingInvalidStrict
-# Anonymous TypedDicts for join
-testCannotGetItemOfAnonymousTypedDictWithInvalidStringLiteralKey
 # unions
 testTypedDictChainedGetWithEmptyDictDefault
 # "Type of TypedDict is ambiguous, none of ("A", "B") matches cleanly"
@@ -2613,6 +2607,7 @@ testRecursiveNamedTupleInBases
 testSubclassOfRecursiveNamedTuple
 testSelfRecursiveTypedDictInheriting
 testSubclassOfRecursiveTypedDict
+testCorrectJoinOfSelfRecursiveTypedDicts
 
 # Won't support --force-union-syntax
 testOptionalErrorSyntax

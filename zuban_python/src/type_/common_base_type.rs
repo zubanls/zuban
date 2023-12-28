@@ -264,14 +264,67 @@ fn common_base_for_callables(
     i_s.db.python_state.function_type()
 }
 
-fn common_params(
+fn common_params<'x>(
     i_s: &InferenceState,
-    params1: &[CallableParam],
-    params2: &[CallableParam],
+    params1: &'x [CallableParam],
+    params2: &'x [CallableParam],
 ) -> Option<CallableParams> {
-    if params1.len() == params2.len() {
-        let mut new_params = vec![];
-        for (p1, p2) in params1.iter().zip(params2.iter()) {
+    fn maybe_unpack_typed_dict_params<'y: 'z, 'z>(
+        i_s: &InferenceState,
+        params: &'y [CallableParam],
+        td_params: &'z mut Vec<CallableParam>,
+    ) -> Option<(usize, impl Iterator<Item = &'z CallableParam>)> {
+        if let Some(p) = params.last() {
+            if let ParamType::StarStar(StarStarParamType::UnpackTypedDict(td)) = &p.type_ {
+                let mut params = params.iter();
+                params.next_back();
+                *td_params = td
+                    .members(i_s.db)
+                    .iter()
+                    .map(|m| m.as_keyword_param())
+                    .collect();
+                return Some((
+                    params.len() + td_params.len(),
+                    params.chain(td_params.iter()),
+                ));
+            }
+        }
+        None
+    }
+    let mut new1 = vec![];
+    let mut new2 = vec![];
+    let result = if let Some((len_p1, new_p1)) =
+        maybe_unpack_typed_dict_params(i_s, params1, &mut new1)
+    {
+        if let Some((len_p2, new_p2)) = maybe_unpack_typed_dict_params(i_s, params2, &mut new2) {
+            common_params_by_iterable(i_s, len_p1, len_p2, new_p1, new_p2)
+        } else {
+            common_params_by_iterable(i_s, len_p1, params2.len(), new_p1, params2.iter())
+        }
+    } else if let Some((len_p2, new_p2)) = maybe_unpack_typed_dict_params(i_s, params2, &mut new2) {
+        common_params_by_iterable(i_s, params1.len(), len_p2, params1.iter(), new_p2)
+    } else {
+        common_params_by_iterable(
+            i_s,
+            params1.len(),
+            params2.len(),
+            params1.iter(),
+            params2.iter(),
+        )
+    };
+    result
+}
+
+fn common_params_by_iterable<'x>(
+    i_s: &InferenceState,
+    p1_len: usize,
+    p2_len: usize,
+    params1: impl Iterator<Item = &'x CallableParam>,
+    params2: impl Iterator<Item = &'x CallableParam>,
+) -> Option<CallableParams> {
+    let mut new_params = vec![];
+    if p1_len == p2_len {
+        for (p1, p2) in params1.zip(params2) {
             let mut kind = p1.type_.param_kind();
             let p2_kind = p2.type_.param_kind();
             let p1_name = p1.name.as_ref().map(|n| n.as_str(i_s.db));
@@ -289,8 +342,8 @@ fn common_params(
                     return None;
                 }
             }
-            let t1 = p1.type_.maybe_positional_type()?;
-            let t2 = p2.type_.maybe_positional_type()?;
+            let t1 = p1.type_.maybe_type()?;
+            let t2 = p2.type_.maybe_type()?;
             let new_t = t1.common_sub_type(i_s, t2)?;
             new_params.push(CallableParam {
                 type_: match &kind {
