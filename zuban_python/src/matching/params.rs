@@ -703,6 +703,18 @@ where
                         }
                     } else if argument.in_args_or_kwargs_and_arbitrary_len() {
                         self.current_arg = None;
+                        if matches!(
+                            &argument.kind,
+                            ArgumentKind::Inferred {
+                                is_keyword: Some(None),
+                                ..
+                            }
+                        ) {
+                            return Some(InferrableParam {
+                                param,
+                                argument: ParamArgument::Argument(argument),
+                            });
+                        }
                     } else {
                         self.too_many_positional_arguments = true;
                     }

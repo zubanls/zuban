@@ -417,7 +417,6 @@ testAssignTypedDictAsAttribute
 testRecursiveTypedDictJoin
 testCorrectJoinOfSelfRecursiveTypedDicts
 # Unpack
-testUnpackKwargsNonIdentifier
 testUnpackKwargsInference
 testUnpackKwargsJoin
 testUnpackKwargsParamSpec

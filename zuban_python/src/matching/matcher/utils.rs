@@ -478,7 +478,7 @@ pub(crate) fn match_arguments_against_params<
             debug!("Arguments for {:?} missing", p.param.name(i_s.db));
             continue;
         }
-        let mut match_arg = |argument: Argument<'db, '_>, expected: Cow<Type>| {
+        let mut match_arg = |argument: &Argument<'db, '_>, expected: Cow<Type>| {
             let value = if matcher.might_have_defined_type_vars() {
                 argument.infer(
                     i_s,
@@ -524,12 +524,7 @@ pub(crate) fn match_arguments_against_params<
                                 got,
                                 expected: &expected,
                             };
-                            (on_type_error.callback)(
-                                i_s,
-                                &diagnostic_string,
-                                &argument,
-                                error_types,
-                            )
+                            (on_type_error.callback)(i_s, &diagnostic_string, argument, error_types)
                         }
                     };
                 }
@@ -571,17 +566,20 @@ pub(crate) fn match_arguments_against_params<
                     | WrappedParamType::Star(WrappedStar::ArbitraryLength(t))
                     | WrappedParamType::StarStar(WrappedStarStar::ValueType(t)) => match t {
                         Some(t) => t,
-                        None => continue,
+                        None => continue, // This is the **kwargs without annotation case
                     },
                     WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(td)) => {
-                        todo!()
+                        for member in td.members(i_s.db).iter() {
+                            match_arg(&argument, Cow::Borrowed(&member.type_))
+                        }
+                        continue;
                     }
                     WrappedParamType::Star(WrappedStar::ParamSpecArgs(_))
                     | WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(_)) => {
                         todo!()
                     }
                 };
-                match_arg(argument, expected)
+                match_arg(&argument, expected)
             }
             ParamArgument::ParamSpecArgs(param_spec, args) => {
                 matches &= match matcher.match_param_spec_arguments(
@@ -622,7 +620,7 @@ pub(crate) fn match_arguments_against_params<
                             .collect(),
                     );
                 }
-                match_arg(argument, Cow::Owned(type_))
+                match_arg(&argument, Cow::Owned(type_))
             }
             ParamArgument::None => (),
         }
