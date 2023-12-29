@@ -23,10 +23,10 @@ use crate::{
         CallableParam, CallableParams, CallableWithParent, ClassGenerics, Dataclass, DbString,
         Enum, EnumMember, FunctionKind, GenericClass, GenericItem, GenericsList, Literal,
         LiteralKind, NamedTuple, Namespace, NewType, ParamSpecArgument, ParamSpecUsage, ParamType,
-        RecursiveType, StarParamType, StarStarParamType, StringSlice, Tuple, Type, TypeArguments,
-        TypeOrUnpack, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
-        TypeVarManager, TypeVarTupleUsage, TypeVarUsage, TypedDict, TypedDictGenerics,
-        TypedDictMember, UnionEntry, UnionType,
+        RecursiveType, StarParamType, StarStarParamType, StringSlice, Tuple, TupleTypeArguments,
+        Type, TypeArguments, TypeOrUnpack, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage,
+        TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, TypedDict,
+        TypedDictGenerics, TypedDictMember, UnionEntry, UnionType,
     },
     type_helpers::{start_namedtuple_params, Class, Function, Module},
 };
@@ -1178,6 +1178,36 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         self.convert_slice_type_or_type_var_tuple(t, slice)
     }
 
+    fn compute_tuple_types<'s>(
+        &mut self,
+        iterator: impl Iterator<Item = SliceOrSimple<'s>>,
+    ) -> TupleTypeArguments {
+        let mut before = vec![];
+        let mut after = vec![];
+        let unpack = None;
+        for s in iterator {
+            match self.compute_slice_type_or_type_var_tuple(s) {
+                TypeOrUnpack::Type(t) => {
+                    if unpack.is_none() {
+                        before.push(t)
+                    } else {
+                        after.push(t)
+                    }
+                }
+                TypeOrUnpack::TypeVarTuple(..) => todo!(),
+            }
+        }
+        if let Some(unpack) = unpack {
+            TupleTypeArguments::WithUnpack {
+                before: before.into(),
+                unpack,
+                after: after.into(),
+            }
+        } else {
+            TupleTypeArguments::FixedLength(before.into())
+        }
+    }
+
     fn convert_slice_type_or_type_var_tuple(
         &mut self,
         t: TypeContent,
@@ -1932,22 +1962,15 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
                 TypeVarLike::TypeVarTuple(_) => {
                     let fetch = slice_type.iter().count() as isize + 1 - expected_count as isize;
-                    GenericItem::TypeArguments(TypeArguments::new_fixed_length(
-                        if let Ok(fetch) = fetch.try_into() {
+                    GenericItem::TypeArguments(TypeArguments {
+                        args: if let Ok(fetch) = fetch.try_into() {
                             given_count += 1;
-                            iterator
-                                .by_ref()
-                                .take(fetch)
-                                .map(|s| match self.compute_slice_type_or_type_var_tuple(s) {
-                                    TypeOrUnpack::Type(t) => t,
-                                    TypeOrUnpack::TypeVarTuple(..) => todo!(),
-                                })
-                                .collect()
+                            self.compute_tuple_types(iterator.by_ref().take(fetch))
                         } else {
                             // If not enough type arguments are given, an error is raised elsewhere.
-                            Rc::new([])
+                            TupleTypeArguments::FixedLength(Rc::new([]))
                         },
-                    ))
+                    })
                 }
                 TypeVarLike::ParamSpec(_) => {
                     given_count += 1;
@@ -1986,25 +2009,18 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     fn compute_type_get_item_on_tuple(&mut self, slice_type: SliceType) -> TypeContent<'db, 'db> {
         let mut iterator = slice_type.iter();
         let first = iterator.next().unwrap();
-        let generics: Rc<[_]> = if let Some(slice_or_simple) = iterator.next() {
+        let generics = if let Some(slice_or_simple) = iterator.next() {
             if let SliceOrSimple::Simple(s) = slice_or_simple {
                 if s.named_expr.is_ellipsis_literal() {
                     let t = self.compute_slice_type(first);
                     return TypeContent::Type(Type::Tuple(Rc::new(Tuple::new_arbitrary_length(t))));
                 }
             }
-            let mut generics = vec![];
-            for slice_content in slice_type.iter() {
-                match self.compute_slice_type_or_type_var_tuple(slice_content) {
-                    TypeOrUnpack::Type(t) => generics.push(t),
-                    TypeOrUnpack::TypeVarTuple(..) => todo!(),
-                }
-            }
-            generics.into()
+            Tuple::new(self.compute_tuple_types(slice_type.iter()))
         } else {
             let t = self.compute_slice_type_content(first);
             // Handle Tuple[()]
-            match t {
+            Tuple::new_fixed_length(match t {
                 TypeContent::InvalidVariable(InvalidVariableType::Tuple { tuple_length: 0 }) => {
                     Rc::new([])
                 }
@@ -2012,9 +2028,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     TypeOrUnpack::Type(t) => Rc::new([t]),
                     TypeOrUnpack::TypeVarTuple(..) => todo!(),
                 },
-            }
+            })
         };
-        TypeContent::Type(Type::Tuple(Rc::new(Tuple::new_fixed_length(generics))))
+        TypeContent::Type(Type::Tuple(Rc::new(generics)))
     }
 
     fn calculate_simplified_param_spec_generics<'y, I: Iterator<Item = SliceOrSimple<'y>>>(
