@@ -210,13 +210,6 @@ pub enum TupleTypeArguments {
 }
 
 impl TupleTypeArguments {
-    pub fn has_type_var_tuple(&self) -> Option<&[TypeOrUnpack]> {
-        match self {
-            Self::WithUnpack { unpack, .. } => todo!(),
-            _ => None,
-        }
-    }
-
     pub fn is_any(&self) -> bool {
         match self {
             Self::ArbitraryLength(t) => matches!(t.as_ref(), Type::Any(_)),

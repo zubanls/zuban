@@ -33,11 +33,6 @@ impl Type {
                 None
             }
             (Type::Tuple(tup1), Type::Tuple(tup2)) => {
-                if tup1.args.has_type_var_tuple().is_some()
-                    || tup2.args.has_type_var_tuple().is_some()
-                {
-                    todo!()
-                }
                 use TupleTypeArguments::*;
                 Some(match (&tup1.args, &tup2.args) {
                     (FixedLength(ts1), FixedLength(ts2)) => {
