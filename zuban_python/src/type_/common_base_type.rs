@@ -4,8 +4,8 @@ use parsa_python_ast::ParamKind;
 
 use super::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, GenericItem, GenericsList,
-    ParamType, StarParamType, StarStarParamType, Tuple, TupleTypeArguments, Type,
-    TypeOrTypeVarTuple, TypeVarLike, Variance,
+    ParamType, StarParamType, StarStarParamType, Tuple, TupleTypeArguments, Type, TypeOrUnpack,
+    TypeVarLike, Variance,
 };
 use crate::{
     inference_state::InferenceState,
@@ -89,19 +89,19 @@ impl Type {
     }
 }
 
-pub fn common_base_type<'x, I: Iterator<Item = &'x TypeOrTypeVarTuple>>(
+pub fn common_base_type<'x, I: Iterator<Item = &'x TypeOrUnpack>>(
     i_s: &InferenceState,
     mut ts: I,
 ) -> Type {
     if let Some(first) = ts.next() {
         let mut result = match first {
-            TypeOrTypeVarTuple::Type(t) => Cow::Borrowed(t),
-            TypeOrTypeVarTuple::TypeVarTuple(_) => return i_s.db.python_state.object_type(),
+            TypeOrUnpack::Type(t) => Cow::Borrowed(t),
+            TypeOrUnpack::TypeVarTuple(_) => return i_s.db.python_state.object_type(),
         };
         for t in ts {
             let t = match t {
-                TypeOrTypeVarTuple::Type(t) => t,
-                TypeOrTypeVarTuple::TypeVarTuple(_) => return i_s.db.python_state.object_type(),
+                TypeOrUnpack::Type(t) => t,
+                TypeOrUnpack::TypeVarTuple(_) => return i_s.db.python_state.object_type(),
             };
             result = Cow::Owned(result.common_base_type(i_s, t));
         }
@@ -407,7 +407,7 @@ fn common_base_for_tuples(i_s: &InferenceState, tup1: &Tuple, tup2: &Tuple) -> T
 
 pub fn common_base_type_of_type_var_tuple_with_items<
     'x,
-    I: ExactSizeIterator<Item = &'x TypeOrTypeVarTuple>,
+    I: ExactSizeIterator<Item = &'x TypeOrUnpack>,
 >(
     args: &mut TupleTypeArguments,
     i_s: &InferenceState,
@@ -420,8 +420,8 @@ pub fn common_base_type_of_type_var_tuple_with_items<
                 let mut new = vec![];
                 for (t1, t2) in calc_ts.iter().zip(items) {
                     match (t1, t2) {
-                        (TypeOrTypeVarTuple::Type(t1), TypeOrTypeVarTuple::Type(t2)) => {
-                            new.push(TypeOrTypeVarTuple::Type(t1.common_base_type(i_s, t2)));
+                        (TypeOrUnpack::Type(t1), TypeOrUnpack::Type(t2)) => {
+                            new.push(TypeOrUnpack::Type(t1.common_base_type(i_s, t2)));
                         }
                         _ => todo!(),
                     }

@@ -163,7 +163,7 @@ pub struct TypeArguments {
 }
 
 impl TypeArguments {
-    pub fn new_fixed_length(args: Rc<[TypeOrTypeVarTuple]>) -> Self {
+    pub fn new_fixed_length(args: Rc<[TypeOrUnpack]>) -> Self {
         Self {
             args: TupleTypeArguments::FixedLength(args),
         }
@@ -781,8 +781,8 @@ impl Type {
                 TupleTypeArguments::FixedLength(ts) => {
                     for t in ts.iter() {
                         match t {
-                            TypeOrTypeVarTuple::Type(t) => t.search_type_vars(found_type_var),
-                            TypeOrTypeVarTuple::TypeVarTuple(t) => {
+                            TypeOrUnpack::Type(t) => t.search_type_vars(found_type_var),
+                            TypeOrUnpack::TypeVarTuple(t) => {
                                 found_type_var(TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(t)))
                             }
                         }
@@ -956,8 +956,8 @@ impl Type {
                 GenericItem::TypeArgument(t) => check(t),
                 GenericItem::TypeArguments(ts) => match &ts.args {
                     TupleTypeArguments::FixedLength(ts) => ts.iter().any(|x| match x {
-                        TypeOrTypeVarTuple::Type(t) => check(t),
-                        TypeOrTypeVarTuple::TypeVarTuple(tvt) => false,
+                        TypeOrUnpack::Type(t) => check(t),
+                        TypeOrUnpack::TypeVarTuple(tvt) => false,
                     }),
                     TupleTypeArguments::ArbitraryLength(t) => check(t),
                 },
@@ -976,8 +976,8 @@ impl Type {
             Self::Type(t) => check(self) || check(t),
             Self::Tuple(content) => match &content.args {
                 TupleTypeArguments::FixedLength(ts) => ts.iter().any(|t| match t {
-                    TypeOrTypeVarTuple::Type(t) => check(t),
-                    TypeOrTypeVarTuple::TypeVarTuple(_) => false,
+                    TypeOrUnpack::Type(t) => check(t),
+                    TypeOrUnpack::TypeVarTuple(_) => false,
                 }),
                 TupleTypeArguments::ArbitraryLength(t) => check(t),
             },
@@ -1009,13 +1009,13 @@ impl Type {
                 if let TupleTypeArguments::FixedLength(ts) = &tup.args {
                     let mut gathered = vec![];
                     if ts.iter().any(|type_or| match type_or {
-                        TypeOrTypeVarTuple::Type(t) => t.maybe_avoid_implicit_literal(db).is_some(),
-                        TypeOrTypeVarTuple::TypeVarTuple(_) => false,
+                        TypeOrUnpack::Type(t) => t.maybe_avoid_implicit_literal(db).is_some(),
+                        TypeOrUnpack::TypeVarTuple(_) => false,
                     }) {
                         for type_or in ts.iter() {
-                            if let TypeOrTypeVarTuple::Type(t) = type_or {
+                            if let TypeOrUnpack::Type(t) = type_or {
                                 if let Some(new_t) = t.maybe_avoid_implicit_literal(db) {
-                                    gathered.push(TypeOrTypeVarTuple::Type(new_t));
+                                    gathered.push(TypeOrUnpack::Type(new_t));
                                     continue;
                                 }
                             }
@@ -1041,7 +1041,7 @@ impl Type {
         self.iter_with_unpacked_unions().any(|t| match t {
             Type::Literal(_) | Type::EnumMember(_) => true,
             Type::Tuple(tup) => match &tup.args {
-                TupleTypeArguments::FixedLength(ts) => ts.iter().any(|type_or| matches!(type_or, TypeOrTypeVarTuple::Type(t) if t.is_literal_or_literal_in_tuple())),
+                TupleTypeArguments::FixedLength(ts) => ts.iter().any(|type_or| matches!(type_or, TypeOrUnpack::Type(t) if t.is_literal_or_literal_in_tuple())),
                 TupleTypeArguments::ArbitraryLength(t) => t.is_literal_or_literal_in_tuple(),
             },
             _ => false,
@@ -1336,12 +1336,9 @@ impl Type {
                                 ts1.iter()
                                     .zip(ts2.iter())
                                     .map(|(t1, t2)| match (t1, t2) {
-                                        (
-                                            TypeOrTypeVarTuple::Type(t1),
-                                            TypeOrTypeVarTuple::Type(t2),
-                                        ) => TypeOrTypeVarTuple::Type(
-                                            t1.merge_matching_parts(db, t2),
-                                        ),
+                                        (TypeOrUnpack::Type(t1), TypeOrUnpack::Type(t2)) => {
+                                            TypeOrUnpack::Type(t1.merge_matching_parts(db, t2))
+                                        }
                                         (t1, t2) => match t1 == t2 {
                                             true => t1.clone(),
                                             false => todo!(),
@@ -1429,12 +1426,12 @@ impl FunctionKind {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum TypeOrTypeVarTuple {
+pub enum TypeOrUnpack {
     Type(Type),
     TypeVarTuple(TypeVarTupleUsage),
 }
 
-impl TypeOrTypeVarTuple {
+impl TypeOrUnpack {
     fn format(&self, format_data: &FormatData) -> Box<str> {
         match self {
             Self::Type(t) => t.format(format_data),

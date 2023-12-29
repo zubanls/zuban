@@ -4,7 +4,7 @@ use super::{
     simplified_union_from_iterators, CallableContent, CallableParam, CallableParams, ClassGenerics,
     Dataclass, GenericClass, GenericItem, GenericsList, NamedTuple, ParamSpecArgument,
     ParamSpecTypeVars, ParamType, RecursiveType, StarParamType, StarStarParamType, Tuple,
-    TupleTypeArguments, Type, TypeArguments, TypeOrTypeVarTuple, TypeVarLike, TypeVarLikeUsage,
+    TupleTypeArguments, Type, TypeArguments, TypeOrUnpack, TypeVarLike, TypeVarLikeUsage,
     TypeVarLikes, TypeVarManager, TypedDictGenerics, UnionEntry, UnionType,
 };
 use crate::{
@@ -38,10 +38,10 @@ impl Type {
                     let mut new_args = vec![];
                     for g in ts.iter() {
                         match g {
-                            TypeOrTypeVarTuple::Type(t) => new_args.push(TypeOrTypeVarTuple::Type(
+                            TypeOrUnpack::Type(t) => new_args.push(TypeOrUnpack::Type(
                                 t.replace_type_var_likes_and_self(db, callable, replace_self),
                             )),
-                            TypeOrTypeVarTuple::TypeVarTuple(t) => {
+                            TypeOrUnpack::TypeVarTuple(t) => {
                                 match callable(TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(t))) {
                                     GenericItem::TypeArguments(new) => {
                                         match new.args {
@@ -576,11 +576,11 @@ impl Type {
                 TupleTypeArguments::FixedLength(ts) => Rc::new(Tuple::new_fixed_length(
                     ts.iter()
                         .map(|g| match g {
-                            TypeOrTypeVarTuple::Type(t) => {
-                                TypeOrTypeVarTuple::Type(t.rewrite_late_bound_callables(manager))
+                            TypeOrUnpack::Type(t) => {
+                                TypeOrUnpack::Type(t.rewrite_late_bound_callables(manager))
                             }
-                            TypeOrTypeVarTuple::TypeVarTuple(t) => {
-                                TypeOrTypeVarTuple::TypeVarTuple(manager.remap_type_var_tuple(t))
+                            TypeOrUnpack::TypeVarTuple(t) => {
+                                TypeOrUnpack::TypeVarTuple(manager.remap_type_var_tuple(t))
                             }
                         })
                         .collect(),

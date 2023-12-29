@@ -24,7 +24,7 @@ use crate::{
         Enum, EnumMember, FunctionKind, GenericClass, GenericItem, GenericsList, Literal,
         LiteralKind, NamedTuple, Namespace, NewType, ParamSpecArgument, ParamSpecUsage, ParamType,
         RecursiveType, StarParamType, StarStarParamType, StringSlice, Tuple, Type, TypeArguments,
-        TypeOrTypeVarTuple, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
+        TypeOrUnpack, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
         TypeVarManager, TypeVarTupleUsage, TypeVarUsage, TypedDict, TypedDictGenerics,
         TypedDictMember, UnionEntry, UnionType,
     },
@@ -237,7 +237,7 @@ enum TypeContent<'db, 'a> {
     InvalidVariable(InvalidVariableType<'a>),
     TypeVarTuple(TypeVarTupleUsage),
     ParamSpec(ParamSpecUsage),
-    Unpacked(TypeOrTypeVarTuple),
+    Unpacked(TypeOrUnpack),
     Concatenate(CallableParams),
     ClassVar(Type),
     EnumMember(EnumMember),
@@ -623,11 +623,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 
     fn wrap_star(&mut self, tc: TypeContent, from: NodeRef) -> AnnotationReturn {
         match tc {
-            TypeContent::Unpacked(TypeOrTypeVarTuple::Type(t @ Type::Tuple(_))) => {
+            TypeContent::Unpacked(TypeOrUnpack::Type(t @ Type::Tuple(_))) => {
                 AnnotationReturn::UnpackType(t)
             }
-            TypeContent::Unpacked(TypeOrTypeVarTuple::TypeVarTuple(_)) => todo!(),
-            TypeContent::Unpacked(TypeOrTypeVarTuple::Type(t)) => {
+            TypeContent::Unpacked(TypeOrUnpack::TypeVarTuple(_)) => todo!(),
+            TypeContent::Unpacked(TypeOrUnpack::Type(t)) => {
                 self.add_issue(
                     from,
                     IssueType::VariadicUnpackMustBeTupleLike {
@@ -647,7 +647,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     fn wrap_star_star(&mut self, tc: TypeContent, expr: Expression) -> AnnotationReturn {
         let from = NodeRef::new(self.inference.file, expr.index());
         match tc {
-            TypeContent::Unpacked(TypeOrTypeVarTuple::Type(t @ Type::TypedDict(_))) => {
+            TypeContent::Unpacked(TypeOrUnpack::Type(t @ Type::TypedDict(_))) => {
                 AnnotationReturn::UnpackType(t)
             }
             TypeContent::Unpacked(_) => {
@@ -1173,7 +1173,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         self.as_type(t, slice.as_node_ref())
     }
 
-    fn compute_slice_type_or_type_var_tuple(&mut self, slice: SliceOrSimple) -> TypeOrTypeVarTuple {
+    fn compute_slice_type_or_type_var_tuple(&mut self, slice: SliceOrSimple) -> TypeOrUnpack {
         let t = self.compute_slice_type_content(slice);
         self.convert_slice_type_or_type_var_tuple(t, slice)
     }
@@ -1182,11 +1182,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         &mut self,
         t: TypeContent,
         slice: SliceOrSimple,
-    ) -> TypeOrTypeVarTuple {
+    ) -> TypeOrUnpack {
         match t {
-            TypeContent::Unpacked(x @ TypeOrTypeVarTuple::TypeVarTuple(_)) => x,
-            TypeContent::Unpacked(TypeOrTypeVarTuple::Type(_)) => todo!(),
-            t => TypeOrTypeVarTuple::Type(self.as_type(t, slice.as_node_ref())),
+            TypeContent::Unpacked(x @ TypeOrUnpack::TypeVarTuple(_)) => x,
+            TypeContent::Unpacked(TypeOrUnpack::Type(_)) => todo!(),
+            t => TypeOrUnpack::Type(self.as_type(t, slice.as_node_ref())),
         }
     }
 
@@ -2044,7 +2044,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     fn check_param(&mut self, t: TypeContent, index: NodeIndex) -> CallableParam {
         let param_type = match t {
             TypeContent::SpecialType(SpecialType::CallableParam(p)) => return p,
-            TypeContent::Unpacked(TypeOrTypeVarTuple::Type(Type::TypedDict(td))) => {
+            TypeContent::Unpacked(TypeOrUnpack::Type(Type::TypedDict(td))) => {
                 ParamType::StarStar(StarStarParamType::UnpackTypedDict(td))
             }
             _ => {
@@ -2361,8 +2361,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let first = iterator.next().unwrap();
         if iterator.count() == 0 {
             TypeContent::Unpacked(match self.compute_slice_type_content(first) {
-                TypeContent::TypeVarTuple(t) => TypeOrTypeVarTuple::TypeVarTuple(t),
-                t => TypeOrTypeVarTuple::Type(self.as_type(t, first.as_node_ref())),
+                TypeContent::TypeVarTuple(t) => TypeOrUnpack::TypeVarTuple(t),
+                t => TypeOrUnpack::Type(self.as_type(t, first.as_node_ref())),
             })
         } else {
             self.add_issue(
@@ -2650,7 +2650,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             let result = self.compute_slice_type_content(s);
             let unpacked_type_var_tuple = matches!(
                 &result,
-                TypeContent::Unpacked(TypeOrTypeVarTuple::TypeVarTuple(t))
+                TypeContent::Unpacked(TypeOrUnpack::TypeVarTuple(t))
                     if t.in_definition == self.for_definition
             );
             if !matches!(result, TypeContent::ParamSpec(_))
@@ -3582,7 +3582,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                     StarLikeExpression::StarNamedExpression(x) => todo!("{x:?}"),
                     StarLikeExpression::StarExpression(x) => todo!("{x:?}"),
                 };
-                TypeOrTypeVarTuple::Type(if let Some(tuple) = expr.maybe_tuple() {
+                TypeOrUnpack::Type(if let Some(tuple) = expr.maybe_tuple() {
                     self.calc_type_comment_tuple(assignment_node_ref, tuple.iter())
                 } else {
                     let expr_node_ref = NodeRef::new(self.file, expr.index());

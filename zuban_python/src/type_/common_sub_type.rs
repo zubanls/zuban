@@ -8,7 +8,7 @@ use super::{
 };
 use crate::{
     inference_state::InferenceState,
-    type_::{Tuple, TupleTypeArguments, TypeOrTypeVarTuple},
+    type_::{Tuple, TupleTypeArguments, TypeOrUnpack},
 };
 
 impl Type {
@@ -47,10 +47,8 @@ impl Type {
                         let mut entries = vec![];
                         for (t1, t2) in ts1.iter().zip(ts2.iter()) {
                             match (t1, t2) {
-                                (TypeOrTypeVarTuple::Type(t1), TypeOrTypeVarTuple::Type(t2)) => {
-                                    entries.push(TypeOrTypeVarTuple::Type(
-                                        t1.common_sub_type(i_s, t2)?,
-                                    ))
+                                (TypeOrUnpack::Type(t1), TypeOrUnpack::Type(t2)) => {
+                                    entries.push(TypeOrUnpack::Type(t1.common_sub_type(i_s, t2)?))
                                 }
                                 _ => todo!(),
                             }
@@ -62,9 +60,8 @@ impl Type {
                     | (FixedLength(ts1), ArbitraryLength(t2)) => {
                         let mut entries = vec![];
                         for type_or1 in ts1.iter() {
-                            if let TypeOrTypeVarTuple::Type(t1) = type_or1 {
-                                entries
-                                    .push(TypeOrTypeVarTuple::Type(t1.common_sub_type(i_s, &t2)?))
+                            if let TypeOrUnpack::Type(t1) = type_or1 {
+                                entries.push(TypeOrUnpack::Type(t1.common_sub_type(i_s, &t2)?))
                             } else {
                                 return None;
                             }

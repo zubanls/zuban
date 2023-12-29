@@ -26,7 +26,7 @@ use crate::{
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, FunctionKind, Literal,
         LiteralKind, Namespace, ParamType, StarParamType, StarStarParamType, StringSlice, Tuple,
-        TupleTypeArguments, Type, TypeOrTypeVarTuple, UnionEntry, UnionType, Variance,
+        TupleTypeArguments, Type, TypeOrUnpack, UnionEntry, UnionType, Variance,
     },
     type_helpers::{
         lookup_in_namespace, Class, FirstParamKind, Function, GeneratorType, Instance, Module,
@@ -867,7 +867,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 Tuple::new_fixed_length(
                     targets
                         .map(|target| {
-                            TypeOrTypeVarTuple::Type(
+                            TypeOrUnpack::Type(
                                 self.infer_target(target, infer_index_expression)
                                     .map(|i| i.as_type(self.i_s))
                                     .unwrap_or(Type::Any(AnyCause::Todo)),
@@ -1116,7 +1116,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     if matches!(new_target, Target::Tuple(_)) {
                                         let mut tuple_entries = vec![];
                                         for _ in 0..fetch {
-                                            tuple_entries.push(TypeOrTypeVarTuple::Type(
+                                            tuple_entries.push(TypeOrUnpack::Type(
                                                 value_iterator
                                                     .next(self.i_s)
                                                     .unwrap()
@@ -2019,7 +2019,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let mut iterator = inferred.iter(self.i_s, NodeRef::new(self.file, from_index));
                 if iterator.len().is_some() {
                     while let Some(inf) = iterator.next(self.i_s) {
-                        generics.push(TypeOrTypeVarTuple::Type(inf.as_type(self.i_s)))
+                        generics.push(TypeOrUnpack::Type(inf.as_type(self.i_s)))
                     }
                 } else {
                     is_arbitrary_length.set(true);
@@ -2035,13 +2035,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 &mut ResultContext::Known(expected),
                             )
                             .as_type(self.i_s);
-                        generics.push(TypeOrTypeVarTuple::Type(t))
+                        generics.push(TypeOrUnpack::Type(t))
                     }
                     StarLikeExpression::Expression(e) => {
                         let t = self
                             .infer_expression_with_context(e, &mut ResultContext::Known(expected))
                             .as_type(self.i_s);
-                        generics.push(TypeOrTypeVarTuple::Type(t))
+                        generics.push(TypeOrUnpack::Type(t))
                     }
                     StarLikeExpression::StarNamedExpression(e) => {
                         let inferred = self.infer_expression_part(e.expression_part());
@@ -2663,10 +2663,10 @@ fn instantiate_except(i_s: &InferenceState, t: &Type) -> Type {
             TupleTypeArguments::FixedLength(ts) => {
                 for t in ts.iter() {
                     match t {
-                        TypeOrTypeVarTuple::Type(t) => {
+                        TypeOrUnpack::Type(t) => {
                             add(Inferred::from_type(instantiate_except(i_s, t)))
                         }
-                        TypeOrTypeVarTuple::TypeVarTuple(_) => todo!(),
+                        TypeOrUnpack::TypeVarTuple(_) => todo!(),
                     }
                 }
             }
@@ -2739,10 +2739,10 @@ fn gather_except_star(i_s: &InferenceState, t: &Type) -> Type {
             TupleTypeArguments::FixedLength(ts) => {
                 for t in ts.iter() {
                     match t {
-                        TypeOrTypeVarTuple::Type(t) => {
+                        TypeOrUnpack::Type(t) => {
                             add(Inferred::from_type(gather_except_star(i_s, t)))
                         }
-                        TypeOrTypeVarTuple::TypeVarTuple(_) => todo!(),
+                        TypeOrUnpack::TypeVarTuple(_) => todo!(),
                     }
                 }
             }

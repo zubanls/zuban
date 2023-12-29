@@ -15,7 +15,7 @@ use crate::{
     inferred::Inferred,
     matching::ResultContext,
     node_ref::NodeRef,
-    type_::{Tuple, Type, TypeOrTypeVarTuple},
+    type_::{Tuple, Type, TypeOrUnpack},
 };
 
 #[derive(Debug, Copy, Clone)]
@@ -157,7 +157,7 @@ impl<'file> Slice<'file> {
     pub fn callback_on_tuple_indexes(
         &self,
         i_s: &InferenceState,
-        tuple_entries: &[TypeOrTypeVarTuple],
+        tuple_entries: &[TypeOrUnpack],
         callback: impl Fn(usize, usize, isize) -> Inferred,
     ) -> Option<Inferred> {
         let infer = |maybe_expr: Option<_>| {
@@ -221,9 +221,7 @@ impl<'file> Slices<'file> {
     pub fn infer(&self, i_s: &InferenceState) -> Inferred {
         let parts = self
             .iter()
-            .map(|x| {
-                TypeOrTypeVarTuple::Type(x.infer(i_s, &mut ResultContext::Unknown).as_type(i_s))
-            })
+            .map(|x| TypeOrUnpack::Type(x.infer(i_s, &mut ResultContext::Unknown).as_type(i_s)))
             .collect();
         Inferred::from_type(Type::Tuple(Rc::new(Tuple::new_fixed_length(parts))))
     }

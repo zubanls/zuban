@@ -34,7 +34,7 @@ use crate::{
     diagnostics::IssueType,
     inference_state::InferenceState,
     inferred::Inferred,
-    type_::{AnyCause, Type, TypeOrTypeVarTuple},
+    type_::{AnyCause, Type, TypeOrUnpack},
     utils::debug_indent,
 };
 
@@ -199,7 +199,7 @@ pub enum IteratorContent {
     Inferred(Inferred),
     // The code before makes sure that no type var tuples are passed.
     FixedLengthTupleGenerics {
-        entries: Rc<[TypeOrTypeVarTuple]>,
+        entries: Rc<[TypeOrUnpack]>,
         current_index: usize,
     },
     Union(Vec<IteratorContent>),
@@ -208,7 +208,7 @@ pub enum IteratorContent {
 }
 
 impl IteratorContent {
-    pub fn new_tuple(entries: Rc<[TypeOrTypeVarTuple]>) -> IteratorContent {
+    pub fn new_tuple(entries: Rc<[TypeOrUnpack]>) -> IteratorContent {
         Self::FixedLengthTupleGenerics {
             entries,
             current_index: 0,
@@ -224,8 +224,8 @@ impl IteratorContent {
             } => Inferred::gather_simplified_union(i_s, |add| {
                 for entry in entries.iter().skip(current_index) {
                     match entry {
-                        TypeOrTypeVarTuple::Type(b) => add(Inferred::from_type(b.clone())),
-                        TypeOrTypeVarTuple::TypeVarTuple(_) => unreachable!(),
+                        TypeOrUnpack::Type(b) => add(Inferred::from_type(b.clone())),
+                        TypeOrUnpack::TypeVarTuple(_) => unreachable!(),
                     }
                 }
             }),
@@ -250,8 +250,8 @@ impl IteratorContent {
                 *current_index += 1;
                 result.map(|result| {
                     Inferred::from_type(match result {
-                        TypeOrTypeVarTuple::Type(t) => t.clone(),
-                        TypeOrTypeVarTuple::TypeVarTuple(_) => unreachable!(),
+                        TypeOrUnpack::Type(t) => t.clone(),
+                        TypeOrUnpack::TypeVarTuple(_) => unreachable!(),
                     })
                 })
             }

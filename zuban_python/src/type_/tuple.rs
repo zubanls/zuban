@@ -2,7 +2,7 @@ use std::{cell::OnceCell, rc::Rc};
 
 use super::{
     common_base_type, simplified_union_from_iterators, utils::method_with_fallback, CustomBehavior,
-    FormatStyle, GenericItem, GenericsList, RecursiveType, TypeOrTypeVarTuple,
+    FormatStyle, GenericItem, GenericsList, RecursiveType, TypeOrUnpack,
 };
 use crate::{
     arguments::Arguments,
@@ -37,7 +37,7 @@ impl Tuple {
         }
     }
 
-    pub fn new_fixed_length(args: Rc<[TypeOrTypeVarTuple]>) -> Self {
+    pub fn new_fixed_length(args: Rc<[TypeOrUnpack]>) -> Self {
         Self::new(TupleTypeArguments::FixedLength(args))
     }
 
@@ -141,10 +141,8 @@ impl Tuple {
                                 };
                                 if let Some(t) = ts.as_ref().get(index) {
                                     Some(match t {
-                                        TypeOrTypeVarTuple::Type(t) => {
-                                            Inferred::from_type(t.clone())
-                                        }
-                                        TypeOrTypeVarTuple::TypeVarTuple(t) => unreachable!(),
+                                        TypeOrUnpack::Type(t) => Inferred::from_type(t.clone()),
+                                        TypeOrUnpack::TypeVarTuple(t) => unreachable!(),
                                     })
                                 } else {
                                     return out_of_range();
@@ -190,16 +188,16 @@ impl Tuple {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TupleTypeArguments {
-    FixedLength(Rc<[TypeOrTypeVarTuple]>),
+    FixedLength(Rc<[TypeOrUnpack]>),
     ArbitraryLength(Box<Type>),
 }
 
 impl TupleTypeArguments {
-    pub fn has_type_var_tuple(&self) -> Option<&[TypeOrTypeVarTuple]> {
+    pub fn has_type_var_tuple(&self) -> Option<&[TypeOrUnpack]> {
         match self {
             Self::FixedLength(ts) => ts
                 .iter()
-                .any(|t| matches!(t, TypeOrTypeVarTuple::TypeVarTuple(_)))
+                .any(|t| matches!(t, TypeOrUnpack::TypeVarTuple(_)))
                 .then(|| ts.as_ref()),
             _ => None,
         }
@@ -223,8 +221,8 @@ impl TupleTypeArguments {
     ) -> bool {
         match self {
             Self::FixedLength(ts) => ts.iter().any(|t| match t {
-                TypeOrTypeVarTuple::Type(t) => t.has_any_internal(i_s, already_checked),
-                TypeOrTypeVarTuple::TypeVarTuple(_) => false,
+                TypeOrUnpack::Type(t) => t.has_any_internal(i_s, already_checked),
+                TypeOrUnpack::TypeVarTuple(_) => false,
             }),
             Self::ArbitraryLength(t) => t.has_any_internal(i_s, already_checked),
         }
@@ -306,11 +304,11 @@ pub fn lookup_tuple_magic_methods(tuple: Rc<Tuple>, name: &str) -> LookupDetails
     )
 }
 
-fn simplified_union_of_tuple_entries(i_s: &InferenceState, entries: &[TypeOrTypeVarTuple]) -> Type {
+fn simplified_union_of_tuple_entries(i_s: &InferenceState, entries: &[TypeOrUnpack]) -> Type {
     let iter = || {
         entries.iter().map(|t_or| match t_or {
-            TypeOrTypeVarTuple::Type(t) => t,
-            TypeOrTypeVarTuple::TypeVarTuple(_) => unreachable!(),
+            TypeOrUnpack::Type(t) => t,
+            TypeOrUnpack::TypeVarTuple(_) => unreachable!(),
         })
     };
     let highest_union_format_index = iter()

@@ -4,7 +4,7 @@ use super::{CalculatedTypeVarLike, Matcher};
 use crate::{
     debug,
     node_ref::NodeRef,
-    type_::{AnyCause, TupleTypeArguments, Type, TypeOrTypeVarTuple},
+    type_::{AnyCause, TupleTypeArguments, Type, TypeOrUnpack},
     type_helpers::Class,
     InferenceState,
 };
@@ -171,7 +171,7 @@ impl fmt::Debug for ResultContext<'_, '_> {
 
 pub enum TupleContextIterator<'a> {
     ArbitraryLength(&'a Type),
-    FixedLength(std::slice::Iter<'a, TypeOrTypeVarTuple>),
+    FixedLength(std::slice::Iter<'a, TypeOrUnpack>),
     Unknown,
 }
 
@@ -183,8 +183,8 @@ impl<'a> Iterator for TupleContextIterator<'a> {
             Self::ArbitraryLength(t) => t,
             Self::FixedLength(items) => {
                 match items.next() {
-                    Some(TypeOrTypeVarTuple::Type(t)) => t,
-                    Some(TypeOrTypeVarTuple::TypeVarTuple(_)) => {
+                    Some(TypeOrUnpack::Type(t)) => t,
+                    Some(TypeOrUnpack::TypeVarTuple(_)) => {
                         // Clear the remaining items, because the order of the following items is
                         // unclear.
                         *items = [].iter();

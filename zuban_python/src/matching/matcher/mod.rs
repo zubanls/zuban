@@ -27,7 +27,7 @@ use crate::{
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, GenericItem, GenericsList,
         ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamType, ReplaceSelf,
-        StarParamType, TupleTypeArguments, Type, TypeArguments, TypeOrTypeVarTuple, TypeVarKind,
+        StarParamType, TupleTypeArguments, Type, TypeArguments, TypeOrUnpack, TypeVarKind,
         TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, TypedDict, TypedDictGenerics,
         Variance,
     },
@@ -243,7 +243,7 @@ impl<'a> Matcher<'a> {
     pub fn match_type_var_tuple(
         &mut self,
         i_s: &InferenceState,
-        tuple1: &[TypeOrTypeVarTuple],
+        tuple1: &[TypeOrUnpack],
         tuple2: &TupleTypeArguments,
         variance: Variance,
     ) -> Match {
@@ -254,13 +254,13 @@ impl<'a> Matcher<'a> {
                 let mut t2_iterator = ts2.iter();
                 for t1 in tuple1.iter() {
                     match t1 {
-                        TypeOrTypeVarTuple::Type(t1) => {
+                        TypeOrUnpack::Type(t1) => {
                             if let Some(t2) = t2_iterator.next() {
                                 match t2 {
-                                    TypeOrTypeVarTuple::Type(t2) => {
+                                    TypeOrUnpack::Type(t2) => {
                                         matches &= t1.matches(i_s, self, t2, variance);
                                     }
-                                    TypeOrTypeVarTuple::TypeVarTuple(_) => {
+                                    TypeOrUnpack::TypeVarTuple(_) => {
                                         return Match::new_false();
                                     }
                                 }
@@ -268,7 +268,7 @@ impl<'a> Matcher<'a> {
                                 matches &= Match::new_false();
                             }
                         }
-                        TypeOrTypeVarTuple::TypeVarTuple(tvt) => {
+                        TypeOrUnpack::TypeVarTuple(tvt) => {
                             // TODO TypeVarTuple currently we ignore variance completely
                             let tv_matcher = self.type_var_matcher.as_mut().unwrap();
                             let calculated =
@@ -300,10 +300,10 @@ impl<'a> Matcher<'a> {
                 let tv_matcher = self.type_var_matcher.as_mut().unwrap();
                 for t1 in tuple1.iter() {
                     match t1 {
-                        TypeOrTypeVarTuple::Type(t1) => {
+                        TypeOrUnpack::Type(t1) => {
                             todo!()
                         }
-                        TypeOrTypeVarTuple::TypeVarTuple(tvt) => {
+                        TypeOrUnpack::TypeVarTuple(tvt) => {
                             let calculated =
                                 &mut tv_matcher.calculated_type_vars[tvt.index.as_usize()];
                             if calculated.calculated() {

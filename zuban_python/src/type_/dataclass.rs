@@ -8,7 +8,7 @@ use parsa_python_ast::{
 use super::{
     AnyCause, CallableContent, CallableParam, CallableParams, ClassGenerics, DbString,
     FunctionKind, GenericClass, Literal, LiteralKind, ParamType, StringSlice, Tuple, Type,
-    TypeOrTypeVarTuple, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikes, TypeVarName, TypeVarUsage,
+    TypeOrUnpack, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikes, TypeVarName, TypeVarUsage,
     Variance,
 };
 use crate::{
@@ -722,7 +722,7 @@ pub(crate) fn lookup_on_dataclass_type<'a>(
             Type::Dataclass(self_.clone()),
             LookupResult::UnknownName(Inferred::from_type(Type::Tuple(Rc::new(
                 Tuple::new_fixed_length(
-                    repeat_with(|| TypeOrTypeVarTuple::Type(i_s.db.python_state.str_type()))
+                    repeat_with(|| TypeOrUnpack::Type(i_s.db.python_state.str_type()))
                         .take(
                             dataclass_init_func(&self_, i_s.db)
                                 .expect_simple_params()
@@ -759,7 +759,7 @@ pub fn lookup_symbol_internal(
                 .iter()
                 .take_while(|p| p.type_.maybe_positional_type().is_some())
                 .map(|p| {
-                    TypeOrTypeVarTuple::Type(Type::Literal(Literal::new(LiteralKind::String(
+                    TypeOrUnpack::Type(Type::Literal(Literal::new(LiteralKind::String(
                         p.name.clone().unwrap(),
                     ))))
                 })

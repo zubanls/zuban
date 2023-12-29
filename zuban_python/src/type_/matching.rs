@@ -10,7 +10,7 @@ use crate::{
         MismatchReason,
     },
     node_ref::NodeRef,
-    type_::{CallableLike, CallableParams, TupleTypeArguments, TypeOrTypeVarTuple, Variance},
+    type_::{CallableLike, CallableParams, TupleTypeArguments, TypeOrUnpack, Variance},
     type_helpers::{Class, TypeOrClass},
 };
 
@@ -799,7 +799,7 @@ impl Type {
                     */
                     if let Some(type2) = value_generics.next() {
                         match (type1, type2) {
-                            (TypeOrTypeVarTuple::Type(t1), TypeOrTypeVarTuple::Type(t2)) => {
+                            (TypeOrUnpack::Type(t1), TypeOrUnpack::Type(t2)) => {
                                 overlaps &= t1.overlaps(i_s, &t2);
                             }
                             _ => todo!(),
@@ -815,14 +815,14 @@ impl Type {
             }
             (ArbitraryLength(t1), ArbitraryLength(t2)) => t1.overlaps(i_s, t2),
             (ArbitraryLength(t1), FixedLength(ts2)) => ts2.iter().all(|t2| match t2 {
-                TypeOrTypeVarTuple::Type(t2) => t1.overlaps(i_s, t2),
-                TypeOrTypeVarTuple::TypeVarTuple(t2) => {
+                TypeOrUnpack::Type(t2) => t1.overlaps(i_s, t2),
+                TypeOrUnpack::TypeVarTuple(t2) => {
                     todo!()
                 }
             }),
             (FixedLength(ts1), ArbitraryLength(t2)) => ts1.iter().all(|t1| match t1 {
-                TypeOrTypeVarTuple::Type(t1) => t1.overlaps(i_s, &t2),
-                TypeOrTypeVarTuple::TypeVarTuple(t1) => {
+                TypeOrUnpack::Type(t1) => t1.overlaps(i_s, &t2),
+                TypeOrUnpack::TypeVarTuple(t1) => {
                     todo!()
                 }
             }),
@@ -888,13 +888,12 @@ pub fn match_tuple_type_arguments(
                 let mut matches = Match::new_true();
                 for (t1, t2) in ts1.iter().zip(ts2.iter()) {
                     match (t1, t2) {
-                        (TypeOrTypeVarTuple::Type(t1), TypeOrTypeVarTuple::Type(t2)) => {
+                        (TypeOrUnpack::Type(t1), TypeOrUnpack::Type(t2)) => {
                             matches &= t1.matches(i_s, matcher, t2, variance);
                         }
-                        (
-                            TypeOrTypeVarTuple::TypeVarTuple(t1),
-                            TypeOrTypeVarTuple::TypeVarTuple(t2),
-                        ) => matches &= (t1 == t2).into(),
+                        (TypeOrUnpack::TypeVarTuple(t1), TypeOrUnpack::TypeVarTuple(t2)) => {
+                            matches &= (t1 == t2).into()
+                        }
                         _ => todo!("{t1:?} {t2:?}"),
                     }
                 }
@@ -916,8 +915,8 @@ pub fn match_tuple_type_arguments(
         (ArbitraryLength(t1), FixedLength(ts2), _) => ts2
             .iter()
             .all(|g2| match g2 {
-                TypeOrTypeVarTuple::Type(t2) => t1.matches(i_s, matcher, t2, variance).bool(),
-                TypeOrTypeVarTuple::TypeVarTuple(_) => {
+                TypeOrUnpack::Type(t2) => t1.matches(i_s, matcher, t2, variance).bool(),
+                TypeOrUnpack::TypeVarTuple(_) => {
                     todo!()
                 }
             })
