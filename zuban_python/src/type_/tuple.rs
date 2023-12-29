@@ -134,6 +134,9 @@ impl Tuple {
                         index_inf
                             .run_on_int_literals(i_s, |index| {
                                 let index = if index < 0 {
+                                    if args.has_type_var_tuple().is_some() {
+                                        todo!()
+                                    }
                                     let index = ts.len() as isize + index;
                                     match index.try_into() {
                                         Ok(index) => index,
