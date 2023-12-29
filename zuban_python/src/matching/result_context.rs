@@ -128,7 +128,7 @@ impl<'a> ResultContext<'a, '_> {
         self.with_type_if_exists_and_replace_type_var_likes(i_s, |type_| {
             match type_ {
                 Type::Tuple(tup) => Some(match &tup.args {
-                    TupleTypeArguments::FixedLength(ts) => {
+                    TupleTypeArguments::WithUnpack(ts) => {
                         callable(TupleContextIterator::FixedLength(ts.iter()))
                     }
                     TupleTypeArguments::ArbitraryLength(t) => {

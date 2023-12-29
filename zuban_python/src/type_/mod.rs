@@ -165,7 +165,7 @@ pub struct TypeArguments {
 impl TypeArguments {
     pub fn new_fixed_length(args: Rc<[TypeOrUnpack]>) -> Self {
         Self {
-            args: TupleTypeArguments::FixedLength(args),
+            args: TupleTypeArguments::WithUnpack(args),
         }
     }
 
@@ -778,7 +778,7 @@ impl Type {
             Self::TypeVar(t) => found_type_var(TypeVarLikeUsage::TypeVar(Cow::Borrowed(t))),
             Self::Type(type_) => type_.search_type_vars(found_type_var),
             Self::Tuple(content) => match &content.args {
-                TupleTypeArguments::FixedLength(ts) => {
+                TupleTypeArguments::WithUnpack(ts) => {
                     for t in ts.iter() {
                         match t {
                             TypeOrUnpack::Type(t) => t.search_type_vars(found_type_var),
@@ -955,7 +955,7 @@ impl Type {
             generics.iter().any(|g| match g {
                 GenericItem::TypeArgument(t) => check(t),
                 GenericItem::TypeArguments(ts) => match &ts.args {
-                    TupleTypeArguments::FixedLength(ts) => ts.iter().any(|x| match x {
+                    TupleTypeArguments::WithUnpack(ts) => ts.iter().any(|x| match x {
                         TypeOrUnpack::Type(t) => check(t),
                         TypeOrUnpack::TypeVarTuple(tvt) => false,
                     }),
@@ -975,7 +975,7 @@ impl Type {
             }
             Self::Type(t) => check(self) || check(t),
             Self::Tuple(content) => match &content.args {
-                TupleTypeArguments::FixedLength(ts) => ts.iter().any(|t| match t {
+                TupleTypeArguments::WithUnpack(ts) => ts.iter().any(|t| match t {
                     TypeOrUnpack::Type(t) => check(t),
                     TypeOrUnpack::TypeVarTuple(_) => false,
                 }),
@@ -1006,7 +1006,7 @@ impl Type {
             Type::Literal(l) if l.implicit => Some(db.python_state.literal_type(&l.kind)),
             Type::EnumMember(m) if m.implicit => Some(Type::Enum(m.enum_.clone())),
             Type::Tuple(tup) => {
-                if let TupleTypeArguments::FixedLength(ts) = &tup.args {
+                if let TupleTypeArguments::WithUnpack(ts) = &tup.args {
                     let mut gathered = vec![];
                     if ts.iter().any(|type_or| match type_or {
                         TypeOrUnpack::Type(t) => t.maybe_avoid_implicit_literal(db).is_some(),
@@ -1041,7 +1041,7 @@ impl Type {
         self.iter_with_unpacked_unions().any(|t| match t {
             Type::Literal(_) | Type::EnumMember(_) => true,
             Type::Tuple(tup) => match &tup.args {
-                TupleTypeArguments::FixedLength(ts) => ts.iter().any(|type_or| matches!(type_or, TypeOrUnpack::Type(t) if t.is_literal_or_literal_in_tuple())),
+                TupleTypeArguments::WithUnpack(ts) => ts.iter().any(|type_or| matches!(type_or, TypeOrUnpack::Type(t) if t.is_literal_or_literal_in_tuple())),
                 TupleTypeArguments::ArbitraryLength(t) => t.is_literal_or_literal_in_tuple(),
             },
             _ => false,
@@ -1330,7 +1330,7 @@ impl Type {
             Type::Tuple(c1) => match other {
                 Type::Tuple(c2) => {
                     Type::Tuple(match (&c1.args, &c2.args) {
-                        (FixedLength(ts1), FixedLength(ts2)) if ts1.len() == ts2.len() => {
+                        (WithUnpack(ts1), WithUnpack(ts2)) if ts1.len() == ts2.len() => {
                             Rc::new(Tuple::new_fixed_length(
                                 // Performance issue: Same as above
                                 ts1.iter()

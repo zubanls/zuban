@@ -2660,7 +2660,7 @@ fn instantiate_except(i_s: &InferenceState, t: &Type) -> Type {
         },
         Type::Any(cause) => Type::Any(*cause),
         Type::Tuple(content) => Inferred::gather_simplified_union(i_s, |add| match &content.args {
-            TupleTypeArguments::FixedLength(ts) => {
+            TupleTypeArguments::WithUnpack(ts) => {
                 for t in ts.iter() {
                     match t {
                         TypeOrUnpack::Type(t) => {
@@ -2736,7 +2736,7 @@ fn gather_except_star(i_s: &InferenceState, t: &Type) -> Type {
         },
         Type::Any(cause) => Type::Any(*cause),
         Type::Tuple(content) => Inferred::gather_simplified_union(i_s, |add| match &content.args {
-            TupleTypeArguments::FixedLength(ts) => {
+            TupleTypeArguments::WithUnpack(ts) => {
                 for t in ts.iter() {
                     match t {
                         TypeOrUnpack::Type(t) => {

@@ -1390,7 +1390,7 @@ impl<'x> Param<'x> for FunctionParam<'x> {
                         unreachable!()
                     };
                     match &t.args {
-                        TupleTypeArguments::FixedLength(..) => todo!(),
+                        TupleTypeArguments::WithUnpack(..) => todo!(),
                         TupleTypeArguments::ArbitraryLength(t) => Cow::Borrowed(t.as_ref()),
                     }
                 })),

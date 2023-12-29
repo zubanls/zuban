@@ -1472,7 +1472,7 @@ fn except_type(i_s: &InferenceState, t: &Type, allow_tuple: bool) -> ExceptType 
         }
         Type::Any(_) => ExceptType::ContainsOnlyBaseExceptions,
         Type::Tuple(content) if allow_tuple => match &content.args {
-            TupleTypeArguments::FixedLength(ts) => {
+            TupleTypeArguments::WithUnpack(ts) => {
                 let mut result = ExceptType::ContainsOnlyBaseExceptions;
                 for t in ts.iter() {
                     match t {

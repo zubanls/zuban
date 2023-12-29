@@ -250,7 +250,7 @@ impl<'a> Matcher<'a> {
         debug_assert!(!self.is_matching_reverse());
         let mut matches = Match::new_true();
         match tuple2 {
-            TupleTypeArguments::FixedLength(ts2) => {
+            TupleTypeArguments::WithUnpack(ts2) => {
                 let mut t2_iterator = ts2.iter();
                 for t1 in tuple1.iter() {
                     match t1 {

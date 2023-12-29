@@ -34,7 +34,7 @@ impl Type {
                                    callable: ReplaceTypeVarLike,
                                    replace_self: ReplaceSelf| {
             match args {
-                TupleTypeArguments::FixedLength(ts) => {
+                TupleTypeArguments::WithUnpack(ts) => {
                     let mut new_args = vec![];
                     for g in ts.iter() {
                         match g {
@@ -45,7 +45,7 @@ impl Type {
                                 match callable(TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(t))) {
                                     GenericItem::TypeArguments(new) => {
                                         match new.args {
-                                            TupleTypeArguments::FixedLength(fixed) => {
+                                            TupleTypeArguments::WithUnpack(fixed) => {
                                                 // Performance issue: clone could probably be removed. Rc -> Vec check
                                                 // https://github.com/rust-lang/rust/issues/93610#issuecomment-1528108612
                                                 new_args.extend(fixed.iter().cloned())
@@ -68,7 +68,7 @@ impl Type {
                             }
                         }
                     }
-                    TupleTypeArguments::FixedLength(new_args.into())
+                    TupleTypeArguments::WithUnpack(new_args.into())
                 }
                 TupleTypeArguments::ArbitraryLength(t) => TupleTypeArguments::ArbitraryLength(
                     Box::new(t.replace_type_var_likes_and_self(db, callable, replace_self)),
@@ -573,7 +573,7 @@ impl Type {
             Type::TypeVar(t) => Type::TypeVar(manager.remap_type_var(t)),
             Type::Type(type_) => Type::Type(Rc::new(type_.rewrite_late_bound_callables(manager))),
             Type::Tuple(content) => Type::Tuple(match &content.args {
-                TupleTypeArguments::FixedLength(ts) => Rc::new(Tuple::new_fixed_length(
+                TupleTypeArguments::WithUnpack(ts) => Rc::new(Tuple::new_fixed_length(
                     ts.iter()
                         .map(|g| match g {
                             TypeOrUnpack::Type(t) => {

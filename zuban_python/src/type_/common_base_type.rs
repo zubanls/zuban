@@ -379,7 +379,7 @@ fn common_base_for_tuple_against_type(
 
 fn common_base_for_tuples(i_s: &InferenceState, tup1: &Tuple, tup2: &Tuple) -> Tuple {
     Tuple::new(match &tup2.args {
-        TupleTypeArguments::FixedLength(ts2) => {
+        TupleTypeArguments::WithUnpack(ts2) => {
             let mut new_args = tup1.args.clone();
             common_base_type_of_type_var_tuple_with_items(
                 &mut new_args,
@@ -390,7 +390,7 @@ fn common_base_for_tuples(i_s: &InferenceState, tup1: &Tuple, tup2: &Tuple) -> T
             new_args
         }
         TupleTypeArguments::ArbitraryLength(t2) => match &tup1.args {
-            TupleTypeArguments::FixedLength(ts1) => {
+            TupleTypeArguments::WithUnpack(ts1) => {
                 let mut new_args = tup2.args.clone();
                 common_base_type_of_type_var_tuple_with_items(
                     &mut new_args,
@@ -415,7 +415,7 @@ pub fn common_base_type_of_type_var_tuple_with_items<
     items: I,
 ) {
     match args {
-        TupleTypeArguments::FixedLength(calc_ts) => {
+        TupleTypeArguments::WithUnpack(calc_ts) => {
             if length == calc_ts.len() {
                 let mut new = vec![];
                 for (t1, t2) in calc_ts.iter().zip(items) {
