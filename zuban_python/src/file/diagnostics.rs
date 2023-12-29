@@ -1484,7 +1484,7 @@ fn except_type(i_s: &InferenceState, t: &Type, allow_tuple: bool) -> ExceptType 
                 result
             }
             TupleTypeArguments::ArbitraryLength(t) => except_type(i_s, t, false),
-            TupleTypeArguments::WithUnpack(ts) => todo!(),
+            TupleTypeArguments::WithUnpack { .. } => todo!(),
         },
         Type::Union(union) => {
             let mut result = ExceptType::ContainsOnlyBaseExceptions;

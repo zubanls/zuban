@@ -253,7 +253,8 @@ impl<'a> Matcher<'a> {
             TupleTypeArguments::FixedLength(ts2) => {
                 todo!()
             }
-            TupleTypeArguments::WithUnpack(ts2) => {
+            TupleTypeArguments::WithUnpack { .. } => {
+                /*
                 let mut t2_iterator = ts2.iter();
                 for t1 in tuple1.iter() {
                     match t1 {
@@ -301,6 +302,8 @@ impl<'a> Matcher<'a> {
                         }
                     }
                 }
+                */
+                todo!()
             }
             TupleTypeArguments::ArbitraryLength(t2) => {
                 let tv_matcher = self.type_var_matcher.as_mut().unwrap();

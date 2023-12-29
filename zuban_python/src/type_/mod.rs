@@ -163,9 +163,9 @@ pub struct TypeArguments {
 }
 
 impl TypeArguments {
-    pub fn new_fixed_length(args: Rc<[TypeOrUnpack]>) -> Self {
+    pub fn new_fixed_length(args: Rc<[Type]>) -> Self {
         Self {
-            args: TupleTypeArguments::WithUnpack(args),
+            args: TupleTypeArguments::FixedLength(args),
         }
     }
 
@@ -784,7 +784,7 @@ impl Type {
                     }
                 }
                 TupleTypeArguments::ArbitraryLength(t) => t.search_type_vars(found_type_var),
-                TupleTypeArguments::WithUnpack(..) => {
+                TupleTypeArguments::WithUnpack { .. } => {
                     //found_type_var(TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(t)))
                     todo!()
                 }
@@ -956,7 +956,7 @@ impl Type {
                 GenericItem::TypeArguments(ts) => match &ts.args {
                     TupleTypeArguments::FixedLength(ts) => ts.iter().any(check),
                     TupleTypeArguments::ArbitraryLength(t) => check(t),
-                    TupleTypeArguments::WithUnpack(ts) => todo!(),
+                    TupleTypeArguments::WithUnpack { .. } => todo!(),
                 },
                 GenericItem::ParamSpecArgument(a) => todo!(),
             })
@@ -974,7 +974,7 @@ impl Type {
             Self::Tuple(content) => match &content.args {
                 TupleTypeArguments::FixedLength(ts) => ts.iter().any(check),
                 TupleTypeArguments::ArbitraryLength(t) => check(t),
-                TupleTypeArguments::WithUnpack(ts) => todo!(),
+                TupleTypeArguments::WithUnpack { .. } => todo!(),
             },
             Self::Callable(content) => content.find_in_type(check),
             Self::TypedDict(d) => match &d.generics {
@@ -1038,7 +1038,7 @@ impl Type {
                     ts.iter().any(|t| t.is_literal_or_literal_in_tuple())
                 }
                 TupleTypeArguments::ArbitraryLength(t) => t.is_literal_or_literal_in_tuple(),
-                TupleTypeArguments::WithUnpack(..) => todo!(),
+                TupleTypeArguments::WithUnpack { .. } => todo!(),
             },
             _ => false,
         })
@@ -1338,8 +1338,8 @@ impl Type {
                         (ArbitraryLength(t1), ArbitraryLength(t2)) => Rc::new(
                             Tuple::new_arbitrary_length(t1.merge_matching_parts(db, &t2)),
                         ),
-                        (WithUnpack(_), _) => todo!(),
-                        (_, WithUnpack(_)) => todo!(),
+                        (WithUnpack { .. }, _) => todo!(),
+                        (_, WithUnpack { .. }) => todo!(),
                         _ => Tuple::new_empty(),
                     })
                 }

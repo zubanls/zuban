@@ -134,7 +134,7 @@ impl<'a> ResultContext<'a, '_> {
                     TupleTypeArguments::ArbitraryLength(t) => {
                         callable(TupleContextIterator::ArbitraryLength(t))
                     }
-                    TupleTypeArguments::WithUnpack(ts) => todo!(),
+                    TupleTypeArguments::WithUnpack { .. } => todo!(),
                 }),
                 Type::Union(items) => {
                     debug!("TODO union tuple inference context ignored");

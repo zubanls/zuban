@@ -811,8 +811,8 @@ impl Type {
             (ArbitraryLength(t1), ArbitraryLength(t2)) => t1.overlaps(i_s, t2),
             (ArbitraryLength(t1), FixedLength(ts2)) => ts2.iter().all(|t2| t1.overlaps(i_s, t2)),
             (FixedLength(ts1), ArbitraryLength(t2)) => ts1.iter().all(|t1| t1.overlaps(i_s, &t2)),
-            (WithUnpack(_), _) => todo!(),
-            (_, WithUnpack(_)) => todo!(),
+            (WithUnpack { .. }, _) => todo!(),
+            (_, WithUnpack { .. }) => todo!(),
         }
     }
 
@@ -890,7 +890,7 @@ pub fn match_tuple_type_arguments(
             .iter()
             .all(|t2| t1.matches(i_s, matcher, t2, variance).bool())
             .into(),
-        (WithUnpack(_), _, _) => todo!(),
-        (_, WithUnpack(_), _) => todo!(),
+        (WithUnpack { .. }, _, _) => todo!(),
+        (_, WithUnpack { .. }, _) => todo!(),
     }
 }

@@ -1938,7 +1938,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             iterator
                                 .by_ref()
                                 .take(fetch)
-                                .map(|s| self.compute_slice_type_or_type_var_tuple(s))
+                                .map(|s| match self.compute_slice_type_or_type_var_tuple(s) {
+                                    TypeOrUnpack::Type(t) => t,
+                                    TypeOrUnpack::TypeVarTuple(..) => todo!(),
+                                })
                                 .collect()
                         } else {
                             // If not enough type arguments are given, an error is raised elsewhere.

@@ -391,9 +391,9 @@ fn common_base_for_tuples(i_s: &InferenceState, tup1: &Tuple, tup2: &Tuple) -> T
                 new_args
             }
             TupleTypeArguments::ArbitraryLength(t1) => todo!(),
-            TupleTypeArguments::WithUnpack(t1) => todo!(),
+            TupleTypeArguments::WithUnpack { .. } => todo!(),
         },
-        TupleTypeArguments::WithUnpack(ts2) => todo!(),
+        TupleTypeArguments::WithUnpack { .. } => todo!(),
     })
 }
 
@@ -418,7 +418,7 @@ pub fn common_base_type_of_type_var_tuple_with_items<'x, I: ExactSizeIterator<It
                 *args = TupleTypeArguments::ArbitraryLength(Box::new(t));
             }
         }
-        TupleTypeArguments::WithUnpack(calc_ts) => todo!(),
+        TupleTypeArguments::WithUnpack { .. } => todo!(),
         TupleTypeArguments::ArbitraryLength(calc_t) => {
             if items.len() == 0 {
                 // args is already ok, because we have an empty tuple here that can be anything.

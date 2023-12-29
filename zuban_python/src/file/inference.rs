@@ -2666,7 +2666,7 @@ fn instantiate_except(i_s: &InferenceState, t: &Type) -> Type {
             TupleTypeArguments::ArbitraryLength(t) => {
                 add(Inferred::from_type(instantiate_except(i_s, t)))
             }
-            TupleTypeArguments::WithUnpack(t) => todo!(),
+            TupleTypeArguments::WithUnpack { .. } => todo!(),
         })
         .as_cow_type(i_s)
         .into_owned(),
@@ -2738,7 +2738,7 @@ fn gather_except_star(i_s: &InferenceState, t: &Type) -> Type {
             TupleTypeArguments::ArbitraryLength(t) => {
                 add(Inferred::from_type(gather_except_star(i_s, t)))
             }
-            TupleTypeArguments::WithUnpack(_) => todo!(),
+            TupleTypeArguments::WithUnpack { .. } => todo!(),
         })
         .as_cow_type(i_s)
         .into_owned(),
