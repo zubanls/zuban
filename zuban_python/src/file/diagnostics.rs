@@ -29,7 +29,7 @@ use crate::{
     type_::{
         format_callable_params, AnyCause, CallableContent, CallableParams, ClassGenerics, DbString,
         FunctionKind, FunctionOverload, GenericItem, GenericsList, Literal, LiteralKind,
-        TupleTypeArguments, Type, TypeOrUnpack, TypeVarLike, Variance,
+        TupleTypeArguments, Type, TypeVarLike, Variance,
     },
     type_helpers::{
         is_private, Class, FirstParamProperties, Function, GeneratorType, Instance, LookupDetails,
@@ -1472,21 +1472,19 @@ fn except_type(i_s: &InferenceState, t: &Type, allow_tuple: bool) -> ExceptType 
         }
         Type::Any(_) => ExceptType::ContainsOnlyBaseExceptions,
         Type::Tuple(content) if allow_tuple => match &content.args {
-            TupleTypeArguments::WithUnpack(ts) => {
+            TupleTypeArguments::FixedLength(ts) => {
                 let mut result = ExceptType::ContainsOnlyBaseExceptions;
                 for t in ts.iter() {
-                    match t {
-                        TypeOrUnpack::Type(t) => match except_type(i_s, t, false) {
-                            ExceptType::ContainsOnlyBaseExceptions => (),
-                            x @ ExceptType::HasExceptionGroup => result = x,
-                            ExceptType::Invalid => return ExceptType::Invalid,
-                        },
-                        TypeOrUnpack::TypeVarTuple(_) => todo!(),
+                    match except_type(i_s, t, false) {
+                        ExceptType::ContainsOnlyBaseExceptions => (),
+                        x @ ExceptType::HasExceptionGroup => result = x,
+                        ExceptType::Invalid => return ExceptType::Invalid,
                     }
                 }
                 result
             }
             TupleTypeArguments::ArbitraryLength(t) => except_type(i_s, t, false),
+            TupleTypeArguments::WithUnpack(ts) => todo!(),
         },
         Type::Union(union) => {
             let mut result = ExceptType::ContainsOnlyBaseExceptions;

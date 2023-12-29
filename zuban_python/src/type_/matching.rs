@@ -10,7 +10,7 @@ use crate::{
         MismatchReason,
     },
     node_ref::NodeRef,
-    type_::{CallableLike, CallableParams, TupleTypeArguments, TypeOrUnpack, Variance},
+    type_::{CallableLike, CallableParams, TupleTypeArguments, Variance},
     type_helpers::{Class, TypeOrClass},
 };
 
@@ -783,7 +783,7 @@ impl Type {
     fn overlaps_tuple(i_s: &InferenceState, t1: &Tuple, t2: &Tuple) -> bool {
         use TupleTypeArguments::*;
         match (&t1.args, &t2.args) {
-            (WithUnpack(ts1), WithUnpack(ts2)) => {
+            (FixedLength(ts1), FixedLength(ts2)) => {
                 let mut value_generics = ts2.iter();
                 let mut overlaps = true;
                 for type1 in ts1.iter() {
@@ -798,12 +798,7 @@ impl Type {
                     }
                     */
                     if let Some(type2) = value_generics.next() {
-                        match (type1, type2) {
-                            (TypeOrUnpack::Type(t1), TypeOrUnpack::Type(t2)) => {
-                                overlaps &= t1.overlaps(i_s, &t2);
-                            }
-                            _ => todo!(),
-                        }
+                        overlaps &= type1.overlaps(i_s, &type2);
                     } else {
                         overlaps = false;
                     }
@@ -814,18 +809,10 @@ impl Type {
                 overlaps
             }
             (ArbitraryLength(t1), ArbitraryLength(t2)) => t1.overlaps(i_s, t2),
-            (ArbitraryLength(t1), WithUnpack(ts2)) => ts2.iter().all(|t2| match t2 {
-                TypeOrUnpack::Type(t2) => t1.overlaps(i_s, t2),
-                TypeOrUnpack::TypeVarTuple(t2) => {
-                    todo!()
-                }
-            }),
-            (WithUnpack(ts1), ArbitraryLength(t2)) => ts1.iter().all(|t1| match t1 {
-                TypeOrUnpack::Type(t1) => t1.overlaps(i_s, &t2),
-                TypeOrUnpack::TypeVarTuple(t1) => {
-                    todo!()
-                }
-            }),
+            (ArbitraryLength(t1), FixedLength(ts2)) => ts2.iter().all(|t2| t1.overlaps(i_s, t2)),
+            (FixedLength(ts1), ArbitraryLength(t2)) => ts1.iter().all(|t1| t1.overlaps(i_s, &t2)),
+            (WithUnpack(_), _) => todo!(),
+            (_, WithUnpack(_)) => todo!(),
         }
     }
 
@@ -883,19 +870,11 @@ pub fn match_tuple_type_arguments(
         }
     }
     match (t1, t2, variance) {
-        (tup1_args @ WithUnpack(ts1), tup2_args @ WithUnpack(ts2), _) => {
+        (FixedLength(ts1), FixedLength(ts2), _) => {
             if ts1.len() == ts2.len() {
                 let mut matches = Match::new_true();
                 for (t1, t2) in ts1.iter().zip(ts2.iter()) {
-                    match (t1, t2) {
-                        (TypeOrUnpack::Type(t1), TypeOrUnpack::Type(t2)) => {
-                            matches &= t1.matches(i_s, matcher, t2, variance);
-                        }
-                        (TypeOrUnpack::TypeVarTuple(t1), TypeOrUnpack::TypeVarTuple(t2)) => {
-                            matches &= (t1 == t2).into()
-                        }
-                        _ => todo!("{t1:?} {t2:?}"),
-                    }
+                    matches &= t1.matches(i_s, matcher, t2, variance);
                 }
                 matches
             } else {
@@ -903,23 +882,15 @@ pub fn match_tuple_type_arguments(
             }
         }
         (ArbitraryLength(t1), ArbitraryLength(t2), _) => t1.matches(i_s, matcher, t2, variance),
-        (tup1_args @ WithUnpack(_), tup2_args @ ArbitraryLength(t2), _)
-            if matches!(t2.as_ref(), Type::Any(_)) =>
-        {
-            Match::new_true()
-        }
-        (tup1_args @ WithUnpack(_), tup2_args @ ArbitraryLength(_), _) => Match::new_false(),
-        (ArbitraryLength(t1), WithUnpack(ts2), Variance::Invariant) => {
+        (_, ArbitraryLength(t2), _) => matches!(t2.as_ref(), Type::Any(_)).into(),
+        (ArbitraryLength(t1), FixedLength(ts2), Variance::Invariant) => {
             todo!()
         }
-        (ArbitraryLength(t1), WithUnpack(ts2), _) => ts2
+        (ArbitraryLength(t1), FixedLength(ts2), _) => ts2
             .iter()
-            .all(|g2| match g2 {
-                TypeOrUnpack::Type(t2) => t1.matches(i_s, matcher, t2, variance).bool(),
-                TypeOrUnpack::TypeVarTuple(_) => {
-                    todo!()
-                }
-            })
+            .all(|t2| t1.matches(i_s, matcher, t2, variance).bool())
             .into(),
+        (WithUnpack(_), _, _) => todo!(),
+        (_, WithUnpack(_), _) => todo!(),
     }
 }

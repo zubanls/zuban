@@ -4,7 +4,7 @@ use super::{CalculatedTypeVarLike, Matcher};
 use crate::{
     debug,
     node_ref::NodeRef,
-    type_::{AnyCause, TupleTypeArguments, Type, TypeOrUnpack},
+    type_::{AnyCause, TupleTypeArguments, Type},
     type_helpers::Class,
     InferenceState,
 };
@@ -128,12 +128,13 @@ impl<'a> ResultContext<'a, '_> {
         self.with_type_if_exists_and_replace_type_var_likes(i_s, |type_| {
             match type_ {
                 Type::Tuple(tup) => Some(match &tup.args {
-                    TupleTypeArguments::WithUnpack(ts) => {
+                    TupleTypeArguments::FixedLength(ts) => {
                         callable(TupleContextIterator::FixedLength(ts.iter()))
                     }
                     TupleTypeArguments::ArbitraryLength(t) => {
                         callable(TupleContextIterator::ArbitraryLength(t))
                     }
+                    TupleTypeArguments::WithUnpack(ts) => todo!(),
                 }),
                 Type::Union(items) => {
                     debug!("TODO union tuple inference context ignored");
@@ -171,7 +172,7 @@ impl fmt::Debug for ResultContext<'_, '_> {
 
 pub enum TupleContextIterator<'a> {
     ArbitraryLength(&'a Type),
-    FixedLength(std::slice::Iter<'a, TypeOrUnpack>),
+    FixedLength(std::slice::Iter<'a, Type>),
     Unknown,
 }
 
@@ -181,18 +182,7 @@ impl<'a> Iterator for TupleContextIterator<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         Some(match self {
             Self::ArbitraryLength(t) => t,
-            Self::FixedLength(items) => {
-                match items.next() {
-                    Some(TypeOrUnpack::Type(t)) => t,
-                    Some(TypeOrUnpack::TypeVarTuple(_)) => {
-                        // Clear the remaining items, because the order of the following items is
-                        // unclear.
-                        *items = [].iter();
-                        todo!("Probably return ResultContext::Unknown here")
-                    }
-                    None => &Type::Any(AnyCause::Todo),
-                }
-            }
+            Self::FixedLength(items) => items.next().unwrap_or(&Type::Any(AnyCause::Todo)),
             Self::Unknown => &Type::Any(AnyCause::Todo),
         })
     }

@@ -34,7 +34,7 @@ use crate::{
     diagnostics::IssueType,
     inference_state::InferenceState,
     inferred::Inferred,
-    type_::{AnyCause, Type, TypeOrUnpack},
+    type_::{AnyCause, Type},
     utils::debug_indent,
 };
 
@@ -199,7 +199,7 @@ pub enum IteratorContent {
     Inferred(Inferred),
     // The code before makes sure that no type var tuples are passed.
     FixedLengthTupleGenerics {
-        entries: Rc<[TypeOrUnpack]>,
+        entries: Rc<[Type]>,
         current_index: usize,
     },
     Union(Vec<IteratorContent>),
@@ -208,7 +208,7 @@ pub enum IteratorContent {
 }
 
 impl IteratorContent {
-    pub fn new_tuple(entries: Rc<[TypeOrUnpack]>) -> IteratorContent {
+    pub fn new_tuple(entries: Rc<[Type]>) -> IteratorContent {
         Self::FixedLengthTupleGenerics {
             entries,
             current_index: 0,
@@ -223,10 +223,7 @@ impl IteratorContent {
                 current_index,
             } => Inferred::gather_simplified_union(i_s, |add| {
                 for entry in entries.iter().skip(current_index) {
-                    match entry {
-                        TypeOrUnpack::Type(b) => add(Inferred::from_type(b.clone())),
-                        TypeOrUnpack::TypeVarTuple(_) => unreachable!(),
-                    }
+                    add(Inferred::from_type(entry.clone()))
                 }
             }),
             Self::Union(iterators) => Inferred::gather_simplified_union(i_s, |add| {
@@ -248,12 +245,7 @@ impl IteratorContent {
             } => {
                 let result = entries.get(*current_index);
                 *current_index += 1;
-                result.map(|result| {
-                    Inferred::from_type(match result {
-                        TypeOrUnpack::Type(t) => t.clone(),
-                        TypeOrUnpack::TypeVarTuple(_) => unreachable!(),
-                    })
-                })
+                result.cloned().map(Inferred::from_type)
             }
             Self::Union(iterators) => {
                 let mut had_next = false;

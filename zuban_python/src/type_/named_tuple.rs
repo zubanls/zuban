@@ -4,7 +4,7 @@ use parsa_python_ast::{AtomContent, CodeIndex, StarLikeExpression};
 
 use super::{
     tuple::lookup_tuple_magic_methods, AnyCause, CallableContent, CallableParam, CallableParams,
-    DbString, FormatStyle, FunctionKind, ParamType, StringSlice, Tuple, Type, TypeOrUnpack,
+    DbString, FormatStyle, FunctionKind, ParamType, StringSlice, Tuple, Type,
 };
 use crate::{
     arguments::{ArgumentIterator, ArgumentKind, Arguments},
@@ -74,9 +74,7 @@ impl NamedTuple {
                 Rc::new(Tuple::new_fixed_length(
                     self.params()
                         .iter()
-                        .map(|t| {
-                            TypeOrUnpack::Type(t.type_.expect_positional_type_as_ref().clone())
-                        })
+                        .map(|t| t.type_.expect_positional_type_as_ref().clone())
                         .collect(),
                 ))
             })
@@ -232,7 +230,7 @@ impl NamedTuple {
                 })
             }),
             "_fields" => Type::Tuple(Rc::new(Tuple::new_fixed_length(
-                std::iter::repeat(TypeOrUnpack::Type(i_s.db.python_state.str_type()))
+                std::iter::repeat(i_s.db.python_state.str_type())
                     .take(self.params().len())
                     .collect(),
             ))),

@@ -778,17 +778,16 @@ impl Type {
             Self::TypeVar(t) => found_type_var(TypeVarLikeUsage::TypeVar(Cow::Borrowed(t))),
             Self::Type(type_) => type_.search_type_vars(found_type_var),
             Self::Tuple(content) => match &content.args {
-                TupleTypeArguments::WithUnpack(ts) => {
+                TupleTypeArguments::FixedLength(ts) => {
                     for t in ts.iter() {
-                        match t {
-                            TypeOrUnpack::Type(t) => t.search_type_vars(found_type_var),
-                            TypeOrUnpack::TypeVarTuple(t) => {
-                                found_type_var(TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(t)))
-                            }
-                        }
+                        t.search_type_vars(found_type_var)
                     }
                 }
                 TupleTypeArguments::ArbitraryLength(t) => t.search_type_vars(found_type_var),
+                TupleTypeArguments::WithUnpack(..) => {
+                    //found_type_var(TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(t)))
+                    todo!()
+                }
             },
             Self::Callable(content) => {
                 content.params.search_type_vars(found_type_var);
@@ -955,11 +954,9 @@ impl Type {
             generics.iter().any(|g| match g {
                 GenericItem::TypeArgument(t) => check(t),
                 GenericItem::TypeArguments(ts) => match &ts.args {
-                    TupleTypeArguments::WithUnpack(ts) => ts.iter().any(|x| match x {
-                        TypeOrUnpack::Type(t) => check(t),
-                        TypeOrUnpack::TypeVarTuple(tvt) => false,
-                    }),
+                    TupleTypeArguments::FixedLength(ts) => ts.iter().any(check),
                     TupleTypeArguments::ArbitraryLength(t) => check(t),
+                    TupleTypeArguments::WithUnpack(ts) => todo!(),
                 },
                 GenericItem::ParamSpecArgument(a) => todo!(),
             })
@@ -975,11 +972,9 @@ impl Type {
             }
             Self::Type(t) => check(self) || check(t),
             Self::Tuple(content) => match &content.args {
-                TupleTypeArguments::WithUnpack(ts) => ts.iter().any(|t| match t {
-                    TypeOrUnpack::Type(t) => check(t),
-                    TypeOrUnpack::TypeVarTuple(_) => false,
-                }),
+                TupleTypeArguments::FixedLength(ts) => ts.iter().any(check),
                 TupleTypeArguments::ArbitraryLength(t) => check(t),
+                TupleTypeArguments::WithUnpack(ts) => todo!(),
             },
             Self::Callable(content) => content.find_in_type(check),
             Self::TypedDict(d) => match &d.generics {
@@ -1006,20 +1001,18 @@ impl Type {
             Type::Literal(l) if l.implicit => Some(db.python_state.literal_type(&l.kind)),
             Type::EnumMember(m) if m.implicit => Some(Type::Enum(m.enum_.clone())),
             Type::Tuple(tup) => {
-                if let TupleTypeArguments::WithUnpack(ts) = &tup.args {
+                if let TupleTypeArguments::FixedLength(ts) = &tup.args {
                     let mut gathered = vec![];
-                    if ts.iter().any(|type_or| match type_or {
-                        TypeOrUnpack::Type(t) => t.maybe_avoid_implicit_literal(db).is_some(),
-                        TypeOrUnpack::TypeVarTuple(_) => false,
-                    }) {
-                        for type_or in ts.iter() {
-                            if let TypeOrUnpack::Type(t) = type_or {
-                                if let Some(new_t) = t.maybe_avoid_implicit_literal(db) {
-                                    gathered.push(TypeOrUnpack::Type(new_t));
-                                    continue;
-                                }
+                    if ts
+                        .iter()
+                        .any(|t| t.maybe_avoid_implicit_literal(db).is_some())
+                    {
+                        for t in ts.iter() {
+                            if let Some(new_t) = t.maybe_avoid_implicit_literal(db) {
+                                gathered.push(new_t);
+                                continue;
                             }
-                            gathered.push(type_or.clone())
+                            gathered.push(t.clone())
                         }
                         return Some(Type::Tuple(Rc::new(Tuple::new_fixed_length(
                             gathered.into(),
@@ -1041,8 +1034,11 @@ impl Type {
         self.iter_with_unpacked_unions().any(|t| match t {
             Type::Literal(_) | Type::EnumMember(_) => true,
             Type::Tuple(tup) => match &tup.args {
-                TupleTypeArguments::WithUnpack(ts) => ts.iter().any(|type_or| matches!(type_or, TypeOrUnpack::Type(t) if t.is_literal_or_literal_in_tuple())),
+                TupleTypeArguments::FixedLength(ts) => {
+                    ts.iter().any(|t| t.is_literal_or_literal_in_tuple())
+                }
                 TupleTypeArguments::ArbitraryLength(t) => t.is_literal_or_literal_in_tuple(),
+                TupleTypeArguments::WithUnpack(..) => todo!(),
             },
             _ => false,
         })
@@ -1330,26 +1326,20 @@ impl Type {
             Type::Tuple(c1) => match other {
                 Type::Tuple(c2) => {
                     Type::Tuple(match (&c1.args, &c2.args) {
-                        (WithUnpack(ts1), WithUnpack(ts2)) if ts1.len() == ts2.len() => {
+                        (FixedLength(ts1), FixedLength(ts2)) if ts1.len() == ts2.len() => {
                             Rc::new(Tuple::new_fixed_length(
                                 // Performance issue: Same as above
                                 ts1.iter()
                                     .zip(ts2.iter())
-                                    .map(|(t1, t2)| match (t1, t2) {
-                                        (TypeOrUnpack::Type(t1), TypeOrUnpack::Type(t2)) => {
-                                            TypeOrUnpack::Type(t1.merge_matching_parts(db, t2))
-                                        }
-                                        (t1, t2) => match t1 == t2 {
-                                            true => t1.clone(),
-                                            false => todo!(),
-                                        },
-                                    })
+                                    .map(|(t1, t2)| t1.merge_matching_parts(db, t2))
                                     .collect(),
                             ))
                         }
                         (ArbitraryLength(t1), ArbitraryLength(t2)) => Rc::new(
                             Tuple::new_arbitrary_length(t1.merge_matching_parts(db, &t2)),
                         ),
+                        (WithUnpack(_), _) => todo!(),
+                        (_, WithUnpack(_)) => todo!(),
                         _ => Tuple::new_empty(),
                     })
                 }

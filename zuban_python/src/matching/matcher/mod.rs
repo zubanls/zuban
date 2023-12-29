@@ -250,6 +250,9 @@ impl<'a> Matcher<'a> {
         debug_assert!(!self.is_matching_reverse());
         let mut matches = Match::new_true();
         match tuple2 {
+            TupleTypeArguments::FixedLength(ts2) => {
+                todo!()
+            }
             TupleTypeArguments::WithUnpack(ts2) => {
                 let mut t2_iterator = ts2.iter();
                 for t1 in tuple1.iter() {
@@ -276,11 +279,14 @@ impl<'a> Matcher<'a> {
                             let fetch = ts2.len() as isize + 1 - tuple1.len() as isize;
                             if let Ok(fetch) = fetch.try_into() {
                                 if calculated.calculated() {
+                                    /*
                                     calculated.merge_fixed_length_type_var_tuple(
                                         i_s,
                                         fetch,
                                         &mut t2_iterator.by_ref().take(fetch),
                                     );
+                                    */
+                                    todo!()
                                 } else {
                                     let types: Rc<_> =
                                         t2_iterator.by_ref().take(fetch).cloned().collect();

@@ -12,8 +12,8 @@ use crate::{
     matching::Param,
     type_::{
         common_base_type_of_type_var_tuple_with_items, AnyCause, CallableParams, GenericItem,
-        ParamSpecArgument, ParamType, Type, TypeArguments, TypeOrUnpack, TypeVar, TypeVarKind,
-        TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
+        ParamSpecArgument, ParamType, Type, TypeArguments, TypeVar, TypeVarKind, TypeVarLike,
+        TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
     },
     type_helpers::{Callable, Class, Function},
 };
@@ -124,7 +124,7 @@ impl CalculatedTypeVarLike {
         !matches!(self.type_, BoundKind::Uncalculated { .. })
     }
 
-    pub fn merge_fixed_length_type_var_tuple<'x, I: ExactSizeIterator<Item = &'x TypeOrUnpack>>(
+    pub fn merge_fixed_length_type_var_tuple<'x, I: ExactSizeIterator<Item = &'x Type>>(
         &mut self,
         i_s: &InferenceState,
         length: usize,

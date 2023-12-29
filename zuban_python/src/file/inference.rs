@@ -26,7 +26,7 @@ use crate::{
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, FunctionKind, Literal,
         LiteralKind, Namespace, ParamType, StarParamType, StarStarParamType, StringSlice, Tuple,
-        TupleTypeArguments, Type, TypeOrUnpack, UnionEntry, UnionType, Variance,
+        TupleTypeArguments, Type, UnionEntry, UnionType, Variance,
     },
     type_helpers::{
         lookup_in_namespace, Class, FirstParamKind, Function, GeneratorType, Instance, Module,
@@ -867,11 +867,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 Tuple::new_fixed_length(
                     targets
                         .map(|target| {
-                            TypeOrUnpack::Type(
-                                self.infer_target(target, infer_index_expression)
-                                    .map(|i| i.as_type(self.i_s))
-                                    .unwrap_or(Type::Any(AnyCause::Todo)),
-                            )
+                            self.infer_target(target, infer_index_expression)
+                                .map(|i| i.as_type(self.i_s))
+                                .unwrap_or(Type::Any(AnyCause::Todo))
                         })
                         .collect(),
                 ),
@@ -1116,12 +1114,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     if matches!(new_target, Target::Tuple(_)) {
                                         let mut tuple_entries = vec![];
                                         for _ in 0..fetch {
-                                            tuple_entries.push(TypeOrUnpack::Type(
+                                            tuple_entries.push(
                                                 value_iterator
                                                     .next(self.i_s)
                                                     .unwrap()
                                                     .as_type(self.i_s),
-                                            ))
+                                            )
                                         }
                                         Type::Tuple(Rc::new(Tuple::new_fixed_length(
                                             tuple_entries.into(),
@@ -2019,7 +2017,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let mut iterator = inferred.iter(self.i_s, NodeRef::new(self.file, from_index));
                 if iterator.len().is_some() {
                     while let Some(inf) = iterator.next(self.i_s) {
-                        generics.push(TypeOrUnpack::Type(inf.as_type(self.i_s)))
+                        generics.push(inf.as_type(self.i_s))
                     }
                 } else {
                     is_arbitrary_length.set(true);
@@ -2035,13 +2033,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 &mut ResultContext::Known(expected),
                             )
                             .as_type(self.i_s);
-                        generics.push(TypeOrUnpack::Type(t))
+                        generics.push(t)
                     }
                     StarLikeExpression::Expression(e) => {
                         let t = self
                             .infer_expression_with_context(e, &mut ResultContext::Known(expected))
                             .as_type(self.i_s);
-                        generics.push(TypeOrUnpack::Type(t))
+                        generics.push(t)
                     }
                     StarLikeExpression::StarNamedExpression(e) => {
                         let inferred = self.infer_expression_part(e.expression_part());
@@ -2660,19 +2658,15 @@ fn instantiate_except(i_s: &InferenceState, t: &Type) -> Type {
         },
         Type::Any(cause) => Type::Any(*cause),
         Type::Tuple(content) => Inferred::gather_simplified_union(i_s, |add| match &content.args {
-            TupleTypeArguments::WithUnpack(ts) => {
+            TupleTypeArguments::FixedLength(ts) => {
                 for t in ts.iter() {
-                    match t {
-                        TypeOrUnpack::Type(t) => {
-                            add(Inferred::from_type(instantiate_except(i_s, t)))
-                        }
-                        TypeOrUnpack::TypeVarTuple(_) => todo!(),
-                    }
+                    add(Inferred::from_type(instantiate_except(i_s, t)))
                 }
             }
             TupleTypeArguments::ArbitraryLength(t) => {
                 add(Inferred::from_type(instantiate_except(i_s, t)))
             }
+            TupleTypeArguments::WithUnpack(t) => todo!(),
         })
         .as_cow_type(i_s)
         .into_owned(),
@@ -2736,19 +2730,15 @@ fn gather_except_star(i_s: &InferenceState, t: &Type) -> Type {
         },
         Type::Any(cause) => Type::Any(*cause),
         Type::Tuple(content) => Inferred::gather_simplified_union(i_s, |add| match &content.args {
-            TupleTypeArguments::WithUnpack(ts) => {
+            TupleTypeArguments::FixedLength(ts) => {
                 for t in ts.iter() {
-                    match t {
-                        TypeOrUnpack::Type(t) => {
-                            add(Inferred::from_type(gather_except_star(i_s, t)))
-                        }
-                        TypeOrUnpack::TypeVarTuple(_) => todo!(),
-                    }
+                    add(Inferred::from_type(gather_except_star(i_s, t)))
                 }
             }
             TupleTypeArguments::ArbitraryLength(t) => {
                 add(Inferred::from_type(gather_except_star(i_s, t)))
             }
+            TupleTypeArguments::WithUnpack(_) => todo!(),
         })
         .as_cow_type(i_s)
         .into_owned(),

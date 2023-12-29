@@ -4,8 +4,8 @@ use super::{
     simplified_union_from_iterators, CallableContent, CallableParam, CallableParams, ClassGenerics,
     Dataclass, GenericClass, GenericItem, GenericsList, NamedTuple, ParamSpecArgument,
     ParamSpecTypeVars, ParamType, RecursiveType, StarParamType, StarStarParamType, Tuple,
-    TupleTypeArguments, Type, TypeArguments, TypeOrUnpack, TypeVarLike, TypeVarLikeUsage,
-    TypeVarLikes, TypeVarManager, TypedDictGenerics, UnionEntry, UnionType,
+    TupleTypeArguments, Type, TypeArguments, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
+    TypeVarManager, TypedDictGenerics, UnionEntry, UnionType,
 };
 use crate::{
     database::{Database, PointLink},
@@ -30,17 +30,20 @@ impl Type {
         callable: ReplaceTypeVarLike,
         replace_self: ReplaceSelf,
     ) -> Type {
-        let replace_tuple_likes = |args: &TupleTypeArguments,
-                                   callable: ReplaceTypeVarLike,
-                                   replace_self: ReplaceSelf| {
-            match args {
-                TupleTypeArguments::WithUnpack(ts) => {
-                    let mut new_args = vec![];
-                    for g in ts.iter() {
+        let replace_tuple_likes =
+            |args: &TupleTypeArguments, callable: ReplaceTypeVarLike, replace_self: ReplaceSelf| {
+                match args {
+                    TupleTypeArguments::FixedLength(ts) => TupleTypeArguments::FixedLength(
+                        ts.iter()
+                            .map(|t| t.replace_type_var_likes_and_self(db, callable, replace_self))
+                            .collect(),
+                    ),
+                    TupleTypeArguments::ArbitraryLength(t) => TupleTypeArguments::ArbitraryLength(
+                        Box::new(t.replace_type_var_likes_and_self(db, callable, replace_self)),
+                    ),
+                    TupleTypeArguments::WithUnpack(..) => {
+                        /*
                         match g {
-                            TypeOrUnpack::Type(t) => new_args.push(TypeOrUnpack::Type(
-                                t.replace_type_var_likes_and_self(db, callable, replace_self),
-                            )),
                             TypeOrUnpack::TypeVarTuple(t) => {
                                 match callable(TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(t))) {
                                     GenericItem::TypeArguments(new) => {
@@ -67,14 +70,12 @@ impl Type {
                                 }
                             }
                         }
+                        TupleTypeArguments::WithUnpack(new_args.into())
+                        */
+                        todo!()
                     }
-                    TupleTypeArguments::WithUnpack(new_args.into())
                 }
-                TupleTypeArguments::ArbitraryLength(t) => TupleTypeArguments::ArbitraryLength(
-                    Box::new(t.replace_type_var_likes_and_self(db, callable, replace_self)),
-                ),
-            }
-        };
+            };
         let mut replace_generics = |generics: &GenericsList| {
             GenericsList::new_generics(
                 generics
@@ -573,21 +574,18 @@ impl Type {
             Type::TypeVar(t) => Type::TypeVar(manager.remap_type_var(t)),
             Type::Type(type_) => Type::Type(Rc::new(type_.rewrite_late_bound_callables(manager))),
             Type::Tuple(content) => Type::Tuple(match &content.args {
-                TupleTypeArguments::WithUnpack(ts) => Rc::new(Tuple::new_fixed_length(
+                TupleTypeArguments::FixedLength(ts) => Rc::new(Tuple::new_fixed_length(
                     ts.iter()
-                        .map(|g| match g {
-                            TypeOrUnpack::Type(t) => {
-                                TypeOrUnpack::Type(t.rewrite_late_bound_callables(manager))
-                            }
-                            TypeOrUnpack::TypeVarTuple(t) => {
-                                TypeOrUnpack::TypeVarTuple(manager.remap_type_var_tuple(t))
-                            }
-                        })
+                        .map(|t| t.rewrite_late_bound_callables(manager))
                         .collect(),
                 )),
                 TupleTypeArguments::ArbitraryLength(t) => Rc::new(Tuple::new_arbitrary_length(
                     t.rewrite_late_bound_callables(manager),
                 )),
+                TupleTypeArguments::WithUnpack(..) => {
+                    // TypeOrUnpack::TypeVarTuple(manager.remap_type_var_tuple(t))
+                    todo!()
+                }
             }),
             Type::Literal { .. } => self.clone(),
             Type::Callable(content) => Type::Callable(Rc::new(

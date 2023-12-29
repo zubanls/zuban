@@ -4,8 +4,8 @@ use parsa_python_ast::ParamKind;
 
 use super::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, GenericItem, GenericsList,
-    ParamType, StarParamType, StarStarParamType, Tuple, TupleTypeArguments, Type, TypeOrUnpack,
-    TypeVarLike, Variance,
+    ParamType, StarParamType, StarStarParamType, Tuple, TupleTypeArguments, Type, TypeVarLike,
+    Variance,
 };
 use crate::{
     inference_state::InferenceState,
@@ -89,20 +89,10 @@ impl Type {
     }
 }
 
-pub fn common_base_type<'x, I: Iterator<Item = &'x TypeOrUnpack>>(
-    i_s: &InferenceState,
-    mut ts: I,
-) -> Type {
+pub fn common_base_type<'x, I: Iterator<Item = &'x Type>>(i_s: &InferenceState, mut ts: I) -> Type {
     if let Some(first) = ts.next() {
-        let mut result = match first {
-            TypeOrUnpack::Type(t) => Cow::Borrowed(t),
-            TypeOrUnpack::TypeVarTuple(_) => return i_s.db.python_state.object_type(),
-        };
+        let mut result = Cow::Borrowed(first);
         for t in ts {
-            let t = match t {
-                TypeOrUnpack::Type(t) => t,
-                TypeOrUnpack::TypeVarTuple(_) => return i_s.db.python_state.object_type(),
-            };
             result = Cow::Owned(result.common_base_type(i_s, t));
         }
         result.into_owned()
@@ -379,7 +369,7 @@ fn common_base_for_tuple_against_type(
 
 fn common_base_for_tuples(i_s: &InferenceState, tup1: &Tuple, tup2: &Tuple) -> Tuple {
     Tuple::new(match &tup2.args {
-        TupleTypeArguments::WithUnpack(ts2) => {
+        TupleTypeArguments::FixedLength(ts2) => {
             let mut new_args = tup1.args.clone();
             common_base_type_of_type_var_tuple_with_items(
                 &mut new_args,
@@ -390,7 +380,7 @@ fn common_base_for_tuples(i_s: &InferenceState, tup1: &Tuple, tup2: &Tuple) -> T
             new_args
         }
         TupleTypeArguments::ArbitraryLength(t2) => match &tup1.args {
-            TupleTypeArguments::WithUnpack(ts1) => {
+            TupleTypeArguments::FixedLength(ts1) => {
                 let mut new_args = tup2.args.clone();
                 common_base_type_of_type_var_tuple_with_items(
                     &mut new_args,
@@ -401,30 +391,24 @@ fn common_base_for_tuples(i_s: &InferenceState, tup1: &Tuple, tup2: &Tuple) -> T
                 new_args
             }
             TupleTypeArguments::ArbitraryLength(t1) => todo!(),
+            TupleTypeArguments::WithUnpack(t1) => todo!(),
         },
+        TupleTypeArguments::WithUnpack(ts2) => todo!(),
     })
 }
 
-pub fn common_base_type_of_type_var_tuple_with_items<
-    'x,
-    I: ExactSizeIterator<Item = &'x TypeOrUnpack>,
->(
+pub fn common_base_type_of_type_var_tuple_with_items<'x, I: ExactSizeIterator<Item = &'x Type>>(
     args: &mut TupleTypeArguments,
     i_s: &InferenceState,
     length: usize,
     items: I,
 ) {
     match args {
-        TupleTypeArguments::WithUnpack(calc_ts) => {
+        TupleTypeArguments::FixedLength(calc_ts) => {
             if length == calc_ts.len() {
                 let mut new = vec![];
                 for (t1, t2) in calc_ts.iter().zip(items) {
-                    match (t1, t2) {
-                        (TypeOrUnpack::Type(t1), TypeOrUnpack::Type(t2)) => {
-                            new.push(TypeOrUnpack::Type(t1.common_base_type(i_s, t2)));
-                        }
-                        _ => todo!(),
-                    }
+                    new.push(t1.common_base_type(i_s, t2));
                 }
                 *calc_ts = new.into();
             } else {
@@ -434,6 +418,7 @@ pub fn common_base_type_of_type_var_tuple_with_items<
                 *args = TupleTypeArguments::ArbitraryLength(Box::new(t));
             }
         }
+        TupleTypeArguments::WithUnpack(calc_ts) => todo!(),
         TupleTypeArguments::ArbitraryLength(calc_t) => {
             if items.len() == 0 {
                 // args is already ok, because we have an empty tuple here that can be anything.

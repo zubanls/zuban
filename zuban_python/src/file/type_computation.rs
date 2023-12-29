@@ -1990,18 +1990,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     return TypeContent::Type(Type::Tuple(Rc::new(Tuple::new_arbitrary_length(t))));
                 }
             }
-            slice_type
-                .iter()
-                .map(|slice_content| {
-                    self.compute_slice_type_or_type_var_tuple(slice_content)
-                    /*
-                     * TODO TypeVarTuple
-                    if matches!(t, Type::TypeVar(ref t) if t.is_type_var_tuple()) {
-                        todo!()
-                    }
-                    */
-                })
-                .collect()
+            let mut generics = vec![];
+            for slice_content in slice_type.iter() {
+                match self.compute_slice_type_or_type_var_tuple(slice_content) {
+                    TypeOrUnpack::Type(t) => generics.push(t),
+                    TypeOrUnpack::TypeVarTuple(..) => todo!(),
+                }
+            }
+            generics.into()
         } else {
             let t = self.compute_slice_type_content(first);
             // Handle Tuple[()]
@@ -2009,7 +2005,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 TypeContent::InvalidVariable(InvalidVariableType::Tuple { tuple_length: 0 }) => {
                     Rc::new([])
                 }
-                _ => Rc::new([self.convert_slice_type_or_type_var_tuple(t, first)]),
+                _ => match self.convert_slice_type_or_type_var_tuple(t, first) {
+                    TypeOrUnpack::Type(t) => Rc::new([t]),
+                    TypeOrUnpack::TypeVarTuple(..) => todo!(),
+                },
             }
         };
         TypeContent::Type(Type::Tuple(Rc::new(Tuple::new_fixed_length(generics))))
@@ -3582,7 +3581,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                     StarLikeExpression::StarNamedExpression(x) => todo!("{x:?}"),
                     StarLikeExpression::StarExpression(x) => todo!("{x:?}"),
                 };
-                TypeOrUnpack::Type(if let Some(tuple) = expr.maybe_tuple() {
+                if let Some(tuple) = expr.maybe_tuple() {
                     self.calc_type_comment_tuple(assignment_node_ref, tuple.iter())
                 } else {
                     let expr_node_ref = NodeRef::new(self.file, expr.index());
@@ -3602,7 +3601,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                     });
                     debug_assert!(type_vars.is_empty());
                     type_
-                })
+                }
             })
             .collect();
         Type::Tuple(Rc::new(Tuple::new_fixed_length(generics)))
