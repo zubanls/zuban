@@ -1,8 +1,8 @@
-use std::{cell::OnceCell, rc::Rc};
+use std::{borrow::Cow, cell::OnceCell, rc::Rc};
 
 use super::{
     common_base_type, simplified_union_from_iterators, utils::method_with_fallback, CustomBehavior,
-    FormatStyle, GenericItem, GenericsList, RecursiveType, TypeOrUnpack,
+    FormatStyle, GenericItem, GenericsList, RecursiveType, TypeVarLikeUsage, TypeVarTupleUsage,
 };
 use crate::{
     arguments::Arguments,
@@ -12,7 +12,10 @@ use crate::{
     getitem::{SliceType, SliceTypeContent},
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
-    matching::{FormatData, IteratorContent, LookupKind, LookupResult, OnTypeError, ResultContext},
+    matching::{
+        FormatData, IteratorContent, LookupKind, LookupResult, OnTypeError, ParamsStyle,
+        ResultContext,
+    },
     node_ref::NodeRef,
     type_::{AnyCause, Type},
     type_helpers::{Instance, LookupDetails, TypeOrClass},
@@ -182,6 +185,24 @@ impl Tuple {
                         ))))
                     }),
             },
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum TypeOrUnpack {
+    Type(Type),
+    TypeVarTuple(TypeVarTupleUsage),
+}
+
+impl TypeOrUnpack {
+    fn format(&self, format_data: &FormatData) -> Box<str> {
+        match self {
+            Self::Type(t) => t.format(format_data),
+            Self::TypeVarTuple(t) => format_data.format_type_var_like(
+                &TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(t)),
+                ParamsStyle::Unreachable,
+            ),
         }
     }
 }

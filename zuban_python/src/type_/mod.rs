@@ -16,26 +16,14 @@ mod utils;
 
 use std::{borrow::Cow, cell::OnceCell, fmt, mem, rc::Rc};
 
-pub use common_base_type::{common_base_type, common_base_type_of_type_var_tuple_with_items};
-pub use matching::match_tuple_type_arguments;
-pub(crate) use named_tuple::{
-    execute_collections_named_tuple, execute_typing_named_tuple, new_collections_named_tuple,
-    new_typing_named_tuple, NamedTuple,
-};
 use parsa_python_ast::{CodeIndex, Expression, Name, PythonString};
-pub use replace::ReplaceSelf;
-pub use tuple::{Tuple, TupleTypeArguments};
-pub use type_var_likes::{
-    CallableWithParent, ParamSpec, ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, TypeVar,
-    TypeVarIndex, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
-    TypeVarName, TypeVarTuple, TypeVarTupleUsage, TypeVarUsage, Variance,
-};
 
 pub(crate) use self::{
     callable::{
         format_callable_params, CallableContent, CallableParam, CallableParams, ParamType,
         StarParamType, StarStarParamType, WrongPositionalCount,
     },
+    common_base_type::{common_base_type, common_base_type_of_type_var_tuple_with_items},
     dataclass::{
         check_dataclass_options, dataclass_init_func, dataclass_initialize, dataclasses_replace,
         lookup_dataclass_symbol, lookup_on_dataclass, lookup_on_dataclass_type, Dataclass,
@@ -46,8 +34,20 @@ pub(crate) use self::{
         lookup_on_enum_instance, lookup_on_enum_member_instance, Enum, EnumMember,
         EnumMemberDefinition,
     },
+    matching::match_tuple_type_arguments,
+    named_tuple::{
+        execute_collections_named_tuple, execute_typing_named_tuple, new_collections_named_tuple,
+        new_typing_named_tuple, NamedTuple,
+    },
     operations::execute_type_of_type,
     recursive_type::{RecursiveType, RecursiveTypeOrigin},
+    replace::ReplaceSelf,
+    tuple::{Tuple, TupleTypeArguments, TypeOrUnpack},
+    type_var_likes::{
+        CallableWithParent, ParamSpec, ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage,
+        TypeVar, TypeVarIndex, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
+        TypeVarManager, TypeVarName, TypeVarTuple, TypeVarTupleUsage, TypeVarUsage, Variance,
+    },
     typed_dict::{
         check_typed_dict_call, infer_typed_dict_item, infer_typed_dict_total_argument,
         initialize_typed_dict, lookup_on_typed_dict, maybe_add_extra_keys_issue, new_typed_dict,
@@ -1421,24 +1421,6 @@ impl FunctionKind {
                 had_first_self_or_class_annotation,
             } => *had_first_self_or_class_annotation = new_value,
             Self::Staticmethod => (),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum TypeOrUnpack {
-    Type(Type),
-    TypeVarTuple(TypeVarTupleUsage),
-}
-
-impl TypeOrUnpack {
-    fn format(&self, format_data: &FormatData) -> Box<str> {
-        match self {
-            Self::Type(t) => t.format(format_data),
-            Self::TypeVarTuple(t) => format_data.format_type_var_like(
-                &TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(t)),
-                ParamsStyle::Unreachable,
-            ),
         }
     }
 }
