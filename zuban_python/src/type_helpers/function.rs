@@ -33,7 +33,7 @@ use crate::{
         DbString, FunctionKind, FunctionOverload, GenericClass, GenericItem, ParamSpecUsage,
         ParamType, ReplaceSelf, StarParamType, StarStarParamType, StringSlice, TupleTypeArguments,
         Type, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
-        TypeVarName, TypeVarUsage, Variance, WithUnpack, WrongPositionalCount,
+        TypeVarName, TypeVarUsage, Variance, WrongPositionalCount,
     },
     type_helpers::{Class, Module},
     utils::rc_unwrap_or_clone,

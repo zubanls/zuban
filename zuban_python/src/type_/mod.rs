@@ -1038,7 +1038,16 @@ impl Type {
                     ts.iter().any(|t| t.is_literal_or_literal_in_tuple())
                 }
                 TupleTypeArguments::ArbitraryLength(t) => t.is_literal_or_literal_in_tuple(),
-                TupleTypeArguments::WithUnpack(_) => todo!(),
+                TupleTypeArguments::WithUnpack(unpack) => {
+                    unpack
+                        .before
+                        .iter()
+                        .any(|t| t.is_literal_or_literal_in_tuple())
+                        || unpack
+                            .after
+                            .iter()
+                            .any(|t| t.is_literal_or_literal_in_tuple())
+                }
             },
             _ => false,
         })

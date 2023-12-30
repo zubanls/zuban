@@ -5,7 +5,7 @@ use super::{
     Dataclass, GenericClass, GenericItem, GenericsList, NamedTuple, ParamSpecArgument,
     ParamSpecTypeVars, ParamType, RecursiveType, StarParamType, StarStarParamType, Tuple,
     TupleTypeArguments, Type, TypeArguments, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
-    TypeVarManager, TypedDictGenerics, UnionEntry, UnionType, WithUnpack,
+    TypeVarManager, TypedDictGenerics, UnionEntry, UnionType,
 };
 use crate::{
     database::{Database, PointLink},

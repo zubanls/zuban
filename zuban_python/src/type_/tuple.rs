@@ -205,6 +205,12 @@ pub struct WithUnpack {
     pub after: Rc<[Type]>,
 }
 
+impl WithUnpack {
+    fn format(&self, format_data: &FormatData) -> Box<str> {
+        "TODO WithUnpackFormat".into()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum TupleTypeArguments {
     WithUnpack(WithUnpack),
@@ -251,7 +257,7 @@ impl TupleTypeArguments {
                 join_with_commas(ts.iter().map(|g| g.format(format_data).into())).into()
             }
             Self::ArbitraryLength(t) => format!("{}, ...", t.format(format_data)).into(),
-            Self::WithUnpack(_) => todo!(),
+            Self::WithUnpack(unpack) => unpack.format(format_data),
         }
     }
 }

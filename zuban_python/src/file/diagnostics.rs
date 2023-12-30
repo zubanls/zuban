@@ -29,7 +29,7 @@ use crate::{
     type_::{
         format_callable_params, AnyCause, CallableContent, CallableParams, ClassGenerics, DbString,
         FunctionKind, FunctionOverload, GenericItem, GenericsList, Literal, LiteralKind,
-        TupleTypeArguments, Type, TypeVarLike, Variance, WithUnpack,
+        TupleTypeArguments, Type, TypeVarLike, Variance,
     },
     type_helpers::{
         is_private, Class, FirstParamProperties, Function, GeneratorType, Instance, LookupDetails,

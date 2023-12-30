@@ -10,7 +10,7 @@ use crate::{
         MismatchReason,
     },
     node_ref::NodeRef,
-    type_::{CallableLike, CallableParams, TupleTypeArguments, Variance, WithUnpack},
+    type_::{CallableLike, CallableParams, TupleTypeArguments, Variance},
     type_helpers::{Class, TypeOrClass},
 };
 
@@ -891,7 +891,7 @@ pub fn match_tuple_type_arguments(
             .iter()
             .all(|t2| t1.matches(i_s, matcher, t2, variance).bool())
             .into(),
-        (WithUnpack(_), _, _) => todo!(),
+        (WithUnpack(unpack), _, _) => Match::new_false(),
         (_, WithUnpack(_), _) => todo!(),
     }
 }

@@ -26,7 +26,7 @@ use crate::{
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, FunctionKind, Literal,
         LiteralKind, Namespace, ParamType, StarParamType, StarStarParamType, StringSlice, Tuple,
-        TupleTypeArguments, Type, UnionEntry, UnionType, Variance, WithUnpack,
+        TupleTypeArguments, Type, UnionEntry, UnionType, Variance,
     },
     type_helpers::{
         lookup_in_namespace, Class, FirstParamKind, Function, GeneratorType, Instance, Module,

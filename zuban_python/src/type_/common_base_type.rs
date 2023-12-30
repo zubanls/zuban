@@ -5,7 +5,7 @@ use parsa_python_ast::ParamKind;
 use super::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, GenericItem, GenericsList,
     ParamType, StarParamType, StarStarParamType, Tuple, TupleTypeArguments, Type, TypeVarLike,
-    Variance, WithUnpack,
+    Variance,
 };
 use crate::{
     inference_state::InferenceState,

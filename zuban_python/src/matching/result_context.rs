@@ -4,7 +4,7 @@ use super::{CalculatedTypeVarLike, Matcher};
 use crate::{
     debug,
     node_ref::NodeRef,
-    type_::{AnyCause, TupleTypeArguments, Type, WithUnpack},
+    type_::{AnyCause, TupleTypeArguments, Type},
     type_helpers::Class,
     InferenceState,
 };

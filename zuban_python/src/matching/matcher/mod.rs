@@ -29,7 +29,6 @@ use crate::{
         ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamType, ReplaceSelf,
         StarParamType, TupleTypeArguments, Type, TypeArguments, TypeVarKind, TypeVarLike,
         TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, TypedDict, TypedDictGenerics, Variance,
-        WithUnpack,
     },
     type_helpers::{Callable, Class, Function},
 };
