@@ -26,7 +26,7 @@ use crate::{
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, FunctionKind, Literal,
         LiteralKind, Namespace, ParamType, StarParamType, StarStarParamType, StringSlice, Tuple,
-        TupleTypeArguments, Type, UnionEntry, UnionType, Variance,
+        TupleTypeArguments, Type, UnionEntry, UnionType, Variance, WithUnpack,
     },
     type_helpers::{
         lookup_in_namespace, Class, FirstParamKind, Function, GeneratorType, Instance, Module,
@@ -2666,7 +2666,7 @@ fn instantiate_except(i_s: &InferenceState, t: &Type) -> Type {
             TupleTypeArguments::ArbitraryLength(t) => {
                 add(Inferred::from_type(instantiate_except(i_s, t)))
             }
-            TupleTypeArguments::WithUnpack { .. } => todo!(),
+            TupleTypeArguments::WithUnpack(_) => todo!(),
         })
         .as_cow_type(i_s)
         .into_owned(),
@@ -2738,7 +2738,7 @@ fn gather_except_star(i_s: &InferenceState, t: &Type) -> Type {
             TupleTypeArguments::ArbitraryLength(t) => {
                 add(Inferred::from_type(gather_except_star(i_s, t)))
             }
-            TupleTypeArguments::WithUnpack { .. } => todo!(),
+            TupleTypeArguments::WithUnpack(_) => todo!(),
         })
         .as_cow_type(i_s)
         .into_owned(),

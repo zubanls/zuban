@@ -29,7 +29,7 @@ use crate::{
     type_::{
         format_callable_params, AnyCause, CallableContent, CallableParams, ClassGenerics, DbString,
         FunctionKind, FunctionOverload, GenericItem, GenericsList, Literal, LiteralKind,
-        TupleTypeArguments, Type, TypeVarLike, Variance,
+        TupleTypeArguments, Type, TypeVarLike, Variance, WithUnpack,
     },
     type_helpers::{
         is_private, Class, FirstParamProperties, Function, GeneratorType, Instance, LookupDetails,
@@ -1484,7 +1484,7 @@ fn except_type(i_s: &InferenceState, t: &Type, allow_tuple: bool) -> ExceptType 
                 result
             }
             TupleTypeArguments::ArbitraryLength(t) => except_type(i_s, t, false),
-            TupleTypeArguments::WithUnpack { .. } => todo!(),
+            TupleTypeArguments::WithUnpack(_) => todo!(),
         },
         Type::Union(union) => {
             let mut result = ExceptType::ContainsOnlyBaseExceptions;

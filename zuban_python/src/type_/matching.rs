@@ -10,7 +10,7 @@ use crate::{
         MismatchReason,
     },
     node_ref::NodeRef,
-    type_::{CallableLike, CallableParams, TupleTypeArguments, Variance},
+    type_::{CallableLike, CallableParams, TupleTypeArguments, Variance, WithUnpack},
     type_helpers::{Class, TypeOrClass},
 };
 
@@ -811,8 +811,8 @@ impl Type {
             (ArbitraryLength(t1), ArbitraryLength(t2)) => t1.overlaps(i_s, t2),
             (ArbitraryLength(t1), FixedLength(ts2)) => ts2.iter().all(|t2| t1.overlaps(i_s, t2)),
             (FixedLength(ts1), ArbitraryLength(t2)) => ts1.iter().all(|t1| t1.overlaps(i_s, &t2)),
-            (WithUnpack { .. }, _) => todo!(),
-            (_, WithUnpack { .. }) => todo!(),
+            (WithUnpack(_), _) => todo!(),
+            (_, WithUnpack(_)) => todo!(),
         }
     }
 
@@ -865,12 +865,7 @@ pub fn match_tuple_type_arguments(
     }
     use TupleTypeArguments::*;
     if matcher.might_have_defined_type_vars() {
-        if let TupleTypeArguments::WithUnpack {
-            before,
-            unpack,
-            after,
-        } = t1
-        {
+        if let TupleTypeArguments::WithUnpack(u) = t1 {
             todo!()
             //return matcher.match_type_var_tuple(i_s, ts, t2, variance);
         }
@@ -896,7 +891,7 @@ pub fn match_tuple_type_arguments(
             .iter()
             .all(|t2| t1.matches(i_s, matcher, t2, variance).bool())
             .into(),
-        (WithUnpack { .. }, _, _) => todo!(),
-        (_, WithUnpack { .. }, _) => todo!(),
+        (WithUnpack(_), _, _) => todo!(),
+        (_, WithUnpack(_), _) => todo!(),
     }
 }

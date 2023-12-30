@@ -33,7 +33,7 @@ use crate::{
         DbString, FunctionKind, FunctionOverload, GenericClass, GenericItem, ParamSpecUsage,
         ParamType, ReplaceSelf, StarParamType, StarStarParamType, StringSlice, TupleTypeArguments,
         Type, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
-        TypeVarName, TypeVarUsage, Variance, WrongPositionalCount,
+        TypeVarName, TypeVarUsage, Variance, WithUnpack, WrongPositionalCount,
     },
     type_helpers::{Class, Module},
     utils::rc_unwrap_or_clone,
@@ -1392,7 +1392,7 @@ impl<'x> Param<'x> for FunctionParam<'x> {
                     match &t.args {
                         TupleTypeArguments::FixedLength(..) => todo!(),
                         TupleTypeArguments::ArbitraryLength(t) => Cow::Borrowed(t.as_ref()),
-                        TupleTypeArguments::WithUnpack { .. } => todo!(),
+                        TupleTypeArguments::WithUnpack(_) => todo!(),
                     }
                 })),
             }),

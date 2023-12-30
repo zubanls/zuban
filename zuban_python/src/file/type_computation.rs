@@ -26,7 +26,7 @@ use crate::{
         RecursiveType, StarParamType, StarStarParamType, StringSlice, Tuple, TupleTypeArguments,
         TupleUnpack, Type, TypeArguments, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage,
         TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, TypedDict,
-        TypedDictGenerics, TypedDictMember, UnionEntry, UnionType,
+        TypedDictGenerics, TypedDictMember, UnionEntry, UnionType, WithUnpack,
     },
     type_helpers::{start_namedtuple_params, Class, Function, Module},
 };
@@ -1204,11 +1204,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
         }
         if let Some(unpack) = unpack {
-            TupleTypeArguments::WithUnpack {
+            TupleTypeArguments::WithUnpack(WithUnpack {
                 before: before.into(),
                 unpack,
                 after: after.into(),
-            }
+            })
         } else {
             TupleTypeArguments::FixedLength(before.into())
         }
@@ -2034,11 +2034,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
                 _ => match self.convert_slice_type_or_tuple_unpack(t, first) {
                     Ok(t) => Tuple::new_fixed_length(Rc::new([t])),
-                    Err(unpack) => Tuple::new(TupleTypeArguments::WithUnpack {
+                    Err(unpack) => Tuple::new(TupleTypeArguments::WithUnpack(WithUnpack {
                         before: Rc::from([]),
                         unpack,
                         after: Rc::from([]),
-                    }),
+                    })),
                 },
             }
         };

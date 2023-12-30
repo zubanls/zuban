@@ -78,7 +78,7 @@ impl Tuple {
             TupleTypeArguments::ArbitraryLength(t) => {
                 IteratorContent::Inferred(Inferred::from_type(t.as_ref().clone()))
             }
-            TupleTypeArguments::WithUnpack { .. } => todo!(),
+            TupleTypeArguments::WithUnpack(_) => todo!(),
         }
     }
 
@@ -144,7 +144,7 @@ impl Tuple {
                                 Inferred::from_type(simplified_union_of_tuple_entries(i_s, ts))
                             })
                     }
-                    TupleTypeArguments::WithUnpack { .. } => todo!(),
+                    TupleTypeArguments::WithUnpack(_) => todo!(),
                 }
             }
             SliceTypeContent::Slices(slices) => {
@@ -174,7 +174,7 @@ impl Tuple {
                             simplified_union_of_tuple_entries(i_s, ts),
                         ))))
                     }),
-                TupleTypeArguments::WithUnpack { .. } => todo!(),
+                TupleTypeArguments::WithUnpack(_) => todo!(),
             },
         }
     }
@@ -199,12 +199,15 @@ impl TupleUnpack {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct WithUnpack {
+    pub before: Rc<[Type]>,
+    pub unpack: TupleUnpack,
+    pub after: Rc<[Type]>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum TupleTypeArguments {
-    WithUnpack {
-        before: Rc<[Type]>,
-        unpack: TupleUnpack,
-        after: Rc<[Type]>,
-    },
+    WithUnpack(WithUnpack),
     FixedLength(Rc<[Type]>),
     ArbitraryLength(Box<Type>),
 }
@@ -229,7 +232,7 @@ impl TupleTypeArguments {
         match self {
             Self::FixedLength(ts) => ts.iter().any(|t| t.has_any_internal(i_s, already_checked)),
             Self::ArbitraryLength(t) => t.has_any_internal(i_s, already_checked),
-            Self::WithUnpack { .. } => todo!(),
+            Self::WithUnpack(_) => todo!(),
         }
     }
 
@@ -237,7 +240,7 @@ impl TupleTypeArguments {
         match self {
             Self::FixedLength(ts) => common_base_type(i_s, ts.iter()),
             Self::ArbitraryLength(t) => t.as_ref().clone(),
-            Self::WithUnpack { .. } => i_s.db.python_state.object_type(),
+            Self::WithUnpack(_) => i_s.db.python_state.object_type(),
         }
     }
 
@@ -248,7 +251,7 @@ impl TupleTypeArguments {
                 join_with_commas(ts.iter().map(|g| g.format(format_data).into())).into()
             }
             Self::ArbitraryLength(t) => format!("{}, ...", t.format(format_data)).into(),
-            Self::WithUnpack { .. } => todo!(),
+            Self::WithUnpack(_) => todo!(),
         }
     }
 }
@@ -409,6 +412,6 @@ fn tuple_mul_internal<'db>(
             ))))
         }),
         TupleTypeArguments::ArbitraryLength(_) => Some(Inferred::from_type(Type::Tuple(tuple))),
-        TupleTypeArguments::WithUnpack { .. } => todo!(),
+        TupleTypeArguments::WithUnpack(_) => todo!(),
     }
 }

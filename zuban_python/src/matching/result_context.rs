@@ -4,7 +4,7 @@ use super::{CalculatedTypeVarLike, Matcher};
 use crate::{
     debug,
     node_ref::NodeRef,
-    type_::{AnyCause, TupleTypeArguments, Type},
+    type_::{AnyCause, TupleTypeArguments, Type, WithUnpack},
     type_helpers::Class,
     InferenceState,
 };
@@ -134,7 +134,7 @@ impl<'a> ResultContext<'a, '_> {
                     TupleTypeArguments::ArbitraryLength(t) => {
                         callable(TupleContextIterator::ArbitraryLength(t))
                     }
-                    TupleTypeArguments::WithUnpack { .. } => todo!(),
+                    TupleTypeArguments::WithUnpack(_) => todo!(),
                 }),
                 Type::Union(items) => {
                     debug!("TODO union tuple inference context ignored");

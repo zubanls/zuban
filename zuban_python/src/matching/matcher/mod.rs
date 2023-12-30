@@ -29,6 +29,7 @@ use crate::{
         ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamType, ReplaceSelf,
         StarParamType, TupleTypeArguments, Type, TypeArguments, TypeVarKind, TypeVarLike,
         TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, TypedDict, TypedDictGenerics, Variance,
+        WithUnpack,
     },
     type_helpers::{Callable, Class, Function},
 };
@@ -252,7 +253,7 @@ impl<'a> Matcher<'a> {
             TupleTypeArguments::FixedLength(ts2) => {
                 todo!()
             }
-            TupleTypeArguments::WithUnpack { .. } => {
+            TupleTypeArguments::WithUnpack(_) => {
                 /*
                 let mut t2_iterator = ts2.iter();
                 for t1 in tuple1.iter() {

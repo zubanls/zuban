@@ -5,7 +5,7 @@ use super::{
     Dataclass, GenericClass, GenericItem, GenericsList, NamedTuple, ParamSpecArgument,
     ParamSpecTypeVars, ParamType, RecursiveType, StarParamType, StarStarParamType, Tuple,
     TupleTypeArguments, Type, TypeArguments, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
-    TypeVarManager, TypedDictGenerics, UnionEntry, UnionType,
+    TypeVarManager, TypedDictGenerics, UnionEntry, UnionType, WithUnpack,
 };
 use crate::{
     database::{Database, PointLink},
@@ -41,7 +41,7 @@ impl Type {
                     TupleTypeArguments::ArbitraryLength(t) => TupleTypeArguments::ArbitraryLength(
                         Box::new(t.replace_type_var_likes_and_self(db, callable, replace_self)),
                     ),
-                    TupleTypeArguments::WithUnpack { .. } => {
+                    TupleTypeArguments::WithUnpack(_) => {
                         /*
                         match g {
                             TypeOrUnpack::TypeVarTuple(t) => {
@@ -582,7 +582,7 @@ impl Type {
                 TupleTypeArguments::ArbitraryLength(t) => Rc::new(Tuple::new_arbitrary_length(
                     t.rewrite_late_bound_callables(manager),
                 )),
-                TupleTypeArguments::WithUnpack { .. } => {
+                TupleTypeArguments::WithUnpack(_) => {
                     // TypeOrUnpack::TypeVarTuple(manager.remap_type_var_tuple(t))
                     todo!()
                 }
