@@ -207,7 +207,17 @@ pub struct WithUnpack {
 
 impl WithUnpack {
     fn format(&self, format_data: &FormatData) -> Box<str> {
-        "TODO WithUnpackFormat".into()
+        join_with_commas(
+            self.before
+                .iter()
+                .map(|t| t.format(format_data).into())
+                .chain(std::iter::once(format!(
+                    "Unpack[{}]",
+                    self.unpack.format(format_data)
+                )))
+                .chain(self.after.iter().map(|t| t.format(format_data).into())),
+        )
+        .into()
     }
 }
 

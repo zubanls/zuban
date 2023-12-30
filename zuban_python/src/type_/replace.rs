@@ -10,6 +10,7 @@ use super::{
 use crate::{
     database::{Database, PointLink},
     inference_state::InferenceState,
+    type_::TupleUnpack,
 };
 
 pub type ReplaceTypeVarLike<'x> = &'x mut dyn FnMut(TypeVarLikeUsage) -> GenericItem;
@@ -41,19 +42,29 @@ impl Type {
                     TupleTypeArguments::ArbitraryLength(t) => TupleTypeArguments::ArbitraryLength(
                         Box::new(t.replace_type_var_likes_and_self(db, callable, replace_self)),
                     ),
-                    TupleTypeArguments::WithUnpack(_) => {
-                        /*
-                        match g {
-                            TypeOrUnpack::TypeVarTuple(t) => {
-                                match callable(TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(t))) {
+                    TupleTypeArguments::WithUnpack(unpack) => {
+                        match &unpack.unpack {
+                            TupleUnpack::TypeVarTuple(tvt) => {
+                                match callable(TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(tvt))) {
                                     GenericItem::TypeArguments(new) => {
                                         match new.args {
+                                            TupleTypeArguments::FixedLength(fixed) => {
+                                                return TupleTypeArguments::FixedLength(
+                                                    unpack
+                                                        .before
+                                                        .iter()
+                                                        .chain(fixed.iter())
+                                                        .chain(unpack.after.iter())
+                                                        .cloned()
+                                                        .collect(),
+                                                )
+                                            }
                                             TupleTypeArguments::WithUnpack(fixed) => {
-                                                // Performance issue: clone could probably be removed. Rc -> Vec check
-                                                // https://github.com/rust-lang/rust/issues/93610#issuecomment-1528108612
-                                                new_args.extend(fixed.iter().cloned())
+                                                //new_args.extend(fixed.iter().cloned())
+                                                todo!()
                                             }
                                             TupleTypeArguments::ArbitraryLength(t) => {
+                                                /*
                                                 match ts.len() {
                                                     // TODO this might be wrong with different data types??
                                                     1 => {
@@ -63,15 +74,17 @@ impl Type {
                                                     }
                                                     _ => todo!(),
                                                 }
+                                                */
+                                                todo!()
                                             }
                                         }
                                     }
                                     x => unreachable!("{x:?}"),
                                 }
                             }
+                            TupleUnpack::Tuple(_) => todo!(),
                         }
-                        TupleTypeArguments::WithUnpack(new_args.into())
-                        */
+                        //TupleTypeArguments::WithUnpack(new_args.into())
                         todo!()
                     }
                 }

@@ -865,9 +865,8 @@ pub fn match_tuple_type_arguments(
     }
     use TupleTypeArguments::*;
     if matcher.might_have_defined_type_vars() {
-        if let TupleTypeArguments::WithUnpack(u) = t1 {
-            todo!()
-            //return matcher.match_type_var_tuple(i_s, ts, t2, variance);
+        if let TupleTypeArguments::WithUnpack(w) = t1 {
+            return matcher.match_type_var_tuple(i_s, w, t2, variance);
         }
     }
     match (t1, t2, variance) {
