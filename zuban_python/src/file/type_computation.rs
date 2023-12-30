@@ -2028,15 +2028,19 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         } else {
             let t = self.compute_slice_type_content(first);
             // Handle Tuple[()]
-            Tuple::new_fixed_length(match t {
+            match t {
                 TypeContent::InvalidVariable(InvalidVariableType::Tuple { tuple_length: 0 }) => {
-                    Rc::new([])
+                    Tuple::new_fixed_length(Rc::new([]))
                 }
                 _ => match self.convert_slice_type_or_tuple_unpack(t, first) {
-                    Ok(t) => Rc::new([t]),
-                    Err(..) => todo!(),
+                    Ok(t) => Tuple::new_fixed_length(Rc::new([t])),
+                    Err(unpack) => Tuple::new(TupleTypeArguments::WithUnpack {
+                        before: Rc::from([]),
+                        unpack,
+                        after: Rc::from([]),
+                    }),
                 },
-            })
+            }
         };
         TypeContent::Type(Type::Tuple(Rc::new(generics)))
     }

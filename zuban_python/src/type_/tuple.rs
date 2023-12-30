@@ -237,7 +237,7 @@ impl TupleTypeArguments {
         match self {
             Self::FixedLength(ts) => common_base_type(i_s, ts.iter()),
             Self::ArbitraryLength(t) => t.as_ref().clone(),
-            Self::WithUnpack { .. } => todo!(),
+            Self::WithUnpack { .. } => i_s.db.python_state.object_type(),
         }
     }
 
