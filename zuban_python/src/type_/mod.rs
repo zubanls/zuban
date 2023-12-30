@@ -42,7 +42,7 @@ pub(crate) use self::{
     operations::execute_type_of_type,
     recursive_type::{RecursiveType, RecursiveTypeOrigin},
     replace::ReplaceSelf,
-    tuple::{Tuple, TupleTypeArguments, TypeOrUnpack},
+    tuple::{Tuple, TupleTypeArguments, TupleUnpack},
     type_var_likes::{
         CallableWithParent, ParamSpec, ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage,
         TypeVar, TypeVarIndex, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,

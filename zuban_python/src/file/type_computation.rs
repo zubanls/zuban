@@ -24,7 +24,7 @@ use crate::{
         Enum, EnumMember, FunctionKind, GenericClass, GenericItem, GenericsList, Literal,
         LiteralKind, NamedTuple, Namespace, NewType, ParamSpecArgument, ParamSpecUsage, ParamType,
         RecursiveType, StarParamType, StarStarParamType, StringSlice, Tuple, TupleTypeArguments,
-        Type, TypeArguments, TypeOrUnpack, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage,
+        TupleUnpack, Type, TypeArguments, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage,
         TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, TypedDict,
         TypedDictGenerics, TypedDictMember, UnionEntry, UnionType,
     },
@@ -211,6 +211,12 @@ impl InvalidVariableType<'_> {
             Self::Ellipsis => IssueType::InvalidType("Unexpected \"...\"".into()),
         })
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum TypeOrUnpack {
+    Type(Type),
+    TypeVarTuple(TypeVarTupleUsage),
 }
 
 #[derive(Debug, Clone)]
@@ -1173,9 +1179,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         self.as_type(t, slice.as_node_ref())
     }
 
-    fn compute_slice_type_or_type_var_tuple(&mut self, slice: SliceOrSimple) -> TypeOrUnpack {
+    fn compute_slice_type_or_unpack(&mut self, slice: SliceOrSimple) -> Result<Type, TupleUnpack> {
         let t = self.compute_slice_type_content(slice);
-        self.convert_slice_type_or_type_var_tuple(t, slice)
+        self.convert_slice_type_or_tuple_unpack(t, slice)
     }
 
     fn compute_tuple_types<'s>(
@@ -1186,15 +1192,15 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut after = vec![];
         let unpack = None;
         for s in iterator {
-            match self.compute_slice_type_or_type_var_tuple(s) {
-                TypeOrUnpack::Type(t) => {
+            match self.compute_slice_type_or_unpack(s) {
+                Ok(t) => {
                     if unpack.is_none() {
                         before.push(t)
                     } else {
                         after.push(t)
                     }
                 }
-                TypeOrUnpack::TypeVarTuple(..) => todo!(),
+                Err(unpack) => todo!(),
             }
         }
         if let Some(unpack) = unpack {
@@ -1208,15 +1214,17 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         }
     }
 
-    fn convert_slice_type_or_type_var_tuple(
+    fn convert_slice_type_or_tuple_unpack(
         &mut self,
         t: TypeContent,
         slice: SliceOrSimple,
-    ) -> TypeOrUnpack {
+    ) -> Result<Type, TupleUnpack> {
         match t {
-            TypeContent::Unpacked(x @ TypeOrUnpack::TypeVarTuple(_)) => x,
+            TypeContent::Unpacked(TypeOrUnpack::TypeVarTuple(tvt)) => {
+                Err(TupleUnpack::TypeVarTuple(tvt))
+            }
             TypeContent::Unpacked(TypeOrUnpack::Type(_)) => todo!(),
-            t => TypeOrUnpack::Type(self.as_type(t, slice.as_node_ref())),
+            t => Ok(self.as_type(t, slice.as_node_ref())),
         }
     }
 
@@ -2024,9 +2032,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 TypeContent::InvalidVariable(InvalidVariableType::Tuple { tuple_length: 0 }) => {
                     Rc::new([])
                 }
-                _ => match self.convert_slice_type_or_type_var_tuple(t, first) {
-                    TypeOrUnpack::Type(t) => Rc::new([t]),
-                    TypeOrUnpack::TypeVarTuple(..) => todo!(),
+                _ => match self.convert_slice_type_or_tuple_unpack(t, first) {
+                    Ok(t) => Rc::new([t]),
+                    Err(..) => todo!(),
                 },
             })
         };

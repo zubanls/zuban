@@ -27,9 +27,8 @@ use crate::{
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, GenericItem, GenericsList,
         ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamType, ReplaceSelf,
-        StarParamType, TupleTypeArguments, Type, TypeArguments, TypeOrUnpack, TypeVarKind,
-        TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, TypedDict, TypedDictGenerics,
-        Variance,
+        StarParamType, TupleTypeArguments, Type, TypeArguments, TypeVarKind, TypeVarLike,
+        TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, TypedDict, TypedDictGenerics, Variance,
     },
     type_helpers::{Callable, Class, Function},
 };
@@ -243,7 +242,7 @@ impl<'a> Matcher<'a> {
     pub fn match_type_var_tuple(
         &mut self,
         i_s: &InferenceState,
-        tuple1: &[TypeOrUnpack],
+        tuple1: &[()],
         tuple2: &TupleTypeArguments,
         variance: Variance,
     ) -> Match {
@@ -308,6 +307,7 @@ impl<'a> Matcher<'a> {
             TupleTypeArguments::ArbitraryLength(t2) => {
                 let tv_matcher = self.type_var_matcher.as_mut().unwrap();
                 for t1 in tuple1.iter() {
+                    /*
                     match t1 {
                         TypeOrUnpack::Type(t1) => {
                             todo!()
@@ -324,6 +324,7 @@ impl<'a> Matcher<'a> {
                             }
                         }
                     }
+                    */
                 }
             }
         };

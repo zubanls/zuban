@@ -181,19 +181,19 @@ impl Tuple {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum TypeOrUnpack {
-    Type(Type),
+pub enum TupleUnpack {
     TypeVarTuple(TypeVarTupleUsage),
+    Tuple(Rc<Tuple>),
 }
 
-impl TypeOrUnpack {
+impl TupleUnpack {
     fn format(&self, format_data: &FormatData) -> Box<str> {
         match self {
-            Self::Type(t) => t.format(format_data),
             Self::TypeVarTuple(t) => format_data.format_type_var_like(
                 &TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(t)),
                 ParamsStyle::Unreachable,
             ),
+            Self::Tuple(tup) => tup.format(format_data),
         }
     }
 }
@@ -202,7 +202,7 @@ impl TypeOrUnpack {
 pub enum TupleTypeArguments {
     WithUnpack {
         before: Rc<[Type]>,
-        unpack: (),
+        unpack: TupleUnpack,
         after: Rc<[Type]>,
     },
     FixedLength(Rc<[Type]>),
