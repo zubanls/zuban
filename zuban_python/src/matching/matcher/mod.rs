@@ -240,33 +240,33 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    pub fn match_type_var_tuple(
+    pub fn match_unpack(
         &mut self,
         i_s: &InferenceState,
-        unpacked: &WithUnpack,
+        with_unpack1: &WithUnpack,
         tuple2: &TupleTypeArguments,
         variance: Variance,
     ) -> Match {
         debug_assert!(!self.is_matching_reverse());
         let mut matches = Match::new_true();
 
-        let TupleUnpack::TypeVarTuple(tvt) = &unpacked.unpack else {
+        let TupleUnpack::TypeVarTuple(tvt) = &with_unpack1.unpack else {
             todo!()
         };
         match tuple2 {
             TupleTypeArguments::FixedLength(ts2) => {
                 let mut t2_iterator = ts2.iter();
-                for (t1, t2) in unpacked.before.iter().zip(t2_iterator.by_ref()) {
+                for (t1, t2) in with_unpack1.before.iter().zip(t2_iterator.by_ref()) {
                     todo!()
                 }
-                if unpacked.after.len() > 0 {
+                if with_unpack1.after.len() > 0 {
                     todo!()
                 }
                 // TODO TypeVarTuple currently we ignore variance completely
                 // TODO why unwrap here?
                 let tv_matcher = self.type_var_matcher.as_mut().unwrap();
                 let calculated = &mut tv_matcher.calculated_type_vars[tvt.index.as_usize()];
-                let fetch = ts2.len() as isize + 1 - unpacked.after.len() as isize;
+                let fetch = ts2.len() as isize + 1 - with_unpack1.after.len() as isize;
                 if let Ok(fetch) = fetch.try_into() {
                     if calculated.calculated() {
                         calculated.merge_fixed_length_type_var_tuple(
@@ -284,7 +284,16 @@ impl<'a> Matcher<'a> {
                     // will be noticed in a different place.
                 }
             }
-            TupleTypeArguments::WithUnpack(_) => {
+            TupleTypeArguments::WithUnpack(with_unpack2) => {
+                if with_unpack1.before.len() != with_unpack2.before.len()
+                    || with_unpack1.after.len() != with_unpack2.after.len()
+                {
+                    todo!()
+                }
+                matches = match &with_unpack2.unpack {
+                    TupleUnpack::TypeVarTuple(tvt2) => (tvt == tvt2).into(),
+                    TupleUnpack::Tuple(_) => todo!(),
+                }
                 /*
                 let mut t2_iterator = ts2.iter();
                 for t1 in tuple1.iter() {
@@ -308,7 +317,6 @@ impl<'a> Matcher<'a> {
                     }
                 }
                 */
-                todo!()
             }
             TupleTypeArguments::ArbitraryLength(t2) => {
                 let tv_matcher = self.type_var_matcher.as_mut().unwrap();

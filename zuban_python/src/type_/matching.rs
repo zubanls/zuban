@@ -864,11 +864,6 @@ pub fn match_tuple_type_arguments(
         });
     }
     use TupleTypeArguments::*;
-    if matcher.might_have_defined_type_vars() {
-        if let TupleTypeArguments::WithUnpack(w) = t1 {
-            return matcher.match_type_var_tuple(i_s, w, t2, variance);
-        }
-    }
     match (t1, t2, variance) {
         (FixedLength(ts1), FixedLength(ts2), _) => {
             if ts1.len() == ts2.len() {
@@ -890,7 +885,7 @@ pub fn match_tuple_type_arguments(
             .iter()
             .all(|t2| t1.matches(i_s, matcher, t2, variance).bool())
             .into(),
-        (WithUnpack(unpack), _, _) => Match::new_false(),
+        (WithUnpack(unpack), _, _) => matcher.match_unpack(i_s, unpack, t2, variance),
         (_, WithUnpack(_), _) => todo!(),
     }
 }
