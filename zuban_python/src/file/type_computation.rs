@@ -1190,7 +1190,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     ) -> TupleTypeArguments {
         let mut before = vec![];
         let mut after = vec![];
-        let unpack = None;
+        let mut unpack = None;
         for s in iterator {
             match self.compute_slice_type_or_unpack(s) {
                 Ok(t) => {
@@ -1200,7 +1200,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         after.push(t)
                     }
                 }
-                Err(unpack) => todo!(),
+                Err(u) => unpack = Some(u),
             }
         }
         if let Some(unpack) = unpack {

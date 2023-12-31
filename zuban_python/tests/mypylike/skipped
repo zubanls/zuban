@@ -498,12 +498,9 @@ testOverloadOnProtocol
 testSimpleRuntimeProtocolCheck
 
 # TypeVarTuple passed once
-testTypeVarTupleGenericClassWithFunctions
-testTypeVarTupleGenericClassWithMethods
 testTypeVarTuplePep646TypeConcatenation
 testTypeVarTuplePep646TypeVarConcatenation
 testVariadicAliasBasicInstance
-testTypeVarTupleAnyOverload
 # TypeVarTuple
 testTypeVarTupleMixed
 testTypeVarTupleChaining
