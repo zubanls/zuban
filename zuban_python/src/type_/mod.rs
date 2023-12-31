@@ -777,18 +777,7 @@ impl Type {
             }
             Self::TypeVar(t) => found_type_var(TypeVarLikeUsage::TypeVar(Cow::Borrowed(t))),
             Self::Type(type_) => type_.search_type_vars(found_type_var),
-            Self::Tuple(content) => match &content.args {
-                TupleTypeArguments::FixedLength(ts) => {
-                    for t in ts.iter() {
-                        t.search_type_vars(found_type_var)
-                    }
-                }
-                TupleTypeArguments::ArbitraryLength(t) => t.search_type_vars(found_type_var),
-                TupleTypeArguments::WithUnpack(_) => {
-                    //found_type_var(TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(t)))
-                    todo!()
-                }
-            },
+            Self::Tuple(tup) => tup.args.search_type_vars(found_type_var),
             Self::Callable(content) => {
                 content.params.search_type_vars(found_type_var);
                 content.return_type.search_type_vars(found_type_var)

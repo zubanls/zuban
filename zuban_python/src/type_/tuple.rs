@@ -270,6 +270,31 @@ impl TupleTypeArguments {
             Self::WithUnpack(unpack) => unpack.format(format_data),
         }
     }
+
+    pub fn search_type_vars<C: FnMut(TypeVarLikeUsage)>(&self, found_type_var: &mut C) {
+        match self {
+            TupleTypeArguments::FixedLength(ts) => {
+                for t in ts.iter() {
+                    t.search_type_vars(found_type_var)
+                }
+            }
+            TupleTypeArguments::ArbitraryLength(t) => t.search_type_vars(found_type_var),
+            TupleTypeArguments::WithUnpack(with_unpack) => {
+                for t in with_unpack.before.iter() {
+                    t.search_type_vars(found_type_var)
+                }
+                match &with_unpack.unpack {
+                    TupleUnpack::TypeVarTuple(tvt) => {
+                        found_type_var(TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(tvt)))
+                    }
+                    TupleUnpack::Tuple(tup) => tup.args.search_type_vars(found_type_var),
+                }
+                for t in with_unpack.after.iter() {
+                    t.search_type_vars(found_type_var)
+                }
+            }
+        }
+    }
 }
 
 pub(crate) fn lookup_on_tuple<'x>(
