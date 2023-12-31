@@ -271,7 +271,6 @@ impl<'a> Matcher<'a> {
                     if calculated.calculated() {
                         calculated.merge_fixed_length_type_var_tuple(
                             i_s,
-                            fetch,
                             &mut t2_iterator.by_ref().take(fetch),
                         );
                     } else {

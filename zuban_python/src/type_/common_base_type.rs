@@ -371,23 +371,13 @@ fn common_base_for_tuples(i_s: &InferenceState, tup1: &Tuple, tup2: &Tuple) -> T
     Tuple::new(match &tup2.args {
         TupleTypeArguments::FixedLength(ts2) => {
             let mut new_args = tup1.args.clone();
-            common_base_type_of_type_var_tuple_with_items(
-                &mut new_args,
-                i_s,
-                ts2.len(),
-                ts2.iter(),
-            );
+            common_base_type_of_type_var_tuple_with_items(&mut new_args, i_s, ts2.iter());
             new_args
         }
         TupleTypeArguments::ArbitraryLength(t2) => match &tup1.args {
             TupleTypeArguments::FixedLength(ts1) => {
                 let mut new_args = tup2.args.clone();
-                common_base_type_of_type_var_tuple_with_items(
-                    &mut new_args,
-                    i_s,
-                    ts1.len(),
-                    ts1.iter(),
-                );
+                common_base_type_of_type_var_tuple_with_items(&mut new_args, i_s, ts1.iter());
                 new_args
             }
             TupleTypeArguments::ArbitraryLength(t1) => todo!(),
@@ -400,12 +390,11 @@ fn common_base_for_tuples(i_s: &InferenceState, tup1: &Tuple, tup2: &Tuple) -> T
 pub fn common_base_type_of_type_var_tuple_with_items<'x, I: ExactSizeIterator<Item = &'x Type>>(
     args: &mut TupleTypeArguments,
     i_s: &InferenceState,
-    length: usize,
     items: I,
 ) {
     match args {
         TupleTypeArguments::FixedLength(calc_ts) => {
-            if length == calc_ts.len() {
+            if items.len() == calc_ts.len() {
                 let mut new = vec![];
                 for (t1, t2) in calc_ts.iter().zip(items) {
                     new.push(t1.common_base_type(i_s, t2));

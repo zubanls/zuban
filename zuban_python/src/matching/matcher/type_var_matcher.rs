@@ -127,12 +127,11 @@ impl CalculatedTypeVarLike {
     pub fn merge_fixed_length_type_var_tuple<'x, I: ExactSizeIterator<Item = &'x Type>>(
         &mut self,
         i_s: &InferenceState,
-        length: usize,
         items: I,
     ) {
         match &mut self.type_ {
             BoundKind::TypeVarTuple(ts) => {
-                common_base_type_of_type_var_tuple_with_items(&mut ts.args, i_s, length, items)
+                common_base_type_of_type_var_tuple_with_items(&mut ts.args, i_s, items)
             }
             _ => unreachable!(),
         }
