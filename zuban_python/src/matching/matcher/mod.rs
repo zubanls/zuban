@@ -320,26 +320,14 @@ impl<'a> Matcher<'a> {
             }
             TupleTypeArguments::ArbitraryLength(t2) => {
                 let tv_matcher = self.type_var_matcher.as_mut().unwrap();
-                /*
-                for t1 in tuple1.iter() {
-                    match t1 {
-                        TypeOrUnpack::Type(t1) => {
-                            todo!()
-                        }
-                        TypeOrUnpack::TypeVarTuple(tvt) => {
-                            let calculated =
-                                &mut tv_matcher.calculated_type_vars[tvt.index.as_usize()];
-                            if calculated.calculated() {
-                                todo!()
-                            } else {
-                                calculated.type_ = BoundKind::TypeVarTuple(
-                                    TypeArguments::new_arbitrary_length(t2.as_ref().clone()),
-                                );
-                            }
-                        }
-                    }
+                let calculated = &mut tv_matcher.calculated_type_vars[tvt.index.as_usize()];
+                if calculated.calculated() {
+                    todo!()
+                } else {
+                    calculated.type_ = BoundKind::TypeVarTuple(
+                        TypeArguments::new_arbitrary_length(t2.as_ref().clone()),
+                    );
                 }
-                    */
             }
         };
         matches

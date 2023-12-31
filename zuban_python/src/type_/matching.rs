@@ -877,6 +877,8 @@ pub fn match_tuple_type_arguments(
             }
         }
         (ArbitraryLength(t1), ArbitraryLength(t2), _) => t1.matches(i_s, matcher, t2, variance),
+        (WithUnpack(unpack), _, _) => matcher.match_unpack(i_s, unpack, t2, variance),
+        (_, WithUnpack(_), _) => todo!(),
         (_, ArbitraryLength(t2), _) => matches!(t2.as_ref(), Type::Any(_)).into(),
         (ArbitraryLength(t1), FixedLength(ts2), Variance::Invariant) => {
             todo!()
@@ -885,7 +887,5 @@ pub fn match_tuple_type_arguments(
             .iter()
             .all(|t2| t1.matches(i_s, matcher, t2, variance).bool())
             .into(),
-        (WithUnpack(unpack), _, _) => matcher.match_unpack(i_s, unpack, t2, variance),
-        (_, WithUnpack(_), _) => todo!(),
     }
 }

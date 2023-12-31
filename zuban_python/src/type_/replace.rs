@@ -31,64 +31,58 @@ impl Type {
         callable: ReplaceTypeVarLike,
         replace_self: ReplaceSelf,
     ) -> Type {
-        let replace_tuple_likes =
-            |args: &TupleTypeArguments, callable: ReplaceTypeVarLike, replace_self: ReplaceSelf| {
-                match args {
-                    TupleTypeArguments::FixedLength(ts) => TupleTypeArguments::FixedLength(
-                        ts.iter()
-                            .map(|t| t.replace_type_var_likes_and_self(db, callable, replace_self))
-                            .collect(),
-                    ),
-                    TupleTypeArguments::ArbitraryLength(t) => TupleTypeArguments::ArbitraryLength(
-                        Box::new(t.replace_type_var_likes_and_self(db, callable, replace_self)),
-                    ),
-                    TupleTypeArguments::WithUnpack(unpack) => {
-                        match &unpack.unpack {
-                            TupleUnpack::TypeVarTuple(tvt) => {
-                                match callable(TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(tvt))) {
-                                    GenericItem::TypeArguments(new) => {
-                                        match new.args {
-                                            TupleTypeArguments::FixedLength(fixed) => {
-                                                return TupleTypeArguments::FixedLength(
-                                                    unpack
-                                                        .before
-                                                        .iter()
-                                                        .chain(fixed.iter())
-                                                        .chain(unpack.after.iter())
-                                                        .cloned()
-                                                        .collect(),
-                                                )
-                                            }
-                                            TupleTypeArguments::WithUnpack(fixed) => {
-                                                //new_args.extend(fixed.iter().cloned())
+        let replace_tuple_likes = |args: &TupleTypeArguments,
+                                   callable: ReplaceTypeVarLike,
+                                   replace_self: ReplaceSelf| {
+            match args {
+                TupleTypeArguments::FixedLength(ts) => TupleTypeArguments::FixedLength(
+                    ts.iter()
+                        .map(|t| t.replace_type_var_likes_and_self(db, callable, replace_self))
+                        .collect(),
+                ),
+                TupleTypeArguments::ArbitraryLength(t) => TupleTypeArguments::ArbitraryLength(
+                    Box::new(t.replace_type_var_likes_and_self(db, callable, replace_self)),
+                ),
+                TupleTypeArguments::WithUnpack(unpack) => {
+                    match &unpack.unpack {
+                        TupleUnpack::TypeVarTuple(tvt) => {
+                            match callable(TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(tvt))) {
+                                GenericItem::TypeArguments(new) => {
+                                    match new.args {
+                                        TupleTypeArguments::FixedLength(fixed) => {
+                                            return TupleTypeArguments::FixedLength(
+                                                unpack
+                                                    .before
+                                                    .iter()
+                                                    .chain(fixed.iter())
+                                                    .chain(unpack.after.iter())
+                                                    .cloned()
+                                                    .collect(),
+                                            )
+                                        }
+                                        TupleTypeArguments::WithUnpack(fixed) => {
+                                            //new_args.extend(fixed.iter().cloned())
+                                            todo!()
+                                        }
+                                        TupleTypeArguments::ArbitraryLength(t) => {
+                                            if !unpack.before.is_empty() || !unpack.after.is_empty()
+                                            {
                                                 todo!()
                                             }
-                                            TupleTypeArguments::ArbitraryLength(t) => {
-                                                /*
-                                                match ts.len() {
-                                                    // TODO this might be wrong with different data types??
-                                                    1 => {
-                                                        return TupleTypeArguments::ArbitraryLength(
-                                                            t,
-                                                        )
-                                                    }
-                                                    _ => todo!(),
-                                                }
-                                                */
-                                                todo!()
-                                            }
+                                            return TupleTypeArguments::ArbitraryLength(t);
                                         }
                                     }
-                                    x => unreachable!("{x:?}"),
                                 }
+                                x => unreachable!("{x:?}"),
                             }
-                            TupleUnpack::Tuple(_) => todo!(),
                         }
-                        //TupleTypeArguments::WithUnpack(new_args.into())
-                        todo!()
+                        TupleUnpack::Tuple(_) => todo!(),
                     }
+                    //TupleTypeArguments::WithUnpack(new_args.into())
+                    todo!()
                 }
-            };
+            }
+        };
         let mut replace_generics = |generics: &GenericsList| {
             GenericsList::new_generics(
                 generics
