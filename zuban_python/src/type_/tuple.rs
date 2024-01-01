@@ -178,6 +178,14 @@ impl Tuple {
             },
         }
     }
+
+    pub fn find_in_type(&self, check: &impl Fn(&Type) -> bool) -> bool {
+        match &self.args {
+            TupleTypeArguments::FixedLength(ts) => ts.iter().any(check),
+            TupleTypeArguments::ArbitraryLength(t) => check(t),
+            TupleTypeArguments::WithUnpack(_) => todo!(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

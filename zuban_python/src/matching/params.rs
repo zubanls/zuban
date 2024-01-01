@@ -569,6 +569,7 @@ impl<'x> Param<'x> for &'x CallableParam {
                 StarParamType::ArbitraryLength(t) => {
                     WrappedStar::ArbitraryLength(Some(Cow::Borrowed(t)))
                 }
+                StarParamType::UnpackedTuple(_) => todo!(),
                 StarParamType::ParamSpecArgs(u) => WrappedStar::ParamSpecArgs(u),
             }),
             ParamType::StarStar(s) => WrappedParamType::StarStar(match s {

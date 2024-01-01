@@ -2077,6 +2077,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::Unpacked(TypeOrUnpack::Type(Type::TypedDict(td))) => {
                 ParamType::StarStar(StarStarParamType::UnpackTypedDict(td))
             }
+            TypeContent::Unpacked(TypeOrUnpack::TypeVarTuple(tvt)) => {
+                ParamType::Star(StarParamType::UnpackedTuple(TupleUnpack::TypeVarTuple(tvt)))
+            }
+            TypeContent::Unpacked(TypeOrUnpack::Type(Type::Tuple(tup))) => {
+                ParamType::Star(StarParamType::UnpackedTuple(TupleUnpack::Tuple(tup)))
+            }
             _ => {
                 ParamType::PositionalOnly(self.as_type(t, NodeRef::new(self.inference.file, index)))
             }

@@ -358,6 +358,7 @@ impl Type {
                                             t.rewrite_late_bound_callables(manager),
                                         )
                                     }
+                                    StarParamType::UnpackedTuple(_) => todo!(),
                                     StarParamType::ParamSpecArgs(_) => todo!(),
                                 }),
                                 ParamType::StarStar(d) => ParamType::StarStar(match d {
@@ -426,6 +427,10 @@ impl Type {
                                         ),
                                     )
                                 }
+                                StarParamType::UnpackedTuple(u) => match u {
+                                    TupleUnpack::TypeVarTuple(tvt) => todo!(),
+                                    TupleUnpack::Tuple(tup) => todo!(),
+                                },
                                 StarParamType::ParamSpecArgs(_) => todo!(),
                             }),
                             ParamType::StarStar(d) => ParamType::StarStar(match d {

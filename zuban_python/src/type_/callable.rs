@@ -3,8 +3,9 @@ use std::{borrow::Cow, rc::Rc};
 use parsa_python_ast::ParamKind;
 
 use super::{
-    AnyCause, DbString, FunctionKind, ParamSpecUsage, RecursiveType, StringSlice, Type, TypeVar,
-    TypeVarKind, TypeVarLike, TypeVarLikes, TypeVarName, TypeVarUsage, TypedDict, Variance,
+    AnyCause, DbString, FunctionKind, ParamSpecUsage, RecursiveType, StringSlice, TupleUnpack,
+    Type, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikes, TypeVarName, TypeVarUsage, TypedDict,
+    Variance,
 };
 use crate::{
     database::{Database, FileIndex, PointLink},
@@ -23,6 +24,7 @@ use crate::{
 pub enum StarParamType {
     ArbitraryLength(Type),
     ParamSpecArgs(ParamSpecUsage),
+    UnpackedTuple(TupleUnpack),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -80,7 +82,8 @@ impl ParamType {
             | Self::KeywordOnly(t)
             | Self::Star(StarParamType::ArbitraryLength(t))
             | Self::StarStar(StarStarParamType::ValueType(t)) => Some(t),
-            Self::Star(StarParamType::ParamSpecArgs(_)) | Self::StarStar(_) => None,
+            Self::Star(StarParamType::ParamSpecArgs(_) | StarParamType::UnpackedTuple(_))
+            | Self::StarStar(_) => None,
         }
     }
 }
@@ -111,6 +114,7 @@ impl CallableParam {
                         format!("VarArg({})", t.format(format_data))
                     }
                     StarParamType::ParamSpecArgs(u) => todo!(),
+                    StarParamType::UnpackedTuple(u) => todo!(),
                 }
                 .into();
             } else if let ParamType::StarStar(t) = &self.type_ {
@@ -142,6 +146,7 @@ impl CallableParam {
                                 match s {
                                     StarParamType::ArbitraryLength(t) => t.format(format_data),
                                     StarParamType::ParamSpecArgs(_) => todo!(),
+                                    StarParamType::UnpackedTuple(u) => todo!(),
                                 }
                             ),
                             ParamType::StarStar(d) => format!(
@@ -291,6 +296,7 @@ impl CallableParams {
                     t.has_any_internal(i_s, already_checked)
                 }
                 ParamType::Star(StarParamType::ParamSpecArgs(_)) => false,
+                ParamType::Star(StarParamType::UnpackedTuple(tup)) => todo!(),
                 ParamType::StarStar(StarStarParamType::ParamSpecKwargs(_)) => false,
                 ParamType::StarStar(StarStarParamType::UnpackTypedDict(_)) => {
                     todo!()
@@ -338,6 +344,7 @@ impl CallableParams {
                         | ParamType::StarStar(StarStarParamType::ValueType(t)) => {
                             t.search_type_vars(found_type_var)
                         }
+                        ParamType::Star(StarParamType::UnpackedTuple(u)) => todo!(),
                         ParamType::Star(StarParamType::ParamSpecArgs(_)) => {
                             unreachable!()
                         }
@@ -526,6 +533,10 @@ impl CallableContent {
                     | ParamType::Star(StarParamType::ArbitraryLength(t))
                     | ParamType::StarStar(StarStarParamType::ValueType(t)) => check(t),
                     ParamType::Star(StarParamType::ParamSpecArgs(_)) => false,
+                    ParamType::Star(StarParamType::UnpackedTuple(u)) => match u {
+                        TupleUnpack::TypeVarTuple(_) => false,
+                        TupleUnpack::Tuple(tup) => tup.find_in_type(check),
+                    },
                     ParamType::StarStar(StarStarParamType::ParamSpecKwargs(_)) => false,
                     ParamType::StarStar(StarStarParamType::UnpackTypedDict(_)) => todo!(),
                 }),

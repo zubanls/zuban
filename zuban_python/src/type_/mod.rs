@@ -939,11 +939,6 @@ impl Type {
     }
 
     pub fn find_in_type(&self, check: &impl Fn(&Type) -> bool) -> bool {
-        let find_in_tup = |tup_args: &_| match tup_args {
-            TupleTypeArguments::FixedLength(ts) => ts.iter().any(check),
-            TupleTypeArguments::ArbitraryLength(t) => check(t),
-            TupleTypeArguments::WithUnpack(_) => todo!(),
-        };
         let check_generics_list = |generics: &GenericsList| {
             generics.iter().any(|g| match g {
                 GenericItem::TypeArgument(t) => check(t),
@@ -954,7 +949,7 @@ impl Type {
                         with_unpack.before.iter().any(check)
                             || match &with_unpack.unpack {
                                 TupleUnpack::TypeVarTuple(_) => false,
-                                TupleUnpack::Tuple(tup) => find_in_tup(&tup.args),
+                                TupleUnpack::Tuple(tup) => tup.find_in_type(check),
                             }
                             || with_unpack.before.iter().any(check)
                     }
@@ -972,7 +967,7 @@ impl Type {
                 intersection.iter_functions().any(|c| c.find_in_type(check))
             }
             Self::Type(t) => check(self) || check(t),
-            Self::Tuple(tup) => find_in_tup(&tup.args),
+            Self::Tuple(tup) => tup.find_in_type(check),
             Self::Callable(content) => content.find_in_type(check),
             Self::TypedDict(d) => match &d.generics {
                 TypedDictGenerics::Generics(g) => check_generics_list(g),
