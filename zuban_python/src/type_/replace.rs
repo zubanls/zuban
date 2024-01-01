@@ -51,15 +51,28 @@ impl Type {
                             };
                             match new.args {
                                 TupleTypeArguments::FixedLength(fixed) => {
-                                    TupleTypeArguments::FixedLength(
-                                        unpack
+                                    TupleTypeArguments::FixedLength({
+                                        let mut elements: Vec<_> = unpack
                                             .before
                                             .iter()
-                                            .chain(fixed.iter())
-                                            .chain(unpack.after.iter())
-                                            .cloned()
-                                            .collect(),
-                                    )
+                                            .map(|t| {
+                                                t.replace_type_var_likes_and_self(
+                                                    db,
+                                                    callable,
+                                                    replace_self,
+                                                )
+                                            })
+                                            .chain(fixed.iter().cloned())
+                                            .collect();
+                                        elements.extend(unpack.after.iter().map(|t| {
+                                            t.replace_type_var_likes_and_self(
+                                                db,
+                                                callable,
+                                                replace_self,
+                                            )
+                                        }));
+                                        elements.into()
+                                    })
                                 }
                                 TupleTypeArguments::WithUnpack(fixed) => {
                                     //new_args.extend(fixed.iter().cloned())
