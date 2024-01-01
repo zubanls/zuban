@@ -46,40 +46,36 @@ impl Type {
                 TupleTypeArguments::WithUnpack(unpack) => {
                     match &unpack.unpack {
                         TupleUnpack::TypeVarTuple(tvt) => {
-                            match callable(TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(tvt))) {
-                                GenericItem::TypeArguments(new) => {
-                                    match new.args {
-                                        TupleTypeArguments::FixedLength(fixed) => {
-                                            return TupleTypeArguments::FixedLength(
-                                                unpack
-                                                    .before
-                                                    .iter()
-                                                    .chain(fixed.iter())
-                                                    .chain(unpack.after.iter())
-                                                    .cloned()
-                                                    .collect(),
-                                            )
-                                        }
-                                        TupleTypeArguments::WithUnpack(fixed) => {
-                                            //new_args.extend(fixed.iter().cloned())
-                                            todo!()
-                                        }
-                                        TupleTypeArguments::ArbitraryLength(t) => {
-                                            if !unpack.before.is_empty() || !unpack.after.is_empty()
-                                            {
-                                                todo!()
-                                            }
-                                            return TupleTypeArguments::ArbitraryLength(t);
-                                        }
-                                    }
+                            let GenericItem::TypeArguments(new) = callable(TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(tvt))) else {
+                                unreachable!();
+                            };
+                            match new.args {
+                                TupleTypeArguments::FixedLength(fixed) => {
+                                    TupleTypeArguments::FixedLength(
+                                        unpack
+                                            .before
+                                            .iter()
+                                            .chain(fixed.iter())
+                                            .chain(unpack.after.iter())
+                                            .cloned()
+                                            .collect(),
+                                    )
                                 }
-                                x => unreachable!("{x:?}"),
+                                TupleTypeArguments::WithUnpack(fixed) => {
+                                    //new_args.extend(fixed.iter().cloned())
+                                    todo!()
+                                }
+                                TupleTypeArguments::ArbitraryLength(t) => {
+                                    if !unpack.before.is_empty() || !unpack.after.is_empty() {
+                                        todo!()
+                                    }
+                                    return TupleTypeArguments::ArbitraryLength(t);
+                                }
                             }
                         }
                         TupleUnpack::Tuple(_) => todo!(),
                     }
                     //TupleTypeArguments::WithUnpack(new_args.into())
-                    todo!()
                 }
             }
         };
