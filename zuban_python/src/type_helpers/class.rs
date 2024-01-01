@@ -2617,8 +2617,7 @@ impl NewOrInitConstructor<'_> {
                 c.remove_first_param().map(|mut c| {
                     let self_ = cls.as_type(i_s.db);
                     if c.has_self_type() {
-                        c = Type::replace_type_var_likes_and_self_for_callable(
-                            &c,
+                        c = c.replace_type_var_likes_and_self(
                             i_s.db,
                             &mut |usage| usage.into_generic_item(),
                             &|| self_.clone(),

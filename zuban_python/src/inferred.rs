@@ -2137,8 +2137,7 @@ fn proper_classmethod_callable(
             class.as_type(i_s.db)
         }
     };
-    let mut new_callable = Type::replace_type_var_likes_and_self_for_callable(
-        &callable,
+    let mut new_callable = callable.replace_type_var_likes_and_self(
         i_s.db,
         &mut |mut usage| {
             let in_definition = usage.in_definition();

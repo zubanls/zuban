@@ -682,8 +682,7 @@ pub(crate) fn execute_type_of_type<'db>(
             Inferred::from_type(Type::NamedTuple(if nt.__new__.type_vars.is_empty() {
                 nt.clone()
             } else {
-                let mut __new__ = Type::replace_type_var_likes_and_self_for_callable(
-                    &nt.__new__,
+                let mut __new__ = nt.__new__.replace_type_var_likes_and_self(
                     i_s.db,
                     &mut |usage| calculated_type_vars.lookup_type_var_usage(i_s, usage),
                     &|| Type::Self_,
