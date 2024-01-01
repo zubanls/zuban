@@ -1,11 +1,11 @@
 use std::{borrow::Cow, rc::Rc};
 
 use super::{
-    simplified_union_from_iterators, CallableContent, CallableParam, CallableParams, ClassGenerics,
-    Dataclass, GenericClass, GenericItem, GenericsList, NamedTuple, ParamSpecArgument,
-    ParamSpecTypeVars, ParamType, RecursiveType, StarParamType, StarStarParamType, Tuple,
-    TupleTypeArguments, Type, TypeArguments, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
-    TypeVarManager, TypedDictGenerics, UnionEntry, UnionType,
+    common_base_type, simplified_union_from_iterators, CallableContent, CallableParam,
+    CallableParams, ClassGenerics, Dataclass, GenericClass, GenericItem, GenericsList, NamedTuple,
+    ParamSpecArgument, ParamSpecTypeVars, ParamType, RecursiveType, StarParamType,
+    StarStarParamType, Tuple, TupleTypeArguments, Type, TypeArguments, TypeVarLike,
+    TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypedDictGenerics, UnionEntry, UnionType,
 };
 use crate::{
     database::{Database, PointLink},
@@ -79,10 +79,20 @@ impl Type {
                                     todo!()
                                 }
                                 TupleTypeArguments::ArbitraryLength(t) => {
-                                    if !unpack.before.is_empty() || !unpack.after.is_empty() {
-                                        todo!()
-                                    }
-                                    return TupleTypeArguments::ArbitraryLength(t);
+                                    return TupleTypeArguments::ArbitraryLength(
+                                        if !unpack.before.is_empty() || !unpack.after.is_empty() {
+                                            Box::new(common_base_type(
+                                                &InferenceState::new(db),
+                                                unpack
+                                                    .before
+                                                    .iter()
+                                                    .chain(std::iter::once(t.as_ref()))
+                                                    .chain(unpack.after.iter()),
+                                            ))
+                                        } else {
+                                            t
+                                        },
+                                    );
                                 }
                             }
                         }

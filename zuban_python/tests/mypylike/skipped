@@ -552,7 +552,6 @@ testVariadicAliasStrictPrefixSuffixCheck
 testTypeVarTupleWithIsInstance
 testVariadicTupleSubtyping
 testVariadicTupleInference
-testVariadicSelfTypeErasure
 testVariadicSubclassFixed
 testVariadicSubclassSame
 testVariadicSubclassExtra

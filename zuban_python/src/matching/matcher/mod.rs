@@ -259,8 +259,12 @@ impl<'a> Matcher<'a> {
                 for (t1, t2) in with_unpack1.before.iter().zip(t2_iterator.by_ref()) {
                     matches &= t1.matches(i_s, self, t2, variance);
                 }
-                if with_unpack1.after.len() > 0 {
-                    todo!()
+                for (t1, t2) in with_unpack1
+                    .after
+                    .iter()
+                    .zip(ts2[ts2.len() - with_unpack1.after.len()..].iter())
+                {
+                    matches &= t1.matches(i_s, self, t2, variance);
                 }
                 // TODO TypeVarTuple currently we ignore variance completely
                 // TODO why unwrap here?
@@ -318,7 +322,9 @@ impl<'a> Matcher<'a> {
                 */
             }
             TupleTypeArguments::ArbitraryLength(t2) => {
-                let tv_matcher = self.type_var_matcher.as_mut().unwrap();
+                let Some(tv_matcher) = self.type_var_matcher.as_mut() else {
+                    return Match::new_false()
+                };
                 let calculated = &mut tv_matcher.calculated_type_vars[tvt.index.as_usize()];
                 if calculated.calculated() {
                     todo!()
