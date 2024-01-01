@@ -31,77 +31,6 @@ impl Type {
         callable: ReplaceTypeVarLike,
         replace_self: ReplaceSelf,
     ) -> Type {
-        let replace_tuple_likes = |args: &TupleTypeArguments,
-                                   callable: ReplaceTypeVarLike,
-                                   replace_self: ReplaceSelf| {
-            match args {
-                TupleTypeArguments::FixedLength(ts) => TupleTypeArguments::FixedLength(
-                    ts.iter()
-                        .map(|t| t.replace_type_var_likes_and_self(db, callable, replace_self))
-                        .collect(),
-                ),
-                TupleTypeArguments::ArbitraryLength(t) => TupleTypeArguments::ArbitraryLength(
-                    Box::new(t.replace_type_var_likes_and_self(db, callable, replace_self)),
-                ),
-                TupleTypeArguments::WithUnpack(unpack) => {
-                    match &unpack.unpack {
-                        TupleUnpack::TypeVarTuple(tvt) => {
-                            let GenericItem::TypeArguments(new) = callable(TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(tvt))) else {
-                                unreachable!();
-                            };
-                            match new.args {
-                                TupleTypeArguments::FixedLength(fixed) => {
-                                    TupleTypeArguments::FixedLength({
-                                        let mut elements: Vec<_> = unpack
-                                            .before
-                                            .iter()
-                                            .map(|t| {
-                                                t.replace_type_var_likes_and_self(
-                                                    db,
-                                                    callable,
-                                                    replace_self,
-                                                )
-                                            })
-                                            .chain(fixed.iter().cloned())
-                                            .collect();
-                                        elements.extend(unpack.after.iter().map(|t| {
-                                            t.replace_type_var_likes_and_self(
-                                                db,
-                                                callable,
-                                                replace_self,
-                                            )
-                                        }));
-                                        elements.into()
-                                    })
-                                }
-                                TupleTypeArguments::WithUnpack(fixed) => {
-                                    //new_args.extend(fixed.iter().cloned())
-                                    todo!()
-                                }
-                                TupleTypeArguments::ArbitraryLength(t) => {
-                                    return TupleTypeArguments::ArbitraryLength(
-                                        if !unpack.before.is_empty() || !unpack.after.is_empty() {
-                                            Box::new(common_base_type(
-                                                &InferenceState::new(db),
-                                                unpack
-                                                    .before
-                                                    .iter()
-                                                    .chain(std::iter::once(t.as_ref()))
-                                                    .chain(unpack.after.iter()),
-                                            ))
-                                        } else {
-                                            t
-                                        },
-                                    );
-                                }
-                            }
-                        }
-                        TupleUnpack::Tuple(_) => todo!(),
-                    }
-                    //TupleTypeArguments::WithUnpack(new_args.into())
-                }
-            }
-        };
         let mut replace_generics = |generics: &GenericsList| {
             GenericsList::new_generics(
                 generics
@@ -112,7 +41,11 @@ impl Type {
                         ),
                         GenericItem::TypeArguments(ts) => {
                             GenericItem::TypeArguments(TypeArguments {
-                                args: replace_tuple_likes(&ts.args, callable, replace_self),
+                                args: ts.args.replace_type_var_likes_and_self(
+                                    db,
+                                    callable,
+                                    replace_self,
+                                ),
                             })
                         }
                         GenericItem::ParamSpecArgument(p) => {
@@ -185,11 +118,11 @@ impl Type {
                 callable,
                 replace_self,
             ))),
-            Type::Tuple(content) => Type::Tuple(Rc::new(Tuple::new(replace_tuple_likes(
-                &content.args,
-                callable,
-                replace_self,
-            )))),
+            Type::Tuple(content) => Type::Tuple(Rc::new(Tuple::new(
+                content
+                    .args
+                    .replace_type_var_likes_and_self(db, callable, replace_self),
+            ))),
             Type::Callable(c) => Type::Callable(Rc::new(c.replace_type_var_likes_and_self(
                 db,
                 callable,
@@ -652,4 +585,81 @@ fn replace_param_spec_inner_type_var_likes_and_self(
         );
     }
     usage.into_generic_item()
+}
+
+impl TupleTypeArguments {
+    pub fn replace_type_var_likes_and_self(
+        &self,
+        db: &Database,
+        callable: ReplaceTypeVarLike,
+        replace_self: ReplaceSelf,
+    ) -> Self {
+        match self {
+            TupleTypeArguments::FixedLength(ts) => TupleTypeArguments::FixedLength(
+                ts.iter()
+                    .map(|t| t.replace_type_var_likes_and_self(db, callable, replace_self))
+                    .collect(),
+            ),
+            TupleTypeArguments::ArbitraryLength(t) => TupleTypeArguments::ArbitraryLength(
+                Box::new(t.replace_type_var_likes_and_self(db, callable, replace_self)),
+            ),
+            TupleTypeArguments::WithUnpack(unpack) => {
+                match &unpack.unpack {
+                    TupleUnpack::TypeVarTuple(tvt) => {
+                        let GenericItem::TypeArguments(new) = callable(TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(tvt))) else {
+                            unreachable!();
+                        };
+                        match new.args {
+                            TupleTypeArguments::FixedLength(fixed) => {
+                                TupleTypeArguments::FixedLength({
+                                    let mut elements: Vec<_> = unpack
+                                        .before
+                                        .iter()
+                                        .map(|t| {
+                                            t.replace_type_var_likes_and_self(
+                                                db,
+                                                callable,
+                                                replace_self,
+                                            )
+                                        })
+                                        .chain(fixed.iter().cloned())
+                                        .collect();
+                                    elements.extend(unpack.after.iter().map(|t| {
+                                        t.replace_type_var_likes_and_self(
+                                            db,
+                                            callable,
+                                            replace_self,
+                                        )
+                                    }));
+                                    elements.into()
+                                })
+                            }
+                            TupleTypeArguments::WithUnpack(fixed) => {
+                                //new_args.extend(fixed.iter().cloned())
+                                todo!()
+                            }
+                            TupleTypeArguments::ArbitraryLength(t) => {
+                                return TupleTypeArguments::ArbitraryLength(
+                                    if !unpack.before.is_empty() || !unpack.after.is_empty() {
+                                        Box::new(common_base_type(
+                                            &InferenceState::new(db),
+                                            unpack
+                                                .before
+                                                .iter()
+                                                .chain(std::iter::once(t.as_ref()))
+                                                .chain(unpack.after.iter()),
+                                        ))
+                                    } else {
+                                        t
+                                    },
+                                );
+                            }
+                        }
+                    }
+                    TupleUnpack::Tuple(_) => todo!(),
+                }
+                //TupleTypeArguments::WithUnpack(new_args.into())
+            }
+        }
+    }
 }
