@@ -257,7 +257,7 @@ impl<'a> Matcher<'a> {
             TupleTypeArguments::FixedLength(ts2) => {
                 let mut t2_iterator = ts2.iter();
                 for (t1, t2) in with_unpack1.before.iter().zip(t2_iterator.by_ref()) {
-                    todo!()
+                    matches &= t1.matches(i_s, self, t2, variance);
                 }
                 if with_unpack1.after.len() > 0 {
                     todo!()
