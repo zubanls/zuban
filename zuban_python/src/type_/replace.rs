@@ -473,8 +473,13 @@ impl CallableParams {
                                     )
                                 }
                                 StarParamType::UnpackedTuple(u) => match u {
-                                    TupleUnpack::TypeVarTuple(tvt) => todo!(),
-                                    TupleUnpack::Tuple(tup) => todo!(),
+                                    TupleUnpack::TypeVarTuple(tvt) => {
+                                        let GenericItem::TypeArguments(new) = callable(TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(tvt))) else {
+                                            unreachable!();
+                                        };
+                                        StarParamType::UnpackedTuple(TupleUnpack::Tuple(Rc::new(Tuple::new(new.args))))
+                                    }
+                                    TupleUnpack::Tuple(tup) => StarParamType::UnpackedTuple(TupleUnpack::Tuple(Rc::new(Tuple::new(tup.args.replace_type_var_likes_and_self(db, callable, replace_self))))),
                                 },
                                 StarParamType::ParamSpecArgs(_) => todo!(),
                             }),

@@ -10,7 +10,7 @@ use crate::{
     inference_state::InferenceState,
     type_::{
         CallableParam, CallableParams, ParamSpecUsage, ParamType, StarParamType, StarStarParamType,
-        StringSlice, Type, TypeVarLikes, TypedDict, TypedDictMember, Variance,
+        StringSlice, TupleUnpack, Type, TypeVarLikes, TypedDict, TypedDictMember, Variance,
     },
 };
 
@@ -156,6 +156,7 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                             continue;
                         }
                         WrappedStar::ParamSpecArgs(u) => todo!(),
+                        WrappedStar::UnpackedTuple(_) => todo!(),
                     },
                     _ => return Match::new_false(),
                 },
@@ -216,6 +217,9 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                                             // TODO do we need to check both?
                                             matches &= match_(i_s, matcher, t1, d2);
                                             matches &= match_(i_s, matcher, t1, s2);
+                                        }
+                                        WrappedParamType::Star(WrappedStar::UnpackedTuple(u)) => {
+                                            todo!()
                                         }
                                         WrappedParamType::Star(WrappedStar::ParamSpecArgs(u)) => {
                                             todo!()
@@ -305,6 +309,7 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                         | (WrappedStar::ParamSpecArgs(_), WrappedStar::ArbitraryLength(_)) => {
                             todo!()
                         }
+                        _ => todo!(),
                     },
                     _ => return Match::new_false(),
                 },
@@ -407,6 +412,7 @@ fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
         | WrappedParamType::Star(WrappedStar::ArbitraryLength(t2))
         | WrappedParamType::StarStar(WrappedStarStar::ValueType(t2)) => t2,
         WrappedParamType::Star(WrappedStar::ParamSpecArgs(u)) => todo!(),
+        WrappedParamType::Star(WrappedStar::UnpackedTuple(u)) => todo!(),
         WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(u)) => todo!(),
         WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(u)) => todo!(),
     };
@@ -522,6 +528,9 @@ fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                     }
                 }
             }
+            WrappedParamType::Star(WrappedStar::UnpackedTuple(u)) => {
+                todo!()
+            }
             WrappedParamType::Star(WrappedStar::ParamSpecArgs(u)) => todo!(),
             WrappedParamType::StarStar(WrappedStarStar::ValueType(t1)) => {
                 for param2 in params2 {
@@ -569,7 +578,7 @@ impl<'x> Param<'x> for &'x CallableParam {
                 StarParamType::ArbitraryLength(t) => {
                     WrappedStar::ArbitraryLength(Some(Cow::Borrowed(t)))
                 }
-                StarParamType::UnpackedTuple(_) => todo!(),
+                StarParamType::UnpackedTuple(u) => WrappedStar::UnpackedTuple(u),
                 StarParamType::ParamSpecArgs(u) => WrappedStar::ParamSpecArgs(u),
             }),
             ParamType::StarStar(s) => WrappedParamType::StarStar(match s {
@@ -910,6 +919,7 @@ pub enum WrappedParamType<'a> {
 pub enum WrappedStar<'a> {
     ArbitraryLength(Option<Cow<'a, Type>>),
     ParamSpecArgs(&'a ParamSpecUsage),
+    UnpackedTuple(&'a TupleUnpack),
 }
 
 #[derive(Debug)]

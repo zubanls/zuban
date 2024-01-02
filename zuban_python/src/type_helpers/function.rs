@@ -1074,6 +1074,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 WrappedParamType::Star(WrappedStar::ArbitraryLength(t)) => {
                     ParamType::Star(StarParamType::ArbitraryLength(as_t(t)))
                 }
+                WrappedParamType::Star(WrappedStar::UnpackedTuple(t)) => {
+                    todo!()
+                }
                 WrappedParamType::Star(WrappedStar::ParamSpecArgs(u1)) => {
                     match params.peek().map(|p| p.specific(i_s.db)) {
                         Some(WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(u2)))
