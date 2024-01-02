@@ -11,6 +11,7 @@ use crate::{
     database::{Database, PointLink},
     inference_state::InferenceState,
     type_::TupleUnpack,
+    utils::rc_slice_into_vec,
 };
 
 pub type ReplaceTypeVarLike<'x> = &'x mut dyn FnMut(TypeVarLikeUsage) -> GenericItem;
@@ -540,8 +541,7 @@ impl CallableParams {
                 } else {
                     match new.params {
                         CallableParams::Simple(params) => {
-                            // Performance issue: Rc -> Vec check https://github.com/rust-lang/rust/issues/93610#issuecomment-1528108612
-                            let mut params = Vec::from(params.as_ref());
+                            let mut params = rc_slice_into_vec(params);
                             params.splice(
                                 0..0,
                                 types.iter().map(|t| CallableParam {
@@ -566,8 +566,7 @@ impl CallableParams {
                                     t.replace_type_var_likes_and_self(db, callable, replace_self)
                                 })
                                 .collect();
-                            // Performance issue: Rc -> Vec check https://github.com/rust-lang/rust/issues/93610#issuecomment-1528108612
-                            types.extend(new_types.iter().cloned());
+                            types.append(&mut rc_slice_into_vec(new_types));
                             CallableParams::WithParamSpec(types.into(), p)
                         }
                     }

@@ -36,7 +36,7 @@ use crate::{
         TypeVarName, TypeVarUsage, Variance, WrongPositionalCount,
     },
     type_helpers::{Class, Module},
-    utils::rc_unwrap_or_clone,
+    utils::{rc_slice_into_vec, rc_unwrap_or_clone},
 };
 
 #[derive(Clone, Copy)]
@@ -316,13 +316,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 Generic::ParamSpecArgument(p) => match p.into_owned().params {
                     CallableParams::Any(cause) => CallableParams::Any(cause),
                     CallableParams::Simple(params) => {
-                        // Performance issue: Rc -> Vec check https://github.com/rust-lang/rust/issues/93610#issuecomment-1528108612
-                        pre_params.extend(params.iter().cloned());
+                        pre_params.append(&mut rc_slice_into_vec(params));
                         CallableParams::Simple(Rc::from(pre_params))
                     }
                     CallableParams::WithParamSpec(pre, p) => {
-                        // Performance issue: Rc -> Vec check https://github.com/rust-lang/rust/issues/93610#issuecomment-1528108612
-                        let types: Vec<_> = Vec::from(pre.as_ref());
+                        let types = rc_slice_into_vec(pre);
                         CallableParams::WithParamSpec(into_types(types, pre_params), p)
                     }
                 },

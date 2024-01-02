@@ -278,3 +278,12 @@ pub fn rc_unwrap_or_clone<T: Clone>(this: Rc<T>) -> T {
 pub fn join_with_commas(input: impl Iterator<Item = String>) -> String {
     input.collect::<Vec<_>>().join(", ")
 }
+
+pub fn rc_slice_into_vec<T: Clone>(this: Rc<[T]>) -> Vec<T> {
+    // Performance issue: Rc -> Vec check https://github.com/rust-lang/rust/issues/93610#issuecomment-1528108612
+
+    // TODO we could avoid cloning here and just use a copy for the slice parts.
+    // See also some discussion how this could be done here:
+    // https://stackoverflow.com/questions/77511698/rct-try-unwrap-into-vect#comment136989622_77511997
+    Vec::from(this.as_ref())
+}
