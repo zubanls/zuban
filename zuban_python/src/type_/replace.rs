@@ -315,7 +315,11 @@ impl GenericItem {
             Self::TypeArgument(t) => {
                 Self::TypeArgument(t.replace_type_var_likes_and_self(db, callable, replace_self))
             }
-            Self::TypeArguments(_) => todo!(),
+            Self::TypeArguments(ta) => Self::TypeArguments(TypeArguments {
+                args: ta
+                    .args
+                    .replace_type_var_likes_and_self(db, callable, replace_self),
+            }),
             Self::ParamSpecArgument(_) => todo!(),
         }
     }
