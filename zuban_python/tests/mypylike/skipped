@@ -2,6 +2,9 @@
 testBadEnumLoading
 testInvalidNamedTupleWithinFunction
 
+# Check after next mypy upgrade
+testTypeVarTupleDisabled_no_incomplete
+
 # 3.12 type var syntax
 test695TypeAlias
 test695Class
@@ -519,11 +522,9 @@ testVariadicAliasFewArgs
 testVariadicAliasRecursiveUnpack
 testVariadicAliasUpperBoundCheck
 testVariadicAliasEmptyArg
-testVariadicAliasVariadicTupleArgGeneric
 testVariadicAliasVariadicTupleArgSplit
 testTypeVarTuplePep646ArrayExampleInfer
 testTypeVarTupleTypingExtensions
-testTypeVarTupleDisabled_no_incomplete
 testBanPathologicalRecursiveTuples
 testInferenceAgainstGenericVariadicWithBadType
 testHomogeneousGenericTupleUnpackInferenceNoCrash1
