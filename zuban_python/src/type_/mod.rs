@@ -176,7 +176,12 @@ impl TypeArguments {
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
-        self.args.format(format_data)
+        let result = self.args.format(format_data);
+        if matches!(self.args, TupleTypeArguments::ArbitraryLength(_)) {
+            format!("Unpack[Tuple[{result}]]").into()
+        } else {
+            result
+        }
     }
 }
 

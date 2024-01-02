@@ -880,14 +880,9 @@ pub fn match_tuple_type_arguments(
         (WithUnpack(unpack), _) => matcher.match_unpack(i_s, unpack, t2, variance),
         (_, WithUnpack(_)) => todo!(),
         (_, ArbitraryLength(t2)) => matches!(t2.as_ref(), Type::Any(_)).into(),
-        (ArbitraryLength(t1), FixedLength(ts2)) => {
-            if variance == Variance::Invariant {
-                todo!()
-            } else {
-                ts2.iter()
-                    .all(|t2| t1.matches(i_s, matcher, t2, variance).bool())
-                    .into()
-            }
-        }
+        (ArbitraryLength(t1), FixedLength(ts2)) => ts2
+            .iter()
+            .all(|t2| t1.matches(i_s, matcher, t2, variance).bool())
+            .into(),
     }
 }
