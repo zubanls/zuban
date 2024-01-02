@@ -10,7 +10,7 @@ use super::{
 use crate::{
     database::{Database, PointLink},
     inference_state::InferenceState,
-    type_::TupleUnpack,
+    type_::{TupleUnpack, WithUnpack},
     utils::rc_slice_into_vec,
 };
 
@@ -661,9 +661,12 @@ impl TupleTypeArguments {
                                     elements.into()
                                 })
                             }
-                            TupleTypeArguments::WithUnpack(fixed) => {
-                                //new_args.extend(fixed.iter().cloned())
-                                todo!()
+                            TupleTypeArguments::WithUnpack(new) => {
+                                TupleTypeArguments::WithUnpack(WithUnpack {
+                                    before: merge_types(unpack.before.clone(), new.before),
+                                    unpack: new.unpack,
+                                    after: merge_types(unpack.after.clone(), new.after),
+                                })
                             }
                             TupleTypeArguments::ArbitraryLength(t) => {
                                 return TupleTypeArguments::ArbitraryLength(
@@ -688,5 +691,17 @@ impl TupleTypeArguments {
                 //TupleTypeArguments::WithUnpack(new_args.into())
             }
         }
+    }
+}
+
+fn merge_types(original: Rc<[Type]>, new: Rc<[Type]>) -> Rc<[Type]> {
+    if original.is_empty() {
+        new
+    } else if new.is_empty() {
+        original
+    } else {
+        let mut merged = rc_slice_into_vec(original);
+        merged.append(&mut rc_slice_into_vec(new));
+        merged.into()
     }
 }
