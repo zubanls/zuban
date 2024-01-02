@@ -1994,6 +1994,15 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     if let Some(slice_content) = iterator.next() {
                         let t = self.compute_slice_type_content(slice_content);
                         self.check_constraints(&type_var, &slice_content, &t, get_of);
+                        if let TypeContent::Unpacked(TypeOrUnpack::Type(Type::Tuple(tup))) = &t {
+                            if let TupleTypeArguments::FixedLength(fixed) = tup.args.clone() {
+                                for t in rc_slice_into_vec(fixed) {
+                                    generics.push(GenericItem::TypeArgument(t));
+                                    given_count += 1;
+                                }
+                                todo!()
+                            }
+                        }
                         given_count += 1;
                         GenericItem::TypeArgument(self.as_type(t, slice_content.as_node_ref()))
                     } else {
