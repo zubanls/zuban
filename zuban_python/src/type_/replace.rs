@@ -489,9 +489,19 @@ impl CallableParams {
                                                 }
                                                 continue;
                                             }
-                                            args => StarParamType::UnpackedTuple(
-                                                TupleUnpack::Tuple(Rc::new(Tuple::new(args))),
-                                            ),
+                                            TupleTypeArguments::ArbitraryLength(t) => {
+                                                new_params.push(CallableParam::new_anonymous(
+                                                    ParamType::Star(
+                                                        StarParamType::ArbitraryLength(*t),
+                                                    ),
+                                                ));
+                                                continue;
+                                            }
+                                            args @ TupleTypeArguments::WithUnpack(_) => {
+                                                StarParamType::UnpackedTuple(TupleUnpack::Tuple(
+                                                    Rc::new(Tuple::new(args)),
+                                                ))
+                                            }
                                         }
                                     }
                                     TupleUnpack::Tuple(tup) => {

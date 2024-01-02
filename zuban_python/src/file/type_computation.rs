@@ -29,6 +29,7 @@ use crate::{
         TypedDictGenerics, TypedDictMember, UnionEntry, UnionType, WithUnpack,
     },
     type_helpers::{start_namedtuple_params, Class, Function, Module},
+    utils::{rc_slice_into_vec, rc_unwrap_or_clone},
 };
 
 const ASSIGNMENT_TYPE_CACHE_OFFSET: u32 = 1;
@@ -1213,11 +1214,30 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
         }
         if let Some(unpack) = unpack {
-            TupleTypeArguments::WithUnpack(WithUnpack {
-                before: before.into(),
-                unpack,
-                after: after.into(),
-            })
+            match unpack {
+                TupleUnpack::Tuple(tup)
+                    if before.is_empty()
+                        && after.is_empty()
+                        && !matches!(tup.args, TupleTypeArguments::WithUnpack(_)) =>
+                {
+                    rc_unwrap_or_clone(tup).args
+                }
+                TupleUnpack::Tuple(tup)
+                    if matches!(tup.args, TupleTypeArguments::FixedLength(_)) =>
+                {
+                    let TupleTypeArguments::FixedLength(unpacked) = rc_unwrap_or_clone(tup).args else {
+                        unreachable!()
+                    };
+                    before.append(&mut rc_slice_into_vec(unpacked));
+                    before.append(&mut after);
+                    TupleTypeArguments::FixedLength(Rc::from(before))
+                }
+                _ => TupleTypeArguments::WithUnpack(WithUnpack {
+                    before: before.into(),
+                    unpack,
+                    after: after.into(),
+                }),
+            }
         } else {
             TupleTypeArguments::FixedLength(before.into())
         }
