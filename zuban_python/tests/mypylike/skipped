@@ -544,7 +544,6 @@ testVariadicAliasForwardRefToFixedUnpack
 testVariadicAliasForwardRefToVariadicUnpack
 testVariadicInstanceStrictPrefixSuffixCheck
 testVariadicAliasStrictPrefixSuffixCheck
-testTypeVarTupleWithIsInstance
 testVariadicTupleSubtyping
 testVariadicTupleInference
 testVariadicSubclassFixed
@@ -2155,13 +2154,13 @@ testFollowImportsSkip
 testSubclassingAnySilentImports
 testSubclassingAnySilentImports2
 
-# --warn-unreachable
+# --warn-unreachable "Statement is unreachable"
 testOperatorContainsNarrowsTypedDicts_final
-# "Statement is unreachable"
 testNamedTupleWithBoolNarrowsToBool
 testUnreachableWithStdlibContextManagers
 testUnreachableWithStdlibContextManagersNoStrictOptional
 testSpecialTypingProtocols
+testTypeVarTupleWithIsInstance
 
 # --no-strict-optional details
 testNestedListExpressions

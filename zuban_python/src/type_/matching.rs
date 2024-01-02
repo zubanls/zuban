@@ -864,8 +864,8 @@ pub fn match_tuple_type_arguments(
         });
     }
     use TupleTypeArguments::*;
-    match (t1, t2, variance) {
-        (FixedLength(ts1), FixedLength(ts2), _) => {
+    match (t1, t2) {
+        (FixedLength(ts1), FixedLength(ts2)) => {
             if ts1.len() == ts2.len() {
                 let mut matches = Match::new_true();
                 for (t1, t2) in ts1.iter().zip(ts2.iter()) {
@@ -876,16 +876,18 @@ pub fn match_tuple_type_arguments(
                 Match::new_false()
             }
         }
-        (ArbitraryLength(t1), ArbitraryLength(t2), _) => t1.matches(i_s, matcher, t2, variance),
-        (WithUnpack(unpack), _, _) => matcher.match_unpack(i_s, unpack, t2, variance),
-        (_, WithUnpack(_), _) => todo!(),
-        (_, ArbitraryLength(t2), _) => matches!(t2.as_ref(), Type::Any(_)).into(),
-        (ArbitraryLength(t1), FixedLength(ts2), Variance::Invariant) => {
-            todo!()
+        (ArbitraryLength(t1), ArbitraryLength(t2)) => t1.matches(i_s, matcher, t2, variance),
+        (WithUnpack(unpack), _) => matcher.match_unpack(i_s, unpack, t2, variance),
+        (_, WithUnpack(_)) => todo!(),
+        (_, ArbitraryLength(t2)) => matches!(t2.as_ref(), Type::Any(_)).into(),
+        (ArbitraryLength(t1), FixedLength(ts2)) => {
+            if variance == Variance::Invariant {
+                todo!()
+            } else {
+                ts2.iter()
+                    .all(|t2| t1.matches(i_s, matcher, t2, variance).bool())
+                    .into()
+            }
         }
-        (ArbitraryLength(t1), FixedLength(ts2), _) => ts2
-            .iter()
-            .all(|t2| t1.matches(i_s, matcher, t2, variance).bool())
-            .into(),
     }
 }
