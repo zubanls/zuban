@@ -260,7 +260,7 @@ impl GenericsList {
         for g in self.iter() {
             match g {
                 GenericItem::TypeArgument(t) => t.search_type_vars(found_type_var),
-                GenericItem::TypeArguments(_) => todo!(),
+                GenericItem::TypeArguments(ts) => ts.args.search_type_vars(found_type_var),
                 GenericItem::ParamSpecArgument(p) => p.params.search_type_vars(found_type_var),
             }
         }
@@ -842,7 +842,7 @@ impl Type {
         let search_in_generics = |generics: &GenericsList, already_checked: &mut _| {
             generics.iter().any(|g| match g {
                 GenericItem::TypeArgument(t) => t.has_any_internal(i_s, already_checked),
-                GenericItem::TypeArguments(_) => todo!(),
+                GenericItem::TypeArguments(ts) => ts.args.has_any_internal(i_s, already_checked),
                 GenericItem::ParamSpecArgument(a) => {
                     a.params.has_any_internal(i_s, already_checked)
                 }

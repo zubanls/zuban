@@ -236,6 +236,24 @@ impl WithUnpack {
             }
             || self.before.iter().any(|t| t.find_in_type(check))
     }
+
+    fn has_any_internal(
+        &self,
+        i_s: &InferenceState,
+        already_checked: &mut Vec<Rc<RecursiveType>>,
+    ) -> bool {
+        self.before
+            .iter()
+            .any(|t| t.has_any_internal(i_s, already_checked))
+            || match &self.unpack {
+                TupleUnpack::TypeVarTuple(_) => false,
+                TupleUnpack::Tuple(tup) => tup.args.has_any_internal(i_s, already_checked),
+            }
+            || self
+                .after
+                .iter()
+                .any(|t| t.has_any_internal(i_s, already_checked))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -265,7 +283,7 @@ impl TupleTypeArguments {
         match self {
             Self::FixedLength(ts) => ts.iter().any(|t| t.has_any_internal(i_s, already_checked)),
             Self::ArbitraryLength(t) => t.has_any_internal(i_s, already_checked),
-            Self::WithUnpack(_) => todo!(),
+            Self::WithUnpack(with_unpack) => with_unpack.has_any_internal(i_s, already_checked),
         }
     }
 

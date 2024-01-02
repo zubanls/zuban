@@ -742,7 +742,7 @@ pub fn format_callable_params<'db: 'x, 'x, P: Param<'x>>(
             WrappedParamType::Star(WrappedStar::ParamSpecArgs(u)) => todo!(),
             WrappedParamType::Star(WrappedStar::UnpackedTuple(u)) => match u {
                 TupleUnpack::TypeVarTuple(tup) => Some(format!("TODO format unpack").into()),
-                TupleUnpack::Tuple(_) => todo!(),
+                TupleUnpack::Tuple(_) => Some(format!("TODO format tuple unpack").into()),
             },
             WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(td)) => {
                 Some(format!("Unpack[{}]", td.format(format_data)).into())
