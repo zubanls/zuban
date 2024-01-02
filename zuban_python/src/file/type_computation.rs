@@ -218,6 +218,7 @@ impl InvalidVariableType<'_> {
 pub enum TypeOrUnpack {
     Type(Type),
     TypeVarTuple(TypeVarTupleUsage),
+    Unknown(AnyCause),
 }
 
 #[derive(Debug, Clone)]
@@ -643,6 +644,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 );
                 AnnotationReturn::Type(Type::Any(AnyCause::FromError))
             }
+            TypeContent::Unpacked(TypeOrUnpack::Unknown(_)) => todo!(),
             _ => match self.as_type(tc, from) {
                 // TODO is this AnnotationReturn really needed??
                 t @ Type::ParamSpecArgs(_) => AnnotationReturn::Type(t),
@@ -1058,7 +1060,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 );
             }
             TypeContent::Unpacked(t) => {
-                self.add_issue(node_ref, IssueType::UnpackOnlyValidInVariadicPosition);
+                if !matches!(t, TypeOrUnpack::Unknown(_)) {
+                    self.add_issue(node_ref, IssueType::UnpackOnlyValidInVariadicPosition);
+                }
             }
             TypeContent::Concatenate(_) => {
                 self.add_issue(
@@ -1255,6 +1259,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::Unpacked(TypeOrUnpack::Type(Type::Tuple(tup))) => {
                 Err(TupleUnpack::Tuple(tup))
             }
+            TypeContent::Unpacked(TypeOrUnpack::Unknown(_)) => todo!(),
             TypeContent::Unpacked(TypeOrUnpack::Type(_)) => todo!(),
             t => Ok(self.as_type(t, slice.as_node_ref())),
         }
@@ -2448,7 +2453,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         if iterator.count() == 0 {
             TypeContent::Unpacked(match self.compute_slice_type_content(first) {
                 TypeContent::TypeVarTuple(t) => TypeOrUnpack::TypeVarTuple(t),
-                TypeContent::Unknown(cause) => return TypeContent::Unknown(cause),
+                TypeContent::Unknown(cause) => TypeOrUnpack::Unknown(cause),
                 t => TypeOrUnpack::Type(self.as_type(t, first.as_node_ref())),
             })
         } else {
