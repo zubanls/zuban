@@ -181,9 +181,9 @@ impl Tuple {
 
     pub fn find_in_type(&self, check: &impl Fn(&Type) -> bool) -> bool {
         match &self.args {
-            TupleTypeArguments::FixedLength(ts) => ts.iter().any(check),
-            TupleTypeArguments::ArbitraryLength(t) => check(t),
-            TupleTypeArguments::WithUnpack(_) => todo!(),
+            TupleTypeArguments::FixedLength(ts) => ts.iter().any(|t| t.find_in_type(check)),
+            TupleTypeArguments::ArbitraryLength(t) => t.find_in_type(check),
+            TupleTypeArguments::WithUnpack(with_unpack) => with_unpack.find_in_type(check),
         }
     }
 }
@@ -226,6 +226,15 @@ impl WithUnpack {
                 .chain(self.after.iter().map(|t| t.format(format_data).into())),
         )
         .into()
+    }
+
+    pub fn find_in_type(&self, check: &impl Fn(&Type) -> bool) -> bool {
+        self.before.iter().any(|t| t.find_in_type(check))
+            || match &self.unpack {
+                TupleUnpack::TypeVarTuple(_) => false,
+                TupleUnpack::Tuple(tup) => tup.find_in_type(check),
+            }
+            || self.before.iter().any(|t| t.find_in_type(check))
     }
 }
 

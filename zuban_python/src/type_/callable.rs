@@ -531,7 +531,7 @@ impl CallableContent {
                     | ParamType::PositionalOrKeyword(t)
                     | ParamType::KeywordOnly(t)
                     | ParamType::Star(StarParamType::ArbitraryLength(t))
-                    | ParamType::StarStar(StarStarParamType::ValueType(t)) => check(t),
+                    | ParamType::StarStar(StarStarParamType::ValueType(t)) => t.find_in_type(check),
                     ParamType::Star(StarParamType::ParamSpecArgs(_)) => false,
                     ParamType::Star(StarParamType::UnpackedTuple(u)) => match u {
                         TupleUnpack::TypeVarTuple(_) => false,
@@ -541,7 +541,9 @@ impl CallableContent {
                     ParamType::StarStar(StarStarParamType::UnpackTypedDict(_)) => todo!(),
                 }),
                 CallableParams::Any(_) => false,
-                CallableParams::WithParamSpec(types, param_spec) => types.iter().any(|t| check(t)),
+                CallableParams::WithParamSpec(types, param_spec) => {
+                    types.iter().any(|t| t.find_in_type(check))
+                }
             }
     }
 

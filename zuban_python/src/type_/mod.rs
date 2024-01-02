@@ -941,18 +941,11 @@ impl Type {
     pub fn find_in_type(&self, check: &impl Fn(&Type) -> bool) -> bool {
         let check_generics_list = |generics: &GenericsList| {
             generics.iter().any(|g| match g {
-                GenericItem::TypeArgument(t) => check(t),
+                GenericItem::TypeArgument(t) => t.find_in_type(check),
                 GenericItem::TypeArguments(ts) => match &ts.args {
-                    TupleTypeArguments::FixedLength(ts) => ts.iter().any(check),
-                    TupleTypeArguments::ArbitraryLength(t) => check(t),
-                    TupleTypeArguments::WithUnpack(with_unpack) => {
-                        with_unpack.before.iter().any(check)
-                            || match &with_unpack.unpack {
-                                TupleUnpack::TypeVarTuple(_) => false,
-                                TupleUnpack::Tuple(tup) => tup.find_in_type(check),
-                            }
-                            || with_unpack.before.iter().any(check)
-                    }
+                    TupleTypeArguments::FixedLength(ts) => ts.iter().any(|t| t.find_in_type(check)),
+                    TupleTypeArguments::ArbitraryLength(t) => t.find_in_type(check),
+                    TupleTypeArguments::WithUnpack(with_unpack) => with_unpack.find_in_type(check),
                 },
                 GenericItem::ParamSpecArgument(a) => todo!(),
             })
@@ -962,11 +955,11 @@ impl Type {
                 generics: ClassGenerics::List(generics),
                 ..
             }) => check(self) || check_generics_list(generics),
-            Self::Union(u) => u.iter().any(check),
+            Self::Union(u) => u.iter().any(|t| t.find_in_type(check)),
             Self::FunctionOverload(intersection) => {
                 intersection.iter_functions().any(|c| c.find_in_type(check))
             }
-            Self::Type(t) => check(self) || check(t),
+            Self::Type(t) => check(self) || t.find_in_type(check),
             Self::Tuple(tup) => tup.find_in_type(check),
             Self::Callable(content) => content.find_in_type(check),
             Self::TypedDict(d) => match &d.generics {
