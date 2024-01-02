@@ -2439,6 +2439,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         if iterator.count() == 0 {
             TypeContent::Unpacked(match self.compute_slice_type_content(first) {
                 TypeContent::TypeVarTuple(t) => TypeOrUnpack::TypeVarTuple(t),
+                TypeContent::Unknown(cause) => return TypeContent::Unknown(cause),
                 t => TypeOrUnpack::Type(self.as_type(t, first.as_node_ref())),
             })
         } else {

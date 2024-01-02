@@ -1,11 +1,11 @@
 use std::{borrow::Cow, rc::Rc};
 
 use super::{
-    common_base_type, simplified_union_from_iterators, CallableContent, CallableParam,
-    CallableParams, ClassGenerics, Dataclass, GenericClass, GenericItem, GenericsList, NamedTuple,
-    ParamSpecArgument, ParamSpecTypeVars, ParamType, RecursiveType, StarParamType,
-    StarStarParamType, Tuple, TupleTypeArguments, Type, TypeArguments, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypedDictGenerics, UnionEntry, UnionType,
+    simplified_union_from_iterators, CallableContent, CallableParam, CallableParams, ClassGenerics,
+    Dataclass, GenericClass, GenericItem, GenericsList, NamedTuple, ParamSpecArgument,
+    ParamSpecTypeVars, ParamType, RecursiveType, StarParamType, StarStarParamType, Tuple,
+    TupleTypeArguments, Type, TypeArguments, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
+    TypeVarManager, TypedDictGenerics, UnionEntry, UnionType,
 };
 use crate::{
     database::{Database, PointLink},

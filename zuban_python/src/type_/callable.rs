@@ -114,7 +114,7 @@ impl CallableParam {
                         format!("VarArg({})", t.format(format_data))
                     }
                     StarParamType::ParamSpecArgs(u) => todo!(),
-                    StarParamType::UnpackedTuple(u) => todo!(),
+                    StarParamType::UnpackedTuple(u) => format!("TODO format unpack callable param"),
                 }
                 .into();
             } else if let ParamType::StarStar(t) = &self.type_ {
