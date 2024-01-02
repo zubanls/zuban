@@ -664,20 +664,17 @@ impl TupleTypeArguments {
                             })
                         }
                         TupleTypeArguments::ArbitraryLength(t) => {
-                            return TupleTypeArguments::ArbitraryLength(
-                                if !unpack.before.is_empty() || !unpack.after.is_empty() {
-                                    Box::new(common_base_type(
-                                        &InferenceState::new(db),
-                                        unpack
-                                            .before
-                                            .iter()
-                                            .chain(std::iter::once(t.as_ref()))
-                                            .chain(unpack.after.iter()),
-                                    ))
-                                } else {
-                                    t
-                                },
-                            );
+                            if !unpack.before.is_empty() || !unpack.after.is_empty() {
+                                TupleTypeArguments::WithUnpack(WithUnpack {
+                                    before: unpack.before.clone(),
+                                    unpack: TupleUnpack::Tuple(Rc::new(Tuple::new(
+                                        TupleTypeArguments::ArbitraryLength(t),
+                                    ))),
+                                    after: unpack.after.clone(),
+                                })
+                            } else {
+                                return TupleTypeArguments::ArbitraryLength(t);
+                            }
                         }
                     }
                 }

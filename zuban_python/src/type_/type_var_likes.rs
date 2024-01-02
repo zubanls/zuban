@@ -1,6 +1,9 @@
 use std::{borrow::Cow, ops::AddAssign, rc::Rc};
 
-use super::{AnyCause, CallableParams, GenericItem, GenericsList, Type, TypeArguments};
+use super::{
+    AnyCause, CallableParams, GenericItem, GenericsList, TupleTypeArguments, TupleUnpack, Type,
+    TypeArguments, WithUnpack,
+};
 use crate::{
     database::{Database, PointLink},
     matching::{FormatData, ParamsStyle},
@@ -607,9 +610,13 @@ impl<'a> TypeVarLikeUsage<'a> {
             TypeVarLikeUsage::TypeVar(usage) => {
                 GenericItem::TypeArgument(Type::TypeVar(usage.into_owned()))
             }
-            TypeVarLikeUsage::TypeVarTuple(usage) => {
-                todo!()
-            }
+            TypeVarLikeUsage::TypeVarTuple(usage) => GenericItem::TypeArguments(TypeArguments {
+                args: TupleTypeArguments::WithUnpack(WithUnpack {
+                    before: Rc::from([]),
+                    unpack: TupleUnpack::TypeVarTuple(usage.into_owned()),
+                    after: Rc::from([]),
+                }),
+            }),
             TypeVarLikeUsage::ParamSpec(usage) => {
                 GenericItem::ParamSpecArgument(ParamSpecArgument::new(
                     CallableParams::WithParamSpec(Rc::new([]), usage.into_owned()),
