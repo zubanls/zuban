@@ -48,7 +48,7 @@ impl Tuple {
         Self::new(TupleTypeArguments::ArbitraryLength(Box::new(arg)))
     }
 
-    pub fn new_empty() -> Rc<Self> {
+    pub fn new_arbitrary_length_with_any() -> Rc<Self> {
         ARBITRARY_TUPLE.with(|t| t.clone())
     }
 

@@ -237,7 +237,9 @@ impl PythonState {
             type_of_object: Type::None, // Will be set later
             type_of_any: Type::Type(Rc::new(Type::Any(AnyCause::Todo))),
             type_of_self: Type::Type(Rc::new(Type::Self_)),
-            type_of_arbitrary_tuple: Type::Type(Rc::new(Type::Tuple(Tuple::new_empty()))),
+            type_of_arbitrary_tuple: Type::Type(Rc::new(Type::Tuple(
+                Tuple::new_arbitrary_length_with_any(),
+            ))),
             any_callable_from_error: Rc::new(CallableContent::new_any(
                 empty_type_var_likes.clone(),
                 AnyCause::FromError,

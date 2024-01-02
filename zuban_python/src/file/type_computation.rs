@@ -973,7 +973,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             },
                         );
                     }
-                    return Some(Type::Tuple(Tuple::new_empty()));
+                    return Some(Type::Tuple(Tuple::new_arbitrary_length_with_any()));
                 }
                 SpecialType::TypingNamedTuple => {
                     return Some(db.python_state.typing_named_tuple_type())
@@ -1184,7 +1184,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         self.as_type(t, slice.as_node_ref())
     }
 
-    fn compute_slice_type_or_unpack(&mut self, slice: SliceOrSimple) -> Result<Type, TupleUnpack> {
+    fn compute_slice_type_or_unpack(&mut self, slice: SliceOrSimple) -> TuplePart {
         let t = self.compute_slice_type_content(slice);
         self.convert_slice_type_or_tuple_unpack(t, slice)
     }
@@ -1198,14 +1198,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut unpack = None;
         for s in iterator {
             match self.compute_slice_type_or_unpack(s) {
-                Ok(t) => {
+                TuplePart::Type(t) => {
                     if unpack.is_none() {
                         before.push(t)
                     } else {
                         after.push(t)
                     }
                 }
-                Err(u) => {
+                TuplePart::TupleUnpack(u) => {
                     if unpack.is_some() {
                         self.add_issue(
                             s.as_node_ref(),
@@ -1251,17 +1251,27 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         &mut self,
         t: TypeContent,
         slice: SliceOrSimple,
-    ) -> Result<Type, TupleUnpack> {
+    ) -> TuplePart {
         match t {
             TypeContent::Unpacked(TypeOrUnpack::TypeVarTuple(tvt)) => {
-                Err(TupleUnpack::TypeVarTuple(tvt))
+                TuplePart::TupleUnpack(TupleUnpack::TypeVarTuple(tvt))
             }
             TypeContent::Unpacked(TypeOrUnpack::Type(Type::Tuple(tup))) => {
-                Err(TupleUnpack::Tuple(tup))
+                TuplePart::TupleUnpack(TupleUnpack::Tuple(tup))
             }
-            TypeContent::Unpacked(TypeOrUnpack::Unknown(_)) => todo!(),
-            TypeContent::Unpacked(TypeOrUnpack::Type(_)) => todo!(),
-            t => Ok(self.as_type(t, slice.as_node_ref())),
+            TypeContent::Unpacked(TypeOrUnpack::Unknown(_)) => {
+                TuplePart::TupleUnpack(TupleUnpack::Tuple(Tuple::new_arbitrary_length_with_any()))
+            }
+            TypeContent::Unpacked(TypeOrUnpack::Type(t)) => {
+                self.add_issue(
+                    slice.as_node_ref(),
+                    IssueType::VariadicUnpackMustBeTupleOrTypeVarTuple {
+                        type_: t.format_short(self.inference.i_s.db),
+                    },
+                );
+                TuplePart::TupleUnpack(TupleUnpack::Tuple(Tuple::new_arbitrary_length_with_any()))
+            }
+            t => TuplePart::Type(self.as_type(t, slice.as_node_ref())),
         }
     }
 
@@ -2079,12 +2089,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     Tuple::new_fixed_length(Rc::new([]))
                 }
                 _ => match self.convert_slice_type_or_tuple_unpack(t, first) {
-                    Ok(t) => Tuple::new_fixed_length(Rc::new([t])),
-                    Err(unpack) => Tuple::new(TupleTypeArguments::WithUnpack(WithUnpack {
-                        before: Rc::from([]),
-                        unpack,
-                        after: Rc::from([]),
-                    })),
+                    TuplePart::Type(t) => Tuple::new_fixed_length(Rc::new([t])),
+                    TuplePart::TupleUnpack(unpack) => {
+                        Tuple::new(TupleTypeArguments::WithUnpack(WithUnpack {
+                            before: Rc::from([]),
+                            unpack,
+                            after: Rc::from([]),
+                        }))
+                    }
                 },
             }
         };
@@ -3908,6 +3920,11 @@ fn check_for_and_replace_type_type_in_finished_alias(
 fn save_alias(alias_origin: NodeRef, alias: TypeAlias) {
     let complex = ComplexPoint::TypeAlias(Box::new(alias));
     alias_origin.insert_complex(complex, Locality::Todo);
+}
+
+enum TuplePart {
+    Type(Type),
+    TupleUnpack(TupleUnpack),
 }
 
 pub(super) fn assignment_type_node_ref<'x>(

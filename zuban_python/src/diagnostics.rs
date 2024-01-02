@@ -168,6 +168,7 @@ pub(crate) enum IssueType {
     UnpackOnlyValidInVariadicPosition,
     VariadicUnpackMustBeTupleLike { actual: Box<str> },
     MoreThanOneUnpackTypeIsNotAllowed,
+    VariadicUnpackMustBeTupleOrTypeVarTuple { type_: Box<str> },
 
     InvalidAssertType { actual: Box<str>, wanted: Box<str> },
 
@@ -990,6 +991,9 @@ impl<'db> Diagnostic<'db> {
             ),
             MoreThanOneUnpackTypeIsNotAllowed =>
                 "More than one Unpack in a type is not allowed".to_string(),
+            VariadicUnpackMustBeTupleOrTypeVarTuple { type_ } => format!(
+                r#""{type_}" cannot be unpacked (must be tuple or TypeVarTuple)"#
+            ),
 
             InvalidAssertType { actual, wanted } => format!(
                 r#"Expression is of type "{actual}", not "{wanted}""#

@@ -1334,7 +1334,7 @@ impl Type {
                         ),
                         (WithUnpack(_), _) => todo!(),
                         (_, WithUnpack(_)) => todo!(),
-                        _ => Tuple::new_empty(),
+                        _ => Tuple::new_arbitrary_length_with_any(),
                     })
                 }
                 _ => Type::Any(AnyCause::FromError),
