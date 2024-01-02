@@ -1200,7 +1200,16 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         after.push(t)
                     }
                 }
-                Err(u) => unpack = Some(u),
+                Err(u) => {
+                    if unpack.is_some() {
+                        self.add_issue(
+                            s.as_node_ref(),
+                            IssueType::MoreThanOneUnpackTypeIsNotAllowed,
+                        )
+                    } else {
+                        unpack = Some(u)
+                    }
+                }
             }
         }
         if let Some(unpack) = unpack {
@@ -1222,6 +1231,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         match t {
             TypeContent::Unpacked(TypeOrUnpack::TypeVarTuple(tvt)) => {
                 Err(TupleUnpack::TypeVarTuple(tvt))
+            }
+            TypeContent::Unpacked(TypeOrUnpack::Type(Type::Tuple(tup))) => {
+                Err(TupleUnpack::Tuple(tup))
             }
             TypeContent::Unpacked(TypeOrUnpack::Type(_)) => todo!(),
             t => Ok(self.as_type(t, slice.as_node_ref())),
@@ -2119,6 +2131,15 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     }
                 }
                 ParamKind::Star if current_kind <= prev_kind => {
+                    if matches!(
+                        previous.type_,
+                        ParamType::Star(StarParamType::UnpackedTuple(_))
+                    ) {
+                        self.add_issue_for_index(
+                            index,
+                            IssueType::MoreThanOneUnpackTypeIsNotAllowed,
+                        );
+                    }
                     Some("Var args may not appear after named or var args")
                 }
                 ParamKind::KeywordOnly if current_kind <= prev_kind => {
