@@ -449,10 +449,10 @@ impl CallableParams {
     ) -> (CallableParams, Option<(PointLink, usize)>) {
         let mut replace_data = None;
         let new_params = match self {
-            CallableParams::Simple(params) => CallableParams::Simple(
-                params
-                    .iter()
-                    .map(|p| CallableParam {
+            CallableParams::Simple(params) => CallableParams::Simple({
+                let mut new_params = vec![];
+                for p in params.iter() {
+                    new_params.push(CallableParam {
                         type_: match &p.type_ {
                             ParamType::PositionalOnly(t) => ParamType::PositionalOnly(
                                 t.replace_type_var_likes_and_self(db, callable, replace_self),
@@ -475,12 +475,34 @@ impl CallableParams {
                                 }
                                 StarParamType::UnpackedTuple(u) => match u {
                                     TupleUnpack::TypeVarTuple(tvt) => {
-                                        let GenericItem::TypeArguments(new) = callable(TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(tvt))) else {
+                                        let GenericItem::TypeArguments(new) = callable(
+                                            TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(tvt))
+                                        ) else {
                                             unreachable!();
                                         };
-                                        StarParamType::UnpackedTuple(TupleUnpack::Tuple(Rc::new(Tuple::new(new.args))))
+                                        match new.args {
+                                            TupleTypeArguments::FixedLength(types) => {
+                                                for t in rc_slice_into_vec(types) {
+                                                    new_params.push(CallableParam::new_anonymous(
+                                                        ParamType::PositionalOnly(t),
+                                                    ))
+                                                }
+                                                continue;
+                                            }
+                                            args => StarParamType::UnpackedTuple(
+                                                TupleUnpack::Tuple(Rc::new(Tuple::new(args))),
+                                            ),
+                                        }
                                     }
-                                    TupleUnpack::Tuple(tup) => StarParamType::UnpackedTuple(TupleUnpack::Tuple(Rc::new(Tuple::new(tup.args.replace_type_var_likes_and_self(db, callable, replace_self))))),
+                                    TupleUnpack::Tuple(tup) => {
+                                        StarParamType::UnpackedTuple(TupleUnpack::Tuple(Rc::new(
+                                            Tuple::new(tup.args.replace_type_var_likes_and_self(
+                                                db,
+                                                callable,
+                                                replace_self,
+                                            )),
+                                        )))
+                                    }
                                 },
                                 StarParamType::ParamSpecArgs(_) => todo!(),
                             }),
@@ -498,9 +520,10 @@ impl CallableParams {
                         },
                         has_default: p.has_default,
                         name: p.name.clone(),
-                    })
-                    .collect(),
-            ),
+                    });
+                }
+                new_params.into()
+            }),
             CallableParams::Any(cause) => CallableParams::Any(*cause),
             CallableParams::WithParamSpec(types, param_spec) => {
                 let result = callable(TypeVarLikeUsage::ParamSpec(Cow::Borrowed(param_spec)));
