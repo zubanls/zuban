@@ -1,25 +1,9 @@
 # Next up
 testBadEnumLoading
 testInvalidNamedTupleWithinFunction
-
-# mypy upgrade
-testRecursiveNamedTupleTypedDict
-testNoIncrementalCrashOnTypedDictMethod
-testNoCrashOnUnImportedAnyNotRequired
-testTypedDictWithClassLevelKeywords
-testNoIncrementalCrashOnInvalidEnumMethod
-testLambdaInferenceUsesNarrowedTypes
 testInferenceAgainstGenericCallableUnion
 testInferenceAgainstGenericCallbackProtoMultiple
-testGenericLambdaGenericMethodNoCrash
-testSelfTypeOnGenericClassObjectNewStyleBound
 testRecursiveSelfTypeCallMethodNoCrash
-
-# Check after next mypy upgrade
-testTypeVarTupleDisabled_no_incomplete
-
-# "Covariant override of a mutable attribute (base class "C" defined the type as "float", expressi on has type "int")  [mutable-override]"
-testCovariantMutableOverride
 
 # 3.12 type var syntax
 test695TypeAlias
@@ -329,6 +313,7 @@ testParamSpecGenericWithNamedArg2
 testSelfTypeRestrictedMethodOverloadInit
 # Self tests
 testTypingSelfAttrOldVsNewStyle
+testSelfTypeOnGenericClassObjectNewStyleBound
 # "Method cannot have explicit self annotation and Self type"
 testTypingSelfConflict
 # "Self argument missing for a non-static method"
@@ -435,6 +420,8 @@ testAssignEnumAsAttribute
 # "TypedDict type as attribute is not supported"
 testAssignTypedDictAsAttribute
 
+# Recursive definitions
+testRecursiveNamedTupleTypedDict
 # Unpack
 testUnpackKwargsInference
 testUnpackKwargsParamSpec
@@ -918,7 +905,8 @@ testSelfTypeOverrideCompatibilityGeneric
 # "Cannot assign to a method" should not error
 testDataclassCallableFieldAssignment
 testDataclassesCallableFrozen
-
+# "Covariant override of a mutable attribute (base class "C" defined the type as "float", expressi on has type "int")  [mutable-override]"
+testCovariantMutableOverride
 # "Signature of "???" incompatible with supertype "???""
 # __hash__ None overrides
 testOverrideAttributeWithMethod
@@ -957,6 +945,7 @@ testInitSubclassWithImports
 testInitSubclassUnannotated
 testTooManyArgsForObject
 testNoClassKeywordsForNamedTuple
+testTypedDictWithClassLevelKeywords
 
 # __setattr__ and __getattr__
 testGetattrAndSetattr
@@ -1319,6 +1308,7 @@ testNarrowOnSelfInGeneric
 testNarrowedVariableInNestedModifiedInWalrus
 testTypedDictTypeNarrowingWithFinalKey
 testLiteralIntelligentIndexingTuples
+testLambdaInferenceUsesNarrowedTypes
 # narrowing if is
 testEnumReachabilityChecksBasic
 testEnumReachabilityChecksWithOrdering
@@ -1846,6 +1836,7 @@ testModuleAliasRepeatedWithAnnotation
 testAnonymousFunctionalEnum
 testNewAnalyzerIncrementalMethodNamedTuple
 testNewAnalyzerNamedTupleClassNestedMethod
+testNoIncrementalCrashOnTypedDictMethod
 # qualified name for NewType for different module
 testNewTypeInMultipleFiles
 # qualified name for Enum for different module
@@ -2139,6 +2130,7 @@ testDisallowImplicitAnySubclassingExplicitAny
 testDisallowImplicitAnyVarDeclaration
 testDisallowUnimportedAnyTypedDictSimple
 testDisallowUnimportedAnyTypedDictGeneric
+testNoCrashOnUnImportedAnyNotRequired
 
 # --disallow-untyped-decorators
 testDisallowUntypedDecoratorsUnresolvedDecorator
@@ -2668,5 +2660,4 @@ testSubtypingWithTypeImplementingGenericABCViaInheritance2-skip
 testOverloadInferringArgumentsUsingContext2-skip
 testUnionTwoPassInference-skip
 testLiteralErrorsWhenInvoked-skip
-testRecursiveNamedTupleTypedDict-skip
 testWeirdRecursiveInferenceForProtocols-skip
