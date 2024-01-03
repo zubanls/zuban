@@ -1068,6 +1068,7 @@ fn set_custom_behavior(file: &PythonFile, name: &str, custom: CustomBehavior) {
     );
 }
 
+/* TODO remove?
 fn set_custom_behavior_method(
     file: &PythonFile,
     class_name: &str,
@@ -1086,6 +1087,7 @@ fn set_custom_behavior_method(
         Locality::Stmt,
     );
 }
+*/
 
 fn setup_type_alias(typing: &PythonFile, name: &str, target_file: &PythonFile, target_name: &str) {
     let node_index = typing.symbol_table.lookup_symbol(name).unwrap();
