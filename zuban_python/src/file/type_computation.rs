@@ -1655,13 +1655,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             slice_type.iter(),
             type_var_likes,
             &|| Box::from("TODO alias name"),
-            |slf: &mut Self, given_count, expected_count| {
+            |slf: &mut Self, counts| {
                 slf.add_issue(
                     slice_type.as_node_ref(),
-                    IssueType::TypeAliasArgumentIssue {
-                        expected_count,
-                        given_count,
-                    },
+                    IssueType::TypeAliasArgumentIssue { counts },
                 );
             },
         );
@@ -1762,13 +1759,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             slice_type.iter(),
             &named_tuple.__new__.type_vars,
             &|| todo!(), //Box::from("TODO type name"),
-            |slf: &mut Self, given_count, expected_count| {
+            |slf: &mut Self, counts| {
                 slf.add_issue(
                     slice_type.as_node_ref(),
                     IssueType::TypeArgumentIssue {
                         class: named_tuple.name.as_str(db).into(),
-                        given_count,
-                        expected_count,
+                        counts,
                     },
                 );
             },
@@ -1800,15 +1796,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 slice_type.iter(),
                 type_var_likes,
                 &|| todo!(), //Box::from("TODO type name"),
-                |slf: &mut Self, given_count, expected_count| {
+                |slf: &mut Self, counts| {
                     slf.add_issue(
                         slice_type.as_node_ref(),
                         IssueType::TypeArgumentIssue {
                             class: typed_dict
                                 .name_or_fallback(&FormatData::new_short(db))
                                 .into(),
-                            given_count,
-                            expected_count,
+                            counts,
                         },
                     );
                 },
@@ -1910,13 +1905,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             iterator,
             type_var_likes,
             &|| Box::from(class_name),
-            |slf: &mut Self, given_count, expected_count| {
+            |slf: &mut Self, counts| {
                 slf.add_issue(
                     slice_type.as_node_ref(),
                     IssueType::TypeArgumentIssue {
                         class: Box::from(class_name),
-                        given_count,
-                        expected_count,
+                        counts,
                     },
                 );
             },
@@ -1999,10 +1993,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         mut iterator: impl Iterator<Item = SliceOrSimple<'x>>,
         type_var_likes: &TypeVarLikes,
         get_of: &impl Fn() -> Box<str>,
-        on_count_mismatch: impl FnOnce(&mut Self, usize, usize),
+        on_count_mismatch: impl FnOnce(&mut Self, GenericCounts),
     ) {
-        let mut given_count = generics.len();
-        let expected_count = type_var_likes.len();
+        let mut given = generics.len();
+        let expected = type_var_likes.len();
         for type_var_like in type_var_likes.iter().skip(generics.len()) {
             let generic_item = match type_var_like {
                 TypeVarLike::TypeVar(type_var) => {
@@ -2013,22 +2007,22 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             if let TupleTypeArguments::FixedLength(fixed) = tup.args.clone() {
                                 for t in rc_slice_into_vec(fixed) {
                                     generics.push(GenericItem::TypeArgument(t));
-                                    given_count += 1;
+                                    given += 1;
                                 }
                                 todo!()
                             }
                         }
-                        given_count += 1;
+                        given += 1;
                         GenericItem::TypeArgument(self.as_type(t, slice_content.as_node_ref()))
                     } else {
                         type_var_like.as_any_generic_item()
                     }
                 }
                 TypeVarLike::TypeVarTuple(_) => {
-                    let fetch = slice_type.iter().count() as isize + 1 - expected_count as isize;
+                    let fetch = slice_type.iter().count() as isize + 1 - expected as isize;
                     GenericItem::TypeArguments(TypeArguments {
                         args: if let Ok(fetch) = fetch.try_into() {
-                            given_count += 1;
+                            given += 1;
                             self.compute_tuple_types(iterator.by_ref().take(fetch))
                         } else {
                             // If not enough type arguments are given, an error is raised elsewhere.
@@ -2037,8 +2031,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     })
                 }
                 TypeVarLike::ParamSpec(_) => {
-                    given_count += 1;
-                    if expected_count == 1 && slice_type.iter().count() != 1 {
+                    given += 1;
+                    if expected == 1 && slice_type.iter().count() != 1 {
                         // PEP 612 allows us to write C[int, str] instead of C[[int, str]],
                         // because "for aesthetic purposes we allow these to be omitted".
                         let params = self.calculate_simplified_param_spec_generics(&mut iterator);
@@ -2047,7 +2041,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         let params = self.calculate_callable_params(
                             iterator.next().unwrap(),
                             true,
-                            expected_count == 1,
+                            expected == 1,
                         );
                         GenericItem::ParamSpecArgument(ParamSpecArgument::new(params, None))
                     }
@@ -2059,10 +2053,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             // Still calculate errors for the rest of the types given. After all they are still
             // expected to be types.
             self.compute_slice_type(slice_content);
-            given_count += 1;
+            given += 1;
         }
-        if given_count != expected_count {
-            on_count_mismatch(self, given_count, expected_count);
+        if given != expected {
+            on_count_mismatch(self, GenericCounts { given, expected });
             generics.clear();
             for missing_type_var in type_var_likes.iter() {
                 generics.push(missing_type_var.as_any_generic_item())
@@ -4301,4 +4295,10 @@ pub fn maybe_saved_annotation(node_ref: NodeRef) -> Option<&Type> {
 pub struct TypeCommentDetails<'db> {
     pub type_: Cow<'db, Type>,
     pub inferred: Inferred,
+}
+
+#[derive(Debug)]
+pub struct GenericCounts {
+    pub expected: usize,
+    pub given: usize,
 }

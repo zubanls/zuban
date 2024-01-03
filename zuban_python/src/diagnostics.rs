@@ -2,7 +2,7 @@ use parsa_python_ast::{CodeIndex, NodeIndex, Tree};
 
 use crate::{
     database::Database,
-    file::{File, PythonFile, OVERLAPPING_REVERSE_TO_NORMAL_METHODS},
+    file::{File, GenericCounts, PythonFile, OVERLAPPING_REVERSE_TO_NORMAL_METHODS},
     name::TreePosition,
     type_::{FunctionKind, StringSlice, TypeVarLike, Variance},
     utils::{join_with_commas, InsertOnlyVec},
@@ -56,8 +56,8 @@ pub(crate) enum IssueType {
     NoParentModule,
     TypeNotFound,
     UnexpectedTypeDeclaration,
-    TypeArgumentIssue { class: Box<str>, expected_count: usize, given_count: usize },
-    TypeAliasArgumentIssue { expected_count: usize, given_count: usize },
+    TypeArgumentIssue { class: Box<str>, counts: GenericCounts },
+    TypeAliasArgumentIssue { counts: GenericCounts },
     NotCallable { type_: Box<str> },
     UnknownFunctionNotCallable,
     AnyNotCallable,
@@ -638,18 +638,18 @@ impl<'db> Diagnostic<'db> {
                     ),
                 }
             }
-            TypeArgumentIssue{class, expected_count, given_count} => {
-                match expected_count {
-                    0 => format!("{class:?} expects no type arguments, but {given_count} given"),
-                    1 => format!("{class:?} expects {expected_count} type argument, but {given_count} given"),
-                    _ => format!("{class:?} expects {expected_count} type arguments, but {given_count} given"),
+            TypeArgumentIssue{class, counts} => {
+                match counts.expected {
+                    0 => format!("{class:?} expects no type arguments, but {} given", counts.given),
+                    1 => format!("{class:?} expects {} type argument, but {} given", counts.expected, counts.given),
+                    _ => format!("{class:?} expects {} type arguments, but {} given", counts.expected, counts.given),
                 }
             }
-            TypeAliasArgumentIssue{expected_count, given_count} => {
-                format!(
-                    "Bad number of arguments for type alias, expected: {expected_count}, given: {given_count}",
-                )
-            }
+            TypeAliasArgumentIssue{counts} => format!(
+                "Bad number of arguments for type alias, expected: {}, given: {}",
+                counts.expected,
+                counts.given,
+            ),
             ModuleNotFound{module_name} => format!(
                 "Cannot find implementation or library stub for module named {module_name:?}",
             ),

@@ -17,8 +17,8 @@ use inference::Inference;
 pub use python_file::{ComplexValues, PythonFile};
 pub use type_computation::{
     maybe_saved_annotation, use_cached_annotation_or_type_comment, use_cached_annotation_type,
-    use_cached_simple_generic_type, CalculatedBaseClass, TypeComputation, TypeComputationOrigin,
-    TypeVarCallbackReturn,
+    use_cached_simple_generic_type, CalculatedBaseClass, GenericCounts, TypeComputation,
+    TypeComputationOrigin, TypeVarCallbackReturn,
 };
 pub use type_var_finder::TypeVarFinder;
 pub use utils::{infer_index, infer_string_index, on_argument_type_error};
