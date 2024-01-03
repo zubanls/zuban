@@ -2616,13 +2616,17 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
                 ExpressionContent::ExpressionPart(ExpressionPart::Factor(f)) => {
                     let (sign, e) = f.unpack();
-                    if sign.as_code() == "-" {
+                    let s = sign.as_code();
+                    if matches!(s, "-" | "+") {
                         if let ExpressionPart::Atom(atom) = e {
                             if let AtomContent::Int(i) = atom.unpack() {
-                                if let Some(i) = i.parse() {
+                                if let Some(mut i) = i.parse() {
                                     let node_ref = NodeRef::new(self.inference.file, f.index());
+                                    if s == "-" {
+                                        i = -i;
+                                    }
                                     return TypeContent::Type(Type::Literal(Literal {
-                                        kind: LiteralKind::Int(-i),
+                                        kind: LiteralKind::Int(i),
                                         implicit: false,
                                     }));
                                 } else {

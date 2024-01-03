@@ -3,9 +3,6 @@ testBadEnumLoading
 testInvalidNamedTupleWithinFunction
 
 # mypy upgrade
-testFinalWithoutBool
-testFinalWithoutBoolButWithLen
-testUnaryOpLiteral
 testRecursiveNamedTupleTypedDict
 testNoIncrementalCrashOnTypedDictMethod
 testNoCrashOnUnImportedAnyNotRequired
@@ -1356,6 +1353,8 @@ testRegression11705_Strict
 testRegression11705_NoStrict
 testBinaryOperationsWithDynamicLeftOperand
 testBinaryOperationsWithDynamicAsRightOperand
+testFinalWithoutBool
+testFinalWithoutBoolButWithLen
 # or/and
 testBooleanAndOr
 testNonBooleanOr
