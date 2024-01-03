@@ -811,7 +811,7 @@ impl<'db> Diagnostic<'db> {
                 format!("Too many values to unpack ({expected} expected, {actual} provided)"),
             UnpackingAStringIsDisallowed => "Unpacking a string is disallowed".to_string(),
             StarredExpressionOnlyNoTarget =>
-                "Can use starred expression only as assignment target".to_string(),
+                "can't use starred expression here".to_string(),
             StmtOutsideFunction{keyword} => format!("{keyword:?} outside function"),
             YieldOrYieldFromInsideComprehension { keyword } => format!(
                 "{keyword:?} inside comprehension or generator expression"

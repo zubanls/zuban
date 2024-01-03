@@ -2,6 +2,22 @@
 testBadEnumLoading
 testInvalidNamedTupleWithinFunction
 
+# mypy upgrade
+testFinalWithoutBool
+testFinalWithoutBoolButWithLen
+testUnaryOpLiteral
+testRecursiveNamedTupleTypedDict
+testNoIncrementalCrashOnTypedDictMethod
+testNoCrashOnUnImportedAnyNotRequired
+testTypedDictWithClassLevelKeywords
+testNoIncrementalCrashOnInvalidEnumMethod
+testLambdaInferenceUsesNarrowedTypes
+testInferenceAgainstGenericCallableUnion
+testInferenceAgainstGenericCallbackProtoMultiple
+testGenericLambdaGenericMethodNoCrash
+testSelfTypeOnGenericClassObjectNewStyleBound
+testRecursiveSelfTypeCallMethodNoCrash
+
 # typeshed upgrade issues
 testEllipsis
 testInferringLvarTypesUnpackedFromIterableClassObject
@@ -15,6 +31,9 @@ testMatchProtocolAgainstOverloadWithMultipleMatchingItems
 
 # Check after next mypy upgrade
 testTypeVarTupleDisabled_no_incomplete
+
+# "Covariant override of a mutable attribute (base class "C" defined the type as "float", expressi on has type "int")  [mutable-override]"
+testCovariantMutableOverride
 
 # 3.12 type var syntax
 test695TypeAlias
@@ -314,6 +333,9 @@ testParamSpecArgumentParamInferenceRegular
 testParamSpecApplyPosVsNamedOptional
 testParamSpecConcatenateSelfType
 testParamSpecCorrectParameterNameInference
+testOverloadingWithParamSpec
+testParamSpecGenericWithNamedArg1
+testParamSpecGenericWithNamedArg2
 
 # Are generics in self types always bound to the function?
 # https://github.com/python/typing/discussions/1340
@@ -574,6 +596,25 @@ testTypeVarTupleParamSpecInteraction
 testTypeVarTupleEmptySpecialCase
 testTypeVarTupleRuntimeTypeApplication
 testTypeVarTupleErrors
+testVariadicAliasMultipleUnpacks
+testVariadicTupleTupleSubclassPrefixSuffix
+testVariadicClassSubclassInit
+testVariadicClassGenericSelf
+testVariadicClassNewStyleSelf
+testVariadicTupleDataclass
+testVariadicTupleInProtocol
+testVariadicTupleCollectionCheck
+testJoinOfVariadicTupleCallablesNoCrash
+testTypeVarTupleBothUnpacksSimple
+testTypeVarTupleBothUnpacksCallable
+testTypeVarTupleBothUnpacksApplication
+testUnpackTupleSpecialCaseNoCrash
+testVariadicTupleContextNoCrash
+testAliasToCallableWithUnpack
+testAliasToCallableWithUnpack2
+testVariadicClassFineUpdateValidToInvalidCached-only_when_cache
+testVariadicClassFineUpdateValidToInvalid-only_when_nocache
+testVariadicClassFineUpdateInvalidToValid
 # typing_extensions.Unpack
 testTypeVarTupleCallable
 testTupleWithStarExpr2
@@ -929,6 +970,7 @@ testInitSubclassTooFewArgs2
 testInitSubclassWithImports
 testInitSubclassUnannotated
 testTooManyArgsForObject
+testNoClassKeywordsForNamedTuple
 
 # __setattr__ and __getattr__
 testGetattrAndSetattr
@@ -2026,7 +2068,7 @@ testFlexibleAlias3
 testTypingSelfRedundantWarning
 testTypingSelfRedundantWarning_pep585
 
-# --strict-equality strict equality
+# --strict-equality strict equality "Non-overlapping equality check (left operand type: "int", right operand type: "str")"
 testStrictEqualityEq
 testStrictEqualityIs
 testStrictEqualityContains
@@ -2052,6 +2094,7 @@ testTypedDictOverlapWithDictNonOverlapping
 testTypedDictOverlapWithDictNonTotalNonOverlapping
 testTypedDictOverlapWithDictEmpty
 testStrictAndStrictEquality
+testStrictEqualityWithRecursiveMapTypes
 
 # --show-column-numbers and tuple targets
 testColumnsAssignment
@@ -2190,6 +2233,10 @@ testNamespacePkgWStubs
 testNamespacePkgWStubsWithNamespacePackagesFlag
 testTypedPkgNamespaceRegFromImportTwiceMissing
 testTypedPkgNamespaceRegFromImportTwiceMissing2
+
+# --enable-incomplete-feature=PreciseTupleTypes
+testTupleWithStarExpr2Precise
+testTupleWithStarExpr3Precise
 
 # --enable-error-code redundant-expr
 # "If condition is always false"
@@ -2616,6 +2663,7 @@ testNewAnalyzerAliasToNotReadyNestedClass
 # "Recursive types are not allowed at function scope"
 testNoRecursiveTuplesAtFunctionScope
 testRecursiveBoundFunctionScopeNoCrash
+testNewAnalyzerReportLoopInMRO2
 
 # Won't support: Mypy internals
 testIncrCacheBustedProtocol
