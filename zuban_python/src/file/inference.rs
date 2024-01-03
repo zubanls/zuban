@@ -2785,7 +2785,7 @@ pub fn first_defined_name(file: &PythonFile, name_index: NodeIndex) -> Option<No
     if !point.calculated() {
         return None;
     }
-    debug_assert_eq!(point.type_(), PointType::MultiDefinition);
+    debug_assert_eq!(point.type_(), PointType::MultiDefinition, "{point:?}");
     let mut current = point.node_index();
     loop {
         let point = file.points.get(current);
