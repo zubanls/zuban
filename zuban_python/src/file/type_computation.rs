@@ -1997,6 +1997,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     ) {
         let mut given = generics.len();
         let expected = type_var_likes.len();
+        let mut at_least_expected = false;
         for type_var_like in type_var_likes.iter().skip(generics.len()) {
             let generic_item = match type_var_like {
                 TypeVarLike::TypeVar(type_var) => {
@@ -2020,6 +2021,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
                 TypeVarLike::TypeVarTuple(_) => {
                     let fetch = slice_type.iter().count() as isize + 1 - expected as isize;
+                    at_least_expected = true;
                     GenericItem::TypeArguments(TypeArguments {
                         args: if let Ok(fetch) = fetch.try_into() {
                             given += 1;
@@ -2056,7 +2058,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             given += 1;
         }
         if given != expected {
-            on_count_mismatch(self, GenericCounts { given, expected });
+            on_count_mismatch(
+                self,
+                GenericCounts {
+                    given,
+                    expected: expected - at_least_expected as usize,
+                    at_least_expected,
+                },
+            );
             generics.clear();
             for missing_type_var in type_var_likes.iter() {
                 generics.push(missing_type_var.as_any_generic_item())
@@ -4301,4 +4310,5 @@ pub struct TypeCommentDetails<'db> {
 pub struct GenericCounts {
     pub expected: usize,
     pub given: usize,
+    pub at_least_expected: bool,
 }

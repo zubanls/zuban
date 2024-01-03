@@ -639,14 +639,27 @@ impl<'db> Diagnostic<'db> {
                 }
             }
             TypeArgumentIssue{class, counts} => {
-                match counts.expected {
-                    0 => format!("{class:?} expects no type arguments, but {} given", counts.given),
-                    1 => format!("{class:?} expects {} type argument, but {} given", counts.expected, counts.given),
-                    _ => format!("{class:?} expects {} type arguments, but {} given", counts.expected, counts.given),
+                if counts.at_least_expected {
+                    format!(
+                        "Bad number of arguments, expected: at least {}, given: {}",
+                        counts.expected,
+                        counts.given,
+                    )
+                } else {
+                    match counts.expected {
+                        0 => format!("{class:?} expects no type arguments, but {} given", counts.given),
+                        1 => format!("{class:?} expects {} type argument, but {} given", counts.expected, counts.given),
+                        _ => format!("{class:?} expects {} type arguments, but {} given", counts.expected, counts.given),
+                    }
                 }
             }
             TypeAliasArgumentIssue{counts} => format!(
-                "Bad number of arguments for type alias, expected: {}, given: {}",
+                "Bad number of arguments for type alias, expected: {}{}, given: {}",
+                if counts.at_least_expected {
+                    "at least "
+                } else {
+                    ""
+                },
                 counts.expected,
                 counts.given,
             ),
