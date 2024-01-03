@@ -1,6 +1,7 @@
 # Next up
 testBadEnumLoading
 testInvalidNamedTupleWithinFunction
+testTypingExtensionsNewType
 
 # mypy upgrade
 testFinalWithoutBool
@@ -17,17 +18,6 @@ testInferenceAgainstGenericCallbackProtoMultiple
 testGenericLambdaGenericMethodNoCrash
 testSelfTypeOnGenericClassObjectNewStyleBound
 testRecursiveSelfTypeCallMethodNoCrash
-
-# typeshed upgrade issues
-testEllipsis
-testInferringLvarTypesUnpackedFromIterableClassObject
-testEllipsisInitializerInStubFileWithoutType
-testEllipsisInitializerInModule
-testEllipsisDefaultArgValueInStub2
-testEllipsisDefaultArgValueInNonStubsOverload
-testTypingExtensionsNewType
-testOverloadTwoTypeArgs
-testMatchProtocolAgainstOverloadWithMultipleMatchingItems
 
 # Check after next mypy upgrade
 testTypeVarTupleDisabled_no_incomplete
