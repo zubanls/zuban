@@ -91,7 +91,6 @@ pub struct PythonState {
     builtins_classmethod_index: NodeIndex,
     builtins_staticmethod_index: NodeIndex,
     builtins_property_index: NodeIndex,
-    builtins_ellipsis_index: NodeIndex,
     pub builtins_int_mro: Box<[BaseClass]>,
     pub builtins_bool_mro: Box<[BaseClass]>,
     pub builtins_str_mro: Box<[BaseClass]>,
@@ -117,6 +116,7 @@ pub struct PythonState {
     pub typing_typed_dict_bases: Box<[BaseClass]>,
     types_module_type_index: NodeIndex,
     types_none_type_index: NodeIndex,
+    types_ellipsis_type_index: NodeIndex,
     collections_namedtuple_index: NodeIndex,
     abc_abc_meta_index: NodeIndex,
     abc_abstractmethod_index: NodeIndex,
@@ -188,13 +188,13 @@ impl PythonState {
             builtins_classmethod_index: 0,
             builtins_staticmethod_index: 0,
             builtins_property_index: 0,
-            builtins_ellipsis_index: 0,
             builtins_int_mro: Box::new([]),   // will be set later
             builtins_bool_mro: Box::new([]),  // will be set later
             builtins_str_mro: Box::new([]),   // will be set later
             builtins_bytes_mro: Box::new([]), // will be set later
             types_module_type_index: 0,
             types_none_type_index: 0,
+            types_ellipsis_type_index: 0,
             typeshed_supports_keys_and_get_item_index: 0,
             typing_namedtuple_index: 0,
             typing_type_var: 0,
@@ -380,7 +380,6 @@ impl PythonState {
         cache_index!(builtins_classmethod_index, db, builtins, "classmethod");
         cache_index!(builtins_staticmethod_index, db, builtins, "staticmethod");
         cache_index!(builtins_property_index, db, builtins, "property");
-        cache_index!(builtins_ellipsis_index, db, builtins, "ellipsis");
         cache_index!(
             typeshed_supports_keys_and_get_item_index,
             db,
@@ -401,6 +400,7 @@ impl PythonState {
         cache_index!(typing_mapping_index, db, typing, "Mapping");
         cache_index!(typing_special_form_index, db, typing, "_SpecialForm");
         cache_index!(types_none_type_index, db, types, "NoneType");
+        cache_index!(types_ellipsis_type_index, db, types, "EllipsisType");
         cache_index!(abc_abstractproperty_index, db, abc, "abstractproperty");
         cache_index!(
             functools_cached_property_index,
@@ -647,7 +647,6 @@ impl PythonState {
     attribute_node_ref!(builtins, pub classmethod_node_ref, builtins_classmethod_index);
     attribute_node_ref!(builtins, pub staticmethod_node_ref, builtins_staticmethod_index);
     attribute_node_ref!(builtins, pub property_node_ref, builtins_property_index);
-    attribute_node_ref!(builtins, ellipsis_node_ref, builtins_ellipsis_index);
     attribute_node_ref!(builtins, pub function_node_ref, builtins_function_index);
     attribute_node_ref!(
         builtins,
@@ -683,6 +682,7 @@ impl PythonState {
     );
     attribute_node_ref!(types, none_type_node_ref, types_none_type_index);
     attribute_node_ref!(types, module_node_ref, types_module_type_index);
+    attribute_node_ref!(types, ellipsis_node_ref, types_ellipsis_type_index);
     attribute_node_ref!(
         typeshed,
         pub supports_keys_and_get_item_node_ref,
