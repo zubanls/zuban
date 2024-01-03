@@ -1,9 +1,6 @@
 # Next up
 testBadEnumLoading
 testInvalidNamedTupleWithinFunction
-testInferenceAgainstGenericCallableUnion
-testInferenceAgainstGenericCallbackProtoMultiple
-testRecursiveSelfTypeCallMethodNoCrash
 
 # 3.12 type var syntax
 test695TypeAlias
@@ -232,7 +229,9 @@ testInferenceAgainstGenericVariadicPopOn
 testInferenceAgainstGenericVariadicVsVariadic
 testInferenceAgainstGenericVariadicVsVariadicConcatenate
 testInferenceAgainstGenericVariadicSecondary
+testInferenceAgainstGenericCallableUnion
 testGenericLambdaGenericMethodNoCrash
+testRecursiveSelfTypeCallMethodNoCrash
 testDefaultDict
 testGenericInferenceWithDataclass
 testGenericInferenceWithItertools
