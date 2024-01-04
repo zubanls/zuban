@@ -1184,11 +1184,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         self.as_type(t, slice.as_node_ref())
     }
 
-    fn compute_slice_type_or_unpack(&mut self, slice: SliceOrSimple) -> TuplePart {
-        let t = self.compute_slice_type_content(slice);
-        self.convert_slice_type_or_tuple_unpack(t, slice)
-    }
-
     fn compute_tuple_types<'s>(
         &mut self,
         iterator: impl Iterator<Item = SliceOrSimple<'s>>,
@@ -1197,7 +1192,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut after = vec![];
         let mut unpack = None;
         for s in iterator {
-            match self.compute_slice_type_or_unpack(s) {
+            let t = self.compute_slice_type_content(s);
+            match self.convert_slice_type_or_tuple_unpack(t, s) {
                 TuplePart::Type(t) => {
                     if unpack.is_none() {
                         before.push(t)
