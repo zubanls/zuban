@@ -2881,6 +2881,7 @@ pub enum SliceContent<'db> {
     NamedExpression(NamedExpression<'db>),
 }
 
+#[derive(Clone)]
 pub struct SliceIterator<'db>(SiblingIterator<'db>);
 
 impl<'db> Iterator for SliceIterator<'db> {

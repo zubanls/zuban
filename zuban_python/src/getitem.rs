@@ -249,6 +249,7 @@ impl<'file> SliceOrSimple<'file> {
     }
 }
 
+#[derive(Clone)]
 pub struct SliceIterator<'file>(&'file PythonFile, ASTSliceIterator<'file>);
 
 impl<'file> Iterator for SliceIterator<'file> {
@@ -269,6 +270,7 @@ impl<'file> Iterator for SliceIterator<'file> {
     }
 }
 
+#[derive(Clone)]
 pub enum SliceTypeIterator<'file> {
     SliceIterator(SliceIterator<'file>),
     SliceOrSimple(SliceOrSimple<'file>),

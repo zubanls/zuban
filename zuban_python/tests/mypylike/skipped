@@ -2,6 +2,8 @@
 testBadEnumLoading
 testInvalidNamedTupleWithinFunction
 testVariadicUnpackWithRegularInstance
+testVariadicAliasFewArgs
+testTooFewItemsInInstanceArguments
 
 # 3.12 type var syntax
 test695TypeAlias

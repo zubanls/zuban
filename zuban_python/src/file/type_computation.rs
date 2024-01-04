@@ -1186,9 +1186,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 
     fn compute_tuple_types<'a>(
         &mut self,
-        iterator: impl Iterator<Item = SliceOrSimple<'a>>,
+        iterator: impl Clone + Iterator<Item = SliceOrSimple<'a>>,
     ) -> TupleTypeArguments {
-        TypeArgIterator::new(iterator).into_type_arguments(self)
+        TypeArgIterator::new(iterator).as_type_arguments(self)
     }
 
     fn convert_slice_type_or_tuple_unpack(
@@ -1949,9 +1949,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut at_least_expected = false;
 
         let mut type_args = TypeArgIterator::new(iterator);
-        let mut type_var_iterator = type_var_likes.iter().skip(generics.len());
+        let mut type_var_iterator = type_var_likes.iter().enumerate().skip(generics.len());
         let mut is_single_param_spec = false;
-        for type_var_like in type_var_iterator.by_ref() {
+        for (i, type_var_like) in type_var_iterator.by_ref() {
             let generic_item = match type_var_like {
                 TypeVarLike::TypeVar(type_var) => {
                     if let Some((node_ref, t)) = type_args.next_type_argument(self) {
@@ -1963,17 +1963,34 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     }
                 }
                 TypeVarLike::TypeVarTuple(_) => {
-                    let fetch = slice_type.iter().count() as isize + 1 - expected as isize;
+                    given += 1;
+                    let slice_type_len = slice_type.iter().count();
+                    for (i, type_var_like) in type_var_iterator.by_ref().rev() {
+                        let generic_item = match type_var_like {
+                            TypeVarLike::TypeVar(type_var) => {
+                                let Some((from, t)) = type_args.next_type_argument_back(self) else {
+                                    break
+                                } ;
+                                given += 1;
+                                self.check_constraints(&type_var, from, |_| t.clone(), get_of);
+                                GenericItem::TypeArgument(t)
+                            }
+                            TypeVarLike::ParamSpec(param_spec) => {
+                                todo!()
+                            }
+                            TypeVarLike::TypeVarTuple(_) => unreachable!(),
+                        };
+
+                        generics.insert(i - 1, generic_item);
+                    }
+                    generics.insert(
+                        i,
+                        GenericItem::TypeArguments(TypeArguments {
+                            args: type_args.as_type_arguments(self),
+                        }),
+                    );
                     at_least_expected = true;
-                    GenericItem::TypeArguments(TypeArguments {
-                        args: if let Ok(fetch) = fetch.try_into() {
-                            given += 1;
-                            self.compute_tuple_types(type_args.slices.by_ref().take(fetch))
-                        } else {
-                            // If not enough type arguments are given, an error is raised elsewhere.
-                            TupleTypeArguments::FixedLength(Rc::new([]))
-                        },
-                    })
+                    break;
                 }
                 TypeVarLike::ParamSpec(_) => {
                     given += 1;
@@ -2001,9 +2018,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
         }
         if given != expected {
-            let at_least_expected = type_var_likes
-                .iter()
-                .any(|tvl| matches!(tvl, TypeVarLike::TypeVarTuple(_)));
+            at_least_expected |=
+                type_var_iterator.any(|(_, tvl)| matches!(tvl, TypeVarLike::TypeVarTuple(_)));
             on_count_mismatch(
                 self,
                 GenericCounts {
@@ -3883,13 +3899,15 @@ enum TuplePart {
 struct TypeArgIterator<'a, I> {
     slices: I,
     current_unpack: Option<(NodeRef<'a>, TupleUnpack)>,
+    reverse_already_analyzed: Option<NodeRef<'a>>,
 }
 
-impl<'a, I: Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
+impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
     fn new(slices: I) -> Self {
         Self {
             slices,
             current_unpack: None,
+            reverse_already_analyzed: None,
         }
     }
 
@@ -3928,6 +3946,34 @@ impl<'a, I: Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
         }
     }
 
+    fn next_type_argument_back(
+        &mut self,
+        type_computation: &mut TypeComputation,
+    ) -> Option<(NodeRef<'a>, Type)> {
+        self.reverse_already_analyzed;
+        let mut current = None;
+        // slices are not reversible, becuase of how the AST is structured. This is not used often,
+        // just clone the iterator.
+        for s in self.slices.clone() {
+            if let Some(already_analyzed) = self.reverse_already_analyzed {
+                if s.as_node_ref() == already_analyzed {
+                    break;
+                }
+            }
+            current = Some(s);
+        }
+        let Some(current_slice_part) = current else {
+            return None
+        };
+        let from = current_slice_part.as_node_ref();
+        self.reverse_already_analyzed = Some(from);
+        let t = type_computation.compute_slice_type_content(current_slice_part);
+        match type_computation.convert_slice_type_or_tuple_unpack(t, current_slice_part) {
+            TuplePart::Type(t) => Some((from, t)),
+            TuplePart::TupleUnpack(u) => todo!(),
+        }
+    }
+
     fn next_param_spec(
         &mut self,
         type_computation: &mut TypeComputation,
@@ -3944,11 +3990,16 @@ impl<'a, I: Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
         Some(ParamSpecArgument::new(params, None))
     }
 
-    fn into_type_arguments(self, type_computation: &mut TypeComputation) -> TupleTypeArguments {
+    fn as_type_arguments(&mut self, type_computation: &mut TypeComputation) -> TupleTypeArguments {
         let mut before = vec![];
         let mut after = vec![];
-        let mut unpack = self.current_unpack.map(|t| t.1);
-        for s in self.slices {
+        let mut unpack = self.current_unpack.take().map(|t| t.1);
+        for s in self.slices.by_ref() {
+            if let Some(already_analyzed) = self.reverse_already_analyzed {
+                if already_analyzed == s.as_node_ref() {
+                    break;
+                }
+            }
             let t = type_computation.compute_slice_type_content(s);
             match type_computation.convert_slice_type_or_tuple_unpack(t, s) {
                 TuplePart::Type(t) => {
