@@ -1946,7 +1946,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     ) {
         let mut given = generics.len();
         let expected = type_var_likes.len();
-        let mut at_least_expected = false;
+        let has_type_var_tuple = type_var_likes
+            .iter()
+            .any(|tvl| matches!(tvl, TypeVarLike::TypeVarTuple(_)));
 
         let mut type_args = TypeArgIterator::new(iterator);
         let mut type_var_iterator = type_var_likes.iter().enumerate().skip(generics.len());
@@ -1954,7 +1956,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         'outer: for (i, type_var_like) in type_var_iterator.by_ref() {
             let generic_item = match type_var_like {
                 TypeVarLike::TypeVar(type_var) => {
-                    if let Some((node_ref, t)) = type_args.next_type_argument(self) {
+                    if let Some((node_ref, t)) =
+                        type_args.next_type_argument(self, has_type_var_tuple)
+                    {
                         given += 1;
                         self.check_constraints(&type_var, node_ref, |_| t.clone(), get_of);
                         GenericItem::TypeArgument(t)
@@ -1964,7 +1968,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
                 TypeVarLike::TypeVarTuple(_) => {
                     let slice_type_len = slice_type.iter().count();
-                    at_least_expected = true;
                     for (i, type_var_like) in type_var_iterator.by_ref().rev() {
                         let generic_item = match type_var_like {
                             TypeVarLike::TypeVar(type_var) => {
@@ -2011,21 +2014,19 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             generics.push(generic_item);
         }
         if !is_single_param_spec {
-            while let Some(_) = type_args.next_type_argument(self) {
+            while let Some(_) = type_args.next_type_argument(self, has_type_var_tuple) {
                 // Still calculate errors for the rest of the types given. After all they are still
                 // expected to be types.
                 given += 1;
             }
         }
         if given != expected {
-            at_least_expected |=
-                type_var_iterator.any(|(_, tvl)| matches!(tvl, TypeVarLike::TypeVarTuple(_)));
             on_count_mismatch(
                 self,
                 GenericCounts {
                     given,
-                    expected: expected - at_least_expected as usize,
-                    at_least_expected,
+                    expected: expected - has_type_var_tuple as usize,
+                    at_least_expected: has_type_var_tuple,
                 },
             );
             generics.clear();
@@ -3914,6 +3915,7 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
     fn next_type_argument(
         &mut self,
         type_computation: &mut TypeComputation,
+        has_type_var_tuple: bool,
     ) -> Option<(NodeRef<'a>, Type)> {
         let Some(s) = self.slices.next() else {
             return None
@@ -3928,21 +3930,25 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
                 },
             };
         }
-        let t = type_computation.compute_slice_type_content(s);
-        match type_computation.convert_slice_type_or_tuple_unpack(t, s) {
-            TuplePart::Type(t) => Some((s.as_node_ref(), t)),
-            TuplePart::TupleUnpack(u) => {
-                if self.current_unpack.is_some() {
-                    type_computation.add_issue(
-                        s.as_node_ref(),
-                        IssueType::MoreThanOneUnpackTypeIsNotAllowed,
-                    );
-                    todo!()
-                } else {
-                    self.current_unpack = Some((s.as_node_ref(), u));
+        if has_type_var_tuple {
+            let t = type_computation.compute_slice_type_content(s);
+            match type_computation.convert_slice_type_or_tuple_unpack(t, s) {
+                TuplePart::Type(t) => Some((s.as_node_ref(), t)),
+                TuplePart::TupleUnpack(u) => {
+                    if self.current_unpack.is_some() {
+                        type_computation.add_issue(
+                            s.as_node_ref(),
+                            IssueType::MoreThanOneUnpackTypeIsNotAllowed,
+                        );
+                        todo!()
+                    } else {
+                        self.current_unpack = Some((s.as_node_ref(), u));
+                    }
+                    self.next_type_argument(type_computation, has_type_var_tuple)
                 }
-                self.next_type_argument(type_computation)
             }
+        } else {
+            Some((s.as_node_ref(), type_computation.compute_slice_type(s)))
         }
     }
 
