@@ -1184,63 +1184,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         self.as_type(t, slice.as_node_ref())
     }
 
-    fn compute_tuple_types<'s>(
+    fn compute_tuple_types<'a>(
         &mut self,
-        iterator: impl Iterator<Item = SliceOrSimple<'s>>,
+        iterator: impl Iterator<Item = SliceOrSimple<'a>>,
     ) -> TupleTypeArguments {
-        let mut before = vec![];
-        let mut after = vec![];
-        let mut unpack = None;
-        for s in iterator {
-            let t = self.compute_slice_type_content(s);
-            match self.convert_slice_type_or_tuple_unpack(t, s) {
-                TuplePart::Type(t) => {
-                    if unpack.is_none() {
-                        before.push(t)
-                    } else {
-                        after.push(t)
-                    }
-                }
-                TuplePart::TupleUnpack(u) => {
-                    if unpack.is_some() {
-                        self.add_issue(
-                            s.as_node_ref(),
-                            IssueType::MoreThanOneUnpackTypeIsNotAllowed,
-                        )
-                    } else {
-                        unpack = Some(u)
-                    }
-                }
-            }
-        }
-        if let Some(unpack) = unpack {
-            match unpack {
-                TupleUnpack::Tuple(tup)
-                    if before.is_empty()
-                        && after.is_empty()
-                        && !matches!(tup.args, TupleTypeArguments::WithUnpack(_)) =>
-                {
-                    rc_unwrap_or_clone(tup).args
-                }
-                TupleUnpack::Tuple(tup)
-                    if matches!(tup.args, TupleTypeArguments::FixedLength(_)) =>
-                {
-                    let TupleTypeArguments::FixedLength(unpacked) = rc_unwrap_or_clone(tup).args else {
-                        unreachable!()
-                    };
-                    before.append(&mut rc_slice_into_vec(unpacked));
-                    before.append(&mut after);
-                    TupleTypeArguments::FixedLength(Rc::from(before))
-                }
-                _ => TupleTypeArguments::WithUnpack(WithUnpack {
-                    before: before.into(),
-                    unpack,
-                    after: after.into(),
-                }),
-            }
-        } else {
-            TupleTypeArguments::FixedLength(before.into())
-        }
+        TypeArgIterator::new(iterator).into_type_arguments(self)
     }
 
     fn convert_slice_type_or_tuple_unpack(
@@ -1919,7 +1867,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         class: Class,
         slice_type: SliceType<'x>,
         generics: &mut Vec<GenericItem>,
-        iterator: &mut impl Iterator<Item = SliceOrSimple<'x>>,
+        iterator: &mut SliceTypeIterator,
         tvs: &TypeVarLikes,
         primary: Option<Primary>,
     ) -> Option<(NodeRef<'db>, ClassGenerics)> {
@@ -1986,7 +1934,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         &mut self,
         slice_type: SliceType,
         generics: &mut Vec<GenericItem>,
-        mut iterator: impl Iterator<Item = SliceOrSimple<'x>>,
+        mut iterator: SliceTypeIterator,
         type_var_likes: &TypeVarLikes,
         get_of: &impl Fn() -> Box<str>,
         on_count_mismatch: impl FnOnce(&mut Self, GenericCounts),
@@ -1994,7 +1942,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut given = generics.len();
         let expected = type_var_likes.len();
         let mut at_least_expected = false;
-        for type_var_like in type_var_likes.iter().skip(generics.len()) {
+
+        let mut type_var_iterator = type_var_likes.iter().skip(generics.len());
+        for type_var_like in type_var_iterator.by_ref() {
             let generic_item = match type_var_like {
                 TypeVarLike::TypeVar(type_var) => {
                     if let Some(slice_content) = iterator.next() {
@@ -3928,6 +3878,112 @@ fn save_alias(alias_origin: NodeRef, alias: TypeAlias) {
 enum TuplePart {
     Type(Type),
     TupleUnpack(TupleUnpack),
+}
+
+struct TypeArgIterator<I> {
+    slices: I,
+    current_unpack: Option<TupleUnpack>,
+}
+
+impl<'a, I: Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<I> {
+    fn new(slices: I) -> Self {
+        Self {
+            slices,
+            current_unpack: None,
+        }
+    }
+
+    fn next_type_argument(&mut self, type_computation: &mut TypeComputation) -> Option<Type> {
+        let Some(s) = self.slices.next() else {
+            return None
+        };
+        if let Some(unpack) = self.current_unpack.as_ref() {
+            return match unpack {
+                TupleUnpack::TypeVarTuple(_) => todo!(),
+                TupleUnpack::Tuple(tup) => match &tup.args {
+                    TupleTypeArguments::WithUnpack(with_unpack) => todo!(),
+                    TupleTypeArguments::FixedLength(ts) => todo!(),
+                    TupleTypeArguments::ArbitraryLength(t) => todo!(),
+                },
+            };
+        }
+        let t = type_computation.compute_slice_type_content(s);
+        match type_computation.convert_slice_type_or_tuple_unpack(t, s) {
+            TuplePart::Type(t) => Some(t),
+            TuplePart::TupleUnpack(u) => {
+                if self.current_unpack.is_some() {
+                    type_computation.add_issue(
+                        s.as_node_ref(),
+                        IssueType::MoreThanOneUnpackTypeIsNotAllowed,
+                    );
+                    todo!()
+                } else {
+                    self.current_unpack = Some(u);
+                }
+                self.next_type_argument(type_computation)
+            }
+        }
+    }
+
+    fn next_param_spec(&mut self, type_computation: &mut TypeComputation) -> ParamSpecArgument {
+        todo!()
+    }
+
+    fn into_type_arguments(self, type_computation: &mut TypeComputation) -> TupleTypeArguments {
+        let mut before = vec![];
+        let mut after = vec![];
+        let mut unpack = self.current_unpack;
+        for s in self.slices {
+            let t = type_computation.compute_slice_type_content(s);
+            match type_computation.convert_slice_type_or_tuple_unpack(t, s) {
+                TuplePart::Type(t) => {
+                    if unpack.is_none() {
+                        before.push(t)
+                    } else {
+                        after.push(t)
+                    }
+                }
+                TuplePart::TupleUnpack(u) => {
+                    if unpack.is_some() {
+                        type_computation.add_issue(
+                            s.as_node_ref(),
+                            IssueType::MoreThanOneUnpackTypeIsNotAllowed,
+                        )
+                    } else {
+                        unpack = Some(u)
+                    }
+                }
+            }
+        }
+        if let Some(unpack) = unpack {
+            match unpack {
+                TupleUnpack::Tuple(tup)
+                    if before.is_empty()
+                        && after.is_empty()
+                        && !matches!(tup.args, TupleTypeArguments::WithUnpack(_)) =>
+                {
+                    rc_unwrap_or_clone(tup).args
+                }
+                TupleUnpack::Tuple(tup)
+                    if matches!(tup.args, TupleTypeArguments::FixedLength(_)) =>
+                {
+                    let TupleTypeArguments::FixedLength(unpacked) = rc_unwrap_or_clone(tup).args else {
+                        unreachable!()
+                    };
+                    before.append(&mut rc_slice_into_vec(unpacked));
+                    before.append(&mut after);
+                    TupleTypeArguments::FixedLength(Rc::from(before))
+                }
+                _ => TupleTypeArguments::WithUnpack(WithUnpack {
+                    before: before.into(),
+                    unpack,
+                    after: after.into(),
+                }),
+            }
+        } else {
+            TupleTypeArguments::FixedLength(before.into())
+        }
+    }
 }
 
 pub(super) fn assignment_type_node_ref<'x>(
