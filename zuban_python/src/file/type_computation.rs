@@ -1613,7 +1613,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     fn check_constraints(
         &mut self,
         type_var: &TypeVar,
-        s: &SliceOrSimple,
+        node_ref: NodeRef,
         as_type: impl Fn(&mut Self) -> Type,
         get_of: impl FnOnce() -> Box<str>,
     ) {
@@ -1623,7 +1623,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 let actual = as_type(self);
                 let i_s = &mut self.inference.i_s;
                 if !bound.is_simple_super_type_of(i_s, &actual).bool() {
-                    s.as_node_ref().add_issue(
+                    node_ref.add_issue(
                         i_s,
                         IssueType::TypeVarBoundViolation {
                             actual: actual.format_short(i_s.db),
@@ -1652,7 +1652,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     .iter()
                     .any(|t| t.is_simple_super_type_of(i_s, &t2).bool())
                 {
-                    s.as_node_ref().add_issue(
+                    node_ref.add_issue(
                         i_s,
                         IssueType::InvalidTypeVarValue {
                             type_var_name: Box::from(type_var.name(i_s.db)),
@@ -1882,7 +1882,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 // Performance: This could be optimized to not create new objects all the time.
                 self.check_constraints(
                     type_var,
-                    &slice_content,
+                    slice_content.as_node_ref(),
                     |slf| slf.as_type(t.clone(), slice_content.as_node_ref()),
                     || Box::from(class.name()),
                 );
@@ -1939,7 +1939,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         &mut self,
         slice_type: SliceType,
         generics: &mut Vec<GenericItem>,
-        mut iterator: SliceTypeIterator,
+        iterator: SliceTypeIterator,
         type_var_likes: &TypeVarLikes,
         get_of: &impl Fn() -> Box<str>,
         on_count_mismatch: impl FnOnce(&mut Self, GenericCounts),
@@ -1948,27 +1948,18 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let expected = type_var_likes.len();
         let mut at_least_expected = false;
 
+        let mut type_args = TypeArgIterator::new(iterator);
         let mut type_var_iterator = type_var_likes.iter().skip(generics.len());
+        let mut is_single_param_spec = false;
         for type_var_like in type_var_iterator.by_ref() {
             let generic_item = match type_var_like {
                 TypeVarLike::TypeVar(type_var) => {
-                    if let Some(slice_content) = iterator.next() {
-                        let t = self.compute_slice_type_content(slice_content);
-                        if let TypeContent::Unpacked(TypeOrUnpack::Type(Type::Tuple(tup))) = &t {
-                            if let TupleTypeArguments::FixedLength(fixed) = tup.args.clone() {
-                                for t in rc_slice_into_vec(fixed) {
-                                    generics.push(GenericItem::TypeArgument(t));
-                                    given += 1;
-                                }
-                                todo!()
-                            }
-                        }
+                    if let Some((node_ref, t)) = type_args.next_type_argument(self) {
                         given += 1;
-                        let t = self.as_type(t, slice_content.as_node_ref());
-                        self.check_constraints(&type_var, &slice_content, |_| t.clone(), get_of);
+                        self.check_constraints(&type_var, node_ref, |_| t.clone(), get_of);
                         GenericItem::TypeArgument(t)
                     } else {
-                        type_var_like.as_any_generic_item()
+                        break;
                     }
                 }
                 TypeVarLike::TypeVarTuple(_) => {
@@ -1977,7 +1968,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     GenericItem::TypeArguments(TypeArguments {
                         args: if let Ok(fetch) = fetch.try_into() {
                             given += 1;
-                            self.compute_tuple_types(iterator.by_ref().take(fetch))
+                            self.compute_tuple_types(type_args.slices.by_ref().take(fetch))
                         } else {
                             // If not enough type arguments are given, an error is raised elsewhere.
                             TupleTypeArguments::FixedLength(Rc::new([]))
@@ -1989,27 +1980,30 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     if expected == 1 && slice_type.iter().count() != 1 {
                         // PEP 612 allows us to write C[int, str] instead of C[[int, str]],
                         // because "for aesthetic purposes we allow these to be omitted".
-                        let params = self.calculate_simplified_param_spec_generics(&mut iterator);
+                        let params =
+                            self.calculate_simplified_param_spec_generics(&mut slice_type.iter());
+                        is_single_param_spec = true;
                         GenericItem::ParamSpecArgument(ParamSpecArgument::new(params, None))
+                    } else if let Some(spec) = type_args.next_param_spec(self, expected == 1) {
+                        GenericItem::ParamSpecArgument(spec)
                     } else {
-                        let params = self.calculate_callable_params(
-                            iterator.next().unwrap(),
-                            true,
-                            expected == 1,
-                        );
-                        GenericItem::ParamSpecArgument(ParamSpecArgument::new(params, None))
+                        break;
                     }
                 }
             };
             generics.push(generic_item);
         }
-        for slice_content in iterator {
-            // Still calculate errors for the rest of the types given. After all they are still
-            // expected to be types.
-            self.compute_slice_type(slice_content);
-            given += 1;
+        if !is_single_param_spec {
+            while let Some(_) = type_args.next_type_argument(self) {
+                // Still calculate errors for the rest of the types given. After all they are still
+                // expected to be types.
+                given += 1;
+            }
         }
         if given != expected {
+            let at_least_expected = type_var_likes
+                .iter()
+                .any(|tvl| matches!(tvl, TypeVarLike::TypeVarTuple(_)));
             on_count_mismatch(
                 self,
                 GenericCounts {
@@ -3899,7 +3893,10 @@ impl<'a, I: Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<I> {
         }
     }
 
-    fn next_type_argument(&mut self, type_computation: &mut TypeComputation) -> Option<Type> {
+    fn next_type_argument(
+        &mut self,
+        type_computation: &mut TypeComputation,
+    ) -> Option<(NodeRef<'a>, Type)> {
         let Some(s) = self.slices.next() else {
             return None
         };
@@ -3915,7 +3912,7 @@ impl<'a, I: Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<I> {
         }
         let t = type_computation.compute_slice_type_content(s);
         match type_computation.convert_slice_type_or_tuple_unpack(t, s) {
-            TuplePart::Type(t) => Some(t),
+            TuplePart::Type(t) => Some((s.as_node_ref(), t)),
             TuplePart::TupleUnpack(u) => {
                 if self.current_unpack.is_some() {
                     type_computation.add_issue(
@@ -3931,8 +3928,20 @@ impl<'a, I: Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<I> {
         }
     }
 
-    fn next_param_spec(&mut self, type_computation: &mut TypeComputation) -> ParamSpecArgument {
-        todo!()
+    fn next_param_spec(
+        &mut self,
+        type_computation: &mut TypeComputation,
+        allow_aesthetic_class_simplification: bool,
+    ) -> Option<ParamSpecArgument> {
+        let Some(s) = self.slices.next() else {
+            return None
+        };
+        let params = type_computation.calculate_callable_params(
+            s,
+            true,
+            allow_aesthetic_class_simplification,
+        );
+        Some(ParamSpecArgument::new(params, None))
     }
 
     fn into_type_arguments(self, type_computation: &mut TypeComputation) -> TupleTypeArguments {
