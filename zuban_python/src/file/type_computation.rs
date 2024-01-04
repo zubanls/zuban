@@ -1614,14 +1614,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         &mut self,
         type_var: &TypeVar,
         s: &SliceOrSimple,
-        type_: &TypeContent,
+        as_type: impl Fn(&mut Self) -> Type,
         get_of: impl FnOnce() -> Box<str>,
     ) {
         match &type_var.kind {
             TypeVarKind::Unrestricted => (),
             TypeVarKind::Bound(bound) => {
-                // Performance: This could be optimized to not create new objects all the time.
-                let actual = self.as_type(type_.clone(), s.as_node_ref());
+                let actual = as_type(self);
                 let i_s = &mut self.inference.i_s;
                 if !bound.is_simple_super_type_of(i_s, &actual).bool() {
                     s.as_node_ref().add_issue(
@@ -1635,7 +1634,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
             }
             TypeVarKind::Constraints(constraints) => {
-                let t2 = self.as_type(type_.clone(), s.as_node_ref());
+                let t2 = as_type(self);
                 let i_s = &mut self.inference.i_s;
                 if let Type::TypeVar(usage) = &t2 {
                     if let TypeVarKind::Constraints(constraints2) = &usage.type_var.kind {
@@ -1880,7 +1879,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             };
             if let Some(slice_content) = iterator.next() {
                 let t = self.compute_slice_type_content(slice_content);
-                self.check_constraints(type_var, &slice_content, &t, || Box::from(class.name()));
+                // Performance: This could be optimized to not create new objects all the time.
+                self.check_constraints(
+                    type_var,
+                    &slice_content,
+                    |slf| slf.as_type(t.clone(), slice_content.as_node_ref()),
+                    || Box::from(class.name()),
+                );
                 if !matches!(
                     t,
                     TypeContent::SimpleGeneric { .. }
@@ -1949,7 +1954,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 TypeVarLike::TypeVar(type_var) => {
                     if let Some(slice_content) = iterator.next() {
                         let t = self.compute_slice_type_content(slice_content);
-                        self.check_constraints(&type_var, &slice_content, &t, get_of);
                         if let TypeContent::Unpacked(TypeOrUnpack::Type(Type::Tuple(tup))) = &t {
                             if let TupleTypeArguments::FixedLength(fixed) = tup.args.clone() {
                                 for t in rc_slice_into_vec(fixed) {
@@ -1960,7 +1964,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             }
                         }
                         given += 1;
-                        GenericItem::TypeArgument(self.as_type(t, slice_content.as_node_ref()))
+                        let t = self.as_type(t, slice_content.as_node_ref());
+                        self.check_constraints(&type_var, &slice_content, |_| t.clone(), get_of);
+                        GenericItem::TypeArgument(t)
                     } else {
                         type_var_like.as_any_generic_item()
                     }
