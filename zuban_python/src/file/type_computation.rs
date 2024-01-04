@@ -3969,6 +3969,16 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
             current = Some(s);
         }
         let Some(current_slice_part) = current else {
+            if let Some((from, unpack)) = self.current_unpack.as_mut() {
+                match unpack {
+                    TupleUnpack::TypeVarTuple(_) => todo!(),
+                    TupleUnpack::Tuple(tup) => match &tup.args {
+                        TupleTypeArguments::WithUnpack(with_unpack) => todo!(),
+                        TupleTypeArguments::FixedLength(ts) => todo!(),
+                        TupleTypeArguments::ArbitraryLength(t) => todo!()//return Some((*from, (**t).clone())),
+                    }
+                }
+            }
             return None
         };
         let from = current_slice_part.as_node_ref();
