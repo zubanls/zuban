@@ -1951,7 +1951,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut type_args = TypeArgIterator::new(iterator);
         let mut type_var_iterator = type_var_likes.iter().enumerate().skip(generics.len());
         let mut is_single_param_spec = false;
-        for (i, type_var_like) in type_var_iterator.by_ref() {
+        'outer: for (i, type_var_like) in type_var_iterator.by_ref() {
             let generic_item = match type_var_like {
                 TypeVarLike::TypeVar(type_var) => {
                     if let Some((node_ref, t)) = type_args.next_type_argument(self) {
@@ -1963,13 +1963,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     }
                 }
                 TypeVarLike::TypeVarTuple(_) => {
-                    given += 1;
                     let slice_type_len = slice_type.iter().count();
+                    at_least_expected = true;
                     for (i, type_var_like) in type_var_iterator.by_ref().rev() {
                         let generic_item = match type_var_like {
                             TypeVarLike::TypeVar(type_var) => {
                                 let Some((from, t)) = type_args.next_type_argument_back(self) else {
-                                    break
+                                    break 'outer;
                                 } ;
                                 given += 1;
                                 self.check_constraints(&type_var, from, |_| t.clone(), get_of);
@@ -1983,13 +1983,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 
                         generics.insert(i - 1, generic_item);
                     }
+                    given += 1;
                     generics.insert(
                         i,
                         GenericItem::TypeArguments(TypeArguments {
                             args: type_args.as_type_arguments(self),
                         }),
                     );
-                    at_least_expected = true;
                     break;
                 }
                 TypeVarLike::ParamSpec(_) => {
