@@ -3880,12 +3880,12 @@ enum TuplePart {
     TupleUnpack(TupleUnpack),
 }
 
-struct TypeArgIterator<I> {
+struct TypeArgIterator<'a, I> {
     slices: I,
-    current_unpack: Option<TupleUnpack>,
+    current_unpack: Option<(NodeRef<'a>, TupleUnpack)>,
 }
 
-impl<'a, I: Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<I> {
+impl<'a, I: Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
     fn new(slices: I) -> Self {
         Self {
             slices,
@@ -3900,13 +3900,13 @@ impl<'a, I: Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<I> {
         let Some(s) = self.slices.next() else {
             return None
         };
-        if let Some(unpack) = self.current_unpack.as_ref() {
+        if let Some((from, unpack)) = self.current_unpack.as_ref() {
             return match unpack {
                 TupleUnpack::TypeVarTuple(_) => todo!(),
                 TupleUnpack::Tuple(tup) => match &tup.args {
                     TupleTypeArguments::WithUnpack(with_unpack) => todo!(),
                     TupleTypeArguments::FixedLength(ts) => todo!(),
-                    TupleTypeArguments::ArbitraryLength(t) => todo!(),
+                    TupleTypeArguments::ArbitraryLength(t) => Some((*from, (**t).clone())),
                 },
             };
         }
@@ -3921,7 +3921,7 @@ impl<'a, I: Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<I> {
                     );
                     todo!()
                 } else {
-                    self.current_unpack = Some(u);
+                    self.current_unpack = Some((s.as_node_ref(), u));
                 }
                 self.next_type_argument(type_computation)
             }
@@ -3947,7 +3947,7 @@ impl<'a, I: Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<I> {
     fn into_type_arguments(self, type_computation: &mut TypeComputation) -> TupleTypeArguments {
         let mut before = vec![];
         let mut after = vec![];
-        let mut unpack = self.current_unpack;
+        let mut unpack = self.current_unpack.map(|t| t.1);
         for s in self.slices {
             let t = type_computation.compute_slice_type_content(s);
             match type_computation.convert_slice_type_or_tuple_unpack(t, s) {
