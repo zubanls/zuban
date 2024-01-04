@@ -649,42 +649,41 @@ impl TupleTypeArguments {
                     let GenericItem::TypeArguments(new) = callable(TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(tvt))) else {
                             unreachable!();
                         };
+                    let new_before: Vec<_> = unpack
+                        .before
+                        .iter()
+                        .map(|t| t.replace_type_var_likes_and_self(db, callable, replace_self))
+                        .collect();
+                    let new_after: Vec<_> = unpack
+                        .after
+                        .iter()
+                        .map(|t| t.replace_type_var_likes_and_self(db, callable, replace_self))
+                        .collect();
                     match new.args {
                         TupleTypeArguments::FixedLength(fixed) => {
                             TupleTypeArguments::FixedLength({
-                                let mut elements: Vec<_> = unpack
-                                    .before
-                                    .iter()
-                                    .map(|t| {
-                                        t.replace_type_var_likes_and_self(
-                                            db,
-                                            callable,
-                                            replace_self,
-                                        )
-                                    })
+                                new_before
+                                    .into_iter()
                                     .chain(fixed.iter().cloned())
-                                    .collect();
-                                elements.extend(unpack.after.iter().map(|t| {
-                                    t.replace_type_var_likes_and_self(db, callable, replace_self)
-                                }));
-                                elements.into()
+                                    .chain(new_after)
+                                    .collect()
                             })
                         }
                         TupleTypeArguments::WithUnpack(new) => {
                             TupleTypeArguments::WithUnpack(WithUnpack {
-                                before: merge_types(unpack.before.clone(), new.before),
+                                before: merge_types(new_before, new.before),
                                 unpack: new.unpack,
-                                after: merge_types(unpack.after.clone(), new.after),
+                                after: merge_types(new_after, new.after),
                             })
                         }
                         TupleTypeArguments::ArbitraryLength(t) => {
-                            if !unpack.before.is_empty() || !unpack.after.is_empty() {
+                            if !new_before.is_empty() || !new_after.is_empty() {
                                 TupleTypeArguments::WithUnpack(WithUnpack {
-                                    before: unpack.before.clone(),
+                                    before: new_before.into(),
                                     unpack: TupleUnpack::Tuple(Rc::new(Tuple::new(
                                         TupleTypeArguments::ArbitraryLength(t),
                                     ))),
-                                    after: unpack.after.clone(),
+                                    after: new_after.into(),
                                 })
                             } else {
                                 return TupleTypeArguments::ArbitraryLength(t);
@@ -705,14 +704,13 @@ impl TupleTypeArguments {
     }
 }
 
-fn merge_types(original: Rc<[Type]>, new: Rc<[Type]>) -> Rc<[Type]> {
+fn merge_types(mut original: Vec<Type>, new: Rc<[Type]>) -> Rc<[Type]> {
     if original.is_empty() {
         new
     } else if new.is_empty() {
-        original
+        original.into()
     } else {
-        let mut merged = rc_slice_into_vec(original);
-        merged.append(&mut rc_slice_into_vec(new));
-        merged.into()
+        original.append(&mut rc_slice_into_vec(new));
+        original.into()
     }
 }
