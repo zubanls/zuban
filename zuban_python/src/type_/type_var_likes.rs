@@ -346,7 +346,7 @@ impl TypeVarLikes {
                     }
                     s
                 }
-                TypeVarLike::TypeVarTuple(t) => todo!(),
+                TypeVarLike::TypeVarTuple(tvt) => tvt.name(format_data.db).into(),
                 TypeVarLike::ParamSpec(s) => s.name(format_data.db).into(),
             }))
         )
@@ -676,7 +676,7 @@ impl<'a> TypeVarLikeUsage<'a> {
     pub fn format_without_matcher(&self, db: &Database, params_style: ParamsStyle) -> Box<str> {
         match self {
             Self::TypeVar(type_var_usage) => type_var_usage.type_var.name(db).into(),
-            Self::TypeVarTuple(t) => format!("*{}", t.type_var_tuple.name(db)).into(),
+            Self::TypeVarTuple(t) => t.type_var_tuple.name(db).into(),
             Self::ParamSpec(p) => {
                 let name = p.param_spec.name(db);
                 match params_style {

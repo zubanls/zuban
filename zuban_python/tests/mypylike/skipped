@@ -566,7 +566,6 @@ testTypeVarTupleCallable
 # type_/type_var_likes.rs:349
 testVariadicTupleDataclass
 # type/matching.rs:932
-testTypeVarTuplePep646TypeVarTupleUnpacking
 testVariadicTupleInference
 testVariadicTupleSubtyping
 # matching/matcher/utils.rs:577

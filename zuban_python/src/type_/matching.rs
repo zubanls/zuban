@@ -929,7 +929,7 @@ pub fn match_unpack(
             if (with_unpack1.before.len() + with_unpack1.after.len()) > ts2.len() {
                 // Negative numbers mean that we have non-matching tuples, but the fact they do not match
                 // will be noticed in a different place.
-                todo!()
+                return Match::new_false();
             } else {
                 match &with_unpack1.unpack {
                     TupleUnpack::TypeVarTuple(tvt) => {
@@ -1022,6 +1022,9 @@ pub fn match_unpack(
             */
         }
         TupleTypeArguments::ArbitraryLength(t2) => {
+            if t2.is_any() {
+                return Match::True { with_any: true };
+            }
             if !with_unpack1.before.is_empty() || !with_unpack1.after.is_empty() {
                 return Match::new_false();
             }
