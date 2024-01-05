@@ -271,19 +271,12 @@ impl<'a> Matcher<'a> {
                 } else {
                     match &with_unpack1.unpack {
                         TupleUnpack::TypeVarTuple(tvt) => {
-                            let Some(tv_matcher) = self.type_var_matcher.as_mut() else {
-                                return Match::new_false()
-                            };
-                            // TODO TypeVarTuple currently we ignore variance completely
-                            let calculated =
-                                &mut tv_matcher.calculated_type_vars[tvt.index.as_usize()];
-                            if calculated.calculated() {
-                                calculated.merge_fixed_length_type_var_tuple(i_s, &mut t2_iterator);
-                            } else {
-                                let types: Rc<_> = t2_iterator.cloned().collect();
-                                calculated.type_ =
-                                    BoundKind::TypeVarTuple(TypeArguments::new_fixed_length(types));
-                            }
+                            matches &= self.match_or_add_type_var_tuple(
+                                i_s,
+                                tvt,
+                                TupleTypeArguments::FixedLength(t2_iterator.cloned().collect()),
+                                variance,
+                            )
                         }
                         TupleUnpack::ArbitraryLength(inner_t1) => {
                             for t2 in t2_iterator {
@@ -408,7 +401,12 @@ impl<'a> Matcher<'a> {
             if matcher.match_in_definition == tvt.in_definition {
                 let current = &mut matcher.calculated_type_vars[tvt.index.as_usize()];
                 if current.calculated() {
-                    todo!()
+                    match args2 {
+                        TupleTypeArguments::FixedLength(ts) => {
+                            current.merge_fixed_length_type_var_tuple(i_s, ts.iter())
+                        }
+                        _ => todo!(),
+                    }
                 } else {
                     current.type_ = BoundKind::TypeVarTuple(TypeArguments { args: args2 });
                 }
