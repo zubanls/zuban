@@ -290,6 +290,17 @@ impl<'a> Matcher<'a> {
                 }
             }
             TupleTypeArguments::WithUnpack(with_unpack2) => {
+                for (t1, t2) in with_unpack1.before.iter().zip(with_unpack2.before.iter()) {
+                    matches &= t1.matches(i_s, self, t2, variance)
+                }
+                for (t1, t2) in with_unpack1
+                    .after
+                    .iter()
+                    .rev()
+                    .zip(with_unpack2.after.iter().rev())
+                {
+                    matches &= t1.matches(i_s, self, t2, variance)
+                }
                 if with_unpack1.before.len() != with_unpack2.before.len()
                     || with_unpack1.after.len() != with_unpack2.after.len()
                 {
