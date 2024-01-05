@@ -1396,11 +1396,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     },
                     TypeContent::RecursiveAlias(link) => {
                         self.is_recursive_alias = true;
-                        let type_vars = &NodeRef::from_link(self.inference.i_s.db, link)
+                        let alias = &NodeRef::from_link(self.inference.i_s.db, link)
                             .maybe_alias()
-                            .unwrap()
-                            .type_vars;
-                        let generics = self.compute_generics_for_alias(s, type_vars);
+                            .unwrap();
+                        let generics = self.compute_generics_for_alias(s, alias);
                         TypeContent::Type(Type::RecursiveType(Rc::new(RecursiveType::new(
                             link,
                             Some(generics),
@@ -1590,15 +1589,20 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     fn compute_generics_for_alias(
         &mut self,
         slice_type: SliceType,
-        type_var_likes: &TypeVarLikes,
+        alias: &TypeAlias,
     ) -> GenericsList {
         let mut generics = vec![];
         self.calculate_type_arguments(
             slice_type,
             &mut generics,
             slice_type.iter(),
-            type_var_likes,
-            &|| Box::from("TODO alias name"),
+            &alias.type_vars,
+            &|| {
+                alias
+                    .name(self.inference.i_s.db)
+                    .unwrap_or("<Alias>")
+                    .into()
+            },
             |slf: &mut Self, counts| {
                 slf.add_issue(
                     slice_type.as_node_ref(),
@@ -2397,7 +2401,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         alias: &TypeAlias,
         slice_type: SliceType,
     ) -> TypeContent<'db, 'db> {
-        let generics = self.compute_generics_for_alias(slice_type, &alias.type_vars);
+        let generics = self.compute_generics_for_alias(slice_type, alias);
         self.is_recursive_alias |= alias.is_recursive();
         TypeContent::Type(
             alias
@@ -3900,6 +3904,7 @@ enum TuplePart {
 struct TypeArgIterator<'a, I> {
     slices: I,
     current_unpack: Option<(NodeRef<'a>, TupleUnpack)>,
+    current_unpack_reverse: Option<TupleUnpack>,
     reverse_already_analyzed: Option<NodeRef<'a>>,
 }
 
@@ -3908,6 +3913,7 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
         Self {
             slices,
             current_unpack: None,
+            current_unpack_reverse: None,
             reverse_already_analyzed: None,
         }
     }
@@ -3969,7 +3975,26 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
         &mut self,
         type_computation: &mut TypeComputation,
     ) -> Option<(NodeRef<'a>, Type)> {
-        self.reverse_already_analyzed;
+        if let Some(unpack) = self.current_unpack_reverse.as_mut() {
+            match unpack {
+                TupleUnpack::TypeVarTuple(_) => todo!(),
+                TupleUnpack::Tuple(tup) => match &tup.args {
+                    TupleTypeArguments::WithUnpack(with_unpack) => todo!(),
+                    TupleTypeArguments::FixedLength(ts) => {
+                        let mut elements = Vec::from(ts.as_ref());
+                        if let Some(result) = elements.pop() {
+                            *tup = Rc::new(Tuple::new_fixed_length(elements.into()));
+                            return Some((self.reverse_already_analyzed.unwrap(), result));
+                        } else {
+                            self.current_unpack = None;
+                        }
+                    }
+                    TupleTypeArguments::ArbitraryLength(t) => {
+                        return Some((self.reverse_already_analyzed.unwrap(), (**t).clone()))
+                    }
+                },
+            }
+        }
         let mut current = None;
         // slices are not reversible, becuase of how the AST is structured. This is not used often,
         // just clone the iterator.
@@ -4007,7 +4032,10 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
         let t = type_computation.compute_slice_type_content(current_slice_part);
         match type_computation.convert_slice_type_or_tuple_unpack(t, current_slice_part) {
             TuplePart::Type(t) => Some((from, t)),
-            TuplePart::TupleUnpack(u) => todo!(),
+            TuplePart::TupleUnpack(u) => {
+                self.current_unpack_reverse = Some(u);
+                self.next_type_argument_back(type_computation)
+            }
         }
     }
 

@@ -546,8 +546,6 @@ testInvalidTypeVarTupleUseNoCrash
 # file/type_computation.rs:2244
 testJoinOfVariadicTupleCallablesNoCrash
 # file/type_computation.rs:4010
-testVariadicAliasUpperBoundCheck
-testVariadicClassUpperBoundCheck
 testVariadicTypedDict
 testVariadicAliasForwardRefToFixedUnpack
 testVariadicAliasForwardRefToVariadicUnpack
