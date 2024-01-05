@@ -3986,7 +3986,7 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
                             *tup = Rc::new(Tuple::new_fixed_length(elements.into()));
                             return Some((self.reverse_already_analyzed.unwrap(), result));
                         } else {
-                            self.current_unpack = None;
+                            self.current_unpack_reverse = None;
                         }
                     }
                     TupleTypeArguments::ArbitraryLength(t) => {
@@ -4083,6 +4083,22 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
                     } else {
                         unpack = Some(u)
                     }
+                }
+            }
+        }
+        if let Some(u) = self.current_unpack_reverse.take() {
+            let mut add_unpack = true;
+            if let TupleUnpack::Tuple(tup) = &u {
+                if let TupleTypeArguments::FixedLength(ts) = &tup.args {
+                    add_unpack = false;
+                    todo!()
+                }
+            }
+            if add_unpack {
+                if unpack.is_some() {
+                    todo!()
+                } else {
+                    unpack = Some(u);
                 }
             }
         }
