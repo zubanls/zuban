@@ -10,7 +10,7 @@ use crate::{
         MismatchReason,
     },
     node_ref::NodeRef,
-    type_::{CallableLike, CallableParams, TupleTypeArguments, Variance},
+    type_::{CallableLike, CallableParams, TupleTypeArguments, TupleUnpack, Variance},
     type_helpers::{Class, TypeOrClass},
 };
 
@@ -854,17 +854,17 @@ impl Type {
 pub fn match_tuple_type_arguments(
     i_s: &InferenceState,
     matcher: &mut Matcher,
-    t1: &TupleTypeArguments,
-    t2: &TupleTypeArguments,
+    tup1: &TupleTypeArguments,
+    tup2: &TupleTypeArguments,
     variance: Variance,
 ) -> Match {
     if matcher.is_matching_reverse() {
         return matcher.match_reverse(|matcher| {
-            match_tuple_type_arguments(i_s, matcher, t2, t1, variance.invert())
+            match_tuple_type_arguments(i_s, matcher, tup2, tup1, variance.invert())
         });
     }
     use TupleTypeArguments::*;
-    match (t1, t2) {
+    match (tup1, tup2) {
         (FixedLength(ts1), FixedLength(ts2)) => {
             if ts1.len() == ts2.len() {
                 let mut matches = Match::new_true();
@@ -877,8 +877,22 @@ pub fn match_tuple_type_arguments(
             }
         }
         (ArbitraryLength(t1), ArbitraryLength(t2)) => t1.matches(i_s, matcher, t2, variance),
-        (WithUnpack(unpack), _) => matcher.match_unpack(i_s, unpack, t2, variance),
-        (_, WithUnpack(_)) => todo!(),
+        (WithUnpack(unpack), _) => matcher.match_unpack(i_s, unpack, tup2, variance),
+        (ArbitraryLength(t1), WithUnpack(u2)) => match &u2.unpack {
+            TupleUnpack::TypeVarTuple(_) => todo!(),
+            TupleUnpack::Tuple(tup2) => {
+                let mut matches = Match::new_true();
+                for t2 in u2.before.iter() {
+                    matches &= t1.matches(i_s, matcher, t2, variance)
+                }
+                matches &= match_tuple_type_arguments(i_s, matcher, tup1, &tup2.args, variance);
+                for t2 in u2.after.iter() {
+                    matches &= t1.matches(i_s, matcher, t2, variance)
+                }
+                matches
+            }
+        },
+        (FixedLength(_), WithUnpack(_)) => Match::new_false(),
         (_, ArbitraryLength(t2)) => matches!(t2.as_ref(), Type::Any(_)).into(),
         (ArbitraryLength(t1), FixedLength(ts2)) => ts2
             .iter()

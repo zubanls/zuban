@@ -515,6 +515,7 @@ testTypeVarTupleGenericClassDefn
 # matching/matcher/mod.rs:254
 testTypeVarTuplePep646TypeVarTupleUnpacking
 testVariadicTupleInference
+testVariadicTupleSubtyping
 # matching/matcher/mod.rs:271
 testTypeVarTuplePep646ArrayExample
 testTypeVarTuplePep646ArrayExampleWithDType
@@ -567,9 +568,6 @@ testTypeVarTuplePep646TypeVarStarArgsVariableLengthTuple
 testTypeVarTupleIndexTypeVar
 testTypeVarTupleIndexOldStyleNonNormalizedAndNonLiteral
 testVariadicTupleTupleSubclassPrefixSuffix
-# type/matching.rs:881
-testVariadicTupleSubtyping
-testVariadicSubclassExtra
 # type_/replace.rs:409
 testTypeVarTupleCallable
 # type_/type_var_likes.rs:349
