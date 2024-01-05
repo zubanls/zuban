@@ -298,24 +298,25 @@ impl<'a> Matcher<'a> {
                 }
             }
             TupleTypeArguments::WithUnpack(with_unpack2) => {
-                let mut before1_it = with_unpack1.before.iter();
                 let mut before2_it = with_unpack2.before.iter();
-                for (t1, t2) in before1_it.by_ref().zip(before2_it.by_ref()) {
+                for (t1, t2) in with_unpack1.before.iter().zip(before2_it.by_ref()) {
                     matches &= t1.matches(i_s, self, t2, variance)
                 }
 
-                let mut after1_it = with_unpack1.after.iter();
                 let mut after2_it = with_unpack2.after.iter();
-                for (t1, t2) in after1_it.by_ref().rev().zip(after2_it.by_ref().rev()) {
+                for (t1, t2) in with_unpack1
+                    .after
+                    .iter()
+                    .rev()
+                    .zip(after2_it.by_ref().rev())
+                {
                     matches &= t1.matches(i_s, self, t2, variance)
                 }
 
                 match &with_unpack1.unpack {
                     TupleUnpack::TypeVarTuple(tvt1) => {
-                        if before1_it.len() > 0
-                            || before2_it.len() > 0
-                            || after1_it.len() > 0
-                            || after2_it.len() > 0
+                        if with_unpack1.before.len() != with_unpack2.before.len()
+                            || with_unpack1.after.len() != with_unpack2.after.len()
                         {
                             todo!()
                         }
@@ -329,12 +330,14 @@ impl<'a> Matcher<'a> {
                         TupleUnpack::Tuple(inner_tup2) => {
                             match &inner_tup2.args {
                                 TupleTypeArguments::ArbitraryLength(inner_t2) => {
-                                    for t1 in before1_it {
+                                    /*
+                                    if with_unpack1.before.len() > with_unpack2.before.len() {
                                         return Match::new_false();
                                     }
-                                    for t1 in after1_it {
+                                    if with_unpack1.after.len() > with_unpack2.after.len() {
                                         return Match::new_false();
                                     }
+                                    */
                                 }
                                 TupleTypeArguments::WithUnpack(_) => todo!(),
                                 TupleTypeArguments::FixedLength(_) => unreachable!(),
