@@ -3917,38 +3917,53 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
         type_computation: &mut TypeComputation,
         has_type_var_tuple: bool,
     ) -> Option<(NodeRef<'a>, Type)> {
-        let Some(s) = self.slices.next() else {
-            return None
-        };
-        if let Some((from, unpack)) = self.current_unpack.as_ref() {
-            return match unpack {
+        if let Some((from, unpack)) = self.current_unpack.as_mut() {
+            match unpack {
                 TupleUnpack::TypeVarTuple(_) => todo!(),
                 TupleUnpack::Tuple(tup) => match &tup.args {
                     TupleTypeArguments::WithUnpack(with_unpack) => todo!(),
-                    TupleTypeArguments::FixedLength(ts) => todo!(),
-                    TupleTypeArguments::ArbitraryLength(t) => Some((*from, (**t).clone())),
+                    TupleTypeArguments::FixedLength(ts) => {
+                        if let Some(first) = ts.first() {
+                            let result = first.clone();
+                            *tup =
+                                Rc::new(Tuple::new_fixed_length(ts[1..].iter().cloned().collect()));
+                            return Some((*from, result));
+                        } else {
+                            self.current_unpack = None;
+                        }
+                    }
+                    TupleTypeArguments::ArbitraryLength(t) => return Some((*from, (**t).clone())),
                 },
             };
         }
-        if has_type_var_tuple {
-            let t = type_computation.compute_slice_type_content(s);
-            match type_computation.convert_slice_type_or_tuple_unpack(t, s) {
-                TuplePart::Type(t) => Some((s.as_node_ref(), t)),
-                TuplePart::TupleUnpack(u) => {
-                    if self.current_unpack.is_some() {
+        let Some(s) = self.slices.next() else {
+            return None
+        };
+        let t = type_computation.compute_slice_type_content(s);
+        match type_computation.convert_slice_type_or_tuple_unpack(t, s) {
+            TuplePart::Type(t) => Some((s.as_node_ref(), t)),
+            TuplePart::TupleUnpack(u) => {
+                if self.current_unpack.is_some() {
+                    type_computation.add_issue(
+                        s.as_node_ref(),
+                        IssueType::MoreThanOneUnpackTypeIsNotAllowed,
+                    );
+                    todo!()
+                } else {
+                    if !has_type_var_tuple
+                        && !matches!(&u, TupleUnpack::Tuple(tup) if matches!(tup.args, TupleTypeArguments::FixedLength(_)))
+                    {
                         type_computation.add_issue(
                             s.as_node_ref(),
-                            IssueType::MoreThanOneUnpackTypeIsNotAllowed,
+                            IssueType::UnpackOnlyValidInVariadicPosition,
                         );
-                        todo!()
-                    } else {
-                        self.current_unpack = Some((s.as_node_ref(), u));
+                        self.current_unpack = None;
+                        return Some((s.as_node_ref(), Type::Any(AnyCause::FromError)));
                     }
-                    self.next_type_argument(type_computation, has_type_var_tuple)
+                    self.current_unpack = Some((s.as_node_ref(), u));
                 }
+                self.next_type_argument(type_computation, has_type_var_tuple)
             }
-        } else {
-            Some((s.as_node_ref(), type_computation.compute_slice_type(s)))
         }
     }
 
@@ -3974,8 +3989,16 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
                     TupleUnpack::TypeVarTuple(_) => todo!(),
                     TupleUnpack::Tuple(tup) => match &tup.args {
                         TupleTypeArguments::WithUnpack(with_unpack) => todo!(),
-                        TupleTypeArguments::FixedLength(ts) => todo!(),
-                        TupleTypeArguments::ArbitraryLength(t) => todo!()//return Some((*from, (**t).clone())),
+                        TupleTypeArguments::FixedLength(ts) => {
+                            let mut elements = Vec::from(ts.as_ref());
+                            if let Some(result) = elements.pop() {
+                                *tup = Rc::new(Tuple::new_fixed_length(elements.into()));
+                                return Some((*from, result))
+                            } else {
+                                self.current_unpack = None;
+                            }
+                        }
+                        TupleTypeArguments::ArbitraryLength(t) => return Some((*from, (**t).clone())),
                     }
                 }
             }
