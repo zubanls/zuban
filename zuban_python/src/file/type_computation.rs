@@ -4090,8 +4090,14 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
             let mut add_unpack = true;
             if let TupleUnpack::Tuple(tup) = &u {
                 if let TupleTypeArguments::FixedLength(ts) = &tup.args {
+                    for t in ts.iter().cloned() {
+                        if unpack.is_none() {
+                            before.push(t);
+                        } else {
+                            after.push(t);
+                        }
+                    }
                     add_unpack = false;
-                    todo!()
                 }
             }
             if add_unpack {
