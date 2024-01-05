@@ -3,7 +3,7 @@ mod type_var_matcher;
 mod utils;
 
 use core::fmt;
-use std::{borrow::Cow, rc::Rc};
+use std::borrow::Cow;
 
 use type_var_matcher::{BoundKind, TypeVarMatcher};
 pub use type_var_matcher::{CalculatedTypeVarLike, FunctionOrCallable};
@@ -27,9 +27,9 @@ use crate::{
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, GenericItem, GenericsList,
         ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamType, ReplaceSelf,
-        StarParamType, TupleTypeArguments, TupleUnpack, Type, TypeArguments, TypeVarKind,
-        TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict,
-        TypedDictGenerics, Variance, WithUnpack,
+        StarParamType, TupleTypeArguments, Type, TypeArguments, TypeVarKind, TypeVarLike,
+        TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict,
+        TypedDictGenerics, Variance,
     },
     type_helpers::{Callable, Class, Function},
 };
@@ -240,157 +240,7 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    pub fn match_unpack(
-        &mut self,
-        i_s: &InferenceState,
-        with_unpack1: &WithUnpack,
-        tuple2: &TupleTypeArguments,
-        variance: Variance,
-    ) -> Match {
-        debug_assert!(!self.is_matching_reverse());
-        let mut matches = Match::new_true();
-
-        match tuple2 {
-            TupleTypeArguments::FixedLength(ts2) => {
-                let mut t2_iterator = ts2.iter();
-                for (t1, t2) in with_unpack1.before.iter().zip(t2_iterator.by_ref()) {
-                    matches &= t1.matches(i_s, self, t2, variance);
-                }
-                for (t1, t2) in with_unpack1
-                    .after
-                    .iter()
-                    .rev()
-                    .zip(t2_iterator.by_ref().rev())
-                {
-                    matches &= t1.matches(i_s, self, t2, variance);
-                }
-                if (with_unpack1.before.len() + with_unpack1.after.len()) > ts2.len() {
-                    // Negative numbers mean that we have non-matching tuples, but the fact they do not match
-                    // will be noticed in a different place.
-                    todo!()
-                } else {
-                    match &with_unpack1.unpack {
-                        TupleUnpack::TypeVarTuple(tvt) => {
-                            matches &= self.match_or_add_type_var_tuple(
-                                i_s,
-                                tvt,
-                                TupleTypeArguments::FixedLength(t2_iterator.cloned().collect()),
-                                variance,
-                            )
-                        }
-                        TupleUnpack::ArbitraryLength(inner_t1) => {
-                            for t2 in t2_iterator {
-                                matches &= inner_t1.matches(i_s, self, t2, variance)
-                            }
-                        }
-                    }
-                }
-            }
-            TupleTypeArguments::WithUnpack(with_unpack2) => {
-                let mut before2_it = with_unpack2.before.iter();
-                for (t1, t2) in with_unpack1.before.iter().zip(before2_it.by_ref()) {
-                    matches &= t1.matches(i_s, self, t2, variance)
-                }
-
-                let mut after2_it = with_unpack2.after.iter();
-                for (t1, t2) in with_unpack1
-                    .after
-                    .iter()
-                    .rev()
-                    .zip(after2_it.by_ref().rev())
-                {
-                    matches &= t1.matches(i_s, self, t2, variance)
-                }
-
-                match &with_unpack1.unpack {
-                    TupleUnpack::TypeVarTuple(tvt1) => {
-                        if with_unpack1.before.len() != with_unpack2.before.len()
-                            || with_unpack1.after.len() != with_unpack2.after.len()
-                        {
-                            todo!()
-                        }
-                        matches = match &with_unpack2.unpack {
-                            TupleUnpack::TypeVarTuple(tvt2) => (tvt1 == tvt2).into(),
-                            TupleUnpack::ArbitraryLength(_) => todo!(),
-                        }
-                    }
-                    TupleUnpack::ArbitraryLength(inner_t1) => match &with_unpack2.unpack {
-                        TupleUnpack::TypeVarTuple(tvt2) => todo!(),
-                        TupleUnpack::ArbitraryLength(inner_t2) => {
-                            /*
-                            if with_unpack1.before.len() > with_unpack2.before.len() {
-                                return Match::new_false();
-                            }
-                            if with_unpack1.after.len() > with_unpack2.after.len() {
-                                return Match::new_false();
-                            }
-                            */
-                            for t2 in before2_it {
-                                matches &= inner_t1.matches(i_s, self, t2, variance)
-                            }
-                            for t2 in after2_it {
-                                matches &= inner_t1.matches(i_s, self, t2, variance)
-                            }
-                            matches &= inner_t1.matches(i_s, self, inner_t2, variance);
-                        }
-                    },
-                };
-                /*
-                let mut t2_iterator = ts2.iter();
-                for t1 in tuple1.iter() {
-                    match t1 {
-                        TypeOrUnpack::Type(t1) => {
-                            if let Some(t2) = t2_iterator.next() {
-                                match t2 {
-                                    TypeOrUnpack::Type(t2) => {
-                                        matches &= t1.matches(i_s, self, t2, variance);
-                                    }
-                                    TypeOrUnpack::TypeVarTuple(_) => {
-                                        return Match::new_false();
-                                    }
-                                }
-                            } else {
-                                matches &= Match::new_false();
-                            }
-                        }
-                        TypeOrUnpack::TypeVarTuple(tvt) => {
-                        }
-                    }
-                }
-                */
-            }
-            TupleTypeArguments::ArbitraryLength(t2) => {
-                if !with_unpack1.before.is_empty() || !with_unpack1.after.is_empty() {
-                    matches &= Match::new_false()
-                }
-                match &with_unpack1.unpack {
-                    TupleUnpack::TypeVarTuple(tvt) => {
-                        matches &= self.match_or_add_type_var_tuple(
-                            i_s,
-                            tvt,
-                            TupleTypeArguments::ArbitraryLength(t2.clone()),
-                            variance,
-                        )
-                    }
-                    TupleUnpack::ArbitraryLength(inner_t1) => {
-                        /*
-                        matches &= match_tuple_type_arguments(
-                            i_s,
-                            self,
-                            &inner_tup1.args,
-                            tuple2,
-                            variance,
-                        );
-                        */
-                        todo!()
-                    }
-                }
-            }
-        };
-        matches
-    }
-
-    fn match_or_add_type_var_tuple(
+    pub fn match_or_add_type_var_tuple(
         &mut self,
         i_s: &InferenceState,
         tvt: &TypeVarTupleUsage,
