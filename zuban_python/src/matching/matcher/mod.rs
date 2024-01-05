@@ -25,11 +25,11 @@ use crate::{
     diagnostics::IssueType,
     inference_state::InferenceState,
     type_::{
-        AnyCause, CallableContent, CallableParam, CallableParams, GenericItem, GenericsList,
-        ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamType, ReplaceSelf,
-        StarParamType, TupleTypeArguments, TupleUnpack, Type, TypeArguments, TypeVarKind,
-        TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, TypedDict, TypedDictGenerics,
-        Variance, WithUnpack,
+        match_tuple_type_arguments, AnyCause, CallableContent, CallableParam, CallableParams,
+        GenericItem, GenericsList, ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamType,
+        ReplaceSelf, StarParamType, TupleTypeArguments, TupleUnpack, Type, TypeArguments,
+        TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, TypedDict,
+        TypedDictGenerics, Variance, WithUnpack,
     },
     type_helpers::{Callable, Class, Function},
 };
@@ -250,9 +250,6 @@ impl<'a> Matcher<'a> {
         debug_assert!(!self.is_matching_reverse());
         let mut matches = Match::new_true();
 
-        let TupleUnpack::TypeVarTuple(tvt) = &with_unpack1.unpack else {
-            todo!()
-        };
         match tuple2 {
             TupleTypeArguments::FixedLength(ts2) => {
                 let mut t2_iterator = ts2.iter();
@@ -266,9 +263,14 @@ impl<'a> Matcher<'a> {
                 {
                     matches &= t1.matches(i_s, self, t2, variance);
                 }
+                let Some(tv_matcher) = self.type_var_matcher.as_mut() else {
+                    return Match::new_false()
+                };
+                let tvt = match &with_unpack1.unpack {
+                    TupleUnpack::TypeVarTuple(tvt) => tvt,
+                    TupleUnpack::Tuple(tup) => todo!(),
+                };
                 // TODO TypeVarTuple currently we ignore variance completely
-                // TODO why unwrap here?
-                let tv_matcher = self.type_var_matcher.as_mut().unwrap();
                 let calculated = &mut tv_matcher.calculated_type_vars[tvt.index.as_usize()];
                 let fetch = ts2.len() as isize + 1 - with_unpack1.after.len() as isize;
                 if let Ok(fetch) = fetch.try_into() {
@@ -293,10 +295,26 @@ impl<'a> Matcher<'a> {
                 {
                     todo!()
                 }
-                matches = match &with_unpack2.unpack {
-                    TupleUnpack::TypeVarTuple(tvt2) => (tvt == tvt2).into(),
-                    TupleUnpack::Tuple(_) => todo!(),
-                }
+                match &with_unpack1.unpack {
+                    TupleUnpack::TypeVarTuple(tvt1) => {
+                        matches = match &with_unpack2.unpack {
+                            TupleUnpack::TypeVarTuple(tvt2) => (tvt1 == tvt2).into(),
+                            TupleUnpack::Tuple(_) => todo!(),
+                        }
+                    }
+                    TupleUnpack::Tuple(inner_tup1) => match &with_unpack2.unpack {
+                        TupleUnpack::TypeVarTuple(tvt2) => todo!(),
+                        TupleUnpack::Tuple(inner_tup2) => {
+                            matches &= match_tuple_type_arguments(
+                                i_s,
+                                self,
+                                &inner_tup1.args,
+                                &inner_tup2.args,
+                                variance,
+                            )
+                        }
+                    },
+                };
                 /*
                 let mut t2_iterator = ts2.iter();
                 for t1 in tuple1.iter() {
@@ -325,14 +343,19 @@ impl<'a> Matcher<'a> {
                 let Some(tv_matcher) = self.type_var_matcher.as_mut() else {
                     return Match::new_false()
                 };
-                let calculated = &mut tv_matcher.calculated_type_vars[tvt.index.as_usize()];
-                if calculated.calculated() {
-                    todo!()
-                } else {
-                    calculated.type_ = BoundKind::TypeVarTuple(
-                        TypeArguments::new_arbitrary_length(t2.as_ref().clone()),
-                    );
-                }
+                match &with_unpack1.unpack {
+                    TupleUnpack::TypeVarTuple(tvt) => {
+                        let calculated = &mut tv_matcher.calculated_type_vars[tvt.index.as_usize()];
+                        if calculated.calculated() {
+                            todo!()
+                        } else {
+                            calculated.type_ = BoundKind::TypeVarTuple(
+                                TypeArguments::new_arbitrary_length(t2.as_ref().clone()),
+                            );
+                        }
+                    }
+                    TupleUnpack::Tuple(tup) => todo!(),
+                };
             }
         };
         matches
