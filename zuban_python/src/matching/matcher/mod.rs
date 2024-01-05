@@ -290,41 +290,53 @@ impl<'a> Matcher<'a> {
                 }
             }
             TupleTypeArguments::WithUnpack(with_unpack2) => {
-                for (t1, t2) in with_unpack1.before.iter().zip(with_unpack2.before.iter()) {
+                let mut before1_it = with_unpack1.before.iter();
+                let mut before2_it = with_unpack2.before.iter();
+                for (t1, t2) in before1_it.by_ref().zip(before2_it.by_ref()) {
                     matches &= t1.matches(i_s, self, t2, variance)
                 }
-                for (t1, t2) in with_unpack1
-                    .after
-                    .iter()
-                    .rev()
-                    .zip(with_unpack2.after.iter().rev())
-                {
+
+                let mut after1_it = with_unpack1.after.iter();
+                let mut after2_it = with_unpack2.after.iter();
+                for (t1, t2) in after1_it.by_ref().rev().zip(after2_it.by_ref().rev()) {
                     matches &= t1.matches(i_s, self, t2, variance)
                 }
-                if with_unpack1.before.len() != with_unpack2.before.len()
-                    || with_unpack1.after.len() != with_unpack2.after.len()
-                {
-                    todo!()
-                }
+
                 match &with_unpack1.unpack {
                     TupleUnpack::TypeVarTuple(tvt1) => {
+                        if before1_it.len() > 0
+                            || before2_it.len() > 0
+                            || after1_it.len() > 0
+                            || after2_it.len() > 0
+                        {
+                            todo!()
+                        }
                         matches = match &with_unpack2.unpack {
                             TupleUnpack::TypeVarTuple(tvt2) => (tvt1 == tvt2).into(),
                             TupleUnpack::Tuple(_) => todo!(),
                         }
                     }
-                    TupleUnpack::Tuple(inner_tup1) => match &with_unpack2.unpack {
-                        TupleUnpack::TypeVarTuple(tvt2) => todo!(),
-                        TupleUnpack::Tuple(inner_tup2) => {
-                            matches &= match_tuple_type_arguments(
-                                i_s,
-                                self,
-                                &inner_tup1.args,
-                                &inner_tup2.args,
-                                variance,
-                            )
+                    TupleUnpack::Tuple(inner_tup1) => {
+                        if before1_it.len() > 0
+                            || before2_it.len() > 0
+                            || after1_it.len() > 0
+                            || after2_it.len() > 0
+                        {
+                            todo!()
                         }
-                    },
+                        match &with_unpack2.unpack {
+                            TupleUnpack::TypeVarTuple(tvt2) => todo!(),
+                            TupleUnpack::Tuple(inner_tup2) => {
+                                matches &= match_tuple_type_arguments(
+                                    i_s,
+                                    self,
+                                    &inner_tup1.args,
+                                    &inner_tup2.args,
+                                    variance,
+                                )
+                            }
+                        }
+                    }
                 };
                 /*
                 let mut t2_iterator = ts2.iter();
