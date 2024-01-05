@@ -28,8 +28,8 @@ use crate::{
         AnyCause, CallableContent, CallableParam, CallableParams, GenericItem, GenericsList,
         ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamType, ReplaceSelf,
         StarParamType, TupleTypeArguments, TupleUnpack, Type, TypeArguments, TypeVarKind,
-        TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, TypedDict, TypedDictGenerics,
-        Variance, WithUnpack,
+        TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict,
+        TypedDictGenerics, Variance, WithUnpack,
     },
     type_helpers::{Callable, Class, Function},
 };
@@ -332,25 +332,13 @@ impl<'a> Matcher<'a> {
                                 return Match::new_false();
                             }
                             */
-                            let compare_tup2 = if before2_it.len() > 0 || after2_it.len() > 0 {
-                                /*
-                                Cow::Owned(TupleTypeArguments::WithUnpack(WithUnpack {
-                                    before: before2_it.cloned().collect(),
-                                    unpack: TupleUnpack::Tuple(inner_tup2.clone()),
-                                    after: after2_it.cloned().collect(),
-                                }))
-                                matches &= match_tuple_type_arguments(
-                                    i_s,
-                                    self,
-                                    &inner_tup1.args,
-                                    &compare_tup2,
-                                    variance,
-                                );
-                                */
-                                todo!();
-                            } else {
-                                matches &= inner_t1.matches(i_s, self, inner_t2, variance);
-                            };
+                            for t2 in before2_it {
+                                matches &= inner_t1.matches(i_s, self, t2, variance)
+                            }
+                            for t2 in after2_it {
+                                matches &= inner_t1.matches(i_s, self, t2, variance)
+                            }
+                            matches &= inner_t1.matches(i_s, self, inner_t2, variance);
                         }
                     },
                 };
@@ -379,24 +367,19 @@ impl<'a> Matcher<'a> {
                 */
             }
             TupleTypeArguments::ArbitraryLength(t2) => {
-                let Some(tv_matcher) = self.type_var_matcher.as_mut() else {
-                    return Match::new_false()
-                };
+                if !with_unpack1.before.is_empty() || !with_unpack1.after.is_empty() {
+                    matches &= Match::new_false()
+                }
                 match &with_unpack1.unpack {
                     TupleUnpack::TypeVarTuple(tvt) => {
-                        let calculated = &mut tv_matcher.calculated_type_vars[tvt.index.as_usize()];
-                        if calculated.calculated() {
-                            todo!()
-                        } else {
-                            calculated.type_ = BoundKind::TypeVarTuple(
-                                TypeArguments::new_arbitrary_length(t2.as_ref().clone()),
-                            );
-                        }
+                        matches &= self.match_or_add_type_var_tuple(
+                            i_s,
+                            tvt,
+                            TupleTypeArguments::ArbitraryLength(t2.clone()),
+                            variance,
+                        )
                     }
                     TupleUnpack::ArbitraryLength(inner_t1) => {
-                        if !with_unpack1.before.is_empty() || !with_unpack1.after.is_empty() {
-                            todo!()
-                        }
                         /*
                         matches &= match_tuple_type_arguments(
                             i_s,
@@ -412,6 +395,49 @@ impl<'a> Matcher<'a> {
             }
         };
         matches
+    }
+
+    fn match_or_add_type_var_tuple(
+        &mut self,
+        i_s: &InferenceState,
+        tvt: &TypeVarTupleUsage,
+        args2: TupleTypeArguments,
+        variance: Variance,
+    ) -> Match {
+        if let Some(matcher) = self.type_var_matcher.as_mut() {
+            if matcher.match_in_definition == tvt.in_definition {
+                let current = &mut matcher.calculated_type_vars[tvt.index.as_usize()];
+                if current.calculated() {
+                    todo!()
+                } else {
+                    current.type_ = BoundKind::TypeVarTuple(TypeArguments { args: args2 });
+                }
+                return Match::new_true();
+            }
+        }
+        if let Some(class) = self.class {
+            if class.node_ref.as_link() == tvt.in_definition {
+                let g = class
+                    .generics()
+                    .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(tvt)))
+                    .expect_type_argument();
+                todo!("return g.simple_matches(i_s, value_type, variance);")
+            }
+        }
+        // If we're in a class context, we must also be in a method.
+        if let Some(func_class) = self.func_or_callable.as_ref().and_then(|f| f.class()) {
+            if tvt.in_definition == func_class.node_ref.as_link() {
+                let g = func_class
+                    .generics()
+                    .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(tvt)))
+                    .expect_type_argument();
+                todo!("return g.matches(i_s, self, value_type, variance);")
+            }
+        }
+        match args2 {
+            TupleTypeArguments::WithUnpack(_) => todo!(),
+            _ => Match::new_false(),
+        }
     }
 
     pub fn match_or_add_param_spec_against_param_spec(
