@@ -261,26 +261,36 @@ impl<'a> Matcher<'a> {
                 for (t1, t2) in after1_it.by_ref().rev().zip(t2_iterator.by_ref().rev()) {
                     matches &= t1.matches(i_s, self, t2, variance);
                 }
-                let Some(tv_matcher) = self.type_var_matcher.as_mut() else {
-                    return Match::new_false()
-                };
-                let tvt = match &with_unpack1.unpack {
-                    TupleUnpack::TypeVarTuple(tvt) => tvt,
-                    TupleUnpack::Tuple(tup) => todo!(),
-                };
                 if before1_it.len() > 0 || after1_it.len() > 0 {
                     // Negative numbers mean that we have non-matching tuples, but the fact they do not match
                     // will be noticed in a different place.
                     todo!()
                 } else {
-                    // TODO TypeVarTuple currently we ignore variance completely
-                    let calculated = &mut tv_matcher.calculated_type_vars[tvt.index.as_usize()];
-                    if calculated.calculated() {
-                        calculated.merge_fixed_length_type_var_tuple(i_s, &mut t2_iterator);
-                    } else {
-                        let types: Rc<_> = t2_iterator.cloned().collect();
-                        calculated.type_ =
-                            BoundKind::TypeVarTuple(TypeArguments::new_fixed_length(types));
+                    match &with_unpack1.unpack {
+                        TupleUnpack::TypeVarTuple(tvt) => {
+                            let Some(tv_matcher) = self.type_var_matcher.as_mut() else {
+                                return Match::new_false()
+                            };
+                            // TODO TypeVarTuple currently we ignore variance completely
+                            let calculated =
+                                &mut tv_matcher.calculated_type_vars[tvt.index.as_usize()];
+                            if calculated.calculated() {
+                                calculated.merge_fixed_length_type_var_tuple(i_s, &mut t2_iterator);
+                            } else {
+                                let types: Rc<_> = t2_iterator.cloned().collect();
+                                calculated.type_ =
+                                    BoundKind::TypeVarTuple(TypeArguments::new_fixed_length(types));
+                            }
+                        }
+                        TupleUnpack::Tuple(inner_tup1) => {
+                            matches &= match_tuple_type_arguments(
+                                i_s,
+                                self,
+                                &inner_tup1.args,
+                                &TupleTypeArguments::FixedLength(t2_iterator.cloned().collect()),
+                                variance,
+                            );
+                        }
                     }
                 }
             }
