@@ -252,16 +252,19 @@ impl<'a> Matcher<'a> {
 
         match tuple2 {
             TupleTypeArguments::FixedLength(ts2) => {
-                let mut before1_it = with_unpack1.before.iter();
-                let mut after1_it = with_unpack1.after.iter();
                 let mut t2_iterator = ts2.iter();
-                for (t1, t2) in before1_it.by_ref().zip(t2_iterator.by_ref()) {
+                for (t1, t2) in with_unpack1.before.iter().zip(t2_iterator.by_ref()) {
                     matches &= t1.matches(i_s, self, t2, variance);
                 }
-                for (t1, t2) in after1_it.by_ref().rev().zip(t2_iterator.by_ref().rev()) {
+                for (t1, t2) in with_unpack1
+                    .after
+                    .iter()
+                    .rev()
+                    .zip(t2_iterator.by_ref().rev())
+                {
                     matches &= t1.matches(i_s, self, t2, variance);
                 }
-                if before1_it.len() > 0 || after1_it.len() > 0 {
+                if (with_unpack1.before.len() + with_unpack1.after.len()) > ts2.len() {
                     // Negative numbers mean that we have non-matching tuples, but the fact they do not match
                     // will be noticed in a different place.
                     todo!()
@@ -327,10 +330,10 @@ impl<'a> Matcher<'a> {
                             match &inner_tup2.args {
                                 TupleTypeArguments::ArbitraryLength(inner_t2) => {
                                     for t1 in before1_it {
-                                        matches &= t1.matches(i_s, self, inner_t2, variance)
+                                        return Match::new_false();
                                     }
                                     for t1 in after1_it {
-                                        matches &= t1.matches(i_s, self, inner_t2, variance)
+                                        return Match::new_false();
                                     }
                                 }
                                 TupleTypeArguments::WithUnpack(_) => todo!(),
