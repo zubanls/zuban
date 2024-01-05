@@ -316,27 +316,39 @@ impl<'a> Matcher<'a> {
                             TupleUnpack::Tuple(_) => todo!(),
                         }
                     }
-                    TupleUnpack::Tuple(inner_tup1) => {
-                        if before1_it.len() > 0
-                            || before2_it.len() > 0
-                            || after1_it.len() > 0
-                            || after2_it.len() > 0
-                        {
-                            todo!()
-                        }
-                        match &with_unpack2.unpack {
-                            TupleUnpack::TypeVarTuple(tvt2) => todo!(),
-                            TupleUnpack::Tuple(inner_tup2) => {
-                                matches &= match_tuple_type_arguments(
-                                    i_s,
-                                    self,
-                                    &inner_tup1.args,
-                                    &inner_tup2.args,
-                                    variance,
-                                )
+                    TupleUnpack::Tuple(inner_tup1) => match &with_unpack2.unpack {
+                        TupleUnpack::TypeVarTuple(tvt2) => todo!(),
+                        TupleUnpack::Tuple(inner_tup2) => {
+                            match &inner_tup2.args {
+                                TupleTypeArguments::ArbitraryLength(inner_t2) => {
+                                    for t1 in before1_it {
+                                        matches &= t1.matches(i_s, self, inner_t2, variance)
+                                    }
+                                    for t1 in after1_it {
+                                        matches &= t1.matches(i_s, self, inner_t2, variance)
+                                    }
+                                }
+                                TupleTypeArguments::WithUnpack(_) => todo!(),
+                                TupleTypeArguments::FixedLength(_) => unreachable!(),
                             }
+                            let compare_tup2 = if before2_it.len() > 0 || after2_it.len() > 0 {
+                                Cow::Owned(TupleTypeArguments::WithUnpack(WithUnpack {
+                                    before: before2_it.cloned().collect(),
+                                    unpack: TupleUnpack::Tuple(inner_tup2.clone()),
+                                    after: after2_it.cloned().collect(),
+                                }))
+                            } else {
+                                Cow::Borrowed(&inner_tup2.args)
+                            };
+                            matches &= match_tuple_type_arguments(
+                                i_s,
+                                self,
+                                &inner_tup1.args,
+                                &compare_tup2,
+                                variance,
+                            );
                         }
-                    }
+                    },
                 };
                 /*
                 let mut t2_iterator = ts2.iter();
