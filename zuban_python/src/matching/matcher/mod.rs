@@ -252,15 +252,13 @@ impl<'a> Matcher<'a> {
 
         match tuple2 {
             TupleTypeArguments::FixedLength(ts2) => {
+                let mut before1_it = with_unpack1.before.iter();
+                let mut after1_it = with_unpack1.after.iter();
                 let mut t2_iterator = ts2.iter();
-                for (t1, t2) in with_unpack1.before.iter().zip(t2_iterator.by_ref()) {
+                for (t1, t2) in before1_it.by_ref().zip(t2_iterator.by_ref()) {
                     matches &= t1.matches(i_s, self, t2, variance);
                 }
-                for (t1, t2) in with_unpack1
-                    .after
-                    .iter()
-                    .zip(ts2[ts2.len() - with_unpack1.after.len()..].iter())
-                {
+                for (t1, t2) in after1_it.by_ref().rev().zip(t2_iterator.by_ref().rev()) {
                     matches &= t1.matches(i_s, self, t2, variance);
                 }
                 let Some(tv_matcher) = self.type_var_matcher.as_mut() else {
@@ -270,23 +268,20 @@ impl<'a> Matcher<'a> {
                     TupleUnpack::TypeVarTuple(tvt) => tvt,
                     TupleUnpack::Tuple(tup) => todo!(),
                 };
-                // TODO TypeVarTuple currently we ignore variance completely
-                let calculated = &mut tv_matcher.calculated_type_vars[tvt.index.as_usize()];
-                let fetch = ts2.len() as isize + 1 - with_unpack1.after.len() as isize;
-                if let Ok(fetch) = fetch.try_into() {
+                if before1_it.len() > 0 || after1_it.len() > 0 {
+                    // Negative numbers mean that we have non-matching tuples, but the fact they do not match
+                    // will be noticed in a different place.
+                    todo!()
+                } else {
+                    // TODO TypeVarTuple currently we ignore variance completely
+                    let calculated = &mut tv_matcher.calculated_type_vars[tvt.index.as_usize()];
                     if calculated.calculated() {
-                        calculated.merge_fixed_length_type_var_tuple(
-                            i_s,
-                            &mut t2_iterator.by_ref().take(fetch),
-                        );
+                        calculated.merge_fixed_length_type_var_tuple(i_s, &mut t2_iterator);
                     } else {
-                        let types: Rc<_> = t2_iterator.by_ref().take(fetch).cloned().collect();
+                        let types: Rc<_> = t2_iterator.cloned().collect();
                         calculated.type_ =
                             BoundKind::TypeVarTuple(TypeArguments::new_fixed_length(types));
                     }
-                } else {
-                    // Negative numbers mean that we have non-matching tuples, but the fact they do not match
-                    // will be noticed in a different place.
                 }
             }
             TupleTypeArguments::WithUnpack(with_unpack2) => {
