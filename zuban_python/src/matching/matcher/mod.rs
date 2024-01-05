@@ -400,8 +400,22 @@ impl<'a> Matcher<'a> {
                             );
                         }
                     }
-                    TupleUnpack::Tuple(tup) => todo!(),
-                };
+                    TupleUnpack::Tuple(inner_tup1) => {
+                        if !with_unpack1.before.is_empty() || !with_unpack1.after.is_empty() {
+                            todo!()
+                        }
+                        /*
+                        matches &= match_tuple_type_arguments(
+                            i_s,
+                            self,
+                            &inner_tup1.args,
+                            tuple2,
+                            variance,
+                        );
+                        */
+                        todo!()
+                    }
+                }
             }
         };
         matches
