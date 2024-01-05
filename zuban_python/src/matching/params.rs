@@ -10,7 +10,7 @@ use crate::{
     inference_state::InferenceState,
     type_::{
         CallableParam, CallableParams, ParamSpecUsage, ParamType, StarParamType, StarStarParamType,
-        StringSlice, TupleUnpack, Type, TypeVarLikes, TypedDict, TypedDictMember, Variance,
+        StringSlice, Tuple, Type, TypeVarLikes, TypedDict, TypedDictMember, Variance,
     },
 };
 
@@ -919,7 +919,7 @@ pub enum WrappedParamType<'a> {
 pub enum WrappedStar<'a> {
     ArbitraryLength(Option<Cow<'a, Type>>),
     ParamSpecArgs(&'a ParamSpecUsage),
-    UnpackedTuple(&'a TupleUnpack),
+    UnpackedTuple(&'a Tuple),
 }
 
 #[derive(Debug)]

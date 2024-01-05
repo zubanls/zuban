@@ -25,11 +25,11 @@ use crate::{
     diagnostics::IssueType,
     inference_state::InferenceState,
     type_::{
-        match_tuple_type_arguments, AnyCause, CallableContent, CallableParam, CallableParams,
-        GenericItem, GenericsList, ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamType,
-        ReplaceSelf, StarParamType, TupleTypeArguments, TupleUnpack, Type, TypeArguments,
-        TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, TypedDict,
-        TypedDictGenerics, Variance, WithUnpack,
+        AnyCause, CallableContent, CallableParam, CallableParams, GenericItem, GenericsList,
+        ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamType, ReplaceSelf,
+        StarParamType, TupleTypeArguments, TupleUnpack, Type, TypeArguments, TypeVarKind,
+        TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, TypedDict, TypedDictGenerics,
+        Variance, WithUnpack,
     },
     type_helpers::{Callable, Class, Function},
 };
@@ -285,14 +285,10 @@ impl<'a> Matcher<'a> {
                                     BoundKind::TypeVarTuple(TypeArguments::new_fixed_length(types));
                             }
                         }
-                        TupleUnpack::Tuple(inner_tup1) => {
-                            matches &= match_tuple_type_arguments(
-                                i_s,
-                                self,
-                                &inner_tup1.args,
-                                &TupleTypeArguments::FixedLength(t2_iterator.cloned().collect()),
-                                variance,
-                            );
+                        TupleUnpack::ArbitraryLength(inner_t1) => {
+                            for t2 in t2_iterator {
+                                matches &= inner_t1.matches(i_s, self, t2, variance)
+                            }
                         }
                     }
                 }
@@ -322,42 +318,39 @@ impl<'a> Matcher<'a> {
                         }
                         matches = match &with_unpack2.unpack {
                             TupleUnpack::TypeVarTuple(tvt2) => (tvt1 == tvt2).into(),
-                            TupleUnpack::Tuple(_) => todo!(),
+                            TupleUnpack::ArbitraryLength(_) => todo!(),
                         }
                     }
-                    TupleUnpack::Tuple(inner_tup1) => match &with_unpack2.unpack {
+                    TupleUnpack::ArbitraryLength(inner_t1) => match &with_unpack2.unpack {
                         TupleUnpack::TypeVarTuple(tvt2) => todo!(),
-                        TupleUnpack::Tuple(inner_tup2) => {
-                            match &inner_tup2.args {
-                                TupleTypeArguments::ArbitraryLength(inner_t2) => {
-                                    /*
-                                    if with_unpack1.before.len() > with_unpack2.before.len() {
-                                        return Match::new_false();
-                                    }
-                                    if with_unpack1.after.len() > with_unpack2.after.len() {
-                                        return Match::new_false();
-                                    }
-                                    */
-                                }
-                                TupleTypeArguments::WithUnpack(_) => todo!(),
-                                TupleTypeArguments::FixedLength(_) => unreachable!(),
+                        TupleUnpack::ArbitraryLength(inner_t2) => {
+                            /*
+                            if with_unpack1.before.len() > with_unpack2.before.len() {
+                                return Match::new_false();
                             }
+                            if with_unpack1.after.len() > with_unpack2.after.len() {
+                                return Match::new_false();
+                            }
+                            */
                             let compare_tup2 = if before2_it.len() > 0 || after2_it.len() > 0 {
+                                /*
                                 Cow::Owned(TupleTypeArguments::WithUnpack(WithUnpack {
                                     before: before2_it.cloned().collect(),
                                     unpack: TupleUnpack::Tuple(inner_tup2.clone()),
                                     after: after2_it.cloned().collect(),
                                 }))
+                                matches &= match_tuple_type_arguments(
+                                    i_s,
+                                    self,
+                                    &inner_tup1.args,
+                                    &compare_tup2,
+                                    variance,
+                                );
+                                */
+                                todo!();
                             } else {
-                                Cow::Borrowed(&inner_tup2.args)
+                                matches &= inner_t1.matches(i_s, self, inner_t2, variance);
                             };
-                            matches &= match_tuple_type_arguments(
-                                i_s,
-                                self,
-                                &inner_tup1.args,
-                                &compare_tup2,
-                                variance,
-                            );
                         }
                     },
                 };
@@ -400,7 +393,7 @@ impl<'a> Matcher<'a> {
                             );
                         }
                     }
-                    TupleUnpack::Tuple(inner_tup1) => {
+                    TupleUnpack::ArbitraryLength(inner_t1) => {
                         if !with_unpack1.before.is_empty() || !with_unpack1.after.is_empty() {
                             todo!()
                         }

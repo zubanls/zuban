@@ -3,8 +3,8 @@ use std::{borrow::Cow, rc::Rc};
 use parsa_python_ast::ParamKind;
 
 use super::{
-    AnyCause, DbString, FunctionKind, ParamSpecUsage, RecursiveType, StringSlice, TupleUnpack,
-    Type, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikes, TypeVarName, TypeVarUsage, TypedDict,
+    AnyCause, DbString, FunctionKind, ParamSpecUsage, RecursiveType, StringSlice, Tuple, Type,
+    TypeVar, TypeVarKind, TypeVarLike, TypeVarLikes, TypeVarName, TypeVarUsage, TypedDict,
     Variance,
 };
 use crate::{
@@ -24,7 +24,7 @@ use crate::{
 pub enum StarParamType {
     ArbitraryLength(Type),
     ParamSpecArgs(ParamSpecUsage),
-    UnpackedTuple(TupleUnpack),
+    UnpackedTuple(Rc<Tuple>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -533,10 +533,7 @@ impl CallableContent {
                     | ParamType::Star(StarParamType::ArbitraryLength(t))
                     | ParamType::StarStar(StarStarParamType::ValueType(t)) => t.find_in_type(check),
                     ParamType::Star(StarParamType::ParamSpecArgs(_)) => false,
-                    ParamType::Star(StarParamType::UnpackedTuple(u)) => match u {
-                        TupleUnpack::TypeVarTuple(_) => false,
-                        TupleUnpack::Tuple(tup) => tup.find_in_type(check),
-                    },
+                    ParamType::Star(StarParamType::UnpackedTuple(u)) => u.find_in_type(check),
                     ParamType::StarStar(StarStarParamType::ParamSpecKwargs(_)) => false,
                     ParamType::StarStar(StarStarParamType::UnpackTypedDict(_)) => todo!(),
                 }),
@@ -740,10 +737,9 @@ pub fn format_callable_params<'db: 'x, 'x, P: Param<'x>>(
                 .as_ref()
                 .map(|t| format_function_type(format_data, t, class)),
             WrappedParamType::Star(WrappedStar::ParamSpecArgs(u)) => todo!(),
-            WrappedParamType::Star(WrappedStar::UnpackedTuple(u)) => match u {
-                TupleUnpack::TypeVarTuple(tup) => Some(format!("TODO format unpack").into()),
-                TupleUnpack::Tuple(_) => Some(format!("TODO format tuple unpack").into()),
-            },
+            WrappedParamType::Star(WrappedStar::UnpackedTuple(u)) => {
+                Some(format!("TODO format tuple unpack").into())
+            }
             WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(td)) => {
                 Some(format!("Unpack[{}]", td.format(format_data)).into())
             }

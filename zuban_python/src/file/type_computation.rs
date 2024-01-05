@@ -1198,14 +1198,22 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     ) -> TuplePart {
         match t {
             TypeContent::Unpacked(TypeOrUnpack::TypeVarTuple(tvt)) => {
-                TuplePart::TupleUnpack(TupleUnpack::TypeVarTuple(tvt))
+                TuplePart::TupleUnpack(TypeCompTupleUnpack::TypeVarTuple(tvt))
             }
             TypeContent::Unpacked(TypeOrUnpack::Type(Type::Tuple(tup))) => {
-                TuplePart::TupleUnpack(TupleUnpack::Tuple(tup))
+                TuplePart::TupleUnpack(match rc_unwrap_or_clone(tup).args {
+                    TupleTypeArguments::WithUnpack(w) => TypeCompTupleUnpack::WithUnpack(w),
+                    TupleTypeArguments::ArbitraryLength(t) => {
+                        TypeCompTupleUnpack::ArbitraryLength(t)
+                    }
+                    TupleTypeArguments::FixedLength(ts) => {
+                        TypeCompTupleUnpack::FixedLength(rc_slice_into_vec(ts))
+                    }
+                })
             }
-            TypeContent::Unpacked(TypeOrUnpack::Unknown(_)) => {
-                TuplePart::TupleUnpack(TupleUnpack::Tuple(Tuple::new_arbitrary_length_with_any()))
-            }
+            TypeContent::Unpacked(TypeOrUnpack::Unknown(cause)) => TuplePart::TupleUnpack(
+                TypeCompTupleUnpack::ArbitraryLength(Box::new(Type::Any(cause))),
+            ),
             TypeContent::Unpacked(TypeOrUnpack::Type(t)) => {
                 self.add_issue(
                     slice.as_node_ref(),
@@ -1213,7 +1221,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         type_: t.format_short(self.inference.i_s.db),
                     },
                 );
-                TuplePart::TupleUnpack(TupleUnpack::Tuple(Tuple::new_arbitrary_length_with_any()))
+                TuplePart::TupleUnpack(TypeCompTupleUnpack::ArbitraryLength(Box::new(Type::Any(
+                    AnyCause::FromError,
+                ))))
             }
             t => TuplePart::Type(self.as_type(t, slice.as_node_ref())),
         }
@@ -2060,13 +2070,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
                 _ => match self.convert_slice_type_or_tuple_unpack(t, first) {
                     TuplePart::Type(t) => Tuple::new_fixed_length(Rc::new([t])),
-                    TuplePart::TupleUnpack(unpack) => {
-                        Tuple::new(TupleTypeArguments::WithUnpack(WithUnpack {
-                            before: Rc::from([]),
-                            unpack,
-                            after: Rc::from([]),
-                        }))
-                    }
+                    TuplePart::TupleUnpack(u) => u.as_tuple(),
                 },
             }
         };
@@ -2106,10 +2110,16 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 ParamType::StarStar(StarStarParamType::UnpackTypedDict(td))
             }
             TypeContent::Unpacked(TypeOrUnpack::TypeVarTuple(tvt)) => {
-                ParamType::Star(StarParamType::UnpackedTuple(TupleUnpack::TypeVarTuple(tvt)))
+                ParamType::Star(StarParamType::UnpackedTuple(Rc::new(Tuple::new(
+                    TupleTypeArguments::WithUnpack(WithUnpack {
+                        before: Rc::from([]),
+                        unpack: TupleUnpack::TypeVarTuple(tvt),
+                        after: Rc::from([]),
+                    }),
+                ))))
             }
             TypeContent::Unpacked(TypeOrUnpack::Type(Type::Tuple(tup))) => {
-                ParamType::Star(StarParamType::UnpackedTuple(TupleUnpack::Tuple(tup)))
+                ParamType::Star(StarParamType::UnpackedTuple(tup))
             }
             _ => {
                 ParamType::PositionalOnly(self.as_type(t, NodeRef::new(self.inference.file, index)))
@@ -3896,15 +3906,36 @@ fn save_alias(alias_origin: NodeRef, alias: TypeAlias) {
     alias_origin.insert_complex(complex, Locality::Todo);
 }
 
+enum TypeCompTupleUnpack {
+    TypeVarTuple(TypeVarTupleUsage),
+    ArbitraryLength(Box<Type>),
+    FixedLength(Vec<Type>),
+    WithUnpack(WithUnpack),
+}
+impl TypeCompTupleUnpack {
+    fn as_tuple(self) -> Tuple {
+        Tuple::new(match self {
+            Self::TypeVarTuple(tvt) => TupleTypeArguments::WithUnpack(WithUnpack {
+                before: Rc::from([]),
+                unpack: TupleUnpack::TypeVarTuple(tvt),
+                after: Rc::from([]),
+            }),
+            Self::ArbitraryLength(t) => TupleTypeArguments::ArbitraryLength(t),
+            Self::FixedLength(ts) => TupleTypeArguments::FixedLength(ts.into()),
+            Self::WithUnpack(with_unpack) => TupleTypeArguments::WithUnpack(with_unpack),
+        })
+    }
+}
+
 enum TuplePart {
     Type(Type),
-    TupleUnpack(TupleUnpack),
+    TupleUnpack(TypeCompTupleUnpack),
 }
 
 struct TypeArgIterator<'a, I> {
     slices: I,
-    current_unpack: Option<(NodeRef<'a>, TupleUnpack)>,
-    current_unpack_reverse: Option<TupleUnpack>,
+    current_unpack: Option<(NodeRef<'a>, TypeCompTupleUnpack)>,
+    current_unpack_reverse: Option<TypeCompTupleUnpack>,
     reverse_already_analyzed: Option<NodeRef<'a>>,
 }
 
@@ -3925,25 +3956,20 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
     ) -> Option<(NodeRef<'a>, Type)> {
         if let Some((from, unpack)) = self.current_unpack.as_mut() {
             match unpack {
-                TupleUnpack::TypeVarTuple(_) => {
+                TypeCompTupleUnpack::TypeVarTuple(_) => {
                     type_computation.add_issue(*from, IssueType::TypeVarTupleCannotBeSplit);
                     return Some((*from, Type::Any(AnyCause::FromError)));
                 }
-                TupleUnpack::Tuple(tup) => match &tup.args {
-                    TupleTypeArguments::WithUnpack(with_unpack) => todo!(),
-                    TupleTypeArguments::FixedLength(ts) => {
-                        if let Some(first) = ts.first() {
-                            let result = first.clone();
-                            *tup =
-                                Rc::new(Tuple::new_fixed_length(ts[1..].iter().cloned().collect()));
-                            return Some((*from, result));
-                        } else {
-                            self.current_unpack = None;
-                        }
+                TypeCompTupleUnpack::ArbitraryLength(t) => return Some((*from, (**t).clone())),
+                TypeCompTupleUnpack::WithUnpack(with_unpack) => todo!(),
+                TypeCompTupleUnpack::FixedLength(ts) => {
+                    if ts.len() > 0 {
+                        return Some((*from, ts.remove(0)));
+                    } else {
+                        self.current_unpack = None;
                     }
-                    TupleTypeArguments::ArbitraryLength(t) => return Some((*from, (**t).clone())),
-                },
-            };
+                }
+            }
         }
         let Some(s) = self.slices.next() else {
             return None
@@ -3959,7 +3985,7 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
                     );
                     todo!()
                 } else {
-                    if !has_type_var_tuple && !u.is_fixed_length_tuple() {
+                    if !has_type_var_tuple && !matches!(u, TypeCompTupleUnpack::FixedLength(_)) {
                         type_computation.add_issue(
                             s.as_node_ref(),
                             IssueType::UnpackOnlyValidInVariadicPosition,
@@ -3981,26 +4007,22 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
         if let Some(unpack) = self.current_unpack_reverse.as_mut() {
             let from = self.reverse_already_analyzed.unwrap();
             match unpack {
-                TupleUnpack::TypeVarTuple(_) => {
+                TypeCompTupleUnpack::TypeVarTuple(_) => {
                     type_computation.add_issue(
                         self.reverse_already_analyzed.unwrap(),
                         IssueType::TypeVarTupleCannotBeSplit,
                     );
                     return Some((from, Type::Any(AnyCause::FromError)));
                 }
-                TupleUnpack::Tuple(tup) => match &tup.args {
-                    TupleTypeArguments::WithUnpack(with_unpack) => todo!(),
-                    TupleTypeArguments::FixedLength(ts) => {
-                        let mut elements = Vec::from(ts.as_ref());
-                        if let Some(result) = elements.pop() {
-                            *tup = Rc::new(Tuple::new_fixed_length(elements.into()));
-                            return Some((from, result));
-                        } else {
-                            self.current_unpack_reverse = None;
-                        }
+                TypeCompTupleUnpack::WithUnpack(with_unpack) => todo!(),
+                TypeCompTupleUnpack::FixedLength(ts) => {
+                    if let Some(result) = ts.pop() {
+                        return Some((from, result));
+                    } else {
+                        self.current_unpack_reverse = None;
                     }
-                    TupleTypeArguments::ArbitraryLength(t) => return Some((from, (**t).clone())),
-                },
+                }
+                TypeCompTupleUnpack::ArbitraryLength(t) => return Some((from, (**t).clone())),
             }
         }
         let mut current = None;
@@ -4017,20 +4039,16 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
         let Some(current_slice_part) = current else {
             if let Some((from, unpack)) = self.current_unpack.as_mut() {
                 match unpack {
-                    TupleUnpack::TypeVarTuple(_) => todo!(),
-                    TupleUnpack::Tuple(tup) => match &tup.args {
-                        TupleTypeArguments::WithUnpack(with_unpack) => todo!(),
-                        TupleTypeArguments::FixedLength(ts) => {
-                            let mut elements = Vec::from(ts.as_ref());
-                            if let Some(result) = elements.pop() {
-                                *tup = Rc::new(Tuple::new_fixed_length(elements.into()));
-                                return Some((*from, result))
-                            } else {
-                                self.current_unpack = None;
-                            }
+                    TypeCompTupleUnpack::TypeVarTuple(_) => todo!(),
+                    TypeCompTupleUnpack::WithUnpack(with_unpack) => todo!(),
+                    TypeCompTupleUnpack::FixedLength(ts) => {
+                        if let Some(result) = ts.pop() {
+                            return Some((*from, result))
+                        } else {
+                            self.current_unpack = None;
                         }
-                        TupleTypeArguments::ArbitraryLength(t) => return Some((*from, (**t).clone())),
                     }
+                    TypeCompTupleUnpack::ArbitraryLength(t) => return Some((*from, (**t).clone())),
                 }
             }
             return None
@@ -4066,7 +4084,43 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
     fn as_type_arguments(&mut self, type_computation: &mut TypeComputation) -> TupleTypeArguments {
         let mut before = vec![];
         let mut after = vec![];
-        let mut unpack = self.current_unpack.take().map(|t| t.1);
+        let mut unpack = None;
+
+        let add_unpack = |type_computation: &mut TypeComputation,
+                          from,
+                          u,
+                          before: &mut Vec<_>,
+                          unpack: &mut Option<TupleUnpack>,
+                          after: &mut Vec<_>| {
+            let new_unpack = match u {
+                TypeCompTupleUnpack::TypeVarTuple(tvt) => TupleUnpack::TypeVarTuple(tvt),
+                TypeCompTupleUnpack::ArbitraryLength(t) => TupleUnpack::ArbitraryLength(*t),
+                TypeCompTupleUnpack::WithUnpack(with_unpack) => {
+                    before.extend(with_unpack.before.iter().cloned());
+                    after.extend(with_unpack.after.iter().cloned());
+                    with_unpack.unpack
+                }
+                TypeCompTupleUnpack::FixedLength(mut ts) => {
+                    before.append(&mut ts);
+                    return;
+                }
+            };
+            if unpack.is_some() {
+                type_computation.add_issue(from, IssueType::MoreThanOneUnpackTypeIsNotAllowed)
+            } else {
+                *unpack = Some(new_unpack);
+            }
+        };
+        if let Some((from, current_unpack)) = self.current_unpack.take() {
+            add_unpack(
+                type_computation,
+                from,
+                current_unpack,
+                &mut before,
+                &mut unpack,
+                &mut after,
+            )
+        }
         for s in self.slices.by_ref() {
             if let Some(already_analyzed) = self.reverse_already_analyzed {
                 if already_analyzed == s.as_node_ref() {
@@ -4082,58 +4136,30 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
                         after.push(t)
                     }
                 }
-                TuplePart::TupleUnpack(u) => {
-                    if unpack.is_some() {
-                        type_computation.add_issue(
-                            s.as_node_ref(),
-                            IssueType::MoreThanOneUnpackTypeIsNotAllowed,
-                        )
-                    } else {
-                        unpack = Some(u)
-                    }
-                }
+                TuplePart::TupleUnpack(u) => add_unpack(
+                    type_computation,
+                    s.as_node_ref(),
+                    u,
+                    &mut before,
+                    &mut unpack,
+                    &mut after,
+                ),
             }
         }
         if let Some(u) = self.current_unpack_reverse.take() {
-            let mut add_unpack = true;
-            if let TupleUnpack::Tuple(tup) = &u {
-                if let TupleTypeArguments::FixedLength(ts) = &tup.args {
-                    for t in ts.iter().cloned() {
-                        if unpack.is_none() {
-                            before.push(t);
-                        } else {
-                            after.push(t);
-                        }
-                    }
-                    add_unpack = false;
-                }
-            }
-            if add_unpack {
-                if unpack.is_some() {
-                    todo!()
-                } else {
-                    unpack = Some(u);
-                }
-            }
+            add_unpack(
+                type_computation,
+                self.reverse_already_analyzed.unwrap(),
+                u,
+                &mut before,
+                &mut unpack,
+                &mut after,
+            )
         }
         if let Some(unpack) = unpack {
             match unpack {
-                TupleUnpack::Tuple(tup)
-                    if before.is_empty()
-                        && after.is_empty()
-                        && !matches!(tup.args, TupleTypeArguments::WithUnpack(_)) =>
-                {
-                    rc_unwrap_or_clone(tup).args
-                }
-                TupleUnpack::Tuple(tup)
-                    if matches!(tup.args, TupleTypeArguments::FixedLength(_)) =>
-                {
-                    let TupleTypeArguments::FixedLength(unpacked) = rc_unwrap_or_clone(tup).args else {
-                        unreachable!()
-                    };
-                    before.append(&mut rc_slice_into_vec(unpacked));
-                    before.append(&mut after);
-                    TupleTypeArguments::FixedLength(Rc::from(before))
+                TupleUnpack::ArbitraryLength(t) if before.is_empty() && after.is_empty() => {
+                    TupleTypeArguments::ArbitraryLength(Box::new(t))
                 }
                 _ => TupleTypeArguments::WithUnpack(WithUnpack {
                     before: before.into(),

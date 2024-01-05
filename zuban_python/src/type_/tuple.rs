@@ -191,7 +191,7 @@ impl Tuple {
 #[derive(Debug, Clone, PartialEq)]
 pub enum TupleUnpack {
     TypeVarTuple(TypeVarTupleUsage),
-    Tuple(Rc<Tuple>),
+    ArbitraryLength(Type),
 }
 
 impl TupleUnpack {
@@ -201,12 +201,8 @@ impl TupleUnpack {
                 &TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(t)),
                 ParamsStyle::Unreachable,
             ),
-            Self::Tuple(tup) => tup.format(format_data),
+            Self::ArbitraryLength(t) => format!("Tuple[{}, ...]", t.format(format_data)).into(),
         }
-    }
-
-    pub fn is_fixed_length_tuple(&self) -> bool {
-        matches!(self, TupleUnpack::Tuple(tup) if matches!(tup.args, TupleTypeArguments::FixedLength(_)))
     }
 }
 
@@ -236,7 +232,7 @@ impl WithUnpack {
         self.before.iter().any(|t| t.find_in_type(check))
             || match &self.unpack {
                 TupleUnpack::TypeVarTuple(_) => false,
-                TupleUnpack::Tuple(tup) => tup.find_in_type(check),
+                TupleUnpack::ArbitraryLength(t) => t.find_in_type(check),
             }
             || self.before.iter().any(|t| t.find_in_type(check))
     }
@@ -251,7 +247,7 @@ impl WithUnpack {
             .any(|t| t.has_any_internal(i_s, already_checked))
             || match &self.unpack {
                 TupleUnpack::TypeVarTuple(_) => false,
-                TupleUnpack::Tuple(tup) => tup.args.has_any_internal(i_s, already_checked),
+                TupleUnpack::ArbitraryLength(t) => t.has_any_internal(i_s, already_checked),
             }
             || self
                 .after
@@ -330,7 +326,7 @@ impl TupleTypeArguments {
                     TupleUnpack::TypeVarTuple(tvt) => {
                         found_type_var(TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(tvt)))
                     }
-                    TupleUnpack::Tuple(tup) => tup.args.search_type_vars(found_type_var),
+                    TupleUnpack::ArbitraryLength(t) => t.search_type_vars(found_type_var),
                 }
                 for t in with_unpack.after.iter() {
                     t.search_type_vars(found_type_var)

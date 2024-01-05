@@ -477,47 +477,31 @@ impl CallableParams {
                                         ),
                                     )
                                 }
-                                StarParamType::UnpackedTuple(u) => match u {
-                                    TupleUnpack::TypeVarTuple(tvt) => {
-                                        let GenericItem::TypeArguments(new) = callable(
-                                            TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(tvt))
-                                        ) else {
-                                            unreachable!();
-                                        };
-                                        match new.args {
-                                            TupleTypeArguments::FixedLength(types) => {
-                                                for t in rc_slice_into_vec(types) {
-                                                    new_params.push(CallableParam::new_anonymous(
-                                                        ParamType::PositionalOnly(t),
-                                                    ))
-                                                }
-                                                continue;
-                                            }
-                                            TupleTypeArguments::ArbitraryLength(t) => {
+                                StarParamType::UnpackedTuple(u) => {
+                                    match u.args.replace_type_var_likes_and_self(
+                                        db,
+                                        callable,
+                                        replace_self,
+                                    ) {
+                                        TupleTypeArguments::FixedLength(types) => {
+                                            for t in rc_slice_into_vec(types) {
                                                 new_params.push(CallableParam::new_anonymous(
-                                                    ParamType::Star(
-                                                        StarParamType::ArbitraryLength(*t),
-                                                    ),
-                                                ));
-                                                continue;
-                                            }
-                                            args @ TupleTypeArguments::WithUnpack(_) => {
-                                                StarParamType::UnpackedTuple(TupleUnpack::Tuple(
-                                                    Rc::new(Tuple::new(args)),
+                                                    ParamType::PositionalOnly(t),
                                                 ))
                                             }
+                                            continue;
+                                        }
+                                        TupleTypeArguments::ArbitraryLength(t) => {
+                                            new_params.push(CallableParam::new_anonymous(
+                                                ParamType::Star(StarParamType::ArbitraryLength(*t)),
+                                            ));
+                                            continue;
+                                        }
+                                        args @ TupleTypeArguments::WithUnpack(_) => {
+                                            StarParamType::UnpackedTuple(Rc::new(Tuple::new(args)))
                                         }
                                     }
-                                    TupleUnpack::Tuple(tup) => {
-                                        StarParamType::UnpackedTuple(TupleUnpack::Tuple(Rc::new(
-                                            Tuple::new(tup.args.replace_type_var_likes_and_self(
-                                                db,
-                                                callable,
-                                                replace_self,
-                                            )),
-                                        )))
-                                    }
-                                },
+                                }
                                 StarParamType::ParamSpecArgs(_) => todo!(),
                             }),
                             ParamType::StarStar(d) => ParamType::StarStar(match d {
@@ -677,26 +661,25 @@ impl TupleTypeArguments {
                             })
                         }
                         TupleTypeArguments::ArbitraryLength(t) => {
-                            if !new_before.is_empty() || !new_after.is_empty() {
+                            if new_before.is_empty() && new_after.is_empty() {
+                                TupleTypeArguments::ArbitraryLength(t)
+                            } else {
                                 TupleTypeArguments::WithUnpack(WithUnpack {
                                     before: new_before.into(),
-                                    unpack: TupleUnpack::Tuple(Rc::new(Tuple::new(
-                                        TupleTypeArguments::ArbitraryLength(t),
-                                    ))),
+                                    unpack: TupleUnpack::ArbitraryLength(*t),
                                     after: new_after.into(),
                                 })
-                            } else {
-                                return TupleTypeArguments::ArbitraryLength(t);
                             }
                         }
                     }
                 }
-                TupleUnpack::Tuple(tup) => TupleTypeArguments::WithUnpack(WithUnpack {
+                TupleUnpack::ArbitraryLength(t) => TupleTypeArguments::WithUnpack(WithUnpack {
                     before: unpack.before.clone(),
-                    unpack: TupleUnpack::Tuple(Rc::new(Tuple::new(
-                        tup.args
-                            .replace_type_var_likes_and_self(db, callable, replace_self),
-                    ))),
+                    unpack: TupleUnpack::ArbitraryLength(t.replace_type_var_likes_and_self(
+                        db,
+                        callable,
+                        replace_self,
+                    )),
                     after: unpack.after.clone(),
                 }),
             },
