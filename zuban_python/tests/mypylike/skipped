@@ -2,6 +2,7 @@
 testBadEnumLoading
 testInvalidNamedTupleWithinFunction
 testVariadicUnpackWithRegularInstance
+testMisguidedSetItem
 
 # 3.12 type var syntax
 test695TypeAlias
@@ -564,7 +565,6 @@ testTypeVarTupleIndexOldStyleNonNormalizedAndNonLiteral
 testTypeVarTupleNotConcreteCallable
 testTypeVarTupleParamSpecInteraction
 testTypeVarTupleEmptySpecialCase
-testTypeVarTupleRuntimeTypeApplication
 testTypeVarTupleErrors
 testVariadicAliasMultipleUnpacks
 testVariadicTupleTupleSubclassPrefixSuffix

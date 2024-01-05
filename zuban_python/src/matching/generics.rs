@@ -217,16 +217,10 @@ impl<'a> Generics<'a> {
 
     pub fn format(&self, format_data: &FormatData, expected: Option<usize>) -> String {
         // Returns something like [str] or [List[int], Set[Any]]
-        let mut strings: Vec<_> = self
+        let strings: Vec<_> = self
             .iter(format_data.db)
-            .map(|g| g.format(format_data))
+            .filter_map(|g| g.format(format_data))
             .collect();
-        if let Some(expected) = expected {
-            if strings.len() != expected {
-                // TODO this should probably never happen and we should assert this
-            }
-            strings.resize_with(expected, || Box::from("Any"))
-        }
         format!("[{}]", strings.join(", "))
     }
 

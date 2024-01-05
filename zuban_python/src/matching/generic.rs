@@ -44,11 +44,11 @@ impl<'a> Generic<'a> {
         }
     }
 
-    pub fn format(&self, format_data: &FormatData) -> Box<str> {
+    pub fn format(&self, format_data: &FormatData) -> Option<Box<str>> {
         match self {
-            Self::TypeArgument(t) => t.format(format_data),
+            Self::TypeArgument(t) => Some(t.format(format_data)),
             Self::TypeVarTuple(ts) => ts.format(format_data),
-            Self::ParamSpecArgument(args) => match &args.params {
+            Self::ParamSpecArgument(args) => Some(match &args.params {
                 CallableParams::Simple(params) => format!(
                     "[{}]",
                     &format_callable_params(format_data, None, false, params.iter(), false)
@@ -58,7 +58,7 @@ impl<'a> Generic<'a> {
                 CallableParams::WithParamSpec(..) => {
                     args.params.format(format_data, ParamsStyle::CallableParams)
                 }
-            },
+            }),
         }
     }
 

@@ -3950,9 +3950,7 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
                     );
                     todo!()
                 } else {
-                    if !has_type_var_tuple
-                        && !matches!(&u, TupleUnpack::Tuple(tup) if matches!(tup.args, TupleTypeArguments::FixedLength(_)))
-                    {
+                    if !has_type_var_tuple && !u.is_fixed_length_tuple() {
                         type_computation.add_issue(
                             s.as_node_ref(),
                             IssueType::UnpackOnlyValidInVariadicPosition,

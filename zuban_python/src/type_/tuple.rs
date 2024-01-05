@@ -204,6 +204,10 @@ impl TupleUnpack {
             Self::Tuple(tup) => tup.format(format_data),
         }
     }
+
+    pub fn is_fixed_length_tuple(&self) -> bool {
+        matches!(self, TupleUnpack::Tuple(tup) if matches!(tup.args, TupleTypeArguments::FixedLength(_)))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -273,6 +277,10 @@ impl TupleTypeArguments {
 
     pub fn has_any(&self, i_s: &InferenceState) -> bool {
         self.has_any_internal(i_s, &mut Vec::new())
+    }
+
+    pub fn is_empty(&self) -> bool {
+        matches!(self, TupleTypeArguments::FixedLength(fixed) if fixed.is_empty())
     }
 
     pub(super) fn has_any_internal(

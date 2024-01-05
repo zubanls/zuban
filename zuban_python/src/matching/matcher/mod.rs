@@ -600,7 +600,7 @@ impl<'a> Matcher<'a> {
                 let current = &type_var_matcher.calculated_type_vars[usage.index().as_usize()];
                 return match &current.type_ {
                     BoundKind::TypeVar(bound) => bound.format(format_data.db, format_data.style),
-                    BoundKind::TypeVarTuple(ts) => ts.format(format_data),
+                    BoundKind::TypeVarTuple(ts) => ts.format(format_data).unwrap_or("()".into()),
                     BoundKind::ParamSpecArgument(p) => p.params.format(format_data, params_style),
                     BoundKind::Uncalculated { fallback } => {
                         if let TypeVarLike::TypeVar(type_var) = usage.as_type_var_like() {
@@ -618,7 +618,8 @@ impl<'a> Matcher<'a> {
                 return class
                     .generics()
                     .nth_usage(format_data.db, usage)
-                    .format(&format_data.remove_matcher());
+                    .format(&format_data.remove_matcher())
+                    .unwrap_or("()".into());
             }
         }
         if let Some(func_class) = self.func_or_callable.as_ref().and_then(|f| f.class()) {
@@ -626,7 +627,8 @@ impl<'a> Matcher<'a> {
                 return func_class
                     .generics()
                     .nth_usage(format_data.db, usage)
-                    .format(format_data);
+                    .format(format_data)
+                    .unwrap_or("()".into());
             }
         }
         usage.format_without_matcher(format_data.db, params_style)

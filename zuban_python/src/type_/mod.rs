@@ -175,12 +175,12 @@ impl TypeArguments {
         }
     }
 
-    pub fn format(&self, format_data: &FormatData) -> Box<str> {
+    pub fn format(&self, format_data: &FormatData) -> Option<Box<str>> {
         let result = self.args.format(format_data);
         if matches!(self.args, TupleTypeArguments::ArbitraryLength(_)) {
-            format!("Unpack[Tuple[{result}]]").into()
+            Some(format!("Unpack[Tuple[{result}]]").into())
         } else {
-            result
+            (!self.args.is_empty()).then(|| result)
         }
     }
 }
@@ -256,7 +256,7 @@ impl GenericsList {
         join_with_commas(
             self.0
                 .iter()
-                .map(|g| Generic::new(g).format(format_data).into()),
+                .filter_map(|g| Generic::new(g).format(format_data).map(|s| s.into())),
         )
         .into()
     }
