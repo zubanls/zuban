@@ -118,7 +118,14 @@ impl<'a> Generic<'a> {
     pub fn expect_type_argument(self) -> Cow<'a, Type> {
         match self {
             Self::TypeArgument(t) => t,
-            _ => todo!(),
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn expect_type_arguments(self) -> Cow<'a, TypeArguments> {
+        match self {
+            Self::TypeVarTuple(ts) => ts,
+            _ => unreachable!(),
         }
     }
 

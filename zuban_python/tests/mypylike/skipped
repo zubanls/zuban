@@ -512,13 +512,6 @@ testTypeVarTupleMixed
 testTypeVarTupleChaining
 # TypeVarTuple Foo[()]
 testTypeVarTupleGenericClassDefn
-# matching/matcher/mod.rs:254
-testTypeVarTuplePep646TypeVarTupleUnpacking
-testVariadicTupleInference
-testVariadicTupleSubtyping
-# matching/matcher/mod.rs:271
-testTypeVarTuplePep646ArrayExample
-testTypeVarTuplePep646ArrayExampleWithDType
 # matching/result_context.rs:137
 testVariadicTupleInTupleContext
 testVariadicTupleContextNoCrash
@@ -572,6 +565,10 @@ testVariadicTupleTupleSubclassPrefixSuffix
 testTypeVarTupleCallable
 # type_/type_var_likes.rs:349
 testVariadicTupleDataclass
+# type/matching.rs:932
+testTypeVarTuplePep646TypeVarTupleUnpacking
+testVariadicTupleInference
+testVariadicTupleSubtyping
 # matching/matcher/utils.rs:577
 testTypeVarTupleBothUnpacksCallable
 # matching/params.rs:312

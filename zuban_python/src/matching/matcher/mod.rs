@@ -25,10 +25,10 @@ use crate::{
     diagnostics::IssueType,
     inference_state::InferenceState,
     type_::{
-        AnyCause, CallableContent, CallableParam, CallableParams, GenericItem, GenericsList,
-        ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamType, ReplaceSelf,
-        StarParamType, TupleTypeArguments, Type, TypeArguments, TypeVarKind, TypeVarLike,
-        TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict,
+        match_tuple_type_arguments, AnyCause, CallableContent, CallableParam, CallableParams,
+        GenericItem, GenericsList, ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamType,
+        ReplaceSelf, StarParamType, TupleTypeArguments, Type, TypeArguments, TypeVarKind,
+        TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict,
         TypedDictGenerics, Variance,
     },
     type_helpers::{Callable, Class, Function},
@@ -265,21 +265,33 @@ impl<'a> Matcher<'a> {
         }
         if let Some(class) = self.class {
             if class.node_ref.as_link() == tvt.in_definition {
-                let g = class
+                let ts1 = class
                     .generics()
                     .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(tvt)))
-                    .expect_type_argument();
-                todo!("return g.simple_matches(i_s, value_type, variance);")
+                    .expect_type_arguments();
+                return match_tuple_type_arguments(
+                    i_s,
+                    &mut Matcher::default(),
+                    &ts1.args,
+                    &args2,
+                    variance,
+                );
             }
         }
         // If we're in a class context, we must also be in a method.
         if let Some(func_class) = self.func_or_callable.as_ref().and_then(|f| f.class()) {
             if tvt.in_definition == func_class.node_ref.as_link() {
-                let g = func_class
+                let ts1 = func_class
                     .generics()
                     .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(tvt)))
-                    .expect_type_argument();
-                todo!("return g.matches(i_s, self, value_type, variance);")
+                    .expect_type_arguments();
+                return match_tuple_type_arguments(
+                    i_s,
+                    &mut Matcher::default(),
+                    &ts1.args,
+                    &args2,
+                    variance,
+                );
             }
         }
         match args2 {

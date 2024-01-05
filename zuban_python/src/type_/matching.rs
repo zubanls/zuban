@@ -1023,7 +1023,7 @@ pub fn match_unpack(
         }
         TupleTypeArguments::ArbitraryLength(t2) => {
             if !with_unpack1.before.is_empty() || !with_unpack1.after.is_empty() {
-                matches &= Match::new_false()
+                return Match::new_false();
             }
             match &with_unpack1.unpack {
                 TupleUnpack::TypeVarTuple(tvt) => {
@@ -1035,15 +1035,6 @@ pub fn match_unpack(
                     )
                 }
                 TupleUnpack::ArbitraryLength(inner_t1) => {
-                    /*
-                    matches &= match_tuple_type_arguments(
-                        i_s,
-                        self,
-                        &inner_tup1.args,
-                        tuple2,
-                        variance,
-                    );
-                    */
                     todo!()
                 }
             }
