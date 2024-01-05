@@ -545,11 +545,6 @@ testTypeVarTuple
 testInvalidTypeVarTupleUseNoCrash
 # file/type_computation.rs:2244
 testJoinOfVariadicTupleCallablesNoCrash
-# file/type_computation.rs:4010
-testVariadicTypedDict
-testVariadicInstanceStrictPrefixSuffixCheck
-testVariadicAliasStrictPrefixSuffixCheck
-testVariadicSubclassExtra
 # type_helpers/function.rs:1394
 testTypeVarTuplePep646TypeVarStarArgsFixedLengthTuple
 testAliasToCallableWithUnpack2
@@ -574,7 +569,7 @@ testTypeVarTupleIndexOldStyleNonNormalizedAndNonLiteral
 testVariadicTupleTupleSubclassPrefixSuffix
 # type/matching.rs:881
 testVariadicTupleSubtyping
-testVariadicTupleConcatenation
+testVariadicSubclassExtra
 # type_/replace.rs:409
 testTypeVarTupleCallable
 # type_/type_var_likes.rs:349
@@ -598,6 +593,7 @@ testVariadicAliasMultipleUnpacks
 testVariadicClassGenericSelf
 testVariadicClassNewStyleSelf
 testVariadicTupleCollectionCheck
+testVariadicTypedDict
 testVariadicClassFineUpdateValidToInvalidCached-only_when_cache
 testVariadicClassFineUpdateValidToInvalid-only_when_nocache
 testVariadicClassFineUpdateInvalidToValid
@@ -2224,6 +2220,7 @@ testTypedPkgNamespaceRegFromImportTwiceMissing2
 # --enable-incomplete-feature=PreciseTupleTypes
 testTupleWithStarExpr2Precise
 testTupleWithStarExpr3Precise
+testVariadicTupleConcatenation
 
 # --enable-error-code redundant-expr
 # "If condition is always false"

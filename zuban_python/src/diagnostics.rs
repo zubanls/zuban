@@ -169,6 +169,7 @@ pub(crate) enum IssueType {
     VariadicUnpackMustBeTupleLike { actual: Box<str> },
     MoreThanOneUnpackTypeIsNotAllowed,
     VariadicUnpackMustBeTupleOrTypeVarTuple { type_: Box<str> },
+    TypeVarTupleCannotBeSplit,
 
     InvalidAssertType { actual: Box<str>, wanted: Box<str> },
 
@@ -1007,6 +1008,7 @@ impl<'db> Diagnostic<'db> {
             VariadicUnpackMustBeTupleOrTypeVarTuple { type_ } => format!(
                 r#""{type_}" cannot be unpacked (must be tuple or TypeVarTuple)"#
             ),
+            TypeVarTupleCannotBeSplit => "TypeVarTuple cannot be split".to_string(),
 
             InvalidAssertType { actual, wanted } => format!(
                 r#"Expression is of type "{actual}", not "{wanted}""#

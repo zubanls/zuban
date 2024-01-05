@@ -3925,7 +3925,10 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
     ) -> Option<(NodeRef<'a>, Type)> {
         if let Some((from, unpack)) = self.current_unpack.as_mut() {
             match unpack {
-                TupleUnpack::TypeVarTuple(_) => todo!(),
+                TupleUnpack::TypeVarTuple(_) => {
+                    type_computation.add_issue(*from, IssueType::TypeVarTupleCannotBeSplit);
+                    return Some((*from, Type::Any(AnyCause::FromError)));
+                }
                 TupleUnpack::Tuple(tup) => match &tup.args {
                     TupleTypeArguments::WithUnpack(with_unpack) => todo!(),
                     TupleTypeArguments::FixedLength(ts) => {
@@ -3976,22 +3979,27 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
         type_computation: &mut TypeComputation,
     ) -> Option<(NodeRef<'a>, Type)> {
         if let Some(unpack) = self.current_unpack_reverse.as_mut() {
+            let from = self.reverse_already_analyzed.unwrap();
             match unpack {
-                TupleUnpack::TypeVarTuple(_) => todo!(),
+                TupleUnpack::TypeVarTuple(_) => {
+                    type_computation.add_issue(
+                        self.reverse_already_analyzed.unwrap(),
+                        IssueType::TypeVarTupleCannotBeSplit,
+                    );
+                    return Some((from, Type::Any(AnyCause::FromError)));
+                }
                 TupleUnpack::Tuple(tup) => match &tup.args {
                     TupleTypeArguments::WithUnpack(with_unpack) => todo!(),
                     TupleTypeArguments::FixedLength(ts) => {
                         let mut elements = Vec::from(ts.as_ref());
                         if let Some(result) = elements.pop() {
                             *tup = Rc::new(Tuple::new_fixed_length(elements.into()));
-                            return Some((self.reverse_already_analyzed.unwrap(), result));
+                            return Some((from, result));
                         } else {
                             self.current_unpack_reverse = None;
                         }
                     }
-                    TupleTypeArguments::ArbitraryLength(t) => {
-                        return Some((self.reverse_already_analyzed.unwrap(), (**t).clone()))
-                    }
+                    TupleTypeArguments::ArbitraryLength(t) => return Some((from, (**t).clone())),
                 },
             }
         }
