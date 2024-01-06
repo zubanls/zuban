@@ -1110,46 +1110,20 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             } else if let Some(len) = value_iterator.len() {
                                 let fetch = len - normal;
                                 let new_target = star_target.as_target();
-                                let inner = Inferred::from_type(
-                                    if matches!(new_target, Target::Tuple(_)) {
-                                        let mut tuple_entries = vec![];
-                                        for _ in 0..fetch {
-                                            tuple_entries.push(
-                                                value_iterator
-                                                    .next(self.i_s)
-                                                    .unwrap()
-                                                    .as_type(self.i_s),
-                                            )
-                                        }
-                                        Type::Tuple(Rc::new(Tuple::new_fixed_length(
-                                            tuple_entries.into(),
-                                        )))
-                                    } else {
-                                        let union =
-                                            Inferred::gather_base_types(self.i_s, |callable| {
-                                                for _ in 0..fetch {
-                                                    callable(
-                                                        value_iterator.next(self.i_s).unwrap(),
-                                                    );
-                                                }
-                                            });
-                                        let mut generic = union.as_type(self.i_s);
-                                        if fetch == 0 {
-                                            if self
-                                                .infer_target(star_target.as_target(), false)
-                                                .is_some()
-                                            {
-                                                // The type is already defined, just use any here, because the
-                                                // list really can be anything.
-                                                generic = Type::Any(AnyCause::Todo)
-                                            }
-                                        }
-                                        new_class!(
-                                            self.i_s.db.python_state.list_node_ref().as_link(),
-                                            generic,
-                                        )
-                                    },
-                                );
+                                let expect_tuple = matches!(new_target, Target::Tuple(_));
+                                let inner = if fetch == 0
+                                    && !expect_tuple
+                                    && self.infer_target(star_target.as_target(), false).is_some()
+                                {
+                                    // The type is already defined, just use any here, because the
+                                    // list really can be anything.
+                                    Inferred::from_type(new_class!(
+                                        self.i_s.db.python_state.list_node_ref().as_link(),
+                                        Type::Any(AnyCause::Todo),
+                                    ))
+                                } else {
+                                    value_iterator.next_starred(self.i_s, fetch, expect_tuple)
+                                };
                                 self.assign_targets(
                                     new_target,
                                     inner,

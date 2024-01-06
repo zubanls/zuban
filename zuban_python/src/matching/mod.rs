@@ -34,7 +34,8 @@ use crate::{
     diagnostics::IssueType,
     inference_state::InferenceState,
     inferred::Inferred,
-    type_::{AnyCause, Type},
+    new_class,
+    type_::{AnyCause, Tuple, Type},
     utils::debug_indent,
 };
 
@@ -234,6 +235,29 @@ impl IteratorContent {
             Self::Empty => todo!(),
             Self::Any(cause) => Inferred::new_any(cause),
         }
+    }
+
+    pub fn next_starred(
+        &mut self,
+        i_s: &InferenceState,
+        fetch: usize,
+        tuple_target: bool,
+    ) -> Inferred {
+        Inferred::from_type(if tuple_target {
+            let mut tuple_entries = vec![];
+            for _ in 0..fetch {
+                tuple_entries.push(self.next(i_s).unwrap().as_type(i_s))
+            }
+            Type::Tuple(Rc::new(Tuple::new_fixed_length(tuple_entries.into())))
+        } else {
+            let union = Inferred::gather_base_types(i_s, |callable| {
+                for _ in 0..fetch {
+                    callable(self.next(i_s).unwrap());
+                }
+            });
+            let generic = union.as_type(i_s);
+            new_class!(i_s.db.python_state.list_node_ref().as_link(), generic,)
+        })
     }
 
     pub fn next(&mut self, i_s: &InferenceState) -> Option<Inferred> {
