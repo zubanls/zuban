@@ -78,7 +78,10 @@ impl Tuple {
             TupleTypeArguments::ArbitraryLength(t) => {
                 IteratorContent::Inferred(Inferred::from_type(t.as_ref().clone()))
             }
-            TupleTypeArguments::WithUnpack(_) => todo!(),
+            TupleTypeArguments::WithUnpack(w) => IteratorContent::WithUnpack {
+                unpack: w.clone(),
+                current_index: 0,
+            },
         }
     }
 

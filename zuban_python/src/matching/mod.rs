@@ -35,7 +35,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     new_class,
-    type_::{AnyCause, Tuple, Type},
+    type_::{AnyCause, Tuple, Type, WithUnpack},
     utils::debug_indent,
 };
 
@@ -203,6 +203,10 @@ pub enum IteratorContent {
         entries: Rc<[Type]>,
         current_index: usize,
     },
+    WithUnpack {
+        unpack: WithUnpack,
+        current_index: usize,
+    },
     Union(Vec<IteratorContent>),
     Empty,
     Any(AnyCause),
@@ -233,6 +237,7 @@ impl IteratorContent {
                 }
             }),
             Self::Empty => todo!(),
+            Self::WithUnpack { .. } => todo!(),
             Self::Any(cause) => Inferred::new_any(cause),
         }
     }
@@ -283,6 +288,7 @@ impl IteratorContent {
                 });
                 had_next.then_some(result)
             }
+            Self::WithUnpack { .. } => todo!(),
             Self::Empty => todo!(),
             Self::Any(cause) => Some(Inferred::new_any(*cause)),
         }
@@ -304,6 +310,7 @@ impl IteratorContent {
                     todo!()
                 }
             }
+            Self::WithUnpack { .. } => todo!(),
             Self::Empty => todo!(),
         }
     }
