@@ -18,8 +18,8 @@ use crate::{
     inference_state::InferenceState,
     inferred::{add_attribute_error, specific_to_type, Inferred, UnionValue},
     matching::{
-        matches_simple_params, CouldBeALiteral, FormatData, Generics, LookupKind, LookupResult,
-        Matcher, OnTypeError, ResultContext, TupleLenInfos,
+        matches_simple_params, CouldBeALiteral, FormatData, Generics, IteratorContent, LookupKind,
+        LookupResult, Matcher, OnTypeError, ResultContext, TupleLenInfos,
     },
     new_class,
     node_ref::NodeRef,
@@ -1049,133 +1049,27 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             Target::Tuple(targets) => {
                 // TODO what about never? The loop will never be executed.
                 for union_part in value.as_cow_type(self.i_s).iter_with_unpacked_unions() {
-                    let mut targets = targets.clone();
                     if union_part == &self.i_s.db.python_state.str_type() {
                         value_node_ref.add_issue(self.i_s, IssueType::UnpackingAStringIsDisallowed)
                     }
-                    let mut value_iterator = union_part.iter(self.i_s, value_node_ref);
-                    let mut counter = 0;
-                    // 1. Check lengths
-                    if let Some(actual_lens) = value_iterator.len_infos() {
-                        let expected_lens = targets_len_infos(targets.clone());
-                        use TupleLenInfos::*;
-                        match (actual_lens, expected_lens) {
-                            (FixedLength(actual), FixedLength(expected)) if actual != expected => {
-                                for target in targets {
-                                    counter += 1;
-                                    self.assign_targets(
-                                        target,
-                                        Inferred::new_any_from_error(),
-                                        value_node_ref,
-                                        is_definition,
-                                    );
-                                }
-                                value_node_ref.add_issue(
-                                    self.i_s,
-                                    if actual < expected {
-                                        IssueType::TooFewValuesToUnpack { actual, expected }
-                                    } else {
-                                        IssueType::TooManyValuesToUnpack { actual, expected }
-                                    },
-                                );
-                                continue;
+                    let value_iterator = union_part.iter(self.i_s, value_node_ref);
+                    match value_iterator {
+                        IteratorContent::Union(iterators) => {
+                            for it in iterators {
+                                self.assign_tuple_target(
+                                    targets.clone(),
+                                    it,
+                                    value_node_ref,
+                                    is_definition,
+                                )
                             }
-                            _ => (),
                         }
-                    }
-                    // Actually assign
-                    while let Some(target) = targets.next() {
-                        counter += 1;
-                        if let Target::Starred(star_target) = target {
-                            let (stars, normal) =
-                                targets.clone().remaining_stars_and_normal_count();
-                            if stars > 0 {
-                                self.add_issue(
-                                    star_target.index(),
-                                    IssueType::MultipleStarredExpressionsInAssignment,
-                                );
-                                self.assign_targets(
-                                    star_target.as_target(),
-                                    Inferred::new_any_from_error(),
-                                    value_node_ref,
-                                    is_definition,
-                                );
-                                for target in targets {
-                                    self.assign_targets(
-                                        target,
-                                        Inferred::new_any_from_error(),
-                                        value_node_ref,
-                                        is_definition,
-                                    );
-                                }
-                                return;
-                            } else if let Some(len) = value_iterator.len() {
-                                let fetch = len - normal;
-                                let new_target = star_target.as_target();
-                                let expect_tuple = matches!(new_target, Target::Tuple(_));
-                                let inner = if fetch == 0
-                                    && !expect_tuple
-                                    && self.infer_target(star_target.as_target(), false).is_some()
-                                {
-                                    // The type is already defined, just use any here, because the
-                                    // list really can be anything.
-                                    Inferred::from_type(new_class!(
-                                        self.i_s.db.python_state.list_node_ref().as_link(),
-                                        Type::Any(AnyCause::Todo),
-                                    ))
-                                } else {
-                                    value_iterator.next_starred(self.i_s, fetch, expect_tuple)
-                                };
-                                self.assign_targets(
-                                    new_target,
-                                    inner,
-                                    value_node_ref,
-                                    is_definition,
-                                );
-                            } else if value_iterator.len().is_none() {
-                                let value = value_iterator.next(self.i_s).unwrap();
-                                let list = Inferred::from_type(new_class!(
-                                    self.i_s.db.python_state.list_node_ref().as_link(),
-                                    value.as_type(self.i_s),
-                                ));
-                                self.assign_targets(
-                                    star_target.as_target(),
-                                    list,
-                                    value_node_ref,
-                                    is_definition,
-                                );
-                            } else {
-                                todo!()
-                            }
-                        } else if let Some(value) = value_iterator.next(self.i_s) {
-                            self.assign_targets(target, value, value_node_ref, is_definition)
-                        } else {
-                            value_node_ref.add_issue(
-                                self.i_s,
-                                IssueType::TooFewValuesToUnpack {
-                                    actual: counter - 1,
-                                    expected: counter,
-                                },
-                            );
-                            self.assign_targets(
-                                target,
-                                Inferred::new_any_from_error(),
-                                value_node_ref,
-                                is_definition,
-                            );
-                            for target in targets {
-                                if !matches!(target, Target::Starred(_)) {
-                                    counter += 1;
-                                }
-                                self.assign_targets(
-                                    target,
-                                    Inferred::new_any_from_error(),
-                                    value_node_ref,
-                                    is_definition,
-                                );
-                            }
-                            break;
-                        }
+                        _ => self.assign_tuple_target(
+                            targets.clone(),
+                            value_iterator,
+                            value_node_ref,
+                            is_definition,
+                        ),
                     }
                 }
             }
@@ -1198,6 +1092,132 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 })
             }
         };
+    }
+
+    fn assign_tuple_target(
+        &mut self,
+        mut targets: TargetIterator,
+        mut value_iterator: IteratorContent,
+        value_node_ref: NodeRef,
+        is_definition: bool,
+    ) {
+        let mut counter = 0;
+        // 1. Check lengths
+        if let Some(actual_lens) = value_iterator.len_infos() {
+            let expected_lens = targets_len_infos(targets.clone());
+            use TupleLenInfos::*;
+            match (actual_lens, expected_lens) {
+                (FixedLength(actual), FixedLength(expected)) if actual != expected => {
+                    for target in targets {
+                        counter += 1;
+                        self.assign_targets(
+                            target,
+                            Inferred::new_any_from_error(),
+                            value_node_ref,
+                            is_definition,
+                        );
+                    }
+                    value_node_ref.add_issue(
+                        self.i_s,
+                        if actual < expected {
+                            IssueType::TooFewValuesToUnpack { actual, expected }
+                        } else {
+                            IssueType::TooManyValuesToUnpack { actual, expected }
+                        },
+                    );
+                    return;
+                }
+                _ => (),
+            }
+        }
+        // Actually assign
+        while let Some(target) = targets.next() {
+            counter += 1;
+            if let Target::Starred(star_target) = target {
+                let (stars, normal) = targets.clone().remaining_stars_and_normal_count();
+                if stars > 0 {
+                    self.add_issue(
+                        star_target.index(),
+                        IssueType::MultipleStarredExpressionsInAssignment,
+                    );
+                    self.assign_targets(
+                        star_target.as_target(),
+                        Inferred::new_any_from_error(),
+                        value_node_ref,
+                        is_definition,
+                    );
+                    for target in targets {
+                        self.assign_targets(
+                            target,
+                            Inferred::new_any_from_error(),
+                            value_node_ref,
+                            is_definition,
+                        );
+                    }
+                    return;
+                } else if let Some(len) = value_iterator.len() {
+                    let fetch = len - normal;
+                    let new_target = star_target.as_target();
+                    let expect_tuple = matches!(new_target, Target::Tuple(_));
+                    let inner = if fetch == 0
+                        && !expect_tuple
+                        && self.infer_target(star_target.as_target(), false).is_some()
+                    {
+                        // The type is already defined, just use any here, because the
+                        // list really can be anything.
+                        Inferred::from_type(new_class!(
+                            self.i_s.db.python_state.list_node_ref().as_link(),
+                            Type::Any(AnyCause::Todo),
+                        ))
+                    } else {
+                        value_iterator.next_starred(self.i_s, fetch, expect_tuple)
+                    };
+                    self.assign_targets(new_target, inner, value_node_ref, is_definition);
+                } else if value_iterator.len().is_none() {
+                    let value = value_iterator.next(self.i_s).unwrap();
+                    let list = Inferred::from_type(new_class!(
+                        self.i_s.db.python_state.list_node_ref().as_link(),
+                        value.as_type(self.i_s),
+                    ));
+                    self.assign_targets(
+                        star_target.as_target(),
+                        list,
+                        value_node_ref,
+                        is_definition,
+                    );
+                } else {
+                    todo!()
+                }
+            } else if let Some(value) = value_iterator.next(self.i_s) {
+                self.assign_targets(target, value, value_node_ref, is_definition)
+            } else {
+                value_node_ref.add_issue(
+                    self.i_s,
+                    IssueType::TooFewValuesToUnpack {
+                        actual: counter - 1,
+                        expected: counter,
+                    },
+                );
+                self.assign_targets(
+                    target,
+                    Inferred::new_any_from_error(),
+                    value_node_ref,
+                    is_definition,
+                );
+                for target in targets {
+                    if !matches!(target, Target::Starred(_)) {
+                        counter += 1;
+                    }
+                    self.assign_targets(
+                        target,
+                        Inferred::new_any_from_error(),
+                        value_node_ref,
+                        is_definition,
+                    );
+                }
+                break;
+            }
+        }
     }
 
     pub fn infer_star_expressions(

@@ -4,8 +4,6 @@ testInvalidNamedTupleWithinFunction
 testVariadicUnpackWithRegularInstance
 testMisguidedSetItem
 
-testInferringLvarTypesUnpackedFromIterableClassObject
-
 # 3.12 type var syntax
 test695TypeAlias
 test695Class
