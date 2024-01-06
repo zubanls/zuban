@@ -1073,7 +1073,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     ParamType::Star(StarParamType::ArbitraryLength(as_t(t)))
                 }
                 WrappedParamType::Star(WrappedStar::UnpackedTuple(t)) => {
-                    todo!()
+                    ParamType::Star(StarParamType::UnpackedTuple(Rc::new(t.clone())))
                 }
                 WrappedParamType::Star(WrappedStar::ParamSpecArgs(u1)) => {
                     match params.peek().map(|p| p.specific(i_s.db)) {
@@ -1386,16 +1386,21 @@ impl<'x> Param<'x> for FunctionParam<'x> {
                 Some(Type::ParamSpecArgs(ref param_spec_usage)) => {
                     WrappedStar::ParamSpecArgs(param_spec_usage)
                 }
-                _ => WrappedStar::ArbitraryLength(t.map(|t| {
-                    let Type::Tuple(t) = expect_borrowed(&t) else {
-                        unreachable!()
-                    };
-                    match &t.args {
-                        TupleTypeArguments::FixedLength(..) => todo!(),
-                        TupleTypeArguments::ArbitraryLength(t) => Cow::Borrowed(t.as_ref()),
-                        TupleTypeArguments::WithUnpack(_) => todo!(),
+                _ => match t {
+                    Some(t) => {
+                        let Type::Tuple(tup) = expect_borrowed(&t) else {
+                            unreachable!()
+                        };
+                        match &tup.args {
+                            TupleTypeArguments::FixedLength(..) => todo!(),
+                            TupleTypeArguments::ArbitraryLength(t) => {
+                                WrappedStar::ArbitraryLength(Some(Cow::Borrowed(t.as_ref())))
+                            }
+                            TupleTypeArguments::WithUnpack(_) => WrappedStar::UnpackedTuple(tup),
+                        }
                     }
-                })),
+                    None => WrappedStar::ArbitraryLength(None),
+                },
             }),
             ParamKind::StarStar => WrappedParamType::StarStar(match dbt(t.as_ref()) {
                 Some(Type::ParamSpecKwargs(param_spec_usage)) => {

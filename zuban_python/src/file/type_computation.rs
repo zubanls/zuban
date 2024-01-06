@@ -634,7 +634,15 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::Unpacked(TypeOrUnpack::Type(t @ Type::Tuple(_))) => {
                 AnnotationReturn::UnpackType(t)
             }
-            TypeContent::Unpacked(TypeOrUnpack::TypeVarTuple(_)) => todo!(),
+            TypeContent::Unpacked(TypeOrUnpack::TypeVarTuple(tvt)) => {
+                AnnotationReturn::UnpackType(Type::Tuple(Rc::new(Tuple::new(
+                    TupleTypeArguments::WithUnpack(WithUnpack {
+                        before: Rc::from([]),
+                        unpack: TupleUnpack::TypeVarTuple(tvt),
+                        after: Rc::from([]),
+                    }),
+                ))))
+            }
             TypeContent::Unpacked(TypeOrUnpack::Type(t)) => {
                 self.add_issue(
                     from,
