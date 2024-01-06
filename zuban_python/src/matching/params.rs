@@ -578,7 +578,7 @@ impl<'x> Param<'x> for &'x CallableParam {
                 StarParamType::ArbitraryLength(t) => {
                     WrappedStar::ArbitraryLength(Some(Cow::Borrowed(t)))
                 }
-                StarParamType::UnpackedTuple(u) => WrappedStar::UnpackedTuple(u),
+                StarParamType::UnpackedTuple(u) => WrappedStar::UnpackedTuple(u.clone()),
                 StarParamType::ParamSpecArgs(u) => WrappedStar::ParamSpecArgs(u),
             }),
             ParamType::StarStar(s) => WrappedParamType::StarStar(match s {
@@ -919,7 +919,7 @@ pub enum WrappedParamType<'a> {
 pub enum WrappedStar<'a> {
     ArbitraryLength(Option<Cow<'a, Type>>),
     ParamSpecArgs(&'a ParamSpecUsage),
-    UnpackedTuple(&'a Tuple),
+    UnpackedTuple(Rc<Tuple>),
 }
 
 #[derive(Debug)]

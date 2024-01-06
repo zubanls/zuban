@@ -1073,7 +1073,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     ParamType::Star(StarParamType::ArbitraryLength(as_t(t)))
                 }
                 WrappedParamType::Star(WrappedStar::UnpackedTuple(t)) => {
-                    ParamType::Star(StarParamType::UnpackedTuple(Rc::new(t.clone())))
+                    ParamType::Star(StarParamType::UnpackedTuple(t.clone()))
                 }
                 WrappedParamType::Star(WrappedStar::ParamSpecArgs(u1)) => {
                     match params.peek().map(|p| p.specific(i_s.db)) {
@@ -1396,7 +1396,9 @@ impl<'x> Param<'x> for FunctionParam<'x> {
                             TupleTypeArguments::ArbitraryLength(t) => {
                                 WrappedStar::ArbitraryLength(Some(Cow::Borrowed(t.as_ref())))
                             }
-                            TupleTypeArguments::WithUnpack(_) => WrappedStar::UnpackedTuple(tup),
+                            TupleTypeArguments::WithUnpack(_) => {
+                                WrappedStar::UnpackedTuple(tup.clone())
+                            }
                         }
                     }
                     None => WrappedStar::ArbitraryLength(None),

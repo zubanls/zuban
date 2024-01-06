@@ -574,7 +574,9 @@ pub(crate) fn match_arguments_against_params<
                         }
                         continue;
                     }
-                    WrappedParamType::Star(WrappedStar::UnpackedTuple(_)) => todo!(),
+                    WrappedParamType::Star(WrappedStar::UnpackedTuple(tup)) => {
+                        Cow::Owned(Type::Tuple(tup.clone()))
+                    }
                     WrappedParamType::Star(WrappedStar::ParamSpecArgs(_))
                     | WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(_)) => {
                         todo!()
