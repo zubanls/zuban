@@ -19,7 +19,7 @@ use crate::{
     inferred::{add_attribute_error, specific_to_type, Inferred, UnionValue},
     matching::{
         matches_simple_params, CouldBeALiteral, FormatData, Generics, LookupKind, LookupResult,
-        Matcher, OnTypeError, ResultContext,
+        Matcher, OnTypeError, ResultContext, TupleLenInfos,
     },
     new_class,
     node_ref::NodeRef,
@@ -1055,33 +1055,35 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                     let mut value_iterator = union_part.iter(self.i_s, value_node_ref);
                     let mut counter = 0;
-                    if let Some(actual) = value_iterator.len() {
-                        let expected = targets.clone().count();
-                        if !targets
-                            .clone()
-                            .any(|target| matches!(target, Target::Starred(_)))
-                            && actual != expected
-                        {
-                            for target in targets {
-                                counter += 1;
-                                self.assign_targets(
-                                    target,
-                                    Inferred::new_any_from_error(),
-                                    value_node_ref,
-                                    is_definition,
+                    // 1. Check lengths
+                    if let Some(actual_lens) = value_iterator.len_infos() {
+                        let expected_lens = targets_len_infos(targets.clone());
+                        use TupleLenInfos::*;
+                        match (actual_lens, expected_lens) {
+                            (FixedLength(actual), FixedLength(expected)) if actual != expected => {
+                                for target in targets {
+                                    counter += 1;
+                                    self.assign_targets(
+                                        target,
+                                        Inferred::new_any_from_error(),
+                                        value_node_ref,
+                                        is_definition,
+                                    );
+                                }
+                                value_node_ref.add_issue(
+                                    self.i_s,
+                                    if actual < expected {
+                                        IssueType::TooFewValuesToUnpack { actual, expected }
+                                    } else {
+                                        IssueType::TooManyValuesToUnpack { actual, expected }
+                                    },
                                 );
+                                continue;
                             }
-                            value_node_ref.add_issue(
-                                self.i_s,
-                                if actual < expected {
-                                    IssueType::TooFewValuesToUnpack { actual, expected }
-                                } else {
-                                    IssueType::TooManyValuesToUnpack { actual, expected }
-                                },
-                            );
-                            continue;
+                            _ => (),
                         }
                     }
+                    // Actually assign
                     while let Some(target) = targets.next() {
                         counter += 1;
                         if let Target::Starred(star_target) = target {
@@ -2806,5 +2808,23 @@ pub fn await_(
         Inferred::new_any_from_error()
     } else {
         Inferred::from_type(t)
+    }
+}
+
+fn targets_len_infos(targets: TargetIterator) -> TupleLenInfos {
+    let mut before = 0;
+    let mut has_star = false;
+    let mut after = 0;
+    for target in targets {
+        match target {
+            Target::Starred(_) => has_star = true,
+            _ if has_star => after += 1,
+            _ => before += 1,
+        }
+    }
+    if has_star {
+        TupleLenInfos::WithStar { before, after }
+    } else {
+        TupleLenInfos::FixedLength(before)
     }
 }

@@ -314,6 +314,21 @@ impl IteratorContent {
             Self::Empty => todo!(),
         }
     }
+
+    pub fn len_infos(&self) -> Option<TupleLenInfos> {
+        match self {
+            Self::Inferred(_) | Self::Any(_) => None,
+            Self::FixedLengthTupleGenerics {
+                entries,
+                current_index,
+            } => Some(TupleLenInfos::FixedLength(
+                entries.as_ref().len() - current_index,
+            )),
+            Self::Union(iterators) => unreachable!(),
+            Self::WithUnpack { .. } => todo!(),
+            Self::Empty => todo!(),
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -323,4 +338,9 @@ pub enum LookupKind {
     // This type object is used to access __and__, when a user types `int & int`. Note that int
     // defines __and__ as well, but the type of int does not, hence it should lead to an error.
     OnlyType,
+}
+
+pub enum TupleLenInfos {
+    FixedLength(usize),
+    WithStar { before: usize, after: usize },
 }
