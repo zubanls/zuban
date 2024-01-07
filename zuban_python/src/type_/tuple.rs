@@ -227,13 +227,22 @@ impl Tuple {
             SliceTypeContent::Slices(slices) => {
                 todo!()
             }
-            SliceTypeContent::Slice(slice) => match &self.args {
-                TupleTypeArguments::ArbitraryLength(t) => {
-                    todo!()
-                }
-                args @ TupleTypeArguments::FixedLength(ts) => slice
-                    .callback_on_tuple_indexes(i_s, ts, |start, end, step| {
-                        Inferred::from_type(Type::Tuple(Rc::new(Tuple::new_fixed_length(
+            SliceTypeContent::Slice(slice) => slice
+                .callback_on_tuple_indexes(i_s, |start, end, step| match &self.args {
+                    TupleTypeArguments::FixedLength(ts) => {
+                        Inferred::from_type(Type::Tuple(Rc::new(Tuple::new_fixed_length({
+                            let end = match end {
+                                Some(end) if end < 0 => ts.len() as isize + end,
+                                Some(end) => end,
+                                None => ts.len() as isize,
+                            };
+                            let start = if start < 0 {
+                                ts.len() as isize + start
+                            } else {
+                                start
+                            };
+                            let start = (start.max(0) as usize).min(ts.len());
+                            let end = (end.max(start as isize) as usize).min(ts.len());
                             match step {
                                 1 => ts[start..end].into(),
                                 n if n > 1 => {
@@ -243,16 +252,21 @@ impl Tuple {
                                     todo!()
                                 }
                                 _ => unreachable!(),
-                            },
-                        ))))
-                    })
-                    .unwrap_or_else(|| {
-                        Inferred::from_type(Type::Tuple(Rc::new(Tuple::new_arbitrary_length(
-                            self.simplified_union_of_tuple_entries(i_s),
-                        ))))
-                    }),
-                TupleTypeArguments::WithUnpack(_) => todo!(),
-            },
+                            }
+                        }))))
+                    }
+                    TupleTypeArguments::WithUnpack(ts) => {
+                        todo!()
+                    }
+                    TupleTypeArguments::ArbitraryLength(t) => {
+                        todo!()
+                    }
+                })
+                .unwrap_or_else(|| {
+                    Inferred::from_type(Type::Tuple(Rc::new(Tuple::new_arbitrary_length(
+                        self.simplified_union_of_tuple_entries(i_s),
+                    ))))
+                }),
         }
     }
 
