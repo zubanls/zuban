@@ -24,6 +24,7 @@ use crate::{
 
 thread_local! {
     static ARBITRARY_TUPLE: Rc<Tuple> = Rc::new(Tuple::new_arbitrary_length(Type::Any(AnyCause::Todo)));
+    static ARBITRARY_TUPLE_FROM_ERROR: Rc<Tuple> = Rc::new(Tuple::new_arbitrary_length(Type::Any(AnyCause::FromError)));
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -50,6 +51,10 @@ impl Tuple {
 
     pub fn new_arbitrary_length_with_any() -> Rc<Self> {
         ARBITRARY_TUPLE.with(|t| t.clone())
+    }
+
+    pub fn new_arbitrary_length_with_any_from_error() -> Rc<Self> {
+        ARBITRARY_TUPLE_FROM_ERROR.with(|t| t.clone())
     }
 
     pub fn tuple_class_generics(&self, db: &Database) -> &GenericsList {
@@ -83,6 +88,15 @@ impl Tuple {
                 before_index: 0,
                 after_index: 0,
             },
+        }
+    }
+
+    pub fn format_with_simplified_unpack(&self, format_data: &FormatData) -> Box<str> {
+        match &self.args {
+            TupleTypeArguments::WithUnpack(w) if w.before.is_empty() && w.after.is_empty() => {
+                w.unpack.format(format_data)
+            }
+            _ => self.format(format_data),
         }
     }
 

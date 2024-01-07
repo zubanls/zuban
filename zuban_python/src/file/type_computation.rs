@@ -640,7 +640,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         actual: t.format_short(self.inference.i_s.db),
                     },
                 );
-                Type::Any(AnyCause::FromError)
+                Type::Tuple(Tuple::new_arbitrary_length_with_any_from_error())
             }
             TypeContent::Unpacked(TypeOrUnpack::Unknown(_)) => todo!(),
             _ => match self.as_type(tc, from) {
@@ -656,7 +656,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::Unpacked(TypeOrUnpack::Type(t @ Type::TypedDict(_))) => t,
             TypeContent::Unpacked(_) => {
                 self.add_issue(from, IssueType::UnpackItemInStarStarMustBeTypedDict);
-                Type::Any(AnyCause::FromError)
+                new_class!(
+                    self.inference.i_s.db.python_state.dict_node_ref().as_link(),
+                    self.inference.i_s.db.python_state.str_type(),
+                    Type::Any(AnyCause::FromError),
+                )
             }
             _ => match self.as_type(tc, from) {
                 t @ Type::ParamSpecKwargs(_) => t,
