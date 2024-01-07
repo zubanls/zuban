@@ -1101,7 +1101,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         value_node_ref: NodeRef,
         is_definition: bool,
     ) {
-        let mut counter = 0;
         let (star_count, expected_lens) = targets_len_infos(targets.clone());
         let mut had_issue = false;
         // 1. Check lengths and search length mismatch issues
@@ -1156,7 +1155,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
         if had_issue {
             for target in targets {
-                counter += 1;
                 self.assign_targets(
                     target,
                     Inferred::new_any_from_error(),
@@ -1169,7 +1167,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
         // 2. Actually assign targets
         while let Some(target) = targets.next() {
-            counter += 1;
             if let Target::Starred(star_target) = target {
                 if let Some(len) = value_iterator.len() {
                     let TupleLenInfos::WithStar { after, .. } = expected_lens else {
