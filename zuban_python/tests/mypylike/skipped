@@ -549,12 +549,9 @@ testTypeVarTupleErrors
 # type_/tuple.rs:81 (iter / unpack)
 testTupleWithUnpackIterator
 testUnpackingVariadicTuplesHomogeneous
-testRepackingVariadicTuplesTypeVar
 testRepackingVariadicTuplesHomogeneous
 testPackingVariadicTuplesTypeVar
-testPackingVariadicTuplesHomogeneous
 testVariadicTupleInListSetExpr
-testUnpackTupleSpecialCaseNoCrash
 # type_/tuple.rs:147
 testTypeVarTuplePep646TypeVarStarArgsVariableLengthTuple
 testTypeVarTupleIndexTypeVar
@@ -2211,6 +2208,7 @@ testTypedPkgNamespaceRegFromImportTwiceMissing2
 testTupleWithStarExpr2Precise
 testTupleWithStarExpr3Precise
 testVariadicTupleConcatenation
+testPackingVariadicTuplesHomogeneous
 
 # --enable-error-code redundant-expr
 # "If condition is always false"

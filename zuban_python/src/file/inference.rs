@@ -26,13 +26,13 @@ use crate::{
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, FunctionKind, Literal,
         LiteralKind, Namespace, ParamType, StarParamType, StarStarParamType, StringSlice, Tuple,
-        TupleTypeArguments, Type, UnionEntry, UnionType, Variance, WithUnpack,
+        TupleTypeArguments, TupleUnpack, Type, UnionEntry, UnionType, Variance, WithUnpack,
     },
     type_helpers::{
         lookup_in_namespace, Class, FirstParamKind, Function, GeneratorType, Instance, Module,
         TypeOrClass,
     },
-    utils::{debug_indent, rc_slice_into_vec},
+    utils::debug_indent,
 };
 
 pub struct Inference<'db: 'file, 'file, 'i_s> {
@@ -1997,23 +1997,81 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         iterator: impl ClonableTupleIterator<'x>,
         result_context: &mut ResultContext,
     ) -> Inferred {
-        let mut generics = vec![];
-        let mut with_unpack = None;
-        let is_arbitrary_length = Cell::new(false);
+        struct TupleGatherer {
+            // "before" means before an unpack, which is usually always the case.
+            before: Vec<Type>,
+            unpack: Option<TupleUnpack>,
+            after: Vec<Type>,
+            is_arbitrary_length: bool,
+        }
+
+        impl TupleGatherer {
+            fn add(&mut self, t: Type) {
+                if self.unpack.is_some() {
+                    self.after.push(t)
+                } else {
+                    self.before.push(t)
+                }
+            }
+
+            fn extend_from_slice(&mut self, ts: &[Type]) {
+                if self.unpack.is_some() {
+                    self.after.extend_from_slice(ts)
+                } else {
+                    self.before.extend_from_slice(ts)
+                }
+            }
+
+            fn into_tuple<'x>(
+                self,
+                inference: &mut Inference,
+                iterator: impl ClonableTupleIterator<'x>,
+            ) -> Inferred {
+                let content = if let Some(unpack) = self.unpack {
+                    Tuple::new(TupleTypeArguments::WithUnpack(WithUnpack {
+                        before: self.before.into(),
+                        unpack,
+                        after: self.after.into(),
+                    }))
+                } else if self.is_arbitrary_length {
+                    let generic = inference.create_list_or_set_generics(iterator);
+                    Tuple::new_arbitrary_length(generic)
+                } else {
+                    Tuple::new_fixed_length(self.before.into())
+                };
+                debug!(
+                    "Inferred: {}",
+                    content.format(&FormatData::new_short(inference.i_s.db))
+                );
+                Inferred::from_type(Type::Tuple(Rc::new(content)))
+            }
+        }
+
+        let mut gatherer = TupleGatherer {
+            before: vec![],
+            unpack: None,
+            after: vec![],
+            is_arbitrary_length: false,
+        };
+
         let is_definition = matches!(result_context, ResultContext::AssignmentNewDefinition);
         result_context.with_tuple_context_iterator(self.i_s, |tuple_context_iterator| {
-            let mut add_from_stars = |generics: &mut Vec<_>, inferred: Inferred, from_index| {
+            let add_from_stars = |gatherer: &mut TupleGatherer, inferred: Inferred, from_index| {
                 match inferred.iter(self.i_s, NodeRef::new(self.file, from_index)) {
                     IteratorContent::Inferred(_) | IteratorContent::Any(_) => {
-                        is_arbitrary_length.set(true);
+                        gatherer.is_arbitrary_length = true;
                         return;
                     }
                     IteratorContent::FixedLengthTupleGenerics { entries, .. } => {
-                        generics.extend_from_slice(&entries);
+                        gatherer.extend_from_slice(&entries);
                     }
                     IteratorContent::WithUnpack { unpack, .. } => {
-                        generics.extend_from_slice(&unpack.before);
-                        with_unpack = Some((unpack.unpack, rc_slice_into_vec(unpack.after)))
+                        if gatherer.unpack.is_some() {
+                            todo!()
+                        }
+                        gatherer.extend_from_slice(&unpack.before);
+                        gatherer.unpack = Some(unpack.unpack);
+                        gatherer.extend_from_slice(&unpack.after)
                     }
                     // TODO this is not correct. The star expression can be a union as well.
                     IteratorContent::Union(_) => todo!(),
@@ -2028,45 +2086,29 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 &mut ResultContext::Known(expected),
                             )
                             .as_type(self.i_s);
-                        generics.push(t)
+                        gatherer.add(t)
                     }
                     StarLikeExpression::Expression(e) => {
                         let t = self
                             .infer_expression_with_context(e, &mut ResultContext::Known(expected))
                             .as_type(self.i_s);
-                        generics.push(t)
+                        gatherer.add(t)
                     }
                     StarLikeExpression::StarNamedExpression(e) => {
                         let inferred = self.infer_expression_part(e.expression_part());
-                        add_from_stars(&mut generics, inferred, e.index())
+                        add_from_stars(&mut gatherer, inferred, e.index())
                     }
                     StarLikeExpression::StarExpression(e) => {
                         let inferred = self.infer_expression_part(e.expression_part());
-                        add_from_stars(&mut generics, inferred, e.index())
+                        add_from_stars(&mut gatherer, inferred, e.index())
                     }
                 }
-                if is_arbitrary_length.get() {
+                if gatherer.is_arbitrary_length {
                     return;
                 }
             }
         });
-        let content = if let Some((unpack, after)) = with_unpack {
-            Tuple::new(TupleTypeArguments::WithUnpack(WithUnpack {
-                before: generics.into(),
-                unpack,
-                after: after.into(),
-            }))
-        } else if is_arbitrary_length.get() {
-            let generic = self.create_list_or_set_generics(iterator);
-            Tuple::new_arbitrary_length(generic)
-        } else {
-            Tuple::new_fixed_length(generics.into())
-        };
-        debug!(
-            "Inferred: {}",
-            content.format(&FormatData::new_short(self.i_s.db))
-        );
-        Inferred::from_type(Type::Tuple(Rc::new(content)))
+        gatherer.into_tuple(self, iterator)
     }
 
     check_point_cache_with!(pub infer_primary_target, Self::_infer_primary_target, PrimaryTarget);
