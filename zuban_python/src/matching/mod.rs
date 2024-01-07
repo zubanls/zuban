@@ -292,13 +292,14 @@ impl IteratorContent {
         (
             false,
             match self {
-                Self::Inferred(_) | Self::Any(_) => {
-                    let value = self.next(i_s).unwrap();
-                    Inferred::from_type(new_class!(
-                        i_s.db.python_state.list_node_ref().as_link(),
-                        value.as_type(i_s),
-                    ))
-                }
+                Self::Inferred(inf) => Inferred::from_type(new_class!(
+                    i_s.db.python_state.list_node_ref().as_link(),
+                    inf.as_type(i_s),
+                )),
+                Self::Any(cause) => Inferred::from_type(new_class!(
+                    i_s.db.python_state.list_node_ref().as_link(),
+                    Type::Any(*cause),
+                )),
                 Self::FixedLengthTupleGenerics {
                     entries,
                     current_index,
