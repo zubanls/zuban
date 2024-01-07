@@ -546,9 +546,6 @@ testAliasToCallableWithUnpack2
 testVariadicNamedTuple
 # type_helpers/class.rs:661
 testTypeVarTupleErrors
-# iter / unpack join vs union?
-testUnpackingVariadicTuplesHomogeneous
-testRepackingVariadicTuplesHomogeneous
 # type_/tuple.rs:147
 testTypeVarTuplePep646TypeVarStarArgsVariableLengthTuple
 testTypeVarTupleIndexTypeVar
