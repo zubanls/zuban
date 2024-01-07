@@ -35,7 +35,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     new_class,
-    type_::{AnyCause, Tuple, Type, WithUnpack},
+    type_::{AnyCause, Tuple, TupleUnpack, Type, WithUnpack},
     utils::debug_indent,
 };
 
@@ -237,7 +237,26 @@ impl IteratorContent {
                 }
             }),
             Self::Empty => todo!(),
-            Self::WithUnpack { .. } => todo!(),
+            Self::WithUnpack {
+                unpack,
+                current_index,
+            } => Inferred::gather_simplified_union(i_s, |add| match unpack.unpack {
+                TupleUnpack::TypeVarTuple(_) => todo!(),
+                TupleUnpack::ArbitraryLength(t) => {
+                    let skip_after_count = if current_index > unpack.before.len() {
+                        current_index - unpack.before.len()
+                    } else {
+                        for entry in unpack.before.iter().skip(current_index) {
+                            add(Inferred::from_type(entry.clone()))
+                        }
+                        0
+                    };
+                    add(Inferred::from_type(t));
+                    for entry in unpack.before.iter().skip(skip_after_count) {
+                        add(Inferred::from_type(entry.clone()))
+                    }
+                }
+            }),
             Self::Any(cause) => Inferred::new_any(cause),
         }
     }
