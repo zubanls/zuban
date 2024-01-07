@@ -240,7 +240,7 @@ impl IteratorContent {
                 before_index,
                 after_index,
             } => Inferred::gather_simplified_union(i_s, |add| match unpack.unpack {
-                TupleUnpack::TypeVarTuple(_) => todo!(),
+                TupleUnpack::TypeVarTuple(_) => add(Inferred::new_object(i_s.db)),
                 TupleUnpack::ArbitraryLength(t) => {
                     for entry in unpack.before.iter().skip(before_index) {
                         add(Inferred::from_type(entry.clone()))

@@ -123,6 +123,10 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
+    pub fn new_object(db: &Database) -> Self {
+        Self::from_type(db.python_state.object_type())
+    }
+
     pub fn new_list_of(db: &Database, inner: Type) -> Self {
         Self::from_type(new_class!(db.python_state.list_node_ref().as_link(), inner,))
     }

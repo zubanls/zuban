@@ -2027,15 +2027,15 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 inference: &mut Inference,
                 iterator: impl ClonableTupleIterator<'x>,
             ) -> Inferred {
-                let content = if let Some(unpack) = self.unpack {
+                let content = if self.is_arbitrary_length {
+                    let generic = inference.create_list_or_set_generics(iterator);
+                    Tuple::new_arbitrary_length(generic)
+                } else if let Some(unpack) = self.unpack {
                     Tuple::new(TupleTypeArguments::WithUnpack(WithUnpack {
                         before: self.before.into(),
                         unpack,
                         after: self.after.into(),
                     }))
-                } else if self.is_arbitrary_length {
-                    let generic = inference.create_list_or_set_generics(iterator);
-                    Tuple::new_arbitrary_length(generic)
                 } else {
                     Tuple::new_fixed_length(self.before.into())
                 };
@@ -2067,7 +2067,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                     IteratorContent::WithUnpack { unpack, .. } => {
                         if gatherer.unpack.is_some() {
-                            todo!()
+                            // Fallback to simplified tuple inference.
+                            gatherer.is_arbitrary_length = true;
+                            return;
                         }
                         gatherer.extend_from_slice(&unpack.before);
                         gatherer.unpack = Some(unpack.unpack);
