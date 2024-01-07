@@ -1103,7 +1103,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     ) {
         let (star_count, expected_lens) = targets_len_infos(targets.clone());
         let mut had_issue = false;
-        // 1. Check lengths and search length mismatch issues
+        // 1. Check length mismatch to maybe abort
         if let Some(actual_lens) = value_iterator.len_infos() {
             use TupleLenInfos::*;
             had_issue = match (expected_lens, actual_lens) {
@@ -1138,6 +1138,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 _ => false,
             };
         }
+        // 2. Check for stuff like *x, *y = ...
         if star_count > 1 {
             had_issue = true;
             let star_target = targets
@@ -1153,6 +1154,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             );
         }
 
+        // 3. Abort if necessary.
         if had_issue {
             for target in targets {
                 self.assign_targets(
@@ -1165,49 +1167,32 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             return;
         }
 
-        // 2. Actually assign targets
+        // 4. Actually assign targets, now that everything is fine
         while let Some(target) = targets.next() {
             if let Target::Starred(star_target) = target {
-                if let Some(len) = value_iterator.len() {
-                    let TupleLenInfos::WithStar { after, .. } = expected_lens else {
-                        unreachable!()
-                    };
-                    let fetch = len - after;
-                    let new_target = star_target.as_target();
-                    let expect_tuple = matches!(new_target, Target::Tuple(_));
-                    let inner = if fetch == 0
-                        && !expect_tuple
-                        && self.infer_target(star_target.as_target(), false).is_some()
-                    {
-                        // The type is already defined, just use any here, because the
-                        // list really can be anything.
-                        Inferred::from_type(new_class!(
-                            self.i_s.db.python_state.list_node_ref().as_link(),
-                            Type::Any(AnyCause::Todo),
-                        ))
-                    } else {
-                        value_iterator.next_starred(self.i_s, fetch, expect_tuple)
-                    };
-                    self.assign_targets(new_target, inner, value_node_ref, is_definition);
-                } else if value_iterator.len().is_none() {
-                    let value = value_iterator.next(self.i_s).unwrap();
-                    let list = Inferred::from_type(new_class!(
+                let TupleLenInfos::WithStar { after, .. } = expected_lens else {
+                    unreachable!()
+                };
+
+                let new_target = star_target.as_target();
+                let expect_tuple = matches!(new_target, Target::Tuple(_));
+                let (is_empty, mut value) =
+                    value_iterator.unpack_starred(self.i_s, after, expect_tuple);
+                if is_empty
+                    && !expect_tuple
+                    && self.infer_target(star_target.as_target(), false).is_some()
+                {
+                    // The type is already defined, just use any here, because the
+                    // list really can be anything.
+                    value = Inferred::from_type(new_class!(
                         self.i_s.db.python_state.list_node_ref().as_link(),
-                        value.as_type(self.i_s),
-                    ));
-                    self.assign_targets(
-                        star_target.as_target(),
-                        list,
-                        value_node_ref,
-                        is_definition,
-                    );
-                } else {
-                    todo!()
+                        Type::Any(AnyCause::Todo),
+                    ))
                 }
-            } else if let Some(value) = value_iterator.next(self.i_s) {
-                self.assign_targets(target, value, value_node_ref, is_definition)
+                self.assign_targets(new_target, value, value_node_ref, is_definition);
             } else {
-                unreachable!()
+                let value = value_iterator.unpack_next(self.i_s, expected_lens);
+                self.assign_targets(target, value, value_node_ref, is_definition);
             }
         }
     }

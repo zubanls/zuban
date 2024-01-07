@@ -208,7 +208,6 @@ pub enum IteratorContent {
         current_index: usize,
     },
     Union(Vec<IteratorContent>),
-    Empty,
     Any(AnyCause),
 }
 
@@ -236,7 +235,6 @@ impl IteratorContent {
                     add(iterator.infer_all(i_s))
                 }
             }),
-            Self::Empty => todo!(),
             Self::WithUnpack {
                 unpack,
                 current_index,
@@ -259,29 +257,6 @@ impl IteratorContent {
             }),
             Self::Any(cause) => Inferred::new_any(cause),
         }
-    }
-
-    pub fn next_starred(
-        &mut self,
-        i_s: &InferenceState,
-        fetch: usize,
-        tuple_target: bool,
-    ) -> Inferred {
-        Inferred::from_type(if tuple_target {
-            let mut tuple_entries = vec![];
-            for _ in 0..fetch {
-                tuple_entries.push(self.next(i_s).unwrap().as_type(i_s))
-            }
-            Type::Tuple(Rc::new(Tuple::new_fixed_length(tuple_entries.into())))
-        } else {
-            let union = Inferred::gather_base_types(i_s, |callable| {
-                for _ in 0..fetch {
-                    callable(self.next(i_s).unwrap());
-                }
-            });
-            let generic = union.as_type(i_s);
-            new_class!(i_s.db.python_state.list_node_ref().as_link(), generic,)
-        })
     }
 
     pub fn next(&mut self, i_s: &InferenceState) -> Option<Inferred> {
@@ -308,8 +283,76 @@ impl IteratorContent {
                 had_next.then_some(result)
             }
             Self::WithUnpack { .. } => todo!(),
-            Self::Empty => todo!(),
             Self::Any(cause) => Some(Inferred::new_any(*cause)),
+        }
+    }
+
+    pub fn unpack_starred(
+        &mut self,
+        i_s: &InferenceState,
+        after: usize,
+        tuple_target: bool,
+    ) -> (bool, Inferred) {
+        (
+            false,
+            match self {
+                Self::Inferred(_) | Self::Any(_) => {
+                    let value = self.next(i_s).unwrap();
+                    Inferred::from_type(new_class!(
+                        i_s.db.python_state.list_node_ref().as_link(),
+                        value.as_type(i_s),
+                    ))
+                }
+                Self::FixedLengthTupleGenerics {
+                    entries,
+                    current_index,
+                } => {
+                    let end = entries.len() - after;
+                    let fetch = end - *current_index;
+                    let relevant_entries = &entries[*current_index..end];
+                    let inf = Inferred::from_type(if tuple_target {
+                        let mut tuple_entries = vec![];
+                        for t in relevant_entries {
+                            tuple_entries.push(t.clone());
+                        }
+                        Type::Tuple(Rc::new(Tuple::new_fixed_length(tuple_entries.into())))
+                    } else {
+                        let union = Inferred::gather_base_types(i_s, |callable| {
+                            for t in relevant_entries {
+                                callable(Inferred::from_type(t.clone()));
+                            }
+                        });
+                        let generic = union.as_type(i_s);
+                        new_class!(i_s.db.python_state.list_node_ref().as_link(), generic,)
+                    });
+                    *current_index += fetch;
+                    if fetch == 0 {
+                        return (true, inf);
+                    }
+                    inf
+                }
+                Self::WithUnpack {
+                    unpack,
+                    current_index,
+                } => todo!(),
+                Self::Union(_) => unreachable!(),
+            },
+        )
+    }
+
+    pub fn unpack_next(&mut self, i_s: &InferenceState, expected_lens: TupleLenInfos) -> Inferred {
+        // It is important to note that the lengths have been checked before and it is at this
+        // point clear that we can unpack the iterator. This should only ever be used for
+        // assignment calculation, e.g. foo, *bar = ...
+        match self {
+            Self::Inferred(inf) => inf.clone(),
+            Self::Any(cause) => Inferred::new_any(*cause),
+            Self::FixedLengthTupleGenerics { .. } => self.next(i_s).unwrap(),
+            Self::WithUnpack {
+                unpack,
+                current_index,
+            } => todo!(),
+            Self::Union(_) => unreachable!(),
         }
     }
 
@@ -330,7 +373,6 @@ impl IteratorContent {
                 }
             }
             Self::WithUnpack { .. } => todo!(),
-            Self::Empty => todo!(),
         }
     }
 
@@ -348,7 +390,6 @@ impl IteratorContent {
                 before: unpack.before.len(),
                 after: unpack.after.len(),
             }),
-            Self::Empty => todo!(),
         }
     }
 }
