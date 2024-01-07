@@ -75,6 +75,7 @@ pub(crate) enum IssueType {
     InvalidSliceIndex,
     TooFewValuesToUnpack { actual: usize, expected: usize },
     TooManyValuesToUnpack { actual: usize, expected: usize},
+    VariadicTupleUnpackingRequiresStarTarget,
     UnpackingAStringIsDisallowed,
     StarredExpressionOnlyNoTarget,
     StmtOutsideFunction { keyword: &'static str },
@@ -823,6 +824,8 @@ impl<'db> Diagnostic<'db> {
             },
             TooManyValuesToUnpack{actual, expected} =>
                 format!("Too many values to unpack ({expected} expected, {actual} provided)"),
+            VariadicTupleUnpackingRequiresStarTarget =>
+                "Variadic tuple unpacking requires a star target".to_string(),
             UnpackingAStringIsDisallowed => "Unpacking a string is disallowed".to_string(),
             StarredExpressionOnlyNoTarget =>
                 "can't use starred expression here".to_string(),

@@ -1102,21 +1102,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         is_definition: bool,
     ) {
         let mut counter = 0;
+        let expected_lens = targets_len_infos(targets.clone());
         // 1. Check lengths
         if let Some(actual_lens) = value_iterator.len_infos() {
-            let expected_lens = targets_len_infos(targets.clone());
             use TupleLenInfos::*;
-            match (actual_lens, expected_lens) {
-                (FixedLength(actual), FixedLength(expected)) if actual != expected => {
-                    for target in targets {
-                        counter += 1;
-                        self.assign_targets(
-                            target,
-                            Inferred::new_any_from_error(),
-                            value_node_ref,
-                            is_definition,
-                        );
-                    }
+            let had_issue = match (expected_lens, actual_lens) {
+                (FixedLength(expected), FixedLength(actual)) if actual != expected => {
                     value_node_ref.add_issue(
                         self.i_s,
                         if actual < expected {
@@ -1125,9 +1116,28 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             IssueType::TooManyValuesToUnpack { actual, expected }
                         },
                     );
-                    return;
+                    true
                 }
-                _ => (),
+                (FixedLength(expected), WithStar { before, after }) => {
+                    value_node_ref.add_issue(
+                        self.i_s,
+                        IssueType::VariadicTupleUnpackingRequiresStarTarget,
+                    );
+                    true
+                }
+                _ => false,
+            };
+            if had_issue {
+                for target in targets {
+                    counter += 1;
+                    self.assign_targets(
+                        target,
+                        Inferred::new_any_from_error(),
+                        value_node_ref,
+                        is_definition,
+                    );
+                }
+                return;
             }
         }
         // Actually assign

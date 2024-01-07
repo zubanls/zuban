@@ -344,7 +344,10 @@ impl IteratorContent {
                 entries.as_ref().len() - current_index,
             )),
             Self::Union(iterators) => unreachable!(),
-            Self::WithUnpack { .. } => todo!(),
+            Self::WithUnpack { unpack, .. } => Some(TupleLenInfos::WithStar {
+                before: unpack.before.len(),
+                after: unpack.after.len(),
+            }),
             Self::Empty => todo!(),
         }
     }
