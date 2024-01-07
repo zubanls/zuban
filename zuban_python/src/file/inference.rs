@@ -1118,6 +1118,16 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     );
                     true
                 }
+                (WithStar { before, after }, FixedLength(actual)) if before + after > actual => {
+                    value_node_ref.add_issue(
+                        self.i_s,
+                        IssueType::TooFewValuesToUnpack {
+                            actual,
+                            expected: before + after,
+                        },
+                    );
+                    true
+                }
                 (FixedLength(expected), WithStar { before, after }) => {
                     value_node_ref.add_issue(
                         self.i_s,
@@ -1203,31 +1213,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             } else if let Some(value) = value_iterator.next(self.i_s) {
                 self.assign_targets(target, value, value_node_ref, is_definition)
             } else {
-                value_node_ref.add_issue(
-                    self.i_s,
-                    IssueType::TooFewValuesToUnpack {
-                        actual: counter - 1,
-                        expected: counter,
-                    },
-                );
-                self.assign_targets(
-                    target,
-                    Inferred::new_any_from_error(),
-                    value_node_ref,
-                    is_definition,
-                );
-                for target in targets {
-                    if !matches!(target, Target::Starred(_)) {
-                        counter += 1;
-                    }
-                    self.assign_targets(
-                        target,
-                        Inferred::new_any_from_error(),
-                        value_node_ref,
-                        is_definition,
-                    );
-                }
-                break;
+                unreachable!()
             }
         }
     }
