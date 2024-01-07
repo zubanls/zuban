@@ -134,7 +134,7 @@ impl Tuple {
                     TupleTypeArguments::ArbitraryLength(t) => {
                         Inferred::from_type(t.as_ref().clone())
                     }
-                    TupleTypeArguments::FixedLength(ts) => {
+                    _ => {
                         let out_of_range = || {
                             slice_type
                                 .as_argument_node_ref()
@@ -142,27 +142,30 @@ impl Tuple {
                             Some(Inferred::new_any_from_error())
                         };
                         index_inf
-                            .run_on_int_literals(i_s, |index| {
-                                let index = if index < 0 {
-                                    let index = ts.len() as isize + index;
-                                    match index.try_into() {
-                                        Ok(index) => index,
-                                        Err(_) => return out_of_range(),
+                            .run_on_int_literals(i_s, |index| match &self.args {
+                                TupleTypeArguments::FixedLength(ts) => {
+                                    let index = if index < 0 {
+                                        let index = ts.len() as isize + index;
+                                        match index.try_into() {
+                                            Ok(index) => index,
+                                            Err(_) => return out_of_range(),
+                                        }
+                                    } else {
+                                        index as usize
+                                    };
+                                    if let Some(t) = ts.as_ref().get(index) {
+                                        Some(Inferred::from_type(t.clone()))
+                                    } else {
+                                        return out_of_range();
                                     }
-                                } else {
-                                    index as usize
-                                };
-                                if let Some(t) = ts.as_ref().get(index) {
-                                    Some(Inferred::from_type(t.clone()))
-                                } else {
-                                    return out_of_range();
                                 }
+                                TupleTypeArguments::WithUnpack(_) => todo!(),
+                                TupleTypeArguments::ArbitraryLength(_) => unreachable!(),
                             })
                             .unwrap_or_else(|| {
-                                Inferred::from_type(simplified_union_of_tuple_entries(i_s, ts))
+                                Inferred::from_type(self.simplified_union_of_tuple_entries(i_s))
                             })
                     }
-                    TupleTypeArguments::WithUnpack(_) => todo!(),
                 }
             }
             SliceTypeContent::Slices(slices) => {
@@ -189,7 +192,7 @@ impl Tuple {
                     })
                     .unwrap_or_else(|| {
                         Inferred::from_type(Type::Tuple(Rc::new(Tuple::new_arbitrary_length(
-                            simplified_union_of_tuple_entries(i_s, ts),
+                            self.simplified_union_of_tuple_entries(i_s),
                         ))))
                     }),
                 TupleTypeArguments::WithUnpack(_) => todo!(),
@@ -202,6 +205,24 @@ impl Tuple {
             TupleTypeArguments::FixedLength(ts) => ts.iter().any(|t| t.find_in_type(check)),
             TupleTypeArguments::ArbitraryLength(t) => t.find_in_type(check),
             TupleTypeArguments::WithUnpack(with_unpack) => with_unpack.find_in_type(check),
+        }
+    }
+
+    fn simplified_union_of_tuple_entries(&self, i_s: &InferenceState) -> Type {
+        match &self.args {
+            TupleTypeArguments::FixedLength(ts) => simplified_union_from_iterators(i_s, ts.iter()),
+            TupleTypeArguments::WithUnpack(with_unpack) => match &with_unpack.unpack {
+                TupleUnpack::TypeVarTuple(tvt) => i_s.db.python_state.object_type(),
+                TupleUnpack::ArbitraryLength(t) => simplified_union_from_iterators(
+                    i_s,
+                    with_unpack
+                        .before
+                        .iter()
+                        .chain(std::iter::once(t))
+                        .chain(with_unpack.after.iter()),
+                ),
+            },
+            TupleTypeArguments::ArbitraryLength(t) => (**t).clone(),
         }
     }
 }
@@ -409,20 +430,6 @@ pub fn lookup_tuple_magic_methods(tuple: Rc<Tuple>, name: &str) -> LookupDetails
             _ => LookupResult::None,
         },
         AttributeKind::DefMethod,
-    )
-}
-
-fn simplified_union_of_tuple_entries(i_s: &InferenceState, entries: &[Type]) -> Type {
-    let highest_union_format_index = entries
-        .iter()
-        .map(|t| t.highest_union_format_index())
-        .max()
-        .unwrap_or(0);
-    simplified_union_from_iterators(
-        i_s,
-        entries.iter().cloned().enumerate(),
-        highest_union_format_index,
-        false,
     )
 }
 

@@ -13,7 +13,7 @@ impl Type {
         let highest_union_format_index = self
             .highest_union_format_index()
             .max(other.highest_union_format_index());
-        simplified_union_from_iterators(
+        simplified_union_from_iterators_with_format_index(
             i_s,
             [(0, self.clone()), (1, other.clone())].into_iter(),
             highest_union_format_index,
@@ -22,7 +22,24 @@ impl Type {
     }
 }
 
-pub fn simplified_union_from_iterators(
+pub fn simplified_union_from_iterators<'x>(
+    i_s: &InferenceState,
+    types: impl Iterator<Item = &'x Type> + Clone,
+) -> Type {
+    let highest_union_format_index = types
+        .clone()
+        .map(|t| t.highest_union_format_index())
+        .max()
+        .unwrap_or(0);
+    simplified_union_from_iterators_with_format_index(
+        i_s,
+        types.cloned().enumerate(),
+        highest_union_format_index,
+        false,
+    )
+}
+
+pub fn simplified_union_from_iterators_with_format_index(
     i_s: &InferenceState,
     types: impl Iterator<Item = (usize, Type)>,
     // We need this to make sure that the unions within the iterator can be properly ordered.

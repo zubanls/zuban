@@ -1,11 +1,11 @@
 use std::{borrow::Cow, rc::Rc};
 
 use super::{
-    simplified_union_from_iterators, CallableContent, CallableParam, CallableParams, ClassGenerics,
-    Dataclass, GenericClass, GenericItem, GenericsList, NamedTuple, ParamSpecArgument,
-    ParamSpecTypeVars, ParamType, RecursiveType, StarParamType, StarStarParamType, Tuple,
-    TupleTypeArguments, Type, TypeArguments, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
-    TypeVarManager, TypedDictGenerics, UnionEntry, UnionType,
+    simplified_union_from_iterators_with_format_index, CallableContent, CallableParam,
+    CallableParams, ClassGenerics, Dataclass, GenericClass, GenericItem, GenericsList, NamedTuple,
+    ParamSpecArgument, ParamSpecTypeVars, ParamType, RecursiveType, StarParamType,
+    StarStarParamType, Tuple, TupleTypeArguments, Type, TypeArguments, TypeVarLike,
+    TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypedDictGenerics, UnionEntry, UnionType,
 };
 use crate::{
     database::{Database, PointLink},
@@ -102,7 +102,7 @@ impl Type {
                     .map(|e| e.1.highest_union_format_index())
                     .max()
                     .unwrap();
-                simplified_union_from_iterators(
+                simplified_union_from_iterators_with_format_index(
                     &i_s,
                     new_entries.into_iter(),
                     highest_union_format_index,

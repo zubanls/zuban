@@ -53,7 +53,10 @@ pub(crate) use self::{
         initialize_typed_dict, lookup_on_typed_dict, maybe_add_extra_keys_issue, new_typed_dict,
         TypedDict, TypedDictGenerics, TypedDictMember, TypedDictMemberGatherer,
     },
-    union::{simplified_union_from_iterators, UnionEntry, UnionType},
+    union::{
+        simplified_union_from_iterators, simplified_union_from_iterators_with_format_index,
+        UnionEntry, UnionType,
+    },
 };
 use crate::{
     arguments::Arguments,
