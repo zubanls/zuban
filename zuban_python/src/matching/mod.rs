@@ -362,6 +362,7 @@ pub enum LookupKind {
     OnlyType,
 }
 
+#[derive(Copy, Clone)]
 pub enum TupleLenInfos {
     FixedLength(usize),
     WithStar { before: usize, after: usize },

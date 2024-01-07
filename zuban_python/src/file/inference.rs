@@ -1102,7 +1102,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         is_definition: bool,
     ) {
         let mut counter = 0;
-        let expected_lens = targets_len_infos(targets.clone());
+        let (star_count, expected_lens) = targets_len_infos(targets.clone());
         // 1. Check lengths
         if let Some(actual_lens) = value_iterator.len_infos() {
             use TupleLenInfos::*;
@@ -1144,8 +1144,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         while let Some(target) = targets.next() {
             counter += 1;
             if let Target::Starred(star_target) = target {
-                let (stars, normal) = targets.clone().remaining_stars_and_normal_count();
-                if stars > 0 {
+                if star_count > 1 {
                     self.add_issue(
                         star_target.index(),
                         IssueType::MultipleStarredExpressionsInAssignment,
@@ -1166,7 +1165,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                     return;
                 } else if let Some(len) = value_iterator.len() {
-                    let fetch = len - normal;
+                    let TupleLenInfos::WithStar { after, .. } = expected_lens else {
+                        unreachable!()
+                    };
+                    let fetch = len - after;
                     let new_target = star_target.as_target();
                     let expect_tuple = matches!(new_target, Target::Tuple(_));
                     let inner = if fetch == 0
@@ -2841,20 +2843,23 @@ pub fn await_(
     }
 }
 
-fn targets_len_infos(targets: TargetIterator) -> TupleLenInfos {
+fn targets_len_infos(targets: TargetIterator) -> (usize, TupleLenInfos) {
     let mut before = 0;
-    let mut has_star = false;
+    let mut star_count = 0;
     let mut after = 0;
     for target in targets {
         match target {
-            Target::Starred(_) => has_star = true,
-            _ if has_star => after += 1,
+            Target::Starred(_) => star_count += 1,
+            _ if star_count > 0 => after += 1,
             _ => before += 1,
         }
     }
-    if has_star {
-        TupleLenInfos::WithStar { before, after }
-    } else {
-        TupleLenInfos::FixedLength(before)
-    }
+    (
+        star_count,
+        if star_count > 0 {
+            TupleLenInfos::WithStar { before, after }
+        } else {
+            TupleLenInfos::FixedLength(before)
+        },
+    )
 }

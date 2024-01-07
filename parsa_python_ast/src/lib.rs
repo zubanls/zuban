@@ -1016,21 +1016,6 @@ impl<'db> Iterator for TargetIterator<'db> {
     }
 }
 
-impl<'db> TargetIterator<'db> {
-    pub fn remaining_stars_and_normal_count(self) -> (usize, usize) {
-        let mut star_count = 0;
-        let mut after_star_count = 0;
-        for t in self {
-            if matches!(t, Target::Starred(_)) {
-                star_count += 1;
-            } else {
-                after_star_count += 1;
-            }
-        }
-        (star_count, after_star_count)
-    }
-}
-
 impl<'db> Block<'db> {
     pub fn unpack(&self) -> BlockContent<'db> {
         // simple_stmts | Newline Indent stmt+ Dedent
