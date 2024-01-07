@@ -42,13 +42,7 @@ pub enum TypeVarCallbackReturn {
     NotFound,
 }
 
-type MapAnnotationTypeCallback<'a> =
-    Option<&'a dyn Fn(&mut TypeComputation, TypeContent) -> AnnotationReturn>;
-
-enum AnnotationReturn {
-    Type(Type),
-    UnpackType(Type),
-}
+type MapAnnotationTypeCallback<'a> = Option<&'a dyn Fn(&mut TypeComputation, TypeContent) -> Type>;
 
 type TypeVarCallback<'db, 'x> = &'x mut dyn FnMut(
     &InferenceState<'db, '_>,
@@ -629,20 +623,16 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         };
     }
 
-    fn wrap_star(&mut self, tc: TypeContent, from: NodeRef) -> AnnotationReturn {
+    fn wrap_star(&mut self, tc: TypeContent, from: NodeRef) -> Type {
         match tc {
-            TypeContent::Unpacked(TypeOrUnpack::Type(t @ Type::Tuple(_))) => {
-                AnnotationReturn::UnpackType(t)
-            }
-            TypeContent::Unpacked(TypeOrUnpack::TypeVarTuple(tvt)) => {
-                AnnotationReturn::UnpackType(Type::Tuple(Rc::new(Tuple::new(
-                    TupleTypeArguments::WithUnpack(WithUnpack {
-                        before: Rc::from([]),
-                        unpack: TupleUnpack::TypeVarTuple(tvt),
-                        after: Rc::from([]),
-                    }),
-                ))))
-            }
+            TypeContent::Unpacked(TypeOrUnpack::Type(t @ Type::Tuple(_))) => t,
+            TypeContent::Unpacked(TypeOrUnpack::TypeVarTuple(tvt)) => Type::Tuple(Rc::new(
+                Tuple::new(TupleTypeArguments::WithUnpack(WithUnpack {
+                    before: Rc::from([]),
+                    unpack: TupleUnpack::TypeVarTuple(tvt),
+                    after: Rc::from([]),
+                })),
+            )),
             TypeContent::Unpacked(TypeOrUnpack::Type(t)) => {
                 self.add_issue(
                     from,
@@ -650,34 +640,31 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         actual: t.format_short(self.inference.i_s.db),
                     },
                 );
-                AnnotationReturn::Type(Type::Any(AnyCause::FromError))
+                Type::Any(AnyCause::FromError)
             }
             TypeContent::Unpacked(TypeOrUnpack::Unknown(_)) => todo!(),
             _ => match self.as_type(tc, from) {
-                // TODO is this AnnotationReturn really needed??
-                t @ Type::ParamSpecArgs(_) => AnnotationReturn::Type(t),
-                t => AnnotationReturn::Type(Type::Tuple(Rc::new(Tuple::new_arbitrary_length(t)))),
+                t @ Type::ParamSpecArgs(_) => t,
+                t => Type::Tuple(Rc::new(Tuple::new_arbitrary_length(t))),
             },
         }
     }
 
-    fn wrap_star_star(&mut self, tc: TypeContent, expr: Expression) -> AnnotationReturn {
+    fn wrap_star_star(&mut self, tc: TypeContent, expr: Expression) -> Type {
         let from = NodeRef::new(self.inference.file, expr.index());
         match tc {
-            TypeContent::Unpacked(TypeOrUnpack::Type(t @ Type::TypedDict(_))) => {
-                AnnotationReturn::UnpackType(t)
-            }
+            TypeContent::Unpacked(TypeOrUnpack::Type(t @ Type::TypedDict(_))) => t,
             TypeContent::Unpacked(_) => {
                 self.add_issue(from, IssueType::UnpackItemInStarStarMustBeTypedDict);
-                AnnotationReturn::Type(Type::Any(AnyCause::FromError))
+                Type::Any(AnyCause::FromError)
             }
             _ => match self.as_type(tc, from) {
-                t @ Type::ParamSpecKwargs(_) => AnnotationReturn::Type(t),
-                t => AnnotationReturn::Type(new_class!(
+                t @ Type::ParamSpecKwargs(_) => t,
+                t => new_class!(
                     self.inference.i_s.db.python_state.dict_node_ref().as_link(),
                     self.inference.i_s.db.python_state.str_type(),
                     t,
-                )),
+                ),
             },
         }
     }
@@ -723,10 +710,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             uses_class_generics
         };
         let mut type_ = match map_type_callback {
-            Some(map_type_callback) => match map_type_callback(self, type_) {
-                AnnotationReturn::Type(t) => t,
-                AnnotationReturn::UnpackType(t) => t,
-            },
+            Some(map_type_callback) => map_type_callback(self, type_),
             None => match type_ {
                 TypeContent::SimpleGeneric { .. } | TypeContent::Class { .. }
                     if !is_implicit_optional =>
