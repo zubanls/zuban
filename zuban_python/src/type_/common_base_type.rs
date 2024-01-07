@@ -8,6 +8,7 @@ use super::{
     Variance,
 };
 use crate::{
+    database::Database,
     inference_state::InferenceState,
     matching::{Match, Matcher},
     type_::CallableLike,
@@ -101,7 +102,28 @@ pub fn common_base_type<'x, I: Iterator<Item = &'x Type>>(i_s: &InferenceState, 
     }
 }
 
+fn check_promotion(db: &Database, promote: Class, other: Class) -> Option<Type> {
+    if let Some(promote_to) = promote.class_storage.promote_to.get() {
+        let promoted = Class::from_non_generic_link(db, promote_to);
+        if promoted.node_ref == other.node_ref {
+            Some(Type::new_class(
+                promoted.node_ref.as_link(),
+                ClassGenerics::None,
+            ))
+        } else {
+            check_promotion(db, promoted, other)
+        }
+    } else {
+        None
+    }
+}
+
 fn common_base_class(i_s: &InferenceState, c1: Class, c2: Class) -> Option<Type> {
+    common_base_class_basic(i_s, c1, c2)
+        .or_else(|| check_promotion(i_s.db, c1, c2))
+        .or_else(|| check_promotion(i_s.db, c2, c1))
+}
+fn common_base_class_basic(i_s: &InferenceState, c1: Class, c2: Class) -> Option<Type> {
     if c1.node_ref != c2.node_ref {
         return None;
     }
