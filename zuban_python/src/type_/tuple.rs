@@ -135,10 +135,11 @@ impl Tuple {
                         Inferred::from_type(t.as_ref().clone())
                     }
                     _ => {
-                        let out_of_range = || {
-                            slice_type
-                                .as_argument_node_ref()
-                                .add_issue(i_s, IssueType::TupleIndexOutOfRange);
+                        let out_of_range = |variadic_max_len| {
+                            slice_type.as_argument_node_ref().add_issue(
+                                i_s,
+                                IssueType::TupleIndexOutOfRange { variadic_max_len },
+                            );
                             Some(Inferred::new_any_from_error())
                         };
                         index_inf
@@ -148,7 +149,7 @@ impl Tuple {
                                         let index = ts.len() as isize + index;
                                         match index.try_into() {
                                             Ok(index) => index,
-                                            Err(_) => return out_of_range(),
+                                            Err(_) => return out_of_range(None),
                                         }
                                     } else {
                                         index as usize
@@ -156,10 +157,30 @@ impl Tuple {
                                     if let Some(t) = ts.as_ref().get(index) {
                                         Some(Inferred::from_type(t.clone()))
                                     } else {
-                                        return out_of_range();
+                                        out_of_range(None)
                                     }
                                 }
-                                TupleTypeArguments::WithUnpack(_) => todo!(),
+                                TupleTypeArguments::WithUnpack(with_unpack) => {
+                                    if index < 0 {
+                                        todo!()
+                                    } else {
+                                        let index = index as usize;
+                                        let bef = with_unpack.before.iter();
+                                        let before_len = with_unpack.before.len();
+                                        let max_len = before_len + with_unpack.after.len();
+                                        Some(Inferred::from_type(if index >= max_len {
+                                            return out_of_range(Some(max_len));
+                                        } else if index < before_len {
+                                            simplified_union_from_iterators(i_s, bef.take(index))
+                                        } else {
+                                            match &with_unpack.unpack {
+                                                TupleUnpack::TypeVarTuple(tvt) => todo!(),
+                                                TupleUnpack::ArbitraryLength(t) => todo!(),
+                                            }
+                                            //simplified_union_from_iterators(i_s, bef.chain(std::iter::once()).take(index))
+                                        }))
+                                    }
+                                }
                                 TupleTypeArguments::ArbitraryLength(_) => unreachable!(),
                             })
                             .unwrap_or_else(|| {

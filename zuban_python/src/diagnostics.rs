@@ -214,7 +214,7 @@ pub(crate) enum IssueType {
     BaseExceptionExpectedForRaise,
     ExceptStarIsNotAllowedToBeAnExceptionGroup,
 
-    TupleIndexOutOfRange,
+    TupleIndexOutOfRange { variadic_max_len: Option<usize> },
     NamedTupleExpectsStringLiteralAsFirstArg { name: &'static str },
     StringLiteralExpectedAsNamedTupleItem,
     InvalidStmtInNamedTuple,
@@ -1138,7 +1138,12 @@ impl<'db> Diagnostic<'db> {
             ExceptStarIsNotAllowedToBeAnExceptionGroup =>
                 "Exception type in except* cannot derive from BaseExceptionGroup".to_string(),
 
-            TupleIndexOutOfRange => "Tuple index out of range".to_string(),
+            TupleIndexOutOfRange { variadic_max_len } => {
+                if let Some(len) = variadic_max_len {
+                    additional_notes.push(format!("Variadic tuple can have length {len}"));
+                }
+                "Tuple index out of range".to_string()
+            }
             NamedTupleExpectsStringLiteralAsFirstArg{name} =>
                 format!("\"{name}()\" expects a string literal as the first argument"),
             StringLiteralExpectedAsNamedTupleItem =>

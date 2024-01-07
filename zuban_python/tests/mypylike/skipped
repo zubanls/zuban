@@ -548,7 +548,6 @@ testVariadicNamedTuple
 testTypeVarTupleErrors
 # type_/tuple.rs:147
 testTypeVarTuplePep646TypeVarStarArgsVariableLengthTuple
-testTypeVarTupleIndexTypeVar
 # type_/replace.rs:409
 testTypeVarTupleCallable
 # type_/type_var_likes.rs:349
