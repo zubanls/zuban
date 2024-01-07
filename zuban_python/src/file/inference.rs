@@ -26,13 +26,13 @@ use crate::{
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, FunctionKind, Literal,
         LiteralKind, Namespace, ParamType, StarParamType, StarStarParamType, StringSlice, Tuple,
-        TupleTypeArguments, Type, UnionEntry, UnionType, Variance,
+        TupleTypeArguments, Type, UnionEntry, UnionType, Variance, WithUnpack,
     },
     type_helpers::{
         lookup_in_namespace, Class, FirstParamKind, Function, GeneratorType, Instance, Module,
         TypeOrClass,
     },
-    utils::debug_indent,
+    utils::{debug_indent, rc_slice_into_vec},
 };
 
 pub struct Inference<'db: 'file, 'file, 'i_s> {
@@ -1998,19 +1998,25 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         result_context: &mut ResultContext,
     ) -> Inferred {
         let mut generics = vec![];
+        let mut with_unpack = None;
         let is_arbitrary_length = Cell::new(false);
         let is_definition = matches!(result_context, ResultContext::AssignmentNewDefinition);
         result_context.with_tuple_context_iterator(self.i_s, |tuple_context_iterator| {
-            let add_from_stars = |generics: &mut Vec<_>, inferred: Inferred, from_index| {
-                // TODO this is not correct. The star expression can be a union as well.
-                let mut iterator = inferred.iter(self.i_s, NodeRef::new(self.file, from_index));
-                if iterator.len().is_some() {
-                    while let Some(inf) = iterator.next(self.i_s) {
-                        generics.push(inf.as_type(self.i_s))
+            let mut add_from_stars = |generics: &mut Vec<_>, inferred: Inferred, from_index| {
+                match inferred.iter(self.i_s, NodeRef::new(self.file, from_index)) {
+                    IteratorContent::Inferred(_) | IteratorContent::Any(_) => {
+                        is_arbitrary_length.set(true);
+                        return;
                     }
-                } else {
-                    is_arbitrary_length.set(true);
-                    return;
+                    IteratorContent::FixedLengthTupleGenerics { entries, .. } => {
+                        generics.extend_from_slice(&entries);
+                    }
+                    IteratorContent::WithUnpack { unpack, .. } => {
+                        generics.extend_from_slice(&unpack.before);
+                        with_unpack = Some((unpack.unpack, rc_slice_into_vec(unpack.after)))
+                    }
+                    // TODO this is not correct. The star expression can be a union as well.
+                    IteratorContent::Union(_) => todo!(),
                 }
             };
             for (e, expected) in iterator.clone().zip(tuple_context_iterator) {
@@ -2044,7 +2050,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
             }
         });
-        let content = if is_arbitrary_length.get() {
+        let content = if let Some((unpack, after)) = with_unpack {
+            Tuple::new(TupleTypeArguments::WithUnpack(WithUnpack {
+                before: generics.into(),
+                unpack,
+                after: after.into(),
+            }))
+        } else if is_arbitrary_length.get() {
             let generic = self.create_list_or_set_generics(iterator);
             Tuple::new_arbitrary_length(generic)
         } else {
