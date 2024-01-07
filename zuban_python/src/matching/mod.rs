@@ -265,11 +265,7 @@ impl IteratorContent {
             Self::FixedLengthTupleGenerics {
                 entries,
                 current_index,
-            } => {
-                let result = entries.get(*current_index);
-                *current_index += 1;
-                result.cloned().map(Inferred::from_type)
-            }
+            } => next_fixed_length(entries, current_index),
             Self::Union(iterators) => {
                 let mut had_next = false;
                 let result = Inferred::gather_simplified_union(i_s, |add| {
@@ -340,14 +336,17 @@ impl IteratorContent {
         )
     }
 
-    pub fn unpack_next(&mut self, i_s: &InferenceState, expected_lens: TupleLenInfos) -> Inferred {
+    pub fn unpack_next(&mut self, expected_lens: TupleLenInfos) -> Inferred {
         // It is important to note that the lengths have been checked before and it is at this
         // point clear that we can unpack the iterator. This should only ever be used for
         // assignment calculation, e.g. foo, *bar = ...
         match self {
             Self::Inferred(inf) => inf.clone(),
             Self::Any(cause) => Inferred::new_any(*cause),
-            Self::FixedLengthTupleGenerics { .. } => self.next(i_s).unwrap(),
+            Self::FixedLengthTupleGenerics {
+                entries,
+                current_index,
+            } => next_fixed_length(entries, current_index).unwrap(),
             Self::WithUnpack {
                 unpack,
                 current_index,
@@ -407,4 +406,10 @@ pub enum LookupKind {
 pub enum TupleLenInfos {
     FixedLength(usize),
     WithStar { before: usize, after: usize },
+}
+
+fn next_fixed_length(entries: &[Type], current_index: &mut usize) -> Option<Inferred> {
+    let result = entries.get(*current_index)?;
+    *current_index += 1;
+    Some(Inferred::from_type(result.clone()))
 }

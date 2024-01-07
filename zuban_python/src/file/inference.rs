@@ -1191,7 +1191,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
                 self.assign_targets(new_target, value, value_node_ref, is_definition);
             } else {
-                let value = value_iterator.unpack_next(self.i_s, expected_lens);
+                let value = value_iterator.unpack_next(expected_lens);
                 self.assign_targets(target, value, value_node_ref, is_definition);
             }
         }
