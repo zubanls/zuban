@@ -1103,10 +1103,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     ) {
         let mut counter = 0;
         let (star_count, expected_lens) = targets_len_infos(targets.clone());
-        // 1. Check lengths
+        let mut had_issue = false;
+        // 1. Check lengths and search length mismatch issues
         if let Some(actual_lens) = value_iterator.len_infos() {
             use TupleLenInfos::*;
-            let had_issue = match (expected_lens, actual_lens) {
+            had_issue = match (expected_lens, actual_lens) {
                 (FixedLength(expected), FixedLength(actual)) if actual != expected => {
                     value_node_ref.add_issue(
                         self.i_s,
@@ -1137,44 +1138,40 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
                 _ => false,
             };
-            if had_issue {
-                for target in targets {
-                    counter += 1;
-                    self.assign_targets(
-                        target,
-                        Inferred::new_any_from_error(),
-                        value_node_ref,
-                        is_definition,
-                    );
-                }
-                return;
-            }
         }
-        // Actually assign
+        if star_count > 1 {
+            had_issue = true;
+            let star_target = targets
+                .clone()
+                .find_map(|target| match target {
+                    Target::Starred(t) => Some(t),
+                    _ => None,
+                })
+                .unwrap();
+            self.add_issue(
+                star_target.index(),
+                IssueType::MultipleStarredExpressionsInAssignment,
+            );
+        }
+
+        if had_issue {
+            for target in targets {
+                counter += 1;
+                self.assign_targets(
+                    target,
+                    Inferred::new_any_from_error(),
+                    value_node_ref,
+                    is_definition,
+                );
+            }
+            return;
+        }
+
+        // 2. Actually assign targets
         while let Some(target) = targets.next() {
             counter += 1;
             if let Target::Starred(star_target) = target {
-                if star_count > 1 {
-                    self.add_issue(
-                        star_target.index(),
-                        IssueType::MultipleStarredExpressionsInAssignment,
-                    );
-                    self.assign_targets(
-                        star_target.as_target(),
-                        Inferred::new_any_from_error(),
-                        value_node_ref,
-                        is_definition,
-                    );
-                    for target in targets {
-                        self.assign_targets(
-                            target,
-                            Inferred::new_any_from_error(),
-                            value_node_ref,
-                            is_definition,
-                        );
-                    }
-                    return;
-                } else if let Some(len) = value_iterator.len() {
+                if let Some(len) = value_iterator.len() {
                     let TupleLenInfos::WithStar { after, .. } = expected_lens else {
                         unreachable!()
                     };
