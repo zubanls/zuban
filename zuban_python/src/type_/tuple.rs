@@ -80,7 +80,8 @@ impl Tuple {
             }
             TupleTypeArguments::WithUnpack(w) => IteratorContent::WithUnpack {
                 unpack: w.clone(),
-                current_index: 0,
+                before_index: 0,
+                after_index: 0,
             },
         }
     }

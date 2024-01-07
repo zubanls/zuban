@@ -548,7 +548,6 @@ testVariadicNamedTuple
 testTypeVarTupleErrors
 # type_/tuple.rs:81 (iter / unpack)
 testTupleWithUnpackIterator
-testUnpackingVariadicTuplesTypeVar
 testUnpackingVariadicTuplesHomogeneous
 testRepackingVariadicTuplesTypeVar
 testRepackingVariadicTuplesHomogeneous

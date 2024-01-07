@@ -34,7 +34,6 @@ use crate::{
     diagnostics::IssueType,
     inference_state::InferenceState,
     inferred::Inferred,
-    new_class,
     type_::{AnyCause, Tuple, TupleUnpack, Type, WithUnpack},
     utils::debug_indent,
 };
@@ -205,7 +204,8 @@ pub enum IteratorContent {
     },
     WithUnpack {
         unpack: WithUnpack,
-        current_index: usize,
+        before_index: usize,
+        after_index: usize,
     },
     Union(Vec<IteratorContent>),
     Any(AnyCause),
@@ -237,20 +237,16 @@ impl IteratorContent {
             }),
             Self::WithUnpack {
                 unpack,
-                current_index,
+                before_index,
+                after_index,
             } => Inferred::gather_simplified_union(i_s, |add| match unpack.unpack {
                 TupleUnpack::TypeVarTuple(_) => todo!(),
                 TupleUnpack::ArbitraryLength(t) => {
-                    let skip_after_count = if current_index > unpack.before.len() {
-                        current_index - unpack.before.len()
-                    } else {
-                        for entry in unpack.before.iter().skip(current_index) {
-                            add(Inferred::from_type(entry.clone()))
-                        }
-                        0
-                    };
+                    for entry in unpack.before.iter().skip(before_index) {
+                        add(Inferred::from_type(entry.clone()))
+                    }
                     add(Inferred::from_type(t));
-                    for entry in unpack.before.iter().skip(skip_after_count) {
+                    for entry in unpack.before.iter().skip(after_index) {
                         add(Inferred::from_type(entry.clone()))
                     }
                 }
@@ -292,14 +288,8 @@ impl IteratorContent {
         (
             false,
             match self {
-                Self::Inferred(inf) => Inferred::from_type(new_class!(
-                    i_s.db.python_state.list_node_ref().as_link(),
-                    inf.as_type(i_s),
-                )),
-                Self::Any(cause) => Inferred::from_type(new_class!(
-                    i_s.db.python_state.list_node_ref().as_link(),
-                    Type::Any(*cause),
-                )),
+                Self::Inferred(inf) => Inferred::new_list_of(i_s.db, inf.as_type(i_s)),
+                Self::Any(cause) => Inferred::new_list_of(i_s.db, Type::Any(*cause)),
                 Self::FixedLengthTupleGenerics {
                     entries,
                     current_index,
@@ -307,12 +297,14 @@ impl IteratorContent {
                     let end = entries.len() - after;
                     let fetch = end - *current_index;
                     let relevant_entries = &entries[*current_index..end];
-                    let inf = Inferred::from_type(if tuple_target {
+                    let inf = if tuple_target {
                         let mut tuple_entries = vec![];
                         for t in relevant_entries {
                             tuple_entries.push(t.clone());
                         }
-                        Type::Tuple(Rc::new(Tuple::new_fixed_length(tuple_entries.into())))
+                        Inferred::from_type(Type::Tuple(Rc::new(Tuple::new_fixed_length(
+                            tuple_entries.into(),
+                        ))))
                     } else {
                         let union = Inferred::gather_base_types(i_s, |callable| {
                             for t in relevant_entries {
@@ -320,8 +312,8 @@ impl IteratorContent {
                             }
                         });
                         let generic = union.as_type(i_s);
-                        new_class!(i_s.db.python_state.list_node_ref().as_link(), generic,)
-                    });
+                        Inferred::new_list_of(i_s.db, generic)
+                    };
                     *current_index += fetch;
                     if fetch == 0 {
                         return (true, inf);
@@ -330,14 +322,38 @@ impl IteratorContent {
                 }
                 Self::WithUnpack {
                     unpack,
-                    current_index,
-                } => todo!(),
+                    before_index,
+                    after_index,
+                } => {
+                    let result = Inferred::new_list_of(
+                        i_s.db,
+                        match &unpack.unpack {
+                            TupleUnpack::TypeVarTuple(_) => i_s.db.python_state.object_type(),
+                            TupleUnpack::ArbitraryLength(t) => {
+                                let inner = Inferred::gather_simplified_union(i_s, |add| {
+                                    for entry in unpack.before.iter().skip(*before_index) {
+                                        add(Inferred::from_type(entry.clone()));
+                                    }
+                                    add(Inferred::from_type(t.clone()));
+                                    for entry in unpack.before.iter().rev().skip(after).rev() {
+                                        add(Inferred::from_type(entry.clone()));
+                                    }
+                                });
+                                inner.as_type(i_s)
+                            }
+                        },
+                    );
+                    // Change the indexes, to account for what has been fetched.
+                    *before_index = unpack.before.len();
+                    *after_index = unpack.after.len() - after;
+                    result
+                }
                 Self::Union(_) => unreachable!(),
             },
         )
     }
 
-    pub fn unpack_next(&mut self, expected_lens: TupleLenInfos) -> Inferred {
+    pub fn unpack_next(&mut self) -> Inferred {
         // It is important to note that the lengths have been checked before and it is at this
         // point clear that we can unpack the iterator. This should only ever be used for
         // assignment calculation, e.g. foo, *bar = ...
@@ -350,13 +366,25 @@ impl IteratorContent {
             } => next_fixed_length(entries, current_index).unwrap(),
             Self::WithUnpack {
                 unpack,
-                current_index,
-            } => todo!(),
+                before_index,
+                after_index,
+            } => {
+                if *before_index == unpack.before.len() {
+                    let result = unpack.after.get(*after_index).unwrap();
+                    *after_index += 1;
+                    Inferred::from_type(result.clone())
+                } else {
+                    let result = unpack.before.get(*before_index).unwrap();
+                    *before_index += 1;
+                    Inferred::from_type(result.clone())
+                }
+            }
             Self::Union(_) => unreachable!(),
         }
     }
 
     pub fn len(&self) -> Option<usize> {
+        // TODO this function should probably be removed.
         match self {
             Self::Inferred(_) | Self::Any(_) => None,
             Self::FixedLengthTupleGenerics {

@@ -1077,7 +1077,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 // This is always invalid, just set it to Any. Issues were added before.
                 self.assign_targets(
                     starred.as_target(),
-                    Inferred::new_any_from_error(),
+                    Inferred::new_list_of(self.i_s.db, Type::Any(AnyCause::FromError)),
                     value_node_ref,
                     is_definition,
                 );
@@ -1096,7 +1096,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
     fn assign_tuple_target(
         &mut self,
-        mut targets: TargetIterator,
+        targets: TargetIterator,
         mut value_iterator: IteratorContent,
         value_node_ref: NodeRef,
         is_definition: bool,
@@ -1125,6 +1125,22 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             actual,
                             expected: before + after,
                         },
+                    );
+                    true
+                }
+                (
+                    WithStar {
+                        before: before1,
+                        after: after1,
+                    },
+                    WithStar {
+                        before: before2,
+                        after: after2,
+                    },
+                ) if before1 > before2 || after1 > after2 => {
+                    value_node_ref.add_issue(
+                        self.i_s,
+                        IssueType::TooManyAssignmentTargetsForVariadicUnpack,
                     );
                     true
                 }
@@ -1168,12 +1184,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
 
         // 4. Actually assign targets, now that everything is fine
-        while let Some(target) = targets.next() {
+        for target in targets {
             if let Target::Starred(star_target) = target {
                 let TupleLenInfos::WithStar { after, .. } = expected_lens else {
                     unreachable!()
                 };
-
                 let new_target = star_target.as_target();
                 let expect_tuple = matches!(new_target, Target::Tuple(_));
                 let (is_empty, mut value) =
@@ -1191,7 +1206,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
                 self.assign_targets(new_target, value, value_node_ref, is_definition);
             } else {
-                let value = value_iterator.unpack_next(expected_lens);
+                let value = value_iterator.unpack_next();
                 self.assign_targets(target, value, value_node_ref, is_definition);
             }
         }
@@ -1987,6 +2002,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let is_definition = matches!(result_context, ResultContext::AssignmentNewDefinition);
         result_context.with_tuple_context_iterator(self.i_s, |tuple_context_iterator| {
             let add_from_stars = |generics: &mut Vec<_>, inferred: Inferred, from_index| {
+                // TODO this is not correct. The star expression can be a union as well.
                 let mut iterator = inferred.iter(self.i_s, NodeRef::new(self.file, from_index));
                 if iterator.len().is_some() {
                     while let Some(inf) = iterator.next(self.i_s) {

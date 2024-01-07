@@ -22,6 +22,7 @@ use crate::{
         ErrorStrs, ErrorTypes, FormatData, Generics, GotType, IteratorContent, LookupKind,
         LookupResult, Match, Matcher, OnLookupError, OnTypeError, ResultContext,
     },
+    new_class,
     node_ref::NodeRef,
     type_::{
         execute_collections_named_tuple, execute_type_of_type, execute_typing_named_tuple,
@@ -120,6 +121,10 @@ impl<'db: 'slf, 'slf> Inferred {
         Self {
             state: InferredState::UnsavedSpecific(Specific::None),
         }
+    }
+
+    pub fn new_list_of(db: &Database, inner: Type) -> Self {
+        Self::from_type(new_class!(db.python_state.list_node_ref().as_link(), inner,))
     }
 
     pub fn new_any_from_error() -> Self {
