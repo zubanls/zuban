@@ -162,22 +162,57 @@ impl Tuple {
                                 }
                                 TupleTypeArguments::WithUnpack(with_unpack) => {
                                     if index < 0 {
-                                        todo!()
+                                        let index = -index as usize - 1;
+                                        let after_len = with_unpack.after.len();
+                                        let max_len = after_len + with_unpack.before.len();
+                                        Some(Inferred::from_type(if index >= max_len {
+                                            return out_of_range(Some(max_len));
+                                        } else if index < after_len {
+                                            with_unpack.after[after_len - index - 1].clone()
+                                        } else {
+                                            match &with_unpack.unpack {
+                                                TupleUnpack::TypeVarTuple(tvt) => {
+                                                    i_s.db.python_state.object_type()
+                                                }
+                                                TupleUnpack::ArbitraryLength(t) => {
+                                                    simplified_union_from_iterators(
+                                                        i_s,
+                                                        with_unpack
+                                                            .before
+                                                            .iter()
+                                                            .rev()
+                                                            .take(index - after_len + 1)
+                                                            .rev()
+                                                            .chain(std::iter::once(t)),
+                                                    )
+                                                }
+                                            }
+                                        }))
                                     } else {
                                         let index = index as usize;
-                                        let bef = with_unpack.before.iter();
                                         let before_len = with_unpack.before.len();
                                         let max_len = before_len + with_unpack.after.len();
                                         Some(Inferred::from_type(if index >= max_len {
                                             return out_of_range(Some(max_len));
                                         } else if index < before_len {
-                                            simplified_union_from_iterators(i_s, bef.take(index))
+                                            with_unpack.before[index].clone()
                                         } else {
                                             match &with_unpack.unpack {
-                                                TupleUnpack::TypeVarTuple(tvt) => todo!(),
-                                                TupleUnpack::ArbitraryLength(t) => todo!(),
+                                                TupleUnpack::TypeVarTuple(tvt) => {
+                                                    i_s.db.python_state.object_type()
+                                                }
+                                                TupleUnpack::ArbitraryLength(t) => {
+                                                    simplified_union_from_iterators(
+                                                        i_s,
+                                                        std::iter::once(t).chain(
+                                                            with_unpack
+                                                                .after
+                                                                .iter()
+                                                                .take(index - before_len + 1),
+                                                        ),
+                                                    )
+                                                }
                                             }
-                                            //simplified_union_from_iterators(i_s, bef.chain(std::iter::once()).take(index))
                                         }))
                                     }
                                 }
