@@ -286,14 +286,46 @@ impl Tuple {
                                 }
                             }))))
                         }
-                        TupleTypeArguments::WithUnpack(ts) => {
-                            Inferred::from_type(Type::Tuple(Rc::new(Tuple::new_fixed_length({
-                                if !matches!(step, -1 | 1) {
+                        TupleTypeArguments::WithUnpack(with_unpack) => Inferred::from_type(
+                            Type::Tuple(Rc::new(Tuple::new(TupleTypeArguments::WithUnpack({
+                                let ambigous = || {
+                                    slice_type
+                                        .as_node_ref()
+                                        .add_issue(i_s, IssueType::AmbigousSliceOfVariadicTuple);
+                                    Inferred::from_type(Type::Tuple(
+                                        Self::new_arbitrary_length_with_any_from_error(),
+                                    ))
+                                };
+                                if step == 1 {
+                                    let start = start.unwrap_or(0);
+                                    let before_len = with_unpack.before.len() as isize;
+                                    let after_len = with_unpack.after.len() as isize;
+                                    if start > before_len {
+                                        return ambigous();
+                                    }
+                                    if start < 0 {
+                                        todo!()
+                                    }
+                                    if let Some(end) = end {
+                                        if end > before_len {
+                                            return ambigous();
+                                        }
+                                    }
                                     todo!()
+                                } else if step == -1 {
+                                    if start.is_some() || end.is_some() {
+                                        todo!()
+                                    }
+                                    WithUnpack {
+                                        before: with_unpack.after.iter().rev().cloned().collect(),
+                                        unpack: with_unpack.unpack.clone(),
+                                        after: with_unpack.before.iter().rev().cloned().collect(),
+                                    }
+                                } else {
+                                    return ambigous();
                                 }
-                                todo!()
-                            }))))
-                        }
+                            })))),
+                        ),
                         TupleTypeArguments::ArbitraryLength(t) => {
                             Inferred::from_type(Type::Tuple(Rc::new(self.clone())))
                         }
