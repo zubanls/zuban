@@ -642,7 +642,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 );
                 Type::Tuple(Tuple::new_arbitrary_length_with_any_from_error())
             }
-            TypeContent::Unpacked(TypeOrUnpack::Unknown(_)) => todo!(),
+            TypeContent::Unpacked(TypeOrUnpack::Unknown(_)) => {
+                Type::Tuple(Tuple::new_arbitrary_length_with_any())
+            }
             _ => match self.as_type(tc, from) {
                 t @ Type::ParamSpecArgs(_) => t,
                 t => Type::Tuple(Rc::new(Tuple::new_arbitrary_length(t))),

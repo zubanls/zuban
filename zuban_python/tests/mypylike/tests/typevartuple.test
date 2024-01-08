@@ -1,0 +1,11 @@
+[case invalid_unpack_type_var_tuple]
+from typing import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+def foo(*args: Unpack[Ts]) -> None:
+    x: Unpack[Ts]  # E: Unpack is only valid in a variadic position
+    reveal_type(x)  # N: Revealed type is "Any"
+
+[case unknown_unpack]
+from typing import Unpack
+def foo(*args: Unpack[Unknown]) -> None: ...  # E: Name "Unknown" is not defined
