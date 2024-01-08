@@ -230,7 +230,12 @@ impl Tuple {
             SliceTypeContent::Slice(slice) => slice
                 .callback_on_tuple_indexes(i_s, |start, end, step| {
                     if step == 0 {
-                        todo!()
+                        slice_type
+                            .as_node_ref()
+                            .add_issue(i_s, IssueType::TupleSliceStepCannotBeZero);
+                        return Inferred::from_type(Type::Tuple(
+                            Self::new_arbitrary_length_with_any_from_error(),
+                        ));
                     }
                     match &self.args {
                         TupleTypeArguments::FixedLength(ts) => {

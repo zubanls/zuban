@@ -215,6 +215,7 @@ pub(crate) enum IssueType {
     ExceptStarIsNotAllowedToBeAnExceptionGroup,
 
     TupleIndexOutOfRange { variadic_max_len: Option<usize> },
+    TupleSliceStepCannotBeZero,  // Not in mypy
     NamedTupleExpectsStringLiteralAsFirstArg { name: &'static str },
     StringLiteralExpectedAsNamedTupleItem,
     InvalidStmtInNamedTuple,
@@ -1144,6 +1145,7 @@ impl<'db> Diagnostic<'db> {
                 }
                 "Tuple index out of range".to_string()
             }
+            TupleSliceStepCannotBeZero => "slice step cannot be zero".to_string(),
             NamedTupleExpectsStringLiteralAsFirstArg{name} =>
                 format!("\"{name}()\" expects a string literal as the first argument"),
             StringLiteralExpectedAsNamedTupleItem =>
