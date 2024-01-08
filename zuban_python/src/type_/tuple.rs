@@ -228,38 +228,43 @@ impl Tuple {
                 todo!()
             }
             SliceTypeContent::Slice(slice) => slice
-                .callback_on_tuple_indexes(i_s, |start, end, step| match &self.args {
-                    TupleTypeArguments::FixedLength(ts) => {
-                        Inferred::from_type(Type::Tuple(Rc::new(Tuple::new_fixed_length({
-                            let end = match end {
-                                Some(end) if end < 0 => ts.len() as isize + end,
-                                Some(end) => end,
-                                None => ts.len() as isize,
-                            };
-                            let start = if start < 0 {
-                                ts.len() as isize + start
-                            } else {
-                                start
-                            };
-                            let start = (start.max(0) as usize).min(ts.len());
-                            let end = (end.max(start as isize) as usize).min(ts.len());
-                            match step {
-                                1 => ts[start..end].into(),
-                                n if n > 1 => {
-                                    ts[start..end].iter().step_by(n as usize).cloned().collect()
-                                }
-                                n if n < 0 => {
-                                    todo!()
-                                }
-                                _ => unreachable!(),
-                            }
-                        }))))
-                    }
-                    TupleTypeArguments::WithUnpack(ts) => {
+                .callback_on_tuple_indexes(i_s, |start, end, step| {
+                    if step == 0 {
                         todo!()
                     }
-                    TupleTypeArguments::ArbitraryLength(t) => {
-                        todo!()
+                    match &self.args {
+                        TupleTypeArguments::FixedLength(ts) => {
+                            Inferred::from_type(Type::Tuple(Rc::new(Tuple::new_fixed_length({
+                                let end = match end {
+                                    Some(end) if end < 0 => ts.len() as isize + end,
+                                    Some(end) => end,
+                                    None => ts.len() as isize,
+                                };
+                                let start = if start < 0 {
+                                    ts.len() as isize + start
+                                } else {
+                                    start
+                                };
+                                let start = (start.max(0) as usize).min(ts.len());
+                                let end = (end.max(start as isize) as usize).min(ts.len());
+                                match step {
+                                    1 => ts[start..end].into(),
+                                    n if n > 1 => {
+                                        ts[start..end].iter().step_by(n as usize).cloned().collect()
+                                    }
+                                    n if n < 0 => {
+                                        todo!()
+                                    }
+                                    _ => unreachable!(),
+                                }
+                            }))))
+                        }
+                        TupleTypeArguments::WithUnpack(ts) => {
+                            todo!()
+                        }
+                        TupleTypeArguments::ArbitraryLength(t) => {
+                            Inferred::from_type(Type::Tuple(Rc::new(self.clone())))
+                        }
                     }
                 })
                 .unwrap_or_else(|| {

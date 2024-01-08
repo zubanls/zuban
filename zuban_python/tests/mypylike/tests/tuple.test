@@ -81,3 +81,14 @@ class T2(Tuple[int, str]): pass
 x: T2
 reveal_type(x + (1.0,))  # N: Revealed type is "tuple[int, str, float]"
 reveal_type((1.0,) + x)  # N: Revealed type is "tuple[float, int, str]"
+
+[case tuple_slice_reverse_arbitrary_len]
+x: tuple[int, ...]
+reveal_type(x[42:])  # N: Revealed type is "tuple[int, ...]"
+reveal_type(x[:42])  # N: Revealed type is "tuple[int, ...]"
+reveal_type(x[::-3])  # N: Revealed type is "tuple[int, ...]"
+reveal_type(x[::-3])  # N: Revealed type is "tuple[int, ...]"
+reveal_type(x[0:0])  # N: Revealed type is "tuple[int, ...]"
+reveal_type(x[-2:-5:-3])  # N: Revealed type is "tuple[int, ...]"
+reveal_type(x[-2:-3])  # N: Revealed type is "tuple[int, ...]"
+reveal_type(x[-5:-3])  # N: Revealed type is "tuple[int, ...]"
