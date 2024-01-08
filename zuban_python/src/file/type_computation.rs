@@ -1191,13 +1191,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         self.as_type(t, slice.as_node_ref())
     }
 
-    fn compute_tuple_types<'a>(
-        &mut self,
-        iterator: impl Clone + Iterator<Item = SliceOrSimple<'a>>,
-    ) -> TupleTypeArguments {
-        TypeArgIterator::new(iterator).as_type_arguments(self)
-    }
-
     fn convert_slice_type_or_tuple_unpack(
         &mut self,
         t: TypeContent,
@@ -2011,7 +2004,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     generics.insert(
                         i,
                         GenericItem::TypeArguments(TypeArguments {
-                            args: type_args.as_type_arguments(self),
+                            args: type_args.as_type_arguments(
+                                self,
+                                type_var_likes.len() == 1 && slice_type.iter().count() == 1,
+                            ),
                         }),
                     );
                     break;
@@ -2060,28 +2056,18 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     fn compute_type_get_item_on_tuple(&mut self, slice_type: SliceType) -> TypeContent<'db, 'db> {
         let mut iterator = slice_type.iter();
         let first = iterator.next().unwrap();
-        let generics = if let Some(slice_or_simple) = iterator.next() {
+        if let Some(slice_or_simple) = iterator.next() {
             if let SliceOrSimple::Simple(s) = slice_or_simple {
                 if s.named_expr.is_ellipsis_literal() {
                     let t = self.compute_slice_type(first);
                     return TypeContent::Type(Type::Tuple(Rc::new(Tuple::new_arbitrary_length(t))));
                 }
             }
-            Tuple::new(self.compute_tuple_types(slice_type.iter()))
-        } else {
-            let t = self.compute_slice_type_content(first);
-            // Handle Tuple[()]
-            match t {
-                TypeContent::InvalidVariable(InvalidVariableType::Tuple { tuple_length: 0 }) => {
-                    Tuple::new_fixed_length(Rc::new([]))
-                }
-                _ => match self.convert_slice_type_or_tuple_unpack(t, first) {
-                    TuplePart::Type(t) => Tuple::new_fixed_length(Rc::new([t])),
-                    TuplePart::TupleUnpack(u) => u.as_tuple(),
-                },
-            }
-        };
-        TypeContent::Type(Type::Tuple(Rc::new(generics)))
+        }
+        TypeContent::Type(Type::Tuple(Rc::new(Tuple::new(
+            TypeArgIterator::new(slice_type.iter())
+                .as_type_arguments(self, slice_type.iter().count() == 1),
+        ))))
     }
 
     fn calculate_simplified_param_spec_generics<'y, I: Iterator<Item = SliceOrSimple<'y>>>(
@@ -4088,7 +4074,11 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
         Some(ParamSpecArgument::new(params, None))
     }
 
-    fn as_type_arguments(&mut self, type_computation: &mut TypeComputation) -> TupleTypeArguments {
+    fn as_type_arguments(
+        &mut self,
+        type_computation: &mut TypeComputation,
+        allow_empty_tuple: bool,
+    ) -> TupleTypeArguments {
         let mut before = vec![];
         let mut after = vec![];
         let mut unpack = None;
@@ -4135,6 +4125,14 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
                 }
             }
             let t = type_computation.compute_slice_type_content(s);
+            if allow_empty_tuple
+                && matches!(
+                    t,
+                    TypeContent::InvalidVariable(InvalidVariableType::Tuple { tuple_length: 0 })
+                )
+            {
+                break;
+            }
             match type_computation.convert_slice_type_or_tuple_unpack(t, s) {
                 TuplePart::Type(t) => {
                     if unpack.is_none() {

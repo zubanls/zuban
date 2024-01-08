@@ -221,7 +221,11 @@ impl<'a> Generics<'a> {
             .iter(format_data.db)
             .filter_map(|g| g.format(format_data))
             .collect();
-        format!("[{}]", strings.join(", "))
+        if strings.is_empty() {
+            "[()]".to_string()
+        } else {
+            format!("[{}]", strings.join(", "))
+        }
     }
 
     pub fn matches(

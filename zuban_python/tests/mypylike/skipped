@@ -511,7 +511,6 @@ testSimpleRuntimeProtocolCheck
 testTypeVarTupleMixed
 testTypeVarTupleChaining
 # TypeVarTuple Foo[()]
-testTypeVarTupleGenericClassDefn
 testTypeVarTupleEmptySpecialCase
 # matching/result_context.rs:137
 testVariadicTupleInTupleContext
