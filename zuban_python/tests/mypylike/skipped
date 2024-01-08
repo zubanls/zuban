@@ -512,13 +512,12 @@ testTypeVarTupleMixed
 testTypeVarTupleChaining
 # TypeVarTuple Foo[()]
 testTypeVarTupleGenericClassDefn
+testTypeVarTupleEmptySpecialCase
 # matching/result_context.rs:137
 testVariadicTupleInTupleContext
 testVariadicTupleContextNoCrash
 # matching/generic.rs:151
 testTypeVarTupleOverloadMatch
-# matching/params.rs:87
-testTypeVarTupleEmptySpecialCase
 # file/type_computation.rs:637
 testTypeVarTuplePep646TypeVarStarArgsBasic
 testTypeVarTuplePep646TypeVarStarArgs

@@ -9,8 +9,9 @@ use crate::{
     debug,
     inference_state::InferenceState,
     type_::{
-        CallableParam, CallableParams, ParamSpecUsage, ParamType, StarParamType, StarStarParamType,
-        StringSlice, Tuple, Type, TypeVarLikes, TypedDict, TypedDictMember, Variance,
+        CallableParam, CallableParams, ParamSpecUsage, ParamType, ParamTypeDetails, StarParamType,
+        StarStarParamType, StringSlice, Tuple, Type, TypeVarLikes, TypedDict, TypedDictMember,
+        Variance,
     },
 };
 
@@ -81,10 +82,15 @@ pub fn matches_params(
         (Any(_), _) => Match::new_true(),
         (Simple(params1), Any(cause)) => {
             for p in params1.iter() {
-                if let Some(t) = p.type_.maybe_type() {
-                    matcher.set_all_contained_type_vars_to_any(i_s, t, *cause);
-                } else {
-                    todo!()
+                match p.type_.details() {
+                    ParamTypeDetails::Type(t) => {
+                        matcher.set_all_contained_type_vars_to_any(i_s, t, *cause)
+                    }
+                    ParamTypeDetails::UnpackedTuple(tup) => {
+                        matcher.set_all_contained_type_vars_to_any(i_s, &Type::Tuple(tup), *cause)
+                    }
+                    ParamTypeDetails::UnpackTypedDict(_) => todo!(),
+                    ParamTypeDetails::ParamSpecUsage(_) => todo!(),
                 }
             }
             Match::new_true()

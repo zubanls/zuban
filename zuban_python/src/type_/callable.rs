@@ -86,6 +86,35 @@ impl ParamType {
             | Self::StarStar(_) => None,
         }
     }
+
+    pub fn details(&self) -> ParamTypeDetails {
+        match self {
+            Self::PositionalOnly(t)
+            | Self::PositionalOrKeyword(t)
+            | Self::KeywordOnly(t)
+            | Self::Star(StarParamType::ArbitraryLength(t))
+            | Self::StarStar(StarStarParamType::ValueType(t)) => ParamTypeDetails::Type(t),
+            Self::Star(StarParamType::ParamSpecArgs(usage)) => {
+                ParamTypeDetails::ParamSpecUsage(usage)
+            }
+            Self::Star(StarParamType::UnpackedTuple(tup)) => {
+                ParamTypeDetails::UnpackedTuple(tup.clone())
+            }
+            Self::StarStar(StarStarParamType::ParamSpecKwargs(usage)) => {
+                ParamTypeDetails::ParamSpecUsage(usage)
+            }
+            Self::StarStar(StarStarParamType::UnpackTypedDict(td)) => {
+                ParamTypeDetails::UnpackTypedDict(td.clone())
+            }
+        }
+    }
+}
+
+pub enum ParamTypeDetails<'a> {
+    Type(&'a Type),
+    ParamSpecUsage(&'a ParamSpecUsage),
+    UnpackedTuple(Rc<Tuple>),
+    UnpackTypedDict(Rc<TypedDict>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
