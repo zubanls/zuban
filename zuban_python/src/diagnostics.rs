@@ -147,7 +147,6 @@ pub(crate) enum IssueType {
     TypeVarContravariantInReturnType,
     TypeVarVarianceIncompatibleWithParentType { type_var_name: Box<str> },
     UnexpectedTypeForTypeVar,
-    TypeVarTupleTooManyArguments,
     ParamSpecTooManyKeywordArguments,
     ParamSpecNestedSpecificationsNotAllowed,
     MultipleTypeVarTuplesInClassDef,
@@ -966,8 +965,6 @@ impl<'db> Diagnostic<'db> {
             ),
             UnexpectedTypeForTypeVar =>
                 "Cannot declare the type of a TypeVar or similar construct".to_string(),
-            TypeVarTupleTooManyArguments =>
-                "Only the first argument to TypeVarTuple has defined semantics".to_string(),
             ParamSpecTooManyKeywordArguments =>
                 "The variance and bound arguments to ParamSpec do not have defined semantics yet".to_string(),
             ParamSpecNestedSpecificationsNotAllowed =>

@@ -527,7 +527,12 @@ fn maybe_type_var_tuple(
         for arg in iterator {
             match arg.kind {
                 ArgumentKind::Positional { node_ref, .. } => {
-                    node_ref.add_issue(i_s, IssueType::TypeVarTupleTooManyArguments);
+                    node_ref.add_issue(
+                        i_s,
+                        IssueType::ArgumentIssue(
+                            "Too many positional arguments for \"TypeVarTuple\"".into(),
+                        ),
+                    );
                     return None;
                 }
                 ArgumentKind::Keyword {
@@ -551,10 +556,12 @@ fn maybe_type_var_tuple(
                     _ => {
                         node_ref.add_issue(
                             i_s,
-                            IssueType::UnexpectedArgument {
-                                class_name: "TypeVarTuple",
-                                argument_name: Box::from(key),
-                            },
+                            IssueType::ArgumentIssue(
+                                format!(
+                                    r#"Unexpected keyword argument "{key}" for "TypeVarTuple""#
+                                )
+                                .into(),
+                            ),
                         );
                         return None;
                     }

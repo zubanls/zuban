@@ -544,8 +544,6 @@ testTypeVarTuplePep646TypeVarStarArgsFixedLengthTuple
 testAliasToCallableWithUnpack2
 # type_helpers/callable.rs:442
 testVariadicNamedTuple
-# type_helpers/class.rs:661
-testTypeVarTupleErrors
 # type_/tuple.rs:147
 testTypeVarTuplePep646TypeVarStarArgsVariableLengthTuple
 # type_/replace.rs:409

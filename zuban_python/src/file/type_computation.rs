@@ -1038,7 +1038,16 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     self.add_issue(node_ref, IssueType::InvalidType(Box::from("Invalid type")));
                 }
             },
-            TypeContent::TypeVarTuple(t) => todo!(),
+            TypeContent::TypeVarTuple(t) => self.add_issue(
+                node_ref,
+                IssueType::InvalidType(
+                    format!(
+                        "TypeVarTuple \"{}\" is only valid with an unpack",
+                        t.type_var_tuple.name(self.inference.i_s.db),
+                    )
+                    .into(),
+                ),
+            ),
             TypeContent::ParamSpec(p) => {
                 self.add_issue(
                     node_ref,

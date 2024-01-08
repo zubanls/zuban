@@ -652,13 +652,14 @@ impl<'db: 'a, 'a> Class<'a> {
                                     type_vars.find(type_var_like.clone(), self.node_ref.as_link())
                                 {
                                     return TypeVarCallbackReturn::TypeVarLike(usage);
-                                }
-                                if let Some(usage) =
+                                } else if let Some(usage) =
                                     self.maybe_type_var_like_in_parent(i_s, &type_var_like)
                                 {
-                                    return TypeVarCallbackReturn::TypeVarLike(usage);
+                                    TypeVarCallbackReturn::TypeVarLike(usage)
+                                } else {
+                                    // This can happen if two type var likes are used.
+                                    TypeVarCallbackReturn::NotFound
                                 }
-                                todo!("Maybe class in func");
                             },
                             TypeComputationOrigin::BaseClass,
                         )

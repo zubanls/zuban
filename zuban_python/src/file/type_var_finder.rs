@@ -3,7 +3,6 @@ use parsa_python_ast::*;
 use super::type_computation::cache_name_on_class;
 use crate::{
     database::{Locality, Point, PointLink, PointType, Specific},
-    debug,
     diagnostics::IssueType,
     file::{file_state::File, PythonFile},
     getitem::{SliceOrSimple, SliceType},
@@ -208,9 +207,10 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
                     {
                         if let TypeVarLike::TypeVarTuple(t) = &type_var_like {
                             if self.type_var_manager.has_type_var_tuples() {
-                                debug!("TODO type var tuples twice");
-                                //NodeRef::new(self.file, name.index())
-                                //.add_issue(self.i_s, IssueType::MultipleTypeVarTuplesInClassDef)
+                                NodeRef::new(self.file, name.index()).add_issue(
+                                    self.i_s,
+                                    IssueType::MultipleTypeVarTuplesInClassDef,
+                                );
                                 return BaseLookup::Other;
                             }
                         }
