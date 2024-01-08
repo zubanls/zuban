@@ -157,7 +157,7 @@ impl<'file> Slice<'file> {
     pub fn callback_on_tuple_indexes(
         &self,
         i_s: &InferenceState,
-        callback: impl Fn(isize, Option<isize>, isize) -> Inferred,
+        callback: impl Fn(Option<isize>, Option<isize>, isize) -> Inferred,
     ) -> Option<Inferred> {
         let infer = |maybe_expr: Option<_>| {
             maybe_expr.map(|expr| self.file.inference(i_s).infer_expression(expr))
@@ -184,9 +184,9 @@ impl<'file> Slice<'file> {
             }
         };
         if let Some(first) = first {
-            infer_index(i_s, self.file, first, |index| infer_second(index))
+            infer_index(i_s, self.file, first, |index| infer_second(Some(index)))
         } else {
-            infer_second(0)
+            infer_second(None)
         }
     }
 }
