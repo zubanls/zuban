@@ -880,7 +880,7 @@ pub fn match_tuple_type_arguments(
         (ArbitraryLength(t1), ArbitraryLength(t2)) => t1.matches(i_s, matcher, t2, variance),
         (WithUnpack(unpack), _) => match_unpack(i_s, matcher, unpack, tup2, variance),
         (ArbitraryLength(t1), WithUnpack(u2)) => match &u2.unpack {
-            TupleUnpack::TypeVarTuple(_) => todo!(),
+            TupleUnpack::TypeVarTuple(_) => todo!("{t1:?}"),
             TupleUnpack::ArbitraryLength(inner_t2) => {
                 let mut matches = Match::new_true();
                 for t2 in u2.before.iter() {

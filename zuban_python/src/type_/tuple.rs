@@ -288,7 +288,7 @@ impl Tuple {
                         }
                         TupleTypeArguments::WithUnpack(with_unpack) => Inferred::from_type(
                             Type::Tuple(Rc::new(Tuple::new(TupleTypeArguments::WithUnpack({
-                                let ambigous = || {
+                                let ambiguous = || {
                                     slice_type
                                         .as_node_ref()
                                         .add_issue(i_s, IssueType::AmbigousSliceOfVariadicTuple);
@@ -300,18 +300,39 @@ impl Tuple {
                                     let start = start.unwrap_or(0);
                                     let before_len = with_unpack.before.len() as isize;
                                     let after_len = with_unpack.after.len() as isize;
-                                    if start > before_len {
-                                        return ambigous();
+                                    let end = end.unwrap_or(0);
+                                    if start > before_len || end > before_len {
+                                        return ambiguous();
                                     }
-                                    if start < 0 {
+                                    if -end > after_len || -start > after_len {
+                                        return ambiguous();
+                                    }
+                                    if end > 0 {
+                                        if start < 0 {
+                                            return ambiguous();
+                                        }
                                         todo!()
-                                    }
-                                    if let Some(end) = end {
-                                        if end > before_len {
-                                            return ambigous();
+                                    } else if start < 0 {
+                                        todo!()
+                                    } else {
+                                        WithUnpack {
+                                            before: with_unpack
+                                                .after
+                                                .iter()
+                                                .skip(start as usize)
+                                                .cloned()
+                                                .collect(),
+                                            unpack: with_unpack.unpack.clone(),
+                                            after: with_unpack
+                                                .before
+                                                .iter()
+                                                .rev()
+                                                .skip(-end as usize)
+                                                .rev()
+                                                .cloned()
+                                                .collect(),
                                         }
                                     }
-                                    todo!()
                                 } else if step == -1 {
                                     if start.is_some() || end.is_some() {
                                         todo!()
@@ -322,7 +343,7 @@ impl Tuple {
                                         after: with_unpack.before.iter().rev().cloned().collect(),
                                     }
                                 } else {
-                                    return ambigous();
+                                    return ambiguous();
                                 }
                             })))),
                         ),
