@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use super::{
     CallableContent, ClassGenerics, FunctionOverload, Tuple, Type, TypeVarKind, UnionType,
     WithUnpack,
@@ -972,7 +974,16 @@ pub fn match_unpack(
                         todo!()
                     }
                     matches = match &with_unpack2.unpack {
-                        TupleUnpack::TypeVarTuple(tvt2) => (tvt1 == tvt2).into(),
+                        TupleUnpack::TypeVarTuple(tvt2) => matcher.match_or_add_type_var_tuple(
+                            i_s,
+                            tvt1,
+                            TupleTypeArguments::WithUnpack(WithUnpack {
+                                before: Rc::from([]),
+                                unpack: with_unpack2.unpack.clone(),
+                                after: Rc::from([]),
+                            }),
+                            variance,
+                        ),
                         TupleUnpack::ArbitraryLength(_) => todo!(),
                     }
                 }

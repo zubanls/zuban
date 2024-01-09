@@ -27,9 +27,9 @@ use crate::{
     type_::{
         match_tuple_type_arguments, AnyCause, CallableContent, CallableParam, CallableParams,
         GenericItem, GenericsList, ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamType,
-        ReplaceSelf, StarParamType, TupleTypeArguments, Type, TypeArguments, TypeVarKind,
-        TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict,
-        TypedDictGenerics, Variance,
+        ReplaceSelf, StarParamType, TupleTypeArguments, TupleUnpack, Type, TypeArguments,
+        TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage,
+        TypedDict, TypedDictGenerics, Variance,
     },
     type_helpers::{Callable, Class, Function},
 };
@@ -255,7 +255,12 @@ impl<'a> Matcher<'a> {
                         TupleTypeArguments::FixedLength(ts) => {
                             current.merge_fixed_length_type_var_tuple(i_s, ts.iter())
                         }
-                        _ => todo!(),
+                        TupleTypeArguments::ArbitraryLength(ts) => {
+                            todo!()
+                        }
+                        TupleTypeArguments::WithUnpack(ts) => {
+                            debug!("TODO implement withunpack merging")
+                        }
                     }
                 } else {
                     current.type_ = BoundKind::TypeVarTuple(TypeArguments { args: args2 });
@@ -294,10 +299,7 @@ impl<'a> Matcher<'a> {
                 );
             }
         }
-        match args2 {
-            TupleTypeArguments::WithUnpack(_) => todo!(),
-            _ => Match::new_false(),
-        }
+        matches!(args2, TupleTypeArguments::WithUnpack(u) if u.before.is_empty() || u.after.is_empty() && matches!(&u.unpack, TupleUnpack::TypeVarTuple(tvt2) if tvt == tvt2)).into()
     }
 
     pub fn match_or_add_param_spec_against_param_spec(

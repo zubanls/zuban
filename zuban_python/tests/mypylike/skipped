@@ -507,9 +507,8 @@ testProtocolAndRuntimeAreDefinedAlsoInTypingExtensions
 testOverloadOnProtocol
 testSimpleRuntimeProtocolCheck
 
-# TypeVarTuple lookups
+# TypeVarTuple mismatches how to format? Unpack[Never]?
 testTypeVarTupleMixed
-testTypeVarTupleChaining
 # matching/result_context.rs:137
 testVariadicTupleInTupleContext
 testVariadicTupleContextNoCrash
