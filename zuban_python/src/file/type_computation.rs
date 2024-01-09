@@ -3905,20 +3905,6 @@ enum TypeCompTupleUnpack {
     FixedLength(Vec<Type>),
     WithUnpack(WithUnpack),
 }
-impl TypeCompTupleUnpack {
-    fn as_tuple(self) -> Tuple {
-        Tuple::new(match self {
-            Self::TypeVarTuple(tvt) => TupleTypeArguments::WithUnpack(WithUnpack {
-                before: Rc::from([]),
-                unpack: TupleUnpack::TypeVarTuple(tvt),
-                after: Rc::from([]),
-            }),
-            Self::ArbitraryLength(t) => TupleTypeArguments::ArbitraryLength(t),
-            Self::FixedLength(ts) => TupleTypeArguments::FixedLength(ts.into()),
-            Self::WithUnpack(with_unpack) => TupleTypeArguments::WithUnpack(with_unpack),
-        })
-    }
-}
 
 enum TuplePart {
     Type(Type),
