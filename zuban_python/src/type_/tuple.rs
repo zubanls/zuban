@@ -317,14 +317,14 @@ impl Tuple {
                                     } else {
                                         WithUnpack {
                                             before: with_unpack
-                                                .after
+                                                .before
                                                 .iter()
                                                 .skip(start as usize)
                                                 .cloned()
                                                 .collect(),
                                             unpack: with_unpack.unpack.clone(),
                                             after: with_unpack
-                                                .before
+                                                .after
                                                 .iter()
                                                 .rev()
                                                 .skip(-end as usize)
@@ -621,20 +621,35 @@ fn tuple_add_internal<'db>(
     args: &dyn Arguments<'db>,
 ) -> Option<Inferred> {
     let first = args.maybe_single_positional_arg(i_s, &mut ResultContext::Unknown)?;
-    if let TupleTypeArguments::FixedLength(ts1) = &tuple1.args {
-        for (_, type_or_class) in first.as_cow_type(i_s).mro(i_s.db) {
-            if let TypeOrClass::Type(t) = type_or_class {
-                if let Type::Tuple(tuple2) = t.as_ref() {
-                    if let TupleTypeArguments::FixedLength(ts2) = &tuple2.args {
-                        return Some(Inferred::from_type(Type::Tuple(Rc::new(
-                            Tuple::new_fixed_length(
-                                ts1.iter().chain(ts2.iter()).cloned().collect(),
-                            ),
-                        ))));
-                    }
+    for (_, type_or_class) in first.as_cow_type(i_s).mro(i_s.db) {
+        let TypeOrClass::Type(t) = type_or_class else {
+            continue;
+        };
+        let Type::Tuple(tuple2) = t.as_ref() else {
+            continue;
+        };
+        return Some(Inferred::from_type(Type::Tuple(Rc::new(Tuple::new(
+            match (&tuple1.args, &tuple2.args) {
+                (TupleTypeArguments::FixedLength(ts1), TupleTypeArguments::FixedLength(ts2)) => {
+                    TupleTypeArguments::FixedLength(ts1.iter().chain(ts2.iter()).cloned().collect())
                 }
-            }
-        }
+                (TupleTypeArguments::FixedLength(ts1), TupleTypeArguments::WithUnpack(u)) => {
+                    TupleTypeArguments::WithUnpack(WithUnpack {
+                        before: ts1.iter().chain(u.before.iter()).cloned().collect(),
+                        unpack: u.unpack.clone(),
+                        after: u.after.clone(),
+                    })
+                }
+                (TupleTypeArguments::WithUnpack(u), TupleTypeArguments::FixedLength(ts2)) => {
+                    TupleTypeArguments::WithUnpack(WithUnpack {
+                        before: u.before.clone(),
+                        unpack: u.unpack.clone(),
+                        after: u.after.iter().chain(ts2.iter()).cloned().collect(),
+                    })
+                }
+                _ => return None,
+            },
+        )))));
     }
     None
 }
