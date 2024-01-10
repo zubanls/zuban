@@ -66,7 +66,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{
-        maybe_class_usage, AvoidRecursionFor, CalculatedTypeArguments, ErrorStrs, ErrorTypes,
+        maybe_class_usage, AvoidRecursionFor, CalculatedTypeArgs, ErrorStrs, ErrorTypes,
         FormatData, Generic, Generics, GotType, Match, Matcher, MismatchReason, OnTypeError,
         ParamsStyle, ResultContext,
     },
@@ -161,11 +161,11 @@ impl From<StringSlice> for DbString {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct TypeArguments {
+pub struct TypeArgs {
     pub args: TupleArgs,
 }
 
-impl TypeArguments {
+impl TypeArgs {
     pub fn new(args: TupleArgs) -> Self {
         Self { args }
     }
@@ -192,7 +192,7 @@ impl TypeArguments {
 pub enum GenericItem {
     TypeArgument(Type),
     // For TypeVarTuple
-    TypeArguments(TypeArguments),
+    TypeArguments(TypeArgs),
     // For ParamSpec
     ParamSpecArgument(ParamSpecArgument),
 }
@@ -1155,7 +1155,7 @@ impl Type {
     pub fn execute_and_resolve_type_vars(
         &self,
         i_s: &InferenceState,
-        calculated_type_args: &CalculatedTypeArguments,
+        calculated_type_args: &CalculatedTypeArgs,
         class: Option<&Class>,
         replace_self_type: ReplaceSelf,
     ) -> Inferred {
@@ -1168,7 +1168,7 @@ impl Type {
     fn internal_resolve_type_vars(
         &self,
         i_s: &InferenceState,
-        calculated_type_args: &CalculatedTypeArguments,
+        calculated_type_args: &CalculatedTypeArgs,
         class: Option<&Class>,
         replace_self_type: ReplaceSelf,
     ) -> Type {

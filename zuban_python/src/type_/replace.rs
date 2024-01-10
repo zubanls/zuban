@@ -4,7 +4,7 @@ use super::{
     simplified_union_from_iterators_with_format_index, CallableContent, CallableParam,
     CallableParams, ClassGenerics, Dataclass, GenericClass, GenericItem, GenericsList, NamedTuple,
     ParamSpecArgument, ParamSpecTypeVars, ParamType, RecursiveType, StarParamType,
-    StarStarParamType, Tuple, TupleArgs, Type, TypeArguments, TypeVarLike, TypeVarLikeUsage,
+    StarStarParamType, Tuple, TupleArgs, Type, TypeArgs, TypeVarLike, TypeVarLikeUsage,
     TypeVarLikes, TypeVarManager, TypedDictGenerics, UnionEntry, UnionType,
 };
 use crate::{
@@ -40,15 +40,13 @@ impl Type {
                         GenericItem::TypeArgument(t) => GenericItem::TypeArgument(
                             t.replace_type_var_likes_and_self(db, callable, replace_self),
                         ),
-                        GenericItem::TypeArguments(ts) => {
-                            GenericItem::TypeArguments(TypeArguments {
-                                args: ts.args.replace_type_var_likes_and_self(
-                                    db,
-                                    callable,
-                                    replace_self,
-                                ),
-                            })
-                        }
+                        GenericItem::TypeArguments(ts) => GenericItem::TypeArguments(TypeArgs {
+                            args: ts.args.replace_type_var_likes_and_self(
+                                db,
+                                callable,
+                                replace_self,
+                            ),
+                        }),
                         GenericItem::ParamSpecArgument(p) => {
                             let mut type_vars = p.type_vars.clone().map(|t| t.type_vars.as_vec());
                             GenericItem::ParamSpecArgument(ParamSpecArgument::new(
@@ -315,7 +313,7 @@ impl GenericItem {
             Self::TypeArgument(t) => {
                 Self::TypeArgument(t.replace_type_var_likes_and_self(db, callable, replace_self))
             }
-            Self::TypeArguments(ta) => Self::TypeArguments(TypeArguments {
+            Self::TypeArguments(ta) => Self::TypeArguments(TypeArgs {
                 args: ta
                     .args
                     .replace_type_var_likes_and_self(db, callable, replace_self),

@@ -12,7 +12,7 @@ use crate::{
     matching::Param,
     type_::{
         common_base_type_of_type_var_tuple_with_items, AnyCause, CallableParams, GenericItem,
-        ParamSpecArgument, ParamType, Type, TypeArguments, TypeVar, TypeVarKind, TypeVarLike,
+        ParamSpecArgument, ParamType, Type, TypeArgs, TypeVar, TypeVarKind, TypeVarLike,
         TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
     },
     type_helpers::{Callable, Class, Function},
@@ -102,7 +102,7 @@ impl<'db: 'a, 'a> FunctionOrCallable<'a> {
 #[derive(Debug, Clone)]
 pub enum BoundKind {
     TypeVar(TypeVarBound),
-    TypeVarTuple(TypeArguments),
+    TypeVarTuple(TypeArgs),
     ParamSpecArgument(ParamSpecArgument),
     Uncalculated { fallback: Option<Type> },
 }
@@ -150,7 +150,7 @@ impl CalculatedTypeVarLike {
                         TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(Type::Never),
                         // TODO TypeVarTuple: this feels wrong, should maybe be never?
                         TypeVarLike::TypeVarTuple(_) => {
-                            GenericItem::TypeArguments(TypeArguments::new_fixed_length(Rc::new([])))
+                            GenericItem::TypeArguments(TypeArgs::new_fixed_length(Rc::new([])))
                         }
                         // TODO ParamSpec: this feels wrong, should maybe be never?
                         TypeVarLike::ParamSpec(_) => GenericItem::ParamSpecArgument(
@@ -237,7 +237,7 @@ impl TypeVarMatcher {
                             BoundKind::TypeVar(TypeVarBound::Invariant(Type::Any(cause)))
                         }
                         TypeVarLikeUsage::TypeVarTuple(_) => BoundKind::TypeVarTuple(
-                            TypeArguments::new_arbitrary_length(Type::Any(cause)),
+                            TypeArgs::new_arbitrary_length(Type::Any(cause)),
                         ),
                         TypeVarLikeUsage::ParamSpec(_) => {
                             BoundKind::ParamSpecArgument(ParamSpecArgument::new_any(cause))

@@ -23,7 +23,7 @@ use crate::{
     matching::{
         calculate_function_type_vars_and_return, maybe_class_usage,
         params::{InferrableParamIterator, Param, WrappedParamType, WrappedStar, WrappedStarStar},
-        CalculatedTypeArguments, Generic, LookupResult, OnTypeError, ResultContext,
+        CalculatedTypeArgs, Generic, LookupResult, OnTypeError, ResultContext,
     },
     new_class,
     node_ref::NodeRef,
@@ -1183,7 +1183,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     fn apply_type_args_in_return_annotation(
         &self,
         i_s: &InferenceState<'db, '_>,
-        calculated_type_vars: CalculatedTypeArguments,
+        calculated_type_vars: CalculatedTypeArgs,
         replace_self_type: ReplaceSelf,
         return_annotation: ReturnAnnotation,
         args: &dyn Arguments<'db>,

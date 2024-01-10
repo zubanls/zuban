@@ -6,14 +6,14 @@ use crate::{
     inference_state::InferenceState,
     type_::{
         format_callable_params, match_tuple_type_arguments, CallableParams, GenericItem,
-        ParamSpecArgument, Type, TypeArguments, TypeVarLike, Variance,
+        ParamSpecArgument, Type, TypeArgs, TypeVarLike, Variance,
     },
 };
 
 #[derive(Debug)]
 pub enum Generic<'a> {
     TypeArgument(Cow<'a, Type>),
-    TypeVarTuple(Cow<'a, TypeArguments>),
+    TypeVarTuple(Cow<'a, TypeArgs>),
     ParamSpecArgument(Cow<'a, ParamSpecArgument>),
 }
 
@@ -122,7 +122,7 @@ impl<'a> Generic<'a> {
         }
     }
 
-    pub fn expect_type_arguments(self) -> Cow<'a, TypeArguments> {
+    pub fn expect_type_arguments(self) -> Cow<'a, TypeArgs> {
         match self {
             Self::TypeVarTuple(ts) => ts,
             _ => unreachable!(),
@@ -157,7 +157,7 @@ impl<'a> Generic<'a> {
                 let Self::TypeVarTuple(ts2) = other else {
                     unreachable!()
                 };
-                GenericItem::TypeArguments(TypeArguments::new(
+                GenericItem::TypeArguments(TypeArgs::new(
                     ts1.args.merge_matching_parts(db, &ts2.args),
                 ))
             }

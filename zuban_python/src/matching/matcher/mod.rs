@@ -11,7 +11,7 @@ use utils::match_arguments_against_params;
 pub(crate) use utils::{
     calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
     calculate_class_init_type_vars_and_return, calculate_function_type_vars_and_return,
-    CalculatedTypeArguments,
+    CalculatedTypeArgs,
 };
 
 use super::{
@@ -27,7 +27,7 @@ use crate::{
     type_::{
         match_tuple_type_arguments, AnyCause, CallableContent, CallableParam, CallableParams,
         GenericItem, GenericsList, ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamType,
-        ReplaceSelf, StarParamType, TupleArgs, TupleUnpack, Type, TypeArguments, TypeVarKind,
+        ReplaceSelf, StarParamType, TupleArgs, TupleUnpack, Type, TypeArgs, TypeVarKind,
         TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict,
         TypedDictGenerics, Variance,
     },
@@ -263,7 +263,7 @@ impl<'a> Matcher<'a> {
                         }
                     }
                 } else {
-                    current.type_ = BoundKind::TypeVarTuple(TypeArguments { args: args2 });
+                    current.type_ = BoundKind::TypeVarTuple(TypeArgs { args: args2 });
                 }
                 return Match::new_true();
             }

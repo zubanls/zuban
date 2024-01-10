@@ -37,7 +37,7 @@ pub(crate) fn calculate_callable_init_type_vars_and_return<'db: 'a, 'a>(
     add_issue: impl Fn(IssueType),
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
-) -> CalculatedTypeArguments {
+) -> CalculatedTypeArgs {
     calculate_init_type_vars_and_return(
         i_s,
         class,
@@ -57,7 +57,7 @@ pub(crate) fn calculate_class_init_type_vars_and_return<'db: 'a, 'a>(
     add_issue: impl Fn(IssueType),
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
-) -> CalculatedTypeArguments {
+) -> CalculatedTypeArgs {
     calculate_init_type_vars_and_return(
         i_s,
         class,
@@ -77,7 +77,7 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
     add_issue: impl Fn(IssueType),
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
-) -> CalculatedTypeArguments {
+) -> CalculatedTypeArgs {
     debug!("Calculate __init__ type vars for class {}", class.name());
     let type_vars = class.type_vars(i_s);
     let has_generics =
@@ -140,13 +140,13 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
 }
 
 #[derive(Debug)]
-pub struct CalculatedTypeArguments {
+pub struct CalculatedTypeArgs {
     pub in_definition: PointLink,
     pub matches: SignatureMatch,
     pub type_arguments: Option<GenericsList>,
 }
 
-impl CalculatedTypeArguments {
+impl CalculatedTypeArgs {
     pub fn type_arguments_into_class_generics(self) -> ClassGenerics {
         match self.type_arguments {
             Some(g) => ClassGenerics::List(g),
@@ -155,7 +155,7 @@ impl CalculatedTypeArguments {
     }
 }
 
-impl CalculatedTypeArguments {
+impl CalculatedTypeArgs {
     pub fn lookup_type_var_usage(
         &self,
         i_s: &InferenceState,
@@ -185,7 +185,7 @@ pub(crate) fn calculate_function_type_vars_and_return<'db: 'a, 'a>(
     replace_self: ReplaceSelf,
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
-) -> CalculatedTypeArguments {
+) -> CalculatedTypeArgs {
     debug!("Calculate type vars for {}", function.diagnostic_string());
     let func_or_callable = FunctionOrCallable::Function(function);
     calculate_type_vars(
@@ -217,7 +217,7 @@ pub(crate) fn calculate_callable_type_vars_and_return<'db: 'a, 'a>(
     skip_first_param: bool,
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
-) -> CalculatedTypeArguments {
+) -> CalculatedTypeArgs {
     let func_or_callable = FunctionOrCallable::Callable(callable);
     let type_vars = &callable.content.type_vars;
     calculate_type_vars(
@@ -265,7 +265,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
     match_in_definition: PointLink,
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
-) -> CalculatedTypeArguments {
+) -> CalculatedTypeArgs {
     if matcher.type_var_matcher.is_some() {
         let add_init_generics = |matcher: &mut _, return_class: &Class| {
             if let Some(t) = func_or_callable.first_self_or_class_annotation(i_s) {
@@ -440,7 +440,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
             );
         }
     }
-    CalculatedTypeArguments {
+    CalculatedTypeArgs {
         in_definition: match_in_definition,
         matches,
         type_arguments,

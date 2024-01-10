@@ -24,7 +24,7 @@ use crate::{
         Enum, EnumMember, FunctionKind, GenericClass, GenericItem, GenericsList, Literal,
         LiteralKind, NamedTuple, Namespace, NewType, ParamSpecArgument, ParamSpecUsage, ParamType,
         RecursiveType, StarParamType, StarStarParamType, StringSlice, Tuple, TupleArgs,
-        TupleUnpack, Type, TypeArguments, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage,
+        TupleUnpack, Type, TypeArgs, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage,
         TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, TypedDict,
         TypedDictGenerics, TypedDictMember, UnionEntry, UnionType, WithUnpack,
     },
@@ -2001,7 +2001,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     given += 1;
                     generics.insert(
                         i,
-                        GenericItem::TypeArguments(TypeArguments {
+                        GenericItem::TypeArguments(TypeArgs {
                             args: type_args.as_type_arguments(
                                 self,
                                 type_var_likes.len() == 1 && slice_type.iter().count() == 1,

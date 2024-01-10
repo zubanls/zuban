@@ -1,8 +1,8 @@
 use std::{borrow::Cow, ops::AddAssign, rc::Rc};
 
 use super::{
-    AnyCause, CallableParams, GenericItem, GenericsList, TupleArgs, TupleUnpack, Type,
-    TypeArguments, WithUnpack,
+    AnyCause, CallableParams, GenericItem, GenericsList, TupleArgs, TupleUnpack, Type, TypeArgs,
+    WithUnpack,
 };
 use crate::{
     database::{Database, PointLink},
@@ -407,7 +407,7 @@ impl TypeVarLike {
         match self {
             TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(Type::Any(AnyCause::Todo)),
             TypeVarLike::TypeVarTuple(_) => GenericItem::TypeArguments(
-                TypeArguments::new_arbitrary_length(Type::Any(AnyCause::Todo)),
+                TypeArgs::new_arbitrary_length(Type::Any(AnyCause::Todo)),
             ),
             TypeVarLike::ParamSpec(_) => {
                 GenericItem::ParamSpecArgument(ParamSpecArgument::new_any(AnyCause::Todo))
@@ -419,7 +419,7 @@ impl TypeVarLike {
         match self {
             TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(Type::Never),
             TypeVarLike::TypeVarTuple(_) => {
-                GenericItem::TypeArguments(TypeArguments::new_arbitrary_length(Type::Never))
+                GenericItem::TypeArguments(TypeArgs::new_arbitrary_length(Type::Never))
             }
             TypeVarLike::ParamSpec(_) => todo!(),
         }
@@ -610,7 +610,7 @@ impl<'a> TypeVarLikeUsage<'a> {
             TypeVarLikeUsage::TypeVar(usage) => {
                 GenericItem::TypeArgument(Type::TypeVar(usage.into_owned()))
             }
-            TypeVarLikeUsage::TypeVarTuple(usage) => GenericItem::TypeArguments(TypeArguments {
+            TypeVarLikeUsage::TypeVarTuple(usage) => GenericItem::TypeArguments(TypeArgs {
                 args: TupleArgs::WithUnpack(WithUnpack {
                     before: Rc::from([]),
                     unpack: TupleUnpack::TypeVarTuple(usage.into_owned()),
