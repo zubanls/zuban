@@ -59,47 +59,33 @@ pub fn create_signature_without_self_for_callable(
     func_class: &Class,
     first_type: &Type,
 ) -> Option<CallableContent> {
-    let matcher = Matcher::new_callable_matcher(callable);
-    create_signature_without_self(
-        i_s,
-        matcher,
-        || {
-            let c = callable
-                .remove_first_param()
-                .expect("Signatures without any params should have been filtered before");
-            replace_class_type_vars_in_callable(i_s.db, &c, Some(func_class), &|| instance.clone())
-        },
-        instance,
-        func_class,
-        first_type,
-    )
+    let mut matcher = Matcher::new_callable_matcher(callable);
+    if !match_self_type(i_s, &mut matcher, instance, func_class, first_type) {
+        return None;
+    }
+    let c = callable
+        .remove_first_param()
+        .expect("Signatures without any params should have been filtered before");
+    let c = replace_class_type_vars_in_callable(i_s.db, &c, Some(func_class), &|| instance.clone());
+    Some(remove_self_from_callable(i_s, matcher, c))
 }
 
-fn match_self_type(
+pub fn match_self_type(
     i_s: &InferenceState,
     matcher: &mut Matcher,
     instance: &Type,
     func_class: &Class,
     first_type: &Type,
-) -> Option<()> {
+) -> bool {
     let expected = replace_class_type_vars(i_s.db, first_type, func_class, &|| instance.clone());
-    if !expected.is_super_type_of(i_s, matcher, instance).bool() {
-        return None;
-    }
-    Some(())
+    expected.is_super_type_of(i_s, matcher, instance).bool()
 }
 
-pub fn create_signature_without_self(
+pub fn remove_self_from_callable(
     i_s: &InferenceState,
-    mut matcher: Matcher,
-    get_callable: impl FnOnce() -> CallableContent,
-    instance: &Type,
-    func_class: &Class,
-    first_type: &Type,
-) -> Option<CallableContent> {
-    match_self_type(i_s, &mut matcher, instance, func_class, first_type)?;
-    let mut callable = get_callable();
-
+    matcher: Matcher,
+    mut callable: CallableContent,
+) -> CallableContent {
     // Since self was removed, there is no self without annotation anymore.
     callable
         .kind
@@ -142,7 +128,7 @@ pub fn create_signature_without_self(
             callable.type_vars = TypeVarLikes::from_vec(old_type_vars);
         }
     }
-    Some(callable)
+    callable
 }
 
 pub fn calculate_property_return(
@@ -153,7 +139,9 @@ pub fn calculate_property_return(
 ) -> Option<Type> {
     let first_type = callable.first_positional_type().unwrap();
     let mut matcher = Matcher::new_callable_matcher(callable);
-    match_self_type(i_s, &mut matcher, instance, func_class, &first_type)?;
+    if !match_self_type(i_s, &mut matcher, instance, func_class, &first_type) {
+        return None;
+    }
 
     let t = replace_class_type_vars(i_s.db, &callable.return_type, func_class, &|| {
         instance.clone()

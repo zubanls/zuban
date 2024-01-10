@@ -549,7 +549,6 @@ testAliasToCallableWithUnpack
 testBanPathologicalRecursiveTuples
 # TypeVarTuple rest
 testVariadicAliasRecursiveUnpack
-testVariadicClassGenericSelf
 testVariadicClassNewStyleSelf
 testVariadicTupleCollectionCheck
 testVariadicTypedDict

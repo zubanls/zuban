@@ -187,3 +187,13 @@ reveal_type(X().baz(X()))  # N: Revealed type is "__main__.X"
 
 X().bar(Base())  # E: Argument 1 to "bar" of "Base" has incompatible type "Base"; expected "Self"
 X().baz(Base())  # E: Argument 1 to "baz" of "Base" has incompatible type "Base"; expected "X"
+
+[case invalid_self_argument_return]
+from typing import TypeVar, Generic
+T = TypeVar("T")
+class Foo(Generic[T]):
+    def foo(self: Foo[int]) -> int:
+        return 1
+
+x = Foo[str]().foo() # E: Invalid self argument "Foo[str]" to attribute function "foo" with type "Callable[[Foo[int]], int]"
+reveal_type(x)  # N: Revealed type is "int"

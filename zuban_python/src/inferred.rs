@@ -17,10 +17,10 @@ use crate::{
     getitem::{SliceType, SliceTypeContent},
     inference_state::InferenceState,
     matching::{
-        calculate_property_return, create_signature_without_self,
-        create_signature_without_self_for_callable, maybe_class_usage, replace_class_type_vars,
-        ErrorStrs, ErrorTypes, FormatData, Generics, GotType, IteratorContent, LookupKind,
-        LookupResult, Match, Matcher, OnLookupError, OnTypeError, ResultContext,
+        calculate_property_return, create_signature_without_self_for_callable, match_self_type,
+        maybe_class_usage, remove_self_from_callable, replace_class_type_vars, ErrorStrs,
+        ErrorTypes, FormatData, Generics, GotType, IteratorContent, LookupKind, LookupResult,
+        Match, Matcher, OnLookupError, OnTypeError, ResultContext,
     },
     new_class,
     node_ref::NodeRef,
@@ -785,42 +785,41 @@ impl<'db: 'slf, 'slf> Inferred {
                             let func = prepare_func(i_s, *definition, attribute_class);
                             let attr_kind = AttributeKind::DefMethod;
                             return if let Some(first_type) = func.first_param_annotation_type(i_s) {
-                                if let Some(t) = create_signature_without_self(
+                                let as_instance = || instance.clone();
+                                let mut matcher = Matcher::new_function_matcher(
+                                    func,
+                                    func.type_vars(i_s),
+                                    &as_instance,
+                                );
+                                if !match_self_type(
                                     i_s,
-                                    Matcher::new_function_matcher(
-                                        func,
-                                        func.type_vars(i_s),
-                                        &|| instance.clone(),
-                                    ),
-                                    || {
-                                        func.as_callable(
-                                            i_s,
-                                            FirstParamProperties::Skip {
-                                                to_self_instance: &|| instance.clone(),
-                                            },
-                                        )
-                                    },
+                                    &mut matcher,
                                     &instance,
                                     &attribute_class,
                                     &first_type,
                                 ) {
-                                    Some((
-                                        Self::new_unsaved_complex(ComplexPoint::TypeInstance(
-                                            Type::Callable(Rc::new(t)),
-                                        )),
-                                        attr_kind,
-                                    ))
-                                } else {
-                                    let t = IssueType::InvalidSelfArgument {
+                                    add_issue(IssueType::InvalidSelfArgument {
                                         argument_type: instance.format_short(i_s.db),
                                         function_name: Box::from(func.name()),
                                         callable: func
                                             .as_type(i_s, FirstParamProperties::None)
                                             .format_short(i_s.db),
-                                    };
-                                    add_issue(t);
-                                    Some((Self::new_any_from_error(), attr_kind))
+                                    });
                                 }
+                                let callable = func.as_callable(
+                                    i_s,
+                                    FirstParamProperties::Skip {
+                                        to_self_instance: &|| instance.clone(),
+                                    },
+                                );
+                                Some((
+                                    Self::new_unsaved_complex(ComplexPoint::TypeInstance(
+                                        Type::Callable(Rc::new(remove_self_from_callable(
+                                            i_s, matcher, callable,
+                                        ))),
+                                    )),
+                                    attr_kind,
+                                ))
                             } else {
                                 Some((
                                     Self::new_bound_method(instance, mro_index, *definition),
