@@ -23,7 +23,7 @@ use crate::{
         CallableParam, CallableParams, CallableWithParent, ClassGenerics, Dataclass, DbString,
         Enum, EnumMember, FunctionKind, GenericClass, GenericItem, GenericsList, Literal,
         LiteralKind, NamedTuple, Namespace, NewType, ParamSpecArgument, ParamSpecUsage, ParamType,
-        RecursiveType, StarParamType, StarStarParamType, StringSlice, Tuple, TupleTypeArguments,
+        RecursiveType, StarParamType, StarStarParamType, StringSlice, Tuple, TupleArgs,
         TupleUnpack, Type, TypeArguments, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage,
         TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, TypedDict,
         TypedDictGenerics, TypedDictMember, UnionEntry, UnionType, WithUnpack,
@@ -626,13 +626,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     fn wrap_star(&mut self, tc: TypeContent, from: NodeRef) -> Type {
         match tc {
             TypeContent::Unpacked(TypeOrUnpack::Type(t @ Type::Tuple(_))) => t,
-            TypeContent::Unpacked(TypeOrUnpack::TypeVarTuple(tvt)) => Type::Tuple(Rc::new(
-                Tuple::new(TupleTypeArguments::WithUnpack(WithUnpack {
+            TypeContent::Unpacked(TypeOrUnpack::TypeVarTuple(tvt)) => {
+                Type::Tuple(Rc::new(Tuple::new(TupleArgs::WithUnpack(WithUnpack {
                     before: Rc::from([]),
                     unpack: TupleUnpack::TypeVarTuple(tvt),
                     after: Rc::from([]),
-                })),
-            )),
+                }))))
+            }
             TypeContent::Unpacked(TypeOrUnpack::Type(t)) => {
                 self.add_issue(
                     from,
@@ -1202,11 +1202,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             TypeContent::Unpacked(TypeOrUnpack::Type(Type::Tuple(tup))) => {
                 TuplePart::TupleUnpack(match rc_unwrap_or_clone(tup).args {
-                    TupleTypeArguments::WithUnpack(w) => TypeCompTupleUnpack::WithUnpack(w),
-                    TupleTypeArguments::ArbitraryLength(t) => {
-                        TypeCompTupleUnpack::ArbitraryLength(t)
-                    }
-                    TupleTypeArguments::FixedLength(ts) => {
+                    TupleArgs::WithUnpack(w) => TypeCompTupleUnpack::WithUnpack(w),
+                    TupleArgs::ArbitraryLength(t) => TypeCompTupleUnpack::ArbitraryLength(t),
+                    TupleArgs::FixedLength(ts) => {
                         TypeCompTupleUnpack::FixedLength(rc_slice_into_vec(ts))
                     }
                 })
@@ -2104,7 +2102,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             TypeContent::Unpacked(TypeOrUnpack::TypeVarTuple(tvt)) => {
                 ParamType::Star(StarParamType::UnpackedTuple(Rc::new(Tuple::new(
-                    TupleTypeArguments::WithUnpack(WithUnpack {
+                    TupleArgs::WithUnpack(WithUnpack {
                         before: Rc::from([]),
                         unpack: TupleUnpack::TypeVarTuple(tvt),
                         after: Rc::from([]),
@@ -2146,20 +2144,20 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             unreachable!();
                         };
                         let with_unpack = match tup.args {
-                            TupleTypeArguments::WithUnpack(mut with_unpack) => {
+                            TupleArgs::WithUnpack(mut with_unpack) => {
                                 let mut after = rc_slice_into_vec(with_unpack.after);
                                 after.push(new);
                                 with_unpack.after = after.into();
                                 with_unpack
                             }
-                            TupleTypeArguments::ArbitraryLength(t) => WithUnpack {
+                            TupleArgs::ArbitraryLength(t) => WithUnpack {
                                 before: Rc::from([]),
                                 unpack: TupleUnpack::ArbitraryLength(*t),
                                 after: Rc::from([new]),
                             },
-                            TupleTypeArguments::FixedLength(_) => unreachable!(),
+                            TupleArgs::FixedLength(_) => unreachable!(),
                         };
-                        let tup = Rc::new(Tuple::new(TupleTypeArguments::WithUnpack(with_unpack)));
+                        let tup = Rc::new(Tuple::new(TupleArgs::WithUnpack(with_unpack)));
                         params.push(CallableParam {
                             type_: ParamType::Star(StarParamType::UnpackedTuple(tup)),
                             name: previous.name,
@@ -4099,7 +4097,7 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
         &mut self,
         type_computation: &mut TypeComputation,
         allow_empty_tuple: bool,
-    ) -> TupleTypeArguments {
+    ) -> TupleArgs {
         let mut before = vec![];
         let mut after = vec![];
         let mut unpack = None;
@@ -4185,16 +4183,16 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
         if let Some(unpack) = unpack {
             match unpack {
                 TupleUnpack::ArbitraryLength(t) if before.is_empty() && after.is_empty() => {
-                    TupleTypeArguments::ArbitraryLength(Box::new(t))
+                    TupleArgs::ArbitraryLength(Box::new(t))
                 }
-                _ => TupleTypeArguments::WithUnpack(WithUnpack {
+                _ => TupleArgs::WithUnpack(WithUnpack {
                     before: before.into(),
                     unpack,
                     after: after.into(),
                 }),
             }
         } else {
-            TupleTypeArguments::FixedLength(before.into())
+            TupleArgs::FixedLength(before.into())
         }
     }
 }

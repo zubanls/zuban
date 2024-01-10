@@ -8,7 +8,7 @@ use super::{
 };
 use crate::{
     inference_state::InferenceState,
-    type_::{Tuple, TupleTypeArguments},
+    type_::{Tuple, TupleArgs},
 };
 
 impl Type {
@@ -33,7 +33,7 @@ impl Type {
                 None
             }
             (Type::Tuple(tup1), Type::Tuple(tup2)) => {
-                use TupleTypeArguments::*;
+                use TupleArgs::*;
                 Some(match (&tup1.args, &tup2.args) {
                     (FixedLength(ts1), FixedLength(ts2)) => {
                         if ts1.len() != ts2.len() {

@@ -42,7 +42,7 @@ pub(crate) use self::{
     operations::execute_type_of_type,
     recursive_type::{RecursiveType, RecursiveTypeOrigin},
     replace::ReplaceSelf,
-    tuple::{Tuple, TupleTypeArguments, TupleUnpack, WithUnpack},
+    tuple::{Tuple, TupleArgs, TupleUnpack, WithUnpack},
     type_var_likes::{
         CallableWithParent, ParamSpec, ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage,
         TypeVar, TypeVarIndex, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
@@ -162,25 +162,25 @@ impl From<StringSlice> for DbString {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypeArguments {
-    pub args: TupleTypeArguments,
+    pub args: TupleArgs,
 }
 
 impl TypeArguments {
-    pub fn new(args: TupleTypeArguments) -> Self {
+    pub fn new(args: TupleArgs) -> Self {
         Self { args }
     }
 
     pub fn new_fixed_length(args: Rc<[Type]>) -> Self {
-        Self::new(TupleTypeArguments::FixedLength(args))
+        Self::new(TupleArgs::FixedLength(args))
     }
 
     pub fn new_arbitrary_length(arg: Type) -> Self {
-        Self::new(TupleTypeArguments::ArbitraryLength(Box::new(arg)))
+        Self::new(TupleArgs::ArbitraryLength(Box::new(arg)))
     }
 
     pub fn format(&self, format_data: &FormatData) -> Option<Box<str>> {
         let result = self.args.format(format_data);
-        if matches!(self.args, TupleTypeArguments::ArbitraryLength(_)) {
+        if matches!(self.args, TupleArgs::ArbitraryLength(_)) {
             Some(format!("Unpack[Tuple[{result}]]").into())
         } else {
             (!self.args.is_empty()).then(|| result)
@@ -951,9 +951,9 @@ impl Type {
             generics.iter().any(|g| match g {
                 GenericItem::TypeArgument(t) => t.find_in_type(check),
                 GenericItem::TypeArguments(ts) => match &ts.args {
-                    TupleTypeArguments::FixedLength(ts) => ts.iter().any(|t| t.find_in_type(check)),
-                    TupleTypeArguments::ArbitraryLength(t) => t.find_in_type(check),
-                    TupleTypeArguments::WithUnpack(with_unpack) => with_unpack.find_in_type(check),
+                    TupleArgs::FixedLength(ts) => ts.iter().any(|t| t.find_in_type(check)),
+                    TupleArgs::ArbitraryLength(t) => t.find_in_type(check),
+                    TupleArgs::WithUnpack(with_unpack) => with_unpack.find_in_type(check),
                 },
                 GenericItem::ParamSpecArgument(a) => todo!(),
             })
@@ -994,7 +994,7 @@ impl Type {
             Type::Literal(l) if l.implicit => Some(db.python_state.literal_type(&l.kind)),
             Type::EnumMember(m) if m.implicit => Some(Type::Enum(m.enum_.clone())),
             Type::Tuple(tup) => {
-                if let TupleTypeArguments::FixedLength(ts) = &tup.args {
+                if let TupleArgs::FixedLength(ts) = &tup.args {
                     let mut gathered = vec![];
                     if ts
                         .iter()
@@ -1027,11 +1027,9 @@ impl Type {
         self.iter_with_unpacked_unions().any(|t| match t {
             Type::Literal(_) | Type::EnumMember(_) => true,
             Type::Tuple(tup) => match &tup.args {
-                TupleTypeArguments::FixedLength(ts) => {
-                    ts.iter().any(|t| t.is_literal_or_literal_in_tuple())
-                }
-                TupleTypeArguments::ArbitraryLength(t) => t.is_literal_or_literal_in_tuple(),
-                TupleTypeArguments::WithUnpack(unpack) => {
+                TupleArgs::FixedLength(ts) => ts.iter().any(|t| t.is_literal_or_literal_in_tuple()),
+                TupleArgs::ArbitraryLength(t) => t.is_literal_or_literal_in_tuple(),
+                TupleArgs::WithUnpack(unpack) => {
                     unpack
                         .before
                         .iter()

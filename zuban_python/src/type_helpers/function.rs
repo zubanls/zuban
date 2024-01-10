@@ -31,8 +31,8 @@ use crate::{
     type_::{
         AnyCause, CallableContent, CallableLike, CallableParam, CallableParams, ClassGenerics,
         DbString, FunctionKind, FunctionOverload, GenericClass, GenericItem, ParamSpecUsage,
-        ParamType, ReplaceSelf, StarParamType, StarStarParamType, StringSlice, TupleTypeArguments,
-        Type, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
+        ParamType, ReplaceSelf, StarParamType, StarStarParamType, StringSlice, TupleArgs, Type,
+        TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
         TypeVarName, TypeVarUsage, Variance, WrongPositionalCount,
     },
     type_helpers::{Class, Module},
@@ -1392,13 +1392,11 @@ impl<'x> Param<'x> for FunctionParam<'x> {
                             unreachable!()
                         };
                         match &tup.args {
-                            TupleTypeArguments::FixedLength(..) => todo!(),
-                            TupleTypeArguments::ArbitraryLength(t) => {
+                            TupleArgs::FixedLength(..) => todo!(),
+                            TupleArgs::ArbitraryLength(t) => {
                                 WrappedStar::ArbitraryLength(Some(Cow::Borrowed(t.as_ref())))
                             }
-                            TupleTypeArguments::WithUnpack(_) => {
-                                WrappedStar::UnpackedTuple(tup.clone())
-                            }
+                            TupleArgs::WithUnpack(_) => WrappedStar::UnpackedTuple(tup.clone()),
                         }
                     }
                     None => WrappedStar::ArbitraryLength(None),

@@ -4,7 +4,7 @@ use super::{CalculatedTypeVarLike, Matcher};
 use crate::{
     debug,
     node_ref::NodeRef,
-    type_::{AnyCause, TupleTypeArguments, Type},
+    type_::{AnyCause, TupleArgs, Type},
     type_helpers::Class,
     InferenceState,
 };
@@ -128,13 +128,13 @@ impl<'a> ResultContext<'a, '_> {
         self.with_type_if_exists_and_replace_type_var_likes(i_s, |type_| {
             match type_ {
                 Type::Tuple(tup) => Some(match &tup.args {
-                    TupleTypeArguments::FixedLength(ts) => {
+                    TupleArgs::FixedLength(ts) => {
                         callable(TupleContextIterator::FixedLength(ts.iter()))
                     }
-                    TupleTypeArguments::ArbitraryLength(t) => {
+                    TupleArgs::ArbitraryLength(t) => {
                         callable(TupleContextIterator::ArbitraryLength(t))
                     }
-                    TupleTypeArguments::WithUnpack(_) => callable(TupleContextIterator::Unknown),
+                    TupleArgs::WithUnpack(_) => callable(TupleContextIterator::Unknown),
                 }),
                 Type::Union(items) => {
                     debug!("TODO union tuple inference context ignored");

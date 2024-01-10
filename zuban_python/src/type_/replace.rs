@@ -4,8 +4,8 @@ use super::{
     simplified_union_from_iterators_with_format_index, CallableContent, CallableParam,
     CallableParams, ClassGenerics, Dataclass, GenericClass, GenericItem, GenericsList, NamedTuple,
     ParamSpecArgument, ParamSpecTypeVars, ParamType, RecursiveType, StarParamType,
-    StarStarParamType, Tuple, TupleTypeArguments, Type, TypeArguments, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypedDictGenerics, UnionEntry, UnionType,
+    StarStarParamType, Tuple, TupleArgs, Type, TypeArguments, TypeVarLike, TypeVarLikeUsage,
+    TypeVarLikes, TypeVarManager, TypedDictGenerics, UnionEntry, UnionType,
 };
 use crate::{
     database::{Database, PointLink},
@@ -261,15 +261,15 @@ impl Type {
             Type::TypeVar(t) => Type::TypeVar(manager.remap_type_var(t)),
             Type::Type(type_) => Type::Type(Rc::new(type_.rewrite_late_bound_callables(manager))),
             Type::Tuple(content) => Type::Tuple(match &content.args {
-                TupleTypeArguments::FixedLength(ts) => Rc::new(Tuple::new_fixed_length(
+                TupleArgs::FixedLength(ts) => Rc::new(Tuple::new_fixed_length(
                     ts.iter()
                         .map(|t| t.rewrite_late_bound_callables(manager))
                         .collect(),
                 )),
-                TupleTypeArguments::ArbitraryLength(t) => Rc::new(Tuple::new_arbitrary_length(
+                TupleArgs::ArbitraryLength(t) => Rc::new(Tuple::new_arbitrary_length(
                     t.rewrite_late_bound_callables(manager),
                 )),
-                TupleTypeArguments::WithUnpack(_) => {
+                TupleArgs::WithUnpack(_) => {
                     // TypeOrUnpack::TypeVarTuple(manager.remap_type_var_tuple(t))
                     todo!()
                 }
@@ -483,7 +483,7 @@ impl CallableParams {
                                         callable,
                                         replace_self,
                                     ) {
-                                        TupleTypeArguments::FixedLength(types) => {
+                                        TupleArgs::FixedLength(types) => {
                                             for t in rc_slice_into_vec(types) {
                                                 new_params.push(CallableParam::new_anonymous(
                                                     ParamType::PositionalOnly(t),
@@ -491,13 +491,13 @@ impl CallableParams {
                                             }
                                             continue;
                                         }
-                                        TupleTypeArguments::ArbitraryLength(t) => {
+                                        TupleArgs::ArbitraryLength(t) => {
                                             new_params.push(CallableParam::new_anonymous(
                                                 ParamType::Star(StarParamType::ArbitraryLength(*t)),
                                             ));
                                             continue;
                                         }
-                                        args @ TupleTypeArguments::WithUnpack(_) => {
+                                        args @ TupleArgs::WithUnpack(_) => {
                                             StarParamType::UnpackedTuple(Rc::new(Tuple::new(args)))
                                         }
                                     }
@@ -612,7 +612,7 @@ fn replace_param_spec_inner_type_var_likes_and_self(
     usage.into_generic_item()
 }
 
-impl TupleTypeArguments {
+impl TupleArgs {
     pub fn replace_type_var_likes_and_self(
         &self,
         db: &Database,
@@ -620,15 +620,15 @@ impl TupleTypeArguments {
         replace_self: ReplaceSelf,
     ) -> Self {
         match self {
-            TupleTypeArguments::FixedLength(ts) => TupleTypeArguments::FixedLength(
+            TupleArgs::FixedLength(ts) => TupleArgs::FixedLength(
                 ts.iter()
                     .map(|t| t.replace_type_var_likes_and_self(db, callable, replace_self))
                     .collect(),
             ),
-            TupleTypeArguments::ArbitraryLength(t) => TupleTypeArguments::ArbitraryLength(
-                Box::new(t.replace_type_var_likes_and_self(db, callable, replace_self)),
-            ),
-            TupleTypeArguments::WithUnpack(unpack) => match &unpack.unpack {
+            TupleArgs::ArbitraryLength(t) => TupleArgs::ArbitraryLength(Box::new(
+                t.replace_type_var_likes_and_self(db, callable, replace_self),
+            )),
+            TupleArgs::WithUnpack(unpack) => match &unpack.unpack {
                 TupleUnpack::TypeVarTuple(tvt) => {
                     let GenericItem::TypeArguments(new) = callable(TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(tvt))) else {
                             unreachable!();
@@ -644,27 +644,23 @@ impl TupleTypeArguments {
                         .map(|t| t.replace_type_var_likes_and_self(db, callable, replace_self))
                         .collect();
                     match new.args {
-                        TupleTypeArguments::FixedLength(fixed) => {
-                            TupleTypeArguments::FixedLength({
-                                new_before
-                                    .into_iter()
-                                    .chain(fixed.iter().cloned())
-                                    .chain(new_after)
-                                    .collect()
-                            })
-                        }
-                        TupleTypeArguments::WithUnpack(new) => {
-                            TupleTypeArguments::WithUnpack(WithUnpack {
-                                before: merge_types(new_before, new.before),
-                                unpack: new.unpack,
-                                after: merge_types(new_after, new.after),
-                            })
-                        }
-                        TupleTypeArguments::ArbitraryLength(t) => {
+                        TupleArgs::FixedLength(fixed) => TupleArgs::FixedLength({
+                            new_before
+                                .into_iter()
+                                .chain(fixed.iter().cloned())
+                                .chain(new_after)
+                                .collect()
+                        }),
+                        TupleArgs::WithUnpack(new) => TupleArgs::WithUnpack(WithUnpack {
+                            before: merge_types(new_before, new.before),
+                            unpack: new.unpack,
+                            after: merge_types(new_after, new.after),
+                        }),
+                        TupleArgs::ArbitraryLength(t) => {
                             if new_before.is_empty() && new_after.is_empty() {
-                                TupleTypeArguments::ArbitraryLength(t)
+                                TupleArgs::ArbitraryLength(t)
                             } else {
-                                TupleTypeArguments::WithUnpack(WithUnpack {
+                                TupleArgs::WithUnpack(WithUnpack {
                                     before: new_before.into(),
                                     unpack: TupleUnpack::ArbitraryLength(*t),
                                     after: new_after.into(),
@@ -673,7 +669,7 @@ impl TupleTypeArguments {
                         }
                     }
                 }
-                TupleUnpack::ArbitraryLength(t) => TupleTypeArguments::WithUnpack(WithUnpack {
+                TupleUnpack::ArbitraryLength(t) => TupleArgs::WithUnpack(WithUnpack {
                     before: unpack.before.clone(),
                     unpack: TupleUnpack::ArbitraryLength(t.replace_type_var_likes_and_self(
                         db,

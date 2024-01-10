@@ -1,7 +1,7 @@
 use std::{borrow::Cow, ops::AddAssign, rc::Rc};
 
 use super::{
-    AnyCause, CallableParams, GenericItem, GenericsList, TupleTypeArguments, TupleUnpack, Type,
+    AnyCause, CallableParams, GenericItem, GenericsList, TupleArgs, TupleUnpack, Type,
     TypeArguments, WithUnpack,
 };
 use crate::{
@@ -611,7 +611,7 @@ impl<'a> TypeVarLikeUsage<'a> {
                 GenericItem::TypeArgument(Type::TypeVar(usage.into_owned()))
             }
             TypeVarLikeUsage::TypeVarTuple(usage) => GenericItem::TypeArguments(TypeArguments {
-                args: TupleTypeArguments::WithUnpack(WithUnpack {
+                args: TupleArgs::WithUnpack(WithUnpack {
                     before: Rc::from([]),
                     unpack: TupleUnpack::TypeVarTuple(usage.into_owned()),
                     after: Rc::from([]),

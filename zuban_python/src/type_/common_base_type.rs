@@ -4,8 +4,7 @@ use parsa_python_ast::ParamKind;
 
 use super::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, GenericItem, GenericsList,
-    ParamType, StarParamType, StarStarParamType, Tuple, TupleTypeArguments, Type, TypeVarLike,
-    Variance,
+    ParamType, StarParamType, StarStarParamType, Tuple, TupleArgs, Type, TypeVarLike, Variance,
 };
 use crate::{
     database::Database,
@@ -391,31 +390,31 @@ fn common_base_for_tuple_against_type(
 
 fn common_base_for_tuples(i_s: &InferenceState, tup1: &Tuple, tup2: &Tuple) -> Tuple {
     Tuple::new(match &tup2.args {
-        TupleTypeArguments::FixedLength(ts2) => {
+        TupleArgs::FixedLength(ts2) => {
             let mut new_args = tup1.args.clone();
             common_base_type_of_type_var_tuple_with_items(&mut new_args, i_s, ts2.iter());
             new_args
         }
-        TupleTypeArguments::ArbitraryLength(t2) => match &tup1.args {
-            TupleTypeArguments::FixedLength(ts1) => {
+        TupleArgs::ArbitraryLength(t2) => match &tup1.args {
+            TupleArgs::FixedLength(ts1) => {
                 let mut new_args = tup2.args.clone();
                 common_base_type_of_type_var_tuple_with_items(&mut new_args, i_s, ts1.iter());
                 new_args
             }
-            TupleTypeArguments::ArbitraryLength(t1) => todo!(),
-            TupleTypeArguments::WithUnpack(_) => todo!(),
+            TupleArgs::ArbitraryLength(t1) => todo!(),
+            TupleArgs::WithUnpack(_) => todo!(),
         },
-        TupleTypeArguments::WithUnpack(_) => todo!(),
+        TupleArgs::WithUnpack(_) => todo!(),
     })
 }
 
 pub fn common_base_type_of_type_var_tuple_with_items<'x, I: ExactSizeIterator<Item = &'x Type>>(
-    args: &mut TupleTypeArguments,
+    args: &mut TupleArgs,
     i_s: &InferenceState,
     items: I,
 ) {
     match args {
-        TupleTypeArguments::FixedLength(calc_ts) => {
+        TupleArgs::FixedLength(calc_ts) => {
             if items.len() == calc_ts.len() {
                 let mut new = vec![];
                 for (t1, t2) in calc_ts.iter().zip(items) {
@@ -426,17 +425,17 @@ pub fn common_base_type_of_type_var_tuple_with_items<'x, I: ExactSizeIterator<It
                 // We use map to make an iterator with covariant lifetimes.
                 #[allow(clippy::map_identity)]
                 let t = common_base_type(i_s, calc_ts.iter().chain(items.map(|x| x)));
-                *args = TupleTypeArguments::ArbitraryLength(Box::new(t));
+                *args = TupleArgs::ArbitraryLength(Box::new(t));
             }
         }
-        TupleTypeArguments::WithUnpack(_) => todo!(),
-        TupleTypeArguments::ArbitraryLength(calc_t) => {
+        TupleArgs::WithUnpack(_) => todo!(),
+        TupleArgs::ArbitraryLength(calc_t) => {
             if items.len() == 0 {
                 // args is already ok, because we have an empty tuple here that can be anything.
                 return;
             }
             let base = common_base_type(i_s, items).common_base_type(i_s, calc_t);
-            *args = TupleTypeArguments::ArbitraryLength(Box::new(base));
+            *args = TupleArgs::ArbitraryLength(Box::new(base));
         }
     }
 }

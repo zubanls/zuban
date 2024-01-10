@@ -26,7 +26,7 @@ use crate::{
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, FunctionKind, Literal,
         LiteralKind, Namespace, ParamType, StarParamType, StarStarParamType, StringSlice, Tuple,
-        TupleTypeArguments, TupleUnpack, Type, UnionEntry, UnionType, Variance, WithUnpack,
+        TupleArgs, TupleUnpack, Type, UnionEntry, UnionType, Variance, WithUnpack,
     },
     type_helpers::{
         lookup_in_namespace, Class, FirstParamKind, Function, GeneratorType, Instance, Module,
@@ -2031,7 +2031,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     let generic = inference.create_list_or_set_generics(iterator);
                     Tuple::new_arbitrary_length(generic)
                 } else if let Some(unpack) = self.unpack {
-                    Tuple::new(TupleTypeArguments::WithUnpack(WithUnpack {
+                    Tuple::new(TupleArgs::WithUnpack(WithUnpack {
                         before: self.before.into(),
                         unpack,
                         after: self.after.into(),
@@ -2709,15 +2709,13 @@ fn instantiate_except(i_s: &InferenceState, t: &Type) -> Type {
         },
         Type::Any(cause) => Type::Any(*cause),
         Type::Tuple(content) => Inferred::gather_simplified_union(i_s, |add| match &content.args {
-            TupleTypeArguments::FixedLength(ts) => {
+            TupleArgs::FixedLength(ts) => {
                 for t in ts.iter() {
                     add(Inferred::from_type(instantiate_except(i_s, t)))
                 }
             }
-            TupleTypeArguments::ArbitraryLength(t) => {
-                add(Inferred::from_type(instantiate_except(i_s, t)))
-            }
-            TupleTypeArguments::WithUnpack(_) => todo!(),
+            TupleArgs::ArbitraryLength(t) => add(Inferred::from_type(instantiate_except(i_s, t))),
+            TupleArgs::WithUnpack(_) => todo!(),
         })
         .as_cow_type(i_s)
         .into_owned(),
@@ -2781,15 +2779,13 @@ fn gather_except_star(i_s: &InferenceState, t: &Type) -> Type {
         },
         Type::Any(cause) => Type::Any(*cause),
         Type::Tuple(content) => Inferred::gather_simplified_union(i_s, |add| match &content.args {
-            TupleTypeArguments::FixedLength(ts) => {
+            TupleArgs::FixedLength(ts) => {
                 for t in ts.iter() {
                     add(Inferred::from_type(gather_except_star(i_s, t)))
                 }
             }
-            TupleTypeArguments::ArbitraryLength(t) => {
-                add(Inferred::from_type(gather_except_star(i_s, t)))
-            }
-            TupleTypeArguments::WithUnpack(_) => todo!(),
+            TupleArgs::ArbitraryLength(t) => add(Inferred::from_type(gather_except_star(i_s, t))),
+            TupleArgs::WithUnpack(_) => todo!(),
         })
         .as_cow_type(i_s)
         .into_owned(),

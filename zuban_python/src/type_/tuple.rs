@@ -29,12 +29,12 @@ thread_local! {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Tuple {
-    pub args: TupleTypeArguments,
+    pub args: TupleArgs,
     pub(super) tuple_class_generics: OnceCell<GenericsList>,
 }
 
 impl Tuple {
-    pub fn new(args: TupleTypeArguments) -> Self {
+    pub fn new(args: TupleArgs) -> Self {
         Self {
             args,
             tuple_class_generics: OnceCell::new(),
@@ -42,11 +42,11 @@ impl Tuple {
     }
 
     pub fn new_fixed_length(args: Rc<[Type]>) -> Self {
-        Self::new(TupleTypeArguments::FixedLength(args))
+        Self::new(TupleArgs::FixedLength(args))
     }
 
     pub fn new_arbitrary_length(arg: Type) -> Self {
-        Self::new(TupleTypeArguments::ArbitraryLength(Box::new(arg)))
+        Self::new(TupleArgs::ArbitraryLength(Box::new(arg)))
     }
 
     pub fn new_arbitrary_length_with_any() -> Rc<Self> {
@@ -79,11 +79,11 @@ impl Tuple {
 
     pub fn iter(&self, i_s: &InferenceState, from: NodeRef) -> IteratorContent {
         match &self.args {
-            TupleTypeArguments::FixedLength(ts) => IteratorContent::new_tuple(ts.clone()),
-            TupleTypeArguments::ArbitraryLength(t) => {
+            TupleArgs::FixedLength(ts) => IteratorContent::new_tuple(ts.clone()),
+            TupleArgs::ArbitraryLength(t) => {
                 IteratorContent::Inferred(Inferred::from_type(t.as_ref().clone()))
             }
-            TupleTypeArguments::WithUnpack(w) => IteratorContent::WithUnpack {
+            TupleArgs::WithUnpack(w) => IteratorContent::WithUnpack {
                 unpack: w.clone(),
                 before_index: 0,
                 after_index: 0,
@@ -93,7 +93,7 @@ impl Tuple {
 
     pub fn format_with_simplified_unpack(&self, format_data: &FormatData) -> Box<str> {
         match &self.args {
-            TupleTypeArguments::WithUnpack(w) if w.before.is_empty() && w.after.is_empty() => {
+            TupleArgs::WithUnpack(w) if w.before.is_empty() && w.after.is_empty() => {
                 w.unpack.format(format_data)
             }
             _ => self.format(format_data),
@@ -131,9 +131,7 @@ impl Tuple {
                     return Inferred::new_any(AnyCause::Todo);
                 }
                 match &self.args {
-                    TupleTypeArguments::ArbitraryLength(t) => {
-                        Inferred::from_type(t.as_ref().clone())
-                    }
+                    TupleArgs::ArbitraryLength(t) => Inferred::from_type(t.as_ref().clone()),
                     _ => {
                         let out_of_range = |variadic_max_len| {
                             slice_type.as_argument_node_ref().add_issue(
@@ -144,7 +142,7 @@ impl Tuple {
                         };
                         index_inf
                             .run_on_int_literals(i_s, |index| match &self.args {
-                                TupleTypeArguments::FixedLength(ts) => {
+                                TupleArgs::FixedLength(ts) => {
                                     let index = if index < 0 {
                                         let index = ts.len() as isize + index;
                                         match index.try_into() {
@@ -160,7 +158,7 @@ impl Tuple {
                                         out_of_range(None)
                                     }
                                 }
-                                TupleTypeArguments::WithUnpack(with_unpack) => {
+                                TupleArgs::WithUnpack(with_unpack) => {
                                     if index < 0 {
                                         let index = -index as usize - 1;
                                         let after_len = with_unpack.after.len();
@@ -216,7 +214,7 @@ impl Tuple {
                                         }))
                                     }
                                 }
-                                TupleTypeArguments::ArbitraryLength(_) => unreachable!(),
+                                TupleArgs::ArbitraryLength(_) => unreachable!(),
                             })
                             .unwrap_or_else(|| {
                                 Inferred::from_type(self.simplified_union_of_tuple_entries(i_s))
@@ -238,7 +236,7 @@ impl Tuple {
                         ));
                     }
                     match &self.args {
-                        TupleTypeArguments::FixedLength(ts) => {
+                        TupleArgs::FixedLength(ts) => {
                             Inferred::from_type(Type::Tuple(Rc::new(Tuple::new_fixed_length({
                                 let (start, end) = if step < 0 {
                                     let swapped_start = match end {
@@ -286,8 +284,8 @@ impl Tuple {
                                 }
                             }))))
                         }
-                        TupleTypeArguments::WithUnpack(with_unpack) => Inferred::from_type(
-                            Type::Tuple(Rc::new(Tuple::new(TupleTypeArguments::WithUnpack({
+                        TupleArgs::WithUnpack(with_unpack) => Inferred::from_type(Type::Tuple(
+                            Rc::new(Tuple::new(TupleArgs::WithUnpack({
                                 let ambiguous = || {
                                     slice_type
                                         .as_node_ref()
@@ -345,9 +343,9 @@ impl Tuple {
                                 } else {
                                     return ambiguous();
                                 }
-                            })))),
-                        ),
-                        TupleTypeArguments::ArbitraryLength(t) => {
+                            }))),
+                        )),
+                        TupleArgs::ArbitraryLength(t) => {
                             Inferred::from_type(Type::Tuple(Rc::new(self.clone())))
                         }
                     }
@@ -362,16 +360,16 @@ impl Tuple {
 
     pub fn find_in_type(&self, check: &impl Fn(&Type) -> bool) -> bool {
         match &self.args {
-            TupleTypeArguments::FixedLength(ts) => ts.iter().any(|t| t.find_in_type(check)),
-            TupleTypeArguments::ArbitraryLength(t) => t.find_in_type(check),
-            TupleTypeArguments::WithUnpack(with_unpack) => with_unpack.find_in_type(check),
+            TupleArgs::FixedLength(ts) => ts.iter().any(|t| t.find_in_type(check)),
+            TupleArgs::ArbitraryLength(t) => t.find_in_type(check),
+            TupleArgs::WithUnpack(with_unpack) => with_unpack.find_in_type(check),
         }
     }
 
     fn simplified_union_of_tuple_entries(&self, i_s: &InferenceState) -> Type {
         match &self.args {
-            TupleTypeArguments::FixedLength(ts) => simplified_union_from_iterators(i_s, ts.iter()),
-            TupleTypeArguments::WithUnpack(with_unpack) => match &with_unpack.unpack {
+            TupleArgs::FixedLength(ts) => simplified_union_from_iterators(i_s, ts.iter()),
+            TupleArgs::WithUnpack(with_unpack) => match &with_unpack.unpack {
                 TupleUnpack::TypeVarTuple(tvt) => i_s.db.python_state.object_type(),
                 TupleUnpack::ArbitraryLength(t) => simplified_union_from_iterators(
                     i_s,
@@ -382,7 +380,7 @@ impl Tuple {
                         .chain(with_unpack.after.iter()),
                 ),
             },
-            TupleTypeArguments::ArbitraryLength(t) => (**t).clone(),
+            TupleArgs::ArbitraryLength(t) => (**t).clone(),
         }
     }
 }
@@ -456,13 +454,13 @@ impl WithUnpack {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum TupleTypeArguments {
+pub enum TupleArgs {
     WithUnpack(WithUnpack),
     FixedLength(Rc<[Type]>),
     ArbitraryLength(Box<Type>),
 }
 
-impl TupleTypeArguments {
+impl TupleArgs {
     pub fn is_any(&self) -> bool {
         match self {
             Self::ArbitraryLength(t) => matches!(t.as_ref(), Type::Any(_)),
@@ -475,7 +473,7 @@ impl TupleTypeArguments {
     }
 
     pub fn is_empty(&self) -> bool {
-        matches!(self, TupleTypeArguments::FixedLength(fixed) if fixed.is_empty())
+        matches!(self, TupleArgs::FixedLength(fixed) if fixed.is_empty())
     }
 
     pub(super) fn has_any_internal(
@@ -511,13 +509,13 @@ impl TupleTypeArguments {
 
     pub fn search_type_vars<C: FnMut(TypeVarLikeUsage)>(&self, found_type_var: &mut C) {
         match self {
-            TupleTypeArguments::FixedLength(ts) => {
+            TupleArgs::FixedLength(ts) => {
                 for t in ts.iter() {
                     t.search_type_vars(found_type_var)
                 }
             }
-            TupleTypeArguments::ArbitraryLength(t) => t.search_type_vars(found_type_var),
-            TupleTypeArguments::WithUnpack(with_unpack) => {
+            TupleArgs::ArbitraryLength(t) => t.search_type_vars(found_type_var),
+            TupleArgs::WithUnpack(with_unpack) => {
                 for t in with_unpack.before.iter() {
                     t.search_type_vars(found_type_var)
                 }
@@ -535,7 +533,7 @@ impl TupleTypeArguments {
     }
 
     pub fn merge_matching_parts(&self, db: &Database, other: &Self) -> Self {
-        use TupleTypeArguments::*;
+        use TupleArgs::*;
         match (self, other) {
             (FixedLength(ts1), FixedLength(ts2)) if ts1.len() == ts2.len() => {
                 Self::FixedLength(
@@ -651,18 +649,18 @@ fn tuple_add_internal<'db>(
         };
         return Some(Inferred::from_type(Type::Tuple(Rc::new(Tuple::new(
             match (&tuple1.args, &tuple2.args) {
-                (TupleTypeArguments::FixedLength(ts1), TupleTypeArguments::FixedLength(ts2)) => {
-                    TupleTypeArguments::FixedLength(ts1.iter().chain(ts2.iter()).cloned().collect())
+                (TupleArgs::FixedLength(ts1), TupleArgs::FixedLength(ts2)) => {
+                    TupleArgs::FixedLength(ts1.iter().chain(ts2.iter()).cloned().collect())
                 }
-                (TupleTypeArguments::FixedLength(ts1), TupleTypeArguments::WithUnpack(u)) => {
-                    TupleTypeArguments::WithUnpack(WithUnpack {
+                (TupleArgs::FixedLength(ts1), TupleArgs::WithUnpack(u)) => {
+                    TupleArgs::WithUnpack(WithUnpack {
                         before: ts1.iter().chain(u.before.iter()).cloned().collect(),
                         unpack: u.unpack.clone(),
                         after: u.after.clone(),
                     })
                 }
-                (TupleTypeArguments::WithUnpack(u), TupleTypeArguments::FixedLength(ts2)) => {
-                    TupleTypeArguments::WithUnpack(WithUnpack {
+                (TupleArgs::WithUnpack(u), TupleArgs::FixedLength(ts2)) => {
+                    TupleArgs::WithUnpack(WithUnpack {
                         before: u.before.clone(),
                         unpack: u.unpack.clone(),
                         after: u.after.iter().chain(ts2.iter()).cloned().collect(),
@@ -703,7 +701,7 @@ fn tuple_mul_internal<'db>(
 ) -> Option<Inferred> {
     let first = args.maybe_single_positional_arg(i_s, &mut ResultContext::Unknown)?;
     match &tuple.args {
-        TupleTypeArguments::FixedLength(ts) => first.run_on_int_literals(i_s, |int| {
+        TupleArgs::FixedLength(ts) => first.run_on_int_literals(i_s, |int| {
             let int = int.max(0) as usize;
             if int > 10 {
                 todo!("Do we really want extremely large tuples?")
@@ -712,7 +710,7 @@ fn tuple_mul_internal<'db>(
                 Tuple::new_fixed_length(ts.iter().cycle().take(int * ts.len()).cloned().collect()),
             ))))
         }),
-        TupleTypeArguments::ArbitraryLength(_) => Some(Inferred::from_type(Type::Tuple(tuple))),
-        TupleTypeArguments::WithUnpack(_) => todo!(),
+        TupleArgs::ArbitraryLength(_) => Some(Inferred::from_type(Type::Tuple(tuple))),
+        TupleArgs::WithUnpack(_) => todo!(),
     }
 }

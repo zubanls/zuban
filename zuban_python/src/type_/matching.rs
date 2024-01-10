@@ -13,7 +13,7 @@ use crate::{
         MismatchReason,
     },
     node_ref::NodeRef,
-    type_::{CallableLike, CallableParams, TupleTypeArguments, TupleUnpack, Variance},
+    type_::{CallableLike, CallableParams, TupleArgs, TupleUnpack, Variance},
     type_helpers::{Class, TypeOrClass},
 };
 
@@ -784,7 +784,7 @@ impl Type {
     }
 
     fn overlaps_tuple(i_s: &InferenceState, t1: &Tuple, t2: &Tuple) -> bool {
-        use TupleTypeArguments::*;
+        use TupleArgs::*;
         match (&t1.args, &t2.args) {
             (FixedLength(ts1), FixedLength(ts2)) => {
                 let mut value_generics = ts2.iter();
@@ -857,8 +857,8 @@ impl Type {
 pub fn match_tuple_type_arguments(
     i_s: &InferenceState,
     matcher: &mut Matcher,
-    tup1: &TupleTypeArguments,
-    tup2: &TupleTypeArguments,
+    tup1: &TupleArgs,
+    tup2: &TupleArgs,
     variance: Variance,
 ) -> Match {
     if matcher.is_matching_reverse() {
@@ -866,7 +866,7 @@ pub fn match_tuple_type_arguments(
             match_tuple_type_arguments(i_s, matcher, tup2, tup1, variance.invert())
         });
     }
-    use TupleTypeArguments::*;
+    use TupleArgs::*;
     match (tup1, tup2) {
         (FixedLength(ts1), FixedLength(ts2)) => {
             if ts1.len() == ts2.len() {
@@ -908,14 +908,14 @@ pub fn match_unpack(
     i_s: &InferenceState,
     matcher: &mut Matcher,
     with_unpack1: &WithUnpack,
-    tuple2: &TupleTypeArguments,
+    tuple2: &TupleArgs,
     variance: Variance,
 ) -> Match {
     debug_assert!(!matcher.is_matching_reverse());
     let mut matches = Match::new_true();
 
     match tuple2 {
-        TupleTypeArguments::FixedLength(ts2) => {
+        TupleArgs::FixedLength(ts2) => {
             let mut t2_iterator = ts2.iter();
             for (t1, t2) in with_unpack1.before.iter().zip(t2_iterator.by_ref()) {
                 matches &= t1.matches(i_s, matcher, t2, variance);
@@ -938,7 +938,7 @@ pub fn match_unpack(
                         matches &= matcher.match_or_add_type_var_tuple(
                             i_s,
                             tvt,
-                            TupleTypeArguments::FixedLength(t2_iterator.cloned().collect()),
+                            TupleArgs::FixedLength(t2_iterator.cloned().collect()),
                             variance,
                         )
                     }
@@ -950,7 +950,7 @@ pub fn match_unpack(
                 }
             }
         }
-        TupleTypeArguments::WithUnpack(with_unpack2) => {
+        TupleArgs::WithUnpack(with_unpack2) => {
             let mut before2_it = with_unpack2.before.iter();
             for (t1, t2) in with_unpack1.before.iter().zip(before2_it.by_ref()) {
                 matches &= t1.matches(i_s, matcher, t2, variance)
@@ -977,7 +977,7 @@ pub fn match_unpack(
                         TupleUnpack::TypeVarTuple(tvt2) => matcher.match_or_add_type_var_tuple(
                             i_s,
                             tvt1,
-                            TupleTypeArguments::WithUnpack(WithUnpack {
+                            TupleArgs::WithUnpack(WithUnpack {
                                 before: Rc::from([]),
                                 unpack: with_unpack2.unpack.clone(),
                                 after: Rc::from([]),
@@ -1032,7 +1032,7 @@ pub fn match_unpack(
             }
             */
         }
-        TupleTypeArguments::ArbitraryLength(t2) => {
+        TupleArgs::ArbitraryLength(t2) => {
             if t2.is_any() {
                 return Match::True { with_any: true };
             }
@@ -1044,7 +1044,7 @@ pub fn match_unpack(
                     matches &= matcher.match_or_add_type_var_tuple(
                         i_s,
                         tvt,
-                        TupleTypeArguments::ArbitraryLength(t2.clone()),
+                        TupleArgs::ArbitraryLength(t2.clone()),
                         variance,
                     )
                 }
