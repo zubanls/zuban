@@ -166,16 +166,16 @@ pub struct TypeArguments {
 }
 
 impl TypeArguments {
+    pub fn new(args: TupleTypeArguments) -> Self {
+        Self { args }
+    }
+
     pub fn new_fixed_length(args: Rc<[Type]>) -> Self {
-        Self {
-            args: TupleTypeArguments::FixedLength(args),
-        }
+        Self::new(TupleTypeArguments::FixedLength(args))
     }
 
     pub fn new_arbitrary_length(arg: Type) -> Self {
-        Self {
-            args: TupleTypeArguments::ArbitraryLength(Box::new(arg)),
-        }
+        Self::new(TupleTypeArguments::ArbitraryLength(Box::new(arg)))
     }
 
     pub fn format(&self, format_data: &FormatData) -> Option<Box<str>> {
@@ -1311,7 +1311,6 @@ impl Type {
                     .collect(),
             ))
         };
-        use TupleTypeArguments::*;
         match self {
             Type::Class(c1) => match other {
                 Type::Class(c2) if c1.link == c2.link => {
@@ -1326,25 +1325,9 @@ impl Type {
                 _ => Type::Any(AnyCause::FromError),
             },
             Type::Tuple(c1) => match other {
-                Type::Tuple(c2) => {
-                    Type::Tuple(match (&c1.args, &c2.args) {
-                        (FixedLength(ts1), FixedLength(ts2)) if ts1.len() == ts2.len() => {
-                            Rc::new(Tuple::new_fixed_length(
-                                // Performance issue: Same as above
-                                ts1.iter()
-                                    .zip(ts2.iter())
-                                    .map(|(t1, t2)| t1.merge_matching_parts(db, t2))
-                                    .collect(),
-                            ))
-                        }
-                        (ArbitraryLength(t1), ArbitraryLength(t2)) => Rc::new(
-                            Tuple::new_arbitrary_length(t1.merge_matching_parts(db, &t2)),
-                        ),
-                        (WithUnpack(_), _) => todo!(),
-                        (_, WithUnpack(_)) => todo!(),
-                        _ => Tuple::new_arbitrary_length_with_any(),
-                    })
-                }
+                Type::Tuple(c2) => Type::Tuple(Rc::new(Tuple::new(
+                    c1.args.merge_matching_parts(db, &c2.args),
+                ))),
                 _ => Type::Any(AnyCause::FromError),
             },
             Type::Callable(content1) => match other {

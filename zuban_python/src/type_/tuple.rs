@@ -533,6 +533,27 @@ impl TupleTypeArguments {
             }
         }
     }
+
+    pub fn merge_matching_parts(&self, db: &Database, other: &Self) -> Self {
+        use TupleTypeArguments::*;
+        match (self, other) {
+            (FixedLength(ts1), FixedLength(ts2)) if ts1.len() == ts2.len() => {
+                Self::FixedLength(
+                    // Performance issue: Same as above
+                    ts1.iter()
+                        .zip(ts2.iter())
+                        .map(|(t1, t2)| t1.merge_matching_parts(db, t2))
+                        .collect(),
+                )
+            }
+            (ArbitraryLength(t1), ArbitraryLength(t2)) => {
+                Self::ArbitraryLength(Box::new(t1.merge_matching_parts(db, &t2)))
+            }
+            (WithUnpack(_), _) => todo!(),
+            (_, WithUnpack(_)) => todo!(),
+            _ => Tuple::new_arbitrary_length_with_any().args.clone(),
+        }
+    }
 }
 
 pub(crate) fn lookup_on_tuple<'x>(

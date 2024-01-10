@@ -157,7 +157,9 @@ impl<'a> Generic<'a> {
                 let Self::TypeVarTuple(ts2) = other else {
                     unreachable!()
                 };
-                todo!("{ts1:?} {ts2:?}")
+                GenericItem::TypeArguments(TypeArguments::new(
+                    ts1.args.merge_matching_parts(db, &ts2.args),
+                ))
             }
             Self::ParamSpecArgument(params) => todo!(),
         }
