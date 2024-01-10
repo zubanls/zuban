@@ -509,9 +509,6 @@ testSimpleRuntimeProtocolCheck
 
 # TypeVarTuple mismatches how to format? Unpack[Never]?
 testTypeVarTupleMixed
-# matching/result_context.rs:137
-testVariadicTupleInTupleContext
-testVariadicTupleContextNoCrash
 # matching/generic.rs:151
 testTypeVarTupleOverloadMatch
 # file/type_computation.rs:637
@@ -2186,6 +2183,8 @@ testTupleWithStarExpr2Precise
 testTupleWithStarExpr3Precise
 testVariadicTupleConcatenation
 testPackingVariadicTuplesHomogeneous
+testVariadicTupleContextNoCrash
+testVariadicTupleInTupleContext
 
 # --enable-error-code redundant-expr
 # "If condition is always false"
