@@ -380,15 +380,13 @@ fn common_base_for_tuple_against_type(
     t2: &Type,
 ) -> Option<Type> {
     Some(match t2 {
-        Type::Tuple(tup2) => Type::Tuple(Rc::new(common_base_for_tuples(i_s, tup1, tup2))),
-        Type::NamedTuple(nt2) => {
-            Type::Tuple(Rc::new(common_base_for_tuples(i_s, tup1, &nt2.as_tuple())))
-        }
+        Type::Tuple(tup2) => Type::Tuple(common_base_for_tuples(i_s, tup1, tup2)),
+        Type::NamedTuple(nt2) => Type::Tuple(common_base_for_tuples(i_s, tup1, &nt2.as_tuple())),
         _ => return None,
     })
 }
 
-fn common_base_for_tuples(i_s: &InferenceState, tup1: &Tuple, tup2: &Tuple) -> Tuple {
+fn common_base_for_tuples(i_s: &InferenceState, tup1: &Tuple, tup2: &Tuple) -> Rc<Tuple> {
     Tuple::new(match &tup2.args {
         TupleArgs::FixedLength(ts2) => {
             let mut new_args = tup1.args.clone();

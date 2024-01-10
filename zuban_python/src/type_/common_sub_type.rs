@@ -43,7 +43,7 @@ impl Type {
                         for (t1, t2) in ts1.iter().zip(ts2.iter()) {
                             entries.push(t1.common_sub_type(i_s, t2)?)
                         }
-                        Type::Tuple(Rc::new(Tuple::new_fixed_length(entries.into())))
+                        Type::Tuple(Tuple::new_fixed_length(entries.into()))
                     }
                     (ArbitraryLength(t1), ArbitraryLength(t2)) => t1.common_sub_type(i_s, t2)?,
                     (ArbitraryLength(t2), FixedLength(ts1))
@@ -52,7 +52,7 @@ impl Type {
                         for t1 in ts1.iter() {
                             entries.push(t1.common_sub_type(i_s, &t2)?)
                         }
-                        Type::Tuple(Rc::new(Tuple::new_fixed_length(entries.into())))
+                        Type::Tuple(Tuple::new_fixed_length(entries.into()))
                     }
                     _ => todo!(),
                 })

@@ -71,12 +71,12 @@ impl NamedTuple {
     pub fn as_tuple(&self) -> Rc<Tuple> {
         self.tuple
             .get_or_init(|| {
-                Rc::new(Tuple::new_fixed_length(
+                Tuple::new_fixed_length(
                     self.params()
                         .iter()
                         .map(|t| t.type_.expect_positional_type_as_ref().clone())
                         .collect(),
-                ))
+                )
             })
             .clone()
     }
@@ -229,11 +229,11 @@ impl NamedTuple {
                     return_type: as_self.map(|as_self| as_self()).unwrap_or(Type::Self_),
                 })
             }),
-            "_fields" => Type::Tuple(Rc::new(Tuple::new_fixed_length(
+            "_fields" => Type::Tuple(Tuple::new_fixed_length(
                 std::iter::repeat(i_s.db.python_state.str_type())
                     .take(self.params().len())
                     .collect(),
-            ))),
+            )),
             "_field_defaults" => new_class!(
                 i_s.db.python_state.dict_node_ref().as_link(),
                 i_s.db.python_state.str_type(),

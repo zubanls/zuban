@@ -719,16 +719,14 @@ pub(crate) fn lookup_on_dataclass_type<'a>(
     if name == "__slots__" && self_.options.slots {
         return LookupDetails::new(
             Type::Dataclass(self_.clone()),
-            LookupResult::UnknownName(Inferred::from_type(Type::Tuple(Rc::new(
-                Tuple::new_fixed_length(
-                    repeat_with(|| i_s.db.python_state.str_type())
-                        .take(
-                            dataclass_init_func(&self_, i_s.db)
-                                .expect_simple_params()
-                                .len(),
-                        )
-                        .collect(),
-                ),
+            LookupResult::UnknownName(Inferred::from_type(Type::Tuple(Tuple::new_fixed_length(
+                repeat_with(|| i_s.db.python_state.str_type())
+                    .take(
+                        dataclass_init_func(&self_, i_s.db)
+                            .expect_simple_params()
+                            .len(),
+                    )
+                    .collect(),
             )))),
             AttributeKind::Attribute,
         );
@@ -752,14 +750,14 @@ pub fn lookup_symbol_internal(
         );
     } else if name == "__match_args__" && self_.options.match_args {
         let __init__ = dataclass_init_func(&self_, i_s.db);
-        let tup = Rc::new(Tuple::new_fixed_length(
+        let tup = Tuple::new_fixed_length(
             __init__
                 .expect_simple_params()
                 .iter()
                 .take_while(|p| p.type_.maybe_positional_type().is_some())
                 .map(|p| Type::Literal(Literal::new(LiteralKind::String(p.name.clone().unwrap()))))
                 .collect(),
-        ));
+        );
         return (
             LookupResult::UnknownName(Inferred::from_type(Type::Tuple(tup))),
             AttributeKind::DefMethod,

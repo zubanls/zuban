@@ -117,11 +117,11 @@ impl Type {
                 callable,
                 replace_self,
             ))),
-            Type::Tuple(content) => Type::Tuple(Rc::new(Tuple::new(
+            Type::Tuple(content) => Type::Tuple(Tuple::new(
                 content
                     .args
                     .replace_type_var_likes_and_self(db, callable, replace_self),
-            ))),
+            )),
             Type::Callable(c) => Type::Callable(Rc::new(c.replace_type_var_likes_and_self(
                 db,
                 callable,
@@ -259,14 +259,14 @@ impl Type {
             Type::TypeVar(t) => Type::TypeVar(manager.remap_type_var(t)),
             Type::Type(type_) => Type::Type(Rc::new(type_.rewrite_late_bound_callables(manager))),
             Type::Tuple(content) => Type::Tuple(match &content.args {
-                TupleArgs::FixedLength(ts) => Rc::new(Tuple::new_fixed_length(
+                TupleArgs::FixedLength(ts) => Tuple::new_fixed_length(
                     ts.iter()
                         .map(|t| t.rewrite_late_bound_callables(manager))
                         .collect(),
-                )),
-                TupleArgs::ArbitraryLength(t) => Rc::new(Tuple::new_arbitrary_length(
-                    t.rewrite_late_bound_callables(manager),
-                )),
+                ),
+                TupleArgs::ArbitraryLength(t) => {
+                    Tuple::new_arbitrary_length(t.rewrite_late_bound_callables(manager))
+                }
                 TupleArgs::WithUnpack(_) => {
                     // TypeOrUnpack::TypeVarTuple(manager.remap_type_var_tuple(t))
                     todo!()
@@ -496,7 +496,7 @@ impl CallableParams {
                                             continue;
                                         }
                                         args @ TupleArgs::WithUnpack(_) => {
-                                            StarParamType::UnpackedTuple(Rc::new(Tuple::new(args)))
+                                            StarParamType::UnpackedTuple(Tuple::new(args))
                                         }
                                     }
                                 }

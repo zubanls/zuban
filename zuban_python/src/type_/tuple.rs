@@ -23,8 +23,8 @@ use crate::{
 };
 
 thread_local! {
-    static ARBITRARY_TUPLE: Rc<Tuple> = Rc::new(Tuple::new_arbitrary_length(Type::Any(AnyCause::Todo)));
-    static ARBITRARY_TUPLE_FROM_ERROR: Rc<Tuple> = Rc::new(Tuple::new_arbitrary_length(Type::Any(AnyCause::FromError)));
+    static ARBITRARY_TUPLE: Rc<Tuple> = Tuple::new_arbitrary_length(Type::Any(AnyCause::Todo));
+    static ARBITRARY_TUPLE_FROM_ERROR: Rc<Tuple> = Tuple::new_arbitrary_length(Type::Any(AnyCause::FromError));
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -34,18 +34,18 @@ pub struct Tuple {
 }
 
 impl Tuple {
-    pub fn new(args: TupleArgs) -> Self {
-        Self {
+    pub fn new(args: TupleArgs) -> Rc<Self> {
+        Rc::new(Self {
             args,
             tuple_class_generics: OnceCell::new(),
-        }
+        })
     }
 
-    pub fn new_fixed_length(args: Rc<[Type]>) -> Self {
+    pub fn new_fixed_length(args: Rc<[Type]>) -> Rc<Self> {
         Self::new(TupleArgs::FixedLength(args))
     }
 
-    pub fn new_arbitrary_length(arg: Type) -> Self {
+    pub fn new_arbitrary_length(arg: Type) -> Rc<Self> {
         Self::new(TupleArgs::ArbitraryLength(Box::new(arg)))
     }
 
@@ -237,7 +237,7 @@ impl Tuple {
                     }
                     match &self.args {
                         TupleArgs::FixedLength(ts) => {
-                            Inferred::from_type(Type::Tuple(Rc::new(Tuple::new_fixed_length({
+                            Inferred::from_type(Type::Tuple(Tuple::new_fixed_length({
                                 let (start, end) = if step < 0 {
                                     let swapped_start = match end {
                                         Some(end) if end < 0 => ts.len() as isize + end + 1,
@@ -282,10 +282,10 @@ impl Tuple {
                                         .cloned()
                                         .collect()
                                 }
-                            }))))
+                            })))
                         }
-                        TupleArgs::WithUnpack(with_unpack) => Inferred::from_type(Type::Tuple(
-                            Rc::new(Tuple::new(TupleArgs::WithUnpack({
+                        TupleArgs::WithUnpack(with_unpack) => {
+                            Inferred::from_type(Type::Tuple(Tuple::new(TupleArgs::WithUnpack({
                                 let ambiguous = || {
                                     slice_type
                                         .as_node_ref()
@@ -343,17 +343,17 @@ impl Tuple {
                                 } else {
                                     return ambiguous();
                                 }
-                            }))),
-                        )),
+                            }))))
+                        }
                         TupleArgs::ArbitraryLength(t) => {
                             Inferred::from_type(Type::Tuple(Rc::new(self.clone())))
                         }
                     }
                 })
                 .unwrap_or_else(|| {
-                    Inferred::from_type(Type::Tuple(Rc::new(Tuple::new_arbitrary_length(
+                    Inferred::from_type(Type::Tuple(Tuple::new_arbitrary_length(
                         self.simplified_union_of_tuple_entries(i_s),
-                    ))))
+                    )))
                 }),
         }
     }
@@ -647,7 +647,7 @@ fn tuple_add_internal<'db>(
         let Type::Tuple(tuple2) = t.as_ref() else {
             continue;
         };
-        return Some(Inferred::from_type(Type::Tuple(Rc::new(Tuple::new(
+        return Some(Inferred::from_type(Type::Tuple(Tuple::new(
             match (&tuple1.args, &tuple2.args) {
                 (TupleArgs::FixedLength(ts1), TupleArgs::FixedLength(ts2)) => {
                     TupleArgs::FixedLength(ts1.iter().chain(ts2.iter()).cloned().collect())
@@ -668,7 +668,7 @@ fn tuple_add_internal<'db>(
                 }
                 _ => return None,
             },
-        )))));
+        ))));
     }
     None
 }
@@ -706,8 +706,8 @@ fn tuple_mul_internal<'db>(
             if int > 10 {
                 todo!("Do we really want extremely large tuples?")
             }
-            Some(Inferred::from_type(Type::Tuple(Rc::new(
-                Tuple::new_fixed_length(ts.iter().cycle().take(int * ts.len()).cloned().collect()),
+            Some(Inferred::from_type(Type::Tuple(Tuple::new_fixed_length(
+                ts.iter().cycle().take(int * ts.len()).cloned().collect(),
             ))))
         }),
         TupleArgs::ArbitraryLength(_) => Some(Inferred::from_type(Type::Tuple(tuple))),

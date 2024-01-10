@@ -1005,9 +1005,7 @@ impl Type {
                             }
                             gathered.push(t.clone())
                         }
-                        return Some(Type::Tuple(Rc::new(Tuple::new_fixed_length(
-                            gathered.into(),
-                        ))));
+                        return Some(Type::Tuple(Tuple::new_fixed_length(gathered.into())));
                     }
                 }
                 None
@@ -1321,9 +1319,9 @@ impl Type {
                 _ => Type::Any(AnyCause::FromError),
             },
             Type::Tuple(c1) => match other {
-                Type::Tuple(c2) => Type::Tuple(Rc::new(Tuple::new(
-                    c1.args.merge_matching_parts(db, &c2.args),
-                ))),
+                Type::Tuple(c2) => {
+                    Type::Tuple(Tuple::new(c1.args.merge_matching_parts(db, &c2.args)))
+                }
                 _ => Type::Any(AnyCause::FromError),
             },
             Type::Callable(content1) => match other {

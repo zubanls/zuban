@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use parsa_python_ast::{
     NamedExpression, NodeIndex, Slice as ASTSlice, SliceContent, SliceIterator as ASTSliceIterator,
     SliceType as ASTSliceType, Slices as ASTSlices,
@@ -211,7 +209,7 @@ impl<'file> Slices<'file> {
             .iter()
             .map(|x| x.infer(i_s, &mut ResultContext::Unknown).as_type(i_s))
             .collect();
-        Inferred::from_type(Type::Tuple(Rc::new(Tuple::new_fixed_length(parts))))
+        Inferred::from_type(Type::Tuple(Tuple::new_fixed_length(parts)))
     }
 }
 

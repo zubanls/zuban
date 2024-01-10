@@ -627,11 +627,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         match tc {
             TypeContent::Unpacked(TypeOrUnpack::Type(t @ Type::Tuple(_))) => t,
             TypeContent::Unpacked(TypeOrUnpack::TypeVarTuple(tvt)) => {
-                Type::Tuple(Rc::new(Tuple::new(TupleArgs::WithUnpack(WithUnpack {
+                Type::Tuple(Tuple::new(TupleArgs::WithUnpack(WithUnpack {
                     before: Rc::from([]),
                     unpack: TupleUnpack::TypeVarTuple(tvt),
                     after: Rc::from([]),
-                }))))
+                })))
             }
             TypeContent::Unpacked(TypeOrUnpack::Type(t)) => {
                 self.add_issue(
@@ -647,7 +647,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             _ => match self.as_type(tc, from) {
                 t @ Type::ParamSpecArgs(_) => t,
-                t => Type::Tuple(Rc::new(Tuple::new_arbitrary_length(t))),
+                t => Type::Tuple(Tuple::new_arbitrary_length(t)),
             },
         }
     }
@@ -2050,14 +2050,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             if let SliceOrSimple::Simple(s) = slice_or_simple {
                 if s.named_expr.is_ellipsis_literal() {
                     let t = self.compute_slice_type(first);
-                    return TypeContent::Type(Type::Tuple(Rc::new(Tuple::new_arbitrary_length(t))));
+                    return TypeContent::Type(Type::Tuple(Tuple::new_arbitrary_length(t)));
                 }
             }
         }
-        TypeContent::Type(Type::Tuple(Rc::new(Tuple::new(
+        TypeContent::Type(Type::Tuple(Tuple::new(
             TypeArgIterator::new(slice_type.iter())
                 .as_type_arguments(self, slice_type.iter().count() == 1),
-        ))))
+        )))
     }
 
     fn calculate_simplified_param_spec_generics<'y, I: Iterator<Item = SliceOrSimple<'y>>>(
@@ -2092,15 +2092,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::Unpacked(TypeOrUnpack::Type(Type::TypedDict(td))) => {
                 ParamType::StarStar(StarStarParamType::UnpackTypedDict(td))
             }
-            TypeContent::Unpacked(TypeOrUnpack::TypeVarTuple(tvt)) => {
-                ParamType::Star(StarParamType::UnpackedTuple(Rc::new(Tuple::new(
-                    TupleArgs::WithUnpack(WithUnpack {
-                        before: Rc::from([]),
-                        unpack: TupleUnpack::TypeVarTuple(tvt),
-                        after: Rc::from([]),
-                    }),
-                ))))
-            }
+            TypeContent::Unpacked(TypeOrUnpack::TypeVarTuple(tvt)) => ParamType::Star(
+                StarParamType::UnpackedTuple(Tuple::new(TupleArgs::WithUnpack(WithUnpack {
+                    before: Rc::from([]),
+                    unpack: TupleUnpack::TypeVarTuple(tvt),
+                    after: Rc::from([]),
+                }))),
+            ),
             TypeContent::Unpacked(TypeOrUnpack::Type(Type::Tuple(tup))) => {
                 ParamType::Star(StarParamType::UnpackedTuple(tup))
             }
@@ -2149,7 +2147,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             },
                             TupleArgs::FixedLength(_) => unreachable!(),
                         };
-                        let tup = Rc::new(Tuple::new(TupleArgs::WithUnpack(with_unpack)));
+                        let tup = Tuple::new(TupleArgs::WithUnpack(with_unpack));
                         params.push(CallableParam {
                             type_: ParamType::Star(StarParamType::UnpackedTuple(tup)),
                             name: previous.name,
@@ -3711,7 +3709,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 }
             })
             .collect();
-        Type::Tuple(Rc::new(Tuple::new_fixed_length(generics)))
+        Type::Tuple(Tuple::new_fixed_length(generics))
     }
 
     pub fn check_for_type_comment(

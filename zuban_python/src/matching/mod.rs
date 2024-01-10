@@ -302,9 +302,9 @@ impl IteratorContent {
                         for t in relevant_entries {
                             tuple_entries.push(t.clone());
                         }
-                        Inferred::from_type(Type::Tuple(Rc::new(Tuple::new_fixed_length(
+                        Inferred::from_type(Type::Tuple(Tuple::new_fixed_length(
                             tuple_entries.into(),
-                        ))))
+                        )))
                     } else {
                         let union = Inferred::gather_base_types(i_s, |callable| {
                             for t in relevant_entries {

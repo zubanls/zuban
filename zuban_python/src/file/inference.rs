@@ -863,8 +863,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             Target::IndexExpression(t) if infer_index_expression => {
                 Some(self.infer_primary_target(t))
             }
-            Target::Tuple(targets) => Some(Inferred::from_type(Type::Tuple(Rc::new(
-                Tuple::new_fixed_length(
+            Target::Tuple(targets) => {
+                Some(Inferred::from_type(Type::Tuple(Tuple::new_fixed_length(
                     targets
                         .map(|target| {
                             self.infer_target(target, infer_index_expression)
@@ -872,8 +872,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 .unwrap_or(Type::Any(AnyCause::Todo))
                         })
                         .collect(),
-                ),
-            )))),
+                ))))
+            }
             _ => None,
         }
     }
@@ -2043,7 +2043,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     "Inferred: {}",
                     content.format(&FormatData::new_short(inference.i_s.db))
                 );
-                Inferred::from_type(Type::Tuple(Rc::new(content)))
+                Inferred::from_type(Type::Tuple(content))
             }
         }
 
