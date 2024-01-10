@@ -207,10 +207,12 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
                     {
                         if let TypeVarLike::TypeVarTuple(t) = &type_var_like {
                             if self.type_var_manager.has_type_var_tuples() {
-                                NodeRef::new(self.file, name.index()).add_issue(
-                                    self.i_s,
-                                    IssueType::MultipleTypeVarTuplesInClassDef,
-                                );
+                                if self.class.is_some() {
+                                    NodeRef::new(self.file, name.index()).add_issue(
+                                        self.i_s,
+                                        IssueType::MultipleTypeVarTuplesInClassDef,
+                                    );
+                                }
                                 return BaseLookup::Other;
                             }
                         }

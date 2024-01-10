@@ -2177,6 +2177,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             index,
                             IssueType::MoreThanOneUnpackTypeIsNotAllowed,
                         );
+                        return;
                     }
                     Some("Var args may not appear after named or var args")
                 }

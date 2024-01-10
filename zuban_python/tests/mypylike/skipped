@@ -194,6 +194,7 @@ testEnumNameWorkCorrectlyOn311
 testRegularGenericDecoratorOverload
 testParamSpecDecoratorOverload
 # --new-type-inference
+testHomogeneousGenericTupleUnpackInferenceNoCrash2
 testParamSpecDecoratorAppliedToGeneric
 testParamSpecArgumentParamInferenceGeneric
 testParamSpecNestedApplyNoCrash
@@ -510,6 +511,8 @@ testSimpleRuntimeProtocolCheck
 
 # TypeVarTuple mismatches how to format? Unpack[Never]?
 testTypeVarTupleMixed
+testVariadicTupleInference
+testTypeVarTuplePep646CallableWithPrefixSuffix
 # Overload matching issues
 testTypeVarTupleOverloadMatch
 # file/type_computation.rs:637
@@ -536,7 +539,6 @@ testTypeVarTuplePep646TypeVarStarArgsFixedLengthTuple
 # type_/tuple.rs:147
 testTypeVarTuplePep646TypeVarStarArgsVariableLengthTuple
 # type/matching.rs:932
-testVariadicTupleInference
 testVariadicTupleSubtyping
 # matching/matcher/utils.rs:577
 testTypeVarTupleBothUnpacksCallable
@@ -546,10 +548,7 @@ testAliasToCallableWithUnpack
 # database.rs:574
 testBanPathologicalRecursiveTuples
 # TypeVarTuple rest
-testTypeVarTuplePep646CallableWithPrefixSuffix
 testVariadicAliasRecursiveUnpack
-testHomogeneousGenericTupleUnpackInferenceNoCrash2
-testVariadicAliasMultipleUnpacks
 testVariadicClassGenericSelf
 testVariadicClassNewStyleSelf
 testVariadicTupleCollectionCheck
