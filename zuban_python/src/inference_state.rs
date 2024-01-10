@@ -1,7 +1,7 @@
 use std::cell::Cell;
 
 use crate::{
-    arguments::Arguments,
+    arguments::Args,
     database::{Database, ParentScope},
     file::TypeVarCallbackReturn,
     type_::{CallableContent, TypeVarLike},
@@ -13,8 +13,8 @@ enum Context<'db, 'a> {
     None,
     DiagnosticClass(&'a Class<'a>),
     Class(&'a Class<'a>),
-    DiagnosticExecution(&'a Function<'a, 'a>, &'a dyn Arguments<'db>),
-    Execution(&'a Function<'a, 'a>, &'a dyn Arguments<'db>),
+    DiagnosticExecution(&'a Function<'a, 'a>, &'a dyn Args<'db>),
+    Execution(&'a Function<'a, 'a>, &'a dyn Args<'db>),
     LambdaCallable(&'a CallableContent),
 }
 
@@ -44,7 +44,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
     pub(crate) fn with_func_and_args(
         &self,
         func: &'a Function<'a, 'a>,
-        args: &'a dyn Arguments<'db>,
+        args: &'a dyn Args<'db>,
     ) -> Self {
         Self {
             db: self.db,
@@ -56,7 +56,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
     pub(crate) fn with_diagnostic_func_and_args(
         &self,
         func: &'a Function<'a, 'a>,
-        args: &'a dyn Arguments<'db>,
+        args: &'a dyn Args<'db>,
     ) -> Self {
         Self {
             db: self.db,
@@ -134,9 +134,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         }
     }
 
-    pub(crate) fn current_execution(
-        &self,
-    ) -> Option<(&'a Function<'a, 'a>, &'a dyn Arguments<'db>)> {
+    pub(crate) fn current_execution(&self) -> Option<(&'a Function<'a, 'a>, &'a dyn Args<'db>)> {
         match &self.context {
             Context::DiagnosticExecution(f, a) | Context::Execution(f, a) => Some((f, *a)),
             _ => None,

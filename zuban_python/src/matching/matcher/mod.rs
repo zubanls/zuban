@@ -19,14 +19,14 @@ use super::{
     FormatData, Match, OnTypeError, ParamsStyle, ResultContext, SignatureMatch,
 };
 use crate::{
-    arguments::{Arg, ArgumentKind},
+    arguments::{Arg, ArgKind},
     database::{Database, PointLink},
     debug,
     diagnostics::IssueType,
     inference_state::InferenceState,
     type_::{
         match_tuple_type_arguments, AnyCause, CallableContent, CallableParam, CallableParams,
-        GenericItem, GenericsList, ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamType,
+        GenericItem, GenericsList, ParamSpecArg, ParamSpecTypeVars, ParamSpecUsage, ParamType,
         ReplaceSelf, StarParamType, TupleArgs, TupleUnpack, Type, TypeArgs, TypeVarKind,
         TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict,
         TypedDictGenerics, Variance,
@@ -324,7 +324,7 @@ impl<'a> Matcher<'a> {
             }
         }
         let match_params =
-            |i_s: &_, matches, params: &ParamSpecArgument, p2_pre_iterator: std::slice::Iter<_>| {
+            |i_s: &_, matches, params: &ParamSpecArg, p2_pre_iterator: std::slice::Iter<_>| {
                 match &params.params {
                     CallableParams::Simple(params1) => todo!(),
                     CallableParams::Any(_) => matches,
@@ -358,7 +358,7 @@ impl<'a> Matcher<'a> {
             match &mut calc.type_ {
                 BoundKind::ParamSpecArgument(p) => match_params(i_s, matches, p, p2_pre_iterator),
                 BoundKind::Uncalculated { .. } => {
-                    calc.type_ = BoundKind::ParamSpecArgument(ParamSpecArgument::new(
+                    calc.type_ = BoundKind::ParamSpecArgument(ParamSpecArg::new(
                         CallableParams::WithParamSpec(
                             p2_pre_iterator.cloned().collect(),
                             p2.clone(),
@@ -435,7 +435,7 @@ impl<'a> Matcher<'a> {
                     match_params(i_s, matches, &p.params, params2_iterator)
                 }
                 BoundKind::Uncalculated { .. } => {
-                    calc.type_ = BoundKind::ParamSpecArgument(ParamSpecArgument::new(
+                    calc.type_ = BoundKind::ParamSpecArgument(ParamSpecArg::new(
                         CallableParams::Simple(params2_iterator.cloned().collect()),
                         type_vars2.map(|type_vars| ParamSpecTypeVars {
                             type_vars: type_vars.0.clone(),
@@ -516,7 +516,7 @@ impl<'a> Matcher<'a> {
                     todo!()
                 };
                 match last_arg.kind {
-                    ArgumentKind::ParamSpec {
+                    ArgKind::ParamSpec {
                         usage: ref usage2, ..
                     } => {
                         if usage1 == usage2 {
@@ -621,10 +621,10 @@ impl<'a> Matcher<'a> {
                     let current = &type_var_matcher.calculated_type_vars
                         [type_var_like_usage.index().as_usize()];
                     return match &current.type_ {
-                        BoundKind::TypeVar(t) => GenericItem::TypeArgument(t.clone().into_type(db)),
+                        BoundKind::TypeVar(t) => GenericItem::TypeArg(t.clone().into_type(db)),
                         BoundKind::TypeVarTuple(_) => todo!(),
                         BoundKind::ParamSpecArgument(param_spec) => {
-                            GenericItem::ParamSpecArgument(param_spec.clone())
+                            GenericItem::ParamSpecArg(param_spec.clone())
                         }
                         // Any is just ignored by the context later.
                         BoundKind::Uncalculated { .. } => {
@@ -637,7 +637,7 @@ impl<'a> Matcher<'a> {
                                     type_var_like_usage.as_type_var_like()
                                 {
                                     if let TypeVarKind::Bound(bound) = &tv.kind {
-                                        return GenericItem::TypeArgument(bound.clone());
+                                        return GenericItem::TypeArg(bound.clone());
                                     }
                                 }
                                 type_var_like_usage.as_type_var_like().as_any_generic_item()
@@ -661,11 +661,11 @@ impl<'a> Matcher<'a> {
                         .nth_usage(db, &type_var_like_usage)
                         .into_generic_item(db);
                     return match g {
-                        GenericItem::TypeArgument(t) => GenericItem::TypeArgument(
+                        GenericItem::TypeArg(t) => GenericItem::TypeArg(
                             self.replace_type_var_likes_for_nested_context(db, &t),
                         ),
-                        GenericItem::TypeArguments(_) => todo!(),
-                        GenericItem::ParamSpecArgument(_) => todo!(),
+                        GenericItem::TypeArgs(_) => todo!(),
+                        GenericItem::ParamSpecArg(_) => todo!(),
                     };
                 }
             }

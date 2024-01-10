@@ -4,7 +4,7 @@ use parsa_python_ast::{SliceType as ASTSliceType, *};
 
 use super::TypeVarFinder;
 use crate::{
-    arguments::SimpleArguments,
+    arguments::SimpleArgs,
     database::{
         ComplexPoint, Database, Locality, Point, PointLink, PointType, Specific, TypeAlias,
     },
@@ -22,7 +22,7 @@ use crate::{
         new_collections_named_tuple, new_typing_named_tuple, AnyCause, CallableContent,
         CallableParam, CallableParams, CallableWithParent, ClassGenerics, Dataclass, DbString,
         Enum, EnumMember, FunctionKind, GenericClass, GenericItem, GenericsList, Literal,
-        LiteralKind, NamedTuple, Namespace, NewType, ParamSpecArgument, ParamSpecUsage, ParamType,
+        LiteralKind, NamedTuple, Namespace, NewType, ParamSpecArg, ParamSpecUsage, ParamType,
         RecursiveType, StarParamType, StarStarParamType, StringSlice, Tuple, TupleArgs,
         TupleUnpack, Type, TypeArgs, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage,
         TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, TypedDict,
@@ -1276,11 +1276,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     self.execute_mypy_extension_param(primary, s, details)
                 }
                 TypeContent::SpecialType(SpecialType::TypingNamedTuple) => {
-                    let args = SimpleArguments::from_primary(
-                        *self.inference.i_s,
-                        self.inference.file,
-                        primary,
-                    );
+                    let args =
+                        SimpleArgs::from_primary(*self.inference.i_s, self.inference.file, primary);
                     TypeContent::Type(
                         match new_typing_named_tuple(self.inference.i_s, &args, true) {
                             Some(rc) => Type::NamedTuple(rc),
@@ -1289,11 +1286,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     )
                 }
                 TypeContent::SpecialType(SpecialType::CollectionsNamedTuple) => {
-                    let args = SimpleArguments::from_primary(
-                        *self.inference.i_s,
-                        self.inference.file,
-                        primary,
-                    );
+                    let args =
+                        SimpleArgs::from_primary(*self.inference.i_s, self.inference.file, primary);
                     TypeContent::Type(
                         match new_collections_named_tuple(self.inference.i_s, &args) {
                             Some(rc) => Type::NamedTuple(rc),
@@ -1908,11 +1902,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 ) {
                     // Backfill the generics
                     for slice_content in slice_type.iter().take(i) {
-                        generics.push(GenericItem::TypeArgument(
-                            self.compute_slice_type(slice_content),
-                        ));
+                        generics.push(GenericItem::TypeArg(self.compute_slice_type(slice_content)));
                     }
-                    generics.push(GenericItem::TypeArgument(
+                    generics.push(GenericItem::TypeArg(
                         self.as_type(t, slice_content.as_node_ref()),
                     ));
                     return None;
@@ -1973,7 +1965,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     {
                         given += 1;
                         self.check_constraints(&type_var, node_ref, |_| t.clone(), get_of);
-                        GenericItem::TypeArgument(t)
+                        GenericItem::TypeArg(t)
                     } else {
                         break;
                     }
@@ -1988,7 +1980,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                 } ;
                                 given += 1;
                                 self.check_constraints(&type_var, from, |_| t.clone(), get_of);
-                                GenericItem::TypeArgument(t)
+                                GenericItem::TypeArg(t)
                             }
                             TypeVarLike::ParamSpec(param_spec) => {
                                 todo!()
@@ -2001,7 +1993,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     given += 1;
                     generics.insert(
                         i,
-                        GenericItem::TypeArguments(TypeArgs {
+                        GenericItem::TypeArgs(TypeArgs {
                             args: type_args.as_type_arguments(
                                 self,
                                 type_var_likes.len() == 1 && slice_type.iter().count() == 1,
@@ -2018,9 +2010,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         let params =
                             self.calculate_simplified_param_spec_generics(&mut slice_type.iter());
                         is_single_param_spec = true;
-                        GenericItem::ParamSpecArgument(ParamSpecArgument::new(params, None))
+                        GenericItem::ParamSpecArg(ParamSpecArg::new(params, None))
                     } else if let Some(spec) = type_args.next_param_spec(self, expected == 1) {
-                        GenericItem::ParamSpecArgument(spec)
+                        GenericItem::ParamSpecArg(spec)
                     } else {
                         break;
                     }
@@ -3877,9 +3869,9 @@ fn detect_diverging_alias(db: &Database, type_var_likes: &TypeVarLikes, t: &Type
                 if rec.calculating(db) {
                     rec.generics.as_ref().is_some_and(|generics| {
                         let has_direct_type_var_like = generics.iter().any(|g| match g {
-                            GenericItem::TypeArgument(t) => matches!(t, Type::TypeVar(_)),
-                            GenericItem::TypeArguments(ts) => todo!(),
-                            GenericItem::ParamSpecArgument(p) => {
+                            GenericItem::TypeArg(t) => matches!(t, Type::TypeVar(_)),
+                            GenericItem::TypeArgs(ts) => todo!(),
+                            GenericItem::ParamSpecArg(p) => {
                                 matches!(p.params, CallableParams::WithParamSpec(_, _))
                             }
                         });
@@ -4081,7 +4073,7 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
         &mut self,
         type_computation: &mut TypeComputation,
         allow_aesthetic_class_simplification: bool,
-    ) -> Option<ParamSpecArgument> {
+    ) -> Option<ParamSpecArg> {
         let Some(s) = self.slices.next() else {
             return None
         };
@@ -4090,7 +4082,7 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
             true,
             allow_aesthetic_class_simplification,
         );
-        Some(ParamSpecArgument::new(params, None))
+        Some(ParamSpecArg::new(params, None))
     }
 
     fn as_type_arguments(

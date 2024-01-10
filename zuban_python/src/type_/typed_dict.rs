@@ -8,7 +8,7 @@ use super::{
     TypeVarLikes,
 };
 use crate::{
-    arguments::{ArgumentKind, Arguments},
+    arguments::{ArgKind, Args},
     database::{ComplexPoint, Database, PointLink, TypedDictDefinition},
     diagnostics::IssueType,
     file::{infer_string_index, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn},
@@ -459,22 +459,19 @@ fn add_access_key_must_be_string_literal_issue(
     })
 }
 
-pub(crate) fn new_typed_dict<'db>(
-    i_s: &InferenceState<'db, '_>,
-    args: &dyn Arguments<'db>,
-) -> Inferred {
+pub(crate) fn new_typed_dict<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Args<'db>) -> Inferred {
     new_typed_dict_internal(i_s, args).unwrap_or_else(Inferred::new_any_from_error)
 }
 
 fn new_typed_dict_internal<'db>(
     i_s: &InferenceState<'db, '_>,
-    args: &dyn Arguments<'db>,
+    args: &dyn Args<'db>,
 ) -> Option<Inferred> {
     let mut iterator = args.iter();
     let Some(first_arg) = iterator.next() else {
         todo!()
     };
-    let ArgumentKind::Positional { node_ref, .. } = first_arg.kind else {
+    let ArgKind::Positional { node_ref, .. } = first_arg.kind else {
         args
             .add_issue(i_s, IssueType::UnexpectedArgumentsToTypedDict);
         return None
@@ -508,7 +505,7 @@ fn new_typed_dict_internal<'db>(
         args.add_issue(i_s, IssueType::TooFewArguments(" for TypedDict()".into()));
         return None
     };
-    let ArgumentKind::Positional { node_ref: second_node_ref, .. } = second_arg.kind else {
+    let ArgKind::Positional { node_ref: second_node_ref, .. } = second_arg.kind else {
         todo!()
     };
     let Some(atom_content) = second_node_ref.as_named_expression().expression().maybe_unpacked_atom() else {
@@ -517,14 +514,14 @@ fn new_typed_dict_internal<'db>(
     let mut total = true;
     if let Some(next) = iterator.next() {
         match &next.kind {
-            ArgumentKind::Keyword { key: "total", .. } => {
+            ArgKind::Keyword { key: "total", .. } => {
                 total = infer_typed_dict_total_argument(
                     i_s,
                     next.infer(i_s, &mut ResultContext::Unknown),
                     |issue| next.add_issue(i_s, issue),
                 )?;
             }
-            ArgumentKind::Keyword { key, node_ref, .. } => {
+            ArgKind::Keyword { key, node_ref, .. } => {
                 let s = format!(r#"Unexpected keyword argument "{key}" for "TypedDict""#);
                 node_ref.add_issue(i_s, IssueType::ArgumentIssue(s.into()));
                 return None;
@@ -608,7 +605,7 @@ pub(crate) fn infer_typed_dict_total_argument(
 
 pub(crate) fn typed_dict_setdefault<'db>(
     i_s: &InferenceState<'db, '_>,
-    args: &dyn Arguments<'db>,
+    args: &dyn Args<'db>,
     result_context: &mut ResultContext,
     on_type_error: OnTypeError<'db, '_>,
     bound: Option<&Type>,
@@ -630,7 +627,7 @@ pub(crate) fn typed_dict_setdefault<'db>(
 fn typed_dict_setdefault_internal<'db>(
     i_s: &InferenceState<'db, '_>,
     td: &TypedDict,
-    args: &dyn Arguments<'db>,
+    args: &dyn Args<'db>,
 ) -> Option<Inferred> {
     let mut iterator = args.iter();
     let first_arg = iterator.next()?;
@@ -640,7 +637,7 @@ fn typed_dict_setdefault_internal<'db>(
     }
     let default = match &second_arg {
         Some(second) => match &second.kind {
-            ArgumentKind::Positional { .. } | ArgumentKind::Keyword { key: "default", .. } => {
+            ArgKind::Positional { .. } | ArgKind::Keyword { key: "default", .. } => {
                 second.infer(i_s, &mut ResultContext::Unknown)
             }
             _ => return None,
@@ -681,7 +678,7 @@ fn typed_dict_setdefault_internal<'db>(
 
 pub(crate) fn typed_dict_get<'db>(
     i_s: &InferenceState<'db, '_>,
-    args: &dyn Arguments<'db>,
+    args: &dyn Args<'db>,
     result_context: &mut ResultContext,
     on_type_error: OnTypeError<'db, '_>,
     bound: Option<&Type>,
@@ -703,7 +700,7 @@ pub(crate) fn typed_dict_get<'db>(
 fn typed_dict_get_internal<'db>(
     i_s: &InferenceState<'db, '_>,
     td: &TypedDict,
-    args: &dyn Arguments<'db>,
+    args: &dyn Args<'db>,
 ) -> Option<Inferred> {
     typed_dict_get_or_pop_internal(i_s, td, args, false)
 }
@@ -711,7 +708,7 @@ fn typed_dict_get_internal<'db>(
 fn typed_dict_get_or_pop_internal<'db>(
     i_s: &InferenceState<'db, '_>,
     td: &TypedDict,
-    args: &dyn Arguments<'db>,
+    args: &dyn Args<'db>,
     is_pop: bool,
 ) -> Option<Inferred> {
     let mut iterator = args.iter();
@@ -722,7 +719,7 @@ fn typed_dict_get_or_pop_internal<'db>(
     }
     let infer_default = |context: &mut _| match &second_arg {
         Some(second) => match &second.kind {
-            ArgumentKind::Positional { .. } | ArgumentKind::Keyword { key: "default", .. } => {
+            ArgKind::Positional { .. } | ArgKind::Keyword { key: "default", .. } => {
                 Some(second.infer(i_s, context))
             }
             _ => return None,
@@ -782,14 +779,14 @@ fn typed_dict_get_or_pop_internal<'db>(
 fn typed_dict_pop_internal<'db>(
     i_s: &InferenceState<'db, '_>,
     td: &TypedDict,
-    args: &dyn Arguments<'db>,
+    args: &dyn Args<'db>,
 ) -> Option<Inferred> {
     typed_dict_get_or_pop_internal(i_s, td, args, true)
 }
 
 pub(crate) fn typed_dict_pop<'db>(
     i_s: &InferenceState<'db, '_>,
-    args: &dyn Arguments<'db>,
+    args: &dyn Args<'db>,
     result_context: &mut ResultContext,
     on_type_error: OnTypeError<'db, '_>,
     bound: Option<&Type>,
@@ -810,7 +807,7 @@ pub(crate) fn typed_dict_pop<'db>(
 
 fn typed_dict_method_with_fallback<'db>(
     i_s: &InferenceState<'db, '_>,
-    args: &dyn Arguments<'db>,
+    args: &dyn Args<'db>,
     result_context: &mut ResultContext,
     on_type_error: OnTypeError<'db, '_>,
     td: &TypedDict,
@@ -818,7 +815,7 @@ fn typed_dict_method_with_fallback<'db>(
     handler: fn(
         i_s: &InferenceState<'db, '_>,
         td: &TypedDict,
-        args: &dyn Arguments<'db>,
+        args: &dyn Args<'db>,
     ) -> Option<Inferred>,
 ) -> Inferred {
     method_with_fallback(
@@ -835,7 +832,7 @@ fn typed_dict_method_with_fallback<'db>(
 
 fn typed_dict_setitem<'db>(
     i_s: &InferenceState<'db, '_>,
-    args: &dyn Arguments<'db>,
+    args: &dyn Args<'db>,
     result_context: &mut ResultContext,
     on_type_error: OnTypeError<'db, '_>,
     bound: Option<&Type>,
@@ -857,7 +854,7 @@ fn typed_dict_setitem<'db>(
 fn typed_dict_setitem_internal<'db>(
     i_s: &InferenceState<'db, '_>,
     td: &TypedDict,
-    args: &dyn Arguments<'db>,
+    args: &dyn Args<'db>,
 ) -> Option<Inferred> {
     let mut iterator = args.iter();
     let first_arg = iterator.next()?;
@@ -899,7 +896,7 @@ fn typed_dict_setitem_internal<'db>(
 
 fn typed_dict_delitem<'db>(
     i_s: &InferenceState<'db, '_>,
-    args: &dyn Arguments<'db>,
+    args: &dyn Args<'db>,
     result_context: &mut ResultContext,
     on_type_error: OnTypeError<'db, '_>,
     bound: Option<&Type>,
@@ -921,14 +918,14 @@ fn typed_dict_delitem<'db>(
 fn typed_dict_delitem_internal<'db>(
     i_s: &InferenceState<'db, '_>,
     td: &TypedDict,
-    args: &dyn Arguments<'db>,
+    args: &dyn Args<'db>,
 ) -> Option<Inferred> {
     typed_dict_get_or_pop_internal(i_s, td, args, true).map(|_| Inferred::new_none())
 }
 
 fn typed_dict_update<'db>(
     i_s: &InferenceState<'db, '_>,
-    args: &dyn Arguments<'db>,
+    args: &dyn Args<'db>,
     result_context: &mut ResultContext,
     on_type_error: OnTypeError<'db, '_>,
     bound: Option<&Type>,
@@ -950,7 +947,7 @@ fn typed_dict_update<'db>(
 fn typed_dict_update_internal<'db>(
     i_s: &InferenceState<'db, '_>,
     td: &TypedDict,
-    args: &dyn Arguments<'db>,
+    args: &dyn Args<'db>,
 ) -> Option<Inferred> {
     let mut members: Vec<_> = td.members(i_s.db).clone().into();
     for member in members.iter_mut() {
@@ -970,7 +967,7 @@ fn typed_dict_update_internal<'db>(
 pub(crate) fn initialize_typed_dict<'db>(
     typed_dict: Rc<TypedDict>,
     i_s: &InferenceState<'db, '_>,
-    args: &dyn Arguments<'db>,
+    args: &dyn Args<'db>,
     result_context: &mut ResultContext,
     on_type_error: OnTypeError<'db, '_>,
 ) -> Inferred {
@@ -1067,7 +1064,7 @@ pub(crate) fn check_typed_dict_call<'db>(
     i_s: &InferenceState<'db, '_>,
     matcher: &mut Matcher,
     typed_dict: Rc<TypedDict>,
-    args: &dyn Arguments<'db>,
+    args: &dyn Args<'db>,
 ) -> Option<Type> {
     let mut extra_keys = vec![];
     for arg in args.iter() {

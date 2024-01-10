@@ -4,7 +4,7 @@ use parsa_python_ast::ParamKind;
 
 use super::{Match, Matcher};
 use crate::{
-    arguments::{Arg, ArgumentKind},
+    arguments::{Arg, ArgKind},
     database::{Database, PointLink},
     debug,
     inference_state::InferenceState,
@@ -709,7 +709,7 @@ where
                         self.current_arg = None;
                         if matches!(
                             &argument.kind,
-                            ArgumentKind::Inferred {
+                            ArgKind::Inferred {
                                 is_keyword: Some(None),
                                 ..
                             }
@@ -775,7 +775,7 @@ where
                 ParamKind::KeywordOnly => {
                     while let Some(arg) = self.next_arg() {
                         match arg.kind {
-                            ArgumentKind::Inferred {
+                            ArgKind::Inferred {
                                 is_keyword: Some(None),
                                 in_args_or_kwargs_and_arbitrary_len: true,
                                 ..
@@ -808,12 +808,12 @@ where
                 ParamKind::PositionalOnly => {
                     if let Some(arg) = self.next_arg() {
                         match arg.kind {
-                            ArgumentKind::Positional { .. }
-                            | ArgumentKind::Inferred {
+                            ArgKind::Positional { .. }
+                            | ArgKind::Inferred {
                                 is_keyword: None, ..
                             }
-                            | ArgumentKind::InferredWithCustomAddIssue { .. }
-                            | ArgumentKind::Comprehension { .. } => argument_with_index = Some(arg),
+                            | ArgKind::InferredWithCustomAddIssue { .. }
+                            | ArgKind::Comprehension { .. } => argument_with_index = Some(arg),
                             _ => {
                                 if arg.keyword_name(self.db).is_some() {
                                     self.unused_keyword_arguments.push(arg);

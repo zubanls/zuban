@@ -2886,8 +2886,8 @@ impl<'db> Iterator for SliceIterator<'db> {
 }
 
 impl<'db> Arguments<'db> {
-    pub fn iter(&self) -> ArgumentsIterator<'db> {
-        ArgumentsIterator(self.node.iter_children())
+    pub fn iter(&self) -> ArgsIterator<'db> {
+        ArgsIterator(self.node.iter_children())
     }
 
     pub fn search_names(&self) -> NameIterator<'db> {
@@ -2906,9 +2906,9 @@ impl<'db> Iterator for NameIterator<'db> {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct ArgumentsIterator<'db>(SiblingIterator<'db>);
+pub struct ArgsIterator<'db>(SiblingIterator<'db>);
 
-impl<'db> Iterator for ArgumentsIterator<'db> {
+impl<'db> Iterator for ArgsIterator<'db> {
     type Item = Argument<'db>;
 
     fn next(&mut self) -> Option<Self::Item> {

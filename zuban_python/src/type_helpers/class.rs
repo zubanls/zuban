@@ -13,7 +13,7 @@ use parsa_python_ast::{
 
 use super::{overload::OverloadResult, Callable, Instance, LookupDetails, Module};
 use crate::{
-    arguments::{Arguments, KnownArguments, SimpleArguments},
+    arguments::{Args, KnownArgs, SimpleArgs},
     database::{
         BaseClass, ClassInfos, ClassKind, ClassStorage, ComplexPoint, Database, Locality,
         MetaclassState, ParentScope, Point, PointLink, PointType, ProtocolMember,
@@ -139,7 +139,7 @@ impl<'db: 'a, 'a> Class<'a> {
         i_s: &InferenceState<'db, '_>,
         __init__: LookupResult,
         init_class: Option<Class>,
-        args: &dyn Arguments<'db>,
+        args: &dyn Args<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
         from_type_type: bool, // Errors are different for Cls() vs. Type[Cls] that is instantiated
@@ -351,12 +351,8 @@ impl<'db: 'a, 'a> Class<'a> {
                         == Some(dataclass_link)
                     {
                         if let PrimaryContent::Execution(exec) = primary.second() {
-                            let args = SimpleArguments::new(
-                                *i_s,
-                                self.node_ref.file,
-                                primary.index(),
-                                exec,
-                            );
+                            let args =
+                                SimpleArgs::new(*i_s, self.node_ref.file, primary.index(), exec);
                             dataclass_options = Some(check_dataclass_options(i_s, &args));
                             continue;
                         }
@@ -438,7 +434,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     .infer_named_expression(decorator.named_expression());
                 inferred = decorate.execute(
                     i_s,
-                    &KnownArguments::new(
+                    &KnownArgs::new(
                         &inferred,
                         NodeRef::new(self.node_ref.file, decorator.index()),
                     ),
@@ -1791,7 +1787,7 @@ impl<'db: 'a, 'a> Class<'a> {
     pub(crate) fn execute(
         &self,
         original_i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
+        args: &dyn Args<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
         from_type_type: bool,
@@ -1831,7 +1827,7 @@ impl<'db: 'a, 'a> Class<'a> {
     fn execute_and_return_generics(
         &self,
         original_i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
+        args: &dyn Args<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
         from_type_type: bool,

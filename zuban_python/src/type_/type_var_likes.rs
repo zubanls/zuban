@@ -405,21 +405,21 @@ impl TypeVarLike {
 
     pub fn as_any_generic_item(&self) -> GenericItem {
         match self {
-            TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(Type::Any(AnyCause::Todo)),
-            TypeVarLike::TypeVarTuple(_) => GenericItem::TypeArguments(
-                TypeArgs::new_arbitrary_length(Type::Any(AnyCause::Todo)),
-            ),
+            TypeVarLike::TypeVar(_) => GenericItem::TypeArg(Type::Any(AnyCause::Todo)),
+            TypeVarLike::TypeVarTuple(_) => {
+                GenericItem::TypeArgs(TypeArgs::new_arbitrary_length(Type::Any(AnyCause::Todo)))
+            }
             TypeVarLike::ParamSpec(_) => {
-                GenericItem::ParamSpecArgument(ParamSpecArgument::new_any(AnyCause::Todo))
+                GenericItem::ParamSpecArg(ParamSpecArg::new_any(AnyCause::Todo))
             }
         }
     }
 
     pub fn as_never_generic_item(&self) -> GenericItem {
         match self {
-            TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(Type::Never),
+            TypeVarLike::TypeVar(_) => GenericItem::TypeArg(Type::Never),
             TypeVarLike::TypeVarTuple(_) => {
-                GenericItem::TypeArguments(TypeArgs::new_arbitrary_length(Type::Never))
+                GenericItem::TypeArgs(TypeArgs::new_arbitrary_length(Type::Never))
             }
             TypeVarLike::ParamSpec(_) => todo!(),
         }
@@ -547,12 +547,12 @@ pub struct ParamSpecTypeVars {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct ParamSpecArgument {
+pub struct ParamSpecArg {
     pub params: CallableParams,
     pub type_vars: Option<ParamSpecTypeVars>,
 }
 
-impl ParamSpecArgument {
+impl ParamSpecArg {
     pub fn new(params: CallableParams, type_vars: Option<ParamSpecTypeVars>) -> Self {
         Self { params, type_vars }
     }
@@ -608,21 +608,19 @@ impl<'a> TypeVarLikeUsage<'a> {
     pub fn into_generic_item(self) -> GenericItem {
         match self {
             TypeVarLikeUsage::TypeVar(usage) => {
-                GenericItem::TypeArgument(Type::TypeVar(usage.into_owned()))
+                GenericItem::TypeArg(Type::TypeVar(usage.into_owned()))
             }
-            TypeVarLikeUsage::TypeVarTuple(usage) => GenericItem::TypeArguments(TypeArgs {
+            TypeVarLikeUsage::TypeVarTuple(usage) => GenericItem::TypeArgs(TypeArgs {
                 args: TupleArgs::WithUnpack(WithUnpack {
                     before: Rc::from([]),
                     unpack: TupleUnpack::TypeVarTuple(usage.into_owned()),
                     after: Rc::from([]),
                 }),
             }),
-            TypeVarLikeUsage::ParamSpec(usage) => {
-                GenericItem::ParamSpecArgument(ParamSpecArgument::new(
-                    CallableParams::WithParamSpec(Rc::new([]), usage.into_owned()),
-                    None,
-                ))
-            }
+            TypeVarLikeUsage::ParamSpec(usage) => GenericItem::ParamSpecArg(ParamSpecArg::new(
+                CallableParams::WithParamSpec(Rc::new([]), usage.into_owned()),
+                None,
+            )),
         }
     }
 
@@ -631,7 +629,7 @@ impl<'a> TypeVarLikeUsage<'a> {
             TypeVarLikeUsage::TypeVar(usage) => {
                 let mut usage = usage.into_owned();
                 usage.index = index;
-                GenericItem::TypeArgument(Type::TypeVar(usage))
+                GenericItem::TypeArg(Type::TypeVar(usage))
             }
             TypeVarLikeUsage::TypeVarTuple(usage) => {
                 let mut usage = usage.into_owned();
@@ -641,7 +639,7 @@ impl<'a> TypeVarLikeUsage<'a> {
             TypeVarLikeUsage::ParamSpec(usage) => {
                 let mut usage = usage.into_owned();
                 usage.index = index;
-                GenericItem::ParamSpecArgument(ParamSpecArgument::new(
+                GenericItem::ParamSpecArg(ParamSpecArg::new(
                     CallableParams::WithParamSpec(Rc::new([]), usage),
                     None,
                 ))

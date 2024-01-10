@@ -8,7 +8,7 @@ use super::{
     AnyCause, Type, TypeVarKind,
 };
 use crate::{
-    arguments::{Arguments, NoArguments},
+    arguments::{Args, NoArgs},
     database::FileIndex,
     debug,
     diagnostics::IssueType,
@@ -401,7 +401,7 @@ impl Type {
         &self,
         i_s: &InferenceState<'db, '_>,
         inferred_from: Option<&Inferred>,
-        args: &dyn Arguments<'db>,
+        args: &dyn Args<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
@@ -500,12 +500,12 @@ impl Type {
                     },
                 )
                 .into_inferred()
-                .execute(i_s, &NoArguments::new(from))
+                .execute(i_s, &NoArgs::new(from))
                 .type_lookup_and_execute(
                     i_s,
                     from,
                     "__next__",
-                    &NoArguments::new(from),
+                    &NoArgs::new(from),
                     &|_| todo!(),
                 ),
             ),
@@ -600,7 +600,7 @@ pub(crate) fn attribute_access_of_type(
 
 pub(crate) fn execute_type_of_type<'db>(
     i_s: &InferenceState<'db, '_>,
-    args: &dyn Arguments<'db>,
+    args: &dyn Args<'db>,
     result_context: &mut ResultContext,
     on_type_error: OnTypeError<'db, '_>,
     type_: &Type,

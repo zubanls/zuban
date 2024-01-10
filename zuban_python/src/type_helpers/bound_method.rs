@@ -1,6 +1,6 @@
 use super::{FirstParamProperties, Function, OverloadedFunction};
 use crate::{
-    arguments::Arguments,
+    arguments::Args,
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{OnTypeError, ResultContext},
@@ -27,7 +27,7 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
     pub(crate) fn execute<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
+        args: &dyn Args<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {

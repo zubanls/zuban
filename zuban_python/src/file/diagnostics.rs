@@ -8,7 +8,7 @@ use parsa_python_ast::*;
 
 use super::{inference::await_, on_argument_type_error};
 use crate::{
-    arguments::{CombinedArguments, KnownArguments, NoArguments},
+    arguments::{CombinedArgs, KnownArgs, NoArgs},
     database::{
         ClassKind, ComplexPoint, Database, Locality, OverloadImplementation, Point, PointType,
         Specific,
@@ -351,7 +351,7 @@ impl<'db> Inference<'db, '_, '_> {
                     false => "__enter__",
                     true => "__aenter__",
                 },
-                &NoArguments::new(from),
+                &NoArgs::new(from),
             );
             if is_async {
                 enter_result = await_(
@@ -369,12 +369,12 @@ impl<'db> Inference<'db, '_, '_> {
                     false => "__exit__",
                     true => "__aexit__",
                 },
-                &CombinedArguments::new(
-                    &KnownArguments::new(&Inferred::new_any(AnyCause::Todo), from),
-                    &CombinedArguments::new(
+                &CombinedArgs::new(
+                    &KnownArgs::new(&Inferred::new_any(AnyCause::Todo), from),
+                    &CombinedArgs::new(
                         // TODO don't use any here.
-                        &KnownArguments::new(&Inferred::new_any(AnyCause::Todo), from),
-                        &KnownArguments::new(&Inferred::new_any(AnyCause::Todo), from),
+                        &KnownArgs::new(&Inferred::new_any(AnyCause::Todo), from),
+                        &KnownArgs::new(&Inferred::new_any(AnyCause::Todo), from),
                     ),
                 ),
             );
@@ -495,7 +495,7 @@ impl<'db> Inference<'db, '_, '_> {
                 .iter()
                 .zip(cls1.type_var_remap.map(|g| g.iter()).unwrap_or([].iter()))
             {
-                if let GenericItem::TypeArgument(Type::TypeVar(tv)) = arg {
+                if let GenericItem::TypeArg(Type::TypeVar(tv)) = arg {
                     if let TypeVarLike::TypeVar(tv_def) = type_var_like {
                         if tv.type_var.variance != Variance::Invariant
                             && tv.type_var.variance != tv_def.variance
@@ -854,7 +854,7 @@ impl<'db> Inference<'db, '_, '_> {
         }
 
         let is_dynamic = function.is_dynamic();
-        let args = NoArguments::new(NodeRef::new(self.file, f.index()));
+        let args = NoArgs::new(NodeRef::new(self.file, f.index()));
         let function_i_s = &mut i_s.with_diagnostic_func_and_args(&function, &args);
         let mut inference = self.file.inference(function_i_s);
         if !is_dynamic || flags.check_untyped_defs {
@@ -1428,7 +1428,7 @@ fn valid_raise_type(i_s: &InferenceState, from: NodeRef, t: &Type, allow_none: b
                 let cls = c.class(db);
                 cls.execute(
                     i_s,
-                    &NoArguments::new(from),
+                    &NoArgs::new(from),
                     &mut ResultContext::Unknown,
                     OnTypeError::new(&|_, _, _, _| {
                         unreachable!(
@@ -1504,7 +1504,7 @@ fn except_type(i_s: &InferenceState, t: &Type, allow_tuple: bool) -> ExceptType 
 pub fn await_aiter_and_next(i_s: &InferenceState, base: Inferred, from: NodeRef) -> Inferred {
     await_(
         i_s,
-        base.type_lookup_and_execute(i_s, from, "__aiter__", &NoArguments::new(from), &|t| {
+        base.type_lookup_and_execute(i_s, from, "__aiter__", &NoArgs::new(from), &|t| {
             from.add_issue(
                 i_s,
                 IssueType::AsyncNotIterable {
@@ -1516,7 +1516,7 @@ pub fn await_aiter_and_next(i_s: &InferenceState, base: Inferred, from: NodeRef)
             i_s,
             from,
             "__anext__",
-            &NoArguments::new(from),
+            &NoArgs::new(from),
         ),
         from,
         r#""async for""#,
@@ -1968,7 +1968,7 @@ fn check_protocol_type_var_variances(i_s: &InferenceState, class: Class) {
                         .enumerate()
                         .map(|(j, tv_like)| {
                             if i == j {
-                                GenericItem::TypeArgument(if is_upper {
+                                GenericItem::TypeArg(if is_upper {
                                     i_s.db.python_state.object_type()
                                 } else {
                                     Type::Never

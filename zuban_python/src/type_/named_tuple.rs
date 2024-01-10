@@ -7,7 +7,7 @@ use super::{
     DbString, FormatStyle, FunctionKind, ParamType, StringSlice, Tuple, Type,
 };
 use crate::{
-    arguments::{ArgumentIterator, ArgumentKind, Arguments},
+    arguments::{ArgIterator, ArgKind, Args},
     database::{ComplexPoint, Database, FileIndex, PointLink},
     diagnostics::IssueType,
     file::{File, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn},
@@ -282,7 +282,7 @@ impl NamedTuple {
     }
 }
 
-pub(crate) fn execute_typing_named_tuple(i_s: &InferenceState, args: &dyn Arguments) -> Inferred {
+pub(crate) fn execute_typing_named_tuple(i_s: &InferenceState, args: &dyn Args) -> Inferred {
     match new_typing_named_tuple(i_s, args, false) {
         Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(Rc::new(
             Type::NamedTuple(rc),
@@ -293,7 +293,7 @@ pub(crate) fn execute_typing_named_tuple(i_s: &InferenceState, args: &dyn Argume
 
 pub(crate) fn execute_collections_named_tuple<'db>(
     i_s: &InferenceState<'db, '_>,
-    args: &dyn Arguments<'db>,
+    args: &dyn Args<'db>,
     result_context: &mut ResultContext,
     on_type_error: OnTypeError<'db, '_>,
 ) -> Inferred {
@@ -312,18 +312,18 @@ pub(crate) fn execute_collections_named_tuple<'db>(
 fn check_named_tuple_name<'x, 'y>(
     i_s: &InferenceState,
     executable_name: &'static str,
-    args: &'y dyn Arguments<'x>,
+    args: &'y dyn Args<'x>,
 ) -> Option<(
     StringSlice,
     NodeRef<'y>,
     AtomContent<'y>,
-    ArgumentIterator<'x, 'y>,
+    ArgIterator<'x, 'y>,
 )> {
     let mut iterator = args.iter();
     let Some(first_arg) = iterator.next() else {
         todo!()
     };
-    let ArgumentKind::Positional { node_ref, .. } = first_arg.kind else {
+    let ArgKind::Positional { node_ref, .. } = first_arg.kind else {
         first_arg.add_issue(i_s, IssueType::UnexpectedArgumentsTo { name: "namedtuple" });
         return None
     };
@@ -357,7 +357,7 @@ fn check_named_tuple_name<'x, 'y>(
         }
         return None
     };
-    let ArgumentKind::Positional { node_ref, .. } = second_arg.kind else {
+    let ArgKind::Positional { node_ref, .. } = second_arg.kind else {
         todo!()
     };
     let Some(atom_content) = node_ref.as_named_expression().expression().maybe_unpacked_atom() else {
@@ -368,7 +368,7 @@ fn check_named_tuple_name<'x, 'y>(
 
 pub(crate) fn new_typing_named_tuple(
     i_s: &InferenceState,
-    args: &dyn Arguments,
+    args: &dyn Args,
     in_type_definition: bool,
 ) -> Option<Rc<NamedTuple>> {
     let Some((name, second_node_ref, atom_content, mut iterator)) = check_named_tuple_name(i_s, "NamedTuple", args) else {
@@ -429,7 +429,7 @@ pub(crate) fn new_typing_named_tuple(
 
 pub(crate) fn new_collections_named_tuple(
     i_s: &InferenceState,
-    args: &dyn Arguments,
+    args: &dyn Args,
 ) -> Option<Rc<NamedTuple>> {
     let Some((name, second_node_ref, atom_content, _)) = check_named_tuple_name(i_s, "namedtuple", args) else {
         return None
@@ -489,7 +489,7 @@ pub(crate) fn new_collections_named_tuple(
     check_named_tuple_has_no_fields_with_underscore(i_s, "namedtuple", args, &params);
 
     for arg in args.iter() {
-        if let ArgumentKind::Keyword {
+        if let ArgKind::Keyword {
             key: "defaults",
             expression,
             ..
@@ -535,7 +535,7 @@ pub(crate) fn new_collections_named_tuple(
 fn check_named_tuple_has_no_fields_with_underscore(
     i_s: &InferenceState,
     name: &'static str,
-    args: &dyn Arguments,
+    args: &dyn Args,
     params: &[CallableParam],
 ) {
     let field_names_with_underscore: Vec<_> = params

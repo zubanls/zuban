@@ -6,7 +6,7 @@ use parsa_python_ast::{
 };
 
 use crate::{
-    arguments::{unpack_star_star, Arg, Arguments},
+    arguments::{unpack_star_star, Arg, Args},
     database::Database,
     debug,
     diagnostics::IssueType,
@@ -309,7 +309,7 @@ impl<'db> Inference<'db, '_, '_> {
     // For dict(..)
     pub(crate) fn infer_dict_call_from_context(
         &mut self,
-        args: &dyn Arguments<'db>,
+        args: &dyn Args<'db>,
         result_context: &mut ResultContext,
     ) -> Option<Inferred> {
         result_context

@@ -15,7 +15,7 @@ use super::{
     type_var_matcher::{BoundKind, FunctionOrCallable, TypeVarMatcher},
 };
 use crate::{
-    arguments::{Arg, ArgumentKind},
+    arguments::{Arg, ArgKind},
     database::PointLink,
     debug,
     diagnostics::IssueType,
@@ -410,7 +410,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
                     debug!("TODO we should match param spec pre types?");
                 }
                 if let Some(arg) = args.next() {
-                    if let ArgumentKind::ParamSpec { usage, .. } = &arg.kind {
+                    if let ArgKind::ParamSpec { usage, .. } = &arg.kind {
                         if usage.in_definition == param_spec.in_definition {
                             SignatureMatch::new_true()
                         } else {

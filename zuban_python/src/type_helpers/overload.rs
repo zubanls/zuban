@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use super::{Callable, Class};
 use crate::{
-    arguments::{Arg, ArgumentIterator, ArgumentKind, Arguments},
+    arguments::{Arg, ArgIterator, ArgKind, Args},
     database::Database,
     debug,
     diagnostics::IssueType,
@@ -46,7 +46,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
     pub(super) fn find_matching_function(
         &self,
         i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
+        args: &dyn Args<'db>,
         skip_first_argument: bool,
         class: Option<&Class>,
         search_init: bool, // TODO this feels weird, maybe use a callback?
@@ -270,7 +270,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         &self,
         i_s: &InferenceState<'db, '_>,
         result_context: &mut ResultContext,
-        mut args: ArgumentIterator<'db, 'x>,
+        mut args: ArgIterator<'db, 'x>,
         skip_first_argument: bool,
         non_union_args: &mut Vec<Arg<'db, 'x>>,
         add_issue: &impl Fn(IssueType),
@@ -284,7 +284,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 let nxt_arg: &'x Arg<'db, 'x> = unsafe { std::mem::transmute(&next_arg) };
                 non_union_args.push(Arg {
                     index: next_arg.index,
-                    kind: ArgumentKind::Overridden {
+                    kind: ArgKind::Overridden {
                         original: nxt_arg,
                         inferred: Inferred::new_any(AnyCause::Todo),
                     },
@@ -297,7 +297,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 let mut mismatch = false;
                 for entry in u.entries.into_vec().into_iter() {
                     let non_union_args_len = non_union_args.len();
-                    non_union_args.last_mut().unwrap().kind = ArgumentKind::Overridden {
+                    non_union_args.last_mut().unwrap().kind = ArgKind::Overridden {
                         original: nxt_arg,
                         inferred: Inferred::from_type(entry.type_),
                     };
@@ -489,7 +489,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
     pub(crate) fn execute(
         &self,
         i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
+        args: &dyn Args<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
@@ -499,7 +499,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
     pub(super) fn execute_internal(
         &self,
         i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
+        args: &dyn Args<'db>,
         skip_first_argument: bool,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,

@@ -3,7 +3,7 @@ use std::{borrow::Cow, cell::RefCell, rc::Rc};
 use parsa_python_ast::{NodeIndex, PrimaryContent, PythonString, SliceType as ASTSliceType};
 
 use crate::{
-    arguments::{Arguments, CombinedArguments, KnownArguments, KnownArgumentsWithCustomAddIssue},
+    arguments::{Args, CombinedArgs, KnownArgs, KnownArgsWithCustomAddIssue},
     database::{
         ComplexPoint, Database, FileIndex, Locality, OverloadDefinition, Point, PointLink,
         PointType, Specific,
@@ -1354,12 +1354,9 @@ impl<'db: 'slf, 'slf> Inferred {
                     let class_as_inferred = class.as_inferred(i_s);
                     return Some(Some(inf.execute(
                         i_s,
-                        &CombinedArguments::new(
-                            &KnownArgumentsWithCustomAddIssue::new(
-                                &Inferred::new_none(),
-                                &add_issue,
-                            ),
-                            &KnownArgumentsWithCustomAddIssue::new(&class_as_inferred, &add_issue),
+                        &CombinedArgs::new(
+                            &KnownArgsWithCustomAddIssue::new(&Inferred::new_none(), &add_issue),
+                            &KnownArgsWithCustomAddIssue::new(&class_as_inferred, &add_issue),
                         ),
                     )));
                 }
@@ -1558,7 +1555,7 @@ impl<'db: 'slf, 'slf> Inferred {
         i_s: &InferenceState<'db, '_>,
         from: NodeRef,
         name: &str,
-        args: &dyn Arguments<'db>,
+        args: &dyn Args<'db>,
         on_lookup_error: OnLookupError,
     ) -> Self {
         self.type_lookup_and_execute_with_details(
@@ -1576,7 +1573,7 @@ impl<'db: 'slf, 'slf> Inferred {
         i_s: &InferenceState<'db, '_>,
         from: NodeRef,
         name: &str,
-        args: &dyn Arguments<'db>,
+        args: &dyn Args<'db>,
     ) -> Self {
         self.type_lookup_and_execute(i_s, from, name, args, &|t| {
             add_attribute_error(i_s, from, &self.as_cow_type(i_s), t, name)
@@ -1588,7 +1585,7 @@ impl<'db: 'slf, 'slf> Inferred {
         i_s: &InferenceState<'db, '_>,
         from: NodeRef,
         name: &str,
-        args: &dyn Arguments<'db>,
+        args: &dyn Args<'db>,
         on_lookup_error: OnLookupError,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Self {
@@ -1618,7 +1615,7 @@ impl<'db: 'slf, 'slf> Inferred {
         result.unwrap_or_else(|| todo!())
     }
 
-    pub(crate) fn execute(&self, i_s: &InferenceState<'db, '_>, args: &dyn Arguments<'db>) -> Self {
+    pub(crate) fn execute(&self, i_s: &InferenceState<'db, '_>, args: &dyn Args<'db>) -> Self {
         self.execute_with_details(
             i_s,
             args,
@@ -1630,7 +1627,7 @@ impl<'db: 'slf, 'slf> Inferred {
     pub(crate) fn execute_with_details(
         &self,
         i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
+        args: &dyn Args<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Self {
@@ -1962,7 +1959,7 @@ impl<'db: 'slf, 'slf> Inferred {
             i_s,
             from,
             "__setitem__",
-            &CombinedArguments::new(&args, &KnownArguments::new(value, from)),
+            &CombinedArgs::new(&args, &KnownArgs::new(value, from)),
             &|_| {
                 slice_type.as_node_ref().add_issue(
                     i_s,
@@ -2172,7 +2169,7 @@ fn proper_classmethod_callable(
             } else if in_definition == callable.defined_at {
                 if let Some(u) = &class_method_type_var_usage {
                     if u.index == usage.index() {
-                        return GenericItem::TypeArgument(get_class_method_class());
+                        return GenericItem::TypeArg(get_class_method_class());
                     } else {
                         usage.add_to_index(-1);
                         todo!()

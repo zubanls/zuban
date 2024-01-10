@@ -3,9 +3,9 @@ use std::{borrow::Cow, rc::Rc};
 use super::{
     simplified_union_from_iterators_with_format_index, CallableContent, CallableParam,
     CallableParams, ClassGenerics, Dataclass, GenericClass, GenericItem, GenericsList, NamedTuple,
-    ParamSpecArgument, ParamSpecTypeVars, ParamType, RecursiveType, StarParamType,
-    StarStarParamType, Tuple, TupleArgs, Type, TypeArgs, TypeVarLike, TypeVarLikeUsage,
-    TypeVarLikes, TypeVarManager, TypedDictGenerics, UnionEntry, UnionType,
+    ParamSpecArg, ParamSpecTypeVars, ParamType, RecursiveType, StarParamType, StarStarParamType,
+    Tuple, TupleArgs, Type, TypeArgs, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
+    TypedDictGenerics, UnionEntry, UnionType,
 };
 use crate::{
     database::{Database, PointLink},
@@ -37,19 +37,19 @@ impl Type {
                 generics
                     .iter()
                     .map(|g| match g {
-                        GenericItem::TypeArgument(t) => GenericItem::TypeArgument(
+                        GenericItem::TypeArg(t) => GenericItem::TypeArg(
                             t.replace_type_var_likes_and_self(db, callable, replace_self),
                         ),
-                        GenericItem::TypeArguments(ts) => GenericItem::TypeArguments(TypeArgs {
+                        GenericItem::TypeArgs(ts) => GenericItem::TypeArgs(TypeArgs {
                             args: ts.args.replace_type_var_likes_and_self(
                                 db,
                                 callable,
                                 replace_self,
                             ),
                         }),
-                        GenericItem::ParamSpecArgument(p) => {
+                        GenericItem::ParamSpecArg(p) => {
                             let mut type_vars = p.type_vars.clone().map(|t| t.type_vars.as_vec());
-                            GenericItem::ParamSpecArgument(ParamSpecArgument::new(
+                            GenericItem::ParamSpecArg(ParamSpecArg::new(
                                 p.params
                                     .replace_type_var_likes_and_self(
                                         db,
@@ -108,9 +108,9 @@ impl Type {
                 )
             }
             Type::TypeVar(t) => match callable(TypeVarLikeUsage::TypeVar(Cow::Borrowed(&t))) {
-                GenericItem::TypeArgument(t) => t,
-                GenericItem::TypeArguments(ts) => unreachable!(),
-                GenericItem::ParamSpecArgument(params) => todo!(),
+                GenericItem::TypeArg(t) => t,
+                GenericItem::TypeArgs(ts) => unreachable!(),
+                GenericItem::ParamSpecArg(params) => todo!(),
             },
             Type::Type(t) => Type::Type(Rc::new(t.replace_type_var_likes_and_self(
                 db,
@@ -202,13 +202,13 @@ impl Type {
                 generics
                     .iter()
                     .map(|g| match g {
-                        GenericItem::TypeArgument(t) => {
-                            GenericItem::TypeArgument(t.rewrite_late_bound_callables(manager))
+                        GenericItem::TypeArg(t) => {
+                            GenericItem::TypeArg(t.rewrite_late_bound_callables(manager))
                         }
-                        GenericItem::TypeArguments(ts) => todo!(),
-                        GenericItem::ParamSpecArgument(p) => GenericItem::ParamSpecArgument({
+                        GenericItem::TypeArgs(ts) => todo!(),
+                        GenericItem::ParamSpecArg(p) => GenericItem::ParamSpecArg({
                             debug_assert!(p.type_vars.is_none());
-                            ParamSpecArgument {
+                            ParamSpecArg {
                                 params: match &p.params {
                                     CallableParams::WithParamSpec(types, param_spec) => {
                                         CallableParams::WithParamSpec(
@@ -310,15 +310,15 @@ impl GenericItem {
         replace_self: ReplaceSelf,
     ) -> Self {
         match self {
-            Self::TypeArgument(t) => {
-                Self::TypeArgument(t.replace_type_var_likes_and_self(db, callable, replace_self))
+            Self::TypeArg(t) => {
+                Self::TypeArg(t.replace_type_var_likes_and_self(db, callable, replace_self))
             }
-            Self::TypeArguments(ta) => Self::TypeArguments(TypeArgs {
+            Self::TypeArgs(ta) => Self::TypeArgs(TypeArgs {
                 args: ta
                     .args
                     .replace_type_var_likes_and_self(db, callable, replace_self),
             }),
-            Self::ParamSpecArgument(_) => todo!(),
+            Self::ParamSpecArg(_) => todo!(),
         }
     }
 }
@@ -523,7 +523,7 @@ impl CallableParams {
             CallableParams::Any(cause) => CallableParams::Any(*cause),
             CallableParams::WithParamSpec(types, param_spec) => {
                 let result = callable(TypeVarLikeUsage::ParamSpec(Cow::Borrowed(param_spec)));
-                let GenericItem::ParamSpecArgument(mut new) = result else {
+                let GenericItem::ParamSpecArg(mut new) = result else {
                     unreachable!()
                 };
                 if let Some(new_spec_type_vars) = new.type_vars {
@@ -628,7 +628,7 @@ impl TupleArgs {
             )),
             TupleArgs::WithUnpack(unpack) => match &unpack.unpack {
                 TupleUnpack::TypeVarTuple(tvt) => {
-                    let GenericItem::TypeArguments(new) = callable(TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(tvt))) else {
+                    let GenericItem::TypeArgs(new) = callable(TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(tvt))) else {
                             unreachable!();
                         };
                     let new_before: Vec<_> = unpack

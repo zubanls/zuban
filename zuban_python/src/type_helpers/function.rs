@@ -7,7 +7,7 @@ use parsa_python_ast::{
 };
 
 use crate::{
-    arguments::{Arg, Arguments, KnownArguments},
+    arguments::{Arg, Args, KnownArgs},
     database::{
         ComplexPoint, Database, Locality, OverloadDefinition, OverloadImplementation, Point,
         PointType, Specific,
@@ -136,7 +136,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     fn execute_without_annotation(
         &self,
         i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
+        args: &dyn Args<'db>,
     ) -> Inferred {
         if i_s.db.project.flags.mypy_compatible {
             return Inferred::new_any(AnyCause::Unannotated);
@@ -313,7 +313,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 .generics()
                 .nth_usage(i_s.db, &TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)))
             {
-                Generic::ParamSpecArgument(p) => match p.into_owned().params {
+                Generic::ParamSpecArg(p) => match p.into_owned().params {
                     CallableParams::Any(cause) => CallableParams::Any(cause),
                     CallableParams::Simple(params) => {
                         pre_params.append(&mut rc_slice_into_vec(params));
@@ -576,7 +576,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     }
                     inferred = dec_inf.execute(
                         i_s,
-                        &KnownArguments::new(
+                        &KnownArgs::new(
                             &inferred,
                             NodeRef::new(self.node_ref.file, decorator.index()),
                         ),
@@ -1130,7 +1130,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     pub(super) fn execute_internal(
         &self,
         i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
+        args: &dyn Args<'db>,
         skip_first_argument: bool,
         on_type_error: OnTypeError<'db, '_>,
         replace_self_type: ReplaceSelf,
@@ -1186,7 +1186,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         calculated_type_vars: CalculatedTypeArgs,
         replace_self_type: ReplaceSelf,
         return_annotation: ReturnAnnotation,
-        args: &dyn Arguments<'db>,
+        args: &dyn Args<'db>,
         result_context: &mut ResultContext,
     ) -> Inferred {
         let return_type = self
@@ -1257,7 +1257,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     pub(crate) fn execute(
         &self,
         i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
+        args: &dyn Args<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
@@ -1413,7 +1413,7 @@ impl<'x> Param<'x> for FunctionParam<'x> {
                             generics: ClassGenerics::List(generics),
                         }) => {
                             debug_assert_eq!(*link, db.python_state.dict_node_ref().as_link());
-                            let GenericItem::TypeArgument(t) = &generics[1.into()] else {
+                            let GenericItem::TypeArg(t) = &generics[1.into()] else {
                             unreachable!();
                         };
                             WrappedStarStar::ValueType(Some(Cow::Borrowed(t)))

@@ -6,7 +6,7 @@ use parsa_python_ast::{
 };
 
 use crate::{
-    arguments::{ArgumentIterator, Arguments, ArgumentsType},
+    arguments::{ArgIterator, Args, ArgumentsType},
     database::PointsBackup,
     debug,
     diagnostics::IssueType,
@@ -290,9 +290,9 @@ pub struct SliceArguments<'db, 'a> {
     i_s: InferenceState<'db, 'a>,
 }
 
-impl<'db> Arguments<'db> for SliceArguments<'db, '_> {
-    fn iter(&self) -> ArgumentIterator<'db, '_> {
-        ArgumentIterator::new_slice(*self.slice_type, self.i_s)
+impl<'db> Args<'db> for SliceArguments<'db, '_> {
+    fn iter(&self) -> ArgIterator<'db, '_> {
+        ArgIterator::new_slice(*self.slice_type, self.i_s)
     }
 
     fn type_(&self) -> ArgumentsType {

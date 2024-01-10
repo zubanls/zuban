@@ -4,9 +4,7 @@ use parsa_python_ast::Name;
 
 use super::{class::TypeOrClass, Class, MroIterator};
 use crate::{
-    arguments::{
-        Arguments, CombinedArguments, KnownArguments, KnownArgumentsWithCustomAddIssue, NoArguments,
-    },
+    arguments::{Args, CombinedArgs, KnownArgs, KnownArgsWithCustomAddIssue, NoArgs},
     database::{Database, PointLink, Specific},
     debug,
     diagnostics::IssueType,
@@ -181,15 +179,12 @@ impl<'a> Instance<'a> {
                 let c_t = Type::Type(Rc::new(instance.clone()));
                 inf.execute(
                     i_s,
-                    &CombinedArguments::new(
-                        &KnownArgumentsWithCustomAddIssue::new(
+                    &CombinedArgs::new(
+                        &KnownArgsWithCustomAddIssue::new(
                             &Inferred::from_type(instance),
                             &add_issue,
                         ),
-                        &KnownArgumentsWithCustomAddIssue::new(
-                            &Inferred::from_type(c_t),
-                            &add_issue,
-                        ),
+                        &KnownArgsWithCustomAddIssue::new(&Inferred::from_type(c_t), &add_issue),
                     ),
                 )
             })
@@ -198,7 +193,7 @@ impl<'a> Instance<'a> {
     pub(crate) fn execute<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
+        args: &dyn Args<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
@@ -240,12 +235,12 @@ impl<'a> Instance<'a> {
             match found_on_class {
                 FoundOnClass::Attribute(inf) => {
                     return IteratorContent::Inferred(
-                        inf.execute(i_s, &NoArguments::new(from))
+                        inf.execute(i_s, &NoArgs::new(from))
                             .type_lookup_and_execute(
                                 i_s,
                                 from,
                                 "__next__",
-                                &NoArguments::new(from),
+                                &NoArgs::new(from),
                                 &|_| todo!(),
                             ),
                     );
@@ -354,7 +349,7 @@ impl<'a> Instance<'a> {
                 if let Some(inf) = l.lookup.into_maybe_inferred() {
                     let lookup = LookupResult::UnknownName(inf.execute(
                         i_s,
-                        &KnownArgumentsWithCustomAddIssue::new(
+                        &KnownArgsWithCustomAddIssue::new(
                             &Inferred::new_any(AnyCause::Internal),
                             &add_issue,
                         ),
@@ -539,9 +534,9 @@ fn calculate_descriptor(
 ) {
     set_method.execute_with_details(
         i_s,
-        &CombinedArguments::new(
-            &KnownArguments::new(&instance, from),
-            &KnownArguments::new(value, from),
+        &CombinedArgs::new(
+            &KnownArgs::new(&instance, from),
+            &KnownArgs::new(value, from),
         ),
         &mut ResultContext::ExpectUnused,
         OnTypeError::new(&|i_s, error_text, argument, types| {
@@ -608,10 +603,7 @@ impl<'db: 'a, 'a> Iterator for ClassMroFinder<'db, 'a, '_> {
     }
 }
 
-pub(crate) fn execute_super<'db>(
-    i_s: &InferenceState<'db, '_>,
-    args: &dyn Arguments<'db>,
-) -> Inferred {
+pub(crate) fn execute_super<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Args<'db>) -> Inferred {
     match execute_super_internal(i_s, args) {
         Ok(inf) => inf,
         Err(issue) => {
@@ -623,7 +615,7 @@ pub(crate) fn execute_super<'db>(
 
 fn execute_super_internal<'db>(
     i_s: &InferenceState<'db, '_>,
-    args: &dyn Arguments<'db>,
+    args: &dyn Args<'db>,
 ) -> Result<Inferred, IssueType> {
     let mut iterator = args.iter();
     let mut next_arg = || {

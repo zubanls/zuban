@@ -1,5 +1,5 @@
 use crate::{
-    arguments::KnownArgumentsWithCustomAddIssue,
+    arguments::KnownArgsWithCustomAddIssue,
     database::{Database, FileIndex, PointLink},
     debug,
     diagnostics::IssueType,
@@ -133,7 +133,7 @@ impl<'a> Module<'a> {
                 .infer_name_by_index(link.node_index);
             inf.execute(
                 i_s,
-                &KnownArgumentsWithCustomAddIssue::new(
+                &KnownArgsWithCustomAddIssue::new(
                     &Inferred::from_type(i_s.db.python_state.str_type()),
                     add_issue,
                 ),

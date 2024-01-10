@@ -1,8 +1,8 @@
 use std::{mem, rc::Rc};
 
 use parsa_python_ast::{
-    Argument as ASTArgument, ArgumentsDetails, ArgumentsIterator, Comprehension, Expression,
-    NodeIndex, Primary, PrimaryContent,
+    ArgsIterator, Argument as ASTArgument, ArgumentsDetails, Comprehension, Expression, NodeIndex,
+    Primary, PrimaryContent,
 };
 
 use crate::{
@@ -22,10 +22,10 @@ pub enum ArgumentsType<'a> {
     Normal(&'a PythonFile, NodeIndex),
 }
 
-pub(crate) trait Arguments<'db>: std::fmt::Debug {
+pub(crate) trait Args<'db>: std::fmt::Debug {
     // Returns an iterator of arguments, where args are returned before kw args.
     // This is not the case in the grammar, but here we want that.
-    fn iter(&self) -> ArgumentIterator<'db, '_>;
+    fn iter(&self) -> ArgIterator<'db, '_>;
     fn type_(&self) -> ArgumentsType;
     fn as_node_ref(&self) -> Option<NodeRef>;
     fn add_issue(&self, i_s: &InferenceState, issue: IssueType) {
@@ -61,13 +61,13 @@ pub(crate) trait Arguments<'db>: std::fmt::Debug {
         let Some(first_arg) = iterator.next() else {
             return None
         };
-        let ArgumentKind::Positional { node_ref: node_ref1, .. } = first_arg.kind else {
+        let ArgKind::Positional { node_ref: node_ref1, .. } = first_arg.kind else {
             return None
         };
         let Some(second_arg) = iterator.next() else {
             return None
         };
-        let ArgumentKind::Positional { node_ref: node_ref2, .. } = second_arg.kind else {
+        let ArgKind::Positional { node_ref: node_ref2, .. } = second_arg.kind else {
             return None
         };
         if iterator.next().is_some() {
@@ -91,7 +91,7 @@ pub(crate) trait Arguments<'db>: std::fmt::Debug {
 }
 
 #[derive(Debug)]
-pub struct SimpleArguments<'db, 'a> {
+pub struct SimpleArgs<'db, 'a> {
     // The node id of the grammar node called primary, which is defined like
     // primary "(" [arguments | comprehension] ")"
     file: &'a PythonFile,
@@ -100,10 +100,10 @@ pub struct SimpleArguments<'db, 'a> {
     i_s: InferenceState<'db, 'a>,
 }
 
-impl<'db: 'a, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
-    fn iter(&self) -> ArgumentIterator<'db, '_> {
-        ArgumentIterator::new(match self.details {
-            ArgumentsDetails::Node(arguments) => ArgumentIteratorBase::Iterator {
+impl<'db: 'a, 'a> Args<'db> for SimpleArgs<'db, 'a> {
+    fn iter(&self) -> ArgIterator<'db, '_> {
+        ArgIterator::new(match self.details {
+            ArgumentsDetails::Node(arguments) => ArgIteratorBase::Iterator {
                 i_s: self.i_s,
                 file: self.file,
                 iterator: arguments.iter().enumerate(),
@@ -121,9 +121,9 @@ impl<'db: 'a, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
                 },
             },
             ArgumentsDetails::Comprehension(comprehension) => {
-                ArgumentIteratorBase::Comprehension(self.i_s, self.file, comprehension)
+                ArgIteratorBase::Comprehension(self.i_s, self.file, comprehension)
             }
-            ArgumentsDetails::None => ArgumentIteratorBase::Finished,
+            ArgumentsDetails::None => ArgIteratorBase::Finished,
         })
     }
 
@@ -149,7 +149,7 @@ impl<'db: 'a, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
     }
 }
 
-impl<'db: 'a, 'a> SimpleArguments<'db, 'a> {
+impl<'db: 'a, 'a> SimpleArgs<'db, 'a> {
     pub fn new(
         i_s: InferenceState<'db, 'a>,
         file: &'a PythonFile,
@@ -179,14 +179,14 @@ impl<'db: 'a, 'a> SimpleArguments<'db, 'a> {
 }
 
 #[derive(Debug)]
-pub struct KnownArguments<'a> {
+pub struct KnownArgs<'a> {
     inferred: &'a Inferred,
     node_ref: NodeRef<'a>,
 }
 
-impl<'db, 'a> Arguments<'db> for KnownArguments<'a> {
-    fn iter(&self) -> ArgumentIterator<'db, '_> {
-        ArgumentIterator::new(ArgumentIteratorBase::Inferred {
+impl<'db, 'a> Args<'db> for KnownArgs<'a> {
+    fn iter(&self) -> ArgIterator<'db, '_> {
+        ArgIterator::new(ArgIteratorBase::Inferred {
             inferred: self.inferred,
             node_ref: self.node_ref,
         })
@@ -201,13 +201,13 @@ impl<'db, 'a> Arguments<'db> for KnownArguments<'a> {
     }
 }
 
-impl<'a> KnownArguments<'a> {
+impl<'a> KnownArgs<'a> {
     pub fn new(inferred: &'a Inferred, node_ref: NodeRef<'a>) -> Self {
         Self { inferred, node_ref }
     }
 }
 
-impl<'a> KnownArgumentsWithCustomAddIssue<'a> {
+impl<'a> KnownArgsWithCustomAddIssue<'a> {
     pub(crate) fn new(inferred: &'a Inferred, add_issue: &'a dyn Fn(IssueType)) -> Self {
         Self {
             inferred,
@@ -217,14 +217,14 @@ impl<'a> KnownArgumentsWithCustomAddIssue<'a> {
 }
 
 #[derive(Debug)]
-pub(crate) struct KnownArgumentsWithCustomAddIssue<'a> {
+pub(crate) struct KnownArgsWithCustomAddIssue<'a> {
     inferred: &'a Inferred,
     add_issue: CustomAddIssue<'a>,
 }
 
-impl<'db, 'a> Arguments<'db> for KnownArgumentsWithCustomAddIssue<'a> {
-    fn iter(&self) -> ArgumentIterator<'db, '_> {
-        ArgumentIterator::new(ArgumentIteratorBase::InferredWithCustomAddIssue {
+impl<'db, 'a> Args<'db> for KnownArgsWithCustomAddIssue<'a> {
+    fn iter(&self) -> ArgIterator<'db, '_> {
+        ArgIterator::new(ArgIteratorBase::InferredWithCustomAddIssue {
             inferred: self.inferred,
             add_issue: self.add_issue,
         })
@@ -244,13 +244,13 @@ impl<'db, 'a> Arguments<'db> for KnownArgumentsWithCustomAddIssue<'a> {
 }
 
 #[derive(Debug)]
-pub struct CombinedArguments<'db, 'a> {
-    args1: &'a dyn Arguments<'db>,
-    args2: &'a dyn Arguments<'db>,
+pub struct CombinedArgs<'db, 'a> {
+    args1: &'a dyn Args<'db>,
+    args2: &'a dyn Args<'db>,
 }
 
-impl<'db, 'a> Arguments<'db> for CombinedArguments<'db, 'a> {
-    fn iter(&self) -> ArgumentIterator<'db, '_> {
+impl<'db, 'a> Args<'db> for CombinedArgs<'db, 'a> {
+    fn iter(&self) -> ArgIterator<'db, '_> {
         let mut iterator = self.args1.iter();
         debug_assert!(iterator.next.is_none()); // For now this is not supported
         iterator.next = Some(self.args2);
@@ -284,14 +284,14 @@ impl<'db, 'a> Arguments<'db> for CombinedArguments<'db, 'a> {
     }
 }
 
-impl<'db, 'a> CombinedArguments<'db, 'a> {
-    pub(crate) fn new(args1: &'a dyn Arguments<'db>, args2: &'a dyn Arguments<'db>) -> Self {
+impl<'db, 'a> CombinedArgs<'db, 'a> {
+    pub(crate) fn new(args1: &'a dyn Args<'db>, args2: &'a dyn Args<'db>) -> Self {
         Self { args1, args2 }
     }
 }
 
 #[derive(Debug, Clone)]
-pub enum ArgumentKind<'db, 'a> {
+pub enum ArgKind<'db, 'a> {
     // Can be used for classmethod class or self in bound methods
     Keyword {
         i_s: InferenceState<'db, 'a>,
@@ -336,14 +336,14 @@ pub enum ArgumentKind<'db, 'a> {
     },
 }
 
-impl<'db, 'a> ArgumentKind<'db, 'a> {
+impl<'db, 'a> ArgKind<'db, 'a> {
     fn new_positional_return(
         i_s: InferenceState<'db, 'a>,
         position: usize,
         file: &'a PythonFile,
         node_index: NodeIndex,
-    ) -> BaseArgumentReturn<'db, 'a> {
-        BaseArgumentReturn::Argument(ArgumentKind::Positional {
+    ) -> BaseArgReturn<'db, 'a> {
+        BaseArgReturn::Arg(ArgKind::Positional {
             i_s,
             position,
             node_ref: NodeRef { file, node_index },
@@ -356,8 +356,8 @@ impl<'db, 'a> ArgumentKind<'db, 'a> {
         key: &'a str,
         node_index: NodeIndex,
         expression: Expression<'a>,
-    ) -> BaseArgumentReturn<'db, 'a> {
-        BaseArgumentReturn::Argument(ArgumentKind::Keyword {
+    ) -> BaseArgReturn<'db, 'a> {
+        BaseArgReturn::Arg(ArgKind::Keyword {
             i_s,
             key,
             node_ref: NodeRef { file, node_index },
@@ -368,14 +368,14 @@ impl<'db, 'a> ArgumentKind<'db, 'a> {
 
 #[derive(Debug, Clone)]
 pub struct Arg<'db, 'a> {
-    pub kind: ArgumentKind<'db, 'a>,
+    pub kind: ArgKind<'db, 'a>,
     pub index: usize,
 }
 
 impl<'db, 'a> Arg<'db, 'a> {
     pub fn in_args_or_kwargs_and_arbitrary_len(&self) -> bool {
         match &self.kind {
-            ArgumentKind::Inferred {
+            ArgKind::Inferred {
                 in_args_or_kwargs_and_arbitrary_len,
                 ..
             } => *in_args_or_kwargs_and_arbitrary_len,
@@ -389,9 +389,9 @@ impl<'db, 'a> Arg<'db, 'a> {
         result_context: &mut ResultContext,
     ) -> Inferred {
         match &self.kind {
-            ArgumentKind::Inferred { inferred, .. }
-            | ArgumentKind::InferredWithCustomAddIssue { inferred, .. } => (*inferred).clone(),
-            ArgumentKind::Positional { i_s, node_ref, .. } => {
+            ArgKind::Inferred { inferred, .. }
+            | ArgKind::InferredWithCustomAddIssue { inferred, .. } => (*inferred).clone(),
+            ArgKind::Positional { i_s, node_ref, .. } => {
                 node_ref
                     .file
                     // TODO this execution is wrong
@@ -401,7 +401,7 @@ impl<'db, 'a> Arg<'db, 'a> {
                         result_context,
                     )
             }
-            ArgumentKind::Keyword {
+            ArgKind::Keyword {
                 i_s,
                 node_ref,
                 expression,
@@ -410,35 +410,35 @@ impl<'db, 'a> Arg<'db, 'a> {
                 .file
                 .inference(&i_s.use_mode_of(func_i_s))
                 .infer_expression_with_context(*expression, result_context),
-            ArgumentKind::SlicesTuple { i_s, slices } => slices.infer(&i_s.use_mode_of(func_i_s)),
-            ArgumentKind::Comprehension {
+            ArgKind::SlicesTuple { i_s, slices } => slices.infer(&i_s.use_mode_of(func_i_s)),
+            ArgKind::Comprehension {
                 file,
                 comprehension,
                 i_s,
             } => file
                 .inference(&i_s.use_mode_of(func_i_s))
                 .infer_generator_comprehension(*comprehension, result_context),
-            ArgumentKind::ParamSpec { usage, .. } => {
+            ArgKind::ParamSpec { usage, .. } => {
                 Inferred::from_type(Type::ParamSpecArgs(usage.clone()))
             }
-            ArgumentKind::Overridden { inferred, .. } => inferred.clone(),
+            ArgKind::Overridden { inferred, .. } => inferred.clone(),
         }
     }
 
     fn as_node_ref(&self) -> Result<NodeRef, CustomAddIssue> {
         match &self.kind {
-            ArgumentKind::Positional { node_ref, .. }
-            | ArgumentKind::Keyword { node_ref, .. }
-            | ArgumentKind::ParamSpec { node_ref, .. }
-            | ArgumentKind::Inferred { node_ref, .. } => Ok(*node_ref),
-            ArgumentKind::Comprehension {
+            ArgKind::Positional { node_ref, .. }
+            | ArgKind::Keyword { node_ref, .. }
+            | ArgKind::ParamSpec { node_ref, .. }
+            | ArgKind::Inferred { node_ref, .. } => Ok(*node_ref),
+            ArgKind::Comprehension {
                 file,
                 comprehension,
                 ..
             } => Ok(NodeRef::new(file, comprehension.index())),
-            ArgumentKind::SlicesTuple { slices, .. } => todo!(),
-            ArgumentKind::Overridden { original, .. } => original.as_node_ref(),
-            ArgumentKind::InferredWithCustomAddIssue { add_issue, .. } => Err(add_issue.clone()),
+            ArgKind::SlicesTuple { slices, .. } => todo!(),
+            ArgKind::Overridden { original, .. } => original.as_node_ref(),
+            ArgKind::InferredWithCustomAddIssue { add_issue, .. } => Err(add_issue.clone()),
         }
     }
 
@@ -473,7 +473,7 @@ impl<'db, 'a> Arg<'db, 'a> {
                 // shouldn't be formatted.
                 if matches!(
                     &self.kind,
-                    ArgumentKind::Inferred {
+                    ArgKind::Inferred {
                         is_keyword: Some(Some(_)),
                         ..
                     }
@@ -500,28 +500,28 @@ impl<'db, 'a> Arg<'db, 'a> {
 
     pub fn human_readable_index(&self, db: &Database) -> String {
         match &self.kind {
-            ArgumentKind::Inferred {
+            ArgKind::Inferred {
                 is_keyword: Some(Some(s)),
                 ..
             } => format!("\"{}\"", s.as_str(db)),
-            ArgumentKind::Positional { position, .. }
-            | ArgumentKind::Inferred { position, .. }
-            | ArgumentKind::InferredWithCustomAddIssue { position, .. }
-            | ArgumentKind::ParamSpec { position, .. } => {
+            ArgKind::Positional { position, .. }
+            | ArgKind::Inferred { position, .. }
+            | ArgKind::InferredWithCustomAddIssue { position, .. }
+            | ArgKind::ParamSpec { position, .. } => {
                 format!("{position}")
             }
-            ArgumentKind::Comprehension { .. } => "0".to_owned(),
-            ArgumentKind::Keyword { key, .. } => format!("\"{key}\""),
-            ArgumentKind::SlicesTuple { .. } => todo!(),
-            ArgumentKind::Overridden { original, .. } => original.human_readable_index(db),
+            ArgKind::Comprehension { .. } => "0".to_owned(),
+            ArgKind::Keyword { key, .. } => format!("\"{key}\""),
+            ArgKind::SlicesTuple { .. } => todo!(),
+            ArgKind::Overridden { original, .. } => original.human_readable_index(db),
         }
     }
 
     pub fn is_keyword_argument(&self) -> bool {
         matches!(
             self.kind,
-            ArgumentKind::Keyword { .. }
-                | ArgumentKind::Inferred {
+            ArgKind::Keyword { .. }
+                | ArgKind::Inferred {
                     is_keyword: Some(_),
                     ..
                 }
@@ -530,8 +530,8 @@ impl<'db, 'a> Arg<'db, 'a> {
 
     pub fn keyword_name(&self, db: &'db Database) -> Option<&str> {
         match self.kind {
-            ArgumentKind::Keyword { key, .. } => Some(key),
-            ArgumentKind::Inferred {
+            ArgKind::Keyword { key, .. } => Some(key),
+            ArgKind::Inferred {
                 is_keyword: Some(Some(key)),
                 ..
             } => Some(key.as_str(db)),
@@ -545,32 +545,32 @@ impl<'db, 'a> Arg<'db, 'a> {
         context: &mut ResultContext,
     ) -> Option<Inferred> {
         match self.kind {
-            ArgumentKind::Positional { .. }
-            | ArgumentKind::SlicesTuple { .. }
-            | ArgumentKind::Comprehension { .. } => Some(self.infer(i_s, context)),
-            ArgumentKind::Inferred {
+            ArgKind::Positional { .. }
+            | ArgKind::SlicesTuple { .. }
+            | ArgKind::Comprehension { .. } => Some(self.infer(i_s, context)),
+            ArgKind::Inferred {
                 inferred,
                 in_args_or_kwargs_and_arbitrary_len: false,
                 is_keyword: None,
                 ..
             }
-            | ArgumentKind::InferredWithCustomAddIssue { inferred, .. } => Some(inferred),
-            ArgumentKind::ParamSpec { .. } => todo!(),
-            ArgumentKind::Overridden { original, inferred } => original
+            | ArgKind::InferredWithCustomAddIssue { inferred, .. } => Some(inferred),
+            ArgKind::ParamSpec { .. } => todo!(),
+            ArgKind::Overridden { original, inferred } => original
                 .clone()
                 .maybe_positional_arg(i_s, context)
                 .map(|_| inferred),
-            ArgumentKind::Keyword { .. } | ArgumentKind::Inferred { .. } => None,
+            ArgKind::Keyword { .. } | ArgKind::Inferred { .. } => None,
         }
     }
 }
 
 #[derive(Debug, Clone)]
-enum ArgumentIteratorBase<'db, 'a> {
+enum ArgIteratorBase<'db, 'a> {
     Iterator {
         i_s: InferenceState<'db, 'a>,
         file: &'a PythonFile,
-        iterator: std::iter::Enumerate<ArgumentsIterator<'a>>,
+        iterator: std::iter::Enumerate<ArgsIterator<'a>>,
         kwargs_before_star_args: Option<Vec<ASTArgument<'a>>>,
     },
     Comprehension(InferenceState<'db, 'a>, &'a PythonFile, Comprehension<'a>),
@@ -586,12 +586,12 @@ enum ArgumentIteratorBase<'db, 'a> {
     Finished,
 }
 
-enum BaseArgumentReturn<'db, 'a> {
+enum BaseArgReturn<'db, 'a> {
     ArgsKwargs(ArgsKwargsIterator<'a>),
-    Argument(ArgumentKind<'db, 'a>),
+    Arg(ArgKind<'db, 'a>),
 }
 
-impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
+impl<'db, 'a> ArgIteratorBase<'db, 'a> {
     fn expect_i_s(&mut self) -> &InferenceState<'db, 'a> {
         if let Self::Iterator { i_s, .. } = self {
             i_s
@@ -649,14 +649,14 @@ impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
     }
 }
 
-impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
-    type Item = BaseArgumentReturn<'db, 'a>;
+impl<'db, 'a> Iterator for ArgIteratorBase<'db, 'a> {
+    type Item = BaseArgReturn<'db, 'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
             Self::Inferred { .. } => {
                 if let Self::Inferred { inferred, node_ref } = mem::replace(self, Self::Finished) {
-                    Some(BaseArgumentReturn::Argument(ArgumentKind::Inferred {
+                    Some(BaseArgReturn::Arg(ArgKind::Inferred {
                         inferred: inferred.clone(),
                         position: 1,
                         node_ref,
@@ -676,7 +676,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                 for (i, arg) in iterator.by_ref() {
                     match arg {
                         ASTArgument::Positional(named_expr) => {
-                            return Some(ArgumentKind::new_positional_return(
+                            return Some(ArgKind::new_positional_return(
                                 *i_s,
                                 i + 1,
                                 file,
@@ -688,7 +688,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                             if let Some(kwargs_before_star_args) = kwargs_before_star_args {
                                 kwargs_before_star_args.push(arg);
                             } else {
-                                return Some(ArgumentKind::new_keyword_return(
+                                return Some(ArgKind::new_keyword_return(
                                     *i_s,
                                     file,
                                     name.as_code(),
@@ -706,19 +706,17 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                 Type::ParamSpecArgs(usage) => {
                                     // TODO check for the next arg being **P.kwargs
                                     iterator.next();
-                                    Some(BaseArgumentReturn::Argument(ArgumentKind::ParamSpec {
+                                    Some(BaseArgReturn::Arg(ArgKind::ParamSpec {
                                         usage: usage.clone(),
                                         node_ref: NodeRef::new(file, starred_expr.index()),
                                         position: i + 1,
                                     }))
                                 }
-                                _ => {
-                                    Some(BaseArgumentReturn::ArgsKwargs(ArgsKwargsIterator::Args {
-                                        iterator: inf.iter(i_s, node_ref),
-                                        node_ref,
-                                        position: i + 1,
-                                    }))
-                                }
+                                _ => Some(BaseArgReturn::ArgsKwargs(ArgsKwargsIterator::Args {
+                                    iterator: inf.iter(i_s, node_ref),
+                                    node_ref,
+                                    position: i + 1,
+                                })),
                             };
                         }
                         ASTArgument::StarStar(double_starred_expr) => {
@@ -728,7 +726,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                             let type_ = inf.as_cow_type(i_s);
                             let node_ref = NodeRef::new(file, double_starred_expr.index());
                             if let Some(typed_dict) = type_.maybe_typed_dict(i_s.db) {
-                                return Some(BaseArgumentReturn::ArgsKwargs(
+                                return Some(BaseArgReturn::ArgsKwargs(
                                     ArgsKwargsIterator::TypedDict {
                                         db: i_s.db,
                                         typed_dict,
@@ -764,13 +762,11 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                 );
                                 Type::Any(AnyCause::FromError)
                             };
-                            return Some(BaseArgumentReturn::ArgsKwargs(
-                                ArgsKwargsIterator::Kwargs {
-                                    inferred_value: Inferred::from_type(value),
-                                    node_ref,
-                                    position: i + 1,
-                                },
-                            ));
+                            return Some(BaseArgReturn::ArgsKwargs(ArgsKwargsIterator::Kwargs {
+                                inferred_value: Inferred::from_type(value),
+                                node_ref,
+                                position: i + 1,
+                            }));
                         }
                     }
                 }
@@ -779,7 +775,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                         match kwarg_before_star_args {
                             ASTArgument::Keyword(kwarg) => {
                                 let (name, expression) = kwarg.unpack();
-                                return Some(ArgumentKind::new_keyword_return(
+                                return Some(ArgKind::new_keyword_return(
                                     *i_s,
                                     file,
                                     name.as_code(),
@@ -797,7 +793,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                 if let Self::Comprehension(i_s, file, comprehension) =
                     mem::replace(self, Self::Finished)
                 {
-                    Some(BaseArgumentReturn::Argument(ArgumentKind::Comprehension {
+                    Some(BaseArgReturn::Arg(ArgKind::Comprehension {
                         i_s,
                         file,
                         comprehension,
@@ -815,7 +811,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                     SliceTypeContent::Simple(s) => {
                         let file = s.file;
                         let named_expr = s.named_expr;
-                        Some(ArgumentKind::new_positional_return(
+                        Some(ArgKind::new_positional_return(
                             i_s,
                             1,
                             file,
@@ -823,20 +819,15 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                         ))
                     }
                     SliceTypeContent::Slices(slices) => {
-                        Some(BaseArgumentReturn::Argument(ArgumentKind::SlicesTuple {
-                            i_s,
-                            slices,
-                        }))
+                        Some(BaseArgReturn::Arg(ArgKind::SlicesTuple { i_s, slices }))
                     }
-                    SliceTypeContent::Slice(slice) => {
-                        Some(BaseArgumentReturn::Argument(ArgumentKind::Inferred {
-                            inferred: slice.infer(&i_s),
-                            position: 1,
-                            node_ref: slice.as_node_ref(),
-                            in_args_or_kwargs_and_arbitrary_len: false,
-                            is_keyword: None,
-                        }))
-                    }
+                    SliceTypeContent::Slice(slice) => Some(BaseArgReturn::Arg(ArgKind::Inferred {
+                        inferred: slice.infer(&i_s),
+                        position: 1,
+                        node_ref: slice.as_node_ref(),
+                        in_args_or_kwargs_and_arbitrary_len: false,
+                        is_keyword: None,
+                    })),
                 }
             }
             Self::InferredWithCustomAddIssue {
@@ -848,13 +839,11 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                     add_issue,
                 } = mem::replace(self, Self::Finished)
                 {
-                    Some(BaseArgumentReturn::Argument(
-                        ArgumentKind::InferredWithCustomAddIssue {
-                            inferred: inferred.clone(),
-                            position: 1,
-                            add_issue,
-                        },
-                    ))
+                    Some(BaseArgReturn::Arg(ArgKind::InferredWithCustomAddIssue {
+                        inferred: inferred.clone(),
+                        position: 1,
+                        add_issue,
+                    }))
                 } else {
                     unreachable!()
                 }
@@ -864,15 +853,15 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
 }
 
 #[derive(Debug, Clone)]
-pub struct ArgumentIterator<'db, 'a> {
-    current: ArgumentIteratorBase<'db, 'a>,
+pub struct ArgIterator<'db, 'a> {
+    current: ArgIteratorBase<'db, 'a>,
     args_kwargs_iterator: ArgsKwargsIterator<'a>,
-    next: Option<&'a dyn Arguments<'db>>,
+    next: Option<&'a dyn Args<'db>>,
     counter: usize,
 }
 
-impl<'db, 'a> ArgumentIterator<'db, 'a> {
-    fn new(current: ArgumentIteratorBase<'db, 'a>) -> Self {
+impl<'db, 'a> ArgIterator<'db, 'a> {
+    fn new(current: ArgIteratorBase<'db, 'a>) -> Self {
         Self {
             current,
             next: None,
@@ -883,7 +872,7 @@ impl<'db, 'a> ArgumentIterator<'db, 'a> {
 
     pub fn new_slice(slice_type: SliceType<'a>, i_s: InferenceState<'db, 'a>) -> Self {
         Self {
-            current: ArgumentIteratorBase::SliceType(i_s, slice_type),
+            current: ArgIteratorBase::SliceType(i_s, slice_type),
             args_kwargs_iterator: ArgsKwargsIterator::None,
             next: None,
             counter: 0,
@@ -910,16 +899,16 @@ impl<'db, 'a> ArgumentIterator<'db, 'a> {
     }
 }
 
-impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
+impl<'db, 'a> Iterator for ArgIterator<'db, 'a> {
     type Item = Arg<'db, 'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match std::mem::replace(&mut self.args_kwargs_iterator, ArgsKwargsIterator::None) {
             ArgsKwargsIterator::None => match self.current.next() {
-                Some(BaseArgumentReturn::Argument(mut kind)) => {
+                Some(BaseArgReturn::Arg(mut kind)) => {
                     let index = self.counter;
-                    if let ArgumentKind::Inferred { position, .. }
-                    | ArgumentKind::InferredWithCustomAddIssue { position, .. } = &mut kind
+                    if let ArgKind::Inferred { position, .. }
+                    | ArgKind::InferredWithCustomAddIssue { position, .. } = &mut kind
                     {
                         // This is a bit of a special case where 0 means that we're on a bound self
                         // argument. In that case we do not want to increase the counter, because
@@ -936,7 +925,7 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
                         index: self.counter,
                     })
                 }
-                Some(BaseArgumentReturn::ArgsKwargs(args_kwargs)) => {
+                Some(BaseArgReturn::ArgsKwargs(args_kwargs)) => {
                     self.args_kwargs_iterator = args_kwargs;
                     self.next()
                 }
@@ -968,7 +957,7 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
                         };
                     }
                     Some(Arg {
-                        kind: ArgumentKind::Inferred {
+                        kind: ArgKind::Inferred {
                             inferred,
                             position,
                             node_ref,
@@ -989,7 +978,7 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
                 let index = self.counter;
                 self.counter += 1;
                 Some(Arg {
-                    kind: ArgumentKind::Inferred {
+                    kind: ArgKind::Inferred {
                         inferred: inferred_value,
                         position,
                         node_ref,
@@ -1024,7 +1013,7 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
                     iterator_index: iterator_index + 1,
                 };
                 Some(Arg {
-                    kind: ArgumentKind::Inferred {
+                    kind: ArgKind::Inferred {
                         inferred: Inferred::from_type(t),
                         position,
                         node_ref,
@@ -1072,7 +1061,7 @@ pub fn unpack_star_star(i_s: &InferenceState, t: &Type) -> Option<(Type, Type)> 
             .into_iter()
             .zip(wanted_cls.type_vars(i_s).iter())
             .map(|(c, type_var_like)| {
-                let GenericItem::TypeArgument(t) = c.into_generic_item(
+                let GenericItem::TypeArg(t) = c.into_generic_item(
                     i_s.db,
                     type_var_like
                 ) else {
@@ -1085,17 +1074,17 @@ pub fn unpack_star_star(i_s: &InferenceState, t: &Type) -> Option<(Type, Type)> 
 }
 
 #[derive(Debug)]
-pub struct NoArguments<'a>(NodeRef<'a>);
+pub struct NoArgs<'a>(NodeRef<'a>);
 
-impl<'a> NoArguments<'a> {
+impl<'a> NoArgs<'a> {
     pub fn new(node_ref: NodeRef<'a>) -> Self {
         Self(node_ref)
     }
 }
 
-impl<'db, 'a> Arguments<'db> for NoArguments<'a> {
-    fn iter(&self) -> ArgumentIterator<'db, '_> {
-        ArgumentIterator::new(ArgumentIteratorBase::Finished)
+impl<'db, 'a> Args<'db> for NoArgs<'a> {
+    fn iter(&self) -> ArgIterator<'db, '_> {
+        ArgIterator::new(ArgIteratorBase::Finished)
     }
 
     fn type_(&self) -> ArgumentsType {

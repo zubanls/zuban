@@ -11,7 +11,7 @@ use super::{
     TypeVarKind, TypeVarLike, TypeVarLikes, TypeVarName, TypeVarUsage, Variance,
 };
 use crate::{
-    arguments::{Arg, ArgumentKind, Arguments, SimpleArguments},
+    arguments::{Arg, ArgKind, Args, SimpleArgs},
     database::{Database, Locality, Point, Specific},
     diagnostics::{Issue, IssueType},
     file::{File, PythonFile},
@@ -424,7 +424,7 @@ fn calculate_field_arg(
                     let left = file.inference(i_s).infer_primary_or_atom(primary.first());
                     if left.maybe_saved_link() == Some(i_s.db.python_state.dataclasses_field_link())
                     {
-                        let args = SimpleArguments::new(*i_s, file, primary.index(), details);
+                        let args = SimpleArgs::new(*i_s, file, primary.index(), details);
                         return field_options_from_args(i_s, args);
                     }
                 }
@@ -440,7 +440,7 @@ fn calculate_field_arg(
 
 fn field_options_from_args<'db>(
     i_s: &InferenceState<'db, '_>,
-    args: SimpleArguments<'db, '_>,
+    args: SimpleArgs<'db, '_>,
 ) -> FieldOptions {
     let mut options = FieldOptions {
         has_default: false,
@@ -448,7 +448,7 @@ fn field_options_from_args<'db>(
         init: true,
     };
     for arg in args.iter() {
-        if matches!(arg.kind, ArgumentKind::Inferred { .. }) {
+        if matches!(arg.kind, ArgKind::Inferred { .. }) {
             arg.add_issue(i_s, IssueType::DataclassUnpackingKwargsInField);
             continue;
         }
@@ -480,7 +480,7 @@ fn field_options_from_args<'db>(
 
 pub fn check_dataclass_options<'db>(
     i_s: &InferenceState<'db, '_>,
-    args: &SimpleArguments<'db, '_>,
+    args: &SimpleArgs<'db, '_>,
 ) -> DataclassOptions {
     let mut options = DataclassOptions::default();
     let assign_option = |target: &mut _, arg: Arg<'db, '_>| {
@@ -516,7 +516,7 @@ pub fn check_dataclass_options<'db>(
 
 pub(crate) fn dataclasses_replace<'db>(
     i_s: &InferenceState<'db, '_>,
-    args: &dyn Arguments<'db>,
+    args: &dyn Args<'db>,
     result_context: &mut ResultContext,
     on_type_error: OnTypeError<'db, '_>,
     bound: Option<&Type>,
@@ -525,7 +525,7 @@ pub(crate) fn dataclasses_replace<'db>(
 
     let mut arg_iterator = args.iter();
     if let Some(first) = arg_iterator.next() {
-        if let ArgumentKind::Positional { node_ref, .. } = &first.kind {
+        if let ArgKind::Positional { node_ref, .. } = &first.kind {
             let inferred = first.infer(i_s, &mut ResultContext::Unknown);
             if run_on_dataclass(
                 i_s,
@@ -647,7 +647,7 @@ fn run_on_dataclass(
 pub(crate) fn dataclass_initialize<'db>(
     dataclass: &Rc<Dataclass>,
     i_s: &InferenceState<'db, '_>,
-    args: &dyn Arguments<'db>,
+    args: &dyn Args<'db>,
     result_context: &mut ResultContext,
     on_type_error: OnTypeError<'db, '_>,
 ) -> Inferred {

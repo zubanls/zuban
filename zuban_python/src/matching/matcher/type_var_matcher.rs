@@ -12,7 +12,7 @@ use crate::{
     matching::Param,
     type_::{
         common_base_type_of_type_var_tuple_with_items, AnyCause, CallableParams, GenericItem,
-        ParamSpecArgument, ParamType, Type, TypeArgs, TypeVar, TypeVarKind, TypeVarLike,
+        ParamSpecArg, ParamType, Type, TypeArgs, TypeVar, TypeVarKind, TypeVarLike,
         TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
     },
     type_helpers::{Callable, Class, Function},
@@ -103,7 +103,7 @@ impl<'db: 'a, 'a> FunctionOrCallable<'a> {
 pub enum BoundKind {
     TypeVar(TypeVarBound),
     TypeVarTuple(TypeArgs),
-    ParamSpecArgument(ParamSpecArgument),
+    ParamSpecArgument(ParamSpecArg),
     Uncalculated { fallback: Option<Type> },
 }
 
@@ -139,23 +139,23 @@ impl CalculatedTypeVarLike {
 
     pub fn into_generic_item(self, db: &Database, type_var_like: &TypeVarLike) -> GenericItem {
         match self.type_ {
-            BoundKind::TypeVar(t) => GenericItem::TypeArgument(t.into_type(db)),
-            BoundKind::TypeVarTuple(ts) => GenericItem::TypeArguments(ts),
-            BoundKind::ParamSpecArgument(params) => GenericItem::ParamSpecArgument(params),
+            BoundKind::TypeVar(t) => GenericItem::TypeArg(t.into_type(db)),
+            BoundKind::TypeVarTuple(ts) => GenericItem::TypeArgs(ts),
+            BoundKind::ParamSpecArgument(params) => GenericItem::ParamSpecArg(params),
             BoundKind::Uncalculated { fallback } => {
                 if let Some(fallback) = fallback {
-                    GenericItem::TypeArgument(fallback)
+                    GenericItem::TypeArg(fallback)
                 } else {
                     match type_var_like {
-                        TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(Type::Never),
+                        TypeVarLike::TypeVar(_) => GenericItem::TypeArg(Type::Never),
                         // TODO TypeVarTuple: this feels wrong, should maybe be never?
                         TypeVarLike::TypeVarTuple(_) => {
-                            GenericItem::TypeArguments(TypeArgs::new_fixed_length(Rc::new([])))
+                            GenericItem::TypeArgs(TypeArgs::new_fixed_length(Rc::new([])))
                         }
                         // TODO ParamSpec: this feels wrong, should maybe be never?
-                        TypeVarLike::ParamSpec(_) => GenericItem::ParamSpecArgument(
-                            ParamSpecArgument::new_any(AnyCause::Todo),
-                        ),
+                        TypeVarLike::ParamSpec(_) => {
+                            GenericItem::ParamSpecArg(ParamSpecArg::new_any(AnyCause::Todo))
+                        }
                     }
                 }
             }
@@ -172,9 +172,9 @@ impl CalculatedTypeVarLike {
     pub fn update_uncalculated_with_generic_invariant(&mut self, db: &Database, g: Generic) {
         debug_assert!(matches!(self.type_, BoundKind::Uncalculated { .. }));
         self.type_ = match g {
-            Generic::TypeArgument(t) => BoundKind::TypeVar(TypeVarBound::Invariant(t.into_owned())),
-            Generic::TypeVarTuple(t) => todo!(),
-            Generic::ParamSpecArgument(p) => todo!(),
+            Generic::TypeArg(t) => BoundKind::TypeVar(TypeVarBound::Invariant(t.into_owned())),
+            Generic::TypeArgs(t) => todo!(),
+            Generic::ParamSpecArg(p) => todo!(),
         }
     }
 
@@ -240,7 +240,7 @@ impl TypeVarMatcher {
                             TypeArgs::new_arbitrary_length(Type::Any(cause)),
                         ),
                         TypeVarLikeUsage::ParamSpec(_) => {
-                            BoundKind::ParamSpecArgument(ParamSpecArgument::new_any(cause))
+                            BoundKind::ParamSpecArgument(ParamSpecArg::new_any(cause))
                         }
                     }
                 }

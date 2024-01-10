@@ -44,7 +44,7 @@ macro_rules! new_class {
         $crate::type_::Type::new_class(
             $link,
             $crate::type_::ClassGenerics::List($crate::type_::GenericsList::new_generics(Rc::new([
-                $($crate::type_::GenericItem::TypeArgument($arg)),*
+                $($crate::type_::GenericItem::TypeArg($arg)),*
             ])))
         )
     }

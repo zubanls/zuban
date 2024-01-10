@@ -7,7 +7,7 @@ use super::{
     PythonFile,
 };
 use crate::{
-    arguments::{KnownArguments, NoArguments, SimpleArguments},
+    arguments::{KnownArgs, NoArgs, SimpleArgs},
     database::{
         ComplexPoint, Database, FileIndex, Locality, Point, PointLink, PointType, Specific,
     },
@@ -672,7 +672,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     self.i_s,
                     node_ref,
                     inplace,
-                    &KnownArguments::new(&right, node_ref),
+                    &KnownArgs::new(&right, node_ref),
                     &|type_| had_lookup_error.set(true),
                 );
                 let had_error = Cell::new(false);
@@ -681,7 +681,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         self.i_s,
                         node_ref,
                         normal,
-                        &KnownArguments::new(&right, node_ref),
+                        &KnownArgs::new(&right, node_ref),
                         &|type_| {
                             let left = type_.format_short(self.i_s.db);
                             node_ref.add_issue(
@@ -787,7 +787,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     i_s,
                     from,
                     "__iter__",
-                    &NoArguments::new(from),
+                    &NoArgs::new(from),
                     &|_| {
                         from.add_issue(
                             i_s,
@@ -801,7 +801,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     i_s,
                     from,
                     "__next__",
-                    &NoArguments::new(from),
+                    &NoArgs::new(from),
                     &|_| todo!(),
                 );
                 generator.yield_type.error_if_not_matches(
@@ -1389,7 +1389,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     self.i_s,
                                     from,
                                     "__eq__",
-                                    &KnownArguments::new(&second, from),
+                                    &KnownArgs::new(&second, from),
                                     &|_| todo!(),
                                 )
                             }
@@ -1415,7 +1415,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                         {
                                             method.execute_with_details(
                                                 self.i_s,
-                                                &KnownArguments::new(&first, from),
+                                                &KnownArgs::new(&first, from),
                                                 &mut ResultContext::Unknown,
                                                 OnTypeError::new(&|i_s, _, _, types| {
                                                     let right = r_type.format_short(i_s.db);
@@ -1450,12 +1450,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                     },
                                                 )
                                                 .into_inferred()
-                                                .execute(self.i_s, &NoArguments::new(from))
+                                                .execute(self.i_s, &NoArgs::new(from))
                                                 .type_lookup_and_execute(
                                                     self.i_s,
                                                     from,
                                                     "__next__",
-                                                    &NoArguments::new(from),
+                                                    &NoArgs::new(from),
                                                     &|_| todo!(),
                                                 )
                                                 .as_cow_type(self.i_s)
@@ -1510,7 +1510,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     self.i_s,
                     node_ref,
                     method_name,
-                    &NoArguments::new(node_ref),
+                    &NoArgs::new(node_ref),
                     &|type_| {
                         let operand = match operand.as_code() {
                             "~" => "~",
@@ -1731,7 +1731,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             let local_error = Cell::new(false);
                             let result = first.execute_with_details(
                                 i_s,
-                                &KnownArguments::new(&second, from),
+                                &KnownArgs::new(&second, from),
                                 &mut ResultContext::Unknown,
                                 OnTypeError::with_overload_mismatch(
                                     &|_, _, _, _| local_error.set(true),
@@ -1856,7 +1856,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
             PrimaryContent::Execution(details) => {
                 let f = self.file;
-                let args = SimpleArguments::new(*self.i_s, f, node_index, details);
+                let args = SimpleArgs::new(*self.i_s, f, node_index, details);
                 base.execute_with_details(
                     self.i_s,
                     &args,
@@ -2861,7 +2861,7 @@ pub fn await_(
 ) -> Inferred {
     let t = get_generator_return_type(
         i_s.db,
-        inf.type_lookup_and_execute(i_s, from, "__await__", &NoArguments::new(from), &|t| {
+        inf.type_lookup_and_execute(i_s, from, "__await__", &NoArgs::new(from), &|t| {
             from.add_issue(
                 i_s,
                 IssueType::IncompatibleTypes {

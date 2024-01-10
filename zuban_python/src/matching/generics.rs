@@ -10,8 +10,8 @@ use crate::{
     inference_state::InferenceState,
     node_ref::NodeRef,
     type_::{
-        ClassGenerics, GenericItem, GenericsList, ParamSpecArgument, ParamSpecUsage, Type,
-        TypeVarLike, TypeVarLikeUsage, TypeVarLikes, Variance,
+        ClassGenerics, GenericItem, GenericsList, ParamSpecArg, ParamSpecUsage, Type, TypeVarLike,
+        TypeVarLikeUsage, TypeVarLikes, Variance,
     },
 };
 
@@ -89,9 +89,9 @@ impl<'a> Generics<'a> {
         &self,
         db: &'db Database,
         usage: &ParamSpecUsage,
-    ) -> Cow<'a, ParamSpecArgument> {
+    ) -> Cow<'a, ParamSpecArg> {
         let generic = self.nth_usage(db, &TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)));
-        if let Generic::ParamSpecArgument(p) = generic {
+        if let Generic::ParamSpecArg(p) = generic {
             p
         } else {
             unreachable!()
@@ -105,7 +105,7 @@ impl<'a> Generics<'a> {
         n: usize,
     ) -> Cow<'a, Type> {
         let generic = self.nth(db, type_var_like, n);
-        if let Generic::TypeArgument(p) = generic {
+        if let Generic::TypeArg(p) = generic {
             p
         } else {
             unreachable!()
@@ -121,7 +121,7 @@ impl<'a> Generics<'a> {
         match self {
             Self::ExpressionWithClassType(file, expr) => {
                 if n == 0 {
-                    Generic::TypeArgument(use_cached_simple_generic_type(db, file, *expr))
+                    Generic::TypeArg(use_cached_simple_generic_type(db, file, *expr))
                 } else {
                     debug!(
                         "Generic expr {:?} has one item, but {:?} was requested",
@@ -131,7 +131,7 @@ impl<'a> Generics<'a> {
                     todo!()
                 }
             }
-            Self::SlicesWithClassTypes(file, slices) => Generic::TypeArgument(
+            Self::SlicesWithClassTypes(file, slices) => Generic::TypeArg(
                 slices
                     .iter()
                     .nth(n)
@@ -308,13 +308,13 @@ impl<'a> Iterator for GenericsIterator<'a> {
                     return None;
                 }
                 self.ended = true;
-                Some(Generic::TypeArgument(use_cached_simple_generic_type(
+                Some(Generic::TypeArg(use_cached_simple_generic_type(
                     self.db, file, *expr,
                 )))
             }
             GenericsIteratorItem::SimpleGenericSliceIterator(file, iter) => {
                 if let Some(SliceContent::NamedExpression(s)) = iter.next() {
-                    Some(Generic::TypeArgument(use_cached_simple_generic_type(
+                    Some(Generic::TypeArg(use_cached_simple_generic_type(
                         self.db,
                         file,
                         s.expression(),

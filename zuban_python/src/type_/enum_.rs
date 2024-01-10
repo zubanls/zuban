@@ -9,7 +9,7 @@ use super::{
     AnyCause, CallableLike, DbString, FormatStyle, Literal, LiteralKind, StringSlice, Type,
 };
 use crate::{
-    arguments::{ArgumentKind, Arguments},
+    arguments::{ArgKind, Args},
     database::{Database, ParentScope, PointLink},
     diagnostics::IssueType,
     file::File,
@@ -337,14 +337,14 @@ fn lookup_members_on_enum(
 pub(crate) fn execute_functional_enum<'db>(
     i_s: &InferenceState<'db, '_>,
     class: Class,
-    args: &dyn Arguments<'db>,
+    args: &dyn Args<'db>,
     result_context: &mut ResultContext,
 ) -> Option<Inferred> {
     let mut name_infos = None;
     let mut fields_infos = None;
     for arg in args.iter() {
         match arg.kind {
-            ArgumentKind::Positional { node_ref, .. } => {
+            ArgKind::Positional { node_ref, .. } => {
                 let expr = node_ref.as_named_expression().expression();
                 if name_infos.is_none() {
                     name_infos = Some((node_ref, arg.infer(i_s, &mut ResultContext::Unknown)));
@@ -354,7 +354,7 @@ pub(crate) fn execute_functional_enum<'db>(
                 // All the other arguments are not relevant here and were checked by checking
                 // EnumMeta.__call__.
             }
-            ArgumentKind::Keyword {
+            ArgKind::Keyword {
                 key,
                 node_ref,
                 expression,

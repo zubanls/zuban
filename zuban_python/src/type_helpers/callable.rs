@@ -1,6 +1,6 @@
 use super::Class;
 use crate::{
-    arguments::Arguments,
+    arguments::Args,
     database::Database,
     diagnostics::IssueType,
     inference_state::InferenceState,
@@ -36,7 +36,7 @@ impl<'a> Callable<'a> {
     pub(crate) fn execute<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
+        args: &dyn Args<'db>,
         on_type_error: OnTypeError<'db, '_>,
         result_context: &mut ResultContext,
     ) -> Inferred {
@@ -46,7 +46,7 @@ impl<'a> Callable<'a> {
     pub(crate) fn execute_internal<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
+        args: &dyn Args<'db>,
         skip_first_argument: bool,
         on_type_error: OnTypeError<'db, '_>,
         result_context: &mut ResultContext,

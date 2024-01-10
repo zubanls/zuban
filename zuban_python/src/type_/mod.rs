@@ -44,9 +44,9 @@ pub(crate) use self::{
     replace::ReplaceSelf,
     tuple::{Tuple, TupleArgs, TupleUnpack, WithUnpack},
     type_var_likes::{
-        CallableWithParent, ParamSpec, ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage,
-        TypeVar, TypeVarIndex, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
-        TypeVarManager, TypeVarName, TypeVarTuple, TypeVarTupleUsage, TypeVarUsage, Variance,
+        CallableWithParent, ParamSpec, ParamSpecArg, ParamSpecTypeVars, ParamSpecUsage, TypeVar,
+        TypeVarIndex, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
+        TypeVarName, TypeVarTuple, TypeVarTupleUsage, TypeVarUsage, Variance,
     },
     typed_dict::{
         check_typed_dict_call, infer_typed_dict_item, infer_typed_dict_total_argument,
@@ -59,7 +59,7 @@ pub(crate) use self::{
     },
 };
 use crate::{
-    arguments::Arguments,
+    arguments::Args,
     database::{Database, FileIndex, PointLink},
     debug,
     diagnostics::IssueType,
@@ -190,19 +190,19 @@ impl TypeArgs {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum GenericItem {
-    TypeArgument(Type),
+    TypeArg(Type),
     // For TypeVarTuple
-    TypeArguments(TypeArgs),
+    TypeArgs(TypeArgs),
     // For ParamSpec
-    ParamSpecArgument(ParamSpecArgument),
+    ParamSpecArg(ParamSpecArg),
 }
 
 impl GenericItem {
     fn is_any(&self) -> bool {
         match self {
-            Self::TypeArgument(t) => matches!(t, Type::Any(_)),
-            Self::TypeArguments(ts) => ts.args.is_any(),
-            Self::ParamSpecArgument(_) => false,
+            Self::TypeArg(t) => matches!(t, Type::Any(_)),
+            Self::TypeArgs(ts) => ts.args.is_any(),
+            Self::ParamSpecArg(_) => false,
         }
     }
 }
@@ -267,9 +267,9 @@ impl GenericsList {
     fn search_type_vars<C: FnMut(TypeVarLikeUsage)>(&self, found_type_var: &mut C) {
         for g in self.iter() {
             match g {
-                GenericItem::TypeArgument(t) => t.search_type_vars(found_type_var),
-                GenericItem::TypeArguments(ts) => ts.args.search_type_vars(found_type_var),
-                GenericItem::ParamSpecArgument(p) => p.params.search_type_vars(found_type_var),
+                GenericItem::TypeArg(t) => t.search_type_vars(found_type_var),
+                GenericItem::TypeArgs(ts) => ts.args.search_type_vars(found_type_var),
+                GenericItem::ParamSpecArg(p) => p.params.search_type_vars(found_type_var),
             }
         }
     }
@@ -849,11 +849,9 @@ impl Type {
     ) -> bool {
         let search_in_generics = |generics: &GenericsList, already_checked: &mut _| {
             generics.iter().any(|g| match g {
-                GenericItem::TypeArgument(t) => t.has_any_internal(i_s, already_checked),
-                GenericItem::TypeArguments(ts) => ts.args.has_any_internal(i_s, already_checked),
-                GenericItem::ParamSpecArgument(a) => {
-                    a.params.has_any_internal(i_s, already_checked)
-                }
+                GenericItem::TypeArg(t) => t.has_any_internal(i_s, already_checked),
+                GenericItem::TypeArgs(ts) => ts.args.has_any_internal(i_s, already_checked),
+                GenericItem::ParamSpecArg(a) => a.params.has_any_internal(i_s, already_checked),
             })
         };
         match self {
@@ -949,13 +947,13 @@ impl Type {
     pub fn find_in_type(&self, check: &impl Fn(&Type) -> bool) -> bool {
         let check_generics_list = |generics: &GenericsList| {
             generics.iter().any(|g| match g {
-                GenericItem::TypeArgument(t) => t.find_in_type(check),
-                GenericItem::TypeArguments(ts) => match &ts.args {
+                GenericItem::TypeArg(t) => t.find_in_type(check),
+                GenericItem::TypeArgs(ts) => match &ts.args {
                     TupleArgs::FixedLength(ts) => ts.iter().any(|t| t.find_in_type(check)),
                     TupleArgs::ArbitraryLength(t) => t.find_in_type(check),
                     TupleArgs::WithUnpack(with_unpack) => with_unpack.find_in_type(check),
                 },
-                GenericItem::ParamSpecArgument(a) => todo!(),
+                GenericItem::ParamSpecArg(a) => todo!(),
             })
         };
         match self {
@@ -1531,7 +1529,7 @@ impl Literal {
 
 type CustomBehaviorCallback = for<'db> fn(
     i_s: &InferenceState<'db, '_>,
-    args: &dyn Arguments<'db>,
+    args: &dyn Args<'db>,
     result_context: &mut ResultContext,
     on_type_error: OnTypeError<'db, '_>,
     bound: Option<&Type>,
@@ -1579,7 +1577,7 @@ impl CustomBehavior {
     pub(crate) fn execute<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
+        args: &dyn Args<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {

@@ -1,7 +1,7 @@
 use std::{borrow::Cow, rc::Rc};
 
 use crate::{
-    arguments::{ArgumentKind, Arguments},
+    arguments::{ArgKind, Args},
     database::{ComplexPoint, PointLink},
     debug,
     diagnostics::IssueType,
@@ -18,7 +18,7 @@ use crate::{
 
 pub(crate) fn execute_type<'db>(
     i_s: &InferenceState<'db, '_>,
-    args: &dyn Arguments<'db>,
+    args: &dyn Args<'db>,
     on_type_error: OnTypeError<'db, '_>,
 ) -> Inferred {
     let mut iterator = args.iter();
@@ -41,7 +41,7 @@ impl<'db> TypingCast {
     pub(crate) fn execute(
         &self,
         i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
+        args: &dyn Args<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
@@ -57,7 +57,7 @@ impl<'db> TypingCast {
                 break;
             }
             match arg.kind {
-                ArgumentKind::Positional {
+                ArgKind::Positional {
                     position, node_ref, ..
                 } => {
                     if position == 1 {
@@ -117,7 +117,7 @@ impl RevealTypeFunction {
     pub(crate) fn execute<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
+        args: &dyn Args<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
@@ -197,7 +197,7 @@ fn reveal_type_info(i_s: &InferenceState, t: &Type) -> Box<str> {
 
 pub(crate) fn execute_assert_type<'db>(
     i_s: &InferenceState<'db, '_>,
-    args: &dyn Arguments<'db>,
+    args: &dyn Args<'db>,
     result_context: &mut ResultContext,
     on_type_error: OnTypeError<'db, '_>,
 ) -> Inferred {
@@ -222,10 +222,10 @@ pub(crate) fn execute_assert_type<'db>(
         );
         Inferred::new_any_from_error()
     };
-    if !matches!(&first.kind, ArgumentKind::Positional { .. }) {
+    if !matches!(&first.kind, ArgKind::Positional { .. }) {
         return error_non_positional();
     }
-    let ArgumentKind::Positional { node_ref: second_node_ref, ..}= second.kind else {
+    let ArgKind::Positional { node_ref: second_node_ref, ..}= second.kind else {
         return error_non_positional()
     };
     let first = if matches!(result_context, ResultContext::ExpectUnused) {
@@ -263,7 +263,7 @@ impl TypeVarClass {
     pub(crate) fn execute(
         &self,
         i_s: &InferenceState,
-        args: &dyn Arguments,
+        args: &dyn Args,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError,
     ) -> Inferred {
@@ -277,7 +277,7 @@ impl TypeVarClass {
 
 fn maybe_type_var(
     i_s: &InferenceState,
-    args: &dyn Arguments,
+    args: &dyn Args,
     result_context: &ResultContext,
 ) -> Option<TypeVarLike> {
     if !matches!(result_context, ResultContext::AssignmentNewDefinition) {
@@ -286,7 +286,7 @@ fn maybe_type_var(
     }
     let mut iterator = args.iter();
     if let Some(first_arg) = iterator.next() {
-        let result = if let ArgumentKind::Positional { node_ref, .. } = first_arg.kind {
+        let result = if let ArgKind::Positional { node_ref, .. } = first_arg.kind {
             node_ref
                 .as_named_expression()
                 .maybe_single_string_literal()
@@ -328,7 +328,7 @@ fn maybe_type_var(
         let mut contravariant = false;
         for arg in iterator {
             match arg.kind {
-                ArgumentKind::Positional { node_ref, .. } => {
+                ArgKind::Positional { node_ref, .. } => {
                     let mut inference = node_ref.file.inference(i_s);
                     if let Some(t) = inference
                         .compute_type_var_constraint(node_ref.as_named_expression().expression())
@@ -340,7 +340,7 @@ fn maybe_type_var(
                         return None;
                     }
                 }
-                ArgumentKind::Keyword {
+                ArgKind::Keyword {
                     key,
                     node_ref,
                     expression,
@@ -405,15 +405,15 @@ fn maybe_type_var(
                         return None;
                     }
                 },
-                ArgumentKind::Comprehension { .. } => {
+                ArgKind::Comprehension { .. } => {
                     arg.add_issue(i_s, IssueType::UnexpectedComprehension);
                     return None;
                 }
-                ArgumentKind::Inferred { .. }
-                | ArgumentKind::InferredWithCustomAddIssue { .. }
-                | ArgumentKind::SlicesTuple { .. }
-                | ArgumentKind::Overridden { .. }
-                | ArgumentKind::ParamSpec { .. } => {
+                ArgKind::Inferred { .. }
+                | ArgKind::InferredWithCustomAddIssue { .. }
+                | ArgKind::SlicesTuple { .. }
+                | ArgKind::Overridden { .. }
+                | ArgKind::ParamSpec { .. } => {
                     arg.add_issue(i_s, IssueType::UnexpectedArgumentTo { name: "TypeVar" });
                 }
             }
@@ -464,7 +464,7 @@ impl TypeVarTupleClass {
     pub(crate) fn execute(
         &self,
         i_s: &InferenceState,
-        args: &dyn Arguments,
+        args: &dyn Args,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError,
     ) -> Inferred {
@@ -478,7 +478,7 @@ impl TypeVarTupleClass {
 
 fn maybe_type_var_tuple(
     i_s: &InferenceState,
-    args: &dyn Arguments,
+    args: &dyn Args,
     result_context: &ResultContext,
 ) -> Option<TypeVarLike> {
     if !matches!(result_context, ResultContext::AssignmentNewDefinition) {
@@ -487,7 +487,7 @@ fn maybe_type_var_tuple(
     }
     let mut iterator = args.iter();
     if let Some(first_arg) = iterator.next() {
-        let result = if let ArgumentKind::Positional { node_ref, .. } = first_arg.kind {
+        let result = if let ArgKind::Positional { node_ref, .. } = first_arg.kind {
             node_ref
                 .as_named_expression()
                 .maybe_single_string_literal()
@@ -526,7 +526,7 @@ fn maybe_type_var_tuple(
         let default = None;
         for arg in iterator {
             match arg.kind {
-                ArgumentKind::Positional { node_ref, .. } => {
+                ArgKind::Positional { node_ref, .. } => {
                     node_ref.add_issue(
                         i_s,
                         IssueType::ArgumentIssue(
@@ -535,7 +535,7 @@ fn maybe_type_var_tuple(
                     );
                     return None;
                 }
-                ArgumentKind::Keyword {
+                ArgKind::Keyword {
                     key,
                     node_ref,
                     expression,
@@ -566,15 +566,15 @@ fn maybe_type_var_tuple(
                         return None;
                     }
                 },
-                ArgumentKind::Comprehension { .. } => {
+                ArgKind::Comprehension { .. } => {
                     arg.add_issue(i_s, IssueType::UnexpectedComprehension);
                     return None;
                 }
-                ArgumentKind::Inferred { .. }
-                | ArgumentKind::InferredWithCustomAddIssue { .. }
-                | ArgumentKind::SlicesTuple { .. }
-                | ArgumentKind::Overridden { .. }
-                | ArgumentKind::ParamSpec { .. } => unreachable!(),
+                ArgKind::Inferred { .. }
+                | ArgKind::InferredWithCustomAddIssue { .. }
+                | ArgKind::SlicesTuple { .. }
+                | ArgKind::Overridden { .. }
+                | ArgKind::ParamSpec { .. } => unreachable!(),
             }
         }
         Some(TypeVarLike::TypeVarTuple(Rc::new(TypeVarTuple {
@@ -602,7 +602,7 @@ impl ParamSpecClass {
     pub(crate) fn execute(
         &self,
         i_s: &InferenceState,
-        args: &dyn Arguments,
+        args: &dyn Args,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError,
     ) -> Inferred {
@@ -616,7 +616,7 @@ impl ParamSpecClass {
 
 fn maybe_param_spec(
     i_s: &InferenceState,
-    args: &dyn Arguments,
+    args: &dyn Args,
     result_context: &ResultContext,
 ) -> Option<TypeVarLike> {
     if !matches!(result_context, ResultContext::AssignmentNewDefinition) {
@@ -625,7 +625,7 @@ fn maybe_param_spec(
     }
     let mut iterator = args.iter();
     if let Some(first_arg) = iterator.next() {
-        let result = if let ArgumentKind::Positional { node_ref, .. } = first_arg.kind {
+        let result = if let ArgKind::Positional { node_ref, .. } = first_arg.kind {
             node_ref
                 .as_named_expression()
                 .maybe_single_string_literal()
@@ -663,7 +663,7 @@ fn maybe_param_spec(
 
         for arg in iterator {
             match arg.kind {
-                ArgumentKind::Keyword {
+                ArgKind::Keyword {
                     key,
                     node_ref,
                     expression,
@@ -679,10 +679,10 @@ fn maybe_param_spec(
                         todo!()
                     }
                 }
-                ArgumentKind::Inferred { .. }
-                | ArgumentKind::SlicesTuple { .. }
-                | ArgumentKind::ParamSpec { .. } => unreachable!(),
-                ArgumentKind::Positional { .. } => {
+                ArgKind::Inferred { .. }
+                | ArgKind::SlicesTuple { .. }
+                | ArgKind::ParamSpec { .. } => unreachable!(),
+                ArgKind::Positional { .. } => {
                     arg.add_issue(
                         i_s,
                         IssueType::ArgumentIssue(
@@ -721,7 +721,7 @@ impl NewTypeClass {
     pub(crate) fn execute<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
+        args: &dyn Args<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError,
     ) -> Inferred {
@@ -733,10 +733,7 @@ impl NewTypeClass {
     }
 }
 
-fn maybe_new_type<'db>(
-    i_s: &InferenceState<'db, '_>,
-    args: &dyn Arguments<'db>,
-) -> Option<NewType> {
+fn maybe_new_type<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Args<'db>) -> Option<NewType> {
     let Some((first, second)) = args.maybe_two_positional_args(i_s.db) else {
         args.add_issue(
             i_s,

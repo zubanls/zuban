@@ -1,6 +1,6 @@
 use super::Instance;
 use crate::{
-    arguments::Arguments,
+    arguments::Args,
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{LookupKind, OnTypeError, ResultContext},
@@ -8,16 +8,12 @@ use crate::{
 
 pub(crate) fn method_with_fallback<'db, 'x, T>(
     i_s: &InferenceState<'db, '_>,
-    args: &dyn Arguments<'db>,
+    args: &dyn Args<'db>,
     result_context: &mut ResultContext,
     on_type_error: OnTypeError<'db, '_>,
     td: T,
     name: &str,
-    handler: fn(
-        i_s: &InferenceState<'db, '_>,
-        td: T,
-        args: &dyn Arguments<'db>,
-    ) -> Option<Inferred>,
+    handler: fn(i_s: &InferenceState<'db, '_>, td: T, args: &dyn Args<'db>) -> Option<Inferred>,
     fallback_instance: impl FnOnce() -> Instance<'x>,
 ) -> Inferred {
     handler(i_s, td, args).unwrap_or_else(|| {

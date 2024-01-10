@@ -144,22 +144,22 @@ fn common_base_class_basic(i_s: &InferenceState, c1: Class, c2: Class) -> Option
                         // like T[Any, int] & T[int, Any] should become T[Any, Any]
                         match matches {
                             Match::True { with_any: false } => {
-                                generics.push(GenericItem::TypeArgument(inner_t1.into_owned()));
+                                generics.push(GenericItem::TypeArg(inner_t1.into_owned()));
                             }
                             Match::True { with_any: true } => {
-                                generics.push(GenericItem::TypeArgument(inner_t2.into_owned()));
+                                generics.push(GenericItem::TypeArg(inner_t2.into_owned()));
                             }
                             _ => return None,
                         }
                     }
                     Variance::Covariant => {
-                        generics.push(GenericItem::TypeArgument(
+                        generics.push(GenericItem::TypeArg(
                             inner_t1.common_base_type(i_s, &inner_t2),
                         ));
                     }
                     Variance::Contravariant => {
                         if let Some(t) = inner_t1.common_sub_type(i_s, &inner_t2) {
-                            generics.push(GenericItem::TypeArgument(t));
+                            generics.push(GenericItem::TypeArg(t));
                         } else {
                             return None;
                         }

@@ -5,7 +5,7 @@ use super::{
     FormatStyle, GenericItem, GenericsList, RecursiveType, TypeVarLikeUsage, TypeVarTupleUsage,
 };
 use crate::{
-    arguments::Arguments,
+    arguments::Args,
     database::Database,
     debug,
     diagnostics::IssueType,
@@ -59,7 +59,7 @@ impl Tuple {
 
     pub fn tuple_class_generics(&self, db: &Database) -> &GenericsList {
         self.tuple_class_generics.get_or_init(|| {
-            GenericsList::new_generics(Rc::new([GenericItem::TypeArgument(
+            GenericsList::new_generics(Rc::new([GenericItem::TypeArg(
                 self.args.common_base_type(&InferenceState::new(db)),
             )]))
         })
@@ -614,7 +614,7 @@ pub fn lookup_tuple_magic_methods(tuple: Rc<Tuple>, name: &str) -> LookupDetails
 
 fn tuple_add<'db>(
     i_s: &InferenceState<'db, '_>,
-    args: &dyn Arguments<'db>,
+    args: &dyn Args<'db>,
     result_context: &mut ResultContext,
     on_type_error: OnTypeError<'db, '_>,
     bound: Option<&Type>,
@@ -637,7 +637,7 @@ fn tuple_add<'db>(
 fn tuple_add_internal<'db>(
     i_s: &InferenceState<'db, '_>,
     tuple1: Rc<Tuple>,
-    args: &dyn Arguments<'db>,
+    args: &dyn Args<'db>,
 ) -> Option<Inferred> {
     let first = args.maybe_single_positional_arg(i_s, &mut ResultContext::Unknown)?;
     for (_, type_or_class) in first.as_cow_type(i_s).mro(i_s.db) {
@@ -674,7 +674,7 @@ fn tuple_add_internal<'db>(
 }
 fn tuple_mul<'db>(
     i_s: &InferenceState<'db, '_>,
-    args: &dyn Arguments<'db>,
+    args: &dyn Args<'db>,
     result_context: &mut ResultContext,
     on_type_error: OnTypeError<'db, '_>,
     bound: Option<&Type>,
@@ -697,7 +697,7 @@ fn tuple_mul<'db>(
 fn tuple_mul_internal<'db>(
     i_s: &InferenceState<'db, '_>,
     tuple: Rc<Tuple>,
-    args: &dyn Arguments<'db>,
+    args: &dyn Args<'db>,
 ) -> Option<Inferred> {
     let first = args.maybe_single_positional_arg(i_s, &mut ResultContext::Unknown)?;
     match &tuple.args {
