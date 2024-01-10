@@ -6,7 +6,7 @@ use parsa_python_ast::{
 };
 
 use crate::{
-    arguments::{ArgIterator, Args, ArgumentsType},
+    arguments::{ArgIterator, Args},
     database::PointsBackup,
     debug,
     diagnostics::IssueType,
@@ -293,15 +293,6 @@ pub struct SliceArguments<'db, 'a> {
 impl<'db> Args<'db> for SliceArguments<'db, '_> {
     fn iter(&self) -> ArgIterator<'db, '_> {
         ArgIterator::new_slice(*self.slice_type, self.i_s)
-    }
-
-    fn type_(&self) -> ArgumentsType {
-        /*
-        match {
-            ArgumentsType::Normal(self.file, self.primary_node)
-        }
-        */
-        todo!()
     }
 
     fn as_node_ref(&self) -> Option<NodeRef> {

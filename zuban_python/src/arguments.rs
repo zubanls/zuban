@@ -18,15 +18,10 @@ use crate::{
     InferenceState,
 };
 
-pub enum ArgumentsType<'a> {
-    Normal(&'a PythonFile, NodeIndex),
-}
-
 pub(crate) trait Args<'db>: std::fmt::Debug {
     // Returns an iterator of arguments, where args are returned before kw args.
     // This is not the case in the grammar, but here we want that.
     fn iter(&self) -> ArgIterator<'db, '_>;
-    fn type_(&self) -> ArgumentsType;
     fn as_node_ref(&self) -> Option<NodeRef>;
     fn add_issue(&self, i_s: &InferenceState, issue: IssueType) {
         self.as_node_ref()
@@ -127,10 +122,6 @@ impl<'db: 'a, 'a> Args<'db> for SimpleArgs<'db, 'a> {
         })
     }
 
-    fn type_(&self) -> ArgumentsType {
-        ArgumentsType::Normal(self.file, self.primary_node_index)
-    }
-
     fn as_node_ref(&self) -> Option<NodeRef> {
         Some(NodeRef::new(self.file, self.primary_node_index))
     }
@@ -192,10 +183,6 @@ impl<'db, 'a> Args<'db> for KnownArgs<'a> {
         })
     }
 
-    fn type_(&self) -> ArgumentsType {
-        todo!()
-    }
-
     fn as_node_ref(&self) -> Option<NodeRef> {
         Some(self.node_ref)
     }
@@ -230,10 +217,6 @@ impl<'db, 'a> Args<'db> for KnownArgsWithCustomAddIssue<'a> {
         })
     }
 
-    fn type_(&self) -> ArgumentsType {
-        todo!()
-    }
-
     fn add_issue(&self, i_s: &InferenceState, issue: IssueType) {
         self.add_issue.0(issue)
     }
@@ -255,10 +238,6 @@ impl<'db, 'a> Args<'db> for CombinedArgs<'db, 'a> {
         debug_assert!(iterator.next.is_none()); // For now this is not supported
         iterator.next = Some(self.args2);
         iterator
-    }
-
-    fn type_(&self) -> ArgumentsType {
-        todo!()
     }
 
     fn as_node_ref(&self) -> Option<NodeRef> {
@@ -1085,10 +1064,6 @@ impl<'a> NoArgs<'a> {
 impl<'db, 'a> Args<'db> for NoArgs<'a> {
     fn iter(&self) -> ArgIterator<'db, '_> {
         ArgIterator::new(ArgIteratorBase::Finished)
-    }
-
-    fn type_(&self) -> ArgumentsType {
-        todo!()
     }
 
     fn as_node_ref(&self) -> Option<NodeRef> {
