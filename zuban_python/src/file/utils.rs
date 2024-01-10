@@ -6,7 +6,7 @@ use parsa_python_ast::{
 };
 
 use crate::{
-    arguments::{unpack_star_star, Argument, Arguments},
+    arguments::{unpack_star_star, Arg, Arguments},
     database::Database,
     debug,
     diagnostics::IssueType,
@@ -462,7 +462,7 @@ fn check_list_with_context<'db>(
 pub fn on_argument_type_error(
     i_s: &InferenceState,
     error_text: &dyn Fn(&str) -> Option<Box<str>>,
-    arg: &Argument,
+    arg: &Arg,
     types: ErrorTypes,
 ) {
     let strings = types.as_boxed_strs(i_s);

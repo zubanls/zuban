@@ -29,7 +29,7 @@ pub use utils::{
 };
 
 use crate::{
-    arguments::Argument,
+    arguments::Arg,
     database::Database,
     diagnostics::IssueType,
     inference_state::InferenceState,
@@ -189,7 +189,7 @@ impl ErrorTypes<'_> {
 pub type OnTypeErrorCallback<'db, 'a> = &'a dyn Fn(
     &InferenceState<'db, '_>,
     &dyn Fn(&str) -> Option<Box<str>>, // error_text; argument is a prefix
-    &Argument,
+    &Arg,
     ErrorTypes,
 );
 pub type OnLookupError<'a> = &'a dyn Fn(&Type);

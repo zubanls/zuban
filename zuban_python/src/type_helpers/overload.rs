@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use super::{Callable, Class};
 use crate::{
-    arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments},
+    arguments::{Arg, ArgumentIterator, ArgumentKind, Arguments},
     database::Database,
     debug,
     diagnostics::IssueType,
@@ -272,7 +272,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         result_context: &mut ResultContext,
         mut args: ArgumentIterator<'db, 'x>,
         skip_first_argument: bool,
-        non_union_args: &mut Vec<Argument<'db, 'x>>,
+        non_union_args: &mut Vec<Arg<'db, 'x>>,
         add_issue: &impl Fn(IssueType),
         search_init: bool,
         class: Option<&Class>,
@@ -281,8 +281,8 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             let inf = next_arg.infer(i_s, result_context);
             if inf.is_union(i_s) {
                 // TODO this is shit
-                let nxt_arg: &'x Argument<'db, 'x> = unsafe { std::mem::transmute(&next_arg) };
-                non_union_args.push(Argument {
+                let nxt_arg: &'x Arg<'db, 'x> = unsafe { std::mem::transmute(&next_arg) };
+                non_union_args.push(Arg {
                     index: next_arg.index,
                     kind: ArgumentKind::Overridden {
                         original: nxt_arg,

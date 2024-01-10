@@ -11,7 +11,7 @@ use super::{
     TypeVarKind, TypeVarLike, TypeVarLikes, TypeVarName, TypeVarUsage, Variance,
 };
 use crate::{
-    arguments::{Argument, ArgumentKind, Arguments, SimpleArguments},
+    arguments::{Arg, ArgumentKind, Arguments, SimpleArguments},
     database::{Database, Locality, Point, Specific},
     diagnostics::{Issue, IssueType},
     file::{File, PythonFile},
@@ -483,7 +483,7 @@ pub fn check_dataclass_options<'db>(
     args: &SimpleArguments<'db, '_>,
 ) -> DataclassOptions {
     let mut options = DataclassOptions::default();
-    let assign_option = |target: &mut _, arg: Argument<'db, '_>| {
+    let assign_option = |target: &mut _, arg: Arg<'db, '_>| {
         let result = arg.infer(i_s, &mut ResultContext::Unknown);
         if let Some(bool_) = result.maybe_bool_literal(i_s) {
             *target = bool_;

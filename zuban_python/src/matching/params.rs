@@ -4,7 +4,7 @@ use parsa_python_ast::ParamKind;
 
 use super::{Match, Matcher};
 use crate::{
-    arguments::{Argument, ArgumentKind},
+    arguments::{Arg, ArgumentKind},
     database::{Database, PointLink},
     debug,
     inference_state::InferenceState,
@@ -597,18 +597,16 @@ impl<'x> Param<'x> for &'x CallableParam {
 pub struct InferrableParamIterator<'db, 'a, I, P, AI: Iterator> {
     db: &'db Database,
     arguments: AI,
-    current_arg: Option<Argument<'db, 'a>>,
+    current_arg: Option<Arg<'db, 'a>>,
     params: I,
-    pub unused_keyword_arguments: Vec<Argument<'db, 'a>>,
+    pub unused_keyword_arguments: Vec<Arg<'db, 'a>>,
     current_starred_param: Option<P>,
     current_double_starred_param: Option<P>,
     pub too_many_positional_arguments: bool,
     arbitrary_length_handled: bool,
 }
 
-impl<'db, 'a, I, P, AI: Iterator<Item = Argument<'db, 'a>>>
-    InferrableParamIterator<'db, 'a, I, P, AI>
-{
+impl<'db, 'a, I, P, AI: Iterator<Item = Arg<'db, 'a>>> InferrableParamIterator<'db, 'a, I, P, AI> {
     pub fn new(db: &'db Database, params: I, arguments: AI) -> Self {
         Self {
             db,
@@ -645,7 +643,7 @@ impl<'db, 'a, I, P, AI: Iterator<Item = Argument<'db, 'a>>>
         self.arbitrary_length_handled
     }
 
-    pub fn next_arg(&mut self) -> Option<Argument<'db, 'a>> {
+    pub fn next_arg(&mut self) -> Option<Arg<'db, 'a>> {
         let arg = self.current_arg.take().or_else(|| self.arguments.next());
         if let Some(a) = &arg {
             if a.in_args_or_kwargs_and_arbitrary_len() {
@@ -656,7 +654,7 @@ impl<'db, 'a, I, P, AI: Iterator<Item = Argument<'db, 'a>>>
         arg
     }
 
-    fn maybe_exact_multi_arg(&mut self, is_keyword_arg: bool) -> Option<Argument<'db, 'a>> {
+    fn maybe_exact_multi_arg(&mut self, is_keyword_arg: bool) -> Option<Arg<'db, 'a>> {
         self.next_arg().and_then(|arg| {
             if arg.is_keyword_argument() == is_keyword_arg {
                 self.arbitrary_length_handled = true;
@@ -674,7 +672,7 @@ impl<'db: 'x, 'a, 'x, I, P, AI> Iterator for InferrableParamIterator<'db, 'a, I,
 where
     I: Iterator<Item = P>,
     P: Param<'x>,
-    AI: Iterator<Item = Argument<'db, 'a>>,
+    AI: Iterator<Item = Arg<'db, 'a>>,
 {
     type Item = InferrableParam<'db, 'a, P>;
 
@@ -887,13 +885,13 @@ impl<'member> Param<'member> for TypedDictMemberParam<'member> {
 #[derive(Debug)]
 pub enum ParamArgument<'db, 'a> {
     None,
-    Argument(Argument<'db, 'a>),
+    Argument(Arg<'db, 'a>),
     MatchedUnpackedTypedDictMember {
-        argument: Argument<'db, 'a>,
+        argument: Arg<'db, 'a>,
         type_: Type,
         name: StringSlice,
     },
-    ParamSpecArgs(ParamSpecUsage, Box<[Argument<'db, 'a>]>),
+    ParamSpecArgs(ParamSpecUsage, Box<[Arg<'db, 'a>]>),
 }
 
 #[derive(Debug)]

@@ -19,7 +19,7 @@ use super::{
     FormatData, Match, OnTypeError, ParamsStyle, ResultContext, SignatureMatch,
 };
 use crate::{
-    arguments::{Argument, ArgumentKind},
+    arguments::{Arg, ArgumentKind},
     database::{Database, PointLink},
     debug,
     diagnostics::IssueType,
@@ -455,7 +455,7 @@ impl<'a> Matcher<'a> {
         &self,
         i_s: &InferenceState<'db, '_>,
         usage: &ParamSpecUsage,
-        args: Box<[Argument<'db, 'b>]>,
+        args: Box<[Arg<'db, 'b>]>,
         func_or_callable: FunctionOrCallable,
         add_issue: &dyn Fn(IssueType),
         on_type_error: Option<OnTypeError<'db, '_>>,

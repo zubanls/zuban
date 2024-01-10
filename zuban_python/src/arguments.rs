@@ -331,7 +331,7 @@ pub enum ArgumentKind<'db, 'a> {
         comprehension: Comprehension<'a>,
     },
     Overridden {
-        original: &'a Argument<'db, 'a>,
+        original: &'a Arg<'db, 'a>,
         inferred: Inferred,
     },
 }
@@ -367,12 +367,12 @@ impl<'db, 'a> ArgumentKind<'db, 'a> {
 }
 
 #[derive(Debug, Clone)]
-pub struct Argument<'db, 'a> {
+pub struct Arg<'db, 'a> {
     pub kind: ArgumentKind<'db, 'a>,
     pub index: usize,
 }
 
-impl<'db, 'a> Argument<'db, 'a> {
+impl<'db, 'a> Arg<'db, 'a> {
     pub fn in_args_or_kwargs_and_arbitrary_len(&self) -> bool {
         match &self.kind {
             ArgumentKind::Inferred {
@@ -911,7 +911,7 @@ impl<'db, 'a> ArgumentIterator<'db, 'a> {
 }
 
 impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
-    type Item = Argument<'db, 'a>;
+    type Item = Arg<'db, 'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match std::mem::replace(&mut self.args_kwargs_iterator, ArgsKwargsIterator::None) {
@@ -931,7 +931,7 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
                     } else {
                         self.counter += 1;
                     }
-                    Some(Argument {
+                    Some(Arg {
                         kind,
                         index: self.counter,
                     })
@@ -967,7 +967,7 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
                             position,
                         };
                     }
-                    Some(Argument {
+                    Some(Arg {
                         kind: ArgumentKind::Inferred {
                             inferred,
                             position,
@@ -988,7 +988,7 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
             } => {
                 let index = self.counter;
                 self.counter += 1;
-                Some(Argument {
+                Some(Arg {
                     kind: ArgumentKind::Inferred {
                         inferred: inferred_value,
                         position,
@@ -1023,7 +1023,7 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
                     typed_dict,
                     iterator_index: iterator_index + 1,
                 };
-                Some(Argument {
+                Some(Arg {
                     kind: ArgumentKind::Inferred {
                         inferred: Inferred::from_type(t),
                         position,

@@ -15,7 +15,7 @@ use super::{
     type_var_matcher::{BoundKind, FunctionOrCallable, TypeVarMatcher},
 };
 use crate::{
-    arguments::{Argument, ArgumentKind},
+    arguments::{Arg, ArgumentKind},
     database::PointLink,
     debug,
     diagnostics::IssueType,
@@ -33,7 +33,7 @@ pub(crate) fn calculate_callable_init_type_vars_and_return<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     class: &Class,
     callable: Callable<'a>,
-    args: impl Iterator<Item = Argument<'db, 'a>>,
+    args: impl Iterator<Item = Arg<'db, 'a>>,
     add_issue: impl Fn(IssueType),
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
@@ -53,7 +53,7 @@ pub(crate) fn calculate_class_init_type_vars_and_return<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     class: &Class,
     function: Function<'a, 'a>,
-    args: impl Iterator<Item = Argument<'db, 'a>>,
+    args: impl Iterator<Item = Arg<'db, 'a>>,
     add_issue: impl Fn(IssueType),
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
@@ -73,7 +73,7 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     class: &Class,
     func_or_callable: FunctionOrCallable<'a>,
-    args: impl Iterator<Item = Argument<'db, 'a>>,
+    args: impl Iterator<Item = Arg<'db, 'a>>,
     add_issue: impl Fn(IssueType),
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
@@ -177,7 +177,7 @@ impl CalculatedTypeArgs {
 pub(crate) fn calculate_function_type_vars_and_return<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     function: Function<'a, 'a>,
-    args: impl Iterator<Item = Argument<'db, 'a>>,
+    args: impl Iterator<Item = Arg<'db, 'a>>,
     add_issue: impl Fn(IssueType),
     skip_first_param: bool,
     type_vars: &TypeVarLikes,
@@ -212,7 +212,7 @@ pub(crate) fn calculate_function_type_vars_and_return<'db: 'a, 'a>(
 pub(crate) fn calculate_callable_type_vars_and_return<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     callable: Callable<'a>,
-    args: impl Iterator<Item = Argument<'db, 'a>>,
+    args: impl Iterator<Item = Arg<'db, 'a>>,
     add_issue: impl Fn(IssueType),
     skip_first_param: bool,
     result_context: &mut ResultContext,
@@ -258,7 +258,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
     mut matcher: Matcher,
     func_or_callable: FunctionOrCallable<'a>,
     return_class: Option<&Class>,
-    mut args: impl Iterator<Item = Argument<'db, 'a>>,
+    mut args: impl Iterator<Item = Arg<'db, 'a>>,
     add_issue: impl Fn(IssueType),
     skip_first_param: bool,
     type_vars: &TypeVarLikes,
@@ -451,7 +451,7 @@ pub(crate) fn match_arguments_against_params<
     'db: 'x,
     'x,
     P: Param<'x>,
-    AI: Iterator<Item = Argument<'db, 'x>>,
+    AI: Iterator<Item = Arg<'db, 'x>>,
 >(
     i_s: &InferenceState<'db, '_>,
     matcher: &mut Matcher,
@@ -478,7 +478,7 @@ pub(crate) fn match_arguments_against_params<
             debug!("Arguments for {:?} missing", p.param.name(i_s.db));
             continue;
         }
-        let mut match_arg = |argument: &Argument<'db, '_>, expected: Cow<Type>| {
+        let mut match_arg = |argument: &Arg<'db, '_>, expected: Cow<Type>| {
             let value = if matcher.might_have_defined_type_vars() {
                 argument.infer(
                     i_s,
@@ -628,7 +628,7 @@ pub(crate) fn match_arguments_against_params<
             ParamArgument::None => (),
         }
     }
-    let add_keyword_argument_issue = |arg: &Argument, name: &str| {
+    let add_keyword_argument_issue = |arg: &Arg, name: &str| {
         let s = match func_or_callable.has_keyword_param_with_name(i_s.db, name) {
             true => format!(
                 "{} gets multiple values for keyword argument \"{name}\"",
@@ -744,12 +744,7 @@ pub(crate) fn match_arguments_against_params<
     }
 }
 
-fn calculate_type_vars_for_params<
-    'db: 'x,
-    'x,
-    P: Param<'x>,
-    AI: Iterator<Item = Argument<'db, 'x>>,
->(
+fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>, AI: Iterator<Item = Arg<'db, 'x>>>(
     i_s: &InferenceState<'db, '_>,
     matcher: &mut Matcher,
     func_or_callable: FunctionOrCallable,

@@ -7,7 +7,7 @@ use parsa_python_ast::{
 };
 
 use crate::{
-    arguments::{Argument, Arguments, KnownArguments},
+    arguments::{Arg, Arguments, KnownArguments},
     database::{
         ComplexPoint, Database, Locality, OverloadDefinition, OverloadImplementation, Point,
         PointType, Specific,
@@ -111,7 +111,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         iterator.any(|p| p.annotation().is_none())
     }
 
-    pub fn iter_args_with_params<'b, AI: Iterator<Item = Argument<'db, 'b>>>(
+    pub fn iter_args_with_params<'b, AI: Iterator<Item = Arg<'db, 'b>>>(
         &self,
         db: &'db Database,
         args: AI,
