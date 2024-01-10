@@ -1262,7 +1262,7 @@ impl<'db> Inference<'db, '_, '_> {
         let forward_type = match param.specific(i_s.db) {
             WrappedParamType::PositionalOnly(t)
             | WrappedParamType::PositionalOrKeyword(t)
-            | WrappedParamType::Star(WrappedStar::ArbitraryLength(t)) => t,
+            | WrappedParamType::Star(WrappedStar::ArbitraryLen(t)) => t,
             _ => return invalid_signature(),
         };
         let Some(forward_type) = forward_type else {
@@ -1472,7 +1472,7 @@ fn except_type(i_s: &InferenceState, t: &Type, allow_tuple: bool) -> ExceptType 
         }
         Type::Any(_) => ExceptType::ContainsOnlyBaseExceptions,
         Type::Tuple(content) if allow_tuple => match &content.args {
-            TupleArgs::FixedLength(ts) => {
+            TupleArgs::FixedLen(ts) => {
                 let mut result = ExceptType::ContainsOnlyBaseExceptions;
                 for t in ts.iter() {
                     match except_type(i_s, t, false) {
@@ -1483,7 +1483,7 @@ fn except_type(i_s: &InferenceState, t: &Type, allow_tuple: bool) -> ExceptType 
                 }
                 result
             }
-            TupleArgs::ArbitraryLength(t) => except_type(i_s, t, false),
+            TupleArgs::ArbitraryLen(t) => except_type(i_s, t, false),
             TupleArgs::WithUnpack(_) => todo!(),
         },
         Type::Union(union) => {
@@ -1724,7 +1724,7 @@ fn check_override(
         // Mypy helps the user a bit by formatting different error messages for similar
         // signatures. Try to make this as similar as possible to Mypy.
         match override_func_infos(&override_t, &original_t) {
-            Some(OverrideFuncInfos::CallablesSameParamLength(got_c, expected_c)) => {
+            Some(OverrideFuncInfos::CallablesSameParamLen(got_c, expected_c)) => {
                 let supertype = original_class_name(db, &original_class);
 
                 // First check params
@@ -1903,7 +1903,7 @@ fn is_async_iterator_without_async(
 }
 
 enum OverrideFuncInfos<'t1, 't2> {
-    CallablesSameParamLength(&'t1 CallableContent, &'t2 CallableContent),
+    CallablesSameParamLen(&'t1 CallableContent, &'t2 CallableContent),
     BothOverloads(&'t1 FunctionOverload, &'t2 FunctionOverload),
     Mixed,
 }
@@ -1915,7 +1915,7 @@ fn override_func_infos<'t1, 't2>(
     match (t1, t2) {
         (Type::Callable(c1), Type::Callable(c2)) => Some(match (&c1.params, &c2.params) {
             (CallableParams::Simple(p1), CallableParams::Simple(p2)) if p1.len() == p2.len() => {
-                OverrideFuncInfos::CallablesSameParamLength(c1, c2)
+                OverrideFuncInfos::CallablesSameParamLen(c1, c2)
             }
             _ => OverrideFuncInfos::Mixed,
         }),

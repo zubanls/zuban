@@ -786,7 +786,7 @@ impl Type {
     fn overlaps_tuple(i_s: &InferenceState, t1: &Tuple, t2: &Tuple) -> bool {
         use TupleArgs::*;
         match (&t1.args, &t2.args) {
-            (FixedLength(ts1), FixedLength(ts2)) => {
+            (FixedLen(ts1), FixedLen(ts2)) => {
                 let mut value_generics = ts2.iter();
                 let mut overlaps = true;
                 for type1 in ts1.iter() {
@@ -811,9 +811,9 @@ impl Type {
                 }
                 overlaps
             }
-            (ArbitraryLength(t1), ArbitraryLength(t2)) => t1.overlaps(i_s, t2),
-            (ArbitraryLength(t1), FixedLength(ts2)) => ts2.iter().all(|t2| t1.overlaps(i_s, t2)),
-            (FixedLength(ts1), ArbitraryLength(t2)) => ts1.iter().all(|t1| t1.overlaps(i_s, &t2)),
+            (ArbitraryLen(t1), ArbitraryLen(t2)) => t1.overlaps(i_s, t2),
+            (ArbitraryLen(t1), FixedLen(ts2)) => ts2.iter().all(|t2| t1.overlaps(i_s, t2)),
+            (FixedLen(ts1), ArbitraryLen(t2)) => ts1.iter().all(|t1| t1.overlaps(i_s, &t2)),
             (WithUnpack(_), _) => todo!(),
             (_, WithUnpack(_)) => todo!(),
         }
@@ -868,7 +868,7 @@ pub fn match_tuple_type_arguments(
     }
     use TupleArgs::*;
     match (tup1, tup2) {
-        (FixedLength(ts1), FixedLength(ts2)) => {
+        (FixedLen(ts1), FixedLen(ts2)) => {
             if ts1.len() == ts2.len() {
                 let mut matches = Match::new_true();
                 for (t1, t2) in ts1.iter().zip(ts2.iter()) {
@@ -879,11 +879,11 @@ pub fn match_tuple_type_arguments(
                 Match::new_false()
             }
         }
-        (ArbitraryLength(t1), ArbitraryLength(t2)) => t1.matches(i_s, matcher, t2, variance),
+        (ArbitraryLen(t1), ArbitraryLen(t2)) => t1.matches(i_s, matcher, t2, variance),
         (WithUnpack(unpack), _) => match_unpack(i_s, matcher, unpack, tup2, variance),
-        (ArbitraryLength(t1), WithUnpack(u2)) => match &u2.unpack {
+        (ArbitraryLen(t1), WithUnpack(u2)) => match &u2.unpack {
             TupleUnpack::TypeVarTuple(_) => todo!("{t1:?}"),
-            TupleUnpack::ArbitraryLength(inner_t2) => {
+            TupleUnpack::ArbitraryLen(inner_t2) => {
                 let mut matches = Match::new_true();
                 for t2 in u2.before.iter() {
                     matches &= t1.matches(i_s, matcher, t2, variance)
@@ -895,9 +895,9 @@ pub fn match_tuple_type_arguments(
                 matches
             }
         },
-        (FixedLength(_), WithUnpack(_)) => Match::new_false(),
-        (_, ArbitraryLength(t2)) => matches!(t2.as_ref(), Type::Any(_)).into(),
-        (ArbitraryLength(t1), FixedLength(ts2)) => ts2
+        (FixedLen(_), WithUnpack(_)) => Match::new_false(),
+        (_, ArbitraryLen(t2)) => matches!(t2.as_ref(), Type::Any(_)).into(),
+        (ArbitraryLen(t1), FixedLen(ts2)) => ts2
             .iter()
             .all(|t2| t1.matches(i_s, matcher, t2, variance).bool())
             .into(),
@@ -915,7 +915,7 @@ pub fn match_unpack(
     let mut matches = Match::new_true();
 
     match tuple2 {
-        TupleArgs::FixedLength(ts2) => {
+        TupleArgs::FixedLen(ts2) => {
             let mut t2_iterator = ts2.iter();
             for (t1, t2) in with_unpack1.before.iter().zip(t2_iterator.by_ref()) {
                 matches &= t1.matches(i_s, matcher, t2, variance);
@@ -938,11 +938,11 @@ pub fn match_unpack(
                         matches &= matcher.match_or_add_type_var_tuple(
                             i_s,
                             tvt,
-                            TupleArgs::FixedLength(t2_iterator.cloned().collect()),
+                            TupleArgs::FixedLen(t2_iterator.cloned().collect()),
                             variance,
                         )
                     }
-                    TupleUnpack::ArbitraryLength(inner_t1) => {
+                    TupleUnpack::ArbitraryLen(inner_t1) => {
                         for t2 in t2_iterator {
                             matches &= inner_t1.matches(i_s, matcher, t2, variance)
                         }
@@ -984,12 +984,12 @@ pub fn match_unpack(
                             }),
                             variance,
                         ),
-                        TupleUnpack::ArbitraryLength(_) => todo!(),
+                        TupleUnpack::ArbitraryLen(_) => todo!(),
                     }
                 }
-                TupleUnpack::ArbitraryLength(inner_t1) => match &with_unpack2.unpack {
+                TupleUnpack::ArbitraryLen(inner_t1) => match &with_unpack2.unpack {
                     TupleUnpack::TypeVarTuple(tvt2) => todo!(),
-                    TupleUnpack::ArbitraryLength(inner_t2) => {
+                    TupleUnpack::ArbitraryLen(inner_t2) => {
                         /*
                         if with_unpack1.before.len() > with_unpack2.before.len() {
                             return Match::new_false();
@@ -1032,7 +1032,7 @@ pub fn match_unpack(
             }
             */
         }
-        TupleArgs::ArbitraryLength(t2) => {
+        TupleArgs::ArbitraryLen(t2) => {
             if t2.is_any() {
                 return Match::True { with_any: true };
             }
@@ -1044,11 +1044,11 @@ pub fn match_unpack(
                     matches &= matcher.match_or_add_type_var_tuple(
                         i_s,
                         tvt,
-                        TupleArgs::ArbitraryLength(t2.clone()),
+                        TupleArgs::ArbitraryLen(t2.clone()),
                         variance,
                     )
                 }
-                TupleUnpack::ArbitraryLength(inner_t1) => {
+                TupleUnpack::ArbitraryLen(inner_t1) => {
                     todo!()
                 }
             }

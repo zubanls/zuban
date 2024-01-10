@@ -361,7 +361,7 @@ fn common_params_by_iterable<'x>(
                     ParamKind::PositionalOnly => ParamType::PositionalOnly(new_t),
                     ParamKind::PositionalOrKeyword => ParamType::PositionalOrKeyword(new_t),
                     ParamKind::KeywordOnly => ParamType::KeywordOnly(new_t),
-                    ParamKind::Star => ParamType::Star(StarParamType::ArbitraryLength(new_t)),
+                    ParamKind::Star => ParamType::Star(StarParamType::ArbitraryLen(new_t)),
                     ParamKind::StarStar => ParamType::StarStar(StarStarParamType::ValueType(new_t)),
                 },
                 name: (p1_name == p2_name).then(|| p1.name.clone()).flatten(),
@@ -388,18 +388,18 @@ fn common_base_for_tuple_against_type(
 
 fn common_base_for_tuples(i_s: &InferenceState, tup1: &Tuple, tup2: &Tuple) -> Rc<Tuple> {
     Tuple::new(match &tup2.args {
-        TupleArgs::FixedLength(ts2) => {
+        TupleArgs::FixedLen(ts2) => {
             let mut new_args = tup1.args.clone();
             common_base_type_of_type_var_tuple_with_items(&mut new_args, i_s, ts2.iter());
             new_args
         }
-        TupleArgs::ArbitraryLength(t2) => match &tup1.args {
-            TupleArgs::FixedLength(ts1) => {
+        TupleArgs::ArbitraryLen(t2) => match &tup1.args {
+            TupleArgs::FixedLen(ts1) => {
                 let mut new_args = tup2.args.clone();
                 common_base_type_of_type_var_tuple_with_items(&mut new_args, i_s, ts1.iter());
                 new_args
             }
-            TupleArgs::ArbitraryLength(t1) => todo!(),
+            TupleArgs::ArbitraryLen(t1) => todo!(),
             TupleArgs::WithUnpack(_) => todo!(),
         },
         TupleArgs::WithUnpack(_) => todo!(),
@@ -412,7 +412,7 @@ pub fn common_base_type_of_type_var_tuple_with_items<'x, I: ExactSizeIterator<It
     items: I,
 ) {
     match args {
-        TupleArgs::FixedLength(calc_ts) => {
+        TupleArgs::FixedLen(calc_ts) => {
             if items.len() == calc_ts.len() {
                 let mut new = vec![];
                 for (t1, t2) in calc_ts.iter().zip(items) {
@@ -423,17 +423,17 @@ pub fn common_base_type_of_type_var_tuple_with_items<'x, I: ExactSizeIterator<It
                 // We use map to make an iterator with covariant lifetimes.
                 #[allow(clippy::map_identity)]
                 let t = common_base_type(i_s, calc_ts.iter().chain(items.map(|x| x)));
-                *args = TupleArgs::ArbitraryLength(Box::new(t));
+                *args = TupleArgs::ArbitraryLen(Box::new(t));
             }
         }
         TupleArgs::WithUnpack(_) => todo!(),
-        TupleArgs::ArbitraryLength(calc_t) => {
+        TupleArgs::ArbitraryLen(calc_t) => {
             if items.len() == 0 {
                 // args is already ok, because we have an empty tuple here that can be anything.
                 return;
             }
             let base = common_base_type(i_s, items).common_base_type(i_s, calc_t);
-            *args = TupleArgs::ArbitraryLength(Box::new(base));
+            *args = TupleArgs::ArbitraryLen(Box::new(base));
         }
     }
 }

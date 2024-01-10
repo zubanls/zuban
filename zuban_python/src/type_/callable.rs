@@ -22,7 +22,7 @@ use crate::{
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum StarParamType {
-    ArbitraryLength(Type),
+    ArbitraryLen(Type),
     ParamSpecArgs(ParamSpecUsage),
     UnpackedTuple(Rc<Tuple>),
 }
@@ -80,7 +80,7 @@ impl ParamType {
             Self::PositionalOnly(t)
             | Self::PositionalOrKeyword(t)
             | Self::KeywordOnly(t)
-            | Self::Star(StarParamType::ArbitraryLength(t))
+            | Self::Star(StarParamType::ArbitraryLen(t))
             | Self::StarStar(StarStarParamType::ValueType(t)) => Some(t),
             Self::Star(StarParamType::ParamSpecArgs(_) | StarParamType::UnpackedTuple(_))
             | Self::StarStar(_) => None,
@@ -92,7 +92,7 @@ impl ParamType {
             Self::PositionalOnly(t)
             | Self::PositionalOrKeyword(t)
             | Self::KeywordOnly(t)
-            | Self::Star(StarParamType::ArbitraryLength(t))
+            | Self::Star(StarParamType::ArbitraryLen(t))
             | Self::StarStar(StarStarParamType::ValueType(t)) => ParamTypeDetails::Type(t),
             Self::Star(StarParamType::ParamSpecArgs(usage)) => {
                 ParamTypeDetails::ParamSpecUsage(usage)
@@ -139,7 +139,7 @@ impl CallableParam {
         {
             if let ParamType::Star(t) = &self.type_ {
                 return match t {
-                    StarParamType::ArbitraryLength(t) => {
+                    StarParamType::ArbitraryLen(t) => {
                         format!("VarArg({})", t.format(format_data))
                     }
                     StarParamType::ParamSpecArgs(u) => todo!(),
@@ -175,7 +175,7 @@ impl CallableParam {
                                 "*{}: {}",
                                 name.as_str(format_data.db),
                                 match s {
-                                    StarParamType::ArbitraryLength(t) => t.format(format_data),
+                                    StarParamType::ArbitraryLen(t) => t.format(format_data),
                                     StarParamType::ParamSpecArgs(_) => todo!(),
                                     StarParamType::UnpackedTuple(u) => todo!(),
                                 }
@@ -322,7 +322,7 @@ impl CallableParams {
                 ParamType::PositionalOnly(t)
                 | ParamType::PositionalOrKeyword(t)
                 | ParamType::KeywordOnly(t)
-                | ParamType::Star(StarParamType::ArbitraryLength(t))
+                | ParamType::Star(StarParamType::ArbitraryLen(t))
                 | ParamType::StarStar(StarStarParamType::ValueType(t)) => {
                     t.has_any_internal(i_s, already_checked)
                 }
@@ -350,7 +350,7 @@ impl CallableParams {
         };
         if !matches!(
             &first.type_,
-            ParamType::Star(StarParamType::ArbitraryLength(Type::Any(_)))
+            ParamType::Star(StarParamType::ArbitraryLen(Type::Any(_)))
         ) {
             return false;
         }
@@ -371,7 +371,7 @@ impl CallableParams {
                         ParamType::PositionalOnly(t)
                         | ParamType::PositionalOrKeyword(t)
                         | ParamType::KeywordOnly(t)
-                        | ParamType::Star(StarParamType::ArbitraryLength(t))
+                        | ParamType::Star(StarParamType::ArbitraryLen(t))
                         | ParamType::StarStar(StarStarParamType::ValueType(t)) => {
                             t.search_type_vars(found_type_var)
                         }
@@ -484,14 +484,14 @@ impl CallableContent {
             CallableParams::Simple(params) => {
                 let mut iterator = params.iter();
                 if let Some(first) = iterator.next() {
-                    if let ParamType::Star(StarParamType::ArbitraryLength(t)) = &first.type_ {
+                    if let ParamType::Star(StarParamType::ArbitraryLen(t)) = &first.type_ {
                         return Some(t.clone());
                     }
                 }
                 iterator.next().and_then(|second| match &second.type_ {
                     ParamType::PositionalOnly(t)
                     | ParamType::PositionalOrKeyword(t)
-                    | ParamType::Star(StarParamType::ArbitraryLength(t)) => Some(t.clone()),
+                    | ParamType::Star(StarParamType::ArbitraryLen(t)) => Some(t.clone()),
                     _ => None,
                 })
             }
@@ -561,7 +561,7 @@ impl CallableContent {
                     ParamType::PositionalOnly(t)
                     | ParamType::PositionalOrKeyword(t)
                     | ParamType::KeywordOnly(t)
-                    | ParamType::Star(StarParamType::ArbitraryLength(t))
+                    | ParamType::Star(StarParamType::ArbitraryLen(t))
                     | ParamType::StarStar(StarStarParamType::ValueType(t)) => t.find_in_type(check),
                     ParamType::Star(StarParamType::ParamSpecArgs(_)) => false,
                     ParamType::Star(StarParamType::UnpackedTuple(u)) => u.find_in_type(check),
@@ -763,7 +763,7 @@ pub fn format_callable_params<'db: 'x, 'x, P: Param<'x>>(
             WrappedParamType::PositionalOnly(t)
             | WrappedParamType::PositionalOrKeyword(t)
             | WrappedParamType::KeywordOnly(t)
-            | WrappedParamType::Star(WrappedStar::ArbitraryLength(t))
+            | WrappedParamType::Star(WrappedStar::ArbitraryLen(t))
             | WrappedParamType::StarStar(WrappedStarStar::ValueType(t)) => t
                 .as_ref()
                 .map(|t| format_function_type(format_data, t, class)),

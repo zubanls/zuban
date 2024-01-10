@@ -356,7 +356,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
     }
     if cls.incomplete_mro(i_s.db) {
         params.push(CallableParam {
-            type_: ParamType::Star(StarParamType::ArbitraryLength(Type::Any(AnyCause::Todo))),
+            type_: ParamType::Star(StarParamType::ArbitraryLen(Type::Any(AnyCause::Todo))),
             name: None,
             has_default: false,
         });

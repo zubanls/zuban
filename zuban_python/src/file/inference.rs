@@ -1107,7 +1107,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         if let Some(actual_lens) = value_iterator.len_infos() {
             use TupleLenInfos::*;
             had_issue = match (expected_lens, actual_lens) {
-                (FixedLength(expected), FixedLength(actual)) if actual != expected => {
+                (FixedLen(expected), FixedLen(actual)) if actual != expected => {
                     value_node_ref.add_issue(
                         self.i_s,
                         if actual < expected {
@@ -1118,7 +1118,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     );
                     true
                 }
-                (WithStar { before, after }, FixedLength(actual)) if before + after > actual => {
+                (WithStar { before, after }, FixedLen(actual)) if before + after > actual => {
                     value_node_ref.add_issue(
                         self.i_s,
                         IssueType::TooFewValuesToUnpack {
@@ -1144,7 +1144,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     );
                     true
                 }
-                (FixedLength(expected), WithStar { before, after }) => {
+                (FixedLen(expected), WithStar { before, after }) => {
                     value_node_ref.add_issue(
                         self.i_s,
                         IssueType::VariadicTupleUnpackingRequiresStarTarget,
@@ -1573,7 +1573,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     ParamType::PositionalOrKeyword(Type::Any(AnyCause::Unannotated))
                 }
                 ParamKind::KeywordOnly => ParamType::KeywordOnly(Type::Any(AnyCause::Unannotated)),
-                ParamKind::Star => ParamType::Star(StarParamType::ArbitraryLength(Type::Any(
+                ParamKind::Star => ParamType::Star(StarParamType::ArbitraryLen(Type::Any(
                     AnyCause::Unannotated,
                 ))),
                 ParamKind::StarStar => ParamType::StarStar(StarStarParamType::ValueType(
@@ -2063,12 +2063,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             gatherer.is_arbitrary_length = true;
                             return;
                         }
-                        //gatherer.unpack = Some(TupleUnpack::ArbitraryLength(it.infer_all(self.i_s).as_type(self.i_s)));
+                        //gatherer.unpack = Some(TupleUnpack::ArbitraryLen(it.infer_all(self.i_s).as_type(self.i_s)));
                         // TODO this is part of --enable-incomplete-feature=PreciseTupleTypes
                         gatherer.is_arbitrary_length = true;
                         return;
                     }
-                    IteratorContent::FixedLengthTupleGenerics { entries, .. } => {
+                    IteratorContent::FixedLenTupleGenerics { entries, .. } => {
                         gatherer.extend_from_slice(&entries);
                     }
                     IteratorContent::WithUnpack { unpack, .. } => {
@@ -2709,12 +2709,12 @@ fn instantiate_except(i_s: &InferenceState, t: &Type) -> Type {
         },
         Type::Any(cause) => Type::Any(*cause),
         Type::Tuple(content) => Inferred::gather_simplified_union(i_s, |add| match &content.args {
-            TupleArgs::FixedLength(ts) => {
+            TupleArgs::FixedLen(ts) => {
                 for t in ts.iter() {
                     add(Inferred::from_type(instantiate_except(i_s, t)))
                 }
             }
-            TupleArgs::ArbitraryLength(t) => add(Inferred::from_type(instantiate_except(i_s, t))),
+            TupleArgs::ArbitraryLen(t) => add(Inferred::from_type(instantiate_except(i_s, t))),
             TupleArgs::WithUnpack(_) => todo!(),
         })
         .as_cow_type(i_s)
@@ -2779,12 +2779,12 @@ fn gather_except_star(i_s: &InferenceState, t: &Type) -> Type {
         },
         Type::Any(cause) => Type::Any(*cause),
         Type::Tuple(content) => Inferred::gather_simplified_union(i_s, |add| match &content.args {
-            TupleArgs::FixedLength(ts) => {
+            TupleArgs::FixedLen(ts) => {
                 for t in ts.iter() {
                     add(Inferred::from_type(gather_except_star(i_s, t)))
                 }
             }
-            TupleArgs::ArbitraryLength(t) => add(Inferred::from_type(gather_except_star(i_s, t))),
+            TupleArgs::ArbitraryLen(t) => add(Inferred::from_type(gather_except_star(i_s, t))),
             TupleArgs::WithUnpack(_) => todo!(),
         })
         .as_cow_type(i_s)
@@ -2898,7 +2898,7 @@ fn targets_len_infos(targets: TargetIterator) -> (usize, TupleLenInfos) {
         if star_count > 0 {
             TupleLenInfos::WithStar { before, after }
         } else {
-            TupleLenInfos::FixedLength(before)
+            TupleLenInfos::FixedLen(before)
         },
     )
 }

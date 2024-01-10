@@ -563,7 +563,7 @@ pub(crate) fn match_arguments_against_params<
                     WrappedParamType::PositionalOnly(t)
                     | WrappedParamType::PositionalOrKeyword(t)
                     | WrappedParamType::KeywordOnly(t)
-                    | WrappedParamType::Star(WrappedStar::ArbitraryLength(t))
+                    | WrappedParamType::Star(WrappedStar::ArbitraryLen(t))
                     | WrappedParamType::StarStar(WrappedStarStar::ValueType(t)) => match t {
                         Some(t) => t,
                         None => continue, // This is the **kwargs without annotation case

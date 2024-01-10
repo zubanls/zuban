@@ -35,7 +35,7 @@ impl Type {
             (Type::Tuple(tup1), Type::Tuple(tup2)) => {
                 use TupleArgs::*;
                 Some(match (&tup1.args, &tup2.args) {
-                    (FixedLength(ts1), FixedLength(ts2)) => {
+                    (FixedLen(ts1), FixedLen(ts2)) => {
                         if ts1.len() != ts2.len() {
                             return None;
                         }
@@ -45,9 +45,8 @@ impl Type {
                         }
                         Type::Tuple(Tuple::new_fixed_length(entries.into()))
                     }
-                    (ArbitraryLength(t1), ArbitraryLength(t2)) => t1.common_sub_type(i_s, t2)?,
-                    (ArbitraryLength(t2), FixedLength(ts1))
-                    | (FixedLength(ts1), ArbitraryLength(t2)) => {
+                    (ArbitraryLen(t1), ArbitraryLen(t2)) => t1.common_sub_type(i_s, t2)?,
+                    (ArbitraryLen(t2), FixedLen(ts1)) | (FixedLen(ts1), ArbitraryLen(t2)) => {
                         let mut entries = vec![];
                         for t1 in ts1.iter() {
                             entries.push(t1.common_sub_type(i_s, &t2)?)
@@ -135,7 +134,7 @@ fn common_sub_type_params(
                     ParamKind::PositionalOnly => ParamType::PositionalOnly(new_t),
                     ParamKind::PositionalOrKeyword => ParamType::PositionalOrKeyword(new_t),
                     ParamKind::KeywordOnly => ParamType::KeywordOnly(new_t),
-                    ParamKind::Star => ParamType::Star(StarParamType::ArbitraryLength(new_t)),
+                    ParamKind::Star => ParamType::Star(StarParamType::ArbitraryLen(new_t)),
                     ParamKind::StarStar => ParamType::StarStar(StarStarParamType::ValueType(new_t)),
                 },
                 name: p1.name.clone(),

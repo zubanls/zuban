@@ -1069,8 +1069,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 WrappedParamType::PositionalOnly(t) => ParamType::PositionalOnly(as_t(t)),
                 WrappedParamType::PositionalOrKeyword(t) => ParamType::PositionalOrKeyword(as_t(t)),
                 WrappedParamType::KeywordOnly(t) => ParamType::KeywordOnly(as_t(t)),
-                WrappedParamType::Star(WrappedStar::ArbitraryLength(t)) => {
-                    ParamType::Star(StarParamType::ArbitraryLength(as_t(t)))
+                WrappedParamType::Star(WrappedStar::ArbitraryLen(t)) => {
+                    ParamType::Star(StarParamType::ArbitraryLen(as_t(t)))
                 }
                 WrappedParamType::Star(WrappedStar::UnpackedTuple(t)) => {
                     ParamType::Star(StarParamType::UnpackedTuple(t.clone()))
@@ -1392,14 +1392,14 @@ impl<'x> Param<'x> for FunctionParam<'x> {
                             unreachable!()
                         };
                         match &tup.args {
-                            TupleArgs::FixedLength(..) => todo!(),
-                            TupleArgs::ArbitraryLength(t) => {
-                                WrappedStar::ArbitraryLength(Some(Cow::Borrowed(t.as_ref())))
+                            TupleArgs::FixedLen(..) => todo!(),
+                            TupleArgs::ArbitraryLen(t) => {
+                                WrappedStar::ArbitraryLen(Some(Cow::Borrowed(t.as_ref())))
                             }
                             TupleArgs::WithUnpack(_) => WrappedStar::UnpackedTuple(tup.clone()),
                         }
                     }
-                    None => WrappedStar::ArbitraryLength(None),
+                    None => WrappedStar::ArbitraryLen(None),
                 },
             }),
             ParamKind::StarStar => WrappedParamType::StarStar(match dbt(t.as_ref()) {

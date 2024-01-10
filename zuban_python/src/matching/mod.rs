@@ -198,7 +198,7 @@ pub type OnLookupError<'a> = &'a dyn Fn(&Type);
 pub enum IteratorContent {
     Inferred(Inferred),
     // The code before makes sure that no type var tuples are passed.
-    FixedLengthTupleGenerics {
+    FixedLenTupleGenerics {
         entries: Rc<[Type]>,
         current_index: usize,
     },
@@ -213,7 +213,7 @@ pub enum IteratorContent {
 
 impl IteratorContent {
     pub fn new_tuple(entries: Rc<[Type]>) -> IteratorContent {
-        Self::FixedLengthTupleGenerics {
+        Self::FixedLenTupleGenerics {
             entries,
             current_index: 0,
         }
@@ -222,7 +222,7 @@ impl IteratorContent {
     pub fn infer_all(self, i_s: &InferenceState) -> Inferred {
         match self {
             Self::Inferred(inferred) => inferred,
-            Self::FixedLengthTupleGenerics {
+            Self::FixedLenTupleGenerics {
                 entries,
                 current_index,
             } => Inferred::gather_simplified_union(i_s, |add| {
@@ -241,7 +241,7 @@ impl IteratorContent {
                 after_index,
             } => Inferred::gather_base_types(i_s, |add| match unpack.unpack {
                 TupleUnpack::TypeVarTuple(_) => add(Inferred::new_object(i_s.db)),
-                TupleUnpack::ArbitraryLength(t) => {
+                TupleUnpack::ArbitraryLen(t) => {
                     for entry in unpack.before.iter().skip(before_index) {
                         add(Inferred::from_type(entry.clone()))
                     }
@@ -258,7 +258,7 @@ impl IteratorContent {
     pub fn next(&mut self, i_s: &InferenceState) -> Option<Inferred> {
         match self {
             Self::Inferred(inferred) => Some(inferred.clone()),
-            Self::FixedLengthTupleGenerics {
+            Self::FixedLenTupleGenerics {
                 entries,
                 current_index,
             } => next_fixed_length(entries, current_index),
@@ -290,7 +290,7 @@ impl IteratorContent {
             match self {
                 Self::Inferred(inf) => Inferred::new_list_of(i_s.db, inf.as_type(i_s)),
                 Self::Any(cause) => Inferred::new_list_of(i_s.db, Type::Any(*cause)),
-                Self::FixedLengthTupleGenerics {
+                Self::FixedLenTupleGenerics {
                     entries,
                     current_index,
                 } => {
@@ -329,7 +329,7 @@ impl IteratorContent {
                         i_s.db,
                         match &unpack.unpack {
                             TupleUnpack::TypeVarTuple(_) => i_s.db.python_state.object_type(),
-                            TupleUnpack::ArbitraryLength(t) => {
+                            TupleUnpack::ArbitraryLen(t) => {
                                 let inner = Inferred::gather_base_types(i_s, |add| {
                                     for entry in unpack.before.iter().skip(*before_index) {
                                         add(Inferred::from_type(entry.clone()));
@@ -360,7 +360,7 @@ impl IteratorContent {
         match self {
             Self::Inferred(inf) => inf.clone(),
             Self::Any(cause) => Inferred::new_any(*cause),
-            Self::FixedLengthTupleGenerics {
+            Self::FixedLenTupleGenerics {
                 entries,
                 current_index,
             } => next_fixed_length(entries, current_index).unwrap(),
@@ -387,7 +387,7 @@ impl IteratorContent {
         // TODO this function should probably be removed.
         match self {
             Self::Inferred(_) | Self::Any(_) => None,
-            Self::FixedLengthTupleGenerics {
+            Self::FixedLenTupleGenerics {
                 entries,
                 current_index,
             } => Some(entries.as_ref().len() - current_index),
@@ -407,10 +407,10 @@ impl IteratorContent {
     pub fn len_infos(&self) -> Option<TupleLenInfos> {
         match self {
             Self::Inferred(_) | Self::Any(_) => None,
-            Self::FixedLengthTupleGenerics {
+            Self::FixedLenTupleGenerics {
                 entries,
                 current_index,
-            } => Some(TupleLenInfos::FixedLength(
+            } => Some(TupleLenInfos::FixedLen(
                 entries.as_ref().len() - current_index,
             )),
             Self::Union(iterators) => unreachable!(),
@@ -433,7 +433,7 @@ pub enum LookupKind {
 
 #[derive(Copy, Clone)]
 pub enum TupleLenInfos {
-    FixedLength(usize),
+    FixedLen(usize),
     WithStar { before: usize, after: usize },
 }
 

@@ -252,10 +252,10 @@ impl<'a> Matcher<'a> {
                 let current = &mut matcher.calculated_type_vars[tvt.index.as_usize()];
                 if current.calculated() {
                     match args2 {
-                        TupleArgs::FixedLength(ts) => {
+                        TupleArgs::FixedLen(ts) => {
                             current.merge_fixed_length_type_var_tuple(i_s, ts.iter())
                         }
-                        TupleArgs::ArbitraryLength(ts) => {
+                        TupleArgs::ArbitraryLen(ts) => {
                             todo!()
                         }
                         TupleArgs::WithUnpack(ts) => {
@@ -395,7 +395,7 @@ impl<'a> Matcher<'a> {
                     params2_iterator.next();
                     t
                 }
-                Some(ParamType::Star(StarParamType::ArbitraryLength(t))) => t,
+                Some(ParamType::Star(StarParamType::ArbitraryLen(t))) => t,
                 _ => return Match::new_false(),
             };
             matches &= pre.matches(i_s, self, t, variance);

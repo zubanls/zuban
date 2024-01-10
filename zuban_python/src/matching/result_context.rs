@@ -128,12 +128,8 @@ impl<'a> ResultContext<'a, '_> {
         self.with_type_if_exists_and_replace_type_var_likes(i_s, |type_| {
             match type_ {
                 Type::Tuple(tup) => Some(match &tup.args {
-                    TupleArgs::FixedLength(ts) => {
-                        callable(TupleContextIterator::FixedLength(ts.iter()))
-                    }
-                    TupleArgs::ArbitraryLength(t) => {
-                        callable(TupleContextIterator::ArbitraryLength(t))
-                    }
+                    TupleArgs::FixedLen(ts) => callable(TupleContextIterator::FixedLen(ts.iter())),
+                    TupleArgs::ArbitraryLen(t) => callable(TupleContextIterator::ArbitraryLen(t)),
                     TupleArgs::WithUnpack(_) => callable(TupleContextIterator::Unknown),
                 }),
                 Type::Union(items) => {
@@ -143,7 +139,7 @@ impl<'a> ResultContext<'a, '_> {
                 // Case x: Iterable[int] = (1, 1)
                 Type::Class(c) if c.link == i_s.db.python_state.iterable_link() => {
                     let t = c.class(i_s.db).nth_type_argument(i_s.db, 0);
-                    Some(callable(TupleContextIterator::ArbitraryLength(&t)))
+                    Some(callable(TupleContextIterator::ArbitraryLen(&t)))
                 }
                 _ => None,
             }
@@ -171,8 +167,8 @@ impl fmt::Debug for ResultContext<'_, '_> {
 }
 
 pub enum TupleContextIterator<'a> {
-    ArbitraryLength(&'a Type),
-    FixedLength(std::slice::Iter<'a, Type>),
+    ArbitraryLen(&'a Type),
+    FixedLen(std::slice::Iter<'a, Type>),
     Unknown,
 }
 
@@ -181,8 +177,8 @@ impl<'a> Iterator for TupleContextIterator<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         Some(match self {
-            Self::ArbitraryLength(t) => t,
-            Self::FixedLength(items) => items.next().unwrap_or(&Type::Any(AnyCause::Todo)),
+            Self::ArbitraryLen(t) => t,
+            Self::FixedLen(items) => items.next().unwrap_or(&Type::Any(AnyCause::Todo)),
             Self::Unknown => &Type::Any(AnyCause::Todo),
         })
     }

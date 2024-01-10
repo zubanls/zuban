@@ -171,16 +171,16 @@ impl TypeArgs {
     }
 
     pub fn new_fixed_length(args: Rc<[Type]>) -> Self {
-        Self::new(TupleArgs::FixedLength(args))
+        Self::new(TupleArgs::FixedLen(args))
     }
 
     pub fn new_arbitrary_length(arg: Type) -> Self {
-        Self::new(TupleArgs::ArbitraryLength(Box::new(arg)))
+        Self::new(TupleArgs::ArbitraryLen(Box::new(arg)))
     }
 
     pub fn format(&self, format_data: &FormatData) -> Option<Box<str>> {
         let result = self.args.format(format_data);
-        if matches!(self.args, TupleArgs::ArbitraryLength(_)) {
+        if matches!(self.args, TupleArgs::ArbitraryLen(_)) {
             Some(format!("Unpack[Tuple[{result}]]").into())
         } else {
             (!self.args.is_empty()).then(|| result)
@@ -949,8 +949,8 @@ impl Type {
             generics.iter().any(|g| match g {
                 GenericItem::TypeArg(t) => t.find_in_type(check),
                 GenericItem::TypeArgs(ts) => match &ts.args {
-                    TupleArgs::FixedLength(ts) => ts.iter().any(|t| t.find_in_type(check)),
-                    TupleArgs::ArbitraryLength(t) => t.find_in_type(check),
+                    TupleArgs::FixedLen(ts) => ts.iter().any(|t| t.find_in_type(check)),
+                    TupleArgs::ArbitraryLen(t) => t.find_in_type(check),
                     TupleArgs::WithUnpack(with_unpack) => with_unpack.find_in_type(check),
                 },
                 GenericItem::ParamSpecArg(a) => todo!(),
@@ -992,7 +992,7 @@ impl Type {
             Type::Literal(l) if l.implicit => Some(db.python_state.literal_type(&l.kind)),
             Type::EnumMember(m) if m.implicit => Some(Type::Enum(m.enum_.clone())),
             Type::Tuple(tup) => {
-                if let TupleArgs::FixedLength(ts) = &tup.args {
+                if let TupleArgs::FixedLen(ts) = &tup.args {
                     let mut gathered = vec![];
                     if ts
                         .iter()
@@ -1023,8 +1023,8 @@ impl Type {
         self.iter_with_unpacked_unions().any(|t| match t {
             Type::Literal(_) | Type::EnumMember(_) => true,
             Type::Tuple(tup) => match &tup.args {
-                TupleArgs::FixedLength(ts) => ts.iter().any(|t| t.is_literal_or_literal_in_tuple()),
-                TupleArgs::ArbitraryLength(t) => t.is_literal_or_literal_in_tuple(),
+                TupleArgs::FixedLen(ts) => ts.iter().any(|t| t.is_literal_or_literal_in_tuple()),
+                TupleArgs::ArbitraryLen(t) => t.is_literal_or_literal_in_tuple(),
                 TupleArgs::WithUnpack(unpack) => {
                     unpack
                         .before
