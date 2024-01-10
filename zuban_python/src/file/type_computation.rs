@@ -2134,6 +2134,39 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 ParamKind::PositionalOnly
                     if current_kind < prev_kind || previous.has_default && !p.has_default =>
                 {
+                    if let ParamType::Star(StarParamType::UnpackedTuple(unpacked)) = &previous.type_
+                    {
+                        let previous = params.pop().unwrap();
+                        let ParamType::Star(StarParamType::UnpackedTuple(tup)) = previous.type_ else {
+                            unreachable!()
+                        };
+                        let tup = rc_unwrap_or_clone(tup);
+                        dbg!(&tup.args);
+                        let ParamType::PositionalOnly(new) = p.type_ else {
+                            unreachable!();
+                        };
+                        let with_unpack = match tup.args {
+                            TupleTypeArguments::WithUnpack(mut with_unpack) => {
+                                let mut after = rc_slice_into_vec(with_unpack.after);
+                                after.push(new);
+                                with_unpack.after = after.into();
+                                with_unpack
+                            }
+                            TupleTypeArguments::ArbitraryLength(t) => WithUnpack {
+                                before: Rc::from([]),
+                                unpack: TupleUnpack::ArbitraryLength(*t),
+                                after: Rc::from([new]),
+                            },
+                            TupleTypeArguments::FixedLength(_) => unreachable!(),
+                        };
+                        let tup = Rc::new(Tuple::new(TupleTypeArguments::WithUnpack(with_unpack)));
+                        params.push(CallableParam {
+                            type_: ParamType::Star(StarParamType::UnpackedTuple(tup)),
+                            name: previous.name,
+                            has_default: previous.has_default,
+                        });
+                        return;
+                    }
                     Some("Required positional args may not appear after default, named or var args")
                 }
                 ParamKind::PositionalOrKeyword => {
@@ -2248,14 +2281,16 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                         NodeRef::new(self.inference.file, star_expr.index());
                                     let t = self.as_type(t, node_ref);
                                     if matches!(t, Type::Tuple(_)) {
+                                        //self.add_param(&mut params, TypeContent::Unpacked(TypeOrUnpack::Type(t)), star_expr.index())
                                         todo!()
+                                    } else {
+                                        self.add_issue(
+                                            node_ref,
+                                            IssueType::VariadicUnpackMustBeTupleLike {
+                                                actual: t.format_short(self.inference.i_s.db),
+                                            },
+                                        );
                                     }
-                                    self.add_issue(
-                                        node_ref,
-                                        IssueType::VariadicUnpackMustBeTupleLike {
-                                            actual: t.format_short(self.inference.i_s.db),
-                                        },
-                                    );
                                 }
                             }
                         }

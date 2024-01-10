@@ -532,7 +532,6 @@ testTypeVarTuple
 testJoinOfVariadicTupleCallablesNoCrash
 # type_helpers/function.rs:1394
 testTypeVarTuplePep646TypeVarStarArgsFixedLengthTuple
-testAliasToCallableWithUnpack2
 # type_helpers/callable.rs:442
 testVariadicNamedTuple
 # type_/tuple.rs:147

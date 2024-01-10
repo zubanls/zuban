@@ -31,25 +31,6 @@ pub fn matches_params(
     variance: Variance,
     skip_first_of_params2: bool,
 ) -> Match {
-    if matcher.is_matching_reverse() {
-        /*
-        if type_vars2.is_none() {
-            return matcher.match_reverse(|matcher| {
-                matches_params(
-                    i_s,
-                    matcher,
-                    params2,
-                    params1,
-                    type_vars2,
-                    variance.invert(),
-                    skip_first_of_params2,
-                )
-            });
-        }
-        */
-        debug!("TODO should maybe be the line above");
-    }
-
     use CallableParams::*;
     match (params1, params2) {
         (Simple(params1), Simple(params2)) => {
@@ -315,7 +296,16 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                         | (WrappedStar::ParamSpecArgs(_), WrappedStar::ArbitraryLength(_)) => {
                             todo!()
                         }
-                        _ => todo!(),
+                        (WrappedStar::UnpackedTuple(tup1), WrappedStar::UnpackedTuple(tup2)) => {
+                            matches &= Type::Tuple(tup1.clone()).matches(
+                                i_s,
+                                matcher,
+                                &Type::Tuple(tup2.clone()),
+                                variance,
+                            );
+                        }
+                        (WrappedStar::UnpackedTuple(tup1), _) => return Match::new_false(),
+                        _ => todo!("{s1:?} {s2:?}"),
                     },
                     _ => return Match::new_false(),
                 },
