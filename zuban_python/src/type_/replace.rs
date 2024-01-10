@@ -196,7 +196,7 @@ impl Type {
         }
     }
 
-    pub fn rewrite_late_bound_callables(&self, manager: &TypeVarManager) -> Type {
+    pub fn rewrite_late_bound_callables(&self, manager: &TypeVarManager) -> Self {
         let rewrite_generics = |generics: &GenericsList| {
             GenericsList::new_generics(
                 generics
@@ -258,20 +258,9 @@ impl Type {
             }
             Type::TypeVar(t) => Type::TypeVar(manager.remap_type_var(t)),
             Type::Type(type_) => Type::Type(Rc::new(type_.rewrite_late_bound_callables(manager))),
-            Type::Tuple(content) => Type::Tuple(match &content.args {
-                TupleArgs::FixedLen(ts) => Tuple::new_fixed_length(
-                    ts.iter()
-                        .map(|t| t.rewrite_late_bound_callables(manager))
-                        .collect(),
-                ),
-                TupleArgs::ArbitraryLen(t) => {
-                    Tuple::new_arbitrary_length(t.rewrite_late_bound_callables(manager))
-                }
-                TupleArgs::WithUnpack(_) => {
-                    // TypeOrUnpack::TypeVarTuple(manager.remap_type_var_tuple(t))
-                    todo!()
-                }
-            }),
+            Type::Tuple(tup) => {
+                Type::Tuple(Tuple::new(tup.args.rewrite_late_bound_callables(manager)))
+            }
             Type::Literal { .. } => self.clone(),
             Type::Callable(c) => Type::Callable(Rc::new(c.rewrite_late_bound_callables(manager))),
             Type::NewType(_) => todo!(),
@@ -368,7 +357,7 @@ impl CallableContent {
         }
     }
 
-    fn rewrite_late_bound_callables(&self, manager: &TypeVarManager) -> CallableContent {
+    fn rewrite_late_bound_callables(&self, manager: &TypeVarManager) -> Self {
         let type_vars = manager
             .iter()
             .filter_map(|t| {
@@ -402,7 +391,11 @@ impl CallableContent {
                                     StarParamType::ArbitraryLen(t) => StarParamType::ArbitraryLen(
                                         t.rewrite_late_bound_callables(manager),
                                     ),
-                                    StarParamType::UnpackedTuple(_) => todo!(),
+                                    StarParamType::UnpackedTuple(tup) => {
+                                        StarParamType::UnpackedTuple(Tuple::new(
+                                            tup.args.rewrite_late_bound_callables(manager),
+                                        ))
+                                    }
                                     StarParamType::ParamSpecArgs(_) => todo!(),
                                 }),
                                 ParamType::StarStar(d) => ParamType::StarStar(match d {
@@ -669,6 +662,39 @@ impl TupleArgs {
                     after: unpack.after.clone(),
                 }),
             },
+        }
+    }
+
+    pub fn rewrite_late_bound_callables(&self, manager: &TypeVarManager) -> Self {
+        match self {
+            Self::FixedLen(ts) => Self::FixedLen(
+                ts.iter()
+                    .map(|t| t.rewrite_late_bound_callables(manager))
+                    .collect(),
+            ),
+            Self::ArbitraryLen(t) => {
+                Self::ArbitraryLen(Box::new(t.rewrite_late_bound_callables(manager)))
+            }
+            Self::WithUnpack(with_unpack) => Self::WithUnpack(WithUnpack {
+                before: with_unpack
+                    .before
+                    .iter()
+                    .map(|t| t.rewrite_late_bound_callables(manager))
+                    .collect(),
+                unpack: match &with_unpack.unpack {
+                    TupleUnpack::TypeVarTuple(tvt) => {
+                        TupleUnpack::TypeVarTuple(manager.remap_type_var_tuple(tvt))
+                    }
+                    TupleUnpack::ArbitraryLen(t) => {
+                        TupleUnpack::ArbitraryLen(t.rewrite_late_bound_callables(manager))
+                    }
+                },
+                after: with_unpack
+                    .after
+                    .iter()
+                    .map(|t| t.rewrite_late_bound_callables(manager))
+                    .collect(),
+            }),
         }
     }
 }

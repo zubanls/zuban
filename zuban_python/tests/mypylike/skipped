@@ -535,8 +535,6 @@ testJoinOfVariadicTupleCallablesNoCrash
 testTypeVarTuplePep646TypeVarStarArgsFixedLengthTuple
 # type_/tuple.rs:147
 testTypeVarTuplePep646TypeVarStarArgsVariableLengthTuple
-# type_/replace.rs:409
-testTypeVarTupleCallable
 # type/matching.rs:932
 testVariadicTupleInference
 testVariadicTupleSubtyping

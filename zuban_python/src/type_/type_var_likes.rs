@@ -214,7 +214,17 @@ impl TypeVarManager {
     }
 
     pub fn remap_type_var_tuple(&self, usage: &TypeVarTupleUsage) -> TypeVarTupleUsage {
-        todo!()
+        if let Some((index, in_definition)) =
+            self.remap_internal(&TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(usage)))
+        {
+            TypeVarTupleUsage {
+                type_var_tuple: usage.type_var_tuple.clone(),
+                in_definition: in_definition.unwrap_or(usage.in_definition),
+                index,
+            }
+        } else {
+            usage.clone()
+        }
     }
 
     pub fn remap_param_spec(&self, usage: &ParamSpecUsage) -> ParamSpecUsage {
