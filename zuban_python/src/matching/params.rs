@@ -820,8 +820,9 @@ where
                 }
                 ParamKind::Star => match param.specific(self.db) {
                     WrappedParamType::Star(WrappedStar::ParamSpecArgs(u)) => {
+                        let next = self.params.next();
                         debug_assert!(matches!(
-                            self.params.next().unwrap().specific(self.db),
+                            next.unwrap().specific(self.db),
                             WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(u)),
                         ));
                         return Some(InferrableParam {
@@ -832,10 +833,14 @@ where
                             ),
                         });
                     }
-                    _ => {
+                    WrappedParamType::Star(WrappedStar::UnpackedTuple(u)) => {
+                        todo!()
+                    }
+                    WrappedParamType::Star(WrappedStar::ArbitraryLen(_)) => {
                         self.current_starred_param = Some(param);
                         return self.next();
                     }
+                    _ => unreachable!(),
                 },
                 ParamKind::StarStar => {
                     self.current_double_starred_param = Some(param);
