@@ -24,7 +24,7 @@ use crate::{
     node_ref::NodeRef,
     type_::{
         match_tuple_type_arguments, CallableParams, ClassGenerics, GenericItem, GenericsList,
-        ReplaceSelf, Type, TypeVarLikeUsage, TypeVarLikes, Variance,
+        ReplaceSelf, TupleArgs, Type, TypeVarLikeUsage, TypeVarLikes, Variance,
     },
     type_helpers::{Callable, Class, Function},
 };
@@ -599,17 +599,28 @@ pub(crate) fn match_arguments_against_params<
                     },
                 }
             }
-            ParamArgument::TupleUnpack(tuple_arg) => {
-                let WrappedParamType::Star(WrappedStar::UnpackedTuple(tup)) = p.param.specific(i_s.db) else {
+            ParamArgument::TupleUnpack(args) => {
+                let WrappedParamType::Star(WrappedStar::UnpackedTuple(expected)) = p.param.specific(i_s.db) else {
                     unreachable!()
                 };
-                matches &= match_tuple_type_arguments(
+
+                let mut before = vec![];
+                for arg in args.iter() {
+                    if arg.in_args_or_kwargs_and_arbitrary_len() {
+                        todo!()
+                    } else {
+                        before.push(arg.infer(&i_s, &mut ResultContext::Unknown).as_type(&i_s))
+                    }
+                }
+                let actual = TupleArgs::FixedLen(before.into());
+                let match_ = match_tuple_type_arguments(
                     i_s,
                     matcher,
-                    &tup.args,
-                    &tuple_arg,
+                    &expected.args,
+                    &actual,
                     Variance::Covariant,
                 );
+                matches &= match_;
             }
             ParamArgument::MatchedUnpackedTypedDictMember {
                 argument,

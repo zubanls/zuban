@@ -2,7 +2,7 @@ use std::{borrow::Cow, iter::Peekable, rc::Rc};
 
 use parsa_python_ast::ParamKind;
 
-use super::{Match, Matcher, ResultContext};
+use super::{Match, Matcher};
 use crate::{
     arguments::{Arg, ArgKind},
     database::{Database, PointLink},
@@ -10,8 +10,8 @@ use crate::{
     inference_state::InferenceState,
     type_::{
         CallableParam, CallableParams, ParamSpecUsage, ParamType, ParamTypeDetails, StarParamType,
-        StarStarParamType, StringSlice, Tuple, TupleArgs, Type, TypeVarLikes, TypedDict,
-        TypedDictMember, Variance,
+        StarStarParamType, StringSlice, Tuple, Type, TypeVarLikes, TypedDict, TypedDictMember,
+        Variance,
     },
 };
 
@@ -835,26 +835,18 @@ where
                         });
                     }
                     WrappedParamType::Star(WrappedStar::UnpackedTuple(u)) => {
-                        let mut before = vec![];
-                        let i_s = InferenceState::new(self.db);
+                        let mut args = vec![];
                         // Fetch all positional arguments
                         while let Some(arg) = self.next_arg() {
                             if arg.is_keyword_argument() {
                                 self.current_arg = Some(arg);
                                 break;
                             }
-                            if arg.in_args_or_kwargs_and_arbitrary_len() {
-                                todo!()
-                            } else {
-                                before.push(
-                                    arg.infer(&i_s, &mut ResultContext::Unknown).as_type(&i_s),
-                                )
-                            }
+                            args.push(arg);
                         }
-                        let tup_args = TupleArgs::FixedLen(before.into());
                         return Some(InferrableParam {
                             param,
-                            argument: ParamArgument::TupleUnpack(tup_args),
+                            argument: ParamArgument::TupleUnpack(args.into()),
                         });
                     }
                     WrappedParamType::Star(WrappedStar::ArbitraryLen(_)) => {
@@ -908,7 +900,7 @@ impl<'member> Param<'member> for TypedDictMemberParam<'member> {
 pub enum ParamArgument<'db, 'a> {
     None,
     Argument(Arg<'db, 'a>),
-    TupleUnpack(TupleArgs), // For stuff like *args: *Ts
+    TupleUnpack(Box<[Arg<'db, 'a>]>), // For stuff like *args: *Ts
     MatchedUnpackedTypedDictMember {
         argument: Arg<'db, 'a>,
         type_: Type,
