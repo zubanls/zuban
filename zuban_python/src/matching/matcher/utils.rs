@@ -23,8 +23,8 @@ use crate::{
     matching::{ErrorTypes, GotType},
     node_ref::NodeRef,
     type_::{
-        CallableParams, ClassGenerics, GenericItem, GenericsList, ReplaceSelf, Type,
-        TypeVarLikeUsage, TypeVarLikes,
+        match_tuple_type_arguments, CallableParams, ClassGenerics, GenericItem, GenericsList,
+        ReplaceSelf, Type, TypeVarLikeUsage, TypeVarLikes, Variance,
     },
     type_helpers::{Callable, Class, Function},
 };
@@ -574,12 +574,10 @@ pub(crate) fn match_arguments_against_params<
                         }
                         continue;
                     }
-                    WrappedParamType::Star(WrappedStar::UnpackedTuple(tup)) => {
-                        Cow::Owned(Type::Tuple(tup.clone()))
-                    }
+                    WrappedParamType::Star(WrappedStar::UnpackedTuple(tup)) => unreachable!(),
                     WrappedParamType::Star(WrappedStar::ParamSpecArgs(_))
                     | WrappedParamType::StarStar(WrappedStarStar::ParamSpecKwargs(_)) => {
-                        todo!()
+                        unreachable!()
                     }
                 };
                 match_arg(&argument, expected)
@@ -600,6 +598,18 @@ pub(crate) fn match_arguments_against_params<
                         reason: MismatchReason::None,
                     },
                 }
+            }
+            ParamArgument::TupleUnpack(tuple_arg) => {
+                let WrappedParamType::Star(WrappedStar::UnpackedTuple(tup)) = p.param.specific(i_s.db) else {
+                    unreachable!()
+                };
+                matches &= match_tuple_type_arguments(
+                    i_s,
+                    matcher,
+                    &tup.args,
+                    &tuple_arg,
+                    Variance::Covariant,
+                );
             }
             ParamArgument::MatchedUnpackedTypedDictMember {
                 argument,
