@@ -487,6 +487,7 @@ impl Type {
             },
             Type::NewType(n) => n.type_(i_s).iter(i_s, from),
             Type::Self_ => Instance::new(*i_s.current_class().unwrap(), None).iter(i_s, from),
+            Type::RecursiveType(rec) => rec.calculated_type(i_s.db).iter(i_s, from),
             _ => IteratorContent::Inferred(
                 self.lookup(
                     i_s,

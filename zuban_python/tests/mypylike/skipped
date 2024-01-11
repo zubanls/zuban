@@ -547,10 +547,9 @@ testTypeVarTuplePep646Callable
 testAliasToCallableWithUnpack
 # database.rs:574
 testBanPathologicalRecursiveTuples
-# TypeVarTuple rest
-testVariadicAliasRecursiveUnpack
+# Self matching
 testVariadicClassNewStyleSelf
-testVariadicTupleCollectionCheck
+# Complex callable matching
 testVariadicTypedDict
 # *ts TypeVarTuple syntax
 testTypeVarTupleNewSyntaxAnnotations
@@ -1267,6 +1266,8 @@ testNarrowedVariableInNestedModifiedInWalrus
 testTypedDictTypeNarrowingWithFinalKey
 testLiteralIntelligentIndexingTuples
 testLambdaInferenceUsesNarrowedTypes
+testVariadicAliasRecursiveUnpack
+testVariadicTupleCollectionCheck
 # narrowing if is
 testEnumReachabilityChecksBasic
 testEnumReachabilityChecksWithOrdering
