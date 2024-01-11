@@ -612,15 +612,34 @@ pub(crate) fn match_arguments_against_params<
                         before.push(arg.infer(&i_s, &mut ResultContext::Unknown).as_type(&i_s))
                     }
                 }
-                let actual = TupleArgs::FixedLen(before.into());
-                let match_ = match_tuple_type_arguments(
-                    i_s,
-                    matcher,
-                    &expected.args,
-                    &actual,
-                    Variance::Covariant,
-                );
-                matches &= match_;
+                match &expected.args {
+                    TupleArgs::WithUnpack(with_unpack) => {
+                        let actual = TupleArgs::FixedLen(before.into());
+                        let match_ = match_tuple_type_arguments(
+                            i_s,
+                            matcher,
+                            &expected.args,
+                            &actual,
+                            Variance::Covariant,
+                        );
+                        matches &= match_;
+                    }
+                    TupleArgs::ArbitraryLen(_) => todo!(),
+                    TupleArgs::FixedLen(_) => unreachable!(),
+                    /*
+                    if !match_.bool() {
+                        /*
+                        let error_types = ErrorTypes {
+                            matcher,
+                            reason,
+                            got,
+                            expected: &expected,
+                        };
+                        */
+                        (on_type_error.callback)(i_s, &diagnostic_string, argument, error_types)
+                    }
+                    */
+                }
             }
             ParamArgument::MatchedUnpackedTypedDictMember {
                 argument,
