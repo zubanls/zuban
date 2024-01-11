@@ -34,7 +34,7 @@ pub(crate) use self::{
         lookup_on_enum_instance, lookup_on_enum_member_instance, Enum, EnumMember,
         EnumMemberDefinition,
     },
-    matching::match_tuple_type_arguments,
+    matching::{match_tuple_type_arguments, match_unpack},
     named_tuple::{
         execute_collections_named_tuple, execute_typing_named_tuple, new_collections_named_tuple,
         new_typing_named_tuple, NamedTuple,

@@ -23,8 +23,8 @@ use crate::{
     matching::{ErrorTypes, GotType},
     node_ref::NodeRef,
     type_::{
-        match_tuple_type_arguments, CallableParams, ClassGenerics, GenericItem, GenericsList,
-        ReplaceSelf, TupleArgs, Type, TypeVarLikeUsage, TypeVarLikes, Variance,
+        match_unpack, CallableParams, ClassGenerics, GenericItem, GenericsList, ReplaceSelf,
+        TupleArgs, Type, TypeVarLikeUsage, TypeVarLikes, Variance,
     },
     type_helpers::{Callable, Class, Function},
 };
@@ -615,30 +615,29 @@ pub(crate) fn match_arguments_against_params<
                 match &expected.args {
                     TupleArgs::WithUnpack(with_unpack) => {
                         let actual = TupleArgs::FixedLen(before.into());
-                        let match_ = match_tuple_type_arguments(
+                        let match_ = match_unpack(
                             i_s,
                             matcher,
-                            &expected.args,
+                            with_unpack,
                             &actual,
                             Variance::Covariant,
+                            Some(&|error_types: ErrorTypes, index: usize| {
+                                let Some(on_type_error) = on_type_error else {
+                                    return
+                                };
+                                let argument = &args[index];
+                                (on_type_error.callback)(
+                                    i_s,
+                                    &diagnostic_string,
+                                    argument,
+                                    error_types,
+                                )
+                            }),
                         );
                         matches &= match_;
                     }
                     TupleArgs::ArbitraryLen(_) => todo!(),
                     TupleArgs::FixedLen(_) => unreachable!(),
-                    /*
-                    if !match_.bool() {
-                        /*
-                        let error_types = ErrorTypes {
-                            matcher,
-                            reason,
-                            got,
-                            expected: &expected,
-                        };
-                        */
-                        (on_type_error.callback)(i_s, &diagnostic_string, argument, error_types)
-                    }
-                    */
                 }
             }
             ParamArgument::MatchedUnpackedTypedDictMember {

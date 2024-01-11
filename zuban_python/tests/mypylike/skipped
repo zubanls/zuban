@@ -536,8 +536,6 @@ testTypeVarTuple
 testJoinOfVariadicTupleCallablesNoCrash
 # type_helpers/function.rs:1394
 testTypeVarTuplePep646TypeVarStarArgsFixedLengthTuple
-# type_/tuple.rs:147
-testTypeVarTuplePep646TypeVarStarArgsVariableLengthTuple
 # type/matching.rs:932
 testVariadicTupleSubtyping
 # matching/matcher/utils.rs:577

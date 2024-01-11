@@ -9,8 +9,8 @@ use crate::{
     debug,
     inference_state::InferenceState,
     matching::{
-        avoid_protocol_mismatch, matches_params, params::has_overlapping_params, Match, Matcher,
-        MismatchReason,
+        avoid_protocol_mismatch, matches_params, params::has_overlapping_params, ErrorTypes,
+        GotType, Match, Matcher, MismatchReason,
     },
     node_ref::NodeRef,
     type_::{CallableLike, CallableParams, TupleArgs, TupleUnpack, Variance},
@@ -880,7 +880,7 @@ pub fn match_tuple_type_arguments(
             }
         }
         (ArbitraryLen(t1), ArbitraryLen(t2)) => t1.matches(i_s, matcher, t2, variance),
-        (WithUnpack(unpack), _) => match_unpack(i_s, matcher, unpack, tup2, variance),
+        (WithUnpack(unpack), _) => match_unpack(i_s, matcher, unpack, tup2, variance, None),
         (ArbitraryLen(t1), WithUnpack(u2)) => match &u2.unpack {
             TupleUnpack::TypeVarTuple(_) => todo!("{t1:?}"),
             TupleUnpack::ArbitraryLen(inner_t2) => {
@@ -910,23 +910,42 @@ pub fn match_unpack(
     with_unpack1: &WithUnpack,
     tuple2: &TupleArgs,
     variance: Variance,
+    on_mismatch: Option<&dyn Fn(ErrorTypes, usize)>,
 ) -> Match {
     debug_assert!(!matcher.is_matching_reverse());
     let mut matches = Match::new_true();
 
+    let check_type = |matcher: &mut _, t1: &Type, t2, index| {
+        let match_ = t1.matches(i_s, matcher, t2, variance);
+        if let Match::False { reason, .. } = &match_ {
+            if let Some(on_mismatch) = on_mismatch {
+                on_mismatch(
+                    ErrorTypes {
+                        matcher,
+                        reason,
+                        expected: t1,
+                        got: GotType::Type(t2),
+                    },
+                    index,
+                );
+            }
+        }
+        match_
+    };
+
     match tuple2 {
         TupleArgs::FixedLen(ts2) => {
-            let mut t2_iterator = ts2.iter();
-            for (t1, t2) in with_unpack1.before.iter().zip(t2_iterator.by_ref()) {
-                matches &= t1.matches(i_s, matcher, t2, variance);
+            let mut t2_iterator = ts2.iter().enumerate();
+            for (t1, (i, t2)) in with_unpack1.before.iter().zip(t2_iterator.by_ref()) {
+                matches &= check_type(matcher, t1, t2, i);
             }
-            for (t1, t2) in with_unpack1
+            for (t1, (i, t2)) in with_unpack1
                 .after
                 .iter()
                 .rev()
                 .zip(t2_iterator.by_ref().rev())
             {
-                matches &= t1.matches(i_s, matcher, t2, variance);
+                matches &= check_type(matcher, t1, t2, i);
             }
             if (with_unpack1.before.len() + with_unpack1.after.len()) > ts2.len() {
                 // Negative numbers mean that we have non-matching tuples, but the fact they do not match
@@ -938,13 +957,13 @@ pub fn match_unpack(
                         matches &= matcher.match_or_add_type_var_tuple(
                             i_s,
                             tvt,
-                            TupleArgs::FixedLen(t2_iterator.cloned().collect()),
+                            TupleArgs::FixedLen(t2_iterator.map(|(_, t2)| t2.clone()).collect()),
                             variance,
                         )
                     }
                     TupleUnpack::ArbitraryLen(inner_t1) => {
-                        for t2 in t2_iterator {
-                            matches &= inner_t1.matches(i_s, matcher, t2, variance)
+                        for (i, t2) in t2_iterator {
+                            matches &= check_type(matcher, inner_t1, t2, i)
                         }
                     }
                 }
