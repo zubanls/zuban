@@ -878,7 +878,7 @@ pub fn match_tuple_type_arguments(
             }
         }
         (ArbitraryLen(t1), ArbitraryLen(t2)) => t1.matches(i_s, matcher, t2, variance),
-        (WithUnpack(unpack), _) => match_unpack(i_s, matcher, unpack, tup2, variance, None),
+        (WithUnpack(unpack), _) => match_unpack(i_s, matcher, unpack, tup2, variance, None, None),
         (ArbitraryLen(t1), WithUnpack(u2)) => match &u2.unpack {
             TupleUnpack::TypeVarTuple(_) => todo!("{t1:?}"),
             TupleUnpack::ArbitraryLen(inner_t2) => {
@@ -909,6 +909,7 @@ pub fn match_unpack(
     tuple2: &TupleArgs,
     variance: Variance,
     on_mismatch: Option<&dyn Fn(ErrorTypes, usize)>,
+    on_too_few_args: Option<&dyn Fn()>,
 ) -> Match {
     debug_assert!(!matcher.is_matching_reverse());
     let mut matches = Match::new_true();
@@ -946,8 +947,9 @@ pub fn match_unpack(
                 matches &= check_type(matcher, t1, t2, i);
             }
             if (with_unpack1.before.len() + with_unpack1.after.len()) > ts2.len() {
-                // Negative numbers mean that we have non-matching tuples, but the fact they do not match
-                // will be noticed in a different place.
+                if let Some(on_too_few_args) = on_too_few_args {
+                    on_too_few_args()
+                }
                 return Match::new_false();
             } else {
                 match &with_unpack1.unpack {
@@ -985,9 +987,31 @@ pub fn match_unpack(
 
             match &with_unpack1.unpack {
                 TupleUnpack::TypeVarTuple(tvt1) => {
-                    if with_unpack1.before.len() > with_unpack2.before.len()
-                        || with_unpack1.after.len() > with_unpack2.after.len()
-                    {
+                    let len1 = with_unpack1.before.len();
+                    let len2 = with_unpack2.before.len();
+                    if len1 > len2 {
+                        if let Some(on_mismatch) = on_mismatch {
+                            on_mismatch(
+                                ErrorTypes {
+                                    matcher,
+                                    reason: &MismatchReason::None,
+                                    expected: &with_unpack1.before[len2],
+                                    got: GotType::Starred(Type::Tuple(Tuple::new(tuple2.clone()))),
+                                },
+                                len1,
+                            );
+                            if let Some(on_too_few_args) = on_too_few_args {
+                                on_too_few_args()
+                            }
+                        }
+                        return Match::new_false();
+                    } else if with_unpack1.after.len() > with_unpack2.after.len() {
+                        /*
+                        if let Some(on_too_few_args) = on_too_few_args {
+                            on_too_few_args()
+                        }
+                        return Match::new_false()
+                        */
                         todo!()
                     }
                     matches &= matcher.match_or_add_type_var_tuple(

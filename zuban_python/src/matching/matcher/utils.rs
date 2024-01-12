@@ -464,6 +464,10 @@ pub(crate) fn match_arguments_against_params<
         (on_type_error.unwrap().generate_diagnostic_string)(&func_or_callable, i_s.db)
             .map(|s| (prefix.to_owned() + &s).into())
     };
+    let too_few_arguments = || {
+        let s = diagnostic_string(" for ").unwrap_or_else(|| Box::from(""));
+        add_issue(IssueType::TooFewArguments(s));
+    };
     let should_generate_errors = on_type_error.is_some();
     let mut missing_params = vec![];
     let mut missing_unpacked_typed_dict_names: Option<Vec<_>> = None;
@@ -666,7 +670,7 @@ pub(crate) fn match_arguments_against_params<
                                 let Some(on_type_error) = on_type_error else {
                                     return
                                 };
-                                let argument = &args[index];
+                                let argument = &args[index.min(args.len() - 1)];
                                 (on_type_error.callback)(
                                     i_s,
                                     &diagnostic_string,
@@ -674,6 +678,7 @@ pub(crate) fn match_arguments_against_params<
                                     error_types,
                                 )
                             }),
+                            Some(&too_few_arguments),
                         );
                         matches &= match_;
                     }
@@ -786,8 +791,7 @@ pub(crate) fn match_arguments_against_params<
                     missing_positional.push(format!("\"{param_name}\""));
                 }
             } else {
-                let s = diagnostic_string(" for ").unwrap_or_else(|| Box::from(""));
-                add_issue(IssueType::TooFewArguments(s));
+                too_few_arguments();
                 break;
             }
         }

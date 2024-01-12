@@ -274,10 +274,17 @@ impl IteratorContent {
                 before_index,
                 after_index,
             } => {
-                if !unpack.before.is_empty() {
-                    todo!()
-                }
-                Some(UnpackedArgument::WithUnpack(unpack.clone()))
+                debug_assert_eq!(*after_index, 0);
+                let new_unpack = if *before_index == 0 {
+                    unpack.clone()
+                } else {
+                    WithUnpack {
+                        before: unpack.before.iter().skip(*before_index).cloned().collect(),
+                        unpack: unpack.unpack.clone(),
+                        after: unpack.after.clone(),
+                    }
+                };
+                Some(UnpackedArgument::WithUnpack(new_unpack))
             }
             Self::Any(cause) => Some(UnpackedArgument::Normal {
                 inferred: Inferred::new_any(*cause),
