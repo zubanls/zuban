@@ -24,7 +24,7 @@ use crate::{
     node_ref::NodeRef,
     type_::{
         match_unpack, CallableParams, ClassGenerics, GenericItem, GenericsList, ReplaceSelf,
-        TupleArgs, Type, TypeVarLikeUsage, TypeVarLikes, Variance, WithUnpack,
+        TupleArgs, TupleUnpack, Type, TypeVarLikeUsage, TypeVarLikes, Variance, WithUnpack,
     },
     type_helpers::{Callable, Class, Function},
 };
@@ -612,7 +612,17 @@ pub(crate) fn match_arguments_against_params<
                 let mut after = vec![];
                 for arg in args.iter() {
                     if arg.in_args_or_kwargs_and_arbitrary_len() {
-                        todo!()
+                        if unpack.is_some() {
+                            add_issue(IssueType::ArgumentIssue(
+                                "Passing multiple variadic unpacks in a call is not supported"
+                                    .into(),
+                            ));
+                            return SignatureMatch::False { similar: false };
+                        }
+                        unpack = Some(TupleUnpack::ArbitraryLen(
+                            arg.infer_inferrable(i_s, &mut ResultContext::Unknown)
+                                .as_type(i_s),
+                        ))
                     } else {
                         match arg.infer(&i_s, &mut ResultContext::Unknown) {
                             InferredArg::Inferred(inf) => {
@@ -624,6 +634,10 @@ pub(crate) fn match_arguments_against_params<
                                 }
                             }
                             InferredArg::StarredWithUnpack(with_unpack) => {
+                                if unpack.is_some() {
+                                    add_issue(IssueType::ArgumentIssue("Passing multiple variadic unpacks in a call is not supported".into()));
+                                    return SignatureMatch::False { similar: false };
+                                }
                                 before.extend_from_slice(&with_unpack.before);
                                 unpack = Some(with_unpack.unpack);
                                 after.extend_from_slice(&with_unpack.after);

@@ -838,6 +838,7 @@ where
                         let mut args = vec![];
                         // Fetch all positional arguments
                         while let Some(arg) = self.next_arg() {
+                            self.current_arg = None;
                             if arg.is_keyword_argument() {
                                 self.current_arg = Some(arg);
                                 break;
