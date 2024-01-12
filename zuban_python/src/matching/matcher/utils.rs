@@ -608,13 +608,14 @@ pub(crate) fn match_arguments_against_params<
                 };
 
                 let mut before = vec![];
+                let mut unpack = None;
                 for arg in args.iter() {
                     if arg.in_args_or_kwargs_and_arbitrary_len() {
                         todo!()
                     } else {
                         match arg.infer(&i_s, &mut ResultContext::Unknown) {
                             InferredArg::Inferred(inf) => before.push(inf.as_type(&i_s)),
-                            InferredArg::StarredWithUnpack(_) => todo!(),
+                            InferredArg::StarredWithUnpack(u) => unpack = Some(u),
                             InferredArg::ParamSpec { .. } => todo!(),
                         }
                     }
