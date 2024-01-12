@@ -56,13 +56,13 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
         let Some(first_arg) = iterator.next() else {
             return None
         };
-        let ArgKind::Positional { node_ref: node_ref1, .. } = first_arg.kind else {
+        let ArgKind::Positional(PositionalArg { node_ref: node_ref1, .. }) = first_arg.kind else {
             return None
         };
         let Some(second_arg) = iterator.next() else {
             return None
         };
-        let ArgKind::Positional { node_ref: node_ref2, .. } = second_arg.kind else {
+        let ArgKind::Positional(PositionalArg { node_ref: node_ref2, .. }) = second_arg.kind else {
             return None
         };
         if iterator.next().is_some() {
@@ -270,6 +270,30 @@ impl<'db, 'a> CombinedArgs<'db, 'a> {
 }
 
 #[derive(Debug, Clone)]
+pub struct PositionalArg<'db, 'a> {
+    i_s: InferenceState<'db, 'a>,
+    pub position: usize, // The position as a 1-based index
+    pub node_ref: NodeRef<'a>,
+}
+
+impl<'db> PositionalArg<'db, '_> {
+    pub fn infer(
+        &self,
+        func_i_s: &InferenceState<'db, '_>,
+        result_context: &mut ResultContext,
+    ) -> Inferred {
+        self.node_ref
+            .file
+            // TODO this execution is wrong
+            .inference(&self.i_s.use_mode_of(func_i_s))
+            .infer_named_expression_with_context(
+                self.node_ref.as_named_expression(),
+                result_context,
+            )
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum ArgKind<'db, 'a> {
     // Can be used for classmethod class or self in bound methods
     Keyword {
@@ -290,11 +314,7 @@ pub enum ArgKind<'db, 'a> {
         position: usize, // The position as a 1-based index
         add_issue: CustomAddIssue<'a>,
     },
-    Positional {
-        i_s: InferenceState<'db, 'a>,
-        position: usize, // The position as a 1-based index
-        node_ref: NodeRef<'a>,
-    },
+    Positional(PositionalArg<'db, 'a>),
     SlicesTuple {
         i_s: InferenceState<'db, 'a>,
         slices: Slices<'a>,
@@ -327,11 +347,11 @@ impl<'db, 'a> ArgKind<'db, 'a> {
         file: &'a PythonFile,
         node_index: NodeIndex,
     ) -> BaseArgReturn<'db, 'a> {
-        BaseArgReturn::Arg(ArgKind::Positional {
+        BaseArgReturn::Arg(ArgKind::Positional(PositionalArg {
             i_s,
             position,
             node_ref: NodeRef { file, node_index },
-        })
+        }))
     }
 
     fn new_keyword_return(
@@ -375,16 +395,7 @@ impl<'db, 'a> Arg<'db, 'a> {
         match &self.kind {
             ArgKind::Inferred { inferred, .. }
             | ArgKind::InferredWithCustomAddIssue { inferred, .. } => (*inferred).clone(),
-            ArgKind::Positional { i_s, node_ref, .. } => {
-                node_ref
-                    .file
-                    // TODO this execution is wrong
-                    .inference(&i_s.use_mode_of(func_i_s))
-                    .infer_named_expression_with_context(
-                        node_ref.as_named_expression(),
-                        result_context,
-                    )
-            }
+            ArgKind::Positional(positional) => positional.infer(func_i_s, result_context),
             ArgKind::Keyword {
                 i_s,
                 node_ref,
@@ -412,7 +423,7 @@ impl<'db, 'a> Arg<'db, 'a> {
 
     fn as_node_ref(&self) -> Result<NodeRef, CustomAddIssue> {
         match &self.kind {
-            ArgKind::Positional { node_ref, .. }
+            ArgKind::Positional(PositionalArg { node_ref, .. })
             | ArgKind::Keyword { node_ref, .. }
             | ArgKind::ParamSpec { node_ref, .. }
             | ArgKind::StarredWithUnpack { node_ref, .. }
@@ -490,7 +501,7 @@ impl<'db, 'a> Arg<'db, 'a> {
                 is_keyword: Some(Some(s)),
                 ..
             } => format!("\"{}\"", s.as_str(db)),
-            ArgKind::Positional { position, .. }
+            ArgKind::Positional(PositionalArg { position, .. })
             | ArgKind::Inferred { position, .. }
             | ArgKind::InferredWithCustomAddIssue { position, .. }
             | ArgKind::StarredWithUnpack { position, .. }

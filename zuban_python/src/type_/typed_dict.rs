@@ -471,14 +471,13 @@ fn new_typed_dict_internal<'db>(
     let Some(first_arg) = iterator.next() else {
         todo!()
     };
-    let ArgKind::Positional { node_ref, .. } = first_arg.kind else {
-        args
-            .add_issue(i_s, IssueType::UnexpectedArgumentsToTypedDict);
+    let ArgKind::Positional(first) = first_arg.kind else {
+        args.add_issue(i_s, IssueType::UnexpectedArgumentsToTypedDict);
         return None
     };
-    let expr = node_ref.as_named_expression().expression();
-    let Some(name) = StringSlice::from_string_in_expression(node_ref.file_index(), expr) else {
-        node_ref.add_issue(i_s, IssueType::TypedDictFirstArgMustBeString);
+    let expr = first.node_ref.as_named_expression().expression();
+    let Some(name) = StringSlice::from_string_in_expression(first.node_ref.file_index(), expr) else {
+        first.node_ref.add_issue(i_s, IssueType::TypedDictFirstArgMustBeString);
         return None
     };
 
@@ -489,7 +488,7 @@ fn new_typed_dict_internal<'db>(
     {
         let name = name.as_str(i_s.db);
         if name != definition_name.as_code() {
-            node_ref.add_issue(
+            first.node_ref.add_issue(
                 i_s,
                 IssueType::TypedDictNameMismatch {
                     string_name: Box::from(name),
@@ -505,10 +504,10 @@ fn new_typed_dict_internal<'db>(
         args.add_issue(i_s, IssueType::TooFewArguments(" for TypedDict()".into()));
         return None
     };
-    let ArgKind::Positional { node_ref: second_node_ref, .. } = second_arg.kind else {
+    let ArgKind::Positional(second) = second_arg.kind else {
         todo!()
     };
-    let Some(atom_content) = second_node_ref.as_named_expression().expression().maybe_unpacked_atom() else {
+    let Some(atom_content) = second.node_ref.as_named_expression().expression().maybe_unpacked_atom() else {
         todo!()
     };
     let mut total = true;
@@ -539,15 +538,17 @@ fn new_typed_dict_internal<'db>(
     let dct_iterator = match atom_content {
         AtomContent::Dict(dct) => dct.iter_elements(),
         _ => {
-            second_node_ref.add_issue(i_s, IssueType::TypedDictSecondArgMustBeDict);
+            second
+                .node_ref
+                .add_issue(i_s, IssueType::TypedDictSecondArgMustBeDict);
             return None;
         }
     };
     let on_type_var = &mut |i_s: &InferenceState, _: &_, _, _| TypeVarCallbackReturn::NotFound;
-    let mut inference = node_ref.file.inference(i_s);
+    let mut inference = first.node_ref.file.inference(i_s);
     let mut comp = TypeComputation::new(
         &mut inference,
-        node_ref.as_link(),
+        first.node_ref.as_link(),
         on_type_var,
         TypeComputationOrigin::TypedDictMember,
     );
@@ -555,8 +556,8 @@ fn new_typed_dict_internal<'db>(
     for element in dct_iterator {
         match element {
             DictElement::KeyValue(key_value) => {
-                let Some(name) = StringSlice::from_string_in_expression(node_ref.file_index(), key_value.key()) else {
-                    NodeRef::new(node_ref.file, key_value.key().index())
+                let Some(name) = StringSlice::from_string_in_expression(first.node_ref.file_index(), key_value.key()) else {
+                    NodeRef::new(first.node_ref.file, key_value.key().index())
                         .add_issue(i_s, IssueType::TypedDictInvalidFieldName);
                     return None
                 };
@@ -564,12 +565,13 @@ fn new_typed_dict_internal<'db>(
                     i_s.db,
                     comp.compute_typed_dict_member(name, key_value.value(), total),
                 ) {
-                    NodeRef::new(node_ref.file, key_value.key().index()).add_issue(i_s, issue);
+                    NodeRef::new(first.node_ref.file, key_value.key().index())
+                        .add_issue(i_s, issue);
                 }
                 key_value.key();
             }
             DictElement::Star(d) => {
-                NodeRef::new(node_ref.file, d.index())
+                NodeRef::new(first.node_ref.file, d.index())
                     .add_issue(i_s, IssueType::TypedDictInvalidFieldName);
                 return None;
             }
@@ -582,7 +584,7 @@ fn new_typed_dict_internal<'db>(
             TypedDict::new_definition(
                 name,
                 members.into_boxed_slice(),
-                node_ref.as_link(),
+                first.node_ref.as_link(),
                 type_var_likes,
             ),
             total,

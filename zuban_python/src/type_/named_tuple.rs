@@ -323,16 +323,16 @@ fn check_named_tuple_name<'x, 'y>(
     let Some(first_arg) = iterator.next() else {
         todo!()
     };
-    let ArgKind::Positional { node_ref, .. } = first_arg.kind else {
+    let ArgKind::Positional(pos) = first_arg.kind else {
         first_arg.add_issue(i_s, IssueType::UnexpectedArgumentsTo { name: "namedtuple" });
         return None
     };
-    let expr = node_ref.as_named_expression().expression();
+    let expr = pos.node_ref.as_named_expression().expression();
     let first = expr
         .maybe_single_string_literal()
-        .map(|py_string| (node_ref, py_string));
-    let Some(mut string_slice) = StringSlice::from_string_in_expression(node_ref.file_index(), expr) else {
-        node_ref.add_issue(i_s, IssueType::NamedTupleExpectsStringLiteralAsFirstArg { name: executable_name });
+        .map(|py_string| (pos.node_ref, py_string));
+    let Some(mut string_slice) = StringSlice::from_string_in_expression(pos.node_ref.file_index(), expr) else {
+        pos.node_ref.add_issue(i_s, IssueType::NamedTupleExpectsStringLiteralAsFirstArg { name: executable_name });
         return None
     };
     let py_string = expr.maybe_single_string_literal()?;
@@ -340,14 +340,14 @@ fn check_named_tuple_name<'x, 'y>(
         let should = name.as_code();
         let is = py_string.content();
         if should != is {
-            node_ref.add_issue(
+            pos.node_ref.add_issue(
                 i_s,
                 IssueType::NamedTupleFirstArgumentMismatch {
                     should: should.into(),
                     is: is.into(),
                 },
             );
-            string_slice = StringSlice::from_name(node_ref.file_index(), name.name());
+            string_slice = StringSlice::from_name(pos.node_ref.file_index(), name.name());
         }
     }
     let Some(second_arg) = iterator.next() else {
@@ -357,13 +357,13 @@ fn check_named_tuple_name<'x, 'y>(
         }
         return None
     };
-    let ArgKind::Positional { node_ref, .. } = second_arg.kind else {
+    let ArgKind::Positional(second) = second_arg.kind else {
         todo!()
     };
-    let Some(atom_content) = node_ref.as_named_expression().expression().maybe_unpacked_atom() else {
+    let Some(atom_content) = second.node_ref.as_named_expression().expression().maybe_unpacked_atom() else {
         todo!()
     };
-    Some((string_slice, node_ref, atom_content, iterator))
+    Some((string_slice, second.node_ref, atom_content, iterator))
 }
 
 pub(crate) fn new_typing_named_tuple(

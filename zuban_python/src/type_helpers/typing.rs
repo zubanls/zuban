@@ -57,17 +57,16 @@ impl<'db> TypingCast {
                 break;
             }
             match arg.kind {
-                ArgKind::Positional {
-                    position, node_ref, ..
-                } => {
-                    if position == 1 {
-                        result = node_ref
+                ArgKind::Positional(positional) => {
+                    if positional.position == 1 {
+                        result = positional
+                            .node_ref
                             .file
                             .inference(i_s)
-                            .compute_cast_target(node_ref)
+                            .compute_cast_target(positional.node_ref)
                             .ok()
                     } else {
-                        actual = Some(arg.infer(i_s, &mut ResultContext::ExpectUnused));
+                        actual = Some(positional.infer(i_s, &mut ResultContext::ExpectUnused));
                     }
                 }
                 _ => {
@@ -225,7 +224,7 @@ pub(crate) fn execute_assert_type<'db>(
     if !matches!(&first.kind, ArgKind::Positional { .. }) {
         return error_non_positional();
     }
-    let ArgKind::Positional { node_ref: second_node_ref, ..}= second.kind else {
+    let ArgKind::Positional(second_positional) = second.kind else {
         return error_non_positional()
     };
     let first = if matches!(result_context, ResultContext::ExpectUnused) {
@@ -235,10 +234,10 @@ pub(crate) fn execute_assert_type<'db>(
     };
     let first_type = first.as_cow_type(i_s);
 
-    let Ok(second) = second_node_ref
+    let Ok(second) = second_positional.node_ref
         .file
         .inference(i_s)
-        .compute_cast_target(second_node_ref) else {
+        .compute_cast_target(second_positional.node_ref) else {
         return Inferred::new_any_from_error()
     };
     let second_type = second.as_cow_type(i_s);
@@ -286,11 +285,11 @@ fn maybe_type_var(
     }
     let mut iterator = args.iter();
     if let Some(first_arg) = iterator.next() {
-        let result = if let ArgKind::Positional { node_ref, .. } = first_arg.kind {
-            node_ref
+        let result = if let ArgKind::Positional(pos) = &first_arg.kind {
+            pos.node_ref
                 .as_named_expression()
                 .maybe_single_string_literal()
-                .map(|py_string| (node_ref, py_string))
+                .map(|py_string| (pos.node_ref, py_string))
         } else {
             debug!("TODO this should probably add an error");
             None
@@ -328,11 +327,11 @@ fn maybe_type_var(
         let mut contravariant = false;
         for arg in iterator {
             match arg.kind {
-                ArgKind::Positional { node_ref, .. } => {
-                    let mut inference = node_ref.file.inference(i_s);
-                    if let Some(t) = inference
-                        .compute_type_var_constraint(node_ref.as_named_expression().expression())
-                    {
+                ArgKind::Positional(pos) => {
+                    let mut inference = pos.node_ref.file.inference(i_s);
+                    if let Some(t) = inference.compute_type_var_constraint(
+                        pos.node_ref.as_named_expression().expression(),
+                    ) {
                         constraints.push(t);
                     } else {
                         //
@@ -481,11 +480,11 @@ fn maybe_type_var_tuple(
     }
     let mut iterator = args.iter();
     if let Some(first_arg) = iterator.next() {
-        let result = if let ArgKind::Positional { node_ref, .. } = first_arg.kind {
-            node_ref
+        let result = if let ArgKind::Positional(pos) = &first_arg.kind {
+            pos.node_ref
                 .as_named_expression()
                 .maybe_single_string_literal()
-                .map(|py_string| (node_ref, py_string))
+                .map(|py_string| (pos.node_ref, py_string))
         } else {
             debug!("TODO type var tuple why does this not need an error?");
             None
@@ -520,8 +519,8 @@ fn maybe_type_var_tuple(
         let default = None;
         for arg in iterator {
             match arg.kind {
-                ArgKind::Positional { node_ref, .. } => {
-                    node_ref.add_issue(
+                ArgKind::Positional(_) => {
+                    arg.add_issue(
                         i_s,
                         IssueType::ArgumentIssue(
                             "Too many positional arguments for \"TypeVarTuple\"".into(),
@@ -615,11 +614,11 @@ fn maybe_param_spec(
     }
     let mut iterator = args.iter();
     if let Some(first_arg) = iterator.next() {
-        let result = if let ArgKind::Positional { node_ref, .. } = first_arg.kind {
-            node_ref
+        let result = if let ArgKind::Positional(pos) = &first_arg.kind {
+            pos.node_ref
                 .as_named_expression()
                 .maybe_single_string_literal()
-                .map(|py_string| (node_ref, py_string))
+                .map(|py_string| (pos.node_ref, py_string))
         } else {
             debug!("TODO param spec why does this not need an error?");
             None

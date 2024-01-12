@@ -344,12 +344,15 @@ pub(crate) fn execute_functional_enum<'db>(
     let mut fields_infos = None;
     for arg in args.iter() {
         match arg.kind {
-            ArgKind::Positional { node_ref, .. } => {
-                let expr = node_ref.as_named_expression().expression();
+            ArgKind::Positional(positional) => {
+                let expr = positional.node_ref.as_named_expression().expression();
                 if name_infos.is_none() {
-                    name_infos = Some((node_ref, arg.infer(i_s, &mut ResultContext::Unknown)));
+                    name_infos = Some((
+                        positional.node_ref,
+                        positional.infer(i_s, &mut ResultContext::Unknown),
+                    ));
                 } else if fields_infos.is_none() {
-                    fields_infos = Some((node_ref, expr));
+                    fields_infos = Some((positional.node_ref, expr));
                 }
                 // All the other arguments are not relevant here and were checked by checking
                 // EnumMeta.__call__.

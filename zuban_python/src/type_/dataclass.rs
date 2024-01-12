@@ -525,11 +525,11 @@ pub(crate) fn dataclasses_replace<'db>(
 
     let mut arg_iterator = args.iter();
     if let Some(first) = arg_iterator.next() {
-        if let ArgKind::Positional { node_ref, .. } = &first.kind {
+        if let ArgKind::Positional(positional) = &first.kind {
             let inferred = first.infer(i_s, &mut ResultContext::Unknown);
             if run_on_dataclass(
                 i_s,
-                Some(*node_ref),
+                Some(positional.node_ref),
                 &inferred.as_cow_type(i_s),
                 &mut |dataclass| {
                     let mut replace_func = dataclass_init_func(dataclass, i_s.db).clone();
