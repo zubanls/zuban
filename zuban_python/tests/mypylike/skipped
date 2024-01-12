@@ -516,7 +516,6 @@ testTypeVarTuplePep646CallableWithPrefixSuffix
 # Overload matching issues
 testTypeVarTupleOverloadMatch
 # file/type_computation.rs:637
-testTypeVarTuplePep646TypeVarStarArgs
 testTypeVarTuplePep646CallableStarArgs
 testTypeVarTupleTypingExtensions
 testVariadicStarArgsCallNoCrash
