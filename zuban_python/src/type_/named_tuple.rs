@@ -7,7 +7,7 @@ use super::{
     DbString, FormatStyle, FunctionKind, ParamType, StringSlice, Tuple, Type,
 };
 use crate::{
-    arguments::{ArgIterator, ArgKind, Args},
+    arguments::{ArgIterator, ArgKind, Args, KeywordArg},
     database::{ComplexPoint, Database, FileIndex, PointLink},
     diagnostics::IssueType,
     file::{File, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn},
@@ -489,11 +489,11 @@ pub(crate) fn new_collections_named_tuple(
     check_named_tuple_has_no_fields_with_underscore(i_s, "namedtuple", args, &params);
 
     for arg in args.iter() {
-        if let ArgKind::Keyword {
+        if let ArgKind::Keyword(KeywordArg {
             key: "defaults",
             expression,
             ..
-        } = arg.kind
+        }) = arg.kind
         {
             let defaults_iterator = match expression.maybe_unpacked_atom() {
                 Some(AtomContent::List(list)) => list.unpack(),

@@ -8,7 +8,7 @@ use super::{
     TypeVarLikes,
 };
 use crate::{
-    arguments::{ArgKind, Args},
+    arguments::{ArgKind, Args, KeywordArg},
     database::{ComplexPoint, Database, PointLink, TypedDictDefinition},
     diagnostics::IssueType,
     file::{infer_string_index, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn},
@@ -513,16 +513,19 @@ fn new_typed_dict_internal<'db>(
     let mut total = true;
     if let Some(next) = iterator.next() {
         match &next.kind {
-            ArgKind::Keyword { key: "total", .. } => {
+            ArgKind::Keyword(KeywordArg { key: "total", .. }) => {
                 total = infer_typed_dict_total_argument(
                     i_s,
                     next.infer(i_s, &mut ResultContext::Unknown),
                     |issue| next.add_issue(i_s, issue),
                 )?;
             }
-            ArgKind::Keyword { key, node_ref, .. } => {
-                let s = format!(r#"Unexpected keyword argument "{key}" for "TypedDict""#);
-                node_ref.add_issue(i_s, IssueType::ArgumentIssue(s.into()));
+            ArgKind::Keyword(kw) => {
+                let s = format!(
+                    r#"Unexpected keyword argument "{}" for "TypedDict""#,
+                    kw.key
+                );
+                kw.add_issue(i_s, IssueType::ArgumentIssue(s.into()));
                 return None;
             }
             _ => {
@@ -639,7 +642,7 @@ fn typed_dict_setdefault_internal<'db>(
     }
     let default = match &second_arg {
         Some(second) => match &second.kind {
-            ArgKind::Positional { .. } | ArgKind::Keyword { key: "default", .. } => {
+            ArgKind::Positional { .. } | ArgKind::Keyword(KeywordArg { key: "default", .. }) => {
                 second.infer(i_s, &mut ResultContext::Unknown)
             }
             _ => return None,
@@ -721,7 +724,7 @@ fn typed_dict_get_or_pop_internal<'db>(
     }
     let infer_default = |context: &mut _| match &second_arg {
         Some(second) => match &second.kind {
-            ArgKind::Positional { .. } | ArgKind::Keyword { key: "default", .. } => {
+            ArgKind::Positional { .. } | ArgKind::Keyword(KeywordArg { key: "default", .. }) => {
                 Some(second.infer(i_s, context))
             }
             _ => return None,

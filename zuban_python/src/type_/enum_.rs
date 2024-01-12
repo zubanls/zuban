@@ -9,7 +9,7 @@ use super::{
     AnyCause, CallableLike, DbString, FormatStyle, Literal, LiteralKind, StringSlice, Type,
 };
 use crate::{
-    arguments::{ArgKind, Args},
+    arguments::{ArgKind, Args, KeywordArg},
     database::{Database, ParentScope, PointLink},
     diagnostics::IssueType,
     file::File,
@@ -357,12 +357,12 @@ pub(crate) fn execute_functional_enum<'db>(
                 // All the other arguments are not relevant here and were checked by checking
                 // EnumMeta.__call__.
             }
-            ArgKind::Keyword {
+            ArgKind::Keyword(KeywordArg {
                 key,
                 node_ref,
                 expression,
                 ..
-            } => match key {
+            }) => match key {
                 "value" => {
                     name_infos = Some((node_ref, arg.infer(i_s, &mut ResultContext::Unknown)))
                 }

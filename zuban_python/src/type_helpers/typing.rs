@@ -1,7 +1,7 @@
 use std::{borrow::Cow, rc::Rc};
 
 use crate::{
-    arguments::{ArgKind, Args},
+    arguments::{ArgKind, Args, KeywordArg},
     database::{ComplexPoint, PointLink},
     debug,
     diagnostics::IssueType,
@@ -339,12 +339,12 @@ fn maybe_type_var(
                         return None;
                     }
                 }
-                ArgKind::Keyword {
+                ArgKind::Keyword(KeywordArg {
                     key,
                     node_ref,
                     expression,
                     ..
-                } => match key {
+                }) => match key {
                     "covariant" => {
                         let code = expression.as_code();
                         match code {
@@ -528,12 +528,12 @@ fn maybe_type_var_tuple(
                     );
                     return None;
                 }
-                ArgKind::Keyword {
+                ArgKind::Keyword(KeywordArg {
                     key,
                     node_ref,
                     expression,
                     ..
-                } => match key {
+                }) => match key {
                     "default" => {
                         if let Some(t) = node_ref
                             .file
@@ -652,12 +652,12 @@ fn maybe_param_spec(
 
         for arg in iterator {
             match arg.kind {
-                ArgKind::Keyword {
+                ArgKind::Keyword(KeywordArg {
                     key,
                     node_ref,
                     expression,
                     ..
-                } if key == "default" => {
+                }) if key == "default" => {
                     if let Some(t) = node_ref
                         .file
                         .inference(i_s)

@@ -294,14 +294,34 @@ impl<'db> PositionalArg<'db, '_> {
 }
 
 #[derive(Debug, Clone)]
+pub struct KeywordArg<'db, 'a> {
+    i_s: InferenceState<'db, 'a>,
+    pub key: &'a str,
+    pub node_ref: NodeRef<'a>,
+    pub expression: Expression<'a>,
+}
+
+impl<'db> KeywordArg<'db, '_> {
+    pub fn infer(
+        &self,
+        func_i_s: &InferenceState<'db, '_>,
+        result_context: &mut ResultContext,
+    ) -> Inferred {
+        self.node_ref
+            .file
+            .inference(&self.i_s.use_mode_of(func_i_s))
+            .infer_expression_with_context(self.expression, result_context)
+    }
+
+    pub(crate) fn add_issue(&self, i_s: &InferenceState, issue: IssueType) {
+        self.node_ref.add_issue(i_s, issue)
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum ArgKind<'db, 'a> {
     // Can be used for classmethod class or self in bound methods
-    Keyword {
-        i_s: InferenceState<'db, 'a>,
-        key: &'a str,
-        node_ref: NodeRef<'a>,
-        expression: Expression<'a>,
-    },
+    Keyword(KeywordArg<'db, 'a>),
     Inferred {
         inferred: Inferred,
         position: usize, // The position as a 1-based index
@@ -361,12 +381,12 @@ impl<'db, 'a> ArgKind<'db, 'a> {
         node_index: NodeIndex,
         expression: Expression<'a>,
     ) -> BaseArgReturn<'db, 'a> {
-        BaseArgReturn::Arg(ArgKind::Keyword {
+        BaseArgReturn::Arg(ArgKind::Keyword(KeywordArg {
             i_s,
             key,
             node_ref: NodeRef { file, node_index },
             expression,
-        })
+        }))
     }
 }
 
@@ -396,15 +416,7 @@ impl<'db, 'a> Arg<'db, 'a> {
             ArgKind::Inferred { inferred, .. }
             | ArgKind::InferredWithCustomAddIssue { inferred, .. } => (*inferred).clone(),
             ArgKind::Positional(positional) => positional.infer(func_i_s, result_context),
-            ArgKind::Keyword {
-                i_s,
-                node_ref,
-                expression,
-                ..
-            } => node_ref
-                .file
-                .inference(&i_s.use_mode_of(func_i_s))
-                .infer_expression_with_context(*expression, result_context),
+            ArgKind::Keyword(kw) => kw.infer(func_i_s, result_context),
             ArgKind::SlicesTuple { i_s, slices } => slices.infer(&i_s.use_mode_of(func_i_s)),
             ArgKind::Comprehension {
                 file,
@@ -424,7 +436,7 @@ impl<'db, 'a> Arg<'db, 'a> {
     fn as_node_ref(&self) -> Result<NodeRef, CustomAddIssue> {
         match &self.kind {
             ArgKind::Positional(PositionalArg { node_ref, .. })
-            | ArgKind::Keyword { node_ref, .. }
+            | ArgKind::Keyword(KeywordArg { node_ref, .. })
             | ArgKind::ParamSpec { node_ref, .. }
             | ArgKind::StarredWithUnpack { node_ref, .. }
             | ArgKind::Inferred { node_ref, .. } => Ok(*node_ref),
@@ -509,7 +521,7 @@ impl<'db, 'a> Arg<'db, 'a> {
                 format!("{position}")
             }
             ArgKind::Comprehension { .. } => "0".to_owned(),
-            ArgKind::Keyword { key, .. } => format!("\"{key}\""),
+            ArgKind::Keyword(KeywordArg { key, .. }) => format!("\"{key}\""),
             ArgKind::SlicesTuple { .. } => todo!(),
             ArgKind::Overridden { original, .. } => original.human_readable_index(db),
         }
@@ -527,8 +539,8 @@ impl<'db, 'a> Arg<'db, 'a> {
     }
 
     pub fn keyword_name(&self, db: &'db Database) -> Option<&str> {
-        match self.kind {
-            ArgKind::Keyword { key, .. } => Some(key),
+        match &self.kind {
+            ArgKind::Keyword(kw) => Some(kw.key),
             ArgKind::Inferred {
                 is_keyword: Some(Some(key)),
                 ..
@@ -559,7 +571,7 @@ impl<'db, 'a> Arg<'db, 'a> {
                 .map(|_| inferred),
             ArgKind::ParamSpec { .. }
             | ArgKind::StarredWithUnpack { .. }
-            | ArgKind::Keyword { .. }
+            | ArgKind::Keyword(KeywordArg { .. })
             | ArgKind::Inferred { .. } => None,
         }
     }
