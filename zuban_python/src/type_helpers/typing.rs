@@ -409,13 +409,7 @@ fn maybe_type_var(
                     arg.add_issue(i_s, IssueType::UnexpectedComprehension);
                     return None;
                 }
-                ArgKind::Inferred { .. }
-                | ArgKind::InferredWithCustomAddIssue { .. }
-                | ArgKind::SlicesTuple { .. }
-                | ArgKind::Overridden { .. }
-                | ArgKind::ParamSpec { .. } => {
-                    arg.add_issue(i_s, IssueType::UnexpectedArgumentTo { name: "TypeVar" });
-                }
+                _ => arg.add_issue(i_s, IssueType::UnexpectedArgumentTo { name: "TypeVar" }),
             }
         }
         if constraints.len() == 1 {
@@ -570,11 +564,7 @@ fn maybe_type_var_tuple(
                     arg.add_issue(i_s, IssueType::UnexpectedComprehension);
                     return None;
                 }
-                ArgKind::Inferred { .. }
-                | ArgKind::InferredWithCustomAddIssue { .. }
-                | ArgKind::SlicesTuple { .. }
-                | ArgKind::Overridden { .. }
-                | ArgKind::ParamSpec { .. } => unreachable!(),
+                _ => todo!(),
             }
         }
         Some(TypeVarLike::TypeVarTuple(Rc::new(TypeVarTuple {

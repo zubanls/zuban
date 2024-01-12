@@ -14,7 +14,7 @@ use crate::{
     inferred::Inferred,
     matching::{IteratorContent, Matcher, ResultContext, UnpackedArgument},
     node_ref::NodeRef,
-    type_::{AnyCause, GenericItem, ParamSpecUsage, StringSlice, Type, TypedDict},
+    type_::{AnyCause, GenericItem, ParamSpecUsage, StringSlice, Type, TypedDict, WithUnpack},
     InferenceState,
 };
 
@@ -299,6 +299,11 @@ pub enum ArgKind<'db, 'a> {
         i_s: InferenceState<'db, 'a>,
         slices: Slices<'a>,
     },
+    StarredWithUnpack {
+        with_unpack: WithUnpack,
+        node_ref: NodeRef<'a>,
+        position: usize, // The position as a 1-based index
+    },
     ParamSpec {
         usage: ParamSpecUsage,
         node_ref: NodeRef<'a>,
@@ -400,6 +405,7 @@ impl<'db, 'a> Arg<'db, 'a> {
             ArgKind::ParamSpec { usage, .. } => {
                 Inferred::from_type(Type::ParamSpecArgs(usage.clone()))
             }
+            ArgKind::StarredWithUnpack { .. } => todo!(),
             ArgKind::Overridden { inferred, .. } => inferred.clone(),
         }
     }
@@ -409,6 +415,7 @@ impl<'db, 'a> Arg<'db, 'a> {
             ArgKind::Positional { node_ref, .. }
             | ArgKind::Keyword { node_ref, .. }
             | ArgKind::ParamSpec { node_ref, .. }
+            | ArgKind::StarredWithUnpack { node_ref, .. }
             | ArgKind::Inferred { node_ref, .. } => Ok(*node_ref),
             ArgKind::Comprehension {
                 file,
@@ -486,6 +493,7 @@ impl<'db, 'a> Arg<'db, 'a> {
             ArgKind::Positional { position, .. }
             | ArgKind::Inferred { position, .. }
             | ArgKind::InferredWithCustomAddIssue { position, .. }
+            | ArgKind::StarredWithUnpack { position, .. }
             | ArgKind::ParamSpec { position, .. } => {
                 format!("{position}")
             }
@@ -534,12 +542,14 @@ impl<'db, 'a> Arg<'db, 'a> {
                 ..
             }
             | ArgKind::InferredWithCustomAddIssue { inferred, .. } => Some(inferred),
-            ArgKind::ParamSpec { .. } => todo!(),
             ArgKind::Overridden { original, inferred } => original
                 .clone()
                 .maybe_positional_arg(i_s, context)
                 .map(|_| inferred),
-            ArgKind::Keyword { .. } | ArgKind::Inferred { .. } => None,
+            ArgKind::ParamSpec { .. }
+            | ArgKind::StarredWithUnpack { .. }
+            | ArgKind::Keyword { .. }
+            | ArgKind::Inferred { .. } => None,
         }
     }
 }
@@ -939,7 +949,7 @@ impl<'db, 'a> Iterator for ArgIterator<'db, 'a> {
                     }
                     Some(Arg {
                         kind: ArgKind::Inferred {
-                            inferred: inferred,
+                            inferred,
                             position,
                             node_ref,
                             in_args_or_kwargs_and_arbitrary_len: arbitrary_len,
@@ -948,7 +958,18 @@ impl<'db, 'a> Iterator for ArgIterator<'db, 'a> {
                         index,
                     })
                 }
-                Some(UnpackedArgument::WithUnpack(_)) => todo!(),
+                Some(UnpackedArgument::WithUnpack(with_unpack)) => {
+                    let index = self.counter;
+                    self.counter += 1;
+                    Some(Arg {
+                        kind: ArgKind::StarredWithUnpack {
+                            with_unpack,
+                            position,
+                            node_ref,
+                        },
+                        index,
+                    })
+                }
                 None => self.next(),
             },
             ArgsKwargsIterator::Kwargs {

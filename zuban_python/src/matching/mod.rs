@@ -269,7 +269,16 @@ impl IteratorContent {
                 arbitrary_len: false,
             }),
             Self::Union(iterators) => todo!(),
-            Self::WithUnpack { .. } => todo!(),
+            Self::WithUnpack {
+                unpack,
+                before_index,
+                after_index,
+            } => {
+                if !unpack.before.is_empty() {
+                    todo!()
+                }
+                Some(UnpackedArgument::WithUnpack(unpack.clone()))
+            }
             Self::Any(cause) => Some(UnpackedArgument::Normal {
                 inferred: Inferred::new_any(*cause),
                 arbitrary_len: true,
