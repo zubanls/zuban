@@ -4,7 +4,7 @@ use parsa_python_ast::Name;
 
 use super::{class::TypeOrClass, Class, MroIterator};
 use crate::{
-    arguments::{Args, CombinedArgs, KnownArgs, KnownArgsWithCustomAddIssue, NoArgs},
+    arguments::{Args, CombinedArgs, InferredArg, KnownArgs, KnownArgsWithCustomAddIssue, NoArgs},
     database::{Database, PointLink, Specific},
     debug,
     diagnostics::IssueType,
@@ -621,7 +621,10 @@ fn execute_super_internal<'db>(
     let mut next_arg = || {
         iterator.next().map(|arg| match arg.is_keyword_argument() {
             false => match arg.in_args_or_kwargs_and_arbitrary_len() {
-                false => Ok(arg.infer(i_s, &mut ResultContext::Unknown)),
+                false => match arg.infer(i_s, &mut ResultContext::Unknown) {
+                    InferredArg::Inferred(inf) => Ok(inf),
+                    _ => Err(IssueType::SuperOnlyAcceptsPositionalArguments),
+                },
                 true => Err(IssueType::SuperVarargsNotSupported),
             },
             true => Err(IssueType::SuperOnlyAcceptsPositionalArguments),

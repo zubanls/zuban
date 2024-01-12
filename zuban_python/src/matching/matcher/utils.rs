@@ -15,7 +15,7 @@ use super::{
     type_var_matcher::{BoundKind, FunctionOrCallable, TypeVarMatcher},
 };
 use crate::{
-    arguments::{Arg, ArgKind},
+    arguments::{Arg, ArgKind, InferredArg},
     database::PointLink,
     debug,
     diagnostics::IssueType,
@@ -490,6 +490,9 @@ pub(crate) fn match_arguments_against_params<
             } else {
                 argument.infer(i_s, &mut ResultContext::Known(&expected))
             };
+            let InferredArg::Inferred(value) = value else {
+                todo!("not sure if reachable")
+            };
             let value_t = value.as_cow_type(i_s);
             let m = expected.is_super_type_of(i_s, matcher, &value_t);
             if let Match::False { reason, .. } = &m {
@@ -609,7 +612,11 @@ pub(crate) fn match_arguments_against_params<
                     if arg.in_args_or_kwargs_and_arbitrary_len() {
                         todo!()
                     } else {
-                        before.push(arg.infer(&i_s, &mut ResultContext::Unknown).as_type(&i_s))
+                        match arg.infer(&i_s, &mut ResultContext::Unknown) {
+                            InferredArg::Inferred(inf) => before.push(inf.as_type(&i_s)),
+                            InferredArg::StarredWithUnpack(_) => todo!(),
+                            InferredArg::ParamSpec { .. } => todo!(),
+                        }
                     }
                 }
                 match &expected.args {

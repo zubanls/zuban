@@ -16,8 +16,8 @@ use crate::{
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
     matching::{
-        calculate_callable_type_vars_and_return, ErrorTypes, GotType, IteratorContent, LookupKind,
-        LookupResult, Match, Matcher, OnLookupError, OnTypeError, ResultContext,
+        calculate_callable_type_vars_and_return, IteratorContent, LookupKind, LookupResult,
+        OnLookupError, OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
     type_::NamedTuple,
@@ -612,6 +612,7 @@ pub(crate) fn execute_type_of_type<'db>(
         tuple @ Type::Tuple(tuple_content) => {
             debug!("TODO this does not check the arguments");
             return Inferred::from_type(tuple.clone());
+            /*
             // TODO reenable this
             let mut args_iterator = args.iter();
             let (arg, inferred_tup) = if let Some(arg) = args_iterator.next() {
@@ -635,6 +636,7 @@ pub(crate) fn execute_type_of_type<'db>(
                 (on_type_error.callback)(i_s, &|_| todo!(), &arg, error_types);
             }
             Inferred::from_type(tuple.clone())
+            */
         }
         Type::Class(c) => c
             .class(i_s.db)

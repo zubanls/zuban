@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use super::{Callable, Class};
 use crate::{
-    arguments::{Arg, ArgIterator, ArgKind, Args},
+    arguments::{Arg, ArgIterator, ArgKind, Args, InferredArg},
     database::Database,
     debug,
     diagnostics::IssueType,
@@ -278,7 +278,19 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         class: Option<&Class>,
     ) -> UnionMathResult {
         if let Some(next_arg) = args.next() {
-            let inf = next_arg.infer(i_s, result_context);
+            let InferredArg::Inferred(inf) = next_arg.infer(i_s, result_context) else {
+                non_union_args.push(next_arg);
+                return self.check_union_math(
+                    i_s,
+                    result_context,
+                    args,
+                    skip_first_argument,
+                    non_union_args,
+                    add_issue,
+                    search_init,
+                    class,
+                )
+            };
             if inf.is_union(i_s) {
                 // TODO this is shit
                 let nxt_arg: &'x Arg<'db, 'x> = unsafe { std::mem::transmute(&next_arg) };

@@ -3,7 +3,7 @@ use std::{borrow::Cow, cell::RefCell, rc::Rc};
 use parsa_python_ast::{NodeIndex, PrimaryContent, PythonString, SliceType as ASTSliceType};
 
 use crate::{
-    arguments::{Args, CombinedArgs, KnownArgs, KnownArgsWithCustomAddIssue},
+    arguments::{Args, CombinedArgs, InferredArg, KnownArgs, KnownArgsWithCustomAddIssue},
     database::{
         ComplexPoint, Database, FileIndex, Locality, OverloadDefinition, Point, PointLink,
         PointType, Specific,
@@ -1786,7 +1786,9 @@ impl<'db: 'slf, 'slf> Inferred {
                                 let mut iterator = args.iter();
                                 if let Some(first_arg) = iterator.next() {
                                     let t = new_type.type_(i_s);
-                                    let inf = first_arg.infer(i_s, &mut ResultContext::Known(t));
+                                    let InferredArg::Inferred(inf) = first_arg.infer(i_s, &mut ResultContext::Known(t)) else {
+                                        todo!()
+                                    };
                                     let other = inf.as_cow_type(i_s);
                                     if let Match::False { ref reason, .. } =
                                         t.is_simple_super_type_of(i_s, &other)

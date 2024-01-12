@@ -8,7 +8,7 @@ use super::{
     TypeVarLikes,
 };
 use crate::{
-    arguments::{ArgKind, Args, KeywordArg},
+    arguments::{ArgKind, Args},
     database::{ComplexPoint, Database, PointLink, TypedDictDefinition},
     diagnostics::IssueType,
     file::{infer_string_index, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn},
@@ -513,10 +513,10 @@ fn new_typed_dict_internal<'db>(
     let mut total = true;
     if let Some(next) = iterator.next() {
         match &next.kind {
-            ArgKind::Keyword(KeywordArg { key: "total", .. }) => {
+            ArgKind::Keyword(kw) if kw.key == "total" => {
                 total = infer_typed_dict_total_argument(
                     i_s,
-                    next.infer(i_s, &mut ResultContext::Unknown),
+                    kw.infer(i_s, &mut ResultContext::Unknown),
                     |issue| next.add_issue(i_s, issue),
                 )?;
             }
@@ -642,7 +642,8 @@ fn typed_dict_setdefault_internal<'db>(
     }
     let default = match &second_arg {
         Some(second) => match &second.kind {
-            ArgKind::Positional { .. } | ArgKind::Keyword(KeywordArg { key: "default", .. }) => {
+            ArgKind::Positional(second) => second.infer(i_s, &mut ResultContext::Unknown),
+            ArgKind::Keyword(second) if second.key == "detaulf" => {
                 second.infer(i_s, &mut ResultContext::Unknown)
             }
             _ => return None,
@@ -724,9 +725,8 @@ fn typed_dict_get_or_pop_internal<'db>(
     }
     let infer_default = |context: &mut _| match &second_arg {
         Some(second) => match &second.kind {
-            ArgKind::Positional { .. } | ArgKind::Keyword(KeywordArg { key: "default", .. }) => {
-                Some(second.infer(i_s, context))
-            }
+            ArgKind::Positional(second) => Some(second.infer(i_s, context)),
+            ArgKind::Keyword(second) if second.key == "default" => Some(second.infer(i_s, context)),
             _ => return None,
         },
         None => Some(Inferred::new_none()),
@@ -1081,7 +1081,7 @@ pub(crate) fn check_typed_dict_call<'db>(
                 |issue| arg.add_issue(i_s, issue),
                 key,
                 &mut extra_keys,
-                |context| arg.infer(i_s, context),
+                |context| arg.infer_inferrable(i_s, context),
             );
         } else {
             todo!()

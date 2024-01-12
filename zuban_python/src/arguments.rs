@@ -44,8 +44,10 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
 
     fn has_a_union_argument(&self, i_s: &InferenceState<'db, '_>) -> bool {
         for arg in self.iter() {
-            if arg.infer(i_s, &mut ResultContext::Unknown).is_union(i_s) {
-                return true;
+            if let InferredArg::Inferred(inf) = arg.infer(i_s, &mut ResultContext::Unknown) {
+                if inf.is_union(i_s) {
+                    return true;
+                }
             }
         }
         false
@@ -291,6 +293,10 @@ impl<'db> PositionalArg<'db, '_> {
                 result_context,
             )
     }
+
+    pub(crate) fn add_issue(&self, i_s: &InferenceState, issue: IssueType) {
+        self.node_ref.add_issue(i_s, issue)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -390,6 +396,12 @@ impl<'db, 'a> ArgKind<'db, 'a> {
     }
 }
 
+pub enum InferredArg<'a> {
+    Inferred(Inferred),
+    StarredWithUnpack(&'a WithUnpack),
+    ParamSpec(&'a ParamSpecUsage),
+}
+
 #[derive(Debug, Clone)]
 pub struct Arg<'db, 'a> {
     pub kind: ArgKind<'db, 'a>,
@@ -407,12 +419,23 @@ impl<'db, 'a> Arg<'db, 'a> {
         }
     }
 
-    pub fn infer(
+    pub fn infer_inferrable(
         &self,
         func_i_s: &InferenceState<'db, '_>,
         result_context: &mut ResultContext,
     ) -> Inferred {
-        match &self.kind {
+        match self.infer(func_i_s, result_context) {
+            InferredArg::Inferred(inf) => inf,
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn infer(
+        &self,
+        func_i_s: &InferenceState<'db, '_>,
+        result_context: &mut ResultContext,
+    ) -> InferredArg {
+        InferredArg::Inferred(match &self.kind {
             ArgKind::Inferred { inferred, .. }
             | ArgKind::InferredWithCustomAddIssue { inferred, .. } => (*inferred).clone(),
             ArgKind::Positional(positional) => positional.infer(func_i_s, result_context),
@@ -428,9 +451,11 @@ impl<'db, 'a> Arg<'db, 'a> {
             ArgKind::ParamSpec { usage, .. } => {
                 Inferred::from_type(Type::ParamSpecArgs(usage.clone()))
             }
-            ArgKind::StarredWithUnpack { .. } => todo!(),
+            ArgKind::StarredWithUnpack { with_unpack, .. } => {
+                return InferredArg::StarredWithUnpack(with_unpack)
+            }
             ArgKind::Overridden { inferred, .. } => inferred.clone(),
-        }
+        })
     }
 
     fn as_node_ref(&self) -> Result<NodeRef, CustomAddIssue> {
@@ -557,7 +582,7 @@ impl<'db, 'a> Arg<'db, 'a> {
         match self.kind {
             ArgKind::Positional { .. }
             | ArgKind::SlicesTuple { .. }
-            | ArgKind::Comprehension { .. } => Some(self.infer(i_s, context)),
+            | ArgKind::Comprehension { .. } => Some(self.infer_inferrable(i_s, context)),
             ArgKind::Inferred {
                 inferred,
                 in_args_or_kwargs_and_arbitrary_len: false,

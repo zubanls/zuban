@@ -1,7 +1,7 @@
 use std::{borrow::Cow, rc::Rc};
 
 use crate::{
-    arguments::{ArgKind, Args, KeywordArg},
+    arguments::{ArgKind, Args, InferredArg, KeywordArg},
     database::{ComplexPoint, PointLink},
     debug,
     diagnostics::IssueType,
@@ -26,9 +26,10 @@ pub(crate) fn execute_type<'db>(
     if let Some(x) = iterator.next() {
         todo!()
     } else if let Some(first) = first {
-        Inferred::from_type(Type::Type(Rc::new(
-            first.infer(i_s, &mut ResultContext::Unknown).as_type(i_s),
-        )))
+        let InferredArg::Inferred(inf) = first.infer(i_s, &mut ResultContext::Unknown) else {
+            todo!()
+        };
+        Inferred::from_type(Type::Type(Rc::new(inf.as_type(i_s))))
     } else {
         todo!()
     }
@@ -122,12 +123,15 @@ impl RevealTypeFunction {
     ) -> Inferred {
         let mut iterator = args.iter();
         let arg = iterator.next().unwrap_or_else(|| todo!());
+        let ArgKind::Positional(pos) = arg.kind else {
+            todo!()
+        };
 
         let inferred = if matches!(result_context, ResultContext::ExpectUnused) {
             // For some reason mypy wants to generate a literal here if possible.
-            arg.infer(i_s, &mut ResultContext::RevealType)
+            pos.infer(i_s, &mut ResultContext::RevealType)
         } else {
-            arg.infer(i_s, result_context)
+            pos.infer(i_s, result_context)
         };
         let t = inferred.as_cow_type(i_s);
         let s = reveal_type_info(
@@ -145,7 +149,7 @@ impl RevealTypeFunction {
             }
             .as_ref(),
         );
-        arg.add_issue(
+        pos.add_issue(
             i_s,
             IssueType::Note(format!("Revealed type is \"{s}\"").into()),
         );
@@ -221,9 +225,9 @@ pub(crate) fn execute_assert_type<'db>(
         );
         Inferred::new_any_from_error()
     };
-    if !matches!(&first.kind, ArgKind::Positional { .. }) {
+    let ArgKind::Positional(first) = first.kind else {
         return error_non_positional();
-    }
+    };
     let ArgKind::Positional(second_positional) = second.kind else {
         return error_non_positional()
     };

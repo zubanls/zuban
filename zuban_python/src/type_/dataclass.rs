@@ -456,7 +456,7 @@ fn field_options_from_args<'db>(
             match key {
                 "default" | "default_factory" => options.has_default = true,
                 "kw_only" => {
-                    let result = arg.infer(i_s, &mut ResultContext::Unknown);
+                    let result = arg.infer_inferrable(i_s, &mut ResultContext::Unknown);
                     if let Some(bool_) = result.maybe_bool_literal(i_s) {
                         options.kw_only = Some(bool_);
                     } else {
@@ -464,7 +464,7 @@ fn field_options_from_args<'db>(
                     }
                 }
                 "init" => {
-                    let result = arg.infer(i_s, &mut ResultContext::Unknown);
+                    let result = arg.infer_inferrable(i_s, &mut ResultContext::Unknown);
                     if let Some(bool_) = result.maybe_bool_literal(i_s) {
                         options.init = bool_
                     } else {
@@ -484,7 +484,7 @@ pub fn check_dataclass_options<'db>(
 ) -> DataclassOptions {
     let mut options = DataclassOptions::default();
     let assign_option = |target: &mut _, arg: Arg<'db, '_>| {
-        let result = arg.infer(i_s, &mut ResultContext::Unknown);
+        let result = arg.infer_inferrable(i_s, &mut ResultContext::Unknown);
         if let Some(bool_) = result.maybe_bool_literal(i_s) {
             *target = bool_;
         } else {
@@ -526,7 +526,7 @@ pub(crate) fn dataclasses_replace<'db>(
     let mut arg_iterator = args.iter();
     if let Some(first) = arg_iterator.next() {
         if let ArgKind::Positional(positional) = &first.kind {
-            let inferred = first.infer(i_s, &mut ResultContext::Unknown);
+            let inferred = positional.infer(i_s, &mut ResultContext::Unknown);
             if run_on_dataclass(
                 i_s,
                 Some(positional.node_ref),
