@@ -255,27 +255,25 @@ impl IteratorContent {
         }
     }
 
-    pub fn next(&mut self, i_s: &InferenceState) -> Option<Inferred> {
+    pub fn next_as_argument(&mut self, i_s: &InferenceState) -> Option<UnpackedArgument> {
         match self {
-            Self::Inferred(inferred) => Some(inferred.clone()),
+            Self::Inferred(inferred) => Some(UnpackedArgument::Normal {
+                inferred: inferred.clone(),
+                arbitrary_len: true,
+            }),
             Self::FixedLenTupleGenerics {
                 entries,
                 current_index,
-            } => next_fixed_length(entries, current_index),
-            Self::Union(iterators) => {
-                let mut had_next = false;
-                let result = Inferred::gather_simplified_union(i_s, |add| {
-                    for iterator in iterators {
-                        if let Some(inf) = iterator.next(i_s) {
-                            had_next = true;
-                            add(inf)
-                        }
-                    }
-                });
-                had_next.then_some(result)
-            }
+            } => next_fixed_length(entries, current_index).map(|inf| UnpackedArgument::Normal {
+                inferred: inf,
+                arbitrary_len: false,
+            }),
+            Self::Union(iterators) => todo!(),
             Self::WithUnpack { .. } => todo!(),
-            Self::Any(cause) => Some(Inferred::new_any(*cause)),
+            Self::Any(cause) => Some(UnpackedArgument::Normal {
+                inferred: Inferred::new_any(*cause),
+                arbitrary_len: true,
+            }),
         }
     }
 
@@ -383,27 +381,6 @@ impl IteratorContent {
         }
     }
 
-    pub fn len(&self) -> Option<usize> {
-        // TODO this function should probably be removed.
-        match self {
-            Self::Inferred(_) | Self::Any(_) => None,
-            Self::FixedLenTupleGenerics {
-                entries,
-                current_index,
-            } => Some(entries.as_ref().len() - current_index),
-            Self::Union(iterators) => {
-                let mut iterator = iterators.iter().filter_map(|i| i.len());
-                let first_len = iterator.next()?;
-                if iterator.all(|len| len == first_len) {
-                    Some(first_len)
-                } else {
-                    todo!()
-                }
-            }
-            Self::WithUnpack { .. } => todo!(),
-        }
-    }
-
     pub fn len_infos(&self) -> Option<TupleLenInfos> {
         match self {
             Self::Inferred(_) | Self::Any(_) => None,
@@ -420,6 +397,14 @@ impl IteratorContent {
             }),
         }
     }
+}
+
+pub enum UnpackedArgument {
+    Normal {
+        inferred: Inferred,
+        arbitrary_len: bool,
+    },
+    WithUnpack(WithUnpack),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]

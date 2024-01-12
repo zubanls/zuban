@@ -12,7 +12,7 @@ use crate::{
     file::PythonFile,
     getitem::{SliceType, SliceTypeContent, Slices},
     inferred::Inferred,
-    matching::{IteratorContent, Matcher, ResultContext},
+    matching::{IteratorContent, Matcher, ResultContext, UnpackedArgument},
     node_ref::NodeRef,
     type_::{AnyCause, GenericItem, ParamSpecUsage, StringSlice, Type, TypedDict},
     InferenceState,
@@ -923,12 +923,14 @@ impl<'db, 'a> Iterator for ArgIterator<'db, 'a> {
                 mut iterator,
                 node_ref,
                 position,
-            } => {
-                if let Some(inferred) = iterator.next(self.current.expect_i_s()) {
+            } => match iterator.next_as_argument(self.current.expect_i_s()) {
+                Some(UnpackedArgument::Normal {
+                    inferred,
+                    arbitrary_len,
+                }) => {
                     let index = self.counter;
                     self.counter += 1;
-                    let in_args_or_kwargs_and_arbitrary_len = iterator.len().is_none();
-                    if !in_args_or_kwargs_and_arbitrary_len {
+                    if !arbitrary_len {
                         self.args_kwargs_iterator = ArgsKwargsIterator::Args {
                             iterator,
                             node_ref,
@@ -937,18 +939,18 @@ impl<'db, 'a> Iterator for ArgIterator<'db, 'a> {
                     }
                     Some(Arg {
                         kind: ArgKind::Inferred {
-                            inferred,
+                            inferred: inferred,
                             position,
                             node_ref,
-                            in_args_or_kwargs_and_arbitrary_len,
+                            in_args_or_kwargs_and_arbitrary_len: arbitrary_len,
                             is_keyword: None,
                         },
                         index,
                     })
-                } else {
-                    self.next()
                 }
-            }
+                Some(UnpackedArgument::WithUnpack(_)) => todo!(),
+                None => self.next(),
+            },
             ArgsKwargsIterator::Kwargs {
                 inferred_value,
                 node_ref,
