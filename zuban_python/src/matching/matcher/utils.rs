@@ -24,7 +24,7 @@ use crate::{
     node_ref::NodeRef,
     type_::{
         match_unpack, CallableParams, ClassGenerics, GenericItem, GenericsList, ReplaceSelf,
-        TupleArgs, Type, TypeVarLikeUsage, TypeVarLikes, Variance,
+        TupleArgs, Type, TypeVarLikeUsage, TypeVarLikes, Variance, WithUnpack,
     },
     type_helpers::{Callable, Class, Function},
 };
@@ -609,20 +609,39 @@ pub(crate) fn match_arguments_against_params<
 
                 let mut before = vec![];
                 let mut unpack = None;
+                let mut after = vec![];
                 for arg in args.iter() {
                     if arg.in_args_or_kwargs_and_arbitrary_len() {
                         todo!()
                     } else {
                         match arg.infer(&i_s, &mut ResultContext::Unknown) {
-                            InferredArg::Inferred(inf) => before.push(inf.as_type(&i_s)),
-                            InferredArg::StarredWithUnpack(u) => unpack = Some(u),
+                            InferredArg::Inferred(inf) => {
+                                let t = inf.as_type(&i_s);
+                                if unpack.is_some() {
+                                    after.push(t)
+                                } else {
+                                    before.push(t)
+                                }
+                            }
+                            InferredArg::StarredWithUnpack(with_unpack) => {
+                                before.extend_from_slice(&with_unpack.before);
+                                unpack = Some(with_unpack.unpack);
+                                after.extend_from_slice(&with_unpack.after);
+                            }
                             InferredArg::ParamSpec { .. } => todo!(),
                         }
                     }
                 }
                 match &expected.args {
                     TupleArgs::WithUnpack(with_unpack) => {
-                        let actual = TupleArgs::FixedLen(before.into());
+                        let actual = match unpack {
+                            Some(unpack) => TupleArgs::WithUnpack(WithUnpack {
+                                before: before.into(),
+                                unpack,
+                                after: after.into(),
+                            }),
+                            None => TupleArgs::FixedLen(before.into()),
+                        };
                         let match_ = match_unpack(
                             i_s,
                             matcher,
