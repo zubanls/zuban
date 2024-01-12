@@ -990,19 +990,16 @@ pub fn match_unpack(
                     {
                         todo!()
                     }
-                    matches = match &with_unpack2.unpack {
-                        TupleUnpack::TypeVarTuple(tvt2) => matcher.match_or_add_type_var_tuple(
-                            i_s,
-                            tvt1,
-                            TupleArgs::WithUnpack(WithUnpack {
-                                before: before2_it.cloned().collect(),
-                                unpack: with_unpack2.unpack.clone(),
-                                after: after2_it.cloned().collect(),
-                            }),
-                            variance,
-                        ),
-                        TupleUnpack::ArbitraryLen(_) => Match::new_false(),
-                    }
+                    matches &= matcher.match_or_add_type_var_tuple(
+                        i_s,
+                        tvt1,
+                        TupleArgs::WithUnpack(WithUnpack {
+                            before: before2_it.cloned().collect(),
+                            unpack: with_unpack2.unpack.clone(),
+                            after: after2_it.cloned().collect(),
+                        }),
+                        variance,
+                    );
                 }
                 TupleUnpack::ArbitraryLen(inner_t1) => match &with_unpack2.unpack {
                     TupleUnpack::TypeVarTuple(tvt2) => todo!(),
