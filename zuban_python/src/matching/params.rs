@@ -8,10 +8,11 @@ use crate::{
     database::{Database, PointLink},
     debug,
     inference_state::InferenceState,
+    matching::FormatData,
     type_::{
         CallableParam, CallableParams, ParamSpecUsage, ParamType, ParamTypeDetails, StarParamType,
-        StarStarParamType, StringSlice, Tuple, Type, TypeVarLikes, TypedDict, TypedDictMember,
-        Variance,
+        StarStarParamType, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarLikes,
+        TypedDict, TypedDictMember, Variance,
     },
 };
 
@@ -127,6 +128,11 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
             .copied()
         {
             if param1.has_default() && !param2.has_default() {
+                debug!(
+                    "Mismatch callable, because {:?} has default and {:?} hasn't",
+                    param1.name(i_s.db),
+                    param2.name(i_s.db)
+                );
                 return Match::new_false();
             }
             let specific1 = param1.specific(i_s.db);
@@ -302,7 +308,56 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                                 variance,
                             );
                         }
-                        (WrappedStar::UnpackedTuple(tup1), _) => return Match::new_false(),
+                        (WrappedStar::UnpackedTuple(tup1), WrappedStar::ArbitraryLen(t2)) => {
+                            if let Some(t2) = t2 {
+                                match &tup1.args {
+                                    TupleArgs::ArbitraryLen(t1) => {
+                                        matches &= t1.matches(i_s, matcher, t2, variance);
+                                    }
+                                    TupleArgs::FixedLen(ts1) => {
+                                        for t1 in ts1.iter() {
+                                            matches &= t1.matches(i_s, matcher, t2, variance);
+                                        }
+                                    }
+                                    TupleArgs::WithUnpack(u1) => match &u1.unpack {
+                                        TupleUnpack::ArbitraryLen(t1) => {
+                                            for t2 in u1.before.iter() {
+                                                matches &= t1.matches(i_s, matcher, t2, variance);
+                                            }
+                                            matches &= t1.matches(i_s, matcher, t2, variance);
+                                            for t2 in u1.after.iter() {
+                                                matches &= t1.matches(i_s, matcher, t2, variance);
+                                            }
+                                        }
+                                        TupleUnpack::TypeVarTuple(tvt) => {
+                                            if !u1.before.is_empty() || !u1.after.is_empty() {
+                                                todo!()
+                                            }
+                                            matches &= matcher.match_or_add_type_var_tuple(
+                                                i_s,
+                                                tvt,
+                                                TupleArgs::ArbitraryLen(Box::new((**t2).clone())),
+                                                variance,
+                                            )
+                                        }
+                                    },
+                                }
+                            }
+                        }
+                        (WrappedStar::ArbitraryLen(t1), WrappedStar::UnpackedTuple(tup2)) => {
+                            match &tup2.args {
+                                TupleArgs::ArbitraryLen(t2) => {
+                                    if let Some(t1) = t1 {
+                                        matches &= t1.matches(i_s, matcher, t2, variance);
+                                    }
+                                }
+                                _ => {
+                                    debug!("Param mismatch, because arbitrary len {:?} vs Unpack[{:?}]", t1.as_ref().map(|t| t.format_short(i_s.db)), tup2.format(&FormatData::new_short(i_s.db)));
+                                    matches &= Match::new_false();
+                                    todo!()
+                                }
+                            }
+                        }
                         _ => todo!("{s1:?} {s2:?}"),
                     },
                     _ => return Match::new_false(),
