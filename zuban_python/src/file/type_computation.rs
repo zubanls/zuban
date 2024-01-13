@@ -2144,17 +2144,24 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 ParamKind::PositionalOnly
                     if current_kind < prev_kind || previous.has_default && !p.has_default =>
                 {
-                    if let ParamType::Star(StarParamType::UnpackedTuple(_)) = &previous.type_ {
+                    if let ParamType::Star(
+                        StarParamType::UnpackedTuple(_) | StarParamType::ArbitraryLen(_),
+                    ) = &previous.type_
+                    {
                         let previous = params.pop().unwrap();
-                        let ParamType::Star(StarParamType::UnpackedTuple(tup)) = previous.type_ else {
-                            unreachable!()
+                        let tup_args = match previous.type_ {
+                            ParamType::Star(StarParamType::UnpackedTuple(tup)) => {
+                                rc_unwrap_or_clone(tup).args
+                            }
+                            ParamType::Star(StarParamType::ArbitraryLen(t)) => {
+                                TupleArgs::ArbitraryLen(Box::new(t))
+                            }
+                            _ => unreachable!(),
                         };
-                        let tup = rc_unwrap_or_clone(tup);
-                        dbg!(&tup.args);
                         let ParamType::PositionalOnly(new) = p.type_ else {
                             unreachable!();
                         };
-                        let with_unpack = match tup.args {
+                        let with_unpack = match tup_args {
                             TupleArgs::WithUnpack(mut with_unpack) => {
                                 let mut after = rc_slice_into_vec(with_unpack.after);
                                 after.push(new);
