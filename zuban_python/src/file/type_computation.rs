@@ -2097,9 +2097,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     after: Rc::from([]),
                 }))),
             ),
-            TypeContent::Unpacked(TypeOrUnpack::Type(Type::Tuple(tup))) => {
-                ParamType::Star(StarParamType::UnpackedTuple(tup))
-            }
             _ => {
                 ParamType::PositionalOnly(self.as_type(t, NodeRef::new(self.inference.file, index)))
             }
@@ -2112,7 +2109,34 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     }
 
     fn add_param(&mut self, params: &mut Vec<CallableParam>, t: TypeContent, index: NodeIndex) {
-        let p = self.check_param(t, index);
+        let p = match t {
+            TypeContent::Unpacked(TypeOrUnpack::Type(Type::Tuple(tup))) => match &tup.args {
+                TupleArgs::WithUnpack(with_unpack) => {
+                    /*
+                    CallableParam {
+                        type_: ParamType::Star(StarParamType::UnpackedTuple(tup)),
+                        has_default: false,
+                        name: None,
+                    }
+                    */
+                    todo!()
+                }
+                TupleArgs::ArbitraryLen(_) => {
+                    let TupleArgs::ArbitraryLen(t) = rc_unwrap_or_clone(tup).args else {
+                        unreachable!();
+                    };
+                    CallableParam {
+                        type_: ParamType::Star(StarParamType::ArbitraryLen(*t)),
+                        has_default: false,
+                        name: None,
+                    }
+                }
+                TupleArgs::FixedLen(ts) => {
+                    todo!()
+                }
+            },
+            _ => self.check_param(t, index),
+        };
         if let Some(previous) = params.last() {
             let prev_kind = previous.type_.param_kind();
             let current_kind = p.type_.param_kind();
@@ -2120,8 +2144,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 ParamKind::PositionalOnly
                     if current_kind < prev_kind || previous.has_default && !p.has_default =>
                 {
-                    if let ParamType::Star(StarParamType::UnpackedTuple(unpacked)) = &previous.type_
-                    {
+                    if let ParamType::Star(StarParamType::UnpackedTuple(_)) = &previous.type_ {
                         let previous = params.pop().unwrap();
                         let ParamType::Star(StarParamType::UnpackedTuple(tup)) = previous.type_ else {
                             unreachable!()

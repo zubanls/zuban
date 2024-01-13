@@ -538,7 +538,7 @@ testVariadicTupleSubtyping
 testTypeVarTupleBothUnpacksCallable
 # matching/params.rs:312
 testTypeVarTuplePep646Callable
-testAliasToCallableWithUnpack
+testAliasToCallableWithUnpack2
 # database.rs:574
 testBanPathologicalRecursiveTuples
 # Self matching
