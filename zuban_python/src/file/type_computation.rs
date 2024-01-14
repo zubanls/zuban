@@ -2303,8 +2303,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                         NodeRef::new(self.inference.file, star_expr.index());
                                     let t = self.as_type(t, node_ref);
                                     if matches!(t, Type::Tuple(_)) {
-                                        //self.add_param(&mut params, TypeContent::Unpacked(TypeOrUnpack::Type(t)), star_expr.index())
-                                        todo!()
+                                        self.add_param(
+                                            &mut params,
+                                            TypeContent::Unpacked(TypeOrUnpack::Type(t)),
+                                            star_expr.index(),
+                                        )
                                     } else {
                                         self.add_issue(
                                             node_ref,

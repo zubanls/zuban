@@ -4,7 +4,8 @@ use parsa_python_ast::ParamKind;
 
 use super::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, GenericItem, GenericsList,
-    ParamType, StarParamType, StarStarParamType, Tuple, TupleArgs, Type, TypeVarLike, Variance,
+    ParamType, ParamTypeDetails, StarParamType, StarStarParamType, Tuple, TupleArgs, TupleUnpack,
+    Type, TypeVarLike, Variance, WithUnpack,
 };
 use crate::{
     database::Database,
@@ -353,20 +354,34 @@ fn common_params_by_iterable<'x>(
                     return None;
                 }
             }
-            let t1 = p1.type_.maybe_type()?;
-            let t2 = p2.type_.maybe_type()?;
-            let new_t = t1.common_sub_type(i_s, t2)?;
-            new_params.push(CallableParam {
-                type_: match &kind {
-                    ParamKind::PositionalOnly => ParamType::PositionalOnly(new_t),
-                    ParamKind::PositionalOrKeyword => ParamType::PositionalOrKeyword(new_t),
-                    ParamKind::KeywordOnly => ParamType::KeywordOnly(new_t),
-                    ParamKind::Star => ParamType::Star(StarParamType::ArbitraryLen(new_t)),
-                    ParamKind::StarStar => ParamType::StarStar(StarStarParamType::ValueType(new_t)),
-                },
+            let new_param = |type_| CallableParam {
+                type_,
                 name: (p1_name == p2_name).then(|| p1.name.clone()).flatten(),
                 has_default: p1.has_default & p2.has_default,
-            });
+            };
+
+            let t1 = match p1.type_.details() {
+                ParamTypeDetails::Type(t) => t,
+                ParamTypeDetails::UnpackedTuple(u1) => match p2.type_.details() {
+                    ParamTypeDetails::UnpackedTuple(u2) => {
+                        new_params.push(new_param(ParamType::Star(StarParamType::UnpackedTuple(
+                            common_base_for_tuples(i_s, &u1, &u2),
+                        ))));
+                        continue;
+                    }
+                    _ => return None,
+                },
+                _ => return None,
+            };
+            let t2 = p2.type_.maybe_type()?;
+            let new_t = t1.common_sub_type(i_s, t2)?;
+            new_params.push(new_param(match &kind {
+                ParamKind::PositionalOnly => ParamType::PositionalOnly(new_t),
+                ParamKind::PositionalOrKeyword => ParamType::PositionalOrKeyword(new_t),
+                ParamKind::KeywordOnly => ParamType::KeywordOnly(new_t),
+                ParamKind::Star => ParamType::Star(StarParamType::ArbitraryLen(new_t)),
+                ParamKind::StarStar => ParamType::StarStar(StarStarParamType::ValueType(new_t)),
+            }));
         }
         Some(CallableParams::Simple(new_params.into()))
     } else {
@@ -402,7 +417,38 @@ fn common_base_for_tuples(i_s: &InferenceState, tup1: &Tuple, tup2: &Tuple) -> R
             TupleArgs::ArbitraryLen(t1) => todo!(),
             TupleArgs::WithUnpack(_) => todo!(),
         },
-        TupleArgs::WithUnpack(_) => todo!(),
+        TupleArgs::WithUnpack(w1) => match &tup1.args {
+            TupleArgs::FixedLen(ts1) => todo!(),
+            TupleArgs::ArbitraryLen(t1) => todo!(),
+            TupleArgs::WithUnpack(w2) => {
+                if w1.before.len() != w2.before.len() || w1.after.len() != w2.after.len() {
+                    todo!()
+                }
+                let new_unpack = match (&w1.unpack, &w2.unpack) {
+                    (TupleUnpack::ArbitraryLen(t1), TupleUnpack::ArbitraryLen(t2)) => {
+                        TupleUnpack::ArbitraryLen(
+                            t1.common_sub_type(i_s, t2).unwrap_or(Type::Never),
+                        )
+                    }
+                    _ => todo!(),
+                };
+                TupleArgs::WithUnpack(WithUnpack {
+                    before: w1
+                        .before
+                        .iter()
+                        .zip(w2.before.iter())
+                        .map(|(t1, t2)| t1.common_sub_type(i_s, t2).unwrap_or(Type::Never))
+                        .collect(),
+                    unpack: new_unpack,
+                    after: w1
+                        .after
+                        .iter()
+                        .zip(w2.after.iter())
+                        .map(|(t1, t2)| t1.common_sub_type(i_s, t2).unwrap_or(Type::Never))
+                        .collect(),
+                })
+            }
+        },
     })
 }
 
