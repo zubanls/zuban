@@ -532,8 +532,6 @@ testTypeVarTuple
 testTypeVarTuplePep646TypeVarStarArgsFixedLengthTuple
 # type/matching.rs:932
 testVariadicTupleSubtyping
-# matching/matcher/utils.rs:577
-testTypeVarTupleBothUnpacksCallable
 # matching/params.rs:312
 testTypeVarTuplePep646Callable
 # Self matching
