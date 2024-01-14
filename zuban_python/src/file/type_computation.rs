@@ -1213,8 +1213,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::Unpacked(TypeOrUnpack::Type(t)) => {
                 self.add_issue(
                     slice.as_node_ref(),
-                    IssueType::VariadicUnpackMustBeTupleOrTypeVarTuple {
-                        type_: t.format_short(self.inference.i_s.db),
+                    match t {
+                        Type::RecursiveType(_) => {
+                            IssueType::InvalidRecursiveTypeAliasUnionOfItself { target: "union" }
+                        }
+                        _ => IssueType::VariadicUnpackMustBeTupleOrTypeVarTuple {
+                            type_: t.format_short(self.inference.i_s.db),
+                        },
                     },
                 );
                 TuplePart::TupleUnpack(TypeCompTupleUnpack::ArbitraryLen(Box::new(Type::Any(

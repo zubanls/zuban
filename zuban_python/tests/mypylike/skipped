@@ -538,8 +538,6 @@ testVariadicTupleSubtyping
 testTypeVarTupleBothUnpacksCallable
 # matching/params.rs:312
 testTypeVarTuplePep646Callable
-# database.rs:574
-testBanPathologicalRecursiveTuples
 # Self matching
 testVariadicClassNewStyleSelf
 # Complex callable matching
@@ -1480,6 +1478,7 @@ testNamedTupleHasMatchArgs
 
 # "Name "C" is used before definition"
 testNewAnalyzerNewTypeForwardClassAliasReversed
+testBanPathologicalRecursiveTuples
 # undefined += 1 where undefined is a NameError
 testOperatorAssignment
 inplace_operator_on_undefined_target
