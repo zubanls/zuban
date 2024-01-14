@@ -987,18 +987,18 @@ pub fn match_unpack(
 
             match &with_unpack1.unpack {
                 TupleUnpack::TypeVarTuple(tvt1) => {
-                    let len1 = with_unpack1.before.len();
-                    let len2 = with_unpack2.before.len();
-                    if len1 > len2 {
+                    let len_before_1 = with_unpack1.before.len();
+                    let len_before_2 = with_unpack2.before.len();
+                    if len_before_1 > len_before_2 {
                         if let Some(on_mismatch) = on_mismatch {
                             on_mismatch(
                                 ErrorTypes {
                                     matcher,
                                     reason: &MismatchReason::None,
-                                    expected: &with_unpack1.before[len2],
+                                    expected: &with_unpack1.before[len_before_2],
                                     got: GotType::Starred(Type::Tuple(Tuple::new(tuple2.clone()))),
                                 },
-                                len1,
+                                len_before_1,
                             );
                             if let Some(on_too_few_args) = on_too_few_args {
                                 on_too_few_args()
