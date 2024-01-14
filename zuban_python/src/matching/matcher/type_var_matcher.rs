@@ -131,9 +131,11 @@ impl CalculatedTypeVarLike {
                 TupleArgs::FixedLen(ts) => {
                     common_base_type_of_type_var_tuple_with_items(current, i_s, ts.iter())
                 }
-                TupleArgs::ArbitraryLen(ts) => {
-                    todo!()
-                }
+                TupleArgs::ArbitraryLen(t2) => match current {
+                    TupleArgs::ArbitraryLen(t1) => *t1 = Box::new(t1.common_base_type(i_s, &t2)),
+                    TupleArgs::FixedLen(_) => todo!(),
+                    TupleArgs::WithUnpack(_) => todo!(),
+                },
                 TupleArgs::WithUnpack(ts) => {
                     debug!("TODO implement withunpack merging");
                 }

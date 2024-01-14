@@ -27,8 +27,8 @@ use crate::{
     type_::{
         match_tuple_type_arguments, AnyCause, CallableContent, CallableParam, CallableParams,
         GenericItem, GenericsList, ParamSpecArg, ParamSpecTypeVars, ParamSpecUsage, ParamType,
-        ReplaceSelf, StarParamType, TupleArgs, TupleUnpack, Type, TypeVarKind, TypeVarLike,
-        TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict,
+        ReplaceSelf, StarParamType, TupleArgs, TupleUnpack, Type, TypeArgs, TypeVarKind,
+        TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict,
         TypedDictGenerics, Variance,
     },
     type_helpers::{Callable, Class, Function},
@@ -607,7 +607,9 @@ impl<'a> Matcher<'a> {
                         [type_var_like_usage.index().as_usize()];
                     return match &current.type_ {
                         BoundKind::TypeVar(t) => GenericItem::TypeArg(t.clone().into_type(db)),
-                        BoundKind::TypeVarTuple(_) => todo!(),
+                        BoundKind::TypeVarTuple(ts) => {
+                            GenericItem::TypeArgs(TypeArgs::new(ts.clone()))
+                        }
                         BoundKind::ParamSpecArgument(param_spec) => {
                             GenericItem::ParamSpecArg(param_spec.clone())
                         }
