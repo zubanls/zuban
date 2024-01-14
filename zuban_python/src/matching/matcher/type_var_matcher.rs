@@ -8,11 +8,12 @@ use super::{
 };
 use crate::{
     database::{Database, PointLink},
+    debug,
     inference_state::InferenceState,
     matching::Param,
     type_::{
         common_base_type_of_type_var_tuple_with_items, AnyCause, CallableParams, GenericItem,
-        ParamSpecArg, ParamType, Type, TypeArgs, TypeVar, TypeVarKind, TypeVarLike,
+        ParamSpecArg, ParamType, TupleArgs, Type, TypeArgs, TypeVar, TypeVarKind, TypeVarLike,
         TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
     },
     type_helpers::{Callable, Class, Function},
@@ -124,17 +125,25 @@ impl CalculatedTypeVarLike {
         !matches!(self.type_, BoundKind::Uncalculated { .. })
     }
 
-    pub fn merge_fixed_length_type_var_tuple<'x, I: ExactSizeIterator<Item = &'x Type>>(
-        &mut self,
-        i_s: &InferenceState,
-        items: I,
-    ) {
+    pub fn match_or_add_type_var_tuple(&mut self, i_s: &InferenceState, args2: TupleArgs) -> Match {
         match &mut self.type_ {
-            BoundKind::TypeVarTuple(ts) => {
-                common_base_type_of_type_var_tuple_with_items(&mut ts.args, i_s, items)
+            BoundKind::TypeVarTuple(current) => match args2 {
+                TupleArgs::FixedLen(ts) => {
+                    common_base_type_of_type_var_tuple_with_items(&mut current.args, i_s, ts.iter())
+                }
+                TupleArgs::ArbitraryLen(ts) => {
+                    todo!()
+                }
+                TupleArgs::WithUnpack(ts) => {
+                    debug!("TODO implement withunpack merging");
+                }
+            },
+            BoundKind::Uncalculated { .. } => {
+                self.type_ = BoundKind::TypeVarTuple(TypeArgs { args: args2 });
             }
             _ => unreachable!(),
         }
+        Match::new_true()
     }
 
     pub fn into_generic_item(self, db: &Database, type_var_like: &TypeVarLike) -> GenericItem {

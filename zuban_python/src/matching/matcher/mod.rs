@@ -27,8 +27,8 @@ use crate::{
     type_::{
         match_tuple_type_arguments, AnyCause, CallableContent, CallableParam, CallableParams,
         GenericItem, GenericsList, ParamSpecArg, ParamSpecTypeVars, ParamSpecUsage, ParamType,
-        ReplaceSelf, StarParamType, TupleArgs, TupleUnpack, Type, TypeArgs, TypeVarKind,
-        TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict,
+        ReplaceSelf, StarParamType, TupleArgs, TupleUnpack, Type, TypeVarKind, TypeVarLike,
+        TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict,
         TypedDictGenerics, Variance,
     },
     type_helpers::{Callable, Class, Function},
@@ -249,23 +249,8 @@ impl<'a> Matcher<'a> {
     ) -> Match {
         if let Some(matcher) = self.type_var_matcher.as_mut() {
             if matcher.match_in_definition == tvt.in_definition {
-                let current = &mut matcher.calculated_type_vars[tvt.index.as_usize()];
-                if current.calculated() {
-                    match args2 {
-                        TupleArgs::FixedLen(ts) => {
-                            current.merge_fixed_length_type_var_tuple(i_s, ts.iter())
-                        }
-                        TupleArgs::ArbitraryLen(ts) => {
-                            todo!()
-                        }
-                        TupleArgs::WithUnpack(ts) => {
-                            debug!("TODO implement withunpack merging")
-                        }
-                    }
-                } else {
-                    current.type_ = BoundKind::TypeVarTuple(TypeArgs { args: args2 });
-                }
-                return Match::new_true();
+                return matcher.calculated_type_vars[tvt.index.as_usize()]
+                    .match_or_add_type_var_tuple(i_s, args2);
             }
         }
         if let Some(class) = self.class {
