@@ -314,7 +314,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
                                 BoundKind::TypeVar(TypeVarBound::UpperAndLower(t1, t2)) => {
                                     t1.has_any(i_s) | t2.has_any(i_s)
                                 }
-                                BoundKind::TypeVarTuple(ts) => ts.args.has_any(i_s),
+                                BoundKind::TypeVarTuple(ts) => ts.has_any(i_s),
                                 BoundKind::ParamSpecArgument(params) => match &params.params {
                                     CallableParams::Simple(params) => params.iter().any(|t| {
                                         t.type_.maybe_type().is_some_and(|t| t.has_any(i_s))
@@ -357,7 +357,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
                         BoundKind::TypeVar(TypeVarBound::UpperAndLower(t1, t2)) => {
                             t1.has_any(i_s) | t2.has_any(i_s)
                         }
-                        BoundKind::TypeVarTuple(ts) => ts.args.has_any(i_s),
+                        BoundKind::TypeVarTuple(ts) => ts.has_any(i_s),
                         BoundKind::ParamSpecArgument(params) => match &params.params {
                             CallableParams::Simple(params) => todo!(),
                             CallableParams::WithParamSpec(pre, _) => {

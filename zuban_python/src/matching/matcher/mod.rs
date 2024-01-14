@@ -549,7 +549,7 @@ impl<'a> Matcher<'a> {
                 let current = &type_var_matcher.calculated_type_vars[usage.index().as_usize()];
                 return match &current.type_ {
                     BoundKind::TypeVar(bound) => bound.format(format_data.db, format_data.style),
-                    BoundKind::TypeVarTuple(ts) => ts.format(format_data).unwrap_or("()".into()),
+                    BoundKind::TypeVarTuple(ts) => ts.format(format_data),
                     BoundKind::ParamSpecArgument(p) => p.params.format(format_data, params_style),
                     BoundKind::Uncalculated { fallback } => {
                         if let TypeVarLike::TypeVar(type_var) = usage.as_type_var_like() {

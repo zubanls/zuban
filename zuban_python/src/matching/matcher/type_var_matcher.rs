@@ -103,7 +103,7 @@ impl<'db: 'a, 'a> FunctionOrCallable<'a> {
 #[derive(Debug, Clone)]
 pub enum BoundKind {
     TypeVar(TypeVarBound),
-    TypeVarTuple(TypeArgs),
+    TypeVarTuple(TupleArgs),
     ParamSpecArgument(ParamSpecArg),
     Uncalculated { fallback: Option<Type> },
 }
@@ -129,7 +129,7 @@ impl CalculatedTypeVarLike {
         match &mut self.type_ {
             BoundKind::TypeVarTuple(current) => match args2 {
                 TupleArgs::FixedLen(ts) => {
-                    common_base_type_of_type_var_tuple_with_items(&mut current.args, i_s, ts.iter())
+                    common_base_type_of_type_var_tuple_with_items(current, i_s, ts.iter())
                 }
                 TupleArgs::ArbitraryLen(ts) => {
                     todo!()
@@ -139,7 +139,7 @@ impl CalculatedTypeVarLike {
                 }
             },
             BoundKind::Uncalculated { .. } => {
-                self.type_ = BoundKind::TypeVarTuple(TypeArgs { args: args2 });
+                self.type_ = BoundKind::TypeVarTuple(args2);
             }
             _ => unreachable!(),
         }
@@ -149,7 +149,7 @@ impl CalculatedTypeVarLike {
     pub fn into_generic_item(self, db: &Database, type_var_like: &TypeVarLike) -> GenericItem {
         match self.type_ {
             BoundKind::TypeVar(t) => GenericItem::TypeArg(t.into_type(db)),
-            BoundKind::TypeVarTuple(ts) => GenericItem::TypeArgs(ts),
+            BoundKind::TypeVarTuple(ts) => GenericItem::TypeArgs(TypeArgs::new(ts)),
             BoundKind::ParamSpecArgument(params) => GenericItem::ParamSpecArg(params),
             BoundKind::Uncalculated { fallback } => {
                 if let Some(fallback) = fallback {
@@ -246,7 +246,7 @@ impl TypeVarMatcher {
                             BoundKind::TypeVar(TypeVarBound::Invariant(Type::Any(cause)))
                         }
                         TypeVarLikeUsage::TypeVarTuple(_) => BoundKind::TypeVarTuple(
-                            TypeArgs::new_arbitrary_length(Type::Any(cause)),
+                            TupleArgs::ArbitraryLen(Box::new(Type::Any(cause))),
                         ),
                         TypeVarLikeUsage::ParamSpec(_) => {
                             BoundKind::ParamSpecArgument(ParamSpecArg::new_any(cause))
