@@ -1073,7 +1073,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     ParamType::Star(StarParamType::ArbitraryLen(as_t(t)))
                 }
                 WrappedParamType::Star(WrappedStar::UnpackedTuple(t)) => {
-                    ParamType::Star(StarParamType::UnpackedTuple(t.clone()))
+                    let Type::Tuple(tup) = as_type(&Type::Tuple(t)) else {
+                        unreachable!()
+                    };
+                    ParamType::Star(StarParamType::UnpackedTuple(tup))
                 }
                 WrappedParamType::Star(WrappedStar::ParamSpecArgs(u1)) => {
                     match params.peek().map(|p| p.specific(i_s.db)) {

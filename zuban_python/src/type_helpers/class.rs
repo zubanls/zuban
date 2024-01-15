@@ -30,8 +30,9 @@ use crate::{
     inferred::{AttributeKind, FunctionOrOverload, Inferred, MroIndex},
     matching::{
         calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
-        calculate_class_init_type_vars_and_return, FormatData, FunctionOrCallable, Generics,
-        LookupKind, LookupResult, Match, Matcher, MismatchReason, OnTypeError, ResultContext,
+        calculate_class_init_type_vars_and_return, maybe_class_usage, FormatData,
+        FunctionOrCallable, Generics, LookupKind, LookupResult, Match, Matcher, MismatchReason,
+        OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
     python_state::NAME_TO_FUNCTION_DIFF,
@@ -2613,10 +2614,24 @@ impl NewOrInitConstructor<'_> {
                 }
                 c.remove_first_param().map(|mut c| {
                     let self_ = cls.as_type(i_s.db);
-                    if c.has_self_type() {
+                    let needs_type_var_remap = self.init_class.is_some_and(|c| {
+                        !c.type_vars(i_s).is_empty() && c.node_ref != cls.node_ref
+                    });
+                    if c.has_self_type() || needs_type_var_remap {
                         c = c.replace_type_var_likes_and_self(
                             i_s.db,
-                            &mut |usage| usage.into_generic_item(),
+                            &mut |usage| {
+                                if needs_type_var_remap {
+                                    if let Some(func_class) = self.init_class {
+                                        if let Some(result) =
+                                            maybe_class_usage(i_s.db, &func_class, &usage)
+                                        {
+                                            return result;
+                                        }
+                                    }
+                                }
+                                usage.into_generic_item()
+                            },
                             &|| self_.clone(),
                         )
                     }
