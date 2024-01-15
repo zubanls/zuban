@@ -284,7 +284,12 @@ impl<'a> Matcher<'a> {
                 );
             }
         }
-        matches!(args2, TupleArgs::WithUnpack(u) if u.before.is_empty() || u.after.is_empty() && matches!(&u.unpack, TupleUnpack::TypeVarTuple(tvt2) if tvt == tvt2)).into()
+        matches!(
+            args2,
+            TupleArgs::WithUnpack(u) if u.before.is_empty() && u.after.is_empty()
+                 && matches!(&u.unpack, TupleUnpack::TypeVarTuple(tvt2) if tvt == tvt2)
+        )
+        .into()
     }
 
     pub fn match_or_add_param_spec_against_param_spec(

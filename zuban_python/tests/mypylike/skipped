@@ -509,6 +509,7 @@ testProtocolAndRuntimeAreDefinedAlsoInTypingExtensions
 testOverloadOnProtocol
 testSimpleRuntimeProtocolCheck
 
+testVariadicStarArgsCallNoCrash
 # TypeVarTuple mismatches how to format? Unpack[Never]?
 testTypeVarTupleMixed
 testVariadicTupleInference
