@@ -518,7 +518,6 @@ testTypeVarTupleNotConcreteCallable
 testTypeVarTupleOverloadMatch
 # file/type_computation.rs:637
 testTypeVarTuplePep646CallableStarArgs
-testTypeVarTupleTypingExtensions
 testTypeVarTupleParamSpecInteraction
 testVariadicTupleInProtocol
 testTypeVarTupleEmptySpecialCase

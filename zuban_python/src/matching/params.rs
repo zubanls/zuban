@@ -10,9 +10,9 @@ use crate::{
     inference_state::InferenceState,
     matching::FormatData,
     type_::{
-        match_tuple_type_arguments, AnyCause, CallableParam, CallableParams, ParamSpecUsage,
-        ParamType, ParamTypeDetails, StarParamType, StarStarParamType, StringSlice, Tuple,
-        TupleArgs, TupleUnpack, Type, TypeVarLikes, TypedDict, TypedDictMember, Variance,
+        empty_types, match_tuple_type_arguments, AnyCause, CallableParam, CallableParams,
+        ParamSpecUsage, ParamType, ParamTypeDetails, StarParamType, StarStarParamType, StringSlice,
+        Tuple, TupleArgs, TupleUnpack, Type, TypeVarLikes, TypedDict, TypedDictMember, Variance,
     },
 };
 
@@ -436,8 +436,24 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
             };
             params2.next();
         } else {
-            debug!("Params mismatch, because one side had less params: {param1:?}");
-            return Match::new_false();
+            match param1.specific(i_s.db) {
+                WrappedParamType::Star(WrappedStar::UnpackedTuple(tup1))
+                    if params1.next().is_none() =>
+                {
+                    matches &= match_tuple_type_arguments(
+                        i_s,
+                        matcher,
+                        &tup1.args,
+                        &TupleArgs::FixedLen(empty_types()),
+                        variance,
+                    );
+                    break;
+                }
+                _ => {
+                    debug!("Params mismatch, because one side had less params: {param1:?}");
+                    return Match::new_false();
+                }
+            }
         }
     }
     for unused in unused_keyword_params {

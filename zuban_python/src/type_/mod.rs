@@ -76,6 +76,14 @@ use crate::{
     workspaces::Directory,
 };
 
+thread_local! {
+    static EMPTY_TYPES: Rc<[Type]> = Rc::new([]);
+}
+
+pub fn empty_types() -> Rc<[Type]> {
+    EMPTY_TYPES.with(|t| t.clone())
+}
+
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum FormatStyle {
     Short,
