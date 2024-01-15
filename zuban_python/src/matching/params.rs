@@ -149,7 +149,7 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                             continue;
                         }
                         WrappedStar::ParamSpecArgs(u) => todo!(),
-                        WrappedStar::UnpackedTuple(_) => todo!(),
+                        WrappedStar::UnpackedTuple(_) => return Match::new_false(),
                     },
                     _ => return Match::new_false(),
                 },
