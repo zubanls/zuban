@@ -20,7 +20,7 @@ use crate::{
     debug,
     diagnostics::IssueType,
     inference_state::InferenceState,
-    matching::{params::UnpackTypedDictState, ErrorTypes, GotType},
+    matching::{ErrorTypes, GotType},
     node_ref::NodeRef,
     type_::{
         match_unpack, CallableParams, ClassGenerics, GenericItem, GenericsList, ReplaceSelf,
