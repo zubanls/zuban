@@ -645,6 +645,19 @@ impl<'x> Param<'x> for &'x CallableParam {
     }
 }
 
+pub enum UnpackTypedDictState {
+    Unused(Rc<TypedDict>),
+    CheckingUnusedKwArgs,
+    Used,
+}
+impl UnpackTypedDictState {
+    pub fn maybe_unchecked(&self) -> Option<Rc<TypedDict>> {
+        match self {
+            Self::Unused(td) => Some(td.clone()),
+            _ => None,
+        }
+    }
+}
 pub struct InferrableParamIterator<'db, 'a, I, P, AI: Iterator> {
     db: &'db Database,
     arguments: AI,
@@ -655,6 +668,7 @@ pub struct InferrableParamIterator<'db, 'a, I, P, AI: Iterator> {
     current_double_starred_param: Option<P>,
     pub too_many_positional_arguments: bool,
     arbitrary_length_handled: bool,
+    pub unused_unpack_typed_dict: UnpackTypedDictState,
 }
 
 impl<'db, 'a, I, P, AI: Iterator<Item = Arg<'db, 'a>>> InferrableParamIterator<'db, 'a, I, P, AI> {
@@ -669,6 +683,7 @@ impl<'db, 'a, I, P, AI: Iterator<Item = Arg<'db, 'a>>> InferrableParamIterator<'
             current_double_starred_param: None,
             too_many_positional_arguments: false,
             arbitrary_length_handled: true,
+            unused_unpack_typed_dict: UnpackTypedDictState::Used,
         }
     }
 
@@ -738,9 +753,28 @@ where
             if let WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(td)) =
                 param.specific(self.db)
             {
+                if !matches!(self.unused_unpack_typed_dict, UnpackTypedDictState::Used) {
+                    for (i, unused) in self.unused_keyword_arguments.iter().enumerate() {
+                        if let Some(key) = unused.keyword_name(self.db) {
+                            if let Some(member) = td.find_member(self.db, key) {
+                                self.unused_unpack_typed_dict =
+                                    UnpackTypedDictState::CheckingUnusedKwArgs;
+                                return Some(InferrableParam {
+                                    param,
+                                    argument: ParamArgument::MatchedUnpackedTypedDictMember {
+                                        argument: self.unused_keyword_arguments.remove(i),
+                                        type_: member.type_.clone(),
+                                        name: member.name,
+                                    },
+                                });
+                            }
+                        }
+                    }
+                }
                 while let Some(argument) = self.next_arg() {
                     if let Some(key) = argument.keyword_name(self.db) {
                         if let Some(member) = td.find_member(self.db, key) {
+                            self.unused_unpack_typed_dict = UnpackTypedDictState::Used;
                             return Some(InferrableParam {
                                 param,
                                 argument: ParamArgument::MatchedUnpackedTypedDictMember {
@@ -761,6 +795,7 @@ where
                                 ..
                             }
                         ) {
+                            self.unused_unpack_typed_dict = UnpackTypedDictState::Used;
                             return Some(InferrableParam {
                                 param,
                                 argument: ParamArgument::Argument(argument),
@@ -909,6 +944,11 @@ where
                 },
                 ParamKind::StarStar => {
                     self.current_double_starred_param = Some(param);
+                    if let WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(td)) =
+                        param.specific(self.db)
+                    {
+                        self.unused_unpack_typed_dict = UnpackTypedDictState::Unused(td);
+                    }
                     return self.next();
                 }
             }

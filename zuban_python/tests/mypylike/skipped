@@ -522,7 +522,6 @@ testTypeVarTupleSimpleDecoratorWorks
 testTypeVarTupleNotConcreteCallable
 testTypeVarTupleParamSpecInteraction
 testVariadicTupleInProtocol
-testTypeVarTupleBothUnpacksSimple
 testTypeVarTupleBothUnpacksApplication
 testTypeVarTupleEmptySpecialCase
 # Unpack item in ** argument must be a TypedDict

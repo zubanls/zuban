@@ -20,7 +20,7 @@ use crate::{
     debug,
     diagnostics::IssueType,
     inference_state::InferenceState,
-    matching::{ErrorTypes, GotType},
+    matching::{params::UnpackTypedDictState, ErrorTypes, GotType},
     node_ref::NodeRef,
     type_::{
         match_unpack, CallableParams, ClassGenerics, GenericItem, GenericsList, ReplaceSelf,
@@ -800,6 +800,11 @@ pub(crate) fn match_arguments_against_params<
                 add_missing_kw_issue(missing.as_str(i_s.db))
             }
         }
+        if let Some(unused_td) = &args_with_params.unused_unpack_typed_dict.maybe_unchecked() {
+            for missing in unused_td.members(i_s.db) {
+                add_missing_kw_issue(missing.name.as_str(i_s.db))
+            }
+        }
         if let Some(mut s) = match &missing_positional[..] {
             [] => None,
             [param_name] => Some(format!(
@@ -814,7 +819,12 @@ pub(crate) fn match_arguments_against_params<
             s += diagnostic_string(" to ").as_deref().unwrap_or("");
             add_issue(IssueType::ArgumentIssue(s.into()));
         };
-    } else if missing_unpacked_typed_dict_names.is_some_and(|t| !t.is_empty()) {
+    } else if missing_unpacked_typed_dict_names.is_some_and(|t| !t.is_empty())
+        || args_with_params
+            .unused_unpack_typed_dict
+            .maybe_unchecked()
+            .is_some()
+    {
         matches = Match::new_false()
     }
     match matches {
