@@ -10,9 +10,9 @@ use crate::{
     inference_state::InferenceState,
     matching::FormatData,
     type_::{
-        CallableParam, CallableParams, ParamSpecUsage, ParamType, ParamTypeDetails, StarParamType,
-        StarStarParamType, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarLikes,
-        TypedDict, TypedDictMember, Variance,
+        match_tuple_type_arguments, AnyCause, CallableParam, CallableParams, ParamSpecUsage,
+        ParamType, ParamTypeDetails, StarParamType, StarStarParamType, StringSlice, Tuple,
+        TupleArgs, TupleUnpack, Type, TypeVarLikes, TypedDict, TypedDictMember, Variance,
     },
 };
 
@@ -360,7 +360,31 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                         }
                         _ => todo!("{s1:?} {s2:?}"),
                     },
-                    _ => return Match::new_false(),
+                    _ => match s1 {
+                        WrappedStar::UnpackedTuple(tup1) => {
+                            let mut before = vec![];
+                            while let Some(next) = params2.peek() {
+                                match next.specific(i_s.db) {
+                                    WrappedParamType::PositionalOnly(t2)
+                                    | WrappedParamType::PositionalOrKeyword(t2) => before.push(
+                                        t2.map(|t2| t2.into_owned())
+                                            .unwrap_or(Type::Any(AnyCause::Unannotated)),
+                                    ),
+                                    WrappedParamType::Star(s2) => todo!(),
+                                    _ => break,
+                                }
+                                params2.next();
+                            }
+                            matches &= match_tuple_type_arguments(
+                                i_s,
+                                matcher,
+                                &tup1.args,
+                                &TupleArgs::FixedLen(before.into()),
+                                variance,
+                            );
+                        }
+                        _ => return Match::new_false(),
+                    },
                 },
                 WrappedParamType::StarStar(d1) => match specific2 {
                     WrappedParamType::StarStar(d2) => match (d1, d2) {
