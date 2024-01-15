@@ -672,10 +672,6 @@ impl<'db, 'a, I, P, AI: Iterator<Item = Arg<'db, 'a>>> InferrableParamIterator<'
         }
     }
 
-    pub fn has_unused_keyword_arguments(&mut self) -> bool {
-        !self.unused_keyword_arguments.is_empty()
-    }
-
     pub fn has_unused_arguments(&mut self) -> bool {
         while let Some(arg) = self.next_arg() {
             if arg.in_args_or_kwargs_and_arbitrary_len() {

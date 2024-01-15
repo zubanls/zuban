@@ -761,7 +761,7 @@ pub(crate) fn match_arguments_against_params<
         } else {
             debug!("Too many arguments found");
         }
-    } else if args_with_params.has_unused_keyword_arguments() {
+    } else if !args_with_params.unused_keyword_arguments.is_empty() {
         matches = Match::new_false();
         if should_generate_errors {
             for unused in &args_with_params.unused_keyword_arguments {
