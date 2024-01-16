@@ -520,11 +520,7 @@ testTypeVarTupleNotConcreteCallable
 testTypeVarTupleOverloadMatch
 # file/type_computation.rs:637
 testTypeVarTuplePep646CallableStarArgs
-testTypeVarTupleParamSpecInteraction
 testVariadicTupleInProtocol
-testTypeVarTupleEmptySpecialCase
-# Unpack item in ** argument must be a TypedDict
-testTypeVarTuple
 # type_helpers/function.rs:1394
 testTypeVarTuplePep646TypeVarStarArgsFixedLengthTuple
 # type/matching.rs:932
