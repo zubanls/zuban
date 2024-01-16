@@ -1050,14 +1050,6 @@ pub fn match_unpack(
                 TupleUnpack::ArbitraryLen(inner_t1) => match &with_unpack2.unpack {
                     TupleUnpack::TypeVarTuple(tvt2) => todo!(),
                     TupleUnpack::ArbitraryLen(inner_t2) => {
-                        /*
-                        if with_unpack1.before.len() > with_unpack2.before.len() {
-                            return Match::new_false();
-                        }
-                        if with_unpack1.after.len() > with_unpack2.after.len() {
-                            return Match::new_false();
-                        }
-                        */
                         for t2 in before2_it {
                             matches &= inner_t1.matches(i_s, matcher, t2, variance)
                         }
@@ -1068,29 +1060,6 @@ pub fn match_unpack(
                     }
                 },
             };
-            /*
-            let mut t2_iterator = ts2.iter();
-            for t1 in tuple1.iter() {
-                match t1 {
-                    TypeOrUnpack::Type(t1) => {
-                        if let Some(t2) = t2_iterator.next() {
-                            match t2 {
-                                TypeOrUnpack::Type(t2) => {
-                                    matches &= t1.matches(i_s, self, t2, variance);
-                                }
-                                TypeOrUnpack::TypeVarTuple(_) => {
-                                    return Match::new_false();
-                                }
-                            }
-                        } else {
-                            matches &= Match::new_false();
-                        }
-                    }
-                    TypeOrUnpack::TypeVarTuple(tvt) => {
-                    }
-                }
-            }
-            */
         }
         TupleArgs::ArbitraryLen(t2) => {
             if t2.is_any() {

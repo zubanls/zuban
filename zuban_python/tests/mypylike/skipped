@@ -531,8 +531,6 @@ testVariadicTupleInProtocol
 testVariadicClassNewStyleSelf
 # Complex callable matching
 testVariadicTypedDict
-# Arbitrary len to non-arbitrary
-testTypeVarTupleNewSyntaxGenerics
 
 # import order
 testTypeAliasesToNamedTuple
@@ -1394,6 +1392,7 @@ testSubclassDescriptorsBinder
 testPropertyGetterBody
 # self assignment validation
 testSlotsAssignmentWithMethodReassign
+testTypeVarTupleNewSyntaxGenerics
 # "NamedTuple type as an attribute is not supported"
 testAssignNamedTupleAsAttribute
 testNoCrashUnsupportedNamedTuple
