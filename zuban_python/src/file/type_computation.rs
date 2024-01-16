@@ -605,7 +605,23 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         is_implicit_optional: bool,
     ) {
         match param_annotation.maybe_starred() {
-            Ok(starred) => todo!(),
+            Ok(starred) => {
+                /*
+                self.cache_annotation_or_type_comment(
+                    param_annotation.index(),
+                    starred.expression_part(),
+                    false,
+                    Some(&|slf, tc| {
+                        match tc {
+                            TypeContent::TypeVarTuple(t) => todo!(),
+                            TypeContent::Unknown(cause) => todo!(),
+                            t => todo!(),
+                        }
+                    }),
+                )
+                */
+                todo!()
+            }
             Err(expr) => self.cache_annotation(
                 param_annotation.index(),
                 expr,
@@ -717,12 +733,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         if annotation_node_ref.point().calculated() {
             return;
         }
-        debug!(
-            "Infer annotation expression class on {:?}: {:?}",
-            self.inference.file.byte_to_line_column(expr.start()),
-            expr.as_code()
-        );
-
         let type_ = self.compute_type(expr);
 
         let node_ref = NodeRef::new(self.inference.file, expr.index());
@@ -743,7 +753,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 TypeContent::SimpleGeneric { .. } | TypeContent::Class { .. }
                     if !is_implicit_optional =>
                 {
-                    debug_assert!(self.inference.file.points.get(expr.index()).calculated());
+                    debug_assert!(node_ref.point().calculated());
                     annotation_node_ref.set_point(Point::new_simple_specific(
                         Specific::AnnotationOrTypeCommentSimpleClassInstance,
                         Locality::Todo,
