@@ -531,7 +531,7 @@ testVariadicTupleInProtocol
 testVariadicClassNewStyleSelf
 # Complex callable matching
 testVariadicTypedDict
-# *ts TypeVarTuple syntax
+# Arbitrary len to non-arbitrary
 testTypeVarTupleNewSyntaxGenerics
 
 # import order
