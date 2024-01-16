@@ -598,27 +598,32 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         }
     }
 
-    pub fn cache_annotation(&mut self, annotation: Annotation, is_implicit_optional: bool) {
-        let expr = annotation.expression();
+    pub fn cache_annotation(
+        &mut self,
+        annotation_index: NodeIndex,
+        expr: Expression,
+        kind: Option<ParamKind>,
+        is_implicit_optional: bool,
+    ) {
         let from = NodeRef::new(self.inference.file, expr.index());
-        match annotation.simple_param_kind() {
-            Some(SimpleParamKind::Normal) | None => self.cache_annotation_or_type_comment(
-                annotation.index(),
-                expr,
-                is_implicit_optional,
-                None,
-            ),
-            Some(SimpleParamKind::Star) => self.cache_annotation_or_type_comment(
-                annotation.index(),
+        match kind {
+            Some(ParamKind::Star) => self.cache_annotation_or_type_comment(
+                annotation_index,
                 expr,
                 false,
                 Some(&|slf, t| slf.wrap_star(t, from)),
             ),
-            Some(SimpleParamKind::StarStar) => self.cache_annotation_or_type_comment(
-                annotation.index(),
+            Some(ParamKind::StarStar) => self.cache_annotation_or_type_comment(
+                annotation_index,
                 expr,
                 false,
                 Some(&|slf, t| slf.wrap_star_star(t, expr)),
+            ),
+            _ => self.cache_annotation_or_type_comment(
+                annotation_index,
+                expr,
+                is_implicit_optional,
+                None,
             ),
         };
     }
@@ -1937,6 +1942,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     ASTSliceType::Slices(slices) => ClassGenerics::SlicesWithClassTypes(
                         PointLink::new(node_ref.file_index(), slices.index()),
                     ),
+                    ASTSliceType::StarredExpression(_) => return None,
                     ASTSliceType::Slice(_) => unreachable!(),
                 },
             ))
@@ -3159,7 +3165,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 &mut x,
                 origin,
             );
-            comp.cache_annotation(annotation, false);
+            comp.cache_annotation(annotation.index(), annotation.expression(), None, false);
             comp.into_type_vars(|inf, recalculate_type_vars| {
                 inf.recalculate_annotation_type_vars(annotation.index(), recalculate_type_vars);
             });
@@ -3319,6 +3325,18 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         }
     }
 
+    pub(super) fn use_cached_param_annotation(&mut self, annotation: ParamAnnotation) -> Inferred {
+        let point = self.file.points.get(annotation.index());
+        debug_assert!(matches!(
+            point.specific(),
+            Specific::AnnotationOrTypeCommentWithTypeVars
+                | Specific::AnnotationOrTypeCommentWithoutTypeVars
+                | Specific::AnnotationOrTypeCommentSimpleClassInstance
+                | Specific::AnnotationOrTypeCommentClassVar
+        ));
+        self.check_point_cache(annotation.index()).unwrap()
+    }
+
     pub(super) fn use_cached_annotation(&mut self, annotation: Annotation) -> Inferred {
         let point = self.file.points.get(annotation.index());
         debug_assert!(matches!(
@@ -3355,6 +3373,22 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         self.use_cached_annotation_or_type_comment_type_internal(
             annotation.index(),
             annotation.expression(),
+        )
+    }
+
+    pub fn use_cached_param_annotation_type(
+        &mut self,
+        annotation: ParamAnnotation,
+    ) -> Cow<'file, Type> {
+        self.use_cached_annotation_or_type_comment_type_internal(
+            annotation.index(),
+            match annotation {
+                ParamAnnotation::Annotation(annot) => annot.expression(),
+                ParamAnnotation::StarAnnotation(starred) => match starred.unpack() {
+                    StarAnnotationContent::Expression(expr) => expr,
+                    StarAnnotationContent::StarExpression(expr) => todo!(),
+                },
+            },
         )
     }
 
@@ -4549,6 +4583,24 @@ pub fn use_cached_simple_generic_type<'db>(
     );
     let inferred = inference.check_point_cache(expr.index()).unwrap();
     inferred.expect_class_or_simple_generic(i_s)
+}
+
+pub fn use_cached_param_annotation_type<'db: 'file, 'file>(
+    db: &'db Database,
+    file: &'file PythonFile,
+    annotation: ParamAnnotation,
+) -> Cow<'file, Type> {
+    file.inference(&InferenceState::new(db))
+        .use_cached_annotation_or_type_comment_type_internal(
+            annotation.index(),
+            match annotation {
+                ParamAnnotation::Annotation(a) => a.expression(),
+                ParamAnnotation::StarAnnotation(s) => match s.unpack() {
+                    StarAnnotationContent::Expression(e) => e,
+                    StarAnnotationContent::StarExpression(s) => todo!(),
+                },
+            },
+        )
 }
 
 pub fn use_cached_annotation_type<'db: 'file, 'file>(

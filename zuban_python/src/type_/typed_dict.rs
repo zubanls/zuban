@@ -335,8 +335,7 @@ impl TypedDict {
                     }
                 },
             ),
-            SliceTypeContent::Slice(_) => todo!(),
-            SliceTypeContent::Slices(_) => todo!(),
+            _ => todo!(),
         }
     }
 

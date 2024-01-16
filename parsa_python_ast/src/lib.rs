@@ -344,6 +344,7 @@ create_nonterminal_structs!(
     FunctionDefParameters: function_def_parameters
     ReturnAnnotation: return_annotation
     Annotation: annotation
+    StarAnnotation: star_annotation
     ReturnStmt: return_stmt
     YieldExpr: yield_expr
     YieldFrom: yield_from
@@ -1893,8 +1894,33 @@ impl<'db> Iterator for ParamIterator<'db> {
 pub struct Param<'db> {
     type_: ParamKind,
     name_def: NameDefinition<'db>,
-    annotation: Option<Annotation<'db>>,
+    annotation: Option<ParamAnnotation<'db>>,
     default: Option<Expression<'db>>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum ParamAnnotation<'db> {
+    Annotation(Annotation<'db>),
+    StarAnnotation(StarAnnotation<'db>),
+}
+
+impl<'db> ParamAnnotation<'db> {
+    pub fn index(&self) -> NodeIndex {
+        match self {
+            Self::Annotation(a) => a.index(),
+            Self::StarAnnotation(s) => s.index(),
+        }
+    }
+
+    pub fn maybe_starred(&self) -> Result<StarExpression<'db>, Expression<'db>> {
+        match self {
+            Self::Annotation(annot) => Err(annot.expression()),
+            Self::StarAnnotation(star_annot) => match star_annot.unpack() {
+                StarAnnotationContent::Expression(e) => Err(e),
+                StarAnnotationContent::StarExpression(star_expr) => Ok(star_expr),
+            },
+        }
+    }
 }
 
 impl<'db> Param<'db> {
@@ -1903,7 +1929,14 @@ impl<'db> Param<'db> {
         let annot = if let Some(annotation_node) = param_children.next() {
             if annotation_node.is_type(Nonterminal(annotation)) {
                 param_children.next(); // Make sure the next node is skipped for defaults
-                Some(Annotation::new(annotation_node))
+                Some(ParamAnnotation::Annotation(Annotation::new(
+                    annotation_node,
+                )))
+            } else if annotation_node.is_type(Nonterminal(star_annotation)) {
+                param_children.next();
+                Some(ParamAnnotation::StarAnnotation(StarAnnotation::new(
+                    annotation_node,
+                )))
             } else {
                 None
             }
@@ -1931,7 +1964,7 @@ impl<'db> Param<'db> {
         self.name_def
     }
 
-    pub fn annotation(&self) -> Option<Annotation<'db>> {
+    pub fn annotation(&self) -> Option<ParamAnnotation<'db>> {
         self.annotation
     }
 }
@@ -1945,27 +1978,25 @@ pub enum ParamKind {
     StarStar,
 }
 
-pub enum SimpleParamKind {
-    Normal,
-    Star,
-    StarStar,
-}
-
 impl<'db> Annotation<'db> {
     pub fn expression(&self) -> Expression<'db> {
         Expression::new(self.node.nth_child(1))
     }
+}
 
-    pub fn simple_param_kind(&self) -> Option<SimpleParamKind> {
-        let maybe_param = self.node.parent().unwrap();
-        if maybe_param.is_type(Nonterminal(starred_param)) {
-            Some(SimpleParamKind::Star)
-        } else if maybe_param.is_type(Nonterminal(double_starred_param)) {
-            Some(SimpleParamKind::StarStar)
-        } else if maybe_param.is_type(Nonterminal(assignment)) {
-            None
+pub enum StarAnnotationContent<'db> {
+    Expression(Expression<'db>),
+    StarExpression(StarExpression<'db>),
+}
+
+impl<'db> StarAnnotation<'db> {
+    pub fn unpack(&self) -> StarAnnotationContent<'db> {
+        let n = self.node.nth_child(1);
+        if n.is_type(Nonterminal(expression)) {
+            StarAnnotationContent::Expression(Expression::new(n))
         } else {
-            Some(SimpleParamKind::Normal)
+            debug_assert_eq!(n.type_(), Nonterminal(star_expression));
+            StarAnnotationContent::StarExpression(StarExpression::new(n))
         }
     }
 }
@@ -2432,6 +2463,8 @@ impl<'db> Primary<'db> {
             PrimaryContent::GetItem(SliceType::Slice(Slice::new(second)))
         } else if second.is_type(Nonterminal(slices)) {
             PrimaryContent::GetItem(SliceType::Slices(Slices::new(second)))
+        } else if second.is_type(Nonterminal(starred_expression)) {
+            PrimaryContent::GetItem(SliceType::StarredExpression(StarredExpression::new(second)))
         } else {
             debug_assert_eq!(second.as_code(), ")");
             PrimaryContent::Execution(ArgumentsDetails::None)
@@ -2803,6 +2836,7 @@ pub enum SliceType<'db> {
     Slices(Slices<'db>),
     Slice(Slice<'db>),
     NamedExpression(NamedExpression<'db>),
+    StarredExpression(StarredExpression<'db>),
 }
 
 impl<'db> SliceType<'db> {
@@ -2811,6 +2845,7 @@ impl<'db> SliceType<'db> {
             Self::Slices(s) => s.index(),
             Self::Slice(s) => s.index(),
             Self::NamedExpression(n) => n.index(),
+            Self::StarredExpression(s) => s.index(),
         }
     }
 }
@@ -3138,10 +3173,12 @@ impl<'db> NameDefinition<'db> {
             })
     }
 
-    pub fn maybe_param_annotation(&self) -> Option<Annotation<'db>> {
+    pub fn maybe_param_annotation(&self) -> Option<ParamAnnotation<'db>> {
         if let Some(next) = self.node.next_sibling() {
             if next.is_type(Nonterminal(annotation)) {
-                return Some(Annotation::new(next));
+                return Some(ParamAnnotation::Annotation(Annotation::new(next)));
+            } else if next.is_type(Nonterminal(star_annotation)) {
+                return Some(ParamAnnotation::StarAnnotation(StarAnnotation::new(next)));
             }
         }
         None

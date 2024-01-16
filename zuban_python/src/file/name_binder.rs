@@ -921,8 +921,18 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         for param in params.iter() {
             // expressions are resolved immediately while annotations are inferred at the
             // end of a module.
-            if let Some(annotation) = param.annotation() {
-                self.index_annotation_expression(&annotation.expression());
+            if let Some(param_annotation) = param.annotation() {
+                match param_annotation {
+                    ParamAnnotation::Annotation(a) => {
+                        self.index_annotation_expression(&a.expression())
+                    }
+                    ParamAnnotation::StarAnnotation(s) => match s.unpack() {
+                        StarAnnotationContent::Expression(expr) => {
+                            self.index_annotation_expression(&expr)
+                        }
+                        StarAnnotationContent::StarExpression(_) => todo!(),
+                    },
+                };
             }
             if let Some(expression) = param.default() {
                 self.index_non_block_node(&expression, ordered, in_base_scope);

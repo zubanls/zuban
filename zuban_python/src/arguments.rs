@@ -863,6 +863,7 @@ impl<'db, 'a> Iterator for ArgIteratorBase<'db, 'a> {
                         in_args_or_kwargs_and_arbitrary_len: false,
                         is_keyword: None,
                     })),
+                    SliceTypeContent::Starred(_) => todo!(),
                 }
             }
             Self::InferredWithCustomAddIssue {

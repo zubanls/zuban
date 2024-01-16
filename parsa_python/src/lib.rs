@@ -139,9 +139,10 @@ create_grammar!(
     param_no_default: name_definition annotation? !"="
     param_with_default: name_definition annotation? "=" expression
     param_maybe_default: name_definition annotation? ["=" expression ]
-    starred_param: "*" name_definition annotation?
+    starred_param: "*" name_definition star_annotation?
     double_starred_param: "**" name_definition annotation?
     annotation: ":" expression
+    star_annotation: ":" (star_expression | expression)
 
     // If statement
     // ------------

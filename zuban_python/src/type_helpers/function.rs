@@ -15,7 +15,7 @@ use crate::{
     debug,
     diagnostics::{Issue, IssueType},
     file::{
-        first_defined_name, use_cached_annotation_type, PythonFile, TypeComputation,
+        first_defined_name, use_cached_param_annotation_type, PythonFile, TypeComputation,
         TypeComputationOrigin, TypeVarCallbackReturn,
     },
     inference_state::InferenceState,
@@ -248,7 +248,15 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         }
                     }
                 }
-                type_computation.cache_annotation(annotation, is_implicit_optional);
+                match annotation.maybe_starred() {
+                    Ok(starred) => todo!(),
+                    Err(expr) => type_computation.cache_annotation(
+                        annotation.index(),
+                        expr,
+                        Some(param.type_()),
+                        is_implicit_optional,
+                    ),
+                }
             }
         }
         if let Some(return_annot) = func_node.return_annotation() {
@@ -1347,7 +1355,7 @@ impl<'db: 'x, 'x> FunctionParam<'x> {
     pub fn annotation(&self, i_s: &InferenceState<'db, '_>) -> Option<Cow<'x, Type>> {
         self.param
             .annotation()
-            .map(|annotation| use_cached_annotation_type(i_s.db, self.file, annotation))
+            .map(|annotation| use_cached_param_annotation_type(i_s.db, self.file, annotation))
     }
 
     pub fn has_default_or_stars(&self, db: &Database) -> bool {
@@ -1368,7 +1376,7 @@ impl<'x> Param<'x> for FunctionParam<'x> {
         let t = self
             .param
             .annotation()
-            .map(|annotation| use_cached_annotation_type(db, self.file, annotation));
+            .map(|annotation| use_cached_param_annotation_type(db, self.file, annotation));
 
         fn expect_borrowed<'a>(t: &Cow<'a, Type>) -> &'a Type {
             let Cow::Borrowed(t) = t else {

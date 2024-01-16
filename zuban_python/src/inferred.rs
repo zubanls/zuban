@@ -1460,7 +1460,7 @@ impl<'db: 'slf, 'slf> Inferred {
             ASTSliceType::NamedExpression(named) => ClassGenerics::ExpressionWithClassType(
                 PointLink::new(definition.file_index(), named.expression().index()),
             ),
-            ASTSliceType::Slice(_) => unreachable!(),
+            ASTSliceType::Slice(_) | ASTSliceType::StarredExpression(_) => unreachable!(),
             ASTSliceType::Slices(slices) => ClassGenerics::SlicesWithClassTypes(PointLink::new(
                 definition.file_index(),
                 slices.index(),
@@ -1910,10 +1910,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             // TODO if it is a (), it's am empty tuple
                             simple.infer(i_s, &mut ResultContext::Unknown)
                         }
-                        SliceTypeContent::Slice(x) => {
-                            todo!()
-                        }
-                        SliceTypeContent::Slices(x) => {
+                        _ => {
                             todo!()
                         }
                     };

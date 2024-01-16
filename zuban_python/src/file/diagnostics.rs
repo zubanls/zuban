@@ -746,7 +746,7 @@ impl<'db> Inference<'db, '_, '_> {
             for param in params.iter() {
                 if let Some(annotation) = param.annotation() {
                     if let Some(default) = param.default() {
-                        let t = self.use_cached_annotation_type(annotation);
+                        let t = self.use_cached_param_annotation_type(annotation);
                         let inf = self
                             .infer_expression_with_context(default, &mut ResultContext::Known(&t));
                         t.error_if_not_matches(
@@ -779,7 +779,7 @@ impl<'db> Inference<'db, '_, '_> {
             .skip((class.is_some() && function.kind(i_s) != FunctionKind::Staticmethod).into())
         {
             if let Some(annotation) = param.annotation() {
-                let t = self.use_cached_annotation_type(annotation);
+                let t = self.use_cached_param_annotation_type(annotation);
                 if matches!(t.as_ref(), Type::TypeVar(tv) if tv.type_var.variance == Variance::Covariant)
                 {
                     if !["__init__", "__new__", "__post_init__"].contains(&name.as_code()) {
@@ -921,7 +921,7 @@ impl<'db> Inference<'db, '_, '_> {
                 .skip((class.is_some() && function.kind(i_s) != FunctionKind::Staticmethod).into())
             {
                 if let Some(annotation) = param.annotation() {
-                    let t = self.use_cached_annotation_type(annotation);
+                    let t = self.use_cached_param_annotation_type(annotation);
                     // TODO implement --disallow-any-unimported
                 }
             }

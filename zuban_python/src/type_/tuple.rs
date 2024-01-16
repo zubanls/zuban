@@ -222,7 +222,7 @@ impl Tuple {
                     }
                 }
             }
-            SliceTypeContent::Slices(slices) => {
+            SliceTypeContent::Slices(_) | SliceTypeContent::Starred(_) => {
                 todo!()
             }
             SliceTypeContent::Slice(slice) => slice

@@ -25,6 +25,7 @@ pub struct SliceType<'file> {
 
 pub enum SliceTypeContent<'file> {
     Simple(Simple<'file>),
+    Starred(Starred<'file>),
     Slice(Slice<'file>),
     Slices(Slices<'file>),
 }
@@ -71,6 +72,10 @@ impl<'db, 'file> SliceType<'file> {
                 file: self.file,
                 slices,
             }),
+            ASTSliceType::StarredExpression(starred_expr) => SliceTypeContent::Starred(Starred {
+                file: self.file,
+                starred_expr,
+            }),
         }
     }
 
@@ -81,6 +86,9 @@ impl<'db, 'file> SliceType<'file> {
             }
             SliceTypeContent::Slice(s) => SliceTypeIterator::SliceOrSimple(SliceOrSimple::Slice(s)),
             SliceTypeContent::Slices(s) => SliceTypeIterator::SliceIterator(s.iter()),
+            SliceTypeContent::Starred(s) => {
+                SliceTypeIterator::SliceOrSimple(SliceOrSimple::Starred(s))
+            }
         }
     }
 
@@ -97,6 +105,7 @@ impl<'db, 'file> SliceType<'file> {
             SliceTypeContent::Simple(s) => s.infer(i_s, result_context),
             SliceTypeContent::Slice(s) => s.infer(i_s),
             SliceTypeContent::Slices(s) => s.infer(i_s),
+            SliceTypeContent::Starred(_) => todo!(),
         }
     }
 }
@@ -128,6 +137,13 @@ pub struct Starred<'file> {
 impl<'file> Starred<'file> {
     pub fn as_node_ref(&self) -> NodeRef<'file> {
         NodeRef::new(self.file, self.starred_expr.index())
+    }
+
+    fn infer(&self, i_s: &InferenceState) -> Inferred {
+        self.file
+            .inference(&i_s)
+            .infer_expression(self.starred_expr.expression());
+        Inferred::new_object(i_s.db)
     }
 }
 
@@ -237,7 +253,7 @@ impl<'file> SliceOrSimple<'file> {
         match self {
             Self::Simple(simple) => simple.infer(i_s, result_context),
             Self::Slice(slice) => slice.infer(i_s),
-            SliceOrSimple::Starred(_) => todo!(),
+            SliceOrSimple::Starred(starred) => starred.infer(i_s),
         }
     }
 
