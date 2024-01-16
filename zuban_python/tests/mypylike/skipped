@@ -518,15 +518,14 @@ testTypeVarTuplePep646CallableWithPrefixSuffix
 testTypeVarTupleNotConcreteCallable
 # Overload matching issues
 testTypeVarTupleOverloadMatch
-# file/type_computation.rs:637
+# Unpack fixed length (type_helpers/function.rs:1394)
+testTypeVarTuplePep646TypeVarStarArgsFixedLengthTuple
+# subtyping arbitrary length unpacks
+testVariadicTupleSubtyping
+# TypeVarTuple Callable checked later
+testTypeVarTuplePep646Callable
 testTypeVarTuplePep646CallableStarArgs
 testVariadicTupleInProtocol
-# type_helpers/function.rs:1394
-testTypeVarTuplePep646TypeVarStarArgsFixedLengthTuple
-# type/matching.rs:932
-testVariadicTupleSubtyping
-# matching/params.rs:312
-testTypeVarTuplePep646Callable
 # Self matching
 testVariadicClassNewStyleSelf
 # Complex callable matching
