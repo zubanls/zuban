@@ -908,7 +908,7 @@ pub fn match_unpack(
     with_unpack1: &WithUnpack,
     tuple2: &TupleArgs,
     variance: Variance,
-    on_mismatch: Option<&dyn Fn(ErrorTypes, usize)>,
+    on_mismatch: Option<&dyn Fn(ErrorTypes, isize)>,
     on_too_few_args: Option<&dyn Fn()>,
 ) -> Match {
     debug_assert!(!matcher.is_matching_reverse());
@@ -936,7 +936,7 @@ pub fn match_unpack(
         TupleArgs::FixedLen(ts2) => {
             let mut t2_iterator = ts2.iter().enumerate();
             for (t1, (i, t2)) in with_unpack1.before.iter().zip(t2_iterator.by_ref()) {
-                matches &= check_type(matcher, t1, t2, i);
+                matches &= check_type(matcher, t1, t2, i as isize);
             }
             for (t1, (i, t2)) in with_unpack1
                 .after
@@ -944,7 +944,7 @@ pub fn match_unpack(
                 .rev()
                 .zip(t2_iterator.by_ref().rev())
             {
-                matches &= check_type(matcher, t1, t2, i);
+                matches &= check_type(matcher, t1, t2, i as isize);
             }
             if (with_unpack1.before.len() + with_unpack1.after.len()) > ts2.len() {
                 if let Some(on_too_few_args) = on_too_few_args {
@@ -963,7 +963,7 @@ pub fn match_unpack(
                     }
                     TupleUnpack::ArbitraryLen(inner_t1) => {
                         for (i, t2) in t2_iterator {
-                            matches &= check_type(matcher, inner_t1, t2, i)
+                            matches &= check_type(matcher, inner_t1, t2, i as isize)
                         }
                     }
                 }
@@ -971,18 +971,24 @@ pub fn match_unpack(
         }
         TupleArgs::WithUnpack(with_unpack2) => {
             let mut before2_it = with_unpack2.before.iter();
-            for (t1, t2) in with_unpack1.before.iter().zip(before2_it.by_ref()) {
-                matches &= t1.matches(i_s, matcher, t2, variance)
+            for (i, (t1, t2)) in with_unpack1
+                .before
+                .iter()
+                .zip(before2_it.by_ref())
+                .enumerate()
+            {
+                matches &= check_type(matcher, t1, t2, i as isize)
             }
 
             let mut after2_it = with_unpack2.after.iter();
-            for (t1, t2) in with_unpack1
+            for (i, (t1, t2)) in with_unpack1
                 .after
                 .iter()
                 .rev()
                 .zip(after2_it.by_ref().rev())
+                .enumerate()
             {
-                matches &= t1.matches(i_s, matcher, t2, variance)
+                matches &= check_type(matcher, t1, t2, -(i as isize) - 1)
             }
 
             match &with_unpack1.unpack {
@@ -998,7 +1004,7 @@ pub fn match_unpack(
                                     expected: &with_unpack1.before[len_before_2],
                                     got: GotType::Starred(Type::Tuple(Tuple::new(tuple2.clone()))),
                                 },
-                                len_before_1,
+                                len_before_1 as isize,
                             );
                             if let Some(on_too_few_args) = on_too_few_args {
                                 on_too_few_args()
@@ -1035,7 +1041,7 @@ pub fn match_unpack(
                                     ))),
                                     got: GotType::Starred(Type::Tuple(Tuple::new(tuple2.clone()))),
                                 },
-                                len_before_1,
+                                len_before_1 as isize,
                             );
                         }
                     }

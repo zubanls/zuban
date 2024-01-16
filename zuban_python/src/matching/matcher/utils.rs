@@ -666,11 +666,15 @@ pub(crate) fn match_arguments_against_params<
                             with_unpack,
                             &actual,
                             Variance::Covariant,
-                            Some(&|error_types: ErrorTypes, index: usize| {
+                            Some(&|error_types: ErrorTypes, index: isize| {
                                 let Some(on_type_error) = on_type_error else {
                                     return
                                 };
-                                let argument = &args[index.min(args.len() - 1)];
+                                let argument = if index >= 0 {
+                                    &args[(index as usize).min(args.len() - 1)]
+                                } else {
+                                    todo!()
+                                };
                                 (on_type_error.callback)(
                                     i_s,
                                     &diagnostic_string,
