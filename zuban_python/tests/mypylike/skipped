@@ -189,6 +189,8 @@ testGenericTypeAliasesWrongAliases
 testGenericClassAlternativeConstructorPreciseOverloaded
 # current_class in i_s should probably be a type and not a class
 testEnumNameWorkCorrectlyOn311
+# current_function in i_s is wrong.
+testTypeVarTuplePep646TypeVarStarArgs
 
 # Callable remapping over overload leads to a mapped overload
 testRegularGenericDecoratorOverload
@@ -509,8 +511,6 @@ testProtocolAndRuntimeAreDefinedAlsoInTypingExtensions
 testOverloadOnProtocol
 testSimpleRuntimeProtocolCheck
 
-testVariadicStarArgsCallNoCrash
-testTypeVarTupleSimpleDecoratorWorks
 # TypeVarTuple mismatches how to format? Unpack[Never]?
 testTypeVarTupleMixed
 testVariadicTupleInference

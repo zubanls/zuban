@@ -170,11 +170,6 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         }
         if let Some(func) = self.current_function() {
             for (index, type_var) in func.type_vars(self).iter().enumerate() {
-                if matches!(type_var, TypeVarLike::TypeVarTuple(_)) {
-                    // TODO hack PLEASE REMOVE; this is here, because the current_function etc
-                    // stuff is currently very imprecise.
-                    continue;
-                }
                 if type_var == searched {
                     return Some(TypeVarCallbackReturn::TypeVarLike(
                         type_var.as_type_var_like_usage(index.into(), func.node_ref.as_link()),
