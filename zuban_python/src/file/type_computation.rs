@@ -4664,16 +4664,7 @@ pub fn use_cached_param_annotation_type<'db: 'file, 'file>(
     annotation: ParamAnnotation,
 ) -> Cow<'file, Type> {
     file.inference(&InferenceState::new(db))
-        .use_cached_annotation_or_type_comment_type_internal(
-            annotation.index(),
-            match annotation {
-                ParamAnnotation::Annotation(a) => a.expression(),
-                ParamAnnotation::StarAnnotation(s) => match s.unpack() {
-                    StarAnnotationContent::Expression(e) => e,
-                    StarAnnotationContent::StarExpression(s) => todo!(),
-                },
-            },
-        )
+        .use_cached_param_annotation_type(annotation)
 }
 
 pub fn use_cached_annotation_type<'db: 'file, 'file>(

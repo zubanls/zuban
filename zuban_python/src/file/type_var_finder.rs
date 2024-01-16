@@ -84,6 +84,14 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
         finder.type_var_manager.into_type_vars()
     }
 
+    fn find_in_slice_like(&mut self, slice_like: SliceOrSimple<'d>) {
+        match slice_like {
+            SliceOrSimple::Simple(s) => self.find_in_expr(s.named_expr.expression()),
+            SliceOrSimple::Slice(_) => (),
+            SliceOrSimple::Starred(starred) => self.find_in_expr(starred.starred_expr.expression()),
+        };
+    }
+
     fn find_in_expr(&mut self, expr: Expression<'d>) {
         match expr.unpack() {
             ExpressionContent::ExpressionPart(n) => {
@@ -152,20 +160,16 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
                         }
                         self.generic_or_protocol_slice =
                             Some(SliceType::new(self.file, primary.index(), slice_type));
-                        for (i, slice_or_simple) in s.iter().enumerate() {
+                        for (i, slice_like) in s.iter().enumerate() {
                             self.current_generic_or_protocol_index = Some(i.into());
-                            if let SliceOrSimple::Simple(s) = slice_or_simple {
-                                self.find_in_expr(s.named_expr.expression())
-                            }
+                            self.find_in_slice_like(slice_like)
                         }
                         self.current_generic_or_protocol_index = None;
                     }
                     BaseLookup::Callable => self.find_in_callable(s),
                     _ => {
-                        for slice_or_simple in s.iter() {
-                            if let SliceOrSimple::Simple(s) = slice_or_simple {
-                                self.find_in_expr(s.named_expr.expression())
-                            }
+                        for slice_like in s.iter() {
+                            self.find_in_slice_like(slice_like)
                         }
                     }
                 }
