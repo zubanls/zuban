@@ -598,7 +598,24 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         }
     }
 
-    pub fn cache_annotation(
+    pub fn cache_param_annotation(
+        &mut self,
+        param_annotation: ParamAnnotation,
+        param_kind: ParamKind,
+        is_implicit_optional: bool,
+    ) {
+        match param_annotation.maybe_starred() {
+            Ok(starred) => todo!(),
+            Err(expr) => self.cache_annotation(
+                param_annotation.index(),
+                expr,
+                Some(param_kind),
+                is_implicit_optional,
+            ),
+        }
+    }
+
+    fn cache_annotation(
         &mut self,
         annotation_index: NodeIndex,
         expr: Expression,

@@ -248,15 +248,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         }
                     }
                 }
-                match annotation.maybe_starred() {
-                    Ok(starred) => todo!(),
-                    Err(expr) => type_computation.cache_annotation(
-                        annotation.index(),
-                        expr,
-                        Some(param.type_()),
-                        is_implicit_optional,
-                    ),
-                }
+                type_computation.cache_param_annotation(
+                    annotation,
+                    param.type_(),
+                    is_implicit_optional,
+                )
             }
         }
         if let Some(return_annot) = func_node.return_annotation() {
