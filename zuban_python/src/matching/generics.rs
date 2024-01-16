@@ -139,6 +139,7 @@ impl<'a> Generics<'a> {
                         SliceContent::NamedExpression(n) => {
                             use_cached_simple_generic_type(db, file, n.expression())
                         }
+                        SliceContent::StarredExpression(n) => todo!(),
                         SliceContent::Slice(s) => todo!(),
                     })
                     .unwrap_or_else(|| todo!()),

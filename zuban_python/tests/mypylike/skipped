@@ -531,10 +531,8 @@ testVariadicClassNewStyleSelf
 # Complex callable matching
 testVariadicTypedDict
 # *ts TypeVarTuple syntax
-testTypeVarTupleNewSyntaxAnnotations
 testTypeVarTupleNewSyntaxGenerics
 testTypeVarTupleNewSyntaxCallables
-testTypeVarTuplePep646CallableSuffixSyntax
 testTypeVarTuplePep646CallableInvalidSyntax
 testTypeVarTuplePep646CallableNewSyntax
 

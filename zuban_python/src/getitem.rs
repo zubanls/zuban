@@ -1,6 +1,6 @@
 use parsa_python_ast::{
     NamedExpression, NodeIndex, Slice as ASTSlice, SliceContent, SliceIterator as ASTSliceIterator,
-    SliceType as ASTSliceType, Slices as ASTSlices,
+    SliceType as ASTSliceType, Slices as ASTSlices, StarredExpression,
 };
 
 use crate::{
@@ -120,6 +120,18 @@ impl<'file> Simple<'file> {
 }
 
 #[derive(Debug, Copy, Clone)]
+pub struct Starred<'file> {
+    pub file: &'file PythonFile,
+    pub starred_expr: StarredExpression<'file>,
+}
+
+impl<'file> Starred<'file> {
+    pub fn as_node_ref(&self) -> NodeRef<'file> {
+        NodeRef::new(self.file, self.starred_expr.index())
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
 pub struct Slice<'file> {
     file: &'file PythonFile,
     slice: ASTSlice<'file>,
@@ -217,6 +229,7 @@ impl<'file> Slices<'file> {
 pub enum SliceOrSimple<'file> {
     Simple(Simple<'file>),
     Slice(Slice<'file>),
+    Starred(Starred<'file>),
 }
 
 impl<'file> SliceOrSimple<'file> {
@@ -224,6 +237,7 @@ impl<'file> SliceOrSimple<'file> {
         match self {
             Self::Simple(simple) => simple.infer(i_s, result_context),
             Self::Slice(slice) => slice.infer(i_s),
+            SliceOrSimple::Starred(_) => todo!(),
         }
     }
 
@@ -231,6 +245,7 @@ impl<'file> SliceOrSimple<'file> {
         match self {
             SliceOrSimple::Simple(simple) => simple.as_node_ref(),
             SliceOrSimple::Slice(slice) => slice.as_node_ref(),
+            SliceOrSimple::Starred(starred) => starred.as_node_ref(),
         }
     }
 }
@@ -247,6 +262,10 @@ impl<'file> Iterator for SliceIterator<'file> {
             SliceContent::NamedExpression(n) => SliceOrSimple::Simple(Simple {
                 file: self.0,
                 named_expr: n,
+            }),
+            SliceContent::StarredExpression(s) => SliceOrSimple::Starred(Starred {
+                file: self.0,
+                starred_expr: s,
             }),
             SliceContent::Slice(s) => SliceOrSimple::Slice(Slice {
                 file: self.0,

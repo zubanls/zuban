@@ -1183,6 +1183,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         match slice {
             SliceOrSimple::Simple(s) => self.compute_type(s.named_expr.expression()),
             SliceOrSimple::Slice(n) => TypeContent::InvalidVariable(InvalidVariableType::Slice),
+            SliceOrSimple::Starred(s) => {
+                let tc = self.compute_type(s.starred_expr.expression());
+                self.wrap_in_unpack(tc, slice)
+            }
         }
     }
 
@@ -2492,15 +2496,24 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         }
     }
 
+    fn wrap_in_unpack(
+        &mut self,
+        tc: TypeContent,
+        slice: SliceOrSimple,
+    ) -> TypeContent<'static, 'static> {
+        TypeContent::Unpacked(match tc {
+            TypeContent::TypeVarTuple(t) => TypeOrUnpack::TypeVarTuple(t),
+            TypeContent::Unknown(cause) => TypeOrUnpack::Unknown(cause),
+            t => TypeOrUnpack::Type(self.as_type(t, slice.as_node_ref())),
+        })
+    }
+
     fn compute_type_get_item_on_unpack(&mut self, slice_type: SliceType) -> TypeContent<'db, 'db> {
         let mut iterator = slice_type.iter();
         let first = iterator.next().unwrap();
         if iterator.count() == 0 {
-            TypeContent::Unpacked(match self.compute_slice_type_content(first) {
-                TypeContent::TypeVarTuple(t) => TypeOrUnpack::TypeVarTuple(t),
-                TypeContent::Unknown(cause) => TypeOrUnpack::Unknown(cause),
-                t => TypeOrUnpack::Type(self.as_type(t, first.as_node_ref())),
-            })
+            let tc = self.compute_slice_type_content(first);
+            self.wrap_in_unpack(tc, first)
         } else {
             self.add_issue(
                 slice_type.as_node_ref(),

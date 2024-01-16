@@ -2864,6 +2864,7 @@ impl<'db> Slice<'db> {
 pub enum SliceContent<'db> {
     Slice(Slice<'db>),
     NamedExpression(NamedExpression<'db>),
+    StarredExpression(StarredExpression<'db>),
 }
 
 #[derive(Clone)]
@@ -2876,6 +2877,8 @@ impl<'db> Iterator for SliceIterator<'db> {
         let result = self.0.next().map(|n| {
             if n.is_type(Nonterminal(slice)) {
                 SliceContent::Slice(Slice::new(n))
+            } else if n.is_type(Nonterminal(starred_expression)) {
+                SliceContent::StarredExpression(StarredExpression::new(n))
             } else {
                 SliceContent::NamedExpression(NamedExpression::new(n))
             }
