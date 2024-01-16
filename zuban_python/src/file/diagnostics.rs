@@ -788,14 +788,14 @@ impl<'db> Inference<'db, '_, '_> {
                     }
                 }
 
-                if param.type_() == ParamKind::StarStar {
+                if param.kind() == ParamKind::StarStar {
                     if let Type::TypedDict(td) = t.as_ref() {
                         let mut overlapping_names = vec![];
                         for member in td.members(i_s.db) {
                             for p in params.iter() {
                                 let name = member.name.as_str(i_s.db);
                                 if matches!(
-                                    p.type_(),
+                                    p.kind(),
                                     ParamKind::PositionalOrKeyword | ParamKind::KeywordOnly
                                 ) && name == p.name_definition().as_code()
                                 {

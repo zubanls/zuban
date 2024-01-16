@@ -1565,7 +1565,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
         };
         let to_callable_param = |param: Param| CallableParam {
-            type_: match param.type_() {
+            type_: match param.kind() {
                 ParamKind::PositionalOnly => {
                     ParamType::PositionalOnly(Type::Any(AnyCause::Unannotated))
                 }
@@ -2353,7 +2353,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     } else {
                                         for param in func_node.params().iter() {
                                             if param.name_definition().index() == name_def.index() {
-                                                return match param.type_() {
+                                                return match param.kind() {
                                                     ParamKind::Star => todo!(),
                                                     ParamKind::StarStar => {
                                                         Inferred::from_type(new_class!(
@@ -2390,7 +2390,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                         if let ParamType::PositionalOnly(t) =
                                                             &p2.type_
                                                         {
-                                                            if p.type_()
+                                                            if p.kind()
                                                                 == ParamKind::PositionalOrKeyword
                                                             {
                                                                 Inferred::from_type(t.clone())

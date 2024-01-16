@@ -1892,7 +1892,7 @@ impl<'db> Iterator for ParamIterator<'db> {
 
 #[derive(Debug, Clone, Copy)]
 pub struct Param<'db> {
-    type_: ParamKind,
+    kind: ParamKind,
     name_def: NameDefinition<'db>,
     annotation: Option<ParamAnnotation<'db>>,
     default: Option<Expression<'db>>,
@@ -1924,7 +1924,7 @@ impl<'db> ParamAnnotation<'db> {
 }
 
 impl<'db> Param<'db> {
-    fn new(param_children: &mut impl Iterator<Item = PyNode<'db>>, type_: ParamKind) -> Self {
+    fn new(param_children: &mut impl Iterator<Item = PyNode<'db>>, kind: ParamKind) -> Self {
         let name_def = NameDefinition::new(param_children.next().unwrap());
         let annot = if let Some(annotation_node) = param_children.next() {
             if annotation_node.is_type(Nonterminal(annotation)) {
@@ -1945,15 +1945,15 @@ impl<'db> Param<'db> {
         };
         let default_node = param_children.next();
         Self {
-            type_,
+            kind,
             name_def,
             annotation: annot,
             default: default_node.map(Expression::new),
         }
     }
 
-    pub fn type_(&self) -> ParamKind {
-        self.type_
+    pub fn kind(&self) -> ParamKind {
+        self.kind
     }
 
     pub fn default(&self) -> Option<Expression<'db>> {

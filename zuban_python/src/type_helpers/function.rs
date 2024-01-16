@@ -250,7 +250,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 }
                 type_computation.cache_param_annotation(
                     annotation,
-                    param.type_(),
+                    param.kind(),
                     is_implicit_optional,
                 )
             }
@@ -1434,7 +1434,7 @@ impl<'x> Param<'x> for FunctionParam<'x> {
     }
 
     fn kind(&self, db: &Database) -> ParamKind {
-        let mut t = self.param.type_();
+        let mut t = self.param.kind();
         if t == ParamKind::PositionalOrKeyword
             && db.project.flags.mypy_compatible
             && is_private(self.param.name_definition().as_code())
