@@ -1958,13 +1958,9 @@ impl<'db> Annotation<'db> {
 
     pub fn simple_param_kind(&self) -> Option<SimpleParamKind> {
         let maybe_param = self.node.parent().unwrap();
-        if maybe_param.is_type(Nonterminal(starred_param))
-            || maybe_param.is_type(Nonterminal(lambda_starred_param))
-        {
+        if maybe_param.is_type(Nonterminal(starred_param)) {
             Some(SimpleParamKind::Star)
-        } else if maybe_param.is_type(Nonterminal(double_starred_param))
-            || maybe_param.is_type(Nonterminal(lambda_double_starred_param))
-        {
+        } else if maybe_param.is_type(Nonterminal(double_starred_param)) {
             Some(SimpleParamKind::StarStar)
         } else if maybe_param.is_type(Nonterminal(assignment)) {
             None
