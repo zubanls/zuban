@@ -3426,16 +3426,19 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         &mut self,
         annotation: ParamAnnotation,
     ) -> Cow<'file, Type> {
-        self.use_cached_annotation_or_type_comment_type_internal(
-            annotation.index(),
-            match annotation {
-                ParamAnnotation::Annotation(annot) => annot.expression(),
-                ParamAnnotation::StarAnnotation(starred) => match starred.unpack() {
-                    StarAnnotationContent::Expression(expr) => expr,
-                    StarAnnotationContent::StarExpression(expr) => todo!(),
-                },
-            },
-        )
+        match annotation.maybe_starred() {
+            Ok(star_expr) => {
+                debug_assert!(matches!(
+                    self.file.points.get(annotation.index()).specific(),
+                    Specific::AnnotationOrTypeCommentWithTypeVars
+                        | Specific::AnnotationOrTypeCommentWithoutTypeVars
+                ));
+                self.use_cached_annotation_internal(star_expr.index())
+            }
+            Err(expr) => {
+                self.use_cached_annotation_or_type_comment_type_internal(annotation.index(), expr)
+            }
+        }
     }
 
     fn use_cached_annotation_or_type_comment_type_internal(
@@ -3457,12 +3460,19 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                         | Specific::AnnotationOrTypeCommentWithoutTypeVars
                         | Specific::AnnotationOrTypeCommentClassVar
                 ));
-                let complex_index = self.file.points.get(expr.index()).complex_index();
-                match self.file.complex_points.get(complex_index) {
-                    ComplexPoint::TypeInstance(t) => Cow::Borrowed(t),
-                    _ => unreachable!(),
-                }
+                self.use_cached_annotation_internal(expr.index())
             }
+        }
+    }
+
+    fn use_cached_annotation_internal(
+        &mut self,
+        type_storage_index: NodeIndex,
+    ) -> Cow<'file, Type> {
+        let complex_index = self.file.points.get(type_storage_index).complex_index();
+        match self.file.complex_points.get(complex_index) {
+            ComplexPoint::TypeInstance(t) => Cow::Borrowed(t),
+            _ => unreachable!(),
         }
     }
 
