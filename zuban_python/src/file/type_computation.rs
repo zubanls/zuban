@@ -1227,28 +1227,24 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         self.as_type(t, slice.as_node_ref())
     }
 
-    fn convert_slice_type_or_tuple_unpack(
+    fn use_tuple_unpack(
         &mut self,
-        t: TypeContent,
-        slice: SliceOrSimple,
-    ) -> TuplePart {
-        match t {
-            TypeContent::Unpacked(TypeOrUnpack::TypeVarTuple(tvt)) => {
-                TuplePart::TupleUnpack(TypeCompTupleUnpack::TypeVarTuple(tvt))
+        type_or_unpack: TypeOrUnpack,
+        from: NodeRef,
+    ) -> TypeCompTupleUnpack {
+        match type_or_unpack {
+            TypeOrUnpack::TypeVarTuple(tvt) => TypeCompTupleUnpack::TypeVarTuple(tvt),
+            TypeOrUnpack::Type(Type::Tuple(tup)) => match rc_unwrap_or_clone(tup).args {
+                TupleArgs::WithUnpack(w) => TypeCompTupleUnpack::WithUnpack(w),
+                TupleArgs::ArbitraryLen(t) => TypeCompTupleUnpack::ArbitraryLen(t),
+                TupleArgs::FixedLen(ts) => TypeCompTupleUnpack::FixedLen(rc_slice_into_vec(ts)),
+            },
+            TypeOrUnpack::Unknown(cause) => {
+                TypeCompTupleUnpack::ArbitraryLen(Box::new(Type::Any(cause)))
             }
-            TypeContent::Unpacked(TypeOrUnpack::Type(Type::Tuple(tup))) => {
-                TuplePart::TupleUnpack(match rc_unwrap_or_clone(tup).args {
-                    TupleArgs::WithUnpack(w) => TypeCompTupleUnpack::WithUnpack(w),
-                    TupleArgs::ArbitraryLen(t) => TypeCompTupleUnpack::ArbitraryLen(t),
-                    TupleArgs::FixedLen(ts) => TypeCompTupleUnpack::FixedLen(rc_slice_into_vec(ts)),
-                })
-            }
-            TypeContent::Unpacked(TypeOrUnpack::Unknown(cause)) => TuplePart::TupleUnpack(
-                TypeCompTupleUnpack::ArbitraryLen(Box::new(Type::Any(cause))),
-            ),
-            TypeContent::Unpacked(TypeOrUnpack::Type(t)) => {
+            TypeOrUnpack::Type(t) => {
                 self.add_issue(
-                    slice.as_node_ref(),
+                    from,
                     match t {
                         Type::RecursiveType(_) => {
                             IssueType::InvalidRecursiveTypeAliasUnionOfItself { target: "union" }
@@ -1258,11 +1254,17 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         },
                     },
                 );
-                TuplePart::TupleUnpack(TypeCompTupleUnpack::ArbitraryLen(Box::new(Type::Any(
-                    AnyCause::FromError,
-                ))))
+                TypeCompTupleUnpack::ArbitraryLen(Box::new(Type::Any(AnyCause::FromError)))
             }
-            t => TuplePart::Type(self.as_type(t, slice.as_node_ref())),
+        }
+    }
+
+    fn convert_slice_type_or_tuple_unpack(&mut self, t: TypeContent, from: NodeRef) -> TuplePart {
+        match t {
+            TypeContent::Unpacked(unpacked) => {
+                TuplePart::TupleUnpack(self.use_tuple_unpack(unpacked, from))
+            }
+            t => TuplePart::Type(self.as_type(t, from)),
         }
     }
 
@@ -4088,7 +4090,7 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
             return None
         };
         let t = type_computation.compute_slice_type_content(s);
-        match type_computation.convert_slice_type_or_tuple_unpack(t, s) {
+        match type_computation.convert_slice_type_or_tuple_unpack(t, s.as_node_ref()) {
             TuplePart::Type(t) => Some((s.as_node_ref(), t)),
             TuplePart::TupleUnpack(u) => {
                 if self.current_unpack.is_some() {
@@ -4169,7 +4171,9 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
         let from = current_slice_part.as_node_ref();
         self.reverse_already_analyzed = Some(from);
         let t = type_computation.compute_slice_type_content(current_slice_part);
-        match type_computation.convert_slice_type_or_tuple_unpack(t, current_slice_part) {
+        match type_computation
+            .convert_slice_type_or_tuple_unpack(t, current_slice_part.as_node_ref())
+        {
             TuplePart::Type(t) => Some((from, t)),
             TuplePart::TupleUnpack(u) => {
                 self.current_unpack_reverse = Some(u);
@@ -4253,7 +4257,7 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
             {
                 break;
             }
-            match type_computation.convert_slice_type_or_tuple_unpack(t, s) {
+            match type_computation.convert_slice_type_or_tuple_unpack(t, s.as_node_ref()) {
                 TuplePart::Type(t) => {
                     if unpack.is_none() {
                         before.push(t)
