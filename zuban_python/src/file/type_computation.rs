@@ -606,21 +606,17 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     ) {
         match param_annotation.maybe_starred() {
             Ok(starred) => {
-                /*
-                self.cache_annotation_or_type_comment(
+                let from = NodeRef::new(self.inference.file, starred.index());
+                self.cache_annotation_or_type_comment_detailed(
                     param_annotation.index(),
-                    starred.expression_part(),
+                    |slf| slf.compute_type_expression_part(starred.expression_part()),
+                    from,
                     false,
                     Some(&|slf, tc| {
-                        match tc {
-                            TypeContent::TypeVarTuple(t) => todo!(),
-                            TypeContent::Unknown(cause) => todo!(),
-                            t => todo!(),
-                        }
+                        let wrapped = slf.wrap_in_unpack(tc, from);
+                        Type::Tuple(slf.use_tuple_unpack(wrapped, from).as_tuple())
                     }),
                 )
-                */
-                todo!()
             }
             Err(expr) => self.cache_annotation(
                 param_annotation.index(),
@@ -729,13 +725,29 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         is_implicit_optional: bool,
         map_type_callback: MapAnnotationTypeCallback,
     ) {
+        self.cache_annotation_or_type_comment_detailed(
+            annotation_index,
+            |slf| slf.compute_type(expr),
+            NodeRef::new(self.inference.file, expr.index()),
+            is_implicit_optional,
+            map_type_callback,
+        )
+    }
+
+    fn cache_annotation_or_type_comment_detailed<'tmp>(
+        &mut self,
+        annotation_index: NodeIndex,
+        as_type: impl FnOnce(&mut Self) -> TypeContent<'db, 'tmp>,
+        type_storage_node_ref: NodeRef,
+        is_implicit_optional: bool,
+        map_type_callback: MapAnnotationTypeCallback,
+    ) {
         let annotation_node_ref = NodeRef::new(self.inference.file, annotation_index);
         if annotation_node_ref.point().calculated() {
             return;
         }
-        let type_ = self.compute_type(expr);
+        let type_ = as_type(self);
 
-        let node_ref = NodeRef::new(self.inference.file, expr.index());
         let mut is_class_var = false;
         let i_s = self.inference.i_s;
         let uses_class_generics = |class: &Class, t: &Type| {
@@ -753,7 +765,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 TypeContent::SimpleGeneric { .. } | TypeContent::Class { .. }
                     if !is_implicit_optional =>
                 {
-                    debug_assert!(node_ref.point().calculated());
+                    debug_assert!(type_storage_node_ref.point().calculated());
                     annotation_node_ref.set_point(Point::new_simple_specific(
                         Specific::AnnotationOrTypeCommentSimpleClassInstance,
                         Locality::Todo,
@@ -787,7 +799,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     {
                         todo!()
                     } else {
-                        self.add_issue(node_ref, IssueType::ClassVarOnlyInAssignmentsInClass);
+                        self.add_issue(
+                            type_storage_node_ref,
+                            IssueType::ClassVarOnlyInAssignmentsInClass,
+                        );
                         Type::Any(AnyCause::FromError)
                     }
                 }
@@ -797,17 +812,23 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         self.origin,
                         TypeComputationOrigin::AssignmentTypeCommentOrAnnotation { .. }
                     ) {
-                        self.add_issue(node_ref, IssueType::ClassVarOnlyInAssignmentsInClass);
+                        self.add_issue(
+                            type_storage_node_ref,
+                            IssueType::ClassVarOnlyInAssignmentsInClass,
+                        );
                         Type::Any(AnyCause::FromError)
                     } else if self.has_type_vars_or_self {
                         let i_s = self.inference.i_s;
                         let class = i_s.current_class().unwrap();
                         if uses_class_generics(class, &t) {
-                            self.add_issue(node_ref, IssueType::ClassVarCannotContainTypeVariables);
+                            self.add_issue(
+                                type_storage_node_ref,
+                                IssueType::ClassVarCannotContainTypeVariables,
+                            );
                             Type::Any(AnyCause::FromError)
                         } else if !class.type_vars(i_s).is_empty() && t.has_self_type() {
                             self.add_issue(
-                                node_ref,
+                                type_storage_node_ref,
                                 IssueType::ClassVarCannotContainSelfTypeInGenericClass,
                             );
                             t
@@ -825,7 +846,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     {
                         if !is_initialized && !self.inference.file.is_stub(i_s.db) {
                             self.add_issue(
-                                node_ref,
+                                type_storage_node_ref,
                                 IssueType::FinalNameMustBeInitializedWithValue,
                             );
                         }
@@ -834,7 +855,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             .is_some_and(|class| uses_class_generics(class, &t))
                         {
                             self.add_issue(
-                                node_ref,
+                                type_storage_node_ref,
                                 IssueType::FinalInClassBodyCannotDependOnTypeVariables,
                             );
                             Type::Any(AnyCause::FromError)
@@ -842,16 +863,16 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             t
                         }
                     } else {
-                        self.as_type(TypeContent::Final(t), node_ref)
+                        self.as_type(TypeContent::Final(t), type_storage_node_ref)
                     }
                 }
-                _ => self.as_type(type_, node_ref),
+                _ => self.as_type(type_, type_storage_node_ref),
             },
         };
         if is_implicit_optional {
             type_.make_optional(i_s.db)
         }
-        node_ref.insert_complex(ComplexPoint::TypeInstance(type_), Locality::Todo);
+        type_storage_node_ref.insert_complex(ComplexPoint::TypeInstance(type_), Locality::Todo);
         annotation_node_ref.set_point(Point::new_simple_specific(
             if is_class_var {
                 Specific::AnnotationOrTypeCommentClassVar
@@ -1217,7 +1238,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             SliceOrSimple::Slice(n) => TypeContent::InvalidVariable(InvalidVariableType::Slice),
             SliceOrSimple::Starred(s) => {
                 let tc = self.compute_type(s.starred_expr.expression());
-                self.wrap_in_unpack(tc, slice)
+                TypeContent::Unpacked(self.wrap_in_unpack(tc, slice.as_node_ref()))
             }
         }
     }
@@ -2531,16 +2552,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         }
     }
 
-    fn wrap_in_unpack(
-        &mut self,
-        tc: TypeContent,
-        slice: SliceOrSimple,
-    ) -> TypeContent<'static, 'static> {
-        TypeContent::Unpacked(match tc {
+    fn wrap_in_unpack(&mut self, tc: TypeContent, from: NodeRef) -> TypeOrUnpack {
+        match tc {
             TypeContent::TypeVarTuple(t) => TypeOrUnpack::TypeVarTuple(t),
             TypeContent::Unknown(cause) => TypeOrUnpack::Unknown(cause),
-            t => TypeOrUnpack::Type(self.as_type(t, slice.as_node_ref())),
-        })
+            t => TypeOrUnpack::Type(self.as_type(t, from)),
+        }
     }
 
     fn compute_type_get_item_on_unpack(&mut self, slice_type: SliceType) -> TypeContent<'db, 'db> {
@@ -2548,7 +2565,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let first = iterator.next().unwrap();
         if iterator.count() == 0 {
             let tc = self.compute_slice_type_content(first);
-            self.wrap_in_unpack(tc, first)
+            TypeContent::Unpacked(self.wrap_in_unpack(tc, first.as_node_ref()))
         } else {
             self.add_issue(
                 slice_type.as_node_ref(),
@@ -4040,6 +4057,21 @@ enum TypeCompTupleUnpack {
     ArbitraryLen(Box<Type>),
     FixedLen(Vec<Type>),
     WithUnpack(WithUnpack),
+}
+
+impl TypeCompTupleUnpack {
+    fn as_tuple(self) -> Rc<Tuple> {
+        Tuple::new(match self {
+            Self::TypeVarTuple(tvt) => TupleArgs::WithUnpack(WithUnpack {
+                before: Rc::from([]),
+                unpack: TupleUnpack::TypeVarTuple(tvt),
+                after: Rc::from([]),
+            }),
+            Self::ArbitraryLen(t) => TupleArgs::ArbitraryLen(t),
+            Self::FixedLen(ts) => TupleArgs::FixedLen(ts.into()),
+            Self::WithUnpack(with_unpack) => TupleArgs::WithUnpack(with_unpack),
+        })
+    }
 }
 
 enum TuplePart {
