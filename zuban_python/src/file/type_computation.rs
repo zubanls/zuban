@@ -2162,6 +2162,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     after: Rc::from([]),
                 }))),
             ),
+            TypeContent::SpecialType(SpecialType::Unpack) => {
+                ParamType::Star(StarParamType::ArbitraryLen(
+                    // Creates an Any.
+                    self.as_type(t, NodeRef::new(self.inference.file, index)),
+                ))
+            }
             _ => {
                 ParamType::PositionalOnly(self.as_type(t, NodeRef::new(self.inference.file, index)))
             }

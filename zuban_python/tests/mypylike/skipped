@@ -520,6 +520,7 @@ testTypeVarTupleNotConcreteCallable
 testTypeVarTupleOverloadMatch
 # Unpack fixed length (type_helpers/function.rs:1394)
 testTypeVarTuplePep646TypeVarStarArgsFixedLengthTuple
+testTypeVarTupleNewSyntaxCallables
 # subtyping arbitrary length unpacks
 testVariadicTupleSubtyping
 # TypeVarTuple Callable checked later
@@ -532,8 +533,6 @@ testVariadicClassNewStyleSelf
 testVariadicTypedDict
 # *ts TypeVarTuple syntax
 testTypeVarTupleNewSyntaxGenerics
-testTypeVarTupleNewSyntaxCallables
-testTypeVarTuplePep646CallableInvalidSyntax
 testTypeVarTuplePep646CallableNewSyntax
 
 # import order
