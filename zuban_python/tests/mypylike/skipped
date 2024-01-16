@@ -533,7 +533,6 @@ testVariadicClassNewStyleSelf
 testVariadicTypedDict
 # *ts TypeVarTuple syntax
 testTypeVarTupleNewSyntaxGenerics
-testTypeVarTuplePep646CallableNewSyntax
 
 # import order
 testTypeAliasesToNamedTuple
