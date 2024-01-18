@@ -249,12 +249,9 @@ multiple_lambda_mypy_issue_4226
 # type var backtracking for overloads if variant does not match
 testMatchProtocolAgainstOverloadWithAmbiguity
 # func type var in __init__
-testInvalidNumberOfTypeArgs
 testInheritedConstructor2
-testMapStr
 testVarArgsFunctionSubtyping
 # lambda infer callable after type params after it.
-testMapWithLambdaSpecialCase
 testParamSpecInferredFromLambda
 
 # lambda context recursion
