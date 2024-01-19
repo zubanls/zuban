@@ -43,7 +43,7 @@ struct CheckedTypeRecursion<'a> {
 
 #[derive(Default)]
 pub struct Matcher<'a> {
-    pub(super) type_var_matcher: Option<TypeVarMatcher>,
+    type_var_matcher: Option<TypeVarMatcher>,
     checking_type_recursion: Option<CheckedTypeRecursion<'a>>,
     class: Option<&'a Class<'a>>,
     func_or_callable: Option<FunctionOrCallable<'a>>,
