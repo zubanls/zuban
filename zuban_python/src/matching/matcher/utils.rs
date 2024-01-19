@@ -266,7 +266,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> CalculatedTypeArgs {
-    if matcher.type_var_matcher.is_some() {
+    if matcher.has_type_var_matcher() {
         let add_init_generics = |matcher: &mut _, return_class: &Class| {
             if let Some(t) = func_or_callable.first_self_or_class_annotation(i_s) {
                 // When an __init__ has a self annotation, it's a bit special, because it influences
@@ -281,7 +281,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
                 }
                 for entry in &mut matcher
                     .type_var_matcher
-                    .as_mut()
+                    .first_mut()
                     .unwrap()
                     .calculated_type_vars
                 {

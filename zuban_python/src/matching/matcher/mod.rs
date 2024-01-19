@@ -43,7 +43,7 @@ struct CheckedTypeRecursion<'a> {
 
 #[derive(Default)]
 pub struct Matcher<'a> {
-    type_var_matcher: Option<TypeVarMatcher>,
+    type_var_matcher: Vec<TypeVarMatcher>,
     checking_type_recursion: Option<CheckedTypeRecursion<'a>>,
     class: Option<&'a Class<'a>>,
     func_or_callable: Option<FunctionOrCallable<'a>>,
@@ -63,7 +63,7 @@ impl<'a> Matcher<'a> {
         Self {
             class,
             func_or_callable: Some(func_or_callable),
-            type_var_matcher,
+            type_var_matcher: type_var_matcher.into_iter().collect(),
             replace_self,
             ..Self::default()
         }
@@ -75,10 +75,10 @@ impl<'a> Matcher<'a> {
             Self::default()
         } else {
             Self {
-                type_var_matcher: Some(TypeVarMatcher::new(
+                type_var_matcher: vec![TypeVarMatcher::new(
                     class.node_ref.as_link(),
                     type_var_likes.len(),
-                )),
+                )],
                 ..Self::default()
             }
         }
@@ -89,7 +89,7 @@ impl<'a> Matcher<'a> {
             .then(|| TypeVarMatcher::new(callable.defined_at, callable.type_vars.len()));
         Self {
             class: None,
-            type_var_matcher,
+            type_var_matcher: type_var_matcher.into_iter().collect(),
             func_or_callable: Some(FunctionOrCallable::Callable(Callable::new(callable, None))),
             ..Self::default()
         }
@@ -109,7 +109,7 @@ impl<'a> Matcher<'a> {
         let type_var_matcher = (!type_vars.is_empty())
             .then(|| TypeVarMatcher::new(function.node_ref.as_link(), type_vars.len()));
         Self {
-            type_var_matcher,
+            type_var_matcher: type_var_matcher.into_iter().collect(),
             func_or_callable: Some(FunctionOrCallable::Function(function)),
             replace_self: Some(replace_self),
             ..Self::default()
@@ -126,7 +126,7 @@ impl<'a> Matcher<'a> {
             TypedDictGenerics::Generics(_) => None,
         };
         Self {
-            type_var_matcher,
+            type_var_matcher: type_var_matcher.into_iter().collect(),
             ..Self::default()
         }
     }
@@ -153,12 +153,12 @@ impl<'a> Matcher<'a> {
 
     #[inline]
     pub fn might_have_defined_type_vars(&self) -> bool {
-        self.type_var_matcher.is_some() || self.func_or_callable.is_some()
+        !self.type_var_matcher.is_empty() || self.func_or_callable.is_some()
     }
 
     #[inline]
     pub fn has_type_var_matcher(&self) -> bool {
-        self.type_var_matcher.is_some()
+        !self.type_var_matcher.is_empty()
     }
 
     pub fn is_matching_reverse(&self) -> bool {
@@ -198,7 +198,7 @@ impl<'a> Matcher<'a> {
         value_type: &Type,
         variance: Variance,
     ) -> Match {
-        if let Some(matcher) = self.type_var_matcher.as_mut() {
+        for matcher in &mut self.type_var_matcher {
             if matcher.match_in_definition == t1.in_definition {
                 return matcher.match_or_add_type_var(
                     i_s,
@@ -247,7 +247,7 @@ impl<'a> Matcher<'a> {
         args2: TupleArgs,
         variance: Variance,
     ) -> Match {
-        if let Some(matcher) = self.type_var_matcher.as_mut() {
+        for matcher in &mut self.type_var_matcher {
             if matcher.match_in_definition == tvt.in_definition {
                 return matcher.calculated_type_vars[tvt.index.as_usize()]
                     .match_or_add_type_var_tuple(i_s, args2);
@@ -340,7 +340,7 @@ impl<'a> Matcher<'a> {
                 todo!()
             }
         }
-        let Some(tv_matcher) = self.type_var_matcher.as_mut() else {
+        let Some(tv_matcher) = self.type_var_matcher.first_mut() else {
             return (p2_pre_iterator.next().is_none() && p1 == p2).into()
         };
         if tv_matcher.match_in_definition == p1.in_definition {
@@ -415,7 +415,7 @@ impl<'a> Matcher<'a> {
                 todo!()
             }
         }
-        let Some(tv_matcher) = self.type_var_matcher.as_mut() else {
+        let Some(tv_matcher) = self.type_var_matcher.first_mut() else {
             return Match::new_false()
         };
         if tv_matcher.match_in_definition == p1.in_definition {
@@ -451,7 +451,7 @@ impl<'a> Matcher<'a> {
         on_type_error: Option<OnTypeError<'db, '_>>,
     ) -> SignatureMatch {
         let func_class = self.func_or_callable.and_then(|f| f.class());
-        let param_spec_arg = if let Some(type_var_matcher) = &self.type_var_matcher {
+        let param_spec_arg = if let Some(type_var_matcher) = self.type_var_matcher.first() {
             if type_var_matcher.match_in_definition == usage.in_definition {
                 match &type_var_matcher.calculated_type_vars[usage.index.as_usize()].type_ {
                     BoundKind::ParamSpecArgument(p) => Cow::Borrowed(p),
@@ -531,7 +531,7 @@ impl<'a> Matcher<'a> {
                         }
                     }
                     _ => {
-                        if let Some(type_var_matcher) = self.type_var_matcher.as_ref() {
+                        if let Some(type_var_matcher) = self.type_var_matcher.first() {
                             dbg!(self.class);
                         }
                         todo!("{:?}", last_arg.kind)
@@ -549,7 +549,7 @@ impl<'a> Matcher<'a> {
     ) -> Box<str> {
         // In general this whole function should look very similar to the matches function, since
         // on mismatches this can be run.
-        if let Some(type_var_matcher) = self.type_var_matcher.as_ref() {
+        if let Some(type_var_matcher) = self.type_var_matcher.first() {
             if type_var_matcher.match_in_definition == usage.in_definition() {
                 let current = &type_var_matcher.calculated_type_vars[usage.index().as_usize()];
                 return match &current.type_ {
@@ -589,7 +589,7 @@ impl<'a> Matcher<'a> {
     }
 
     pub fn iter_calculated_type_vars(&mut self) -> std::slice::IterMut<CalculatedTypeVarLike> {
-        if let Some(type_var_matcher) = self.type_var_matcher.as_mut() {
+        if let Some(type_var_matcher) = self.type_var_matcher.first_mut() {
             type_var_matcher.calculated_type_vars.iter_mut()
         } else {
             unreachable!()
@@ -606,7 +606,7 @@ impl<'a> Matcher<'a> {
 
     fn replace_type_var_likes(&self, db: &Database, t: &Type, never_for_unbound: bool) -> Type {
         t.replace_type_var_likes(db, &mut |type_var_like_usage| {
-            if let Some(type_var_matcher) = self.type_var_matcher.as_ref() {
+            for type_var_matcher in &self.type_var_matcher {
                 if type_var_like_usage.in_definition() == type_var_matcher.match_in_definition {
                     let current = &type_var_matcher.calculated_type_vars
                         [type_var_like_usage.index().as_usize()];
@@ -671,7 +671,7 @@ impl<'a> Matcher<'a> {
         type_: &Type,
         cause: AnyCause,
     ) {
-        if let Some(matcher) = self.type_var_matcher.as_mut() {
+        if let Some(matcher) = self.type_var_matcher.first_mut() {
             matcher.set_all_contained_type_vars_to_any(i_s, type_, cause)
         }
     }
@@ -690,7 +690,7 @@ impl<'a> Matcher<'a> {
             type_recursion = tr.previously_checked;
         }
         let mut inner_matcher = Matcher {
-            type_var_matcher: self.type_var_matcher.take(),
+            type_var_matcher: std::mem::take(&mut self.type_var_matcher),
             checking_type_recursion: Some(CheckedTypeRecursion {
                 type1,
                 type2,
@@ -705,12 +705,16 @@ impl<'a> Matcher<'a> {
         };
         let result = callable(&mut inner_matcher);
         // Need to move back, because it was moved previously.
-        self.type_var_matcher = inner_matcher.type_var_matcher.take();
+        self.type_var_matcher = std::mem::take(&mut inner_matcher.type_var_matcher);
         result
     }
 
     pub fn unwrap_calculated_type_args(self) -> Vec<CalculatedTypeVarLike> {
-        self.type_var_matcher.unwrap().calculated_type_vars
+        self.type_var_matcher
+            .into_iter()
+            .next()
+            .unwrap()
+            .calculated_type_vars
     }
 
     pub fn into_generics_list(
@@ -718,8 +722,7 @@ impl<'a> Matcher<'a> {
         db: &Database,
         type_var_likes: &TypeVarLikes,
     ) -> Option<GenericsList> {
-        //self.type_var_matcher.map(|t| t.calculated_type_vars.)
-        self.type_var_matcher.map(|m| {
+        self.type_var_matcher.into_iter().next().map(|m| {
             GenericsList::new_generics(
                 m.calculated_type_vars
                     .into_iter()
