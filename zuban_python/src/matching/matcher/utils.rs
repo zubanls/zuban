@@ -280,7 +280,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
                     todo!()
                 }
                 for entry in &mut matcher
-                    .type_var_matcher
+                    .type_var_matchers
                     .first_mut()
                     .unwrap()
                     .calculated_type_vars
