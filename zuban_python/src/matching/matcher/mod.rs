@@ -57,13 +57,13 @@ impl<'a> Matcher<'a> {
     pub fn new(
         class: Option<&'a Class<'a>>,
         func_or_callable: FunctionOrCallable<'a>,
-        type_var_matcher: Option<TypeVarMatcher>,
+        type_var_matchers: Vec<TypeVarMatcher>,
         replace_self: Option<ReplaceSelf<'a>>,
     ) -> Self {
         Self {
             class,
             func_or_callable: Some(func_or_callable),
-            type_var_matchers: type_var_matcher.into_iter().collect(),
+            type_var_matchers,
             replace_self,
             ..Self::default()
         }

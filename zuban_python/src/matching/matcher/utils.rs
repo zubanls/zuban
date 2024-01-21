@@ -85,20 +85,24 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
     // Function type vars need to be calculated, so annotations are used.
     let func_type_vars = func_or_callable.type_vars(i_s);
 
-    let match_in_definition;
-    let matcher = if has_generics {
-        match_in_definition = func_or_callable.defined_at();
-        get_matcher(
-            Some(class),
-            func_or_callable,
+    let mut match_in_definition = func_or_callable.defined_at();
+    let mut tv_matchers = vec![];
+    if !func_type_vars.is_empty() {
+        tv_matchers.push(TypeVarMatcher::new(
             match_in_definition,
-            None,
-            func_type_vars,
-        )
-    } else {
+            func_type_vars.len(),
+        ));
+    }
+    if !has_generics {
         match_in_definition = class.node_ref.as_link();
-        get_matcher(None, func_or_callable, match_in_definition, None, type_vars)
-    };
+        tv_matchers.push(TypeVarMatcher::new(match_in_definition, type_vars.len()));
+    }
+    let matcher = Matcher::new(
+        has_generics.then_some(class),
+        func_or_callable,
+        tv_matchers,
+        None,
+    );
 
     if has_generics {
         let mut type_arguments = calculate_type_vars(
@@ -248,8 +252,11 @@ fn get_matcher<'a>(
     replace_self: Option<ReplaceSelf<'a>>,
     type_vars: &TypeVarLikes,
 ) -> Matcher<'a> {
-    let matcher =
-        (!type_vars.is_empty()).then(|| TypeVarMatcher::new(match_in_definition, type_vars.len()));
+    let matcher = if type_vars.is_empty() {
+        vec![]
+    } else {
+        vec![TypeVarMatcher::new(match_in_definition, type_vars.len())]
+    };
     Matcher::new(class, func_or_callable, matcher, replace_self)
 }
 
