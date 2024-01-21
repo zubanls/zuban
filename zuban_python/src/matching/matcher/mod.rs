@@ -340,31 +340,32 @@ impl<'a> Matcher<'a> {
                 todo!()
             }
         }
-        let Some(tv_matcher) = self.type_var_matchers.first_mut() else {
-            return (p2_pre_iterator.next().is_none() && p1 == p2).into()
-        };
-        if tv_matcher.match_in_definition == p1.in_definition {
-            let calc = &mut tv_matcher.calculated_type_vars[p1.index.as_usize()];
-            match &mut calc.type_ {
-                BoundKind::ParamSpecArgument(p) => match_params(i_s, matches, p, p2_pre_iterator),
-                BoundKind::Uncalculated { .. } => {
-                    calc.type_ = BoundKind::ParamSpecArgument(ParamSpecArg::new(
-                        CallableParams::WithParamSpec(
-                            p2_pre_iterator.cloned().collect(),
-                            p2.clone(),
-                        ),
-                        type_vars2.map(|type_vars| ParamSpecTypeVars {
-                            type_vars: type_vars.0.clone(),
-                            in_definition: type_vars.1,
-                        }),
-                    ));
-                    matches
-                }
-                _ => unreachable!(),
+
+        for tv_matcher in &mut self.type_var_matchers {
+            if tv_matcher.match_in_definition == p1.in_definition {
+                let calc = &mut tv_matcher.calculated_type_vars[p1.index.as_usize()];
+                return match &mut calc.type_ {
+                    BoundKind::ParamSpecArgument(p) => {
+                        match_params(i_s, matches, p, p2_pre_iterator)
+                    }
+                    BoundKind::Uncalculated { .. } => {
+                        calc.type_ = BoundKind::ParamSpecArgument(ParamSpecArg::new(
+                            CallableParams::WithParamSpec(
+                                p2_pre_iterator.cloned().collect(),
+                                p2.clone(),
+                            ),
+                            type_vars2.map(|type_vars| ParamSpecTypeVars {
+                                type_vars: type_vars.0.clone(),
+                                in_definition: type_vars.1,
+                            }),
+                        ));
+                        matches
+                    }
+                    _ => unreachable!(),
+                };
             }
-        } else {
-            (p2_pre_iterator.next().is_none() && p1 == p2).into()
         }
+        (p2_pre_iterator.next().is_none() && p1 == p2).into()
     }
 
     pub fn match_or_add_param_spec(
@@ -407,6 +408,29 @@ impl<'a> Matcher<'a> {
             CallableParams::Any(_) => matches,
             CallableParams::WithParamSpec(_, _) => todo!(),
         };
+        for tv_matcher in &mut self.type_var_matchers {
+            if tv_matcher.match_in_definition == p1.in_definition {
+                let calc = &mut tv_matcher.calculated_type_vars[p1.index.as_usize()];
+                return match &mut calc.type_ {
+                    BoundKind::ParamSpecArgument(p) => {
+                        match_params(i_s, matches, &p.params, params2_iterator)
+                    }
+                    BoundKind::Uncalculated { .. } => {
+                        calc.type_ = BoundKind::ParamSpecArgument(ParamSpecArg::new(
+                            CallableParams::Simple(params2_iterator.cloned().collect()),
+                            type_vars2.map(|type_vars| ParamSpecTypeVars {
+                                type_vars: type_vars.0.clone(),
+                                in_definition: type_vars.1,
+                            }),
+                        ));
+                        matches
+                    }
+                    _ => unreachable!(),
+                };
+            } else {
+                todo!()
+            }
+        }
         if let Some(class) = self.class {
             if class.node_ref.as_link() == p1.in_definition {
                 let usage = class.generics().nth_param_spec_usage(i_s.db, p1);
@@ -415,30 +439,7 @@ impl<'a> Matcher<'a> {
                 todo!()
             }
         }
-        let Some(tv_matcher) = self.type_var_matchers.first_mut() else {
-            return Match::new_false()
-        };
-        if tv_matcher.match_in_definition == p1.in_definition {
-            let calc = &mut tv_matcher.calculated_type_vars[p1.index.as_usize()];
-            match &mut calc.type_ {
-                BoundKind::ParamSpecArgument(p) => {
-                    match_params(i_s, matches, &p.params, params2_iterator)
-                }
-                BoundKind::Uncalculated { .. } => {
-                    calc.type_ = BoundKind::ParamSpecArgument(ParamSpecArg::new(
-                        CallableParams::Simple(params2_iterator.cloned().collect()),
-                        type_vars2.map(|type_vars| ParamSpecTypeVars {
-                            type_vars: type_vars.0.clone(),
-                            in_definition: type_vars.1,
-                        }),
-                    ));
-                    matches
-                }
-                _ => unreachable!(),
-            }
-        } else {
-            todo!()
-        }
+        Match::new_false()
     }
 
     pub(crate) fn match_param_spec_arguments<'db, 'b, 'c>(

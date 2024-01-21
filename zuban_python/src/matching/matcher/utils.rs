@@ -97,27 +97,26 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
         match_in_definition = class.node_ref.as_link();
         tv_matchers.push(TypeVarMatcher::new(match_in_definition, type_vars.len()));
     }
-    let matcher = Matcher::new(
-        has_generics.then_some(class),
-        func_or_callable,
-        tv_matchers,
-        None,
-    );
+    let matcher = Matcher::new(Some(class), func_or_callable, tv_matchers, None);
 
+    let mut type_arguments = calculate_type_vars(
+        i_s,
+        matcher,
+        func_or_callable,
+        Some(class),
+        args,
+        add_issue,
+        true,
+        if has_generics {
+            func_type_vars
+        } else {
+            type_vars
+        },
+        match_in_definition,
+        result_context,
+        on_type_error,
+    );
     if has_generics {
-        let mut type_arguments = calculate_type_vars(
-            i_s,
-            matcher,
-            func_or_callable,
-            None,
-            args,
-            add_issue,
-            true,
-            func_type_vars,
-            match_in_definition,
-            result_context,
-            on_type_error,
-        );
         type_arguments.type_arguments = match class.generics_as_list(i_s.db) {
             ClassGenerics::List(generics_list) => Some(generics_list),
             ClassGenerics::ExpressionWithClassType(_) => todo!(),
@@ -125,22 +124,8 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
             ClassGenerics::None => None,
             ClassGenerics::NotDefinedYet => unreachable!(),
         };
-        type_arguments
-    } else {
-        calculate_type_vars(
-            i_s,
-            matcher,
-            func_or_callable,
-            Some(class),
-            args,
-            add_issue,
-            true,
-            type_vars,
-            match_in_definition,
-            result_context,
-            on_type_error,
-        )
     }
+    type_arguments
 }
 
 #[derive(Debug)]
