@@ -196,6 +196,7 @@ testTypeVarTuplePep646TypeVarStarArgs
 testRegularGenericDecoratorOverload
 testParamSpecDecoratorOverload
 # --new-type-inference
+nested_late_bound_type_vars
 testHomogeneousGenericTupleUnpackInferenceNoCrash2
 testParamSpecDecoratorAppliedToGeneric
 testParamSpecArgumentParamInferenceGeneric
