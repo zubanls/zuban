@@ -192,7 +192,6 @@ testEnumNameWorkCorrectlyOn311
 # current_function in i_s is wrong.
 testTypeVarTuplePep646TypeVarStarArgs
 
-testGenericFunctionSubtypingWithUnions
 testVariadicStarArgsCallNoCrash
 # Callable remapping over overload leads to a mapped overload
 testRegularGenericDecoratorOverload
@@ -244,6 +243,7 @@ testGenericInferenceWithDataclass
 testGenericInferenceWithItertools
 param_spec_with_generic_class
 # type var backtracking
+testGenericFunctionSubtypingWithUnions
 testUnionInference
 testCrashOnComplexCheckWithNamedTupleNext
 unite_type_vars_mypy_issue_5874

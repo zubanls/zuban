@@ -421,7 +421,6 @@ fn calculate_type_vars<'db: 'a, 'a>(
     let type_arguments = matcher.into_generics_list(i_s.db, type_vars);
     if cfg!(feature = "zuban_debug") {
         if let Some(type_arguments) = &type_arguments {
-            let callable_description: String;
             debug!(
                 "Calculated type vars for {}: [{}]",
                 func_or_callable

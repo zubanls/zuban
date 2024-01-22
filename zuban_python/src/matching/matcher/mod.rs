@@ -138,9 +138,19 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    pub fn remove_reverse_callable_matcher(&mut self, c: &CallableContent) {
+    pub fn remove_reverse_callable_matcher(&mut self, db: &Database, c: &CallableContent) {
         if !c.type_vars.is_empty() {
-            self.type_var_matchers.pop();
+            let Some(matcher) = self.type_var_matchers.pop() else {
+                // TODO why does this ever happen?
+                return
+            };
+            if cfg!(feature = "zuban_debug") {
+                let generics = matcher.into_generics_list(db, &c.type_vars);
+                debug!(
+                    "Type vars for reverse callable matching [{}]",
+                    generics.format(&FormatData::new_short(db)),
+                );
+            }
         }
     }
 
@@ -769,15 +779,10 @@ impl<'a> Matcher<'a> {
         db: &Database,
         type_var_likes: &TypeVarLikes,
     ) -> Option<GenericsList> {
-        self.type_var_matchers.into_iter().next().map(|m| {
-            GenericsList::new_generics(
-                m.calculated_type_vars
-                    .into_iter()
-                    .zip(type_var_likes.iter())
-                    .map(|(c, type_var_like)| c.into_generic_item(db, type_var_like))
-                    .collect(),
-            )
-        })
+        self.type_var_matchers
+            .into_iter()
+            .next()
+            .map(|m| m.into_generics_list(db, type_var_likes))
     }
 }
 

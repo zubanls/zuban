@@ -13,8 +13,8 @@ use crate::{
     matching::Param,
     type_::{
         common_base_type_of_type_var_tuple_with_items, AnyCause, CallableParams, GenericItem,
-        ParamSpecArg, ParamType, TupleArgs, Type, TypeArgs, TypeVar, TypeVarKind, TypeVarLike,
-        TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
+        GenericsList, ParamSpecArg, ParamType, TupleArgs, Type, TypeArgs, TypeVar, TypeVarKind,
+        TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
     },
     type_helpers::{Callable, Class, Function},
 };
@@ -305,6 +305,16 @@ impl TypeVarMatcher {
                 m
             }
         }
+    }
+
+    pub fn into_generics_list(self, db: &Database, type_var_likes: &TypeVarLikes) -> GenericsList {
+        GenericsList::new_generics(
+            self.calculated_type_vars
+                .into_iter()
+                .zip(type_var_likes.iter())
+                .map(|(c, type_var_like)| c.into_generic_item(db, type_var_like))
+                .collect(),
+        )
     }
 }
 
