@@ -445,7 +445,7 @@ impl Type {
             Type::None if !i_s.db.project.flags.strict_optional => return Match::new_true(),
             Type::TypeVar(t2) => {
                 if matcher.is_matching_reverse() {
-                    return matcher.match_or_add_type_var(i_s, t2, self, variance.invert());
+                    return matcher.match_or_add_type_var_reverse(i_s, t2, self, variance);
                 }
                 if variance == Variance::Covariant {
                     match &t2.type_var.kind {
@@ -532,7 +532,7 @@ impl Type {
     ) -> Match {
         match value_type {
             Type::TypeVar(type_var2) if matcher.is_matching_reverse() => {
-                matcher.match_or_add_type_var(i_s, type_var2, self, variance.invert())
+                matcher.match_or_add_type_var_reverse(i_s, type_var2, self, variance)
             }
             Type::Union(u2) => match variance {
                 Variance::Covariant => {

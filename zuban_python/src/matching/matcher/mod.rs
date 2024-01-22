@@ -203,16 +203,20 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    pub fn match_or_add_type_var(
+    fn match_or_add_type_var_internal(
         &mut self,
         i_s: &InferenceState,
         t1: &TypeVarUsage,
         value_type: &Type,
         variance: Variance,
+        from_reverse: bool,
     ) -> Match {
-        for matcher in &mut self.type_var_matchers {
-            if matcher.match_in_definition == t1.in_definition {
-                return matcher.match_or_add_type_var(
+        let normal_side_matching = from_reverse == self.match_reverse;
+        for tv_matcher in &mut self.type_var_matchers {
+            if tv_matcher.match_in_definition == t1.in_definition
+                && tv_matcher.match_reverse != normal_side_matching
+            {
+                return tv_matcher.match_or_add_type_var(
                     i_s,
                     t1,
                     t1.type_var.as_ref(),
@@ -221,28 +225,30 @@ impl<'a> Matcher<'a> {
                 );
             }
         }
-        if let Some(class) = self.class {
-            if class.node_ref.as_link() == t1.in_definition {
-                let g = class
-                    .generics()
-                    .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(Cow::Borrowed(t1)))
-                    .expect_type_argument();
-                return g.simple_matches(i_s, value_type, variance);
+        if normal_side_matching {
+            if let Some(class) = self.class {
+                if class.node_ref.as_link() == t1.in_definition {
+                    let g = class
+                        .generics()
+                        .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(Cow::Borrowed(t1)))
+                        .expect_type_argument();
+                    return g.simple_matches(i_s, value_type, variance);
+                }
             }
-        }
-        // If we're in a class context, we must also be in a method.
-        if let Some(func_class) = self.func_or_callable.as_ref().and_then(|f| f.class()) {
-            if t1.in_definition == func_class.node_ref.as_link() {
-                let g = func_class
-                    .generics()
-                    .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(Cow::Borrowed(t1)))
-                    .expect_type_argument();
-                return g.matches(i_s, self, value_type, variance);
+            // If we're in a class context, we must also be in a method.
+            if let Some(func_class) = self.func_or_callable.as_ref().and_then(|f| f.class()) {
+                if t1.in_definition == func_class.node_ref.as_link() {
+                    let g = func_class
+                        .generics()
+                        .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(Cow::Borrowed(t1)))
+                        .expect_type_argument();
+                    return g.matches(i_s, self, value_type, variance);
+                }
+                // The case that the if does not hit happens e.g. for
+                // testInvalidNumberOfTypeArgs:
+                // class C:  # Forgot to add type params here
+                //     def __init__(self, t: T) -> None: pass
             }
-            // The case that the if does not hit happens e.g. for
-            // testInvalidNumberOfTypeArgs:
-            // class C:  # Forgot to add type params here
-            //     def __init__(self, t: T) -> None: pass
         }
         match value_type {
             Type::TypeVar(t2) => {
@@ -250,6 +256,26 @@ impl<'a> Matcher<'a> {
             }
             _ => Match::new_false(),
         }
+    }
+
+    pub fn match_or_add_type_var(
+        &mut self,
+        i_s: &InferenceState,
+        t1: &TypeVarUsage,
+        other: &Type,
+        variance: Variance,
+    ) -> Match {
+        self.match_or_add_type_var_internal(i_s, t1, other, variance, false)
+    }
+
+    pub fn match_or_add_type_var_reverse(
+        &mut self,
+        i_s: &InferenceState,
+        type_var_usage: &TypeVarUsage,
+        other: &Type,
+        variance: Variance,
+    ) -> Match {
+        self.match_or_add_type_var_internal(i_s, type_var_usage, other, variance.invert(), true)
     }
 
     pub fn match_or_add_type_var_tuple(
