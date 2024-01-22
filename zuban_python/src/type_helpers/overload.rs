@@ -408,7 +408,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                                 result: callable
                                     .content
                                     .return_type
-                                    .execute_and_resolve_type_vars(
+                                    .resolve_type_vars(
                                         i_s,
                                         &calculated_type_args,
                                         self.class.as_ref(),

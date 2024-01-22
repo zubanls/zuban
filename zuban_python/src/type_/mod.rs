@@ -1156,27 +1156,14 @@ impl Type {
         }
     }
 
-    pub fn execute_and_resolve_type_vars(
+    pub fn resolve_type_vars(
         &self,
         i_s: &InferenceState,
         calculated_type_args: &CalculatedTypeArgs,
         class: Option<&Class>,
         replace_self_type: ReplaceSelf,
     ) -> Inferred {
-        let type_ =
-            self.internal_resolve_type_vars(i_s, calculated_type_args, class, replace_self_type);
-        debug!("Resolved type vars: {}", type_.format_short(i_s.db));
-        Inferred::from_type(type_)
-    }
-
-    fn internal_resolve_type_vars(
-        &self,
-        i_s: &InferenceState,
-        calculated_type_args: &CalculatedTypeArgs,
-        class: Option<&Class>,
-        replace_self_type: ReplaceSelf,
-    ) -> Type {
-        self.replace_type_var_likes_and_self(
+        let type_ = self.replace_type_var_likes_and_self(
             i_s.db,
             &mut |usage| {
                 if let Some(c) = class {
@@ -1187,7 +1174,9 @@ impl Type {
                 calculated_type_args.lookup_type_var_usage(i_s, usage)
             },
             replace_self_type,
-        )
+        );
+        debug!("Resolved type vars: {}", type_.format_short(i_s.db));
+        Inferred::from_type(type_)
     }
 
     pub fn on_any_typed_dict(
