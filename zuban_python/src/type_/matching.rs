@@ -107,13 +107,7 @@ impl Type {
                 Type::Type(t2) => t1.matches(i_s, matcher, t2, variance).similar_if_false(),
                 _ => Match::new_false(),
             },
-            Type::TypeVar(t1) => {
-                if matcher.is_matching_reverse() {
-                    Match::new_false()
-                } else {
-                    matcher.match_or_add_type_var(i_s, t1, value_type, variance)
-                }
-            }
+            Type::TypeVar(t1) => matcher.match_or_add_type_var(i_s, t1, value_type, variance),
             Type::Callable(c1) => {
                 Self::matches_callable_against_arbitrary(i_s, matcher, c1, value_type, variance)
             }
@@ -444,8 +438,9 @@ impl Type {
             }
             Type::None if !i_s.db.project.flags.strict_optional => return Match::new_true(),
             Type::TypeVar(t2) => {
-                if matcher.is_matching_reverse() {
-                    return matcher.match_or_add_type_var_reverse(i_s, t2, self, variance);
+                m = matcher.match_or_add_type_var_reverse(i_s, t2, self, variance);
+                if m.bool() {
+                    return m;
                 }
                 if variance == Variance::Covariant {
                     match &t2.type_var.kind {
@@ -697,12 +692,6 @@ impl Type {
         c2: &CallableContent,
     ) -> Match {
         matcher.add_reverse_callable_matcher(c2);
-        if !matcher.has_type_var_matcher() {
-            if !c2.type_vars.is_empty() {
-                let mut matcher = Matcher::new_reverse_callable_matcher(c2);
-                return Self::matches_callable(i_s, &mut matcher, c1, c2);
-            }
-        }
         let result = c1
             .return_type
             .is_super_type_of(i_s, matcher, &c2.return_type)

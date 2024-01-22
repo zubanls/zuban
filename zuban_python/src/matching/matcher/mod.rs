@@ -133,13 +133,14 @@ impl<'a> Matcher<'a> {
 
     pub fn add_reverse_callable_matcher(&mut self, c: &CallableContent) {
         if !c.type_vars.is_empty() {
-            //self.type_var_matchers.push(TypeVarMatcher::new_reverse(c.defined_at, c.type_vars.len()))
+            self.type_var_matchers
+                .push(TypeVarMatcher::new_reverse(c.defined_at, c.type_vars.len()))
         }
     }
 
     pub fn remove_reverse_callable_matcher(&mut self, c: &CallableContent) {
         if !c.type_vars.is_empty() {
-            //self.type_var_matchers.pop();
+            self.type_var_matchers.pop();
         }
     }
 
