@@ -991,6 +991,7 @@ impl<'db> Inference<'db, '_, '_> {
         let matcher = &mut Matcher::new_reverse_callable_matcher(&implementation.callable);
         let implementation_result = &implementation.callable.return_type;
         let item_result = &overload_item.return_type;
+        // This is bivariant matching. This is how Mypy allows subtyping.
         if !item_result
             .is_sub_type_of(self.i_s, matcher, implementation_result)
             .bool()
