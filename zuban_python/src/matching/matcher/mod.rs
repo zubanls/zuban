@@ -204,26 +204,26 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    fn match_or_add_type_var_internal(
+    fn match_or_add_type_var_if_responsible(
         &mut self,
         i_s: &InferenceState,
         t1: &TypeVarUsage,
         value_type: &Type,
         variance: Variance,
         from_reverse: bool,
-    ) -> Match {
+    ) -> Option<Match> {
         let normal_side_matching = from_reverse == self.match_reverse;
         for tv_matcher in &mut self.type_var_matchers {
             if tv_matcher.match_in_definition == t1.in_definition
                 && tv_matcher.match_reverse != normal_side_matching
             {
-                return tv_matcher.match_or_add_type_var(
+                return Some(tv_matcher.match_or_add_type_var(
                     i_s,
                     t1,
                     t1.type_var.as_ref(),
                     value_type,
                     variance,
-                );
+                ));
             }
         }
         if normal_side_matching {
@@ -233,7 +233,7 @@ impl<'a> Matcher<'a> {
                         .generics()
                         .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(Cow::Borrowed(t1)))
                         .expect_type_argument();
-                    return g.simple_matches(i_s, value_type, variance);
+                    return Some(g.simple_matches(i_s, value_type, variance));
                 }
             }
             // If we're in a class context, we must also be in a method.
@@ -243,7 +243,7 @@ impl<'a> Matcher<'a> {
                         .generics()
                         .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(Cow::Borrowed(t1)))
                         .expect_type_argument();
-                    return g.matches(i_s, self, value_type, variance);
+                    return Some(g.matches(i_s, self, value_type, variance));
                 }
                 // The case that the if does not hit happens e.g. for
                 // testInvalidNumberOfTypeArgs:
@@ -251,12 +251,7 @@ impl<'a> Matcher<'a> {
                 //     def __init__(self, t: T) -> None: pass
             }
         }
-        match value_type {
-            Type::TypeVar(t2) => {
-                (t1.index == t2.index && t1.in_definition == t2.in_definition).into()
-            }
-            _ => Match::new_false(),
-        }
+        None
     }
 
     pub fn match_or_add_type_var(
@@ -266,17 +261,29 @@ impl<'a> Matcher<'a> {
         other: &Type,
         variance: Variance,
     ) -> Match {
-        self.match_or_add_type_var_internal(i_s, t1, other, variance, false)
+        self.match_or_add_type_var_if_responsible(i_s, t1, other, variance, false)
+            .unwrap_or_else(|| match other {
+                Type::TypeVar(t2) => {
+                    (t1.index == t2.index && t1.in_definition == t2.in_definition).into()
+                }
+                _ => Match::new_false(),
+            })
     }
 
-    pub fn match_or_add_type_var_reverse(
+    pub fn match_or_add_type_var_reverse_if_responsible(
         &mut self,
         i_s: &InferenceState,
         type_var_usage: &TypeVarUsage,
         other: &Type,
         variance: Variance,
-    ) -> Match {
-        self.match_or_add_type_var_internal(i_s, type_var_usage, other, variance.invert(), true)
+    ) -> Option<Match> {
+        self.match_or_add_type_var_if_responsible(
+            i_s,
+            type_var_usage,
+            other,
+            variance.invert(),
+            true,
+        )
     }
 
     pub fn match_or_add_type_var_tuple(
