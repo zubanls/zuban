@@ -696,14 +696,15 @@ impl Type {
         c1: &CallableContent,
         c2: &CallableContent,
     ) -> Match {
-        // TODO This if is weird.
+        matcher.add_reverse_callable_matcher(c2);
         if !matcher.has_type_var_matcher() {
             if !c2.type_vars.is_empty() {
                 let mut matcher = Matcher::new_reverse_callable_matcher(c2);
                 return Self::matches_callable(i_s, &mut matcher, c1, c2);
             }
         }
-        c1.return_type
+        let result = c1
+            .return_type
             .is_super_type_of(i_s, matcher, &c2.return_type)
             & matches_params(
                 i_s,
@@ -717,7 +718,9 @@ impl Type {
             .or(|| {
                 // Mypy treats *args/**kwargs special
                 c1.params.is_any_args_and_kwargs().into()
-            })
+            });
+        matcher.remove_reverse_callable_matcher(c1);
+        result
     }
 
     fn matches_overload(
