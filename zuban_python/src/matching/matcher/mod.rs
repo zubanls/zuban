@@ -264,15 +264,23 @@ impl<'a> Matcher<'a> {
     pub fn match_or_add_type_var(
         &mut self,
         i_s: &InferenceState,
-        t1: &TypeVarUsage,
+        tv1: &TypeVarUsage,
         other: &Type,
         variance: Variance,
     ) -> Match {
-        self.match_or_add_type_var_if_responsible(i_s, t1, other, variance, false)
+        self.match_or_add_type_var_if_responsible(i_s, tv1, other, variance, false)
             .unwrap_or_else(|| match other {
-                Type::TypeVar(t2) => {
-                    (t1.index == t2.index && t1.in_definition == t2.in_definition).into()
-                }
+                Type::TypeVar(tv2) => self
+                    .match_or_add_type_var_if_responsible(
+                        i_s,
+                        tv2,
+                        &Type::TypeVar(tv1.clone()),
+                        variance.invert(),
+                        true,
+                    )
+                    .unwrap_or_else(|| {
+                        (tv1.index == tv2.index && tv1.in_definition == tv2.in_definition).into()
+                    }),
                 _ => Match::new_false(),
             })
     }

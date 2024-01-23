@@ -192,7 +192,6 @@ testEnumNameWorkCorrectlyOn311
 # current_function in i_s is wrong.
 testTypeVarTuplePep646TypeVarStarArgs
 
-testVariadicStarArgsCallNoCrash
 # Callable remapping over overload leads to a mapped overload
 testRegularGenericDecoratorOverload
 testParamSpecDecoratorOverload
