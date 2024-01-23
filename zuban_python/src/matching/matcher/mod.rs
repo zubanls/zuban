@@ -140,10 +140,7 @@ impl<'a> Matcher<'a> {
 
     pub fn remove_reverse_callable_matcher(&mut self, db: &Database, c: &CallableContent) {
         if !c.type_vars.is_empty() {
-            let Some(matcher) = self.type_var_matchers.pop() else {
-                // TODO why does this ever happen?
-                return
-            };
+            let matcher = self.type_var_matchers.pop().unwrap();
             if cfg!(feature = "zuban_debug") {
                 let generics = matcher.into_generics_list(db, &c.type_vars);
                 debug!(

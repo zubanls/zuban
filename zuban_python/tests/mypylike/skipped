@@ -197,7 +197,6 @@ testVariadicStarArgsCallNoCrash
 testRegularGenericDecoratorOverload
 testParamSpecDecoratorOverload
 # --new-type-inference
-testHomogeneousGenericTupleUnpackInferenceNoCrash2
 testParamSpecDecoratorAppliedToGeneric
 testParamSpecArgumentParamInferenceGeneric
 testParamSpecNestedApplyNoCrash
