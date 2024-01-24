@@ -216,11 +216,12 @@ impl CalculatedTypeVarLike {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TypeVarMatcher {
     pub(super) calculated_type_vars: Vec<CalculatedTypeVarLike>,
     pub(super) match_in_definition: PointLink,
     pub match_reverse: bool,
+    pub enabled: bool,
 }
 
 impl TypeVarMatcher {
@@ -245,6 +246,7 @@ impl TypeVarMatcher {
             calculated_type_vars,
             match_in_definition,
             match_reverse,
+            enabled: true,
         }
     }
 
@@ -316,6 +318,12 @@ impl TypeVarMatcher {
                 .map(|(c, type_var_like)| c.into_generic_item(db, type_var_like))
                 .collect(),
         )
+    }
+
+    pub fn has_unresolved_transitive_constraints(&self) -> bool {
+        self.calculated_type_vars
+            .iter()
+            .any(|calculated| !calculated.unresolved_transitive_constraints.is_empty())
     }
 }
 

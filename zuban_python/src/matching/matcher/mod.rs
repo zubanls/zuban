@@ -140,14 +140,20 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    pub fn remove_reverse_callable_matcher(&mut self, db: &Database, c: &CallableContent) {
+    pub fn disable_reverse_callable_matcher(&mut self, db: &Database, c: &CallableContent) {
         if !c.type_vars.is_empty() {
-            let matcher = self.type_var_matchers.pop().unwrap();
+            let matcher = self.type_var_matchers.last_mut().unwrap();
+            matcher.enabled = false;
             if cfg!(feature = "zuban_debug") {
-                let generics = matcher.into_generics_list(db, &c.type_vars);
+                let generics = matcher.clone().into_generics_list(db, &c.type_vars);
                 debug!(
-                    "Type vars for reverse callable matching [{}]",
+                    "Type vars for reverse callable matching [{}]{}",
                     generics.format(&FormatData::new_short(db)),
+                    if matcher.has_unresolved_transitive_constraints() {
+                        " (has unresolved transitive constraints)"
+                    } else {
+                        ""
+                    }
                 );
             }
         }
@@ -223,7 +229,12 @@ impl<'a> Matcher<'a> {
     ) -> Option<Match> {
         let normal_side_matching = from_reverse == self.match_reverse;
         let type_var_matchers_count = self.type_var_matchers.len();
-        for (i, tv_matcher) in self.type_var_matchers.iter().enumerate() {
+        for (i, tv_matcher) in self
+            .type_var_matchers
+            .iter()
+            .filter(|tvm| tvm.enabled)
+            .enumerate()
+        {
             if tv_matcher.match_in_definition == t1.in_definition
                 && tv_matcher.match_reverse != normal_side_matching
             {
@@ -353,9 +364,15 @@ impl<'a> Matcher<'a> {
         args2: TupleArgs,
         variance: Variance,
     ) -> Match {
-        for matcher in &mut self.type_var_matchers {
-            if matcher.match_in_definition == tvt.in_definition {
-                return matcher.calculated_type_vars[tvt.index.as_usize()]
+        for (i, tv_matcher) in self
+            .type_var_matchers
+            .iter()
+            .filter(|tvm| tvm.enabled)
+            .enumerate()
+        {
+            if tv_matcher.match_in_definition == tvt.in_definition {
+                let tv_matcher = &mut self.type_var_matchers[i];
+                return tv_matcher.calculated_type_vars[tvt.index.as_usize()]
                     .match_or_add_type_var_tuple(i_s, args2);
             }
         }
@@ -447,8 +464,14 @@ impl<'a> Matcher<'a> {
             }
         }
 
-        for tv_matcher in &mut self.type_var_matchers {
+        for (i, tv_matcher) in self
+            .type_var_matchers
+            .iter()
+            .filter(|tvm| tvm.enabled)
+            .enumerate()
+        {
             if tv_matcher.match_in_definition == p1.in_definition {
+                let tv_matcher = &mut self.type_var_matchers[i];
                 let calc = &mut tv_matcher.calculated_type_vars[p1.index.as_usize()];
                 return match &mut calc.type_ {
                     BoundKind::ParamSpecArgument(p) => {
@@ -514,8 +537,14 @@ impl<'a> Matcher<'a> {
             CallableParams::Any(_) => matches,
             CallableParams::WithParamSpec(_, _) => todo!(),
         };
-        for tv_matcher in &mut self.type_var_matchers {
+        for (i, tv_matcher) in self
+            .type_var_matchers
+            .iter()
+            .filter(|tvm| tvm.enabled)
+            .enumerate()
+        {
             if tv_matcher.match_in_definition == p1.in_definition {
+                let tv_matcher = &mut self.type_var_matchers[i];
                 let calc = &mut tv_matcher.calculated_type_vars[p1.index.as_usize()];
                 return match &mut calc.type_ {
                     BoundKind::ParamSpecArgument(p) => {
@@ -713,7 +742,7 @@ impl<'a> Matcher<'a> {
 
     fn replace_type_var_likes(&self, db: &Database, t: &Type, never_for_unbound: bool) -> Type {
         t.replace_type_var_likes(db, &mut |type_var_like_usage| {
-            for type_var_matcher in &self.type_var_matchers {
+            for type_var_matcher in self.type_var_matchers.iter().filter(|tvm| tvm.enabled) {
                 if type_var_like_usage.in_definition() == type_var_matcher.match_in_definition {
                     let current = &type_var_matcher.calculated_type_vars
                         [type_var_like_usage.index().as_usize()];

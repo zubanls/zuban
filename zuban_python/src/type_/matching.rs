@@ -709,7 +709,7 @@ impl Type {
                 // Mypy treats *args/**kwargs special
                 c1.params.is_any_args_and_kwargs().into()
             });
-        matcher.remove_reverse_callable_matcher(i_s.db, c2);
+        matcher.disable_reverse_callable_matcher(i_s.db, c2);
         result
     }
 
