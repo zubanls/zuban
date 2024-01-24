@@ -14,6 +14,8 @@ pub(crate) use utils::{
     CalculatedTypeArgs,
 };
 
+use self::bound::TypeVarBound;
+
 use super::{
     params::{matches_simple_params, InferrableParamIterator},
     FormatData, Match, OnTypeError, ParamsStyle, ResultContext, SignatureMatch,
@@ -220,10 +222,35 @@ impl<'a> Matcher<'a> {
         from_reverse: bool,
     ) -> Option<Match> {
         let normal_side_matching = from_reverse == self.match_reverse;
-        for tv_matcher in &mut self.type_var_matchers {
+        let type_var_matchers_count = self.type_var_matchers.len();
+        for (i, tv_matcher) in self.type_var_matchers.iter().enumerate() {
             if tv_matcher.match_in_definition == t1.in_definition
                 && tv_matcher.match_reverse != normal_side_matching
             {
+                if type_var_matchers_count > 1 {
+                    let mut has_unresolved_constraint = false;
+                    value_type.search_type_vars(&mut |tv| {
+                        for tv_matcher in &self.type_var_matchers {
+                            if tv_matcher.match_in_definition == tv.in_definition()
+                                && tv_matcher.match_reverse == normal_side_matching
+                            {
+                                has_unresolved_constraint = true;
+                            }
+                        }
+                    });
+                    if has_unresolved_constraint {
+                        let tv_matcher = &mut self.type_var_matchers[i];
+                        tv_matcher.calculated_type_vars[t1.index.as_usize()]
+                            .unresolved_transitive_constraints
+                            .push(BoundKind::TypeVar(TypeVarBound::new(
+                                value_type.clone(),
+                                variance,
+                                t1.type_var.as_ref(),
+                            )));
+                        return Some(Match::new_true());
+                    }
+                }
+                let tv_matcher = &mut self.type_var_matchers[i];
                 return Some(tv_matcher.match_or_add_type_var(
                     i_s,
                     t1,
@@ -268,6 +295,24 @@ impl<'a> Matcher<'a> {
         other: &Type,
         variance: Variance,
     ) -> Match {
+        /*
+        let other_side = match other {
+            Type::TypeVar(tv2) => self
+                .match_or_add_type_var_if_responsible(
+                    i_s,
+                    tv2,
+                    &Type::TypeVar(tv1.clone()),
+                    variance.invert(),
+                    true,
+                )
+                .unwrap_or_else(|| {
+                    (tv1.index == tv2.index && tv1.in_definition == tv2.in_definition).into()
+                }),
+            _ => Match::new_false(),
+        };
+        let m = self.match_or_add_type_var_if_responsible(i_s, tv1, other, variance, false);
+        m.unwrap_or(other_side)
+        */
         self.match_or_add_type_var_if_responsible(i_s, tv1, other, variance, false)
             .unwrap_or_else(|| match other {
                 Type::TypeVar(tv2) => self
