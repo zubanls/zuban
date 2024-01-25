@@ -137,15 +137,6 @@ pub struct CalculatedTypeArgs {
 }
 
 impl CalculatedTypeArgs {
-    pub fn type_arguments_into_class_generics(self) -> ClassGenerics {
-        match self.type_arguments {
-            Some(g) => ClassGenerics::List(g),
-            None => ClassGenerics::None,
-        }
-    }
-}
-
-impl CalculatedTypeArgs {
     fn lookup_type_var_usage(&self, i_s: &InferenceState, usage: TypeVarLikeUsage) -> GenericItem {
         if self.in_definition == usage.in_definition() {
             return if let Some(fm) = &self.type_arguments {
@@ -157,6 +148,13 @@ impl CalculatedTypeArgs {
             };
         }
         usage.into_generic_item()
+    }
+
+    pub fn type_arguments_into_class_generics(self) -> ClassGenerics {
+        match self.type_arguments {
+            Some(g) => ClassGenerics::List(g),
+            None => ClassGenerics::None,
+        }
     }
 
     pub fn as_return_type(
