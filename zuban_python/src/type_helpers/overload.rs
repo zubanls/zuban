@@ -80,7 +80,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         };
         let mut first_arbitrary_length_not_handled = None;
         let mut first_similar = None;
-        let mut multi_any_match: Option<(_, _, Box<_>)> = None;
+        let mut multi_any_match: Option<(_, Box<_>)> = None;
         let mut had_error_in_func = None;
         let points_backup = args.points_backup();
         for (i, callable) in self.overload.iter_functions().enumerate() {
@@ -103,8 +103,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         return OverloadResult::NotFound;
                     } else if !arbitrary_length_handled {
                         if first_arbitrary_length_not_handled.is_none() {
-                            first_arbitrary_length_not_handled =
-                                Some((calculated_type_args.type_arguments, callable));
+                            first_arbitrary_length_not_handled = Some(callable);
                         }
                     } else {
                         debug!(
@@ -120,7 +119,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 SignatureMatch::TrueWithAny { argument_indices } if !had_error => {
                     // TODO there could be three matches or more?
                     // TODO maybe merge list[any] and list[int]
-                    if let Some((_, _, ref old_indices)) = multi_any_match {
+                    if let Some((_, ref old_indices)) = multi_any_match {
                         // If multiple signatures match because of Any, we should just return
                         // without an error message, there is no clear choice, i.e. it's ambiguous,
                         // but there should also not be an error.
@@ -146,11 +145,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             return OverloadResult::NotFound;
                         }
                     } else {
-                        multi_any_match = Some((
-                            calculated_type_args.type_arguments,
-                            callable,
-                            argument_indices,
-                        ))
+                        multi_any_match = Some((callable, argument_indices))
                     }
                 }
                 SignatureMatch::False { similar: true }
@@ -164,7 +159,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             }
             args.reset_points_from_backup(&points_backup);
         }
-        if let Some((type_arguments, callable, _)) = multi_any_match {
+        if let Some((callable, _)) = multi_any_match {
             debug!(
                 "Decided overload with any fallback for {} (called on #{}): {:?}",
                 self.name(i_s.db),
@@ -173,7 +168,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             );
             return OverloadResult::Single(callable);
         }
-        if let Some((type_arguments, callable)) = first_arbitrary_length_not_handled {
+        if let Some(callable) = first_arbitrary_length_not_handled {
             debug!(
                 "Decided overload with arbitrary length not handled for {} (called on #{}): {:?}",
                 self.name(i_s.db),

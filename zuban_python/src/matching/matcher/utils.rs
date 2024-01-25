@@ -133,7 +133,7 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
 pub struct CalculatedTypeArgs {
     in_definition: PointLink,
     pub matches: SignatureMatch,
-    pub type_arguments: Option<GenericsList>,
+    type_arguments: Option<GenericsList>,
 }
 
 impl CalculatedTypeArgs {
