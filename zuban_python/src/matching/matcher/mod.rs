@@ -907,6 +907,28 @@ impl<'a> Matcher<'a> {
             .calculated_type_vars
     }
 
+    pub fn into_type_iterator<'x>(
+        self,
+        db: &'x Database,
+        type_vars: &'x TypeVarLikes,
+    ) -> impl Iterator<Item = Type> + 'x {
+        self.type_var_matchers
+            .into_iter()
+            .next()
+            .unwrap()
+            .calculated_type_vars
+            .into_iter()
+            .zip(type_vars.iter())
+            .map(|(c, type_var_like)| {
+                let GenericItem::TypeArg(t) = c.into_generic_item(
+                    db,
+                    type_var_like
+                ) else {
+                    unreachable!();
+                };
+                t
+            })
+    }
     pub fn into_generics_list(
         self,
         db: &Database,
