@@ -2615,13 +2615,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         self.infer_for_if_clauses(for_if_clauses);
 
         result_context
-            .on_unique_type_in_unpacked_union(i_s, class, |matcher, calculated_type_args| {
-                let inner_expected = calculated_type_args
-                    .into_iter()
+            .on_unique_type_in_unpacked_union(i_s, class, |matcher, cls_matcher| {
+                let inner_expected = cls_matcher
+                    .into_type_iterator_or_any(i_s.db)
                     .next()
-                    .unwrap()
-                    .maybe_calculated_type(i_s.db)
-                    .unwrap_or(Type::Any(AnyCause::Todo));
+                    .unwrap();
                 let inf = self.infer_named_expression_with_context(
                     comp_expr,
                     &mut ResultContext::WithMatcher {

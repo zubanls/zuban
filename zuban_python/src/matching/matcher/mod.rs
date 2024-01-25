@@ -899,12 +899,20 @@ impl<'a> Matcher<'a> {
         result
     }
 
-    pub fn unwrap_calculated_type_args(self) -> Vec<CalculatedTypeVarLike> {
+    pub fn into_type_iterator_or_any<'db>(
+        self,
+        db: &'db Database,
+    ) -> impl Iterator<Item = Type> + 'db {
         self.type_var_matchers
             .into_iter()
             .next()
             .unwrap()
             .calculated_type_vars
+            .into_iter()
+            .map(|c| {
+                c.maybe_calculated_type(db)
+                    .unwrap_or(Type::Any(AnyCause::Todo))
+            })
     }
 
     pub fn into_type_iterator<'x>(
