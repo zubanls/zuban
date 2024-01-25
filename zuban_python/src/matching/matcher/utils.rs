@@ -20,7 +20,8 @@ use crate::{
     debug,
     diagnostics::IssueType,
     inference_state::InferenceState,
-    matching::{ErrorTypes, GotType},
+    inferred::Inferred,
+    matching::{maybe_class_usage, ErrorTypes, GotType},
     node_ref::NodeRef,
     type_::{
         match_unpack, CallableParams, ClassGenerics, GenericItem, GenericsList, ReplaceSelf,
@@ -160,6 +161,29 @@ impl CalculatedTypeArgs {
             };
         }
         usage.into_generic_item()
+    }
+
+    pub fn as_return_type(
+        &self,
+        i_s: &InferenceState,
+        return_type: &Type,
+        class: Option<&Class>,
+        replace_self_type: ReplaceSelf,
+    ) -> Inferred {
+        let type_ = return_type.replace_type_var_likes_and_self(
+            i_s.db,
+            &mut |usage| {
+                if let Some(c) = class {
+                    if let Some(generic_item) = maybe_class_usage(i_s.db, c, &usage) {
+                        return generic_item;
+                    }
+                }
+                self.lookup_type_var_usage(i_s, usage)
+            },
+            replace_self_type,
+        );
+        debug!("Resolved type vars: {}", type_.format_short(i_s.db));
+        Inferred::from_type(type_)
     }
 }
 

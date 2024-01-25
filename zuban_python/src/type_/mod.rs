@@ -66,9 +66,8 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{
-        maybe_class_usage, AvoidRecursionFor, CalculatedTypeArgs, ErrorStrs, ErrorTypes,
-        FormatData, Generic, Generics, GotType, Match, Matcher, MismatchReason, OnTypeError,
-        ParamsStyle, ResultContext,
+        AvoidRecursionFor, ErrorStrs, ErrorTypes, FormatData, Generic, Generics, GotType, Match,
+        Matcher, MismatchReason, OnTypeError, ParamsStyle, ResultContext,
     },
     node_ref::NodeRef,
     type_helpers::{dotted_path_from_dir, Class, Instance, MroIterator, TypeOrClass},
@@ -1154,29 +1153,6 @@ impl Type {
                 error_types.add_mismatch_notes(|issue| add_issue(issue))
             }
         }
-    }
-
-    pub fn resolve_type_vars(
-        &self,
-        i_s: &InferenceState,
-        calculated_type_args: &CalculatedTypeArgs,
-        class: Option<&Class>,
-        replace_self_type: ReplaceSelf,
-    ) -> Inferred {
-        let type_ = self.replace_type_var_likes_and_self(
-            i_s.db,
-            &mut |usage| {
-                if let Some(c) = class {
-                    if let Some(generic_item) = maybe_class_usage(i_s.db, c, &usage) {
-                        return generic_item;
-                    }
-                }
-                calculated_type_args.lookup_type_var_usage(i_s, usage)
-            },
-            replace_self_type,
-        );
-        debug!("Resolved type vars: {}", type_.format_short(i_s.db));
-        Inferred::from_type(type_)
     }
 
     pub fn on_any_typed_dict(

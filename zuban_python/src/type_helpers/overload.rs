@@ -405,12 +405,10 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             todo!()
                         } else {
                             return UnionMathResult::Match {
-                                result: callable
-                                    .content
-                                    .return_type
-                                    .resolve_type_vars(
+                                result: calculated_type_args
+                                    .as_return_type(
                                         i_s,
-                                        &calculated_type_args,
+                                        &callable.content.return_type,
                                         self.class.as_ref(),
                                         &|| class.map(|c| c.as_type(i_s.db)).unwrap_or(Type::Self_),
                                     )
