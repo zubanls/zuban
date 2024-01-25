@@ -24,6 +24,7 @@ use crate::{
     type_helpers::{
         lookup_in_namespace, Callable, Class, Instance, LookupDetails, Module, OverloadedFunction,
     },
+    utils::rc_unwrap_or_clone,
 };
 
 impl Type {
@@ -685,11 +686,16 @@ pub(crate) fn execute_type_of_type<'db>(
             Inferred::from_type(Type::NamedTuple(if nt.__new__.type_vars.is_empty() {
                 nt.clone()
             } else {
-                let mut __new__ = nt.__new__.replace_type_var_likes_and_self(
-                    i_s.db,
-                    &mut |usage| calculated_type_vars.lookup_type_var_usage(i_s, usage),
+                let inf = calculated_type_vars.as_return_type(
+                    i_s,
+                    &Type::Callable(nt.__new__.clone()),
+                    None,
                     &|| Type::Self_,
                 );
+                let Type::Callable(__new__) = inf.as_type(i_s) else {
+                    unreachable!()
+                };
+                let mut __new__ = rc_unwrap_or_clone(__new__);
                 __new__.type_vars = i_s.db.python_state.empty_type_var_likes.clone();
                 Rc::new(NamedTuple::new(nt.name, __new__))
             }))

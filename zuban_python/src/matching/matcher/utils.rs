@@ -131,7 +131,7 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
 
 #[derive(Debug)]
 pub struct CalculatedTypeArgs {
-    pub in_definition: PointLink,
+    in_definition: PointLink,
     pub matches: SignatureMatch,
     pub type_arguments: Option<GenericsList>,
 }
@@ -146,11 +146,7 @@ impl CalculatedTypeArgs {
 }
 
 impl CalculatedTypeArgs {
-    pub fn lookup_type_var_usage(
-        &self,
-        i_s: &InferenceState,
-        usage: TypeVarLikeUsage,
-    ) -> GenericItem {
+    fn lookup_type_var_usage(&self, i_s: &InferenceState, usage: TypeVarLikeUsage) -> GenericItem {
         if self.in_definition == usage.in_definition() {
             return if let Some(fm) = &self.type_arguments {
                 fm[usage.index()].clone()
