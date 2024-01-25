@@ -100,17 +100,19 @@ pub fn remove_self_from_callable(
                 if usage.in_definition() == callable.defined_at {
                     let c = &calculated[index];
                     if c.calculated() {
-                        return (*c)
-                            .clone()
-                            .into_generic_item(i_s.db, &callable.type_vars[index]);
+                        (*c).clone()
+                            .into_generic_item(i_s.db, &callable.type_vars[index])
+                    } else {
+                        let new_index = calculated
+                            .iter()
+                            .take(index)
+                            .filter(|c| !c.calculated())
+                            .count();
+                        usage.into_generic_item_with_new_index(new_index.into())
                     }
+                } else {
+                    usage.into_generic_item()
                 }
-                let new_index = calculated
-                    .iter()
-                    .take(index)
-                    .filter(|c| !c.calculated())
-                    .count();
-                usage.into_generic_item_with_new_index(new_index.into())
             },
             &|| unreachable!("Self should have been remapped already"),
         );
