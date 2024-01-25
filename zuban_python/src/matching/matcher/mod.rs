@@ -744,28 +744,25 @@ impl<'a> Matcher<'a> {
 
         if !callable.type_vars.is_empty() {
             let tv_matcher = self.type_var_matchers.first().unwrap();
+            let defined_at = callable.defined_at;
             callable = callable.replace_type_var_likes_and_self(
                 i_s.db,
-                &mut |usage| {
+                &mut self.as_usage_closure(i_s.db, |usage| {
                     let index = usage.index().as_usize();
-                    if usage.in_definition() == callable.defined_at {
+                    if usage.in_definition() == defined_at {
                         let c = &tv_matcher.calculated_type_vars[index];
-                        if c.calculated() {
-                            (*c).clone()
-                                .into_generic_item(i_s.db, &callable.type_vars[index])
-                        } else {
-                            let new_index = tv_matcher
-                                .calculated_type_vars
-                                .iter()
-                                .take(index)
-                                .filter(|c| !c.calculated())
-                                .count();
-                            usage.into_generic_item_with_new_index(new_index.into())
-                        }
+                        debug_assert!(!c.calculated());
+                        let new_index = tv_matcher
+                            .calculated_type_vars
+                            .iter()
+                            .take(index)
+                            .filter(|c| !c.calculated())
+                            .count();
+                        usage.into_generic_item_with_new_index(new_index.into())
                     } else {
                         usage.into_generic_item()
                     }
-                },
+                }),
                 &|| unreachable!("Self should have been remapped already"),
             );
             let mut old_type_vars = std::mem::replace(
@@ -808,7 +805,16 @@ impl<'a> Matcher<'a> {
         t: &Type,
         on_uncalculated: impl Fn(TypeVarLikeUsage) -> GenericItem,
     ) -> Type {
-        t.replace_type_var_likes(db, &mut |usage| {
+        t.replace_type_var_likes(db, &mut self.as_usage_closure(db, on_uncalculated))
+    }
+
+    // TODO it feels extremely weird that we use GenericItem+'b
+    pub fn as_usage_closure<'b>(
+        &'b self,
+        db: &'b Database,
+        on_uncalculated: impl for<'x> Fn(TypeVarLikeUsage<'x>) -> GenericItem + 'b,
+    ) -> impl for<'y> Fn(TypeVarLikeUsage<'y>) -> GenericItem + 'b {
+        move |usage| {
             for type_var_matcher in self.type_var_matchers.iter().filter(|tvm| tvm.enabled) {
                 if usage.in_definition() == type_var_matcher.match_in_definition {
                     let current = &type_var_matcher.calculated_type_vars[usage.index().as_usize()];
@@ -846,7 +852,7 @@ impl<'a> Matcher<'a> {
                 }
             }
             usage.into_generic_item()
-        })
+        }
     }
 
     pub fn set_all_contained_type_vars_to_any(
