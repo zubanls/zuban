@@ -755,11 +755,10 @@ impl<'a> Matcher<'a> {
         t: &Type,
         on_uncalculated: impl Fn(TypeVarLikeUsage) -> GenericItem,
     ) -> Type {
-        t.replace_type_var_likes(db, &mut |type_var_like_usage| {
+        t.replace_type_var_likes(db, &mut |usage| {
             for type_var_matcher in self.type_var_matchers.iter().filter(|tvm| tvm.enabled) {
-                if type_var_like_usage.in_definition() == type_var_matcher.match_in_definition {
-                    let current = &type_var_matcher.calculated_type_vars
-                        [type_var_like_usage.index().as_usize()];
+                if usage.in_definition() == type_var_matcher.match_in_definition {
+                    let current = &type_var_matcher.calculated_type_vars[usage.index().as_usize()];
                     return match &current.type_ {
                         BoundKind::TypeVar(t) => GenericItem::TypeArg(t.clone().into_type(db)),
                         BoundKind::TypeVarTuple(ts) => {
@@ -769,23 +768,20 @@ impl<'a> Matcher<'a> {
                             GenericItem::ParamSpecArg(param_spec.clone())
                         }
                         // Any is just ignored by the context later.
-                        BoundKind::Uncalculated { .. } => on_uncalculated(type_var_like_usage),
+                        BoundKind::Uncalculated { .. } => on_uncalculated(usage),
                     };
                 }
             }
             if let Some(c) = self.class {
-                if c.node_ref.as_link() == type_var_like_usage.in_definition() {
-                    return c
-                        .generics()
-                        .nth_usage(db, &type_var_like_usage)
-                        .into_generic_item(db);
+                if c.node_ref.as_link() == usage.in_definition() {
+                    return c.generics().nth_usage(db, &usage).into_generic_item(db);
                 }
             }
             if let Some(func_class) = self.func_or_callable.as_ref().and_then(|f| f.class()) {
-                if type_var_like_usage.in_definition() == func_class.node_ref.as_link() {
+                if usage.in_definition() == func_class.node_ref.as_link() {
                     let g = func_class
                         .generics()
-                        .nth_usage(db, &type_var_like_usage)
+                        .nth_usage(db, &usage)
                         .into_generic_item(db);
                     return match g {
                         GenericItem::TypeArg(t) => GenericItem::TypeArg(
@@ -796,7 +792,7 @@ impl<'a> Matcher<'a> {
                     };
                 }
             }
-            type_var_like_usage.into_generic_item()
+            usage.into_generic_item()
         })
     }
 
