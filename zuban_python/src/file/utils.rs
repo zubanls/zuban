@@ -74,7 +74,7 @@ impl<'db> Inference<'db, '_, '_> {
             i_s.db.python_state.list_node_ref(),
             |matcher, cls_matcher| {
                 let generic_t = cls_matcher
-                    .into_type_iterator_or_any(i_s.db)
+                    .into_type_arg_iterator_or_any(i_s.db)
                     .next()
                     .unwrap();
                 let found = check_list_with_context(i_s, matcher, &generic_t, self.file, list);
@@ -548,7 +548,7 @@ pub fn infer_dict_like(
         i_s,
         i_s.db.python_state.dict_node_ref(),
         |matcher, cls_matcher| {
-            let mut generics = cls_matcher.into_type_iterator_or_any(i_s.db);
+            let mut generics = cls_matcher.into_type_arg_iterator_or_any(i_s.db);
             let key_t = generics.next().unwrap();
             let value_t = generics.next().unwrap();
             let found = infer_with_context(matcher, &key_t, &value_t);

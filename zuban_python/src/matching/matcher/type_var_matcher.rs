@@ -3,7 +3,7 @@ use std::{borrow::Cow, rc::Rc};
 use parsa_python_ast::ParamKind;
 
 use super::{
-    super::{Generic, Match, MismatchReason},
+    super::{Match, MismatchReason},
     bound::TypeVarBound,
 };
 use crate::{
@@ -180,15 +180,6 @@ impl CalculatedTypeVarLike {
             BoundKind::TypeVar(bound) => Some(bound.into_type(db)),
             BoundKind::Uncalculated { .. } => None,
             _ => unreachable!(),
-        }
-    }
-
-    pub fn update_uncalculated_with_generic_invariant(&mut self, db: &Database, g: Generic) {
-        debug_assert!(matches!(self.type_, BoundKind::Uncalculated { .. }));
-        self.type_ = match g {
-            Generic::TypeArg(t) => BoundKind::TypeVar(TypeVarBound::Invariant(t.into_owned())),
-            Generic::TypeArgs(t) => todo!(),
-            Generic::ParamSpecArg(p) => todo!(),
         }
     }
 

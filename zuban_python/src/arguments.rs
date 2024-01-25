@@ -1105,7 +1105,7 @@ pub fn unpack_star_star(i_s: &InferenceState, t: &Type) -> Option<(Type, Type)> 
         .check_protocol_match(i_s, &mut matcher, &t)
         .bool();
     matches.then(|| {
-        let mut iter = matcher.into_type_iterator(i_s.db, wanted_cls.type_vars(i_s));
+        let mut iter = matcher.into_type_arg_iterator(i_s.db, wanted_cls.type_vars(i_s));
         (iter.next().unwrap(), iter.next().unwrap())
     })
 }

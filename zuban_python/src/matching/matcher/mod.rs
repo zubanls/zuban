@@ -5,8 +5,8 @@ mod utils;
 use core::fmt;
 use std::borrow::Cow;
 
+pub use type_var_matcher::FunctionOrCallable;
 use type_var_matcher::{BoundKind, TypeVarMatcher};
-pub use type_var_matcher::{CalculatedTypeVarLike, FunctionOrCallable};
 use utils::match_arguments_against_params;
 pub(crate) use utils::{
     calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
@@ -14,7 +14,7 @@ pub(crate) use utils::{
     CalculatedTypeArgs,
 };
 
-use self::bound::TypeVarBound;
+use self::{bound::TypeVarBound, type_var_matcher::CalculatedTypeVarLike};
 
 use super::{
     params::{matches_simple_params, InferrableParamIterator},
@@ -724,7 +724,7 @@ impl<'a> Matcher<'a> {
         usage.format_without_matcher(format_data.db, params_style)
     }
 
-    pub fn iter_calculated_type_vars(&mut self) -> std::slice::IterMut<CalculatedTypeVarLike> {
+    fn iter_calculated_type_vars(&mut self) -> std::slice::IterMut<CalculatedTypeVarLike> {
         if let Some(type_var_matcher) = self.type_var_matchers.first_mut() {
             type_var_matcher.calculated_type_vars.iter_mut()
         } else {
@@ -899,7 +899,7 @@ impl<'a> Matcher<'a> {
         result
     }
 
-    pub fn into_type_iterator_or_any<'db>(
+    pub fn into_type_arg_iterator_or_any<'db>(
         self,
         db: &'db Database,
     ) -> impl Iterator<Item = Type> + 'db {
@@ -915,7 +915,7 @@ impl<'a> Matcher<'a> {
             })
     }
 
-    pub fn into_type_iterator<'x>(
+    pub fn into_type_arg_iterator<'x>(
         self,
         db: &'x Database,
         type_vars: &'x TypeVarLikes,

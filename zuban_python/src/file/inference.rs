@@ -2617,7 +2617,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         result_context
             .on_unique_type_in_unpacked_union(i_s, class, |matcher, cls_matcher| {
                 let inner_expected = cls_matcher
-                    .into_type_iterator_or_any(i_s.db)
+                    .into_type_arg_iterator_or_any(i_s.db)
                     .next()
                     .unwrap();
                 let inf = self.infer_named_expression_with_context(
