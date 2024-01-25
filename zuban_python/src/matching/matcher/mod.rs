@@ -732,6 +732,58 @@ impl<'a> Matcher<'a> {
         }
     }
 
+    pub fn remove_self_from_callable(
+        self,
+        i_s: &InferenceState,
+        mut callable: CallableContent,
+    ) -> CallableContent {
+        // Since self was removed, there is no self without annotation anymore.
+        callable
+            .kind
+            .update_had_first_self_or_class_annotation(true);
+
+        if !callable.type_vars.is_empty() {
+            let calculated = self.unwrap_calculated_type_args();
+            callable = callable.replace_type_var_likes_and_self(
+                i_s.db,
+                &mut |usage| {
+                    let index = usage.index().as_usize();
+                    if usage.in_definition() == callable.defined_at {
+                        let c = &calculated[index];
+                        if c.calculated() {
+                            (*c).clone()
+                                .into_generic_item(i_s.db, &callable.type_vars[index])
+                        } else {
+                            let new_index = calculated
+                                .iter()
+                                .take(index)
+                                .filter(|c| !c.calculated())
+                                .count();
+                            usage.into_generic_item_with_new_index(new_index.into())
+                        }
+                    } else {
+                        usage.into_generic_item()
+                    }
+                },
+                &|| unreachable!("Self should have been remapped already"),
+            );
+            let mut old_type_vars = std::mem::replace(
+                &mut callable.type_vars,
+                i_s.db.python_state.empty_type_var_likes.clone(),
+            )
+            .as_vec();
+            for (i, c) in calculated.iter().enumerate().rev() {
+                if c.calculated() {
+                    old_type_vars.remove(i);
+                }
+            }
+            if !old_type_vars.is_empty() {
+                callable.type_vars = TypeVarLikes::from_vec(old_type_vars);
+            }
+        }
+        callable
+    }
+
     pub fn replace_type_var_likes_for_nested_context(&self, db: &Database, t: &Type) -> Type {
         self.replace_type_var_likes(db, t, |usage| {
             if let TypeVarLike::TypeVar(tv) = usage.as_type_var_like() {

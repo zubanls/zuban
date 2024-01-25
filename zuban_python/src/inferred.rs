@@ -18,9 +18,9 @@ use crate::{
     inference_state::InferenceState,
     matching::{
         calculate_property_return, create_signature_without_self_for_callable, match_self_type,
-        maybe_class_usage, remove_self_from_callable, replace_class_type_vars, ErrorStrs,
-        ErrorTypes, FormatData, Generics, GotType, IteratorContent, LookupKind, LookupResult,
-        Match, Matcher, OnLookupError, OnTypeError, ResultContext,
+        maybe_class_usage, replace_class_type_vars, ErrorStrs, ErrorTypes, FormatData, Generics,
+        GotType, IteratorContent, LookupKind, LookupResult, Match, Matcher, OnLookupError,
+        OnTypeError, ResultContext,
     },
     new_class,
     node_ref::NodeRef,
@@ -814,9 +814,9 @@ impl<'db: 'slf, 'slf> Inferred {
                                 );
                                 Some((
                                     Self::new_unsaved_complex(ComplexPoint::TypeInstance(
-                                        Type::Callable(Rc::new(remove_self_from_callable(
-                                            i_s, matcher, callable,
-                                        ))),
+                                        Type::Callable(Rc::new(
+                                            matcher.remove_self_from_callable(i_s, callable),
+                                        )),
                                     )),
                                     attr_kind,
                                 ))
