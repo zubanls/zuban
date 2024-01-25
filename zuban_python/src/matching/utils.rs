@@ -152,18 +152,6 @@ pub fn calculate_property_return(
     Some(if callable.type_vars.is_empty() {
         t
     } else {
-        let calculated = matcher.unwrap_calculated_type_args();
-        t.replace_type_var_likes(i_s.db, &mut |usage| {
-            let index = usage.index().as_usize();
-            if usage.in_definition() == callable.defined_at {
-                let c = &calculated[index];
-                if c.calculated() {
-                    return (*c)
-                        .clone()
-                        .into_generic_item(i_s.db, &callable.type_vars[index]);
-                }
-            }
-            usage.into_generic_item()
-        })
+        matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, &t)
     })
 }
