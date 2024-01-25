@@ -743,18 +743,19 @@ impl<'a> Matcher<'a> {
             .update_had_first_self_or_class_annotation(true);
 
         if !callable.type_vars.is_empty() {
-            let calculated = self.unwrap_calculated_type_args();
+            let tv_matcher = self.type_var_matchers.first().unwrap();
             callable = callable.replace_type_var_likes_and_self(
                 i_s.db,
                 &mut |usage| {
                     let index = usage.index().as_usize();
                     if usage.in_definition() == callable.defined_at {
-                        let c = &calculated[index];
+                        let c = &tv_matcher.calculated_type_vars[index];
                         if c.calculated() {
                             (*c).clone()
                                 .into_generic_item(i_s.db, &callable.type_vars[index])
                         } else {
-                            let new_index = calculated
+                            let new_index = tv_matcher
+                                .calculated_type_vars
                                 .iter()
                                 .take(index)
                                 .filter(|c| !c.calculated())
@@ -772,7 +773,7 @@ impl<'a> Matcher<'a> {
                 i_s.db.python_state.empty_type_var_likes.clone(),
             )
             .as_vec();
-            for (i, c) in calculated.iter().enumerate().rev() {
+            for (i, c) in tv_matcher.calculated_type_vars.iter().enumerate().rev() {
                 if c.calculated() {
                     old_type_vars.remove(i);
                 }
