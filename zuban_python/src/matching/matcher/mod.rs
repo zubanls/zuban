@@ -733,14 +733,28 @@ impl<'a> Matcher<'a> {
     }
 
     pub fn replace_type_var_likes_for_nested_context(&self, db: &Database, t: &Type) -> Type {
-        self.replace_type_var_likes(db, t, false)
+        self.replace_type_var_likes(db, t, |usage| {
+            if let TypeVarLike::TypeVar(tv) = usage.as_type_var_like() {
+                if let TypeVarKind::Bound(bound) = &tv.kind {
+                    return GenericItem::TypeArg(bound.clone());
+                }
+            }
+            usage.as_type_var_like().as_any_generic_item()
+        })
     }
 
     pub fn replace_type_var_likes_for_unknown_type_vars(&self, db: &Database, t: &Type) -> Type {
-        self.replace_type_var_likes(db, t, true)
+        self.replace_type_var_likes(db, t, |usage| {
+            usage.as_type_var_like().as_never_generic_item()
+        })
     }
 
-    fn replace_type_var_likes(&self, db: &Database, t: &Type, never_for_unbound: bool) -> Type {
+    fn replace_type_var_likes(
+        &self,
+        db: &Database,
+        t: &Type,
+        on_uncalculated: impl Fn(TypeVarLikeUsage) -> GenericItem,
+    ) -> Type {
         t.replace_type_var_likes(db, &mut |type_var_like_usage| {
             for type_var_matcher in self.type_var_matchers.iter().filter(|tvm| tvm.enabled) {
                 if type_var_like_usage.in_definition() == type_var_matcher.match_in_definition {
@@ -755,22 +769,7 @@ impl<'a> Matcher<'a> {
                             GenericItem::ParamSpecArg(param_spec.clone())
                         }
                         // Any is just ignored by the context later.
-                        BoundKind::Uncalculated { .. } => {
-                            if never_for_unbound {
-                                type_var_like_usage
-                                    .as_type_var_like()
-                                    .as_never_generic_item()
-                            } else {
-                                if let TypeVarLike::TypeVar(tv) =
-                                    type_var_like_usage.as_type_var_like()
-                                {
-                                    if let TypeVarKind::Bound(bound) = &tv.kind {
-                                        return GenericItem::TypeArg(bound.clone());
-                                    }
-                                }
-                                type_var_like_usage.as_type_var_like().as_any_generic_item()
-                            }
-                        }
+                        BoundKind::Uncalculated { .. } => on_uncalculated(type_var_like_usage),
                     };
                 }
             }
