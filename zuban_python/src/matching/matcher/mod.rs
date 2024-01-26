@@ -887,8 +887,8 @@ impl<'a> Matcher<'a> {
         db: &Database,
         free_type_variables: &mut Vec<()>,
         calculated: &mut CalculatedTypeVarLike,
+        current: TransitiveConstraintAlreadySeen,
     ) {
-        return; // TODO disable
         for x in &calculated.unresolved_transitive_constraints {
             match x {
                 BoundKind::TypeVar(tv_bound) => {
@@ -898,7 +898,7 @@ impl<'a> Matcher<'a> {
                         TypeVarBound::Invariant(t) => todo!(),
                         TypeVarBound::UpperAndLower(..) => todo!(),
                     };
-                    let new_t = self.resolve_unresolved_type(db, free_type_variables, t);
+                    let new_t = self.resolve_unresolved_type(db, free_type_variables, t, &current);
                     if calculated.calculated() {
                         todo!()
                     } else {
@@ -918,14 +918,27 @@ impl<'a> Matcher<'a> {
         db: &Database,
         free_type_variables: &mut Vec<()>,
         t: &Type,
+        current_seen: &TransitiveConstraintAlreadySeen,
     ) -> Type {
-        // TODO see comment below for the same transmute
+        // See comment below for the same transmute
         let slf: &mut Self = unsafe { std::mem::transmute(self as *mut Self) };
         t.replace_type_var_likes(db, &mut |usage| {
-            for tv_matcher in &mut self.type_var_matchers {
+            for (matcher_index, tv_matcher) in self.type_var_matchers.iter_mut().enumerate() {
                 if usage.in_definition() == tv_matcher.match_in_definition {
-                    let current = &mut tv_matcher.calculated_type_vars[usage.index().as_usize()];
-                    slf.resolve_unresolved_transitive_constraints(db, free_type_variables, current);
+                    let type_var_index = usage.index().as_usize();
+                    let current = &mut tv_matcher.calculated_type_vars[type_var_index];
+                    slf.resolve_unresolved_transitive_constraints(
+                        db,
+                        free_type_variables,
+                        current,
+                        TransitiveConstraintAlreadySeen {
+                            current: TypeVarAlreadySeen {
+                                matcher_index,
+                                type_var_index,
+                            },
+                            previous: Some(current_seen),
+                        },
+                    );
                     return match &current.type_ {
                         BoundKind::TypeVar(t) => GenericItem::TypeArg(t.clone().into_type(db)),
                         BoundKind::TypeVarTuple(ts) => todo!(),
@@ -961,8 +974,19 @@ impl<'a> Matcher<'a> {
         // for that.
         let slf: &mut Self = unsafe { std::mem::transmute(&mut self) };
         for (i, tv_matcher) in self.type_var_matchers.iter_mut().enumerate() {
-            for tv in &mut tv_matcher.calculated_type_vars {
-                slf.resolve_unresolved_transitive_constraints(db, &mut free_type_variables, tv);
+            for (k, tv) in tv_matcher.calculated_type_vars.iter_mut().enumerate() {
+                slf.resolve_unresolved_transitive_constraints(
+                    db,
+                    &mut free_type_variables,
+                    tv,
+                    TransitiveConstraintAlreadySeen {
+                        current: TypeVarAlreadySeen {
+                            matcher_index: i,
+                            type_var_index: k,
+                        },
+                        previous: None,
+                    },
+                );
             }
         }
 
@@ -1037,4 +1061,14 @@ impl fmt::Debug for Matcher<'_> {
             .field("match_reverse", &self.match_reverse)
             .finish()
     }
+}
+
+struct TypeVarAlreadySeen {
+    matcher_index: usize,
+    type_var_index: usize,
+}
+
+struct TransitiveConstraintAlreadySeen<'a> {
+    current: TypeVarAlreadySeen,
+    previous: Option<&'a TransitiveConstraintAlreadySeen<'a>>,
 }
