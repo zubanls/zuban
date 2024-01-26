@@ -306,7 +306,6 @@ impl<'a> Matcher<'a> {
         other: &Type,
         variance: Variance,
     ) -> Match {
-        /*
         let other_side = match other {
             Type::TypeVar(tv2) => self
                 .match_or_add_type_var_if_responsible(
@@ -323,22 +322,6 @@ impl<'a> Matcher<'a> {
         };
         let m = self.match_or_add_type_var_if_responsible(i_s, tv1, other, variance, false);
         m.unwrap_or(other_side)
-        */
-        self.match_or_add_type_var_if_responsible(i_s, tv1, other, variance, false)
-            .unwrap_or_else(|| match other {
-                Type::TypeVar(tv2) => self
-                    .match_or_add_type_var_if_responsible(
-                        i_s,
-                        tv2,
-                        &Type::TypeVar(tv1.clone()),
-                        variance.invert(),
-                        true,
-                    )
-                    .unwrap_or_else(|| {
-                        (tv1.index == tv2.index && tv1.in_definition == tv2.in_definition).into()
-                    }),
-                _ => Match::new_false(),
-            })
     }
 
     pub fn match_or_add_type_var_reverse_if_responsible(
@@ -899,6 +882,93 @@ impl<'a> Matcher<'a> {
         result
     }
 
+    fn resolve_unresolved_transitive_constraints(
+        &mut self,
+        db: &Database,
+        free_type_variables: &mut Vec<()>,
+        calculated: &mut CalculatedTypeVarLike,
+    ) {
+        return; // TODO disable
+        for x in &calculated.unresolved_transitive_constraints {
+            match x {
+                BoundKind::TypeVar(tv_bound) => {
+                    let (t, variance) = match tv_bound {
+                        TypeVarBound::Upper(t) => (t, Variance::Contravariant),
+                        TypeVarBound::Lower(t) => (t, Variance::Covariant),
+                        TypeVarBound::Invariant(t) => todo!(),
+                        TypeVarBound::UpperAndLower(..) => todo!(),
+                    };
+                    let new_t = self.resolve_unresolved_type(db, free_type_variables, t);
+                    if calculated.calculated() {
+                        todo!()
+                    } else {
+                        //TypeVarBound::new(new_t, variance, &tv);
+                        calculated.type_ = BoundKind::TypeVar(TypeVarBound::Lower(new_t));
+                    }
+                }
+                BoundKind::TypeVarTuple(_) => todo!(),
+                BoundKind::ParamSpecArgument(_) => todo!(),
+                BoundKind::Uncalculated { fallback } => unreachable!(),
+            };
+        }
+    }
+
+    fn resolve_unresolved_type(
+        &mut self,
+        db: &Database,
+        free_type_variables: &mut Vec<()>,
+        t: &Type,
+    ) -> Type {
+        // TODO see comment below for the same transmute
+        let slf: &mut Self = unsafe { std::mem::transmute(self as *mut Self) };
+        t.replace_type_var_likes(db, &mut |usage| {
+            for tv_matcher in &mut self.type_var_matchers {
+                if usage.in_definition() == tv_matcher.match_in_definition {
+                    let current = &mut tv_matcher.calculated_type_vars[usage.index().as_usize()];
+                    slf.resolve_unresolved_transitive_constraints(db, free_type_variables, current);
+                    return match &current.type_ {
+                        BoundKind::TypeVar(t) => GenericItem::TypeArg(t.clone().into_type(db)),
+                        BoundKind::TypeVarTuple(ts) => todo!(),
+                        BoundKind::ParamSpecArgument(param_spec) => todo!(),
+                        BoundKind::Uncalculated { .. } => todo!(),
+                    };
+                }
+            }
+            if let Some(c) = self.class {
+                if c.node_ref.as_link() == usage.in_definition() {
+                    todo!()
+                }
+            }
+            if let Some(func_class) = self.func_or_callable.as_ref().and_then(|f| f.class()) {
+                if usage.in_definition() == func_class.node_ref.as_link() {
+                    todo!()
+                }
+            }
+            usage.into_generic_item()
+        })
+    }
+
+    fn finish_matcher(mut self, db: &Database) -> Self {
+        if self.type_var_matchers.len() < 2 {
+            // Finishing is only needed if multiple type var matchers need to negotiate type
+            // vars.
+            return self;
+        }
+
+        let mut free_type_variables = vec![];
+        // It is questionable that we just avoid all controls for Rust here, however we have the
+        // problem that we are dealing with Cycles and I'm not sure what the best strategy would be
+        // for that.
+        let slf: &mut Self = unsafe { std::mem::transmute(&mut self) };
+        for (i, tv_matcher) in self.type_var_matchers.iter_mut().enumerate() {
+            for tv in &mut tv_matcher.calculated_type_vars {
+                slf.resolve_unresolved_transitive_constraints(db, &mut free_type_variables, tv);
+            }
+        }
+
+        self
+    }
+
     pub fn into_type_arg_iterator_or_any<'db>(
         self,
         db: &'db Database,
@@ -937,12 +1007,14 @@ impl<'a> Matcher<'a> {
                 t
             })
     }
+
     pub fn into_generics_list(
         self,
         db: &Database,
         type_var_likes: &TypeVarLikes,
     ) -> Option<GenericsList> {
-        self.type_var_matchers
+        self.finish_matcher(db)
+            .type_var_matchers
             .into_iter()
             .next()
             .map(|m| m.into_generics_list(db, type_var_likes))
