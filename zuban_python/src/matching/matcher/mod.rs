@@ -889,6 +889,7 @@ impl<'a> Matcher<'a> {
         calculated: &mut CalculatedTypeVarLike,
         current: TransitiveConstraintAlreadySeen,
     ) {
+        if let Some(next) = current.is_cycle_and_return_next() {}
         for x in &calculated.unresolved_transitive_constraints {
             match x {
                 BoundKind::TypeVar(tv_bound) => {
@@ -1063,12 +1064,27 @@ impl fmt::Debug for Matcher<'_> {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Debug)]
 struct TypeVarAlreadySeen {
     matcher_index: usize,
     type_var_index: usize,
 }
 
+#[derive(Debug)]
 struct TransitiveConstraintAlreadySeen<'a> {
     current: TypeVarAlreadySeen,
     previous: Option<&'a TransitiveConstraintAlreadySeen<'a>>,
+}
+
+impl TransitiveConstraintAlreadySeen<'_> {
+    fn is_cycle_and_return_next(&self) -> Option<TypeVarAlreadySeen> {
+        let mut checking = self;
+        while let Some(c) = checking.previous {
+            if c.current == self.current {
+                return Some(checking.current);
+            }
+            checking = c;
+        }
+        None
+    }
 }
