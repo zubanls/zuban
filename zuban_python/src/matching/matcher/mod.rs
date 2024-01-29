@@ -1216,10 +1216,9 @@ impl TypeVarCycles {
                 }
             }
         }
-        self.0.push(TypeVarCycle {
-            set: HashSet::from_iter(already_seen.iter_ancestors()),
-            has_bound: false, // This is initially initialized false and later updated.
-        })
+        self.0.push(TypeVarCycle::new(HashSet::from_iter(
+            already_seen.iter_ancestors(),
+        )));
     }
 
     fn enable_has_bound_for_type_var(&mut self, tv: TypeVarAlreadySeen) {
@@ -1235,4 +1234,14 @@ impl TypeVarCycles {
 struct TypeVarCycle {
     set: HashSet<TypeVarAlreadySeen>,
     has_bound: bool,
+}
+
+impl TypeVarCycle {
+    fn new(set: HashSet<TypeVarAlreadySeen>) -> Self {
+        // has_bound is initially initialized false and later updated.
+        Self {
+            set,
+            has_bound: false,
+        }
+    }
 }
