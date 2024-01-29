@@ -91,12 +91,12 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
     if !func_type_vars.is_empty() {
         tv_matchers.push(TypeVarMatcher::new(
             match_in_definition,
-            func_type_vars.len(),
+            func_type_vars.clone(),
         ));
     }
     if !has_generics {
         match_in_definition = class.node_ref.as_link();
-        tv_matchers.push(TypeVarMatcher::new(match_in_definition, type_vars.len()));
+        tv_matchers.push(TypeVarMatcher::new(match_in_definition, type_vars.clone()));
     }
     let matcher = Matcher::new(Some(class), func_or_callable, tv_matchers, None);
 
@@ -198,7 +198,6 @@ pub(crate) fn calculate_function_type_vars_and_return<'db: 'a, 'a>(
     calculate_type_vars(
         i_s,
         get_matcher(
-            None,
             func_or_callable,
             match_in_definition,
             Some(replace_self),
@@ -230,7 +229,6 @@ pub(crate) fn calculate_callable_type_vars_and_return<'db: 'a, 'a>(
     calculate_type_vars(
         i_s,
         get_matcher(
-            None,
             func_or_callable,
             callable.content.defined_at,
             None,
@@ -249,7 +247,6 @@ pub(crate) fn calculate_callable_type_vars_and_return<'db: 'a, 'a>(
 }
 
 fn get_matcher<'a>(
-    class: Option<&'a Class>,
     func_or_callable: FunctionOrCallable<'a>,
     match_in_definition: PointLink,
     replace_self: Option<ReplaceSelf<'a>>,
@@ -258,9 +255,9 @@ fn get_matcher<'a>(
     let matcher = if type_vars.is_empty() {
         vec![]
     } else {
-        vec![TypeVarMatcher::new(match_in_definition, type_vars.len())]
+        vec![TypeVarMatcher::new(match_in_definition, type_vars.clone())]
     };
-    Matcher::new(class, func_or_callable, matcher, replace_self)
+    Matcher::new(None, func_or_callable, matcher, replace_self)
 }
 
 fn calculate_type_vars<'db: 'a, 'a>(

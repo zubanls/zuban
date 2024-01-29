@@ -79,7 +79,7 @@ impl<'a> Matcher<'a> {
             Self {
                 type_var_matchers: vec![TypeVarMatcher::new(
                     class.node_ref.as_link(),
-                    type_var_likes.len(),
+                    type_var_likes.clone(),
                 )],
                 ..Self::default()
             }
@@ -88,7 +88,7 @@ impl<'a> Matcher<'a> {
 
     pub fn new_callable_matcher(callable: &'a CallableContent) -> Self {
         let type_var_matcher = (!callable.type_vars.is_empty())
-            .then(|| TypeVarMatcher::new(callable.defined_at, callable.type_vars.len()));
+            .then(|| TypeVarMatcher::new(callable.defined_at, callable.type_vars.clone()));
         Self {
             class: None,
             type_var_matchers: type_var_matcher.into_iter().collect(),
@@ -109,7 +109,7 @@ impl<'a> Matcher<'a> {
         replace_self: ReplaceSelf<'a>,
     ) -> Self {
         let type_var_matcher = (!type_vars.is_empty())
-            .then(|| TypeVarMatcher::new(function.node_ref.as_link(), type_vars.len()));
+            .then(|| TypeVarMatcher::new(function.node_ref.as_link(), type_vars.clone()));
         Self {
             type_var_matchers: type_var_matcher.into_iter().collect(),
             func_or_callable: Some(FunctionOrCallable::Function(function)),
@@ -122,7 +122,7 @@ impl<'a> Matcher<'a> {
         let type_var_matcher = match &typed_dict.generics {
             TypedDictGenerics::NotDefinedYet(type_var_likes) => Some(TypeVarMatcher::new(
                 typed_dict.defined_at,
-                type_var_likes.len(),
+                type_var_likes.clone(),
             )),
             TypedDictGenerics::None => None,
             TypedDictGenerics::Generics(_) => None,
@@ -135,8 +135,10 @@ impl<'a> Matcher<'a> {
 
     pub fn add_reverse_callable_matcher(&mut self, c: &CallableContent) {
         if !c.type_vars.is_empty() {
-            self.type_var_matchers
-                .push(TypeVarMatcher::new_reverse(c.defined_at, c.type_vars.len()))
+            self.type_var_matchers.push(TypeVarMatcher::new_reverse(
+                c.defined_at,
+                c.type_vars.clone(),
+            ))
         }
     }
 
@@ -1018,9 +1020,10 @@ impl<'a> Matcher<'a> {
     }
 
     fn add_free_type_var_likes_to_cycles(&self, cycles: &mut TypeVarCycles) {
-        for cycle in &cycles.cycles {
+        for cycle in &mut cycles.cycles {
             if !cycle.has_bound {
-                todo!()
+                cycle.free_type_var_index = Some(cycles.free_type_var_likes.len());
+                //cycles.free_type_var_likes.push(new_tv);
             }
         }
     }
