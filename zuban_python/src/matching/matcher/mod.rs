@@ -977,40 +977,9 @@ impl<'a> Matcher<'a> {
 
         let mut cycles = self.find_unresolved_transitive_constraint_cycles(db);
         self.add_free_type_var_likes_to_cycles(&mut cycles);
+
         for cycle in &cycles.cycles {
-            let mut current_bound = BoundKind::default();
-            for tv_in_cycle in &cycle.set {
-                let taken = std::mem::take(
-                    &mut self.type_var_matchers[tv_in_cycle.matcher_index].calculated_type_vars
-                        [tv_in_cycle.type_var_index]
-                        .type_,
-                );
-                current_bound.merge(taken);
-            }
-            for tv_in_cycle in &cycle.set {
-                self.type_var_matchers[tv_in_cycle.matcher_index].calculated_type_vars
-                    [tv_in_cycle.type_var_index]
-                    .type_ = current_bound.clone();
-            }
-            /*
-            let mut free_type_variables = vec![];
-            for (i, tv_matcher) in self.type_var_matchers.iter_mut().enumerate() {
-                for (k, tv) in tv_matcher.calculated_type_vars.iter_mut().enumerate() {
-                    slf.resolve_unresolved_transitive_constraints(
-                        db,
-                        &mut free_type_variables,
-                        tv,
-                        TransitiveConstraintAlreadySeen {
-                            current: TypeVarAlreadySeen {
-                                matcher_index: i,
-                                type_var_index: k,
-                            },
-                            previous: None,
-                        },
-                    );
-                }
-            }
-            */
+            self.resolve_cycle(&cycles, cycle)
         }
 
         // It is questionable that we just avoid all controls for Rust here, however we have the
@@ -1021,6 +990,78 @@ impl<'a> Matcher<'a> {
          */
 
         self
+    }
+
+    fn resolve_cycle(&mut self, cycles: &TypeVarCycles, cycle: &TypeVarCycle) {
+        let mut current_bound = BoundKind::default();
+        for tv_in_cycle in &cycle.set {
+            // Use normal bound
+            let used = &mut self.type_var_matchers[tv_in_cycle.matcher_index].calculated_type_vars
+                [tv_in_cycle.type_var_index];
+            let taken_bounds = std::mem::take(&mut used.type_);
+            current_bound.merge(taken_bounds);
+
+            // Use unresolved transitive constraints
+            let unresolved_transitive_constraints =
+                std::mem::take(&mut used.unresolved_transitive_constraints);
+
+            for unresolved in unresolved_transitive_constraints.into_iter() {
+                // Cache unresolved transitive constraints to kind of create a topological sorting.
+                unresolved.search_type_vars(&mut |usage| {
+                    for matcher_index in 0..self.type_var_matchers.len() {
+                        let tv_matcher = &self.type_var_matchers[matcher_index];
+                        if usage.in_definition() == tv_matcher.match_in_definition {
+                            let type_var_index = usage.index().as_usize();
+                            let c = &tv_matcher.calculated_type_vars[type_var_index];
+                            if !c.unresolved_transitive_constraints.is_empty() {
+                                let depending_on = cycles.find_cycle(TypeVarAlreadySeen {
+                                    matcher_index,
+                                    type_var_index,
+                                });
+                                self.resolve_cycle(cycles, depending_on)
+                            }
+                        }
+                    }
+                });
+
+                /*
+                match unresolved {
+                    BoundKind::TypeVar(tv_bound) => {
+                        let (t, variance) = match tv_bound {
+                            TypeVarBound::Upper(t) => (t, Variance::Contravariant),
+                            TypeVarBound::Lower(t) => (t, Variance::Covariant),
+                            TypeVarBound::Invariant(t) => todo!(),
+                            TypeVarBound::UpperAndLower(..) => todo!(),
+                        };
+                        let new_t = self.resolve_unresolved_type(db, free_type_variables, t, &current);
+                        if calculated.calculated() {
+                            todo!()
+                        } else {
+                            //TypeVarBound::new(new_t, variance, &tv);
+                            calculated.type_ = BoundKind::TypeVar(TypeVarBound::Lower(new_t));
+                        }
+                    }
+                    BoundKind::TypeVarTuple(_) => todo!(),
+                    BoundKind::ParamSpecArgument(_) => todo!(),
+                    BoundKind::Uncalculated { fallback } => unreachable!(),
+                };
+                */
+            }
+        }
+
+        // Set the bounds properly
+        for tv_in_cycle in &cycle.set {
+            self.type_var_matchers[tv_in_cycle.matcher_index].calculated_type_vars
+                [tv_in_cycle.type_var_index]
+                .type_ = current_bound.clone();
+        }
+        /*
+        let mut free_type_variables = vec![];
+        for (i, tv_matcher) in self.type_var_matchers.iter_mut().enumerate() {
+            for (k, tv) in tv_matcher.calculated_type_vars.iter_mut().enumerate() {
+            }
+        }
+        */
     }
 
     fn add_free_type_var_likes_to_cycles(&self, cycles: &mut TypeVarCycles) {
@@ -1277,6 +1318,15 @@ impl TypeVarCycles {
                 break;
             }
         }
+    }
+
+    fn find_cycle(&self, tv: TypeVarAlreadySeen) -> &TypeVarCycle {
+        for cycle in &self.cycles {
+            if cycle.set.contains(&tv) {
+                return cycle;
+            }
+        }
+        unreachable!()
     }
 }
 
