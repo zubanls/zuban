@@ -144,10 +144,14 @@ impl<'a> Matcher<'a> {
 
     pub fn disable_reverse_callable_matcher(&mut self, db: &Database, c: &CallableContent) {
         if !c.type_vars.is_empty() {
-            let matcher = self.type_var_matchers.last_mut().unwrap();
+            let matcher = self
+                .type_var_matchers
+                .iter_mut()
+                .find(|m| m.match_in_definition == c.defined_at && m.enabled)
+                .unwrap();
             matcher.enabled = false;
             if cfg!(feature = "zuban_debug") {
-                let generics = matcher.clone().into_generics_list(db, &c.type_vars);
+                let generics = matcher.clone().into_generics_list(db);
                 debug!(
                     "Type vars for reverse callable matching [{}]{}",
                     generics.format(&FormatData::new_short(db)),
@@ -1146,16 +1150,12 @@ impl<'a> Matcher<'a> {
             })
     }
 
-    pub fn into_generics_list(
-        self,
-        db: &Database,
-        type_var_likes: &TypeVarLikes,
-    ) -> Option<GenericsList> {
+    pub fn into_generics_list(self, db: &Database) -> Option<GenericsList> {
         self.finish_matcher(db)
             .type_var_matchers
             .into_iter()
             .next()
-            .map(|m| m.into_generics_list(db, type_var_likes))
+            .map(|m| m.into_generics_list(db))
     }
 }
 

@@ -108,11 +108,6 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
         args,
         add_issue,
         true,
-        if has_generics {
-            func_type_vars
-        } else {
-            type_vars
-        },
         match_in_definition,
         result_context,
         on_type_error,
@@ -208,7 +203,6 @@ pub(crate) fn calculate_function_type_vars_and_return<'db: 'a, 'a>(
         args,
         add_issue,
         skip_first_param,
-        type_vars,
         match_in_definition,
         result_context,
         on_type_error,
@@ -239,7 +233,6 @@ pub(crate) fn calculate_callable_type_vars_and_return<'db: 'a, 'a>(
         args,
         add_issue,
         skip_first_param,
-        type_vars,
         callable.content.defined_at,
         result_context,
         on_type_error,
@@ -268,7 +261,6 @@ fn calculate_type_vars<'db: 'a, 'a>(
     mut args: impl Iterator<Item = Arg<'db, 'a>>,
     add_issue: impl Fn(IssueType),
     skip_first_param: bool,
-    type_vars: &TypeVarLikes,
     match_in_definition: PointLink,
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
@@ -433,7 +425,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
             }
         },
     };
-    let type_arguments = matcher.into_generics_list(i_s.db, type_vars);
+    let type_arguments = matcher.into_generics_list(i_s.db);
     if cfg!(feature = "zuban_debug") {
         if let Some(type_arguments) = &type_arguments {
             debug!(

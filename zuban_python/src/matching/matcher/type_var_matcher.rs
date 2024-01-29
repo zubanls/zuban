@@ -325,11 +325,11 @@ impl TypeVarMatcher {
         }
     }
 
-    pub fn into_generics_list(self, db: &Database, type_var_likes: &TypeVarLikes) -> GenericsList {
+    pub fn into_generics_list(self, db: &Database) -> GenericsList {
         GenericsList::new_generics(
             self.calculated_type_vars
                 .into_iter()
-                .zip(type_var_likes.iter())
+                .zip(self.type_var_likes.iter())
                 .map(|(c, type_var_like)| c.into_generic_item(db, type_var_like))
                 .collect(),
         )
