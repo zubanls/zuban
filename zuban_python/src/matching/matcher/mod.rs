@@ -1189,7 +1189,21 @@ impl TypeVarCycles {
                 if cycle.contains(&tv) {
                     // If a cycle is discovered, add the type vars to that cycle.
                     cycle.extend(already_seen.iter_ancestors());
-                    // TODO we have to merge cycles that this is connected to.
+
+                    // We have to merge cycles that are connected to our cycle here.
+                    // e.g. we have (A, B) and (C, D) and a new cycle (B, C) is added.
+                    // In that case it should not be 2 or 3 cycles, but one like:
+                    // (A, B, C, D).
+                    let mut taken_cycle = std::mem::take(cycle);
+                    for other_cycle in self.0.iter_mut().skip(i) {
+                        for other_tv in already_seen.iter_ancestors() {
+                            if other_cycle.contains(&other_tv) {
+                                taken_cycle.extend(other_cycle.drain())
+                            }
+                        }
+                    }
+                    self.0[i] = taken_cycle;
+                    self.0.retain(|cycle| !cycle.is_empty());
                     return;
                 }
             }
