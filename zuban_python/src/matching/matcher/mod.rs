@@ -971,30 +971,48 @@ impl<'a> Matcher<'a> {
 
         let mut cycles = self.find_unresolved_transitive_constraint_cycles(db);
         self.add_free_type_var_likes_to_cycles(&mut cycles);
+        for cycle in &cycles.cycles {
+            let mut current_bound = BoundKind::default();
+            for tv_in_cycle in &cycle.set {
+                let taken = std::mem::take(
+                    &mut self.type_var_matchers[tv_in_cycle.matcher_index].calculated_type_vars
+                        [tv_in_cycle.type_var_index]
+                        .type_,
+                );
+                current_bound.merge(taken);
+            }
+            for tv_in_cycle in &cycle.set {
+                self.type_var_matchers[tv_in_cycle.matcher_index].calculated_type_vars
+                    [tv_in_cycle.type_var_index]
+                    .type_ = current_bound.clone();
+            }
+            /*
+            let mut free_type_variables = vec![];
+            for (i, tv_matcher) in self.type_var_matchers.iter_mut().enumerate() {
+                for (k, tv) in tv_matcher.calculated_type_vars.iter_mut().enumerate() {
+                    slf.resolve_unresolved_transitive_constraints(
+                        db,
+                        &mut free_type_variables,
+                        tv,
+                        TransitiveConstraintAlreadySeen {
+                            current: TypeVarAlreadySeen {
+                                matcher_index: i,
+                                type_var_index: k,
+                            },
+                            previous: None,
+                        },
+                    );
+                }
+            }
+            */
+        }
 
         // It is questionable that we just avoid all controls for Rust here, however we have the
         // problem that we are dealing with Cycles and I'm not sure what the best strategy would be
         // for that.
         let slf: &mut Self = unsafe { std::mem::transmute(&mut self) };
         /*
-        let mut free_type_variables = vec![];
-        for (i, tv_matcher) in self.type_var_matchers.iter_mut().enumerate() {
-            for (k, tv) in tv_matcher.calculated_type_vars.iter_mut().enumerate() {
-                slf.resolve_unresolved_transitive_constraints(
-                    db,
-                    &mut free_type_variables,
-                    tv,
-                    TransitiveConstraintAlreadySeen {
-                        current: TypeVarAlreadySeen {
-                            matcher_index: i,
-                            type_var_index: k,
-                        },
-                        previous: None,
-                    },
-                );
-            }
-        }
-        */
+         */
 
         self
     }

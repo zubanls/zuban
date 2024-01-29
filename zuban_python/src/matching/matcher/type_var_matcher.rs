@@ -114,6 +114,26 @@ impl Default for BoundKind {
     }
 }
 
+impl BoundKind {
+    pub fn merge(&mut self, other: Self) {
+        match (&self, other) {
+            (Self::TypeVar(bound1), Self::TypeVar(bound2)) => {
+                todo!()
+            }
+            (Self::TypeVarTuple(_), Self::TypeVarTuple(_)) => {
+                todo!()
+            }
+            (Self::ParamSpecArgument(_), Self::ParamSpecArgument(_)) => {
+                todo!()
+            }
+            (Self::Uncalculated { fallback: Some(_) }, Self::Uncalculated { .. }) => (),
+            (Self::Uncalculated { fallback: _ }, other) => *self = other,
+            (_, Self::Uncalculated { fallback: _ }) => (),
+            _ => unreachable!(),
+        }
+    }
+}
+
 #[derive(Debug, Default, Clone)]
 pub(super) struct CalculatedTypeVarLike {
     pub(super) type_: BoundKind,
