@@ -969,13 +969,15 @@ impl<'a> Matcher<'a> {
             return self;
         }
 
-        let cycles = self.find_unresolved_transitive_constraint_cycles(db);
+        let mut cycles = self.find_unresolved_transitive_constraint_cycles(db);
+        self.add_free_type_var_likes_to_cycles(&mut cycles);
 
-        let mut free_type_variables = vec![];
         // It is questionable that we just avoid all controls for Rust here, however we have the
         // problem that we are dealing with Cycles and I'm not sure what the best strategy would be
         // for that.
         let slf: &mut Self = unsafe { std::mem::transmute(&mut self) };
+        /*
+        let mut free_type_variables = vec![];
         for (i, tv_matcher) in self.type_var_matchers.iter_mut().enumerate() {
             for (k, tv) in tv_matcher.calculated_type_vars.iter_mut().enumerate() {
                 slf.resolve_unresolved_transitive_constraints(
@@ -992,11 +994,20 @@ impl<'a> Matcher<'a> {
                 );
             }
         }
+        */
 
         self
     }
 
-    fn find_unresolved_transitive_constraint_cycles(&mut self, db: &Database) -> TypeVarCycles {
+    fn add_free_type_var_likes_to_cycles(&self, cycles: &mut TypeVarCycles) {
+        for cycle in &cycles.cycles {
+            if !cycle.has_bound {
+                todo!()
+            }
+        }
+    }
+
+    fn find_unresolved_transitive_constraint_cycles(&self, db: &Database) -> TypeVarCycles {
         let mut cycles = TypeVarCycles::default();
         for (i, tv_matcher) in self.type_var_matchers.iter().enumerate() {
             for (k, tv) in tv_matcher.calculated_type_vars.iter().enumerate() {
@@ -1188,12 +1199,15 @@ impl Iterator for TypeVarAlreadySeenIterator<'_> {
 }
 
 #[derive(Default)]
-struct TypeVarCycles(Vec<TypeVarCycle>);
+struct TypeVarCycles {
+    cycles: Vec<TypeVarCycle>,
+    free_type_var_likes: Vec<TypeVarLike>,
+}
 
 impl TypeVarCycles {
     fn add(&mut self, already_seen: TransitiveConstraintAlreadySeen) {
         for tv in already_seen.iter_ancestors() {
-            for (i, cycle) in self.0.iter_mut().enumerate() {
+            for (i, cycle) in self.cycles.iter_mut().enumerate() {
                 if cycle.set.contains(&tv) {
                     // If a cycle is discovered, add the type vars to that cycle.
                     cycle.set.extend(already_seen.iter_ancestors());
@@ -1203,26 +1217,26 @@ impl TypeVarCycles {
                     // In that case it should not be 2 or 3 cycles, but one like:
                     // (A, B, C, D).
                     let mut taken_cycle = std::mem::take(&mut cycle.set);
-                    for other_cycle in self.0.iter_mut().skip(i) {
+                    for other_cycle in self.cycles.iter_mut().skip(i) {
                         for other_tv in already_seen.iter_ancestors() {
                             if other_cycle.set.contains(&other_tv) {
                                 taken_cycle.extend(other_cycle.set.drain())
                             }
                         }
                     }
-                    self.0[i].set = taken_cycle;
-                    self.0.retain(|cycle| !cycle.set.is_empty());
+                    self.cycles[i].set = taken_cycle;
+                    self.cycles.retain(|cycle| !cycle.set.is_empty());
                     return;
                 }
             }
         }
-        self.0.push(TypeVarCycle::new(HashSet::from_iter(
+        self.cycles.push(TypeVarCycle::new(HashSet::from_iter(
             already_seen.iter_ancestors(),
         )));
     }
 
     fn enable_has_bound_for_type_var(&mut self, tv: TypeVarAlreadySeen) {
-        for cycle in &mut self.0 {
+        for cycle in &mut self.cycles {
             if cycle.set.contains(&tv) {
                 cycle.has_bound = true;
                 break;
@@ -1234,6 +1248,7 @@ impl TypeVarCycles {
 struct TypeVarCycle {
     set: HashSet<TypeVarAlreadySeen>,
     has_bound: bool,
+    free_type_var_index: Option<usize>,
 }
 
 impl TypeVarCycle {
@@ -1242,6 +1257,7 @@ impl TypeVarCycle {
         Self {
             set,
             has_bound: false,
+            free_type_var_index: None,
         }
     }
 }
