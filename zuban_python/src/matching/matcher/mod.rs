@@ -1000,18 +1000,22 @@ impl<'a> Matcher<'a> {
         let mut cycles = TypeVarCycles::default();
         for (i, tv_matcher) in self.type_var_matchers.iter().enumerate() {
             for (k, tv) in tv_matcher.calculated_type_vars.iter().enumerate() {
-                self.add_cycles(
+                let current = TypeVarAlreadySeen {
+                    matcher_index: i,
+                    type_var_index: k,
+                };
+                let has_bound = self.add_cycles(
                     db,
                     &mut cycles,
                     tv,
                     TransitiveConstraintAlreadySeen {
-                        current: TypeVarAlreadySeen {
-                            matcher_index: i,
-                            type_var_index: k,
-                        },
+                        current,
                         previous: None,
                     },
                 );
+                if has_bound {
+                    cycles.enable_has_bound_for_type_var(current)
+                }
             }
         }
         cycles
@@ -1023,7 +1027,8 @@ impl<'a> Matcher<'a> {
         cycles: &mut TypeVarCycles,
         calculated: &CalculatedTypeVarLike,
         current_seen: TransitiveConstraintAlreadySeen,
-    ) {
+    ) -> bool {
+        let mut has_bound = calculated.calculated();
         for x in &calculated.unresolved_transitive_constraints {
             match x {
                 BoundKind::TypeVar(tv_bound) => {
@@ -1055,7 +1060,8 @@ impl<'a> Matcher<'a> {
                                 if new_current_seen.is_cycle_and_return_next().is_some() {
                                     cycles.add(new_current_seen)
                                 } else {
-                                    self.add_cycles(db, cycles, current, new_current_seen);
+                                    has_bound |=
+                                        self.add_cycles(db, cycles, current, new_current_seen);
                                 }
                             }
                         }
@@ -1066,6 +1072,7 @@ impl<'a> Matcher<'a> {
                 BoundKind::Uncalculated { fallback } => unreachable!(),
             }
         }
+        has_bound
     }
 
     pub fn into_type_arg_iterator_or_any<'db>(
@@ -1211,10 +1218,21 @@ impl TypeVarCycles {
         }
         self.0.push(TypeVarCycle {
             set: HashSet::from_iter(already_seen.iter_ancestors()),
+            has_bound: false, // This is initially initialized false and later updated.
         })
+    }
+
+    fn enable_has_bound_for_type_var(&mut self, tv: TypeVarAlreadySeen) {
+        for cycle in &mut self.0 {
+            if cycle.set.contains(&tv) {
+                cycle.has_bound = true;
+                break;
+            }
+        }
     }
 }
 
 struct TypeVarCycle {
     set: HashSet<TypeVarAlreadySeen>,
+    has_bound: bool,
 }
