@@ -232,7 +232,7 @@ impl CalculatedTypeVarLike {
 #[derive(Debug, Clone)]
 pub struct TypeVarMatcher {
     pub(super) calculated_type_vars: Vec<CalculatedTypeVarLike>,
-    type_var_likes: TypeVarLikes,
+    pub(super) type_var_likes: TypeVarLikes,
     pub(super) match_in_definition: PointLink,
     pub match_reverse: bool,
     pub enabled: bool,

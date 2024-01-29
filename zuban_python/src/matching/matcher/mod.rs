@@ -1027,9 +1027,23 @@ impl<'a> Matcher<'a> {
         for cycle in &mut cycles.cycles {
             if !cycle.has_bound {
                 cycle.free_type_var_index = Some(cycles.free_type_var_likes.len());
-                //cycles.free_type_var_likes.push(new_tv);
+                let new_tv = self.choose_free_type_variable(cycle);
+                cycles.free_type_var_likes.push(new_tv);
             }
         }
+    }
+
+    fn choose_free_type_variable(&self, cycle: &TypeVarCycle) -> TypeVarLike {
+        let iterator = cycle.set.iter().map(|tv| {
+            (
+                tv,
+                &self.type_var_matchers[tv.matcher_index].type_var_likes[tv.type_var_index],
+            )
+        });
+        let lowest = iterator
+            .min_by_key(|(tv, _)| (tv.matcher_index, tv.type_var_index))
+            .unwrap();
+        lowest.1.clone()
     }
 
     fn find_unresolved_transitive_constraint_cycles(&self, db: &Database) -> TypeVarCycles {
@@ -1065,8 +1079,8 @@ impl<'a> Matcher<'a> {
         current_seen: TransitiveConstraintAlreadySeen,
     ) -> bool {
         let mut has_bound = calculated.calculated();
-        for x in &calculated.unresolved_transitive_constraints {
-            match x {
+        for constraint in &calculated.unresolved_transitive_constraints {
+            match constraint {
                 BoundKind::TypeVar(tv_bound) => {
                     let (t, variance) = match tv_bound {
                         TypeVarBound::Upper(t) => (t, Variance::Contravariant),
