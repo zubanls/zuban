@@ -969,7 +969,7 @@ impl<'a> Matcher<'a> {
             return self;
         }
 
-        self.avoid_unresolved_transitive_constraint_cycles(db);
+        let cycles = self.find_unresolved_transitive_constraint_cycles(db);
 
         let mut free_type_variables = vec![];
         // It is questionable that we just avoid all controls for Rust here, however we have the
@@ -996,7 +996,7 @@ impl<'a> Matcher<'a> {
         self
     }
 
-    fn avoid_unresolved_transitive_constraint_cycles(&mut self, db: &Database) {
+    fn find_unresolved_transitive_constraint_cycles(&mut self, db: &Database) -> TypeVarCycles {
         let mut cycles = TypeVarCycles::default();
         for (i, tv_matcher) in self.type_var_matchers.iter().enumerate() {
             for (k, tv) in tv_matcher.calculated_type_vars.iter().enumerate() {
@@ -1014,6 +1014,7 @@ impl<'a> Matcher<'a> {
                 );
             }
         }
+        cycles
     }
 
     fn add_cycles(
@@ -1180,35 +1181,40 @@ impl Iterator for TypeVarAlreadySeenIterator<'_> {
 }
 
 #[derive(Default)]
-struct TypeVarCycles(Vec<HashSet<TypeVarAlreadySeen>>);
+struct TypeVarCycles(Vec<TypeVarCycle>);
 
 impl TypeVarCycles {
     fn add(&mut self, already_seen: TransitiveConstraintAlreadySeen) {
         for tv in already_seen.iter_ancestors() {
             for (i, cycle) in self.0.iter_mut().enumerate() {
-                if cycle.contains(&tv) {
+                if cycle.set.contains(&tv) {
                     // If a cycle is discovered, add the type vars to that cycle.
-                    cycle.extend(already_seen.iter_ancestors());
+                    cycle.set.extend(already_seen.iter_ancestors());
 
                     // We have to merge cycles that are connected to our cycle here.
                     // e.g. we have (A, B) and (C, D) and a new cycle (B, C) is added.
                     // In that case it should not be 2 or 3 cycles, but one like:
                     // (A, B, C, D).
-                    let mut taken_cycle = std::mem::take(cycle);
+                    let mut taken_cycle = std::mem::take(&mut cycle.set);
                     for other_cycle in self.0.iter_mut().skip(i) {
                         for other_tv in already_seen.iter_ancestors() {
-                            if other_cycle.contains(&other_tv) {
-                                taken_cycle.extend(other_cycle.drain())
+                            if other_cycle.set.contains(&other_tv) {
+                                taken_cycle.extend(other_cycle.set.drain())
                             }
                         }
                     }
-                    self.0[i] = taken_cycle;
-                    self.0.retain(|cycle| !cycle.is_empty());
+                    self.0[i].set = taken_cycle;
+                    self.0.retain(|cycle| !cycle.set.is_empty());
                     return;
                 }
             }
         }
-        self.0
-            .push(HashSet::from_iter(already_seen.iter_ancestors()))
+        self.0.push(TypeVarCycle {
+            set: HashSet::from_iter(already_seen.iter_ancestors()),
+        })
     }
+}
+
+struct TypeVarCycle {
+    set: HashSet<TypeVarAlreadySeen>,
 }
