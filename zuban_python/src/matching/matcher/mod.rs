@@ -3,7 +3,7 @@ mod type_var_matcher;
 mod utils;
 
 use core::fmt;
-use std::borrow::Cow;
+use std::{borrow::Cow, collections::HashSet};
 
 pub use type_var_matcher::FunctionOrCallable;
 use type_var_matcher::{BoundKind, TypeVarMatcher};
@@ -969,6 +969,8 @@ impl<'a> Matcher<'a> {
             return self;
         }
 
+        self.avoid_unresolved_transitive_constraint_cycles(db);
+
         let mut free_type_variables = vec![];
         // It is questionable that we just avoid all controls for Rust here, however we have the
         // problem that we are dealing with Cycles and I'm not sure what the best strategy would be
@@ -992,6 +994,77 @@ impl<'a> Matcher<'a> {
         }
 
         self
+    }
+
+    fn avoid_unresolved_transitive_constraint_cycles(&mut self, db: &Database) {
+        let mut cycles = TypeVarCycles::default();
+        for (i, tv_matcher) in self.type_var_matchers.iter().enumerate() {
+            for (k, tv) in tv_matcher.calculated_type_vars.iter().enumerate() {
+                self.add_cycles(
+                    db,
+                    &mut cycles,
+                    tv,
+                    TransitiveConstraintAlreadySeen {
+                        current: TypeVarAlreadySeen {
+                            matcher_index: i,
+                            type_var_index: k,
+                        },
+                        previous: None,
+                    },
+                );
+            }
+        }
+    }
+
+    fn add_cycles(
+        &self,
+        db: &Database,
+        cycles: &mut TypeVarCycles,
+        calculated: &CalculatedTypeVarLike,
+        current_seen: TransitiveConstraintAlreadySeen,
+    ) {
+        for x in &calculated.unresolved_transitive_constraints {
+            match x {
+                BoundKind::TypeVar(tv_bound) => {
+                    let (t, variance) = match tv_bound {
+                        TypeVarBound::Upper(t) => (t, Variance::Contravariant),
+                        TypeVarBound::Lower(t) => (t, Variance::Covariant),
+                        TypeVarBound::Invariant(t) => todo!(),
+                        TypeVarBound::UpperAndLower(..) => todo!(),
+                    };
+                    let t = match tv_bound {
+                        TypeVarBound::Upper(t) => t,
+                        TypeVarBound::Lower(t) => t,
+                        TypeVarBound::Invariant(t) => todo!(),
+                        TypeVarBound::UpperAndLower(..) => todo!(),
+                    };
+                    t.search_type_vars(&mut |usage| {
+                        for (matcher_index, tv_matcher) in self.type_var_matchers.iter().enumerate()
+                        {
+                            if usage.in_definition() == tv_matcher.match_in_definition {
+                                let type_var_index = usage.index().as_usize();
+                                let current = &tv_matcher.calculated_type_vars[type_var_index];
+                                let new_current_seen = TransitiveConstraintAlreadySeen {
+                                    current: TypeVarAlreadySeen {
+                                        matcher_index,
+                                        type_var_index,
+                                    },
+                                    previous: Some(&current_seen),
+                                };
+                                if new_current_seen.is_cycle_and_return_next().is_some() {
+                                    cycles.add(new_current_seen)
+                                } else {
+                                    self.add_cycles(db, cycles, current, new_current_seen);
+                                }
+                            }
+                        }
+                    })
+                }
+                BoundKind::TypeVarTuple(_) => todo!(),
+                BoundKind::ParamSpecArgument(_) => todo!(),
+                BoundKind::Uncalculated { fallback } => unreachable!(),
+            }
+        }
     }
 
     pub fn into_type_arg_iterator_or_any<'db>(
@@ -1064,7 +1137,7 @@ impl fmt::Debug for Matcher<'_> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug, Eq, Hash)]
 struct TypeVarAlreadySeen {
     matcher_index: usize,
     type_var_index: usize,
@@ -1076,7 +1149,7 @@ struct TransitiveConstraintAlreadySeen<'a> {
     previous: Option<&'a TransitiveConstraintAlreadySeen<'a>>,
 }
 
-impl TransitiveConstraintAlreadySeen<'_> {
+impl<'a> TransitiveConstraintAlreadySeen<'a> {
     fn is_cycle_and_return_next(&self) -> Option<TypeVarAlreadySeen> {
         let mut checking = self;
         while let Some(c) = checking.previous {
@@ -1086,5 +1159,42 @@ impl TransitiveConstraintAlreadySeen<'_> {
             checking = c;
         }
         None
+    }
+
+    fn iter_ancestors(&self) -> TypeVarAlreadySeenIterator<'a> {
+        TypeVarAlreadySeenIterator(self.previous)
+    }
+}
+
+struct TypeVarAlreadySeenIterator<'a>(Option<&'a TransitiveConstraintAlreadySeen<'a>>);
+
+impl Iterator for TypeVarAlreadySeenIterator<'_> {
+    type Item = TypeVarAlreadySeen;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let first = self.0.take()?;
+        let result = Some(first.current);
+        self.0 = first.previous;
+        result
+    }
+}
+
+#[derive(Default)]
+struct TypeVarCycles(Vec<HashSet<TypeVarAlreadySeen>>);
+
+impl TypeVarCycles {
+    fn add(&mut self, already_seen: TransitiveConstraintAlreadySeen) {
+        for tv in already_seen.iter_ancestors() {
+            for (i, cycle) in self.0.iter_mut().enumerate() {
+                if cycle.contains(&tv) {
+                    // If a cycle is discovered, add the type vars to that cycle.
+                    cycle.extend(already_seen.iter_ancestors());
+                    // TODO we have to merge cycles that this is connected to.
+                    return;
+                }
+            }
+        }
+        self.0
+            .push(HashSet::from_iter(already_seen.iter_ancestors()))
     }
 }
