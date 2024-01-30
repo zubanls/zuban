@@ -148,6 +148,13 @@ impl CalculatedTypeArgs {
         class: Option<&Class>,
         replace_self_type: ReplaceSelf,
     ) -> Inferred {
+        let mut in_callable_definition = None;
+        if self.type_var_likes.is_some() {
+            if let Type::Callable(c) = &return_type {
+                in_callable_definition = Some(c.defined_at);
+            }
+        }
+
         let mut type_ = return_type.replace_type_var_likes_and_self(
             i_s.db,
             &mut |usage| {
@@ -157,7 +164,24 @@ impl CalculatedTypeArgs {
                     }
                 }
                 if self.in_definition == usage.in_definition() {
-                    return self.type_arguments.as_ref().unwrap()[usage.index()].clone();
+                    let mut arg = self.type_arguments.as_ref().unwrap()[usage.index()].clone();
+                    if self.type_var_likes.is_some() {
+                        arg = arg.replace_type_var_likes(
+                            i_s.db,
+                            &mut |mut tvl| {
+                                if tvl.in_definition() == self.in_definition {
+                                    if let Some(in_def) = in_callable_definition {
+                                        tvl.update_in_definition_and_index(in_def, tvl.index())
+                                    } else {
+                                        todo!()
+                                    }
+                                }
+                                tvl.into_generic_item()
+                            },
+                            &|| Type::Self_,
+                        )
+                    }
+                    return arg;
                 }
                 usage.into_generic_item()
             },
