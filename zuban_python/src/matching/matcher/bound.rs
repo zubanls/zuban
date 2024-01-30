@@ -5,7 +5,7 @@ use crate::{
     type_::{FormatStyle, Type, TypeVar, TypeVarKind, Variance},
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum TypeVarBound {
     Invariant(Type),
     Upper(Type),

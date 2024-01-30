@@ -920,7 +920,8 @@ impl<'a> Matcher<'a> {
             for unresolved in unresolved_transitive_constraints.into_iter() {
                 // Cache unresolved transitive constraints recursively to create a topological
                 // sorting.
-                unresolved.replace_type_var_likes(db, &mut |usage| {
+                let mut is_in_cycle = false;
+                let replaced_unresolved = unresolved.replace_type_var_likes(db, &mut |usage| {
                     for matcher_index in 0..self.type_var_matchers.len() {
                         let tv_matcher = &self.type_var_matchers[matcher_index];
                         if usage.in_definition() == tv_matcher.match_in_definition {
@@ -948,6 +949,10 @@ impl<'a> Matcher<'a> {
                                     TypeVarLike::ParamSpec(_) => todo!(),
                                 };
                             } else {
+                                if depending_on.set.contains(tv_in_cycle) {
+                                    is_in_cycle = true;
+                                    return usage.into_generic_item();
+                                }
                                 let first_entry = depending_on.set.iter().next().unwrap();
                                 let tv_matcher = &self.type_var_matchers[first_entry.matcher_index];
                                 let tvl = &tv_matcher.type_var_likes[first_entry.type_var_index];
@@ -959,6 +964,9 @@ impl<'a> Matcher<'a> {
                     }
                     usage.into_generic_item()
                 });
+                if !is_in_cycle {
+                    current_bound.merge(replaced_unresolved);
+                }
             }
         }
 

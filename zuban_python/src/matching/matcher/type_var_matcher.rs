@@ -100,7 +100,7 @@ impl<'db: 'a, 'a> FunctionOrCallable<'a> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum BoundKind {
     TypeVar(TypeVarBound),
     TypeVarTuple(TupleArgs),
@@ -116,6 +116,9 @@ impl Default for BoundKind {
 
 impl BoundKind {
     pub fn merge(&mut self, other: Self) {
+        if self == &other {
+            return;
+        }
         match (&self, other) {
             (Self::TypeVar(bound1), Self::TypeVar(bound2)) => {
                 todo!()
