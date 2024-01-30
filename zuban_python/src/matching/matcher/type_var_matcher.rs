@@ -150,6 +150,36 @@ impl BoundKind {
             Self::Uncalculated { fallback: None } => (),
         }
     }
+
+    pub fn replace_type_var_likes(
+        &self,
+        db: &Database,
+        on_type_var_like: &mut impl FnMut(TypeVarLikeUsage) -> GenericItem,
+    ) -> Self {
+        match self {
+            Self::TypeVar(tv) => Self::TypeVar(match tv {
+                TypeVarBound::Invariant(t) => {
+                    TypeVarBound::Invariant(t.replace_type_var_likes(db, on_type_var_like))
+                }
+                TypeVarBound::Upper(t) => {
+                    TypeVarBound::Upper(t.replace_type_var_likes(db, on_type_var_like))
+                }
+                TypeVarBound::Lower(t) => {
+                    TypeVarBound::Upper(t.replace_type_var_likes(db, on_type_var_like))
+                }
+                TypeVarBound::UpperAndLower(upper, lower) => TypeVarBound::UpperAndLower(
+                    upper.replace_type_var_likes(db, on_type_var_like),
+                    lower.replace_type_var_likes(db, on_type_var_like),
+                ),
+            }),
+            Self::TypeVarTuple(..) => todo!(),
+            Self::ParamSpecArgument(..) => todo!(),
+            Self::Uncalculated { fallback: Some(t) } => Self::Uncalculated {
+                fallback: Some(t.replace_type_var_likes(db, on_type_var_like)),
+            },
+            Self::Uncalculated { fallback: None } => Self::Uncalculated { fallback: None },
+        }
+    }
 }
 
 #[derive(Debug, Default, Clone)]

@@ -979,7 +979,7 @@ impl<'a> Matcher<'a> {
         self.add_free_type_var_likes_to_cycles(&mut cycles);
 
         for cycle in &cycles.cycles {
-            self.resolve_cycle(&cycles, cycle)
+            self.resolve_cycle(db, &cycles, cycle)
         }
 
         // It is questionable that we just avoid all controls for Rust here, however we have the
@@ -992,7 +992,7 @@ impl<'a> Matcher<'a> {
         self
     }
 
-    fn resolve_cycle(&mut self, cycles: &TypeVarCycles, cycle: &TypeVarCycle) {
+    fn resolve_cycle(&mut self, db: &Database, cycles: &TypeVarCycles, cycle: &TypeVarCycle) {
         let mut current_bound = BoundKind::default();
         for tv_in_cycle in &cycle.set {
             // Use normal bound
@@ -1018,10 +1018,50 @@ impl<'a> Matcher<'a> {
                                     matcher_index,
                                     type_var_index,
                                 });
-                                self.resolve_cycle(cycles, depending_on)
+                                self.resolve_cycle(db, cycles, depending_on)
                             }
                         }
                     }
+                });
+
+                unresolved.replace_type_var_likes(db, &mut |usage| {
+                    for matcher_index in 0..self.type_var_matchers.len() {
+                        let tv_matcher = &self.type_var_matchers[matcher_index];
+                        if usage.in_definition() == tv_matcher.match_in_definition {
+                            let type_var_index = usage.index().as_usize();
+                            let c = &tv_matcher.calculated_type_vars[type_var_index];
+                            let depending_on = cycles.find_cycle(TypeVarAlreadySeen {
+                                matcher_index,
+                                type_var_index,
+                            });
+                            if !c.unresolved_transitive_constraints.is_empty() {
+                                self.resolve_cycle(db, cycles, depending_on)
+                            }
+                            if let Some(free_type_var_index) = depending_on.free_type_var_index {
+                                let in_definition = self.type_var_matchers[0].match_in_definition;
+                                todo!();
+                                return match cycles.free_type_var_likes[free_type_var_index] {
+                                    TypeVarLike::TypeVar(type_var) => {
+                                        GenericItem::TypeArg(Type::TypeVar(TypeVarUsage {
+                                            type_var,
+                                            index: free_type_var_index.into(),
+                                            in_definition,
+                                        }))
+                                    }
+                                    TypeVarLike::TypeVarTuple(_) => todo!(),
+                                    TypeVarLike::ParamSpec(_) => todo!(),
+                                };
+                            } else {
+                                let first_entry = depending_on.set.iter().next().unwrap();
+                                let tv_matcher = &self.type_var_matchers[first_entry.matcher_index];
+                                let tvl = &tv_matcher.type_var_likes[first_entry.type_var_index];
+                                return tv_matcher.calculated_type_vars[first_entry.type_var_index]
+                                    .clone()
+                                    .into_generic_item(db, tvl);
+                            }
+                        }
+                    }
+                    usage.into_generic_item()
                 });
 
                 /*
