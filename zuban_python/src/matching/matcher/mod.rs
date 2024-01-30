@@ -888,86 +888,6 @@ impl<'a> Matcher<'a> {
         result
     }
 
-    fn resolve_unresolved_transitive_constraints(
-        &mut self,
-        db: &Database,
-        free_type_variables: &mut Vec<()>,
-        calculated: &mut CalculatedTypeVarLike,
-        current: TransitiveConstraintAlreadySeen,
-    ) {
-        if let Some(next) = current.is_cycle_and_return_next() {}
-        for x in &calculated.unresolved_transitive_constraints {
-            match x {
-                BoundKind::TypeVar(tv_bound) => {
-                    let (t, variance) = match tv_bound {
-                        TypeVarBound::Upper(t) => (t, Variance::Contravariant),
-                        TypeVarBound::Lower(t) => (t, Variance::Covariant),
-                        TypeVarBound::Invariant(t) => todo!(),
-                        TypeVarBound::UpperAndLower(..) => todo!(),
-                    };
-                    let new_t = self.resolve_unresolved_type(db, free_type_variables, t, &current);
-                    if calculated.calculated() {
-                        todo!()
-                    } else {
-                        //TypeVarBound::new(new_t, variance, &tv);
-                        calculated.type_ = BoundKind::TypeVar(TypeVarBound::Lower(new_t));
-                    }
-                }
-                BoundKind::TypeVarTuple(_) => todo!(),
-                BoundKind::ParamSpecArgument(_) => todo!(),
-                BoundKind::Uncalculated { fallback } => unreachable!(),
-            };
-        }
-    }
-
-    fn resolve_unresolved_type(
-        &mut self,
-        db: &Database,
-        free_type_variables: &mut Vec<()>,
-        t: &Type,
-        current_seen: &TransitiveConstraintAlreadySeen,
-    ) -> Type {
-        // See comment below for the same transmute
-        let slf: &mut Self = unsafe { std::mem::transmute(self as *mut Self) };
-        t.replace_type_var_likes(db, &mut |usage| {
-            for (matcher_index, tv_matcher) in self.type_var_matchers.iter_mut().enumerate() {
-                if usage.in_definition() == tv_matcher.match_in_definition {
-                    let type_var_index = usage.index().as_usize();
-                    let current = &mut tv_matcher.calculated_type_vars[type_var_index];
-                    slf.resolve_unresolved_transitive_constraints(
-                        db,
-                        free_type_variables,
-                        current,
-                        TransitiveConstraintAlreadySeen {
-                            current: TypeVarAlreadySeen {
-                                matcher_index,
-                                type_var_index,
-                            },
-                            previous: Some(current_seen),
-                        },
-                    );
-                    return match &current.type_ {
-                        BoundKind::TypeVar(t) => GenericItem::TypeArg(t.clone().into_type(db)),
-                        BoundKind::TypeVarTuple(ts) => todo!(),
-                        BoundKind::ParamSpecArgument(param_spec) => todo!(),
-                        BoundKind::Uncalculated { .. } => todo!(),
-                    };
-                }
-            }
-            if let Some(c) = self.class {
-                if c.node_ref.as_link() == usage.in_definition() {
-                    todo!()
-                }
-            }
-            if let Some(func_class) = self.func_or_callable.as_ref().and_then(|f| f.class()) {
-                if usage.in_definition() == func_class.node_ref.as_link() {
-                    todo!()
-                }
-            }
-            usage.into_generic_item()
-        })
-    }
-
     fn finish_matcher(mut self, db: &Database) -> Self {
         if self.type_var_matchers.len() < 2 {
             // Finishing is only needed if multiple type var matchers need to negotiate type
@@ -981,14 +901,6 @@ impl<'a> Matcher<'a> {
         for cycle in &cycles.cycles {
             self.resolve_cycle(db, &cycles, cycle)
         }
-
-        // It is questionable that we just avoid all controls for Rust here, however we have the
-        // problem that we are dealing with Cycles and I'm not sure what the best strategy would be
-        // for that.
-        let slf: &mut Self = unsafe { std::mem::transmute(&mut self) };
-        /*
-         */
-
         self
     }
 
@@ -1006,24 +918,8 @@ impl<'a> Matcher<'a> {
                 std::mem::take(&mut used.unresolved_transitive_constraints);
 
             for unresolved in unresolved_transitive_constraints.into_iter() {
-                // Cache unresolved transitive constraints to kind of create a topological sorting.
-                unresolved.search_type_vars(&mut |usage| {
-                    for matcher_index in 0..self.type_var_matchers.len() {
-                        let tv_matcher = &self.type_var_matchers[matcher_index];
-                        if usage.in_definition() == tv_matcher.match_in_definition {
-                            let type_var_index = usage.index().as_usize();
-                            let c = &tv_matcher.calculated_type_vars[type_var_index];
-                            if !c.unresolved_transitive_constraints.is_empty() {
-                                let depending_on = cycles.find_cycle(TypeVarAlreadySeen {
-                                    matcher_index,
-                                    type_var_index,
-                                });
-                                self.resolve_cycle(db, cycles, depending_on)
-                            }
-                        }
-                    }
-                });
-
+                // Cache unresolved transitive constraints recursively to create a topological
+                // sorting.
                 unresolved.replace_type_var_likes(db, &mut |usage| {
                     for matcher_index in 0..self.type_var_matchers.len() {
                         let tv_matcher = &self.type_var_matchers[matcher_index];
@@ -1039,8 +935,8 @@ impl<'a> Matcher<'a> {
                             }
                             if let Some(free_type_var_index) = depending_on.free_type_var_index {
                                 let in_definition = self.type_var_matchers[0].match_in_definition;
-                                todo!();
-                                return match cycles.free_type_var_likes[free_type_var_index] {
+                                return match cycles.free_type_var_likes[free_type_var_index].clone()
+                                {
                                     TypeVarLike::TypeVar(type_var) => {
                                         GenericItem::TypeArg(Type::TypeVar(TypeVarUsage {
                                             type_var,
@@ -1063,29 +959,6 @@ impl<'a> Matcher<'a> {
                     }
                     usage.into_generic_item()
                 });
-
-                /*
-                match unresolved {
-                    BoundKind::TypeVar(tv_bound) => {
-                        let (t, variance) = match tv_bound {
-                            TypeVarBound::Upper(t) => (t, Variance::Contravariant),
-                            TypeVarBound::Lower(t) => (t, Variance::Covariant),
-                            TypeVarBound::Invariant(t) => todo!(),
-                            TypeVarBound::UpperAndLower(..) => todo!(),
-                        };
-                        let new_t = self.resolve_unresolved_type(db, free_type_variables, t, &current);
-                        if calculated.calculated() {
-                            todo!()
-                        } else {
-                            //TypeVarBound::new(new_t, variance, &tv);
-                            calculated.type_ = BoundKind::TypeVar(TypeVarBound::Lower(new_t));
-                        }
-                    }
-                    BoundKind::TypeVarTuple(_) => todo!(),
-                    BoundKind::ParamSpecArgument(_) => todo!(),
-                    BoundKind::Uncalculated { fallback } => unreachable!(),
-                };
-                */
             }
         }
 
@@ -1095,13 +968,6 @@ impl<'a> Matcher<'a> {
                 [tv_in_cycle.type_var_index]
                 .type_ = current_bound.clone();
         }
-        /*
-        let mut free_type_variables = vec![];
-        for (i, tv_matcher) in self.type_var_matchers.iter_mut().enumerate() {
-            for (k, tv) in tv_matcher.calculated_type_vars.iter_mut().enumerate() {
-            }
-        }
-        */
     }
 
     fn add_free_type_var_likes_to_cycles(&self, cycles: &mut TypeVarCycles) {

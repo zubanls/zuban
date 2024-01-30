@@ -133,24 +133,6 @@ impl BoundKind {
         }
     }
 
-    pub fn search_type_vars<C: FnMut(TypeVarLikeUsage)>(&self, found_type_var: &mut C) {
-        match self {
-            Self::TypeVar(tv) => match tv {
-                TypeVarBound::Invariant(t) | TypeVarBound::Upper(t) | TypeVarBound::Lower(t) => {
-                    t.search_type_vars(found_type_var)
-                }
-                TypeVarBound::UpperAndLower(upper, lower) => {
-                    upper.search_type_vars(found_type_var);
-                    lower.search_type_vars(found_type_var);
-                }
-            },
-            Self::TypeVarTuple(..) => todo!(),
-            Self::ParamSpecArgument(..) => todo!(),
-            Self::Uncalculated { fallback: Some(t) } => t.search_type_vars(found_type_var),
-            Self::Uncalculated { fallback: None } => (),
-        }
-    }
-
     pub fn replace_type_var_likes(
         &self,
         db: &Database,
