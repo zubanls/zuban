@@ -411,6 +411,14 @@ pub struct WithUnpack {
 }
 
 impl WithUnpack {
+    pub fn with_empty_before_and_after(unpack: TupleUnpack) -> Self {
+        Self {
+            before: Rc::from([]),
+            unpack,
+            after: Rc::from([]),
+        }
+    }
+
     fn format(&self, format_data: &FormatData) -> Box<str> {
         join_with_commas(
             self.before

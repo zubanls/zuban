@@ -31,7 +31,7 @@ use crate::{
         GenericItem, GenericsList, ParamSpecArg, ParamSpecTypeVars, ParamSpecUsage, ParamType,
         ReplaceSelf, StarParamType, TupleArgs, TupleUnpack, Type, TypeArgs, TypeVarKind,
         TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict,
-        TypedDictGenerics, Variance,
+        TypedDictGenerics, Variance, WithUnpack,
     },
     type_helpers::{Callable, Class, Function},
 };
@@ -909,13 +909,38 @@ impl<'a> Matcher<'a> {
     }
 
     fn resolve_cycle(&mut self, db: &Database, cycles: &TypeVarCycles, cycle: &TypeVarCycle) {
-        let mut current_bound = BoundKind::default();
+        let mut current_bound = if let Some(free_type_var_index) = cycle.free_type_var_index {
+            let in_definition = self.type_var_matchers[0].match_in_definition;
+            match cycles.free_type_var_likes[free_type_var_index].clone() {
+                TypeVarLike::TypeVar(type_var) => {
+                    BoundKind::TypeVar(TypeVarBound::Invariant(Type::TypeVar(TypeVarUsage {
+                        type_var,
+                        index: free_type_var_index.into(),
+                        in_definition,
+                    })))
+                }
+                TypeVarLike::TypeVarTuple(tvt) => BoundKind::TypeVarTuple(TupleArgs::WithUnpack(
+                    WithUnpack::with_empty_before_and_after(TupleUnpack::TypeVarTuple(
+                        TypeVarTupleUsage {
+                            type_var_tuple: tvt,
+                            index: free_type_var_index.into(),
+                            in_definition,
+                        },
+                    )),
+                )),
+                TypeVarLike::ParamSpec(_) => todo!(),
+            }
+        } else {
+            BoundKind::default()
+        };
         for tv_in_cycle in &cycle.set {
             // Use normal bound
             let used = &mut self.type_var_matchers[tv_in_cycle.matcher_index].calculated_type_vars
                 [tv_in_cycle.type_var_index];
             let taken_bounds = std::mem::take(&mut used.type_);
-            current_bound.merge(taken_bounds);
+            if !current_bound.merge(db, taken_bounds).bool() {
+                todo!()
+            }
 
             // Use unresolved transitive constraints
             let unresolved_transitive_constraints =
@@ -971,7 +996,9 @@ impl<'a> Matcher<'a> {
                     usage.into_generic_item()
                 });
                 if !is_in_cycle {
-                    current_bound.merge(replaced_unresolved);
+                    if !current_bound.merge(db, replaced_unresolved).bool() {
+                        todo!()
+                    }
                 }
             }
         }
@@ -1047,12 +1074,6 @@ impl<'a> Matcher<'a> {
         for constraint in &calculated.unresolved_transitive_constraints {
             match constraint {
                 BoundKind::TypeVar(tv_bound) => {
-                    let (t, variance) = match tv_bound {
-                        TypeVarBound::Upper(t) => (t, Variance::Contravariant),
-                        TypeVarBound::Lower(t) => (t, Variance::Covariant),
-                        TypeVarBound::Invariant(t) => todo!(),
-                        TypeVarBound::UpperAndLower(..) => todo!(),
-                    };
                     let t = match tv_bound {
                         TypeVarBound::Upper(t) => t,
                         TypeVarBound::Lower(t) => t,

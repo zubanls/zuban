@@ -115,14 +115,20 @@ impl Default for BoundKind {
 }
 
 impl BoundKind {
-    pub fn merge(&mut self, other: Self) {
+    pub fn merge(&mut self, db: &Database, other: Self) -> Match {
         if self == &other {
-            return;
+            return Match::new_true();
         }
-        match (&self, other) {
+        match (self, other) {
             (Self::TypeVar(bound1), Self::TypeVar(bound2)) => {
-                dbg!(bound1, bound2);
-                todo!()
+                let i_s = InferenceState::new(db);
+                let (t, variance) = match bound2 {
+                    TypeVarBound::Upper(t) => (t, Variance::Contravariant),
+                    TypeVarBound::Lower(t) => (t, Variance::Covariant),
+                    TypeVarBound::Invariant(t) => (t, Variance::Invariant),
+                    TypeVarBound::UpperAndLower(..) => todo!(),
+                };
+                bound1.merge_or_mismatch(&i_s, &t, variance)
             }
             (Self::TypeVarTuple(_), Self::TypeVarTuple(_)) => {
                 todo!()
@@ -130,9 +136,14 @@ impl BoundKind {
             (Self::ParamSpecArgument(_), Self::ParamSpecArgument(_)) => {
                 todo!()
             }
-            (Self::Uncalculated { fallback: Some(_) }, Self::Uncalculated { .. }) => (),
-            (Self::Uncalculated { fallback: _ }, other) => *self = other,
-            (_, Self::Uncalculated { fallback: _ }) => (),
+            (Self::Uncalculated { fallback: Some(_) }, Self::Uncalculated { .. }) => {
+                Match::new_true()
+            }
+            (slf @ Self::Uncalculated { fallback: _ }, other) => {
+                *slf = other;
+                Match::new_true()
+            }
+            (_, Self::Uncalculated { fallback: _ }) => Match::new_true(),
             _ => unreachable!(),
         }
     }
