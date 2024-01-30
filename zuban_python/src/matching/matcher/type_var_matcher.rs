@@ -121,6 +121,7 @@ impl BoundKind {
         }
         match (&self, other) {
             (Self::TypeVar(bound1), Self::TypeVar(bound2)) => {
+                dbg!(bound1, bound2);
                 todo!()
             }
             (Self::TypeVarTuple(_), Self::TypeVarTuple(_)) => {

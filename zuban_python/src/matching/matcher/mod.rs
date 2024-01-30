@@ -931,10 +931,12 @@ impl<'a> Matcher<'a> {
                         if usage.in_definition() == tv_matcher.match_in_definition {
                             let type_var_index = usage.index().as_usize();
                             let c = &tv_matcher.calculated_type_vars[type_var_index];
-                            let depending_on = cycles.find_cycle(TypeVarAlreadySeen {
-                                matcher_index,
-                                type_var_index,
-                            });
+                            let depending_on = cycles
+                                .find_cycle(TypeVarAlreadySeen {
+                                    matcher_index,
+                                    type_var_index,
+                                })
+                                .unwrap();
                             if !c.unresolved_transitive_constraints.is_empty() {
                                 self.resolve_cycle(db, cycles, depending_on)
                             }
@@ -1013,17 +1015,21 @@ impl<'a> Matcher<'a> {
                     matcher_index: i,
                     type_var_index: k,
                 };
-                let has_bound = self.add_cycles(
-                    db,
-                    &mut cycles,
-                    tv,
-                    TransitiveConstraintAlreadySeen {
+                let already_seen = TransitiveConstraintAlreadySeen {
+                    current,
+                    previous: None,
+                };
+                if !tv.calculated() && tv.unresolved_transitive_constraints.is_empty() {
+                    // Create a cycle for a type var that is not part of a cycle
+                    cycles.add(TransitiveConstraintAlreadySeen {
                         current,
-                        previous: None,
-                    },
-                );
-                if has_bound {
-                    cycles.enable_has_bound_for_type_var(current)
+                        previous: Some(&already_seen),
+                    })
+                } else {
+                    let has_bound = self.add_cycles(db, &mut cycles, tv, already_seen);
+                    if has_bound {
+                        cycles.enable_has_bound_for_type_var(current)
+                    }
                 }
             }
         }
@@ -1059,18 +1065,22 @@ impl<'a> Matcher<'a> {
                             if usage.in_definition() == tv_matcher.match_in_definition {
                                 let type_var_index = usage.index().as_usize();
                                 let current = &tv_matcher.calculated_type_vars[type_var_index];
-                                let new_current_seen = TransitiveConstraintAlreadySeen {
-                                    current: TypeVarAlreadySeen {
-                                        matcher_index,
-                                        type_var_index,
-                                    },
+                                let new_current_seen = TypeVarAlreadySeen {
+                                    matcher_index,
+                                    type_var_index,
+                                };
+                                let new_already_seen = TransitiveConstraintAlreadySeen {
+                                    current: new_current_seen,
                                     previous: Some(&current_seen),
                                 };
-                                if new_current_seen.is_cycle_and_return_next().is_some() {
-                                    cycles.add(new_current_seen)
+                                if new_already_seen.is_cycle_and_return_next().is_some() {
+                                    cycles.add(new_already_seen)
                                 } else {
                                     has_bound |=
-                                        self.add_cycles(db, cycles, current, new_current_seen);
+                                        self.add_cycles(db, cycles, current, new_already_seen);
+                                    if cycles.find_cycle(new_current_seen).is_none() {
+                                        has_bound = true;
+                                    }
                                 }
                             }
                         }
@@ -1241,16 +1251,17 @@ impl TypeVarCycles {
         }
     }
 
-    fn find_cycle(&self, tv: TypeVarAlreadySeen) -> &TypeVarCycle {
+    fn find_cycle(&self, tv: TypeVarAlreadySeen) -> Option<&TypeVarCycle> {
         for cycle in &self.cycles {
             if cycle.set.contains(&tv) {
-                return cycle;
+                return Some(cycle);
             }
         }
-        unreachable!()
+        return None;
     }
 }
 
+#[derive(Debug)]
 struct TypeVarCycle {
     set: HashSet<TypeVarAlreadySeen>,
     has_bound: bool,
