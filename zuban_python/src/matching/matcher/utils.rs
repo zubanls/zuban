@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, rc::Rc};
 
 use parsa_python_ast::ParamKind;
 
@@ -24,10 +24,11 @@ use crate::{
     matching::{maybe_class_usage, ErrorTypes, GotType},
     node_ref::NodeRef,
     type_::{
-        match_unpack, CallableParams, ClassGenerics, GenericItem, GenericsList, ReplaceSelf,
-        TupleArgs, TupleUnpack, Type, TypeVarLikeUsage, TypeVarLikes, Variance, WithUnpack,
+        match_unpack, CallableParams, ClassGenerics, GenericsList, ReplaceSelf, TupleArgs,
+        TupleUnpack, Type, TypeVarLikes, Variance, WithUnpack,
     },
     type_helpers::{Callable, Class, Function},
+    utils::rc_unwrap_or_clone,
 };
 
 pub(crate) fn calculate_callable_init_type_vars_and_return<'db: 'a, 'a>(
@@ -129,22 +130,10 @@ pub struct CalculatedTypeArgs {
     in_definition: PointLink,
     pub matches: SignatureMatch,
     type_arguments: Option<GenericsList>,
+    type_var_likes: Option<TypeVarLikes>,
 }
 
 impl CalculatedTypeArgs {
-    fn lookup_type_var_usage(&self, i_s: &InferenceState, usage: TypeVarLikeUsage) -> GenericItem {
-        if self.in_definition == usage.in_definition() {
-            return if let Some(fm) = &self.type_arguments {
-                fm[usage.index()].clone()
-            } else {
-                // TODO we are just passing the type vars again. Does this make sense?
-                // usage.into_generic_item()
-                todo!()
-            };
-        }
-        usage.into_generic_item()
-    }
-
     pub fn type_arguments_into_class_generics(self) -> ClassGenerics {
         match self.type_arguments {
             Some(g) => ClassGenerics::List(g),
@@ -153,13 +142,13 @@ impl CalculatedTypeArgs {
     }
 
     pub fn as_return_type(
-        &self,
+        self,
         i_s: &InferenceState,
         return_type: &Type,
         class: Option<&Class>,
         replace_self_type: ReplaceSelf,
     ) -> Inferred {
-        let type_ = return_type.replace_type_var_likes_and_self(
+        let mut type_ = return_type.replace_type_var_likes_and_self(
             i_s.db,
             &mut |usage| {
                 if let Some(c) = class {
@@ -167,10 +156,22 @@ impl CalculatedTypeArgs {
                         return generic_item;
                     }
                 }
-                self.lookup_type_var_usage(i_s, usage)
+                if self.in_definition == usage.in_definition() {
+                    return self.type_arguments.as_ref().unwrap()[usage.index()].clone();
+                }
+                usage.into_generic_item()
             },
             replace_self_type,
         );
+        if let Some(type_var_likes) = self.type_var_likes {
+            if let Type::Callable(c) = type_ {
+                let mut callable = rc_unwrap_or_clone(c);
+                callable.type_vars = type_var_likes;
+                type_ = Type::Callable(Rc::new(callable))
+            } else {
+                todo!()
+            }
+        }
         debug!("Resolved type vars: {}", type_.format_short(i_s.db));
         Inferred::from_type(type_)
     }
@@ -425,7 +426,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
             }
         },
     };
-    let type_arguments = matcher.into_generics_list(i_s.db);
+    let (type_arguments, type_var_likes) = matcher.into_generics_list(i_s.db);
     if cfg!(feature = "zuban_debug") {
         if let Some(type_arguments) = &type_arguments {
             debug!(
@@ -442,6 +443,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
         in_definition: match_in_definition,
         matches,
         type_arguments,
+        type_var_likes,
     }
 }
 

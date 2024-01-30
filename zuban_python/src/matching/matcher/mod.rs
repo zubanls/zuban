@@ -888,11 +888,11 @@ impl<'a> Matcher<'a> {
         result
     }
 
-    fn finish_matcher(mut self, db: &Database) -> Self {
+    fn finish_matcher(mut self, db: &Database) -> (Self, Option<TypeVarLikes>) {
         if self.type_var_matchers.len() < 2 {
             // Finishing is only needed if multiple type var matchers need to negotiate type
             // vars.
-            return self;
+            return (self, None);
         }
 
         let mut cycles = self.find_unresolved_transitive_constraint_cycles(db);
@@ -901,7 +901,11 @@ impl<'a> Matcher<'a> {
         for cycle in &cycles.cycles {
             self.resolve_cycle(db, &cycles, cycle)
         }
-        self
+        (
+            self,
+            (!cycles.free_type_var_likes.is_empty())
+                .then(|| TypeVarLikes::from_vec(cycles.free_type_var_likes)),
+        )
     }
 
     fn resolve_cycle(&mut self, db: &Database, cycles: &TypeVarCycles, cycle: &TypeVarCycle) {
@@ -1119,12 +1123,15 @@ impl<'a> Matcher<'a> {
             })
     }
 
-    pub fn into_generics_list(self, db: &Database) -> Option<GenericsList> {
-        self.finish_matcher(db)
-            .type_var_matchers
-            .into_iter()
-            .next()
-            .map(|m| m.into_generics_list(db))
+    pub fn into_generics_list(self, db: &Database) -> (Option<GenericsList>, Option<TypeVarLikes>) {
+        let (slf, tvls) = self.finish_matcher(db);
+        (
+            slf.type_var_matchers
+                .into_iter()
+                .next()
+                .map(|m| m.into_generics_list(db)),
+            tvls,
+        )
     }
 }
 

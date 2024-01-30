@@ -990,8 +990,8 @@ pub(crate) fn initialize_typed_dict<'db>(
         let mut matcher = Matcher::new_typed_dict_matcher(&typed_dict);
         check_typed_dict_call(i_s, &mut matcher, typed_dict.clone(), args);
         if matcher.has_type_var_matcher() {
-            let generics = matcher.into_generics_list(i_s.db).unwrap();
-            typed_dict.apply_generics(i_s.db, generics)
+            let (generics, _) = matcher.into_generics_list(i_s.db);
+            typed_dict.apply_generics(i_s.db, generics.unwrap())
         } else {
             typed_dict.clone()
         }
