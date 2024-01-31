@@ -1251,11 +1251,17 @@ struct TypeVarCycles {
 
 impl TypeVarCycles {
     fn add(&mut self, already_seen: TransitiveConstraintAlreadySeen) {
-        for tv in already_seen.iter_ancestors() {
+        let cycle_parts = || {
+            already_seen
+                .iter_ancestors()
+                .take_while(|tv| *tv != already_seen.current)
+                .chain(std::iter::once(already_seen.current))
+        };
+        for tv in cycle_parts() {
             for (i, cycle) in self.cycles.iter_mut().enumerate() {
                 if cycle.set.contains(&tv) {
                     // If a cycle is discovered, add the type vars to that cycle.
-                    cycle.set.extend(already_seen.iter_ancestors());
+                    cycle.set.extend(cycle_parts());
 
                     // We have to merge cycles that are connected to our cycle here.
                     // e.g. we have (A, B) and (C, D) and a new cycle (B, C) is added.
@@ -1263,7 +1269,7 @@ impl TypeVarCycles {
                     // (A, B, C, D).
                     let mut taken_cycle = std::mem::take(&mut cycle.set);
                     for other_cycle in self.cycles.iter_mut().skip(i) {
-                        for other_tv in already_seen.iter_ancestors() {
+                        for other_tv in cycle_parts() {
                             if other_cycle.set.contains(&other_tv) {
                                 taken_cycle.extend(other_cycle.set.drain())
                             }
@@ -1275,9 +1281,8 @@ impl TypeVarCycles {
                 }
             }
         }
-        self.cycles.push(TypeVarCycle::new(HashSet::from_iter(
-            already_seen.iter_ancestors(),
-        )));
+        self.cycles
+            .push(TypeVarCycle::new(HashSet::from_iter(cycle_parts())));
     }
 
     fn enable_has_bound_for_type_var(&mut self, tv: TypeVarAlreadySeen) {
