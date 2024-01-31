@@ -1045,13 +1045,20 @@ impl<'a> Matcher<'a> {
     }
 
     fn choose_free_type_variable(&self, cycle: &TypeVarCycle) -> TypeVarLike {
-        let iterator = cycle.set.iter().map(|tv| {
-            (
-                tv,
-                &self.type_var_matchers[tv.matcher_index].type_var_likes[tv.type_var_index],
-            )
-        });
-        let lowest = iterator
+        let tv_iterator = || {
+            cycle.set.iter().map(|tv| {
+                (
+                    tv,
+                    &self.type_var_matchers[tv.matcher_index].type_var_likes[tv.type_var_index],
+                )
+            })
+        };
+        // Prioritize bounds / constraints
+        if let Some(next) = tv_iterator().filter(|(_, type_var)| matches!(type_var, TypeVarLike::TypeVar(tv) if !matches!(tv.kind, TypeVarKind::Unrestricted)))
+            .min_by_key(|(tv, _)| (tv.matcher_index, tv.type_var_index)) {
+            return next.1.clone()
+        }
+        let lowest = tv_iterator()
             .min_by_key(|(tv, _)| (tv.matcher_index, tv.type_var_index))
             .unwrap();
         lowest.1.clone()
