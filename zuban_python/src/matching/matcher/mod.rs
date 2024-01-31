@@ -889,15 +889,17 @@ impl<'a> Matcher<'a> {
         result
     }
 
-    fn finish_matcher(mut self, db: &Database) -> (Self, Option<TypeVarLikes>) {
+    fn finish_matcher(mut self, db: &Database) -> (Self, Result<Option<TypeVarLikes>, Match>) {
         if self.type_var_matchers.len() < 2 {
             // Finishing is only needed if multiple type var matchers need to negotiate type
             // vars.
-            return (self, None);
+            return (self, Ok(None));
         }
 
         let mut cycles = self.find_unresolved_transitive_constraint_cycles(db);
-        self.add_free_type_var_likes_to_cycles(&mut cycles);
+        if let Err(m) = self.add_free_type_var_likes_to_cycles(db, &mut cycles) {
+            return (self, Err(m));
+        }
 
         if cfg!(feature = "zuban_debug") {
             debug!("Got the following transitive constraint cycles:");
@@ -926,8 +928,8 @@ impl<'a> Matcher<'a> {
         }
         (
             self,
-            (!cycles.free_type_var_likes.is_empty())
-                .then(|| TypeVarLikes::from_vec(cycles.free_type_var_likes)),
+            Ok((!cycles.free_type_var_likes.is_empty())
+                .then(|| TypeVarLikes::from_vec(cycles.free_type_var_likes))),
         )
     }
 
@@ -1034,34 +1036,72 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    fn add_free_type_var_likes_to_cycles(&self, cycles: &mut TypeVarCycles) {
+    fn add_free_type_var_likes_to_cycles(
+        &self,
+        db: &Database,
+        cycles: &mut TypeVarCycles,
+    ) -> Result<(), Match> {
         for cycle in &mut cycles.cycles {
             if !cycle.has_bound {
                 cycle.free_type_var_index = Some(cycles.free_type_var_likes.len());
-                let new_tv = self.choose_free_type_variable(cycle);
+                let new_tv = self.choose_free_type_variable(db, cycle)?;
                 cycles.free_type_var_likes.push(new_tv);
             }
         }
+        Ok(())
     }
 
-    fn choose_free_type_variable(&self, cycle: &TypeVarCycle) -> TypeVarLike {
-        let tv_iterator = || {
-            cycle.set.iter().map(|tv| {
-                (
-                    tv,
-                    &self.type_var_matchers[tv.matcher_index].type_var_likes[tv.type_var_index],
-                )
-            })
+    fn choose_free_type_variable(
+        &self,
+        db: &Database,
+        cycle: &TypeVarCycle,
+    ) -> Result<TypeVarLike, Match> {
+        let as_type_var_like = |tv_index: TypeVarAlreadySeen| {
+            &self.type_var_matchers[tv_index.matcher_index].type_var_likes[tv_index.type_var_index]
         };
-        // Prioritize bounds / constraints
-        if let Some(next) = tv_iterator().filter(|(_, type_var)| matches!(type_var, TypeVarLike::TypeVar(tv) if !matches!(tv.kind, TypeVarKind::Unrestricted)))
-            .min_by_key(|(tv, _)| (tv.matcher_index, tv.type_var_index)) {
-            return next.1.clone()
+        let mut lst = Vec::from_iter(cycle.set.iter().cloned());
+        lst.sort();
+        let mut preferred_bound = None;
+        for tv_index in &lst {
+            let type_var_like = as_type_var_like(*tv_index);
+            if let TypeVarLike::TypeVar(type_var) = type_var_like {
+                if !matches!(type_var.kind, TypeVarKind::Unrestricted) {
+                    if let Some(current) = preferred_bound {
+                        let TypeVarLike::TypeVar(current_tv) = type_var_like else {
+                            unreachable!()
+                        };
+                        match (&type_var.kind, &current_tv.kind) {
+                            (TypeVarKind::Bound(t1), TypeVarKind::Bound(t2)) => {
+                                let i_s = &InferenceState::new(db);
+                                if t1.is_simple_super_type_of(i_s, t2).bool() {
+                                    // Nothing left to do here.
+                                } else if t2.is_simple_super_type_of(i_s, t1).bool() {
+                                    preferred_bound = Some(type_var_like)
+                                } else {
+                                    return Err(Match::new_false());
+                                }
+                            }
+                            _ => return Err(Match::new_false()),
+                        }
+
+                        Type::TypeVar(TypeVarUsage {
+                            type_var: type_var.clone(),
+                            index: 0.into(),
+                            in_definition: self.type_var_matchers[tv_index.matcher_index]
+                                .match_in_definition,
+                        });
+                    } else {
+                        preferred_bound = Some(type_var_like)
+                    }
+                    continue;
+                }
+            }
         }
-        let lowest = tv_iterator()
-            .min_by_key(|(tv, _)| (tv.matcher_index, tv.type_var_index))
-            .unwrap();
-        lowest.1.clone()
+        if let Some(preferred_bound) = preferred_bound {
+            Ok(preferred_bound.clone())
+        } else {
+            Ok(as_type_var_like(lst[0]).clone())
+        }
     }
 
     fn find_unresolved_transitive_constraint_cycles(&self, db: &Database) -> TypeVarCycles {
@@ -1203,15 +1243,20 @@ impl<'a> Matcher<'a> {
             })
     }
 
-    pub fn into_generics_list(self, db: &Database) -> (Option<GenericsList>, Option<TypeVarLikes>) {
-        let (slf, tvls) = self.finish_matcher(db);
-        (
-            slf.type_var_matchers
-                .into_iter()
-                .next()
-                .map(|m| m.into_generics_list(db)),
-            tvls,
-        )
+    pub fn into_generics_list(
+        self,
+        db: &Database,
+    ) -> (Match, Option<GenericsList>, Option<TypeVarLikes>) {
+        let (slf, result) = self.finish_matcher(db);
+        let type_args = slf
+            .type_var_matchers
+            .into_iter()
+            .next()
+            .map(|m| m.into_generics_list(db));
+        match result {
+            Ok(tvls) => (Match::new_true(), type_args, tvls),
+            Err(m) => (m, type_args, None),
+        }
     }
 }
 
@@ -1233,7 +1278,7 @@ impl fmt::Debug for Matcher<'_> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Debug, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Debug, Eq, Hash, PartialOrd, Ord)]
 struct TypeVarAlreadySeen {
     matcher_index: usize,
     type_var_index: usize,

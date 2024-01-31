@@ -404,7 +404,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
             }
         });
     }
-    let matches = match func_or_callable {
+    let mut matches = match func_or_callable {
         FunctionOrCallable::Function(function) => calculate_type_vars_for_params(
             i_s,
             &mut matcher,
@@ -450,7 +450,10 @@ fn calculate_type_vars<'db: 'a, 'a>(
             }
         },
     };
-    let (type_arguments, type_var_likes) = matcher.into_generics_list(i_s.db);
+    let (m, type_arguments, type_var_likes) = matcher.into_generics_list(i_s.db);
+    if !m.bool() {
+        matches = SignatureMatch::False { similar: false };
+    }
     if cfg!(feature = "zuban_debug") {
         if let Some(type_arguments) = &type_arguments {
             debug!(
