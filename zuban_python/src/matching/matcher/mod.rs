@@ -1117,7 +1117,7 @@ impl<'a> Matcher<'a> {
                                     current: new_current_seen,
                                     previous: Some(&current_seen),
                                 };
-                                if new_already_seen.is_cycle_and_return_next().is_some() {
+                                if new_already_seen.is_cycle() {
                                     cycles.add(new_already_seen)
                                 } else {
                                     has_bound |=
@@ -1220,15 +1220,9 @@ struct TransitiveConstraintAlreadySeen<'a> {
 }
 
 impl<'a> TransitiveConstraintAlreadySeen<'a> {
-    fn is_cycle_and_return_next(&self) -> Option<TypeVarAlreadySeen> {
-        let mut checking = self;
-        while let Some(c) = checking.previous {
-            if c.current == self.current {
-                return Some(checking.current);
-            }
-            checking = c;
-        }
-        None
+    fn is_cycle(&self) -> bool {
+        self.iter_ancestors()
+            .any(|ancestor| ancestor == self.current)
     }
 
     fn iter_ancestors(&self) -> TypeVarAlreadySeenIterator<'a> {
