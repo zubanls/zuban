@@ -904,13 +904,13 @@ impl<'a> Matcher<'a> {
             for cycle in &cycles.cycles {
                 let bound = match cycle.free_type_var_index {
                     Some(index) => format!(
-                        "free type var {:?}",
+                        "with free type var {:?}",
                         cycles.free_type_var_likes[index].name(db)
                     ),
                     None => "has bounds".into(),
                 };
                 debug!(
-                    " - {} with {}",
+                    " - {} {}",
                     join_with_commas(
                         cycle
                             .set
@@ -1080,6 +1080,24 @@ impl<'a> Matcher<'a> {
                     if has_bound {
                         cycles.enable_has_bound_for_type_var(current)
                     }
+                }
+            }
+        }
+        // Add all the remaining type var that are not actually a cycle to the list of cycles, so
+        // we can just iterate over all distinct "cycles".
+        for (i, tv_matcher) in self.type_var_matchers.iter().enumerate() {
+            for (k, tv) in tv_matcher.calculated_type_vars.iter().enumerate() {
+                let current = TypeVarAlreadySeen {
+                    matcher_index: i,
+                    type_var_index: k,
+                };
+                if cycles.find_cycle(current).is_none() {
+                    cycles.cycles.push(TypeVarCycle {
+                        set: HashSet::from([current]),
+                        has_bound: tv.calculated()
+                            | !tv.unresolved_transitive_constraints.is_empty(),
+                        free_type_var_index: None,
+                    });
                 }
             }
         }
@@ -1268,14 +1286,17 @@ impl TypeVarCycles {
                     // In that case it should not be 2 or 3 cycles, but one like:
                     // (A, B, C, D).
                     let mut taken_cycle = std::mem::take(&mut cycle.set);
+                    let mut new_has_bound = false;
                     for other_cycle in self.cycles.iter_mut().skip(i) {
                         for other_tv in cycle_parts() {
                             if other_cycle.set.contains(&other_tv) {
-                                taken_cycle.extend(other_cycle.set.drain())
+                                taken_cycle.extend(other_cycle.set.drain());
+                                new_has_bound |= other_cycle.has_bound;
                             }
                         }
                     }
                     self.cycles[i].set = taken_cycle;
+                    self.cycles[i].has_bound |= new_has_bound;
                     self.cycles.retain(|cycle| !cycle.set.is_empty());
                     return;
                 }
@@ -1289,7 +1310,7 @@ impl TypeVarCycles {
         for cycle in &mut self.cycles {
             if cycle.set.contains(&tv) {
                 cycle.has_bound = true;
-                break;
+                return;
             }
         }
     }
