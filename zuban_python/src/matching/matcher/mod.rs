@@ -34,6 +34,7 @@ use crate::{
         TypedDictGenerics, Variance, WithUnpack,
     },
     type_helpers::{Callable, Class, Function},
+    utils::join_with_commas,
 };
 
 #[derive(Debug)]
@@ -898,6 +899,28 @@ impl<'a> Matcher<'a> {
         let mut cycles = self.find_unresolved_transitive_constraint_cycles(db);
         self.add_free_type_var_likes_to_cycles(&mut cycles);
 
+        if cfg!(feature = "zuban_debug") {
+            debug!("Got the following transitive constraint cycles:");
+            for cycle in &cycles.cycles {
+                let bound = match cycle.free_type_var_index {
+                    Some(index) => format!(
+                        "free type var {:?}",
+                        cycles.free_type_var_likes[index].name(db)
+                    ),
+                    None => "has bounds".into(),
+                };
+                debug!(
+                    " - {} with {}",
+                    join_with_commas(
+                        cycle
+                            .set
+                            .iter()
+                            .map(|tv| format!("({}, {})", tv.matcher_index, tv.type_var_index))
+                    ),
+                    bound
+                );
+            }
+        }
         for cycle in &cycles.cycles {
             self.resolve_cycle(db, &cycles, cycle)
         }

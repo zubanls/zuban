@@ -382,7 +382,7 @@ impl TypeVarLike {
     pub fn name<'db>(&self, db: &'db Database) -> &'db str {
         match self {
             Self::TypeVar(t) => t.name(db),
-            Self::TypeVarTuple(t) => todo!(), //t.name(db),
+            Self::TypeVarTuple(t) => t.name(db),
             Self::ParamSpec(s) => s.name(db),
         }
     }
