@@ -452,6 +452,11 @@ fn calculate_type_vars<'db: 'a, 'a>(
     };
     let (m, type_arguments, type_var_likes) = matcher.into_generics_list(i_s.db);
     if !m.bool() {
+        if on_type_error.is_some() {
+            add_issue(IssueType::ArgumentTypeIssue(
+                "Incompatible callable argument with type vars".into(),
+            ))
+        }
         matches = SignatureMatch::False { similar: false };
     }
     if cfg!(feature = "zuban_debug") {

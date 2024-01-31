@@ -1061,21 +1061,21 @@ impl<'a> Matcher<'a> {
         };
         let mut lst = Vec::from_iter(cycle.set.iter().cloned());
         lst.sort();
-        let mut preferred_bound = None;
+        let mut preferred_bound: Option<&_> = None;
         for tv_index in &lst {
             let type_var_like = as_type_var_like(*tv_index);
-            if let TypeVarLike::TypeVar(type_var) = type_var_like {
-                if !matches!(type_var.kind, TypeVarKind::Unrestricted) {
+            if let TypeVarLike::TypeVar(new) = type_var_like {
+                if !matches!(new.kind, TypeVarKind::Unrestricted) {
                     if let Some(current) = preferred_bound {
-                        let TypeVarLike::TypeVar(current_tv) = type_var_like else {
+                        let TypeVarLike::TypeVar(current_tv) = current else {
                             unreachable!()
                         };
-                        match (&type_var.kind, &current_tv.kind) {
+                        match (&current_tv.kind, &new.kind) {
                             (TypeVarKind::Bound(t1), TypeVarKind::Bound(t2)) => {
                                 let i_s = &InferenceState::new(db);
-                                if t1.is_simple_super_type_of(i_s, t2).bool() {
+                                if t1.is_simple_sub_type_of(i_s, t2).bool() {
                                     // Nothing left to do here.
-                                } else if t2.is_simple_super_type_of(i_s, t1).bool() {
+                                } else if t2.is_simple_sub_type_of(i_s, t1).bool() {
                                     preferred_bound = Some(type_var_like)
                                 } else {
                                     return Err(Match::new_false());
@@ -1083,13 +1083,6 @@ impl<'a> Matcher<'a> {
                             }
                             _ => return Err(Match::new_false()),
                         }
-
-                        Type::TypeVar(TypeVarUsage {
-                            type_var: type_var.clone(),
-                            index: 0.into(),
-                            in_definition: self.type_var_matchers[tv_index.matcher_index]
-                                .match_in_definition,
-                        });
                     } else {
                         preferred_bound = Some(type_var_like)
                     }
