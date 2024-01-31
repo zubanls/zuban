@@ -405,7 +405,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
         });
     }
     let mut matches = match func_or_callable {
-        FunctionOrCallable::Function(function) => calculate_type_vars_for_params(
+        FunctionOrCallable::Function(function) => match_arguments_against_params(
             i_s,
             &mut matcher,
             func_or_callable,
@@ -414,7 +414,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
             function.iter_args_with_params(i_s.db, args, skip_first_param),
         ),
         FunctionOrCallable::Callable(callable) => match &callable.content.params {
-            CallableParams::Simple(params) => calculate_type_vars_for_params(
+            CallableParams::Simple(params) => match_arguments_against_params(
                 i_s,
                 &mut matcher,
                 func_or_callable,
@@ -867,22 +867,4 @@ pub(crate) fn match_arguments_against_params<
         },
         Match::False { similar, .. } => SignatureMatch::False { similar },
     }
-}
-
-fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>, AI: Iterator<Item = Arg<'db, 'x>>>(
-    i_s: &InferenceState<'db, '_>,
-    matcher: &mut Matcher,
-    func_or_callable: FunctionOrCallable,
-    add_issue: &impl Fn(IssueType),
-    on_type_error: Option<OnTypeError<'db, '_>>,
-    args_with_params: InferrableParamIterator<'db, 'x, impl Iterator<Item = P>, P, AI>,
-) -> SignatureMatch {
-    match_arguments_against_params(
-        i_s,
-        matcher,
-        func_or_callable,
-        add_issue,
-        on_type_error,
-        args_with_params,
-    )
 }
