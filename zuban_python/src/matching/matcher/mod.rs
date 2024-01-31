@@ -1118,8 +1118,9 @@ impl<'a> Matcher<'a> {
                     let t = match tv_bound {
                         TypeVarBound::Upper(t) => t,
                         TypeVarBound::Lower(t) => t,
-                        TypeVarBound::Invariant(t) => todo!(),
-                        TypeVarBound::UpperAndLower(..) => todo!(),
+                        TypeVarBound::Invariant(t) => t,
+                        // Lower is not relevant, because it comes from the type var bound.
+                        TypeVarBound::UpperAndLower(_, t) => t,
                     };
                     t.search_type_vars(&mut |usage| {
                         for (matcher_index, tv_matcher) in self.type_var_matchers.iter().enumerate()

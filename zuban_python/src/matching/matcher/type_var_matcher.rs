@@ -122,13 +122,17 @@ impl BoundKind {
         match (self, other) {
             (Self::TypeVar(bound1), Self::TypeVar(bound2)) => {
                 let i_s = InferenceState::new(db);
+                let mut m = Match::new_true();
                 let (t, variance) = match bound2 {
                     TypeVarBound::Upper(t) => (t, Variance::Contravariant),
                     TypeVarBound::Lower(t) => (t, Variance::Covariant),
                     TypeVarBound::Invariant(t) => (t, Variance::Invariant),
-                    TypeVarBound::UpperAndLower(..) => todo!(),
+                    TypeVarBound::UpperAndLower(upper, t) => {
+                        m = bound1.merge_or_mismatch(&i_s, &upper, Variance::Contravariant);
+                        (t, Variance::Covariant)
+                    }
                 };
-                bound1.merge_or_mismatch(&i_s, &t, variance)
+                m.or(|| bound1.merge_or_mismatch(&i_s, &t, variance))
             }
             (Self::TypeVarTuple(_), Self::TypeVarTuple(_)) => {
                 todo!()
