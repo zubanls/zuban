@@ -1215,6 +1215,34 @@ impl<'a> Matcher<'a> {
     ) -> bool {
         let mut has_bound = calculated.calculated();
         for unresolved in &calculated.unresolved_transitive_constraints {
+            let cycle_search = &mut |usage: TypeVarLikeUsage| {
+                for (matcher_index, tv_matcher) in self.type_var_matchers.iter().enumerate() {
+                    if unresolved.disabled_matchers.contains(&matcher_index) {
+                        continue;
+                    }
+                    if usage.in_definition() == tv_matcher.match_in_definition {
+                        let type_var_index = usage.index().as_usize();
+                        let current = &tv_matcher.calculated_type_vars[type_var_index];
+                        let new_current_seen = TypeVarAlreadySeen {
+                            matcher_index,
+                            type_var_index,
+                        };
+                        let new_already_seen = TransitiveConstraintAlreadySeen {
+                            current: new_current_seen,
+                            previous: Some(&current_seen),
+                        };
+                        if new_already_seen.is_cycle() {
+                            cycles.add(new_already_seen)
+                        } else {
+                            has_bound |= self.add_cycles(db, cycles, current, new_already_seen);
+                            if cycles.find_cycle(new_current_seen).is_none() {
+                                has_bound = true;
+                            }
+                        }
+                        return;
+                    }
+                }
+            };
             match &unresolved.constraint {
                 BoundKind::TypeVar(tv_bound) => {
                     let t = match tv_bound {
@@ -1224,38 +1252,9 @@ impl<'a> Matcher<'a> {
                         // Lower is not relevant, because it comes from the type var bound.
                         TypeVarBound::UpperAndLower(_, t) => t,
                     };
-                    t.search_type_vars(&mut |usage| {
-                        for (matcher_index, tv_matcher) in self.type_var_matchers.iter().enumerate()
-                        {
-                            if unresolved.disabled_matchers.contains(&matcher_index) {
-                                continue;
-                            }
-                            if usage.in_definition() == tv_matcher.match_in_definition {
-                                let type_var_index = usage.index().as_usize();
-                                let current = &tv_matcher.calculated_type_vars[type_var_index];
-                                let new_current_seen = TypeVarAlreadySeen {
-                                    matcher_index,
-                                    type_var_index,
-                                };
-                                let new_already_seen = TransitiveConstraintAlreadySeen {
-                                    current: new_current_seen,
-                                    previous: Some(&current_seen),
-                                };
-                                if new_already_seen.is_cycle() {
-                                    cycles.add(new_already_seen)
-                                } else {
-                                    has_bound |=
-                                        self.add_cycles(db, cycles, current, new_already_seen);
-                                    if cycles.find_cycle(new_current_seen).is_none() {
-                                        has_bound = true;
-                                    }
-                                }
-                                return;
-                            }
-                        }
-                    })
+                    t.search_type_vars(cycle_search)
                 }
-                BoundKind::TypeVarTuple(_) => todo!(),
+                BoundKind::TypeVarTuple(tup) => tup.search_type_vars(cycle_search),
                 BoundKind::ParamSpecArgument(_) => todo!(),
                 BoundKind::Uncalculated { fallback } => unreachable!(),
             }
