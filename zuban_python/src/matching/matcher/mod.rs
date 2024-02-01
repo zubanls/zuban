@@ -248,24 +248,22 @@ impl<'a> Matcher<'a> {
             if tv_matcher.match_in_definition == t1.in_definition
                 && tv_matcher.match_reverse != normal_side_matching
             {
-                if type_var_matchers_count > 1 {
-                    if self.check_if_unresolved_transitive_constraint(
-                        TypeVarAlreadySeen {
-                            matcher_index: i,
-                            type_var_index: t1.index.as_usize(),
-                        },
-                        normal_side_matching,
-                        |found_type_var| value_type.search_type_vars(found_type_var),
-                        || {
-                            BoundKind::TypeVar(TypeVarBound::new(
-                                value_type.clone(),
-                                variance,
-                                t1.type_var.as_ref(),
-                            ))
-                        },
-                    ) {
-                        return Some(Match::new_true());
-                    }
+                if self.check_if_unresolved_transitive_constraint(
+                    TypeVarAlreadySeen {
+                        matcher_index: i,
+                        type_var_index: t1.index.as_usize(),
+                    },
+                    normal_side_matching,
+                    |found_type_var| value_type.search_type_vars(found_type_var),
+                    || {
+                        BoundKind::TypeVar(TypeVarBound::new(
+                            value_type.clone(),
+                            variance,
+                            t1.type_var.as_ref(),
+                        ))
+                    },
+                ) {
+                    return Some(Match::new_true());
                 }
                 let tv_matcher = &mut self.type_var_matchers[i];
                 return Some(tv_matcher.match_or_add_type_var(
@@ -313,7 +311,9 @@ impl<'a> Matcher<'a> {
         find_type_var: impl FnOnce(&mut dyn FnMut(TypeVarLikeUsage)),
         as_constraint: impl Fn() -> BoundKind,
     ) -> bool {
-        //tv_matcher.calculated_type_vars[t1.index.as_usize()].unresolved_transitive_constraints
+        if self.type_var_matchers.len() <= 1 {
+            return false;
+        }
         let mut has_unresolved_constraint = false;
         find_type_var(&mut |tv| {
             for tv_matcher in &self.type_var_matchers {
@@ -391,6 +391,7 @@ impl<'a> Matcher<'a> {
         args2: TupleArgs,
         variance: Variance,
     ) -> Match {
+        let normal_side_matching = true;
         for (i, tv_matcher) in self
             .type_var_matchers
             .iter()
@@ -398,6 +399,17 @@ impl<'a> Matcher<'a> {
             .filter(|(_, tvm)| tvm.enabled)
         {
             if tv_matcher.match_in_definition == tvt.in_definition {
+                if self.check_if_unresolved_transitive_constraint(
+                    TypeVarAlreadySeen {
+                        matcher_index: i,
+                        type_var_index: tvt.index.as_usize(),
+                    },
+                    normal_side_matching,
+                    |found_type_var| args2.search_type_vars(found_type_var),
+                    || BoundKind::TypeVarTuple(args2.clone()),
+                ) {
+                    return Match::new_true();
+                }
                 let tv_matcher = &mut self.type_var_matchers[i];
                 return tv_matcher.calculated_type_vars[tvt.index.as_usize()]
                     .match_or_add_type_var_tuple(i_s, args2);
