@@ -249,35 +249,21 @@ impl<'a> Matcher<'a> {
                 && tv_matcher.match_reverse != normal_side_matching
             {
                 if type_var_matchers_count > 1 {
-                    let mut has_unresolved_constraint = false;
-                    value_type.search_type_vars(&mut |tv| {
-                        for tv_matcher in &self.type_var_matchers {
-                            if tv_matcher.enabled
-                                && tv_matcher.match_in_definition == tv.in_definition()
-                                && tv_matcher.match_reverse == normal_side_matching
-                            {
-                                has_unresolved_constraint = true;
-                            }
-                        }
-                    });
-                    if has_unresolved_constraint {
-                        let disabled_matchers = self
-                            .type_var_matchers
-                            .iter()
-                            .enumerate()
-                            .filter_map(|(i, tvm)| (!tvm.enabled).then_some(i))
-                            .collect();
-                        let tv_matcher = &mut self.type_var_matchers[i];
-                        tv_matcher.calculated_type_vars[t1.index.as_usize()]
-                            .unresolved_transitive_constraints
-                            .push(UnresolvedTransitiveConstraint {
-                                constraint: BoundKind::TypeVar(TypeVarBound::new(
-                                    value_type.clone(),
-                                    variance,
-                                    t1.type_var.as_ref(),
-                                )),
-                                disabled_matchers,
-                            });
+                    if self.check_if_unresolved_transitive_constraint(
+                        TypeVarAlreadySeen {
+                            matcher_index: i,
+                            type_var_index: t1.index.as_usize(),
+                        },
+                        normal_side_matching,
+                        |found_type_var| value_type.search_type_vars(found_type_var),
+                        || {
+                            BoundKind::TypeVar(TypeVarBound::new(
+                                value_type.clone(),
+                                variance,
+                                t1.type_var.as_ref(),
+                            ))
+                        },
+                    ) {
                         return Some(Match::new_true());
                     }
                 }
@@ -317,6 +303,44 @@ impl<'a> Matcher<'a> {
             }
         }
         None
+    }
+
+    #[inline]
+    fn check_if_unresolved_transitive_constraint(
+        &mut self,
+        tv: TypeVarAlreadySeen,
+        normal_side_matching: bool,
+        find_type_var: impl FnOnce(&mut dyn FnMut(TypeVarLikeUsage)),
+        as_constraint: impl Fn() -> BoundKind,
+    ) -> bool {
+        //tv_matcher.calculated_type_vars[t1.index.as_usize()].unresolved_transitive_constraints
+        let mut has_unresolved_constraint = false;
+        find_type_var(&mut |tv| {
+            for tv_matcher in &self.type_var_matchers {
+                if tv_matcher.enabled
+                    && tv_matcher.match_in_definition == tv.in_definition()
+                    && tv_matcher.match_reverse == normal_side_matching
+                {
+                    has_unresolved_constraint = true;
+                }
+            }
+        });
+        if has_unresolved_constraint {
+            let disabled_matchers = self
+                .type_var_matchers
+                .iter()
+                .enumerate()
+                .filter_map(|(i, tvm)| (!tvm.enabled).then_some(i))
+                .collect();
+            let tv_matcher = &mut self.type_var_matchers[tv.matcher_index];
+            tv_matcher.calculated_type_vars[tv.type_var_index]
+                .unresolved_transitive_constraints
+                .push(UnresolvedTransitiveConstraint {
+                    constraint: as_constraint(),
+                    disabled_matchers,
+                });
+        }
+        has_unresolved_constraint
     }
 
     pub fn match_or_add_type_var(

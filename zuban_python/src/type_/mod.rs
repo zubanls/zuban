@@ -271,7 +271,7 @@ impl GenericsList {
         .into()
     }
 
-    fn search_type_vars<C: FnMut(TypeVarLikeUsage)>(&self, found_type_var: &mut C) {
+    fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C) {
         for g in self.iter() {
             match g {
                 GenericItem::TypeArg(t) => t.search_type_vars(found_type_var),
@@ -773,7 +773,7 @@ impl Type {
         }
     }
 
-    pub fn search_type_vars<C: FnMut(TypeVarLikeUsage)>(&self, found_type_var: &mut C) {
+    pub fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C) {
         match self {
             Self::Class(GenericClass {
                 generics: ClassGenerics::List(generics),

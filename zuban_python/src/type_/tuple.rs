@@ -515,7 +515,7 @@ impl TupleArgs {
         }
     }
 
-    pub fn search_type_vars<C: FnMut(TypeVarLikeUsage)>(&self, found_type_var: &mut C) {
+    pub fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C) {
         match self {
             TupleArgs::FixedLen(ts) => {
                 for t in ts.iter() {
