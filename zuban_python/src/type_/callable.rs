@@ -378,7 +378,9 @@ impl CallableParams {
                         | ParamType::StarStar(StarStarParamType::ValueType(t)) => {
                             t.search_type_vars(found_type_var)
                         }
-                        ParamType::Star(StarParamType::UnpackedTuple(u)) => todo!(),
+                        ParamType::Star(StarParamType::UnpackedTuple(u)) => {
+                            u.args.search_type_vars(found_type_var)
+                        }
                         ParamType::Star(StarParamType::ParamSpecArgs(_)) => {
                             unreachable!()
                         }

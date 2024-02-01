@@ -119,9 +119,9 @@ impl BoundKind {
         if self == &other {
             return Match::new_true();
         }
+        let i_s = InferenceState::new(db);
         match (self, other) {
             (Self::TypeVar(bound1), Self::TypeVar(bound2)) => {
-                let i_s = InferenceState::new(db);
                 let mut m = Match::new_true();
                 let (t, variance) = match bound2 {
                     TypeVarBound::Upper(t) => (t, Variance::Contravariant),
@@ -134,7 +134,7 @@ impl BoundKind {
                 };
                 m.or(|| bound1.merge_or_mismatch(&i_s, &t, variance))
             }
-            (Self::TypeVarTuple(_), Self::TypeVarTuple(_)) => {
+            (Self::TypeVarTuple(tup1), Self::TypeVarTuple(tup2)) => {
                 todo!()
             }
             (Self::ParamSpecArgument(_), Self::ParamSpecArgument(_)) => {
