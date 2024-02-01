@@ -261,7 +261,12 @@ impl<'a> Matcher<'a> {
                         }
                     });
                     if has_unresolved_constraint {
-                        //let disabled_matchers = self.type_var_matchers.iter().enumerate().filter_map(|(i, tvm)| (!tvm.enabled).then_some(i)).collect();
+                        let disabled_matchers = self
+                            .type_var_matchers
+                            .iter()
+                            .enumerate()
+                            .filter_map(|(i, tvm)| (!tvm.enabled).then_some(i))
+                            .collect();
                         let tv_matcher = &mut self.type_var_matchers[i];
                         tv_matcher.calculated_type_vars[t1.index.as_usize()]
                             .unresolved_transitive_constraints
@@ -271,7 +276,7 @@ impl<'a> Matcher<'a> {
                                     variance,
                                     t1.type_var.as_ref(),
                                 )),
-                                disabled_matchers: Default::default(),
+                                disabled_matchers,
                             });
                         return Some(Match::new_true());
                     }
@@ -1209,6 +1214,7 @@ impl<'a> Matcher<'a> {
                                         has_bound = true;
                                     }
                                 }
+                                return;
                             }
                         }
                     })
