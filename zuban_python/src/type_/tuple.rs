@@ -19,7 +19,7 @@ use crate::{
     node_ref::NodeRef,
     type_::{AnyCause, Type},
     type_helpers::{Instance, LookupDetails, TypeOrClass},
-    utils::join_with_commas,
+    utils::{join_with_commas, rc_slice_into_vec},
 };
 
 thread_local! {
@@ -559,6 +559,45 @@ impl TupleArgs {
             (_, WithUnpack(_)) => todo!(),
             _ => Tuple::new_arbitrary_length_with_any().args.clone(),
         }
+    }
+
+    pub fn add_before_and_after(self, before: Vec<Type>, after: Vec<Type>) -> Self {
+        match self {
+            TupleArgs::FixedLen(fixed) => TupleArgs::FixedLen({
+                before
+                    .into_iter()
+                    .chain(fixed.iter().cloned())
+                    .chain(after)
+                    .collect()
+            }),
+            TupleArgs::WithUnpack(new) => TupleArgs::WithUnpack(WithUnpack {
+                before: merge_types(before, new.before),
+                unpack: new.unpack,
+                after: merge_types(after, new.after),
+            }),
+            TupleArgs::ArbitraryLen(t) => {
+                if before.is_empty() && after.is_empty() {
+                    TupleArgs::ArbitraryLen(t)
+                } else {
+                    TupleArgs::WithUnpack(WithUnpack {
+                        before: before.into(),
+                        unpack: TupleUnpack::ArbitraryLen(*t),
+                        after: after.into(),
+                    })
+                }
+            }
+        }
+    }
+}
+
+fn merge_types(mut original: Vec<Type>, new: Rc<[Type]>) -> Rc<[Type]> {
+    if original.is_empty() {
+        new
+    } else if new.is_empty() {
+        original.into()
+    } else {
+        original.append(&mut rc_slice_into_vec(new));
+        original.into()
     }
 }
 

@@ -390,13 +390,8 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                                 if before.is_empty() && after.is_empty() {
                                     Cow::Borrowed(&unpacked_tup.args)
                                 } else {
-                                    let mut new_args = unpacked_tup.args.clone();
-                                    match new_args {
-                                        TupleArgs::WithUnpack(_) => todo!(),
-                                        TupleArgs::ArbitraryLen(_) => todo!(),
-                                        TupleArgs::FixedLen(_) => todo!(),
-                                    };
-                                    Cow::Owned(new_args)
+                                    let new_args = unpacked_tup.args.clone();
+                                    Cow::Owned(new_args.add_before_and_after(before, after))
                                 }
                             } else {
                                 Cow::Owned(TupleArgs::FixedLen(before.into()))

@@ -628,31 +628,7 @@ impl TupleArgs {
                         .iter()
                         .map(|t| t.replace_type_var_likes_and_self(db, callable, replace_self))
                         .collect();
-                    match new.args {
-                        TupleArgs::FixedLen(fixed) => TupleArgs::FixedLen({
-                            new_before
-                                .into_iter()
-                                .chain(fixed.iter().cloned())
-                                .chain(new_after)
-                                .collect()
-                        }),
-                        TupleArgs::WithUnpack(new) => TupleArgs::WithUnpack(WithUnpack {
-                            before: merge_types(new_before, new.before),
-                            unpack: new.unpack,
-                            after: merge_types(new_after, new.after),
-                        }),
-                        TupleArgs::ArbitraryLen(t) => {
-                            if new_before.is_empty() && new_after.is_empty() {
-                                TupleArgs::ArbitraryLen(t)
-                            } else {
-                                TupleArgs::WithUnpack(WithUnpack {
-                                    before: new_before.into(),
-                                    unpack: TupleUnpack::ArbitraryLen(*t),
-                                    after: new_after.into(),
-                                })
-                            }
-                        }
-                    }
+                    new.args.add_before_and_after(new_before, new_after)
                 }
                 TupleUnpack::ArbitraryLen(t) => TupleArgs::WithUnpack(WithUnpack {
                     before: unpack.before.clone(),
@@ -698,16 +674,5 @@ impl TupleArgs {
                     .collect(),
             }),
         }
-    }
-}
-
-fn merge_types(mut original: Vec<Type>, new: Rc<[Type]>) -> Rc<[Type]> {
-    if original.is_empty() {
-        new
-    } else if new.is_empty() {
-        original.into()
-    } else {
-        original.append(&mut rc_slice_into_vec(new));
-        original.into()
     }
 }
