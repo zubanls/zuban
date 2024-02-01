@@ -14,7 +14,10 @@ pub(crate) use utils::{
     CalculatedTypeArgs,
 };
 
-use self::{bound::TypeVarBound, type_var_matcher::CalculatedTypeVarLike};
+use self::{
+    bound::TypeVarBound,
+    type_var_matcher::{CalculatedTypeVarLike, UnresolvedTransitiveConstraint},
+};
 
 use super::{
     params::{matches_simple_params, InferrableParamIterator},
@@ -239,8 +242,8 @@ impl<'a> Matcher<'a> {
         for (i, tv_matcher) in self
             .type_var_matchers
             .iter()
-            .filter(|tvm| tvm.enabled)
             .enumerate()
+            .filter(|(_, tvm)| tvm.enabled)
         {
             if tv_matcher.match_in_definition == t1.in_definition
                 && tv_matcher.match_reverse != normal_side_matching
@@ -249,7 +252,8 @@ impl<'a> Matcher<'a> {
                     let mut has_unresolved_constraint = false;
                     value_type.search_type_vars(&mut |tv| {
                         for tv_matcher in &self.type_var_matchers {
-                            if tv_matcher.match_in_definition == tv.in_definition()
+                            if tv_matcher.enabled
+                                && tv_matcher.match_in_definition == tv.in_definition()
                                 && tv_matcher.match_reverse == normal_side_matching
                             {
                                 has_unresolved_constraint = true;
@@ -257,14 +261,18 @@ impl<'a> Matcher<'a> {
                         }
                     });
                     if has_unresolved_constraint {
+                        //let disabled_matchers = self.type_var_matchers.iter().enumerate().filter_map(|(i, tvm)| (!tvm.enabled).then_some(i)).collect();
                         let tv_matcher = &mut self.type_var_matchers[i];
                         tv_matcher.calculated_type_vars[t1.index.as_usize()]
                             .unresolved_transitive_constraints
-                            .push(BoundKind::TypeVar(TypeVarBound::new(
-                                value_type.clone(),
-                                variance,
-                                t1.type_var.as_ref(),
-                            )));
+                            .push(UnresolvedTransitiveConstraint {
+                                constraint: BoundKind::TypeVar(TypeVarBound::new(
+                                    value_type.clone(),
+                                    variance,
+                                    t1.type_var.as_ref(),
+                                )),
+                                disabled_matchers: Default::default(),
+                            });
                         return Some(Match::new_true());
                     }
                 }
@@ -357,8 +365,8 @@ impl<'a> Matcher<'a> {
         for (i, tv_matcher) in self
             .type_var_matchers
             .iter()
-            .filter(|tvm| tvm.enabled)
             .enumerate()
+            .filter(|(_, tvm)| tvm.enabled)
         {
             if tv_matcher.match_in_definition == tvt.in_definition {
                 let tv_matcher = &mut self.type_var_matchers[i];
@@ -457,8 +465,8 @@ impl<'a> Matcher<'a> {
         for (i, tv_matcher) in self
             .type_var_matchers
             .iter()
-            .filter(|tvm| tvm.enabled)
             .enumerate()
+            .filter(|(_, tvm)| tvm.enabled)
         {
             if tv_matcher.match_in_definition == p1.in_definition {
                 let tv_matcher = &mut self.type_var_matchers[i];
@@ -530,8 +538,8 @@ impl<'a> Matcher<'a> {
         for (i, tv_matcher) in self
             .type_var_matchers
             .iter()
-            .filter(|tvm| tvm.enabled)
             .enumerate()
+            .filter(|(_, tvm)| tvm.enabled)
         {
             if tv_matcher.match_in_definition == p1.in_definition {
                 let tv_matcher = &mut self.type_var_matchers[i];
@@ -975,51 +983,64 @@ impl<'a> Matcher<'a> {
                 // Cache unresolved transitive constraints recursively to create a topological
                 // sorting.
                 let mut is_in_cycle = false;
-                let replaced_unresolved = unresolved.replace_type_var_likes(db, &mut |usage| {
-                    for matcher_index in 0..self.type_var_matchers.len() {
-                        let tv_matcher = &self.type_var_matchers[matcher_index];
-                        if usage.in_definition() == tv_matcher.match_in_definition {
-                            let type_var_index = usage.index().as_usize();
-                            let c = &tv_matcher.calculated_type_vars[type_var_index];
-                            let depending_on = cycles
-                                .find_cycle(TypeVarAlreadySeen {
-                                    matcher_index,
-                                    type_var_index,
-                                })
-                                .unwrap();
-                            if !c.unresolved_transitive_constraints.is_empty() {
-                                self.resolve_cycle(db, cycles, depending_on)
-                            }
-                            if let Some(free_type_var_index) = depending_on.free_type_var_index {
-                                let in_definition = self.type_var_matchers[0].match_in_definition;
-                                return match cycles.free_type_var_likes[free_type_var_index].clone()
-                                {
-                                    TypeVarLike::TypeVar(type_var) => {
-                                        GenericItem::TypeArg(Type::TypeVar(TypeVarUsage {
-                                            type_var,
-                                            index: free_type_var_index.into(),
-                                            in_definition,
-                                        }))
-                                    }
-                                    TypeVarLike::TypeVarTuple(_) => todo!(),
-                                    TypeVarLike::ParamSpec(_) => todo!(),
-                                };
-                            } else {
-                                if depending_on.set.contains(tv_in_cycle) {
-                                    is_in_cycle = true;
-                                    return usage.into_generic_item();
+                let replaced_unresolved =
+                    unresolved
+                        .constraint
+                        .replace_type_var_likes(db, &mut |usage| {
+                            for matcher_index in 0..self.type_var_matchers.len() {
+                                if unresolved.disabled_matchers.contains(&matcher_index) {
+                                    continue;
                                 }
-                                let first_entry = depending_on.set.iter().next().unwrap();
-                                let tv_matcher = &self.type_var_matchers[first_entry.matcher_index];
-                                let tvl = &tv_matcher.type_var_likes[first_entry.type_var_index];
-                                return tv_matcher.calculated_type_vars[first_entry.type_var_index]
-                                    .clone()
-                                    .into_generic_item(db, tvl);
+                                let tv_matcher = &self.type_var_matchers[matcher_index];
+                                if usage.in_definition() == tv_matcher.match_in_definition {
+                                    let type_var_index = usage.index().as_usize();
+                                    let c = &tv_matcher.calculated_type_vars[type_var_index];
+                                    let depending_on = cycles
+                                        .find_cycle(TypeVarAlreadySeen {
+                                            matcher_index,
+                                            type_var_index,
+                                        })
+                                        .unwrap();
+                                    if !c.unresolved_transitive_constraints.is_empty() {
+                                        self.resolve_cycle(db, cycles, depending_on)
+                                    }
+                                    if let Some(free_type_var_index) =
+                                        depending_on.free_type_var_index
+                                    {
+                                        let in_definition =
+                                            self.type_var_matchers[0].match_in_definition;
+                                        return match cycles.free_type_var_likes[free_type_var_index]
+                                            .clone()
+                                        {
+                                            TypeVarLike::TypeVar(type_var) => {
+                                                GenericItem::TypeArg(Type::TypeVar(TypeVarUsage {
+                                                    type_var,
+                                                    index: free_type_var_index.into(),
+                                                    in_definition,
+                                                }))
+                                            }
+                                            TypeVarLike::TypeVarTuple(_) => todo!(),
+                                            TypeVarLike::ParamSpec(_) => todo!(),
+                                        };
+                                    } else {
+                                        if depending_on.set.contains(tv_in_cycle) {
+                                            is_in_cycle = true;
+                                            return usage.into_generic_item();
+                                        }
+                                        let first_entry = depending_on.set.iter().next().unwrap();
+                                        let tv_matcher =
+                                            &self.type_var_matchers[first_entry.matcher_index];
+                                        let tvl =
+                                            &tv_matcher.type_var_likes[first_entry.type_var_index];
+                                        return tv_matcher.calculated_type_vars
+                                            [first_entry.type_var_index]
+                                            .clone()
+                                            .into_generic_item(db, tvl);
+                                    }
+                                }
                             }
-                        }
-                    }
-                    usage.into_generic_item()
-                });
+                            usage.into_generic_item()
+                        });
                 if !is_in_cycle {
                     if !current_bound.merge(db, replaced_unresolved).bool() {
                         todo!()
@@ -1152,8 +1173,8 @@ impl<'a> Matcher<'a> {
         current_seen: TransitiveConstraintAlreadySeen,
     ) -> bool {
         let mut has_bound = calculated.calculated();
-        for constraint in &calculated.unresolved_transitive_constraints {
-            match constraint {
+        for unresolved in &calculated.unresolved_transitive_constraints {
+            match &unresolved.constraint {
                 BoundKind::TypeVar(tv_bound) => {
                     let t = match tv_bound {
                         TypeVarBound::Upper(t) => t,
@@ -1165,6 +1186,9 @@ impl<'a> Matcher<'a> {
                     t.search_type_vars(&mut |usage| {
                         for (matcher_index, tv_matcher) in self.type_var_matchers.iter().enumerate()
                         {
+                            if unresolved.disabled_matchers.contains(&matcher_index) {
+                                continue;
+                            }
                             if usage.in_definition() == tv_matcher.match_in_definition {
                                 let type_var_index = usage.index().as_usize();
                                 let current = &tv_matcher.calculated_type_vars[type_var_index];

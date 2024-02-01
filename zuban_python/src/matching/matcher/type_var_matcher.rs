@@ -183,10 +183,16 @@ impl BoundKind {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct UnresolvedTransitiveConstraint {
+    pub disabled_matchers: Box<[usize]>,
+    pub constraint: BoundKind,
+}
+
 #[derive(Debug, Default, Clone)]
 pub(super) struct CalculatedTypeVarLike {
     pub(super) type_: BoundKind,
-    pub(super) unresolved_transitive_constraints: Vec<BoundKind>,
+    pub(super) unresolved_transitive_constraints: Vec<UnresolvedTransitiveConstraint>,
     pub(super) defined_by_result_context: bool,
 }
 
