@@ -363,25 +363,47 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                     _ => match s1 {
                         WrappedStar::UnpackedTuple(tup1) => {
                             let mut before = vec![];
+                            let mut unpacked_tup = None;
+                            let mut after = vec![];
                             while let Some(next) = params2.peek() {
                                 match next.specific(i_s.db) {
                                     WrappedParamType::PositionalOnly(t2)
-                                    | WrappedParamType::PositionalOrKeyword(t2) => before.push(
-                                        t2.map(|t2| t2.into_owned())
-                                            .unwrap_or(Type::Any(AnyCause::Unannotated)),
-                                    ),
-                                    WrappedParamType::Star(s2) => todo!(),
+                                    | WrappedParamType::PositionalOrKeyword(t2) => {
+                                        let t2 = t2
+                                            .map(|t2| t2.into_owned())
+                                            .unwrap_or(Type::Any(AnyCause::Unannotated));
+                                        if unpacked_tup.is_none() {
+                                            before.push(t2)
+                                        } else {
+                                            after.push(t2)
+                                        }
+                                    }
+                                    WrappedParamType::Star(WrappedStar::UnpackedTuple(tup)) => {
+                                        unpacked_tup = Some(tup);
+                                    }
+                                    WrappedParamType::Star(_) => todo!(),
                                     _ => break,
                                 }
                                 params2.next();
                             }
+                            let tup2_args = if let Some(unpacked_tup) = &unpacked_tup {
+                                if before.is_empty() && after.is_empty() {
+                                    Cow::Borrowed(&unpacked_tup.args)
+                                } else {
+                                    let mut new_args = unpacked_tup.args.clone();
+                                    match new_args {
+                                        TupleArgs::WithUnpack(_) => todo!(),
+                                        TupleArgs::ArbitraryLen(_) => todo!(),
+                                        TupleArgs::FixedLen(_) => todo!(),
+                                    };
+                                    Cow::Owned(new_args)
+                                }
+                            } else {
+                                Cow::Owned(TupleArgs::FixedLen(before.into()))
+                            };
                             matches &= match_tuple_type_arguments(
-                                i_s,
-                                matcher,
-                                &tup1.args,
-                                &TupleArgs::FixedLen(before.into()),
-                                variance,
-                            );
+                                i_s, matcher, &tup1.args, &tup2_args, variance,
+                            )
                         }
                         _ => return Match::new_false(),
                     },
