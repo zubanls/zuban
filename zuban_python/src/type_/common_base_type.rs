@@ -242,8 +242,8 @@ fn common_base_for_callables(
                         class_name: None,
                         defined_at: c1.defined_at,
                         kind: c1.kind,
-                        // TODO why do we just remove type vars here???
-                        type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
+                        // TODO why do we just use the first type vars here???
+                        type_vars: c1.type_vars.clone(),
                         params,
                         return_type: c1.return_type.common_base_type(i_s, &c2.return_type),
                     }));
