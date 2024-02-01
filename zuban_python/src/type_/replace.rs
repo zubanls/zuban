@@ -205,7 +205,9 @@ impl Type {
                         GenericItem::TypeArg(t) => {
                             GenericItem::TypeArg(t.rewrite_late_bound_callables(manager))
                         }
-                        GenericItem::TypeArgs(ts) => todo!(),
+                        GenericItem::TypeArgs(ts) => GenericItem::TypeArgs(TypeArgs::new(
+                            ts.args.rewrite_late_bound_callables(manager),
+                        )),
                         GenericItem::ParamSpecArg(p) => GenericItem::ParamSpecArg({
                             debug_assert!(p.type_vars.is_none());
                             ParamSpecArg {

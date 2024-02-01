@@ -1050,17 +1050,32 @@ impl<'a> Matcher<'a> {
                                     {
                                         let in_definition =
                                             self.type_var_matchers[0].match_in_definition;
+                                        let index = free_type_var_index.into();
                                         return match cycles.free_type_var_likes[free_type_var_index]
                                             .clone()
                                         {
                                             TypeVarLike::TypeVar(type_var) => {
                                                 GenericItem::TypeArg(Type::TypeVar(TypeVarUsage {
                                                     type_var,
-                                                    index: free_type_var_index.into(),
+                                                    index,
                                                     in_definition,
                                                 }))
                                             }
-                                            TypeVarLike::TypeVarTuple(_) => todo!(),
+                                            TypeVarLike::TypeVarTuple(type_var_tuple) => {
+                                                GenericItem::TypeArgs(TypeArgs::new(
+                                                    TupleArgs::WithUnpack(
+                                                        WithUnpack::with_empty_before_and_after(
+                                                            TupleUnpack::TypeVarTuple(
+                                                                TypeVarTupleUsage {
+                                                                    type_var_tuple,
+                                                                    index,
+                                                                    in_definition,
+                                                                },
+                                                            ),
+                                                        ),
+                                                    ),
+                                                ))
+                                            }
                                             TypeVarLike::ParamSpec(_) => todo!(),
                                         };
                                     } else {
