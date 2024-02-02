@@ -856,6 +856,26 @@ pub fn match_tuple_type_arguments(
             match_tuple_type_arguments(i_s, matcher, tup2, tup1, variance.invert())
         });
     }
+    debug_assert!(!matcher.is_matching_reverse());
+    let m = match_tuple_type_arguments_internal(i_s, matcher, tup1, tup2, variance);
+    if !m.bool() && matcher.has_reverse_type_var_matcher() {
+        m.or(|| {
+            matcher.match_reverse(|matcher| {
+                match_tuple_type_arguments_internal(i_s, matcher, tup2, tup1, variance.invert())
+            })
+        })
+    } else {
+        m
+    }
+}
+
+fn match_tuple_type_arguments_internal(
+    i_s: &InferenceState,
+    matcher: &mut Matcher,
+    tup1: &TupleArgs,
+    tup2: &TupleArgs,
+    variance: Variance,
+) -> Match {
     use TupleArgs::*;
     match (tup1, tup2) {
         (FixedLen(ts1), FixedLen(ts2)) => {
@@ -870,7 +890,9 @@ pub fn match_tuple_type_arguments(
             }
         }
         (ArbitraryLen(t1), ArbitraryLen(t2)) => t1.matches(i_s, matcher, t2, variance),
-        (WithUnpack(unpack), _) => match_unpack(i_s, matcher, unpack, tup2, variance, None, None),
+        (WithUnpack(unpack), _) => {
+            match_unpack_internal(i_s, matcher, unpack, tup2, variance, None, None)
+        }
         (ArbitraryLen(t1), WithUnpack(u2)) => match &u2.unpack {
             TupleUnpack::TypeVarTuple(_) => todo!("{t1:?}"),
             TupleUnpack::ArbitraryLen(inner_t2) => {
@@ -898,12 +920,32 @@ pub fn match_unpack(
     i_s: &InferenceState,
     matcher: &mut Matcher,
     with_unpack1: &WithUnpack,
-    tuple2: &TupleArgs,
+    tup2: &TupleArgs,
     variance: Variance,
     on_mismatch: Option<&dyn Fn(ErrorTypes, isize)>,
     on_too_few_args: Option<&dyn Fn()>,
 ) -> Match {
     debug_assert!(!matcher.is_matching_reverse());
+    match_unpack_internal(
+        i_s,
+        matcher,
+        with_unpack1,
+        tup2,
+        variance,
+        on_mismatch,
+        on_too_few_args,
+    )
+}
+
+fn match_unpack_internal(
+    i_s: &InferenceState,
+    matcher: &mut Matcher,
+    with_unpack1: &WithUnpack,
+    tuple2: &TupleArgs,
+    variance: Variance,
+    on_mismatch: Option<&dyn Fn(ErrorTypes, isize)>,
+    on_too_few_args: Option<&dyn Fn()>,
+) -> Match {
     let mut matches = Match::new_true();
 
     let check_type = |matcher: &mut _, t1: &Type, t2, index| {

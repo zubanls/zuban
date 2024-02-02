@@ -199,6 +199,11 @@ impl<'a> Matcher<'a> {
         !self.type_var_matchers.is_empty()
     }
 
+    #[inline]
+    pub fn has_reverse_type_var_matcher(&self) -> bool {
+        !self.type_var_matchers.is_empty()
+    }
+
     pub fn is_matching_reverse(&self) -> bool {
         self.match_reverse
     }
