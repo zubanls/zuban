@@ -204,6 +204,13 @@ impl<'a> Matcher<'a> {
         !self.type_var_matchers.is_empty()
     }
 
+    #[inline]
+    pub fn is_responsible_for_reverse_matching_definition(&self, def: PointLink) -> bool {
+        self.type_var_matchers
+            .iter()
+            .any(|tvm| tvm.match_in_definition == def && tvm.match_reverse != self.match_reverse)
+    }
+
     pub fn is_matching_reverse(&self) -> bool {
         self.match_reverse
     }

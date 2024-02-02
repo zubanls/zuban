@@ -1013,5 +1013,5 @@ def dec(f: Callable[[Tuple[Unpack[Ts]], str, bytes], Tuple[Unpack[Ts]]]) -> Call
 def connect1(x: Tuple[Unpack[Vs]], *args: Unpack[Us]) -> Tuple[Unpack[Vs]]: ...
 def connect2(x: Tuple[Unpack[Us]], *args: Unpack[Vs]) -> Tuple[Unpack[Vs]]: ...
 
-reveal_type(dec(connect1))  # N: Revealed type is ""
-reveal_type(dec(connect2))  # N: Revealed type is ""
+reveal_type(dec(connect1))  # N: Revealed type is "def [Ts] (*Unpack[Ts])"
+reveal_type(dec(connect2))  # N: Revealed type is "def (str, bytes)"
