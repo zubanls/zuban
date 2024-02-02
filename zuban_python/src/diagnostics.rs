@@ -658,7 +658,7 @@ impl<'db> Diagnostic<'db> {
                 }
             }
             TypeAliasArgumentIssue{counts} => format!(
-                "Bad number of arguments for type alias, expected: {}{}, given: {}",
+                "Bad number of arguments for type alias, expected {}{}, given {}",
                 if counts.at_least_expected {
                     "at least "
                 } else {

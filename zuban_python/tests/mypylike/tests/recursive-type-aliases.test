@@ -46,8 +46,8 @@ reveal_type(x1[0])  # N: Revealed type is "list[... | int | float] | int | float
 reveal_type(x2)  # N: Revealed type is "list[... | str | int]"
 reveal_type(x2[0])  # N: Revealed type is "list[... | str | int] | str | int"
 
-x3: Rec[str]  # E: Bad number of arguments for type alias, expected: 2, given: 1
-x4: Rec[str, int, float]  # E: Bad number of arguments for type alias, expected: 2, given: 3
+x3: Rec[str]  # E: Bad number of arguments for type alias, expected 2, given 1
+x4: Rec[str, int, float]  # E: Bad number of arguments for type alias, expected 2, given 3
 reveal_type(x3)  # N: Revealed type is "list[... | Any]"
 reveal_type(x3[0])  # N: Revealed type is "list[... | Any] | Any"
 reveal_type(x4)  # N: Revealed type is "list[... | Any]"
@@ -61,8 +61,8 @@ S = TypeVar("S")
 T = TypeVar("T")
 
 Rec1 = list[Union[Rec1[T, S], T, S]]
-Rec2 = list[Union[Rec2[T, S, int], T, S]]  # E: Bad number of arguments for type alias, expected: 2, given: 3 # E: Bad number of arguments for type alias, expected: 2, given: 3
-Rec3 = list[Union[Rec3[int], T, S]]  # E: Bad number of arguments for type alias, expected: 2, given: 1 # E: Bad number of arguments for type alias, expected: 2, given: 1
+Rec2 = list[Union[Rec2[T, S, int], T, S]]  # E: Bad number of arguments for type alias, expected 2, given 3 # E: Bad number of arguments for type alias, expected 2, given 3
+Rec3 = list[Union[Rec3[int], T, S]]  # E: Bad number of arguments for type alias, expected 2, given 1 # E: Bad number of arguments for type alias, expected 2, given 1
 
 x1: Rec1[int, str]
 x2: Rec2[int, str]

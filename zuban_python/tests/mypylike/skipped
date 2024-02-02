@@ -12,6 +12,12 @@ testMultipleAssignmentWithListAndIndexing
 testNonliteralTupleIndex
 testUnionMultiassignIndexedWithError
 
+# mypy upgrade
+testMultilineQuotedAnnotation
+testDataclassFieldWithPositionalArguments
+testCanCreateClassWithFunctionBasedTypedDictBase
+testTypeVarTupleInvariant
+
 # 3.12 type var syntax
 test695TypeAlias
 test695Class
@@ -1589,6 +1595,7 @@ testWalrusAssignmentAndConditionScopeForProperty
 testWalrusAssignmentAndConditionScopeForFunction
 testWalrusUsedBeforeDef
 testPossiblyUndefinedWithAssignmentExpr
+testGenericDictWithOverload
 # "Assignment expression within a comprehension cannot be used in a class body"
 testNoCrashOnAssignmentExprClass
 
