@@ -859,14 +859,21 @@ pub fn match_tuple_type_arguments(
     debug_assert!(!matcher.is_matching_reverse());
     let m = match_tuple_type_arguments_internal(i_s, matcher, tup1, tup2, variance);
     if !m.bool() && matcher.has_reverse_type_var_matcher() {
-        m.or(|| {
-            matcher.match_reverse(|matcher| {
-                match_tuple_type_arguments_internal(i_s, matcher, tup2, tup1, variance.invert())
+        if matches!(
+            tup2,
+            TupleArgs::WithUnpack(WithUnpack {
+                unpack: TupleUnpack::TypeVarTuple(_),
+                ..
             })
-        })
-    } else {
-        m
+        ) {
+            return m.or(|| {
+                matcher.match_reverse(|matcher| {
+                    match_tuple_type_arguments_internal(i_s, matcher, tup2, tup1, variance.invert())
+                })
+            });
+        }
     }
+    m
 }
 
 fn match_tuple_type_arguments_internal(
