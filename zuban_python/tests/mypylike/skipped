@@ -4,14 +4,6 @@ testInvalidNamedTupleWithinFunction
 testVariadicUnpackWithRegularInstance
 testMisguidedSetItem
 
-# typeshed upgrade
-testBuiltinStaticMethod
-testBuiltinClassMethod
-testColumnInvalidIndexing
-testMultipleAssignmentWithListAndIndexing
-testNonliteralTupleIndex
-testUnionMultiassignIndexedWithError
-
 # mypy upgrade
 testMultilineQuotedAnnotation
 testDataclassFieldWithPositionalArguments
