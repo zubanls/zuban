@@ -4,6 +4,14 @@ testInvalidNamedTupleWithinFunction
 testVariadicUnpackWithRegularInstance
 testMisguidedSetItem
 
+# typeshed upgrade
+testBuiltinStaticMethod
+testBuiltinClassMethod
+testColumnInvalidIndexing
+testMultipleAssignmentWithListAndIndexing
+testNonliteralTupleIndex
+testUnionMultiassignIndexedWithError
+
 # 3.12 type var syntax
 test695TypeAlias
 test695Class
