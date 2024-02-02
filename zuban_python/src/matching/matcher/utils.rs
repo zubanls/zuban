@@ -1,4 +1,4 @@
-use std::{borrow::Cow, rc::Rc};
+use std::{borrow::Cow, cell::Cell, rc::Rc};
 
 use parsa_python_ast::ParamKind;
 
@@ -21,7 +21,7 @@ use crate::{
     diagnostics::IssueType,
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{maybe_class_usage, ErrorTypes, GotType},
+    matching::{maybe_class_usage, ErrorTypes, GotType, LookupKind},
     node_ref::NodeRef,
     type_::{
         match_unpack, CallableParams, ClassGenerics, GenericsList, ReplaceSelf, TupleArgs,
@@ -150,8 +150,40 @@ impl CalculatedTypeArgs {
     ) -> Inferred {
         let mut in_callable_definition = None;
         if self.type_var_likes.is_some() {
-            if let Type::Callable(c) = &return_type {
-                in_callable_definition = Some(c.defined_at);
+            match &return_type {
+                Type::Callable(c) => {
+                    in_callable_definition = Some(c.defined_at);
+                }
+                Type::Class(c) => {
+                    let cls = c.class(i_s.db);
+                    if cls.is_protocol(i_s.db) {
+                        let members = &cls.use_cached_class_infos(i_s.db).protocol_members;
+                        if members.len() == 1
+                            && NodeRef::new(cls.node_ref.file, members[0].name_index).as_code()
+                                == "__call__"
+                        {
+                            let had_error = Cell::new(false);
+                            let inf = cls
+                                .instance()
+                                .lookup(
+                                    i_s,
+                                    |_| had_error.set(true),
+                                    "__call__",
+                                    LookupKind::OnlyType,
+                                )
+                                .into_inferred();
+                            if !had_error.get() {
+                                return self.as_return_type(
+                                    i_s,
+                                    &inf.as_cow_type(i_s),
+                                    None,
+                                    replace_self_type,
+                                );
+                            }
+                        }
+                    }
+                }
+                _ => (),
             }
         }
 
@@ -173,6 +205,7 @@ impl CalculatedTypeArgs {
                                     if let Some(in_def) = in_callable_definition {
                                         tvl.update_in_definition_and_index(in_def, tvl.index())
                                     } else {
+                                        //return tvl.as_type_var_like().as_never_generic_item()
                                         todo!()
                                     }
                                 }
