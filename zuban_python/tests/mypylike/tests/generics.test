@@ -947,3 +947,37 @@ def id2(x: T4) -> T4: ...
 
 reveal_type(combine(id1, id2))  # N: Revealed type is "def [T1] (T1, int) -> tuple[T1, int]"
 reveal_type(combine(id1, id1))  # N: Revealed type is "def [T1] (T1, int) -> tuple[T1, int]"
+
+[case transitive_constraints_type_var_tuple_propagation1]
+from typing import TypeVarTuple, Callable, Tuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+Us = TypeVarTuple("Us")
+Vs = TypeVarTuple("Vs")
+
+def dec(f: Callable[[Tuple[Unpack[Us]], Unpack[Ts]], Tuple[Unpack[Ts]]]) -> Callable[[Unpack[Ts]], Tuple[Unpack[Us]]]: ...
+
+def connect1(x: Tuple[Unpack[Vs]], *args: Unpack[Vs]) -> Tuple[int, str]: ...
+def connect2(x: Tuple[Unpack[Vs]], y: str, z: int) -> Tuple[Unpack[Vs]]: ...
+def connect3(x: Tuple[bytes, str], *args: Unpack[Vs]) -> Tuple[Unpack[Vs]]: ...
+
+reveal_type(dec(connect1))  # N: Revealed type is "def (int, str) -> tuple[int, str]"
+reveal_type(dec(connect2))  # N: Revealed type is "def (str, int) -> tuple[str, int]"
+reveal_type(dec(connect3))  # N: Revealed type is "def [Ts] (*Unpack[Ts]) -> tuple[bytes, str]"
+
+[case transitive_constraints_type_var_tuple_propagation2]
+from typing import TypeVarTuple, Callable, Tuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+Us = TypeVarTuple("Us")
+Vs = TypeVarTuple("Vs")
+
+def dec(f: Callable[[Tuple[Unpack[Us]], Unpack[Us]], Tuple[Unpack[Ts]]]) -> Callable[[Unpack[Us]], Tuple[Unpack[Ts]]]: ...
+
+def connect1(x: Tuple[Unpack[Vs]], y: int, z: str) -> Tuple[Unpack[Vs]]: ...
+def connect2(x: Tuple[str, int], *args: Unpack[Vs]) -> Tuple[Unpack[Vs]]: ...
+def connect3(x: Tuple[Unpack[Vs]], *args: Unpack[Vs]) -> Tuple[bytes, str]: ...
+
+reveal_type(dec(connect1))  # N: Revealed type is "def (int, str) -> tuple[int, str]"
+reveal_type(dec(connect2))  # N: Revealed type is "def (str, int) -> tuple[str, int]"
+reveal_type(dec(connect3))  # N: Revealed type is "def [Us] (*Unpack[Us]) -> tuple[bytes, str]"

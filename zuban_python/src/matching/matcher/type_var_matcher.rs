@@ -135,6 +135,7 @@ impl BoundKind {
                 m.or(|| bound1.merge_or_mismatch(&i_s, &t, variance))
             }
             (Self::TypeVarTuple(tup1), Self::TypeVarTuple(tup2)) => {
+                dbg!(tup1, tup2);
                 //match_tuple_type_arguments(&i_s, &mut Matcher::default(), tup1, &tup2, Variance::Invariant);
                 todo!()
             }
@@ -216,7 +217,7 @@ impl CalculatedTypeVarLike {
                     TupleArgs::WithUnpack(_) => todo!(),
                 },
                 TupleArgs::WithUnpack(ts) => {
-                    debug!("TODO implement withunpack merging");
+                    debug!("TODO implement withunpack merging {current:?} {ts:?}");
                 }
             },
             BoundKind::Uncalculated { .. } => {

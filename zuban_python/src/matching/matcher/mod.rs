@@ -387,18 +387,49 @@ impl<'a> Matcher<'a> {
     pub fn match_or_add_type_var_tuple(
         &mut self,
         i_s: &InferenceState,
-        tvt: &TypeVarTupleUsage,
+        tvt1: &TypeVarTupleUsage,
         args2: TupleArgs,
         variance: Variance,
     ) -> Match {
-        let normal_side_matching = true;
+        let other_side = match &args2 {
+            TupleArgs::WithUnpack(WithUnpack {
+                before,
+                unpack: TupleUnpack::TypeVarTuple(tvt2),
+                after,
+            }) if before.len() == 0 && after.len() == 0 => self
+                .match_or_add_type_var_tuple_internal(
+                    i_s,
+                    tvt2,
+                    TupleArgs::WithUnpack(WithUnpack::with_empty_before_and_after(
+                        TupleUnpack::TypeVarTuple(tvt1.clone()),
+                    )),
+                    variance.invert(),
+                    true,
+                ),
+            _ => Match::new_false(),
+        };
+        let m = self.match_or_add_type_var_tuple_internal(i_s, tvt1, args2, variance, false);
+        m.or(|| other_side)
+    }
+
+    pub fn match_or_add_type_var_tuple_internal(
+        &mut self,
+        i_s: &InferenceState,
+        tvt: &TypeVarTupleUsage,
+        args2: TupleArgs,
+        variance: Variance,
+        from_reverse: bool,
+    ) -> Match {
+        let normal_side_matching = from_reverse == self.match_reverse;
         for (i, tv_matcher) in self
             .type_var_matchers
             .iter()
             .enumerate()
             .filter(|(_, tvm)| tvm.enabled)
         {
-            if tv_matcher.match_in_definition == tvt.in_definition {
+            if tv_matcher.match_in_definition == tvt.in_definition
+                && tv_matcher.match_reverse != normal_side_matching
+            {
                 if self.check_if_unresolved_transitive_constraint(
                     TypeVarAlreadySeen {
                         matcher_index: i,
