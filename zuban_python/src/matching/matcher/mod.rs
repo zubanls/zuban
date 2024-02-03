@@ -453,35 +453,37 @@ impl<'a> Matcher<'a> {
                     .match_or_add_type_var_tuple(i_s, args2);
             }
         }
-        if let Some(class) = self.class {
-            if class.node_ref.as_link() == tvt.in_definition {
-                let ts1 = class
-                    .generics()
-                    .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(tvt)))
-                    .expect_type_arguments();
-                return match_tuple_type_arguments(
-                    i_s,
-                    &mut Matcher::default(),
-                    &ts1.args,
-                    &args2,
-                    variance,
-                );
+        if !self.match_reverse {
+            if let Some(class) = self.class {
+                if class.node_ref.as_link() == tvt.in_definition {
+                    let ts1 = class
+                        .generics()
+                        .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(tvt)))
+                        .expect_type_arguments();
+                    return match_tuple_type_arguments(
+                        i_s,
+                        &mut Matcher::default(),
+                        &ts1.args,
+                        &args2,
+                        variance,
+                    );
+                }
             }
-        }
-        // If we're in a class context, we must also be in a method.
-        if let Some(func_class) = self.func_or_callable.as_ref().and_then(|f| f.class()) {
-            if tvt.in_definition == func_class.node_ref.as_link() {
-                let ts1 = func_class
-                    .generics()
-                    .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(tvt)))
-                    .expect_type_arguments();
-                return match_tuple_type_arguments(
-                    i_s,
-                    &mut Matcher::default(),
-                    &ts1.args,
-                    &args2,
-                    variance,
-                );
+            // If we're in a class context, we must also be in a method.
+            if let Some(func_class) = self.func_or_callable.as_ref().and_then(|f| f.class()) {
+                if tvt.in_definition == func_class.node_ref.as_link() {
+                    let ts1 = func_class
+                        .generics()
+                        .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(tvt)))
+                        .expect_type_arguments();
+                    return match_tuple_type_arguments(
+                        i_s,
+                        &mut Matcher::default(),
+                        &ts1.args,
+                        &args2,
+                        variance,
+                    );
+                }
             }
         }
         matches!(
@@ -587,12 +589,14 @@ impl<'a> Matcher<'a> {
             }
         }
 
-        if let Some(class) = self.class {
-            if class.node_ref.as_link() == p1.in_definition {
-                let usage = class.generics().nth_param_spec_usage(i_s.db, p1);
-                return Some(match_params(i_s, &usage, p2_pre_iterator));
-            } else {
-                todo!()
+        if !self.match_reverse {
+            if let Some(class) = self.class {
+                if class.node_ref.as_link() == p1.in_definition {
+                    let usage = class.generics().nth_param_spec_usage(i_s.db, p1);
+                    return Some(match_params(i_s, &usage, p2_pre_iterator));
+                } else {
+                    todo!()
+                }
             }
         }
         None
@@ -667,12 +671,14 @@ impl<'a> Matcher<'a> {
                 todo!()
             }
         }
-        if let Some(class) = self.class {
-            if class.node_ref.as_link() == p1.in_definition {
-                let usage = class.generics().nth_param_spec_usage(i_s.db, p1);
-                return match_params(i_s, matches, &usage.params, params2_iterator);
-            } else {
-                todo!()
+        if !self.match_reverse {
+            if let Some(class) = self.class {
+                if class.node_ref.as_link() == p1.in_definition {
+                    let usage = class.generics().nth_param_spec_usage(i_s.db, p1);
+                    return match_params(i_s, matches, &usage.params, params2_iterator);
+                } else {
+                    todo!()
+                }
             }
         }
         Match::new_false()
