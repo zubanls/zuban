@@ -139,7 +139,8 @@ impl BoundKind {
                 //match_tuple_type_arguments(&i_s, &mut Matcher::default(), tup1, &tup2, Variance::Invariant);
                 todo!()
             }
-            (Self::ParamSpecArgument(_), Self::ParamSpecArgument(_)) => {
+            (Self::ParamSpecArgument(p1), Self::ParamSpecArgument(p2)) => {
+                dbg!(p1, p2);
                 todo!()
             }
             (Self::Uncalculated { fallback: Some(_) }, Self::Uncalculated { .. }) => {

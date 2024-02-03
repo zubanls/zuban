@@ -540,7 +540,7 @@ impl<'a> Matcher<'a> {
                 p1,
                 p2_pre_iterator.clone(),
                 p2,
-                type_vars2,
+                None, //type_vars2,  // TODO why is this type_vars2 ignored?
                 variance,
             )
             .unwrap_or_else(|| (p2_pre_iterator.next().is_none() && p1 == p2).into());
