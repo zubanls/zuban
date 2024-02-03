@@ -268,7 +268,6 @@ testMeetProtocolCallback
 
 # Nested type vars
 testFunctionInGenericInnerClassTypeVariable-skip
-testConstraintsBetweenConcatenatePrefixes
 testParamSpecTestPropAccess
 testTupleAndDictOperationsOnParamSpecArgsAndKwargs
 testUnpackingParamsSpecArgsAndKwargs
