@@ -525,6 +525,7 @@ impl<'a> Matcher<'a> {
             p2,
             type_vars2,
             variance,
+            true,
         ) {
             matches & m
         } else {
@@ -540,6 +541,7 @@ impl<'a> Matcher<'a> {
         p2: &ParamSpecUsage,
         type_vars2: Option<(&TypeVarLikes, PointLink)>,
         variance: Variance,
+        from_reverse: bool,
     ) -> Option<Match> {
         let match_params =
             |i_s: &_, params: &ParamSpecArg, p2_pre_iterator: std::slice::Iter<_>| match &params
@@ -561,13 +563,16 @@ impl<'a> Matcher<'a> {
                 }
             };
 
+        let normal_side_matching = from_reverse == self.match_reverse;
         for (i, tv_matcher) in self
             .type_var_matchers
             .iter()
             .enumerate()
             .filter(|(_, tvm)| tvm.enabled)
         {
-            if tv_matcher.match_in_definition == p1.in_definition {
+            if tv_matcher.match_in_definition == p1.in_definition
+                && tv_matcher.match_reverse != normal_side_matching
+            {
                 let tv_matcher = &mut self.type_var_matchers[i];
                 let calc = &mut tv_matcher.calculated_type_vars[p1.index.as_usize()];
                 return Some(match &mut calc.type_ {
