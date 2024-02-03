@@ -247,9 +247,7 @@ impl<'a> Matcher<'a> {
         t1: &TypeVarUsage,
         value_type: &Type,
         variance: Variance,
-        from_reverse: bool,
     ) -> Option<Match> {
-        let normal_side_matching = from_reverse == self.match_reverse;
         let type_var_matchers_count = self.type_var_matchers.len();
         for (i, tv_matcher) in self
             .type_var_matchers
@@ -258,14 +256,13 @@ impl<'a> Matcher<'a> {
             .filter(|(_, tvm)| tvm.enabled)
         {
             if tv_matcher.match_in_definition == t1.in_definition
-                && tv_matcher.match_reverse != normal_side_matching
+                && tv_matcher.match_reverse == self.match_reverse
             {
                 if self.check_if_unresolved_transitive_constraint(
                     TypeVarAlreadySeen {
                         matcher_index: i,
                         type_var_index: t1.index.as_usize(),
                     },
-                    normal_side_matching,
                     |found_type_var| value_type.search_type_vars(found_type_var),
                     || {
                         BoundKind::TypeVar(TypeVarBound::new(
@@ -287,7 +284,7 @@ impl<'a> Matcher<'a> {
                 ));
             }
         }
-        if normal_side_matching {
+        if !self.match_reverse {
             if let Some(class) = self.class {
                 if class.node_ref.as_link() == t1.in_definition {
                     let g = class
@@ -319,7 +316,6 @@ impl<'a> Matcher<'a> {
     fn check_if_unresolved_transitive_constraint(
         &mut self,
         tv: TypeVarAlreadySeen,
-        normal_side_matching: bool,
         find_type_var: impl FnOnce(&mut dyn FnMut(TypeVarLikeUsage)),
         as_constraint: impl Fn() -> BoundKind,
     ) -> bool {
@@ -331,7 +327,7 @@ impl<'a> Matcher<'a> {
             for tv_matcher in &self.type_var_matchers {
                 if tv_matcher.enabled
                     && tv_matcher.match_in_definition == tv.in_definition()
-                    && tv_matcher.match_reverse == normal_side_matching
+                    && tv_matcher.match_reverse != self.match_reverse
                 {
                     has_unresolved_constraint = true;
                 }
@@ -364,19 +360,20 @@ impl<'a> Matcher<'a> {
     ) -> Match {
         let other_side = match other {
             Type::TypeVar(tv2) => self
-                .match_or_add_type_var_if_responsible(
-                    i_s,
-                    tv2,
-                    &Type::TypeVar(tv1.clone()),
-                    variance.invert(),
-                    true,
-                )
+                .match_reverse(|matcher| {
+                    matcher.match_or_add_type_var_if_responsible(
+                        i_s,
+                        tv2,
+                        &Type::TypeVar(tv1.clone()),
+                        variance.invert(),
+                    )
+                })
                 .unwrap_or_else(|| {
                     (tv1.index == tv2.index && tv1.in_definition == tv2.in_definition).into()
                 }),
             _ => Match::new_false(),
         };
-        let m = self.match_or_add_type_var_if_responsible(i_s, tv1, other, variance, false);
+        let m = self.match_or_add_type_var_if_responsible(i_s, tv1, other, variance);
         m.unwrap_or(other_side)
     }
 
@@ -387,13 +384,14 @@ impl<'a> Matcher<'a> {
         other: &Type,
         variance: Variance,
     ) -> Option<Match> {
-        self.match_or_add_type_var_if_responsible(
-            i_s,
-            type_var_usage,
-            other,
-            variance.invert(),
-            true,
-        )
+        self.match_reverse(|matcher| {
+            matcher.match_or_add_type_var_if_responsible(
+                i_s,
+                type_var_usage,
+                other,
+                variance.invert(),
+            )
+        })
     }
 
     pub fn match_or_add_type_var_tuple(
@@ -408,19 +406,19 @@ impl<'a> Matcher<'a> {
                 before,
                 unpack: TupleUnpack::TypeVarTuple(tvt2),
                 after,
-            }) if before.len() == 0 && after.len() == 0 => self
-                .match_or_add_type_var_tuple_internal(
+            }) if before.len() == 0 && after.len() == 0 => self.match_reverse(|matcher| {
+                matcher.match_or_add_type_var_tuple_internal(
                     i_s,
                     tvt2,
                     TupleArgs::WithUnpack(WithUnpack::with_empty_before_and_after(
                         TupleUnpack::TypeVarTuple(tvt1.clone()),
                     )),
                     variance.invert(),
-                    true,
-                ),
+                )
+            }),
             _ => Match::new_false(),
         };
-        let m = self.match_or_add_type_var_tuple_internal(i_s, tvt1, args2, variance, false);
+        let m = self.match_or_add_type_var_tuple_internal(i_s, tvt1, args2, variance);
         m.or(|| other_side)
     }
 
@@ -430,9 +428,7 @@ impl<'a> Matcher<'a> {
         tvt: &TypeVarTupleUsage,
         args2: TupleArgs,
         variance: Variance,
-        from_reverse: bool,
     ) -> Match {
-        let normal_side_matching = from_reverse == self.match_reverse;
         for (i, tv_matcher) in self
             .type_var_matchers
             .iter()
@@ -440,14 +436,13 @@ impl<'a> Matcher<'a> {
             .filter(|(_, tvm)| tvm.enabled)
         {
             if tv_matcher.match_in_definition == tvt.in_definition
-                && tv_matcher.match_reverse != normal_side_matching
+                && tv_matcher.match_reverse == self.match_reverse
             {
                 if self.check_if_unresolved_transitive_constraint(
                     TypeVarAlreadySeen {
                         matcher_index: i,
                         type_var_index: tvt.index.as_usize(),
                     },
-                    normal_side_matching,
                     |found_type_var| args2.search_type_vars(found_type_var),
                     || BoundKind::TypeVarTuple(args2.clone()),
                 ) {
