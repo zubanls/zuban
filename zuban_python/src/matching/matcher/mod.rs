@@ -3,7 +3,7 @@ mod type_var_matcher;
 mod utils;
 
 use core::fmt;
-use std::{borrow::Cow, collections::HashSet, rc::Rc};
+use std::{borrow::Cow, collections::HashSet, rc::Rc, slice::Iter};
 
 pub use type_var_matcher::FunctionOrCallable;
 use type_var_matcher::{BoundKind, TypeVarMatcher};
@@ -334,21 +334,25 @@ impl<'a> Matcher<'a> {
             }
         });
         if has_unresolved_constraint {
-            let disabled_matchers = self
-                .type_var_matchers
-                .iter()
-                .enumerate()
-                .filter_map(|(i, tvm)| (!tvm.enabled).then_some(i))
-                .collect();
-            let tv_matcher = &mut self.type_var_matchers[tv.matcher_index];
-            tv_matcher.calculated_type_vars[tv.type_var_index]
-                .unresolved_transitive_constraints
-                .push(UnresolvedTransitiveConstraint {
-                    constraint: as_constraint(),
-                    disabled_matchers,
-                });
+            self.add_unresolved_constraint(tv, as_constraint())
         }
         has_unresolved_constraint
+    }
+
+    fn add_unresolved_constraint(&mut self, tv: TypeVarAlreadySeen, constraint: BoundKind) {
+        let disabled_matchers = self
+            .type_var_matchers
+            .iter()
+            .enumerate()
+            .filter_map(|(i, tvm)| (!tvm.enabled).then_some(i))
+            .collect();
+        let tv_matcher = &mut self.type_var_matchers[tv.matcher_index];
+        tv_matcher.calculated_type_vars[tv.type_var_index]
+            .unresolved_transitive_constraints
+            .push(UnresolvedTransitiveConstraint {
+                constraint,
+                disabled_matchers,
+            });
     }
 
     pub fn match_or_add_type_var(
@@ -515,33 +519,45 @@ impl<'a> Matcher<'a> {
                 return matches;
             }
         }
-        if let Some(m) = self.match_or_add_param_spec_against_param_spec_internal(
-            i_s,
-            p1,
-            p2_pre_iterator.clone(),
-            p2,
-            type_vars2,
-            variance,
-        ) {
-            matches & m
-        } else {
-            matches & (p2_pre_iterator.next().is_none() && p1 == p2).into()
+        let mut reverse_m = Match::new_false();
+        if p2_pre_iterator.clone().next().is_none() {
+            if let Some(m) = self.match_reverse(|matcher| {
+                matcher.match_or_add_param_spec_against_param_spec_internal(
+                    i_s,
+                    p2,
+                    [].iter(),
+                    p1,
+                    None,
+                    variance.invert(),
+                )
+            }) {
+                reverse_m = m;
+            }
         }
+        let m = self
+            .match_or_add_param_spec_against_param_spec_internal(
+                i_s,
+                p1,
+                p2_pre_iterator.clone(),
+                p2,
+                type_vars2,
+                variance,
+            )
+            .unwrap_or_else(|| (p2_pre_iterator.next().is_none() && p1 == p2).into());
+        (matches & m).or(|| reverse_m)
     }
 
     pub fn match_or_add_param_spec_against_param_spec_internal<'x>(
         &mut self,
         i_s: &InferenceState,
         p1: &ParamSpecUsage,
-        p2_pre_iterator: std::slice::Iter<Type>,
+        p2_pre_iterator: Iter<Type>,
         p2: &ParamSpecUsage,
         type_vars2: Option<(&TypeVarLikes, PointLink)>,
         variance: Variance,
     ) -> Option<Match> {
         let match_params =
-            |i_s: &_, params: &ParamSpecArg, p2_pre_iterator: std::slice::Iter<_>| match &params
-                .params
-            {
+            |i_s: &_, params: &ParamSpecArg, p2_pre_iterator: Iter<_>| match &params.params {
                 CallableParams::Simple(params1) => todo!(),
                 CallableParams::Any(_) => Match::new_true(),
                 CallableParams::WithParamSpec(pre, usage) => {
@@ -567,21 +583,39 @@ impl<'a> Matcher<'a> {
             if tv_matcher.match_in_definition == p1.in_definition
                 && tv_matcher.match_reverse == self.match_reverse
             {
+                let as_constraint = |p2_pre_iterator: Iter<Type>| {
+                    BoundKind::ParamSpecArgument(ParamSpecArg::new(
+                        CallableParams::WithParamSpec(
+                            p2_pre_iterator.cloned().collect(),
+                            p2.clone(),
+                        ),
+                        type_vars2.map(|type_vars| ParamSpecTypeVars {
+                            type_vars: type_vars.0.clone(),
+                            in_definition: type_vars.1,
+                        }),
+                    ))
+                };
+
+                let type_var_index = p1.index.as_usize();
+                if self.type_var_matchers.iter().any(|tvm| {
+                    tvm.match_reverse != self.match_reverse
+                        && tvm.match_in_definition == p2.in_definition
+                }) {
+                    self.add_unresolved_constraint(
+                        TypeVarAlreadySeen {
+                            matcher_index: i,
+                            type_var_index,
+                        },
+                        as_constraint(p2_pre_iterator),
+                    );
+                    return Some(Match::new_true());
+                }
                 let tv_matcher = &mut self.type_var_matchers[i];
-                let calc = &mut tv_matcher.calculated_type_vars[p1.index.as_usize()];
+                let calc = &mut tv_matcher.calculated_type_vars[type_var_index];
                 return Some(match &mut calc.type_ {
                     BoundKind::ParamSpecArgument(p) => match_params(i_s, p, p2_pre_iterator),
                     BoundKind::Uncalculated { .. } => {
-                        calc.type_ = BoundKind::ParamSpecArgument(ParamSpecArg::new(
-                            CallableParams::WithParamSpec(
-                                p2_pre_iterator.cloned().collect(),
-                                p2.clone(),
-                            ),
-                            type_vars2.map(|type_vars| ParamSpecTypeVars {
-                                type_vars: type_vars.0.clone(),
-                                in_definition: type_vars.1,
-                            }),
-                        ));
+                        calc.type_ = as_constraint(p2_pre_iterator);
                         Match::new_true()
                     }
                     _ => unreachable!(),
@@ -1360,7 +1394,7 @@ impl<'a> Matcher<'a> {
                     t.search_type_vars(cycle_search)
                 }
                 BoundKind::TypeVarTuple(tup) => tup.search_type_vars(cycle_search),
-                BoundKind::ParamSpecArgument(_) => todo!(),
+                BoundKind::ParamSpecArgument(param_spec_arg) => todo!(),
                 BoundKind::Uncalculated { fallback } => unreachable!(),
             }
         }
