@@ -309,7 +309,27 @@ impl GenericItem {
                     .args
                     .replace_type_var_likes_and_self(db, callable, replace_self),
             }),
-            Self::ParamSpecArg(_) => todo!(),
+            Self::ParamSpecArg(param_spec_arg) => {
+                let tv_ref = param_spec_arg.type_vars.as_ref();
+                let mut type_vars = tv_ref.map(|tv| tv.type_vars.as_vec());
+                let (params, defined_at_and_other) =
+                    param_spec_arg.params.replace_type_var_likes_and_self(
+                        db,
+                        &mut type_vars,
+                        tv_ref.map(|x| x.in_definition),
+                        callable,
+                        replace_self,
+                    );
+                GenericItem::ParamSpecArg(ParamSpecArg {
+                    params,
+                    type_vars: type_vars.map(|tvs| ParamSpecTypeVars {
+                        type_vars: TypeVarLikes::from_vec(tvs),
+                        in_definition: defined_at_and_other
+                            .map(|(d, _)| d)
+                            .unwrap_or_else(|| tv_ref.unwrap().in_definition),
+                    }),
+                })
+            }
         }
     }
 }
