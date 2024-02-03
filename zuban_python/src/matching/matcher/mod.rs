@@ -518,33 +518,48 @@ impl<'a> Matcher<'a> {
                 return matches;
             }
         }
+        if let Some(m) = self.match_or_add_param_spec_against_param_spec_internal(
+            i_s,
+            p1,
+            p2_pre_iterator.clone(),
+            p2,
+            type_vars2,
+            variance,
+        ) {
+            matches & m
+        } else {
+            matches & (p2_pre_iterator.next().is_none() && p1 == p2).into()
+        }
+    }
+
+    pub fn match_or_add_param_spec_against_param_spec_internal<'x>(
+        &mut self,
+        i_s: &InferenceState,
+        p1: &ParamSpecUsage,
+        p2_pre_iterator: std::slice::Iter<Type>,
+        p2: &ParamSpecUsage,
+        type_vars2: Option<(&TypeVarLikes, PointLink)>,
+        variance: Variance,
+    ) -> Option<Match> {
         let match_params =
-            |i_s: &_, matches, params: &ParamSpecArg, p2_pre_iterator: std::slice::Iter<_>| {
-                match &params.params {
-                    CallableParams::Simple(params1) => todo!(),
-                    CallableParams::Any(_) => matches,
-                    CallableParams::WithParamSpec(pre, usage) => {
-                        if pre.len() != p2_pre_iterator.len() {
-                            todo!()
-                        } else {
-                            debug!("TODO should maybe use type vars?");
-                            let mut matches = matches;
-                            for (t1, t2) in pre.iter().zip(p2_pre_iterator) {
-                                matches &= t1.simple_matches(i_s, t2, variance);
-                            }
-                            matches & (usage == p2).into()
+            |i_s: &_, params: &ParamSpecArg, p2_pre_iterator: std::slice::Iter<_>| match &params
+                .params
+            {
+                CallableParams::Simple(params1) => todo!(),
+                CallableParams::Any(_) => Match::new_true(),
+                CallableParams::WithParamSpec(pre, usage) => {
+                    if pre.len() != p2_pre_iterator.len() {
+                        todo!()
+                    } else {
+                        debug!("TODO should maybe use type vars?");
+                        let mut matches = Match::new_true();
+                        for (t1, t2) in pre.iter().zip(p2_pre_iterator) {
+                            matches &= t1.simple_matches(i_s, t2, variance);
                         }
+                        matches & (usage == p2).into()
                     }
                 }
             };
-        if let Some(class) = self.class {
-            if class.node_ref.as_link() == p1.in_definition {
-                let usage = class.generics().nth_param_spec_usage(i_s.db, p1);
-                return match_params(i_s, matches, &usage, p2_pre_iterator);
-            } else {
-                todo!()
-            }
-        }
 
         for (i, tv_matcher) in self
             .type_var_matchers
@@ -555,10 +570,8 @@ impl<'a> Matcher<'a> {
             if tv_matcher.match_in_definition == p1.in_definition {
                 let tv_matcher = &mut self.type_var_matchers[i];
                 let calc = &mut tv_matcher.calculated_type_vars[p1.index.as_usize()];
-                return match &mut calc.type_ {
-                    BoundKind::ParamSpecArgument(p) => {
-                        match_params(i_s, matches, p, p2_pre_iterator)
-                    }
+                return Some(match &mut calc.type_ {
+                    BoundKind::ParamSpecArgument(p) => match_params(i_s, p, p2_pre_iterator),
                     BoundKind::Uncalculated { .. } => {
                         calc.type_ = BoundKind::ParamSpecArgument(ParamSpecArg::new(
                             CallableParams::WithParamSpec(
@@ -570,13 +583,22 @@ impl<'a> Matcher<'a> {
                                 in_definition: type_vars.1,
                             }),
                         ));
-                        matches
+                        Match::new_true()
                     }
                     _ => unreachable!(),
-                };
+                });
             }
         }
-        (p2_pre_iterator.next().is_none() && p1 == p2).into()
+
+        if let Some(class) = self.class {
+            if class.node_ref.as_link() == p1.in_definition {
+                let usage = class.generics().nth_param_spec_usage(i_s.db, p1);
+                return Some(match_params(i_s, &usage, p2_pre_iterator));
+            } else {
+                todo!()
+            }
+        }
+        None
     }
 
     pub fn match_or_add_param_spec(
