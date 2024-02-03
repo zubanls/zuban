@@ -199,18 +199,13 @@ testEnumNameWorkCorrectlyOn311
 testTypeVarTuplePep646TypeVarStarArgs
 
 # Newly not passing
-testInferenceAgainstGenericCallbackProtoMultiple
-testConstraintBetweenParamSpecFunctions1
 testGenericsInInferredParamspecReturn
-testInferenceAgainstGenericCallableUnionParamSpec
-namedtuple_type_used_as_callable
 param_spec_with_generics
 param_spec_with_generics_combined
 # Callable remapping over overload leads to a mapped overload (this is special cased for only one arg and decorator like behavior, see also is_generic_decorator_overload_call)
 testRegularGenericDecoratorOverload
 testParamSpecDecoratorOverload
 # --new-type-inference
-testCopiedParamSpecComparison
 testTypeVarTupleParamSpecInteraction
 testGenericInferenceWithItertools
 testParamSpecDecoratorAppliedToGeneric
