@@ -47,24 +47,9 @@ impl Type {
                                 replace_self,
                             ),
                         }),
-                        GenericItem::ParamSpecArg(p) => {
-                            let mut type_vars = p.type_vars.clone().map(|t| t.type_vars.as_vec());
-                            GenericItem::ParamSpecArg(ParamSpecArg::new(
-                                p.params
-                                    .replace_type_var_likes_and_self(
-                                        db,
-                                        &mut type_vars,
-                                        p.type_vars.as_ref().map(|t| t.in_definition),
-                                        callable,
-                                        replace_self,
-                                    )
-                                    .0,
-                                type_vars.map(|t| ParamSpecTypeVars {
-                                    type_vars: TypeVarLikes::from_vec(t),
-                                    in_definition: p.type_vars.as_ref().unwrap().in_definition,
-                                }),
-                            ))
-                        }
+                        GenericItem::ParamSpecArg(p) => GenericItem::ParamSpecArg(
+                            p.replace_type_var_likes_and_self(db, callable, replace_self),
+                        ),
                     })
                     .collect(),
             )
@@ -454,7 +439,7 @@ impl CallableContent {
 }
 
 impl CallableParams {
-    fn replace_type_var_likes_and_self(
+    pub(super) fn replace_type_var_likes_and_self(
         &self,
         db: &Database,
         type_vars: &mut Option<Vec<TypeVarLike>>,

@@ -363,10 +363,7 @@ impl CallableParams {
         )
     }
 
-    pub(super) fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(
-        &self,
-        found_type_var: &mut C,
-    ) {
+    pub fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C) {
         match self {
             CallableParams::Simple(params) => {
                 for param in params.iter() {

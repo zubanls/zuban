@@ -1,8 +1,8 @@
 use std::{borrow::Cow, ops::AddAssign, rc::Rc};
 
 use super::{
-    AnyCause, CallableParams, GenericItem, GenericsList, TupleArgs, TupleUnpack, Type, TypeArgs,
-    WithUnpack,
+    replace::ReplaceTypeVarLike, AnyCause, CallableParams, GenericItem, GenericsList, ReplaceSelf,
+    TupleArgs, TupleUnpack, Type, TypeArgs, WithUnpack,
 };
 use crate::{
     database::{Database, PointLink},
@@ -572,6 +572,30 @@ impl ParamSpecArg {
             params: CallableParams::Any(cause),
             type_vars: None,
         }
+    }
+
+    pub fn replace_type_var_likes_and_self(
+        &self,
+        db: &Database,
+        callable: ReplaceTypeVarLike,
+        replace_self: ReplaceSelf,
+    ) -> Self {
+        let mut type_vars = self.type_vars.clone().map(|t| t.type_vars.as_vec());
+        Self::new(
+            self.params
+                .replace_type_var_likes_and_self(
+                    db,
+                    &mut type_vars,
+                    self.type_vars.as_ref().map(|t| t.in_definition),
+                    callable,
+                    replace_self,
+                )
+                .0,
+            type_vars.map(|t| ParamSpecTypeVars {
+                type_vars: TypeVarLikes::from_vec(t),
+                in_definition: self.type_vars.as_ref().unwrap().in_definition,
+            }),
+        )
     }
 }
 

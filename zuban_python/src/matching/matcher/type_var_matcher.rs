@@ -178,7 +178,10 @@ impl BoundKind {
             Self::TypeVarTuple(tup) => BoundKind::TypeVarTuple(
                 tup.replace_type_var_likes_and_self(db, on_type_var_like, &|| Type::Self_),
             ),
-            Self::ParamSpecArgument(..) => todo!(),
+            Self::ParamSpecArgument(param_spec_arg) => Self::ParamSpecArgument(
+                param_spec_arg
+                    .replace_type_var_likes_and_self(db, on_type_var_like, &|| Type::Self_),
+            ),
             Self::Uncalculated { fallback: Some(t) } => Self::Uncalculated {
                 fallback: Some(t.replace_type_var_likes(db, on_type_var_like)),
             },

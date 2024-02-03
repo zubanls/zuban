@@ -1394,7 +1394,9 @@ impl<'a> Matcher<'a> {
                     t.search_type_vars(cycle_search)
                 }
                 BoundKind::TypeVarTuple(tup) => tup.search_type_vars(cycle_search),
-                BoundKind::ParamSpecArgument(param_spec_arg) => todo!(),
+                BoundKind::ParamSpecArgument(param_spec_arg) => {
+                    param_spec_arg.params.search_type_vars(cycle_search)
+                }
                 BoundKind::Uncalculated { fallback } => unreachable!(),
             }
         }
