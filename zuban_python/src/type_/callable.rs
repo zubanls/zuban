@@ -636,9 +636,14 @@ impl CallableContent {
                 )
             }
             CallableParams::WithParamSpec(pre_types, usage) => {
-                if !pre_types.is_empty() {
-                    todo!()
-                }
+                let prefix = if pre_types.is_empty() {
+                    "".into()
+                } else {
+                    format!(
+                        "{}, ",
+                        join_with_commas(pre_types.iter().map(|t| t.format(format_data).into()))
+                    )
+                };
                 let spec = usage.param_spec.name(db);
                 format_pretty_function_with_params(
                     format_data,
@@ -646,7 +651,7 @@ impl CallableContent {
                     &self.type_vars,
                     Some(&self.return_type),
                     name,
-                    &format!("*{spec}.args, **{spec}.kwargs"),
+                    &format!("{prefix}*{spec}.args, **{spec}.kwargs"),
                 )
             }
             CallableParams::Any(_) => {

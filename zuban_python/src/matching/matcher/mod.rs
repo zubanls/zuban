@@ -3,7 +3,7 @@ mod type_var_matcher;
 mod utils;
 
 use core::fmt;
-use std::{borrow::Cow, collections::HashSet};
+use std::{borrow::Cow, collections::HashSet, rc::Rc};
 
 pub use type_var_matcher::FunctionOrCallable;
 use type_var_matcher::{BoundKind, TypeVarMatcher};
@@ -1045,7 +1045,17 @@ impl<'a> Matcher<'a> {
                         },
                     )),
                 )),
-                TypeVarLike::ParamSpec(_) => todo!(),
+                TypeVarLike::ParamSpec(param_spec) => BoundKind::ParamSpecArgument(ParamSpecArg {
+                    params: CallableParams::WithParamSpec(
+                        Rc::from([]),
+                        ParamSpecUsage {
+                            param_spec,
+                            index: free_type_var_index.into(),
+                            in_definition,
+                        },
+                    ),
+                    type_vars: None,
+                }),
             }
         } else {
             BoundKind::default()
@@ -1119,7 +1129,19 @@ impl<'a> Matcher<'a> {
                                                     ),
                                                 ))
                                             }
-                                            TypeVarLike::ParamSpec(_) => todo!(),
+                                            TypeVarLike::ParamSpec(param_spec) => {
+                                                GenericItem::ParamSpecArg(ParamSpecArg {
+                                                    params: CallableParams::WithParamSpec(
+                                                        Rc::from([]),
+                                                        ParamSpecUsage {
+                                                            param_spec,
+                                                            index: free_type_var_index.into(),
+                                                            in_definition,
+                                                        },
+                                                    ),
+                                                    type_vars: None,
+                                                })
+                                            }
                                         };
                                     } else {
                                         if depending_on.set.contains(tv_in_cycle) {
