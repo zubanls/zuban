@@ -3,7 +3,7 @@ mod type_var_matcher;
 mod utils;
 
 use core::fmt;
-use std::{borrow::Cow, collections::HashSet, rc::Rc, slice::Iter};
+use std::{borrow::Cow, collections::HashSet, iter::Peekable, rc::Rc, slice::Iter};
 
 pub use type_var_matcher::FunctionOrCallable;
 use type_var_matcher::{BoundKind, TypeVarMatcher};
@@ -682,7 +682,32 @@ impl<'a> Matcher<'a> {
             .enumerate()
             .filter(|(_, tvm)| tvm.enabled)
         {
-            if tv_matcher.match_in_definition == p1.in_definition {
+            if tv_matcher.match_in_definition == p1.in_definition
+                && tv_matcher.match_reverse == self.match_reverse
+            {
+                let as_params =
+                    |p2_it: Peekable<_>| CallableParams::Simple(p2_it.cloned().collect());
+                let as_constraint = |p2_it| {
+                    BoundKind::ParamSpecArgument(ParamSpecArg::new(
+                        as_params(p2_it),
+                        type_vars2.map(|type_vars| ParamSpecTypeVars {
+                            type_vars: type_vars.0.clone(),
+                            in_definition: type_vars.1,
+                        }),
+                    ))
+                };
+                if self.check_if_unresolved_transitive_constraint(
+                    TypeVarAlreadySeen {
+                        matcher_index: i,
+                        type_var_index: p1.index.as_usize(),
+                    },
+                    |found_type_var| {
+                        as_params(params2_iterator.clone()).search_type_vars(found_type_var)
+                    },
+                    || as_constraint(params2_iterator.clone()),
+                ) {
+                    return Match::new_true();
+                }
                 let tv_matcher = &mut self.type_var_matchers[i];
                 let calc = &mut tv_matcher.calculated_type_vars[p1.index.as_usize()];
                 return match &mut calc.type_ {
@@ -690,13 +715,7 @@ impl<'a> Matcher<'a> {
                         match_params(i_s, matches, &p.params, params2_iterator)
                     }
                     BoundKind::Uncalculated { .. } => {
-                        calc.type_ = BoundKind::ParamSpecArgument(ParamSpecArg::new(
-                            CallableParams::Simple(params2_iterator.cloned().collect()),
-                            type_vars2.map(|type_vars| ParamSpecTypeVars {
-                                type_vars: type_vars.0.clone(),
-                                in_definition: type_vars.1,
-                            }),
-                        ));
+                        calc.type_ = as_constraint(params2_iterator);
                         matches
                     }
                     _ => unreachable!(),
