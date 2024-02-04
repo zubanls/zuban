@@ -3,9 +3,9 @@ use std::{borrow::Cow, rc::Rc};
 use super::{
     simplified_union_from_iterators_with_format_index, CallableContent, CallableParam,
     CallableParams, ClassGenerics, Dataclass, GenericClass, GenericItem, GenericsList, NamedTuple,
-    ParamSpecArg, ParamSpecTypeVars, ParamType, RecursiveType, StarParamType, StarStarParamType,
-    Tuple, TupleArgs, Type, TypeArgs, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
-    TypedDictGenerics, UnionEntry, UnionType,
+    ParamSpecArg, ParamType, RecursiveType, StarParamType, StarStarParamType, Tuple, TupleArgs,
+    Type, TypeArgs, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypedDictGenerics,
+    UnionEntry, UnionType,
 };
 use crate::{
     database::{Database, PointLink},
@@ -29,28 +29,14 @@ impl Type {
     pub fn replace_type_var_likes_and_self(
         &self,
         db: &Database,
-        callable: ReplaceTypeVarLike,
+        mut callable: ReplaceTypeVarLike,
         replace_self: ReplaceSelf,
     ) -> Type {
         let mut replace_generics = |generics: &GenericsList| {
             GenericsList::new_generics(
                 generics
                     .iter()
-                    .map(|g| match g {
-                        GenericItem::TypeArg(t) => GenericItem::TypeArg(
-                            t.replace_type_var_likes_and_self(db, callable, replace_self),
-                        ),
-                        GenericItem::TypeArgs(ts) => GenericItem::TypeArgs(TypeArgs {
-                            args: ts.args.replace_type_var_likes_and_self(
-                                db,
-                                callable,
-                                replace_self,
-                            ),
-                        }),
-                        GenericItem::ParamSpecArg(p) => GenericItem::ParamSpecArg(
-                            p.replace_type_var_likes_and_self(db, callable, replace_self),
-                        ),
-                    })
+                    .map(|g| g.replace_type_var_likes_and_self(db, &mut callable, replace_self))
                     .collect(),
             )
         };
@@ -294,27 +280,9 @@ impl GenericItem {
                     .args
                     .replace_type_var_likes_and_self(db, callable, replace_self),
             }),
-            Self::ParamSpecArg(param_spec_arg) => {
-                let tv_ref = param_spec_arg.type_vars.as_ref();
-                let mut type_vars = tv_ref.map(|tv| tv.type_vars.as_vec());
-                let (params, defined_at_and_other) =
-                    param_spec_arg.params.replace_type_var_likes_and_self(
-                        db,
-                        &mut type_vars,
-                        tv_ref.map(|x| x.in_definition),
-                        callable,
-                        replace_self,
-                    );
-                GenericItem::ParamSpecArg(ParamSpecArg {
-                    params,
-                    type_vars: type_vars.map(|tvs| ParamSpecTypeVars {
-                        type_vars: TypeVarLikes::from_vec(tvs),
-                        in_definition: defined_at_and_other
-                            .map(|(d, _)| d)
-                            .unwrap_or_else(|| tv_ref.unwrap().in_definition),
-                    }),
-                })
-            }
+            Self::ParamSpecArg(param_spec_arg) => Self::ParamSpecArg(
+                param_spec_arg.replace_type_var_likes_and_self(db, callable, replace_self),
+            ),
         }
     }
 }
@@ -327,7 +295,7 @@ impl CallableContent {
         replace_self: ReplaceSelf,
     ) -> CallableContent {
         let has_type_vars = !self.type_vars.is_empty();
-        let mut type_vars = has_type_vars.then(|| self.type_vars.clone().as_vec());
+        let mut type_vars = has_type_vars.then(|| self.type_vars.as_vec());
         let (params, remap_data) = self.params.replace_type_var_likes_and_self(
             db,
             &mut type_vars,

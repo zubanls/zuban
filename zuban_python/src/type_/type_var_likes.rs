@@ -580,7 +580,7 @@ impl ParamSpecArg {
         callable: ReplaceTypeVarLike,
         replace_self: ReplaceSelf,
     ) -> Self {
-        let mut type_vars = self.type_vars.clone().map(|t| t.type_vars.as_vec());
+        let mut type_vars = self.type_vars.as_ref().map(|t| t.type_vars.as_vec());
         Self::new(
             self.params
                 .replace_type_var_likes_and_self(
