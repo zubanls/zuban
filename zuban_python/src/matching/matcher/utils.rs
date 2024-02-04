@@ -216,7 +216,7 @@ impl CalculatedTypeArgs {
                 if self.in_definition == usage.in_definition() {
                     let mut arg = self.type_arguments.as_ref().unwrap()[usage.index()].clone();
                     if self.type_var_likes.is_some() {
-                        arg = arg.replace_type_var_likes(
+                        arg = arg.replace_type_var_likes_and_self(
                             i_s.db,
                             &mut |mut tvl| {
                                 if tvl.in_definition() == self.in_definition {

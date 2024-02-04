@@ -279,7 +279,7 @@ impl Type {
 }
 
 impl GenericItem {
-    pub fn replace_type_var_likes(
+    pub fn replace_type_var_likes_and_self(
         &self,
         db: &Database,
         callable: &mut impl FnMut(TypeVarLikeUsage) -> GenericItem,

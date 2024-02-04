@@ -706,7 +706,7 @@ impl CallableContent {
             &mut |usage| {
                 let in_definition = usage.in_definition();
                 if let Some(result) = maybe_class_usage(db, &attribute_class, &usage) {
-                    result.replace_type_var_likes(
+                    result.replace_type_var_likes_and_self(
                         db,
                         &mut |usage| {
                             if usage.in_definition() == class.node_ref.as_link() {
