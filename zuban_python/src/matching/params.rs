@@ -5,15 +5,14 @@ use parsa_python_ast::ParamKind;
 use super::{Match, Matcher};
 use crate::{
     arguments::{Arg, ArgKind},
-    database::{Database, PointLink},
+    database::Database,
     debug,
     inference_state::InferenceState,
     matching::FormatData,
     type_::{
         empty_types, match_tuple_type_arguments, AnyCause, CallableParam, CallableParams,
         ParamSpecUsage, ParamType, ParamTypeDetails, StarParamType, StarStarParamType, StringSlice,
-        Tuple, TupleArgs, TupleUnpack, Type, TypeVarLikes, TypedDict, TypedDictMember, Variance,
-        WithUnpack,
+        Tuple, TupleArgs, TupleUnpack, Type, TypedDict, TypedDictMember, Variance, WithUnpack,
     },
 };
 
@@ -29,7 +28,6 @@ pub fn matches_params(
     matcher: &mut Matcher,
     params1: &CallableParams,
     params2: &CallableParams,
-    type_vars2: Option<(&TypeVarLikes, PointLink)>,
     variance: Variance,
     skip_first_of_params2: bool,
 ) -> Match {
@@ -59,7 +57,7 @@ pub fn matches_params(
                 todo!()
             }
             matcher.match_or_add_param_spec_against_param_spec(
-                i_s, pre1, usage1, pre2, usage2, type_vars2, variance,
+                i_s, pre1, usage1, pre2, usage2, variance,
             )
         }
         (Any(_), _) => Match::new_true(),
@@ -90,7 +88,7 @@ pub fn matches_params(
             if skip_first_of_params2 {
                 params2.next();
             }
-            matcher.match_or_add_param_spec(i_s, types, param_spec, params2, type_vars2, variance)
+            matcher.match_or_add_param_spec(i_s, types, param_spec, params2, variance)
         }
         (Simple(_), WithParamSpec(..)) => Match::new_false(),
     }

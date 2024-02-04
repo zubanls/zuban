@@ -505,7 +505,6 @@ impl<'a> Matcher<'a> {
         p1: &ParamSpecUsage,
         p2_pre_param_spec: &[Type],
         p2: &ParamSpecUsage,
-        type_vars2: Option<(&TypeVarLikes, PointLink)>,
         variance: Variance,
     ) -> Match {
         let mut p2_pre_iterator = p2_pre_param_spec.iter();
@@ -642,7 +641,6 @@ impl<'a> Matcher<'a> {
         pre_param_spec_types: &[Type],
         p1: &ParamSpecUsage,
         params2_iterator: std::slice::Iter<CallableParam>,
-        type_vars2: Option<(&TypeVarLikes, PointLink)>,
         variance: Variance,
     ) -> Match {
         debug_assert!(!self.is_matching_reverse());
@@ -687,15 +685,8 @@ impl<'a> Matcher<'a> {
             {
                 let as_params =
                     |p2_it: Peekable<_>| CallableParams::Simple(p2_it.cloned().collect());
-                let as_constraint = |p2_it| {
-                    BoundKind::ParamSpecArgument(ParamSpecArg::new(
-                        as_params(p2_it),
-                        type_vars2.map(|type_vars| ParamSpecTypeVars {
-                            type_vars: type_vars.0.clone(),
-                            in_definition: type_vars.1,
-                        }),
-                    ))
-                };
+                let as_constraint =
+                    |p2_it| BoundKind::ParamSpecArgument(ParamSpecArg::new(as_params(p2_it), None));
                 if self.check_if_unresolved_transitive_constraint(
                     TypeVarAlreadySeen {
                         matcher_index: i,

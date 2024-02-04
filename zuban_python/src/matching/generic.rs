@@ -83,17 +83,9 @@ impl<'a> Generic<'a> {
                 _ => todo!(),
             },
             Self::ParamSpecArg(p1) => match other {
-                Self::ParamSpecArg(p2) => matches_params(
-                    i_s,
-                    matcher,
-                    &p1.params,
-                    &p2.params,
-                    p2.type_vars
-                        .as_ref()
-                        .map(|t| (&t.type_vars, t.in_definition)),
-                    variance,
-                    false,
-                ),
+                Self::ParamSpecArg(p2) => {
+                    matches_params(i_s, matcher, &p1.params, &p2.params, variance, false)
+                }
                 _ => todo!(),
             },
         }

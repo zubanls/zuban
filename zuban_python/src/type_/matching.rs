@@ -700,7 +700,6 @@ impl Type {
                 matcher,
                 &c1.params,
                 &c2.params,
-                (!c2.type_vars.is_empty()).then(|| (&c2.type_vars, c2.defined_at)),
                 Variance::Contravariant,
                 false,
             )
@@ -738,7 +737,6 @@ impl Type {
                             &mut Matcher::default(),
                             &c1.params,
                             &c2.params,
-                            None,
                             Variance::Contravariant,
                             false,
                         )
@@ -748,7 +746,6 @@ impl Type {
                                 &mut Matcher::default(),
                                 &c2.params,
                                 &c1.params,
-                                None,
                                 Variance::Contravariant,
                                 false,
                             )

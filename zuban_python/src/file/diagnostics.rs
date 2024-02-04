@@ -1012,7 +1012,6 @@ impl<'db> Inference<'db, '_, '_> {
             matcher,
             &overload_item.params,
             &implementation.callable.params,
-            None,
             Variance::Contravariant,
             false,
         );
@@ -1583,7 +1582,6 @@ fn is_overload_unmatchable(
         &mut matcher,
         &c2.params,
         &c1.params,
-        None,
         Variance::Contravariant,
         false,
     );
