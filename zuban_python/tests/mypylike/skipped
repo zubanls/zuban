@@ -199,9 +199,6 @@ testEnumNameWorkCorrectlyOn311
 testTypeVarTuplePep646TypeVarStarArgs
 
 # Newly not passing
-testGenericsInInferredParamspecReturn
-param_spec_with_generics
-param_spec_with_generics_combined
 testParamSpecSubtypeChecking2
 # Callable remapping over overload leads to a mapped overload (this is special cased for only one arg and decorator like behavior, see also is_generic_decorator_overload_call)
 testRegularGenericDecoratorOverload
@@ -215,7 +212,6 @@ testParamSpecNestedApplyNoCrash
 testParamSpecNestedApplyPosVsNamed
 testInferenceAgainstGenericCallableNoLeak
 testInferenceAgainstGenericLambdas
-testGenericsInInferredParamspec
 testInferenceAgainstGenericParamSpecPopOff
 testInferenceAgainstGenericParamSpecPopOn
 testInferenceAgainstGenericParamSpecSecondary

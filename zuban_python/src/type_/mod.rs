@@ -71,7 +71,7 @@ use crate::{
     },
     node_ref::NodeRef,
     type_helpers::{dotted_path_from_dir, Class, Instance, MroIterator, TypeOrClass},
-    utils::{bytes_repr, join_with_commas, str_repr},
+    utils::{bytes_repr, join_with_commas, rc_slice_into_vec, str_repr},
     workspaces::Directory,
 };
 
@@ -271,6 +271,11 @@ impl GenericsList {
         .into()
     }
 
+    pub fn has_param_spec(&self) -> bool {
+        self.iter()
+            .any(|g| matches!(g, GenericItem::ParamSpecArg(_)))
+    }
+
     fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C) {
         for g in self.iter() {
             match g {
@@ -285,6 +290,10 @@ impl GenericsList {
         let mut result = false;
         self.search_type_vars(&mut |_| result = true);
         result
+    }
+
+    pub fn into_vec(self) -> Vec<GenericItem> {
+        rc_slice_into_vec(self.0)
     }
 }
 

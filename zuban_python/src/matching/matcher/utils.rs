@@ -24,8 +24,8 @@ use crate::{
     matching::{maybe_class_usage, ErrorTypes, GotType, LookupKind},
     node_ref::NodeRef,
     type_::{
-        match_unpack, CallableParams, ClassGenerics, GenericsList, ReplaceSelf, TupleArgs,
-        TupleUnpack, Type, TypeVarLikes, Variance, WithUnpack,
+        match_unpack, CallableParams, ClassGenerics, GenericItem, GenericsList, ParamSpecTypeVars,
+        ReplaceSelf, TupleArgs, TupleUnpack, Type, TypeVarLikes, Variance, WithUnpack,
     },
     type_helpers::{Callable, Class, Function},
     utils::rc_unwrap_or_clone,
@@ -134,7 +134,25 @@ pub struct CalculatedTypeArgs {
 }
 
 impl CalculatedTypeArgs {
-    pub fn type_arguments_into_class_generics(self) -> ClassGenerics {
+    pub fn type_arguments_into_class_generics(mut self) -> ClassGenerics {
+        if let Some(type_var_likes) = &self.type_var_likes {
+            if let Some(type_args) = self.type_arguments.take() {
+                self.type_arguments = Some(if type_args.has_param_spec() {
+                    let mut type_args = type_args.into_vec();
+                    for type_arg in &mut type_args {
+                        if let GenericItem::ParamSpecArg(param_spec_arg) = type_arg {
+                            param_spec_arg.type_vars = Some(ParamSpecTypeVars {
+                                type_vars: type_var_likes.clone(),
+                                in_definition: self.in_definition,
+                            });
+                        }
+                    }
+                    GenericsList::generics_from_vec(type_args)
+                } else {
+                    type_args
+                })
+            }
+        }
         match self.type_arguments {
             Some(g) => ClassGenerics::List(g),
             None => ClassGenerics::None,
