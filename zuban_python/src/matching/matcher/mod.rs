@@ -31,9 +31,9 @@ use crate::{
     inference_state::InferenceState,
     type_::{
         match_tuple_type_arguments, AnyCause, CallableContent, CallableParam, CallableParams,
-        GenericItem, GenericsList, ParamSpecArg, ParamSpecTypeVars, ParamSpecUsage, ParamType,
-        ReplaceSelf, StarParamType, TupleArgs, TupleUnpack, Type, TypeArgs, TypeVarKind,
-        TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict,
+        GenericItem, GenericsList, ParamSpecArg, ParamSpecUsage, ParamType, ReplaceSelf,
+        StarParamType, TupleArgs, TupleUnpack, Type, TypeArgs, TypeVarKind, TypeVarLike,
+        TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict,
         TypedDictGenerics, Variance, WithUnpack,
     },
     type_helpers::{Callable, Class, Function},
@@ -526,7 +526,6 @@ impl<'a> Matcher<'a> {
                     p2,
                     [].iter(),
                     p1,
-                    None,
                     variance.invert(),
                 )
             }) {
@@ -539,7 +538,6 @@ impl<'a> Matcher<'a> {
                 p1,
                 p2_pre_iterator.clone(),
                 p2,
-                None, //type_vars2,  // TODO why is this type_vars2 ignored?
                 variance,
             )
             .unwrap_or_else(|| (p2_pre_iterator.next().is_none() && p1 == p2).into());
@@ -552,26 +550,23 @@ impl<'a> Matcher<'a> {
         p1: &ParamSpecUsage,
         p2_pre_iterator: Iter<Type>,
         p2: &ParamSpecUsage,
-        type_vars2: Option<(&TypeVarLikes, PointLink)>,
         variance: Variance,
     ) -> Option<Match> {
-        let match_params =
-            |i_s: &_, params: &ParamSpecArg, p2_pre_iterator: Iter<_>| match &params.params {
-                CallableParams::Simple(params1) => todo!(),
-                CallableParams::Any(_) => Match::new_true(),
-                CallableParams::WithParamSpec(pre, usage) => {
-                    if pre.len() != p2_pre_iterator.len() {
-                        todo!()
-                    } else {
-                        debug!("TODO should maybe use type vars?");
-                        let mut matches = Match::new_true();
-                        for (t1, t2) in pre.iter().zip(p2_pre_iterator) {
-                            matches &= t1.simple_matches(i_s, t2, variance);
-                        }
-                        matches & (usage == p2).into()
+        let match_params = |i_s: &_, params: &_, p2_pre_iterator: Iter<_>| match params {
+            CallableParams::Simple(params1) => todo!(),
+            CallableParams::Any(_) => Match::new_true(),
+            CallableParams::WithParamSpec(pre, usage) => {
+                if pre.len() != p2_pre_iterator.len() {
+                    todo!()
+                } else {
+                    let mut matches = Match::new_true();
+                    for (t1, t2) in pre.iter().zip(p2_pre_iterator) {
+                        matches &= t1.simple_matches(i_s, t2, variance);
                     }
+                    matches & (usage == p2).into()
                 }
-            };
+            }
+        };
 
         for (i, tv_matcher) in self
             .type_var_matchers
@@ -583,15 +578,9 @@ impl<'a> Matcher<'a> {
                 && tv_matcher.match_reverse == self.match_reverse
             {
                 let as_constraint = |p2_pre_iterator: Iter<Type>| {
-                    BoundKind::ParamSpecArgument(ParamSpecArg::new(
-                        CallableParams::WithParamSpec(
-                            p2_pre_iterator.cloned().collect(),
-                            p2.clone(),
-                        ),
-                        type_vars2.map(|type_vars| ParamSpecTypeVars {
-                            type_vars: type_vars.0.clone(),
-                            in_definition: type_vars.1,
-                        }),
+                    BoundKind::ParamSpec(CallableParams::WithParamSpec(
+                        p2_pre_iterator.cloned().collect(),
+                        p2.clone(),
                     ))
                 };
 
@@ -612,7 +601,7 @@ impl<'a> Matcher<'a> {
                 let tv_matcher = &mut self.type_var_matchers[i];
                 let calc = &mut tv_matcher.calculated_type_vars[type_var_index];
                 return Some(match &mut calc.type_ {
-                    BoundKind::ParamSpecArgument(p) => match_params(i_s, p, p2_pre_iterator),
+                    BoundKind::ParamSpec(p) => match_params(i_s, p, p2_pre_iterator),
                     BoundKind::Uncalculated { .. } => {
                         calc.type_ = as_constraint(p2_pre_iterator);
                         Match::new_true()
@@ -626,7 +615,8 @@ impl<'a> Matcher<'a> {
             if let Some(class) = self.class {
                 if class.node_ref.as_link() == p1.in_definition {
                     let usage = class.generics().nth_param_spec_usage(i_s.db, p1);
-                    return Some(match_params(i_s, &usage, p2_pre_iterator));
+                    debug!("TODO should maybe use type vars?");
+                    return Some(match_params(i_s, &usage.params, p2_pre_iterator));
                 } else {
                     todo!()
                 }
@@ -685,8 +675,7 @@ impl<'a> Matcher<'a> {
             {
                 let as_params =
                     |p2_it: Peekable<_>| CallableParams::Simple(p2_it.cloned().collect());
-                let as_constraint =
-                    |p2_it| BoundKind::ParamSpecArgument(ParamSpecArg::new(as_params(p2_it), None));
+                let as_constraint = |p2_it| BoundKind::ParamSpec(as_params(p2_it));
                 if self.check_if_unresolved_transitive_constraint(
                     TypeVarAlreadySeen {
                         matcher_index: i,
@@ -702,9 +691,7 @@ impl<'a> Matcher<'a> {
                 let tv_matcher = &mut self.type_var_matchers[i];
                 let calc = &mut tv_matcher.calculated_type_vars[p1.index.as_usize()];
                 return match &mut calc.type_ {
-                    BoundKind::ParamSpecArgument(p) => {
-                        match_params(i_s, matches, &p.params, params2_iterator)
-                    }
+                    BoundKind::ParamSpec(p) => match_params(i_s, matches, &p, params2_iterator),
                     BoundKind::Uncalculated { .. } => {
                         calc.type_ = as_constraint(params2_iterator);
                         matches
@@ -738,10 +725,11 @@ impl<'a> Matcher<'a> {
         on_type_error: Option<OnTypeError<'db, '_>>,
     ) -> SignatureMatch {
         let func_class = self.func_or_callable.and_then(|f| f.class());
-        let param_spec_arg = if let Some(type_var_matcher) = self.type_var_matchers.first() {
+        let param_spec_usage;
+        let params = if let Some(type_var_matcher) = self.type_var_matchers.first() {
             if type_var_matcher.match_in_definition == usage.in_definition {
                 match &type_var_matcher.calculated_type_vars[usage.index.as_usize()].type_ {
-                    BoundKind::ParamSpecArgument(p) => Cow::Borrowed(p),
+                    BoundKind::ParamSpec(p) => p,
                     // This means that an Any came along.
                     BoundKind::Uncalculated { .. } => return SignatureMatch::new_true(),
                     BoundKind::TypeVar(_) | BoundKind::TypeVarTuple(_) => unreachable!(),
@@ -750,11 +738,12 @@ impl<'a> Matcher<'a> {
                 todo!("why?")
             }
         } else if let Some(class) = self.class.or(func_class.as_ref()) {
-            class.generics().nth_param_spec_usage(i_s.db, usage)
+            param_spec_usage = class.generics().nth_param_spec_usage(i_s.db, usage);
+            &param_spec_usage.params
         } else {
             todo!("When does this even happen?")
         };
-        match &param_spec_arg.params {
+        match params {
             CallableParams::Simple(params) => {
                 let iter = InferrableParamIterator::new(
                     i_s.db,
@@ -842,7 +831,7 @@ impl<'a> Matcher<'a> {
                 return match &current.type_ {
                     BoundKind::TypeVar(bound) => bound.format(format_data.db, format_data.style),
                     BoundKind::TypeVarTuple(ts) => ts.format(format_data),
-                    BoundKind::ParamSpecArgument(p) => p.params.format(format_data, params_style),
+                    BoundKind::ParamSpec(p) => p.format(format_data, params_style),
                     BoundKind::Uncalculated { fallback } => {
                         if let TypeVarLike::TypeVar(type_var) = usage.as_type_var_like() {
                             if let TypeVarKind::Bound(bound) = &type_var.kind {
@@ -974,8 +963,11 @@ impl<'a> Matcher<'a> {
                         BoundKind::TypeVarTuple(ts) => {
                             GenericItem::TypeArgs(TypeArgs::new(ts.clone()))
                         }
-                        BoundKind::ParamSpecArgument(param_spec) => {
-                            GenericItem::ParamSpecArg(param_spec.clone())
+                        BoundKind::ParamSpec(param_spec) => {
+                            GenericItem::ParamSpecArg(ParamSpecArg {
+                                params: param_spec.clone(),
+                                type_vars: None,
+                            })
                         }
                         // Any is just ignored by the context later.
                         BoundKind::Uncalculated { .. } => on_uncalculated(usage),
@@ -1114,17 +1106,16 @@ impl<'a> Matcher<'a> {
                         },
                     )),
                 )),
-                TypeVarLike::ParamSpec(param_spec) => BoundKind::ParamSpecArgument(ParamSpecArg {
-                    params: CallableParams::WithParamSpec(
+                TypeVarLike::ParamSpec(param_spec) => {
+                    BoundKind::ParamSpec(CallableParams::WithParamSpec(
                         Rc::from([]),
                         ParamSpecUsage {
                             param_spec,
                             index: free_type_var_index.into(),
                             in_definition,
                         },
-                    ),
-                    type_vars: None,
-                }),
+                    ))
+                }
             }
         } else {
             BoundKind::default()
@@ -1404,8 +1395,8 @@ impl<'a> Matcher<'a> {
                     t.search_type_vars(cycle_search)
                 }
                 BoundKind::TypeVarTuple(tup) => tup.search_type_vars(cycle_search),
-                BoundKind::ParamSpecArgument(param_spec_arg) => {
-                    param_spec_arg.params.search_type_vars(cycle_search)
+                BoundKind::ParamSpec(param_spec_arg) => {
+                    param_spec_arg.search_type_vars(cycle_search)
                 }
                 BoundKind::Uncalculated { fallback } => unreachable!(),
             }

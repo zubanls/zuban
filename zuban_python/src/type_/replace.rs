@@ -439,7 +439,7 @@ impl CallableContent {
 }
 
 impl CallableParams {
-    pub(super) fn replace_type_var_likes_and_self(
+    pub fn replace_type_var_likes_and_self(
         &self,
         db: &Database,
         type_vars: &mut Option<Vec<TypeVarLike>>,

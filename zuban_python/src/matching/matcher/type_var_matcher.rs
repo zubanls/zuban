@@ -104,7 +104,7 @@ impl<'db: 'a, 'a> FunctionOrCallable<'a> {
 pub enum BoundKind {
     TypeVar(TypeVarBound),
     TypeVarTuple(TupleArgs),
-    ParamSpecArgument(ParamSpecArg),
+    ParamSpec(CallableParams),
     Uncalculated { fallback: Option<Type> },
 }
 
@@ -139,7 +139,7 @@ impl BoundKind {
                 //match_tuple_type_arguments(&i_s, &mut Matcher::default(), tup1, &tup2, Variance::Invariant);
                 todo!()
             }
-            (Self::ParamSpecArgument(p1), Self::ParamSpecArgument(p2)) => {
+            (Self::ParamSpec(p1), Self::ParamSpec(p2)) => {
                 dbg!(p1, p2);
                 todo!()
             }
@@ -179,9 +179,12 @@ impl BoundKind {
             Self::TypeVarTuple(tup) => BoundKind::TypeVarTuple(
                 tup.replace_type_var_likes_and_self(db, on_type_var_like, &|| Type::Self_),
             ),
-            Self::ParamSpecArgument(param_spec_arg) => Self::ParamSpecArgument(
-                param_spec_arg
-                    .replace_type_var_likes_and_self(db, on_type_var_like, &|| Type::Self_),
+            Self::ParamSpec(params) => Self::ParamSpec(
+                params
+                    .replace_type_var_likes_and_self(db, &mut None, None, on_type_var_like, &|| {
+                        Type::Self_
+                    })
+                    .0,
             ),
             Self::Uncalculated { fallback: Some(t) } => Self::Uncalculated {
                 fallback: Some(t.replace_type_var_likes(db, on_type_var_like)),
@@ -236,7 +239,10 @@ impl CalculatedTypeVarLike {
         match self.type_ {
             BoundKind::TypeVar(t) => GenericItem::TypeArg(t.into_type(db)),
             BoundKind::TypeVarTuple(ts) => GenericItem::TypeArgs(TypeArgs::new(ts)),
-            BoundKind::ParamSpecArgument(params) => GenericItem::ParamSpecArg(params),
+            BoundKind::ParamSpec(params) => GenericItem::ParamSpecArg(ParamSpecArg {
+                params,
+                type_vars: None,
+            }),
             BoundKind::Uncalculated { fallback } => {
                 if let Some(fallback) = fallback {
                     GenericItem::TypeArg(fallback)
@@ -276,7 +282,7 @@ impl CalculatedTypeVarLike {
             },
             BoundKind::TypeVar(TypeVarBound::UpperAndLower(_, _)) => unreachable!(),
             BoundKind::TypeVarTuple(tvt) => todo!(),
-            BoundKind::ParamSpecArgument(p) => match &p.params {
+            BoundKind::ParamSpec(p) => match p {
                 CallableParams::WithParamSpec(pre, p2)
                     if pre.is_empty() && class.node_ref.as_link() == p2.in_definition =>
                 {
@@ -346,7 +352,7 @@ impl TypeVarMatcher {
                             TupleArgs::ArbitraryLen(Box::new(Type::Any(cause))),
                         ),
                         TypeVarLikeUsage::ParamSpec(_) => {
-                            BoundKind::ParamSpecArgument(ParamSpecArg::new_any(cause))
+                            BoundKind::ParamSpec(CallableParams::Any(cause))
                         }
                     }
                 }
