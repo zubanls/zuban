@@ -206,7 +206,6 @@ testParamSpecDecoratorOverload
 # --new-type-inference
 testTypeVarTupleParamSpecInteraction
 testGenericInferenceWithItertools
-testParamSpecDecoratorAppliedToGeneric
 testParamSpecArgumentParamInferenceGeneric
 testParamSpecNestedApplyNoCrash
 testParamSpecNestedApplyPosVsNamed
