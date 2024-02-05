@@ -825,9 +825,16 @@ impl<'a> Matcher<'a> {
     ) -> Box<str> {
         // In general this whole function should look very similar to the matches function, since
         // on mismatches this can be run.
-        if let Some(type_var_matcher) = self.type_var_matchers.first() {
-            if type_var_matcher.match_in_definition == usage.in_definition() {
-                let current = &type_var_matcher.calculated_type_vars[usage.index().as_usize()];
+        for (i, tv_matcher) in self
+            .type_var_matchers
+            .iter()
+            .enumerate()
+            .filter(|(_, tvm)| tvm.enabled)
+        {
+            if tv_matcher.match_in_definition == usage.in_definition()
+                && tv_matcher.match_reverse == self.match_reverse
+            {
+                let current = &tv_matcher.calculated_type_vars[usage.index().as_usize()];
                 return match &current.type_ {
                     BoundKind::TypeVar(bound) => bound.format(format_data.db, format_data.style),
                     BoundKind::TypeVarTuple(ts) => ts.format(format_data),
@@ -843,22 +850,24 @@ impl<'a> Matcher<'a> {
                 };
             }
         }
-        if let Some(class) = self.class {
-            if class.node_ref.as_link() == usage.in_definition() {
-                return class
-                    .generics()
-                    .nth_usage(format_data.db, usage)
-                    .format(&format_data.remove_matcher())
-                    .unwrap_or("()".into());
+        if !self.match_reverse {
+            if let Some(class) = self.class {
+                if class.node_ref.as_link() == usage.in_definition() {
+                    return class
+                        .generics()
+                        .nth_usage(format_data.db, usage)
+                        .format(&format_data.remove_matcher())
+                        .unwrap_or("()".into());
+                }
             }
-        }
-        if let Some(func_class) = self.func_or_callable.as_ref().and_then(|f| f.class()) {
-            if usage.in_definition() == func_class.node_ref.as_link() {
-                return func_class
-                    .generics()
-                    .nth_usage(format_data.db, usage)
-                    .format(format_data)
-                    .unwrap_or("()".into());
+            if let Some(func_class) = self.func_or_callable.as_ref().and_then(|f| f.class()) {
+                if usage.in_definition() == func_class.node_ref.as_link() {
+                    return func_class
+                        .generics()
+                        .nth_usage(format_data.db, usage)
+                        .format(format_data)
+                        .unwrap_or("()".into());
+                }
             }
         }
         usage.format_without_matcher(format_data.db, params_style)
