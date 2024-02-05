@@ -221,7 +221,6 @@ testInferenceAgainstGenericLambdas
 testGenericLambdaGenericMethodNoCrash
 testRecursiveSelfTypeCallMethodNoCrash
 testDefaultDict
-testGenericInferenceWithDataclass
 # return callables nested correct type var assignments
 testInferenceAgainstGenericCurry
 testInferenceAgainstGenericParamSpecSpuriousBoundsNotUsed
