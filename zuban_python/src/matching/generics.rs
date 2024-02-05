@@ -223,7 +223,12 @@ impl<'a> Generics<'a> {
             .filter_map(|g| g.format(format_data))
             .collect();
         if strings.is_empty() {
-            "[()]".to_string()
+            if matches!(self, Self::NotDefinedYet) {
+                // Format classes that have not been initialized like Foo() or Foo[int] like "Foo".
+                "".to_string()
+            } else {
+                "[()]".to_string()
+            }
         } else {
             format!("[{}]", strings.join(", "))
         }
