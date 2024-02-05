@@ -1075,12 +1075,16 @@ impl<'a> Matcher<'a> {
                 };
                 debug!(
                     " - {} {}",
-                    join_with_commas(
-                        cycle
-                            .set
-                            .iter()
-                            .map(|tv| format!("({}, {})", tv.matcher_index, tv.type_var_index))
-                    ),
+                    join_with_commas(cycle.set.iter().map(|tv| {
+                        format!(
+                            "({}, {}, {})",
+                            tv.matcher_index,
+                            tv.type_var_index,
+                            self.type_var_matchers[tv.matcher_index].type_var_likes
+                                [tv.type_var_index]
+                                .name(db)
+                        )
+                    })),
                     bound
                 );
             }
