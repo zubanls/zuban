@@ -1015,3 +1015,14 @@ def connect2(x: Tuple[Unpack[Us]], *args: Unpack[Vs]) -> Tuple[Unpack[Vs]]: ...
 
 reveal_type(dec(connect1))  # N: Revealed type is "def [Ts] (*Unpack[Ts])"
 reveal_type(dec(connect2))  # N: Revealed type is "def (str, bytes)"
+
+[case transitive_free_type_vars_without_callable]
+from typing import TypeVar, Callable, List
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+
+def foo(f: Callable[[T1], T1]) -> T1: ...
+def id(x: T2) -> T2: ...
+
+reveal_type(foo(id))  # N: Revealed type is "Never"
