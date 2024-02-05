@@ -2617,6 +2617,9 @@ impl NewOrInitConstructor<'_> {
                     let needs_type_var_remap = self.init_class.is_some_and(|c| {
                         !c.type_vars(i_s).is_empty() && c.node_ref != cls.node_ref
                     });
+
+                    // If the __init__ comes from a super class, we need to fetch the generics that
+                    // are relevant for our class.
                     if c.has_self_type() || needs_type_var_remap {
                         c = c.replace_type_var_likes_and_self(
                             i_s.db,
@@ -2636,7 +2639,27 @@ impl NewOrInitConstructor<'_> {
                         )
                     }
                     c.return_type = self_;
-                    c.type_vars = cls.type_vars(i_s).clone();
+
+                    // Now we have two sets of generics, the generics for the class and the
+                    // generics for the __init__ function.
+                    // TODO merge those
+                    let type_vars = cls.type_vars(i_s);
+                    if !type_vars.is_empty() {
+                        c = c.replace_type_var_likes_and_self(
+                            i_s.db,
+                            &mut |mut usage| {
+                                if cls.node_ref.as_link() == usage.in_definition() {
+                                    usage.update_in_definition_and_index(
+                                        c.defined_at,
+                                        usage.index(),
+                                    );
+                                }
+                                usage.into_generic_item()
+                            },
+                            &|| unreachable!("was already replaced above"),
+                        );
+                    }
+                    c.type_vars = type_vars.clone();
                     c
                 })
             };

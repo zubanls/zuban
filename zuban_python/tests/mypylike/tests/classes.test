@@ -394,3 +394,16 @@ class A:
         return ""
 
 A() + A()  # E: Unsupported operand types for + ("A" and "A")
+
+[case generic_class_as_callable]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+class Foo(Generic[T]):
+    def __init__(self, x: T):
+        self.x = x
+
+def foo(c: Callable[[int], Foo[int]]) -> None: ...
+
+foo(Foo)

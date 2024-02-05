@@ -205,7 +205,6 @@ testParamSpecSubtypeChecking2
 testRegularGenericDecoratorOverload
 testParamSpecDecoratorOverload
 # --new-type-inference ParamSpec/TypeVarTuple constraint inference recursion
-param_spec_with_generic_class
 testParamSpecArgumentParamInferenceGeneric
 testParamSpecNestedApplyNoCrash
 testParamSpecNestedApplyPosVsNamed
