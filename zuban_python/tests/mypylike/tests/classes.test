@@ -407,3 +407,17 @@ class Foo(Generic[T]):
 def foo(c: Callable[[int], Foo[int]]) -> None: ...
 
 foo(Foo)
+
+[case generic_class_as_callable_with_func_type_vars]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+S = TypeVar('S')
+
+class Foo(Generic[T]):
+    def __init__(self, x: T, y: S, z: S):
+        self.x = x
+
+def foo(c: Callable[[int, float, float], Foo[int]]) -> None: ...
+
+foo(Foo)
