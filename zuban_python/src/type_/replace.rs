@@ -182,23 +182,7 @@ impl Type {
                         GenericItem::ParamSpecArg(p) => GenericItem::ParamSpecArg({
                             debug_assert!(p.type_vars.is_none());
                             ParamSpecArg {
-                                params: match &p.params {
-                                    CallableParams::WithParamSpec(types, param_spec) => {
-                                        CallableParams::WithParamSpec(
-                                            types
-                                                .iter()
-                                                .map(|t| t.rewrite_late_bound_callables(manager))
-                                                .collect(),
-                                            manager.remap_param_spec(param_spec),
-                                        )
-                                    }
-                                    CallableParams::Simple(ps) => CallableParams::Simple(
-                                        ps.iter()
-                                            .map(|p| p.rewrite_late_bound_callables(manager))
-                                            .collect(),
-                                    ),
-                                    CallableParams::Any(_) => unreachable!(),
-                                },
+                                params: p.params.rewrite_late_bound_callables(manager),
                                 type_vars: p.type_vars.clone(),
                             }
                         }),
@@ -345,22 +329,7 @@ impl CallableContent {
             defined_at: self.defined_at,
             kind: self.kind,
             type_vars: TypeVarLikes::new(type_vars),
-            params: match &self.params {
-                CallableParams::Simple(params) => CallableParams::Simple(
-                    params
-                        .iter()
-                        .map(|p| p.rewrite_late_bound_callables(manager))
-                        .collect(),
-                ),
-                CallableParams::Any(cause) => CallableParams::Any(*cause),
-                CallableParams::WithParamSpec(types, param_spec) => CallableParams::WithParamSpec(
-                    types
-                        .iter()
-                        .map(|t| t.rewrite_late_bound_callables(manager))
-                        .collect(),
-                    manager.remap_param_spec(param_spec),
-                ),
-            },
+            params: self.params.rewrite_late_bound_callables(manager),
             return_type: self.return_type.rewrite_late_bound_callables(manager),
         }
     }
@@ -564,6 +533,25 @@ impl CallableParams {
             }
         };
         (new_params, replace_data)
+    }
+
+    fn rewrite_late_bound_callables(&self, manager: &TypeVarManager) -> Self {
+        match &self {
+            CallableParams::Simple(params) => CallableParams::Simple(
+                params
+                    .iter()
+                    .map(|p| p.rewrite_late_bound_callables(manager))
+                    .collect(),
+            ),
+            CallableParams::Any(cause) => CallableParams::Any(*cause),
+            CallableParams::WithParamSpec(types, param_spec) => CallableParams::WithParamSpec(
+                types
+                    .iter()
+                    .map(|t| t.rewrite_late_bound_callables(manager))
+                    .collect(),
+                manager.remap_param_spec(param_spec),
+            ),
+        }
     }
 }
 
