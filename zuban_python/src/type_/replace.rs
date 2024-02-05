@@ -192,7 +192,11 @@ impl Type {
                                             manager.remap_param_spec(param_spec),
                                         )
                                     }
-                                    CallableParams::Simple(x) => unreachable!(),
+                                    CallableParams::Simple(ps) => CallableParams::Simple(
+                                        ps.iter()
+                                            .map(|p| p.rewrite_late_bound_callables(manager))
+                                            .collect(),
+                                    ),
                                     CallableParams::Any(_) => unreachable!(),
                                 },
                                 type_vars: p.type_vars.clone(),
@@ -345,47 +349,7 @@ impl CallableContent {
                 CallableParams::Simple(params) => CallableParams::Simple(
                     params
                         .iter()
-                        .map(|p| CallableParam {
-                            type_: match &p.type_ {
-                                ParamType::PositionalOnly(t) => ParamType::PositionalOnly(
-                                    t.rewrite_late_bound_callables(manager),
-                                ),
-                                ParamType::PositionalOrKeyword(t) => {
-                                    ParamType::PositionalOrKeyword(
-                                        t.rewrite_late_bound_callables(manager),
-                                    )
-                                }
-                                ParamType::KeywordOnly(t) => {
-                                    ParamType::KeywordOnly(t.rewrite_late_bound_callables(manager))
-                                }
-                                ParamType::Star(s) => ParamType::Star(match s {
-                                    StarParamType::ArbitraryLen(t) => StarParamType::ArbitraryLen(
-                                        t.rewrite_late_bound_callables(manager),
-                                    ),
-                                    StarParamType::UnpackedTuple(tup) => {
-                                        StarParamType::UnpackedTuple(Tuple::new(
-                                            tup.args.rewrite_late_bound_callables(manager),
-                                        ))
-                                    }
-                                    StarParamType::ParamSpecArgs(_) => todo!(),
-                                }),
-                                ParamType::StarStar(d) => ParamType::StarStar(match d {
-                                    StarStarParamType::ValueType(t) => {
-                                        StarStarParamType::ValueType(
-                                            t.rewrite_late_bound_callables(manager),
-                                        )
-                                    }
-                                    StarStarParamType::UnpackTypedDict(_) => {
-                                        todo!()
-                                    }
-                                    StarStarParamType::ParamSpecKwargs(_) => {
-                                        todo!()
-                                    }
-                                }),
-                            },
-                            has_default: p.has_default,
-                            name: p.name.clone(),
-                        })
+                        .map(|p| p.rewrite_late_bound_callables(manager))
                         .collect(),
                 ),
                 CallableParams::Any(cause) => CallableParams::Any(*cause),
@@ -398,6 +362,45 @@ impl CallableContent {
                 ),
             },
             return_type: self.return_type.rewrite_late_bound_callables(manager),
+        }
+    }
+}
+impl CallableParam {
+    fn rewrite_late_bound_callables(&self, manager: &TypeVarManager) -> Self {
+        Self {
+            type_: match &self.type_ {
+                ParamType::PositionalOnly(t) => {
+                    ParamType::PositionalOnly(t.rewrite_late_bound_callables(manager))
+                }
+                ParamType::PositionalOrKeyword(t) => {
+                    ParamType::PositionalOrKeyword(t.rewrite_late_bound_callables(manager))
+                }
+                ParamType::KeywordOnly(t) => {
+                    ParamType::KeywordOnly(t.rewrite_late_bound_callables(manager))
+                }
+                ParamType::Star(s) => ParamType::Star(match s {
+                    StarParamType::ArbitraryLen(t) => {
+                        StarParamType::ArbitraryLen(t.rewrite_late_bound_callables(manager))
+                    }
+                    StarParamType::UnpackedTuple(tup) => StarParamType::UnpackedTuple(Tuple::new(
+                        tup.args.rewrite_late_bound_callables(manager),
+                    )),
+                    StarParamType::ParamSpecArgs(_) => todo!(),
+                }),
+                ParamType::StarStar(d) => ParamType::StarStar(match d {
+                    StarStarParamType::ValueType(t) => {
+                        StarStarParamType::ValueType(t.rewrite_late_bound_callables(manager))
+                    }
+                    StarStarParamType::UnpackTypedDict(_) => {
+                        todo!()
+                    }
+                    StarStarParamType::ParamSpecKwargs(_) => {
+                        todo!()
+                    }
+                }),
+            },
+            has_default: self.has_default,
+            name: self.name.clone(),
         }
     }
 }
