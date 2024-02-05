@@ -223,8 +223,7 @@ impl CalculatedTypeArgs {
                                     if let Some(in_def) = in_callable_definition {
                                         tvl.update_in_definition_and_index(in_def, tvl.index())
                                     } else {
-                                        //return tvl.as_type_var_like().as_never_generic_item()
-                                        todo!()
+                                        return tvl.as_type_var_like().as_never_generic_item();
                                     }
                                 }
                                 tvl.into_generic_item()
@@ -243,8 +242,6 @@ impl CalculatedTypeArgs {
                 let mut callable = rc_unwrap_or_clone(c);
                 callable.type_vars = type_var_likes;
                 type_ = Type::Callable(Rc::new(callable))
-            } else {
-                todo!()
             }
         }
         debug!("Resolved type vars: {}", type_.format_short(i_s.db));
