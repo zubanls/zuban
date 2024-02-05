@@ -338,19 +338,16 @@ fn calculate_type_vars<'db: 'a, 'a>(
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> CalculatedTypeArgs {
+    let mut had_wrong_init_type_var = false;
     if matcher.has_type_var_matcher() {
-        let add_init_generics = |matcher: &mut _, return_class: &Class| {
+        let mut add_init_generics = |matcher: &mut _, return_class: &Class| {
             if let Some(t) = func_or_callable.first_self_or_class_annotation(i_s) {
                 // When an __init__ has a self annotation, it's a bit special, because it influences
                 // the generics.
                 let func_class = func_or_callable.class().unwrap();
-                if !Class::with_self_generics(i_s.db, return_class.node_ref)
+                let m = Class::with_self_generics(i_s.db, return_class.node_ref)
                     .as_type(i_s.db)
-                    .is_sub_type_of(i_s, matcher, &t)
-                    .bool()
-                {
-                    todo!()
-                }
+                    .is_sub_type_of(i_s, matcher, &t);
                 for entry in &mut matcher
                     .type_var_matchers
                     .first_mut()
@@ -358,6 +355,14 @@ fn calculate_type_vars<'db: 'a, 'a>(
                     .calculated_type_vars
                 {
                     entry.avoid_type_vars_from_class_self_arguments(func_class);
+                }
+                if !m.bool() {
+                    had_wrong_init_type_var = true;
+                    if on_type_error.is_some() {
+                        add_issue(IssueType::ArgumentIssue(
+                            "Invalid self type in __init__".into(),
+                        ))
+                    }
                 }
             }
         };
@@ -505,6 +510,9 @@ fn calculate_type_vars<'db: 'a, 'a>(
                 "Incompatible callable argument with type vars".into(),
             ))
         }
+        matches = SignatureMatch::False { similar: false };
+    }
+    if had_wrong_init_type_var {
         matches = SignatureMatch::False { similar: false };
     }
     if cfg!(feature = "zuban_debug") {

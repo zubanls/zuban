@@ -447,3 +447,41 @@ foo(Foo)
 bar1(Foo)  # E: Argument 1 to "bar1" has incompatible type "Type[Foo]"; expected "Callable[[str, int, bytes], Foo[str]]"
 bar2(Foo)  # E: Value of type variable "S" of "bar2" cannot be "bytes"
 bar3(Foo)  # E: Argument 1 to "bar3" has incompatible type "Type[Foo]"; expected "Callable[[str, str, float], Foo[int]]"
+
+[case class_init_with_mismatching_self_type_vars]
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+U = TypeVar("U")
+
+class Foo(Generic[T, U]):
+    def __init__(self: Foo[int, U], y: U): ...
+
+class Bar(Foo[str, U]): ...
+
+x: Bar[float]  # Fine
+y = Bar(1.0)  # E: Invalid self type in __init__
+reveal_type(y)  # N: Revealed type is "__main__.Bar[float]"
+
+[case class_init_with_mismatching_self_type_vars_overload]
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+U = TypeVar("U")
+
+class Foo(Generic[T, U]):
+    @overload
+    def __init__(self: Foo[int, U], y: U): ...
+    @overload
+    def __init__(self: Foo[float, U], y: U): ...
+    def __init__(self, y): ...
+
+class Bar(Foo[str, U]): ...
+
+x: Bar[float]  # Fine
+y = Bar(1.0)  # E: No overload variant of "Bar" matches argument type "float" \
+              # N: Possible overload variants: \
+              # N:     def __init__(self: Foo[int, U], y: U) -> Bar[Any] \
+              # N:     def __init__(self: Foo[float, U], y: U) -> Bar[Any]
+
+reveal_type(y)  # N: Revealed type is "Any"
