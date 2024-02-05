@@ -198,19 +198,17 @@ testEnumNameWorkCorrectlyOn311
 # current_function in i_s is wrong.
 testTypeVarTuplePep646TypeVarStarArgs
 
-# Newly not passing
+# function type vars are not late bound in Mypy in params
+testTypeVarTupleParamSpecInteraction
 testParamSpecSubtypeChecking2
 # Callable remapping over overload leads to a mapped overload (this is special cased for only one arg and decorator like behavior, see also is_generic_decorator_overload_call)
 testRegularGenericDecoratorOverload
 testParamSpecDecoratorOverload
-# --new-type-inference
-testTypeVarTupleParamSpecInteraction
-testGenericInferenceWithItertools
+# --new-type-inference ParamSpec/TypeVarTuple constraint inference recursion
+param_spec_with_generic_class
 testParamSpecArgumentParamInferenceGeneric
 testParamSpecNestedApplyNoCrash
 testParamSpecNestedApplyPosVsNamed
-testInferenceAgainstGenericCallableNoLeak
-testInferenceAgainstGenericLambdas
 testInferenceAgainstGenericParamSpecPopOff
 testInferenceAgainstGenericParamSpecPopOn
 testInferenceAgainstGenericParamSpecSecondary
@@ -218,11 +216,13 @@ testInferenceAgainstGenericParamSpecSecondOrder
 testInferenceAgainstGenericVariadicPopOff
 testInferenceAgainstGenericVariadicPopOn
 testInferenceAgainstGenericVariadicSecondary
+# --new-type-inference rest
+testInferenceAgainstGenericCallableNoLeak
+testInferenceAgainstGenericLambdas
 testGenericLambdaGenericMethodNoCrash
 testRecursiveSelfTypeCallMethodNoCrash
 testDefaultDict
 testGenericInferenceWithDataclass
-param_spec_with_generic_class
 # return callables nested correct type var assignments
 testInferenceAgainstGenericCurry
 testInferenceAgainstGenericParamSpecSpuriousBoundsNotUsed
