@@ -310,11 +310,7 @@ impl CallableContent {
             return_type = return_type.replace_type_var_likes_and_self(
                 db,
                 &mut |usage| {
-                    replace_param_spec_inner_type_var_likes_and_self(
-                        usage,
-                        self.defined_at,
-                        remap_data,
-                    )
+                    replace_param_spec_inner_type_var_likes(usage, self.defined_at, remap_data)
                 },
                 replace_self,
             );
@@ -507,7 +503,7 @@ impl CallableParams {
                             &mut None,
                             None,
                             &mut |usage| {
-                                replace_param_spec_inner_type_var_likes_and_self(
+                                replace_param_spec_inner_type_var_likes(
                                     usage,
                                     in_definition,
                                     replace_data.unwrap(),
@@ -568,7 +564,7 @@ impl CallableParams {
     }
 }
 
-fn replace_param_spec_inner_type_var_likes_and_self(
+fn replace_param_spec_inner_type_var_likes(
     mut usage: TypeVarLikeUsage,
     in_definition: PointLink,
     replace_data: (PointLink, usize),
