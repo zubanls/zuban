@@ -1076,3 +1076,19 @@ def id(x: List[List[int]]) -> List[List[T2]]: ...
 
 x = combine(id)
 reveal_type(x)  # N: Revealed type is "def (list[int]) -> list[int]"
+
+[case transitive_constraints_any_correctly_applied]
+from typing import TypeVar, Callable, List, Tuple
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+
+def foo1(f: Callable[[List[T1]], Any]) -> Callable[[T1], T1]: ...
+def id1(x: List[T2]) -> List[T2]: ...
+
+reveal_type(foo1(id1))  # N: Revealed type is "def (Any) -> Any"
+
+def foo2(f: Callable[[List[T1]], List[T1]]) -> Callable[[T1], T1]: ...
+def id2(x: List[T2]) -> Any: ...
+
+reveal_type(foo2(id2))  # N: Revealed type is "def (Any) -> Any"

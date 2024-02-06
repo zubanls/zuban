@@ -112,11 +112,12 @@ impl Type {
                 Self::matches_callable_against_arbitrary(i_s, matcher, c1, value_type, variance)
             }
             Type::None => matches!(value_type, Type::None).into(),
-            Type::Any(cause) if matcher.is_matching_reverse() => {
-                matcher.set_all_contained_type_vars_to_any(i_s, value_type, *cause);
-                Match::True { with_any: true }
+            Type::Any(cause) => {
+                matcher.set_all_contained_type_vars_to_any_for_other_side(i_s, value_type, *cause);
+                Match::True {
+                    with_any: matcher.is_matching_reverse(),
+                }
             }
-            Type::Any(_) => Match::new_true(),
             Type::Never => matches!(value_type, Type::Never).into(),
             Type::Tuple(t1) => match value_type {
                 Type::Tuple(t2) => {
@@ -430,10 +431,11 @@ impl Type {
         // 3. Check if the value_type is special like Any or a Typevar and needs to be checked
         //    again.
         match value_type {
-            Type::Any(_) if matcher.is_matching_reverse() => return Match::new_true(),
             Type::Any(cause) => {
                 matcher.set_all_contained_type_vars_to_any(i_s, self, *cause);
-                return Match::True { with_any: true };
+                return Match::True {
+                    with_any: !matcher.is_matching_reverse(),
+                };
             }
             Type::None if !i_s.db.project.flags.strict_optional => return Match::new_true(),
             Type::TypeVar(t2) => {
