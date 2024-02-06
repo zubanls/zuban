@@ -219,7 +219,6 @@ testInferenceAgainstGenericVariadicSecondary
 testInferenceAgainstGenericCallableNoLeak
 testInferenceAgainstGenericLambdas
 testGenericLambdaGenericMethodNoCrash
-testRecursiveSelfTypeCallMethodNoCrash
 testDefaultDict
 testGenericInferenceWithItertools
 transitive_constraints_recursive_match
@@ -475,10 +474,11 @@ testTypingNamedTupleAttributesAreReadOnly
 testNamedTupleWithNoArgsCallableField
 testVariadicNamedTuple
 # Protocol Self binding
-testProtocolClassObjectSelfTypeInstanceMethod
 testSelfTypesWithProtocolsBehaveAsWithNominal
 testInferenceViaTypeTypeMetaclass
 testSelfTypeProtocolClassmethodMatch
+# Protocol Self binding recursion error
+testRecursiveSelfTypeCallMethodNoCrash
 # TypeVar in Protocol Body
 testTypeVarInProtocolBody
 # "Type aliases are prohibited in protocol bodies"
