@@ -32,6 +32,44 @@ pub fn matches_params(
     skip_first_of_params2: bool,
 ) -> Match {
     use CallableParams::*;
+    let set_type_vars_to_any =
+        |matcher: &mut Matcher, params: &_, cause, from_other_side| match params {
+            Simple(params) => {
+                for p in params.iter() {
+                    match p.type_.details() {
+                        ParamTypeDetails::Type(t) => matcher
+                            .set_all_contained_type_vars_to_any_detailed(
+                                i_s,
+                                t,
+                                cause,
+                                from_other_side,
+                            ),
+                        ParamTypeDetails::UnpackedTuple(tup) => matcher
+                            .set_all_contained_type_vars_to_any_detailed(
+                                i_s,
+                                &Type::Tuple(tup),
+                                cause,
+                                from_other_side,
+                            ),
+                        ParamTypeDetails::UnpackTypedDict(_) => todo!(),
+                        ParamTypeDetails::ParamSpecUsage(_) => todo!(),
+                    }
+                }
+            }
+            WithParamSpec(pre, usage) => {
+                for t in pre.iter() {
+                    matcher.set_all_contained_type_vars_to_any_detailed(
+                        i_s,
+                        t,
+                        cause,
+                        from_other_side,
+                    );
+                }
+                // TODO should probably set usage to any
+            }
+            Any(_) => (),
+        };
+
     match (params1, params2) {
         (Simple(params1), Simple(params2)) => {
             if skip_first_of_params2 {
@@ -60,27 +98,12 @@ pub fn matches_params(
                 i_s, pre1, usage1, pre2, usage2, variance,
             )
         }
-        (Any(_), _) => Match::new_true(),
-        (Simple(params1), Any(cause)) => {
-            for p in params1.iter() {
-                match p.type_.details() {
-                    ParamTypeDetails::Type(t) => {
-                        matcher.set_all_contained_type_vars_to_any(i_s, t, *cause)
-                    }
-                    ParamTypeDetails::UnpackedTuple(tup) => {
-                        matcher.set_all_contained_type_vars_to_any(i_s, &Type::Tuple(tup), *cause)
-                    }
-                    ParamTypeDetails::UnpackTypedDict(_) => todo!(),
-                    ParamTypeDetails::ParamSpecUsage(_) => todo!(),
-                }
-            }
+        (Any(cause), _) => {
+            set_type_vars_to_any(matcher, params2, *cause, true);
             Match::new_true()
         }
-        (WithParamSpec(pre, usage1), Any(cause)) => {
-            for t in pre.iter() {
-                matcher.set_all_contained_type_vars_to_any(i_s, t, *cause);
-            }
-            // TODO should probably set usage1 to any
+        (_, Any(cause)) => {
+            set_type_vars_to_any(matcher, params1, *cause, false);
             Match::new_true()
         }
         (WithParamSpec(types, param_spec), Simple(params2)) => {

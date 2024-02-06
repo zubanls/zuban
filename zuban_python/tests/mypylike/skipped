@@ -216,7 +216,6 @@ testInferenceAgainstGenericVariadicPopOff
 testInferenceAgainstGenericVariadicPopOn
 testInferenceAgainstGenericVariadicSecondary
 # --new-type-inference rest
-testInferenceAgainstGenericCallableNoLeak
 testInferenceAgainstGenericLambdas
 testGenericLambdaGenericMethodNoCrash
 testDefaultDict
