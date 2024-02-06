@@ -1090,7 +1090,14 @@ impl<'a> Matcher<'a> {
             }
         }
         for cycle in &cycles.cycles {
-            self.resolve_cycle(db, &cycles, cycle)
+            if let Err(e) = self.resolve_cycle(db, &cycles, cycle) {
+                for type_var_matcher in &mut self.type_var_matchers {
+                    for (i, c) in type_var_matcher.calculated_type_vars.iter_mut().enumerate() {
+                        c.set_to_any(&type_var_matcher.type_var_likes[i], AnyCause::FromError);
+                    }
+                }
+                return (self, Err(e));
+            }
         }
         (
             self,
@@ -1099,7 +1106,12 @@ impl<'a> Matcher<'a> {
         )
     }
 
-    fn resolve_cycle(&mut self, db: &Database, cycles: &TypeVarCycles, cycle: &TypeVarCycle) {
+    fn resolve_cycle(
+        &mut self,
+        db: &Database,
+        cycles: &TypeVarCycles,
+        cycle: &TypeVarCycle,
+    ) -> Result<(), Match> {
         let mut current_bound = if let Some(free_type_var_index) = cycle.free_type_var_index {
             let in_definition = self.type_var_matchers[0].match_in_definition;
             match cycles.free_type_var_likes[free_type_var_index].clone() {
@@ -1138,8 +1150,9 @@ impl<'a> Matcher<'a> {
             let used = &mut self.type_var_matchers[tv_in_cycle.matcher_index].calculated_type_vars
                 [tv_in_cycle.type_var_index];
             let taken_bounds = std::mem::take(&mut used.type_);
-            if !current_bound.merge(db, taken_bounds).bool() {
-                todo!()
+            let m = current_bound.merge(db, taken_bounds);
+            if !m.bool() {
+                return Err(m);
             }
 
             // Use unresolved transitive constraints
@@ -1150,10 +1163,14 @@ impl<'a> Matcher<'a> {
                 // Cache unresolved transitive constraints recursively to create a topological
                 // sorting.
                 let mut is_in_cycle = false;
+                let mut had_error = None;
                 let replaced_unresolved =
                     unresolved
                         .constraint
                         .replace_type_var_likes(db, &mut |usage| {
+                            if had_error.is_some() {
+                                return usage.into_generic_item();
+                            }
                             for matcher_index in 0..self.type_var_matchers.len() {
                                 if unresolved.disabled_matchers.contains(&matcher_index) {
                                     continue;
@@ -1169,7 +1186,11 @@ impl<'a> Matcher<'a> {
                                         })
                                         .unwrap();
                                     if !c.unresolved_transitive_constraints.is_empty() {
-                                        self.resolve_cycle(db, cycles, depending_on)
+                                        let m = self.resolve_cycle(db, cycles, depending_on);
+                                        if let Err(err) = m {
+                                            had_error = Some(err);
+                                            return usage.into_generic_item();
+                                        }
                                     }
                                     if let Some(free_type_var_index) =
                                         depending_on.free_type_var_index
@@ -1235,6 +1256,9 @@ impl<'a> Matcher<'a> {
                             }
                             usage.into_generic_item()
                         });
+                if let Some(err) = had_error {
+                    return Err(err);
+                }
                 if !is_in_cycle {
                     if !current_bound.merge(db, replaced_unresolved).bool() {
                         todo!()
@@ -1249,6 +1273,7 @@ impl<'a> Matcher<'a> {
                 [tv_in_cycle.type_var_index]
                 .type_ = current_bound.clone();
         }
+        Ok(())
     }
 
     fn add_free_type_var_likes_to_cycles(

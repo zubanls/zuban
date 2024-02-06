@@ -132,7 +132,7 @@ impl BoundKind {
                         (t, Variance::Covariant)
                     }
                 };
-                m.or(|| bound1.merge_or_mismatch(&i_s, &t, variance))
+                m & bound1.merge_or_mismatch(&i_s, &t, variance)
             }
             (Self::TypeVarTuple(tup1), Self::TypeVarTuple(tup2)) => {
                 dbg!(tup1, tup2);
@@ -210,6 +210,18 @@ pub(super) struct CalculatedTypeVarLike {
 impl CalculatedTypeVarLike {
     pub fn calculated(&self) -> bool {
         !matches!(self.type_, BoundKind::Uncalculated { .. })
+    }
+
+    pub fn set_to_any(&mut self, tv: &TypeVarLike, cause: AnyCause) {
+        self.type_ = match tv {
+            TypeVarLike::TypeVar(_) => {
+                BoundKind::TypeVar(TypeVarBound::Invariant(Type::Any(cause)))
+            }
+            TypeVarLike::TypeVarTuple(_) => {
+                BoundKind::TypeVarTuple(TupleArgs::ArbitraryLen(Box::new(Type::Any(cause))))
+            }
+            TypeVarLike::ParamSpec(_) => BoundKind::ParamSpec(CallableParams::Any(cause)),
+        }
     }
 
     pub fn match_or_add_type_var_tuple(&mut self, i_s: &InferenceState, args2: TupleArgs) -> Match {
@@ -344,17 +356,7 @@ impl TypeVarMatcher {
             if t.in_definition() == self.match_in_definition {
                 let current = &mut self.calculated_type_vars[t.index().as_usize()];
                 if !current.calculated() {
-                    current.type_ = match t {
-                        TypeVarLikeUsage::TypeVar(_) => {
-                            BoundKind::TypeVar(TypeVarBound::Invariant(Type::Any(cause)))
-                        }
-                        TypeVarLikeUsage::TypeVarTuple(_) => BoundKind::TypeVarTuple(
-                            TupleArgs::ArbitraryLen(Box::new(Type::Any(cause))),
-                        ),
-                        TypeVarLikeUsage::ParamSpec(_) => {
-                            BoundKind::ParamSpec(CallableParams::Any(cause))
-                        }
-                    }
+                    current.set_to_any(&t.as_type_var_like(), cause)
                 }
             }
         });
