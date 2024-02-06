@@ -1052,3 +1052,27 @@ def id(x: T3, y: int) -> T3: ...
 
 x = combine(id, "")  # E: Incompatible callable argument with type vars
 reveal_type(x)  # N: Revealed type is "def (Any) -> Any"
+
+[case transitive_constraints_mismatch3]
+from typing import TypeVar, Callable, List, Tuple
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+
+def combine(f: Callable[[List[T1]], List[T1]]) -> Callable[[T1], T1]: ...
+def id(x: List[T2]) -> List[List[T2]]: ...
+
+x = combine(id)  # E: Incompatible callable argument with type vars
+reveal_type(x)  # N: Revealed type is "def (Any) -> Any"
+
+[case transitive_constraints_recursive_match]
+from typing import TypeVar, Callable, List, Tuple
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+
+def combine(f: Callable[[List[T1]], List[T1]]) -> Callable[[T1], T1]: ...
+def id(x: List[List[int]]) -> List[List[T2]]: ...
+
+x = combine(id)
+reveal_type(x)  # N: Revealed type is "def (list[int]) -> list[int]"

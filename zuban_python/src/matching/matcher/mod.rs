@@ -1260,8 +1260,9 @@ impl<'a> Matcher<'a> {
                     return Err(err);
                 }
                 if !is_in_cycle {
-                    if !current_bound.merge(db, replaced_unresolved).bool() {
-                        todo!()
+                    let m = current_bound.merge(db, replaced_unresolved);
+                    if !m.bool() {
+                        return Err(m);
                     }
                 }
             }

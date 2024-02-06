@@ -222,6 +222,7 @@ testGenericLambdaGenericMethodNoCrash
 testRecursiveSelfTypeCallMethodNoCrash
 testDefaultDict
 testGenericInferenceWithItertools
+transitive_constraints_recursive_match
 # return callables nested correct type var assignments
 testInferenceAgainstGenericCurry
 testInferenceAgainstGenericParamSpecSpuriousBoundsNotUsed
