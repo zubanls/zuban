@@ -204,21 +204,20 @@ testParamSpecSubtypeChecking2
 # Callable remapping over overload leads to a mapped overload (this is special cased for only one arg and decorator like behavior, see also is_generic_decorator_overload_call)
 testRegularGenericDecoratorOverload
 testParamSpecDecoratorOverload
-# --new-type-inference ParamSpec/TypeVarTuple constraint inference recursion
+# --new-type-inference
 testParamSpecArgumentParamInferenceGeneric
 testParamSpecNestedApplyNoCrash
 testParamSpecNestedApplyPosVsNamed
-testInferenceAgainstGenericParamSpecPopOff
-testInferenceAgainstGenericParamSpecPopOn
-testInferenceAgainstGenericParamSpecSecondary
 testInferenceAgainstGenericParamSpecSecondOrder
-# TypeVar confusion
+testInferenceAgainstGenericLambdas
+testGenericLambdaGenericMethodNoCrash
+# --new-type-inference TypeVar confusion
 transitive_constraints_avoid_same_function_tv_confusion
 testInferenceAgainstGenericVariadicPopOff
 testInferenceAgainstGenericVariadicPopOn
-# --new-type-inference rest
-testInferenceAgainstGenericLambdas
-testGenericLambdaGenericMethodNoCrash
+testInferenceAgainstGenericParamSpecPopOff
+testInferenceAgainstGenericParamSpecPopOn
+# Weird class type vars passing
 testDefaultDict
 # return callables nested correct type var assignments
 testInferenceAgainstGenericCurry

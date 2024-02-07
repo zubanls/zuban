@@ -20,7 +20,7 @@ use self::{
 };
 
 use super::{
-    params::{matches_simple_params, InferrableParamIterator},
+    params::{matches_params, matches_simple_params, InferrableParamIterator},
     FormatData, Match, OnTypeError, ParamsStyle, ResultContext, SignatureMatch,
 };
 use crate::{
@@ -1145,13 +1145,31 @@ impl<'a> Matcher<'a> {
                                     Variance::Invariant,
                                 );
                                 debug!(
-                                    "Secondary constraint match for {} against {}: {m:?}",
+                                    "Secondary constraint TypeVarTuple match for {} against {}: {m:?}",
                                     tup1.format(&FormatData::new_short(db)),
                                     tup2.format(&FormatData::new_short(db)),
                                 );
                             }
                             (BoundKind::ParamSpec(params1), BoundKind::ParamSpec(params2)) => {
-                                todo!()
+                                let m = matches_params(
+                                    i_s,
+                                    self,
+                                    params1,
+                                    &params2,
+                                    Variance::Invariant,
+                                    false,
+                                );
+                                debug!(
+                                    "Secondary constraint ParamSpec match for {} against {}: {m:?}",
+                                    params1.format(
+                                        &FormatData::new_short(db),
+                                        ParamsStyle::CallableParams
+                                    ),
+                                    params2.format(
+                                        &FormatData::new_short(db),
+                                        ParamsStyle::CallableParams
+                                    ),
+                                );
                             }
                             _ => unreachable!(),
                         }
