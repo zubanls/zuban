@@ -256,9 +256,7 @@ impl<'a> Matcher<'a> {
             .enumerate()
             .filter(|(_, tvm)| tvm.enabled)
         {
-            if tv_matcher.match_in_definition == t1.in_definition
-                && tv_matcher.match_reverse == self.match_reverse
-            {
+            if tv_matcher.match_in_definition == t1.in_definition {
                 if self.check_if_unresolved_transitive_constraint(
                     TypeVarAlreadySeen {
                         matcher_index: i,
@@ -326,10 +324,7 @@ impl<'a> Matcher<'a> {
         let mut has_unresolved_constraint = false;
         find_type_var(&mut |tv| {
             for tv_matcher in &self.type_var_matchers {
-                if tv_matcher.enabled
-                    && tv_matcher.match_in_definition == tv.in_definition()
-                    && tv_matcher.match_reverse != self.match_reverse
-                {
+                if tv_matcher.enabled && tv_matcher.match_in_definition == tv.in_definition() {
                     has_unresolved_constraint = true;
                 }
             }
@@ -440,9 +435,7 @@ impl<'a> Matcher<'a> {
             .enumerate()
             .filter(|(_, tvm)| tvm.enabled)
         {
-            if tv_matcher.match_in_definition == tvt.in_definition
-                && tv_matcher.match_reverse == self.match_reverse
-            {
+            if tv_matcher.match_in_definition == tvt.in_definition {
                 if self.check_if_unresolved_transitive_constraint(
                     TypeVarAlreadySeen {
                         matcher_index: i,
@@ -575,9 +568,7 @@ impl<'a> Matcher<'a> {
             .enumerate()
             .filter(|(_, tvm)| tvm.enabled)
         {
-            if tv_matcher.match_in_definition == p1.in_definition
-                && tv_matcher.match_reverse == self.match_reverse
-            {
+            if tv_matcher.match_in_definition == p1.in_definition {
                 let as_constraint = |p2_pre_iterator: Iter<Type>| {
                     BoundKind::ParamSpec(CallableParams::WithParamSpec(
                         p2_pre_iterator.cloned().collect(),
@@ -586,10 +577,11 @@ impl<'a> Matcher<'a> {
                 };
 
                 let type_var_index = p1.index.as_usize();
-                if self.type_var_matchers.iter().any(|tvm| {
-                    tvm.match_reverse != self.match_reverse
-                        && tvm.match_in_definition == p2.in_definition
-                }) {
+                if self
+                    .type_var_matchers
+                    .iter()
+                    .any(|tvm| tvm.match_in_definition == p2.in_definition)
+                {
                     self.add_unresolved_constraint(
                         TypeVarAlreadySeen {
                             matcher_index: i,
@@ -671,9 +663,7 @@ impl<'a> Matcher<'a> {
             .enumerate()
             .filter(|(_, tvm)| tvm.enabled)
         {
-            if tv_matcher.match_in_definition == p1.in_definition
-                && tv_matcher.match_reverse == self.match_reverse
-            {
+            if tv_matcher.match_in_definition == p1.in_definition {
                 let as_params =
                     |p2_it: Peekable<_>| CallableParams::Simple(p2_it.cloned().collect());
                 let as_constraint = |p2_it| BoundKind::ParamSpec(as_params(p2_it));
@@ -832,9 +822,7 @@ impl<'a> Matcher<'a> {
             .enumerate()
             .filter(|(_, tvm)| tvm.enabled)
         {
-            if tv_matcher.match_in_definition == usage.in_definition()
-                && tv_matcher.match_reverse == self.match_reverse
-            {
+            if tv_matcher.match_in_definition == usage.in_definition() {
                 let current = &tv_matcher.calculated_type_vars[usage.index().as_usize()];
                 return match &current.type_ {
                     BoundKind::TypeVar(bound) => bound.format(format_data.db, format_data.style),
