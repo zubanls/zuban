@@ -1114,6 +1114,7 @@ impl<'a> Matcher<'a> {
                         [tv_index.type_var_index];
                     if c.calculated() {
                         let bound = c.type_.clone();
+                        let i_s = &InferenceState::new(db);
                         match (wanted_constraint, bound) {
                             (BoundKind::TypeVar(b1), BoundKind::TypeVar(b2)) => {
                                 let t1 = match b1 {
@@ -1128,7 +1129,7 @@ impl<'a> Matcher<'a> {
                                     TypeVarBound::UpperAndLower(_, _) => todo!(),
                                     TypeVarBound::Lower(t) => (t, Variance::Covariant),
                                 };
-                                let m = t1.matches(&InferenceState::new(db), self, &t2, variance);
+                                let m = t1.matches(i_s, self, &t2, variance);
                                 debug!(
                                     "Secondary constraint match for {} against {}: {m:?}",
                                     t1.format_short(db),
@@ -1136,7 +1137,18 @@ impl<'a> Matcher<'a> {
                                 );
                             }
                             (BoundKind::TypeVarTuple(tup1), BoundKind::TypeVarTuple(tup2)) => {
-                                todo!()
+                                let m = match_tuple_type_arguments(
+                                    i_s,
+                                    self,
+                                    tup1,
+                                    &tup2,
+                                    Variance::Invariant,
+                                );
+                                debug!(
+                                    "Secondary constraint match for {} against {}: {m:?}",
+                                    tup1.format(&FormatData::new_short(db)),
+                                    tup2.format(&FormatData::new_short(db)),
+                                );
                             }
                             (BoundKind::ParamSpec(params1), BoundKind::ParamSpec(params2)) => {
                                 todo!()
