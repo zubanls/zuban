@@ -2964,25 +2964,25 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     );
                     match type_var_like {
                         TypeVarLike::TypeVar(type_var) => {
-                            TypeContent::Type(Type::TypeVar(TypeVarUsage {
+                            TypeContent::Type(Type::TypeVar(TypeVarUsage::new(
                                 type_var,
+                                self.for_definition,
                                 index,
-                                in_definition: self.for_definition,
-                            }))
+                            )))
                         }
                         TypeVarLike::TypeVarTuple(type_var_tuple) => {
-                            TypeContent::TypeVarTuple(TypeVarTupleUsage {
+                            TypeContent::TypeVarTuple(TypeVarTupleUsage::new(
                                 type_var_tuple,
+                                self.for_definition,
                                 index,
-                                in_definition: self.for_definition,
-                            })
+                            ))
                         }
                         TypeVarLike::ParamSpec(param_spec) => {
-                            TypeContent::ParamSpec(ParamSpecUsage {
+                            TypeContent::ParamSpec(ParamSpecUsage::new(
                                 param_spec,
+                                self.for_definition,
                                 index,
-                                in_definition: self.for_definition,
-                            })
+                            ))
                         }
                     }
                 })

@@ -203,11 +203,11 @@ impl TypeVarManager {
         if let Some((index, in_definition)) =
             self.remap_internal(&TypeVarLikeUsage::TypeVar(Cow::Borrowed(usage)))
         {
-            TypeVarUsage {
-                type_var: usage.type_var.clone(),
-                in_definition: in_definition.unwrap_or(usage.in_definition),
+            TypeVarUsage::new(
+                usage.type_var.clone(),
+                in_definition.unwrap_or(usage.in_definition),
                 index,
-            }
+            )
         } else {
             usage.clone()
         }
@@ -217,11 +217,11 @@ impl TypeVarManager {
         if let Some((index, in_definition)) =
             self.remap_internal(&TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(usage)))
         {
-            TypeVarTupleUsage {
-                type_var_tuple: usage.type_var_tuple.clone(),
-                in_definition: in_definition.unwrap_or(usage.in_definition),
+            TypeVarTupleUsage::new(
+                usage.type_var_tuple.clone(),
+                in_definition.unwrap_or(usage.in_definition),
                 index,
-            }
+            )
         } else {
             usage.clone()
         }
@@ -231,11 +231,11 @@ impl TypeVarManager {
         if let Some((index, in_definition)) =
             self.remap_internal(&TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)))
         {
-            ParamSpecUsage {
-                param_spec: usage.param_spec.clone(),
-                in_definition: in_definition.unwrap_or(usage.in_definition),
+            ParamSpecUsage::new(
+                usage.param_spec.clone(),
+                in_definition.unwrap_or(usage.in_definition),
                 index,
-            }
+            )
         } else {
             usage.clone()
         }
@@ -301,27 +301,19 @@ impl TypeVarLikes {
             .iter()
             .position(|t| t == &type_var_like)
             .map(|index| match type_var_like {
-                TypeVarLike::TypeVar(type_var) => {
-                    TypeVarLikeUsage::TypeVar(Cow::Owned(TypeVarUsage {
-                        type_var,
-                        index: index.into(),
-                        in_definition,
-                    }))
-                }
+                TypeVarLike::TypeVar(type_var) => TypeVarLikeUsage::TypeVar(Cow::Owned(
+                    TypeVarUsage::new(type_var, in_definition, index.into()),
+                )),
                 TypeVarLike::TypeVarTuple(type_var_tuple) => {
-                    TypeVarLikeUsage::TypeVarTuple(Cow::Owned(TypeVarTupleUsage {
+                    TypeVarLikeUsage::TypeVarTuple(Cow::Owned(TypeVarTupleUsage::new(
                         type_var_tuple,
-                        index: index.into(),
                         in_definition,
-                    }))
+                        index.into(),
+                    )))
                 }
-                TypeVarLike::ParamSpec(param_spec) => {
-                    TypeVarLikeUsage::ParamSpec(Cow::Owned(ParamSpecUsage {
-                        param_spec,
-                        index: index.into(),
-                        in_definition,
-                    }))
-                }
+                TypeVarLike::ParamSpec(param_spec) => TypeVarLikeUsage::ParamSpec(Cow::Owned(
+                    ParamSpecUsage::new(param_spec, in_definition, index.into()),
+                )),
             })
     }
 
@@ -393,23 +385,19 @@ impl TypeVarLike {
         in_definition: PointLink,
     ) -> TypeVarLikeUsage<'static> {
         match self {
-            Self::TypeVar(type_var) => TypeVarLikeUsage::TypeVar(Cow::Owned(TypeVarUsage {
-                type_var: type_var.clone(),
-                index,
+            Self::TypeVar(type_var) => TypeVarLikeUsage::TypeVar(Cow::Owned(TypeVarUsage::new(
+                type_var.clone(),
                 in_definition,
-            })),
-            Self::TypeVarTuple(t) => {
-                TypeVarLikeUsage::TypeVarTuple(Cow::Owned(TypeVarTupleUsage {
-                    type_var_tuple: t.clone(),
-                    index,
-                    in_definition,
-                }))
-            }
-            Self::ParamSpec(p) => TypeVarLikeUsage::ParamSpec(Cow::Owned(ParamSpecUsage {
-                param_spec: p.clone(),
                 index,
+            ))),
+            Self::TypeVarTuple(t) => TypeVarLikeUsage::TypeVarTuple(Cow::Owned(
+                TypeVarTupleUsage::new(t.clone(), in_definition, index),
+            )),
+            Self::ParamSpec(p) => TypeVarLikeUsage::ParamSpec(Cow::Owned(ParamSpecUsage::new(
+                p.clone(),
                 in_definition,
-            })),
+                index,
+            ))),
         }
     }
 
@@ -532,22 +520,62 @@ impl PartialEq for ParamSpec {
 #[derive(Debug, PartialEq, Clone)]
 pub struct TypeVarUsage {
     pub type_var: Rc<TypeVar>,
-    pub index: TypeVarIndex,
     pub in_definition: PointLink,
+    pub index: TypeVarIndex,
+    pub temporary_matcher_id: u32,
+}
+
+impl TypeVarUsage {
+    pub fn new(type_var: Rc<TypeVar>, in_definition: PointLink, index: TypeVarIndex) -> Self {
+        Self {
+            type_var,
+            in_definition,
+            index,
+            temporary_matcher_id: 0,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct TypeVarTupleUsage {
     pub type_var_tuple: Rc<TypeVarTuple>,
-    pub index: TypeVarIndex,
     pub in_definition: PointLink,
+    pub index: TypeVarIndex,
+    pub temporary_matcher_id: u32,
+}
+
+impl TypeVarTupleUsage {
+    pub fn new(
+        type_var_tuple: Rc<TypeVarTuple>,
+        in_definition: PointLink,
+        index: TypeVarIndex,
+    ) -> Self {
+        Self {
+            type_var_tuple,
+            in_definition,
+            index,
+            temporary_matcher_id: 0,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct ParamSpecUsage {
     pub param_spec: Rc<ParamSpec>,
-    pub index: TypeVarIndex,
     pub in_definition: PointLink,
+    pub index: TypeVarIndex,
+    pub temporary_matcher_id: u32,
+}
+
+impl ParamSpecUsage {
+    pub fn new(param_spec: Rc<ParamSpec>, in_definition: PointLink, index: TypeVarIndex) -> Self {
+        Self {
+            param_spec,
+            in_definition,
+            index,
+            temporary_matcher_id: 0,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

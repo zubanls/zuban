@@ -923,11 +923,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         kind: TypeVarKind::Bound(self.class.unwrap().as_type(i_s.db)),
                         variance: Variance::Invariant,
                     });
-                    self_type_var_usage = Some(TypeVarUsage {
-                        in_definition: defined_at,
-                        type_var: self_type_var.clone(),
-                        index: 0.into(),
-                    });
+                    self_type_var_usage = Some(TypeVarUsage::new(
+                        self_type_var.clone(),
+                        defined_at,
+                        0.into(),
+                    ));
                     type_vars.insert(0, TypeVarLike::TypeVar(self_type_var));
                 }
             }

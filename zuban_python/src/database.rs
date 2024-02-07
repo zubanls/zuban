@@ -651,6 +651,7 @@ impl TypeAlias {
                                         type_var: type_var.clone(),
                                         index: i.into(),
                                         in_definition: self.location,
+                                        temporary_matcher_id: 0,
                                     })))
                                 }
                                 TypeVarLike::TypeVarTuple(t) => callable(
@@ -658,6 +659,7 @@ impl TypeAlias {
                                         type_var_tuple: t.clone(),
                                         index: i.into(),
                                         in_definition: self.location,
+                                        temporary_matcher_id: 0,
                                     })),
                                 ),
                                 TypeVarLike::ParamSpec(p) => callable(TypeVarLikeUsage::ParamSpec(
@@ -665,6 +667,7 @@ impl TypeAlias {
                                         param_spec: p.clone(),
                                         index: i.into(),
                                         in_definition: self.location,
+                                        temporary_matcher_id: 0,
                                     }),
                                 )),
                             })

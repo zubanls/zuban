@@ -1225,12 +1225,14 @@ impl<'a> Matcher<'a> {
     ) -> Result<(), Match> {
         let mut current_bound = if let Some(free_type_var_index) = cycle.free_type_var_index {
             let in_definition = self.type_var_matchers[0].match_in_definition;
+            let temporary_matcher_id = 0;
             match cycles.free_type_var_likes[free_type_var_index].clone() {
                 TypeVarLike::TypeVar(type_var) => {
                     BoundKind::TypeVar(TypeVarBound::Invariant(Type::TypeVar(TypeVarUsage {
                         type_var,
                         index: free_type_var_index.into(),
                         in_definition,
+                        temporary_matcher_id,
                     })))
                 }
                 TypeVarLike::TypeVarTuple(tvt) => BoundKind::TypeVarTuple(TupleArgs::WithUnpack(
@@ -1239,6 +1241,7 @@ impl<'a> Matcher<'a> {
                             type_var_tuple: tvt,
                             index: free_type_var_index.into(),
                             in_definition,
+                            temporary_matcher_id,
                         },
                     )),
                 )),
@@ -1249,6 +1252,7 @@ impl<'a> Matcher<'a> {
                             param_spec,
                             index: free_type_var_index.into(),
                             in_definition,
+                            temporary_matcher_id,
                         },
                     ))
                 }
@@ -1309,6 +1313,7 @@ impl<'a> Matcher<'a> {
                                         let in_definition =
                                             self.type_var_matchers[0].match_in_definition;
                                         let index = free_type_var_index.into();
+                                        let temporary_matcher_id = 0;
                                         return match cycles.free_type_var_likes[free_type_var_index]
                                             .clone()
                                         {
@@ -1317,6 +1322,7 @@ impl<'a> Matcher<'a> {
                                                     type_var,
                                                     index,
                                                     in_definition,
+                                                    temporary_matcher_id,
                                                 }))
                                             }
                                             TypeVarLike::TypeVarTuple(type_var_tuple) => {
@@ -1328,6 +1334,7 @@ impl<'a> Matcher<'a> {
                                                                     type_var_tuple,
                                                                     index,
                                                                     in_definition,
+                                                                    temporary_matcher_id,
                                                                 },
                                                             ),
                                                         ),
@@ -1342,6 +1349,7 @@ impl<'a> Matcher<'a> {
                                                             param_spec,
                                                             index: free_type_var_index.into(),
                                                             in_definition,
+                                                            temporary_matcher_id,
                                                         },
                                                     ),
                                                     type_vars: None,

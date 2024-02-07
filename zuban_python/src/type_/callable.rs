@@ -693,11 +693,11 @@ impl CallableContent {
                 kind: TypeVarKind::Bound(bound),
                 variance: Variance::Invariant,
             });
-            self_type_var_usage = Some(TypeVarUsage {
-                in_definition: self.defined_at,
-                type_var: self_type_var.clone(),
-                index: type_vars.len().into(),
-            });
+            self_type_var_usage = Some(TypeVarUsage::new(
+                self_type_var.clone(),
+                self.defined_at,
+                type_vars.len().into(),
+            ));
             type_vars.push(TypeVarLike::TypeVar(self_type_var));
         }
         let type_vars = TypeVarLikes::from_vec(type_vars);
