@@ -286,6 +286,18 @@ impl GenericsList {
         }
     }
 
+    pub fn find_in_type(&self, check: &mut impl FnMut(&Type) -> bool) -> bool {
+        self.iter().any(|g| match g {
+            GenericItem::TypeArg(t) => t.find_in_type(check),
+            GenericItem::TypeArgs(ts) => match &ts.args {
+                TupleArgs::FixedLen(ts) => ts.iter().any(|t| t.find_in_type(check)),
+                TupleArgs::ArbitraryLen(t) => t.find_in_type(check),
+                TupleArgs::WithUnpack(with_unpack) => with_unpack.find_in_type(check),
+            },
+            GenericItem::ParamSpecArg(a) => todo!(),
+        })
+    }
+
     pub fn has_type_vars(&self) -> bool {
         let mut result = false;
         self.search_type_vars(&mut |_| result = true);
@@ -957,26 +969,15 @@ impl Type {
     }
 
     pub fn has_self_type(&self) -> bool {
-        self.find_in_type(&Self::is_self_type)
+        self.find_in_type(&mut Self::is_self_type)
     }
 
-    pub fn find_in_type(&self, check: &impl Fn(&Type) -> bool) -> bool {
-        let check_generics_list = |generics: &GenericsList| {
-            generics.iter().any(|g| match g {
-                GenericItem::TypeArg(t) => t.find_in_type(check),
-                GenericItem::TypeArgs(ts) => match &ts.args {
-                    TupleArgs::FixedLen(ts) => ts.iter().any(|t| t.find_in_type(check)),
-                    TupleArgs::ArbitraryLen(t) => t.find_in_type(check),
-                    TupleArgs::WithUnpack(with_unpack) => with_unpack.find_in_type(check),
-                },
-                GenericItem::ParamSpecArg(a) => todo!(),
-            })
-        };
+    pub fn find_in_type(&self, check: &mut impl FnMut(&Type) -> bool) -> bool {
         match self {
             Self::Class(GenericClass {
                 generics: ClassGenerics::List(generics),
                 ..
-            }) => check(self) || check_generics_list(generics),
+            }) => check(self) || generics.find_in_type(check),
             Self::Union(u) => u.iter().any(|t| t.find_in_type(check)),
             Self::FunctionOverload(intersection) => {
                 intersection.iter_functions().any(|c| c.find_in_type(check))
@@ -985,7 +986,7 @@ impl Type {
             Self::Tuple(tup) => tup.find_in_type(check),
             Self::Callable(content) => content.find_in_type(check),
             Self::TypedDict(d) => match &d.generics {
-                TypedDictGenerics::Generics(g) => check_generics_list(g),
+                TypedDictGenerics::Generics(g) => g.find_in_type(check),
                 TypedDictGenerics::None | TypedDictGenerics::NotDefinedYet(_) => false,
             },
             _ => check(self),

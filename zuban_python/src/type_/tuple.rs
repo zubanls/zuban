@@ -358,7 +358,7 @@ impl Tuple {
         }
     }
 
-    pub fn find_in_type(&self, check: &impl Fn(&Type) -> bool) -> bool {
+    pub fn find_in_type(&self, check: &mut impl FnMut(&Type) -> bool) -> bool {
         match &self.args {
             TupleArgs::FixedLen(ts) => ts.iter().any(|t| t.find_in_type(check)),
             TupleArgs::ArbitraryLen(t) => t.find_in_type(check),
@@ -433,7 +433,7 @@ impl WithUnpack {
         .into()
     }
 
-    pub fn find_in_type(&self, check: &impl Fn(&Type) -> bool) -> bool {
+    pub fn find_in_type(&self, check: &mut impl FnMut(&Type) -> bool) -> bool {
         self.before.iter().any(|t| t.find_in_type(check))
             || match &self.unpack {
                 TupleUnpack::TypeVarTuple(_) => false,

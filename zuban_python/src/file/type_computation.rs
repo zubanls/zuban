@@ -4008,7 +4008,7 @@ fn is_invalid_recursive_alias(db: &Database, t: &Type) -> bool {
 
 fn detect_diverging_alias(db: &Database, type_var_likes: &TypeVarLikes, t: &Type) -> bool {
     !type_var_likes.is_empty()
-        && t.find_in_type(&|t| match t {
+        && t.find_in_type(&mut |t| match t {
             Type::RecursiveType(rec) if rec.has_alias_origin(db) && rec.generics.is_some() => {
                 if rec.calculating(db) {
                     rec.generics.as_ref().is_some_and(|generics| {
@@ -4042,7 +4042,7 @@ fn check_for_and_replace_type_type_in_finished_alias(
     //
     //  will probably just be ignored and should need additional logic to be recognized.
     //  see also the test type_type_alias_circular
-    if alias.type_if_valid().find_in_type(&|t| match t {
+    if alias.type_if_valid().find_in_type(&mut |t| match t {
         Type::Type(t) => t.iter_with_unpacked_unions().any(|t| match t {
             Type::RecursiveType(recursive_alias) => {
                 !recursive_alias.calculating(i_s.db)
