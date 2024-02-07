@@ -1128,9 +1128,12 @@ impl<'a> Matcher<'a> {
                                     TypeVarBound::UpperAndLower(_, _) => todo!(),
                                     TypeVarBound::Lower(t) => (t, Variance::Covariant),
                                 };
-                                //let m = t1.matches(&InferenceState::new(db), self, &t2, variance);
-                                //let m = t2.matches(&InferenceState::new(db), self, &t1, variance.invert());
-                                //debug!("Secondary constraint match for {} against {}: {m:?}", t1.format_short(db), t2.format_short(db));
+                                let m = t1.matches(&InferenceState::new(db), self, &t2, variance);
+                                debug!(
+                                    "Secondary constraint match for {} against {}: {m:?}",
+                                    t1.format_short(db),
+                                    t2.format_short(db)
+                                );
                             }
                             (BoundKind::TypeVarTuple(tup1), BoundKind::TypeVarTuple(tup2)) => {
                                 todo!()
@@ -1153,6 +1156,11 @@ impl<'a> Matcher<'a> {
             // Finishing is only needed if multiple type var matchers need to negotiate type
             // vars.
             return (self, Ok(None));
+        }
+
+        // Secondary constraints inference needs to have all type var matchers enabled.
+        for tv_matcher in &mut self.type_var_matchers {
+            tv_matcher.enabled = true;
         }
 
         let mut cycles = self.find_unresolved_transitive_constraint_cycles(db);
