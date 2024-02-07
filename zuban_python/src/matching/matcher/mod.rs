@@ -50,6 +50,7 @@ struct CheckedTypeRecursion<'a> {
 #[derive(Default)]
 pub struct Matcher<'a> {
     type_var_matchers: Vec<TypeVarMatcher>,
+    temporary_matcher_id_counter: usize,
     checking_type_recursion: Option<CheckedTypeRecursion<'a>>,
     class: Option<&'a Class<'a>>,
     func_or_callable: Option<FunctionOrCallable<'a>>,
@@ -60,7 +61,7 @@ pub struct Matcher<'a> {
 }
 
 impl<'a> Matcher<'a> {
-    pub fn new(
+    fn new(
         class: Option<&'a Class<'a>>,
         func_or_callable: FunctionOrCallable<'a>,
         type_var_matchers: Vec<TypeVarMatcher>,
@@ -1054,6 +1055,7 @@ impl<'a> Matcher<'a> {
         }
         let mut inner_matcher = Matcher {
             type_var_matchers: std::mem::take(&mut self.type_var_matchers),
+            temporary_matcher_id_counter: self.temporary_matcher_id_counter,
             checking_type_recursion: Some(CheckedTypeRecursion {
                 type1,
                 type2,
@@ -1069,6 +1071,7 @@ impl<'a> Matcher<'a> {
         let result = callable(&mut inner_matcher);
         // Need to move back, because it was moved previously.
         self.type_var_matchers = std::mem::take(&mut inner_matcher.type_var_matchers);
+        self.temporary_matcher_id_counter = inner_matcher.temporary_matcher_id_counter;
         result
     }
 
