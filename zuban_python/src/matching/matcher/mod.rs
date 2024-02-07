@@ -1072,6 +1072,91 @@ impl<'a> Matcher<'a> {
         result
     }
 
+    fn constraint_count(&self) -> usize {
+        self.type_var_matchers
+            .iter()
+            .map(|tvm| {
+                tvm.calculated_type_vars
+                    .iter()
+                    .map(|c| c.unresolved_transitive_constraints.len() + c.calculated() as usize)
+            })
+            .flatten()
+            .sum()
+    }
+
+    fn find_secondary_transitive_constraints(&mut self, db: &Database, cycles: &TypeVarCycles) {
+        for cycle in &cycles.cycles {
+            let mut unresolved = vec![];
+            // First check for all relevant unresolved constraints in the cycle that are non-cycles
+            for tv_index in &cycle.set {
+                let tv = &self.type_var_matchers[tv_index.matcher_index].calculated_type_vars
+                    [tv_index.type_var_index];
+                for u in &tv.unresolved_transitive_constraints {
+                    let mut is_cycle = false;
+                    u.constraint.search_type_vars(&mut |usage| {
+                        if let Some((matcher_index, _)) = self
+                            .type_var_matchers
+                            .iter()
+                            .enumerate()
+                            .filter(|(_, m)| m.match_in_definition == usage.in_definition())
+                            .next()
+                        {
+                            let current = TypeVarAlreadySeen {
+                                matcher_index,
+                                type_var_index: usage.index().as_usize(),
+                            };
+                            if cycle.set.contains(&current) {
+                                is_cycle = true;
+                            }
+                        }
+                    });
+                    if !is_cycle {
+                        unresolved.push(u.constraint.clone());
+                    }
+                }
+            }
+
+            // Check non-transitive constraints first
+            for wanted_constraint in &unresolved {
+                for tv_index in &cycle.set {
+                    let c = &self.type_var_matchers[tv_index.matcher_index].calculated_type_vars
+                        [tv_index.type_var_index];
+                    if c.calculated() {
+                        let bound = c.type_.clone();
+                        match (wanted_constraint, bound) {
+                            (BoundKind::TypeVar(b1), BoundKind::TypeVar(b2)) => {
+                                let t1 = match b1 {
+                                    TypeVarBound::Invariant(t) => t,
+                                    TypeVarBound::Upper(t) => t,
+                                    TypeVarBound::UpperAndLower(_, _) => todo!(),
+                                    TypeVarBound::Lower(t) => t,
+                                };
+                                let (t2, variance) = match b2 {
+                                    TypeVarBound::Invariant(t) => (t, Variance::Invariant),
+                                    TypeVarBound::Upper(t) => (t, Variance::Contravariant),
+                                    TypeVarBound::UpperAndLower(_, _) => todo!(),
+                                    TypeVarBound::Lower(t) => (t, Variance::Covariant),
+                                };
+                                //let m = t1.matches(&InferenceState::new(db), self, &t2, variance);
+                                //let m = t2.matches(&InferenceState::new(db), self, &t1, variance.invert());
+                                //debug!("Secondary constraint match for {} against {}: {m:?}", t1.format_short(db), t2.format_short(db));
+                            }
+                            (BoundKind::TypeVarTuple(tup1), BoundKind::TypeVarTuple(tup2)) => {
+                                todo!()
+                            }
+                            (BoundKind::ParamSpec(params1), BoundKind::ParamSpec(params2)) => {
+                                todo!()
+                            }
+                            _ => unreachable!(),
+                        }
+                    }
+                }
+            }
+
+            // TODO check unresolved against each other
+        }
+    }
+
     fn finish_matcher(mut self, db: &Database) -> (Self, Result<Option<TypeVarLikes>, Match>) {
         if self.type_var_matchers.len() < 2 {
             // Finishing is only needed if multiple type var matchers need to negotiate type
@@ -1080,6 +1165,11 @@ impl<'a> Matcher<'a> {
         }
 
         let mut cycles = self.find_unresolved_transitive_constraint_cycles(db);
+        let before = self.constraint_count();
+        self.find_secondary_transitive_constraints(db, &cycles);
+        if before < self.constraint_count() {
+            cycles = self.find_unresolved_transitive_constraint_cycles(db);
+        }
         if let Err(m) = self.add_free_type_var_likes_to_cycles(db, &mut cycles) {
             return (self, Err(m));
         }
