@@ -138,7 +138,7 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    pub fn add_reverse_callable_matcher(&mut self, c: &CallableContent) {
+    fn add_reverse_callable_matcher(&mut self, c: &CallableContent) {
         if !c.type_vars.is_empty() {
             self.type_var_matchers.push(TypeVarMatcher::new_reverse(
                 c.defined_at,
@@ -147,7 +147,7 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    pub fn disable_reverse_callable_matcher(&mut self, db: &Database, c: &CallableContent) {
+    fn disable_reverse_callable_matcher(&mut self, db: &Database, c: &CallableContent) {
         if !c.type_vars.is_empty() {
             let matcher = self
                 .type_var_matchers
@@ -168,6 +168,30 @@ impl<'a> Matcher<'a> {
                 );
             }
         }
+    }
+
+    pub fn matches_callable(
+        &mut self,
+        i_s: &InferenceState,
+        c1: &CallableContent,
+        c2: &CallableContent,
+    ) -> Match {
+        self.add_reverse_callable_matcher(c2);
+        let result = c1.return_type.is_super_type_of(i_s, self, &c2.return_type)
+            & matches_params(
+                i_s,
+                self,
+                &c1.params,
+                &c2.params,
+                Variance::Contravariant,
+                false,
+            )
+            .or(|| {
+                // Mypy treats *args/**kwargs special
+                c1.params.is_any_args_and_kwargs().into()
+            });
+        self.disable_reverse_callable_matcher(i_s.db, c2);
+        result
     }
 
     pub fn with_ignored_promotions() -> Self {

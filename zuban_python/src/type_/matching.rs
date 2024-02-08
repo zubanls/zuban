@@ -665,14 +665,14 @@ impl Type {
                     debug!("TODO is matching reverse for function overload?");
                 }
                 Match::any(overload.iter_functions(), |c2| {
-                    Self::matches_callable(i_s, matcher, c1, c2)
+                    matcher.matches_callable(i_s, c1, c2)
                 })
             }
             Type::Type(t2) if matches!(c1.params, CallableParams::Any(_)) => {
                 c1.return_type.is_super_type_of(i_s, matcher, t2)
             }
             _ => match value_type.maybe_callable(i_s) {
-                Some(CallableLike::Callable(c2)) => Self::matches_callable(i_s, matcher, c1, &c2),
+                Some(CallableLike::Callable(c2)) => matcher.matches_callable(i_s, c1, &c2),
                 Some(CallableLike::Overload(overload)) if variance == Variance::Covariant => {
                     Self::matches_callable_against_arbitrary(
                         i_s,
@@ -687,32 +687,6 @@ impl Type {
         }
     }
 
-    pub fn matches_callable(
-        i_s: &InferenceState,
-        matcher: &mut Matcher,
-        c1: &CallableContent,
-        c2: &CallableContent,
-    ) -> Match {
-        matcher.add_reverse_callable_matcher(c2);
-        let result = c1
-            .return_type
-            .is_super_type_of(i_s, matcher, &c2.return_type)
-            & matches_params(
-                i_s,
-                matcher,
-                &c1.params,
-                &c2.params,
-                Variance::Contravariant,
-                false,
-            )
-            .or(|| {
-                // Mypy treats *args/**kwargs special
-                c1.params.is_any_args_and_kwargs().into()
-            });
-        matcher.disable_reverse_callable_matcher(i_s.db, c2);
-        result
-    }
-
     fn matches_overload(
         i_s: &InferenceState,
         matcher: &mut Matcher,
@@ -724,7 +698,7 @@ impl Type {
         'outer: for c1 in overload1.iter_functions() {
             for (right_index, c2) in overload2.iter_functions().enumerate() {
                 let right_index = right_index as isize;
-                let m = Type::matches_callable(i_s, matcher, c1, c2);
+                let m = matcher.matches_callable(i_s, c1, c2);
                 if m.bool() && right_index >= previous_match_right_index {
                     previous_match_right_index = right_index;
                     matches &= m;

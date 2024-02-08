@@ -1803,7 +1803,7 @@ fn check_override(
                 let mut previous_match_right_index = 0;
                 'outer: for c1 in expected.iter_functions() {
                     for (right_index, c2) in got.iter_functions().enumerate() {
-                        let m = Type::matches_callable(i_s, &mut Matcher::default(), c1, c2);
+                        let m = Matcher::default().matches_callable(i_s, c1, c2);
                         if m.bool() {
                             if previous_match_right_index <= right_index {
                                 previous_match_right_index = right_index;
