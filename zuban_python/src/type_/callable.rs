@@ -394,6 +394,26 @@ impl CallableParams {
             }
         }
     }
+
+    pub fn find_in_type(&self, check: &mut impl FnMut(&Type) -> bool) -> bool {
+        match self {
+            CallableParams::Simple(params) => params.iter().any(|param| match &param.type_ {
+                ParamType::PositionalOnly(t)
+                | ParamType::PositionalOrKeyword(t)
+                | ParamType::KeywordOnly(t)
+                | ParamType::Star(StarParamType::ArbitraryLen(t))
+                | ParamType::StarStar(StarStarParamType::ValueType(t)) => t.find_in_type(check),
+                ParamType::Star(StarParamType::ParamSpecArgs(_)) => false,
+                ParamType::Star(StarParamType::UnpackedTuple(u)) => u.find_in_type(check),
+                ParamType::StarStar(StarStarParamType::ParamSpecKwargs(_)) => false,
+                ParamType::StarStar(StarStarParamType::UnpackTypedDict(_)) => todo!(),
+            }),
+            CallableParams::Any(_) => false,
+            CallableParams::WithParamSpec(types, param_spec) => {
+                types.iter().any(|t| t.find_in_type(check))
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -555,24 +575,7 @@ impl CallableContent {
     }
 
     pub fn find_in_type(&self, check: &mut impl FnMut(&Type) -> bool) -> bool {
-        self.return_type.find_in_type(check)
-            || match &self.params {
-                CallableParams::Simple(params) => params.iter().any(|param| match &param.type_ {
-                    ParamType::PositionalOnly(t)
-                    | ParamType::PositionalOrKeyword(t)
-                    | ParamType::KeywordOnly(t)
-                    | ParamType::Star(StarParamType::ArbitraryLen(t))
-                    | ParamType::StarStar(StarStarParamType::ValueType(t)) => t.find_in_type(check),
-                    ParamType::Star(StarParamType::ParamSpecArgs(_)) => false,
-                    ParamType::Star(StarParamType::UnpackedTuple(u)) => u.find_in_type(check),
-                    ParamType::StarStar(StarStarParamType::ParamSpecKwargs(_)) => false,
-                    ParamType::StarStar(StarStarParamType::UnpackTypedDict(_)) => todo!(),
-                }),
-                CallableParams::Any(_) => false,
-                CallableParams::WithParamSpec(types, param_spec) => {
-                    types.iter().any(|t| t.find_in_type(check))
-                }
-            }
+        self.return_type.find_in_type(check) || self.params.find_in_type(check)
     }
 
     pub fn format(&self, format_data: &FormatData) -> String {

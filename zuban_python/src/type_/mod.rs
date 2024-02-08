@@ -294,7 +294,7 @@ impl GenericsList {
                 TupleArgs::ArbitraryLen(t) => t.find_in_type(check),
                 TupleArgs::WithUnpack(with_unpack) => with_unpack.find_in_type(check),
             },
-            GenericItem::ParamSpecArg(a) => todo!(),
+            GenericItem::ParamSpecArg(a) => a.params.find_in_type(check),
         })
     }
 
