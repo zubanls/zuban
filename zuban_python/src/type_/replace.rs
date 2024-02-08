@@ -1,4 +1,4 @@
-use std::{borrow::Cow, rc::Rc};
+use std::rc::Rc;
 
 use super::{
     simplified_union_from_iterators_with_format_index, CallableContent, CallableParam,
@@ -78,7 +78,7 @@ impl Type {
                     u.format_as_optional,
                 )
             }
-            Type::TypeVar(t) => match callable(TypeVarLikeUsage::TypeVar(Cow::Borrowed(&t))) {
+            Type::TypeVar(t) => match callable(TypeVarLikeUsage::TypeVar(t.clone())) {
                 GenericItem::TypeArg(t) => t,
                 GenericItem::TypeArgs(ts) => unreachable!(),
                 GenericItem::ParamSpecArg(params) => todo!(),
@@ -462,7 +462,7 @@ impl CallableParams {
             }),
             CallableParams::Any(cause) => CallableParams::Any(*cause),
             CallableParams::WithParamSpec(types, param_spec) => {
-                let result = callable(TypeVarLikeUsage::ParamSpec(Cow::Borrowed(param_spec)));
+                let result = callable(TypeVarLikeUsage::ParamSpec(param_spec.clone()));
                 let GenericItem::ParamSpecArg(mut new) = result else {
                     unreachable!()
                 };
@@ -587,7 +587,7 @@ impl TupleArgs {
             )),
             TupleArgs::WithUnpack(unpack) => match &unpack.unpack {
                 TupleUnpack::TypeVarTuple(tvt) => {
-                    let GenericItem::TypeArgs(new) = callable(TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(tvt))) else {
+                    let GenericItem::TypeArgs(new) = callable(TypeVarLikeUsage::TypeVarTuple(tvt.clone())) else {
                             unreachable!();
                         };
                     let new_before: Vec<_> = unpack

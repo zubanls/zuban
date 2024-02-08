@@ -272,7 +272,7 @@ impl CallableParams {
                         StarStar(ParamSpecKwargs(usage)) => match had_param_spec_args {
                             true => out_params.push(format_data.format_type_var_like(
                                 // TODO is this even reachable?
-                                &TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)),
+                                &TypeVarLikeUsage::ParamSpec(usage.clone()),
                                 style,
                             )),
                             false => todo!(),
@@ -289,10 +289,8 @@ impl CallableParams {
                     }
                     _ => style,
                 };
-                let spec = format_data.format_type_var_like(
-                    &TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)),
-                    style,
-                );
+                let spec = format_data
+                    .format_type_var_like(&TypeVarLikeUsage::ParamSpec(usage.clone()), style);
                 if pre_types.len() == 0 {
                     return spec;
                 }
@@ -392,7 +390,7 @@ impl CallableParams {
             }
             CallableParams::Any(_) => (),
             CallableParams::WithParamSpec(_, spec) => {
-                found_type_var(TypeVarLikeUsage::ParamSpec(Cow::Borrowed(spec)))
+                found_type_var(TypeVarLikeUsage::ParamSpec(spec.clone()))
             }
         }
     }

@@ -3,7 +3,7 @@ mod type_var_matcher;
 mod utils;
 
 use core::fmt;
-use std::{borrow::Cow, collections::HashSet, iter::Peekable, rc::Rc, slice::Iter};
+use std::{collections::HashSet, iter::Peekable, rc::Rc, slice::Iter};
 
 pub use type_var_matcher::FunctionOrCallable;
 use type_var_matcher::{BoundKind, TypeVarMatcher};
@@ -288,7 +288,7 @@ impl<'a> Matcher<'a> {
                 if class.node_ref.as_link() == t1.in_definition {
                     let g = class
                         .generics()
-                        .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(Cow::Borrowed(t1)))
+                        .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(t1.clone()))
                         .expect_type_argument();
                     return Some(g.simple_matches(i_s, value_type, variance));
                 }
@@ -298,7 +298,7 @@ impl<'a> Matcher<'a> {
                 if t1.in_definition == func_class.node_ref.as_link() {
                     let g = func_class
                         .generics()
-                        .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(Cow::Borrowed(t1)))
+                        .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(t1.clone()))
                         .expect_type_argument();
                     return Some(g.matches(i_s, self, value_type, variance));
                 }
@@ -456,7 +456,7 @@ impl<'a> Matcher<'a> {
                 if class.node_ref.as_link() == tvt.in_definition {
                     let ts1 = class
                         .generics()
-                        .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(tvt)))
+                        .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVarTuple(tvt.clone()))
                         .expect_type_arguments();
                     return match_tuple_type_arguments(
                         i_s,
@@ -472,7 +472,7 @@ impl<'a> Matcher<'a> {
                 if tvt.in_definition == func_class.node_ref.as_link() {
                     let ts1 = func_class
                         .generics()
-                        .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(tvt)))
+                        .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVarTuple(tvt.clone()))
                         .expect_type_arguments();
                     return match_tuple_type_arguments(
                         i_s,
@@ -950,8 +950,8 @@ impl<'a> Matcher<'a> {
     pub fn as_usage_closure<'b>(
         &'b self,
         db: &'b Database,
-        on_uncalculated: impl for<'x> Fn(TypeVarLikeUsage<'x>) -> GenericItem + 'b,
-    ) -> impl for<'y> Fn(TypeVarLikeUsage<'y>) -> GenericItem + 'b {
+        on_uncalculated: impl for<'x> Fn(TypeVarLikeUsage) -> GenericItem + 'b,
+    ) -> impl for<'y> Fn(TypeVarLikeUsage) -> GenericItem + 'b {
         move |usage| {
             for type_var_matcher in self.type_var_matchers.iter().filter(|tvm| tvm.enabled) {
                 if usage.in_definition() == type_var_matcher.match_in_definition {

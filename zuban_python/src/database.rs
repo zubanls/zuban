@@ -647,29 +647,29 @@ impl TypeAlias {
                             .enumerate()
                             .map(|(i, type_var_like)| match type_var_like {
                                 TypeVarLike::TypeVar(type_var) => {
-                                    callable(TypeVarLikeUsage::TypeVar(Cow::Owned(TypeVarUsage {
+                                    callable(TypeVarLikeUsage::TypeVar(TypeVarUsage {
                                         type_var: type_var.clone(),
                                         index: i.into(),
                                         in_definition: self.location,
                                         temporary_matcher_id: 0,
-                                    })))
+                                    }))
                                 }
-                                TypeVarLike::TypeVarTuple(t) => callable(
-                                    TypeVarLikeUsage::TypeVarTuple(Cow::Owned(TypeVarTupleUsage {
+                                TypeVarLike::TypeVarTuple(t) => {
+                                    callable(TypeVarLikeUsage::TypeVarTuple(TypeVarTupleUsage {
                                         type_var_tuple: t.clone(),
                                         index: i.into(),
                                         in_definition: self.location,
                                         temporary_matcher_id: 0,
-                                    })),
-                                ),
-                                TypeVarLike::ParamSpec(p) => callable(TypeVarLikeUsage::ParamSpec(
-                                    Cow::Owned(ParamSpecUsage {
+                                    }))
+                                }
+                                TypeVarLike::ParamSpec(p) => {
+                                    callable(TypeVarLikeUsage::ParamSpec(ParamSpecUsage {
                                         param_spec: p.clone(),
                                         index: i.into(),
                                         in_definition: self.location,
                                         temporary_matcher_id: 0,
-                                    }),
-                                )),
+                                    }))
+                                }
                             })
                             .collect(),
                     )

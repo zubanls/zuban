@@ -37,7 +37,7 @@ const ANNOTATION_TO_EXPR_DIFFERENCE: u32 = 2;
 
 #[derive(Debug)]
 pub enum TypeVarCallbackReturn {
-    TypeVarLike(TypeVarLikeUsage<'static>),
+    TypeVarLike(TypeVarLikeUsage),
     UnboundTypeVar,
     NotFound,
 }
@@ -2930,13 +2930,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     self.current_callable,
                 ) {
                     TypeVarCallbackReturn::TypeVarLike(TypeVarLikeUsage::TypeVar(usage)) => {
-                        Some(TypeContent::Type(Type::TypeVar(usage.into_owned())))
+                        Some(TypeContent::Type(Type::TypeVar(usage)))
                     }
                     TypeVarCallbackReturn::TypeVarLike(TypeVarLikeUsage::TypeVarTuple(usage)) => {
-                        Some(TypeContent::TypeVarTuple(usage.into_owned()))
+                        Some(TypeContent::TypeVarTuple(usage))
                     }
                     TypeVarCallbackReturn::TypeVarLike(TypeVarLikeUsage::ParamSpec(usage)) => {
-                        Some(TypeContent::ParamSpec(usage.into_owned()))
+                        Some(TypeContent::ParamSpec(usage))
                     }
                     TypeVarCallbackReturn::UnboundTypeVar => {
                         let node_ref = NodeRef::new(self.inference.file, name.index());

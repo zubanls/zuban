@@ -1,4 +1,4 @@
-use std::{borrow::Cow, ops::AddAssign, rc::Rc};
+use std::{ops::AddAssign, rc::Rc};
 
 use super::{
     replace::ReplaceTypeVarLike, AnyCause, CallableParams, GenericItem, GenericsList, ReplaceSelf,
@@ -201,7 +201,7 @@ impl TypeVarManager {
 
     pub fn remap_type_var(&self, usage: &TypeVarUsage) -> TypeVarUsage {
         if let Some((index, in_definition)) =
-            self.remap_internal(&TypeVarLikeUsage::TypeVar(Cow::Borrowed(usage)))
+            self.remap_internal(&TypeVarLikeUsage::TypeVar(usage.clone()))
         {
             TypeVarUsage::new(
                 usage.type_var.clone(),
@@ -215,7 +215,7 @@ impl TypeVarManager {
 
     pub fn remap_type_var_tuple(&self, usage: &TypeVarTupleUsage) -> TypeVarTupleUsage {
         if let Some((index, in_definition)) =
-            self.remap_internal(&TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(usage)))
+            self.remap_internal(&TypeVarLikeUsage::TypeVarTuple(usage.clone()))
         {
             TypeVarTupleUsage::new(
                 usage.type_var_tuple.clone(),
@@ -229,7 +229,7 @@ impl TypeVarManager {
 
     pub fn remap_param_spec(&self, usage: &ParamSpecUsage) -> ParamSpecUsage {
         if let Some((index, in_definition)) =
-            self.remap_internal(&TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)))
+            self.remap_internal(&TypeVarLikeUsage::ParamSpec(usage.clone()))
         {
             ParamSpecUsage::new(
                 usage.param_spec.clone(),
@@ -296,24 +296,22 @@ impl TypeVarLikes {
         &self,
         type_var_like: TypeVarLike,
         in_definition: PointLink,
-    ) -> Option<TypeVarLikeUsage<'static>> {
+    ) -> Option<TypeVarLikeUsage> {
         self.0
             .iter()
             .position(|t| t == &type_var_like)
             .map(|index| match type_var_like {
-                TypeVarLike::TypeVar(type_var) => TypeVarLikeUsage::TypeVar(Cow::Owned(
-                    TypeVarUsage::new(type_var, in_definition, index.into()),
+                TypeVarLike::TypeVar(type_var) => TypeVarLikeUsage::TypeVar(TypeVarUsage::new(
+                    type_var,
+                    in_definition,
+                    index.into(),
                 )),
-                TypeVarLike::TypeVarTuple(type_var_tuple) => {
-                    TypeVarLikeUsage::TypeVarTuple(Cow::Owned(TypeVarTupleUsage::new(
-                        type_var_tuple,
-                        in_definition,
-                        index.into(),
-                    )))
-                }
-                TypeVarLike::ParamSpec(param_spec) => TypeVarLikeUsage::ParamSpec(Cow::Owned(
+                TypeVarLike::TypeVarTuple(type_var_tuple) => TypeVarLikeUsage::TypeVarTuple(
+                    TypeVarTupleUsage::new(type_var_tuple, in_definition, index.into()),
+                ),
+                TypeVarLike::ParamSpec(param_spec) => TypeVarLikeUsage::ParamSpec(
                     ParamSpecUsage::new(param_spec, in_definition, index.into()),
-                )),
+                ),
             })
     }
 
@@ -383,21 +381,19 @@ impl TypeVarLike {
         &self,
         index: TypeVarIndex,
         in_definition: PointLink,
-    ) -> TypeVarLikeUsage<'static> {
+    ) -> TypeVarLikeUsage {
         match self {
-            Self::TypeVar(type_var) => TypeVarLikeUsage::TypeVar(Cow::Owned(TypeVarUsage::new(
-                type_var.clone(),
+            Self::TypeVar(type_var) => {
+                TypeVarLikeUsage::TypeVar(TypeVarUsage::new(type_var.clone(), in_definition, index))
+            }
+            Self::TypeVarTuple(t) => TypeVarLikeUsage::TypeVarTuple(TypeVarTupleUsage::new(
+                t.clone(),
                 in_definition,
                 index,
-            ))),
-            Self::TypeVarTuple(t) => TypeVarLikeUsage::TypeVarTuple(Cow::Owned(
-                TypeVarTupleUsage::new(t.clone(), in_definition, index),
             )),
-            Self::ParamSpec(p) => TypeVarLikeUsage::ParamSpec(Cow::Owned(ParamSpecUsage::new(
-                p.clone(),
-                in_definition,
-                index,
-            ))),
+            Self::ParamSpec(p) => {
+                TypeVarLikeUsage::ParamSpec(ParamSpecUsage::new(p.clone(), in_definition, index))
+            }
         }
     }
 
@@ -628,13 +624,13 @@ impl ParamSpecArg {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum TypeVarLikeUsage<'a> {
-    TypeVar(Cow<'a, TypeVarUsage>),
-    TypeVarTuple(Cow<'a, TypeVarTupleUsage>),
-    ParamSpec(Cow<'a, ParamSpecUsage>),
+pub enum TypeVarLikeUsage {
+    TypeVar(TypeVarUsage),
+    TypeVarTuple(TypeVarTupleUsage),
+    ParamSpec(ParamSpecUsage),
 }
 
-impl<'a> TypeVarLikeUsage<'a> {
+impl TypeVarLikeUsage {
     pub fn in_definition(&self) -> PointLink {
         match self {
             Self::TypeVar(t) => t.in_definition,
@@ -645,9 +641,9 @@ impl<'a> TypeVarLikeUsage<'a> {
 
     pub fn add_to_index(&mut self, amount: i32) {
         match self {
-            Self::TypeVar(t) => t.to_mut().index += amount,
-            Self::TypeVarTuple(t) => t.to_mut().index += amount,
-            Self::ParamSpec(p) => p.to_mut().index += amount,
+            Self::TypeVar(t) => t.index += amount,
+            Self::TypeVarTuple(t) => t.index += amount,
+            Self::ParamSpec(p) => p.index += amount,
         }
     }
 
@@ -669,18 +665,16 @@ impl<'a> TypeVarLikeUsage<'a> {
 
     pub fn into_generic_item(self) -> GenericItem {
         match self {
-            TypeVarLikeUsage::TypeVar(usage) => {
-                GenericItem::TypeArg(Type::TypeVar(usage.into_owned()))
-            }
+            TypeVarLikeUsage::TypeVar(usage) => GenericItem::TypeArg(Type::TypeVar(usage)),
             TypeVarLikeUsage::TypeVarTuple(usage) => GenericItem::TypeArgs(TypeArgs {
                 args: TupleArgs::WithUnpack(WithUnpack {
                     before: Rc::from([]),
-                    unpack: TupleUnpack::TypeVarTuple(usage.into_owned()),
+                    unpack: TupleUnpack::TypeVarTuple(usage),
                     after: Rc::from([]),
                 }),
             }),
             TypeVarLikeUsage::ParamSpec(usage) => GenericItem::ParamSpecArg(ParamSpecArg::new(
-                CallableParams::WithParamSpec(Rc::new([]), usage.into_owned()),
+                CallableParams::WithParamSpec(Rc::new([]), usage),
                 None,
             )),
         }
@@ -688,18 +682,15 @@ impl<'a> TypeVarLikeUsage<'a> {
 
     pub fn into_generic_item_with_new_index(self, index: TypeVarIndex) -> GenericItem {
         match self {
-            TypeVarLikeUsage::TypeVar(usage) => {
-                let mut usage = usage.into_owned();
+            TypeVarLikeUsage::TypeVar(mut usage) => {
                 usage.index = index;
                 GenericItem::TypeArg(Type::TypeVar(usage))
             }
-            TypeVarLikeUsage::TypeVarTuple(usage) => {
-                let mut usage = usage.into_owned();
+            TypeVarLikeUsage::TypeVarTuple(mut usage) => {
                 usage.index = index;
                 todo!()
             }
-            TypeVarLikeUsage::ParamSpec(usage) => {
-                let mut usage = usage.into_owned();
+            TypeVarLikeUsage::ParamSpec(mut usage) => {
                 usage.index = index;
                 GenericItem::ParamSpecArg(ParamSpecArg::new(
                     CallableParams::WithParamSpec(Rc::new([]), usage),
@@ -716,17 +707,14 @@ impl<'a> TypeVarLikeUsage<'a> {
     ) {
         match self {
             Self::TypeVar(t) => {
-                let t = t.to_mut();
                 t.index = index;
                 t.in_definition = in_definition;
             }
             Self::TypeVarTuple(t) => {
-                let t = t.to_mut();
                 t.index = index;
                 t.in_definition = in_definition;
             }
             Self::ParamSpec(p) => {
-                let p = p.to_mut();
                 p.index = index;
                 p.in_definition = in_definition;
             }

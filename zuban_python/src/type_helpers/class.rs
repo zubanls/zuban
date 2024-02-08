@@ -281,7 +281,7 @@ impl<'db: 'a, 'a> Class<'a> {
         &self,
         i_s: &InferenceState<'db, '_>,
         type_var: &TypeVarLike,
-    ) -> Option<TypeVarLikeUsage<'static>> {
+    ) -> Option<TypeVarLikeUsage> {
         match self.class_storage.parent_scope {
             ParentScope::Module => None,
             ParentScope::Class(node_index) => {

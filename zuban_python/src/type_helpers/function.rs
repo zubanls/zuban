@@ -315,7 +315,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         match self.class {
             Some(c) if c.node_ref.as_link() == usage.in_definition => match c
                 .generics()
-                .nth_usage(i_s.db, &TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)))
+                .nth_usage(i_s.db, &TypeVarLikeUsage::ParamSpec(usage.clone()))
             {
                 Generic::ParamSpecArg(p) => match p.into_owned().params {
                     CallableParams::Any(cause) => CallableParams::Any(cause),

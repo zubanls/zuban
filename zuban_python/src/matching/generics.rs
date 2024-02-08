@@ -90,7 +90,7 @@ impl<'a> Generics<'a> {
         db: &'db Database,
         usage: &ParamSpecUsage,
     ) -> Cow<'a, ParamSpecArg> {
-        let generic = self.nth_usage(db, &TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)));
+        let generic = self.nth_usage(db, &TypeVarLikeUsage::ParamSpec(usage.clone()));
         if let Generic::ParamSpecArg(p) = generic {
             p
         } else {

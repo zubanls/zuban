@@ -706,7 +706,7 @@ impl Type {
                 _ => Box::from("overloaded function"),
             },
             Self::TypeVar(t) => format_data.format_type_var_like(
-                &TypeVarLikeUsage::TypeVar(Cow::Borrowed(t)),
+                &TypeVarLikeUsage::TypeVar(t.clone()),
                 ParamsStyle::Unreachable,
             ),
             Self::Type(type_) => format!("Type[{}]", type_.format(format_data)).into(),
@@ -811,7 +811,7 @@ impl Type {
                     callable.return_type.search_type_vars(found_type_var)
                 }
             }
-            Self::TypeVar(t) => found_type_var(TypeVarLikeUsage::TypeVar(Cow::Borrowed(t))),
+            Self::TypeVar(t) => found_type_var(TypeVarLikeUsage::TypeVar(t.clone())),
             Self::Type(type_) => type_.search_type_vars(found_type_var),
             Self::Tuple(tup) => tup.args.search_type_vars(found_type_var),
             Self::Callable(content) => {

@@ -1,4 +1,4 @@
-use std::{borrow::Cow, cell::OnceCell, rc::Rc};
+use std::{cell::OnceCell, rc::Rc};
 
 use super::{
     common_base_type, simplified_union_from_iterators, utils::method_with_fallback, CustomBehavior,
@@ -395,7 +395,7 @@ impl TupleUnpack {
     fn format(&self, format_data: &FormatData) -> Box<str> {
         match self {
             Self::TypeVarTuple(t) => format_data.format_type_var_like(
-                &TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(t)),
+                &TypeVarLikeUsage::TypeVarTuple(t.clone()),
                 ParamsStyle::Unreachable,
             ),
             Self::ArbitraryLen(t) => format!("Tuple[{}, ...]", t.format(format_data)).into(),
@@ -529,7 +529,7 @@ impl TupleArgs {
                 }
                 match &with_unpack.unpack {
                     TupleUnpack::TypeVarTuple(tvt) => {
-                        found_type_var(TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(tvt)))
+                        found_type_var(TypeVarLikeUsage::TypeVarTuple(tvt.clone()))
                     }
                     TupleUnpack::ArbitraryLen(t) => t.search_type_vars(found_type_var),
                 }
