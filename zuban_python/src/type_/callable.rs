@@ -389,7 +389,10 @@ impl CallableParams {
                 }
             }
             CallableParams::Any(_) => (),
-            CallableParams::WithParamSpec(_, spec) => {
+            CallableParams::WithParamSpec(pre, spec) => {
+                for t in pre.iter() {
+                    t.search_type_vars(found_type_var)
+                }
                 found_type_var(TypeVarLikeUsage::ParamSpec(spec.clone()))
             }
         }

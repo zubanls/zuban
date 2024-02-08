@@ -219,9 +219,6 @@ testInferenceAgainstGenericParamSpecPopOff
 testInferenceAgainstGenericParamSpecPopOn
 # Weird class type vars passing
 testDefaultDict
-# return callables nested correct type var assignments
-testInferenceAgainstGenericParamSpecVsParamSpec
-testInferenceAgainstGenericParamSpecVsParamSpecConcatenate
 # list element context inference should probably ignore type vars
 testInferenceAgainstGenericCallableGenericNonLinear
 # type var backtracking
