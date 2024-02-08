@@ -3,7 +3,7 @@ mod type_var_matcher;
 mod utils;
 
 use core::fmt;
-use std::{collections::HashSet, iter::Peekable, rc::Rc, slice::Iter};
+use std::{borrow::Cow, collections::HashSet, iter::Peekable, rc::Rc, slice::Iter};
 
 pub use type_var_matcher::FunctionOrCallable;
 use type_var_matcher::{BoundKind, TypeVarMatcher};
@@ -50,7 +50,6 @@ struct CheckedTypeRecursion<'a> {
 #[derive(Default)]
 pub struct Matcher<'a> {
     type_var_matchers: Vec<TypeVarMatcher>,
-    temporary_matcher_id_counter: usize,
     checking_type_recursion: Option<CheckedTypeRecursion<'a>>,
     class: Option<&'a Class<'a>>,
     func_or_callable: Option<FunctionOrCallable<'a>>,
@@ -138,15 +137,6 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    fn add_reverse_callable_matcher(&mut self, c: &CallableContent) {
-        if !c.type_vars.is_empty() {
-            self.type_var_matchers.push(TypeVarMatcher::new_reverse(
-                c.defined_at,
-                c.type_vars.clone(),
-            ))
-        }
-    }
-
     fn disable_reverse_callable_matcher(&mut self, db: &Database, c: &CallableContent) {
         if !c.type_vars.is_empty() {
             let matcher = self
@@ -174,9 +164,33 @@ impl<'a> Matcher<'a> {
         &mut self,
         i_s: &InferenceState,
         c1: &CallableContent,
-        c2: &CallableContent,
+        c2_ref: &CallableContent,
     ) -> Match {
-        self.add_reverse_callable_matcher(c2);
+        let mut c2 = Cow::Borrowed(c2_ref);
+        if !c2.type_vars.is_empty() {
+            if self
+                .type_var_matchers
+                .iter()
+                .any(|tvm| tvm.match_in_definition == c2.defined_at)
+            {
+                c2 = Cow::Owned(c2_ref.replace_type_var_likes_and_self(
+                    i_s.db,
+                    &mut |mut usage| {
+                        if usage.in_definition() == c2_ref.defined_at {
+                            usage
+                                .update_temporary_matcher_index(self.type_var_matchers.len() as u32)
+                        }
+                        usage.into_generic_item()
+                    },
+                    &|| Type::Self_,
+                ));
+            }
+            self.type_var_matchers.push(TypeVarMatcher::new_reverse(
+                c2.defined_at,
+                c2.type_vars.clone(),
+            ))
+        }
+
         let result = c1.return_type.is_super_type_of(i_s, self, &c2.return_type)
             & matches_params(
                 i_s,
@@ -190,7 +204,7 @@ impl<'a> Matcher<'a> {
                 // Mypy treats *args/**kwargs special
                 c1.params.is_any_args_and_kwargs().into()
             });
-        self.disable_reverse_callable_matcher(i_s.db, c2);
+        self.disable_reverse_callable_matcher(i_s.db, &c2);
         result
     }
 
@@ -1067,7 +1081,6 @@ impl<'a> Matcher<'a> {
         }
         let mut inner_matcher = Matcher {
             type_var_matchers: std::mem::take(&mut self.type_var_matchers),
-            temporary_matcher_id_counter: self.temporary_matcher_id_counter,
             checking_type_recursion: Some(CheckedTypeRecursion {
                 type1,
                 type2,
@@ -1083,7 +1096,6 @@ impl<'a> Matcher<'a> {
         let result = callable(&mut inner_matcher);
         // Need to move back, because it was moved previously.
         self.type_var_matchers = std::mem::take(&mut inner_matcher.type_var_matchers);
-        self.temporary_matcher_id_counter = inner_matcher.temporary_matcher_id_counter;
         result
     }
 

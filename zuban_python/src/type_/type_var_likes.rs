@@ -726,6 +726,20 @@ impl TypeVarLikeUsage {
         }
     }
 
+    pub fn update_temporary_matcher_index(&mut self, index: u32) {
+        match self {
+            Self::TypeVar(t) => {
+                t.temporary_matcher_id = index;
+            }
+            Self::TypeVarTuple(t) => {
+                t.temporary_matcher_id = index;
+            }
+            Self::ParamSpec(p) => {
+                p.temporary_matcher_id = index;
+            }
+        }
+    }
+
     pub fn format_without_matcher(&self, db: &Database, params_style: ParamsStyle) -> Box<str> {
         match self {
             Self::TypeVar(type_var_usage) => type_var_usage.type_var.name(db).into(),

@@ -4,6 +4,8 @@ testInvalidNamedTupleWithinFunction
 testVariadicUnpackWithRegularInstance
 testMisguidedSetItem
 
+testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
+
 # mypy upgrade
 testMultilineQuotedAnnotation
 testDataclassFieldWithPositionalArguments
