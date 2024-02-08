@@ -316,7 +316,7 @@ impl CallableContent {
         }
     }
 
-    fn rewrite_late_bound_callables(&self, manager: &TypeVarManager) -> Self {
+    pub fn rewrite_late_bound_callables(&self, manager: &TypeVarManager) -> Self {
         let type_vars = manager
             .iter()
             .filter_map(|t| {

@@ -105,7 +105,12 @@ impl TypeVarManager {
     }
 
     pub fn register_callable(&mut self, c: CallableWithParent) {
+        debug_assert!(!self.is_callable_known(c.defined_at));
         self.callables.push(c)
+    }
+
+    pub fn is_callable_known(&self, link: PointLink) -> bool {
+        self.callables.iter().any(|c| c.defined_at == link)
     }
 
     pub fn move_index(&mut self, old_index: TypeVarIndex, force_index: TypeVarIndex) {

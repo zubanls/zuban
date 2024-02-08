@@ -554,7 +554,7 @@ impl CallableContent {
         self.return_type.has_self_type() || self.find_in_type(&mut Type::is_self_type)
     }
 
-    pub(super) fn find_in_type(&self, check: &mut impl FnMut(&Type) -> bool) -> bool {
+    pub fn find_in_type(&self, check: &mut impl FnMut(&Type) -> bool) -> bool {
         self.return_type.find_in_type(check)
             || match &self.params {
                 CallableParams::Simple(params) => params.iter().any(|param| match &param.type_ {

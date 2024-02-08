@@ -24,11 +24,11 @@ use crate::{
     matching::{maybe_class_usage, ErrorTypes, GotType, LookupKind},
     node_ref::NodeRef,
     type_::{
-        match_unpack, CallableParams, ClassGenerics, GenericItem, GenericsList, ParamSpecTypeVars,
-        ReplaceSelf, TupleArgs, TupleUnpack, Type, TypeVarLikes, Variance, WithUnpack,
+        match_unpack, CallableParams, CallableWithParent, ClassGenerics, GenericItem, GenericsList,
+        ParamSpecTypeVars, ReplaceSelf, TupleArgs, TupleUnpack, Type, TypeVarLikes, TypeVarManager,
+        Variance, WithUnpack,
     },
     type_helpers::{Callable, Class, Function},
-    utils::rc_unwrap_or_clone,
 };
 
 pub(crate) fn calculate_callable_init_type_vars_and_return<'db: 'a, 'a>(
@@ -238,10 +238,46 @@ impl CalculatedTypeArgs {
             replace_self_type,
         );
         if let Some(type_var_likes) = self.type_var_likes {
-            if let Type::Callable(c) = type_ {
-                let mut callable = rc_unwrap_or_clone(c);
-                callable.type_vars = type_var_likes;
-                type_ = Type::Callable(Rc::new(callable))
+            if let Type::Callable(c) = &type_ {
+                fn create_callable_hierarchy(
+                    manager: &mut TypeVarManager,
+                    parent_callable: Option<PointLink>,
+                    type_var_likes: &TypeVarLikes,
+                    t: &Type,
+                ) {
+                    t.find_in_type(&mut |t| {
+                        if let Type::Callable(c) = t {
+                            // TODO the is_callable_known is only known, because we recurse
+                            // potentially multiple times into the same data structures, which is
+                            // not really needed.
+                            if !manager.is_callable_known(c.defined_at) {
+                                manager.register_callable(CallableWithParent {
+                                    defined_at: c.defined_at,
+                                    parent_callable,
+                                });
+                                c.params.search_type_vars(&mut |u| {
+                                    let found = u.as_type_var_like();
+                                    if type_var_likes.iter().any(|tvl| tvl == &found) {
+                                        manager.add(found, Some(c.defined_at));
+                                    }
+                                });
+                                create_callable_hierarchy(
+                                    manager,
+                                    Some(c.defined_at),
+                                    type_var_likes,
+                                    t,
+                                )
+                            }
+                        }
+                        false
+                    });
+                }
+
+                let mut manager = TypeVarManager::default();
+                create_callable_hierarchy(&mut manager, None, &type_var_likes, &type_);
+                let callable = c.rewrite_late_bound_callables(&manager);
+                type_ = Type::Callable(Rc::new(callable));
+                debug_assert_eq!(manager.into_type_vars().len(), 0);
             }
         }
         debug!("Resolved type vars: {}", type_.format_short(i_s.db));

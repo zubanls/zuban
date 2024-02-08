@@ -984,7 +984,7 @@ impl Type {
             }
             Self::Type(t) => check(self) || t.find_in_type(check),
             Self::Tuple(tup) => tup.find_in_type(check),
-            Self::Callable(content) => content.find_in_type(check),
+            Self::Callable(content) => check(self) || content.find_in_type(check),
             Self::TypedDict(d) => match &d.generics {
                 TypedDictGenerics::Generics(g) => g.find_in_type(check),
                 TypedDictGenerics::None | TypedDictGenerics::NotDefinedYet(_) => false,
