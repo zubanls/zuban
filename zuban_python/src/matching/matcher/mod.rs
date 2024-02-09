@@ -1062,13 +1062,16 @@ impl<'a> Matcher<'a> {
             .sum()
     }
 
+    fn calculating_arg(&self, tv: TypeVarIndexed) -> &CalculatingTypeArg {
+        &self.type_var_matchers[tv.matcher_index].calculating_type_args[tv.type_var_index]
+    }
+
     fn find_secondary_transitive_constraints(&mut self, db: &Database, cycles: &TypeVarCycles) {
         for cycle in &cycles.cycles {
             let mut unresolved = vec![];
             // First check for all relevant unresolved constraints in the cycle that are non-cycles
             for tv_index in &cycle.set {
-                let tv = &self.type_var_matchers[tv_index.matcher_index].calculating_type_args
-                    [tv_index.type_var_index];
+                let tv = self.calculating_arg(*tv_index);
                 for u in &tv.unresolved_transitive_constraints {
                     let mut is_cycle = false;
                     u.search_type_vars(&mut |usage| {
@@ -1094,8 +1097,7 @@ impl<'a> Matcher<'a> {
             // Check non-transitive constraints first
             for wanted_constraint in &unresolved {
                 for tv_index in &cycle.set {
-                    let c = &self.type_var_matchers[tv_index.matcher_index].calculating_type_args
-                        [tv_index.type_var_index];
+                    let c = self.calculating_arg(*tv_index);
                     if c.calculated() {
                         let bound = c.type_.clone();
                         let i_s = &InferenceState::new(db);
