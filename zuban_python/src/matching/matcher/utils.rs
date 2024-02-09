@@ -1,4 +1,4 @@
-use std::{borrow::Cow, cell::Cell, rc::Rc};
+use std::{borrow::Cow, cell::Cell};
 
 use parsa_python_ast::ParamKind;
 
@@ -166,42 +166,35 @@ impl CalculatedTypeArgs {
         class: Option<&Class>,
         replace_self_type: ReplaceSelf,
     ) -> Inferred {
-        let mut in_callable_definition = None;
         if self.type_var_likes.is_some() {
-            match &return_type {
-                Type::Callable(c) => {
-                    in_callable_definition = Some(c.defined_at);
-                }
-                Type::Class(c) => {
-                    let cls = c.class(i_s.db);
-                    if cls.is_protocol(i_s.db) {
-                        let members = &cls.use_cached_class_infos(i_s.db).protocol_members;
-                        if members.len() == 1
-                            && NodeRef::new(cls.node_ref.file, members[0].name_index).as_code()
-                                == "__call__"
-                        {
-                            let had_error = Cell::new(false);
-                            let inf = cls
-                                .instance()
-                                .lookup(
-                                    i_s,
-                                    |_| had_error.set(true),
-                                    "__call__",
-                                    LookupKind::OnlyType,
-                                )
-                                .into_inferred();
-                            if !had_error.get() {
-                                return self.as_return_type(
-                                    i_s,
-                                    &inf.as_cow_type(i_s),
-                                    None,
-                                    replace_self_type,
-                                );
-                            }
+            if let Type::Class(c) = &return_type {
+                let cls = c.class(i_s.db);
+                if cls.is_protocol(i_s.db) {
+                    let members = &cls.use_cached_class_infos(i_s.db).protocol_members;
+                    if members.len() == 1
+                        && NodeRef::new(cls.node_ref.file, members[0].name_index).as_code()
+                            == "__call__"
+                    {
+                        let had_error = Cell::new(false);
+                        let inf = cls
+                            .instance()
+                            .lookup(
+                                i_s,
+                                |_| had_error.set(true),
+                                "__call__",
+                                LookupKind::OnlyType,
+                            )
+                            .into_inferred();
+                        if !had_error.get() {
+                            return self.as_return_type(
+                                i_s,
+                                &inf.as_cow_type(i_s),
+                                None,
+                                replace_self_type,
+                            );
                         }
                     }
                 }
-                _ => (),
             }
         }
 
@@ -214,71 +207,51 @@ impl CalculatedTypeArgs {
                     }
                 }
                 if self.in_definition == usage.in_definition() {
-                    let mut arg = self.type_arguments.as_ref().unwrap()[usage.index()].clone();
-                    if self.type_var_likes.is_some() {
-                        arg = arg.replace_type_var_likes_and_self(
-                            i_s.db,
-                            &mut |mut tvl| {
-                                if tvl.in_definition() == self.in_definition {
-                                    if let Some(in_def) = in_callable_definition {
-                                        tvl.update_in_definition_and_index(in_def, tvl.index())
-                                    } else {
-                                        return tvl.as_type_var_like().as_never_generic_item();
-                                    }
-                                }
-                                tvl.into_generic_item()
-                            },
-                            &|| Type::Self_,
-                        )
-                    }
-                    return arg;
+                    return self.type_arguments.as_ref().unwrap()[usage.index()].clone();
                 }
                 usage.into_generic_item()
             },
             replace_self_type,
         );
         if let Some(type_var_likes) = self.type_var_likes {
-            if let Type::Callable(c) = &type_ {
-                fn create_callable_hierarchy(
-                    manager: &mut TypeVarManager,
-                    parent_callable: Option<PointLink>,
-                    type_var_likes: &TypeVarLikes,
-                    t: &Type,
-                ) {
-                    t.find_in_type(&mut |t| {
-                        if let Type::Callable(c) = t {
-                            // TODO the is_callable_known is only known, because we recurse
-                            // potentially multiple times into the same data structures, which is
-                            // not really needed.
-                            if !manager.is_callable_known(c.defined_at) {
-                                manager.register_callable(CallableWithParent {
-                                    defined_at: c.defined_at,
-                                    parent_callable,
-                                });
-                                c.params.search_type_vars(&mut |u| {
-                                    let found = u.as_type_var_like();
-                                    if type_var_likes.iter().any(|tvl| tvl == &found) {
-                                        manager.add(found, Some(c.defined_at));
-                                    }
-                                });
-                                create_callable_hierarchy(
-                                    manager,
-                                    Some(c.defined_at),
-                                    type_var_likes,
-                                    t,
-                                )
-                            }
+            fn create_callable_hierarchy(
+                manager: &mut TypeVarManager,
+                parent_callable: Option<PointLink>,
+                type_var_likes: &TypeVarLikes,
+                t: &Type,
+            ) {
+                t.find_in_type(&mut |t| {
+                    if let Type::Callable(c) = t {
+                        // TODO the is_callable_known is only known, because we recurse
+                        // potentially multiple times into the same data structures, which is
+                        // not really needed.
+                        if !manager.is_callable_known(c.defined_at) {
+                            manager.register_callable(CallableWithParent {
+                                defined_at: c.defined_at,
+                                parent_callable,
+                            });
+                            c.params.search_type_vars(&mut |u| {
+                                let found = u.as_type_var_like();
+                                if type_var_likes.iter().any(|tvl| tvl == &found) {
+                                    manager.add(found, Some(c.defined_at));
+                                }
+                            });
+                            create_callable_hierarchy(
+                                manager,
+                                Some(c.defined_at),
+                                type_var_likes,
+                                t,
+                            )
                         }
-                        false
-                    });
-                }
-
-                let mut manager = TypeVarManager::default();
-                create_callable_hierarchy(&mut manager, None, &type_var_likes, &type_);
-                let callable = c.rewrite_late_bound_callables(&manager);
-                type_ = Type::Callable(Rc::new(callable));
-                debug_assert_eq!(manager.into_type_vars().len(), 0);
+                    }
+                    false
+                });
             }
+
+            let mut manager = TypeVarManager::default();
+            create_callable_hierarchy(&mut manager, None, &type_var_likes, &type_);
+            type_ = type_.rewrite_late_bound_callables(&manager);
+            debug_assert_eq!(manager.into_type_vars().len(), 0);
         }
         debug!("Resolved type vars: {}", type_.format_short(i_s.db));
         Inferred::from_type(type_)
