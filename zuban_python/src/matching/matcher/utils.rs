@@ -250,7 +250,7 @@ impl CalculatedTypeArgs {
 
             let mut manager = TypeVarManager::default();
             create_callable_hierarchy(&mut manager, None, &type_var_likes, &type_);
-            type_ = type_.rewrite_late_bound_callables(&manager);
+            type_ = type_.rewrite_late_bound_callables(&mut manager);
             let mut unused_type_vars = vec![];
             for type_var_like in type_var_likes.iter() {
                 if !manager

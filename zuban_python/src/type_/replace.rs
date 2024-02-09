@@ -167,7 +167,7 @@ impl Type {
         }
     }
 
-    pub fn rewrite_late_bound_callables(&self, manager: &TypeVarManager) -> Self {
+    pub fn rewrite_late_bound_callables(&self, manager: &mut TypeVarManager) -> Self {
         let rewrite_generics = |generics: &GenericsList| {
             GenericsList::new_generics(
                 generics
@@ -316,13 +316,21 @@ impl CallableContent {
         }
     }
 
-    pub fn rewrite_late_bound_callables(&self, manager: &TypeVarManager) -> Self {
-        let type_vars = manager
-            .iter()
-            .filter_map(|t| {
-                (t.most_outer_callable == Some(self.defined_at)).then(|| t.type_var_like.clone())
-            })
-            .collect::<Rc<_>>();
+    pub fn rewrite_late_bound_callables(&self, manager: &mut TypeVarManager) -> Self {
+        let type_vars = if manager.already_written_hack.contains(&self.defined_at) {
+            // TODO This is currently necessary and wrong, because polymorphic inference with stuff
+            // like foo(foo) can lead to having the same callable definitions twice.
+            Rc::from([])
+        } else {
+            manager.already_written_hack.push(self.defined_at);
+            manager
+                .iter()
+                .filter_map(|t| {
+                    (t.most_outer_callable == Some(self.defined_at))
+                        .then(|| t.type_var_like.clone())
+                })
+                .collect::<Rc<_>>()
+        };
         CallableContent {
             name: self.name.clone(),
             class_name: self.class_name,
@@ -335,7 +343,7 @@ impl CallableContent {
     }
 }
 impl CallableParam {
-    fn rewrite_late_bound_callables(&self, manager: &TypeVarManager) -> Self {
+    fn rewrite_late_bound_callables(&self, manager: &mut TypeVarManager) -> Self {
         Self {
             type_: match &self.type_ {
                 ParamType::PositionalOnly(t) => {
@@ -535,7 +543,7 @@ impl CallableParams {
         (new_params, replace_data)
     }
 
-    fn rewrite_late_bound_callables(&self, manager: &TypeVarManager) -> Self {
+    fn rewrite_late_bound_callables(&self, manager: &mut TypeVarManager) -> Self {
         match &self {
             CallableParams::Simple(params) => CallableParams::Simple(
                 params
@@ -615,7 +623,7 @@ impl TupleArgs {
         }
     }
 
-    pub fn rewrite_late_bound_callables(&self, manager: &TypeVarManager) -> Self {
+    pub fn rewrite_late_bound_callables(&self, manager: &mut TypeVarManager) -> Self {
         match self {
             Self::FixedLen(ts) => Self::FixedLen(
                 ts.iter()

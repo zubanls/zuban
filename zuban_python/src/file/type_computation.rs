@@ -3161,13 +3161,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         Some(params)
     }
 
-    pub fn into_type_vars<C>(self, on_type_var_recalculation: C) -> TypeVarLikes
+    pub fn into_type_vars<C>(mut self, on_type_var_recalculation: C) -> TypeVarLikes
     where
-        C: FnOnce(&Inference, &dyn Fn(&Type) -> Type),
+        C: FnOnce(&Inference, &mut dyn FnMut(&Type) -> Type),
     {
         if self.type_var_manager.has_late_bound_type_vars() {
-            on_type_var_recalculation(self.inference, &|t| {
-                t.rewrite_late_bound_callables(&self.type_var_manager)
+            on_type_var_recalculation(self.inference, &mut |t| {
+                t.rewrite_late_bound_callables(&mut self.type_var_manager)
             })
         }
         self.type_var_manager.into_type_vars()
@@ -3485,7 +3485,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
     pub fn recalculate_annotation_type_vars(
         &self,
         node_index: NodeIndex,
-        recalculate: impl Fn(&Type) -> Type,
+        mut recalculate: impl FnMut(&Type) -> Type,
     ) {
         if matches!(
             self.file.points.get(node_index).specific(),
