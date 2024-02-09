@@ -14,10 +14,7 @@ pub(crate) use utils::{
     CalculatedTypeArgs,
 };
 
-use self::{
-    bound::TypeVarBound,
-    type_var_matcher::{CalculatingTypeArg, UnresolvedTransitiveConstraint},
-};
+use self::{bound::TypeVarBound, type_var_matcher::CalculatingTypeArg};
 
 use super::{
     params::{matches_params, matches_simple_params, InferrableParamIterator},
@@ -385,7 +382,7 @@ impl<'a> Matcher<'a> {
         let tv_matcher = &mut self.type_var_matchers[tv.matcher_index];
         tv_matcher.calculating_type_args[tv.type_var_index]
             .unresolved_transitive_constraints
-            .push(UnresolvedTransitiveConstraint { constraint });
+            .push(constraint);
     }
 
     pub fn match_or_add_type_var(
@@ -1098,7 +1095,7 @@ impl<'a> Matcher<'a> {
                     [tv_index.type_var_index];
                 for u in &tv.unresolved_transitive_constraints {
                     let mut is_cycle = false;
-                    u.constraint.search_type_vars(&mut |usage| {
+                    u.search_type_vars(&mut |usage| {
                         if let Some((matcher_index, _)) = self
                             .type_var_matchers
                             .iter()
@@ -1116,7 +1113,7 @@ impl<'a> Matcher<'a> {
                         }
                     });
                     if !is_cycle {
-                        unresolved.push(u.constraint.clone());
+                        unresolved.push(u.clone());
                     }
                 }
             }
@@ -1321,99 +1318,86 @@ impl<'a> Matcher<'a> {
                 // sorting.
                 let mut is_in_cycle = false;
                 let mut had_error = None;
-                let replaced_unresolved =
-                    unresolved
-                        .constraint
-                        .replace_type_var_likes(db, &mut |usage| {
-                            if had_error.is_some() {
-                                return usage.into_generic_item();
+                let replaced_unresolved = unresolved.replace_type_var_likes(db, &mut |usage| {
+                    if had_error.is_some() {
+                        return usage.into_generic_item();
+                    }
+                    for matcher_index in 0..self.type_var_matchers.len() {
+                        let tv_matcher = &self.type_var_matchers[matcher_index];
+                        if usage.in_definition() == tv_matcher.match_in_definition {
+                            let type_var_index = usage.index().as_usize();
+                            let c = &tv_matcher.calculating_type_args[type_var_index];
+                            let depending_on = cycles
+                                .find_cycle(TypeVarIndexed {
+                                    matcher_index,
+                                    type_var_index,
+                                })
+                                .unwrap();
+                            if !c.unresolved_transitive_constraints.is_empty() {
+                                let m = self.resolve_cycle(db, cycles, depending_on);
+                                if let Err(err) = m {
+                                    had_error = Some(err);
+                                    return usage.into_generic_item();
+                                }
                             }
-                            for matcher_index in 0..self.type_var_matchers.len() {
-                                let tv_matcher = &self.type_var_matchers[matcher_index];
-                                if usage.in_definition() == tv_matcher.match_in_definition {
-                                    let type_var_index = usage.index().as_usize();
-                                    let c = &tv_matcher.calculating_type_args[type_var_index];
-                                    let depending_on = cycles
-                                        .find_cycle(TypeVarIndexed {
-                                            matcher_index,
-                                            type_var_index,
-                                        })
-                                        .unwrap();
-                                    if !c.unresolved_transitive_constraints.is_empty() {
-                                        let m = self.resolve_cycle(db, cycles, depending_on);
-                                        if let Err(err) = m {
-                                            had_error = Some(err);
-                                            return usage.into_generic_item();
-                                        }
+                            if let Some(free_type_var_index) = depending_on.free_type_var_index {
+                                let in_definition = self.type_var_matchers[0].match_in_definition;
+                                let index = free_type_var_index.into();
+                                let temporary_matcher_id = 0;
+                                return match cycles.free_type_var_likes[free_type_var_index].clone()
+                                {
+                                    TypeVarLike::TypeVar(type_var) => {
+                                        GenericItem::TypeArg(Type::TypeVar(TypeVarUsage {
+                                            type_var,
+                                            index,
+                                            in_definition,
+                                            temporary_matcher_id,
+                                        }))
                                     }
-                                    if let Some(free_type_var_index) =
-                                        depending_on.free_type_var_index
-                                    {
-                                        let in_definition =
-                                            self.type_var_matchers[0].match_in_definition;
-                                        let index = free_type_var_index.into();
-                                        let temporary_matcher_id = 0;
-                                        return match cycles.free_type_var_likes[free_type_var_index]
-                                            .clone()
-                                        {
-                                            TypeVarLike::TypeVar(type_var) => {
-                                                GenericItem::TypeArg(Type::TypeVar(TypeVarUsage {
-                                                    type_var,
+                                    TypeVarLike::TypeVarTuple(type_var_tuple) => {
+                                        GenericItem::TypeArgs(TypeArgs::new(TupleArgs::WithUnpack(
+                                            WithUnpack::with_empty_before_and_after(
+                                                TupleUnpack::TypeVarTuple(TypeVarTupleUsage {
+                                                    type_var_tuple,
                                                     index,
                                                     in_definition,
                                                     temporary_matcher_id,
-                                                }))
-                                            }
-                                            TypeVarLike::TypeVarTuple(type_var_tuple) => {
-                                                GenericItem::TypeArgs(TypeArgs::new(
-                                                    TupleArgs::WithUnpack(
-                                                        WithUnpack::with_empty_before_and_after(
-                                                            TupleUnpack::TypeVarTuple(
-                                                                TypeVarTupleUsage {
-                                                                    type_var_tuple,
-                                                                    index,
-                                                                    in_definition,
-                                                                    temporary_matcher_id,
-                                                                },
-                                                            ),
-                                                        ),
-                                                    ),
-                                                ))
-                                            }
-                                            TypeVarLike::ParamSpec(param_spec) => {
-                                                GenericItem::ParamSpecArg(ParamSpecArg {
-                                                    params: CallableParams::WithParamSpec(
-                                                        Rc::from([]),
-                                                        ParamSpecUsage {
-                                                            param_spec,
-                                                            index: free_type_var_index.into(),
-                                                            in_definition,
-                                                            temporary_matcher_id,
-                                                        },
-                                                    ),
-                                                    type_vars: None,
-                                                })
-                                            }
-                                        };
-                                    } else {
-                                        if depending_on.set.contains(tv_in_cycle) {
-                                            is_in_cycle = true;
-                                            return usage.into_generic_item();
-                                        }
-                                        let first_entry = depending_on.set.iter().next().unwrap();
-                                        let tv_matcher =
-                                            &self.type_var_matchers[first_entry.matcher_index];
-                                        let tvl =
-                                            &tv_matcher.type_var_likes[first_entry.type_var_index];
-                                        return tv_matcher.calculating_type_args
-                                            [first_entry.type_var_index]
-                                            .clone()
-                                            .into_generic_item(db, tvl);
+                                                }),
+                                            ),
+                                        )))
                                     }
+                                    TypeVarLike::ParamSpec(param_spec) => {
+                                        GenericItem::ParamSpecArg(ParamSpecArg {
+                                            params: CallableParams::WithParamSpec(
+                                                Rc::from([]),
+                                                ParamSpecUsage {
+                                                    param_spec,
+                                                    index: free_type_var_index.into(),
+                                                    in_definition,
+                                                    temporary_matcher_id,
+                                                },
+                                            ),
+                                            type_vars: None,
+                                        })
+                                    }
+                                };
+                            } else {
+                                if depending_on.set.contains(tv_in_cycle) {
+                                    is_in_cycle = true;
+                                    return usage.into_generic_item();
                                 }
+                                let first_entry = depending_on.set.iter().next().unwrap();
+                                let tv_matcher = &self.type_var_matchers[first_entry.matcher_index];
+                                let tvl = &tv_matcher.type_var_likes[first_entry.type_var_index];
+                                return tv_matcher.calculating_type_args
+                                    [first_entry.type_var_index]
+                                    .clone()
+                                    .into_generic_item(db, tvl);
                             }
-                            usage.into_generic_item()
-                        });
+                        }
+                    }
+                    usage.into_generic_item()
+                });
                 if let Some(err) = had_error {
                     return Err(err);
                 }
@@ -1577,7 +1561,7 @@ impl<'a> Matcher<'a> {
                     }
                 }
             };
-            match &unresolved.constraint {
+            match unresolved {
                 BoundKind::TypeVar(tv_bound) => {
                     let t = match tv_bound {
                         TypeVarBound::Upper(t) => t,

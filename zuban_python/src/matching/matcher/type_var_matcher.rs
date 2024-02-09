@@ -214,15 +214,10 @@ impl BoundKind {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct UnresolvedTransitiveConstraint {
-    pub constraint: BoundKind,
-}
-
 #[derive(Debug, Default, Clone)]
 pub(super) struct CalculatingTypeArg {
     pub(super) type_: BoundKind,
-    pub(super) unresolved_transitive_constraints: Vec<UnresolvedTransitiveConstraint>,
+    pub(super) unresolved_transitive_constraints: Vec<BoundKind>,
     pub(super) defined_by_result_context: bool,
 }
 
