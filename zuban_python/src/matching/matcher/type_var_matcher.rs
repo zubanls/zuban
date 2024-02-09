@@ -221,13 +221,13 @@ pub struct UnresolvedTransitiveConstraint {
 }
 
 #[derive(Debug, Default, Clone)]
-pub(super) struct CalculatedTypeVarLike {
+pub(super) struct CalculatingTypeArg {
     pub(super) type_: BoundKind,
     pub(super) unresolved_transitive_constraints: Vec<UnresolvedTransitiveConstraint>,
     pub(super) defined_by_result_context: bool,
 }
 
-impl CalculatedTypeVarLike {
+impl CalculatingTypeArg {
     pub fn calculated(&self) -> bool {
         !matches!(self.type_, BoundKind::Uncalculated { .. })
     }
@@ -332,7 +332,7 @@ impl CalculatedTypeVarLike {
 
 #[derive(Debug, Clone)]
 pub struct TypeVarMatcher {
-    pub(super) calculating_type_args: Vec<CalculatedTypeVarLike>,
+    pub(super) calculating_type_args: Vec<CalculatingTypeArg>,
     pub(super) type_var_likes: TypeVarLikes,
     pub(super) match_in_definition: PointLink,
     pub match_reverse: bool,

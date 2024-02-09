@@ -16,7 +16,7 @@ pub(crate) use utils::{
 
 use self::{
     bound::TypeVarBound,
-    type_var_matcher::{CalculatedTypeVarLike, UnresolvedTransitiveConstraint},
+    type_var_matcher::{CalculatingTypeArg, UnresolvedTransitiveConstraint},
 };
 
 use super::{
@@ -900,7 +900,7 @@ impl<'a> Matcher<'a> {
         usage.format_without_matcher(format_data.db, params_style)
     }
 
-    fn iter_calculated_type_vars(&mut self) -> std::slice::IterMut<CalculatedTypeVarLike> {
+    fn iter_calculated_type_vars(&mut self) -> std::slice::IterMut<CalculatingTypeArg> {
         if let Some(type_var_matcher) = self.type_var_matchers.first_mut() {
             type_var_matcher.calculating_type_args.iter_mut()
         } else {
@@ -1577,7 +1577,7 @@ impl<'a> Matcher<'a> {
         &self,
         db: &Database,
         cycles: &mut TypeVarCycles,
-        calculated: &CalculatedTypeVarLike,
+        calculated: &CalculatingTypeArg,
         current_seen: TransitiveConstraintAlreadySeen,
     ) -> bool {
         let mut has_bound = calculated.calculated();
