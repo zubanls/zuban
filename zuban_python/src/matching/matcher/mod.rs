@@ -159,10 +159,8 @@ impl<'a> Matcher<'a> {
                     &|| Type::Self_,
                 ));
             }
-            self.type_var_matchers.push(TypeVarMatcher::new_reverse(
-                c2.defined_at,
-                c2.type_vars.clone(),
-            ))
+            self.type_var_matchers
+                .push(TypeVarMatcher::new(c2.defined_at, c2.type_vars.clone()))
         }
 
         let result = c1.return_type.is_super_type_of(i_s, self, &c2.return_type)

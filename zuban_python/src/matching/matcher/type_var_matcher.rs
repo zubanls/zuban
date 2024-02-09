@@ -329,23 +329,14 @@ pub struct TypeVarMatcher {
     pub(super) calculating_type_args: Vec<CalculatingTypeArg>,
     pub(super) type_var_likes: TypeVarLikes,
     pub(super) match_in_definition: PointLink,
-    pub match_reverse: bool,
 }
 
 impl TypeVarMatcher {
     pub fn new(match_in_definition: PointLink, type_var_likes: TypeVarLikes) -> Self {
-        Self::new_internal(match_in_definition, type_var_likes, false)
+        Self::new_internal(match_in_definition, type_var_likes)
     }
 
-    pub fn new_reverse(match_in_definition: PointLink, type_var_likes: TypeVarLikes) -> Self {
-        Self::new_internal(match_in_definition, type_var_likes, true)
-    }
-
-    fn new_internal(
-        match_in_definition: PointLink,
-        type_var_likes: TypeVarLikes,
-        match_reverse: bool,
-    ) -> Self {
+    fn new_internal(match_in_definition: PointLink, type_var_likes: TypeVarLikes) -> Self {
         // We could allocate on stack as described here:
         // https://stackoverflow.com/questions/27859822/is-it-possible-to-have-stack-allocated-arrays-with-the-size-determined-at-runtim
         let mut calculated_type_vars = vec![];
@@ -354,7 +345,6 @@ impl TypeVarMatcher {
             calculating_type_args: calculated_type_vars,
             match_in_definition,
             type_var_likes,
-            match_reverse,
         }
     }
 
