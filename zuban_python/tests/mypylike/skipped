@@ -5,7 +5,6 @@ testVariadicUnpackWithRegularInstance
 testMisguidedSetItem
 
 testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
-transitive_free_type_vars_without_callable
 
 # mypy upgrade
 testMultilineQuotedAnnotation

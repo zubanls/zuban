@@ -251,6 +251,24 @@ impl CalculatedTypeArgs {
             let mut manager = TypeVarManager::default();
             create_callable_hierarchy(&mut manager, None, &type_var_likes, &type_);
             type_ = type_.rewrite_late_bound_callables(&manager);
+            let mut unused_type_vars = vec![];
+            for type_var_like in type_var_likes.iter() {
+                if !manager
+                    .iter()
+                    .any(|in_manager| &in_manager.type_var_like == type_var_like)
+                {
+                    unused_type_vars.push(type_var_like)
+                }
+            }
+            if !unused_type_vars.is_empty() {
+                type_ = type_.replace_type_var_likes(i_s.db, &mut |usage| {
+                    if usage.in_definition() == self.in_definition {
+                        usage.as_type_var_like().as_never_generic_item()
+                    } else {
+                        usage.into_generic_item()
+                    }
+                });
+            }
             debug_assert_eq!(manager.into_type_vars().len(), 0);
         }
         debug!("Resolved type vars: {}", type_.format_short(i_s.db));
