@@ -388,7 +388,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
                     .type_var_matchers
                     .first_mut()
                     .unwrap()
-                    .calculated_type_vars
+                    .calculating_type_args
                 {
                     entry.avoid_type_vars_from_class_self_arguments(func_class);
                 }

@@ -332,7 +332,7 @@ impl CalculatedTypeVarLike {
 
 #[derive(Debug, Clone)]
 pub struct TypeVarMatcher {
-    pub(super) calculated_type_vars: Vec<CalculatedTypeVarLike>,
+    pub(super) calculating_type_args: Vec<CalculatedTypeVarLike>,
     pub(super) type_var_likes: TypeVarLikes,
     pub(super) match_in_definition: PointLink,
     pub match_reverse: bool,
@@ -358,7 +358,7 @@ impl TypeVarMatcher {
         let mut calculated_type_vars = vec![];
         calculated_type_vars.resize_with(type_var_likes.len(), Default::default);
         Self {
-            calculated_type_vars,
+            calculating_type_args: calculated_type_vars,
             match_in_definition,
             type_var_likes,
             match_reverse,
@@ -374,7 +374,7 @@ impl TypeVarMatcher {
     ) {
         type_.search_type_vars(&mut |t| {
             if t.in_definition() == self.match_in_definition {
-                let current = &mut self.calculated_type_vars[t.index().as_usize()];
+                let current = &mut self.calculating_type_args[t.index().as_usize()];
                 if !current.calculated() {
                     current.set_to_any(&t.as_type_var_like(), cause)
                 }
@@ -391,7 +391,7 @@ impl TypeVarMatcher {
         variance: Variance,
     ) -> Match {
         debug_assert_eq!(type_var_usage.in_definition, self.match_in_definition);
-        let current = &mut self.calculated_type_vars[type_var_usage.index.as_usize()];
+        let current = &mut self.calculating_type_args[type_var_usage.index.as_usize()];
         if let BoundKind::TypeVar(current_type) = &mut current.type_ {
             let m = current_type.merge_or_mismatch(i_s, value_type, variance);
             return m;
@@ -418,7 +418,7 @@ impl TypeVarMatcher {
 
     pub fn into_generics_list(self, db: &Database) -> GenericsList {
         GenericsList::new_generics(
-            self.calculated_type_vars
+            self.calculating_type_args
                 .into_iter()
                 .zip(self.type_var_likes.iter())
                 .map(|(c, type_var_like)| c.into_generic_item(db, type_var_like))
@@ -427,7 +427,7 @@ impl TypeVarMatcher {
     }
 
     pub fn has_unresolved_transitive_constraints(&self) -> bool {
-        self.calculated_type_vars
+        self.calculating_type_args
             .iter()
             .any(|calculated| !calculated.unresolved_transitive_constraints.is_empty())
     }

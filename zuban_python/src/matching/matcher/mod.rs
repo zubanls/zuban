@@ -381,7 +381,7 @@ impl<'a> Matcher<'a> {
             .filter_map(|(i, tvm)| (!tvm.enabled).then_some(i))
             .collect();
         let tv_matcher = &mut self.type_var_matchers[tv.matcher_index];
-        tv_matcher.calculated_type_vars[tv.type_var_index]
+        tv_matcher.calculating_type_args[tv.type_var_index]
             .unresolved_transitive_constraints
             .push(UnresolvedTransitiveConstraint {
                 constraint,
@@ -485,7 +485,7 @@ impl<'a> Matcher<'a> {
                     return Match::new_true();
                 }
                 let tv_matcher = &mut self.type_var_matchers[i];
-                return tv_matcher.calculated_type_vars[tvt.index.as_usize()]
+                return tv_matcher.calculating_type_args[tvt.index.as_usize()]
                     .match_or_add_type_var_tuple(i_s, args2);
             }
         }
@@ -630,7 +630,7 @@ impl<'a> Matcher<'a> {
                     return Some(Match::new_true());
                 }
                 let tv_matcher = &mut self.type_var_matchers[i];
-                let calc = &mut tv_matcher.calculated_type_vars[type_var_index];
+                let calc = &mut tv_matcher.calculating_type_args[type_var_index];
                 return Some(match &mut calc.type_ {
                     BoundKind::ParamSpec(p) => match_params(i_s, p, p2_pre_iterator),
                     BoundKind::Uncalculated { .. } => {
@@ -718,7 +718,7 @@ impl<'a> Matcher<'a> {
                     return Match::new_true();
                 }
                 let tv_matcher = &mut self.type_var_matchers[i];
-                let calc = &mut tv_matcher.calculated_type_vars[p1.index.as_usize()];
+                let calc = &mut tv_matcher.calculating_type_args[p1.index.as_usize()];
                 return match &mut calc.type_ {
                     BoundKind::ParamSpec(p) => match_params(i_s, matches, &p, params2_iterator),
                     BoundKind::Uncalculated { .. } => {
@@ -757,7 +757,7 @@ impl<'a> Matcher<'a> {
         let param_spec_usage;
         let params = if let Some(type_var_matcher) = self.type_var_matchers.first() {
             if type_var_matcher.match_in_definition == usage.in_definition {
-                match &type_var_matcher.calculated_type_vars[usage.index.as_usize()].type_ {
+                match &type_var_matcher.calculating_type_args[usage.index.as_usize()].type_ {
                     BoundKind::ParamSpec(p) => p,
                     // This means that an Any came along.
                     BoundKind::Uncalculated { .. } => return SignatureMatch::new_true(),
@@ -861,7 +861,7 @@ impl<'a> Matcher<'a> {
             .filter(|(_, tvm)| tvm.enabled)
         {
             if tv_matcher.match_in_definition == usage.in_definition() {
-                let current = &tv_matcher.calculated_type_vars[usage.index().as_usize()];
+                let current = &tv_matcher.calculating_type_args[usage.index().as_usize()];
                 return match &current.type_ {
                     BoundKind::TypeVar(bound) => bound.format(format_data.db, format_data.style),
                     BoundKind::TypeVarTuple(ts) => ts.format(format_data),
@@ -902,7 +902,7 @@ impl<'a> Matcher<'a> {
 
     fn iter_calculated_type_vars(&mut self) -> std::slice::IterMut<CalculatedTypeVarLike> {
         if let Some(type_var_matcher) = self.type_var_matchers.first_mut() {
-            type_var_matcher.calculated_type_vars.iter_mut()
+            type_var_matcher.calculating_type_args.iter_mut()
         } else {
             unreachable!()
         }
@@ -926,10 +926,10 @@ impl<'a> Matcher<'a> {
                 &mut self.as_usage_closure(i_s.db, |usage| {
                     let index = usage.index().as_usize();
                     if usage.in_definition() == defined_at {
-                        let c = &tv_matcher.calculated_type_vars[index];
+                        let c = &tv_matcher.calculating_type_args[index];
                         debug_assert!(!c.calculated());
                         let new_index = tv_matcher
-                            .calculated_type_vars
+                            .calculating_type_args
                             .iter()
                             .take(index)
                             .filter(|c| !c.calculated())
@@ -946,7 +946,7 @@ impl<'a> Matcher<'a> {
                 i_s.db.python_state.empty_type_var_likes.clone(),
             )
             .as_vec();
-            for (i, c) in tv_matcher.calculated_type_vars.iter().enumerate().rev() {
+            for (i, c) in tv_matcher.calculating_type_args.iter().enumerate().rev() {
                 if c.calculated() {
                     old_type_vars.remove(i);
                 }
@@ -993,7 +993,7 @@ impl<'a> Matcher<'a> {
         move |usage| {
             for type_var_matcher in self.type_var_matchers.iter().filter(|tvm| tvm.enabled) {
                 if usage.in_definition() == type_var_matcher.match_in_definition {
-                    let current = &type_var_matcher.calculated_type_vars[usage.index().as_usize()];
+                    let current = &type_var_matcher.calculating_type_args[usage.index().as_usize()];
                     return match &current.type_ {
                         BoundKind::TypeVar(t) => GenericItem::TypeArg(t.clone().into_type(db)),
                         BoundKind::TypeVarTuple(ts) => {
@@ -1103,7 +1103,7 @@ impl<'a> Matcher<'a> {
         self.type_var_matchers
             .iter()
             .map(|tvm| {
-                tvm.calculated_type_vars
+                tvm.calculating_type_args
                     .iter()
                     .map(|c| c.unresolved_transitive_constraints.len() + c.calculated() as usize)
             })
@@ -1116,7 +1116,7 @@ impl<'a> Matcher<'a> {
             let mut unresolved = vec![];
             // First check for all relevant unresolved constraints in the cycle that are non-cycles
             for tv_index in &cycle.set {
-                let tv = &self.type_var_matchers[tv_index.matcher_index].calculated_type_vars
+                let tv = &self.type_var_matchers[tv_index.matcher_index].calculating_type_args
                     [tv_index.type_var_index];
                 for u in &tv.unresolved_transitive_constraints {
                     let mut is_cycle = false;
@@ -1146,7 +1146,7 @@ impl<'a> Matcher<'a> {
             // Check non-transitive constraints first
             for wanted_constraint in &unresolved {
                 for tv_index in &cycle.set {
-                    let c = &self.type_var_matchers[tv_index.matcher_index].calculated_type_vars
+                    let c = &self.type_var_matchers[tv_index.matcher_index].calculating_type_args
                         [tv_index.type_var_index];
                     if c.calculated() {
                         let bound = c.type_.clone();
@@ -1268,7 +1268,11 @@ impl<'a> Matcher<'a> {
         for cycle in &cycles.cycles {
             if let Err(e) = self.resolve_cycle(db, &cycles, cycle) {
                 for type_var_matcher in &mut self.type_var_matchers {
-                    for (i, c) in type_var_matcher.calculated_type_vars.iter_mut().enumerate() {
+                    for (i, c) in type_var_matcher
+                        .calculating_type_args
+                        .iter_mut()
+                        .enumerate()
+                    {
                         c.set_to_any(&type_var_matcher.type_var_likes[i], AnyCause::FromError);
                     }
                 }
@@ -1327,7 +1331,7 @@ impl<'a> Matcher<'a> {
         };
         for tv_in_cycle in &cycle.set {
             // Use normal bound
-            let used = &mut self.type_var_matchers[tv_in_cycle.matcher_index].calculated_type_vars
+            let used = &mut self.type_var_matchers[tv_in_cycle.matcher_index].calculating_type_args
                 [tv_in_cycle.type_var_index];
             let taken_bounds = std::mem::take(&mut used.type_);
             let m = current_bound.merge(db, taken_bounds);
@@ -1358,7 +1362,7 @@ impl<'a> Matcher<'a> {
                                 let tv_matcher = &self.type_var_matchers[matcher_index];
                                 if usage.in_definition() == tv_matcher.match_in_definition {
                                     let type_var_index = usage.index().as_usize();
-                                    let c = &tv_matcher.calculated_type_vars[type_var_index];
+                                    let c = &tv_matcher.calculating_type_args[type_var_index];
                                     let depending_on = cycles
                                         .find_cycle(TypeVarAlreadySeen {
                                             matcher_index,
@@ -1431,7 +1435,7 @@ impl<'a> Matcher<'a> {
                                             &self.type_var_matchers[first_entry.matcher_index];
                                         let tvl =
                                             &tv_matcher.type_var_likes[first_entry.type_var_index];
-                                        return tv_matcher.calculated_type_vars
+                                        return tv_matcher.calculating_type_args
                                             [first_entry.type_var_index]
                                             .clone()
                                             .into_generic_item(db, tvl);
@@ -1454,7 +1458,7 @@ impl<'a> Matcher<'a> {
 
         // Set the bounds properly
         for tv_in_cycle in &cycle.set {
-            self.type_var_matchers[tv_in_cycle.matcher_index].calculated_type_vars
+            self.type_var_matchers[tv_in_cycle.matcher_index].calculating_type_args
                 [tv_in_cycle.type_var_index]
                 .type_ = current_bound.clone();
         }
@@ -1525,7 +1529,7 @@ impl<'a> Matcher<'a> {
     fn find_unresolved_transitive_constraint_cycles(&self, db: &Database) -> TypeVarCycles {
         let mut cycles = TypeVarCycles::default();
         for (i, tv_matcher) in self.type_var_matchers.iter().enumerate() {
-            for (k, tv) in tv_matcher.calculated_type_vars.iter().enumerate() {
+            for (k, tv) in tv_matcher.calculating_type_args.iter().enumerate() {
                 let current = TypeVarAlreadySeen {
                     matcher_index: i,
                     type_var_index: k,
@@ -1551,7 +1555,7 @@ impl<'a> Matcher<'a> {
         // Add all the remaining type var that are not actually a cycle to the list of cycles, so
         // we can just iterate over all distinct "cycles".
         for (i, tv_matcher) in self.type_var_matchers.iter().enumerate() {
-            for (k, tv) in tv_matcher.calculated_type_vars.iter().enumerate() {
+            for (k, tv) in tv_matcher.calculating_type_args.iter().enumerate() {
                 let current = TypeVarAlreadySeen {
                     matcher_index: i,
                     type_var_index: k,
@@ -1585,7 +1589,7 @@ impl<'a> Matcher<'a> {
                     }
                     if usage.in_definition() == tv_matcher.match_in_definition {
                         let type_var_index = usage.index().as_usize();
-                        let current = &tv_matcher.calculated_type_vars[type_var_index];
+                        let current = &tv_matcher.calculating_type_args[type_var_index];
                         let new_current_seen = TypeVarAlreadySeen {
                             matcher_index,
                             type_var_index,
@@ -1635,7 +1639,7 @@ impl<'a> Matcher<'a> {
             .into_iter()
             .next()
             .unwrap()
-            .calculated_type_vars
+            .calculating_type_args
             .into_iter()
             .map(|c| {
                 c.maybe_calculated_type(db)
@@ -1652,7 +1656,7 @@ impl<'a> Matcher<'a> {
             .into_iter()
             .next()
             .unwrap()
-            .calculated_type_vars
+            .calculating_type_args
             .into_iter()
             .zip(type_vars.iter())
             .map(|(c, type_var_like)| {
