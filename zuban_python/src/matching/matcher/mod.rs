@@ -365,10 +365,14 @@ impl<'a> Matcher<'a> {
         }
         let mut has_unresolved_constraint = false;
         find_type_var(&mut |tv| {
-            for tv_matcher in &self.type_var_matchers {
-                if tv_matcher.enabled && tv_matcher.match_in_definition == tv.in_definition() {
-                    has_unresolved_constraint = true;
-                }
+            if self
+                .find_responsible_type_var_matcher_index(
+                    tv.in_definition(),
+                    tv.temporary_matcher_id(),
+                )
+                .is_some()
+            {
+                has_unresolved_constraint = true;
             }
         });
         if has_unresolved_constraint {
