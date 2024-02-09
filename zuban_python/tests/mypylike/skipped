@@ -6,6 +6,8 @@ testMisguidedSetItem
 
 testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
 
+testParamSpecJoin
+
 # mypy upgrade
 testMultilineQuotedAnnotation
 testDataclassFieldWithPositionalArguments
