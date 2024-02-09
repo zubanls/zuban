@@ -1072,13 +1072,10 @@ impl<'a> Matcher<'a> {
                 for u in &tv.unresolved_transitive_constraints {
                     let mut is_cycle = false;
                     u.search_type_vars(&mut |usage| {
-                        if let Some((matcher_index, _)) = self
-                            .type_var_matchers
-                            .iter()
-                            .enumerate()
-                            .filter(|(_, m)| m.match_in_definition == usage.in_definition())
-                            .next()
-                        {
+                        if let Some(matcher_index) = self.find_responsible_type_var_matcher_index(
+                            usage.in_definition(),
+                            usage.temporary_matcher_id(),
+                        ) {
                             let current = TypeVarIndexed {
                                 matcher_index,
                                 type_var_index: usage.index().as_usize(),
