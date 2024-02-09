@@ -295,7 +295,7 @@ impl<'a> Matcher<'a> {
         {
             if tv_matcher.match_in_definition == t1.in_definition {
                 if self.check_if_unresolved_transitive_constraint(
-                    TypeVarAlreadySeen {
+                    TypeVarIndexed {
                         matcher_index: i,
                         type_var_index: t1.index.as_usize(),
                     },
@@ -351,7 +351,7 @@ impl<'a> Matcher<'a> {
     #[inline]
     fn check_if_unresolved_transitive_constraint(
         &mut self,
-        tv: TypeVarAlreadySeen,
+        tv: TypeVarIndexed,
         find_type_var: impl FnOnce(&mut dyn FnMut(TypeVarLikeUsage)),
         as_constraint: impl Fn() -> BoundKind,
     ) -> bool {
@@ -372,7 +372,7 @@ impl<'a> Matcher<'a> {
         has_unresolved_constraint
     }
 
-    fn add_unresolved_constraint(&mut self, tv: TypeVarAlreadySeen, constraint: BoundKind) {
+    fn add_unresolved_constraint(&mut self, tv: TypeVarIndexed, constraint: BoundKind) {
         let disabled_matchers = self
             .type_var_matchers
             .iter()
@@ -474,7 +474,7 @@ impl<'a> Matcher<'a> {
         {
             if tv_matcher.match_in_definition == tvt.in_definition {
                 if self.check_if_unresolved_transitive_constraint(
-                    TypeVarAlreadySeen {
+                    TypeVarIndexed {
                         matcher_index: i,
                         type_var_index: tvt.index.as_usize(),
                     },
@@ -620,7 +620,7 @@ impl<'a> Matcher<'a> {
                     .any(|tvm| tvm.match_in_definition == p2.in_definition)
                 {
                     self.add_unresolved_constraint(
-                        TypeVarAlreadySeen {
+                        TypeVarIndexed {
                             matcher_index: i,
                             type_var_index,
                         },
@@ -705,7 +705,7 @@ impl<'a> Matcher<'a> {
                     |p2_it: Peekable<_>| CallableParams::Simple(p2_it.cloned().collect());
                 let as_constraint = |p2_it| BoundKind::ParamSpec(as_params(p2_it));
                 if self.check_if_unresolved_transitive_constraint(
-                    TypeVarAlreadySeen {
+                    TypeVarIndexed {
                         matcher_index: i,
                         type_var_index: p1.index.as_usize(),
                     },
@@ -1127,7 +1127,7 @@ impl<'a> Matcher<'a> {
                             .filter(|(_, m)| m.match_in_definition == usage.in_definition())
                             .next()
                         {
-                            let current = TypeVarAlreadySeen {
+                            let current = TypeVarIndexed {
                                 matcher_index,
                                 type_var_index: usage.index().as_usize(),
                             };
@@ -1363,7 +1363,7 @@ impl<'a> Matcher<'a> {
                                     let type_var_index = usage.index().as_usize();
                                     let c = &tv_matcher.calculating_type_args[type_var_index];
                                     let depending_on = cycles
-                                        .find_cycle(TypeVarAlreadySeen {
+                                        .find_cycle(TypeVarIndexed {
                                             matcher_index,
                                             type_var_index,
                                         })
@@ -1484,7 +1484,7 @@ impl<'a> Matcher<'a> {
         db: &Database,
         cycle: &TypeVarCycle,
     ) -> Result<TypeVarLike, Match> {
-        let as_type_var_like = |tv_index: TypeVarAlreadySeen| {
+        let as_type_var_like = |tv_index: TypeVarIndexed| {
             &self.type_var_matchers[tv_index.matcher_index].type_var_likes[tv_index.type_var_index]
         };
         let mut lst = Vec::from_iter(cycle.set.iter().cloned());
@@ -1529,7 +1529,7 @@ impl<'a> Matcher<'a> {
         let mut cycles = TypeVarCycles::default();
         for (i, tv_matcher) in self.type_var_matchers.iter().enumerate() {
             for (k, tv) in tv_matcher.calculating_type_args.iter().enumerate() {
-                let current = TypeVarAlreadySeen {
+                let current = TypeVarIndexed {
                     matcher_index: i,
                     type_var_index: k,
                 };
@@ -1555,7 +1555,7 @@ impl<'a> Matcher<'a> {
         // we can just iterate over all distinct "cycles".
         for (i, tv_matcher) in self.type_var_matchers.iter().enumerate() {
             for (k, tv) in tv_matcher.calculating_type_args.iter().enumerate() {
-                let current = TypeVarAlreadySeen {
+                let current = TypeVarIndexed {
                     matcher_index: i,
                     type_var_index: k,
                 };
@@ -1589,7 +1589,7 @@ impl<'a> Matcher<'a> {
                     if usage.in_definition() == tv_matcher.match_in_definition {
                         let type_var_index = usage.index().as_usize();
                         let current = &tv_matcher.calculating_type_args[type_var_index];
-                        let new_current_seen = TypeVarAlreadySeen {
+                        let new_current_seen = TypeVarIndexed {
                             matcher_index,
                             type_var_index,
                         };
@@ -1705,14 +1705,14 @@ impl fmt::Debug for Matcher<'_> {
 }
 
 #[derive(Copy, Clone, PartialEq, Debug, Eq, Hash, PartialOrd, Ord)]
-struct TypeVarAlreadySeen {
+struct TypeVarIndexed {
     matcher_index: usize,
     type_var_index: usize,
 }
 
 #[derive(Debug)]
 struct TransitiveConstraintAlreadySeen<'a> {
-    current: TypeVarAlreadySeen,
+    current: TypeVarIndexed,
     previous: Option<&'a TransitiveConstraintAlreadySeen<'a>>,
 }
 
@@ -1730,7 +1730,7 @@ impl<'a> TransitiveConstraintAlreadySeen<'a> {
 struct TypeVarAlreadySeenIterator<'a>(Option<&'a TransitiveConstraintAlreadySeen<'a>>);
 
 impl Iterator for TypeVarAlreadySeenIterator<'_> {
-    type Item = TypeVarAlreadySeen;
+    type Item = TypeVarIndexed;
 
     fn next(&mut self) -> Option<Self::Item> {
         let first = self.0.take()?;
@@ -1785,7 +1785,7 @@ impl TypeVarCycles {
             .push(TypeVarCycle::new(HashSet::from_iter(cycle_parts())));
     }
 
-    fn enable_has_bound_for_type_var(&mut self, tv: TypeVarAlreadySeen) {
+    fn enable_has_bound_for_type_var(&mut self, tv: TypeVarIndexed) {
         for cycle in &mut self.cycles {
             if cycle.set.contains(&tv) {
                 cycle.has_bound = true;
@@ -1794,7 +1794,7 @@ impl TypeVarCycles {
         }
     }
 
-    fn find_cycle(&self, tv: TypeVarAlreadySeen) -> Option<&TypeVarCycle> {
+    fn find_cycle(&self, tv: TypeVarIndexed) -> Option<&TypeVarCycle> {
         for cycle in &self.cycles {
             if cycle.set.contains(&tv) {
                 return Some(cycle);
@@ -1806,13 +1806,13 @@ impl TypeVarCycles {
 
 #[derive(Debug)]
 struct TypeVarCycle {
-    set: HashSet<TypeVarAlreadySeen>,
+    set: HashSet<TypeVarIndexed>,
     has_bound: bool,
     free_type_var_index: Option<usize>,
 }
 
 impl TypeVarCycle {
-    fn new(set: HashSet<TypeVarAlreadySeen>) -> Self {
+    fn new(set: HashSet<TypeVarIndexed>) -> Self {
         // has_bound is initially initialized false and later updated.
         Self {
             set,
