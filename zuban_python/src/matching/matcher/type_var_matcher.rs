@@ -216,7 +216,6 @@ impl BoundKind {
 
 #[derive(Debug, Clone)]
 pub struct UnresolvedTransitiveConstraint {
-    pub disabled_matchers: Box<[usize]>,
     pub constraint: BoundKind,
 }
 

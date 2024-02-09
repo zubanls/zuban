@@ -382,19 +382,10 @@ impl<'a> Matcher<'a> {
     }
 
     fn add_unresolved_constraint(&mut self, tv: TypeVarIndexed, constraint: BoundKind) {
-        let disabled_matchers = self
-            .type_var_matchers
-            .iter()
-            .enumerate()
-            .filter_map(|(i, tvm)| (!tvm.enabled).then_some(i))
-            .collect();
         let tv_matcher = &mut self.type_var_matchers[tv.matcher_index];
         tv_matcher.calculating_type_args[tv.type_var_index]
             .unresolved_transitive_constraints
-            .push(UnresolvedTransitiveConstraint {
-                constraint,
-                disabled_matchers,
-            });
+            .push(UnresolvedTransitiveConstraint { constraint });
     }
 
     pub fn match_or_add_type_var(
@@ -1338,9 +1329,6 @@ impl<'a> Matcher<'a> {
                                 return usage.into_generic_item();
                             }
                             for matcher_index in 0..self.type_var_matchers.len() {
-                                if unresolved.disabled_matchers.contains(&matcher_index) {
-                                    continue;
-                                }
                                 let tv_matcher = &self.type_var_matchers[matcher_index];
                                 if usage.in_definition() == tv_matcher.match_in_definition {
                                     let type_var_index = usage.index().as_usize();
@@ -1566,9 +1554,6 @@ impl<'a> Matcher<'a> {
         for unresolved in &calculated.unresolved_transitive_constraints {
             let cycle_search = &mut |usage: TypeVarLikeUsage| {
                 for (matcher_index, tv_matcher) in self.type_var_matchers.iter().enumerate() {
-                    if unresolved.disabled_matchers.contains(&matcher_index) {
-                        continue;
-                    }
                     if usage.in_definition() == tv_matcher.match_in_definition {
                         let type_var_index = usage.index().as_usize();
                         let current = &tv_matcher.calculating_type_args[type_var_index];
