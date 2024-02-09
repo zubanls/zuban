@@ -287,7 +287,6 @@ impl<'a> Matcher<'a> {
         value_type: &Type,
         variance: Variance,
     ) -> Option<Match> {
-        let type_var_matchers_count = self.type_var_matchers.len();
         for (i, tv_matcher) in self
             .type_var_matchers
             .iter()
