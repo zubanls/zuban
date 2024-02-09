@@ -1034,9 +1034,9 @@ impl<'a> Matcher<'a> {
         cause: AnyCause,
         from_other_side: bool,
     ) {
-        for tvm in self.type_var_matchers.iter_mut() {
-            if tvm.enabled && (tvm.match_reverse == self.match_reverse) != from_other_side {
-                tvm.set_all_contained_type_vars_to_any(i_s, type_, cause)
+        for (i, tvm) in self.type_var_matchers.iter_mut().enumerate() {
+            if (tvm.match_reverse == self.match_reverse) != from_other_side {
+                tvm.set_all_contained_type_vars_to_any(i_s, type_, i as u32, cause)
             }
         }
     }

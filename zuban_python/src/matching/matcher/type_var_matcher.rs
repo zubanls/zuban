@@ -330,7 +330,6 @@ pub struct TypeVarMatcher {
     pub(super) type_var_likes: TypeVarLikes,
     pub(super) match_in_definition: PointLink,
     pub match_reverse: bool,
-    pub enabled: bool,
 }
 
 impl TypeVarMatcher {
@@ -356,7 +355,6 @@ impl TypeVarMatcher {
             match_in_definition,
             type_var_likes,
             match_reverse,
-            enabled: true,
         }
     }
 
@@ -364,13 +362,17 @@ impl TypeVarMatcher {
         &mut self,
         i_s: &InferenceState,
         type_: &Type,
+        matcher_index: u32,
         cause: AnyCause,
     ) {
-        type_.search_type_vars(&mut |t| {
-            if t.in_definition() == self.match_in_definition {
-                let current = &mut self.calculating_type_args[t.index().as_usize()];
-                if !current.calculated() {
-                    current.set_to_any(&t.as_type_var_like(), cause)
+        type_.search_type_vars(&mut |usage| {
+            if usage.in_definition() == self.match_in_definition {
+                let temporary_matcher_id = usage.temporary_matcher_id();
+                if temporary_matcher_id == 0 || temporary_matcher_id == matcher_index {
+                    let current = &mut self.calculating_type_args[usage.index().as_usize()];
+                    if !current.calculated() {
+                        current.set_to_any(&usage.as_type_var_like(), cause)
+                    }
                 }
             }
         });
