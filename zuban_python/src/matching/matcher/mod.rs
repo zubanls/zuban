@@ -236,10 +236,9 @@ impl<'a> Matcher<'a> {
     }
 
     #[inline]
-    pub fn is_responsible_for_reverse_matching_definition(&self, def: PointLink) -> bool {
-        self.type_var_matchers
-            .iter()
-            .any(|tvm| tvm.match_in_definition == def && tvm.match_reverse != self.match_reverse)
+    pub fn has_responsible_matcher(&self, tvt2: &TypeVarTupleUsage) -> bool {
+        self.find_responsible_type_var_matcher_index(tvt2.in_definition, tvt2.temporary_matcher_id)
+            .is_some()
     }
 
     pub fn is_matching_reverse(&self) -> bool {

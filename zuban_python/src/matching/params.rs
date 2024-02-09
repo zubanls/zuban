@@ -160,7 +160,7 @@ pub fn matches_simple_params<
                     ..
                 }) = &unpacked2.args
                 {
-                    if matcher.is_responsible_for_reverse_matching_definition(tvt2.in_definition) {
+                    if matcher.has_responsible_matcher(tvt2) {
                         let mut params1 = std::iter::once(param1)
                             .peekable()
                             .chain(&mut params1)
