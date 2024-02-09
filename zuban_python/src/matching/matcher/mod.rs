@@ -1015,29 +1015,8 @@ impl<'a> Matcher<'a> {
         type_: &Type,
         cause: AnyCause,
     ) {
-        self.set_all_contained_type_vars_to_any_detailed(i_s, type_, cause, false)
-    }
-
-    pub fn set_all_contained_type_vars_to_any_for_other_side(
-        &mut self,
-        i_s: &InferenceState,
-        type_: &Type,
-        cause: AnyCause,
-    ) {
-        self.set_all_contained_type_vars_to_any_detailed(i_s, type_, cause, true)
-    }
-
-    pub fn set_all_contained_type_vars_to_any_detailed(
-        &mut self,
-        i_s: &InferenceState,
-        type_: &Type,
-        cause: AnyCause,
-        from_other_side: bool,
-    ) {
         for (i, tvm) in self.type_var_matchers.iter_mut().enumerate() {
-            if (tvm.match_reverse == self.match_reverse) != from_other_side {
-                tvm.set_all_contained_type_vars_to_any(i_s, type_, i as u32, cause)
-            }
+            tvm.set_all_contained_type_vars_to_any(i_s, type_, i as u32, cause)
         }
     }
 

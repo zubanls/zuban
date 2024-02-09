@@ -113,7 +113,7 @@ impl Type {
             }
             Type::None => matches!(value_type, Type::None).into(),
             Type::Any(cause) => {
-                matcher.set_all_contained_type_vars_to_any_for_other_side(i_s, value_type, *cause);
+                matcher.set_all_contained_type_vars_to_any(i_s, value_type, *cause);
                 Match::True {
                     with_any: matcher.is_matching_reverse(),
                 }
