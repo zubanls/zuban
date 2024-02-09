@@ -836,8 +836,12 @@ impl Type {
                     generics.search_type_vars(found_type_var)
                 }
             }
-            Self::ParamSpecArgs(usage) => todo!(),
-            Self::ParamSpecKwargs(usage) => todo!(),
+            Self::ParamSpecArgs(usage) => {
+                found_type_var(TypeVarLikeUsage::ParamSpec(usage.clone()))
+            }
+            Self::ParamSpecKwargs(usage) => {
+                found_type_var(TypeVarLikeUsage::ParamSpec(usage.clone()))
+            }
             Self::Dataclass(d) => match &d.class.generics {
                 ClassGenerics::List(generics) => generics.search_type_vars(found_type_var),
                 _ => (),
