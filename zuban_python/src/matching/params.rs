@@ -161,6 +161,8 @@ pub fn matches_simple_params<
                 }) = &unpacked2.args
                 {
                     if matcher.has_responsible_matcher(tvt2) {
+                        // TODO making params1 peekable is not possible in this way and will always
+                        // fetch a param too much.
                         let mut params1 = std::iter::once(param1)
                             .peekable()
                             .chain(&mut params1)

@@ -524,6 +524,9 @@ pub struct TypeVarUsage {
     pub type_var: Rc<TypeVar>,
     pub in_definition: PointLink,
     pub index: TypeVarIndex,
+    // This should only ever be used for type matching. This is also only used for stuff like
+    // foo(foo) where the callable is used twice with type vars and polymorphic matching is needed
+    // to negotiate the type vars. This is reset after type matching and should always be 0.
     pub temporary_matcher_id: u32,
 }
 
