@@ -660,6 +660,14 @@ impl TypeVarLikeUsage {
         }
     }
 
+    pub fn temporary_matcher_id(&self) -> u32 {
+        match self {
+            Self::TypeVar(t) => t.temporary_matcher_id,
+            Self::TypeVarTuple(t) => t.temporary_matcher_id,
+            Self::ParamSpec(p) => p.temporary_matcher_id,
+        }
+    }
+
     pub fn as_type_var_like(&self) -> TypeVarLike {
         match self {
             Self::TypeVar(t) => TypeVarLike::TypeVar(t.type_var.clone()),

@@ -280,6 +280,21 @@ impl<'a> Matcher<'a> {
         }
     }
 
+    fn find_responsible_type_var_matcher_index(
+        &self,
+        in_definition: PointLink,
+        temporary_matcher_index: u32,
+    ) -> Option<usize> {
+        for (i, tv_matcher) in self.type_var_matchers.iter().enumerate() {
+            if tv_matcher.enabled && tv_matcher.match_in_definition == in_definition {
+                if temporary_matcher_index > 0 && i != temporary_matcher_index as usize {
+                    continue;
+                }
+                return Some(i);
+            }
+        }
+        None
+    }
     fn match_or_add_type_var_if_responsible(
         &mut self,
         i_s: &InferenceState,
@@ -287,38 +302,33 @@ impl<'a> Matcher<'a> {
         value_type: &Type,
         variance: Variance,
     ) -> Option<Match> {
-        for (i, tv_matcher) in self
-            .type_var_matchers
-            .iter()
-            .enumerate()
-            .filter(|(_, tvm)| tvm.enabled)
+        if let Some(matcher_index) =
+            self.find_responsible_type_var_matcher_index(t1.in_definition, t1.temporary_matcher_id)
         {
-            if tv_matcher.match_in_definition == t1.in_definition {
-                if self.check_if_unresolved_transitive_constraint(
-                    TypeVarIndexed {
-                        matcher_index: i,
-                        type_var_index: t1.index.as_usize(),
-                    },
-                    |found_type_var| value_type.search_type_vars(found_type_var),
-                    || {
-                        BoundKind::TypeVar(TypeVarBound::new(
-                            value_type.clone(),
-                            variance,
-                            t1.type_var.as_ref(),
-                        ))
-                    },
-                ) {
-                    return Some(Match::new_true());
-                }
-                let tv_matcher = &mut self.type_var_matchers[i];
-                return Some(tv_matcher.match_or_add_type_var(
-                    i_s,
-                    t1,
-                    t1.type_var.as_ref(),
-                    value_type,
-                    variance,
-                ));
+            if self.check_if_unresolved_transitive_constraint(
+                TypeVarIndexed {
+                    matcher_index,
+                    type_var_index: t1.index.as_usize(),
+                },
+                |found_type_var| value_type.search_type_vars(found_type_var),
+                || {
+                    BoundKind::TypeVar(TypeVarBound::new(
+                        value_type.clone(),
+                        variance,
+                        t1.type_var.as_ref(),
+                    ))
+                },
+            ) {
+                return Some(Match::new_true());
             }
+            let tv_matcher = &mut self.type_var_matchers[matcher_index];
+            return Some(tv_matcher.match_or_add_type_var(
+                i_s,
+                t1,
+                t1.type_var.as_ref(),
+                value_type,
+                variance,
+            ));
         }
         if !self.match_reverse {
             if let Some(class) = self.class {
@@ -466,28 +476,24 @@ impl<'a> Matcher<'a> {
         args2: TupleArgs,
         variance: Variance,
     ) -> Match {
-        for (i, tv_matcher) in self
-            .type_var_matchers
-            .iter()
-            .enumerate()
-            .filter(|(_, tvm)| tvm.enabled)
+        if let Some(matcher_index) = self
+            .find_responsible_type_var_matcher_index(tvt.in_definition, tvt.temporary_matcher_id)
         {
-            if tv_matcher.match_in_definition == tvt.in_definition {
-                if self.check_if_unresolved_transitive_constraint(
-                    TypeVarIndexed {
-                        matcher_index: i,
-                        type_var_index: tvt.index.as_usize(),
-                    },
-                    |found_type_var| args2.search_type_vars(found_type_var),
-                    || BoundKind::TypeVarTuple(args2.clone()),
-                ) {
-                    return Match::new_true();
-                }
-                let tv_matcher = &mut self.type_var_matchers[i];
-                return tv_matcher.calculating_type_args[tvt.index.as_usize()]
-                    .match_or_add_type_var_tuple(i_s, args2);
+            if self.check_if_unresolved_transitive_constraint(
+                TypeVarIndexed {
+                    matcher_index,
+                    type_var_index: tvt.index.as_usize(),
+                },
+                |found_type_var| args2.search_type_vars(found_type_var),
+                || BoundKind::TypeVarTuple(args2.clone()),
+            ) {
+                return Match::new_true();
             }
+            let tv_matcher = &mut self.type_var_matchers[matcher_index];
+            return tv_matcher.calculating_type_args[tvt.index.as_usize()]
+                .match_or_add_type_var_tuple(i_s, args2);
         }
+
         if !self.match_reverse {
             if let Some(class) = self.class {
                 if class.node_ref.as_link() == tvt.in_definition {
@@ -599,46 +605,41 @@ impl<'a> Matcher<'a> {
             }
         };
 
-        for (i, tv_matcher) in self
-            .type_var_matchers
-            .iter()
-            .enumerate()
-            .filter(|(_, tvm)| tvm.enabled)
+        if let Some(matcher_index) =
+            self.find_responsible_type_var_matcher_index(p1.in_definition, p1.temporary_matcher_id)
         {
-            if tv_matcher.match_in_definition == p1.in_definition {
-                let as_constraint = |p2_pre_iterator: Iter<Type>| {
-                    BoundKind::ParamSpec(CallableParams::WithParamSpec(
-                        p2_pre_iterator.cloned().collect(),
-                        p2.clone(),
-                    ))
-                };
+            let as_constraint = |p2_pre_iterator: Iter<Type>| {
+                BoundKind::ParamSpec(CallableParams::WithParamSpec(
+                    p2_pre_iterator.cloned().collect(),
+                    p2.clone(),
+                ))
+            };
 
-                let type_var_index = p1.index.as_usize();
-                if self
-                    .type_var_matchers
-                    .iter()
-                    .any(|tvm| tvm.match_in_definition == p2.in_definition)
-                {
-                    self.add_unresolved_constraint(
-                        TypeVarIndexed {
-                            matcher_index: i,
-                            type_var_index,
-                        },
-                        as_constraint(p2_pre_iterator),
-                    );
-                    return Some(Match::new_true());
-                }
-                let tv_matcher = &mut self.type_var_matchers[i];
-                let calc = &mut tv_matcher.calculating_type_args[type_var_index];
-                return Some(match &mut calc.type_ {
-                    BoundKind::ParamSpec(p) => match_params(i_s, p, p2_pre_iterator),
-                    BoundKind::Uncalculated { .. } => {
-                        calc.type_ = as_constraint(p2_pre_iterator);
-                        Match::new_true()
-                    }
-                    _ => unreachable!(),
-                });
+            let type_var_index = p1.index.as_usize();
+            if self
+                .type_var_matchers
+                .iter()
+                .any(|tvm| tvm.match_in_definition == p2.in_definition)
+            {
+                self.add_unresolved_constraint(
+                    TypeVarIndexed {
+                        matcher_index,
+                        type_var_index,
+                    },
+                    as_constraint(p2_pre_iterator),
+                );
+                return Some(Match::new_true());
             }
+            let tv_matcher = &mut self.type_var_matchers[matcher_index];
+            let calc = &mut tv_matcher.calculating_type_args[type_var_index];
+            return Some(match &mut calc.type_ {
+                BoundKind::ParamSpec(p) => match_params(i_s, p, p2_pre_iterator),
+                BoundKind::Uncalculated { .. } => {
+                    calc.type_ = as_constraint(p2_pre_iterator);
+                    Match::new_true()
+                }
+                _ => unreachable!(),
+            });
         }
 
         if !self.match_reverse {
@@ -694,41 +695,34 @@ impl<'a> Matcher<'a> {
             CallableParams::Any(_) => matches,
             CallableParams::WithParamSpec(_, _) => todo!(),
         };
-        for (i, tv_matcher) in self
-            .type_var_matchers
-            .iter()
-            .enumerate()
-            .filter(|(_, tvm)| tvm.enabled)
+
+        if let Some(matcher_index) =
+            self.find_responsible_type_var_matcher_index(p1.in_definition, p1.temporary_matcher_id)
         {
-            if tv_matcher.match_in_definition == p1.in_definition {
-                let as_params =
-                    |p2_it: Peekable<_>| CallableParams::Simple(p2_it.cloned().collect());
-                let as_constraint = |p2_it| BoundKind::ParamSpec(as_params(p2_it));
-                if self.check_if_unresolved_transitive_constraint(
-                    TypeVarIndexed {
-                        matcher_index: i,
-                        type_var_index: p1.index.as_usize(),
-                    },
-                    |found_type_var| {
-                        as_params(params2_iterator.clone()).search_type_vars(found_type_var)
-                    },
-                    || as_constraint(params2_iterator.clone()),
-                ) {
-                    return Match::new_true();
-                }
-                let tv_matcher = &mut self.type_var_matchers[i];
-                let calc = &mut tv_matcher.calculating_type_args[p1.index.as_usize()];
-                return match &mut calc.type_ {
-                    BoundKind::ParamSpec(p) => match_params(i_s, matches, &p, params2_iterator),
-                    BoundKind::Uncalculated { .. } => {
-                        calc.type_ = as_constraint(params2_iterator);
-                        matches
-                    }
-                    _ => unreachable!(),
-                };
-            } else {
-                todo!()
+            let as_params = |p2_it: Peekable<_>| CallableParams::Simple(p2_it.cloned().collect());
+            let as_constraint = |p2_it| BoundKind::ParamSpec(as_params(p2_it));
+            if self.check_if_unresolved_transitive_constraint(
+                TypeVarIndexed {
+                    matcher_index,
+                    type_var_index: p1.index.as_usize(),
+                },
+                |found_type_var| {
+                    as_params(params2_iterator.clone()).search_type_vars(found_type_var)
+                },
+                || as_constraint(params2_iterator.clone()),
+            ) {
+                return Match::new_true();
             }
+            let tv_matcher = &mut self.type_var_matchers[matcher_index];
+            let calc = &mut tv_matcher.calculating_type_args[p1.index.as_usize()];
+            return match &mut calc.type_ {
+                BoundKind::ParamSpec(p) => match_params(i_s, matches, &p, params2_iterator),
+                BoundKind::Uncalculated { .. } => {
+                    calc.type_ = as_constraint(params2_iterator);
+                    matches
+                }
+                _ => unreachable!(),
+            };
         }
         if !self.match_reverse {
             if let Some(class) = self.class {
@@ -853,28 +847,25 @@ impl<'a> Matcher<'a> {
     ) -> Box<str> {
         // In general this whole function should look very similar to the matches function, since
         // on mismatches this can be run.
-        for (i, tv_matcher) in self
-            .type_var_matchers
-            .iter()
-            .enumerate()
-            .filter(|(_, tvm)| tvm.enabled)
-        {
-            if tv_matcher.match_in_definition == usage.in_definition() {
-                let current = &tv_matcher.calculating_type_args[usage.index().as_usize()];
-                return match &current.type_ {
-                    BoundKind::TypeVar(bound) => bound.format(format_data.db, format_data.style),
-                    BoundKind::TypeVarTuple(ts) => ts.format(format_data),
-                    BoundKind::ParamSpec(p) => p.format(format_data, params_style),
-                    BoundKind::Uncalculated { fallback } => {
-                        if let TypeVarLike::TypeVar(type_var) = usage.as_type_var_like() {
-                            if let TypeVarKind::Bound(bound) = &type_var.kind {
-                                return bound.format(format_data);
-                            }
+        if let Some(i) = self.find_responsible_type_var_matcher_index(
+            usage.in_definition(),
+            usage.temporary_matcher_id(),
+        ) {
+            let current =
+                &self.type_var_matchers[i].calculating_type_args[usage.index().as_usize()];
+            return match &current.type_ {
+                BoundKind::TypeVar(bound) => bound.format(format_data.db, format_data.style),
+                BoundKind::TypeVarTuple(ts) => ts.format(format_data),
+                BoundKind::ParamSpec(p) => p.format(format_data, params_style),
+                BoundKind::Uncalculated { fallback } => {
+                    if let TypeVarLike::TypeVar(type_var) = usage.as_type_var_like() {
+                        if let TypeVarKind::Bound(bound) = &type_var.kind {
+                            return bound.format(format_data);
                         }
-                        Type::Never.format(format_data)
                     }
-                };
-            }
+                    Type::Never.format(format_data)
+                }
+            };
         }
         if !self.match_reverse {
             if let Some(class) = self.class {
@@ -990,24 +981,22 @@ impl<'a> Matcher<'a> {
         on_uncalculated: impl for<'x> Fn(TypeVarLikeUsage) -> GenericItem + 'b,
     ) -> impl for<'y> Fn(TypeVarLikeUsage) -> GenericItem + 'b {
         move |usage| {
-            for type_var_matcher in self.type_var_matchers.iter().filter(|tvm| tvm.enabled) {
-                if usage.in_definition() == type_var_matcher.match_in_definition {
-                    let current = &type_var_matcher.calculating_type_args[usage.index().as_usize()];
-                    return match &current.type_ {
-                        BoundKind::TypeVar(t) => GenericItem::TypeArg(t.clone().into_type(db)),
-                        BoundKind::TypeVarTuple(ts) => {
-                            GenericItem::TypeArgs(TypeArgs::new(ts.clone()))
-                        }
-                        BoundKind::ParamSpec(param_spec) => {
-                            GenericItem::ParamSpecArg(ParamSpecArg {
-                                params: param_spec.clone(),
-                                type_vars: None,
-                            })
-                        }
-                        // Any is just ignored by the context later.
-                        BoundKind::Uncalculated { .. } => on_uncalculated(usage),
-                    };
-                }
+            if let Some(i) = self.find_responsible_type_var_matcher_index(
+                usage.in_definition(),
+                usage.temporary_matcher_id(),
+            ) {
+                let current =
+                    &self.type_var_matchers[i].calculating_type_args[usage.index().as_usize()];
+                return match &current.type_ {
+                    BoundKind::TypeVar(t) => GenericItem::TypeArg(t.clone().into_type(db)),
+                    BoundKind::TypeVarTuple(ts) => GenericItem::TypeArgs(TypeArgs::new(ts.clone())),
+                    BoundKind::ParamSpec(param_spec) => GenericItem::ParamSpecArg(ParamSpecArg {
+                        params: param_spec.clone(),
+                        type_vars: None,
+                    }),
+                    // Any is just ignored by the context later.
+                    BoundKind::Uncalculated { .. } => on_uncalculated(usage),
+                };
             }
             if let Some(c) = self.class {
                 if c.node_ref.as_link() == usage.in_definition() {
