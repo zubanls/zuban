@@ -137,29 +137,6 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    fn disable_reverse_callable_matcher(&mut self, db: &Database, c: &CallableContent) {
-        if !c.type_vars.is_empty() {
-            let matcher = self
-                .type_var_matchers
-                .iter_mut()
-                .find(|m| m.match_in_definition == c.defined_at && m.enabled)
-                .unwrap();
-            matcher.enabled = false;
-            if cfg!(feature = "zuban_debug") {
-                let generics = matcher.clone().into_generics_list(db);
-                debug!(
-                    "Type vars for reverse callable matching [{}]{}",
-                    generics.format(&FormatData::new_short(db)),
-                    if matcher.has_unresolved_transitive_constraints() {
-                        " (has unresolved transitive constraints)"
-                    } else {
-                        ""
-                    }
-                );
-            }
-        }
-    }
-
     pub fn matches_callable(
         &mut self,
         i_s: &InferenceState,
@@ -167,6 +144,7 @@ impl<'a> Matcher<'a> {
         c2_ref: &CallableContent,
     ) -> Match {
         let mut c2 = Cow::Borrowed(c2_ref);
+        let type_var_matchers_len = self.type_var_matchers.len() as u32;
         if !c2.type_vars.is_empty() {
             if self
                 .type_var_matchers
@@ -177,8 +155,7 @@ impl<'a> Matcher<'a> {
                     i_s.db,
                     &mut |mut usage| {
                         if usage.in_definition() == c2_ref.defined_at {
-                            usage
-                                .update_temporary_matcher_index(self.type_var_matchers.len() as u32)
+                            usage.update_temporary_matcher_index(type_var_matchers_len)
                         }
                         usage.into_generic_item()
                     },
@@ -204,7 +181,25 @@ impl<'a> Matcher<'a> {
                 // Mypy treats *args/**kwargs special
                 c1.params.is_any_args_and_kwargs().into()
             });
-        self.disable_reverse_callable_matcher(i_s.db, &c2);
+
+        if cfg!(feature = "zuban_debug") {
+            if !c2.type_vars.is_empty() {
+                let i = self
+                    .find_responsible_type_var_matcher_index(c2.defined_at, type_var_matchers_len)
+                    .unwrap();
+                let matcher = &self.type_var_matchers[i];
+                let generics = matcher.clone().into_generics_list(i_s.db);
+                debug!(
+                    "Type vars for reverse callable matching [{}]{}",
+                    generics.format(&FormatData::new_short(i_s.db)),
+                    if matcher.has_unresolved_transitive_constraints() {
+                        " (has unresolved transitive constraints)"
+                    } else {
+                        ""
+                    }
+                );
+            }
+        }
         result
     }
 
@@ -286,7 +281,7 @@ impl<'a> Matcher<'a> {
         temporary_matcher_index: u32,
     ) -> Option<usize> {
         for (i, tv_matcher) in self.type_var_matchers.iter().enumerate() {
-            if tv_matcher.enabled && tv_matcher.match_in_definition == in_definition {
+            if tv_matcher.match_in_definition == in_definition {
                 if temporary_matcher_index > 0 && i != temporary_matcher_index as usize {
                     continue;
                 }
@@ -1210,11 +1205,6 @@ impl<'a> Matcher<'a> {
             // Finishing is only needed if multiple type var matchers need to negotiate type
             // vars.
             return (self, Ok(None));
-        }
-
-        // Secondary constraints inference needs to have all type var matchers enabled.
-        for tv_matcher in &mut self.type_var_matchers {
-            tv_matcher.enabled = true;
         }
 
         let mut cycles = self.find_unresolved_transitive_constraint_cycles(db);
