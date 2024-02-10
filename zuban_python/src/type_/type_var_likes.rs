@@ -75,7 +75,6 @@ pub struct UnresolvedTypeVarLike {
 pub struct TypeVarManager {
     pub type_vars: Vec<UnresolvedTypeVarLike>,
     callables: Vec<CallableWithParent>,
-    pub already_written_hack: Vec<PointLink>,
 }
 
 impl TypeVarManager {

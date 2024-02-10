@@ -259,13 +259,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             in_result_type.set(true);
             type_computation.cache_return_annotation(return_annot);
         }
-        let type_vars = type_computation.into_type_vars(|inf, mut recalculate_type_vars| {
+        let type_vars = type_computation.into_type_vars(|inf, recalculate_type_vars| {
             for param in func_node.params().iter() {
                 if let Some(annotation) = param.annotation() {
-                    inf.recalculate_annotation_type_vars(
-                        annotation.index(),
-                        &mut recalculate_type_vars,
-                    );
+                    inf.recalculate_annotation_type_vars(annotation.index(), recalculate_type_vars);
                 }
             }
             if let Some(return_annot) = func_node.return_annotation() {
