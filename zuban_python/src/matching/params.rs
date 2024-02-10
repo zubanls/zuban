@@ -154,32 +154,17 @@ pub fn matches_simple_params<
             let specific1 = param1.specific(i_s.db);
             let specific2 = param2.specific(i_s.db);
 
-            if let WrappedParamType::Star(WrappedStar::UnpackedTuple(unpacked2)) = &specific2 {
-                if let TupleArgs::WithUnpack(WithUnpack {
-                    unpack: TupleUnpack::TypeVarTuple(tvt2),
-                    ..
-                }) = &unpacked2.args
-                {
-                    if matcher.has_responsible_matcher(tvt2) {
-                        // TODO making params1 peekable is not possible in this way and will always
-                        // fetch a param too much.
-                        let mut params1 = std::iter::once(param1)
-                            .peekable()
-                            .chain(&mut params1)
-                            .peekable();
-                        let tup1_args = gather_unpack_args(i_s.db, &mut params1);
-                        matches &= match_tuple_type_arguments(
-                            i_s,
-                            matcher,
-                            &tup1_args,
-                            &unpacked2.args,
-                            variance,
-                        );
-                        continue;
-                    }
-                }
+            if let Some(m) =
+                match_unpack_from_other_side(i_s, matcher, &specific2, variance, || {
+                    std::iter::once(param1)
+                        .peekable()
+                        .chain(&mut params1)
+                        .peekable()
+                })
+            {
+                matches &= m;
+                continue;
             }
-
             match &specific1 {
                 WrappedParamType::PositionalOnly(t1) => match &specific2 {
                     WrappedParamType::PositionalOnly(t2)
@@ -489,6 +474,15 @@ pub fn matches_simple_params<
         }
     }
     for param2 in params2 {
+        /*
+        if let Some(m) = match_unpack_from_other_side(
+            i_s, matcher, &param2.specific(i_s.db), variance,
+            || [].iter().peekable()
+        ) {
+            matches &= m;
+            continue
+        }
+        */
         if !param2.has_default()
             && !matches!(param2.kind(i_s.db), ParamKind::Star | ParamKind::StarStar)
         {
@@ -498,8 +492,39 @@ pub fn matches_simple_params<
     matches
 }
 
-fn gather_unpack_args<'x, P: Param<'x>>(
-    db: &'x Database,
+fn match_unpack_from_other_side<'db: 'x, 'x, P: Param<'x>, IT: Iterator<Item = P>>(
+    i_s: &InferenceState<'db, '_>,
+    matcher: &mut Matcher,
+    specific2: &WrappedParamType,
+    variance: Variance,
+    as_params: impl FnOnce() -> Peekable<IT>,
+) -> Option<Match> {
+    if let WrappedParamType::Star(WrappedStar::UnpackedTuple(unpacked2)) = specific2 {
+        if let TupleArgs::WithUnpack(WithUnpack {
+            unpack: TupleUnpack::TypeVarTuple(tvt2),
+            ..
+        }) = &unpacked2.args
+        {
+            if matcher.has_responsible_matcher(tvt2) {
+                // TODO making params1 peekable is not possible in this way and will always
+                // fetch a param too much.
+                let mut params1 = as_params();
+                let tup1_args = gather_unpack_args(i_s.db, &mut params1);
+                return Some(match_tuple_type_arguments(
+                    i_s,
+                    matcher,
+                    &tup1_args,
+                    &unpacked2.args,
+                    variance,
+                ));
+            }
+        }
+    }
+    None
+}
+
+fn gather_unpack_args<'db: 'x, 'x, P: Param<'x>>(
+    db: &'db Database,
     params: &mut Peekable<impl Iterator<Item = P>>,
 ) -> TupleArgs {
     let mut before = vec![];
