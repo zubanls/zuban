@@ -10,7 +10,7 @@ use crate::{
     arguments::{Arg, Args, KnownArgs},
     database::{
         ComplexPoint, Database, Locality, OverloadDefinition, OverloadImplementation, Point,
-        PointType, Specific,
+        PointLink, PointType, Specific,
     },
     debug,
     diagnostics::{Issue, IssueType},
@@ -211,7 +211,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let in_result_type = Cell::new(false);
         let mut unbound_type_vars = vec![];
         let mut on_type_var = |i_s: &InferenceState,
-                               manager: &TypeVarManager,
+                               manager: &TypeVarManager<PointLink>,
                                type_var: TypeVarLike,
                                current_callable: Option<_>| {
             self.class

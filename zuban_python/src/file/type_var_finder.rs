@@ -26,7 +26,7 @@ pub struct TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
     i_s: &'i_s InferenceState<'db, 'i_s>,
     file: &'file PythonFile,
     class: Option<&'c Class<'c>>,
-    type_var_manager: TypeVarManager,
+    type_var_manager: TypeVarManager<PointLink>,
     generic_or_protocol_slice: Option<SliceType<'d>>,
     current_generic_or_protocol_index: Option<TypeVarIndex>,
     had_generic_or_protocol_issue: bool,

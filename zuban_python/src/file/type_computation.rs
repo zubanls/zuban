@@ -46,7 +46,7 @@ type MapAnnotationTypeCallback<'a> = Option<&'a dyn Fn(&mut TypeComputation, Typ
 
 type TypeVarCallback<'db, 'x> = &'x mut dyn FnMut(
     &InferenceState<'db, '_>,
-    &TypeVarManager,
+    &TypeVarManager<PointLink>,
     TypeVarLike,
     Option<PointLink>, // current_callable
 ) -> TypeVarCallbackReturn;
@@ -375,7 +375,7 @@ macro_rules! compute_type_application {
 
 fn type_computation_for_variable_annotation(
     i_s: &InferenceState,
-    manager: &TypeVarManager,
+    manager: &TypeVarManager<PointLink>,
     type_var_like: TypeVarLike,
     current_callable: Option<PointLink>,
 ) -> TypeVarCallbackReturn {
@@ -405,7 +405,7 @@ pub struct TypeComputation<'db, 'file, 'i_s, 'c> {
     inference: &'c mut Inference<'db, 'file, 'i_s>,
     for_definition: PointLink,
     current_callable: Option<PointLink>,
-    type_var_manager: TypeVarManager,
+    type_var_manager: TypeVarManager<PointLink>,
     type_var_callback: TypeVarCallback<'db, 'c>,
     // This is only for type aliases. Type aliases are also allowed to be used by Python itself.
     // It's therefore unclear if type inference or type computation is needed. So once we encounter

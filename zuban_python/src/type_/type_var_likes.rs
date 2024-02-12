@@ -33,18 +33,18 @@ impl From<usize> for TypeVarIndex {
 }
 
 #[derive(Debug)]
-pub struct CallableWithParent {
-    pub defined_at: PointLink,
-    pub parent_callable: Option<PointLink>,
+pub struct CallableWithParent<T> {
+    pub defined_at: T,
+    pub parent_callable: Option<T>,
 }
 
-struct CallableAncestors<'a> {
-    callables: &'a [CallableWithParent],
-    next: Option<PointLink>,
+struct CallableAncestors<'a, T> {
+    callables: &'a [CallableWithParent<T>],
+    next: Option<&'a T>,
 }
 
-impl Iterator for CallableAncestors<'_> {
-    type Item = PointLink;
+impl<'a, T: CallableId> Iterator for CallableAncestors<'a, T> {
+    type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
         // This algorithm seems a bit weird in terms of Big O, but it shouldn't matter at all,
@@ -52,8 +52,8 @@ impl Iterator for CallableAncestors<'_> {
         if let Some(next) = self.next {
             let result = next;
             for callable_with_parent in self.callables {
-                if callable_with_parent.defined_at == next {
-                    self.next = callable_with_parent.parent_callable;
+                if callable_with_parent.defined_at.is_same(&next) {
+                    self.next = callable_with_parent.parent_callable.as_ref();
                     return Some(result);
                 }
             }
@@ -66,32 +66,28 @@ impl Iterator for CallableAncestors<'_> {
 }
 
 #[derive(Debug)]
-struct UnresolvedTypeVarLike {
+struct UnresolvedTypeVarLike<T> {
     pub type_var_like: TypeVarLike,
-    pub most_outer_callable: Option<PointLink>,
+    pub most_outer_callable: Option<T>,
 }
 
-#[derive(Default, Debug)]
-pub struct TypeVarManager {
-    type_vars: Vec<UnresolvedTypeVarLike>,
-    callables: Vec<CallableWithParent>,
+#[derive(Debug)]
+pub struct TypeVarManager<T> {
+    type_vars: Vec<UnresolvedTypeVarLike<T>>,
+    callables: Vec<CallableWithParent<T>>,
 }
 
-impl TypeVarManager {
+impl<T: CallableId> TypeVarManager<T> {
     pub fn position(&self, type_var: &TypeVarLike) -> Option<usize> {
         self.type_vars
             .iter()
             .position(|t| &t.type_var_like == type_var)
     }
 
-    pub fn add(
-        &mut self,
-        type_var_like: TypeVarLike,
-        in_callable: Option<PointLink>,
-    ) -> TypeVarIndex {
+    pub fn add(&mut self, type_var_like: TypeVarLike, in_callable: Option<T>) -> TypeVarIndex {
         if let Some(index) = self.position(&type_var_like) {
             self.type_vars[index].most_outer_callable = self.calculate_most_outer_callable(
-                self.type_vars[index].most_outer_callable,
+                self.type_vars[index].most_outer_callable.as_ref(),
                 in_callable,
             );
             index.into()
@@ -104,13 +100,15 @@ impl TypeVarManager {
         }
     }
 
-    pub fn register_callable(&mut self, c: CallableWithParent) {
-        debug_assert!(!self.is_callable_known(c.defined_at));
+    pub fn register_callable(&mut self, c: CallableWithParent<T>) {
+        debug_assert!(!self.is_callable_known(c.defined_at.as_in_definition()));
         self.callables.push(c)
     }
 
     pub fn is_callable_known(&self, link: PointLink) -> bool {
-        self.callables.iter().any(|c| c.defined_at == link)
+        self.callables
+            .iter()
+            .any(|c| c.defined_at.as_in_definition() == link)
     }
 
     pub fn move_index(&mut self, old_index: TypeVarIndex, force_index: TypeVarIndex) {
@@ -152,7 +150,10 @@ impl TypeVarManager {
             self.type_vars
                 .iter()
                 .filter_map(|t| {
-                    (t.most_outer_callable == Some(defined_at)).then(|| t.type_var_like.clone())
+                    (t.most_outer_callable
+                        .as_ref()
+                        .is_some_and(|m| m.as_in_definition() == defined_at))
+                    .then(|| t.type_var_like.clone())
                 })
                 .collect(),
         )
@@ -162,21 +163,17 @@ impl TypeVarManager {
         self.type_vars.len()
     }
 
-    fn calculate_most_outer_callable(
-        &self,
-        first: Option<PointLink>,
-        second: Option<PointLink>,
-    ) -> Option<PointLink> {
+    fn calculate_most_outer_callable(&self, first: Option<&T>, second: Option<T>) -> Option<T> {
         for ancestor1 in (CallableAncestors {
             callables: &self.callables,
             next: first,
         }) {
             for ancestor2 in (CallableAncestors {
                 callables: &self.callables,
-                next: second,
+                next: second.as_ref(),
             }) {
-                if ancestor1 == ancestor2 {
-                    return Some(ancestor1);
+                if ancestor1.is_same(&ancestor2) {
+                    return Some(ancestor1.clone());
                 }
             }
         }
@@ -188,7 +185,7 @@ impl TypeVarManager {
         usage: &TypeVarLikeUsage,
     ) -> Option<(TypeVarIndex, Option<PointLink>)> {
         let mut index = 0;
-        let mut in_definition = None;
+        let mut in_definition: Option<Option<&T>> = None;
         for t in self.type_vars.iter().rev() {
             let matched = match &t.type_var_like {
                 TypeVarLike::TypeVar(type_var) => match usage {
@@ -205,15 +202,19 @@ impl TypeVarManager {
                 },
             };
             if let Some(in_def) = in_definition {
-                if in_def == t.most_outer_callable {
+                if in_def.is_none() && t.most_outer_callable.is_none()
+                    || in_def
+                        .zip(t.most_outer_callable.as_ref())
+                        .is_some_and(|(in_def, m)| in_def.is_same(&m))
+                {
                     index += 1;
                 }
             } else if matched {
-                in_definition = Some(t.most_outer_callable);
+                in_definition = Some(t.most_outer_callable.as_ref());
                 index = 0;
             }
         }
-        in_definition.map(|d| (index.into(), d))
+        in_definition.map(|d| (index.into(), d.clone().map(|d| d.as_in_definition())))
     }
 
     pub fn remap_type_var(&self, usage: &TypeVarUsage) -> TypeVarUsage {
@@ -256,6 +257,30 @@ impl TypeVarManager {
         } else {
             usage.clone()
         }
+    }
+}
+
+impl Default for TypeVarManager<PointLink> {
+    fn default() -> Self {
+        Self {
+            type_vars: vec![],
+            callables: vec![],
+        }
+    }
+}
+
+pub trait CallableId: Clone {
+    fn is_same(&self, other: &Self) -> bool;
+    fn as_in_definition(&self) -> PointLink;
+}
+
+impl CallableId for PointLink {
+    fn is_same(&self, other: &Self) -> bool {
+        self == other
+    }
+
+    fn as_in_definition(&self) -> PointLink {
+        *self
     }
 }
 

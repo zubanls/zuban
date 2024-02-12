@@ -1,11 +1,11 @@
 use std::rc::Rc;
 
 use super::{
-    simplified_union_from_iterators_with_format_index, CallableContent, CallableParam,
-    CallableParams, ClassGenerics, Dataclass, GenericClass, GenericItem, GenericsList, NamedTuple,
-    ParamSpecArg, ParamType, RecursiveType, StarParamType, StarStarParamType, Tuple, TupleArgs,
-    Type, TypeArgs, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypedDictGenerics,
-    UnionEntry, UnionType,
+    simplified_union_from_iterators_with_format_index, type_var_likes::CallableId, CallableContent,
+    CallableParam, CallableParams, ClassGenerics, Dataclass, GenericClass, GenericItem,
+    GenericsList, NamedTuple, ParamSpecArg, ParamType, RecursiveType, StarParamType,
+    StarStarParamType, Tuple, TupleArgs, Type, TypeArgs, TypeVarLike, TypeVarLikeUsage,
+    TypeVarLikes, TypeVarManager, TypedDictGenerics, UnionEntry, UnionType,
 };
 use crate::{
     database::{Database, PointLink},
@@ -167,7 +167,7 @@ impl Type {
         }
     }
 
-    pub fn rewrite_late_bound_callables(&self, manager: &TypeVarManager) -> Self {
+    pub fn rewrite_late_bound_callables<T: CallableId>(&self, manager: &TypeVarManager<T>) -> Self {
         let rewrite_generics = |generics: &GenericsList| {
             GenericsList::new_generics(
                 generics
@@ -316,7 +316,7 @@ impl CallableContent {
         }
     }
 
-    pub fn rewrite_late_bound_callables(&self, manager: &TypeVarManager) -> Self {
+    pub fn rewrite_late_bound_callables<T: CallableId>(&self, manager: &TypeVarManager<T>) -> Self {
         CallableContent {
             name: self.name.clone(),
             class_name: self.class_name,
@@ -329,7 +329,7 @@ impl CallableContent {
     }
 }
 impl CallableParam {
-    fn rewrite_late_bound_callables(&self, manager: &TypeVarManager) -> Self {
+    fn rewrite_late_bound_callables<T: CallableId>(&self, manager: &TypeVarManager<T>) -> Self {
         Self {
             type_: match &self.type_ {
                 ParamType::PositionalOnly(t) => {
@@ -529,7 +529,7 @@ impl CallableParams {
         (new_params, replace_data)
     }
 
-    fn rewrite_late_bound_callables(&self, manager: &TypeVarManager) -> Self {
+    fn rewrite_late_bound_callables<T: CallableId>(&self, manager: &TypeVarManager<T>) -> Self {
         match &self {
             CallableParams::Simple(params) => CallableParams::Simple(
                 params
@@ -609,7 +609,7 @@ impl TupleArgs {
         }
     }
 
-    pub fn rewrite_late_bound_callables(&self, manager: &TypeVarManager) -> Self {
+    pub fn rewrite_late_bound_callables<T: CallableId>(&self, manager: &TypeVarManager<T>) -> Self {
         match self {
             Self::FixedLen(ts) => Self::FixedLen(
                 ts.iter()

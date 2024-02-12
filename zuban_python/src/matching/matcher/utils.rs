@@ -215,7 +215,7 @@ impl CalculatedTypeArgs {
         );
         if let Some(type_var_likes) = self.type_var_likes {
             fn create_callable_hierarchy(
-                manager: &mut TypeVarManager,
+                manager: &mut TypeVarManager<PointLink>,
                 parent_callable: Option<PointLink>,
                 type_var_likes: &TypeVarLikes,
                 t: &Type,
