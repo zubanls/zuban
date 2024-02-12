@@ -253,10 +253,7 @@ impl CalculatedTypeArgs {
             type_ = type_.rewrite_late_bound_callables(&manager);
             let mut unused_type_vars = vec![];
             for type_var_like in type_var_likes.iter() {
-                if !manager
-                    .iter()
-                    .any(|in_manager| &in_manager.type_var_like == type_var_like)
-                {
+                if !manager.iter().any(|tvl| tvl == type_var_like) {
                     unused_type_vars.push(type_var_like)
                 }
             }

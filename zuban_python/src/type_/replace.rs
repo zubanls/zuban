@@ -317,18 +317,12 @@ impl CallableContent {
     }
 
     pub fn rewrite_late_bound_callables(&self, manager: &TypeVarManager) -> Self {
-        let type_vars = manager
-            .iter()
-            .filter_map(|t| {
-                (t.most_outer_callable == Some(self.defined_at)).then(|| t.type_var_like.clone())
-            })
-            .collect::<Rc<_>>();
         CallableContent {
             name: self.name.clone(),
             class_name: self.class_name,
             defined_at: self.defined_at,
             kind: self.kind,
-            type_vars: TypeVarLikes::new(type_vars),
+            type_vars: manager.type_vars_for_callable(self.defined_at),
             params: self.params.rewrite_late_bound_callables(manager),
             return_type: self.return_type.rewrite_late_bound_callables(manager),
         }

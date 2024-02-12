@@ -66,14 +66,14 @@ impl Iterator for CallableAncestors<'_> {
 }
 
 #[derive(Debug)]
-pub struct UnresolvedTypeVarLike {
+struct UnresolvedTypeVarLike {
     pub type_var_like: TypeVarLike,
     pub most_outer_callable: Option<PointLink>,
 }
 
 #[derive(Default, Debug)]
 pub struct TypeVarManager {
-    pub type_vars: Vec<UnresolvedTypeVarLike>,
+    type_vars: Vec<UnresolvedTypeVarLike>,
     callables: Vec<CallableWithParent>,
 }
 
@@ -143,9 +143,21 @@ impl TypeVarManager {
         )
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &UnresolvedTypeVarLike> {
-        self.type_vars.iter()
+    pub fn iter(&self) -> impl Iterator<Item = &TypeVarLike> {
+        self.type_vars.iter().map(|u| &u.type_var_like)
     }
+
+    pub fn type_vars_for_callable(&self, defined_at: PointLink) -> TypeVarLikes {
+        TypeVarLikes::new(
+            self.type_vars
+                .iter()
+                .filter_map(|t| {
+                    (t.most_outer_callable == Some(defined_at)).then(|| t.type_var_like.clone())
+                })
+                .collect(),
+        )
+    }
+
     pub fn len(&self) -> usize {
         self.type_vars.len()
     }
