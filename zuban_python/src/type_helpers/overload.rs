@@ -482,7 +482,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         callable
                             .kind
                             .update_had_first_self_or_class_annotation(true);
-                        callable
+                        Rc::new(callable)
                     })
                     .collect(),
             ))

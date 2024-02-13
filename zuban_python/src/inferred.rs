@@ -924,6 +924,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                                     &attribute_class,
                                                     &t,
                                                 )
+                                                .map(|c| Rc::new(c))
                                             } else {
                                                 todo!()
                                             }
@@ -953,9 +954,9 @@ impl<'db: 'slf, 'slf> Inferred {
                                         }
                                         1 => {
                                             return Some((
-                                                Inferred::from_type(Type::Callable(Rc::new(
+                                                Inferred::from_type(Type::Callable(
                                                     results.into_iter().next().unwrap(),
-                                                ))),
+                                                )),
                                                 attr_kind,
                                             ));
                                         }
@@ -2040,7 +2041,10 @@ fn infer_overloaded_class_method(
     Inferred::from_type(Type::FunctionOverload(FunctionOverload::new(
         o.iter_functions()
             .map(|callable| {
-                infer_class_method(i_s, class, attribute_class, callable).unwrap_or_else(|| todo!())
+                let Some(c) = infer_class_method(i_s, class, attribute_class, callable) else {
+                    todo!();
+                };
+                Rc::new(c)
             })
             .collect(),
     )))

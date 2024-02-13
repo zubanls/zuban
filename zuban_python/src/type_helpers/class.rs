@@ -2669,13 +2669,11 @@ impl NewOrInitConstructor<'_> {
                             &|| unreachable!("was already replaced above"),
                         );
                     }
-                    c
+                    Rc::new(c)
                 })
             };
             callable.and_then(|callable_like| match callable_like {
-                CallableLike::Callable(c) => {
-                    to_callable(&c).map(|c| CallableLike::Callable(Rc::new(c)))
-                }
+                CallableLike::Callable(c) => to_callable(&c).map(|c| CallableLike::Callable(c)),
                 CallableLike::Overload(callables) => {
                     let funcs: Box<_> = callables
                         .iter_functions()

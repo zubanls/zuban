@@ -336,10 +336,10 @@ impl std::cmp::PartialEq for Namespace {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct FunctionOverload(Box<[CallableContent]>);
+pub struct FunctionOverload(Box<[Rc<CallableContent>]>);
 
 impl FunctionOverload {
-    pub fn new(functions: Box<[CallableContent]>) -> Rc<Self> {
+    pub fn new(functions: Box<[Rc<CallableContent>]>) -> Rc<Self> {
         debug_assert!(!functions.is_empty());
         Rc::new(Self(functions))
     }
@@ -348,13 +348,13 @@ impl FunctionOverload {
         self.0[0].kind
     }
 
-    pub fn iter_functions(&self) -> impl Iterator<Item = &CallableContent> {
+    pub fn iter_functions(&self) -> impl Iterator<Item = &Rc<CallableContent>> {
         self.0.iter()
     }
 
     pub fn map_functions(
         &self,
-        callable: impl FnOnce(&[CallableContent]) -> Box<[CallableContent]>,
+        callable: impl FnOnce(&[Rc<CallableContent>]) -> Box<[Rc<CallableContent>]>,
     ) -> Rc<Self> {
         Rc::new(Self(callable(&self.0)))
     }

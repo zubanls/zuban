@@ -476,7 +476,7 @@ pub struct OverloadDefinition {
 }
 
 impl OverloadDefinition {
-    pub fn iter_functions(&self) -> impl Iterator<Item = &CallableContent> {
+    pub fn iter_functions(&self) -> impl Iterator<Item = &Rc<CallableContent>> {
         self.functions.iter_functions()
     }
 

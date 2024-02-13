@@ -49,7 +49,9 @@ impl Type {
                 Type::FunctionOverload(overload.map_functions(|functions| {
                     functions
                         .iter()
-                        .map(|c| c.replace_type_var_likes_and_self(db, callable, replace_self))
+                        .map(|c| {
+                            Rc::new(c.replace_type_var_likes_and_self(db, callable, replace_self))
+                        })
                         .collect()
                 }))
             }
@@ -213,7 +215,7 @@ impl Type {
                 Type::FunctionOverload(overload.map_functions(|functions| {
                     functions
                         .iter()
-                        .map(|c| c.rewrite_late_bound_callables(manager))
+                        .map(|c| Rc::new(c.rewrite_late_bound_callables(manager)))
                         .collect()
                 }))
             }

@@ -1932,7 +1932,7 @@ fn operator_domain_is_widened(
     original: &Type,
 ) -> bool {
     override_overload.iter_functions().any(|overload_func| {
-        let widens_callable = |original: &CallableContent| {
+        let widens_callable = |original: &Rc<CallableContent>| {
             let Some(original_domain) = original.first_positional_type() else {
                 return false
             };

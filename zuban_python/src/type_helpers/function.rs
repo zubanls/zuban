@@ -725,7 +725,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut add_func = |inf: Inferred| {
             if let Some(CallableLike::Callable(callable)) = inf.as_cow_type(i_s).maybe_callable(i_s)
             {
-                functions.push(rc_unwrap_or_clone(callable))
+                functions.push(callable)
             } else {
                 todo!()
             }

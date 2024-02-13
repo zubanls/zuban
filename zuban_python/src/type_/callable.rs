@@ -671,7 +671,7 @@ impl CallableContent {
         db: &Database,
         class: Class,
         attribute_class: Class,
-    ) -> CallableContent {
+    ) -> Rc<CallableContent> {
         let mut needs_self_type_variable = self.return_type.has_self_type();
         for param in self.expect_simple_params().iter() {
             if let Some(t) = param.type_.maybe_type() {
@@ -733,7 +733,7 @@ impl CallableContent {
             &|| Type::TypeVar(self_type_var_usage.clone().unwrap()),
         );
         callable.type_vars = type_vars;
-        callable
+        Rc::new(callable)
     }
 
     pub fn is_typed(&self, skip_first_param: bool) -> bool {
