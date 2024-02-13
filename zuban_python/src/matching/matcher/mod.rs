@@ -28,7 +28,7 @@ use crate::{
     inference_state::InferenceState,
     type_::{
         match_tuple_type_arguments, AnyCause, CallableContent, CallableParam, CallableParams,
-        GenericItem, GenericsList, ParamSpecArg, ParamSpecUsage, ParamType, ReplaceSelf,
+        DbString, GenericItem, GenericsList, ParamSpecArg, ParamSpecUsage, ParamType, ReplaceSelf,
         StarParamType, TupleArgs, TupleUnpack, Type, TypeArgs, TypeVarKind, TypeVarLike,
         TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict,
         TypedDictGenerics, Variance, WithUnpack,
@@ -1759,17 +1759,29 @@ fn infer_params_from_args<'db>(
     let mut params = vec![];
     for arg in args.iter() {
         let inferred_arg = arg.infer(i_s, &mut ResultContext::Unknown);
+        let InferredArg::Inferred(inf) = inferred_arg else {
+            todo!()
+        };
+        let t = inf.as_type(i_s);
         let p = match (
             arg.is_keyword_argument(),
             arg.in_args_or_kwargs_and_arbitrary_len(),
         ) {
-            (false, false) => {
-                let InferredArg::Inferred(t) = inferred_arg else {
+            (false, false) => CallableParam {
+                type_: ParamType::PositionalOnly(t),
+                name: None,
+                has_default: true,
+            },
+            (true, false) => {
+                let Some(key) = arg.keyword_name(i_s.db) else {
                     unreachable!()
                 };
-                CallableParam::new_anonymous(ParamType::PositionalOnly(t.as_type(i_s)))
+                CallableParam {
+                    type_: ParamType::PositionalOnly(t),
+                    name: Some(DbString::RcStr(key.into())),
+                    has_default: true,
+                }
             }
-            (true, false) => todo!(),
             (false, true) => todo!(),
             (true, true) => todo!(),
         };
