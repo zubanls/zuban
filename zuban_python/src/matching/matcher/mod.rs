@@ -969,12 +969,11 @@ impl<'a> Matcher<'a> {
         t.replace_type_var_likes(db, &mut self.as_usage_closure(db, on_uncalculated))
     }
 
-    // TODO it feels extremely weird that we use GenericItem+'b
     pub fn as_usage_closure<'b>(
         &'b self,
         db: &'b Database,
-        on_uncalculated: impl for<'x> Fn(TypeVarLikeUsage) -> GenericItem + 'b,
-    ) -> impl for<'y> Fn(TypeVarLikeUsage) -> GenericItem + 'b {
+        on_uncalculated: impl Fn(TypeVarLikeUsage) -> GenericItem + 'b,
+    ) -> impl Fn(TypeVarLikeUsage) -> GenericItem + 'b {
         move |usage| {
             if let Some(i) = self.find_responsible_type_var_matcher_index(
                 usage.in_definition(),
