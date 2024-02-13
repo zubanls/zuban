@@ -3579,7 +3579,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 );
                 save_alias(cached_type_node_ref, alias);
 
-                let mut type_var_manager = TypeVarManager::default();
+                let mut type_var_manager = TypeVarManager::<PointLink>::default();
                 let mut type_var_callback =
                     |_: &InferenceState, _: &_, type_var_like: TypeVarLike, _| {
                         // Here we avoid all late bound type var calculation for callable, which is how

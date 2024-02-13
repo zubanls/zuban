@@ -101,14 +101,13 @@ impl<T: CallableId> TypeVarManager<T> {
     }
 
     pub fn register_callable(&mut self, c: CallableWithParent<T>) {
-        debug_assert!(!self.is_callable_known(c.defined_at.as_in_definition()));
         self.callables.push(c)
     }
 
-    pub fn is_callable_known(&self, link: PointLink) -> bool {
+    pub fn is_callable_known(&self, callable: &Rc<CallableContent>) -> bool {
         self.callables
             .iter()
-            .any(|c| c.defined_at.as_in_definition() == link)
+            .any(|c| c.defined_at.matches_callable(callable))
     }
 
     pub fn move_index(&mut self, old_index: TypeVarIndex, force_index: TypeVarIndex) {
@@ -145,14 +144,14 @@ impl<T: CallableId> TypeVarManager<T> {
         self.type_vars.iter().map(|u| &u.type_var_like)
     }
 
-    pub fn type_vars_for_callable(&self, defined_at: PointLink) -> TypeVarLikes {
+    pub fn type_vars_for_callable(&self, callable: &Rc<CallableContent>) -> TypeVarLikes {
         TypeVarLikes::new(
             self.type_vars
                 .iter()
                 .filter_map(|t| {
                     (t.most_outer_callable
                         .as_ref()
-                        .is_some_and(|m| m.as_in_definition() == defined_at))
+                        .is_some_and(|m| m.matches_callable(callable)))
                     .then(|| t.type_var_like.clone())
                 })
                 .collect(),
@@ -269,9 +268,19 @@ impl Default for TypeVarManager<PointLink> {
     }
 }
 
+impl Default for TypeVarManager<Rc<CallableContent>> {
+    fn default() -> Self {
+        Self {
+            type_vars: vec![],
+            callables: vec![],
+        }
+    }
+}
+
 pub trait CallableId: Clone {
     fn is_same(&self, other: &Self) -> bool;
     fn as_in_definition(&self) -> PointLink;
+    fn matches_callable(&self, callable: &Rc<CallableContent>) -> bool;
 }
 
 impl CallableId for PointLink {
@@ -282,15 +291,23 @@ impl CallableId for PointLink {
     fn as_in_definition(&self) -> PointLink {
         *self
     }
+
+    fn matches_callable(&self, callable: &Rc<CallableContent>) -> bool {
+        *self == callable.defined_at
+    }
 }
 
 impl CallableId for Rc<CallableContent> {
     fn is_same(&self, other: &Self) -> bool {
-        self == other
+        Rc::ptr_eq(self, other)
     }
 
     fn as_in_definition(&self) -> PointLink {
         self.defined_at
+    }
+
+    fn matches_callable(&self, callable: &Self) -> bool {
+        self.is_same(callable)
     }
 }
 

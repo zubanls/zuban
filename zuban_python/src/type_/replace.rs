@@ -330,7 +330,7 @@ fn rc_callable_rewrite_late_bound_callables<T: CallableId>(
         class_name: slf.class_name,
         defined_at: slf.defined_at,
         kind: slf.kind,
-        type_vars: manager.type_vars_for_callable(slf.defined_at),
+        type_vars: manager.type_vars_for_callable(slf),
         params: slf.params.rewrite_late_bound_callables(manager),
         return_type: slf.return_type.rewrite_late_bound_callables(manager),
     })

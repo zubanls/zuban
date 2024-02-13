@@ -1,4 +1,4 @@
-use std::{borrow::Cow, cell::Cell};
+use std::{borrow::Cow, cell::Cell, rc::Rc};
 
 use parsa_python_ast::ParamKind;
 
@@ -24,9 +24,9 @@ use crate::{
     matching::{maybe_class_usage, ErrorTypes, GotType, LookupKind},
     node_ref::NodeRef,
     type_::{
-        match_unpack, CallableParams, CallableWithParent, ClassGenerics, GenericItem, GenericsList,
-        ParamSpecTypeVars, ReplaceSelf, TupleArgs, TupleUnpack, Type, TypeVarLikes, TypeVarManager,
-        Variance, WithUnpack,
+        match_unpack, CallableContent, CallableParams, CallableWithParent, ClassGenerics,
+        GenericItem, GenericsList, ParamSpecTypeVars, ReplaceSelf, TupleArgs, TupleUnpack, Type,
+        TypeVarLikes, TypeVarManager, Variance, WithUnpack,
     },
     type_helpers::{Callable, Class, Function},
 };
@@ -215,8 +215,8 @@ impl CalculatedTypeArgs {
         );
         if let Some(type_var_likes) = self.type_var_likes {
             fn create_callable_hierarchy(
-                manager: &mut TypeVarManager<PointLink>,
-                parent_callable: Option<PointLink>,
+                manager: &mut TypeVarManager<Rc<CallableContent>>,
+                parent_callable: Option<Rc<CallableContent>>,
                 type_var_likes: &TypeVarLikes,
                 t: &Type,
             ) {
@@ -225,23 +225,18 @@ impl CalculatedTypeArgs {
                         // TODO the is_callable_known is only known, because we recurse
                         // potentially multiple times into the same data structures, which is
                         // not really needed.
-                        if !manager.is_callable_known(c.defined_at) {
+                        if !manager.is_callable_known(c) {
                             manager.register_callable(CallableWithParent {
-                                defined_at: c.defined_at,
-                                parent_callable,
+                                defined_at: c.clone(),
+                                parent_callable: parent_callable.clone(),
                             });
                             c.params.search_type_vars(&mut |u| {
                                 let found = u.as_type_var_like();
                                 if type_var_likes.iter().any(|tvl| tvl == &found) {
-                                    manager.add(found, Some(c.defined_at));
+                                    manager.add(found, Some(c.clone()));
                                 }
                             });
-                            create_callable_hierarchy(
-                                manager,
-                                Some(c.defined_at),
-                                type_var_likes,
-                                t,
-                            )
+                            create_callable_hierarchy(manager, Some(c.clone()), type_var_likes, t)
                         }
                     }
                     false
