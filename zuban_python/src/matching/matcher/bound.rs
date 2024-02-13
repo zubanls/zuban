@@ -3,8 +3,8 @@ use crate::{
     database::Database,
     inference_state::InferenceState,
     type_::{
-        CallableParams, FormatStyle, GenericItem, TupleArgs, Type, TypeVar, TypeVarKind,
-        TypeVarLikeUsage, Variance,
+        CallableParams, FormatStyle, GenericItem, ParamSpecArg, TupleArgs, Type, TypeArgs, TypeVar,
+        TypeVarKind, TypeVarLikeUsage, Variance,
     },
 };
 
@@ -220,6 +220,7 @@ impl Bound {
             Self::Uncalculated { fallback: None } => (),
         }
     }
+
     pub fn replace_type_var_likes(
         &self,
         db: &Database,
@@ -257,6 +258,23 @@ impl Bound {
                 fallback: Some(t.replace_type_var_likes(db, on_type_var_like)),
             },
             Self::Uncalculated { fallback: None } => Self::Uncalculated { fallback: None },
+        }
+    }
+
+    pub fn as_generic_item(
+        &self,
+        db: &Database,
+        on_uncalculated: impl FnOnce() -> GenericItem,
+    ) -> GenericItem {
+        match self {
+            Self::TypeVar(t) => GenericItem::TypeArg(t.clone().into_type(db)),
+            Self::TypeVarTuple(ts) => GenericItem::TypeArgs(TypeArgs::new(ts.clone())),
+            Self::ParamSpec(param_spec) => GenericItem::ParamSpecArg(ParamSpecArg {
+                params: param_spec.clone(),
+                type_vars: None,
+            }),
+            // Any is just ignored by the context later.
+            Self::Uncalculated { .. } => on_uncalculated(),
         }
     }
 }
