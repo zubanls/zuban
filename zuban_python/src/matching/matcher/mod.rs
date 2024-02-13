@@ -1591,7 +1591,7 @@ impl<'a> Matcher<'a> {
             })
     }
 
-    pub fn into_generics_list(
+    pub fn into_type_arguments(
         self,
         db: &Database,
     ) -> (Match, Option<GenericsList>, Option<TypeVarLikes>) {

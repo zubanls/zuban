@@ -525,7 +525,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
             }
         },
     };
-    let (m, type_arguments, type_var_likes) = matcher.into_generics_list(i_s.db);
+    let (m, type_arguments, type_var_likes) = matcher.into_type_arguments(i_s.db);
     if !m.bool() {
         if on_type_error.is_some() {
             add_issue(IssueType::ArgumentTypeIssue(
