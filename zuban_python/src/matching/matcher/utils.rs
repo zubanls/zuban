@@ -12,7 +12,7 @@ use super::{
         ResultContext, SignatureMatch,
     },
     bound::TypeVarBound,
-    type_var_matcher::{BoundKind, FunctionOrCallable, TypeVarMatcher},
+    type_var_matcher::{Bound, FunctionOrCallable, TypeVarMatcher},
 };
 use crate::{
     arguments::{Arg, ArgKind, InferredArg},
@@ -405,16 +405,16 @@ fn calculate_type_vars<'db: 'a, 'a>(
                     {
                         for calculated in matcher.iter_calculated_type_vars() {
                             let has_any = match &calculated.type_ {
-                                BoundKind::TypeVar(
+                                Bound::TypeVar(
                                     TypeVarBound::Invariant(t)
                                     | TypeVarBound::Upper(t)
                                     | TypeVarBound::Lower(t),
                                 ) => t.has_any(i_s),
-                                BoundKind::TypeVar(TypeVarBound::UpperAndLower(t1, t2)) => {
+                                Bound::TypeVar(TypeVarBound::UpperAndLower(t1, t2)) => {
                                     t1.has_any(i_s) | t2.has_any(i_s)
                                 }
-                                BoundKind::TypeVarTuple(ts) => ts.has_any(i_s),
-                                BoundKind::ParamSpec(params) => match &params {
+                                Bound::TypeVarTuple(ts) => ts.has_any(i_s),
+                                Bound::ParamSpec(params) => match &params {
                                     CallableParams::Simple(params) => params.iter().any(|t| {
                                         t.type_.maybe_type().is_some_and(|t| t.has_any(i_s))
                                     }),
@@ -423,21 +423,21 @@ fn calculate_type_vars<'db: 'a, 'a>(
                                     }
                                     CallableParams::Any(_) => true,
                                 },
-                                BoundKind::Uncalculated { .. } => {
+                                Bound::Uncalculated { .. } => {
                                     // Make sure that the fallback is never used from a context.
-                                    calculated.type_ = BoundKind::Uncalculated { fallback: None };
+                                    calculated.type_ = Bound::Uncalculated { fallback: None };
                                     continue;
                                 }
                             };
                             if has_any {
-                                calculated.type_ = BoundKind::Uncalculated { fallback: None }
+                                calculated.type_ = Bound::Uncalculated { fallback: None }
                             } else {
                                 calculated.defined_by_result_context = true;
                             }
                         }
                     } else {
                         for calculated in matcher.iter_calculated_type_vars() {
-                            calculated.type_ = BoundKind::Uncalculated { fallback: None }
+                            calculated.type_ = Bound::Uncalculated { fallback: None }
                         }
                         add_init_generics(&mut matcher, return_class)
                     }
@@ -448,30 +448,30 @@ fn calculate_type_vars<'db: 'a, 'a>(
                 return_type.is_sub_type_of(i_s, &mut matcher, expected);
                 for calculated in matcher.iter_calculated_type_vars() {
                     let has_any = match &calculated.type_ {
-                        BoundKind::TypeVar(
+                        Bound::TypeVar(
                             TypeVarBound::Invariant(t)
                             | TypeVarBound::Upper(t)
                             | TypeVarBound::Lower(t),
                         ) => t.has_any(i_s),
-                        BoundKind::TypeVar(TypeVarBound::UpperAndLower(t1, t2)) => {
+                        Bound::TypeVar(TypeVarBound::UpperAndLower(t1, t2)) => {
                             t1.has_any(i_s) | t2.has_any(i_s)
                         }
-                        BoundKind::TypeVarTuple(ts) => ts.has_any(i_s),
-                        BoundKind::ParamSpec(params) => match &params {
+                        Bound::TypeVarTuple(ts) => ts.has_any(i_s),
+                        Bound::ParamSpec(params) => match &params {
                             CallableParams::Simple(params) => todo!(),
                             CallableParams::WithParamSpec(pre, _) => {
                                 pre.iter().any(|t| t.has_any(i_s))
                             }
                             CallableParams::Any(_) => true,
                         },
-                        BoundKind::Uncalculated { .. } => {
+                        Bound::Uncalculated { .. } => {
                             // Make sure that the fallback is never used from a context.
-                            calculated.type_ = BoundKind::Uncalculated { fallback: None };
+                            calculated.type_ = Bound::Uncalculated { fallback: None };
                             continue;
                         }
                     };
                     if has_any {
-                        calculated.type_ = BoundKind::Uncalculated { fallback: None }
+                        calculated.type_ = Bound::Uncalculated { fallback: None }
                     } else {
                         calculated.defined_by_result_context = true;
                     }

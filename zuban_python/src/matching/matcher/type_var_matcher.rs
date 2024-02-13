@@ -101,20 +101,20 @@ impl<'db: 'a, 'a> FunctionOrCallable<'a> {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum BoundKind {
+pub enum Bound {
     TypeVar(TypeVarBound),
     TypeVarTuple(TupleArgs),
     ParamSpec(CallableParams),
     Uncalculated { fallback: Option<Type> },
 }
 
-impl Default for BoundKind {
+impl Default for Bound {
     fn default() -> Self {
         Self::Uncalculated { fallback: None }
     }
 }
 
-impl BoundKind {
+impl Bound {
     pub fn merge(&mut self, db: &Database, other: Self) -> Match {
         if self == &other {
             return Match::new_true();
@@ -197,9 +197,11 @@ impl BoundKind {
                     lower.replace_type_var_likes(db, on_type_var_like),
                 ),
             }),
-            Self::TypeVarTuple(tup) => BoundKind::TypeVarTuple(
-                tup.replace_type_var_likes_and_self(db, on_type_var_like, &|| Type::Self_),
-            ),
+            Self::TypeVarTuple(tup) => Bound::TypeVarTuple(tup.replace_type_var_likes_and_self(
+                db,
+                on_type_var_like,
+                &|| Type::Self_,
+            )),
             Self::ParamSpec(params) => Self::ParamSpec(
                 params
                     .replace_type_var_likes_and_self(db, &mut None, None, on_type_var_like, &|| {
@@ -217,31 +219,29 @@ impl BoundKind {
 
 #[derive(Debug, Default, Clone)]
 pub(super) struct CalculatingTypeArg {
-    pub(super) type_: BoundKind,
-    pub(super) unresolved_transitive_constraints: Vec<BoundKind>,
+    pub(super) type_: Bound,
+    pub(super) unresolved_transitive_constraints: Vec<Bound>,
     pub(super) defined_by_result_context: bool,
 }
 
 impl CalculatingTypeArg {
     pub fn calculated(&self) -> bool {
-        !matches!(self.type_, BoundKind::Uncalculated { .. })
+        !matches!(self.type_, Bound::Uncalculated { .. })
     }
 
     pub fn set_to_any(&mut self, tv: &TypeVarLike, cause: AnyCause) {
         self.type_ = match tv {
-            TypeVarLike::TypeVar(_) => {
-                BoundKind::TypeVar(TypeVarBound::Invariant(Type::Any(cause)))
-            }
+            TypeVarLike::TypeVar(_) => Bound::TypeVar(TypeVarBound::Invariant(Type::Any(cause))),
             TypeVarLike::TypeVarTuple(_) => {
-                BoundKind::TypeVarTuple(TupleArgs::ArbitraryLen(Box::new(Type::Any(cause))))
+                Bound::TypeVarTuple(TupleArgs::ArbitraryLen(Box::new(Type::Any(cause))))
             }
-            TypeVarLike::ParamSpec(_) => BoundKind::ParamSpec(CallableParams::Any(cause)),
+            TypeVarLike::ParamSpec(_) => Bound::ParamSpec(CallableParams::Any(cause)),
         }
     }
 
     pub fn match_or_add_type_var_tuple(&mut self, i_s: &InferenceState, args2: TupleArgs) -> Match {
         match &mut self.type_ {
-            BoundKind::TypeVarTuple(current) => match args2 {
+            Bound::TypeVarTuple(current) => match args2 {
                 TupleArgs::FixedLen(ts) => {
                     common_base_type_of_type_var_tuple_with_items(current, i_s, ts.iter())
                 }
@@ -254,8 +254,8 @@ impl CalculatingTypeArg {
                     debug!("TODO implement withunpack merging {current:?} {ts:?}");
                 }
             },
-            BoundKind::Uncalculated { .. } => {
-                self.type_ = BoundKind::TypeVarTuple(args2);
+            Bound::Uncalculated { .. } => {
+                self.type_ = Bound::TypeVarTuple(args2);
             }
             _ => unreachable!(),
         }
@@ -264,13 +264,13 @@ impl CalculatingTypeArg {
 
     pub fn into_generic_item(self, db: &Database, type_var_like: &TypeVarLike) -> GenericItem {
         match self.type_ {
-            BoundKind::TypeVar(t) => GenericItem::TypeArg(t.into_type(db)),
-            BoundKind::TypeVarTuple(ts) => GenericItem::TypeArgs(TypeArgs::new(ts)),
-            BoundKind::ParamSpec(params) => GenericItem::ParamSpecArg(ParamSpecArg {
+            Bound::TypeVar(t) => GenericItem::TypeArg(t.into_type(db)),
+            Bound::TypeVarTuple(ts) => GenericItem::TypeArgs(TypeArgs::new(ts)),
+            Bound::ParamSpec(params) => GenericItem::ParamSpecArg(ParamSpecArg {
                 params,
                 type_vars: None,
             }),
-            BoundKind::Uncalculated { fallback } => {
+            Bound::Uncalculated { fallback } => {
                 if let Some(fallback) = fallback {
                     GenericItem::TypeArg(fallback)
                 } else {
@@ -293,23 +293,23 @@ impl CalculatingTypeArg {
     pub fn maybe_calculated_type(self, db: &Database) -> Option<Type> {
         // Expects only TypeVars, no TypeVarTuples or ParamSpecs
         match self.type_ {
-            BoundKind::TypeVar(bound) => Some(bound.into_type(db)),
-            BoundKind::Uncalculated { .. } => None,
+            Bound::TypeVar(bound) => Some(bound.into_type(db)),
+            Bound::Uncalculated { .. } => None,
             _ => unreachable!(),
         }
     }
 
     pub fn avoid_type_vars_from_class_self_arguments(&mut self, class: Class) {
         let is_self_type_var = match &self.type_ {
-            BoundKind::TypeVar(
+            Bound::TypeVar(
                 TypeVarBound::Invariant(t) | TypeVarBound::Lower(t) | TypeVarBound::Upper(t),
             ) => match t {
                 Type::TypeVar(tv) if class.node_ref.as_link() == tv.in_definition => true,
                 _ => false,
             },
-            BoundKind::TypeVar(TypeVarBound::UpperAndLower(_, _)) => unreachable!(),
-            BoundKind::TypeVarTuple(tvt) => todo!(),
-            BoundKind::ParamSpec(p) => match p {
+            Bound::TypeVar(TypeVarBound::UpperAndLower(_, _)) => unreachable!(),
+            Bound::TypeVarTuple(tvt) => todo!(),
+            Bound::ParamSpec(p) => match p {
                 CallableParams::WithParamSpec(pre, p2)
                     if pre.is_empty() && class.node_ref.as_link() == p2.in_definition =>
                 {
@@ -317,10 +317,10 @@ impl CalculatingTypeArg {
                 }
                 _ => false,
             },
-            BoundKind::Uncalculated { .. } => false,
+            Bound::Uncalculated { .. } => false,
         };
         if is_self_type_var {
-            self.type_ = BoundKind::Uncalculated { fallback: None };
+            self.type_ = Bound::Uncalculated { fallback: None };
         }
     }
 }
@@ -379,7 +379,7 @@ impl TypeVarMatcher {
     ) -> Match {
         debug_assert_eq!(type_var_usage.in_definition, self.match_in_definition);
         let current = &mut self.calculating_type_args[type_var_usage.index.as_usize()];
-        if let BoundKind::TypeVar(current_type) = &mut current.type_ {
+        if let Bound::TypeVar(current_type) = &mut current.type_ {
             let m = current_type.merge_or_mismatch(i_s, value_type, variance);
             return m;
         }
@@ -387,7 +387,7 @@ impl TypeVarMatcher {
         // Before setting the type var, we need to check if the constraints match.
         match check_constraints(i_s, &type_var_usage.type_var, value_type, variance) {
             Ok(bound) => {
-                current.type_ = BoundKind::TypeVar(bound);
+                current.type_ = Bound::TypeVar(bound);
                 if value_type.is_any() {
                     Match::True { with_any: true }
                 } else {
@@ -395,7 +395,7 @@ impl TypeVarMatcher {
                 }
             }
             Err(m) => {
-                current.type_ = BoundKind::Uncalculated {
+                current.type_ = Bound::Uncalculated {
                     fallback: Some(value_type.clone()),
                 };
                 m
