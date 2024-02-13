@@ -21,7 +21,7 @@ use super::{
     FormatData, Match, OnTypeError, ParamsStyle, ResultContext, SignatureMatch,
 };
 use crate::{
-    arguments::{Arg, ArgKind},
+    arguments::{Arg, ArgKind, InferredArg},
     database::{Database, PointLink},
     debug,
     diagnostics::IssueType,
@@ -722,7 +722,7 @@ impl<'a> Matcher<'a> {
     }
 
     pub(crate) fn match_param_spec_arguments<'db, 'b, 'c>(
-        &self,
+        &mut self,
         i_s: &InferenceState<'db, '_>,
         usage: &ParamSpecUsage,
         args: Box<[Arg<'db, 'b>]>,
@@ -736,8 +736,16 @@ impl<'a> Matcher<'a> {
             if type_var_matcher.match_in_definition == usage.in_definition {
                 match &type_var_matcher.calculating_type_args[usage.index.as_usize()].type_ {
                     BoundKind::ParamSpec(p) => p,
-                    // This means that an Any came along.
-                    BoundKind::Uncalculated { .. } => return SignatureMatch::new_true(),
+                    BoundKind::Uncalculated { .. } => {
+                        let calculating = &mut self
+                            .type_var_matchers
+                            .first_mut()
+                            .unwrap()
+                            .calculating_type_args[usage.index.as_usize()]
+                        .type_;
+                        *calculating = BoundKind::ParamSpec(infer_params_from_args(i_s, args));
+                        return SignatureMatch::new_true();
+                    }
                     BoundKind::TypeVar(_) | BoundKind::TypeVarTuple(_) => unreachable!(),
                 }
             } else {
@@ -1742,4 +1750,30 @@ impl TypeVarCycle {
             free_type_var_index: None,
         }
     }
+}
+
+fn infer_params_from_args<'db>(
+    i_s: &InferenceState<'db, '_>,
+    args: Box<[Arg<'db, '_>]>,
+) -> CallableParams {
+    let mut params = vec![];
+    for arg in args.iter() {
+        let inferred_arg = arg.infer(i_s, &mut ResultContext::Unknown);
+        let p = match (
+            arg.is_keyword_argument(),
+            arg.in_args_or_kwargs_and_arbitrary_len(),
+        ) {
+            (false, false) => {
+                let InferredArg::Inferred(t) = inferred_arg else {
+                    unreachable!()
+                };
+                CallableParam::new_anonymous(ParamType::PositionalOnly(t.as_type(i_s)))
+            }
+            (true, false) => todo!(),
+            (false, true) => todo!(),
+            (true, true) => todo!(),
+        };
+        params.push(p);
+    }
+    CallableParams::Simple(params.into())
 }

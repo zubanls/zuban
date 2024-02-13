@@ -200,6 +200,7 @@ testEnumNameWorkCorrectlyOn311
 # current_function in i_s is wrong.
 testTypeVarTuplePep646TypeVarStarArgs
 
+testApplyParamSpecToParamSpecLiterals
 # function type vars are not late bound in Mypy in params
 testTypeVarTupleParamSpecInteraction
 testParamSpecSubtypeChecking2
