@@ -163,6 +163,7 @@ pub fn matches_simple_params<
                 })
             {
                 matches &= m;
+                params2.next();
                 continue;
             }
             match &specific1 {
@@ -384,7 +385,7 @@ pub fn matches_simple_params<
                                     matches &= Match::new_false();
                                     todo!()
                                 }
-                            }
+                            };
                         }
                         _ => todo!("{s1:?} {s2:?}"),
                     },
@@ -474,15 +475,14 @@ pub fn matches_simple_params<
         }
     }
     for param2 in params2 {
-        /*
-        if let Some(m) = match_unpack_from_other_side(
-            i_s, matcher, &param2.specific(i_s.db), variance,
-            || [].iter().peekable()
-        ) {
+        if let Some(m) =
+            match_unpack_from_other_side(i_s, matcher, &param2.specific(i_s.db), variance, || {
+                [].iter().peekable()
+            })
+        {
             matches &= m;
-            continue
+            continue;
         }
-        */
         if !param2.has_default()
             && !matches!(param2.kind(i_s.db), ParamKind::Star | ParamKind::StarStar)
         {

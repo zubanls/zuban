@@ -214,7 +214,6 @@ testInferenceAgainstGenericParamSpecSecondOrder
 testInferenceAgainstGenericLambdas
 testGenericLambdaGenericMethodNoCrash
 # --new-type-inference TypeVar confusion
-testInferenceAgainstGenericVariadicPopOn
 testInferenceAgainstGenericParamSpecPopOn
 # Weird class type vars passing
 testDefaultDict
