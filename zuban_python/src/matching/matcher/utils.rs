@@ -12,7 +12,7 @@ use super::{
         ResultContext, SignatureMatch,
     },
     bound::TypeVarBound,
-    type_var_matcher::{Bound, FunctionOrCallable, TypeVarMatcher},
+    type_var_matcher::{FunctionOrCallable, TypeVarMatcher},
 };
 use crate::{
     arguments::{Arg, ArgKind, InferredArg},
@@ -21,7 +21,7 @@ use crate::{
     diagnostics::IssueType,
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{maybe_class_usage, ErrorTypes, GotType, LookupKind},
+    matching::{matcher::bound::Bound, maybe_class_usage, ErrorTypes, GotType, LookupKind},
     node_ref::NodeRef,
     type_::{
         match_unpack, CallableContent, CallableParams, CallableWithParent, ClassGenerics,

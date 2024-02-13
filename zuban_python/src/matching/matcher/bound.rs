@@ -2,7 +2,10 @@ use super::super::{FormatData, Match};
 use crate::{
     database::Database,
     inference_state::InferenceState,
-    type_::{FormatStyle, Type, TypeVar, TypeVarKind, Variance},
+    type_::{
+        CallableParams, FormatStyle, GenericItem, TupleArgs, Type, TypeVar, TypeVarKind,
+        TypeVarLikeUsage, Variance,
+    },
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -140,3 +143,134 @@ impl TypeVarBound {
         matches
     }
 }
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Bound {
+    TypeVar(TypeVarBound),
+    TypeVarTuple(TupleArgs),
+    ParamSpec(CallableParams),
+    Uncalculated { fallback: Option<Type> },
+}
+
+impl Default for Bound {
+    fn default() -> Self {
+        Self::Uncalculated { fallback: None }
+    }
+}
+
+impl Bound {
+    pub fn merge(&mut self, db: &Database, other: Self) -> Match {
+        if self == &other {
+            return Match::new_true();
+        }
+        let i_s = InferenceState::new(db);
+        match (self, other) {
+            (Self::TypeVar(bound1), Self::TypeVar(bound2)) => {
+                let mut m = Match::new_true();
+                let (t, variance) = match bound2 {
+                    TypeVarBound::Upper(t) => (t, Variance::Contravariant),
+                    TypeVarBound::Lower(t) => (t, Variance::Covariant),
+                    TypeVarBound::Invariant(t) => (t, Variance::Invariant),
+                    TypeVarBound::UpperAndLower(upper, t) => {
+                        m = bound1.merge_or_mismatch(&i_s, &upper, Variance::Contravariant);
+                        (t, Variance::Covariant)
+                    }
+                };
+                m & bound1.merge_or_mismatch(&i_s, &t, variance)
+            }
+            (Self::TypeVarTuple(tup1), Self::TypeVarTuple(tup2)) => {
+                dbg!(tup1, tup2);
+                //match_tuple_type_arguments(&i_s, &mut Matcher::default(), tup1, &tup2, Variance::Invariant);
+                todo!()
+            }
+            (Self::ParamSpec(p1), Self::ParamSpec(p2)) => {
+                //matches_params(&i_s, &mut Matcher::default(), p1, &p2, Variance::Invariant, false)
+                dbg!(p1, p2);
+                todo!()
+            }
+            (Self::Uncalculated { fallback: Some(_) }, Self::Uncalculated { .. }) => {
+                Match::new_true()
+            }
+            (slf @ Self::Uncalculated { fallback: _ }, other) => {
+                *slf = other;
+                Match::new_true()
+            }
+            (_, Self::Uncalculated { fallback: _ }) => Match::new_true(),
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C) {
+        match self {
+            Self::TypeVar(tv) => {
+                let t = match tv {
+                    TypeVarBound::Invariant(t)
+                    | TypeVarBound::Lower(t)
+                    | TypeVarBound::Upper(t) => t,
+                    TypeVarBound::UpperAndLower(upper, lower) => {
+                        upper.search_type_vars(found_type_var);
+                        lower
+                    }
+                };
+                t.search_type_vars(found_type_var)
+            }
+            Self::TypeVarTuple(tup) => tup.search_type_vars(found_type_var),
+            Self::ParamSpec(params) => params.search_type_vars(found_type_var),
+            Self::Uncalculated { fallback: Some(t) } => t.search_type_vars(found_type_var),
+            Self::Uncalculated { fallback: None } => (),
+        }
+    }
+    pub fn replace_type_var_likes(
+        &self,
+        db: &Database,
+        on_type_var_like: &mut impl FnMut(TypeVarLikeUsage) -> GenericItem,
+    ) -> Self {
+        match self {
+            Self::TypeVar(tv) => Self::TypeVar(match tv {
+                TypeVarBound::Invariant(t) => {
+                    TypeVarBound::Invariant(t.replace_type_var_likes(db, on_type_var_like))
+                }
+                TypeVarBound::Upper(t) => {
+                    TypeVarBound::Upper(t.replace_type_var_likes(db, on_type_var_like))
+                }
+                TypeVarBound::Lower(t) => {
+                    TypeVarBound::Upper(t.replace_type_var_likes(db, on_type_var_like))
+                }
+                TypeVarBound::UpperAndLower(upper, lower) => TypeVarBound::UpperAndLower(
+                    upper.replace_type_var_likes(db, on_type_var_like),
+                    lower.replace_type_var_likes(db, on_type_var_like),
+                ),
+            }),
+            Self::TypeVarTuple(tup) => Bound::TypeVarTuple(tup.replace_type_var_likes_and_self(
+                db,
+                on_type_var_like,
+                &|| Type::Self_,
+            )),
+            Self::ParamSpec(params) => Self::ParamSpec(
+                params
+                    .replace_type_var_likes_and_self(db, &mut None, None, on_type_var_like, &|| {
+                        Type::Self_
+                    })
+                    .0,
+            ),
+            Self::Uncalculated { fallback: Some(t) } => Self::Uncalculated {
+                fallback: Some(t.replace_type_var_likes(db, on_type_var_like)),
+            },
+            Self::Uncalculated { fallback: None } => Self::Uncalculated { fallback: None },
+        }
+    }
+}
+
+/*
+#[derive(Debug, Clone, PartialEq)]
+enum BoundKind {
+    TypeVar(Type),
+    TypeVarTuple(TupleArgs),
+    ParamSpec(CallableParams),
+
+    Invariant(BoundKind),
+    Upper(BoundKind),
+    UpperAndLower(BoundKind, BoundKind),
+    Lower(BoundKind),
+}
+*/

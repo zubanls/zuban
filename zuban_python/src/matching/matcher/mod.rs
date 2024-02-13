@@ -6,7 +6,7 @@ use core::fmt;
 use std::{borrow::Cow, collections::HashSet, iter::Peekable, rc::Rc, slice::Iter};
 
 pub use type_var_matcher::FunctionOrCallable;
-use type_var_matcher::{Bound, TypeVarMatcher};
+use type_var_matcher::TypeVarMatcher;
 use utils::match_arguments_against_params;
 pub(crate) use utils::{
     calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
@@ -14,7 +14,10 @@ pub(crate) use utils::{
     CalculatedTypeArgs,
 };
 
-use self::{bound::TypeVarBound, type_var_matcher::CalculatingTypeArg};
+use self::{
+    bound::{Bound, TypeVarBound},
+    type_var_matcher::CalculatingTypeArg,
+};
 
 use super::{
     params::{matches_params, matches_simple_params, InferrableParamIterator},
