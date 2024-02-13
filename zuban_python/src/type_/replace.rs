@@ -215,7 +215,7 @@ impl Type {
                 Type::FunctionOverload(overload.map_functions(|functions| {
                     functions
                         .iter()
-                        .map(|c| Rc::new(c.rewrite_late_bound_callables(manager)))
+                        .map(|c| rc_callable_rewrite_late_bound_callables(c, manager))
                         .collect()
                 }))
             }
@@ -225,7 +225,9 @@ impl Type {
                 Type::Tuple(Tuple::new(tup.args.rewrite_late_bound_callables(manager)))
             }
             Type::Literal { .. } => self.clone(),
-            Type::Callable(c) => Type::Callable(Rc::new(c.rewrite_late_bound_callables(manager))),
+            Type::Callable(c) => {
+                Type::Callable(rc_callable_rewrite_late_bound_callables(c, manager))
+            }
             Type::NewType(_) => todo!(),
             Type::RecursiveType(recursive_alias) => {
                 Type::RecursiveType(Rc::new(RecursiveType::new(
@@ -317,19 +319,23 @@ impl CallableContent {
             return_type,
         }
     }
-
-    pub fn rewrite_late_bound_callables<T: CallableId>(&self, manager: &TypeVarManager<T>) -> Self {
-        CallableContent {
-            name: self.name.clone(),
-            class_name: self.class_name,
-            defined_at: self.defined_at,
-            kind: self.kind,
-            type_vars: manager.type_vars_for_callable(self.defined_at),
-            params: self.params.rewrite_late_bound_callables(manager),
-            return_type: self.return_type.rewrite_late_bound_callables(manager),
-        }
-    }
 }
+
+fn rc_callable_rewrite_late_bound_callables<T: CallableId>(
+    slf: &Rc<CallableContent>,
+    manager: &TypeVarManager<T>,
+) -> Rc<CallableContent> {
+    Rc::new(CallableContent {
+        name: slf.name.clone(),
+        class_name: slf.class_name,
+        defined_at: slf.defined_at,
+        kind: slf.kind,
+        type_vars: manager.type_vars_for_callable(slf.defined_at),
+        params: slf.params.rewrite_late_bound_callables(manager),
+        return_type: slf.return_type.rewrite_late_bound_callables(manager),
+    })
+}
+
 impl CallableParam {
     fn rewrite_late_bound_callables<T: CallableId>(&self, manager: &TypeVarManager<T>) -> Self {
         Self {

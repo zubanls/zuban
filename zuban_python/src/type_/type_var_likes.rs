@@ -1,8 +1,8 @@
 use std::{ops::AddAssign, rc::Rc};
 
 use super::{
-    replace::ReplaceTypeVarLike, AnyCause, CallableParams, GenericItem, GenericsList, ReplaceSelf,
-    TupleArgs, TupleUnpack, Type, TypeArgs, WithUnpack,
+    replace::ReplaceTypeVarLike, AnyCause, CallableContent, CallableParams, GenericItem,
+    GenericsList, ReplaceSelf, TupleArgs, TupleUnpack, Type, TypeArgs, WithUnpack,
 };
 use crate::{
     database::{Database, PointLink},
@@ -281,6 +281,16 @@ impl CallableId for PointLink {
 
     fn as_in_definition(&self) -> PointLink {
         *self
+    }
+}
+
+impl CallableId for Rc<CallableContent> {
+    fn is_same(&self, other: &Self) -> bool {
+        self == other
+    }
+
+    fn as_in_definition(&self) -> PointLink {
+        self.defined_at
     }
 }
 
