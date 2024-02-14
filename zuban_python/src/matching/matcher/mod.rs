@@ -965,7 +965,10 @@ impl<'a> Matcher<'a> {
             ) {
                 let current =
                     &self.type_var_matchers[i].calculating_type_args[usage.index().as_usize()];
-                return current.type_.as_generic_item(db, || on_uncalculated(usage));
+                return current
+                    .type_
+                    .clone()
+                    .into_generic_item(db, |_| on_uncalculated(usage));
             }
             if let Some(c) = self.class {
                 if c.node_ref.as_link() == usage.in_definition() {
@@ -1505,7 +1508,9 @@ impl<'a> Matcher<'a> {
             .calculating_type_args
             .into_iter()
             .map(|c| {
-                let GenericItem::TypeArg(g) = c.type_.into_generic_item(db, || GenericItem::TypeArg(Type::Any(AnyCause::Todo))) else {
+                let GenericItem::TypeArg(g) = c.type_.into_generic_item(db, |_| {
+                    GenericItem::TypeArg(Type::Any(AnyCause::Todo))
+                }) else {
                     unreachable!();
                 };
                 g

@@ -244,32 +244,10 @@ impl Bound {
         }
     }
 
-    pub fn as_generic_item(
-        &self,
-        db: &Database,
-        on_uncalculated: impl FnOnce() -> GenericItem,
-    ) -> GenericItem {
-        match self {
-            // If the upper bound is a literal, we do not want to use the lower bound.
-            Self::UpperAndLower(t @ BoundKind::TypeVar(Type::Literal(_)), _) => t.as_generic_item(),
-            Self::Lower(BoundKind::TypeVar(Type::Literal(l)))
-            | Self::UpperAndLower(_, BoundKind::TypeVar(Type::Literal(l)))
-                if l.implicit =>
-            {
-                GenericItem::TypeArg(db.python_state.literal_type(&l.kind))
-            }
-            Self::Invariant(k) | Self::Upper(k) | Self::Lower(k) | Self::UpperAndLower(_, k) => {
-                k.as_generic_item()
-            }
-            // Any is just ignored by the context later.
-            Self::Uncalculated { .. } => on_uncalculated(),
-        }
-    }
-
     pub fn into_generic_item(
         self,
         db: &Database,
-        on_uncalculated: impl FnOnce() -> GenericItem,
+        on_uncalculated: impl FnOnce(Option<Type>) -> GenericItem,
     ) -> GenericItem {
         match self {
             // If the upper bound is a literal, we do not want to use the lower bound.
@@ -285,11 +263,7 @@ impl Bound {
             Self::Invariant(k) | Self::Upper(k) | Self::Lower(k) | Self::UpperAndLower(_, k) => {
                 k.into_generic_item()
             }
-            Self::Uncalculated {
-                fallback: Some(fallback),
-            } => GenericItem::TypeArg(fallback),
-            // Any is just ignored by the context later.
-            Self::Uncalculated { .. } => on_uncalculated(),
+            Self::Uncalculated { fallback } => on_uncalculated(fallback),
         }
     }
 
@@ -404,17 +378,6 @@ impl BoundKind {
             BoundKind::TypeVar(t) => t.search_type_vars(found_type_var),
             BoundKind::TypeVarTuple(tup) => tup.search_type_vars(found_type_var),
             BoundKind::ParamSpec(params) => params.search_type_vars(found_type_var),
-        }
-    }
-
-    fn as_generic_item(&self) -> GenericItem {
-        match self {
-            Self::TypeVar(t) => GenericItem::TypeArg(t.clone()),
-            Self::TypeVarTuple(ts) => GenericItem::TypeArgs(TypeArgs::new(ts.clone())),
-            Self::ParamSpec(param_spec) => GenericItem::ParamSpecArg(ParamSpecArg {
-                params: param_spec.clone(),
-                type_vars: None,
-            }),
         }
     }
 

@@ -138,15 +138,21 @@ impl CalculatingTypeArg {
     }
 
     pub fn into_generic_item(self, db: &Database, type_var_like: &TypeVarLike) -> GenericItem {
-        self.type_.into_generic_item(db, || match type_var_like {
-            TypeVarLike::TypeVar(_) => GenericItem::TypeArg(Type::Never),
-            // TODO TypeVarTuple: this feels wrong, should maybe be never?
-            TypeVarLike::TypeVarTuple(_) => {
-                GenericItem::TypeArgs(TypeArgs::new_fixed_length(Rc::new([])))
-            }
-            // TODO ParamSpec: this feels wrong, should maybe be never?
-            TypeVarLike::ParamSpec(_) => {
-                GenericItem::ParamSpecArg(ParamSpecArg::new_any(AnyCause::Todo))
+        self.type_.into_generic_item(db, |fallback| {
+            if let Some(fallback) = fallback {
+                GenericItem::TypeArg(fallback)
+            } else {
+                match type_var_like {
+                    TypeVarLike::TypeVar(_) => GenericItem::TypeArg(Type::Never),
+                    // TODO TypeVarTuple: this feels wrong, should maybe be never?
+                    TypeVarLike::TypeVarTuple(_) => {
+                        GenericItem::TypeArgs(TypeArgs::new_fixed_length(Rc::new([])))
+                    }
+                    // TODO ParamSpec: this feels wrong, should maybe be never?
+                    TypeVarLike::ParamSpec(_) => {
+                        GenericItem::ParamSpecArg(ParamSpecArg::new_any(AnyCause::Todo))
+                    }
+                }
             }
         })
     }
