@@ -945,6 +945,27 @@ fn match_unpack_internal(
         }
         match_
     };
+    let check_type_var_tuple = |matcher: &mut Matcher, tvt, args: TupleArgs| {
+        let m = matcher.match_or_add_type_var_tuple(i_s, tvt, args.clone(), variance);
+        if !m.bool() {
+            if let Match::False { reason, .. } = &m {
+                if let Some(on_mismatch) = on_mismatch {
+                    on_mismatch(
+                        ErrorTypes {
+                            matcher,
+                            reason,
+                            expected: &Type::Tuple(Tuple::new(TupleArgs::WithUnpack(
+                                with_unpack1.clone(),
+                            ))),
+                            got: GotType::Type(&Type::Tuple(Tuple::new(args))),
+                        },
+                        with_unpack1.before.len() as isize,
+                    );
+                }
+            }
+        }
+        m
+    };
 
     match tuple2 {
         TupleArgs::FixedLen(ts2) => {
@@ -968,11 +989,10 @@ fn match_unpack_internal(
             } else {
                 match &with_unpack1.unpack {
                     TupleUnpack::TypeVarTuple(tvt) => {
-                        matches &= matcher.match_or_add_type_var_tuple(
-                            i_s,
+                        matches &= check_type_var_tuple(
+                            matcher,
                             tvt,
                             TupleArgs::FixedLen(t2_iterator.map(|(_, t2)| t2.clone()).collect()),
-                            variance,
                         )
                     }
                     TupleUnpack::ArbitraryLen(inner_t1) => {
@@ -1034,32 +1054,15 @@ fn match_unpack_internal(
                         */
                         todo!()
                     }
-                    let m = matcher.match_or_add_type_var_tuple(
-                        i_s,
+                    matches &= check_type_var_tuple(
+                        matcher,
                         tvt1,
                         TupleArgs::WithUnpack(WithUnpack {
                             before: before2_it.cloned().collect(),
                             unpack: with_unpack2.unpack.clone(),
                             after: after2_it.cloned().collect(),
                         }),
-                        variance,
-                    );
-                    if let Some(on_mismatch) = on_mismatch {
-                        if !m.bool() {
-                            on_mismatch(
-                                ErrorTypes {
-                                    matcher,
-                                    reason: &MismatchReason::None,
-                                    expected: &Type::Tuple(Tuple::new(TupleArgs::WithUnpack(
-                                        with_unpack1.clone(),
-                                    ))),
-                                    got: GotType::Starred(Type::Tuple(Tuple::new(tuple2.clone()))),
-                                },
-                                len_before_1 as isize,
-                            );
-                        }
-                    }
-                    matches &= m;
+                    )
                 }
                 TupleUnpack::ArbitraryLen(inner_t1) => match &with_unpack2.unpack {
                     TupleUnpack::TypeVarTuple(tvt2) => todo!(),
@@ -1084,12 +1087,8 @@ fn match_unpack_internal(
             }
             match &with_unpack1.unpack {
                 TupleUnpack::TypeVarTuple(tvt) => {
-                    matches &= matcher.match_or_add_type_var_tuple(
-                        i_s,
-                        tvt,
-                        TupleArgs::ArbitraryLen(t2.clone()),
-                        variance,
-                    )
+                    matches &=
+                        check_type_var_tuple(matcher, tvt, TupleArgs::ArbitraryLen(t2.clone()))
                 }
                 TupleUnpack::ArbitraryLen(inner_t1) => {
                     todo!()
