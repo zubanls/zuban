@@ -357,7 +357,7 @@ impl Bound {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-enum Bound2 {
+pub enum Bound2 {
     Uncalculated { fallback: Option<Type> },
 
     Invariant(BoundKind),
@@ -367,10 +367,16 @@ enum Bound2 {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-enum BoundKind {
+pub enum BoundKind {
     TypeVar(Type),
     TypeVarTuple(TupleArgs),
     ParamSpec(CallableParams),
+}
+
+impl Default for Bound2 {
+    fn default() -> Self {
+        Self::Uncalculated { fallback: None }
+    }
 }
 
 impl Bound2 {
