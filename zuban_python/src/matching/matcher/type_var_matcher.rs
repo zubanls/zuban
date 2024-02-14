@@ -179,7 +179,6 @@ impl TypeVarMatcher {
         &mut self,
         i_s: &InferenceState,
         type_var_usage: &TypeVarUsage,
-        type_var: &TypeVar,
         value_type: &Type,
         variance: Variance,
     ) -> Match {

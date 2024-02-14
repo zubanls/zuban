@@ -308,13 +308,7 @@ impl<'a> Matcher<'a> {
                 return Some(Match::new_true());
             }
             let tv_matcher = &mut self.type_var_matchers[matcher_index];
-            return Some(tv_matcher.match_or_add_type_var(
-                i_s,
-                t1,
-                t1.type_var.as_ref(),
-                value_type,
-                variance,
-            ));
+            return Some(tv_matcher.match_or_add_type_var(i_s, t1, value_type, variance));
         }
         if !self.match_reverse {
             if let Some(class) = self.class {
