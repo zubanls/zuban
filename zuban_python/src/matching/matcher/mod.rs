@@ -623,7 +623,6 @@ impl<'a> Matcher<'a> {
             if let Some(class) = self.class {
                 if class.node_ref.as_link() == p1.in_definition {
                     let usage = class.generics().nth_param_spec_usage(i_s.db, p1);
-                    debug!("TODO should maybe use type vars?");
                     return Some(match_params(i_s, &usage.params, p2_pre_iterator));
                 } else {
                     todo!()
