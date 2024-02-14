@@ -8,13 +8,11 @@ use super::{
 };
 use crate::{
     database::{Database, PointLink},
-    debug,
     inference_state::InferenceState,
     matching::Param,
     type_::{
-        common_base_type_of_type_var_tuple_with_items, AnyCause, CallableParams, GenericItem,
-        GenericsList, ParamSpecArg, ParamType, TupleArgs, Type, TypeArgs, TypeVar, TypeVarKind,
-        TypeVarLike, TypeVarLikes, TypeVarUsage, Variance,
+        AnyCause, CallableParams, GenericItem, GenericsList, ParamSpecArg, ParamType, Type,
+        TypeArgs, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikes, TypeVarUsage, Variance,
     },
     type_helpers::{Callable, Class, Function},
 };
@@ -112,31 +110,6 @@ impl CalculatingTypeArg {
         !matches!(self.type_, Bound::Uncalculated { .. })
     }
 
-    pub fn match_or_add_type_var_tuple(&mut self, i_s: &InferenceState, args2: TupleArgs) -> Match {
-        match &mut self.type_ {
-            // TODO fix variance
-            Bound::Invariant(BoundKind::TypeVarTuple(current)) => match args2 {
-                TupleArgs::FixedLen(ts) => {
-                    common_base_type_of_type_var_tuple_with_items(current, i_s, ts.iter())
-                }
-                TupleArgs::ArbitraryLen(t2) => match current {
-                    TupleArgs::ArbitraryLen(t1) => *t1 = Box::new(t1.common_base_type(i_s, &t2)),
-                    TupleArgs::FixedLen(_) => todo!(),
-                    TupleArgs::WithUnpack(_) => todo!(),
-                },
-                TupleArgs::WithUnpack(ts) => {
-                    debug!("TODO implement withunpack merging {current:?} {ts:?}");
-                }
-            },
-            Bound::Uncalculated { .. } => {
-                // TODO fix variance
-                self.type_ = Bound::new_type_args(args2, Variance::Invariant);
-            }
-            _ => unreachable!(),
-        }
-        Match::new_true()
-    }
-
     pub fn into_generic_item(self, db: &Database, type_var_like: &TypeVarLike) -> GenericItem {
         self.type_.into_generic_item(db, |fallback| {
             if let Some(fallback) = fallback {
@@ -219,7 +192,6 @@ impl TypeVarMatcher {
                 variance,
             );
         }
-        debug_assert!(!current.calculated(), "{current:?}");
         // Before setting the type var, we need to check if the constraints match.
         match check_constraints(i_s, &type_var_usage.type_var, value_type, variance) {
             Ok(bound) => {

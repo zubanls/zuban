@@ -52,8 +52,7 @@ impl Bound {
     }
 
     pub fn new_type_args(ts: TupleArgs, variance: Variance) -> Self {
-        // TODO change variance
-        Self::new(BoundKind::TypeVarTuple(ts), Variance::Invariant)
+        Self::new(BoundKind::TypeVarTuple(ts), variance)
     }
 
     pub fn new_param_spec(params: CallableParams, variance: Variance) -> Self {
@@ -345,7 +344,9 @@ impl BoundKind {
     fn common_base_type(&self, i_s: &InferenceState, other: &Self) -> Self {
         match (self, other) {
             (Self::TypeVar(t1), Self::TypeVar(t2)) => Self::TypeVar(t1.common_base_type(i_s, t2)),
-            (Self::TypeVarTuple(tup1), Self::TypeVarTuple(tup2)) => todo!(),
+            (Self::TypeVarTuple(tup1), Self::TypeVarTuple(tup2)) => {
+                Self::TypeVarTuple(tup1.common_base_type(i_s, tup2))
+            }
             (Self::ParamSpec(params1), Self::ParamSpec(params2)) => todo!(),
             _ => unreachable!(),
         }

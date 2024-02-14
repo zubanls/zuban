@@ -23,7 +23,7 @@ pub(crate) use self::{
         format_callable_params, CallableContent, CallableParam, CallableParams, ParamType,
         ParamTypeDetails, StarParamType, StarStarParamType, WrongPositionalCount,
     },
-    common_base_type::{common_base_type, common_base_type_of_type_var_tuple_with_items},
+    common_base_type::common_base_type,
     dataclass::{
         check_dataclass_options, dataclass_init_func, dataclass_initialize, dataclasses_replace,
         lookup_dataclass_symbol, lookup_on_dataclass, lookup_on_dataclass_type, Dataclass,

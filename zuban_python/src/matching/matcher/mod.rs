@@ -472,7 +472,8 @@ impl<'a> Matcher<'a> {
             }
             let tv_matcher = &mut self.type_var_matchers[matcher_index];
             return tv_matcher.calculating_type_args[tvt.index.as_usize()]
-                .match_or_add_type_var_tuple(i_s, args2);
+                .type_
+                .merge(i_s.db, Bound::new_type_args(args2, variance));
         }
 
         if !self.match_reverse {
