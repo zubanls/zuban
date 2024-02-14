@@ -4,8 +4,8 @@ use crate::{
     inference_state::InferenceState,
     matching::ParamsStyle,
     type_::{
-        CallableParams, FormatStyle, GenericItem, ParamSpecArg, TupleArgs, Type, TypeArgs, TypeVar,
-        TypeVarKind, TypeVarLike, TypeVarLikeUsage, Variance,
+        AnyCause, CallableParams, FormatStyle, GenericItem, ParamSpecArg, TupleArgs, Type,
+        TypeArgs, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage, Variance,
     },
 };
 
@@ -318,6 +318,16 @@ impl Bound {
             Self::Uncalculated { fallback: None } => on_uncalculated(),
         }
     }
+
+    pub fn set_to_any(&mut self, tv: &TypeVarLike, cause: AnyCause) {
+        *self = match tv {
+            TypeVarLike::TypeVar(_) => Bound::TypeVar(TypeVarBound::Invariant(Type::Any(cause))),
+            TypeVarLike::TypeVarTuple(_) => {
+                Bound::TypeVarTuple(TupleArgs::ArbitraryLen(Box::new(Type::Any(cause))))
+            }
+            TypeVarLike::ParamSpec(_) => Bound::ParamSpec(CallableParams::Any(cause)),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -533,6 +543,16 @@ impl Bound2 {
             // Any is just ignored by the context later.
             Self::Uncalculated { .. } => on_uncalculated(),
         }
+    }
+
+    pub fn set_to_any(&mut self, tv: &TypeVarLike, cause: AnyCause) {
+        *self = Self::Invariant(match tv {
+            TypeVarLike::TypeVar(_) => BoundKind::TypeVar(Type::Any(cause)),
+            TypeVarLike::TypeVarTuple(_) => {
+                BoundKind::TypeVarTuple(TupleArgs::ArbitraryLen(Box::new(Type::Any(cause))))
+            }
+            TypeVarLike::ParamSpec(_) => BoundKind::ParamSpec(CallableParams::Any(cause)),
+        })
     }
 }
 

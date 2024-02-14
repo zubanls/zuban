@@ -112,16 +112,6 @@ impl CalculatingTypeArg {
         !matches!(self.type_, Bound::Uncalculated { .. })
     }
 
-    pub fn set_to_any(&mut self, tv: &TypeVarLike, cause: AnyCause) {
-        self.type_ = match tv {
-            TypeVarLike::TypeVar(_) => Bound::TypeVar(TypeVarBound::Invariant(Type::Any(cause))),
-            TypeVarLike::TypeVarTuple(_) => {
-                Bound::TypeVarTuple(TupleArgs::ArbitraryLen(Box::new(Type::Any(cause))))
-            }
-            TypeVarLike::ParamSpec(_) => Bound::ParamSpec(CallableParams::Any(cause)),
-        }
-    }
-
     pub fn match_or_add_type_var_tuple(&mut self, i_s: &InferenceState, args2: TupleArgs) -> Match {
         match &mut self.type_ {
             Bound::TypeVarTuple(current) => match args2 {
@@ -231,7 +221,7 @@ impl TypeVarMatcher {
                 if temporary_matcher_id == 0 || temporary_matcher_id == matcher_index {
                     let current = &mut self.calculating_type_args[usage.index().as_usize()];
                     if !current.calculated() {
-                        current.set_to_any(&usage.as_type_var_like(), cause)
+                        current.type_.set_to_any(&usage.as_type_var_like(), cause)
                     }
                 }
             }

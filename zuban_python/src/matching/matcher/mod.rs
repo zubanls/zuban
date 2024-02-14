@@ -1207,7 +1207,8 @@ impl<'a> Matcher<'a> {
                         .iter_mut()
                         .enumerate()
                     {
-                        c.set_to_any(&type_var_matcher.type_var_likes[i], AnyCause::FromError);
+                        c.type_
+                            .set_to_any(&type_var_matcher.type_var_likes[i], AnyCause::FromError);
                     }
                 }
                 return (self, Err(e));
