@@ -422,10 +422,10 @@ impl BoundKind {
         match (self, other) {
             (Self::TypeVar(t1), Self::TypeVar(t2)) => t1.matches(i_s, matcher, t2, variance),
             (Self::TypeVarTuple(tup1), Self::TypeVarTuple(tup2)) => {
-                match_tuple_type_arguments(i_s, matcher, tup1, tup2, Variance::Invariant)
+                match_tuple_type_arguments(i_s, matcher, tup1, tup2, variance)
             }
             (Self::ParamSpec(params1), Self::ParamSpec(params2)) => {
-                matches_params(i_s, matcher, params1, params2, Variance::Invariant, false)
+                matches_params(i_s, matcher, params1, params2, variance, false)
             }
             _ => unreachable!(),
         }
