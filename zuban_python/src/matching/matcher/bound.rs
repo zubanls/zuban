@@ -351,7 +351,7 @@ impl Bound {
             Bound::Uncalculated { .. } => false,
         };
         if is_self_type_var {
-            *self = Bound::Uncalculated { fallback: None };
+            *self = Bound::default()
         }
     }
 

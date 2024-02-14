@@ -407,14 +407,14 @@ fn calculate_type_vars<'db: 'a, 'a>(
                         for calc in matcher.iter_calculating() {
                             // Make sure that the fallback is never used from a context.
                             if calc.type_.has_any(i_s) || !calc.calculated() {
-                                calc.type_ = Bound::Uncalculated { fallback: None }
+                                calc.type_ = Bound::default()
                             } else {
                                 calc.defined_by_result_context = true;
                             }
                         }
                     } else {
                         for calc in matcher.iter_calculating() {
-                            calc.type_ = Bound::Uncalculated { fallback: None }
+                            calc.type_ = Bound::default()
                         }
                         add_init_generics(&mut matcher, return_class)
                     }
@@ -425,8 +425,8 @@ fn calculate_type_vars<'db: 'a, 'a>(
                 return_type.is_sub_type_of(i_s, &mut matcher, expected);
                 for calc in matcher.iter_calculating() {
                     // Make sure that the fallback is never used from a context.
-                    if calc.type_.has_any(i_s) || matches!(calc.type_, Bound::Uncalculated { .. }) {
-                        calc.type_ = Bound::Uncalculated { fallback: None }
+                    if calc.type_.has_any(i_s) || !calc.calculated() {
+                        calc.type_ = Bound::default()
                     } else {
                         calc.defined_by_result_context = true;
                     }
