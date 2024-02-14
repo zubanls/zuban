@@ -326,31 +326,20 @@ impl BoundKind {
         self.format(&FormatData::new_short(db), ParamsStyle::CallableParams)
     }
 
+    fn simple_matches(&self, i_s: &InferenceState, other: &Self, variance: Variance) -> Match {
+        self.matches(i_s, &mut Matcher::default(), other, variance)
+    }
+
     fn is_simple_same_type(&self, i_s: &InferenceState, other: &Self) -> Match {
-        match (self, other) {
-            (Self::TypeVar(t1), Self::TypeVar(t2)) => t1.is_simple_same_type(i_s, t2),
-            (Self::TypeVarTuple(tup1), Self::TypeVarTuple(tup2)) => todo!(),
-            (Self::ParamSpec(params1), Self::ParamSpec(params2)) => todo!(),
-            _ => unreachable!(),
-        }
+        self.simple_matches(i_s, other, Variance::Invariant)
     }
 
     fn is_simple_super_type_of(&self, i_s: &InferenceState, other: &Self) -> Match {
-        match (self, other) {
-            (Self::TypeVar(t1), Self::TypeVar(t2)) => t1.is_simple_super_type_of(i_s, t2),
-            (Self::TypeVarTuple(tup1), Self::TypeVarTuple(tup2)) => todo!(),
-            (Self::ParamSpec(params1), Self::ParamSpec(params2)) => todo!(),
-            _ => unreachable!(),
-        }
+        self.simple_matches(i_s, other, Variance::Covariant)
     }
 
     fn is_simple_sub_type_of(&self, i_s: &InferenceState, other: &Self) -> Match {
-        match (self, other) {
-            (Self::TypeVar(t1), Self::TypeVar(t2)) => t1.is_simple_sub_type_of(i_s, t2),
-            (Self::TypeVarTuple(tup1), Self::TypeVarTuple(tup2)) => todo!(),
-            (Self::ParamSpec(params1), Self::ParamSpec(params2)) => todo!(),
-            _ => unreachable!(),
-        }
+        self.simple_matches(i_s, other, Variance::Contravariant)
     }
 
     fn common_base_type(&self, i_s: &InferenceState, other: &Self) -> Self {
