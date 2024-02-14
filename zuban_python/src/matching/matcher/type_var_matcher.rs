@@ -146,31 +146,17 @@ impl CalculatingTypeArg {
     }
 
     pub fn into_generic_item(self, db: &Database, type_var_like: &TypeVarLike) -> GenericItem {
-        match self.type_ {
-            Bound::TypeVar(t) => GenericItem::TypeArg(t.into_type(db)),
-            Bound::TypeVarTuple(ts) => GenericItem::TypeArgs(TypeArgs::new(ts)),
-            Bound::ParamSpec(params) => GenericItem::ParamSpecArg(ParamSpecArg {
-                params,
-                type_vars: None,
-            }),
-            Bound::Uncalculated { fallback } => {
-                if let Some(fallback) = fallback {
-                    GenericItem::TypeArg(fallback)
-                } else {
-                    match type_var_like {
-                        TypeVarLike::TypeVar(_) => GenericItem::TypeArg(Type::Never),
-                        // TODO TypeVarTuple: this feels wrong, should maybe be never?
-                        TypeVarLike::TypeVarTuple(_) => {
-                            GenericItem::TypeArgs(TypeArgs::new_fixed_length(Rc::new([])))
-                        }
-                        // TODO ParamSpec: this feels wrong, should maybe be never?
-                        TypeVarLike::ParamSpec(_) => {
-                            GenericItem::ParamSpecArg(ParamSpecArg::new_any(AnyCause::Todo))
-                        }
-                    }
-                }
+        self.type_.into_generic_item(db, || match type_var_like {
+            TypeVarLike::TypeVar(_) => GenericItem::TypeArg(Type::Never),
+            // TODO TypeVarTuple: this feels wrong, should maybe be never?
+            TypeVarLike::TypeVarTuple(_) => {
+                GenericItem::TypeArgs(TypeArgs::new_fixed_length(Rc::new([])))
             }
-        }
+            // TODO ParamSpec: this feels wrong, should maybe be never?
+            TypeVarLike::ParamSpec(_) => {
+                GenericItem::ParamSpecArg(ParamSpecArg::new_any(AnyCause::Todo))
+            }
+        })
     }
 
     pub fn maybe_calculated_type(self, db: &Database) -> Option<Type> {

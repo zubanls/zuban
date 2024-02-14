@@ -299,6 +299,25 @@ impl Bound {
             Self::Uncalculated { .. } => on_uncalculated(),
         }
     }
+
+    pub fn into_generic_item(
+        self,
+        db: &Database,
+        on_uncalculated: impl FnOnce() -> GenericItem,
+    ) -> GenericItem {
+        match self {
+            Self::TypeVar(t) => GenericItem::TypeArg(t.into_type(db)),
+            Self::TypeVarTuple(ts) => GenericItem::TypeArgs(TypeArgs::new(ts)),
+            Self::ParamSpec(params) => GenericItem::ParamSpecArg(ParamSpecArg {
+                params,
+                type_vars: None,
+            }),
+            Self::Uncalculated {
+                fallback: Some(fallback),
+            } => GenericItem::TypeArg(fallback),
+            Self::Uncalculated { fallback: None } => on_uncalculated(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
