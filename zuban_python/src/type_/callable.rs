@@ -310,6 +310,10 @@ impl CallableParams {
         }
     }
 
+    pub fn has_any(&self, i_s: &InferenceState) -> bool {
+        self.has_any_internal(i_s, &mut Vec::new())
+    }
+
     pub(super) fn has_any_internal(
         &self,
         i_s: &InferenceState,

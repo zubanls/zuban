@@ -354,6 +354,27 @@ impl Bound {
             *self = Bound::Uncalculated { fallback: None };
         }
     }
+
+    pub fn has_any(&self, i_s: &InferenceState) -> bool {
+        match self {
+            Self::TypeVar(
+                TypeVarBound::Invariant(t) | TypeVarBound::Upper(t) | TypeVarBound::Lower(t),
+            ) => t.has_any(i_s),
+            Self::TypeVar(TypeVarBound::UpperAndLower(t1, t2)) => t1.has_any(i_s) | t2.has_any(i_s),
+            Self::TypeVarTuple(ts) => ts.has_any(i_s),
+            Self::ParamSpec(params) => match &params {
+                CallableParams::Simple(params) => params
+                    .iter()
+                    .any(|t| t.type_.maybe_type().is_some_and(|t| t.has_any(i_s))),
+                CallableParams::WithParamSpec(pre, _) => pre.iter().any(|t| t.has_any(i_s)),
+                CallableParams::Any(_) => true,
+            },
+            Self::Uncalculated {
+                fallback: Some(fallback),
+            } => fallback.has_any(i_s),
+            Self::Uncalculated { fallback: None } => false,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -610,6 +631,17 @@ impl Bound2 {
             *self = Self::Uncalculated { fallback: None };
         }
     }
+
+    pub fn has_any(&self, i_s: &InferenceState) -> bool {
+        match self {
+            Self::Invariant(k) | Self::Upper(k) | Self::Lower(k) => k.has_any(i_s),
+            Self::UpperAndLower(lower, upper) => lower.has_any(i_s) || upper.has_any(i_s),
+            Self::Uncalculated {
+                fallback: Some(fallback),
+            } => fallback.has_any(i_s),
+            Self::Uncalculated { fallback: None } => false,
+        }
+    }
 }
 
 impl BoundKind {
@@ -687,7 +719,7 @@ impl BoundKind {
         }
     }
 
-    pub fn replace_type_var_likes(
+    fn replace_type_var_likes(
         &self,
         db: &Database,
         on_type_var_like: &mut impl FnMut(TypeVarLikeUsage) -> GenericItem,
@@ -706,6 +738,14 @@ impl BoundKind {
                     })
                     .0,
             ),
+        }
+    }
+
+    fn has_any(&self, i_s: &InferenceState) -> bool {
+        match self {
+            BoundKind::TypeVar(t) => t.has_any(i_s),
+            BoundKind::TypeVarTuple(ts) => ts.has_any(i_s),
+            BoundKind::ParamSpec(params) => params.has_any(i_s),
         }
     }
 }
