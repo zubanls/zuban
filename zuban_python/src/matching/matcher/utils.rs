@@ -376,7 +376,9 @@ fn calculate_type_vars<'db: 'a, 'a>(
                     .unwrap()
                     .calculating_type_args
                 {
-                    entry.avoid_type_vars_from_class_self_arguments(func_class);
+                    entry
+                        .type_
+                        .avoid_type_vars_from_class_self_arguments(func_class);
                 }
                 if !m.bool() {
                     had_wrong_init_type_var = true;

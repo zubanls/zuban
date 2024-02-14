@@ -7,6 +7,7 @@ use crate::{
         AnyCause, CallableParams, FormatStyle, GenericItem, ParamSpecArg, TupleArgs, Type,
         TypeArgs, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage, Variance,
     },
+    type_helpers::Class,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -328,6 +329,31 @@ impl Bound {
             TypeVarLike::ParamSpec(_) => Bound::ParamSpec(CallableParams::Any(cause)),
         }
     }
+
+    pub fn avoid_type_vars_from_class_self_arguments(&mut self, class: Class) {
+        let is_self_type_var = match self {
+            Bound::TypeVar(
+                TypeVarBound::Invariant(t) | TypeVarBound::Lower(t) | TypeVarBound::Upper(t),
+            ) => match t {
+                Type::TypeVar(tv) if class.node_ref.as_link() == tv.in_definition => true,
+                _ => false,
+            },
+            Bound::TypeVar(TypeVarBound::UpperAndLower(_, _)) => unreachable!(),
+            Bound::TypeVarTuple(tvt) => todo!(),
+            Bound::ParamSpec(p) => match p {
+                CallableParams::WithParamSpec(pre, p2)
+                    if pre.is_empty() && class.node_ref.as_link() == p2.in_definition =>
+                {
+                    true
+                }
+                _ => false,
+            },
+            Bound::Uncalculated { .. } => false,
+        };
+        if is_self_type_var {
+            *self = Bound::Uncalculated { fallback: None };
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -553,6 +579,30 @@ impl Bound2 {
             }
             TypeVarLike::ParamSpec(_) => BoundKind::ParamSpec(CallableParams::Any(cause)),
         })
+    }
+
+    pub fn avoid_type_vars_from_class_self_arguments(&mut self, class: Class) {
+        let is_self_type_var = match self {
+            Self::Invariant(k) | Self::Lower(k) | Self::Upper(k) => match k {
+                BoundKind::TypeVar(Type::TypeVar(tv))
+                    if class.node_ref.as_link() == tv.in_definition =>
+                {
+                    true
+                }
+                BoundKind::TypeVarTuple(_) => todo!(),
+                BoundKind::ParamSpec(CallableParams::WithParamSpec(pre, p2))
+                    if pre.is_empty() && class.node_ref.as_link() == p2.in_definition =>
+                {
+                    true
+                }
+                _ => false,
+            },
+            Self::UpperAndLower(..) => unreachable!(),
+            Self::Uncalculated { .. } => false,
+        };
+        if is_self_type_var {
+            *self = Self::Uncalculated { fallback: None };
+        }
     }
 }
 

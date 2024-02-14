@@ -157,31 +157,6 @@ impl CalculatingTypeArg {
             _ => unreachable!(),
         }
     }
-
-    pub fn avoid_type_vars_from_class_self_arguments(&mut self, class: Class) {
-        let is_self_type_var = match &self.type_ {
-            Bound::TypeVar(
-                TypeVarBound::Invariant(t) | TypeVarBound::Lower(t) | TypeVarBound::Upper(t),
-            ) => match t {
-                Type::TypeVar(tv) if class.node_ref.as_link() == tv.in_definition => true,
-                _ => false,
-            },
-            Bound::TypeVar(TypeVarBound::UpperAndLower(_, _)) => unreachable!(),
-            Bound::TypeVarTuple(tvt) => todo!(),
-            Bound::ParamSpec(p) => match p {
-                CallableParams::WithParamSpec(pre, p2)
-                    if pre.is_empty() && class.node_ref.as_link() == p2.in_definition =>
-                {
-                    true
-                }
-                _ => false,
-            },
-            Bound::Uncalculated { .. } => false,
-        };
-        if is_self_type_var {
-            self.type_ = Bound::Uncalculated { fallback: None };
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
