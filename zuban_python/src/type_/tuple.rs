@@ -60,7 +60,8 @@ impl Tuple {
     pub fn tuple_class_generics(&self, db: &Database) -> &GenericsList {
         self.tuple_class_generics.get_or_init(|| {
             GenericsList::new_generics(Rc::new([GenericItem::TypeArg(
-                self.args.common_base_type(&InferenceState::new(db)),
+                self.args
+                    .common_base_for_all_items(&InferenceState::new(db)),
             )]))
         })
     }
@@ -496,7 +497,7 @@ impl TupleArgs {
         }
     }
 
-    fn common_base_type(&self, i_s: &InferenceState) -> Type {
+    fn common_base_for_all_items(&self, i_s: &InferenceState) -> Type {
         match self {
             Self::FixedLen(ts) => common_base_type(i_s, ts.iter()),
             Self::ArbitraryLen(t) => t.as_ref().clone(),
