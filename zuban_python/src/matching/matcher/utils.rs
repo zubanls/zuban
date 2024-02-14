@@ -404,19 +404,17 @@ fn calculate_type_vars<'db: 'a, 'a>(
                         .is_sub_type_of(i_s, &mut matcher, expected)
                         .bool()
                     {
-                        for calculated in matcher.iter_calculated_type_vars() {
+                        for calc in matcher.iter_calculating() {
                             // Make sure that the fallback is never used from a context.
-                            if calculated.type_.has_any(i_s)
-                                || matches!(calculated.type_, Bound::Uncalculated { .. })
-                            {
-                                calculated.type_ = Bound::Uncalculated { fallback: None }
+                            if calc.type_.has_any(i_s) || !calc.calculated() {
+                                calc.type_ = Bound::Uncalculated { fallback: None }
                             } else {
-                                calculated.defined_by_result_context = true;
+                                calc.defined_by_result_context = true;
                             }
                         }
                     } else {
-                        for calculated in matcher.iter_calculated_type_vars() {
-                            calculated.type_ = Bound::Uncalculated { fallback: None }
+                        for calc in matcher.iter_calculating() {
+                            calc.type_ = Bound::Uncalculated { fallback: None }
                         }
                         add_init_generics(&mut matcher, return_class)
                     }
@@ -425,14 +423,12 @@ fn calculate_type_vars<'db: 'a, 'a>(
                 let return_type = func_or_callable.return_type(i_s);
                 // Fill the type var arguments from context
                 return_type.is_sub_type_of(i_s, &mut matcher, expected);
-                for calculated in matcher.iter_calculated_type_vars() {
+                for calc in matcher.iter_calculating() {
                     // Make sure that the fallback is never used from a context.
-                    if calculated.type_.has_any(i_s)
-                        || matches!(calculated.type_, Bound::Uncalculated { .. })
-                    {
-                        calculated.type_ = Bound::Uncalculated { fallback: None }
+                    if calc.type_.has_any(i_s) || matches!(calc.type_, Bound::Uncalculated { .. }) {
+                        calc.type_ = Bound::Uncalculated { fallback: None }
                     } else {
-                        calculated.defined_by_result_context = true;
+                        calc.defined_by_result_context = true;
                     }
                 }
             }

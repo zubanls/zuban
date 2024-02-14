@@ -873,7 +873,7 @@ impl<'a> Matcher<'a> {
         usage.format_without_matcher(format_data.db, params_style)
     }
 
-    fn iter_calculated_type_vars(&mut self) -> std::slice::IterMut<CalculatingTypeArg> {
+    fn iter_calculating(&mut self) -> std::slice::IterMut<CalculatingTypeArg> {
         if let Some(type_var_matcher) = self.type_var_matchers.first_mut() {
             type_var_matcher.calculating_type_args.iter_mut()
         } else {
@@ -1490,11 +1490,11 @@ impl<'a> Matcher<'a> {
         &self,
         db: &Database,
         cycles: &mut TypeVarCycles,
-        calculated: &CalculatingTypeArg,
+        calc: &CalculatingTypeArg,
         current_seen: TransitiveConstraintAlreadySeen,
     ) -> bool {
-        let mut has_bound = calculated.calculated();
-        for unresolved in &calculated.unresolved_transitive_constraints {
+        let mut has_bound = calc.calculated();
+        for unresolved in &calc.unresolved_transitive_constraints {
             let cycle_search = &mut |usage: TypeVarLikeUsage| {
                 if let Some(matcher_index) = self.find_responsible_type_var_matcher_index(
                     usage.in_definition(),
