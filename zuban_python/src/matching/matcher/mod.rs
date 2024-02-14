@@ -848,19 +848,7 @@ impl<'a> Matcher<'a> {
         ) {
             let current =
                 &self.type_var_matchers[i].calculating_type_args[usage.index().as_usize()];
-            return match &current.type_ {
-                Bound::TypeVar(bound) => bound.format(format_data.db, format_data.style),
-                Bound::TypeVarTuple(ts) => ts.format(format_data),
-                Bound::ParamSpec(p) => p.format(format_data, params_style),
-                Bound::Uncalculated { fallback } => {
-                    if let TypeVarLike::TypeVar(type_var) = usage.as_type_var_like() {
-                        if let TypeVarKind::Bound(bound) = &type_var.kind {
-                            return bound.format(format_data);
-                        }
-                    }
-                    Type::Never.format(format_data)
-                }
-            };
+            return current.type_.format(usage, format_data, params_style);
         }
         if !self.match_reverse {
             if let Some(class) = self.class {

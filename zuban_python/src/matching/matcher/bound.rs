@@ -2,9 +2,10 @@ use super::super::{FormatData, Match};
 use crate::{
     database::Database,
     inference_state::InferenceState,
+    matching::ParamsStyle,
     type_::{
         CallableParams, FormatStyle, GenericItem, ParamSpecArg, TupleArgs, Type, TypeArgs, TypeVar,
-        TypeVarKind, TypeVarLikeUsage, Variance,
+        TypeVarKind, TypeVarLike, TypeVarLikeUsage, Variance,
     },
 };
 
@@ -159,6 +160,27 @@ impl Default for Bound {
 }
 
 impl Bound {
+    pub fn format(
+        &self,
+        usage: &TypeVarLikeUsage,
+        format_data: &FormatData,
+        params_style: ParamsStyle,
+    ) -> Box<str> {
+        return match &self {
+            Self::TypeVar(bound) => bound.format(format_data.db, format_data.style),
+            Self::TypeVarTuple(ts) => ts.format(format_data),
+            Self::ParamSpec(p) => p.format(format_data, params_style),
+            Self::Uncalculated { fallback } => {
+                if let TypeVarLike::TypeVar(type_var) = usage.as_type_var_like() {
+                    if let TypeVarKind::Bound(bound) = &type_var.kind {
+                        return bound.format(format_data);
+                    }
+                }
+                Type::Never.format(format_data)
+            }
+        };
+    }
+
     pub fn merge(&mut self, db: &Database, other: Self) -> Match {
         if self == &other {
             return Match::new_true();
@@ -242,7 +264,7 @@ impl Bound {
                     lower.replace_type_var_likes(db, on_type_var_like),
                 ),
             }),
-            Self::TypeVarTuple(tup) => Bound::TypeVarTuple(tup.replace_type_var_likes_and_self(
+            Self::TypeVarTuple(tup) => Self::TypeVarTuple(tup.replace_type_var_likes_and_self(
                 db,
                 on_type_var_like,
                 &|| Type::Self_,
@@ -297,6 +319,27 @@ enum BoundKind {
 }
 
 impl Bound2 {
+    pub fn format(
+        &self,
+        usage: &TypeVarLikeUsage,
+        format_data: &FormatData,
+        style: ParamsStyle,
+    ) -> Box<str> {
+        match self {
+            Self::Invariant(t) | Self::Upper(t) | Self::Lower(t) | Self::UpperAndLower(t, _) => {
+                t.format(format_data, style)
+            }
+            Self::Uncalculated { fallback } => {
+                if let TypeVarLike::TypeVar(type_var) = usage.as_type_var_like() {
+                    if let TypeVarKind::Bound(bound) = &type_var.kind {
+                        return bound.format(format_data);
+                    }
+                }
+                Type::Never.format(format_data)
+            }
+        }
+    }
+
     pub fn merge(&mut self, db: &Database, other: Self) -> Match {
         if self == &other {
             return Match::new_true();
@@ -322,30 +365,6 @@ impl Bound2 {
         m & self.merge_or_mismatch(&i_s, &t, variance)
     }
 
-    fn merge_or_mismatch2(
-        &mut self,
-        i_s: &InferenceState,
-        other: &BoundKind,
-        variance: Variance,
-    ) -> Match {
-        /*
-        match (self, other) {
-            (Self::TypeVar(bound1), Self::TypeVar(bound2)) => {
-            }
-            (Self::TypeVarTuple(tup1), Self::TypeVarTuple(tup2)) => {
-                dbg!(tup1, tup2);
-                //match_tuple_type_arguments(&i_s, &mut Matcher::default(), tup1, &tup2, Variance::Invariant);
-                todo!()
-            }
-            (Self::ParamSpec(p1), Self::ParamSpec(p2)) => {
-                //matches_params(&i_s, &mut Matcher::default(), p1, &p2, Variance::Invariant, false)
-                dbg!(p1, p2);
-                todo!()
-            }
-        }
-        */
-        todo!()
-    }
     pub fn merge_or_mismatch(
         &mut self,
         i_s: &InferenceState,
@@ -499,6 +518,14 @@ impl Bound2 {
 }
 
 impl BoundKind {
+    fn format(&self, format_data: &FormatData, style: ParamsStyle) -> Box<str> {
+        return match &self {
+            Self::TypeVar(bound) => bound.format(format_data),
+            Self::TypeVarTuple(ts) => ts.format(format_data),
+            Self::ParamSpec(p) => p.format(format_data, style),
+        };
+    }
+
     fn is_simple_same_type(&self, i_s: &InferenceState, other: &Self) -> Match {
         match (self, other) {
             (Self::TypeVar(t1), Self::TypeVar(t2)) => t1.is_simple_same_type(i_s, t2),
