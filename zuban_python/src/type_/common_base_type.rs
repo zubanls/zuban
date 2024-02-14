@@ -435,7 +435,15 @@ impl TupleArgs {
                                 t1.common_sub_type(i_s, t2).unwrap_or(Type::Never),
                             )
                         }
-                        _ => todo!(),
+                        (TupleUnpack::TypeVarTuple(tvt1), TupleUnpack::TypeVarTuple(tvt2)) => {
+                            if tvt1.in_definition == tvt2.in_definition && tvt1.index == tvt2.index
+                            {
+                                TupleUnpack::TypeVarTuple(tvt1.clone())
+                            } else {
+                                todo!()
+                            }
+                        }
+                        _ => todo!("{w1:?} {w2:?}"),
                     };
                     TupleArgs::WithUnpack(WithUnpack {
                         before: w1
