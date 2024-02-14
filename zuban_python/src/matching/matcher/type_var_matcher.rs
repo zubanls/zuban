@@ -4,7 +4,7 @@ use parsa_python_ast::ParamKind;
 
 use super::{
     super::{Match, MismatchReason},
-    bound::{Bound, TypeVarBound},
+    bound::{Bound, BoundKind},
 };
 use crate::{
     database::{Database, PointLink},
@@ -114,7 +114,8 @@ impl CalculatingTypeArg {
 
     pub fn match_or_add_type_var_tuple(&mut self, i_s: &InferenceState, args2: TupleArgs) -> Match {
         match &mut self.type_ {
-            Bound::TypeVarTuple(current) => match args2 {
+            // TODO fix variance
+            Bound::Invariant(BoundKind::TypeVarTuple(current)) => match args2 {
                 TupleArgs::FixedLen(ts) => {
                     common_base_type_of_type_var_tuple_with_items(current, i_s, ts.iter())
                 }
@@ -128,7 +129,8 @@ impl CalculatingTypeArg {
                 }
             },
             Bound::Uncalculated { .. } => {
-                self.type_ = Bound::TypeVarTuple(args2);
+                // TODO fix variance
+                self.type_ = Bound::new_type_args(args2, Variance::Invariant);
             }
             _ => unreachable!(),
         }
@@ -204,15 +206,18 @@ impl TypeVarMatcher {
     ) -> Match {
         debug_assert_eq!(type_var_usage.in_definition, self.match_in_definition);
         let current = &mut self.calculating_type_args[type_var_usage.index.as_usize()];
-        if let Bound::TypeVar(current_type) = &mut current.type_ {
-            let m = current_type.merge_or_mismatch(i_s, value_type, variance);
-            return m;
+        if current.calculated() {
+            return current.type_.merge_or_mismatch(
+                i_s,
+                &BoundKind::TypeVar(value_type.clone()),
+                variance,
+            );
         }
         debug_assert!(!current.calculated(), "{current:?}");
         // Before setting the type var, we need to check if the constraints match.
         match check_constraints(i_s, &type_var_usage.type_var, value_type, variance) {
             Ok(bound) => {
-                current.type_ = Bound::TypeVar(bound);
+                current.type_ = bound;
                 if value_type.is_any() {
                     Match::True { with_any: true }
                 } else {
@@ -250,7 +255,7 @@ pub fn check_constraints(
     type_var: &Rc<TypeVar>,
     value_type: &Type,
     variance: Variance,
-) -> Result<TypeVarBound, Match> {
+) -> Result<Bound, Match> {
     let mut mismatch_constraints = false;
     match &type_var.kind {
         TypeVarKind::Unrestricted => (),
@@ -265,7 +270,7 @@ pub fn check_constraints(
                             .iter()
                             .any(|r1| r1.is_simple_super_type_of(i_s, r2).bool())
                     }) {
-                        return Ok(TypeVarBound::Invariant(value_type.clone()));
+                        return Ok(Bound::Invariant(BoundKind::TypeVar(value_type.clone())));
                     } else {
                         mismatch_constraints = true;
                     }
@@ -279,12 +284,14 @@ pub fn check_constraints(
                         if matched_constraint.is_some() {
                             // This means that any is involved and multiple constraints
                             // are matching. Therefore just return Any.
-                            return Ok(TypeVarBound::Invariant(Type::Any(AnyCause::Todo)));
+                            return Ok(Bound::Invariant(BoundKind::TypeVar(Type::Any(
+                                AnyCause::Todo,
+                            ))));
                         }
                         if value_type.has_any(i_s) {
                             matched_constraint = Some(constraint);
                         } else {
-                            return Ok(TypeVarBound::Invariant(constraint.clone()));
+                            return Ok(Bound::Invariant(BoundKind::TypeVar(constraint.clone())));
                         }
                     }
                 }
@@ -301,6 +308,6 @@ pub fn check_constraints(
             similar: false,
         })
     } else {
-        Ok(TypeVarBound::new(value_type.clone(), variance, type_var))
+        Ok(Bound::new_type_arg(value_type.clone(), variance, type_var))
     }
 }

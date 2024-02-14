@@ -15,7 +15,7 @@ pub(crate) use utils::{
 };
 
 use self::{
-    bound::{Bound, TypeVarBound},
+    bound::{Bound, BoundKind},
     type_var_matcher::CalculatingTypeArg,
 };
 
@@ -303,13 +303,7 @@ impl<'a> Matcher<'a> {
                     type_var_index: t1.index.as_usize(),
                 },
                 |found_type_var| value_type.search_type_vars(found_type_var),
-                || {
-                    Bound::TypeVar(TypeVarBound::new(
-                        value_type.clone(),
-                        variance,
-                        t1.type_var.as_ref(),
-                    ))
-                },
+                || Bound::new_type_arg(value_type.clone(), variance, t1.type_var.as_ref()),
             ) {
                 return Some(Match::new_true());
             }
@@ -472,7 +466,7 @@ impl<'a> Matcher<'a> {
                     type_var_index: tvt.index.as_usize(),
                 },
                 |found_type_var| args2.search_type_vars(found_type_var),
-                || Bound::TypeVarTuple(args2.clone()),
+                || Bound::new_type_args(args2.clone(), variance),
             ) {
                 return Match::new_true();
             }
@@ -596,10 +590,10 @@ impl<'a> Matcher<'a> {
             self.find_responsible_type_var_matcher_index(p1.in_definition, p1.temporary_matcher_id)
         {
             let as_constraint = |p2_pre_iterator: Iter<Type>| {
-                Bound::ParamSpec(CallableParams::WithParamSpec(
-                    p2_pre_iterator.cloned().collect(),
-                    p2.clone(),
-                ))
+                Bound::new_param_spec(
+                    CallableParams::WithParamSpec(p2_pre_iterator.cloned().collect(), p2.clone()),
+                    variance,
+                )
             };
 
             let type_var_index = p1.index.as_usize();
@@ -620,7 +614,8 @@ impl<'a> Matcher<'a> {
             let tv_matcher = &mut self.type_var_matchers[matcher_index];
             let calc = &mut tv_matcher.calculating_type_args[type_var_index];
             return Some(match &mut calc.type_ {
-                Bound::ParamSpec(p) => match_params(i_s, p, p2_pre_iterator),
+                // TODO fix variance
+                Bound::Invariant(BoundKind::ParamSpec(p)) => match_params(i_s, p, p2_pre_iterator),
                 Bound::Uncalculated { .. } => {
                     calc.type_ = as_constraint(p2_pre_iterator);
                     Match::new_true()
@@ -687,7 +682,7 @@ impl<'a> Matcher<'a> {
             self.find_responsible_type_var_matcher_index(p1.in_definition, p1.temporary_matcher_id)
         {
             let as_params = |p2_it: Peekable<_>| CallableParams::Simple(p2_it.cloned().collect());
-            let as_constraint = |p2_it| Bound::ParamSpec(as_params(p2_it));
+            let as_constraint = |p2_it| Bound::new_param_spec(as_params(p2_it), variance);
             if self.check_if_unresolved_transitive_constraint(
                 TypeVarIndexed {
                     matcher_index,
@@ -703,7 +698,9 @@ impl<'a> Matcher<'a> {
             let tv_matcher = &mut self.type_var_matchers[matcher_index];
             let calc = &mut tv_matcher.calculating_type_args[p1.index.as_usize()];
             return match &mut calc.type_ {
-                Bound::ParamSpec(p) => match_params(i_s, matches, &p, params2_iterator),
+                Bound::Invariant(BoundKind::ParamSpec(p)) => {
+                    match_params(i_s, matches, &p, params2_iterator)
+                }
                 Bound::Uncalculated { .. } => {
                     calc.type_ = as_constraint(params2_iterator);
                     matches
@@ -739,12 +736,16 @@ impl<'a> Matcher<'a> {
             if type_var_matcher.match_in_definition == usage.in_definition {
                 let t = &mut type_var_matcher.calculating_type_args[usage.index.as_usize()].type_;
                 match t {
-                    Bound::ParamSpec(p) => p,
+                    Bound::Invariant(BoundKind::ParamSpec(p)) => p,
                     Bound::Uncalculated { .. } => {
-                        *t = Bound::ParamSpec(infer_params_from_args(i_s, args));
+                        // TODO fix variance
+                        *t = Bound::new_param_spec(
+                            infer_params_from_args(i_s, args),
+                            Variance::Invariant,
+                        );
                         return SignatureMatch::new_true();
                     }
-                    Bound::TypeVar(_) | Bound::TypeVarTuple(_) => unreachable!(),
+                    _ => todo!(),
                 }
             } else {
                 todo!("why?")
@@ -1085,64 +1086,27 @@ impl<'a> Matcher<'a> {
                     if c.calculated() {
                         let bound = c.type_.clone();
                         let i_s = &InferenceState::new(db);
-                        match (wanted_constraint, bound) {
-                            (Bound::TypeVar(b1), Bound::TypeVar(b2)) => {
-                                let t1 = match b1 {
-                                    TypeVarBound::Invariant(t) => t,
-                                    TypeVarBound::Upper(t) => t,
-                                    TypeVarBound::UpperAndLower(_, _) => todo!(),
-                                    TypeVarBound::Lower(t) => t,
-                                };
-                                let (t2, variance) = match b2 {
-                                    TypeVarBound::Invariant(t) => (t, Variance::Invariant),
-                                    TypeVarBound::Upper(t) => (t, Variance::Contravariant),
-                                    TypeVarBound::UpperAndLower(_, _) => todo!(),
-                                    TypeVarBound::Lower(t) => (t, Variance::Covariant),
-                                };
-                                let m = t1.matches(i_s, self, &t2, variance);
-                                debug!(
-                                    "Secondary constraint match for {} against {}: {m:?}",
-                                    t1.format_short(db),
-                                    t2.format_short(db)
-                                );
-                            }
-                            (Bound::TypeVarTuple(tup1), Bound::TypeVarTuple(tup2)) => {
-                                let m = match_tuple_type_arguments(
-                                    i_s,
-                                    self,
-                                    tup1,
-                                    &tup2,
-                                    Variance::Invariant,
-                                );
-                                debug!(
-                                    "Secondary constraint TypeVarTuple match for {} against {}: {m:?}",
-                                    tup1.format(&FormatData::new_short(db)),
-                                    tup2.format(&FormatData::new_short(db)),
-                                );
-                            }
-                            (Bound::ParamSpec(params1), Bound::ParamSpec(params2)) => {
-                                let m = matches_params(
-                                    i_s,
-                                    self,
-                                    params1,
-                                    &params2,
-                                    Variance::Invariant,
-                                    false,
-                                );
-                                debug!(
-                                    "Secondary constraint ParamSpec match for {} against {}: {m:?}",
-                                    params1.format(
-                                        &FormatData::new_short(db),
-                                        ParamsStyle::CallableParams
-                                    ),
-                                    params2.format(
-                                        &FormatData::new_short(db),
-                                        ParamsStyle::CallableParams
-                                    ),
-                                );
-                            }
-                            _ => unreachable!(),
-                        }
+
+                        let t1 = match wanted_constraint {
+                            Bound::Invariant(t) => t,
+                            Bound::Upper(t) => t,
+                            Bound::UpperAndLower(_, _) => todo!(),
+                            Bound::Lower(t) => t,
+                            Bound::Uncalculated { .. } => unreachable!(),
+                        };
+                        let (t2, variance) = match bound {
+                            Bound::Invariant(t) => (t, Variance::Invariant),
+                            Bound::Upper(t) => (t, Variance::Contravariant),
+                            Bound::UpperAndLower(_, _) => todo!(),
+                            Bound::Lower(t) => (t, Variance::Covariant),
+                            Bound::Uncalculated { .. } => unreachable!(),
+                        };
+                        let m = t1.matches(i_s, self, &t2, variance);
+                        debug!(
+                            "Secondary constraint match for {} against {}: {m:?}",
+                            t1.format_short(db),
+                            t2.format_short(db)
+                        );
                     }
                 }
             }
@@ -1224,37 +1188,39 @@ impl<'a> Matcher<'a> {
     ) -> Result<(), Match> {
         let mut current_bound = if let Some(free_type_var_index) = cycle.free_type_var_index {
             let in_definition = self.type_var_matchers[0].match_in_definition;
-            match cycles.free_type_var_likes[free_type_var_index].clone() {
-                TypeVarLike::TypeVar(type_var) => {
-                    Bound::TypeVar(TypeVarBound::Invariant(Type::TypeVar(TypeVarUsage {
-                        type_var,
-                        index: free_type_var_index.into(),
-                        in_definition,
-                        temporary_matcher_id: 0,
-                    })))
-                }
-                TypeVarLike::TypeVarTuple(tvt) => Bound::TypeVarTuple(TupleArgs::WithUnpack(
-                    WithUnpack::with_empty_before_and_after(TupleUnpack::TypeVarTuple(
-                        TypeVarTupleUsage {
-                            type_var_tuple: tvt,
+            Bound::Invariant(
+                match cycles.free_type_var_likes[free_type_var_index].clone() {
+                    TypeVarLike::TypeVar(type_var) => {
+                        BoundKind::TypeVar(Type::TypeVar(TypeVarUsage {
+                            type_var,
                             index: free_type_var_index.into(),
                             in_definition,
                             temporary_matcher_id: 0,
-                        },
-                    )),
-                )),
-                TypeVarLike::ParamSpec(param_spec) => {
-                    Bound::ParamSpec(CallableParams::WithParamSpec(
-                        Rc::from([]),
-                        ParamSpecUsage {
-                            param_spec,
-                            index: free_type_var_index.into(),
-                            in_definition,
-                            temporary_matcher_id: 0,
-                        },
-                    ))
-                }
-            }
+                        }))
+                    }
+                    TypeVarLike::TypeVarTuple(tvt) => BoundKind::TypeVarTuple(
+                        TupleArgs::WithUnpack(WithUnpack::with_empty_before_and_after(
+                            TupleUnpack::TypeVarTuple(TypeVarTupleUsage {
+                                type_var_tuple: tvt,
+                                index: free_type_var_index.into(),
+                                in_definition,
+                                temporary_matcher_id: 0,
+                            }),
+                        )),
+                    ),
+                    TypeVarLike::ParamSpec(param_spec) => {
+                        BoundKind::ParamSpec(CallableParams::WithParamSpec(
+                            Rc::from([]),
+                            ParamSpecUsage {
+                                param_spec,
+                                index: free_type_var_index.into(),
+                                in_definition,
+                                temporary_matcher_id: 0,
+                            },
+                        ))
+                    }
+                },
+            )
         } else {
             Bound::default()
         };
