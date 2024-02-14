@@ -735,18 +735,13 @@ impl<'a> Matcher<'a> {
     ) -> SignatureMatch {
         let func_class = self.func_or_callable.and_then(|f| f.class());
         let param_spec_usage;
-        let params = if let Some(type_var_matcher) = self.type_var_matchers.first() {
+        let params = if let Some(type_var_matcher) = self.type_var_matchers.first_mut() {
             if type_var_matcher.match_in_definition == usage.in_definition {
-                match &type_var_matcher.calculating_type_args[usage.index.as_usize()].type_ {
+                let t = &mut type_var_matcher.calculating_type_args[usage.index.as_usize()].type_;
+                match t {
                     Bound::ParamSpec(p) => p,
                     Bound::Uncalculated { .. } => {
-                        let calculating = &mut self
-                            .type_var_matchers
-                            .first_mut()
-                            .unwrap()
-                            .calculating_type_args[usage.index.as_usize()]
-                        .type_;
-                        *calculating = Bound::ParamSpec(infer_params_from_args(i_s, args));
+                        *t = Bound::ParamSpec(infer_params_from_args(i_s, args));
                         return SignatureMatch::new_true();
                     }
                     Bound::TypeVar(_) | Bound::TypeVarTuple(_) => unreachable!(),
