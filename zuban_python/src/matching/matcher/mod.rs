@@ -1520,21 +1520,7 @@ impl<'a> Matcher<'a> {
                     return;
                 }
             };
-            match unresolved {
-                Bound::TypeVar(tv_bound) => {
-                    let t = match tv_bound {
-                        TypeVarBound::Upper(t) => t,
-                        TypeVarBound::Lower(t) => t,
-                        TypeVarBound::Invariant(t) => t,
-                        // Lower is not relevant, because it comes from the type var bound.
-                        TypeVarBound::UpperAndLower(_, t) => t,
-                    };
-                    t.search_type_vars(cycle_search)
-                }
-                Bound::TypeVarTuple(tup) => tup.search_type_vars(cycle_search),
-                Bound::ParamSpec(param_spec_arg) => param_spec_arg.search_type_vars(cycle_search),
-                Bound::Uncalculated { fallback } => unreachable!(),
-            }
+            unresolved.search_type_vars(cycle_search)
         }
         has_bound
     }
