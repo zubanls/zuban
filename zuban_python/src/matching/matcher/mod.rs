@@ -1530,6 +1530,13 @@ impl<'a> Matcher<'a> {
         self,
         db: &'db Database,
     ) -> impl Iterator<Item = Type> + 'db {
+        debug_assert!(self
+            .type_var_matchers
+            .first()
+            .unwrap()
+            .type_var_likes
+            .iter()
+            .all(|tvl| matches!(tvl, TypeVarLike::TypeVar(_))));
         self.type_var_matchers
             .into_iter()
             .next()
@@ -1537,8 +1544,10 @@ impl<'a> Matcher<'a> {
             .calculating_type_args
             .into_iter()
             .map(|c| {
-                c.maybe_calculated_type(db)
-                    .unwrap_or(Type::Any(AnyCause::Todo))
+                let GenericItem::TypeArg(g) = c.type_.into_generic_item(db, || GenericItem::TypeArg(Type::Any(AnyCause::Todo))) else {
+                    unreachable!();
+                };
+                g
             })
     }
 

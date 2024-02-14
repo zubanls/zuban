@@ -148,15 +148,6 @@ impl CalculatingTypeArg {
             }
         })
     }
-
-    pub fn maybe_calculated_type(self, db: &Database) -> Option<Type> {
-        // Expects only TypeVars, no TypeVarTuples or ParamSpecs
-        match self.type_ {
-            Bound::TypeVar(bound) => Some(bound.into_type(db)),
-            Bound::Uncalculated { .. } => None,
-            _ => unreachable!(),
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
