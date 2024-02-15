@@ -92,7 +92,7 @@ impl Tuple {
     pub fn format_with_simplified_unpack(&self, format_data: &FormatData) -> Box<str> {
         match &self.args {
             TupleArgs::WithUnpack(w) if w.before.is_empty() && w.after.is_empty() => {
-                w.unpack.format(format_data)
+                w.unpack.format(format_data).unwrap_or("Never".into())
             }
             _ => self.format(format_data),
         }
@@ -390,12 +390,10 @@ pub enum TupleUnpack {
 }
 
 impl TupleUnpack {
-    fn format(&self, format_data: &FormatData) -> Box<str> {
+    fn format(&self, format_data: &FormatData) -> Option<Box<str>> {
         match self {
-            Self::TypeVarTuple(t) => format_data
-                .format_type_var_tuple(t)
-                .unwrap_or_else(|| "Never".into()),
-            Self::ArbitraryLen(t) => format!("Tuple[{}, ...]", t.format(format_data)).into(),
+            Self::TypeVarTuple(t) => format_data.format_type_var_tuple(t),
+            Self::ArbitraryLen(t) => Some(format!("Tuple[{}, ...]", t.format(format_data)).into()),
         }
     }
 }
@@ -417,14 +415,15 @@ impl WithUnpack {
     }
 
     fn format(&self, format_data: &FormatData) -> Box<str> {
+        let unpack = self
+            .unpack
+            .format(format_data)
+            .map(|s| format!("Unpack[{s}]"));
         join_with_commas(
             self.before
                 .iter()
                 .map(|t| t.format(format_data).into())
-                .chain(std::iter::once(format!(
-                    "Unpack[{}]",
-                    self.unpack.format(format_data)
-                )))
+                .chain(unpack.into_iter())
                 .chain(self.after.iter().map(|t| t.format(format_data).into())),
         )
         .into()
