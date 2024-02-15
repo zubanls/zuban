@@ -91,10 +91,11 @@ impl Tuple {
 
     pub fn format_with_simplified_unpack(&self, format_data: &FormatData) -> Box<str> {
         match &self.args {
-            TupleArgs::WithUnpack(w) if w.before.is_empty() && w.after.is_empty() => {
-                w.unpack.format(format_data).unwrap_or("Never".into())
-            }
-            _ => self.format(format_data),
+            TupleArgs::WithUnpack(w) if w.before.is_empty() && w.after.is_empty() => w
+                .unpack
+                .format(format_data)
+                .unwrap_or("Unpack[Never]".into()),
+            _ => format!("Unpack[{}]", self.format(format_data)).into(),
         }
     }
 
@@ -393,7 +394,9 @@ impl TupleUnpack {
     fn format(&self, format_data: &FormatData) -> Option<Box<str>> {
         match self {
             Self::TypeVarTuple(t) => format_data.format_type_var_tuple(t),
-            Self::ArbitraryLen(t) => Some(format!("Tuple[{}, ...]", t.format(format_data)).into()),
+            Self::ArbitraryLen(t) => {
+                Some(format!("Unpack[Tuple[{}, ...]]", t.format(format_data)).into())
+            }
         }
     }
 }
@@ -415,15 +418,16 @@ impl WithUnpack {
     }
 
     fn format(&self, format_data: &FormatData) -> Box<str> {
-        let unpack = self
-            .unpack
-            .format(format_data)
-            .map(|s| format!("Unpack[{s}]"));
         join_with_commas(
             self.before
                 .iter()
                 .map(|t| t.format(format_data).into())
-                .chain(unpack.into_iter())
+                .chain(
+                    self.unpack
+                        .format(format_data)
+                        .map(|s| s.into())
+                        .into_iter(),
+                )
                 .chain(self.after.iter().map(|t| t.format(format_data).into())),
         )
         .into()

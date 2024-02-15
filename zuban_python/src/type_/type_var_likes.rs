@@ -818,7 +818,7 @@ impl TypeVarLikeUsage {
     pub fn format_without_matcher(&self, db: &Database, params_style: ParamsStyle) -> Box<str> {
         match self {
             Self::TypeVar(type_var_usage) => type_var_usage.type_var.name(db).into(),
-            Self::TypeVarTuple(t) => t.type_var_tuple.name(db).into(),
+            Self::TypeVarTuple(t) => format!("Unpack[{}]", t.type_var_tuple.name(db)).into(),
             Self::ParamSpec(p) => {
                 let name = p.param_spec.name(db);
                 match params_style {
