@@ -829,7 +829,7 @@ impl<'a> Matcher<'a> {
         usage: &TypeVarLikeUsage,
         format_data: &FormatData,
         params_style: ParamsStyle,
-    ) -> Box<str> {
+    ) -> MatcherFormatResult {
         // In general this whole function should look very similar to the matches function, since
         // on mismatches this can be run.
         if let Some(i) = self.find_responsible_type_var_matcher_index(
@@ -843,24 +843,28 @@ impl<'a> Matcher<'a> {
         if !self.match_reverse {
             if let Some(class) = self.class {
                 if class.node_ref.as_link() == usage.in_definition() {
-                    return class
-                        .generics()
-                        .nth_usage(format_data.db, usage)
-                        .format(&format_data.remove_matcher())
-                        .unwrap_or("()".into());
+                    return MatcherFormatResult::Str(
+                        class
+                            .generics()
+                            .nth_usage(format_data.db, usage)
+                            .format(&format_data.remove_matcher())
+                            .unwrap_or("()".into()),
+                    );
                 }
             }
             if let Some(func_class) = self.func_or_callable.as_ref().and_then(|f| f.class()) {
                 if usage.in_definition() == func_class.node_ref.as_link() {
-                    return func_class
-                        .generics()
-                        .nth_usage(format_data.db, usage)
-                        .format(format_data)
-                        .unwrap_or("()".into());
+                    return MatcherFormatResult::Str(
+                        func_class
+                            .generics()
+                            .nth_usage(format_data.db, usage)
+                            .format(format_data)
+                            .unwrap_or("()".into()),
+                    );
                 }
             }
         }
-        usage.format_without_matcher(format_data.db, params_style)
+        MatcherFormatResult::Str(usage.format_without_matcher(format_data.db, params_style))
     }
 
     fn iter_calculating(&mut self) -> std::slice::IterMut<CalculatingTypeArg> {
@@ -1723,4 +1727,9 @@ fn infer_params_from_args<'db>(
         params.push(p);
     }
     CallableParams::Simple(params.into())
+}
+
+pub enum MatcherFormatResult {
+    Str(Box<str>),
+    TypeVarTupleUnknown,
 }

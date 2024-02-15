@@ -12,10 +12,7 @@ use crate::{
     getitem::{SliceType, SliceTypeContent},
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
-    matching::{
-        FormatData, IteratorContent, LookupKind, LookupResult, OnTypeError, ParamsStyle,
-        ResultContext,
-    },
+    matching::{FormatData, IteratorContent, LookupKind, LookupResult, OnTypeError, ResultContext},
     node_ref::NodeRef,
     type_::{AnyCause, Type},
     type_helpers::{Instance, LookupDetails, TypeOrClass},
@@ -395,10 +392,9 @@ pub enum TupleUnpack {
 impl TupleUnpack {
     fn format(&self, format_data: &FormatData) -> Box<str> {
         match self {
-            Self::TypeVarTuple(t) => format_data.format_type_var_like(
-                &TypeVarLikeUsage::TypeVarTuple(t.clone()),
-                ParamsStyle::Unreachable,
-            ),
+            Self::TypeVarTuple(t) => format_data
+                .format_type_var_tuple(t)
+                .unwrap_or_else(|| "Never".into()),
             Self::ArbitraryLen(t) => format!("Tuple[{}, ...]", t.format(format_data)).into(),
         }
     }

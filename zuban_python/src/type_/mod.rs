@@ -67,7 +67,7 @@ use crate::{
     inferred::Inferred,
     matching::{
         AvoidRecursionFor, ErrorStrs, ErrorTypes, FormatData, Generic, Generics, GotType, Match,
-        Matcher, MismatchReason, OnTypeError, ParamsStyle, ResultContext,
+        Matcher, MismatchReason, OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
     type_helpers::{dotted_path_from_dir, Class, Instance, MroIterator, TypeOrClass},
@@ -705,10 +705,7 @@ impl Type {
                 .into(),
                 _ => Box::from("overloaded function"),
             },
-            Self::TypeVar(t) => format_data.format_type_var_like(
-                &TypeVarLikeUsage::TypeVar(t.clone()),
-                ParamsStyle::Unreachable,
-            ),
+            Self::TypeVar(t) => format_data.format_type_var(t),
             Self::Type(type_) => format!("Type[{}]", type_.format(format_data)).into(),
             Self::Tuple(content) => content.format(format_data),
             Self::Callable(content) => content.format(format_data).into(),

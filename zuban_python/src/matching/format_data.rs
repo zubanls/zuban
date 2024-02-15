@@ -1,7 +1,10 @@
-use super::Matcher;
+use super::{Matcher, MatcherFormatResult};
 use crate::{
     database::{Database, PointLink},
-    type_::{FormatStyle, RecursiveType, TypeVarLikeUsage},
+    type_::{
+        FormatStyle, ParamSpecUsage, RecursiveType, TypeVarLikeUsage, TypeVarTupleUsage,
+        TypeVarUsage,
+    },
 };
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -132,14 +135,41 @@ impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
         self.verbose = true;
     }
 
-    pub fn format_type_var_like(
+    pub fn format_type_var(&self, usage: &TypeVarUsage) -> Box<str> {
+        match self.format_internal(
+            &TypeVarLikeUsage::TypeVar(usage.clone()),
+            ParamsStyle::Unreachable,
+        ) {
+            MatcherFormatResult::Str(s) => s,
+            MatcherFormatResult::TypeVarTupleUnknown => unreachable!(),
+        }
+    }
+
+    pub fn format_type_var_tuple(&self, usage: &TypeVarTupleUsage) -> Option<Box<str>> {
+        match self.format_internal(
+            &TypeVarLikeUsage::TypeVarTuple(usage.clone()),
+            ParamsStyle::Unreachable,
+        ) {
+            MatcherFormatResult::Str(s) => Some(s),
+            MatcherFormatResult::TypeVarTupleUnknown => None,
+        }
+    }
+
+    pub fn format_param_spec(&self, usage: &ParamSpecUsage, style: ParamsStyle) -> Box<str> {
+        match self.format_internal(&TypeVarLikeUsage::ParamSpec(usage.clone()), style) {
+            MatcherFormatResult::Str(s) => s,
+            MatcherFormatResult::TypeVarTupleUnknown => unreachable!(),
+        }
+    }
+
+    fn format_internal(
         &self,
         type_var_usage: &TypeVarLikeUsage,
         params_style: ParamsStyle,
-    ) -> Box<str> {
+    ) -> MatcherFormatResult {
         if let Some(matcher) = self.matcher {
             return matcher.format(type_var_usage, self, params_style);
         }
-        type_var_usage.format_without_matcher(self.db, params_style)
+        MatcherFormatResult::Str(type_var_usage.format_without_matcher(self.db, params_style))
     }
 }

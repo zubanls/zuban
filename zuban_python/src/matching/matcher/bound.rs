@@ -1,6 +1,6 @@
 use super::{
     super::{FormatData, Match},
-    Matcher,
+    Matcher, MatcherFormatResult,
 };
 use crate::{
     database::Database,
@@ -73,20 +73,26 @@ impl Bound {
         usage: &TypeVarLikeUsage,
         format_data: &FormatData,
         style: ParamsStyle,
-    ) -> Box<str> {
-        match self {
+    ) -> MatcherFormatResult {
+        MatcherFormatResult::Str(match self {
             Self::Invariant(t) | Self::Upper(t) | Self::Lower(t) | Self::UpperAndLower(t, _) => {
                 t.format(format_data, style)
             }
             Self::Uncalculated { fallback } => {
-                if let TypeVarLike::TypeVar(type_var) = usage.as_type_var_like() {
-                    if let TypeVarKind::Bound(bound) = &type_var.kind {
-                        return bound.format(format_data);
+                match usage.as_type_var_like() {
+                    TypeVarLike::TypeVar(type_var) => {
+                        if let TypeVarKind::Bound(bound) = &type_var.kind {
+                            return MatcherFormatResult::Str(bound.format(format_data));
+                        }
                     }
+                    TypeVarLike::TypeVarTuple(_) => {
+                        return MatcherFormatResult::TypeVarTupleUnknown
+                    }
+                    _ => (),
                 }
                 Type::Never.format(format_data)
             }
-        }
+        })
     }
 
     pub fn merge(&mut self, db: &Database, other: Self) -> Match {

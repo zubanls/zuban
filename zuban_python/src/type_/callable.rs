@@ -270,10 +270,9 @@ impl CallableParams {
                             _ => todo!(),
                         },
                         StarStar(ParamSpecKwargs(usage)) => match had_param_spec_args {
-                            true => out_params.push(format_data.format_type_var_like(
+                            true => out_params.push(format_data.format_param_spec(
                                 // TODO is this even reachable?
-                                &TypeVarLikeUsage::ParamSpec(usage.clone()),
-                                style,
+                                usage, style,
                             )),
                             false => todo!(),
                         },
@@ -289,8 +288,7 @@ impl CallableParams {
                     }
                     _ => style,
                 };
-                let spec = format_data
-                    .format_type_var_like(&TypeVarLikeUsage::ParamSpec(usage.clone()), style);
+                let spec = format_data.format_param_spec(usage, style);
                 if pre_types.len() == 0 {
                     return spec;
                 }
