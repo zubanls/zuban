@@ -824,14 +824,8 @@ pub fn match_tuple_type_arguments(
     tup2: &TupleArgs,
     variance: Variance,
 ) -> Match {
-    if matcher.is_matching_reverse() {
-        return matcher.match_reverse(|matcher| {
-            match_tuple_type_arguments(i_s, matcher, tup2, tup1, variance.invert())
-        });
-    }
-    debug_assert!(!matcher.is_matching_reverse());
     let m = match_tuple_type_arguments_internal(i_s, matcher, tup1, tup2, variance);
-    if !m.bool() && matcher.has_reverse_type_var_matcher() {
+    if !m.bool() && matcher.has_type_var_matcher() {
         if matches!(
             tup2,
             TupleArgs::WithUnpack(WithUnpack {

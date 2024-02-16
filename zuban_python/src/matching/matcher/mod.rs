@@ -232,11 +232,6 @@ impl<'a> Matcher<'a> {
     }
 
     #[inline]
-    pub fn has_reverse_type_var_matcher(&self) -> bool {
-        !self.type_var_matchers.is_empty()
-    }
-
-    #[inline]
     pub fn has_responsible_matcher(&self, tvt2: &TypeVarTupleUsage) -> bool {
         self.find_responsible_type_var_matcher_index(tvt2.in_definition, tvt2.temporary_matcher_id)
             .is_some()
