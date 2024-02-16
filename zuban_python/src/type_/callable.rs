@@ -15,7 +15,7 @@ use crate::{
         params::{WrappedParamType, WrappedStar, WrappedStarStar},
         FormatData, Param, ParamsStyle,
     },
-    type_::{FormatStyle, TypeVarLikeUsage},
+    type_::{FormatStyle, TupleArgs, TypeVarLikeUsage},
     type_helpers::Class,
     utils::join_with_commas,
 };
@@ -144,7 +144,21 @@ impl CallableParam {
                     }
                     StarParamType::ParamSpecArgs(u) => todo!(),
                     StarParamType::UnpackedTuple(tup) => {
-                        format!("VarArg(Unpack[{}])", tup.format(format_data))
+                        if let Some(matcher) = format_data.matcher {
+                            let Type::Tuple(tup) = matcher.replace_type_var_likes_for_unknown_type_vars(
+                                format_data.db, &Type::Tuple(tup.clone())
+                            ) else {
+                                unreachable!()
+                            };
+                            let result = tup.args.format(&format_data.remove_matcher());
+                            if matches!(&tup.args, TupleArgs::FixedLen(_)) {
+                                result.into()
+                            } else {
+                                format!("VarArg(Unpack[Tuple[{result}]])")
+                            }
+                        } else {
+                            format!("VarArg(Unpack[{}])", tup.args.format(format_data))
+                        }
                     }
                 }
                 .into();

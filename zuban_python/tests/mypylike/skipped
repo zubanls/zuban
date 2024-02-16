@@ -486,7 +486,6 @@ testSimpleRuntimeProtocolCheck
 
 # TypeVarTuple mismatches how to format? Unpack[Never]?
 testVariadicTupleInference
-testTypeVarTuplePep646CallableWithPrefixSuffix
 testTypeVarTupleNotConcreteCallable
 # Overload matching issues
 testTypeVarTupleOverloadMatch

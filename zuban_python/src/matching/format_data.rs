@@ -39,7 +39,7 @@ pub enum ParamsStyle {
 #[derive(Debug)]
 pub struct FormatData<'db, 'a, 'b, 'c> {
     pub db: &'db Database,
-    matcher: Option<&'b Matcher<'a>>,
+    pub matcher: Option<&'b Matcher<'a>>,
     pub style: FormatStyle,
     pub verbose: bool,
     pub hide_implicit_literals: bool,
