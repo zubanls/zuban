@@ -157,7 +157,7 @@ impl CallableParam {
                                 format!("VarArg(Unpack[Tuple[{result}]])")
                             }
                         } else {
-                            format!("VarArg(Unpack[{}])", tup.args.format(format_data))
+                            format!("VarArg({})", tup.format_with_simplified_unpack(format_data))
                         }
                     }
                 }

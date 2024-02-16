@@ -486,7 +486,6 @@ testSimpleRuntimeProtocolCheck
 
 # TypeVarTuple mismatches how to format? Unpack[Never]?
 testVariadicTupleInference
-testTypeVarTupleNotConcreteCallable
 # Overload matching issues
 testTypeVarTupleOverloadMatch
 # Unpack fixed length (type_helpers/function.rs:1394)
