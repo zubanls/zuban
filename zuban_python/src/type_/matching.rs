@@ -868,7 +868,7 @@ fn match_tuple_type_arguments_internal(
             match_unpack_internal(i_s, matcher, unpack, tup2, variance, None, None)
         }
         (ArbitraryLen(t1), WithUnpack(u2)) => match &u2.unpack {
-            TupleUnpack::TypeVarTuple(_) => todo!("{t1:?}"),
+            TupleUnpack::TypeVarTuple(tvt2) => Match::new_false(),
             TupleUnpack::ArbitraryLen(inner_t2) => {
                 let mut matches = Match::new_true();
                 for t2 in u2.before.iter() {

@@ -485,7 +485,6 @@ testOverloadOnProtocol
 testSimpleRuntimeProtocolCheck
 
 # Overload matching issues
-testTypeVarTupleOverloadArbitraryLength
 testTypeVarTupleOverloadMatch
 # Unpack fixed length (type_helpers/function.rs:1394)
 testTypeVarTuplePep646TypeVarStarArgsFixedLengthTuple
