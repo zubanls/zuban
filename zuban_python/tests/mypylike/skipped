@@ -68,6 +68,8 @@ overload_union_math_on_class_init_constrained
 testOverloadDetectsPossibleMatchesWithGenerics
 # overload *args should be used if a list of never/any is given?
 testOverloadVarargsSelection
+# overload Any unclear why Mypy decides like this
+testTypeVarTupleOverloadMatch
 # overload x should be preferred over an *x alternative
 testTupleOverloadZipAny
 
@@ -290,6 +292,7 @@ testSelfTypeRestrictedMethodOverloadInit
 # Self tests
 testTypingSelfAttrOldVsNewStyle
 testSelfTypeOnGenericClassObjectNewStyleBound
+testVariadicClassNewStyleSelf
 # "Method cannot have explicit self annotation and Self type"
 testTypingSelfConflict
 # "Self argument missing for a non-static method"
@@ -412,6 +415,7 @@ testTypedDictAsStarStarAndDictAsStarStar
 testTypedDictNonMappingMethods
 # generics
 testGenericTypedDictInference
+testVariadicTypedDict
 # Nested typed dict formatting
 testSerializeTypedDictInMethod
 # --extra-checks
@@ -484,21 +488,15 @@ testProtocolAndRuntimeAreDefinedAlsoInTypingExtensions
 testOverloadOnProtocol
 testSimpleRuntimeProtocolCheck
 
-# Overload matching issues
-testTypeVarTupleOverloadMatch
-# Unpack fixed length (type_helpers/function.rs:1394)
+# Unpack fixed length TypeVarTuple
 testTypeVarTuplePep646TypeVarStarArgsFixedLengthTuple
 testTypeVarTupleNewSyntaxCallables
 # subtyping arbitrary length unpacks
 testVariadicTupleSubtyping
-# TypeVarTuple Callable checked later
+# TypeVarTuple kind of works correctly, but mypy checks args first before callables
 testTypeVarTuplePep646Callable
 testTypeVarTuplePep646CallableStarArgs
 testVariadicTupleInProtocol
-# Self matching
-testVariadicClassNewStyleSelf
-# Complex callable matching
-testVariadicTypedDict
 
 # import order
 testTypeAliasesToNamedTuple
