@@ -84,6 +84,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         let mut had_error_in_func = None;
         let points_backup = args.points_backup();
         for (i, callable) in self.overload.iter_functions().enumerate() {
+            debug!("Checking overload item #{i}");
             let callable = Callable::new(callable, self.class);
             let (calculated_type_args, had_error) =
                 i_s.do_overload_check(|i_s| match_signature(i_s, result_context, callable));
@@ -102,6 +103,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         );
                         return OverloadResult::NotFound;
                     } else if !arbitrary_length_handled {
+                        debug!("Overload #{i} matches, but arbitrary length not handled");
                         if first_arbitrary_length_not_handled.is_none() {
                             first_arbitrary_length_not_handled = Some(callable);
                         }
@@ -144,18 +146,23 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             args.reset_points_from_backup(&points_backup);
                             return OverloadResult::NotFound;
                         }
+                        debug!("Overload #{i} is a follow-up any match, and therefore not used");
                     } else {
+                        debug!("Overload #{i} matches as a first any match");
                         multi_any_match = Some((callable, argument_indices))
                     }
                 }
                 SignatureMatch::False { similar: true }
                 | SignatureMatch::TrueWithAny { .. }
                 | SignatureMatch::True { .. } => {
+                    debug!("Overload #{i} mismatch, is similar.");
                     if first_similar.is_none() {
                         first_similar = Some(callable)
                     }
                 }
-                SignatureMatch::False { similar: false } => (),
+                SignatureMatch::False { similar: false } => {
+                    debug!("Overload #{i} mismatch, is not similar.");
+                }
             }
             args.reset_points_from_backup(&points_backup);
         }
