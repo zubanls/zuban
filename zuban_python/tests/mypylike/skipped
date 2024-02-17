@@ -414,7 +414,6 @@ testTypedDictAsStarStarArgCalleeKwargs
 testTypedDictAsStarStarAndDictAsStarStar
 testTypedDictNonMappingMethods
 # generics
-testGenericTypedDictInference
 testVariadicTypedDict
 # Nested typed dict formatting
 testSerializeTypedDictInMethod

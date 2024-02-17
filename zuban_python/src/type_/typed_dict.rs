@@ -1115,7 +1115,11 @@ pub(crate) fn check_typed_dict_call<'db>(
             },
         )
     }
-    Some(Type::TypedDict(typed_dict))
+    Some(if matches!(&typed_dict.generics, TypedDictGenerics::None) {
+        Type::TypedDict(typed_dict)
+    } else {
+        matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, &Type::TypedDict(typed_dict))
+    })
 }
 
 pub(crate) fn maybe_add_extra_keys_issue(
