@@ -180,10 +180,8 @@ testRegression12258
 testDerivedEnumIterable
 testEnumIterMetaInference
 # Callable matching
-testNoCrashOnNestedGenericCallable
 testSubtypingGenericTypeObject
 testParamSpecNoCrashOnUnificationPrefix
-testProtocolTypeTypeSelfTypeInstanceMethod
 # Callable matching positional names ignored, but kwargs is there; mypy wrong?
 testProtocolIncompatibilityWithUnionType
 # dict questionable decisions
