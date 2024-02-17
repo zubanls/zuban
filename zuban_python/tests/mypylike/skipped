@@ -210,7 +210,6 @@ testParamSpecDecoratorOverload
 testParamSpecArgumentParamInferenceGeneric
 testParamSpecNestedApplyNoCrash
 testParamSpecNestedApplyPosVsNamed
-testInferenceAgainstGenericParamSpecSecondOrder
 testInferenceAgainstGenericLambdas
 testGenericLambdaGenericMethodNoCrash
 # --new-type-inference TypeVar confusion

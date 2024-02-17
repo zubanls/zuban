@@ -3,7 +3,7 @@ mod type_var_matcher;
 mod utils;
 
 use core::fmt;
-use std::{borrow::Cow, collections::HashSet, iter::Peekable, rc::Rc, slice::Iter};
+use std::{borrow::Cow, collections::HashSet, iter::Peekable, rc::Rc};
 
 pub use type_var_matcher::FunctionOrCallable;
 use type_var_matcher::TypeVarMatcher;
@@ -517,9 +517,11 @@ impl<'a> Matcher<'a> {
     ) -> Match {
         let mut p2_pre_iterator = p2_pre_param_spec.iter();
         let mut matches = Match::new_true();
+        let mut only_check_reverse = false;
         for t1 in p1_pre_param_spec {
             let Some(t2) = p2_pre_iterator.next() else {
-                return Match::new_false()
+                only_check_reverse = true;
+                break
             };
             matches &= t1.matches(i_s, self, t2, variance);
             if !matches.bool() {
@@ -532,13 +534,16 @@ impl<'a> Matcher<'a> {
                 matcher.match_or_add_param_spec_against_param_spec_internal(
                     i_s,
                     p2,
-                    [].iter(),
+                    p1_pre_param_spec.iter().skip(p2_pre_param_spec.len()),
                     p1,
                     variance.invert(),
                 )
             }) {
                 reverse_m = m;
             }
+        }
+        if only_check_reverse {
+            return reverse_m;
         }
         let m = self
             .match_or_add_param_spec_against_param_spec_internal(
@@ -556,35 +561,47 @@ impl<'a> Matcher<'a> {
         &mut self,
         i_s: &InferenceState,
         p1: &ParamSpecUsage,
-        p2_pre_iterator: Iter<Type>,
+        p2_pre_iterator: impl ExactSizeIterator<Item = &'x Type>,
         p2: &ParamSpecUsage,
         variance: Variance,
     ) -> Option<Match> {
-        let match_params = |i_s: &_, params: &_, p2_pre_iterator: Iter<_>| match params {
-            CallableParams::Simple(params1) => todo!(),
-            CallableParams::Any(_) => Match::new_true(),
-            CallableParams::WithParamSpec(pre, usage) => {
-                if pre.len() != p2_pre_iterator.len() {
-                    todo!()
-                } else {
-                    let mut matches = Match::new_true();
-                    for (t1, t2) in pre.iter().zip(p2_pre_iterator) {
-                        matches &= t1.simple_matches(i_s, t2, variance);
+        fn match_params<'x>(
+            i_s: &InferenceState,
+            params: &CallableParams,
+            p2: &ParamSpecUsage,
+            p2_pre_iterator: impl ExactSizeIterator<Item = &'x Type>,
+            variance: Variance,
+        ) -> Match {
+            match params {
+                CallableParams::Simple(params1) => todo!(),
+                CallableParams::Any(_) => Match::new_true(),
+                CallableParams::WithParamSpec(pre, usage) => {
+                    if pre.len() != p2_pre_iterator.len() {
+                        todo!()
+                    } else {
+                        let mut matches = Match::new_true();
+                        for (t1, t2) in pre.iter().zip(p2_pre_iterator) {
+                            matches &= t1.simple_matches(i_s, t2, variance);
+                        }
+                        matches & (usage == p2).into()
                     }
-                    matches & (usage == p2).into()
                 }
             }
-        };
+        }
 
         if let Some(matcher_index) =
             self.find_responsible_type_var_matcher_index(p1.in_definition, p1.temporary_matcher_id)
         {
-            let as_constraint = |p2_pre_iterator: Iter<Type>| {
+            fn as_constraint<'x>(
+                p2: &ParamSpecUsage,
+                p2_pre_iterator: impl Iterator<Item = &'x Type>,
+                variance: Variance,
+            ) -> Bound {
                 Bound::new_param_spec(
                     CallableParams::WithParamSpec(p2_pre_iterator.cloned().collect(), p2.clone()),
                     variance,
                 )
-            };
+            }
 
             let type_var_index = p1.index.as_usize();
             if self
@@ -597,7 +614,7 @@ impl<'a> Matcher<'a> {
                         matcher_index,
                         type_var_index,
                     },
-                    as_constraint(p2_pre_iterator),
+                    as_constraint(p2, p2_pre_iterator, variance),
                 );
                 return Some(Match::new_true());
             }
@@ -605,9 +622,11 @@ impl<'a> Matcher<'a> {
             let calc = &mut tv_matcher.calculating_type_args[type_var_index];
             return Some(match &mut calc.type_ {
                 // TODO fix variance
-                Bound::Invariant(BoundKind::ParamSpec(p)) => match_params(i_s, p, p2_pre_iterator),
+                Bound::Invariant(BoundKind::ParamSpec(p)) => {
+                    match_params(i_s, p, p2, p2_pre_iterator, variance)
+                }
                 Bound::Uncalculated { .. } => {
-                    calc.type_ = as_constraint(p2_pre_iterator);
+                    calc.type_ = as_constraint(p2, p2_pre_iterator, variance);
                     Match::new_true()
                 }
                 _ => unreachable!(),
@@ -618,7 +637,13 @@ impl<'a> Matcher<'a> {
             if let Some(class) = self.class {
                 if class.node_ref.as_link() == p1.in_definition {
                     let usage = class.generics().nth_param_spec_usage(i_s.db, p1);
-                    return Some(match_params(i_s, &usage.params, p2_pre_iterator));
+                    return Some(match_params(
+                        i_s,
+                        &usage.params,
+                        p2,
+                        p2_pre_iterator,
+                        variance,
+                    ));
                 } else {
                     todo!()
                 }
