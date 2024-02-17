@@ -976,28 +976,30 @@ pub(crate) fn initialize_typed_dict<'db>(
     on_type_error: OnTypeError<'db, '_>,
 ) -> Inferred {
     let mut iterator = args.iter();
-    let td = if let Some(first_arg) = iterator.next().filter(|arg| !arg.is_keyword_argument()) {
+    let mut matcher = Matcher::new_typed_dict_matcher(&typed_dict);
+    if let Some(first_arg) = iterator.next().filter(|arg| !arg.is_keyword_argument()) {
         if let Some(next_arg) = iterator.next() {
             next_arg.add_issue(i_s, IssueType::TypedDictWrongArgumentsInConstructor);
             return Inferred::new_any_from_error();
         }
         first_arg.infer(
             i_s,
-            &mut ResultContext::Known(&Type::TypedDict(typed_dict.clone())),
+            &mut ResultContext::WithMatcher {
+                matcher: &mut matcher,
+                type_: &Type::TypedDict(typed_dict.clone()),
+            },
         );
-        typed_dict.clone()
     } else {
-        let mut matcher = Matcher::new_typed_dict_matcher(&typed_dict);
         check_typed_dict_call(i_s, &mut matcher, typed_dict.clone(), args);
-        if matcher.has_type_var_matcher() {
-            let (m, generics, _) = matcher.into_type_arguments(i_s.db);
-            if !m.bool() {
-                todo!()
-            }
-            typed_dict.apply_generics(i_s.db, generics.unwrap())
-        } else {
-            typed_dict.clone()
+    };
+    let td = if matcher.has_type_var_matcher() {
+        let (m, generics, _) = matcher.into_type_arguments(i_s.db);
+        if !m.bool() {
+            todo!()
         }
+        typed_dict.apply_generics(i_s.db, generics.unwrap())
+    } else {
+        typed_dict.clone()
     };
     Inferred::from_type(Type::TypedDict(td))
 }

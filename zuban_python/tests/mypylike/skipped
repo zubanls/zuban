@@ -413,8 +413,6 @@ testTypedDictMappingMethods
 testTypedDictAsStarStarArgCalleeKwargs
 testTypedDictAsStarStarAndDictAsStarStar
 testTypedDictNonMappingMethods
-# generics
-testVariadicTypedDict
 # Nested typed dict formatting
 testSerializeTypedDictInMethod
 # --extra-checks

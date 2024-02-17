@@ -151,10 +151,10 @@ impl CallableParam {
                                 unreachable!()
                             };
                             let result = tup.args.format(&format_data.remove_matcher());
-                            if matches!(&tup.args, TupleArgs::FixedLen(_)) {
-                                result.into()
-                            } else {
-                                format!("VarArg(Unpack[Tuple[{result}]])")
+                            match &tup.args {
+                                TupleArgs::FixedLen(ts) if ts.is_empty() => "".to_owned(),
+                                TupleArgs::FixedLen(ts) => result.into(),
+                                _ => format!("VarArg(Unpack[Tuple[{result}]])"),
                             }
                         } else {
                             format!("VarArg({})", tup.format_with_simplified_unpack(format_data))
