@@ -611,7 +611,6 @@ impl<'a> Matcher<'a> {
         params2_iterator: std::slice::Iter<CallableParam>,
         variance: Variance,
     ) -> Match {
-        debug_assert!(!self.is_matching_reverse());
         let mut params2_iterator = params2_iterator.peekable();
         let mut matches = Match::new_true();
         for pre in pre_param_spec_types {

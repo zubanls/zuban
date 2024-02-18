@@ -207,13 +207,10 @@ testParamSpecSubtypeChecking2
 testRegularGenericDecoratorOverload
 testParamSpecDecoratorOverload
 # --new-type-inference
-testParamSpecNestedApplyNoCrash
 testParamSpecArgumentParamInferenceGeneric
 testParamSpecNestedApplyPosVsNamed
 testInferenceAgainstGenericLambdas
 testGenericLambdaGenericMethodNoCrash
-# --new-type-inference TypeVar confusion
-testInferenceAgainstGenericParamSpecPopOn
 # Weird class type vars passing
 testDefaultDict
 # list element context inference should probably ignore type vars

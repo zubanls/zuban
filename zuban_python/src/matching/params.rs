@@ -138,7 +138,12 @@ fn matches_params_detailed(
             }
             matcher.match_or_add_param_spec(i_s, types, param_spec, params2, inner_variance)
         }
-        (Simple(_), WithParamSpec(..)) => Match::new_false(),
+        (Simple(params1), WithParamSpec(types, param_spec)) => {
+            if skip_first_of_params2 {
+                todo!()
+            }
+            matcher.match_or_add_param_spec(i_s, types, param_spec, params1.iter(), inner_variance)
+        }
     }
 }
 
