@@ -73,6 +73,24 @@ impl Type {
     }
 }
 
+impl CallableParams {
+    pub fn common_sub_type(
+        &self,
+        i_s: &InferenceState,
+        other: &CallableParams,
+    ) -> Option<CallableParams> {
+        match &self {
+            CallableParams::Simple(params1) => match &other {
+                CallableParams::Simple(params2) => common_sub_type_params(i_s, &params1, &params2),
+                CallableParams::WithParamSpec(_, _) => todo!(),
+                CallableParams::Any(_) => todo!(),
+            },
+            CallableParams::WithParamSpec(_, _) => todo!(),
+            CallableParams::Any(_) => todo!(),
+        }
+    }
+}
+
 fn common_sub_type_for_callables(
     i_s: &InferenceState,
     c1: &CallableContent,
@@ -81,29 +99,18 @@ fn common_sub_type_for_callables(
     if c1.kind != c2.kind {
         todo!()
     }
-    match &c1.params {
-        CallableParams::Simple(params1) => match &c2.params {
-            CallableParams::Simple(params2) => {
-                if let Some(params) = common_sub_type_params(i_s, &params1, &params2) {
-                    if let Some(return_type) = c1.return_type.common_sub_type(i_s, &c2.return_type)
-                    {
-                        return Rc::new(CallableContent {
-                            name: None,
-                            class_name: None,
-                            defined_at: c1.defined_at,
-                            kind: c1.kind,
-                            type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
-                            params,
-                            return_type,
-                        });
-                    }
-                }
-            }
-            CallableParams::WithParamSpec(_, _) => todo!(),
-            CallableParams::Any(_) => todo!(),
-        },
-        CallableParams::WithParamSpec(_, _) => todo!(),
-        CallableParams::Any(_) => todo!(),
+    if let Some(return_type) = c1.return_type.common_sub_type(i_s, &c2.return_type) {
+        if let Some(params) = c1.params.common_sub_type(i_s, &c2.params) {
+            return Rc::new(CallableContent {
+                name: None,
+                class_name: None,
+                defined_at: c1.defined_at,
+                kind: c1.kind,
+                type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
+                params,
+                return_type,
+            });
+        }
     }
     Rc::new(CallableContent::new_any(
         i_s.db.python_state.empty_type_var_likes.clone(),

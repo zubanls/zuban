@@ -363,7 +363,10 @@ impl BoundKind {
                 Self::TypeVar(t1.common_sub_type(i_s, t2).unwrap_or(Type::Never))
             }
             (Self::TypeVarTuple(tup1), Self::TypeVarTuple(tup2)) => todo!(),
-            (Self::ParamSpec(params1), Self::ParamSpec(params2)) => todo!(),
+            (Self::ParamSpec(params1), Self::ParamSpec(params2)) => {
+                //BoundKind::ParamSpec(params1.common_sub_type(i_s, params2).unwrap_or_else(|| todo!())),
+                todo!()
+            }
             _ => unreachable!(),
         }
     }
