@@ -56,8 +56,7 @@ impl Bound {
     }
 
     pub fn new_param_spec(params: CallableParams, variance: Variance) -> Self {
-        // TODO change variance
-        Self::new(BoundKind::ParamSpec(params), Variance::Invariant)
+        Self::new(BoundKind::ParamSpec(params), variance)
     }
 
     fn new(k: BoundKind, variance: Variance) -> Self {

@@ -621,7 +621,6 @@ impl<'a> Matcher<'a> {
             let tv_matcher = &mut self.type_var_matchers[matcher_index];
             let calc = &mut tv_matcher.calculating_type_args[type_var_index];
             return Some(match &mut calc.type_ {
-                // TODO fix variance
                 Bound::Invariant(BoundKind::ParamSpec(p)) => {
                     match_params(i_s, p, p2, p2_pre_iterator, variance)
                 }
@@ -1073,6 +1072,7 @@ impl<'a> Matcher<'a> {
     }
 
     fn find_secondary_transitive_constraints(&mut self, db: &Database, cycles: &TypeVarCycles) {
+        debug!("Start calculating secondary transitive constraints");
         for cycle in &cycles.cycles {
             let mut unresolved = vec![];
             // First check for all relevant unresolved constraints in the cycle that are non-cycles
