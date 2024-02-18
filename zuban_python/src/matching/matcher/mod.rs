@@ -655,8 +655,6 @@ impl<'a> Matcher<'a> {
                     let usage = class.generics().nth_param_spec_usage(i_s.db, p1);
                     return matches
                         & matches_params(i_s, &mut Matcher::default(), &usage.params, &new_params);
-                } else {
-                    todo!()
                 }
             }
         }
