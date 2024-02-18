@@ -3,7 +3,7 @@ mod type_var_matcher;
 mod utils;
 
 use core::fmt;
-use std::{borrow::Cow, collections::HashSet, iter::Peekable, rc::Rc};
+use std::{borrow::Cow, collections::HashSet, rc::Rc};
 
 pub use type_var_matcher::FunctionOrCallable;
 use type_var_matcher::TypeVarMatcher;
@@ -20,7 +20,7 @@ use self::{
 };
 
 use super::{
-    params::{matches_params, matches_simple_params, InferrableParamIterator},
+    params::{matches_params, InferrableParamIterator},
     FormatData, Match, OnTypeError, ParamsStyle, ResultContext, SignatureMatch,
 };
 use crate::{
@@ -628,59 +628,33 @@ impl<'a> Matcher<'a> {
                 return matches;
             }
         }
-        let match_params = |i_s, matches, params: &_, params2_iterator| match params {
-            CallableParams::Simple(params1) => {
-                matches
-                    & matches_simple_params(
-                        i_s,
-                        &mut Matcher::default(),
-                        params1.iter(),
-                        params2_iterator,
-                        variance,
-                    )
-            }
-            CallableParams::Any(_) => matches,
-            CallableParams::WithParamSpec(_, _) => todo!(),
-        };
-
+        let new_params = CallableParams::Simple(params2_iterator.cloned().collect());
         if let Some(matcher_index) =
             self.find_responsible_type_var_matcher_index(p1.in_definition, p1.temporary_matcher_id)
         {
-            let as_params = |p2_it: Peekable<_>| CallableParams::Simple(p2_it.cloned().collect());
-            let as_constraint = |p2_it| Bound::new_param_spec(as_params(p2_it), variance);
+            let type_var_index = p1.index.as_usize();
             if self.check_if_unresolved_transitive_constraint(
                 TypeVarIndexed {
                     matcher_index,
                     type_var_index: p1.index.as_usize(),
                 },
-                |found_type_var| {
-                    as_params(params2_iterator.clone()).search_type_vars(found_type_var)
-                },
-                || as_constraint(params2_iterator.clone()),
+                |found_type_var| new_params.search_type_vars(found_type_var),
+                || Bound::new_param_spec(new_params.clone(), variance),
             ) {
-                return Match::new_true();
+                return matches;
             }
             let tv_matcher = &mut self.type_var_matchers[matcher_index];
-            let calc = &mut tv_matcher.calculating_type_args[p1.index.as_usize()];
-            return match &mut calc.type_ {
-                // TODO Fix Variance
-                Bound::Invariant(BoundKind::ParamSpec(p))
-                | Bound::Upper(BoundKind::ParamSpec(p))
-                | Bound::Lower(BoundKind::ParamSpec(p)) => {
-                    match_params(i_s, matches, &p, params2_iterator)
-                }
-                Bound::Uncalculated { .. } => {
-                    calc.type_ = as_constraint(params2_iterator);
-                    matches
-                }
-                _ => unreachable!(),
-            };
+            return matches
+                & tv_matcher.calculating_type_args[type_var_index]
+                    .type_
+                    .merge(i_s.db, Bound::new_param_spec(new_params, variance));
         }
         if !self.match_reverse {
             if let Some(class) = self.class {
                 if class.node_ref.as_link() == p1.in_definition {
                     let usage = class.generics().nth_param_spec_usage(i_s.db, p1);
-                    return match_params(i_s, matches, &usage.params, params2_iterator);
+                    return matches
+                        & matches_params(i_s, &mut Matcher::default(), &usage.params, &new_params);
                 } else {
                     todo!()
                 }
