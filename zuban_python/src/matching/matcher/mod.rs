@@ -683,7 +683,7 @@ impl<'a> Matcher<'a> {
                         // TODO fix variance
                         *t = Bound::new_param_spec(
                             infer_params_from_args(i_s, args),
-                            Variance::Invariant,
+                            Variance::Contravariant,
                         );
                         return SignatureMatch::new_true();
                     }
