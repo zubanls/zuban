@@ -1726,11 +1726,7 @@ fn infer_params_from_args<'db>(
             arg.is_keyword_argument(),
             arg.in_args_or_kwargs_and_arbitrary_len(),
         ) {
-            (false, false) => CallableParam {
-                type_: ParamType::PositionalOnly(t),
-                name: None,
-                has_default: true,
-            },
+            (false, false) => CallableParam::new_anonymous(ParamType::PositionalOnly(t)),
             (true, false) => {
                 let Some(key) = arg.keyword_name(i_s.db) else {
                     unreachable!()
@@ -1738,7 +1734,7 @@ fn infer_params_from_args<'db>(
                 CallableParam {
                     type_: ParamType::PositionalOnly(t),
                     name: Some(DbString::RcStr(key.into())),
-                    has_default: true,
+                    has_default: false,
                 }
             }
             (false, true) => todo!(),

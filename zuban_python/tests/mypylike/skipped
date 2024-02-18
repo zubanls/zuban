@@ -208,7 +208,6 @@ testRegularGenericDecoratorOverload
 testParamSpecDecoratorOverload
 # --new-type-inference
 testParamSpecArgumentParamInferenceGeneric
-testParamSpecNestedApplyNoCrash
 testParamSpecNestedApplyPosVsNamed
 testInferenceAgainstGenericLambdas
 testGenericLambdaGenericMethodNoCrash
