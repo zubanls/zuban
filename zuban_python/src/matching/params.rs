@@ -180,7 +180,14 @@ pub fn matches_simple_params<
                         WrappedStar::ParamSpecArgs(u) => todo!(),
                         WrappedStar::UnpackedTuple(_) => return Match::new_false(),
                     },
-                    _ => return Match::new_false(),
+                    _ => {
+                        debug!(
+                            "Params mismatch, because had {:?} vs {:?}",
+                            param1.kind(i_s.db),
+                            param2.kind(i_s.db)
+                        );
+                        return Match::new_false();
+                    }
                 },
                 WrappedParamType::PositionalOrKeyword(t1) => match &specific2 {
                     WrappedParamType::PositionalOrKeyword(t2) => {
@@ -262,7 +269,14 @@ pub fn matches_simple_params<
                     {
                         matches &= match_(i_s, matcher, t1, t2)
                     }
-                    _ => return Match::new_false(),
+                    _ => {
+                        debug!(
+                            "Params mismatch, because had {:?} vs {:?}",
+                            param1.kind(i_s.db),
+                            param2.kind(i_s.db)
+                        );
+                        return Match::new_false();
+                    }
                 },
                 WrappedParamType::KeywordOnly(t1) => match &specific2 {
                     WrappedParamType::StarStar(WrappedStarStar::ValueType(t2)) => {
