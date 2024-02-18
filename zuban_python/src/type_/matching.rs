@@ -708,24 +708,10 @@ impl Type {
                     // the return type differs and it's not a fallback, it might not match, see for
                     // example testSubtypeOverloadWithOverlappingArgumentsButWrongReturnType.
                     if right_index > previous_match_right_index
-                        && (matches_params(
-                            i_s,
-                            &mut Matcher::default(),
-                            &c1.params,
-                            &c2.params,
-                            Variance::Contravariant,
-                            false,
-                        )
-                        .bool()
-                            || matches_params(
-                                i_s,
-                                &mut Matcher::default(),
-                                &c2.params,
-                                &c1.params,
-                                Variance::Contravariant,
-                                false,
-                            )
-                            .bool())
+                        && (matches_params(i_s, &mut Matcher::default(), &c1.params, &c2.params)
+                            .bool()
+                            || matches_params(i_s, &mut Matcher::default(), &c2.params, &c1.params)
+                                .bool())
                     {
                         return Match::new_false();
                     }

@@ -5,7 +5,7 @@ use super::{
 use crate::{
     database::Database,
     inference_state::InferenceState,
-    matching::{matches_params, ParamsStyle},
+    matching::{matches_params_with_variance, ParamsStyle},
     type_::{
         match_tuple_type_arguments, AnyCause, CallableParams, GenericItem, ParamSpecArg, TupleArgs,
         Type, TypeArgs, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage, Variance,
@@ -430,7 +430,7 @@ impl BoundKind {
                 match_tuple_type_arguments(i_s, matcher, tup1, tup2, variance)
             }
             (Self::ParamSpec(params1), Self::ParamSpec(params2)) => {
-                matches_params(i_s, matcher, params1, params2, variance, false)
+                matches_params_with_variance(i_s, matcher, params1, params2, variance)
             }
             _ => unreachable!(),
         }

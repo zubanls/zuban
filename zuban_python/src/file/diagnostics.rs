@@ -1012,8 +1012,6 @@ impl<'db> Inference<'db, '_, '_> {
             matcher,
             &overload_item.params,
             &implementation.callable.params,
-            Variance::Contravariant,
-            false,
         );
         if !match_.bool() {
             implementation
@@ -1577,14 +1575,7 @@ fn is_overload_unmatchable(
     c2: &CallableContent,
 ) -> bool {
     let mut matcher = Matcher::new_reverse_callable_matcher(c1);
-    let result = matches_params(
-        i_s,
-        &mut matcher,
-        &c2.params,
-        &c1.params,
-        Variance::Contravariant,
-        false,
-    );
+    let result = matches_params(i_s, &mut matcher, &c2.params, &c1.params);
     matches!(result, Match::True { with_any: false })
 }
 

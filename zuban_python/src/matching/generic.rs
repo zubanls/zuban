@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use super::{matches_params, FormatData, Match, Matcher, ParamsStyle};
+use super::{matches_params_with_variance, FormatData, Match, Matcher, ParamsStyle};
 use crate::{
     database::Database,
     inference_state::InferenceState,
@@ -84,7 +84,7 @@ impl<'a> Generic<'a> {
             },
             Self::ParamSpecArg(p1) => match other {
                 Self::ParamSpecArg(p2) => {
-                    matches_params(i_s, matcher, &p1.params, &p2.params, variance, false)
+                    matches_params_with_variance(i_s, matcher, &p1.params, &p2.params, variance)
                 }
                 _ => unreachable!(),
             },

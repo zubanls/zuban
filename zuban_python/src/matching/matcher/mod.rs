@@ -167,15 +167,7 @@ impl<'a> Matcher<'a> {
         }
 
         let result = c1.return_type.is_super_type_of(i_s, self, &c2.return_type)
-            & matches_params(
-                i_s,
-                self,
-                &c1.params,
-                &c2.params,
-                Variance::Contravariant,
-                false,
-            )
-            .or(|| {
+            & matches_params(i_s, self, &c1.params, &c2.params).or(|| {
                 // Mypy treats *args/**kwargs special
                 c1.params.is_any_args_and_kwargs().into()
             });
@@ -621,7 +613,10 @@ impl<'a> Matcher<'a> {
             let tv_matcher = &mut self.type_var_matchers[matcher_index];
             let calc = &mut tv_matcher.calculating_type_args[type_var_index];
             return Some(match &mut calc.type_ {
-                Bound::Invariant(BoundKind::ParamSpec(p)) => {
+                // TODO Fix Variance
+                Bound::Invariant(BoundKind::ParamSpec(p))
+                | Bound::Upper(BoundKind::ParamSpec(p))
+                | Bound::Lower(BoundKind::ParamSpec(p)) => {
                     match_params(i_s, p, p2, p2_pre_iterator, variance)
                 }
                 Bound::Uncalculated { .. } => {
@@ -711,7 +706,10 @@ impl<'a> Matcher<'a> {
             let tv_matcher = &mut self.type_var_matchers[matcher_index];
             let calc = &mut tv_matcher.calculating_type_args[p1.index.as_usize()];
             return match &mut calc.type_ {
-                Bound::Invariant(BoundKind::ParamSpec(p)) => {
+                // TODO Fix Variance
+                Bound::Invariant(BoundKind::ParamSpec(p))
+                | Bound::Upper(BoundKind::ParamSpec(p))
+                | Bound::Lower(BoundKind::ParamSpec(p)) => {
                     match_params(i_s, matches, &p, params2_iterator)
                 }
                 Bound::Uncalculated { .. } => {
@@ -749,7 +747,10 @@ impl<'a> Matcher<'a> {
             if type_var_matcher.match_in_definition == usage.in_definition {
                 let t = &mut type_var_matcher.calculating_type_args[usage.index.as_usize()].type_;
                 match t {
-                    Bound::Invariant(BoundKind::ParamSpec(p)) => p,
+                    // TODO fix variance for matching
+                    Bound::Invariant(BoundKind::ParamSpec(p))
+                    | Bound::Upper(BoundKind::ParamSpec(p))
+                    | Bound::Lower(BoundKind::ParamSpec(p)) => p,
                     Bound::Uncalculated { .. } => {
                         // TODO fix variance
                         *t = Bound::new_param_spec(

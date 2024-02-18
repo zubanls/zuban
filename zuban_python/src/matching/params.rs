@@ -23,12 +23,42 @@ pub trait Param<'x>: Copy + std::fmt::Debug {
     fn kind(&self, db: &Database) -> ParamKind;
 }
 
-pub fn matches_params(
+pub fn matches_params_with_variance(
     i_s: &InferenceState,
     matcher: &mut Matcher,
     params1: &CallableParams,
     params2: &CallableParams,
     variance: Variance,
+) -> Match {
+    if variance != Variance::Covariant {
+        debug!("TODO implement params matching variance");
+    }
+    matches_params(i_s, matcher, params1, params2)
+}
+
+pub fn matches_params(
+    i_s: &InferenceState,
+    matcher: &mut Matcher,
+    params1: &CallableParams,
+    params2: &CallableParams,
+) -> Match {
+    matches_params_detailed(
+        i_s,
+        matcher,
+        params1,
+        params2,
+        Variance::Contravariant,
+        false,
+    )
+}
+
+fn matches_params_detailed(
+    i_s: &InferenceState,
+    matcher: &mut Matcher,
+    params1: &CallableParams,
+    params2: &CallableParams,
+    // TODO it seems like this param is currently unused and always Contravariant
+    inner_variance: Variance, // Variance of the types of the params
     skip_first_of_params2: bool,
 ) -> Match {
     use CallableParams::*;
@@ -64,7 +94,7 @@ pub fn matches_params(
                     matcher,
                     params1.iter(),
                     params2.iter().skip(1).peekable(),
-                    variance,
+                    inner_variance,
                 )
             } else {
                 matches_simple_params(
@@ -72,7 +102,7 @@ pub fn matches_params(
                     matcher,
                     params1.iter(),
                     params2.iter().peekable(),
-                    variance,
+                    inner_variance,
                 )
             }
         }
@@ -81,7 +111,12 @@ pub fn matches_params(
                 todo!()
             }
             matcher.match_or_add_param_spec_against_param_spec(
-                i_s, pre1, usage1, pre2, usage2, variance,
+                i_s,
+                pre1,
+                usage1,
+                pre2,
+                usage2,
+                inner_variance,
             )
         }
         (Any(cause), _) => {
@@ -97,7 +132,7 @@ pub fn matches_params(
             if skip_first_of_params2 {
                 params2.next();
             }
-            matcher.match_or_add_param_spec(i_s, types, param_spec, params2, variance)
+            matcher.match_or_add_param_spec(i_s, types, param_spec, params2, inner_variance)
         }
         (Simple(_), WithParamSpec(..)) => Match::new_false(),
     }
