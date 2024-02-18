@@ -175,8 +175,12 @@ impl Bound {
                         // TODO shouldn't we also check LowerAndUpper like this?
                         let m = t.is_simple_sub_type_of(i_s, other);
                         if !m.bool() {
-                            *t = t.common_sub_type(i_s, other);
-                            return Match::new_true();
+                            if let Some(new) = t.common_sub_type(i_s, other) {
+                                *t = new;
+                                return Match::new_true();
+                            } else {
+                                return Match::new_false();
+                            }
                         }
                         return m;
                     }
@@ -357,15 +361,14 @@ impl BoundKind {
         }
     }
 
-    fn common_sub_type(&self, i_s: &InferenceState, other: &Self) -> Self {
+    fn common_sub_type(&self, i_s: &InferenceState, other: &Self) -> Option<Self> {
         match (self, other) {
-            (Self::TypeVar(t1), Self::TypeVar(t2)) => {
-                Self::TypeVar(t1.common_sub_type(i_s, t2).unwrap_or(Type::Never))
-            }
+            (Self::TypeVar(t1), Self::TypeVar(t2)) => Some(Self::TypeVar(
+                t1.common_sub_type(i_s, t2).unwrap_or(Type::Never),
+            )),
             (Self::TypeVarTuple(tup1), Self::TypeVarTuple(tup2)) => todo!(),
             (Self::ParamSpec(params1), Self::ParamSpec(params2)) => {
-                //BoundKind::ParamSpec(params1.common_sub_type(i_s, params2).unwrap_or_else(|| todo!())),
-                todo!()
+                params1.common_sub_type(i_s, params2).map(Self::ParamSpec)
             }
             _ => unreachable!(),
         }
@@ -373,9 +376,9 @@ impl BoundKind {
 
     fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C) {
         match self {
-            BoundKind::TypeVar(t) => t.search_type_vars(found_type_var),
-            BoundKind::TypeVarTuple(tup) => tup.search_type_vars(found_type_var),
-            BoundKind::ParamSpec(params) => params.search_type_vars(found_type_var),
+            Self::TypeVar(t) => t.search_type_vars(found_type_var),
+            Self::TypeVarTuple(tup) => tup.search_type_vars(found_type_var),
+            Self::ParamSpec(params) => params.search_type_vars(found_type_var),
         }
     }
 
@@ -414,9 +417,9 @@ impl BoundKind {
 
     fn has_any(&self, i_s: &InferenceState) -> bool {
         match self {
-            BoundKind::TypeVar(t) => t.has_any(i_s),
-            BoundKind::TypeVarTuple(ts) => ts.has_any(i_s),
-            BoundKind::ParamSpec(params) => params.has_any(i_s),
+            Self::TypeVar(t) => t.has_any(i_s),
+            Self::TypeVarTuple(ts) => ts.has_any(i_s),
+            Self::ParamSpec(params) => params.has_any(i_s),
         }
     }
 
@@ -424,7 +427,7 @@ impl BoundKind {
         &self,
         i_s: &InferenceState,
         matcher: &mut Matcher,
-        other: &BoundKind,
+        other: &Self,
         variance: Variance,
     ) -> Match {
         match (self, other) {

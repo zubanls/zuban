@@ -30,10 +30,14 @@ pub fn matches_params_with_variance(
     params2: &CallableParams,
     variance: Variance,
 ) -> Match {
-    if variance != Variance::Covariant {
-        debug!("TODO implement params matching variance");
+    match variance {
+        Variance::Covariant => matches_params(i_s, matcher, params1, params2),
+        Variance::Contravariant => matches_params(i_s, matcher, params2, params1),
+        Variance::Invariant => {
+            debug!("TODO implement invariant params matching");
+            matches_params(i_s, matcher, params1, params2)
+        }
     }
-    matches_params(i_s, matcher, params1, params2)
 }
 
 pub fn matches_params(
