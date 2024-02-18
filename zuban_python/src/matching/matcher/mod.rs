@@ -557,37 +557,12 @@ impl<'a> Matcher<'a> {
         p2: &ParamSpecUsage,
         variance: Variance,
     ) -> Option<Match> {
-        fn match_params<'x>(
-            i_s: &InferenceState,
-            params: &CallableParams,
-            p2: &ParamSpecUsage,
-            p2_pre_iterator: impl ExactSizeIterator<Item = &'x Type>,
-            variance: Variance,
-        ) -> Match {
-            match params {
-                CallableParams::Simple(params1) => todo!(),
-                CallableParams::Any(_) => Match::new_true(),
-                CallableParams::WithParamSpec(pre, usage) => {
-                    if pre.len() != p2_pre_iterator.len() {
-                        todo!()
-                    } else {
-                        let mut matches = Match::new_true();
-                        for (t1, t2) in pre.iter().zip(p2_pre_iterator) {
-                            matches &= t1.simple_matches(i_s, t2, variance);
-                        }
-                        matches & (usage == p2).into()
-                    }
-                }
-            }
-        }
-
+        let new_params =
+            CallableParams::WithParamSpec(p2_pre_iterator.cloned().collect(), p2.clone());
         if let Some(matcher_index) =
             self.find_responsible_type_var_matcher_index(p1.in_definition, p1.temporary_matcher_id)
         {
-            let new_bound = Bound::new_param_spec(
-                CallableParams::WithParamSpec(p2_pre_iterator.cloned().collect(), p2.clone()),
-                variance,
-            );
+            let new_bound = Bound::new_param_spec(new_params, variance);
 
             let type_var_index = p1.index.as_usize();
             if self
@@ -616,15 +591,12 @@ impl<'a> Matcher<'a> {
             if let Some(class) = self.class {
                 if class.node_ref.as_link() == p1.in_definition {
                     let usage = class.generics().nth_param_spec_usage(i_s.db, p1);
-                    return Some(match_params(
+                    return Some(matches_params(
                         i_s,
+                        &mut Matcher::default(),
                         &usage.params,
-                        p2,
-                        p2_pre_iterator,
-                        variance,
+                        &new_params,
                     ));
-                } else {
-                    todo!()
                 }
             }
         }
