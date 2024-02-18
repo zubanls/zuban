@@ -584,16 +584,10 @@ impl<'a> Matcher<'a> {
         if let Some(matcher_index) =
             self.find_responsible_type_var_matcher_index(p1.in_definition, p1.temporary_matcher_id)
         {
-            fn as_constraint<'x>(
-                p2: &ParamSpecUsage,
-                p2_pre_iterator: impl Iterator<Item = &'x Type>,
-                variance: Variance,
-            ) -> Bound {
-                Bound::new_param_spec(
-                    CallableParams::WithParamSpec(p2_pre_iterator.cloned().collect(), p2.clone()),
-                    variance,
-                )
-            }
+            let new_bound = Bound::new_param_spec(
+                CallableParams::WithParamSpec(p2_pre_iterator.cloned().collect(), p2.clone()),
+                variance,
+            );
 
             let type_var_index = p1.index.as_usize();
             if self
@@ -606,25 +600,16 @@ impl<'a> Matcher<'a> {
                         matcher_index,
                         type_var_index,
                     },
-                    as_constraint(p2, p2_pre_iterator, variance),
+                    new_bound,
                 );
                 return Some(Match::new_true());
             }
             let tv_matcher = &mut self.type_var_matchers[matcher_index];
-            let calc = &mut tv_matcher.calculating_type_args[type_var_index];
-            return Some(match &mut calc.type_ {
-                // TODO Fix Variance
-                Bound::Invariant(BoundKind::ParamSpec(p))
-                | Bound::Upper(BoundKind::ParamSpec(p))
-                | Bound::Lower(BoundKind::ParamSpec(p)) => {
-                    match_params(i_s, p, p2, p2_pre_iterator, variance)
-                }
-                Bound::Uncalculated { .. } => {
-                    calc.type_ = as_constraint(p2, p2_pre_iterator, variance);
-                    Match::new_true()
-                }
-                _ => unreachable!(),
-            });
+            return Some(
+                tv_matcher.calculating_type_args[type_var_index]
+                    .type_
+                    .merge(i_s.db, new_bound),
+            );
         }
 
         if !self.match_reverse {
