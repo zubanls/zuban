@@ -14,7 +14,7 @@ use crate::{
     inferred::Inferred,
     matching::{IteratorContent, Matcher, ResultContext, UnpackedArgument},
     node_ref::NodeRef,
-    type_::{AnyCause, GenericItem, ParamSpecUsage, StringSlice, Type, TypedDict, WithUnpack},
+    type_::{AnyCause, ParamSpecUsage, StringSlice, Type, TypedDict, WithUnpack},
     InferenceState,
 };
 
@@ -1105,19 +1105,7 @@ pub fn unpack_star_star(i_s: &InferenceState, t: &Type) -> Option<(Type, Type)> 
         .check_protocol_match(i_s, &mut matcher, &t)
         .bool();
     matches.then(|| {
-        let mut iter = matcher
-            .unwrap_calculated_type_args()
-            .into_iter()
-            .zip(wanted_cls.type_vars(i_s).iter())
-            .map(|(c, type_var_like)| {
-                let GenericItem::TypeArg(t) = c.into_generic_item(
-                    i_s.db,
-                    type_var_like
-                ) else {
-                    unreachable!();
-                };
-                t
-            });
+        let mut iter = matcher.into_type_arg_iterator(i_s.db, wanted_cls.type_vars(i_s));
         (iter.next().unwrap(), iter.next().unwrap())
     })
 }

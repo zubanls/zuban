@@ -873,3 +873,222 @@ reveal_type(Foo.bar)  # N: Revealed type is "Overload(def [T, Self <: __main__.F
 fooi: Foo[int]
 reveal_type(Foo.bar(fooi, "", 1))  # N: Revealed type is "tuple[__main__.Foo[int], str, int]"
 reveal_type(Foo.bar(fooi, b"", 1))  # N: Revealed type is "tuple[__main__.Foo[int], object, int]"
+
+[case nested_late_bound_type_vars]
+from typing import TypeVar, Callable
+B = TypeVar("B", bound=int)
+B2 = TypeVar("B2", bound=int)
+T = TypeVar("T")
+def foo(x: T, c: Callable[[B, B], None]) -> None: ...
+
+def same(x: int, y: int) -> None: ...
+def same_wrong(x: str, y: str) -> None: ...
+def other(x: int, y: str) -> None: ...
+foo(1.0, same)
+foo(1.0, same_wrong)  # E: Argument 2 to "foo" has incompatible type "Callable[[str, str], None]"; expected "Callable[[B, B], None]"
+foo(1.0, other)  # E: Argument 2 to "foo" has incompatible type "Callable[[int, str], None]"; expected "Callable[[B, B], None]"
+
+def tv1(x: B, y: B2) -> None: ...
+def tv2(x: B2, y: B2) -> None: ...
+foo(1.0, tv1)
+foo(1.0, tv2)
+
+[case nested_late_bound_type_vars2]
+from typing import TypeVar, Callable
+B = TypeVar("B", bound=int)
+B2 = TypeVar("B2", bound=int)
+T = TypeVar("T")
+def foo(x: T, c: Callable[[B, B], B]) -> None: ...
+
+def same(x: int, y: int) -> int: ...
+def same_wrong(x: str, y: str) -> str: ...
+def other(x: int, y: str) -> object: ...
+foo(1.0, same)  # E: Argument 2 to "foo" has incompatible type "Callable[[int, int], int]"; expected "Callable[[B, B], B]"
+foo(1.0, same_wrong)  # E: Argument 2 to "foo" has incompatible type "Callable[[str, str], str]"; expected "Callable[[B, B], B]"
+foo(1.0, other)  # E: Argument 2 to "foo" has incompatible type "Callable[[int, str], object]"; expected "Callable[[B, B], B]"
+
+def tv1(x: B, y: B2) -> B2: ...
+def tv2(x: B2, y: B2) -> B2: ...
+foo(1.0, tv1)
+foo(1.0, tv2)
+
+[case transitive_constraints_pick_correct_bound]
+# A bit like testInferenceAgainstGenericBoundsAndValues, but another case as
+# well.
+from typing import TypeVar, Callable, List
+
+class A: ...
+class B(A): ...
+class C(B): ...
+
+UA = TypeVar('UA', bound=A)
+UB = TypeVar('UB', bound=B)
+UC = TypeVar('UC', bound=C)
+T = TypeVar("T")
+
+def dec1(f: Callable[[UA], T]) -> Callable[[UA], List[T]]: ...
+def dec2(f: Callable[[UC], T]) -> Callable[[UC], List[T]]: ...
+def id1(x: UB) -> UB: ...
+
+reveal_type(dec1(id1))  # N: Revealed type is "def [UB <: __main__.B] (UB) -> list[UB]"
+reveal_type(dec2(id1))  # N: Revealed type is "def [UC <: __main__.C] (UC) -> list[UC]"
+
+[case transitive_constraints_avoid_same_function_tv_confusion]
+from typing import TypeVar, Callable, List, Tuple
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+T3 = TypeVar("T3")
+T4 = TypeVar("T4")
+
+def combine(f: Callable[[T1], T1], g: Callable[[T2], int]) -> Callable[[T1, T2], Tuple[T1, T2]]: ...
+def id1(x: T3) -> T3: ...
+def id2(x: T4) -> T4: ...
+
+reveal_type(combine(id1, id2))  # N: Revealed type is "def [T1] (T1, int) -> tuple[T1, int]"
+reveal_type(combine(id1, id1))  # N: Revealed type is "def [T1] (T1, int) -> tuple[T1, int]"
+
+[case transitive_constraints_type_var_tuple_propagation1]
+from typing import TypeVarTuple, Callable, Tuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+Us = TypeVarTuple("Us")
+Vs = TypeVarTuple("Vs")
+
+def dec(f: Callable[[Tuple[Unpack[Us]], Unpack[Ts]], Tuple[Unpack[Ts]]]) -> Callable[[Unpack[Ts]], Tuple[Unpack[Us]]]: ...
+
+def connect1(x: Tuple[Unpack[Vs]], *args: Unpack[Vs]) -> Tuple[int, str]: ...
+def connect2(x: Tuple[Unpack[Vs]], y: str, z: int) -> Tuple[Unpack[Vs]]: ...
+def connect3(x: Tuple[bytes, str], *args: Unpack[Vs]) -> Tuple[Unpack[Vs]]: ...
+
+reveal_type(dec(connect1))  # N: Revealed type is "def (int, str) -> tuple[int, str]"
+reveal_type(dec(connect2))  # N: Revealed type is "def (str, int) -> tuple[str, int]"
+reveal_type(dec(connect3))  # N: Revealed type is "def [Ts] (*Unpack[Ts]) -> tuple[bytes, str]"
+
+[case transitive_constraints_type_var_tuple_propagation2]
+from typing import TypeVarTuple, Callable, Tuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+Us = TypeVarTuple("Us")
+Vs = TypeVarTuple("Vs")
+
+def dec(f: Callable[[Tuple[Unpack[Us]], Unpack[Us]], Tuple[Unpack[Ts]]]) -> Callable[[Unpack[Us]], Tuple[Unpack[Ts]]]: ...
+
+def connect1(x: Tuple[Unpack[Vs]], y: int, z: str) -> Tuple[Unpack[Vs]]: ...
+def connect2(x: Tuple[str, int], *args: Unpack[Vs]) -> Tuple[Unpack[Vs]]: ...
+def connect3(x: Tuple[Unpack[Vs]], *args: Unpack[Vs]) -> Tuple[bytes, str]: ...
+
+reveal_type(dec(connect1))  # N: Revealed type is "def (int, str) -> tuple[int, str]"
+reveal_type(dec(connect2))  # N: Revealed type is "def (str, int) -> tuple[str, int]"
+reveal_type(dec(connect3))  # N: Revealed type is "def [Us] (*Unpack[Us]) -> tuple[bytes, str]"
+
+[case transitive_constraints_type_var_tuple_propagation_reverse1]
+from typing import TypeVarTuple, Callable, Tuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+Us = TypeVarTuple("Us")
+Vs = TypeVarTuple("Vs")
+
+def dec1(f: Callable[[Tuple[int, str], Unpack[Ts]], Tuple[Unpack[Ts]]]) -> Callable[[Unpack[Ts]], None]: ...
+def dec2(f: Callable[[Tuple[Unpack[Ts]], Unpack[Ts]], Tuple[str, int]]) -> Callable[[Unpack[Ts]], None]: ...
+
+def connect1(x: Tuple[Unpack[Vs]], *args: Unpack[Us]) -> Tuple[Unpack[Vs]]: ...
+def connect2(x: Tuple[Unpack[Us]], *args: Unpack[Vs]) -> Tuple[Unpack[Vs]]: ...
+
+reveal_type(dec1(connect1))  # N: Revealed type is "def (int, str)"
+reveal_type(dec2(connect1))  # N: Revealed type is "def (str, int)"
+
+reveal_type(dec1(connect2))  # N: Revealed type is "def [Ts] (*Unpack[Ts])"
+reveal_type(dec2(connect2))  # N: Revealed type is "def (str, int)"
+
+[case transitive_constraints_type_var_tuple_propagation_reverse2]
+from typing import TypeVarTuple, Callable, Tuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+Us = TypeVarTuple("Us")
+Vs = TypeVarTuple("Vs")
+
+def dec(f: Callable[[Tuple[Unpack[Ts]], str, bytes], Tuple[Unpack[Ts]]]) -> Callable[[Unpack[Ts]], None]: ...
+
+def connect1(x: Tuple[Unpack[Vs]], *args: Unpack[Us]) -> Tuple[Unpack[Vs]]: ...
+def connect2(x: Tuple[Unpack[Us]], *args: Unpack[Vs]) -> Tuple[Unpack[Vs]]: ...
+
+reveal_type(dec(connect1))  # N: Revealed type is "def [Ts] (*Unpack[Ts])"
+reveal_type(dec(connect2))  # N: Revealed type is "def (str, bytes)"
+
+[case transitive_free_type_vars_without_callable]
+from typing import TypeVar, Callable, List
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+
+def foo(f: Callable[[T1], T1]) -> T1: ...
+def id(x: T2) -> T2: ...
+
+reveal_type(foo(id))  # N: Revealed type is "Never"
+
+[case transitive_constraints_mismatch1]
+from typing import TypeVar, Callable, List, Tuple
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+T3 = TypeVar("T3")
+T4 = TypeVar("T4")
+
+def combine(f: Callable[[T1, T2], T3], g: T2, h: T3) -> Callable[[T1], T3]: ...
+def id(x: T4, y: T4) -> T4: ...
+
+reveal_type(combine(id, 1, ""))  # N: Revealed type is "def (object) -> object"
+
+[case transitive_constraints_mismatch2]
+from typing import TypeVar, Callable, List, Tuple
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+T3 = TypeVar("T3")
+
+def combine(f: Callable[[T1, T1], T2], h: T2) -> Callable[[T1], T2]: ...
+def id(x: T3, y: int) -> T3: ...
+
+x = combine(id, "")  # E: Incompatible callable argument with type vars
+reveal_type(x)  # N: Revealed type is "def (Any) -> Any"
+
+[case transitive_constraints_mismatch3]
+from typing import TypeVar, Callable, List, Tuple
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+
+def combine(f: Callable[[List[T1]], List[T1]]) -> Callable[[T1], T1]: ...
+def id(x: List[T2]) -> List[List[T2]]: ...
+
+x = combine(id)  # E: Incompatible callable argument with type vars
+reveal_type(x)  # N: Revealed type is "def (Any) -> Any"
+
+[case transitive_constraints_recursive_match]
+from typing import TypeVar, Callable, List, Tuple
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+
+def combine(f: Callable[[List[T1]], List[T1]]) -> Callable[[T1], T1]: ...
+def id(x: List[List[int]]) -> List[List[T2]]: ...
+
+x = combine(id)
+reveal_type(x)  # N: Revealed type is "def (list[int]) -> list[int]"
+
+[case transitive_constraints_any_correctly_applied]
+from typing import TypeVar, Callable, List, Tuple
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+
+def foo1(f: Callable[[List[T1]], Any]) -> Callable[[T1], T1]: ...
+def id1(x: List[T2]) -> List[T2]: ...
+
+reveal_type(foo1(id1))  # N: Revealed type is "def (Any) -> Any"
+
+def foo2(f: Callable[[List[T1]], List[T1]]) -> Callable[[T1], T1]: ...
+def id2(x: List[T2]) -> Any: ...
+
+reveal_type(foo2(id2))  # N: Revealed type is "def (Any) -> Any"

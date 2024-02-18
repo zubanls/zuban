@@ -991,6 +991,7 @@ impl<'db> Inference<'db, '_, '_> {
         let matcher = &mut Matcher::new_reverse_callable_matcher(&implementation.callable);
         let implementation_result = &implementation.callable.return_type;
         let item_result = &overload_item.return_type;
+        // This is bivariant matching. This is how Mypy allows subtyping.
         if !item_result
             .is_sub_type_of(self.i_s, matcher, implementation_result)
             .bool()
@@ -1011,9 +1012,6 @@ impl<'db> Inference<'db, '_, '_> {
             matcher,
             &overload_item.params,
             &implementation.callable.params,
-            None,
-            Variance::Contravariant,
-            false,
         );
         if !match_.bool() {
             implementation
@@ -1577,15 +1575,7 @@ fn is_overload_unmatchable(
     c2: &CallableContent,
 ) -> bool {
     let mut matcher = Matcher::new_reverse_callable_matcher(c1);
-    let result = matches_params(
-        i_s,
-        &mut matcher,
-        &c2.params,
-        &c1.params,
-        (!c1.type_vars.is_empty()).then(|| (&c1.type_vars, c1.defined_at)),
-        Variance::Contravariant,
-        false,
-    );
+    let result = matches_params(i_s, &mut matcher, &c2.params, &c1.params);
     matches!(result, Match::True { with_any: false })
 }
 
@@ -1804,7 +1794,7 @@ fn check_override(
                 let mut previous_match_right_index = 0;
                 'outer: for c1 in expected.iter_functions() {
                     for (right_index, c2) in got.iter_functions().enumerate() {
-                        let m = Type::matches_callable(i_s, &mut Matcher::default(), c1, c2);
+                        let m = Matcher::default().matches_callable(i_s, c1, c2);
                         if m.bool() {
                             if previous_match_right_index <= right_index {
                                 previous_match_right_index = right_index;
@@ -1933,7 +1923,7 @@ fn operator_domain_is_widened(
     original: &Type,
 ) -> bool {
     override_overload.iter_functions().any(|overload_func| {
-        let widens_callable = |original: &CallableContent| {
+        let widens_callable = |original: &Rc<CallableContent>| {
             let Some(original_domain) = original.first_positional_type() else {
                 return false
             };

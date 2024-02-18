@@ -23,7 +23,7 @@ pub(crate) use self::{
         format_callable_params, CallableContent, CallableParam, CallableParams, ParamType,
         ParamTypeDetails, StarParamType, StarStarParamType, WrongPositionalCount,
     },
-    common_base_type::{common_base_type, common_base_type_of_type_var_tuple_with_items},
+    common_base_type::common_base_type,
     dataclass::{
         check_dataclass_options, dataclass_init_func, dataclass_initialize, dataclasses_replace,
         lookup_dataclass_symbol, lookup_on_dataclass, lookup_on_dataclass_type, Dataclass,
@@ -66,13 +66,12 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{
-        maybe_class_usage, AvoidRecursionFor, CalculatedTypeArgs, ErrorStrs, ErrorTypes,
-        FormatData, Generic, Generics, GotType, Match, Matcher, MismatchReason, OnTypeError,
-        ParamsStyle, ResultContext,
+        AvoidRecursionFor, ErrorStrs, ErrorTypes, FormatData, Generic, Generics, GotType, Match,
+        Matcher, MismatchReason, OnTypeError, ResultContext,
     },
     node_ref::NodeRef,
     type_helpers::{dotted_path_from_dir, Class, Instance, MroIterator, TypeOrClass},
-    utils::{bytes_repr, join_with_commas, str_repr},
+    utils::{bytes_repr, join_with_commas, rc_slice_into_vec, str_repr},
     workspaces::Directory,
 };
 
@@ -272,7 +271,12 @@ impl GenericsList {
         .into()
     }
 
-    fn search_type_vars<C: FnMut(TypeVarLikeUsage)>(&self, found_type_var: &mut C) {
+    pub fn has_param_spec(&self) -> bool {
+        self.iter()
+            .any(|g| matches!(g, GenericItem::ParamSpecArg(_)))
+    }
+
+    fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C) {
         for g in self.iter() {
             match g {
                 GenericItem::TypeArg(t) => t.search_type_vars(found_type_var),
@@ -282,10 +286,26 @@ impl GenericsList {
         }
     }
 
+    pub fn find_in_type(&self, check: &mut impl FnMut(&Type) -> bool) -> bool {
+        self.iter().any(|g| match g {
+            GenericItem::TypeArg(t) => t.find_in_type(check),
+            GenericItem::TypeArgs(ts) => match &ts.args {
+                TupleArgs::FixedLen(ts) => ts.iter().any(|t| t.find_in_type(check)),
+                TupleArgs::ArbitraryLen(t) => t.find_in_type(check),
+                TupleArgs::WithUnpack(with_unpack) => with_unpack.find_in_type(check),
+            },
+            GenericItem::ParamSpecArg(a) => a.params.find_in_type(check),
+        })
+    }
+
     pub fn has_type_vars(&self) -> bool {
         let mut result = false;
         self.search_type_vars(&mut |_| result = true);
         result
+    }
+
+    pub fn into_vec(self) -> Vec<GenericItem> {
+        rc_slice_into_vec(self.0)
     }
 }
 
@@ -316,10 +336,10 @@ impl std::cmp::PartialEq for Namespace {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct FunctionOverload(Box<[CallableContent]>);
+pub struct FunctionOverload(Box<[Rc<CallableContent>]>);
 
 impl FunctionOverload {
-    pub fn new(functions: Box<[CallableContent]>) -> Rc<Self> {
+    pub fn new(functions: Box<[Rc<CallableContent>]>) -> Rc<Self> {
         debug_assert!(!functions.is_empty());
         Rc::new(Self(functions))
     }
@@ -328,13 +348,13 @@ impl FunctionOverload {
         self.0[0].kind
     }
 
-    pub fn iter_functions(&self) -> impl Iterator<Item = &CallableContent> {
+    pub fn iter_functions(&self) -> impl Iterator<Item = &Rc<CallableContent>> {
         self.0.iter()
     }
 
     pub fn map_functions(
         &self,
-        callable: impl FnOnce(&[CallableContent]) -> Box<[CallableContent]>,
+        callable: impl FnOnce(&[Rc<CallableContent>]) -> Box<[Rc<CallableContent>]>,
     ) -> Rc<Self> {
         Rc::new(Self(callable(&self.0)))
     }
@@ -685,10 +705,7 @@ impl Type {
                 .into(),
                 _ => Box::from("overloaded function"),
             },
-            Self::TypeVar(t) => format_data.format_type_var_like(
-                &TypeVarLikeUsage::TypeVar(Cow::Borrowed(t)),
-                ParamsStyle::Unreachable,
-            ),
+            Self::TypeVar(t) => format_data.format_type_var(t),
             Self::Type(type_) => format!("Type[{}]", type_.format(format_data)).into(),
             Self::Tuple(content) => content.format(format_data),
             Self::Callable(content) => content.format(format_data).into(),
@@ -774,7 +791,7 @@ impl Type {
         }
     }
 
-    pub fn search_type_vars<C: FnMut(TypeVarLikeUsage)>(&self, found_type_var: &mut C) {
+    pub fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C) {
         match self {
             Self::Class(GenericClass {
                 generics: ClassGenerics::List(generics),
@@ -791,7 +808,7 @@ impl Type {
                     callable.return_type.search_type_vars(found_type_var)
                 }
             }
-            Self::TypeVar(t) => found_type_var(TypeVarLikeUsage::TypeVar(Cow::Borrowed(t))),
+            Self::TypeVar(t) => found_type_var(TypeVarLikeUsage::TypeVar(t.clone())),
             Self::Type(type_) => type_.search_type_vars(found_type_var),
             Self::Tuple(tup) => tup.args.search_type_vars(found_type_var),
             Self::Callable(content) => {
@@ -816,8 +833,12 @@ impl Type {
                     generics.search_type_vars(found_type_var)
                 }
             }
-            Self::ParamSpecArgs(usage) => todo!(),
-            Self::ParamSpecKwargs(usage) => todo!(),
+            Self::ParamSpecArgs(usage) => {
+                found_type_var(TypeVarLikeUsage::ParamSpec(usage.clone()))
+            }
+            Self::ParamSpecKwargs(usage) => {
+                found_type_var(TypeVarLikeUsage::ParamSpec(usage.clone()))
+            }
             Self::Dataclass(d) => match &d.class.generics {
                 ClassGenerics::List(generics) => generics.search_type_vars(found_type_var),
                 _ => (),
@@ -949,35 +970,24 @@ impl Type {
     }
 
     pub fn has_self_type(&self) -> bool {
-        self.find_in_type(&Self::is_self_type)
+        self.find_in_type(&mut Self::is_self_type)
     }
 
-    pub fn find_in_type(&self, check: &impl Fn(&Type) -> bool) -> bool {
-        let check_generics_list = |generics: &GenericsList| {
-            generics.iter().any(|g| match g {
-                GenericItem::TypeArg(t) => t.find_in_type(check),
-                GenericItem::TypeArgs(ts) => match &ts.args {
-                    TupleArgs::FixedLen(ts) => ts.iter().any(|t| t.find_in_type(check)),
-                    TupleArgs::ArbitraryLen(t) => t.find_in_type(check),
-                    TupleArgs::WithUnpack(with_unpack) => with_unpack.find_in_type(check),
-                },
-                GenericItem::ParamSpecArg(a) => todo!(),
-            })
-        };
+    pub fn find_in_type(&self, check: &mut impl FnMut(&Type) -> bool) -> bool {
         match self {
             Self::Class(GenericClass {
                 generics: ClassGenerics::List(generics),
                 ..
-            }) => check(self) || check_generics_list(generics),
+            }) => check(self) || generics.find_in_type(check),
             Self::Union(u) => u.iter().any(|t| t.find_in_type(check)),
             Self::FunctionOverload(intersection) => {
                 intersection.iter_functions().any(|c| c.find_in_type(check))
             }
             Self::Type(t) => check(self) || t.find_in_type(check),
             Self::Tuple(tup) => tup.find_in_type(check),
-            Self::Callable(content) => content.find_in_type(check),
+            Self::Callable(content) => check(self) || content.find_in_type(check),
             Self::TypedDict(d) => match &d.generics {
-                TypedDictGenerics::Generics(g) => check_generics_list(g),
+                TypedDictGenerics::Generics(g) => g.find_in_type(check),
                 TypedDictGenerics::None | TypedDictGenerics::NotDefinedYet(_) => false,
             },
             _ => check(self),
@@ -1154,40 +1164,6 @@ impl Type {
                 error_types.add_mismatch_notes(|issue| add_issue(issue))
             }
         }
-    }
-
-    pub fn execute_and_resolve_type_vars(
-        &self,
-        i_s: &InferenceState,
-        calculated_type_args: &CalculatedTypeArgs,
-        class: Option<&Class>,
-        replace_self_type: ReplaceSelf,
-    ) -> Inferred {
-        let type_ =
-            self.internal_resolve_type_vars(i_s, calculated_type_args, class, replace_self_type);
-        debug!("Resolved type vars: {}", type_.format_short(i_s.db));
-        Inferred::from_type(type_)
-    }
-
-    fn internal_resolve_type_vars(
-        &self,
-        i_s: &InferenceState,
-        calculated_type_args: &CalculatedTypeArgs,
-        class: Option<&Class>,
-        replace_self_type: ReplaceSelf,
-    ) -> Type {
-        self.replace_type_var_likes_and_self(
-            i_s.db,
-            &mut |usage| {
-                if let Some(c) = class {
-                    if let Some(generic_item) = maybe_class_usage(i_s.db, c, &usage) {
-                        return generic_item;
-                    }
-                }
-                calculated_type_args.lookup_type_var_usage(i_s, usage)
-            },
-            replace_self_type,
-        )
     }
 
     pub fn on_any_typed_dict(

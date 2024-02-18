@@ -4,6 +4,14 @@ testInvalidNamedTupleWithinFunction
 testVariadicUnpackWithRegularInstance
 testMisguidedSetItem
 
+testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
+
+# mypy upgrade
+testMultilineQuotedAnnotation
+testDataclassFieldWithPositionalArguments
+testCanCreateClassWithFunctionBasedTypedDictBase
+testTypeVarTupleInvariant
+
 # 3.12 type var syntax
 test695TypeAlias
 test695Class
@@ -60,6 +68,8 @@ overload_union_math_on_class_init_constrained
 testOverloadDetectsPossibleMatchesWithGenerics
 # overload *args should be used if a list of never/any is given?
 testOverloadVarargsSelection
+# overload Any unclear why Mypy decides like this
+testTypeVarTupleOverloadMatch
 # overload x should be preferred over an *x alternative
 testTupleOverloadZipAny
 
@@ -170,10 +180,8 @@ testRegression12258
 testDerivedEnumIterable
 testEnumIterMetaInference
 # Callable matching
-testNoCrashOnNestedGenericCallable
 testSubtypingGenericTypeObject
 testParamSpecNoCrashOnUnificationPrefix
-testProtocolTypeTypeSelfTypeInstanceMethod
 # Callable matching positional names ignored, but kwargs is there; mypy wrong?
 testProtocolIncompatibilityWithUnionType
 # dict questionable decisions
@@ -192,65 +200,28 @@ testEnumNameWorkCorrectlyOn311
 # current_function in i_s is wrong.
 testTypeVarTuplePep646TypeVarStarArgs
 
-# Callable remapping over overload leads to a mapped overload
+# function type vars are not late bound in Mypy in params
+testTypeVarTupleParamSpecInteraction
+testParamSpecSubtypeChecking2
+# Callable remapping over overload leads to a mapped overload (this is special cased for only one arg and decorator like behavior, see also is_generic_decorator_overload_call)
 testRegularGenericDecoratorOverload
 testParamSpecDecoratorOverload
 # --new-type-inference
-testHomogeneousGenericTupleUnpackInferenceNoCrash2
-testParamSpecDecoratorAppliedToGeneric
-testParamSpecArgumentParamInferenceGeneric
-testParamSpecNestedApplyNoCrash
 testParamSpecNestedApplyPosVsNamed
-testInferenceAgainstGenericCallable
-testInferenceAgainstGenericCallableNoLeak
-testInferenceAgainstGenericCallableChain
-testInferenceAgainstGenericCallableGeneric
-testInferenceAgainstGenericCallableGenericReverse
-testInferenceAgainstGenericCallableGenericArg
-testInferenceAgainstGenericCallableGenericChain
-testInferenceAgainstGenericCallableGenericNonLinear
-testInferenceAgainstGenericCurry
-testInferenceAgainstGenericCallableGenericAlias
-testInferenceAgainstGenericCallableGenericProtocol
-testInferenceAgainstGenericSplitOrder
-testInferenceAgainstGenericSplitOrderGeneric
-testInferenceAgainstGenericCallableNewVariable
-testInferenceAgainstGenericBoundsAndValues
 testInferenceAgainstGenericLambdas
-testInferenceAgainstGenericParamSpecBasicInList
-testInferenceAgainstGenericParamSpecBasicDeList
-testInferenceAgainstGenericParamSpecPopOff
-testInferenceAgainstGenericParamSpecPopOn
-testInferenceAgainstGenericParamSpecVsParamSpec
-testInferenceAgainstGenericParamSpecVsParamSpecConcatenate
-testInferenceAgainstGenericParamSpecSecondary
-testInferenceAgainstGenericParamSpecSecondOrder
-testNoAccidentalVariableClashInNestedGeneric
-testInferenceAgainstGenericParamSpecSpuriousBoundsNotUsed
-testInferenceAgainstGenericVariadicBasicInList
-testInferenceAgainstGenericVariadicBasicDeList
-testInferenceAgainstGenericVariadicPopOff
-testInferenceAgainstGenericVariadicPopOn
-testInferenceAgainstGenericVariadicVsVariadic
-testInferenceAgainstGenericVariadicVsVariadicConcatenate
-testInferenceAgainstGenericVariadicSecondary
-testInferenceAgainstGenericCallableUnion
 testGenericLambdaGenericMethodNoCrash
-testRecursiveSelfTypeCallMethodNoCrash
+# Weird class type vars passing
 testDefaultDict
-testGenericInferenceWithDataclass
-testGenericInferenceWithItertools
-param_spec_with_generic_class
+# list element context inference should probably ignore type vars
+testInferenceAgainstGenericCallableGenericNonLinear
 # type var backtracking
+testGenericFunctionSubtypingWithUnions
 testUnionInference
 testCrashOnComplexCheckWithNamedTupleNext
 unite_type_vars_mypy_issue_5874
 multiple_lambda_mypy_issue_4226
 # type var backtracking for overloads if variant does not match
 testMatchProtocolAgainstOverloadWithAmbiguity
-# func type var in __init__
-testInheritedConstructor2
-testVarArgsFunctionSubtyping
 # lambda infer callable after type params after it.
 testParamSpecInferredFromLambda
 
@@ -275,7 +246,6 @@ testMeetProtocolCallback
 
 # Nested type vars
 testFunctionInGenericInnerClassTypeVariable-skip
-testConstraintsBetweenConcatenatePrefixes
 testParamSpecTestPropAccess
 testTupleAndDictOperationsOnParamSpecArgsAndKwargs
 testUnpackingParamsSpecArgsAndKwargs
@@ -315,6 +285,7 @@ testSelfTypeRestrictedMethodOverloadInit
 # Self tests
 testTypingSelfAttrOldVsNewStyle
 testSelfTypeOnGenericClassObjectNewStyleBound
+testVariadicClassNewStyleSelf
 # "Method cannot have explicit self annotation and Self type"
 testTypingSelfConflict
 # "Self argument missing for a non-static method"
@@ -435,8 +406,6 @@ testTypedDictMappingMethods
 testTypedDictAsStarStarArgCalleeKwargs
 testTypedDictAsStarStarAndDictAsStarStar
 testTypedDictNonMappingMethods
-# generics
-testGenericTypedDictInference
 # Nested typed dict formatting
 testSerializeTypedDictInMethod
 # --extra-checks
@@ -491,10 +460,11 @@ testTypingNamedTupleAttributesAreReadOnly
 testNamedTupleWithNoArgsCallableField
 testVariadicNamedTuple
 # Protocol Self binding
-testProtocolClassObjectSelfTypeInstanceMethod
 testSelfTypesWithProtocolsBehaveAsWithNominal
 testInferenceViaTypeTypeMetaclass
 testSelfTypeProtocolClassmethodMatch
+# Protocol Self binding recursion error
+testRecursiveSelfTypeCallMethodNoCrash
 # TypeVar in Protocol Body
 testTypeVarInProtocolBody
 # "Type aliases are prohibited in protocol bodies"
@@ -508,26 +478,15 @@ testProtocolAndRuntimeAreDefinedAlsoInTypingExtensions
 testOverloadOnProtocol
 testSimpleRuntimeProtocolCheck
 
-# TypeVarTuple mismatches how to format? Unpack[Never]?
-testTypeVarTupleMixed
-testVariadicTupleInference
-testTypeVarTuplePep646CallableWithPrefixSuffix
-testTypeVarTupleNotConcreteCallable
-# Overload matching issues
-testTypeVarTupleOverloadMatch
-# Unpack fixed length (type_helpers/function.rs:1394)
+# Unpack fixed length TypeVarTuple
 testTypeVarTuplePep646TypeVarStarArgsFixedLengthTuple
 testTypeVarTupleNewSyntaxCallables
 # subtyping arbitrary length unpacks
 testVariadicTupleSubtyping
-# TypeVarTuple Callable checked later
+# TypeVarTuple kind of works correctly, but mypy checks args first before callables
 testTypeVarTuplePep646Callable
 testTypeVarTuplePep646CallableStarArgs
 testVariadicTupleInProtocol
-# Self matching
-testVariadicClassNewStyleSelf
-# Complex callable matching
-testVariadicTypedDict
 
 # import order
 testTypeAliasesToNamedTuple
@@ -1587,6 +1546,7 @@ testWalrusAssignmentAndConditionScopeForProperty
 testWalrusAssignmentAndConditionScopeForFunction
 testWalrusUsedBeforeDef
 testPossiblyUndefinedWithAssignmentExpr
+testGenericDictWithOverload
 # "Assignment expression within a comprehension cannot be used in a class body"
 testNoCrashOnAssignmentExprClass
 

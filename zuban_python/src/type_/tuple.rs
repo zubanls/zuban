@@ -1,4 +1,4 @@
-use std::{borrow::Cow, cell::OnceCell, rc::Rc};
+use std::{cell::OnceCell, rc::Rc};
 
 use super::{
     common_base_type, simplified_union_from_iterators, utils::method_with_fallback, CustomBehavior,
@@ -12,14 +12,11 @@ use crate::{
     getitem::{SliceType, SliceTypeContent},
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
-    matching::{
-        FormatData, IteratorContent, LookupKind, LookupResult, OnTypeError, ParamsStyle,
-        ResultContext,
-    },
+    matching::{FormatData, IteratorContent, LookupKind, LookupResult, OnTypeError, ResultContext},
     node_ref::NodeRef,
     type_::{AnyCause, Type},
     type_helpers::{Instance, LookupDetails, TypeOrClass},
-    utils::join_with_commas,
+    utils::{join_with_commas, rc_slice_into_vec},
 };
 
 thread_local! {
@@ -60,7 +57,8 @@ impl Tuple {
     pub fn tuple_class_generics(&self, db: &Database) -> &GenericsList {
         self.tuple_class_generics.get_or_init(|| {
             GenericsList::new_generics(Rc::new([GenericItem::TypeArg(
-                self.args.common_base_type(&InferenceState::new(db)),
+                self.args
+                    .common_base_for_all_items(&InferenceState::new(db)),
             )]))
         })
     }
@@ -93,10 +91,11 @@ impl Tuple {
 
     pub fn format_with_simplified_unpack(&self, format_data: &FormatData) -> Box<str> {
         match &self.args {
-            TupleArgs::WithUnpack(w) if w.before.is_empty() && w.after.is_empty() => {
-                w.unpack.format(format_data)
-            }
-            _ => self.format(format_data),
+            TupleArgs::WithUnpack(w) if w.before.is_empty() && w.after.is_empty() => w
+                .unpack
+                .format(format_data)
+                .unwrap_or("Unpack[Never]".into()),
+            _ => format!("Unpack[{}]", self.format(format_data)).into(),
         }
     }
 
@@ -358,7 +357,7 @@ impl Tuple {
         }
     }
 
-    pub fn find_in_type(&self, check: &impl Fn(&Type) -> bool) -> bool {
+    pub fn find_in_type(&self, check: &mut impl FnMut(&Type) -> bool) -> bool {
         match &self.args {
             TupleArgs::FixedLen(ts) => ts.iter().any(|t| t.find_in_type(check)),
             TupleArgs::ArbitraryLen(t) => t.find_in_type(check),
@@ -392,13 +391,12 @@ pub enum TupleUnpack {
 }
 
 impl TupleUnpack {
-    fn format(&self, format_data: &FormatData) -> Box<str> {
+    fn format(&self, format_data: &FormatData) -> Option<Box<str>> {
         match self {
-            Self::TypeVarTuple(t) => format_data.format_type_var_like(
-                &TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(t)),
-                ParamsStyle::Unreachable,
-            ),
-            Self::ArbitraryLen(t) => format!("Tuple[{}, ...]", t.format(format_data)).into(),
+            Self::TypeVarTuple(t) => format_data.format_type_var_tuple(t),
+            Self::ArbitraryLen(t) => {
+                Some(format!("Unpack[Tuple[{}, ...]]", t.format(format_data)).into())
+            }
         }
     }
 }
@@ -411,21 +409,31 @@ pub struct WithUnpack {
 }
 
 impl WithUnpack {
+    pub fn with_empty_before_and_after(unpack: TupleUnpack) -> Self {
+        Self {
+            before: Rc::from([]),
+            unpack,
+            after: Rc::from([]),
+        }
+    }
+
     fn format(&self, format_data: &FormatData) -> Box<str> {
         join_with_commas(
             self.before
                 .iter()
                 .map(|t| t.format(format_data).into())
-                .chain(std::iter::once(format!(
-                    "Unpack[{}]",
-                    self.unpack.format(format_data)
-                )))
+                .chain(
+                    self.unpack
+                        .format(format_data)
+                        .map(|s| s.into())
+                        .into_iter(),
+                )
                 .chain(self.after.iter().map(|t| t.format(format_data).into())),
         )
         .into()
     }
 
-    pub fn find_in_type(&self, check: &impl Fn(&Type) -> bool) -> bool {
+    pub fn find_in_type(&self, check: &mut impl FnMut(&Type) -> bool) -> bool {
         self.before.iter().any(|t| t.find_in_type(check))
             || match &self.unpack {
                 TupleUnpack::TypeVarTuple(_) => false,
@@ -488,7 +496,7 @@ impl TupleArgs {
         }
     }
 
-    fn common_base_type(&self, i_s: &InferenceState) -> Type {
+    fn common_base_for_all_items(&self, i_s: &InferenceState) -> Type {
         match self {
             Self::FixedLen(ts) => common_base_type(i_s, ts.iter()),
             Self::ArbitraryLen(t) => t.as_ref().clone(),
@@ -507,7 +515,7 @@ impl TupleArgs {
         }
     }
 
-    pub fn search_type_vars<C: FnMut(TypeVarLikeUsage)>(&self, found_type_var: &mut C) {
+    pub fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C) {
         match self {
             TupleArgs::FixedLen(ts) => {
                 for t in ts.iter() {
@@ -521,7 +529,7 @@ impl TupleArgs {
                 }
                 match &with_unpack.unpack {
                     TupleUnpack::TypeVarTuple(tvt) => {
-                        found_type_var(TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(tvt)))
+                        found_type_var(TypeVarLikeUsage::TypeVarTuple(tvt.clone()))
                     }
                     TupleUnpack::ArbitraryLen(t) => t.search_type_vars(found_type_var),
                 }
@@ -551,6 +559,45 @@ impl TupleArgs {
             (_, WithUnpack(_)) => todo!(),
             _ => Tuple::new_arbitrary_length_with_any().args.clone(),
         }
+    }
+
+    pub fn add_before_and_after(self, before: Vec<Type>, after: Vec<Type>) -> Self {
+        match self {
+            TupleArgs::FixedLen(fixed) => TupleArgs::FixedLen({
+                before
+                    .into_iter()
+                    .chain(fixed.iter().cloned())
+                    .chain(after)
+                    .collect()
+            }),
+            TupleArgs::WithUnpack(new) => TupleArgs::WithUnpack(WithUnpack {
+                before: merge_types(before, new.before),
+                unpack: new.unpack,
+                after: merge_types(after, new.after),
+            }),
+            TupleArgs::ArbitraryLen(t) => {
+                if before.is_empty() && after.is_empty() {
+                    TupleArgs::ArbitraryLen(t)
+                } else {
+                    TupleArgs::WithUnpack(WithUnpack {
+                        before: before.into(),
+                        unpack: TupleUnpack::ArbitraryLen(*t),
+                        after: after.into(),
+                    })
+                }
+            }
+        }
+    }
+}
+
+fn merge_types(mut original: Vec<Type>, new: Rc<[Type]>) -> Rc<[Type]> {
+    if original.is_empty() {
+        new
+    } else if new.is_empty() {
+        original.into()
+    } else {
+        original.append(&mut rc_slice_into_vec(new));
+        original.into()
     }
 }
 

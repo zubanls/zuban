@@ -18,9 +18,9 @@ use crate::{
     inference_state::InferenceState,
     matching::{
         calculate_property_return, create_signature_without_self_for_callable, match_self_type,
-        maybe_class_usage, remove_self_from_callable, replace_class_type_vars, ErrorStrs,
-        ErrorTypes, FormatData, Generics, GotType, IteratorContent, LookupKind, LookupResult,
-        Match, Matcher, OnLookupError, OnTypeError, ResultContext,
+        maybe_class_usage, replace_class_type_vars, ErrorStrs, ErrorTypes, FormatData, Generics,
+        GotType, IteratorContent, LookupKind, LookupResult, Match, Matcher, OnLookupError,
+        OnTypeError, ResultContext,
     },
     new_class,
     node_ref::NodeRef,
@@ -814,9 +814,9 @@ impl<'db: 'slf, 'slf> Inferred {
                                 );
                                 Some((
                                     Self::new_unsaved_complex(ComplexPoint::TypeInstance(
-                                        Type::Callable(Rc::new(remove_self_from_callable(
-                                            i_s, matcher, callable,
-                                        ))),
+                                        Type::Callable(Rc::new(
+                                            matcher.remove_self_from_callable(i_s, callable),
+                                        )),
                                     )),
                                     attr_kind,
                                 ))
@@ -924,6 +924,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                                     &attribute_class,
                                                     &t,
                                                 )
+                                                .map(|c| Rc::new(c))
                                             } else {
                                                 todo!()
                                             }
@@ -953,9 +954,9 @@ impl<'db: 'slf, 'slf> Inferred {
                                         }
                                         1 => {
                                             return Some((
-                                                Inferred::from_type(Type::Callable(Rc::new(
+                                                Inferred::from_type(Type::Callable(
                                                     results.into_iter().next().unwrap(),
-                                                ))),
+                                                )),
                                                 attr_kind,
                                             ));
                                         }
@@ -2040,7 +2041,10 @@ fn infer_overloaded_class_method(
     Inferred::from_type(Type::FunctionOverload(FunctionOverload::new(
         o.iter_functions()
             .map(|callable| {
-                infer_class_method(i_s, class, attribute_class, callable).unwrap_or_else(|| todo!())
+                let Some(c) = infer_class_method(i_s, class, attribute_class, callable) else {
+                    todo!();
+                };
+                Rc::new(c)
             })
             .collect(),
     )))
@@ -2150,7 +2154,7 @@ fn proper_classmethod_callable(
                 // generic in the function of the classmethod, see for example
                 // `testGenericClassMethodUnboundOnClass`.
                 if class_generics_not_defined_yet {
-                    return result.replace_type_var_likes(
+                    return result.replace_type_var_likes_and_self(
                         i_s.db,
                         &mut |usage| {
                             if usage.in_definition() == class.node_ref.as_link() {

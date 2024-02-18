@@ -15,7 +15,7 @@ use crate::{
         params::{WrappedParamType, WrappedStar, WrappedStarStar},
         FormatData, Param, ParamsStyle,
     },
-    type_::{FormatStyle, TypeVarLikeUsage},
+    type_::{FormatStyle, TupleArgs, TypeVarLikeUsage},
     type_helpers::Class,
     utils::join_with_commas,
 };
@@ -144,7 +144,21 @@ impl CallableParam {
                     }
                     StarParamType::ParamSpecArgs(u) => todo!(),
                     StarParamType::UnpackedTuple(tup) => {
-                        format!("VarArg(Unpack[{}])", tup.format(format_data))
+                        if let Some(matcher) = format_data.matcher {
+                            let Type::Tuple(tup) = matcher.replace_type_var_likes_for_unknown_type_vars(
+                                format_data.db, &Type::Tuple(tup.clone())
+                            ) else {
+                                unreachable!()
+                            };
+                            let result = tup.args.format(&format_data.remove_matcher());
+                            match &tup.args {
+                                TupleArgs::FixedLen(ts) if ts.is_empty() => "".to_owned(),
+                                TupleArgs::FixedLen(ts) => result.into(),
+                                _ => format!("VarArg(Unpack[Tuple[{result}]])"),
+                            }
+                        } else {
+                            format!("VarArg({})", tup.format_with_simplified_unpack(format_data))
+                        }
                     }
                 }
                 .into();
@@ -270,10 +284,9 @@ impl CallableParams {
                             _ => todo!(),
                         },
                         StarStar(ParamSpecKwargs(usage)) => match had_param_spec_args {
-                            true => out_params.push(format_data.format_type_var_like(
+                            true => out_params.push(format_data.format_param_spec(
                                 // TODO is this even reachable?
-                                &TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)),
-                                style,
+                                usage, style,
                             )),
                             false => todo!(),
                         },
@@ -289,10 +302,7 @@ impl CallableParams {
                     }
                     _ => style,
                 };
-                let spec = format_data.format_type_var_like(
-                    &TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)),
-                    style,
-                );
+                let spec = format_data.format_param_spec(usage, style);
                 if pre_types.len() == 0 {
                     return spec;
                 }
@@ -310,6 +320,10 @@ impl CallableParams {
             ParamsStyle::CallableParams => format!("[{params}]").into(),
             _ => params.into(),
         }
+    }
+
+    pub fn has_any(&self, i_s: &InferenceState) -> bool {
+        self.has_any_internal(i_s, &mut Vec::new())
     }
 
     pub(super) fn has_any_internal(
@@ -363,7 +377,7 @@ impl CallableParams {
         )
     }
 
-    pub(super) fn search_type_vars<C: FnMut(TypeVarLikeUsage)>(&self, found_type_var: &mut C) {
+    pub fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C) {
         match self {
             CallableParams::Simple(params) => {
                 for param in params.iter() {
@@ -375,7 +389,9 @@ impl CallableParams {
                         | ParamType::StarStar(StarStarParamType::ValueType(t)) => {
                             t.search_type_vars(found_type_var)
                         }
-                        ParamType::Star(StarParamType::UnpackedTuple(u)) => todo!(),
+                        ParamType::Star(StarParamType::UnpackedTuple(u)) => {
+                            u.args.search_type_vars(found_type_var)
+                        }
                         ParamType::Star(StarParamType::ParamSpecArgs(_)) => {
                             unreachable!()
                         }
@@ -389,8 +405,31 @@ impl CallableParams {
                 }
             }
             CallableParams::Any(_) => (),
-            CallableParams::WithParamSpec(_, spec) => {
-                found_type_var(TypeVarLikeUsage::ParamSpec(Cow::Borrowed(spec)))
+            CallableParams::WithParamSpec(pre, spec) => {
+                for t in pre.iter() {
+                    t.search_type_vars(found_type_var)
+                }
+                found_type_var(TypeVarLikeUsage::ParamSpec(spec.clone()))
+            }
+        }
+    }
+
+    pub fn find_in_type(&self, check: &mut impl FnMut(&Type) -> bool) -> bool {
+        match self {
+            CallableParams::Simple(params) => params.iter().any(|param| match &param.type_ {
+                ParamType::PositionalOnly(t)
+                | ParamType::PositionalOrKeyword(t)
+                | ParamType::KeywordOnly(t)
+                | ParamType::Star(StarParamType::ArbitraryLen(t))
+                | ParamType::StarStar(StarStarParamType::ValueType(t)) => t.find_in_type(check),
+                ParamType::Star(StarParamType::ParamSpecArgs(_)) => false,
+                ParamType::Star(StarParamType::UnpackedTuple(u)) => u.find_in_type(check),
+                ParamType::StarStar(StarStarParamType::ParamSpecKwargs(_)) => false,
+                ParamType::StarStar(StarStarParamType::UnpackTypedDict(_)) => todo!(),
+            }),
+            CallableParams::Any(_) => false,
+            CallableParams::WithParamSpec(types, param_spec) => {
+                types.iter().any(|t| t.find_in_type(check))
             }
         }
     }
@@ -551,28 +590,11 @@ impl CallableContent {
     }
 
     pub fn has_self_type(&self) -> bool {
-        self.return_type.has_self_type() || self.find_in_type(&Type::is_self_type)
+        self.return_type.has_self_type() || self.find_in_type(&mut Type::is_self_type)
     }
 
-    pub(super) fn find_in_type(&self, check: &impl Fn(&Type) -> bool) -> bool {
-        self.return_type.find_in_type(check)
-            || match &self.params {
-                CallableParams::Simple(params) => params.iter().any(|param| match &param.type_ {
-                    ParamType::PositionalOnly(t)
-                    | ParamType::PositionalOrKeyword(t)
-                    | ParamType::KeywordOnly(t)
-                    | ParamType::Star(StarParamType::ArbitraryLen(t))
-                    | ParamType::StarStar(StarStarParamType::ValueType(t)) => t.find_in_type(check),
-                    ParamType::Star(StarParamType::ParamSpecArgs(_)) => false,
-                    ParamType::Star(StarParamType::UnpackedTuple(u)) => u.find_in_type(check),
-                    ParamType::StarStar(StarStarParamType::ParamSpecKwargs(_)) => false,
-                    ParamType::StarStar(StarStarParamType::UnpackTypedDict(_)) => todo!(),
-                }),
-                CallableParams::Any(_) => false,
-                CallableParams::WithParamSpec(types, param_spec) => {
-                    types.iter().any(|t| t.find_in_type(check))
-                }
-            }
+    pub fn find_in_type(&self, check: &mut impl FnMut(&Type) -> bool) -> bool {
+        self.return_type.find_in_type(check) || self.params.find_in_type(check)
     }
 
     pub fn format(&self, format_data: &FormatData) -> String {
@@ -631,9 +653,14 @@ impl CallableContent {
                 )
             }
             CallableParams::WithParamSpec(pre_types, usage) => {
-                if !pre_types.is_empty() {
-                    todo!()
-                }
+                let prefix = if pre_types.is_empty() {
+                    "".into()
+                } else {
+                    format!(
+                        "{}, ",
+                        join_with_commas(pre_types.iter().map(|t| t.format(format_data).into()))
+                    )
+                };
                 let spec = usage.param_spec.name(db);
                 format_pretty_function_with_params(
                     format_data,
@@ -641,7 +668,7 @@ impl CallableContent {
                     &self.type_vars,
                     Some(&self.return_type),
                     name,
-                    &format!("*{spec}.args, **{spec}.kwargs"),
+                    &format!("{prefix}*{spec}.args, **{spec}.kwargs"),
                 )
             }
             CallableParams::Any(_) => {
@@ -660,7 +687,7 @@ impl CallableContent {
         db: &Database,
         class: Class,
         attribute_class: Class,
-    ) -> CallableContent {
+    ) -> Rc<CallableContent> {
         let mut needs_self_type_variable = self.return_type.has_self_type();
         for param in self.expect_simple_params().iter() {
             if let Some(t) = param.type_.maybe_type() {
@@ -686,11 +713,11 @@ impl CallableContent {
                 kind: TypeVarKind::Bound(bound),
                 variance: Variance::Invariant,
             });
-            self_type_var_usage = Some(TypeVarUsage {
-                in_definition: self.defined_at,
-                type_var: self_type_var.clone(),
-                index: type_vars.len().into(),
-            });
+            self_type_var_usage = Some(TypeVarUsage::new(
+                self_type_var.clone(),
+                self.defined_at,
+                type_vars.len().into(),
+            ));
             type_vars.push(TypeVarLike::TypeVar(self_type_var));
         }
         let type_vars = TypeVarLikes::from_vec(type_vars);
@@ -699,7 +726,7 @@ impl CallableContent {
             &mut |usage| {
                 let in_definition = usage.in_definition();
                 if let Some(result) = maybe_class_usage(db, &attribute_class, &usage) {
-                    result.replace_type_var_likes(
+                    result.replace_type_var_likes_and_self(
                         db,
                         &mut |usage| {
                             if usage.in_definition() == class.node_ref.as_link() {
@@ -722,7 +749,7 @@ impl CallableContent {
             &|| Type::TypeVar(self_type_var_usage.clone().unwrap()),
         );
         callable.type_vars = type_vars;
-        callable
+        Rc::new(callable)
     }
 
     pub fn is_typed(&self, skip_first_param: bool) -> bool {
@@ -769,7 +796,7 @@ pub fn format_callable_params<'db: 'x, 'x, P: Param<'x>>(
                 .map(|t| format_function_type(format_data, t, class)),
             WrappedParamType::Star(WrappedStar::ParamSpecArgs(u)) => todo!(),
             WrappedParamType::Star(WrappedStar::UnpackedTuple(tup)) => {
-                Some(format!("Unpack[{}]", tup.format_with_simplified_unpack(format_data)).into())
+                Some(tup.format_with_simplified_unpack(format_data)).into()
             }
             WrappedParamType::StarStar(WrappedStarStar::UnpackTypedDict(td)) => {
                 Some(format!("Unpack[{}]", td.format(format_data)).into())

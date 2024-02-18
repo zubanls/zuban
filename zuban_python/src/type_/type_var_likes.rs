@@ -1,8 +1,8 @@
-use std::{borrow::Cow, ops::AddAssign, rc::Rc};
+use std::{ops::AddAssign, rc::Rc};
 
 use super::{
-    AnyCause, CallableParams, GenericItem, GenericsList, TupleArgs, TupleUnpack, Type, TypeArgs,
-    WithUnpack,
+    replace::ReplaceTypeVarLike, AnyCause, CallableContent, CallableParams, GenericItem,
+    GenericsList, ReplaceSelf, TupleArgs, TupleUnpack, Type, TypeArgs, WithUnpack,
 };
 use crate::{
     database::{Database, PointLink},
@@ -33,18 +33,18 @@ impl From<usize> for TypeVarIndex {
 }
 
 #[derive(Debug)]
-pub struct CallableWithParent {
-    pub defined_at: PointLink,
-    pub parent_callable: Option<PointLink>,
+pub struct CallableWithParent<T> {
+    pub defined_at: T,
+    pub parent_callable: Option<T>,
 }
 
-struct CallableAncestors<'a> {
-    callables: &'a [CallableWithParent],
-    next: Option<PointLink>,
+struct CallableAncestors<'a, T> {
+    callables: &'a [CallableWithParent<T>],
+    next: Option<&'a T>,
 }
 
-impl Iterator for CallableAncestors<'_> {
-    type Item = PointLink;
+impl<'a, T: CallableId> Iterator for CallableAncestors<'a, T> {
+    type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
         // This algorithm seems a bit weird in terms of Big O, but it shouldn't matter at all,
@@ -52,8 +52,8 @@ impl Iterator for CallableAncestors<'_> {
         if let Some(next) = self.next {
             let result = next;
             for callable_with_parent in self.callables {
-                if callable_with_parent.defined_at == next {
-                    self.next = callable_with_parent.parent_callable;
+                if callable_with_parent.defined_at.is_same(&next) {
+                    self.next = callable_with_parent.parent_callable.as_ref();
                     return Some(result);
                 }
             }
@@ -66,32 +66,28 @@ impl Iterator for CallableAncestors<'_> {
 }
 
 #[derive(Debug)]
-pub struct UnresolvedTypeVarLike {
+struct UnresolvedTypeVarLike<T> {
     pub type_var_like: TypeVarLike,
-    pub most_outer_callable: Option<PointLink>,
+    pub most_outer_callable: Option<T>,
 }
 
-#[derive(Default, Debug)]
-pub struct TypeVarManager {
-    pub type_vars: Vec<UnresolvedTypeVarLike>,
-    callables: Vec<CallableWithParent>,
+#[derive(Debug)]
+pub struct TypeVarManager<T> {
+    type_vars: Vec<UnresolvedTypeVarLike<T>>,
+    callables: Vec<CallableWithParent<T>>,
 }
 
-impl TypeVarManager {
+impl<T: CallableId> TypeVarManager<T> {
     pub fn position(&self, type_var: &TypeVarLike) -> Option<usize> {
         self.type_vars
             .iter()
             .position(|t| &t.type_var_like == type_var)
     }
 
-    pub fn add(
-        &mut self,
-        type_var_like: TypeVarLike,
-        in_callable: Option<PointLink>,
-    ) -> TypeVarIndex {
+    pub fn add(&mut self, type_var_like: TypeVarLike, in_callable: Option<T>) -> TypeVarIndex {
         if let Some(index) = self.position(&type_var_like) {
             self.type_vars[index].most_outer_callable = self.calculate_most_outer_callable(
-                self.type_vars[index].most_outer_callable,
+                self.type_vars[index].most_outer_callable.as_ref(),
                 in_callable,
             );
             index.into()
@@ -104,8 +100,14 @@ impl TypeVarManager {
         }
     }
 
-    pub fn register_callable(&mut self, c: CallableWithParent) {
+    pub fn register_callable(&mut self, c: CallableWithParent<T>) {
         self.callables.push(c)
+    }
+
+    pub fn is_callable_known(&self, callable: &Rc<CallableContent>) -> bool {
+        self.callables
+            .iter()
+            .any(|c| c.defined_at.matches_callable(callable))
     }
 
     pub fn move_index(&mut self, old_index: TypeVarIndex, force_index: TypeVarIndex) {
@@ -138,28 +140,39 @@ impl TypeVarManager {
         )
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &UnresolvedTypeVarLike> {
-        self.type_vars.iter()
+    pub fn iter(&self) -> impl Iterator<Item = &TypeVarLike> {
+        self.type_vars.iter().map(|u| &u.type_var_like)
     }
+
+    pub fn type_vars_for_callable(&self, callable: &Rc<CallableContent>) -> TypeVarLikes {
+        TypeVarLikes::new(
+            self.type_vars
+                .iter()
+                .filter_map(|t| {
+                    (t.most_outer_callable
+                        .as_ref()
+                        .is_some_and(|m| m.matches_callable(callable)))
+                    .then(|| t.type_var_like.clone())
+                })
+                .collect(),
+        )
+    }
+
     pub fn len(&self) -> usize {
         self.type_vars.len()
     }
 
-    fn calculate_most_outer_callable(
-        &self,
-        first: Option<PointLink>,
-        second: Option<PointLink>,
-    ) -> Option<PointLink> {
+    fn calculate_most_outer_callable(&self, first: Option<&T>, second: Option<T>) -> Option<T> {
         for ancestor1 in (CallableAncestors {
             callables: &self.callables,
             next: first,
         }) {
             for ancestor2 in (CallableAncestors {
                 callables: &self.callables,
-                next: second,
+                next: second.as_ref(),
             }) {
-                if ancestor1 == ancestor2 {
-                    return Some(ancestor1);
+                if ancestor1.is_same(&ancestor2) {
+                    return Some(ancestor1.clone());
                 }
             }
         }
@@ -171,7 +184,7 @@ impl TypeVarManager {
         usage: &TypeVarLikeUsage,
     ) -> Option<(TypeVarIndex, Option<PointLink>)> {
         let mut index = 0;
-        let mut in_definition = None;
+        let mut in_definition: Option<Option<&T>> = None;
         for t in self.type_vars.iter().rev() {
             let matched = match &t.type_var_like {
                 TypeVarLike::TypeVar(type_var) => match usage {
@@ -188,26 +201,30 @@ impl TypeVarManager {
                 },
             };
             if let Some(in_def) = in_definition {
-                if in_def == t.most_outer_callable {
+                if in_def.is_none() && t.most_outer_callable.is_none()
+                    || in_def
+                        .zip(t.most_outer_callable.as_ref())
+                        .is_some_and(|(in_def, m)| in_def.is_same(&m))
+                {
                     index += 1;
                 }
             } else if matched {
-                in_definition = Some(t.most_outer_callable);
+                in_definition = Some(t.most_outer_callable.as_ref());
                 index = 0;
             }
         }
-        in_definition.map(|d| (index.into(), d))
+        in_definition.map(|d| (index.into(), d.clone().map(|d| d.as_in_definition())))
     }
 
     pub fn remap_type_var(&self, usage: &TypeVarUsage) -> TypeVarUsage {
         if let Some((index, in_definition)) =
-            self.remap_internal(&TypeVarLikeUsage::TypeVar(Cow::Borrowed(usage)))
+            self.remap_internal(&TypeVarLikeUsage::TypeVar(usage.clone()))
         {
-            TypeVarUsage {
-                type_var: usage.type_var.clone(),
-                in_definition: in_definition.unwrap_or(usage.in_definition),
+            TypeVarUsage::new(
+                usage.type_var.clone(),
+                in_definition.unwrap_or(usage.in_definition),
                 index,
-            }
+            )
         } else {
             usage.clone()
         }
@@ -215,13 +232,13 @@ impl TypeVarManager {
 
     pub fn remap_type_var_tuple(&self, usage: &TypeVarTupleUsage) -> TypeVarTupleUsage {
         if let Some((index, in_definition)) =
-            self.remap_internal(&TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(usage)))
+            self.remap_internal(&TypeVarLikeUsage::TypeVarTuple(usage.clone()))
         {
-            TypeVarTupleUsage {
-                type_var_tuple: usage.type_var_tuple.clone(),
-                in_definition: in_definition.unwrap_or(usage.in_definition),
+            TypeVarTupleUsage::new(
+                usage.type_var_tuple.clone(),
+                in_definition.unwrap_or(usage.in_definition),
                 index,
-            }
+            )
         } else {
             usage.clone()
         }
@@ -229,16 +246,68 @@ impl TypeVarManager {
 
     pub fn remap_param_spec(&self, usage: &ParamSpecUsage) -> ParamSpecUsage {
         if let Some((index, in_definition)) =
-            self.remap_internal(&TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)))
+            self.remap_internal(&TypeVarLikeUsage::ParamSpec(usage.clone()))
         {
-            ParamSpecUsage {
-                param_spec: usage.param_spec.clone(),
-                in_definition: in_definition.unwrap_or(usage.in_definition),
+            ParamSpecUsage::new(
+                usage.param_spec.clone(),
+                in_definition.unwrap_or(usage.in_definition),
                 index,
-            }
+            )
         } else {
             usage.clone()
         }
+    }
+}
+
+impl Default for TypeVarManager<PointLink> {
+    fn default() -> Self {
+        Self {
+            type_vars: vec![],
+            callables: vec![],
+        }
+    }
+}
+
+impl Default for TypeVarManager<Rc<CallableContent>> {
+    fn default() -> Self {
+        Self {
+            type_vars: vec![],
+            callables: vec![],
+        }
+    }
+}
+
+pub trait CallableId: Clone {
+    fn is_same(&self, other: &Self) -> bool;
+    fn as_in_definition(&self) -> PointLink;
+    fn matches_callable(&self, callable: &Rc<CallableContent>) -> bool;
+}
+
+impl CallableId for PointLink {
+    fn is_same(&self, other: &Self) -> bool {
+        self == other
+    }
+
+    fn as_in_definition(&self) -> PointLink {
+        *self
+    }
+
+    fn matches_callable(&self, callable: &Rc<CallableContent>) -> bool {
+        *self == callable.defined_at
+    }
+}
+
+impl CallableId for Rc<CallableContent> {
+    fn is_same(&self, other: &Self) -> bool {
+        Rc::ptr_eq(self, other)
+    }
+
+    fn as_in_definition(&self) -> PointLink {
+        self.defined_at
+    }
+
+    fn matches_callable(&self, callable: &Self) -> bool {
+        self.is_same(callable)
     }
 }
 
@@ -296,32 +365,22 @@ impl TypeVarLikes {
         &self,
         type_var_like: TypeVarLike,
         in_definition: PointLink,
-    ) -> Option<TypeVarLikeUsage<'static>> {
+    ) -> Option<TypeVarLikeUsage> {
         self.0
             .iter()
             .position(|t| t == &type_var_like)
             .map(|index| match type_var_like {
-                TypeVarLike::TypeVar(type_var) => {
-                    TypeVarLikeUsage::TypeVar(Cow::Owned(TypeVarUsage {
-                        type_var,
-                        index: index.into(),
-                        in_definition,
-                    }))
-                }
-                TypeVarLike::TypeVarTuple(type_var_tuple) => {
-                    TypeVarLikeUsage::TypeVarTuple(Cow::Owned(TypeVarTupleUsage {
-                        type_var_tuple,
-                        index: index.into(),
-                        in_definition,
-                    }))
-                }
-                TypeVarLike::ParamSpec(param_spec) => {
-                    TypeVarLikeUsage::ParamSpec(Cow::Owned(ParamSpecUsage {
-                        param_spec,
-                        index: index.into(),
-                        in_definition,
-                    }))
-                }
+                TypeVarLike::TypeVar(type_var) => TypeVarLikeUsage::TypeVar(TypeVarUsage::new(
+                    type_var,
+                    in_definition,
+                    index.into(),
+                )),
+                TypeVarLike::TypeVarTuple(type_var_tuple) => TypeVarLikeUsage::TypeVarTuple(
+                    TypeVarTupleUsage::new(type_var_tuple, in_definition, index.into()),
+                ),
+                TypeVarLike::ParamSpec(param_spec) => TypeVarLikeUsage::ParamSpec(
+                    ParamSpecUsage::new(param_spec, in_definition, index.into()),
+                ),
             })
     }
 
@@ -382,7 +441,7 @@ impl TypeVarLike {
     pub fn name<'db>(&self, db: &'db Database) -> &'db str {
         match self {
             Self::TypeVar(t) => t.name(db),
-            Self::TypeVarTuple(t) => todo!(), //t.name(db),
+            Self::TypeVarTuple(t) => t.name(db),
             Self::ParamSpec(s) => s.name(db),
         }
     }
@@ -391,25 +450,19 @@ impl TypeVarLike {
         &self,
         index: TypeVarIndex,
         in_definition: PointLink,
-    ) -> TypeVarLikeUsage<'static> {
+    ) -> TypeVarLikeUsage {
         match self {
-            Self::TypeVar(type_var) => TypeVarLikeUsage::TypeVar(Cow::Owned(TypeVarUsage {
-                type_var: type_var.clone(),
-                index,
-                in_definition,
-            })),
-            Self::TypeVarTuple(t) => {
-                TypeVarLikeUsage::TypeVarTuple(Cow::Owned(TypeVarTupleUsage {
-                    type_var_tuple: t.clone(),
-                    index,
-                    in_definition,
-                }))
+            Self::TypeVar(type_var) => {
+                TypeVarLikeUsage::TypeVar(TypeVarUsage::new(type_var.clone(), in_definition, index))
             }
-            Self::ParamSpec(p) => TypeVarLikeUsage::ParamSpec(Cow::Owned(ParamSpecUsage {
-                param_spec: p.clone(),
-                index,
+            Self::TypeVarTuple(t) => TypeVarLikeUsage::TypeVarTuple(TypeVarTupleUsage::new(
+                t.clone(),
                 in_definition,
-            })),
+                index,
+            )),
+            Self::ParamSpec(p) => {
+                TypeVarLikeUsage::ParamSpec(ParamSpecUsage::new(p.clone(), in_definition, index))
+            }
         }
     }
 
@@ -532,22 +585,65 @@ impl PartialEq for ParamSpec {
 #[derive(Debug, PartialEq, Clone)]
 pub struct TypeVarUsage {
     pub type_var: Rc<TypeVar>,
-    pub index: TypeVarIndex,
     pub in_definition: PointLink,
+    pub index: TypeVarIndex,
+    // This should only ever be used for type matching. This is also only used for stuff like
+    // foo(foo) where the callable is used twice with type vars and polymorphic matching is needed
+    // to negotiate the type vars. This is reset after type matching and should always be 0.
+    pub temporary_matcher_id: u32,
+}
+
+impl TypeVarUsage {
+    pub fn new(type_var: Rc<TypeVar>, in_definition: PointLink, index: TypeVarIndex) -> Self {
+        Self {
+            type_var,
+            in_definition,
+            index,
+            temporary_matcher_id: 0,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct TypeVarTupleUsage {
     pub type_var_tuple: Rc<TypeVarTuple>,
-    pub index: TypeVarIndex,
     pub in_definition: PointLink,
+    pub index: TypeVarIndex,
+    pub temporary_matcher_id: u32,
+}
+
+impl TypeVarTupleUsage {
+    pub fn new(
+        type_var_tuple: Rc<TypeVarTuple>,
+        in_definition: PointLink,
+        index: TypeVarIndex,
+    ) -> Self {
+        Self {
+            type_var_tuple,
+            in_definition,
+            index,
+            temporary_matcher_id: 0,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct ParamSpecUsage {
     pub param_spec: Rc<ParamSpec>,
-    pub index: TypeVarIndex,
     pub in_definition: PointLink,
+    pub index: TypeVarIndex,
+    pub temporary_matcher_id: u32,
+}
+
+impl ParamSpecUsage {
+    pub fn new(param_spec: Rc<ParamSpec>, in_definition: PointLink, index: TypeVarIndex) -> Self {
+        Self {
+            param_spec,
+            in_definition,
+            index,
+            temporary_matcher_id: 0,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -573,16 +669,40 @@ impl ParamSpecArg {
             type_vars: None,
         }
     }
+
+    pub fn replace_type_var_likes_and_self(
+        &self,
+        db: &Database,
+        callable: ReplaceTypeVarLike,
+        replace_self: ReplaceSelf,
+    ) -> Self {
+        let mut type_vars = self.type_vars.as_ref().map(|t| t.type_vars.as_vec());
+        Self::new(
+            self.params
+                .replace_type_var_likes_and_self(
+                    db,
+                    &mut type_vars,
+                    self.type_vars.as_ref().map(|t| t.in_definition),
+                    callable,
+                    replace_self,
+                )
+                .0,
+            type_vars.map(|t| ParamSpecTypeVars {
+                type_vars: TypeVarLikes::from_vec(t),
+                in_definition: self.type_vars.as_ref().unwrap().in_definition,
+            }),
+        )
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum TypeVarLikeUsage<'a> {
-    TypeVar(Cow<'a, TypeVarUsage>),
-    TypeVarTuple(Cow<'a, TypeVarTupleUsage>),
-    ParamSpec(Cow<'a, ParamSpecUsage>),
+pub enum TypeVarLikeUsage {
+    TypeVar(TypeVarUsage),
+    TypeVarTuple(TypeVarTupleUsage),
+    ParamSpec(ParamSpecUsage),
 }
 
-impl<'a> TypeVarLikeUsage<'a> {
+impl TypeVarLikeUsage {
     pub fn in_definition(&self) -> PointLink {
         match self {
             Self::TypeVar(t) => t.in_definition,
@@ -593,9 +713,9 @@ impl<'a> TypeVarLikeUsage<'a> {
 
     pub fn add_to_index(&mut self, amount: i32) {
         match self {
-            Self::TypeVar(t) => t.to_mut().index += amount,
-            Self::TypeVarTuple(t) => t.to_mut().index += amount,
-            Self::ParamSpec(p) => p.to_mut().index += amount,
+            Self::TypeVar(t) => t.index += amount,
+            Self::TypeVarTuple(t) => t.index += amount,
+            Self::ParamSpec(p) => p.index += amount,
         }
     }
 
@@ -604,6 +724,14 @@ impl<'a> TypeVarLikeUsage<'a> {
             Self::TypeVar(t) => t.index,
             Self::TypeVarTuple(t) => t.index,
             Self::ParamSpec(p) => p.index,
+        }
+    }
+
+    pub fn temporary_matcher_id(&self) -> u32 {
+        match self {
+            Self::TypeVar(t) => t.temporary_matcher_id,
+            Self::TypeVarTuple(t) => t.temporary_matcher_id,
+            Self::ParamSpec(p) => p.temporary_matcher_id,
         }
     }
 
@@ -617,18 +745,16 @@ impl<'a> TypeVarLikeUsage<'a> {
 
     pub fn into_generic_item(self) -> GenericItem {
         match self {
-            TypeVarLikeUsage::TypeVar(usage) => {
-                GenericItem::TypeArg(Type::TypeVar(usage.into_owned()))
-            }
+            TypeVarLikeUsage::TypeVar(usage) => GenericItem::TypeArg(Type::TypeVar(usage)),
             TypeVarLikeUsage::TypeVarTuple(usage) => GenericItem::TypeArgs(TypeArgs {
                 args: TupleArgs::WithUnpack(WithUnpack {
                     before: Rc::from([]),
-                    unpack: TupleUnpack::TypeVarTuple(usage.into_owned()),
+                    unpack: TupleUnpack::TypeVarTuple(usage),
                     after: Rc::from([]),
                 }),
             }),
             TypeVarLikeUsage::ParamSpec(usage) => GenericItem::ParamSpecArg(ParamSpecArg::new(
-                CallableParams::WithParamSpec(Rc::new([]), usage.into_owned()),
+                CallableParams::WithParamSpec(Rc::new([]), usage),
                 None,
             )),
         }
@@ -636,18 +762,15 @@ impl<'a> TypeVarLikeUsage<'a> {
 
     pub fn into_generic_item_with_new_index(self, index: TypeVarIndex) -> GenericItem {
         match self {
-            TypeVarLikeUsage::TypeVar(usage) => {
-                let mut usage = usage.into_owned();
+            TypeVarLikeUsage::TypeVar(mut usage) => {
                 usage.index = index;
                 GenericItem::TypeArg(Type::TypeVar(usage))
             }
-            TypeVarLikeUsage::TypeVarTuple(usage) => {
-                let mut usage = usage.into_owned();
+            TypeVarLikeUsage::TypeVarTuple(mut usage) => {
                 usage.index = index;
                 todo!()
             }
-            TypeVarLikeUsage::ParamSpec(usage) => {
-                let mut usage = usage.into_owned();
+            TypeVarLikeUsage::ParamSpec(mut usage) => {
                 usage.index = index;
                 GenericItem::ParamSpecArg(ParamSpecArg::new(
                     CallableParams::WithParamSpec(Rc::new([]), usage),
@@ -664,19 +787,30 @@ impl<'a> TypeVarLikeUsage<'a> {
     ) {
         match self {
             Self::TypeVar(t) => {
-                let t = t.to_mut();
                 t.index = index;
                 t.in_definition = in_definition;
             }
             Self::TypeVarTuple(t) => {
-                let t = t.to_mut();
                 t.index = index;
                 t.in_definition = in_definition;
             }
             Self::ParamSpec(p) => {
-                let p = p.to_mut();
                 p.index = index;
                 p.in_definition = in_definition;
+            }
+        }
+    }
+
+    pub fn update_temporary_matcher_index(&mut self, index: u32) {
+        match self {
+            Self::TypeVar(t) => {
+                t.temporary_matcher_id = index;
+            }
+            Self::TypeVarTuple(t) => {
+                t.temporary_matcher_id = index;
+            }
+            Self::ParamSpec(p) => {
+                p.temporary_matcher_id = index;
             }
         }
     }
@@ -684,7 +818,7 @@ impl<'a> TypeVarLikeUsage<'a> {
     pub fn format_without_matcher(&self, db: &Database, params_style: ParamsStyle) -> Box<str> {
         match self {
             Self::TypeVar(type_var_usage) => type_var_usage.type_var.name(db).into(),
-            Self::TypeVarTuple(t) => t.type_var_tuple.name(db).into(),
+            Self::TypeVarTuple(t) => format!("Unpack[{}]", t.type_var_tuple.name(db)).into(),
             Self::ParamSpec(p) => {
                 let name = p.param_spec.name(db);
                 match params_style {

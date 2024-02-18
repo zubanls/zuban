@@ -10,7 +10,7 @@ use crate::{
     arguments::{Arg, Args, KnownArgs},
     database::{
         ComplexPoint, Database, Locality, OverloadDefinition, OverloadImplementation, Point,
-        PointType, Specific,
+        PointLink, PointType, Specific,
     },
     debug,
     diagnostics::{Issue, IssueType},
@@ -211,7 +211,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let in_result_type = Cell::new(false);
         let mut unbound_type_vars = vec![];
         let mut on_type_var = |i_s: &InferenceState,
-                               manager: &TypeVarManager,
+                               manager: &TypeVarManager<PointLink>,
                                type_var: TypeVarLike,
                                current_callable: Option<_>| {
             self.class
@@ -315,7 +315,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         match self.class {
             Some(c) if c.node_ref.as_link() == usage.in_definition => match c
                 .generics()
-                .nth_usage(i_s.db, &TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)))
+                .nth_usage(i_s.db, &TypeVarLikeUsage::ParamSpec(usage.clone()))
             {
                 Generic::ParamSpecArg(p) => match p.into_owned().params {
                     CallableParams::Any(cause) => CallableParams::Any(cause),
@@ -725,7 +725,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut add_func = |inf: Inferred| {
             if let Some(CallableLike::Callable(callable)) = inf.as_cow_type(i_s).maybe_callable(i_s)
             {
-                functions.push(rc_unwrap_or_clone(callable))
+                functions.push(callable)
             } else {
                 todo!()
             }
@@ -923,11 +923,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         kind: TypeVarKind::Bound(self.class.unwrap().as_type(i_s.db)),
                         variance: Variance::Invariant,
                     });
-                    self_type_var_usage = Some(TypeVarUsage {
-                        in_definition: defined_at,
-                        type_var: self_type_var.clone(),
-                        index: 0.into(),
-                    });
+                    self_type_var_usage = Some(TypeVarUsage::new(
+                        self_type_var.clone(),
+                        defined_at,
+                        0.into(),
+                    ));
                     type_vars.insert(0, TypeVarLike::TypeVar(self_type_var));
                 }
             }
@@ -1234,9 +1234,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     .unwrap_or_else(|| "".to_owned()),
                 self.name()
             );
-            return_type.execute_and_resolve_type_vars(
+            calculated_type_vars.as_return_type(
                 i_s,
-                &calculated_type_vars,
+                &return_type,
                 self.class.as_ref(),
                 replace_self_type,
             )

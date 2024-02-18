@@ -18,14 +18,13 @@ pub use match_::{ArgumentIndexWithParam, Match, MismatchReason, SignatureMatch};
 pub(crate) use matcher::{
     calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
     calculate_class_init_type_vars_and_return, calculate_function_type_vars_and_return,
-    CalculatedTypeArgs, CalculatedTypeVarLike, FunctionOrCallable, Matcher,
+    CalculatedTypeArgs, FunctionOrCallable, Matcher, MatcherFormatResult,
 };
-pub use params::{matches_params, matches_simple_params, Param};
+pub use params::{matches_params, matches_params_with_variance, matches_simple_params, Param};
 pub use result_context::{CouldBeALiteral, ResultContext};
 pub use utils::{
     calculate_property_return, create_signature_without_self_for_callable, match_self_type,
-    maybe_class_usage, remove_self_from_callable, replace_class_type_vars,
-    replace_class_type_vars_in_callable,
+    maybe_class_usage, replace_class_type_vars, replace_class_type_vars_in_callable,
 };
 
 use crate::{

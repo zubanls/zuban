@@ -5,14 +5,14 @@ use parsa_python_ast::ParamKind;
 use super::{Match, Matcher};
 use crate::{
     arguments::{Arg, ArgKind},
-    database::{Database, PointLink},
+    database::Database,
     debug,
     inference_state::InferenceState,
     matching::FormatData,
     type_::{
         empty_types, match_tuple_type_arguments, AnyCause, CallableParam, CallableParams,
         ParamSpecUsage, ParamType, ParamTypeDetails, StarParamType, StarStarParamType, StringSlice,
-        Tuple, TupleArgs, TupleUnpack, Type, TypeVarLikes, TypedDict, TypedDictMember, Variance,
+        Tuple, TupleArgs, TupleUnpack, Type, TypedDict, TypedDictMember, Variance, WithUnpack,
     },
 };
 
@@ -23,16 +23,73 @@ pub trait Param<'x>: Copy + std::fmt::Debug {
     fn kind(&self, db: &Database) -> ParamKind;
 }
 
+pub fn matches_params_with_variance(
+    i_s: &InferenceState,
+    matcher: &mut Matcher,
+    params1: &CallableParams,
+    params2: &CallableParams,
+    variance: Variance,
+) -> Match {
+    match variance {
+        Variance::Covariant => matches_params(i_s, matcher, params1, params2),
+        Variance::Contravariant => matches_params(i_s, matcher, params2, params1),
+        Variance::Invariant => {
+            debug!("TODO implement invariant params matching");
+            matches_params(i_s, matcher, params1, params2)
+        }
+    }
+}
+
 pub fn matches_params(
     i_s: &InferenceState,
     matcher: &mut Matcher,
     params1: &CallableParams,
     params2: &CallableParams,
-    type_vars2: Option<(&TypeVarLikes, PointLink)>,
-    variance: Variance,
+) -> Match {
+    matches_params_detailed(
+        i_s,
+        matcher,
+        params1,
+        params2,
+        Variance::Contravariant,
+        false,
+    )
+}
+
+fn matches_params_detailed(
+    i_s: &InferenceState,
+    matcher: &mut Matcher,
+    params1: &CallableParams,
+    params2: &CallableParams,
+    // TODO it seems like this param is currently unused and always Contravariant
+    inner_variance: Variance, // Variance of the types of the params
     skip_first_of_params2: bool,
 ) -> Match {
     use CallableParams::*;
+    let set_type_vars_to_any = |matcher: &mut Matcher, params: &_, cause| match params {
+        Simple(params) => {
+            for p in params.iter() {
+                match p.type_.details() {
+                    ParamTypeDetails::Type(t) => {
+                        matcher.set_all_contained_type_vars_to_any(i_s, t, cause)
+                    }
+                    ParamTypeDetails::UnpackedTuple(tup) => {
+                        matcher.set_all_contained_type_vars_to_any(i_s, &Type::Tuple(tup), cause)
+                    }
+                    ParamTypeDetails::UnpackTypedDict(_) => todo!(),
+                    ParamTypeDetails::ParamSpecUsage(_) => todo!(),
+                }
+            }
+        }
+        WithParamSpec(pre, usage) => {
+            for t in pre.iter() {
+                matcher.set_all_contained_type_vars_to_any(i_s, t, cause);
+            }
+            // TODO should probably set usage to any
+        }
+        Any(_) => (),
+    };
+
     match (params1, params2) {
         (Simple(params1), Simple(params2)) => {
             if skip_first_of_params2 {
@@ -41,7 +98,7 @@ pub fn matches_params(
                     matcher,
                     params1.iter(),
                     params2.iter().skip(1).peekable(),
-                    variance,
+                    inner_variance,
                 )
             } else {
                 matches_simple_params(
@@ -49,7 +106,7 @@ pub fn matches_params(
                     matcher,
                     params1.iter(),
                     params2.iter().peekable(),
-                    variance,
+                    inner_variance,
                 )
             }
         }
@@ -58,30 +115,20 @@ pub fn matches_params(
                 todo!()
             }
             matcher.match_or_add_param_spec_against_param_spec(
-                i_s, pre1, usage1, pre2, usage2, type_vars2, variance,
+                i_s,
+                pre1,
+                usage1,
+                pre2,
+                usage2,
+                inner_variance,
             )
         }
-        (Any(_), _) => Match::new_true(),
-        (Simple(params1), Any(cause)) => {
-            for p in params1.iter() {
-                match p.type_.details() {
-                    ParamTypeDetails::Type(t) => {
-                        matcher.set_all_contained_type_vars_to_any(i_s, t, *cause)
-                    }
-                    ParamTypeDetails::UnpackedTuple(tup) => {
-                        matcher.set_all_contained_type_vars_to_any(i_s, &Type::Tuple(tup), *cause)
-                    }
-                    ParamTypeDetails::UnpackTypedDict(_) => todo!(),
-                    ParamTypeDetails::ParamSpecUsage(_) => todo!(),
-                }
-            }
+        (Any(cause), _) => {
+            set_type_vars_to_any(matcher, params2, *cause);
             Match::new_true()
         }
-        (WithParamSpec(pre, usage1), Any(cause)) => {
-            for t in pre.iter() {
-                matcher.set_all_contained_type_vars_to_any(i_s, t, *cause);
-            }
-            // TODO should probably set usage1 to any
+        (_, Any(cause)) => {
+            set_type_vars_to_any(matcher, params1, *cause);
             Match::new_true()
         }
         (WithParamSpec(types, param_spec), Simple(params2)) => {
@@ -89,16 +136,28 @@ pub fn matches_params(
             if skip_first_of_params2 {
                 params2.next();
             }
-            matcher.match_or_add_param_spec(i_s, types, param_spec, params2, type_vars2, variance)
+            matcher.match_or_add_param_spec(i_s, types, param_spec, params2, inner_variance)
         }
-        (Simple(_), WithParamSpec(..)) => Match::new_false(),
+        (Simple(params1), WithParamSpec(types, param_spec)) => {
+            if skip_first_of_params2 {
+                todo!()
+            }
+            matcher.match_or_add_param_spec(i_s, types, param_spec, params1.iter(), inner_variance)
+        }
     }
 }
 
-pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>(
+pub fn matches_simple_params<
+    'db: 'x + 'y,
+    'x,
+    'y,
+    P1: Param<'x>,
+    P2: Param<'y>,
+    I1: Iterator<Item = P1>,
+>(
     i_s: &InferenceState<'db, '_>,
     matcher: &mut Matcher,
-    mut params1: impl Iterator<Item = P1>,
+    params1: I1,
     mut params2: Peekable<impl Iterator<Item = P2>>,
     variance: Variance,
 ) -> Match {
@@ -121,7 +180,8 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
     let mut mismatched_name_pos_params2: Vec<P2> = vec![];
 
     let mut matches = Match::new_true();
-    for param1 in params1.by_ref() {
+    let mut params1 = params1.peekable();
+    while let Some(param1) = params1.next() {
         if let Some(mut param2) = params2
             .peek()
             .or_else(|| unused_keyword_params.get(0))
@@ -137,6 +197,19 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
             }
             let specific1 = param1.specific(i_s.db);
             let specific2 = param2.specific(i_s.db);
+
+            if let Some(m) =
+                match_unpack_from_other_side(i_s, matcher, &specific2, variance, || {
+                    std::iter::once(param1)
+                        .peekable()
+                        .chain(&mut params1)
+                        .peekable()
+                })
+            {
+                matches &= m;
+                params2.next();
+                continue;
+            }
             match &specific1 {
                 WrappedParamType::PositionalOnly(t1) => match &specific2 {
                     WrappedParamType::PositionalOnly(t2)
@@ -151,7 +224,14 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                         WrappedStar::ParamSpecArgs(u) => todo!(),
                         WrappedStar::UnpackedTuple(_) => return Match::new_false(),
                     },
-                    _ => return Match::new_false(),
+                    _ => {
+                        debug!(
+                            "Params mismatch, because had {:?} vs {:?}",
+                            param1.kind(i_s.db),
+                            param2.kind(i_s.db)
+                        );
+                        return Match::new_false();
+                    }
                 },
                 WrappedParamType::PositionalOrKeyword(t1) => match &specific2 {
                     WrappedParamType::PositionalOrKeyword(t2) => {
@@ -233,7 +313,14 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                     {
                         matches &= match_(i_s, matcher, t1, t2)
                     }
-                    _ => return Match::new_false(),
+                    _ => {
+                        debug!(
+                            "Params mismatch, because had {:?} vs {:?}",
+                            param1.kind(i_s.db),
+                            param2.kind(i_s.db)
+                        );
+                        return Match::new_false();
+                    }
                 },
                 WrappedParamType::KeywordOnly(t1) => match &specific2 {
                     WrappedParamType::StarStar(WrappedStarStar::ValueType(t2)) => {
@@ -356,32 +443,16 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                                     matches &= Match::new_false();
                                     todo!()
                                 }
-                            }
+                            };
                         }
                         _ => todo!("{s1:?} {s2:?}"),
                     },
                     _ => match s1 {
                         WrappedStar::UnpackedTuple(tup1) => {
-                            let mut before = vec![];
-                            while let Some(next) = params2.peek() {
-                                match next.specific(i_s.db) {
-                                    WrappedParamType::PositionalOnly(t2)
-                                    | WrappedParamType::PositionalOrKeyword(t2) => before.push(
-                                        t2.map(|t2| t2.into_owned())
-                                            .unwrap_or(Type::Any(AnyCause::Unannotated)),
-                                    ),
-                                    WrappedParamType::Star(s2) => todo!(),
-                                    _ => break,
-                                }
-                                params2.next();
-                            }
+                            let tup2_args = gather_unpack_args(i_s.db, &mut params2);
                             matches &= match_tuple_type_arguments(
-                                i_s,
-                                matcher,
-                                &tup1.args,
-                                &TupleArgs::FixedLen(before.into()),
-                                variance,
-                            );
+                                i_s, matcher, &tup1.args, &tup2_args, variance,
+                            )
                         }
                         _ => return Match::new_false(),
                     },
@@ -462,6 +533,14 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
         }
     }
     for param2 in params2 {
+        if let Some(m) =
+            match_unpack_from_other_side(i_s, matcher, &param2.specific(i_s.db), variance, || {
+                [].iter().peekable()
+            })
+        {
+            matches &= m;
+            continue;
+        }
         if !param2.has_default()
             && !matches!(param2.kind(i_s.db), ParamKind::Star | ParamKind::StarStar)
         {
@@ -469,6 +548,73 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
         }
     }
     matches
+}
+
+fn match_unpack_from_other_side<'db: 'x, 'x, P: Param<'x>, IT: Iterator<Item = P>>(
+    i_s: &InferenceState<'db, '_>,
+    matcher: &mut Matcher,
+    specific2: &WrappedParamType,
+    variance: Variance,
+    as_params: impl FnOnce() -> Peekable<IT>,
+) -> Option<Match> {
+    if let WrappedParamType::Star(WrappedStar::UnpackedTuple(unpacked2)) = specific2 {
+        if let TupleArgs::WithUnpack(WithUnpack {
+            unpack: TupleUnpack::TypeVarTuple(tvt2),
+            ..
+        }) = &unpacked2.args
+        {
+            if matcher.has_responsible_matcher(tvt2) {
+                // TODO making params1 peekable is not possible in this way and will always
+                // fetch a param too much.
+                let mut params1 = as_params();
+                let tup1_args = gather_unpack_args(i_s.db, &mut params1);
+                return Some(match_tuple_type_arguments(
+                    i_s,
+                    matcher,
+                    &tup1_args,
+                    &unpacked2.args,
+                    variance,
+                ));
+            }
+        }
+    }
+    None
+}
+
+fn gather_unpack_args<'db: 'x, 'x, P: Param<'x>>(
+    db: &'db Database,
+    params: &mut Peekable<impl Iterator<Item = P>>,
+) -> TupleArgs {
+    let mut before = vec![];
+    let mut unpacked_tup = None;
+    let mut after = vec![];
+    while let Some(next) = params.peek() {
+        match next.specific(db) {
+            WrappedParamType::PositionalOnly(t2) | WrappedParamType::PositionalOrKeyword(t2) => {
+                let t2 = t2
+                    .map(|t2| t2.into_owned())
+                    .unwrap_or(Type::Any(AnyCause::Unannotated));
+                if unpacked_tup.is_none() {
+                    before.push(t2)
+                } else {
+                    after.push(t2)
+                }
+            }
+            WrappedParamType::Star(WrappedStar::UnpackedTuple(tup)) => {
+                unpacked_tup = Some(tup);
+            }
+            WrappedParamType::Star(_) => todo!(),
+            _ => break,
+        }
+        params.next();
+    }
+    if let Some(unpacked_tup) = &unpacked_tup {
+        let new_args = unpacked_tup.args.clone();
+        new_args.add_before_and_after(before, after)
+    } else {
+        debug_assert!(after.is_empty());
+        TupleArgs::FixedLen(before.into())
+    }
 }
 
 pub fn has_overlapping_params(

@@ -107,23 +107,17 @@ impl Type {
                 Type::Type(t2) => t1.matches(i_s, matcher, t2, variance).similar_if_false(),
                 _ => Match::new_false(),
             },
-            Type::TypeVar(t1) => {
-                if matcher.is_matching_reverse() {
-                    Match::new_false()
-                } else {
-                    matcher.match_or_add_type_var(i_s, t1, value_type, variance)
-                }
-            }
+            Type::TypeVar(t1) => matcher.match_or_add_type_var(i_s, t1, value_type, variance),
             Type::Callable(c1) => {
                 Self::matches_callable_against_arbitrary(i_s, matcher, c1, value_type, variance)
             }
             Type::None => matches!(value_type, Type::None).into(),
-            Type::Any(cause) if matcher.is_matching_reverse() => {
-                debug!("TODO write a test for this. (reverse matching any)");
-                matcher.set_all_contained_type_vars_to_any(i_s, self, *cause);
-                Match::True { with_any: true }
+            Type::Any(cause) => {
+                matcher.set_all_contained_type_vars_to_any(i_s, value_type, *cause);
+                Match::True {
+                    with_any: matcher.is_matching_reverse(),
+                }
             }
-            Type::Any(_) => Match::new_true(),
             Type::Never => matches!(value_type, Type::Never).into(),
             Type::Tuple(t1) => match value_type {
                 Type::Tuple(t2) => {
@@ -437,15 +431,18 @@ impl Type {
         // 3. Check if the value_type is special like Any or a Typevar and needs to be checked
         //    again.
         match value_type {
-            Type::Any(_) if matcher.is_matching_reverse() => return Match::new_true(),
             Type::Any(cause) => {
                 matcher.set_all_contained_type_vars_to_any(i_s, self, *cause);
-                return Match::True { with_any: true };
+                return Match::True {
+                    with_any: !matcher.is_matching_reverse(),
+                };
             }
             Type::None if !i_s.db.project.flags.strict_optional => return Match::new_true(),
             Type::TypeVar(t2) => {
-                if matcher.is_matching_reverse() {
-                    return matcher.match_or_add_type_var(i_s, t2, self, variance.invert());
+                if let Some(match_) =
+                    matcher.match_or_add_type_var_reverse_if_responsible(i_s, t2, self, variance)
+                {
+                    return match_;
                 }
                 if variance == Variance::Covariant {
                     match &t2.type_var.kind {
@@ -531,9 +528,9 @@ impl Type {
         variance: Variance,
     ) -> Match {
         match value_type {
-            Type::TypeVar(type_var2) if matcher.is_matching_reverse() => {
-                matcher.match_or_add_type_var(i_s, type_var2, self, variance.invert())
-            }
+            Type::TypeVar(type_var2) if matcher.is_matching_reverse() => matcher
+                .match_or_add_type_var_reverse_if_responsible(i_s, type_var2, self, variance)
+                .unwrap_or(Match::new_false()),
             Type::Union(u2) => match variance {
                 Variance::Covariant => {
                     let mut matches = Match::new_true();
@@ -668,14 +665,14 @@ impl Type {
                     debug!("TODO is matching reverse for function overload?");
                 }
                 Match::any(overload.iter_functions(), |c2| {
-                    Self::matches_callable(i_s, matcher, c1, c2)
+                    matcher.matches_callable(i_s, c1, c2)
                 })
             }
             Type::Type(t2) if matches!(c1.params, CallableParams::Any(_)) => {
                 c1.return_type.is_super_type_of(i_s, matcher, t2)
             }
             _ => match value_type.maybe_callable(i_s) {
-                Some(CallableLike::Callable(c2)) => Self::matches_callable(i_s, matcher, c1, &c2),
+                Some(CallableLike::Callable(c2)) => matcher.matches_callable(i_s, c1, &c2),
                 Some(CallableLike::Overload(overload)) if variance == Variance::Covariant => {
                     Self::matches_callable_against_arbitrary(
                         i_s,
@@ -690,36 +687,6 @@ impl Type {
         }
     }
 
-    pub fn matches_callable(
-        i_s: &InferenceState,
-        matcher: &mut Matcher,
-        c1: &CallableContent,
-        c2: &CallableContent,
-    ) -> Match {
-        // TODO This if is weird.
-        if !matcher.has_type_var_matcher() {
-            if !c2.type_vars.is_empty() {
-                let mut matcher = Matcher::new_reverse_callable_matcher(c2);
-                return Self::matches_callable(i_s, &mut matcher, c1, c2);
-            }
-        }
-        c1.return_type
-            .is_super_type_of(i_s, matcher, &c2.return_type)
-            & matches_params(
-                i_s,
-                matcher,
-                &c1.params,
-                &c2.params,
-                (!c2.type_vars.is_empty()).then(|| (&c2.type_vars, c2.defined_at)),
-                Variance::Contravariant,
-                false,
-            )
-            .or(|| {
-                // Mypy treats *args/**kwargs special
-                c1.params.is_any_args_and_kwargs().into()
-            })
-    }
-
     fn matches_overload(
         i_s: &InferenceState,
         matcher: &mut Matcher,
@@ -731,7 +698,7 @@ impl Type {
         'outer: for c1 in overload1.iter_functions() {
             for (right_index, c2) in overload2.iter_functions().enumerate() {
                 let right_index = right_index as isize;
-                let m = Type::matches_callable(i_s, matcher, c1, c2);
+                let m = matcher.matches_callable(i_s, c1, c2);
                 if m.bool() && right_index >= previous_match_right_index {
                     previous_match_right_index = right_index;
                     matches &= m;
@@ -741,26 +708,10 @@ impl Type {
                     // the return type differs and it's not a fallback, it might not match, see for
                     // example testSubtypeOverloadWithOverlappingArgumentsButWrongReturnType.
                     if right_index > previous_match_right_index
-                        && (matches_params(
-                            i_s,
-                            &mut Matcher::default(),
-                            &c1.params,
-                            &c2.params,
-                            None,
-                            Variance::Contravariant,
-                            false,
-                        )
-                        .bool()
-                            || matches_params(
-                                i_s,
-                                &mut Matcher::default(),
-                                &c2.params,
-                                &c1.params,
-                                None,
-                                Variance::Contravariant,
-                                false,
-                            )
-                            .bool())
+                        && (matches_params(i_s, &mut Matcher::default(), &c1.params, &c2.params)
+                            .bool()
+                            || matches_params(i_s, &mut Matcher::default(), &c2.params, &c1.params)
+                                .bool())
                     {
                         return Match::new_false();
                     }
@@ -859,11 +810,32 @@ pub fn match_tuple_type_arguments(
     tup2: &TupleArgs,
     variance: Variance,
 ) -> Match {
-    if matcher.is_matching_reverse() {
-        return matcher.match_reverse(|matcher| {
-            match_tuple_type_arguments(i_s, matcher, tup2, tup1, variance.invert())
-        });
+    let m = match_tuple_type_arguments_internal(i_s, matcher, tup1, tup2, variance);
+    if !m.bool() && matcher.has_type_var_matcher() {
+        if matches!(
+            tup2,
+            TupleArgs::WithUnpack(WithUnpack {
+                unpack: TupleUnpack::TypeVarTuple(_),
+                ..
+            })
+        ) {
+            return m.or(|| {
+                matcher.match_reverse(|matcher| {
+                    match_tuple_type_arguments_internal(i_s, matcher, tup2, tup1, variance.invert())
+                })
+            });
+        }
     }
+    m
+}
+
+fn match_tuple_type_arguments_internal(
+    i_s: &InferenceState,
+    matcher: &mut Matcher,
+    tup1: &TupleArgs,
+    tup2: &TupleArgs,
+    variance: Variance,
+) -> Match {
     use TupleArgs::*;
     match (tup1, tup2) {
         (FixedLen(ts1), FixedLen(ts2)) => {
@@ -878,9 +850,11 @@ pub fn match_tuple_type_arguments(
             }
         }
         (ArbitraryLen(t1), ArbitraryLen(t2)) => t1.matches(i_s, matcher, t2, variance),
-        (WithUnpack(unpack), _) => match_unpack(i_s, matcher, unpack, tup2, variance, None, None),
+        (WithUnpack(unpack), _) => {
+            match_unpack_internal(i_s, matcher, unpack, tup2, variance, None, None)
+        }
         (ArbitraryLen(t1), WithUnpack(u2)) => match &u2.unpack {
-            TupleUnpack::TypeVarTuple(_) => todo!("{t1:?}"),
+            TupleUnpack::TypeVarTuple(tvt2) => Match::new_false(),
             TupleUnpack::ArbitraryLen(inner_t2) => {
                 let mut matches = Match::new_true();
                 for t2 in u2.before.iter() {
@@ -906,12 +880,32 @@ pub fn match_unpack(
     i_s: &InferenceState,
     matcher: &mut Matcher,
     with_unpack1: &WithUnpack,
-    tuple2: &TupleArgs,
+    tup2: &TupleArgs,
     variance: Variance,
     on_mismatch: Option<&dyn Fn(ErrorTypes, isize)>,
     on_too_few_args: Option<&dyn Fn()>,
 ) -> Match {
     debug_assert!(!matcher.is_matching_reverse());
+    match_unpack_internal(
+        i_s,
+        matcher,
+        with_unpack1,
+        tup2,
+        variance,
+        on_mismatch,
+        on_too_few_args,
+    )
+}
+
+fn match_unpack_internal(
+    i_s: &InferenceState,
+    matcher: &mut Matcher,
+    with_unpack1: &WithUnpack,
+    tuple2: &TupleArgs,
+    variance: Variance,
+    on_mismatch: Option<&dyn Fn(ErrorTypes, isize)>,
+    on_too_few_args: Option<&dyn Fn()>,
+) -> Match {
     let mut matches = Match::new_true();
 
     let check_type = |matcher: &mut _, t1: &Type, t2, index| {
@@ -930,6 +924,27 @@ pub fn match_unpack(
             }
         }
         match_
+    };
+    let check_type_var_tuple = |matcher: &mut Matcher, tvt, args: TupleArgs| {
+        let m = matcher.match_or_add_type_var_tuple(i_s, tvt, args.clone(), variance);
+        if !m.bool() {
+            if let Match::False { reason, .. } = &m {
+                if let Some(on_mismatch) = on_mismatch {
+                    on_mismatch(
+                        ErrorTypes {
+                            matcher,
+                            reason,
+                            expected: &Type::Tuple(Tuple::new(TupleArgs::WithUnpack(
+                                with_unpack1.clone(),
+                            ))),
+                            got: GotType::Type(&Type::Tuple(Tuple::new(args))),
+                        },
+                        with_unpack1.before.len() as isize,
+                    );
+                }
+            }
+        }
+        m
     };
 
     match tuple2 {
@@ -954,11 +969,10 @@ pub fn match_unpack(
             } else {
                 match &with_unpack1.unpack {
                     TupleUnpack::TypeVarTuple(tvt) => {
-                        matches &= matcher.match_or_add_type_var_tuple(
-                            i_s,
+                        matches &= check_type_var_tuple(
+                            matcher,
                             tvt,
                             TupleArgs::FixedLen(t2_iterator.map(|(_, t2)| t2.clone()).collect()),
-                            variance,
                         )
                     }
                     TupleUnpack::ArbitraryLen(inner_t1) => {
@@ -1020,32 +1034,15 @@ pub fn match_unpack(
                         */
                         todo!()
                     }
-                    let m = matcher.match_or_add_type_var_tuple(
-                        i_s,
+                    matches &= check_type_var_tuple(
+                        matcher,
                         tvt1,
                         TupleArgs::WithUnpack(WithUnpack {
                             before: before2_it.cloned().collect(),
                             unpack: with_unpack2.unpack.clone(),
                             after: after2_it.cloned().collect(),
                         }),
-                        variance,
-                    );
-                    if let Some(on_mismatch) = on_mismatch {
-                        if !m.bool() {
-                            on_mismatch(
-                                ErrorTypes {
-                                    matcher,
-                                    reason: &MismatchReason::None,
-                                    expected: &Type::Tuple(Tuple::new(TupleArgs::WithUnpack(
-                                        with_unpack1.clone(),
-                                    ))),
-                                    got: GotType::Starred(Type::Tuple(Tuple::new(tuple2.clone()))),
-                                },
-                                len_before_1 as isize,
-                            );
-                        }
-                    }
-                    matches &= m;
+                    )
                 }
                 TupleUnpack::ArbitraryLen(inner_t1) => match &with_unpack2.unpack {
                     TupleUnpack::TypeVarTuple(tvt2) => todo!(),
@@ -1070,12 +1067,8 @@ pub fn match_unpack(
             }
             match &with_unpack1.unpack {
                 TupleUnpack::TypeVarTuple(tvt) => {
-                    matches &= matcher.match_or_add_type_var_tuple(
-                        i_s,
-                        tvt,
-                        TupleArgs::ArbitraryLen(t2.clone()),
-                        variance,
-                    )
+                    matches &=
+                        check_type_var_tuple(matcher, tvt, TupleArgs::ArbitraryLen(t2.clone()))
                 }
                 TupleUnpack::ArbitraryLen(inner_t1) => {
                     todo!()

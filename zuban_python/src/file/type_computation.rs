@@ -37,7 +37,7 @@ const ANNOTATION_TO_EXPR_DIFFERENCE: u32 = 2;
 
 #[derive(Debug)]
 pub enum TypeVarCallbackReturn {
-    TypeVarLike(TypeVarLikeUsage<'static>),
+    TypeVarLike(TypeVarLikeUsage),
     UnboundTypeVar,
     NotFound,
 }
@@ -46,7 +46,7 @@ type MapAnnotationTypeCallback<'a> = Option<&'a dyn Fn(&mut TypeComputation, Typ
 
 type TypeVarCallback<'db, 'x> = &'x mut dyn FnMut(
     &InferenceState<'db, '_>,
-    &TypeVarManager,
+    &TypeVarManager<PointLink>,
     TypeVarLike,
     Option<PointLink>, // current_callable
 ) -> TypeVarCallbackReturn;
@@ -375,7 +375,7 @@ macro_rules! compute_type_application {
 
 fn type_computation_for_variable_annotation(
     i_s: &InferenceState,
-    manager: &TypeVarManager,
+    manager: &TypeVarManager<PointLink>,
     type_var_like: TypeVarLike,
     current_callable: Option<PointLink>,
 ) -> TypeVarCallbackReturn {
@@ -405,7 +405,7 @@ pub struct TypeComputation<'db, 'file, 'i_s, 'c> {
     inference: &'c mut Inference<'db, 'file, 'i_s>,
     for_definition: PointLink,
     current_callable: Option<PointLink>,
-    type_var_manager: TypeVarManager,
+    type_var_manager: TypeVarManager<PointLink>,
     type_var_callback: TypeVarCallback<'db, 'c>,
     // This is only for type aliases. Type aliases are also allowed to be used by Python itself.
     // It's therefore unclear if type inference or type computation is needed. So once we encounter
@@ -2930,13 +2930,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     self.current_callable,
                 ) {
                     TypeVarCallbackReturn::TypeVarLike(TypeVarLikeUsage::TypeVar(usage)) => {
-                        Some(TypeContent::Type(Type::TypeVar(usage.into_owned())))
+                        Some(TypeContent::Type(Type::TypeVar(usage)))
                     }
                     TypeVarCallbackReturn::TypeVarLike(TypeVarLikeUsage::TypeVarTuple(usage)) => {
-                        Some(TypeContent::TypeVarTuple(usage.into_owned()))
+                        Some(TypeContent::TypeVarTuple(usage))
                     }
                     TypeVarCallbackReturn::TypeVarLike(TypeVarLikeUsage::ParamSpec(usage)) => {
-                        Some(TypeContent::ParamSpec(usage.into_owned()))
+                        Some(TypeContent::ParamSpec(usage))
                     }
                     TypeVarCallbackReturn::UnboundTypeVar => {
                         let node_ref = NodeRef::new(self.inference.file, name.index());
@@ -2964,25 +2964,25 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     );
                     match type_var_like {
                         TypeVarLike::TypeVar(type_var) => {
-                            TypeContent::Type(Type::TypeVar(TypeVarUsage {
+                            TypeContent::Type(Type::TypeVar(TypeVarUsage::new(
                                 type_var,
+                                self.for_definition,
                                 index,
-                                in_definition: self.for_definition,
-                            }))
+                            )))
                         }
                         TypeVarLike::TypeVarTuple(type_var_tuple) => {
-                            TypeContent::TypeVarTuple(TypeVarTupleUsage {
+                            TypeContent::TypeVarTuple(TypeVarTupleUsage::new(
                                 type_var_tuple,
+                                self.for_definition,
                                 index,
-                                in_definition: self.for_definition,
-                            })
+                            ))
                         }
                         TypeVarLike::ParamSpec(param_spec) => {
-                            TypeContent::ParamSpec(ParamSpecUsage {
+                            TypeContent::ParamSpec(ParamSpecUsage::new(
                                 param_spec,
+                                self.for_definition,
                                 index,
-                                in_definition: self.for_definition,
-                            })
+                            ))
                         }
                     }
                 })
@@ -3579,7 +3579,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 );
                 save_alias(cached_type_node_ref, alias);
 
-                let mut type_var_manager = TypeVarManager::default();
+                let mut type_var_manager = TypeVarManager::<PointLink>::default();
                 let mut type_var_callback =
                     |_: &InferenceState, _: &_, type_var_like: TypeVarLike, _| {
                         // Here we avoid all late bound type var calculation for callable, which is how
@@ -4008,7 +4008,7 @@ fn is_invalid_recursive_alias(db: &Database, t: &Type) -> bool {
 
 fn detect_diverging_alias(db: &Database, type_var_likes: &TypeVarLikes, t: &Type) -> bool {
     !type_var_likes.is_empty()
-        && t.find_in_type(&|t| match t {
+        && t.find_in_type(&mut |t| match t {
             Type::RecursiveType(rec) if rec.has_alias_origin(db) && rec.generics.is_some() => {
                 if rec.calculating(db) {
                     rec.generics.as_ref().is_some_and(|generics| {
@@ -4042,7 +4042,7 @@ fn check_for_and_replace_type_type_in_finished_alias(
     //
     //  will probably just be ignored and should need additional logic to be recognized.
     //  see also the test type_type_alias_circular
-    if alias.type_if_valid().find_in_type(&|t| match t {
+    if alias.type_if_valid().find_in_type(&mut |t| match t {
         Type::Type(t) => t.iter_with_unpacked_unions().any(|t| match t {
             Type::RecursiveType(recursive_alias) => {
                 !recursive_alias.calculating(i_s.db)

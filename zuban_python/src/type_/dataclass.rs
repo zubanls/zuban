@@ -847,11 +847,7 @@ fn type_order_func(self_: Rc<Dataclass>, i_s: &InferenceState) -> LookupResult {
         kind: TypeVarKind::Unrestricted,
         variance: Variance::Invariant,
     });
-    let tv_usage = TypeVarUsage {
-        type_var: type_var.clone(),
-        index: 0.into(),
-        in_definition: self_.class.link,
-    };
+    let tv_usage = TypeVarUsage::new(type_var.clone(), self_.class.link, 0.into());
     return LookupResult::UnknownName(Inferred::from_type(Type::Callable(Rc::new(
         CallableContent {
             name: None,

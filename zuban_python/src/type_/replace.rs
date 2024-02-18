@@ -1,11 +1,11 @@
-use std::{borrow::Cow, rc::Rc};
+use std::rc::Rc;
 
 use super::{
-    simplified_union_from_iterators_with_format_index, CallableContent, CallableParam,
-    CallableParams, ClassGenerics, Dataclass, GenericClass, GenericItem, GenericsList, NamedTuple,
-    ParamSpecArg, ParamSpecTypeVars, ParamType, RecursiveType, StarParamType, StarStarParamType,
-    Tuple, TupleArgs, Type, TypeArgs, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
-    TypedDictGenerics, UnionEntry, UnionType,
+    simplified_union_from_iterators_with_format_index, type_var_likes::CallableId, CallableContent,
+    CallableParam, CallableParams, ClassGenerics, Dataclass, GenericClass, GenericItem,
+    GenericsList, NamedTuple, ParamSpecArg, ParamType, RecursiveType, StarParamType,
+    StarStarParamType, Tuple, TupleArgs, Type, TypeArgs, TypeVarLike, TypeVarLikeUsage,
+    TypeVarLikes, TypeVarManager, TypedDictGenerics, UnionEntry, UnionType,
 };
 use crate::{
     database::{Database, PointLink},
@@ -29,43 +29,14 @@ impl Type {
     pub fn replace_type_var_likes_and_self(
         &self,
         db: &Database,
-        callable: ReplaceTypeVarLike,
+        mut callable: ReplaceTypeVarLike,
         replace_self: ReplaceSelf,
     ) -> Type {
         let mut replace_generics = |generics: &GenericsList| {
             GenericsList::new_generics(
                 generics
                     .iter()
-                    .map(|g| match g {
-                        GenericItem::TypeArg(t) => GenericItem::TypeArg(
-                            t.replace_type_var_likes_and_self(db, callable, replace_self),
-                        ),
-                        GenericItem::TypeArgs(ts) => GenericItem::TypeArgs(TypeArgs {
-                            args: ts.args.replace_type_var_likes_and_self(
-                                db,
-                                callable,
-                                replace_self,
-                            ),
-                        }),
-                        GenericItem::ParamSpecArg(p) => {
-                            let mut type_vars = p.type_vars.clone().map(|t| t.type_vars.as_vec());
-                            GenericItem::ParamSpecArg(ParamSpecArg::new(
-                                p.params
-                                    .replace_type_var_likes_and_self(
-                                        db,
-                                        &mut type_vars,
-                                        p.type_vars.as_ref().map(|t| t.in_definition),
-                                        callable,
-                                        replace_self,
-                                    )
-                                    .0,
-                                type_vars.map(|t| ParamSpecTypeVars {
-                                    type_vars: TypeVarLikes::from_vec(t),
-                                    in_definition: p.type_vars.as_ref().unwrap().in_definition,
-                                }),
-                            ))
-                        }
-                    })
+                    .map(|g| g.replace_type_var_likes_and_self(db, &mut callable, replace_self))
                     .collect(),
             )
         };
@@ -78,7 +49,9 @@ impl Type {
                 Type::FunctionOverload(overload.map_functions(|functions| {
                     functions
                         .iter()
-                        .map(|c| c.replace_type_var_likes_and_self(db, callable, replace_self))
+                        .map(|c| {
+                            Rc::new(c.replace_type_var_likes_and_self(db, callable, replace_self))
+                        })
                         .collect()
                 }))
             }
@@ -107,7 +80,7 @@ impl Type {
                     u.format_as_optional,
                 )
             }
-            Type::TypeVar(t) => match callable(TypeVarLikeUsage::TypeVar(Cow::Borrowed(&t))) {
+            Type::TypeVar(t) => match callable(TypeVarLikeUsage::TypeVar(t.clone())) {
                 GenericItem::TypeArg(t) => t,
                 GenericItem::TypeArgs(ts) => unreachable!(),
                 GenericItem::ParamSpecArg(params) => todo!(),
@@ -196,7 +169,7 @@ impl Type {
         }
     }
 
-    pub fn rewrite_late_bound_callables(&self, manager: &TypeVarManager) -> Self {
+    pub fn rewrite_late_bound_callables<T: CallableId>(&self, manager: &TypeVarManager<T>) -> Self {
         let rewrite_generics = |generics: &GenericsList| {
             GenericsList::new_generics(
                 generics
@@ -205,23 +178,13 @@ impl Type {
                         GenericItem::TypeArg(t) => {
                             GenericItem::TypeArg(t.rewrite_late_bound_callables(manager))
                         }
-                        GenericItem::TypeArgs(ts) => todo!(),
+                        GenericItem::TypeArgs(ts) => GenericItem::TypeArgs(TypeArgs::new(
+                            ts.args.rewrite_late_bound_callables(manager),
+                        )),
                         GenericItem::ParamSpecArg(p) => GenericItem::ParamSpecArg({
                             debug_assert!(p.type_vars.is_none());
                             ParamSpecArg {
-                                params: match &p.params {
-                                    CallableParams::WithParamSpec(types, param_spec) => {
-                                        CallableParams::WithParamSpec(
-                                            types
-                                                .iter()
-                                                .map(|t| t.rewrite_late_bound_callables(manager))
-                                                .collect(),
-                                            manager.remap_param_spec(param_spec),
-                                        )
-                                    }
-                                    CallableParams::Simple(x) => unreachable!(),
-                                    CallableParams::Any(_) => unreachable!(),
-                                },
+                                params: p.params.rewrite_late_bound_callables(manager),
                                 type_vars: p.type_vars.clone(),
                             }
                         }),
@@ -252,7 +215,7 @@ impl Type {
                 Type::FunctionOverload(overload.map_functions(|functions| {
                     functions
                         .iter()
-                        .map(|c| c.rewrite_late_bound_callables(manager))
+                        .map(|c| rc_callable_rewrite_late_bound_callables(c, manager))
                         .collect()
                 }))
             }
@@ -262,7 +225,9 @@ impl Type {
                 Type::Tuple(Tuple::new(tup.args.rewrite_late_bound_callables(manager)))
             }
             Type::Literal { .. } => self.clone(),
-            Type::Callable(c) => Type::Callable(Rc::new(c.rewrite_late_bound_callables(manager))),
+            Type::Callable(c) => {
+                Type::Callable(rc_callable_rewrite_late_bound_callables(c, manager))
+            }
             Type::NewType(_) => todo!(),
             Type::RecursiveType(recursive_alias) => {
                 Type::RecursiveType(Rc::new(RecursiveType::new(
@@ -292,7 +257,7 @@ impl Type {
 }
 
 impl GenericItem {
-    pub fn replace_type_var_likes(
+    pub fn replace_type_var_likes_and_self(
         &self,
         db: &Database,
         callable: &mut impl FnMut(TypeVarLikeUsage) -> GenericItem,
@@ -307,7 +272,9 @@ impl GenericItem {
                     .args
                     .replace_type_var_likes_and_self(db, callable, replace_self),
             }),
-            Self::ParamSpecArg(_) => todo!(),
+            Self::ParamSpecArg(param_spec_arg) => Self::ParamSpecArg(
+                param_spec_arg.replace_type_var_likes_and_self(db, callable, replace_self),
+            ),
         }
     }
 }
@@ -320,7 +287,7 @@ impl CallableContent {
         replace_self: ReplaceSelf,
     ) -> CallableContent {
         let has_type_vars = !self.type_vars.is_empty();
-        let mut type_vars = has_type_vars.then(|| self.type_vars.clone().as_vec());
+        let mut type_vars = has_type_vars.then(|| self.type_vars.as_vec());
         let (params, remap_data) = self.params.replace_type_var_likes_and_self(
             db,
             &mut type_vars,
@@ -335,11 +302,7 @@ impl CallableContent {
             return_type = return_type.replace_type_var_likes_and_self(
                 db,
                 &mut |usage| {
-                    replace_param_spec_inner_type_var_likes_and_self(
-                        usage,
-                        self.defined_at,
-                        remap_data,
-                    )
+                    replace_param_spec_inner_type_var_likes(usage, self.defined_at, remap_data)
                 },
                 replace_self,
             );
@@ -356,83 +319,65 @@ impl CallableContent {
             return_type,
         }
     }
+}
 
-    fn rewrite_late_bound_callables(&self, manager: &TypeVarManager) -> Self {
-        let type_vars = manager
-            .iter()
-            .filter_map(|t| {
-                (t.most_outer_callable == Some(self.defined_at)).then(|| t.type_var_like.clone())
-            })
-            .collect::<Rc<_>>();
-        CallableContent {
-            name: self.name.clone(),
-            class_name: self.class_name,
-            defined_at: self.defined_at,
-            kind: self.kind,
-            type_vars: TypeVarLikes::new(type_vars),
-            params: match &self.params {
-                CallableParams::Simple(params) => CallableParams::Simple(
-                    params
-                        .iter()
-                        .map(|p| CallableParam {
-                            type_: match &p.type_ {
-                                ParamType::PositionalOnly(t) => ParamType::PositionalOnly(
-                                    t.rewrite_late_bound_callables(manager),
-                                ),
-                                ParamType::PositionalOrKeyword(t) => {
-                                    ParamType::PositionalOrKeyword(
-                                        t.rewrite_late_bound_callables(manager),
-                                    )
-                                }
-                                ParamType::KeywordOnly(t) => {
-                                    ParamType::KeywordOnly(t.rewrite_late_bound_callables(manager))
-                                }
-                                ParamType::Star(s) => ParamType::Star(match s {
-                                    StarParamType::ArbitraryLen(t) => StarParamType::ArbitraryLen(
-                                        t.rewrite_late_bound_callables(manager),
-                                    ),
-                                    StarParamType::UnpackedTuple(tup) => {
-                                        StarParamType::UnpackedTuple(Tuple::new(
-                                            tup.args.rewrite_late_bound_callables(manager),
-                                        ))
-                                    }
-                                    StarParamType::ParamSpecArgs(_) => todo!(),
-                                }),
-                                ParamType::StarStar(d) => ParamType::StarStar(match d {
-                                    StarStarParamType::ValueType(t) => {
-                                        StarStarParamType::ValueType(
-                                            t.rewrite_late_bound_callables(manager),
-                                        )
-                                    }
-                                    StarStarParamType::UnpackTypedDict(_) => {
-                                        todo!()
-                                    }
-                                    StarStarParamType::ParamSpecKwargs(_) => {
-                                        todo!()
-                                    }
-                                }),
-                            },
-                            has_default: p.has_default,
-                            name: p.name.clone(),
-                        })
-                        .collect(),
-                ),
-                CallableParams::Any(cause) => CallableParams::Any(*cause),
-                CallableParams::WithParamSpec(types, param_spec) => CallableParams::WithParamSpec(
-                    types
-                        .iter()
-                        .map(|t| t.rewrite_late_bound_callables(manager))
-                        .collect(),
-                    manager.remap_param_spec(param_spec),
-                ),
+fn rc_callable_rewrite_late_bound_callables<T: CallableId>(
+    slf: &Rc<CallableContent>,
+    manager: &TypeVarManager<T>,
+) -> Rc<CallableContent> {
+    Rc::new(CallableContent {
+        name: slf.name.clone(),
+        class_name: slf.class_name,
+        defined_at: slf.defined_at,
+        kind: slf.kind,
+        type_vars: manager.type_vars_for_callable(slf),
+        params: slf.params.rewrite_late_bound_callables(manager),
+        return_type: slf.return_type.rewrite_late_bound_callables(manager),
+    })
+}
+
+impl CallableParam {
+    fn rewrite_late_bound_callables<T: CallableId>(&self, manager: &TypeVarManager<T>) -> Self {
+        Self {
+            type_: match &self.type_ {
+                ParamType::PositionalOnly(t) => {
+                    ParamType::PositionalOnly(t.rewrite_late_bound_callables(manager))
+                }
+                ParamType::PositionalOrKeyword(t) => {
+                    ParamType::PositionalOrKeyword(t.rewrite_late_bound_callables(manager))
+                }
+                ParamType::KeywordOnly(t) => {
+                    ParamType::KeywordOnly(t.rewrite_late_bound_callables(manager))
+                }
+                ParamType::Star(s) => ParamType::Star(match s {
+                    StarParamType::ArbitraryLen(t) => {
+                        StarParamType::ArbitraryLen(t.rewrite_late_bound_callables(manager))
+                    }
+                    StarParamType::UnpackedTuple(tup) => StarParamType::UnpackedTuple(Tuple::new(
+                        tup.args.rewrite_late_bound_callables(manager),
+                    )),
+                    StarParamType::ParamSpecArgs(_) => todo!(),
+                }),
+                ParamType::StarStar(d) => ParamType::StarStar(match d {
+                    StarStarParamType::ValueType(t) => {
+                        StarStarParamType::ValueType(t.rewrite_late_bound_callables(manager))
+                    }
+                    StarStarParamType::UnpackTypedDict(_) => {
+                        todo!()
+                    }
+                    StarStarParamType::ParamSpecKwargs(_) => {
+                        todo!()
+                    }
+                }),
             },
-            return_type: self.return_type.rewrite_late_bound_callables(manager),
+            has_default: self.has_default,
+            name: self.name.clone(),
         }
     }
 }
 
 impl CallableParams {
-    fn replace_type_var_likes_and_self(
+    pub fn replace_type_var_likes_and_self(
         &self,
         db: &Database,
         type_vars: &mut Option<Vec<TypeVarLike>>,
@@ -445,69 +390,81 @@ impl CallableParams {
             CallableParams::Simple(params) => CallableParams::Simple({
                 let mut new_params = vec![];
                 for p in params.iter() {
-                    new_params.push(CallableParam {
-                        type_: match &p.type_ {
-                            ParamType::PositionalOnly(t) => ParamType::PositionalOnly(
+                    let new_param_type = match &p.type_ {
+                        ParamType::PositionalOnly(t) => ParamType::PositionalOnly(
+                            t.replace_type_var_likes_and_self(db, callable, replace_self),
+                        ),
+                        ParamType::PositionalOrKeyword(t) => ParamType::PositionalOrKeyword(
+                            t.replace_type_var_likes_and_self(db, callable, replace_self),
+                        ),
+                        ParamType::KeywordOnly(t) => ParamType::KeywordOnly(
+                            t.replace_type_var_likes_and_self(db, callable, replace_self),
+                        ),
+                        ParamType::Star(s) => ParamType::Star(match s {
+                            StarParamType::ArbitraryLen(t) => StarParamType::ArbitraryLen(
                                 t.replace_type_var_likes_and_self(db, callable, replace_self),
                             ),
-                            ParamType::PositionalOrKeyword(t) => ParamType::PositionalOrKeyword(
-                                t.replace_type_var_likes_and_self(db, callable, replace_self),
-                            ),
-                            ParamType::KeywordOnly(t) => ParamType::KeywordOnly(
-                                t.replace_type_var_likes_and_self(db, callable, replace_self),
-                            ),
-                            ParamType::Star(s) => ParamType::Star(match s {
-                                StarParamType::ArbitraryLen(t) => StarParamType::ArbitraryLen(
-                                    t.replace_type_var_likes_and_self(db, callable, replace_self),
-                                ),
-                                StarParamType::UnpackedTuple(u) => {
-                                    match u.args.replace_type_var_likes_and_self(
-                                        db,
-                                        callable,
-                                        replace_self,
-                                    ) {
-                                        TupleArgs::FixedLen(types) => {
-                                            for t in rc_slice_into_vec(types) {
-                                                new_params.push(CallableParam::new_anonymous(
-                                                    ParamType::PositionalOnly(t),
-                                                ))
-                                            }
-                                            continue;
-                                        }
-                                        TupleArgs::ArbitraryLen(t) => {
+                            StarParamType::UnpackedTuple(u) => {
+                                match u.args.replace_type_var_likes_and_self(
+                                    db,
+                                    callable,
+                                    replace_self,
+                                ) {
+                                    TupleArgs::FixedLen(types) => {
+                                        for t in rc_slice_into_vec(types) {
                                             new_params.push(CallableParam::new_anonymous(
-                                                ParamType::Star(StarParamType::ArbitraryLen(*t)),
-                                            ));
-                                            continue;
+                                                ParamType::PositionalOnly(t),
+                                            ))
                                         }
-                                        args @ TupleArgs::WithUnpack(_) => {
-                                            StarParamType::UnpackedTuple(Tuple::new(args))
+                                        continue;
+                                    }
+                                    TupleArgs::ArbitraryLen(t) => {
+                                        new_params.push(CallableParam::new_anonymous(
+                                            ParamType::Star(StarParamType::ArbitraryLen(*t)),
+                                        ));
+                                        continue;
+                                    }
+                                    TupleArgs::WithUnpack(mut with_unpack) => {
+                                        let before = std::mem::replace(
+                                            &mut with_unpack.before,
+                                            Rc::from([]),
+                                        );
+                                        for t in before.iter() {
+                                            new_params.push(CallableParam::new_anonymous(
+                                                ParamType::PositionalOnly(t.clone()),
+                                            ))
                                         }
+                                        StarParamType::UnpackedTuple(Tuple::new(
+                                            TupleArgs::WithUnpack(with_unpack),
+                                        ))
                                     }
                                 }
-                                StarParamType::ParamSpecArgs(_) => todo!(),
-                            }),
-                            ParamType::StarStar(d) => ParamType::StarStar(match d {
-                                StarStarParamType::ValueType(t) => StarStarParamType::ValueType(
-                                    t.replace_type_var_likes_and_self(db, callable, replace_self),
-                                ),
-                                StarStarParamType::UnpackTypedDict(_) => {
-                                    todo!()
-                                }
-                                StarStarParamType::ParamSpecKwargs(_) => {
-                                    todo!()
-                                }
-                            }),
-                        },
+                            }
+                            StarParamType::ParamSpecArgs(_) => todo!(),
+                        }),
+                        ParamType::StarStar(d) => ParamType::StarStar(match d {
+                            StarStarParamType::ValueType(t) => StarStarParamType::ValueType(
+                                t.replace_type_var_likes_and_self(db, callable, replace_self),
+                            ),
+                            StarStarParamType::UnpackTypedDict(_) => {
+                                todo!()
+                            }
+                            StarStarParamType::ParamSpecKwargs(_) => {
+                                todo!()
+                            }
+                        }),
+                    };
+                    new_params.push(CallableParam {
+                        type_: new_param_type,
                         has_default: p.has_default,
                         name: p.name.clone(),
-                    });
+                    })
                 }
                 new_params.into()
             }),
             CallableParams::Any(cause) => CallableParams::Any(*cause),
             CallableParams::WithParamSpec(types, param_spec) => {
-                let result = callable(TypeVarLikeUsage::ParamSpec(Cow::Borrowed(param_spec)));
+                let result = callable(TypeVarLikeUsage::ParamSpec(param_spec.clone()));
                 let GenericItem::ParamSpecArg(mut new) = result else {
                     unreachable!()
                 };
@@ -520,7 +477,7 @@ impl CallableParams {
                             &mut None,
                             None,
                             &mut |usage| {
-                                replace_param_spec_inner_type_var_likes_and_self(
+                                replace_param_spec_inner_type_var_likes(
                                     usage,
                                     in_definition,
                                     replace_data.unwrap(),
@@ -579,9 +536,28 @@ impl CallableParams {
         };
         (new_params, replace_data)
     }
+
+    fn rewrite_late_bound_callables<T: CallableId>(&self, manager: &TypeVarManager<T>) -> Self {
+        match &self {
+            CallableParams::Simple(params) => CallableParams::Simple(
+                params
+                    .iter()
+                    .map(|p| p.rewrite_late_bound_callables(manager))
+                    .collect(),
+            ),
+            CallableParams::Any(cause) => CallableParams::Any(*cause),
+            CallableParams::WithParamSpec(types, param_spec) => CallableParams::WithParamSpec(
+                types
+                    .iter()
+                    .map(|t| t.rewrite_late_bound_callables(manager))
+                    .collect(),
+                manager.remap_param_spec(param_spec),
+            ),
+        }
+    }
 }
 
-fn replace_param_spec_inner_type_var_likes_and_self(
+fn replace_param_spec_inner_type_var_likes(
     mut usage: TypeVarLikeUsage,
     in_definition: PointLink,
     replace_data: (PointLink, usize),
@@ -613,7 +589,7 @@ impl TupleArgs {
             )),
             TupleArgs::WithUnpack(unpack) => match &unpack.unpack {
                 TupleUnpack::TypeVarTuple(tvt) => {
-                    let GenericItem::TypeArgs(new) = callable(TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(tvt))) else {
+                    let GenericItem::TypeArgs(new) = callable(TypeVarLikeUsage::TypeVarTuple(tvt.clone())) else {
                             unreachable!();
                         };
                     let new_before: Vec<_> = unpack
@@ -626,31 +602,7 @@ impl TupleArgs {
                         .iter()
                         .map(|t| t.replace_type_var_likes_and_self(db, callable, replace_self))
                         .collect();
-                    match new.args {
-                        TupleArgs::FixedLen(fixed) => TupleArgs::FixedLen({
-                            new_before
-                                .into_iter()
-                                .chain(fixed.iter().cloned())
-                                .chain(new_after)
-                                .collect()
-                        }),
-                        TupleArgs::WithUnpack(new) => TupleArgs::WithUnpack(WithUnpack {
-                            before: merge_types(new_before, new.before),
-                            unpack: new.unpack,
-                            after: merge_types(new_after, new.after),
-                        }),
-                        TupleArgs::ArbitraryLen(t) => {
-                            if new_before.is_empty() && new_after.is_empty() {
-                                TupleArgs::ArbitraryLen(t)
-                            } else {
-                                TupleArgs::WithUnpack(WithUnpack {
-                                    before: new_before.into(),
-                                    unpack: TupleUnpack::ArbitraryLen(*t),
-                                    after: new_after.into(),
-                                })
-                            }
-                        }
-                    }
+                    new.args.add_before_and_after(new_before, new_after)
                 }
                 TupleUnpack::ArbitraryLen(t) => TupleArgs::WithUnpack(WithUnpack {
                     before: unpack.before.clone(),
@@ -665,7 +617,7 @@ impl TupleArgs {
         }
     }
 
-    pub fn rewrite_late_bound_callables(&self, manager: &TypeVarManager) -> Self {
+    pub fn rewrite_late_bound_callables<T: CallableId>(&self, manager: &TypeVarManager<T>) -> Self {
         match self {
             Self::FixedLen(ts) => Self::FixedLen(
                 ts.iter()
@@ -696,16 +648,5 @@ impl TupleArgs {
                     .collect(),
             }),
         }
-    }
-}
-
-fn merge_types(mut original: Vec<Type>, new: Rc<[Type]>) -> Rc<[Type]> {
-    if original.is_empty() {
-        new
-    } else if new.is_empty() {
-        original.into()
-    } else {
-        original.append(&mut rc_slice_into_vec(new));
-        original.into()
     }
 }

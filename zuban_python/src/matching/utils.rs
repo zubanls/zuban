@@ -2,7 +2,7 @@ use super::Matcher;
 use crate::{
     database::Database,
     inference_state::InferenceState,
-    type_::{CallableContent, GenericItem, ReplaceSelf, Type, TypeVarLikeUsage, TypeVarLikes},
+    type_::{CallableContent, GenericItem, ReplaceSelf, Type, TypeVarLikeUsage},
     type_helpers::Class,
 };
 
@@ -67,7 +67,7 @@ pub fn create_signature_without_self_for_callable(
         .remove_first_param()
         .expect("Signatures without any params should have been filtered before");
     let c = replace_class_type_vars_in_callable(i_s.db, &c, Some(func_class), &|| instance.clone());
-    Some(remove_self_from_callable(i_s, matcher, c))
+    Some(matcher.remove_self_from_callable(i_s, c))
 }
 
 pub fn match_self_type(
@@ -79,56 +79,6 @@ pub fn match_self_type(
 ) -> bool {
     let expected = replace_class_type_vars(i_s.db, first_type, func_class, &|| instance.clone());
     expected.is_super_type_of(i_s, matcher, instance).bool()
-}
-
-pub fn remove_self_from_callable(
-    i_s: &InferenceState,
-    matcher: Matcher,
-    mut callable: CallableContent,
-) -> CallableContent {
-    // Since self was removed, there is no self without annotation anymore.
-    callable
-        .kind
-        .update_had_first_self_or_class_annotation(true);
-
-    if !callable.type_vars.is_empty() {
-        let calculated = matcher.unwrap_calculated_type_args();
-        callable = callable.replace_type_var_likes_and_self(
-            i_s.db,
-            &mut |usage| {
-                let index = usage.index().as_usize();
-                if usage.in_definition() == callable.defined_at {
-                    let c = &calculated[index];
-                    if c.calculated() {
-                        return (*c)
-                            .clone()
-                            .into_generic_item(i_s.db, &callable.type_vars[index]);
-                    }
-                }
-                let new_index = calculated
-                    .iter()
-                    .take(index)
-                    .filter(|c| !c.calculated())
-                    .count();
-                usage.into_generic_item_with_new_index(new_index.into())
-            },
-            &|| unreachable!("Self should have been remapped already"),
-        );
-        let mut old_type_vars = std::mem::replace(
-            &mut callable.type_vars,
-            i_s.db.python_state.empty_type_var_likes.clone(),
-        )
-        .as_vec();
-        for (i, c) in calculated.iter().enumerate().rev() {
-            if c.calculated() {
-                old_type_vars.remove(i);
-            }
-        }
-        if !old_type_vars.is_empty() {
-            callable.type_vars = TypeVarLikes::from_vec(old_type_vars);
-        }
-    }
-    callable
 }
 
 pub fn calculate_property_return(
@@ -150,18 +100,6 @@ pub fn calculate_property_return(
     Some(if callable.type_vars.is_empty() {
         t
     } else {
-        let calculated = matcher.unwrap_calculated_type_args();
-        t.replace_type_var_likes(i_s.db, &mut |usage| {
-            let index = usage.index().as_usize();
-            if usage.in_definition() == callable.defined_at {
-                let c = &calculated[index];
-                if c.calculated() {
-                    return (*c)
-                        .clone()
-                        .into_generic_item(i_s.db, &callable.type_vars[index]);
-                }
-            }
-            usage.into_generic_item()
-        })
+        matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, &t)
     })
 }

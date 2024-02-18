@@ -281,7 +281,7 @@ impl<'db: 'a, 'a> Class<'a> {
         &self,
         i_s: &InferenceState<'db, '_>,
         type_var: &TypeVarLike,
-    ) -> Option<TypeVarLikeUsage<'static>> {
+    ) -> Option<TypeVarLikeUsage> {
         match self.class_storage.parent_scope {
             ParentScope::Module => None,
             ParentScope::Class(node_index) => {
@@ -2609,14 +2609,14 @@ impl NewOrInitConstructor<'_> {
             let to_callable = |c: &CallableContent| {
                 // Since __init__ does not have a return, We need to check the params
                 // of the __init__ functions and the class as a return type separately.
-                if !c.type_vars.is_empty() {
-                    todo!()
-                }
                 c.remove_first_param().map(|mut c| {
                     let self_ = cls.as_type(i_s.db);
                     let needs_type_var_remap = self.init_class.is_some_and(|c| {
                         !c.type_vars(i_s).is_empty() && c.node_ref != cls.node_ref
                     });
+
+                    // If the __init__ comes from a super class, we need to fetch the generics that
+                    // are relevant for our class.
                     if c.has_self_type() || needs_type_var_remap {
                         c = c.replace_type_var_likes_and_self(
                             i_s.db,
@@ -2636,14 +2636,44 @@ impl NewOrInitConstructor<'_> {
                         )
                     }
                     c.return_type = self_;
-                    c.type_vars = cls.type_vars(i_s).clone();
-                    c
+
+                    // Now we have two sets of generics, the generics for the class and the
+                    // generics for the __init__ function. We merge those and then set the proper
+                    // ids for the type vars.
+                    let class_type_vars = cls.type_vars(i_s);
+                    if class_type_vars.is_empty() {
+                        c.type_vars = class_type_vars.clone();
+                    } else {
+                        let mut tv_vec = class_type_vars.as_vec();
+                        tv_vec.extend(c.type_vars.iter().cloned());
+                        c.type_vars = TypeVarLikes::from_vec(tv_vec);
+                    }
+                    if !c.type_vars.is_empty() {
+                        c = c.replace_type_var_likes_and_self(
+                            i_s.db,
+                            &mut |mut usage| {
+                                let in_def = usage.in_definition();
+                                if cls.node_ref.as_link() == in_def {
+                                    usage.update_in_definition_and_index(
+                                        c.defined_at,
+                                        usage.index(),
+                                    );
+                                } else if c.defined_at == in_def {
+                                    usage.update_in_definition_and_index(
+                                        c.defined_at,
+                                        (class_type_vars.len() + usage.index().as_usize()).into(),
+                                    )
+                                }
+                                usage.into_generic_item()
+                            },
+                            &|| unreachable!("was already replaced above"),
+                        );
+                    }
+                    Rc::new(c)
                 })
             };
             callable.and_then(|callable_like| match callable_like {
-                CallableLike::Callable(c) => {
-                    to_callable(&c).map(|c| CallableLike::Callable(Rc::new(c)))
-                }
+                CallableLike::Callable(c) => to_callable(&c).map(|c| CallableLike::Callable(c)),
                 CallableLike::Overload(callables) => {
                     let funcs: Box<_> = callables
                         .iter_functions()

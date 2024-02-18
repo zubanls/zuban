@@ -1,6 +1,6 @@
 use std::fmt;
 
-use super::{CalculatedTypeVarLike, Matcher};
+use super::Matcher;
 use crate::{
     debug,
     node_ref::NodeRef,
@@ -58,7 +58,7 @@ impl<'a> ResultContext<'a, '_> {
         &mut self,
         i_s: &InferenceState,
         class: NodeRef,
-        on_unique_found: impl FnOnce(&mut Matcher, Vec<CalculatedTypeVarLike>) -> T,
+        on_unique_found: impl FnOnce(&mut Matcher, Matcher) -> T,
     ) -> Option<T> {
         self.with_type_if_exists(|t, matcher| {
             t.on_unique_type_in_unpacked_union(
@@ -72,7 +72,7 @@ impl<'a> ResultContext<'a, '_> {
                         .as_type(i_s.db)
                         .is_sub_type_of(i_s, &mut matcher, t)
                         .non_any_match()
-                        .then(|| matcher.unwrap_calculated_type_args())
+                        .then(|| matcher)
                 },
                 on_unique_found,
             )

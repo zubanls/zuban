@@ -19,7 +19,7 @@ macro_rules! replace_class_vars {
     ($db:expr, $g:ident, $type_var_generics:ident) => {
         match $type_var_generics {
             None | Some(Generics::None | Generics::NotDefinedYet) => Generic::new($g),
-            Some(type_var_generics) => Generic::owned($g.replace_type_var_likes(
+            Some(type_var_generics) => Generic::owned($g.replace_type_var_likes_and_self(
                 $db,
                 &mut |t| type_var_generics.nth_usage($db, &t).into_generic_item($db),
                 &|| Type::Self_,
@@ -90,7 +90,7 @@ impl<'a> Generics<'a> {
         db: &'db Database,
         usage: &ParamSpecUsage,
     ) -> Cow<'a, ParamSpecArg> {
-        let generic = self.nth_usage(db, &TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)));
+        let generic = self.nth_usage(db, &TypeVarLikeUsage::ParamSpec(usage.clone()));
         if let Generic::ParamSpecArg(p) = generic {
             p
         } else {
@@ -223,7 +223,12 @@ impl<'a> Generics<'a> {
             .filter_map(|g| g.format(format_data))
             .collect();
         if strings.is_empty() {
-            "[()]".to_string()
+            if matches!(self, Self::NotDefinedYet) {
+                // Format classes that have not been initialized like Foo() or Foo[int] like "Foo".
+                "".to_string()
+            } else {
+                "[()]".to_string()
+            }
         } else {
             format!("[{}]", strings.join(", "))
         }
