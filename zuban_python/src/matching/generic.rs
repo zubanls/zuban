@@ -74,19 +74,19 @@ impl<'a> Generic<'a> {
         match self {
             Self::TypeArg(t1) => match other {
                 Self::TypeArg(ref t2) => t1.matches(i_s, matcher, t2, variance),
-                _ => todo!(),
+                _ => unreachable!(),
             },
             Self::TypeArgs(ts1) => match other {
                 Self::TypeArgs(ref ts2) => {
                     match_tuple_type_arguments(i_s, matcher, &ts1.args, &ts2.args, variance)
                 }
-                _ => todo!(),
+                _ => unreachable!(),
             },
             Self::ParamSpecArg(p1) => match other {
                 Self::ParamSpecArg(p2) => {
                     matches_params(i_s, matcher, &p1.params, &p2.params, variance, false)
                 }
-                _ => todo!(),
+                _ => unreachable!(),
             },
         }
     }
