@@ -1362,13 +1362,17 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let (first, second) = or.unpack();
                 let first = self.infer_expression_part(first);
                 let second = self.infer_expression_part(second);
-                first.simplified_union(self.i_s, second)
+                first
+                    .filter_truthy_or_falsey(self.i_s, true)
+                    .simplified_union(self.i_s, second)
             }
             ExpressionPart::Conjunction(and) => {
                 let (first, second) = and.unpack();
                 let first = self.infer_expression_part(first);
                 let second = self.infer_expression_part(second);
-                first.simplified_union(self.i_s, second)
+                first
+                    .filter_truthy_or_falsey(self.i_s, false)
+                    .simplified_union(self.i_s, second)
             }
             ExpressionPart::Inversion(inversion) => {
                 let expr = inversion.expression();

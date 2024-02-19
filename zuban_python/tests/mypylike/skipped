@@ -1230,9 +1230,6 @@ testRegression11705_NoStrict
 testBinaryOperationsWithDynamicAsRightOperand
 testFinalWithoutBool
 testFinalWithoutBoolButWithLen
-# or/and
-testBooleanAndOr
-testNonBooleanOr
 # narrowing with assert
 testNarrowOptionalOutsideLambda
 testNarrowOptionalOutsideLambdaWithDeferred

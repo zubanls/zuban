@@ -635,7 +635,7 @@ impl PythonState {
     attribute_node_ref!(builtins, tuple_node_ref, builtins_tuple_index);
     attribute_node_ref!(builtins, pub dict_node_ref, builtins_dict_index);
     attribute_node_ref!(builtins, pub set_node_ref, builtins_set_index);
-    attribute_node_ref!(builtins, bool_node_ref, builtins_bool_index);
+    attribute_node_ref!(builtins, pub bool_node_ref, builtins_bool_index);
     attribute_node_ref!(builtins, int_node_ref, builtins_int_index);
     attribute_node_ref!(builtins, float_node_ref, builtins_float_index);
     attribute_node_ref!(builtins, complex_node_ref, builtins_complex_index);
