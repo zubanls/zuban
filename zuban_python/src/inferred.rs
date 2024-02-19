@@ -715,7 +715,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 None => inferred,
             });
         });
-        result.unwrap_or_else(|| todo!())
+        result.unwrap_or_else(|| Inferred::from_type(Type::Never))
     }
 
     pub fn simplified_union(self, i_s: &InferenceState, other: Self) -> Self {
