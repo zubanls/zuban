@@ -175,15 +175,15 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
-    pub fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type {
+    pub fn as_type(&self, i_s: &InferenceState) -> Type {
         self.as_cow_type(i_s).into_owned()
     }
 
-    pub fn format(&self, i_s: &InferenceState<'db, '_>, format_data: &FormatData) -> Box<str> {
+    pub fn format(&self, i_s: &InferenceState, format_data: &FormatData) -> Box<str> {
         self.as_cow_type(i_s).format(format_data)
     }
 
-    pub fn format_short(&self, i_s: &InferenceState<'db, '_>) -> Box<str> {
+    pub fn format_short(&self, i_s: &InferenceState) -> Box<str> {
         self.format(i_s, &FormatData::new_short(i_s.db))
     }
 
@@ -221,7 +221,7 @@ impl<'db: 'slf, 'slf> Inferred {
             },
         }
     }
-    pub fn maybe_type_var_like(&self, i_s: &InferenceState<'db, '_>) -> Option<TypeVarLike> {
+    pub fn maybe_type_var_like(&self, i_s: &InferenceState) -> Option<TypeVarLike> {
         if let InferredState::Saved(definition) = self.state {
             let node_ref = NodeRef::from_link(i_s.db, definition);
             if let Some(ComplexPoint::TypeVarLike(t)) = node_ref.complex() {
@@ -288,7 +288,7 @@ impl<'db: 'slf, 'slf> Inferred {
             .and_then(|link| NodeRef::from_link(db, link).point().maybe_specific())
     }
 
-    pub fn resolve_untyped_function_return(self, i_s: &InferenceState<'db, '_>) -> Self {
+    pub fn resolve_untyped_function_return(self, i_s: &InferenceState) -> Self {
         todo!();
         /*
         if let InferredState::Saved(definition) = self.state {
@@ -304,7 +304,7 @@ impl<'db: 'slf, 'slf> Inferred {
 
     pub fn resolve_class_type_vars(
         self,
-        i_s: &InferenceState<'db, '_>,
+        i_s: &InferenceState,
         class: &Class,
         attribute_class: &Class,
     ) -> Self {
@@ -704,7 +704,7 @@ impl<'db: 'slf, 'slf> Inferred {
 
     #[inline]
     pub fn gather_simplified_union(
-        i_s: &InferenceState<'db, '_>,
+        i_s: &InferenceState,
         callable: impl FnOnce(&mut dyn FnMut(Self)),
     ) -> Self {
         let mut result: Option<Self> = None;
@@ -718,7 +718,7 @@ impl<'db: 'slf, 'slf> Inferred {
         result.unwrap_or_else(|| todo!())
     }
 
-    pub fn simplified_union(self, i_s: &InferenceState<'db, '_>, other: Self) -> Self {
+    pub fn simplified_union(self, i_s: &InferenceState, other: Self) -> Self {
         Inferred::from_type(
             self.as_cow_type(i_s)
                 .simplified_union(i_s, &other.as_cow_type(i_s)),
@@ -750,7 +750,7 @@ impl<'db: 'slf, 'slf> Inferred {
 
     pub(crate) fn bind_instance_descriptors(
         self,
-        i_s: &InferenceState<'db, '_>,
+        i_s: &InferenceState,
         instance: Type,
         func_class: Class,
         add_issue: impl Fn(IssueType),
@@ -768,7 +768,7 @@ impl<'db: 'slf, 'slf> Inferred {
 
     fn bind_instance_descriptors_internal(
         self,
-        i_s: &InferenceState<'db, '_>,
+        i_s: &InferenceState,
         instance: Type,
         attribute_class: Class,
         add_issue: impl Fn(IssueType),
@@ -1028,7 +1028,7 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     fn bind_instance_descriptors_for_type(
-        i_s: &InferenceState<'db, '_>,
+        i_s: &InferenceState,
         instance: Type,
         attribute_class: Class,
         add_issue: impl Fn(IssueType),
@@ -1149,7 +1149,7 @@ impl<'db: 'slf, 'slf> Inferred {
 
     pub(crate) fn bind_class_descriptors(
         self,
-        i_s: &InferenceState<'db, '_>,
+        i_s: &InferenceState,
         class: &Class,
         attribute_class: Class, // The (sub-)class in which an attribute is defined
         add_issue: impl Fn(IssueType),
@@ -1289,7 +1289,7 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub(crate) fn bind_class_descriptors_for_type(
-        i_s: &InferenceState<'db, '_>,
+        i_s: &InferenceState,
         class: &Class,
         attribute_class: Class, // The (sub-)class in which an attribute is defined
         add_issue: impl Fn(IssueType),
@@ -1370,7 +1370,7 @@ impl<'db: 'slf, 'slf> Inferred {
 
     pub fn bind_new_descriptors(
         self,
-        i_s: &InferenceState<'db, '_>,
+        i_s: &InferenceState,
         class: &Class,
         class_of_attribute: Option<Class>,
     ) -> Self {
@@ -1433,7 +1433,7 @@ impl<'db: 'slf, 'slf> Inferred {
         self
     }
 
-    pub fn debug_info(&self, i_s: &InferenceState<'db, '_>) -> String {
+    pub fn debug_info(&self, i_s: &InferenceState) -> String {
         let details = match &self.state {
             InferredState::Saved(definition) => {
                 let definition = NodeRef::from_link(i_s.db, *definition);
@@ -1451,7 +1451,7 @@ impl<'db: 'slf, 'slf> Inferred {
         )
     }
 
-    fn expect_class_generics(definition: NodeRef<'db>, point: Point) -> ClassGenerics {
+    fn expect_class_generics(definition: NodeRef, point: Point) -> ClassGenerics {
         debug_assert_eq!(point.type_(), PointType::Specific);
         debug_assert_eq!(point.specific(), Specific::SimpleGeneric);
         let PrimaryContent::GetItem(slice_type) = definition.as_primary().second() else {
@@ -1502,7 +1502,7 @@ impl<'db: 'slf, 'slf> Inferred {
     #[inline]
     pub fn run_after_lookup_on_each_union_member(
         &self,
-        i_s: &InferenceState<'db, '_>,
+        i_s: &InferenceState,
         from: NodeRef,
         name: &str,
         kind: LookupKind,
@@ -1522,7 +1522,7 @@ impl<'db: 'slf, 'slf> Inferred {
 
     pub fn lookup(
         &self,
-        i_s: &InferenceState<'db, '_>,
+        i_s: &InferenceState,
         node_ref: NodeRef,
         name: &str,
         kind: LookupKind,
@@ -1532,7 +1532,7 @@ impl<'db: 'slf, 'slf> Inferred {
 
     pub fn lookup_with_result_context(
         &self,
-        i_s: &InferenceState<'db, '_>,
+        i_s: &InferenceState,
         from: NodeRef,
         name: &str,
         kind: LookupKind,
@@ -1947,7 +1947,7 @@ impl<'db: 'slf, 'slf> Inferred {
 
     pub fn type_check_set_item(
         &self,
-        i_s: &InferenceState<'db, '_>,
+        i_s: &InferenceState,
         slice_type: SliceType,
         value: &Inferred,
     ) {
@@ -1981,7 +1981,7 @@ impl<'db: 'slf, 'slf> Inferred {
         );
     }
 
-    pub fn iter(self, i_s: &InferenceState<'db, '_>, from: NodeRef) -> IteratorContent {
+    pub fn iter(self, i_s: &InferenceState, from: NodeRef) -> IteratorContent {
         self.as_cow_type(i_s).iter(i_s, from)
     }
 }
