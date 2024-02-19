@@ -1210,17 +1210,17 @@ testEnumReachabilityWithChainingDisjoint
 testEnumReachabilityWithChainingDirectConflict
 testEnumReachabilityWithChainingBigDisjoints
 testEnumNarrowedToTwoLiterals
-# narrowing with or/and
-testRestrictedTypeAnd
-testRestrictedTypeOr
-testAndOr
-testRestrictedBoolAndOrWithGenerics
-testInvalidBooleanBranchIgnored
-testNoneAndStringIsNone
-testUnionTruthinessTracking
+# Narrowing with previous and/or
 testRegression11705_Strict
 testRegression11705_NoStrict
-testBinaryOperationsWithDynamicAsRightOperand
+# narrowing if and boolean check with or/and
+testRestrictedTypeAnd
+testRestrictedTypeOr
+testUnionTruthinessTracking
+# or/and boolean logic over multiple terms
+testAndOr
+testRestrictedBoolAndOrWithGenerics
+# Narrowing __bool__ / __len__
 testFinalWithoutBool
 testFinalWithoutBoolButWithLen
 # narrowing with assert
@@ -1925,6 +1925,8 @@ testFlexibleAlias3
 testTypingSelfRedundantWarning
 testTypingSelfRedundantWarning_pep585
 
+# if right operand is Any, fallback to Any in operation
+testBinaryOperationsWithDynamicAsRightOperand
 # --strict-equality strict equality "Non-overlapping equality check (left operand type: "int", right operand type: "str")"
 testStrictEqualityEq
 testStrictEqualityIs
@@ -2063,6 +2065,9 @@ testUnreachableWithStdlibContextManagers
 testUnreachableWithStdlibContextManagersNoStrictOptional
 testSpecialTypingProtocols
 testTypeVarTupleWithIsInstance
+# Right operand of "and" is never evaluated
+testNoneAndStringIsNone
+testInvalidBooleanBranchIgnored
 
 # --no-strict-optional details
 testNestedListExpressions
