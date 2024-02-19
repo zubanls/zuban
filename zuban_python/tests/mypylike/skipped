@@ -236,10 +236,8 @@ testFastParserDuplicateNames
 testInferLambdaTypeUsingContext
 # Generator in lambda
 testNoCrashOnLambdaGenerator
-# wtf?
-testEllipsisContextForLambda2
 
-# better meet
+# better meet/join
 testJoinProtocolCallback
 testMeetOfIncompatibleProtocols
 testMeetProtocolCallback
