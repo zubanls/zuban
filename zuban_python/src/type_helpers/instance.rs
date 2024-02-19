@@ -195,7 +195,7 @@ impl<'a> Instance<'a> {
         i_s: &InferenceState<'db, '_>,
         args: &dyn Args<'db>,
         result_context: &mut ResultContext,
-        on_type_error: OnTypeError<'db, '_>,
+        on_type_error: OnTypeError,
     ) -> Inferred {
         if let Some(inf) = self
             .type_lookup(i_s, |issue| args.add_issue(i_s, issue), "__call__")

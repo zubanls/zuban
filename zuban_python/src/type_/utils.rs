@@ -10,7 +10,7 @@ pub(crate) fn method_with_fallback<'db, 'x, T>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Args<'db>,
     result_context: &mut ResultContext,
-    on_type_error: OnTypeError<'db, '_>,
+    on_type_error: OnTypeError,
     td: T,
     name: &str,
     handler: fn(i_s: &InferenceState<'db, '_>, td: T, args: &dyn Args<'db>) -> Option<Inferred>,

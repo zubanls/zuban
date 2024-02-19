@@ -1587,7 +1587,7 @@ impl<'db: 'slf, 'slf> Inferred {
         name: &str,
         args: &dyn Args<'db>,
         on_lookup_error: OnLookupError,
-        on_type_error: OnTypeError<'db, '_>,
+        on_type_error: OnTypeError,
     ) -> Self {
         let mut result: Option<Inferred> = None;
         self.run_after_lookup_on_each_union_member(
@@ -1629,7 +1629,7 @@ impl<'db: 'slf, 'slf> Inferred {
         i_s: &InferenceState<'db, '_>,
         args: &dyn Args<'db>,
         result_context: &mut ResultContext,
-        on_type_error: OnTypeError<'db, '_>,
+        on_type_error: OnTypeError,
     ) -> Self {
         match &self.state {
             InferredState::Saved(link) => {

@@ -29,7 +29,7 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
         i_s: &InferenceState<'db, '_>,
         args: &dyn Args<'db>,
         result_context: &mut ResultContext,
-        on_type_error: OnTypeError<'db, '_>,
+        on_type_error: OnTypeError,
     ) -> Inferred {
         match &self.function {
             BoundMethodFunction::Function(f) => f.execute_internal(

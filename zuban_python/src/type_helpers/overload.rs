@@ -51,7 +51,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         class: Option<&Class>,
         search_init: bool, // TODO this feels weird, maybe use a callback?
         result_context: &mut ResultContext,
-        on_type_error: OnTypeError<'db, '_>,
+        on_type_error: OnTypeError,
     ) -> OverloadResult<'a> {
         let match_signature = |i_s: &InferenceState<'db, '_>,
                                result_context: &mut ResultContext,
@@ -503,7 +503,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         i_s: &InferenceState<'db, '_>,
         args: &dyn Args<'db>,
         result_context: &mut ResultContext,
-        on_type_error: OnTypeError<'db, '_>,
+        on_type_error: OnTypeError,
     ) -> Inferred {
         self.execute_internal(i_s, args, false, result_context, on_type_error)
     }
@@ -514,7 +514,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         args: &dyn Args<'db>,
         skip_first_argument: bool,
         result_context: &mut ResultContext,
-        on_type_error: OnTypeError<'db, '_>,
+        on_type_error: OnTypeError,
     ) -> Inferred {
         debug!("Execute overloaded function {}", self.name(i_s.db));
         match self.find_matching_function(

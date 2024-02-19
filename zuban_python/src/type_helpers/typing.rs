@@ -19,7 +19,7 @@ use crate::{
 pub(crate) fn execute_type<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Args<'db>,
-    on_type_error: OnTypeError<'db, '_>,
+    on_type_error: OnTypeError,
 ) -> Inferred {
     let mut iterator = args.iter();
     let first = iterator.next();
@@ -44,7 +44,7 @@ impl<'db> TypingCast {
         i_s: &InferenceState<'db, '_>,
         args: &dyn Args<'db>,
         result_context: &mut ResultContext,
-        on_type_error: OnTypeError<'db, '_>,
+        on_type_error: OnTypeError,
     ) -> Inferred {
         let mut result = None;
         let mut actual = None;
@@ -119,7 +119,7 @@ impl RevealTypeFunction {
         i_s: &InferenceState<'db, '_>,
         args: &dyn Args<'db>,
         result_context: &mut ResultContext,
-        on_type_error: OnTypeError<'db, '_>,
+        on_type_error: OnTypeError,
     ) -> Inferred {
         let mut iterator = args.iter();
         let arg = iterator.next().unwrap_or_else(|| todo!());
@@ -202,7 +202,7 @@ pub(crate) fn execute_assert_type<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Args<'db>,
     result_context: &mut ResultContext,
-    on_type_error: OnTypeError<'db, '_>,
+    on_type_error: OnTypeError,
 ) -> Inferred {
     if args.iter().count() != 2 {
         args.add_issue(

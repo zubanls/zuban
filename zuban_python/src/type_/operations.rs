@@ -404,7 +404,7 @@ impl Type {
         inferred_from: Option<&Inferred>,
         args: &dyn Args<'db>,
         result_context: &mut ResultContext,
-        on_type_error: OnTypeError<'db, '_>,
+        on_type_error: OnTypeError,
     ) -> Inferred {
         match self {
             Type::Class(c) => {
@@ -604,7 +604,7 @@ pub(crate) fn execute_type_of_type<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Args<'db>,
     result_context: &mut ResultContext,
-    on_type_error: OnTypeError<'db, '_>,
+    on_type_error: OnTypeError,
     type_: &Type,
 ) -> Inferred {
     match type_ {

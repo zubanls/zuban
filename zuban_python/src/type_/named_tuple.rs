@@ -295,7 +295,7 @@ pub(crate) fn execute_collections_named_tuple<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Args<'db>,
     result_context: &mut ResultContext,
-    on_type_error: OnTypeError<'db, '_>,
+    on_type_error: OnTypeError,
 ) -> Inferred {
     i_s.db
         .python_state

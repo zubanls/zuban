@@ -142,7 +142,7 @@ impl<'db: 'a, 'a> Class<'a> {
         init_class: Option<Class>,
         args: &dyn Args<'db>,
         result_context: &mut ResultContext,
-        on_type_error: OnTypeError<'db, '_>,
+        on_type_error: OnTypeError,
         from_type_type: bool, // Errors are different for Cls() vs. Type[Cls] that is instantiated
     ) -> Option<ClassGenerics> {
         let Some(inf) = __init__.into_maybe_inferred() else {
@@ -1790,7 +1790,7 @@ impl<'db: 'a, 'a> Class<'a> {
         original_i_s: &InferenceState<'db, '_>,
         args: &dyn Args<'db>,
         result_context: &mut ResultContext,
-        on_type_error: OnTypeError<'db, '_>,
+        on_type_error: OnTypeError,
         from_type_type: bool,
     ) -> Inferred {
         if self.node_ref == original_i_s.db.python_state.dict_node_ref() {
@@ -1830,7 +1830,7 @@ impl<'db: 'a, 'a> Class<'a> {
         original_i_s: &InferenceState<'db, '_>,
         args: &dyn Args<'db>,
         result_context: &mut ResultContext,
-        on_type_error: OnTypeError<'db, '_>,
+        on_type_error: OnTypeError,
         from_type_type: bool,
     ) -> ClassExecutionResult {
         let i_s = &original_i_s.with_class_context(self);

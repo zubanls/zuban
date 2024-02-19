@@ -56,18 +56,18 @@ pub fn avoid_protocol_mismatch(t1: &Type, t2: &Type, callable: impl FnOnce() -> 
     })
 }
 
-type OnOverloadMismatch<'db, 'a> = Option<&'a dyn Fn()>;
+type OnOverloadMismatch<'a> = Option<&'a dyn Fn()>;
 type GenerateDiagnosticString<'a> = &'a dyn Fn(&FunctionOrCallable, &Database) -> Option<String>;
 
 #[derive(Clone, Copy)]
-pub struct OnTypeError<'db, 'a> {
-    pub callback: OnTypeErrorCallback<'db, 'a>,
-    pub on_overload_mismatch: OnOverloadMismatch<'db, 'a>,
+pub struct OnTypeError<'a> {
+    pub callback: OnTypeErrorCallback<'a>,
+    pub on_overload_mismatch: OnOverloadMismatch<'a>,
     pub generate_diagnostic_string: GenerateDiagnosticString<'a>,
 }
 
-impl<'db, 'a> OnTypeError<'db, 'a> {
-    pub fn new(callback: OnTypeErrorCallback<'db, 'a>) -> Self {
+impl<'a> OnTypeError<'a> {
+    pub fn new(callback: OnTypeErrorCallback<'a>) -> Self {
         Self {
             callback,
             on_overload_mismatch: None,
@@ -76,8 +76,8 @@ impl<'db, 'a> OnTypeError<'db, 'a> {
     }
 
     pub fn with_overload_mismatch(
-        callback: OnTypeErrorCallback<'db, 'a>,
-        on_overload_mismatch: OnOverloadMismatch<'db, 'a>,
+        callback: OnTypeErrorCallback<'a>,
+        on_overload_mismatch: OnOverloadMismatch<'a>,
     ) -> Self {
         Self {
             callback,
@@ -89,7 +89,7 @@ impl<'db, 'a> OnTypeError<'db, 'a> {
     pub fn with_custom_generate_diagnostic_string<'c>(
         &self,
         generate_diagnostic_string: GenerateDiagnosticString<'c>,
-    ) -> OnTypeError<'db, 'c>
+    ) -> OnTypeError<'c>
     where
         'a: 'c,
     {
@@ -185,8 +185,8 @@ impl ErrorTypes<'_> {
     }
 }
 
-pub type OnTypeErrorCallback<'db, 'a> = &'a dyn Fn(
-    &InferenceState<'db, '_>,
+pub type OnTypeErrorCallback<'a> = &'a dyn Fn(
+    &InferenceState,
     &dyn Fn(&str) -> Option<Box<str>>, // error_text; argument is a prefix
     &Arg,
     ErrorTypes,

@@ -37,7 +37,7 @@ impl<'a> Callable<'a> {
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Args<'db>,
-        on_type_error: OnTypeError<'db, '_>,
+        on_type_error: OnTypeError,
         result_context: &mut ResultContext,
     ) -> Inferred {
         self.execute_internal(i_s, args, false, on_type_error, result_context)
@@ -48,7 +48,7 @@ impl<'a> Callable<'a> {
         i_s: &InferenceState<'db, '_>,
         args: &dyn Args<'db>,
         skip_first_argument: bool,
-        on_type_error: OnTypeError<'db, '_>,
+        on_type_error: OnTypeError,
         result_context: &mut ResultContext,
     ) -> Inferred {
         let return_type = &self.content.return_type;

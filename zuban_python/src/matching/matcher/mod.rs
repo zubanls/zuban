@@ -667,7 +667,7 @@ impl<'a> Matcher<'a> {
         args: Box<[Arg<'db, 'b>]>,
         func_or_callable: FunctionOrCallable,
         add_issue: &dyn Fn(IssueType),
-        on_type_error: Option<OnTypeError<'db, '_>>,
+        on_type_error: Option<OnTypeError>,
     ) -> SignatureMatch {
         let func_class = self.func_or_callable.and_then(|f| f.class());
         let param_spec_usage;

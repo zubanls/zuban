@@ -518,7 +518,7 @@ pub(crate) fn dataclasses_replace<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Args<'db>,
     result_context: &mut ResultContext,
-    on_type_error: OnTypeError<'db, '_>,
+    on_type_error: OnTypeError,
     bound: Option<&Type>,
 ) -> Inferred {
     debug_assert!(bound.is_none());
@@ -649,7 +649,7 @@ pub(crate) fn dataclass_initialize<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Args<'db>,
     result_context: &mut ResultContext,
-    on_type_error: OnTypeError<'db, '_>,
+    on_type_error: OnTypeError,
 ) -> Inferred {
     let class = dataclass.class(i_s.db);
     let __init__ = dataclass_init_func(dataclass, i_s.db);

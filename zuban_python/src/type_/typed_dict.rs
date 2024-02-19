@@ -611,7 +611,7 @@ pub(crate) fn typed_dict_setdefault<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Args<'db>,
     result_context: &mut ResultContext,
-    on_type_error: OnTypeError<'db, '_>,
+    on_type_error: OnTypeError,
     bound: Option<&Type>,
 ) -> Inferred {
     let Type::TypedDict(td) = bound.unwrap() else {
@@ -685,7 +685,7 @@ pub(crate) fn typed_dict_get<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Args<'db>,
     result_context: &mut ResultContext,
-    on_type_error: OnTypeError<'db, '_>,
+    on_type_error: OnTypeError,
     bound: Option<&Type>,
 ) -> Inferred {
     let Type::TypedDict(td) = bound.unwrap() else {
@@ -792,7 +792,7 @@ pub(crate) fn typed_dict_pop<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Args<'db>,
     result_context: &mut ResultContext,
-    on_type_error: OnTypeError<'db, '_>,
+    on_type_error: OnTypeError,
     bound: Option<&Type>,
 ) -> Inferred {
     let Type::TypedDict(td) = bound.unwrap() else {
@@ -813,7 +813,7 @@ fn typed_dict_method_with_fallback<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Args<'db>,
     result_context: &mut ResultContext,
-    on_type_error: OnTypeError<'db, '_>,
+    on_type_error: OnTypeError,
     td: &TypedDict,
     name: &str,
     handler: fn(
@@ -838,7 +838,7 @@ fn typed_dict_setitem<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Args<'db>,
     result_context: &mut ResultContext,
-    on_type_error: OnTypeError<'db, '_>,
+    on_type_error: OnTypeError,
     bound: Option<&Type>,
 ) -> Inferred {
     let Type::TypedDict(td) = bound.unwrap() else {
@@ -902,7 +902,7 @@ fn typed_dict_delitem<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Args<'db>,
     result_context: &mut ResultContext,
-    on_type_error: OnTypeError<'db, '_>,
+    on_type_error: OnTypeError,
     bound: Option<&Type>,
 ) -> Inferred {
     let Type::TypedDict(td) = bound.unwrap() else {
@@ -931,7 +931,7 @@ fn typed_dict_update<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Args<'db>,
     result_context: &mut ResultContext,
-    on_type_error: OnTypeError<'db, '_>,
+    on_type_error: OnTypeError,
     bound: Option<&Type>,
 ) -> Inferred {
     let Type::TypedDict(td) = bound.unwrap() else {
@@ -973,7 +973,7 @@ pub(crate) fn initialize_typed_dict<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Args<'db>,
     result_context: &mut ResultContext,
-    on_type_error: OnTypeError<'db, '_>,
+    on_type_error: OnTypeError,
 ) -> Inferred {
     let mut iterator = args.iter();
     let mut matcher = Matcher::new_typed_dict_matcher(&typed_dict);

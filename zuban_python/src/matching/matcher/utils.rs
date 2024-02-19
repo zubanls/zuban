@@ -37,7 +37,7 @@ pub(crate) fn calculate_callable_init_type_vars_and_return<'db: 'a, 'a>(
     args: impl Iterator<Item = Arg<'db, 'a>>,
     add_issue: impl Fn(IssueType),
     result_context: &mut ResultContext,
-    on_type_error: Option<OnTypeError<'db, '_>>,
+    on_type_error: Option<OnTypeError>,
 ) -> CalculatedTypeArgs {
     calculate_init_type_vars_and_return(
         i_s,
@@ -57,7 +57,7 @@ pub(crate) fn calculate_class_init_type_vars_and_return<'db: 'a, 'a>(
     args: impl Iterator<Item = Arg<'db, 'a>>,
     add_issue: impl Fn(IssueType),
     result_context: &mut ResultContext,
-    on_type_error: Option<OnTypeError<'db, '_>>,
+    on_type_error: Option<OnTypeError>,
 ) -> CalculatedTypeArgs {
     calculate_init_type_vars_and_return(
         i_s,
@@ -77,7 +77,7 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
     args: impl Iterator<Item = Arg<'db, 'a>>,
     add_issue: impl Fn(IssueType),
     result_context: &mut ResultContext,
-    on_type_error: Option<OnTypeError<'db, '_>>,
+    on_type_error: Option<OnTypeError>,
 ) -> CalculatedTypeArgs {
     debug!("Calculate __init__ type vars for class {}", class.name());
     let type_vars = class.type_vars(i_s);
@@ -280,7 +280,7 @@ pub(crate) fn calculate_function_type_vars_and_return<'db: 'a, 'a>(
     match_in_definition: PointLink,
     replace_self: ReplaceSelf,
     result_context: &mut ResultContext,
-    on_type_error: Option<OnTypeError<'db, '_>>,
+    on_type_error: Option<OnTypeError>,
 ) -> CalculatedTypeArgs {
     debug!("Calculate type vars for {}", function.diagnostic_string());
     let func_or_callable = FunctionOrCallable::Function(function);
@@ -310,7 +310,7 @@ pub(crate) fn calculate_callable_type_vars_and_return<'db: 'a, 'a>(
     add_issue: impl Fn(IssueType),
     skip_first_param: bool,
     result_context: &mut ResultContext,
-    on_type_error: Option<OnTypeError<'db, '_>>,
+    on_type_error: Option<OnTypeError>,
 ) -> CalculatedTypeArgs {
     let func_or_callable = FunctionOrCallable::Callable(callable);
     let type_vars = &callable.content.type_vars;
@@ -357,7 +357,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
     skip_first_param: bool,
     match_in_definition: PointLink,
     result_context: &mut ResultContext,
-    on_type_error: Option<OnTypeError<'db, '_>>,
+    on_type_error: Option<OnTypeError>,
 ) -> CalculatedTypeArgs {
     let mut had_wrong_init_type_var = false;
     if matcher.has_type_var_matcher() {
@@ -522,7 +522,7 @@ pub(crate) fn match_arguments_against_params<
     matcher: &mut Matcher,
     func_or_callable: FunctionOrCallable,
     add_issue: &impl Fn(IssueType),
-    on_type_error: Option<OnTypeError<'db, '_>>,
+    on_type_error: Option<OnTypeError>,
     mut args_with_params: InferrableParamIterator<'db, 'x, impl Iterator<Item = P>, P, AI>,
 ) -> SignatureMatch {
     let diagnostic_string = |prefix: &str| {

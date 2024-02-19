@@ -1147,7 +1147,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         i_s: &InferenceState<'db, '_>,
         args: &dyn Args<'db>,
         skip_first_argument: bool,
-        on_type_error: OnTypeError<'db, '_>,
+        on_type_error: OnTypeError,
         replace_self_type: ReplaceSelf,
         result_context: &mut ResultContext,
     ) -> Inferred {
@@ -1274,7 +1274,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         i_s: &InferenceState<'db, '_>,
         args: &dyn Args<'db>,
         result_context: &mut ResultContext,
-        on_type_error: OnTypeError<'db, '_>,
+        on_type_error: OnTypeError,
     ) -> Inferred {
         if let Some(class) = &self.class {
             self.execute_internal(

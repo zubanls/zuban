@@ -663,7 +663,7 @@ fn tuple_add<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Args<'db>,
     result_context: &mut ResultContext,
-    on_type_error: OnTypeError<'db, '_>,
+    on_type_error: OnTypeError,
     bound: Option<&Type>,
 ) -> Inferred {
     let Type::Tuple(tuple) = bound.unwrap() else {
@@ -723,7 +723,7 @@ fn tuple_mul<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Args<'db>,
     result_context: &mut ResultContext,
-    on_type_error: OnTypeError<'db, '_>,
+    on_type_error: OnTypeError,
     bound: Option<&Type>,
 ) -> Inferred {
     let Type::Tuple(tuple) = bound.unwrap() else {

@@ -1513,7 +1513,7 @@ type CustomBehaviorCallback = for<'db> fn(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Args<'db>,
     result_context: &mut ResultContext,
-    on_type_error: OnTypeError<'db, '_>,
+    on_type_error: OnTypeError,
     bound: Option<&Type>,
 ) -> Inferred;
 
@@ -1561,7 +1561,7 @@ impl CustomBehavior {
         i_s: &InferenceState<'db, '_>,
         args: &dyn Args<'db>,
         result_context: &mut ResultContext,
-        on_type_error: OnTypeError<'db, '_>,
+        on_type_error: OnTypeError,
     ) -> Inferred {
         let bound = match &self.kind {
             CustomBehaviorKind::Function => None,
