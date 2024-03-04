@@ -10,7 +10,7 @@ use std::{
 
 use parsa_python_ast::{Name, NodeIndex};
 
-thread_local!(pub static DEBUG_INDENTATION: Cell<usize> = Cell::new(0));
+thread_local!(pub static DEBUG_INDENTATION: Cell<usize> = const { Cell::new(0) });
 
 #[inline]
 pub fn debug_indent<C: FnOnce() -> T, T>(f: C) -> T {
