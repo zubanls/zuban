@@ -281,17 +281,7 @@ impl<'db> Inference<'db, '_, '_> {
                     }
                 },
                 StmtContent::IfStmt(if_stmt) => {
-                    for block in if_stmt.iter_blocks() {
-                        match block {
-                            IfBlockType::If(if_expr, block) => {
-                                self.infer_named_expression(if_expr);
-                                self.calc_block_diagnostics(block, class, func)
-                            }
-                            IfBlockType::Else(block) => {
-                                self.calc_block_diagnostics(block, class, func)
-                            }
-                        }
-                    }
+                    self.flow_analysis_for_if_stmt(if_stmt, class, func)
                 }
                 StmtContent::ForStmt(for_stmt) => {
                     self.calc_for_stmt_diagnostics(for_stmt, class, func, false)

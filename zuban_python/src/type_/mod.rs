@@ -689,6 +689,18 @@ impl Type {
         *self = mem::replace(self, Self::Never).union(db, other);
     }
 
+    pub fn gather_union(db: &Database, callable: impl FnOnce(&mut dyn FnMut(Self))) -> Self {
+        let mut result: Option<Self> = None;
+        let r = &mut result;
+        callable(&mut |t| {
+            *r = Some(match r.take() {
+                Some(i) => i.union(db, t),
+                None => t,
+            });
+        });
+        result.unwrap_or_else(|| Type::Never)
+    }
+
     pub fn format_short(&self, db: &Database) -> Box<str> {
         self.format(&FormatData::new_short(db))
     }

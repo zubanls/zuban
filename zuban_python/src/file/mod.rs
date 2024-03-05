@@ -1,5 +1,6 @@
 mod diagnostics;
 mod file_state;
+mod flow_analysis;
 mod inference;
 mod name_binder;
 mod python_file;
