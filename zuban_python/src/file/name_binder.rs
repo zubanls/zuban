@@ -186,7 +186,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         }
     }
 
-    fn add_new_definition(&self, name_def: NameDefinition<'db>, point: Point, in_base_scope: bool) {
+    fn add_new_definition(&self, name_def: NameDefinition<'db>, point: Point) {
         if let Some(first) = self.symbol_table.lookup_symbol(name_def.as_code()) {
             let mut latest_name_index = first;
             loop {
@@ -218,37 +218,22 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         self.points.set(name_def.index(), point);
     }
 
-    fn add_point_definition(
-        &mut self,
-        name_def: NameDefinition<'db>,
-        type_: Specific,
-        in_base_scope: bool,
-    ) {
-        self.add_new_definition(
-            name_def,
-            Point::new_simple_specific(type_, Locality::Stmt),
-            in_base_scope,
-        );
+    fn add_point_definition(&mut self, name_def: NameDefinition<'db>, type_: Specific) {
+        self.add_new_definition(name_def, Point::new_simple_specific(type_, Locality::Stmt));
     }
 
-    fn add_redirect_definition(
-        &mut self,
-        name_def: NameDefinition<'db>,
-        node_index: NodeIndex,
-        in_base_scope: bool,
-    ) {
+    fn add_redirect_definition(&mut self, name_def: NameDefinition<'db>, node_index: NodeIndex) {
         self.add_new_definition(
             name_def,
             Point::new_redirect(self.file_index, node_index, Locality::Stmt),
-            in_base_scope,
         );
     }
 
     pub(crate) fn index_file(&mut self, file_node: File<'db>) {
-        self.index_stmts(file_node.iter_stmts(), true, true);
+        self.index_stmts(file_node.iter_stmts(), true);
     }
 
-    fn index_block(&mut self, block: Block<'db>, ordered: bool, in_base_scope: bool) -> NodeIndex {
+    fn index_block(&mut self, block: Block<'db>, ordered: bool) -> NodeIndex {
         // Returns the latest return/yield index
         // Theory:
         // - while_stmt, for_stmt: ignore order (at least mostly)
@@ -257,19 +242,12 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         // - lambda: only in scope
         // - function_def, class_def: ignore
         match block.unpack() {
-            BlockContent::OneLine(simple) => {
-                self.index_simple_stmts(simple, ordered, in_base_scope)
-            }
-            BlockContent::Indented(stmts) => self.index_stmts(stmts, ordered, in_base_scope),
+            BlockContent::OneLine(simple) => self.index_simple_stmts(simple, ordered),
+            BlockContent::Indented(stmts) => self.index_stmts(stmts, ordered),
         }
     }
 
-    fn index_stmts(
-        &mut self,
-        stmts: StmtIterator<'db>,
-        ordered: bool,
-        in_base_scope: bool,
-    ) -> NodeIndex {
+    fn index_stmts(&mut self, stmts: StmtIterator<'db>, ordered: bool) -> NodeIndex {
         let mut latest_return_or_yield = 0;
         let mut last_was_an_error = false;
         for stmt_or_error in stmts {
@@ -285,46 +263,35 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             };
             last_was_an_error = false;
             let return_or_yield = match stmt.unpack() {
-                StmtContent::SimpleStmts(s) => self.index_simple_stmts(s, ordered, in_base_scope),
+                StmtContent::SimpleStmts(s) => self.index_simple_stmts(s, ordered),
                 StmtContent::FunctionDef(func) => {
                     self.index_function_name_and_param_defaults(
-                        func,
-                        ordered,
-                        in_base_scope,
-                        false, // decorators
+                        func, ordered, false, // decorators
                         false, // is_async
                     );
                     0
                 }
                 StmtContent::ClassDef(class) => {
-                    self.index_class(class, false, in_base_scope);
+                    self.index_class(class, false);
                     0
                 }
                 StmtContent::Decorated(decorated) => {
                     for decorator in decorated.decorators().iter() {
-                        self.index_non_block_node(&decorator, ordered, false);
+                        self.index_non_block_node(&decorator, ordered);
                     }
                     match decorated.decoratee() {
                         Decoratee::FunctionDef(func) => {
                             self.index_function_name_and_param_defaults(
-                                func,
-                                ordered,
-                                in_base_scope,
-                                true,
-                                false, // is_async
+                                func, ordered, true, false, // is_async
                             );
                         }
                         Decoratee::AsyncFunctionDef(func) => {
                             self.index_function_name_and_param_defaults(
-                                func,
-                                ordered,
-                                in_base_scope,
-                                true,
-                                true, // is_async
+                                func, ordered, true, true, // is_async
                             );
                         }
                         Decoratee::ClassDef(cls) => {
-                            self.index_class(cls, true, in_base_scope);
+                            self.index_class(cls, true);
                         }
                     }
                     0
@@ -340,7 +307,6 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                         self.index_function_name_and_param_defaults(
                             function_def,
                             ordered,
-                            in_base_scope,
                             false, // decorators
                             true,
                         );
@@ -427,12 +393,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         debug_assert_eq!(self.unordered_references.len(), 0);
     }
 
-    fn index_simple_stmts(
-        &mut self,
-        simple_stmts: SimpleStmts<'db>,
-        ordered: bool,
-        in_base_scope: bool,
-    ) -> NodeIndex {
+    fn index_simple_stmts(&mut self, simple_stmts: SimpleStmts<'db>, ordered: bool) -> NodeIndex {
         let mut latest_return_or_yield = 0;
         for simple_stmt in simple_stmts.iter() {
             let r = if let Some(assignment) = simple_stmt.maybe_assignment() {
@@ -445,10 +406,10 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                     | AssignmentContentWithSimpleTargets::AugAssign(_, _, right) => {
                         let latest = match right {
                             AssignmentRightSide::YieldExpr(yield_expr) => {
-                                self.index_non_block_node(yield_expr, ordered, in_base_scope)
+                                self.index_non_block_node(yield_expr, ordered)
                             }
                             AssignmentRightSide::StarExpressions(star_exprs) => {
-                                self.index_non_block_node(star_exprs, ordered, in_base_scope)
+                                self.index_non_block_node(star_exprs, ordered)
                             }
                         };
                         latest_return_or_yield =
@@ -459,7 +420,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 match unpacked {
                     AssignmentContentWithSimpleTargets::Normal(targets, _) => {
                         for target in targets {
-                            let l = self.index_non_block_node(&target, ordered, in_base_scope);
+                            let l = self.index_non_block_node(&target, ordered);
                             latest_return_or_yield =
                                 self.merge_latest_return_or_yield(latest_return_or_yield, l);
                         }
@@ -467,10 +428,10 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                     }
                     AssignmentContentWithSimpleTargets::WithAnnotation(target, annotation, _) => {
                         self.index_annotation_expression(&annotation.expression());
-                        self.index_non_block_node(&target, ordered, in_base_scope)
+                        self.index_non_block_node(&target, ordered)
                     }
                     AssignmentContentWithSimpleTargets::AugAssign(target, _, _) => {
-                        self.index_non_block_node(&target, ordered, in_base_scope)
+                        self.index_non_block_node(&target, ordered)
                     }
                 }
             } else if let Some(import) = simple_stmt.maybe_import_from() {
@@ -484,13 +445,13 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                     }
                     ImportFromTargets::Iterator(targets) => {
                         for target in targets {
-                            self.index_non_block_node(&target, ordered, in_base_scope);
+                            self.index_non_block_node(&target, ordered);
                         }
                     }
                 };
                 0
             } else {
-                self.index_non_block_node(&simple_stmt, ordered, in_base_scope)
+                self.index_non_block_node(&simple_stmt, ordered)
             };
             latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, r);
         }
@@ -500,19 +461,19 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     fn index_for_stmt(&mut self, for_stmt: ForStmt<'db>, ordered: bool) -> NodeIndex {
         let mut latest_return_or_yield = 0;
         let (star_targets, star_expressions, block, else_block) = for_stmt.unpack();
-        let latest = self.index_non_block_node(&star_targets, ordered, false);
+        let latest = self.index_non_block_node(&star_targets, ordered);
         latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
-        let latest = self.index_non_block_node(&star_expressions, ordered, false);
+        let latest = self.index_non_block_node(&star_expressions, ordered);
         latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
 
-        let latest = self.index_block(block, false, false);
+        let latest = self.index_block(block, false);
         latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
 
         if ordered {
             self.index_unordered_references();
         }
         if let Some(else_block) = else_block {
-            let latest = self.index_block(else_block.block(), ordered, false);
+            let latest = self.index_block(else_block.block(), ordered);
             latest_return_or_yield =
                 self.merge_latest_return_or_yield(latest_return_or_yield, latest);
         }
@@ -522,16 +483,16 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     fn index_while_stmt(&mut self, while_stmt: WhileStmt<'db>, ordered: bool) -> NodeIndex {
         let mut latest_return_or_yield = 0;
         let (condition, block, else_block) = while_stmt.unpack();
-        let latest = self.index_non_block_node(&condition, ordered, false);
+        let latest = self.index_non_block_node(&condition, ordered);
         latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
-        let latest = self.index_block(block, false, false);
+        let latest = self.index_block(block, false);
         latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
         if ordered {
             self.index_unordered_references();
         }
         if let Some(else_block) = else_block {
             // "else" ":" block
-            let latest = self.index_block(else_block.block(), ordered, false);
+            let latest = self.index_block(else_block.block(), ordered);
             latest_return_or_yield =
                 self.merge_latest_return_or_yield(latest_return_or_yield, latest);
         }
@@ -542,11 +503,11 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         let mut latest_return_or_yield = 0;
         let (with_items, block) = with_stmt.unpack();
         for with_item in with_items.iter() {
-            let latest = self.index_non_block_node(&with_item, ordered, false);
+            let latest = self.index_non_block_node(&with_item, ordered);
             latest_return_or_yield =
                 self.merge_latest_return_or_yield(latest_return_or_yield, latest);
         }
-        let latest = self.index_block(block, ordered, false);
+        let latest = self.index_block(block, ordered);
         self.merge_latest_return_or_yield(latest_return_or_yield, latest)
     }
 
@@ -555,12 +516,12 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         for if_block in if_stmt.iter_blocks() {
             let latest = match if_block {
                 IfBlockType::If(expr, block) => {
-                    let latest = self.index_non_block_node(&expr, ordered, false);
+                    let latest = self.index_non_block_node(&expr, ordered);
                     latest_return_or_yield =
                         self.merge_latest_return_or_yield(latest_return_or_yield, latest);
-                    self.index_block(block, ordered, false)
+                    self.index_block(block, ordered)
                 }
-                IfBlockType::Else(block) => self.index_block(block, ordered, false),
+                IfBlockType::Else(block) => self.index_block(block, ordered),
             };
             latest_return_or_yield =
                 self.merge_latest_return_or_yield(latest_return_or_yield, latest);
@@ -572,21 +533,21 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         let mut latest_return_or_yield = 0;
         for b in try_stmt.iter_blocks() {
             let latest = match b {
-                TryBlockType::Try(block) => self.index_block(block, ordered, false),
+                TryBlockType::Try(block) => self.index_block(block, ordered),
                 TryBlockType::Except(except) => {
                     let (except_expression, block) = except.unpack();
                     if let Some(except_expression) = except_expression {
                         self.index_except_expression_with_block(except_expression, block, ordered)
                     } else {
-                        self.index_block(block, ordered, false)
+                        self.index_block(block, ordered)
                     }
                 }
                 TryBlockType::ExceptStar(except_star) => {
                     let (except_expression, block) = except_star.unpack();
                     self.index_except_expression_with_block(except_expression, block, ordered)
                 }
-                TryBlockType::Else(else_) => self.index_block(else_.block(), ordered, false),
-                TryBlockType::Finally(finally) => self.index_block(finally.block(), ordered, false),
+                TryBlockType::Else(else_) => self.index_block(else_.block(), ordered),
+                TryBlockType::Finally(finally) => self.index_block(finally.block(), ordered),
             };
             latest_return_or_yield =
                 self.merge_latest_return_or_yield(latest_return_or_yield, latest);
@@ -602,14 +563,14 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     ) -> NodeIndex {
         let (expression, name_def) = except_expr.unpack();
         if let Some(name_def) = name_def {
-            self.add_new_definition(name_def, Point::new_uncalculated(), false)
+            self.add_new_definition(name_def, Point::new_uncalculated())
         }
-        let latest1 = self.index_non_block_node(&expression, ordered, false);
-        let latest2 = self.index_block(block, ordered, false);
+        let latest1 = self.index_non_block_node(&expression, ordered);
+        let latest2 = self.index_block(block, ordered);
         self.merge_latest_return_or_yield(latest1, latest2)
     }
 
-    fn index_class(&mut self, class: ClassDef<'db>, is_decorated: bool, in_base_scope: bool) {
+    fn index_class(&mut self, class: ClassDef<'db>, is_decorated: bool) {
         let class_symbol_table = SymbolTable::default();
         let self_symbol_table = SymbolTable::default();
         self.with_nested(
@@ -619,9 +580,9 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             |binder| {
                 let (arguments, block) = class.unpack();
                 if let Some(arguments) = arguments {
-                    binder.index_non_block_node(&arguments, true, true);
+                    binder.index_non_block_node(&arguments, true);
                 }
-                binder.index_block(block, true, true);
+                binder.index_block(block, true);
             },
         );
         self.unresolved_self_vars.push(class);
@@ -658,15 +619,10 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             self.add_point_definition(
                 class.name_definition(),
                 Specific::LazyInferredClass,
-                in_base_scope,
             );
         } else {
         */
-        self.add_new_definition(
-            class.name_definition(),
-            Point::new_uncalculated(),
-            in_base_scope,
-        );
+        self.add_new_definition(class.name_definition(), Point::new_uncalculated());
         //}
     }
 
@@ -713,13 +669,12 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         &mut self,
         node: &T,
         ordered: bool,
-        in_base_scope: bool,
     ) -> NodeIndex {
-        self.index_non_block_node_full(node, ordered, in_base_scope, false)
+        self.index_non_block_node_full(node, ordered, false)
     }
 
     fn index_annotation_expression(&mut self, node: &Expression<'db>) -> NodeIndex {
-        self.index_non_block_node_full(node, true, true, true)
+        self.index_non_block_node_full(node, true, true)
     }
 
     #[inline]
@@ -727,7 +682,6 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         &mut self,
         node: &T,
         ordered: bool,
-        in_base_scope: bool,
         from_annotation: bool,
     ) -> NodeIndex {
         let needs_flow_analysis = false; // TODO
@@ -746,11 +700,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                         NameParent::NameDefinition(name_def) => {
                             if name_def.is_not_primary() {
                                 // The types are inferred later.
-                                self.add_new_definition(
-                                    name_def,
-                                    Point::new_uncalculated(),
-                                    in_base_scope,
-                                )
+                                self.add_new_definition(name_def, Point::new_uncalculated())
                             }
                         }
                         NameParent::GlobalStmt => {
@@ -769,21 +719,11 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 InterestingNode::YieldExpr(n) => {
                     let is_yield_from = match n.unpack() {
                         YieldExprContent::StarExpressions(s) => {
-                            self.index_non_block_node_full(
-                                &s,
-                                ordered,
-                                in_base_scope,
-                                from_annotation,
-                            );
+                            self.index_non_block_node_full(&s, ordered, from_annotation);
                             false
                         }
                         YieldExprContent::YieldFrom(y) => {
-                            self.index_non_block_node_full(
-                                &y,
-                                ordered,
-                                in_base_scope,
-                                from_annotation,
-                            );
+                            self.index_non_block_node_full(&y, ordered, from_annotation);
                             true
                         }
                         YieldExprContent::None => false,
@@ -813,12 +753,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                         )
                     }
                     if let Some(return_expr) = n.star_expressions() {
-                        self.index_non_block_node_full(
-                            &return_expr,
-                            ordered,
-                            in_base_scope,
-                            from_annotation,
-                        );
+                        self.index_non_block_node_full(&return_expr, ordered, from_annotation);
                     }
                     self.index_return_or_yield(&mut latest_return_or_yield, n.index());
                 }
@@ -857,7 +792,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         let (named_expr, for_if_clauses) = comp.unpack();
         let mut clauses = for_if_clauses.iter();
         self.index_comprehension_clause(&clauses.next().unwrap(), &mut clauses, |binder| {
-            binder.index_non_block_node(&named_expr, true, false);
+            binder.index_non_block_node(&named_expr, true);
         })
     }
 
@@ -865,7 +800,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         let (key_value, for_if_clauses) = comp.unpack();
         let mut clauses = for_if_clauses.iter();
         self.index_comprehension_clause(&clauses.next().unwrap(), &mut clauses, |binder| {
-            binder.index_non_block_node(&key_value, true, false);
+            binder.index_non_block_node(&key_value, true);
         })
     }
 
@@ -878,7 +813,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         let (targets, ifs) = match clause {
             ForIfClause::Sync(sync_for_if_clause) | ForIfClause::Async(sync_for_if_clause) => {
                 let (targets, from, ifs) = sync_for_if_clause.unpack();
-                self.index_non_block_node(&from, true, false);
+                self.index_non_block_node(&from, true);
                 (targets, ifs)
             }
         };
@@ -889,9 +824,9 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             clause.index(),
             &symbol_table,
             |binder| {
-                binder.index_non_block_node(&targets, true, false);
+                binder.index_non_block_node(&targets, true);
                 for if_ in ifs {
-                    binder.index_non_block_node(&if_, true, false);
+                    binder.index_non_block_node(&if_, true);
                 }
 
                 if let Some(clause) = clauses.next() {
@@ -907,7 +842,6 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         &mut self,
         func: FunctionDef<'db>,
         ordered: bool,
-        in_base_scope: bool,
         is_decorated: bool,
         is_async: bool,
     ) {
@@ -925,12 +859,12 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             // end of a module.
             if let Some(param_annotation) = param.annotation() {
                 match param_annotation.maybe_starred() {
-                    Ok(starred) => self.index_non_block_node_full(&starred, true, true, true),
+                    Ok(starred) => self.index_non_block_node_full(&starred, true, true),
                     Err(expr) => self.index_annotation_expression(&expr),
                 };
             }
             if let Some(expression) = param.default() {
-                self.index_non_block_node(&expression, ordered, in_base_scope);
+                self.index_non_block_node(&expression, ordered);
             }
         }
         if let Some(return_annotation) = return_annotation {
@@ -938,7 +872,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             self.index_annotation_expression(&return_annotation.expression());
         }
 
-        self.add_redirect_definition(name_def, func.index(), in_base_scope);
+        self.add_redirect_definition(name_def, func.index());
 
         self.points.set(
             func.index(),
@@ -968,7 +902,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             is_method,
         );
 
-        let latest_return_index = self.index_block(block, true, true);
+        let latest_return_index = self.index_block(block, true);
         // It's kind of hard to know where to store the latest reference statement.
         self.points.set(
             func.index() + 1,
@@ -986,11 +920,11 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     ) {
         if is_method {
             if let Some(name_def) = names.next() {
-                self.add_point_definition(name_def, Specific::MaybeSelfParam, true);
+                self.add_point_definition(name_def, Specific::MaybeSelfParam);
             }
         }
         for name_def in names {
-            self.add_point_definition(name_def, Specific::Param, true);
+            self.add_point_definition(name_def, Specific::Param);
         }
     }
 
@@ -998,7 +932,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         // lambda: "lambda" [lambda_parameters] ":" expression
         for param in lambda.params() {
             if let Some(default) = param.default() {
-                self.index_non_block_node(&default, ordered, false);
+                self.index_non_block_node(&default, ordered);
             }
         }
     }
@@ -1006,7 +940,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     fn index_lambda(&mut self, lambda: Lambda<'db>) {
         let (params, expr) = lambda.unpack();
         self.index_param_name_defs(params.map(|param| param.name_definition()), false);
-        self.index_non_block_node(&expr, true, true);
+        self.index_non_block_node(&expr, true);
     }
 
     #[inline]
