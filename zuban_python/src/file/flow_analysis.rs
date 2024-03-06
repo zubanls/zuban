@@ -2,13 +2,14 @@ use std::{cell::RefCell, rc::Rc};
 
 use parsa_python_ast::{
     Atom, AtomContent, ComparisonContent, Expression, ExpressionContent, ExpressionPart,
-    IfBlockIterator, IfBlockType, IfStmt, NamedExpression, NamedExpressionContent, Primary,
-    PrimaryContent, PrimaryOrAtom, SliceType,
+    IfBlockIterator, IfBlockType, IfStmt, NamedExpression, NamedExpressionContent, NodeIndex,
+    Primary, PrimaryContent, PrimaryOrAtom, SliceType,
 };
 
 use crate::{
     database::{Database, PointLink, PointType},
     debug,
+    inferred::Inferred,
     matching::ResultContext,
     type_::Type,
     type_helpers::{Class, Function},
@@ -22,7 +23,7 @@ thread_local! {
     pub static FLOW_ANALYSIS: FlowAnalysis = FlowAnalysis::default();
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 enum FlowKey {
     Name(PointLink),
     Index(Rc<FlowKey>),
@@ -67,6 +68,22 @@ pub struct FlowAnalysis {
 }
 
 impl FlowAnalysis {
+    pub fn narrow_name(&self, name_link: PointLink) -> Option<Inferred> {
+        for frame in self.frames.borrow().iter() {
+            match frame {
+                Frame::Reachable { entries } => {
+                    for entry in entries {
+                        if entry.key == FlowKey::Name(name_link) {
+                            return Some(Inferred::from_type(entry.type_.clone()));
+                        }
+                    }
+                }
+                Frame::Unreachable => todo!(),
+            }
+        }
+        None
+    }
+
     fn with_new_frame(&self, callable: impl FnOnce()) -> Frame {
         self.frames.borrow_mut().push(Frame::default());
         callable();
@@ -172,13 +189,13 @@ impl Inference<'_, '_, '_> {
                                 let right = self.infer_expression_part(right);
                                 match right.as_cow_type(self.i_s).as_ref() {
                                     Type::None => {
-                                        let (left, right) = split_off_none(
+                                        let (rest, none) = split_off_none(
                                             self.i_s.db,
                                             &left_inf.as_cow_type(self.i_s),
                                         );
                                         return (
-                                            Frame::from_type(key.clone(), left),
-                                            Frame::from_type(key, right),
+                                            Frame::from_type(key.clone(), none),
+                                            Frame::from_type(key, rest),
                                         );
                                     }
                                     _ => debug!("TODO is"),

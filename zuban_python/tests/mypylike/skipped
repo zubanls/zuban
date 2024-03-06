@@ -1156,7 +1156,6 @@ testIsinstanceCases
 testIfCases
 testIfNotCases
 testIsNotNoneCases
-testIsNoneCases
 testAnyCanBeNone
 testOrCases
 testAndCases

@@ -52,6 +52,7 @@ pub(crate) struct NameBinder<'db, 'a> {
     unresolved_self_vars: Vec<ClassDef<'db>>,
     annotation_names: Vec<Name<'db>>,
     file_index: FileIndex,
+    references_need_flow_analysis: bool,
     #[allow(dead_code)] // TODO remove this
     parent: Option<&'a NameBinder<'db, 'a>>,
 }
@@ -85,6 +86,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             names_to_be_resolved_in_parent: vec![],
             unresolved_self_vars: vec![],
             annotation_names: vec![],
+            references_need_flow_analysis: false,
             file_index,
             parent,
         }
@@ -186,7 +188,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         }
     }
 
-    fn add_new_definition(&self, name_def: NameDefinition<'db>, point: Point) {
+    fn add_new_definition(&mut self, name_def: NameDefinition<'db>, point: Point) {
         if let Some(first) = self.symbol_table.lookup_symbol(name_def.as_code()) {
             let mut latest_name_index = first;
             loop {
@@ -199,6 +201,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                     latest_name_index = point.node_index()
                 } else {
                     let new_index = name_def.name().index();
+                    self.references_need_flow_analysis = true;
                     self.points.set(
                         latest_name_index,
                         Point::new_multi_definition(new_index, Locality::File),
@@ -466,6 +469,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         let latest = self.index_non_block_node(&star_expressions, ordered);
         latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
 
+        self.references_need_flow_analysis = true;
         let latest = self.index_block(block, false);
         latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
 
@@ -482,6 +486,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
 
     fn index_while_stmt(&mut self, while_stmt: WhileStmt<'db>, ordered: bool) -> NodeIndex {
         let mut latest_return_or_yield = 0;
+        self.references_need_flow_analysis = true;
         let (condition, block, else_block) = while_stmt.unpack();
         let latest = self.index_non_block_node(&condition, ordered);
         latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
@@ -500,6 +505,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     }
 
     fn index_with_stmt(&mut self, with_stmt: WithStmt<'db>, ordered: bool) -> NodeIndex {
+        self.references_need_flow_analysis = true;
         let mut latest_return_or_yield = 0;
         let (with_items, block) = with_stmt.unpack();
         for with_item in with_items.iter() {
@@ -512,6 +518,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     }
 
     fn index_if_stmt(&mut self, if_stmt: IfStmt<'db>, ordered: bool) -> NodeIndex {
+        self.references_need_flow_analysis = true;
         let mut latest_return_or_yield = 0;
         for if_block in if_stmt.iter_blocks() {
             let latest = match if_block {
@@ -530,6 +537,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     }
 
     fn index_try_stmt(&mut self, try_stmt: TryStmt<'db>, ordered: bool) -> NodeIndex {
+        self.references_need_flow_analysis = true;
         let mut latest_return_or_yield = 0;
         for b in try_stmt.iter_blocks() {
             let latest = match b {
@@ -684,7 +692,6 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         ordered: bool,
         from_annotation: bool,
     ) -> NodeIndex {
-        let needs_flow_analysis = false; // TODO
         let mut latest_return_or_yield = 0;
         for n in node.search_interesting_nodes() {
             match n {
@@ -694,7 +701,11 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                             if from_annotation {
                                 self.annotation_names.push(name);
                             } else {
-                                self.maybe_add_reference(name, ordered, needs_flow_analysis);
+                                self.maybe_add_reference(
+                                    name,
+                                    ordered,
+                                    self.references_need_flow_analysis,
+                                );
                             }
                         }
                         NameParent::NameDefinition(name_def) => {
