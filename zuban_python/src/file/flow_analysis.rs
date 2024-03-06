@@ -2,7 +2,8 @@ use std::{cell::RefCell, rc::Rc};
 
 use parsa_python_ast::{
     Atom, AtomContent, ComparisonContent, Expression, ExpressionContent, ExpressionPart,
-    IfBlockType, IfStmt, Primary, PrimaryContent, PrimaryOrAtom, SliceType,
+    IfBlockIterator, IfBlockType, IfStmt, NamedExpression, NamedExpressionContent, Primary,
+    PrimaryContent, PrimaryOrAtom, SliceType,
 };
 
 use crate::{
@@ -66,10 +67,16 @@ pub struct FlowAnalysis {
 }
 
 impl FlowAnalysis {
-    fn with_frame(&self, callable: impl FnOnce()) {
+    fn with_new_frame(&self, callable: impl FnOnce()) -> Frame {
         self.frames.borrow_mut().push(Frame::default());
         callable();
-        let frame = self.frames.borrow_mut().pop();
+        self.frames.borrow_mut().pop().unwrap()
+    }
+
+    fn with_frame(&self, frame: Frame, callable: impl FnOnce()) -> Frame {
+        self.frames.borrow_mut().push(frame);
+        callable();
+        self.frames.borrow_mut().pop().unwrap()
     }
 }
 
@@ -97,27 +104,47 @@ fn split_off_none(db: &Database, key: FlowKey, t: &Type) -> (Type, Type) {
     (left, none_return)
 }
 
-impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
+impl Inference<'_, '_, '_> {
     pub fn flow_analysis_for_if_stmt(
         &mut self,
         if_stmt: IfStmt,
         class: Option<Class>,
         func: Option<&Function>,
     ) {
-        for block in if_stmt.iter_blocks() {
-            match block {
-                IfBlockType::If(if_expr, block) => {
-                    self.infer_named_expression(if_expr);
-                    self.calc_block_diagnostics(block, class, func)
-                }
-                IfBlockType::Else(block) => self.calc_block_diagnostics(block, class, func),
+        self.process_ifs(if_stmt.iter_blocks(), class, func)
+    }
+
+    fn process_ifs(
+        &mut self,
+        mut if_blocks: IfBlockIterator,
+        class: Option<Class>,
+        func: Option<&Function>,
+    ) {
+        match if_blocks.next() {
+            Some(IfBlockType::If(if_expr, block)) => {
+                let (true_frame, false_frame) = self.find_guards_in_named_expr(if_expr);
+                FLOW_ANALYSIS.with(|fa| {
+                    let true_frame = fa.with_frame(true_frame, || {
+                        self.calc_block_diagnostics(block, class, func)
+                    });
+                    let false_frame =
+                        fa.with_frame(false_frame, || self.process_ifs(if_blocks, class, func));
+                    // TODO merge frames
+                });
             }
+            Some(IfBlockType::Else(block)) => self.calc_block_diagnostics(block, class, func),
+            None => (),
         }
     }
 
-    fn with_conditionals(&self, callable: impl FnOnce()) {}
+    fn find_guards_in_named_expr(&mut self, named_expr: NamedExpression) -> (Frame, Frame) {
+        match named_expr.unpack() {
+            NamedExpressionContent::Expression(expr) => self.find_guards_in_expr(expr),
+            NamedExpressionContent::Definition(_, _) => todo!(),
+        }
+    }
 
-    fn find_guards(&mut self, expr: Expression) -> (Frame, Frame) {
+    fn find_guards_in_expr(&mut self, expr: Expression) -> (Frame, Frame) {
         match expr.unpack() {
             ExpressionContent::ExpressionPart(part) => self.find_guards_in_expression_parts(part),
             ExpressionContent::Ternary(_) => todo!(),
@@ -130,7 +157,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             ExpressionPart::Atom(atom) => {
                 let inf = self.infer_atom(atom, &mut ResultContext::Unknown);
                 debug!("maybe use __bool__ for narrowing");
-                (Frame::default(), Frame::default())
             }
             ExpressionPart::Comparisons(comparisons) => {
                 for comparison in comparisons.iter() {
@@ -167,29 +193,29 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let op = bitwise_and.as_operation();
                 let (left_true, left_false) = self.find_guards_in_expression_parts(op.left);
                 let (right_true, right_false) = self.find_guards_in_expression_parts(op.right);
-                (
+                return (
                     merge_and(left_true, right_true),
                     merge_or(left_false, right_false),
-                )
+                );
             }
             ExpressionPart::BitwiseOr(bitwise_or) => {
                 let op = bitwise_or.as_operation();
                 let (left_true, left_false) = self.find_guards_in_expression_parts(op.left);
                 let (right_true, right_false) = self.find_guards_in_expression_parts(op.right);
-                (
+                return (
                     merge_or(left_true, right_true),
                     merge_and(left_false, right_false),
-                )
+                );
             }
             ExpressionPart::Inversion(inv) => {
                 let (true_entries, false_entries) =
                     self.find_guards_in_expression_parts(inv.expression());
-                (false_entries, true_entries)
+                return (false_entries, true_entries);
             }
-            ExpressionPart::Primary(_) => todo!(),
-            ExpressionPart::AwaitPrimary(_) => todo!(),
-            _ => (Frame::default(), Frame::default()),
+            ExpressionPart::Primary(_) => debug!("TODO primary guard"),
+            _ => (),
         }
+        (Frame::default(), Frame::default())
     }
 
     fn key_from_atom(&self, atom: Atom) -> Option<FlowKey> {
