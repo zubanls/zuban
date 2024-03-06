@@ -146,6 +146,11 @@ impl Point {
         }
     }
 
+    pub fn with_needs_flow_analysis(mut self, needs_flow_analysis: bool) -> Self {
+        self.flags |= (needs_flow_analysis as u32) << NEEDS_FLOW_ANALYSIS_BIT_INDEX;
+        self
+    }
+
     pub fn type_(self) -> PointType {
         debug_assert!(self.calculated());
         unsafe { mem::transmute((self.flags & TYPE_MASK) >> TYPE_BIT_INDEX) }

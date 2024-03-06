@@ -46,7 +46,7 @@ pub(crate) struct NameBinder<'db, 'a> {
     complex_points: &'db ComplexValues,
     issues: &'db Diagnostics,
     star_imports: &'db RefCell<Vec<StarImport>>,
-    unordered_references: Vec<Name<'db>>,
+    unordered_references: Vec<(bool, Name<'db>)>,
     unresolved_nodes: Vec<Unresolved<'db>>,
     names_to_be_resolved_in_parent: Vec<Name<'db>>,
     unresolved_self_vars: Vec<ClassDef<'db>>,
@@ -122,7 +122,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             binder.index_self_vars(class_def);
         }
         for annotation_name in &binder.annotation_names {
-            binder.try_to_process_reference(*annotation_name);
+            binder.try_to_process_reference(*annotation_name, false);
         }
     }
 
@@ -168,6 +168,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 self.file_index,
                 self.points,
                 annotation_name,
+                false,
             ) {
                 self.annotation_names.push(annotation_name);
             }
@@ -389,7 +390,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             while let Some(n) = self.unresolved_nodes.pop() {
                 match n {
                     Unresolved::Name(name) => {
-                        if !self.try_to_process_reference(name) {
+                        if !self.try_to_process_reference(name, false) {
                             self.names_to_be_resolved_in_parent.push(name);
                         }
                     }
@@ -729,6 +730,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         in_base_scope: bool,
         from_annotation: bool,
     ) -> NodeIndex {
+        let needs_flow_analysis = false; // TODO
         let mut latest_return_or_yield = 0;
         for n in node.search_interesting_nodes() {
             match n {
@@ -738,7 +740,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                             if from_annotation {
                                 self.annotation_names.push(name);
                             } else {
-                                self.maybe_add_reference(name, ordered);
+                                self.maybe_add_reference(name, ordered, needs_flow_analysis);
                             }
                         }
                         NameParent::NameDefinition(name_def) => {
@@ -1008,27 +1010,28 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     }
 
     #[inline]
-    fn maybe_add_reference(&mut self, name: Name<'db>, ordered: bool) {
+    fn maybe_add_reference(&mut self, name: Name<'db>, ordered: bool, needs_flow_analysis: bool) {
         if !ordered || self.mypy_compatible && self.type_ != NameBinderType::Class {
-            self.unordered_references.push(name);
-        } else if !self.try_to_process_reference(name) {
+            self.unordered_references.push((needs_flow_analysis, name));
+        } else if !self.try_to_process_reference(name, needs_flow_analysis) {
             self.names_to_be_resolved_in_parent.push(name);
         }
     }
 
     #[inline]
-    fn try_to_process_reference(&self, name: Name<'db>) -> bool {
+    fn try_to_process_reference(&self, name: Name<'db>, needs_flow_analysis: bool) -> bool {
         try_to_process_reference_for_symbol_table(
             self.symbol_table,
             self.file_index,
             self.points,
             name,
+            needs_flow_analysis,
         )
     }
 
     fn index_unordered_references(&mut self) {
-        for &name in &self.unordered_references {
-            if !self.try_to_process_reference(name) {
+        for &(needs_flow_analysis, name) in &self.unordered_references {
+            if !self.try_to_process_reference(name, needs_flow_analysis) {
                 self.names_to_be_resolved_in_parent.push(name);
             }
         }
@@ -1115,10 +1118,12 @@ fn try_to_process_reference_for_symbol_table(
     file_index: FileIndex,
     points: &Points,
     name: Name,
+    needs_flow_analysis: bool,
 ) -> bool {
     let point = {
         if let Some(definition) = symbol_table.lookup_symbol(name.as_str()) {
             Point::new_redirect(file_index, definition, Locality::File)
+                .with_needs_flow_analysis(needs_flow_analysis)
         } else {
             return false;
         }
