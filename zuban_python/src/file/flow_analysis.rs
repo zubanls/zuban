@@ -7,7 +7,7 @@ use parsa_python_ast::{
 };
 
 use crate::{
-    database::{Database, PointLink},
+    database::{Database, PointLink, PointType},
     debug,
     matching::ResultContext,
     type_::Type,
@@ -220,10 +220,19 @@ impl Inference<'_, '_, '_> {
 
     fn key_from_atom(&self, atom: Atom) -> Option<FlowKey> {
         match atom.unpack() {
-            AtomContent::Name(name) => Some(FlowKey::Name(PointLink::new(
-                self.file_index,
-                first_defined_name(self.file, name.index()).unwrap(),
-            ))),
+            AtomContent::Name(name) => {
+                let p = self.file.points.get(name.index());
+                if p.calculated() {
+                    debug_assert_eq!(p.type_(), PointType::Redirect);
+                    let def = p.node_index();
+                    Some(FlowKey::Name(PointLink::new(
+                        self.file_index,
+                        first_defined_name(self.file, def).unwrap_or(def),
+                    )))
+                } else {
+                    todo!()
+                }
+            }
             _ => None,
         }
     }
