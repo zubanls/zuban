@@ -22,7 +22,7 @@ thread_local! {
     pub static FLOW_ANALYSIS: FlowAnalysis = FlowAnalysis::default();
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum FlowKey {
     Name(PointLink),
     Index(Rc<FlowKey>),
@@ -90,7 +90,7 @@ fn merge_or(x: Frame, y: Frame) -> Frame {
     Frame::default()
 }
 
-fn split_off_none(db: &Database, key: FlowKey, t: &Type) -> (Type, Type) {
+fn split_off_none(db: &Database, t: &Type) -> (Type, Type) {
     let mut none_return = Type::Never;
     let left = Type::gather_union(db, |gather| {
         for sub_t in t.iter_with_unpacked_unions() {
@@ -174,10 +174,12 @@ impl Inference<'_, '_, '_> {
                                     Type::None => {
                                         let (left, right) = split_off_none(
                                             self.i_s.db,
-                                            key,
                                             &left_inf.as_cow_type(self.i_s),
                                         );
-                                        todo!()
+                                        return (
+                                            Frame::from_type(key.clone(), left),
+                                            Frame::from_type(key, right),
+                                        );
                                     }
                                     _ => debug!("TODO is"),
                                 }
