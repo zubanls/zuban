@@ -140,7 +140,10 @@ impl Inference<'_, '_, '_> {
     fn find_guards_in_named_expr(&mut self, named_expr: NamedExpression) -> (Frame, Frame) {
         match named_expr.unpack() {
             NamedExpressionContent::Expression(expr) => self.find_guards_in_expr(expr),
-            NamedExpressionContent::Definition(_, _) => todo!(),
+            NamedExpressionContent::Definition(name, expr) => {
+                debug!("TODO Flow control for walrus");
+                self.find_guards_in_expr(expr)
+            }
         }
     }
 
@@ -183,7 +186,10 @@ impl Inference<'_, '_, '_> {
                         ComparisonContent::IsNot(_, _, _) => debug!("TODO is not"),
                         ComparisonContent::In(_, _, _) => debug!("TODO in"),
                         ComparisonContent::NotIn(_, _, _) => debug!("TODO not in"),
-                        ComparisonContent::Operation(_) => debug!("TODO comp op"),
+                        ComparisonContent::Operation(_) => {
+                            self.infer_expression_part(part);
+                            return (Frame::default(), Frame::default());
+                        }
                     }
                     return (Frame::default(), Frame::default());
                 }
@@ -212,8 +218,13 @@ impl Inference<'_, '_, '_> {
                     self.find_guards_in_expression_parts(inv.expression());
                 return (false_entries, true_entries);
             }
-            ExpressionPart::Primary(_) => debug!("TODO primary guard"),
-            _ => (),
+            ExpressionPart::Primary(_) => {
+                self.infer_expression_part(part);
+                debug!("TODO primary guard")
+            }
+            _ => {
+                self.infer_expression_part(part);
+            }
         }
         (Frame::default(), Frame::default())
     }
