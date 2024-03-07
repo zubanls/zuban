@@ -111,10 +111,14 @@ fn split_off_none(db: &Database, t: &Type) -> (Type, Type) {
     let mut none_return = Type::Never;
     let left = Type::gather_union(db, |gather| {
         for sub_t in t.iter_with_unpacked_unions() {
-            if matches!(sub_t, Type::None) {
-                none_return = Type::None;
-            } else {
-                gather(sub_t.clone())
+            match sub_t {
+                Type::None => none_return = Type::None,
+                Type::Any(_) => {
+                    // Any can be None or something else.
+                    none_return = Type::None;
+                    gather(sub_t.clone());
+                }
+                _ => gather(sub_t.clone()),
             }
         }
     });

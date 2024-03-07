@@ -1154,7 +1154,6 @@ testOptionalTypeNarrowedByGenericCall3
 testOptionalTypeNarrowedByGenericCall5
 testOptionalTypeNarrowedInBooleanStatement
 testIsinstanceCases
-testAnyCanBeNone
 testOrCases
 testAndCases
 testOptionalAssignAny1
