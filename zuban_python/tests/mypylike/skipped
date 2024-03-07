@@ -1063,6 +1063,9 @@ testWithStmtScopeComplexAssignments
 testWithStmtScopeAndClass
 testWithStmtScopeAndLambda
 
+testGlobalDefinedInBlock
+testSimpleIf
+testVariableInBlock
 # isinstance
 testLiteralErrorsWithIsInstanceAndIsSubclass
 # isinstance narrowing
@@ -1153,8 +1156,6 @@ testOptionalTypeNarrowedByGenericCall3
 testOptionalTypeNarrowedByGenericCall5
 testOptionalTypeNarrowedInBooleanStatement
 testIsinstanceCases
-testIfCases
-testIfNotCases
 testAnyCanBeNone
 testOrCases
 testAndCases

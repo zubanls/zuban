@@ -2,8 +2,8 @@ use std::{cell::RefCell, rc::Rc};
 
 use parsa_python_ast::{
     Atom, AtomContent, ComparisonContent, Expression, ExpressionContent, ExpressionPart,
-    IfBlockIterator, IfBlockType, IfStmt, NamedExpression, NamedExpressionContent, NodeIndex,
-    Primary, PrimaryContent, PrimaryOrAtom, SliceType,
+    IfBlockIterator, IfBlockType, IfStmt, NamedExpression, NamedExpressionContent, Primary,
+    PrimaryContent, PrimaryOrAtom, SliceType,
 };
 
 use crate::{
@@ -121,6 +121,33 @@ fn split_off_none(db: &Database, t: &Type) -> (Type, Type) {
     (left, none_return)
 }
 
+fn split_truthy_and_falsey(db: &Database, t: &Type) -> Option<(Type, Type)> {
+    fn split_truthy_and_falsey_single(t: &Type) -> Option<(Type, Type)> {
+        match t {
+            Type::None => Some((Type::Never, Type::None)),
+            Type::Literal(literal) => todo!(),
+            _ => None,
+        }
+    }
+
+    match t {
+        Type::Union(union) => {
+            let mut truthy = Type::Never;
+            let mut falsey = Type::Never;
+            let mut had_split = false;
+            for t in union.iter() {
+                let result = split_truthy_and_falsey(db, t);
+                had_split |= result.is_some();
+                let (new_true, new_false) = result.unwrap_or_else(|| (t.clone(), t.clone()));
+                truthy.union_in_place(db, new_true);
+                falsey.union_in_place(db, new_false);
+            }
+            had_split.then_some((truthy, falsey))
+        }
+        _ => split_truthy_and_falsey_single(t),
+    }
+}
+
 impl Inference<'_, '_, '_> {
     pub fn flow_analysis_for_if_stmt(
         &mut self,
@@ -176,7 +203,18 @@ impl Inference<'_, '_, '_> {
         match part {
             ExpressionPart::Atom(atom) => {
                 let inf = self.infer_atom(atom, &mut ResultContext::Unknown);
-                debug!("maybe use __bool__ for narrowing");
+                if let Some(key) = self.key_from_atom(atom) {
+                    if let Some((truthy, falsey)) =
+                        split_truthy_and_falsey(self.i_s.db, &inf.as_cow_type(self.i_s))
+                    {
+                        return (
+                            Frame::from_type(key.clone(), truthy),
+                            Frame::from_type(key, falsey),
+                        );
+                    }
+                } else {
+                    debug!("maybe use __bool__ for narrowing");
+                }
             }
             ExpressionPart::Comparisons(comparisons) => {
                 for comparison in comparisons.iter() {
