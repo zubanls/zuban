@@ -180,34 +180,47 @@ impl Inference<'_, '_, '_> {
             }
             ExpressionPart::Comparisons(comparisons) => {
                 for comparison in comparisons.iter() {
-                    match comparison {
-                        ComparisonContent::Equals(_, _, _) => debug!("TODO EQ"),
-                        ComparisonContent::NotEquals(_, _, _) => debug!("TODO NEQ"),
-                        ComparisonContent::Is(left, _, right) => {
-                            let left_inf = self.infer_expression_part(left);
-                            if let Some(key) = self.key_from_expr_part(left) {
-                                let right = self.infer_expression_part(right);
-                                match right.as_cow_type(self.i_s).as_ref() {
-                                    Type::None => {
-                                        let (rest, none) = split_off_none(
-                                            self.i_s.db,
-                                            &left_inf.as_cow_type(self.i_s),
-                                        );
-                                        return (
-                                            Frame::from_type(key.clone(), none),
-                                            Frame::from_type(key, rest),
-                                        );
-                                    }
-                                    _ => debug!("TODO is"),
-                                }
-                            }
+                    let mut invert = false;
+                    let (left, right) = match comparison {
+                        ComparisonContent::Equals(left, _, right) => (left, right),
+                        ComparisonContent::NotEquals(left, _, right) => {
+                            invert = true;
+                            (left, right)
                         }
-                        ComparisonContent::IsNot(_, _, _) => debug!("TODO is not"),
-                        ComparisonContent::In(_, _, _) => debug!("TODO in"),
-                        ComparisonContent::NotIn(_, _, _) => debug!("TODO not in"),
+                        ComparisonContent::Is(left, _, right) => (left, right),
+                        ComparisonContent::IsNot(left, _, right) => {
+                            invert = true;
+                            (left, right)
+                        }
+                        ComparisonContent::In(_, _, _) => {
+                            debug!("TODO in");
+                            self.infer_expression_part(part);
+                            return (Frame::default(), Frame::default());
+                        }
+                        ComparisonContent::NotIn(_, _, _) => {
+                            debug!("TODO not in");
+                            self.infer_expression_part(part);
+                            return (Frame::default(), Frame::default());
+                        }
                         ComparisonContent::Operation(_) => {
                             self.infer_expression_part(part);
                             return (Frame::default(), Frame::default());
+                        }
+                    };
+                    let left_inf = self.infer_expression_part(left);
+                    if let Some(key) = self.key_from_expr_part(left) {
+                        let right = self.infer_expression_part(right);
+                        match right.as_cow_type(self.i_s).as_ref() {
+                            Type::None => {
+                                let (rest, none) =
+                                    split_off_none(self.i_s.db, &left_inf.as_cow_type(self.i_s));
+                                let result = (
+                                    Frame::from_type(key.clone(), none),
+                                    Frame::from_type(key, rest),
+                                );
+                                return if invert { (result.1, result.0) } else { result };
+                            }
+                            _ => debug!("TODO is"),
                         }
                     }
                     return (Frame::default(), Frame::default());
