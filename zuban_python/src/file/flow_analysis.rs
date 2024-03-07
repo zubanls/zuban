@@ -9,6 +9,7 @@ use parsa_python_ast::{
 use crate::{
     database::{Database, PointLink, PointType},
     debug,
+    inference_state::InferenceState,
     inferred::Inferred,
     matching::ResultContext,
     type_::Type,
@@ -123,6 +124,28 @@ fn split_off_none(db: &Database, t: &Type) -> (Type, Type) {
         }
     });
     (left, none_return)
+}
+
+fn handle_identity(
+    i_s: &InferenceState,
+    key: FlowKey,
+    left_inf: &Inferred,
+    right_inf: &Inferred,
+) -> Option<(Frame, Frame)> {
+    match right_inf.as_cow_type(i_s).as_ref() {
+        Type::None => {
+            let (rest, none) = split_off_none(i_s.db, &left_inf.as_cow_type(i_s));
+            let result = (
+                Frame::from_type(key.clone(), none),
+                Frame::from_type(key, rest),
+            );
+            Some(result)
+        }
+        _ => {
+            debug!("TODO is");
+            None
+        }
+    }
 }
 
 fn split_truthy_and_falsey(db: &Database, t: &Type) -> Option<(Type, Type)> {
@@ -250,20 +273,21 @@ impl Inference<'_, '_, '_> {
                         }
                     };
                     let left_inf = self.infer_expression_part(left);
+                    let right_inf = self.infer_expression_part(right);
                     if let Some(key) = self.key_from_expr_part(left) {
-                        let right = self.infer_expression_part(right);
-                        match right.as_cow_type(self.i_s).as_ref() {
-                            Type::None => {
-                                let (rest, none) =
-                                    split_off_none(self.i_s.db, &left_inf.as_cow_type(self.i_s));
-                                let result = (
-                                    Frame::from_type(key.clone(), none),
-                                    Frame::from_type(key, rest),
-                                );
-                                return if invert { (result.1, result.0) } else { result };
-                            }
-                            _ => debug!("TODO is"),
+                        // Narrow Foo in `Foo is None`
+                        if let Some(result) = handle_identity(self.i_s, key, &left_inf, &right_inf)
+                        {
+                            return if invert { (result.1, result.0) } else { result };
                         }
+                    }
+                    if let Some(key) = self.key_from_expr_part(right) {
+                        // Narrow Foo in `None is Foo`
+                        /*
+                        if let Some(result) = handle_identity(self.i_s, key, &right_inf, &left_inf) {
+                            return if invert { (result.1, result.0) } else { result };
+                        }
+                        */
                     }
                     return (Frame::default(), Frame::default());
                 }
