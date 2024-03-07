@@ -1063,8 +1063,7 @@ testWithStmtScopeComplexAssignments
 testWithStmtScopeAndClass
 testWithStmtScopeAndLambda
 
-testGlobalDefinedInBlock
-testSimpleIf
+# reachability todo
 testVariableInBlock
 # isinstance
 testLiteralErrorsWithIsInstanceAndIsSubclass

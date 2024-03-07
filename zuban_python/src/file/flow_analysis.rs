@@ -306,9 +306,10 @@ impl Inference<'_, '_, '_> {
                 if p.calculated() {
                     debug_assert_eq!(p.type_(), PointType::Redirect);
                     let def = p.node_index();
+                    let file = self.i_s.db.loaded_python_file(p.file_index());
                     Some(FlowKey::Name(PointLink::new(
-                        self.file_index,
-                        first_defined_name(self.file, def).unwrap_or(def),
+                        p.file_index(),
+                        first_defined_name(file, def).unwrap_or(def),
                     )))
                 } else {
                     todo!()
