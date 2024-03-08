@@ -23,7 +23,7 @@ use crate::{
 #[derive(Debug, PartialEq, Clone)]
 pub struct EnumMember {
     pub enum_: Rc<Enum>,
-    member_index: usize,
+    pub member_index: usize,
     pub(super) implicit: bool,
 }
 
@@ -88,7 +88,7 @@ impl EnumMemberDefinition {
 pub struct Enum {
     pub name: DbString,
     pub class: PointLink,
-    defined_at: PointLink,
+    pub defined_at: PointLink,
     parent_scope: ParentScope,
     pub members: Box<[EnumMemberDefinition]>,
     has_customized_new: OnceCell<bool>,

@@ -12,7 +12,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     matching::ResultContext,
-    type_::Type,
+    type_::{EnumMember, Type},
     type_helpers::{Class, Function},
 };
 
@@ -79,7 +79,9 @@ impl FlowAnalysis {
                         }
                     }
                 }
-                Frame::Unreachable => todo!(),
+                Frame::Unreachable => {
+                    todo!() //return Some(Inferred::from_type(Type::Never))
+                }
             }
         }
         None
@@ -108,25 +110,50 @@ fn merge_or(x: Frame, y: Frame) -> Frame {
     Frame::default()
 }
 
-fn split_off_none(db: &Database, t: &Type) -> (Type, Type) {
-    let mut none_return = Type::Never;
+fn split_off_singleton(db: &Database, t: &Type, split_off: &Type) -> (Type, Type) {
+    let matches_singleton = |t: &_| match split_off {
+        Type::None => split_off == t,
+        Type::EnumMember(member1) => match t {
+            Type::EnumMember(member2) => member1.is_same_member(member2),
+            _ => false,
+        },
+        _ => false,
+    };
+    let mut other_return = Type::Never;
     let left = Type::gather_union(db, |gather| {
         for sub_t in t.iter_with_unpacked_unions() {
             match sub_t {
-                Type::None => none_return = Type::None,
                 Type::Any(_) => {
                     // Any can be None or something else.
-                    none_return = Type::None;
+                    other_return = split_off.clone();
                     gather(sub_t.clone());
                 }
+                Type::Enum(enum_) => {
+                    if let Type::EnumMember(split) = split_off {
+                        if enum_.defined_at == split.enum_.defined_at {
+                            for (i, _) in enum_.members.iter().enumerate() {
+                                let new_member =
+                                    Type::EnumMember(EnumMember::new(enum_.clone(), i, false));
+                                if i == split.member_index {
+                                    other_return.union_in_place(db, new_member)
+                                } else {
+                                    gather(new_member)
+                                }
+                            }
+                            continue;
+                        }
+                    }
+                    gather(sub_t.clone())
+                }
+                _ if matches_singleton(sub_t) => other_return = split_off.clone(),
                 _ => gather(sub_t.clone()),
             }
         }
     });
-    (left, none_return)
+    (left, other_return)
 }
 
-fn handle_identity(
+fn narrow_is_or_eq(
     i_s: &InferenceState,
     key: FlowKey,
     left_inf: &Inferred,
@@ -134,8 +161,8 @@ fn handle_identity(
 ) -> Option<(Frame, Frame)> {
     let left_t = left_inf.as_cow_type(i_s);
     match right_inf.as_cow_type(i_s).as_ref() {
-        Type::None => {
-            let (rest, none) = split_off_none(i_s.db, &left_t);
+        right_t @ (Type::None | Type::EnumMember(_)) => {
+            let (rest, none) = split_off_singleton(i_s.db, &left_t, right_t);
             let result = (
                 Frame::from_type(key.clone(), none),
                 Frame::from_type(key, rest),
@@ -149,7 +176,7 @@ fn handle_identity(
                     .iter_with_unpacked_unions()
                     .any(|t| matches!(t, Type::None))
                 {
-                    let (new_left, _) = split_off_none(i_s.db, left_t);
+                    let (new_left, _) = split_off_singleton(i_s.db, left_t, &Type::None);
                     if new_left.is_simple_sub_type_of(i_s, right_t).bool()
                         || new_left.is_simple_super_type_of(i_s, right_t).bool()
                     {
@@ -291,7 +318,7 @@ impl Inference<'_, '_, '_> {
                     let right_inf = self.infer_expression_part(right);
                     if let Some(key) = self.key_from_expr_part(left) {
                         // Narrow Foo in `Foo is None`
-                        if let Some(result) = handle_identity(self.i_s, key, &left_inf, &right_inf)
+                        if let Some(result) = narrow_is_or_eq(self.i_s, key, &left_inf, &right_inf)
                         {
                             return if invert { (result.1, result.0) } else { result };
                         }
@@ -299,7 +326,7 @@ impl Inference<'_, '_, '_> {
                     if let Some(key) = self.key_from_expr_part(right) {
                         // Narrow Foo in `None is Foo`
                         /*
-                        if let Some(result) = handle_identity(self.i_s, key, &right_inf, &left_inf) {
+                        if let Some(result) = narrow_is_or_eq(self.i_s, key, &right_inf, &left_inf) {
                             return if invert { (result.1, result.0) } else { result };
                         }
                         */
