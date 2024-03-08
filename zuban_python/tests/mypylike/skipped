@@ -923,6 +923,10 @@ testNestedDecoratedCoroutineAndTypeVarValues
 testAnyStr
 testTypeVarWithTypedDictValueInIndexExpression
 testReverseOperatorTypeVar2b
+testIsinstanceAndTypeVarValues*
+testIsinstanceWithUserDefinedTypeAndTypeVarValues
+testIsinstanceWithUserDefinedTypeAndTypeVarValues
+testIsinstanceWithUserDefinedTypeAndTypeVarValues2
 
 # - Overload does not consistently use the "@classmethod" decorator on all function signatures
 # - Overload does not consistently use the "@staticmethod" decorator on all function signatures
@@ -1069,10 +1073,6 @@ testVariableInBlock
 testLiteralErrorsWithIsInstanceAndIsSubclass
 # isinstance narrowing
 testUnionGenericWithBoundedVariable
-testIsinstanceAndTypeVarValues*
-testIsinstanceWithUserDefinedTypeAndTypeVarValues
-testIsinstanceWithUserDefinedTypeAndTypeVarValues
-testIsinstanceWithUserDefinedTypeAndTypeVarValues2
 testTypeCheckOverloadImplementationTypeVarWithValueRestriction
 testTypeCheckOverloadImplementationTypeVarDifferingUsage1
 testIntersectionUsingPromotion1
@@ -1159,10 +1159,6 @@ testAndCases
 testOptionalAssignAny1
 testOptionalAssignAny2
 testOptionalAssignAny3
-testInferEqualsNotOptional
-testInferEqualsNotOptionalWithUnion
-testInferEqualsNotOptionalWithOverlap
-testInferEqualsStillOptionalWithNoOverlap
 testInferEqualsNotOptionalWithMultipleArgs
 testTernaryWithNone
 testNoneListTernary

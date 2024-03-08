@@ -132,19 +132,34 @@ fn handle_identity(
     left_inf: &Inferred,
     right_inf: &Inferred,
 ) -> Option<(Frame, Frame)> {
+    let left_t = left_inf.as_cow_type(i_s);
     match right_inf.as_cow_type(i_s).as_ref() {
         Type::None => {
-            let (rest, none) = split_off_none(i_s.db, &left_inf.as_cow_type(i_s));
+            let (rest, none) = split_off_none(i_s.db, &left_t);
             let result = (
                 Frame::from_type(key.clone(), none),
                 Frame::from_type(key, rest),
             );
             Some(result)
         }
-        _ => {
-            debug!("TODO is");
-            None
-        }
+        right_t => match left_t.as_ref() {
+            left_t @ Type::Union(union) => {
+                // Remove None from left, if the right types match everything except None.
+                if left_t
+                    .iter_with_unpacked_unions()
+                    .any(|t| matches!(t, Type::None))
+                {
+                    let (new_left, _) = split_off_none(i_s.db, left_t);
+                    if new_left.is_simple_sub_type_of(i_s, right_t).bool()
+                        || new_left.is_simple_super_type_of(i_s, right_t).bool()
+                    {
+                        return Some((Frame::from_type(key, new_left), Frame::default()));
+                    }
+                }
+                None
+            }
+            _ => None,
+        },
     }
 }
 
