@@ -4,7 +4,7 @@ use parsa_python_ast::ParamKind;
 
 use super::{
     AnyCause, CallableContent, CallableParam, CallableParams, ParamType, StarParamType,
-    StarStarParamType, Type,
+    StarStarParamType, Type, UnionType,
 };
 use crate::{
     inference_state::InferenceState,
@@ -14,24 +14,8 @@ use crate::{
 impl Type {
     pub fn common_sub_type(&self, i_s: &InferenceState, other: &Self) -> Option<Type> {
         match (self, other) {
-            (Type::Union(union), _) => {
-                for t in union.iter() {
-                    // TODO what about multiple items?
-                    if let Some(found) = t.common_sub_type(i_s, other) {
-                        return Some(found);
-                    }
-                }
-                None
-            }
-            (_, Type::Union(union)) => {
-                for t in union.iter() {
-                    // TODO what about multiple items?
-                    if let Some(found) = t.common_sub_type(i_s, self) {
-                        return Some(found);
-                    }
-                }
-                None
-            }
+            (Type::Union(union), _) => common_sub_type_for_union(i_s, union, other),
+            (_, Type::Union(union)) => common_sub_type_for_union(i_s, union, self),
             (Type::Tuple(tup1), Type::Tuple(tup2)) => {
                 use TupleArgs::*;
                 Some(match (&tup1.args, &tup2.args) {
@@ -152,4 +136,22 @@ fn common_sub_type_params(
     } else {
         todo!()
     }
+}
+
+fn common_sub_type_for_union(
+    i_s: &InferenceState,
+    union: &UnionType,
+    other: &Type,
+) -> Option<Type> {
+    let mut result: Option<Type> = None;
+    for t in union.iter() {
+        if let Some(found) = t.common_sub_type(i_s, other) {
+            if let Some(result) = &mut result {
+                result.union_in_place(i_s.db, found)
+            } else {
+                result = Some(found)
+            }
+        }
+    }
+    result
 }
