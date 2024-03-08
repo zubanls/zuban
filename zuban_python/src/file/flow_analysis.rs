@@ -100,14 +100,50 @@ impl FlowAnalysis {
     }
 }
 
-fn merge_and(x: Frame, y: Frame) -> Frame {
-    debug!("TODO implement and");
-    x
+fn merge_and(i_s: &InferenceState, x: Frame, y: Frame) -> Frame {
+    let Frame::Reachable { entries: y_entries } = &y else {
+        return Frame::Unreachable
+    };
+    let Frame::Reachable { entries: mut x_entries } = x else {
+        return Frame::Unreachable
+    };
+    for x_entry in &mut x_entries {
+        for y_entry in y_entries {
+            if &x_entry.key == &y_entry.key {
+                if let Some(t) = x_entry.type_.common_sub_type(i_s, &y_entry.type_) {
+                    x_entry.type_ = t
+                }
+                break;
+            }
+        }
+    }
+    Frame::Reachable { entries: x_entries }
 }
 
-fn merge_or(x: Frame, y: Frame) -> Frame {
-    debug!("TODO implement or");
-    Frame::default()
+fn merge_or(i_s: &InferenceState, x: Frame, y: Frame) -> Frame {
+    let Frame::Reachable { entries: y_entries } = &y else {
+        return x
+    };
+    let Frame::Reachable { entries: x_entries } = x else {
+        return y
+    };
+    let mut new_entries = vec![];
+    for x_entry in x_entries {
+        for y_entry in y_entries {
+            // Only when both sides narrow the same type we actually have learned anything about
+            // the expression.
+            if &x_entry.key == &y_entry.key {
+                new_entries.push(Entry {
+                    key: x_entry.key,
+                    type_: x_entry.type_.simplified_union(i_s, &y_entry.type_),
+                })
+            }
+            break;
+        }
+    }
+    Frame::Reachable {
+        entries: new_entries,
+    }
 }
 
 fn split_off_singleton(db: &Database, t: &Type, split_off: &Type) -> (Type, Type) {
@@ -335,22 +371,22 @@ impl Inference<'_, '_, '_> {
                 }
                 todo!()
             }
-            ExpressionPart::BitwiseAnd(bitwise_and) => {
-                let op = bitwise_and.as_operation();
-                let (left_true, left_false) = self.find_guards_in_expression_parts(op.left);
-                let (right_true, right_false) = self.find_guards_in_expression_parts(op.right);
+            ExpressionPart::Conjunction(and) => {
+                let (left, right) = and.unpack();
+                let (left_true, left_false) = self.find_guards_in_expression_parts(left);
+                let (right_true, right_false) = self.find_guards_in_expression_parts(right);
                 return (
-                    merge_and(left_true, right_true),
-                    merge_or(left_false, right_false),
+                    merge_and(self.i_s, left_true, right_true),
+                    merge_or(self.i_s, left_false, right_false),
                 );
             }
-            ExpressionPart::BitwiseOr(bitwise_or) => {
-                let op = bitwise_or.as_operation();
-                let (left_true, left_false) = self.find_guards_in_expression_parts(op.left);
-                let (right_true, right_false) = self.find_guards_in_expression_parts(op.right);
+            ExpressionPart::Disjunction(or) => {
+                let (left, right) = or.unpack();
+                let (left_true, left_false) = self.find_guards_in_expression_parts(left);
+                let (right_true, right_false) = self.find_guards_in_expression_parts(right);
                 return (
-                    merge_or(left_true, right_true),
-                    merge_and(left_false, right_false),
+                    merge_or(self.i_s, left_true, right_true),
+                    merge_and(self.i_s, left_false, right_false),
                 );
             }
             ExpressionPart::Inversion(inv) => {

@@ -964,7 +964,7 @@ impl Type {
                     .any(|m| m.type_.has_any_internal(i_s, already_checked))
             }
             Self::NamedTuple(nt) => nt.__new__.has_any_internal(i_s, already_checked),
-            Self::EnumMember(_) => todo!(),
+            Self::EnumMember(_) => false,
             Self::Super { .. } => todo!(),
         }
     }
