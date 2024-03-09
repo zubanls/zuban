@@ -1186,7 +1186,6 @@ testLambdaInferenceUsesNarrowedTypes
 testVariadicAliasRecursiveUnpack
 testVariadicTupleCollectionCheck
 # narrowing if is
-testEnumReachabilityChecksBasic
 testEnumReachabilityChecksWithOrdering
 testEnumReachabilityChecksIndirect
 testEnumReachabilityPEP484ExampleSingleton

@@ -110,6 +110,9 @@ impl FlowAnalysis {
     }
 
     fn with_frame(&self, frame: Frame, callable: impl FnOnce()) -> Frame {
+        if matches!(frame, Frame::Unreachable) {
+            return frame;
+        }
         self.frames.borrow_mut().push(frame);
         callable();
         self.frames.borrow_mut().pop().unwrap()
@@ -401,11 +404,14 @@ impl Inference<'_, '_, '_> {
                     }
                     if let Some(key) = self.key_from_expr_part(right) {
                         // Narrow Foo in `None is Foo`
-                        /*
-                        if let Some(result) = narrow_is_or_eq(self.i_s, key, &right_inf, &left_inf) {
+                        if let Some(result) = narrow_is_or_eq(
+                            self.i_s,
+                            key,
+                            &right_inf.as_cow_type(self.i_s),
+                            &left_inf.as_cow_type(self.i_s),
+                        ) {
                             return if invert { (result.1, result.0) } else { result };
                         }
-                        */
                     }
                     return (Frame::default(), Frame::default());
                 }
