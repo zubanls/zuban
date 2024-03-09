@@ -70,7 +70,7 @@ pub struct FlowAnalysis {
 
 impl FlowAnalysis {
     pub fn narrow_name(&self, name_link: PointLink) -> Option<Inferred> {
-        for frame in self.frames.borrow().iter() {
+        for frame in self.frames.borrow().iter().rev() {
             match frame {
                 Frame::Reachable { entries } => {
                     for entry in entries {
