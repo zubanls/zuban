@@ -192,12 +192,11 @@ fn split_off_singleton(db: &Database, t: &Type, split_off: &Type) -> (Type, Type
 fn narrow_is_or_eq(
     i_s: &InferenceState,
     key: FlowKey,
-    left_inf: &Inferred,
-    right_inf: &Inferred,
+    left_t: &Type,
+    right_t: &Type,
 ) -> Option<(Frame, Frame)> {
-    let left_t = left_inf.as_cow_type(i_s);
-    match right_inf.as_cow_type(i_s).as_ref() {
-        right_t @ (Type::None | Type::EnumMember(_)) => {
+    match right_t {
+        Type::None | Type::EnumMember(_) => {
             let (rest, none) = split_off_singleton(i_s.db, &left_t, right_t);
             let result = (
                 Frame::from_type(key.clone(), none),
@@ -205,7 +204,7 @@ fn narrow_is_or_eq(
             );
             Some(result)
         }
-        right_t => match left_t.as_ref() {
+        _ => match left_t {
             left_t @ Type::Union(union) => {
                 // Remove None from left, if the right types match everything except None.
                 if left_t
@@ -354,8 +353,12 @@ impl Inference<'_, '_, '_> {
                     let right_inf = self.infer_expression_part(right);
                     if let Some(key) = self.key_from_expr_part(left) {
                         // Narrow Foo in `Foo is None`
-                        if let Some(result) = narrow_is_or_eq(self.i_s, key, &left_inf, &right_inf)
-                        {
+                        if let Some(result) = narrow_is_or_eq(
+                            self.i_s,
+                            key,
+                            &left_inf.as_cow_type(self.i_s),
+                            &right_inf.as_cow_type(self.i_s),
+                        ) {
                             return if invert { (result.1, result.0) } else { result };
                         }
                     }
