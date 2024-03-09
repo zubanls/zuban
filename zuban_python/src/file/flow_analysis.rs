@@ -87,16 +87,36 @@ impl FlowAnalysis {
         None
     }
 
-    fn with_new_frame(&self, callable: impl FnOnce()) -> Frame {
+    fn overwrite_entries(&self, new_entries: Entries) {
+        let mut frames = self.frames.borrow_mut();
+        let Frame::Reachable{ entries } = &mut frames.last_mut().unwrap() else {
+            unreachable!()
+        };
+        'outer: for new_entry in new_entries {
+            for entry in &mut *entries {
+                if entry.key == new_entry.key {
+                    entry.type_ = new_entry.type_;
+                    break 'outer;
+                }
+            }
+            entries.push(new_entry)
+        }
+    }
+
+    pub fn with_new_frame(&self, callable: impl FnOnce()) {
         self.frames.borrow_mut().push(Frame::default());
         callable();
-        self.frames.borrow_mut().pop().unwrap()
+        self.frames.borrow_mut().pop().unwrap();
     }
 
     fn with_frame(&self, frame: Frame, callable: impl FnOnce()) -> Frame {
         self.frames.borrow_mut().push(frame);
         callable();
         self.frames.borrow_mut().pop().unwrap()
+    }
+
+    pub fn mark_current_frame_unreachable(&self) {
+        *self.frames.borrow_mut().last_mut().unwrap() = Frame::Unreachable
     }
 }
 
@@ -282,7 +302,19 @@ impl Inference<'_, '_, '_> {
                     });
                     let false_frame =
                         fa.with_frame(false_frame, || self.process_ifs(if_blocks, class, func));
-                    // TODO merge frames
+
+                    // TODO merge frames properly, this is just a special case
+                    if matches!(false_frame, Frame::Unreachable)
+                        || matches!(true_frame, Frame::Unreachable)
+                    {
+                        if let Frame::Reachable { entries } = false_frame {
+                            fa.overwrite_entries(entries)
+                        } else if let Frame::Reachable { entries } = true_frame {
+                            fa.overwrite_entries(entries)
+                        } else {
+                            debug!("TODO should probably be unreachable")
+                        }
+                    }
                 });
             }
             Some(IfBlockType::Else(block)) => self.calc_block_diagnostics(block, class, func),

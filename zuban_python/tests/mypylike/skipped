@@ -1195,7 +1195,6 @@ testEnumReachabilityWithChaining
 testEnumReachabilityWithChainingDisjoint
 testEnumReachabilityWithChainingDirectConflict
 testEnumReachabilityWithChainingBigDisjoints
-testEnumNarrowedToTwoLiterals
 # Narrowing with previous and/or
 testRegression11705_Strict
 testRegression11705_NoStrict

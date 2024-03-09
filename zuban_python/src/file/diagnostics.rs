@@ -6,7 +6,7 @@ use std::{
 
 use parsa_python_ast::*;
 
-use super::{inference::await_, on_argument_type_error};
+use super::{flow_analysis::FLOW_ANALYSIS, inference::await_, on_argument_type_error};
 use crate::{
     arguments::{CombinedArgs, KnownArgs, NoArgs},
     database::{
@@ -121,7 +121,11 @@ lazy_static::lazy_static! {
 
 impl<'db> Inference<'db, '_, '_> {
     pub fn calculate_diagnostics(&mut self) {
-        self.calc_stmts_diagnostics(self.file.tree.root().iter_stmts(), None, None);
+        FLOW_ANALYSIS.with(|fa| {
+            fa.with_new_frame(|| {
+                self.calc_stmts_diagnostics(self.file.tree.root().iter_stmts(), None, None);
+            })
+        });
         for complex_point in unsafe { self.file.complex_points.iter() } {
             if let ComplexPoint::NewTypeDefinition(n) = complex_point {
                 // Make sure types are calculated and the errors are generated.
@@ -196,7 +200,8 @@ impl<'db> Inference<'db, '_, '_> {
                     self.infer_star_expressions(star_exprs, &mut ResultContext::ExpectUnused);
                 }
                 SimpleStmtContent::ReturnStmt(return_stmt) => {
-                    self.calc_return_stmt_diagnostics(func, return_stmt)
+                    self.calc_return_stmt_diagnostics(func, return_stmt);
+                    FLOW_ANALYSIS.with(|fa| fa.mark_current_frame_unreachable())
                 }
                 SimpleStmtContent::YieldExpr(yield_expr) => {
                     self.infer_yield_expr(yield_expr, &mut ResultContext::ExpectUnused);
@@ -678,6 +683,11 @@ impl<'db> Inference<'db, '_, '_> {
     }
 
     fn calc_function_diagnostics(&mut self, f: FunctionDef, class: Option<Class>) {
+        FLOW_ANALYSIS
+            .with(|fa| fa.with_new_frame(|| self.calc_function_diagnostics_internal(f, class)))
+    }
+
+    fn calc_function_diagnostics_internal(&mut self, f: FunctionDef, class: Option<Class>) {
         let i_s = self.i_s;
         let function = Function::new(NodeRef::new(self.file, f.index()), class);
         let decorator_ref = function.decorator_ref();
