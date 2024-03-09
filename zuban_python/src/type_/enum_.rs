@@ -153,7 +153,7 @@ pub(crate) fn lookup_on_enum_class<'a>(
     result_context: &mut ResultContext,
 ) -> LookupDetails<'a> {
     match name {
-        "_ignore_" => LookupDetails::none(),
+        "_ignore_" | "_order_" | "__order__" => LookupDetails::none(),
         _ => LookupDetails::new(
             Type::Enum(enum_.clone()),
             lookup_members_on_enum(i_s, enum_, name, result_context),
