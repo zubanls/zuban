@@ -24,7 +24,7 @@ use crate::{
 pub struct EnumMember {
     pub enum_: Rc<Enum>,
     pub member_index: usize,
-    pub(super) implicit: bool,
+    pub implicit: bool,
 }
 
 impl EnumMember {

@@ -196,6 +196,11 @@ fn narrow_is_or_eq(
     right_t: &Type,
 ) -> Option<(Frame, Frame)> {
     match right_t {
+        Type::EnumMember(member) if member.implicit => {
+            let mut new_member = member.clone();
+            new_member.implicit = false;
+            narrow_is_or_eq(i_s, key, left_t, &Type::EnumMember(new_member))
+        }
         Type::None | Type::EnumMember(_) => {
             let (rest, none) = split_off_singleton(i_s.db, &left_t, right_t);
             let result = (
