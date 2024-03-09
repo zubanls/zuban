@@ -232,6 +232,15 @@ fn narrow_is_or_eq(
             );
             Some(result)
         }
+        Type::Enum(enum_) if enum_.members.len() == 1 => {
+            // Enums with a single item can be compared to that item.
+            narrow_is_or_eq(
+                i_s,
+                key,
+                left_t,
+                &Type::EnumMember(EnumMember::new(enum_.clone(), 0, false)),
+            )
+        }
         _ => match left_t {
             left_t @ Type::Union(union) => {
                 // Remove None from left, if the right types match everything except None.
