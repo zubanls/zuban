@@ -1382,34 +1382,31 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
             ExpressionPart::Comparisons(cmps) => {
                 Inferred::gather_base_types(self.i_s, |gather| {
+                    let mut left_inf =
+                        self.infer_expression_part(cmps.iter().next().unwrap().left());
                     for cmp in cmps.iter() {
+                        let right_inf = self.infer_expression_part(cmp.right());
                         let result = match cmp {
                             ComparisonContent::Equals(first, op, second)
                             | ComparisonContent::NotEquals(first, op, second) => {
-                                let first = self.infer_expression_part(first);
-                                let second = self.infer_expression_part(second);
                                 let from = NodeRef::new(self.file, op.index());
                                 // TODO this does not implement __ne__ for NotEquals
-                                first.type_lookup_and_execute(
+                                left_inf.type_lookup_and_execute(
                                     self.i_s,
                                     from,
                                     "__eq__",
-                                    &KnownArgs::new(&second, from),
+                                    &KnownArgs::new(&right_inf, from),
                                     &|_| todo!(),
                                 )
                             }
                             ComparisonContent::Is(first, _, second)
                             | ComparisonContent::IsNot(first, _, second) => {
-                                let first = self.infer_expression_part(first);
-                                let second = self.infer_expression_part(second);
                                 Inferred::from_type(self.i_s.db.python_state.bool_type())
                             }
                             ComparisonContent::In(first, op, second)
                             | ComparisonContent::NotIn(first, op, second) => {
-                                let first = self.infer_expression_part(first);
-                                let second = self.infer_expression_part(second);
                                 let from = NodeRef::new(self.file, op.index());
-                                second.run_after_lookup_on_each_union_member(
+                                right_inf.run_after_lookup_on_each_union_member(
                                     self.i_s,
                                     from,
                                     "__contains__",
@@ -1420,7 +1417,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                         {
                                             method.execute_with_details(
                                                 self.i_s,
-                                                &KnownArgs::new(&first, from),
+                                                &KnownArgs::new(&left_inf, from),
                                                 &mut ResultContext::Unknown,
                                                 OnTypeError::new(&|i_s, _, _, types| {
                                                     let right = r_type.format_short(i_s.db);
@@ -1447,7 +1444,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                     &mut ResultContext::Unknown,
                                                     &|issue| from.add_issue(self.i_s, issue),
                                                     &|_| {
-                                                        let right = second.format_short(self.i_s);
+                                                        let right =
+                                                            right_inf.format_short(self.i_s);
                                                         from.add_issue(
                                                             self.i_s,
                                                             IssueType::UnsupportedIn { right },
@@ -1466,7 +1464,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                 .as_cow_type(self.i_s)
                                                 .error_if_not_matches(
                                                     self.i_s,
-                                                    &first,
+                                                    &left_inf,
                                                     |issue| from.add_issue(self.i_s, issue),
                                                     |got, _| {
                                                         Some(IssueType::UnsupportedOperand {
@@ -1481,8 +1479,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 );
                                 Inferred::from_type(self.i_s.db.python_state.bool_type())
                             }
-                            ComparisonContent::Operation(op) => self.infer_operation(op),
+                            ComparisonContent::Operation(op) => {
+                                self.infer_detailed_operation(op, left_inf, &right_inf)
+                            }
                         };
+                        left_inf = right_inf;
                         gather(result)
                     }
                 })
@@ -1653,17 +1654,22 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
     fn infer_operation(&mut self, op: Operation) -> Inferred {
         let left = self.infer_expression_part(op.left);
-        self.infer_detailed_operation(op, left)
+        let right = self.infer_expression_part(op.right);
+        self.infer_detailed_operation(op, left, &right)
     }
 
-    fn infer_detailed_operation(&mut self, op: Operation, left: Inferred) -> Inferred {
+    fn infer_detailed_operation(
+        &mut self,
+        op: Operation,
+        left: Inferred,
+        right: &Inferred,
+    ) -> Inferred {
         enum LookupStrategy {
             ShortCircuit,
             NormalThenReverse,
             ReverseThenNormal,
         }
 
-        let right = self.infer_expression_part(op.right);
         let from = NodeRef::new(self.file, op.index);
         let mut had_error = false;
         let i_s = self.i_s;

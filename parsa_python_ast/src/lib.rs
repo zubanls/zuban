@@ -2754,6 +2754,34 @@ pub enum ComparisonContent<'db> {
     Operation(Operation<'db>),
 }
 
+impl<'db> ComparisonContent<'db> {
+    pub fn left(&self) -> ExpressionPart<'db> {
+        use ComparisonContent::*;
+        match self {
+            Equals(left, _, _)
+            | NotEquals(left, _, _)
+            | Is(left, _, _)
+            | IsNot(left, _, _)
+            | In(left, _, _)
+            | NotIn(left, _, _) => *left,
+            Operation(operation) => operation.left,
+        }
+    }
+
+    pub fn right(&self) -> ExpressionPart<'db> {
+        use ComparisonContent::*;
+        match self {
+            Equals(_, _, right)
+            | NotEquals(_, _, right)
+            | Is(_, _, right)
+            | IsNot(_, _, right)
+            | In(_, _, right)
+            | NotIn(_, _, right) => *right,
+            Operation(operation) => operation.right,
+        }
+    }
+}
+
 impl<'db> Comparisons<'db> {
     pub fn iter(&self) -> ComparisonIterator<'db> {
         let mut iterator = self.node.iter_children();
