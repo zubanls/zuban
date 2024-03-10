@@ -125,15 +125,16 @@ fn merge_and(i_s: &InferenceState, mut x: Frame, y: Frame) -> Frame {
     if y.unreachable {
         return y;
     }
-    for x_entry in &mut x.entries {
-        for y_entry in &y.entries {
+    'outer: for y_entry in y.entries {
+        for x_entry in &mut x.entries {
             if &x_entry.key == &y_entry.key {
                 if let Some(t) = x_entry.type_.common_sub_type(i_s, &y_entry.type_) {
                     x_entry.type_ = t
                 }
-                break;
+                continue 'outer;
             }
         }
+        x.entries.push(y_entry)
     }
     x
 }
@@ -388,12 +389,16 @@ impl Inference<'_, '_, '_> {
                             while let Some(ComparisonContent::Equals(_, _, r)) = iterator.peek() {
                                 if eq_chain.is_empty() {
                                     eq_chain.push(
-                                        self.new_comparison_part(&left_inf, comparison.left()),
+                                        self.new_comparison_part(
+                                            left_inf.clone(),
+                                            comparison.left(),
+                                        ),
                                     );
-                                    eq_chain.push(self.new_comparison_part(&right_inf, right));
+                                    eq_chain
+                                        .push(self.new_comparison_part(right_inf.clone(), right));
                                 }
-                                let new_inf = self.infer_expression_part(right);
-                                //eq_chain.push(self.new_comparison_part(&new_inf, *r));
+                                let new_inf = self.infer_expression_part(*r);
+                                eq_chain.push(self.new_comparison_part(new_inf, *r));
                                 iterator.next();
                             }
                             if !eq_chain.is_empty() {
@@ -410,12 +415,16 @@ impl Inference<'_, '_, '_> {
                             while let Some(ComparisonContent::Is(_, _, r)) = iterator.peek() {
                                 if is_chain.is_empty() {
                                     is_chain.push(
-                                        self.new_comparison_part(&left_inf, comparison.left()),
+                                        self.new_comparison_part(
+                                            left_inf.clone(),
+                                            comparison.left(),
+                                        ),
                                     );
-                                    is_chain.push(self.new_comparison_part(&right_inf, right));
+                                    is_chain
+                                        .push(self.new_comparison_part(right_inf.clone(), right));
                                 }
-                                let new_inf = self.infer_expression_part(right);
-                                //is_chain.push(self.new_comparison_part(&new_inf, *r));
+                                let new_inf = self.infer_expression_part(*r);
+                                is_chain.push(self.new_comparison_part(new_inf, *r));
                                 iterator.next();
                             }
                             if !is_chain.is_empty() {
@@ -443,7 +452,7 @@ impl Inference<'_, '_, '_> {
                             return (Frame::default(), Frame::default());
                         }
                     };
-                    let left_infos = self.new_comparison_part(&left_inf, comparison.left());
+                    let left_infos = self.new_comparison_part(left_inf, comparison.left());
                     if let Some(mut new) =
                         self.find_comparison_guards(left_infos, &right_inf, right)
                     {
@@ -489,11 +498,7 @@ impl Inference<'_, '_, '_> {
         (Frame::default(), Frame::default())
     }
 
-    fn new_comparison_part<'a>(
-        &mut self,
-        inf: &'a Inferred,
-        part: ExpressionPart,
-    ) -> ComparisonPart<'a> {
+    fn new_comparison_part<'a>(&mut self, inf: Inferred, part: ExpressionPart) -> ComparisonPart {
         ComparisonPart {
             inf,
             key: self.key_from_expr_part(part),
@@ -536,7 +541,7 @@ impl Inference<'_, '_, '_> {
         chain: Vec<ComparisonPart>,
     ) -> Option<(Frame, Frame)> {
         let mut frames = None;
-        for (i, part1) in chain.iter().enumerate() {
+        'outer: for (i, part1) in chain.iter().enumerate() {
             for (k, part2) in chain.iter().enumerate() {
                 if i == k {
                     continue;
@@ -548,7 +553,8 @@ impl Inference<'_, '_, '_> {
                         &part1.inf.as_cow_type(self.i_s),
                         &part2.inf.as_cow_type(self.i_s),
                     ) {
-                        frames = Some(merge_conjunction(self.i_s, frames, new))
+                        frames = Some(merge_conjunction(self.i_s, frames, new));
+                        continue 'outer;
                     }
                 }
             }
@@ -606,7 +612,7 @@ impl Inference<'_, '_, '_> {
     }
 }
 
-struct ComparisonPart<'a> {
+struct ComparisonPart {
     key: Option<FlowKey>,
-    inf: &'a Inferred,
+    inf: Inferred,
 }
