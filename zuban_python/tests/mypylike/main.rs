@@ -98,7 +98,7 @@ struct Steps<'code> {
 }
 
 impl<'name, 'code> TestCase<'name, 'code> {
-    fn run(&self, projects: &mut ProjectsCache, mypy_compatible_override: bool) {
+    fn run(&self, projects: &mut ProjectsCache, mypy_compatible: bool) -> bool {
         let steps = self.calculate_steps();
         let mut diagnostics_config = DiagnosticConfig::default();
 
@@ -111,10 +111,10 @@ impl<'name, 'code> TestCase<'name, 'code> {
         if self.file_name == "check-columns" || steps.flags.contains(&"--show-column-numbers") {
             diagnostics_config.show_column_numbers = true;
         }
-        let mut mypy_compatible =
-            mypy_compatible_override || steps.flags.contains(&"--mypy-compatible");
-        if steps.flags.contains(&"--no-mypy-compatible") {
-            mypy_compatible = false;
+        if steps.flags.contains(&"--mypy-compatible") && !mypy_compatible
+            || steps.flags.contains(&"--no-mypy-compatible") && mypy_compatible
+        {
+            return false;
         }
         let extra_checks = steps.flags.contains(&"--extra-checks");
         let config = if steps.flags.contains(&"--strict") {
@@ -257,6 +257,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 }
             }
         }
+        true
     }
 
     fn calculate_steps(&self) -> Steps {
@@ -622,11 +623,13 @@ fn main() {
             }
             if !from_mypy_test_suite {
                 // Run our own tests both with mypy-compatible and without it.
-                case.run(&mut projects, from_mypy_test_suite);
+                if case.run(&mut projects, from_mypy_test_suite) {
+                    ran_count += 1;
+                }
+            }
+            if case.run(&mut projects, true) {
                 ran_count += 1;
             }
-            case.run(&mut projects, true);
-            ran_count += 1;
         }
     }
     println!(
