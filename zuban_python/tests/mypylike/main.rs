@@ -618,6 +618,7 @@ fn main() {
                 .any(|s| s.is_skip(&case.name) && !filters.contains(&case.name))
             {
                 println!("Skipped: {}", case.name);
+                full_count += 1;
                 continue;
             }
             let mut ran_in = 0;
