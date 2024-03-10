@@ -162,6 +162,18 @@ fn merge_or(i_s: &InferenceState, x: Frame, y: Frame) -> Frame {
     Frame::new(new_entries)
 }
 
+fn merge_conjunction(
+    i_s: &InferenceState,
+    old: Option<(Frame, Frame)>,
+    new: (Frame, Frame),
+) -> (Frame, Frame) {
+    if let Some(old) = old {
+        (merge_and(i_s, old.0, new.0), merge_or(i_s, old.1, new.1))
+    } else {
+        new
+    }
+}
+
 fn split_off_singleton(db: &Database, t: &Type, split_off: &Type) -> (Type, Type) {
     let matches_singleton = |t: &_| match split_off {
         Type::None => split_off == t,
@@ -365,17 +377,54 @@ impl Inference<'_, '_, '_> {
                 let mut frames: Option<(Frame, Frame)> = None;
                 let mut iterator = comps.iter().peekable();
                 let mut left_inf = self.infer_expression_part(iterator.peek().unwrap().left());
-                while let Some(comparison) = iterator.next() {
+                'outer: while let Some(comparison) = iterator.next() {
                     let mut invert = false;
-                    let left = comparison.left();
                     let right = comparison.right();
                     let right_inf = self.infer_expression_part(right);
                     match comparison {
-                        ComparisonContent::Equals(..) => {}
+                        ComparisonContent::Equals(..) => {
+                            let mut eq_chain = vec![];
+                            // `foo == bar == None` needs special handling
+                            while let Some(ComparisonContent::Equals(_, _, r)) = iterator.peek() {
+                                if eq_chain.is_empty() {
+                                    eq_chain.push(
+                                        self.new_comparison_part(&left_inf, comparison.left()),
+                                    );
+                                    eq_chain.push(self.new_comparison_part(&right_inf, right));
+                                }
+                                let new_inf = self.infer_expression_part(right);
+                                //eq_chain.push(self.new_comparison_part(&new_inf, *r));
+                                iterator.next();
+                            }
+                            if !eq_chain.is_empty() {
+                                todo!();
+                                continue 'outer;
+                            }
+                        }
                         ComparisonContent::NotEquals(..) => {
                             invert = true;
                         }
-                        ComparisonContent::Is(..) => {}
+                        ComparisonContent::Is(..) => {
+                            let mut is_chain = vec![];
+                            // `foo is bar is None` needs special handling
+                            while let Some(ComparisonContent::Is(_, _, r)) = iterator.peek() {
+                                if is_chain.is_empty() {
+                                    is_chain.push(
+                                        self.new_comparison_part(&left_inf, comparison.left()),
+                                    );
+                                    is_chain.push(self.new_comparison_part(&right_inf, right));
+                                }
+                                let new_inf = self.infer_expression_part(right);
+                                //is_chain.push(self.new_comparison_part(&new_inf, *r));
+                                iterator.next();
+                            }
+                            if !is_chain.is_empty() {
+                                if let Some(new) = self.find_comparison_chain_guards(is_chain) {
+                                    frames = Some(merge_conjunction(self.i_s, frames, new));
+                                }
+                                continue 'outer;
+                            }
+                        }
                         ComparisonContent::IsNot(..) => {
                             invert = true;
                         }
@@ -394,25 +443,14 @@ impl Inference<'_, '_, '_> {
                             return (Frame::default(), Frame::default());
                         }
                     };
-                    if let Some(mut new) = self.find_comparison_guards(
-                        ComparisonPart {
-                            inf: &left_inf,
-                            key: self.key_from_expr_part(left),
-                        },
-                        &right_inf,
-                        right,
-                    ) {
+                    let left_infos = self.new_comparison_part(&left_inf, comparison.left());
+                    if let Some(mut new) =
+                        self.find_comparison_guards(left_infos, &right_inf, right)
+                    {
                         if invert {
                             new = (new.1, new.0)
                         }
-                        frames = Some(if let Some(old) = frames {
-                            (
-                                merge_and(self.i_s, old.0, new.0),
-                                merge_or(self.i_s, old.1, new.1),
-                            )
-                        } else {
-                            new
-                        })
+                        frames = Some(merge_conjunction(self.i_s, frames, new))
                     }
                     left_inf = right_inf
                 }
@@ -422,12 +460,9 @@ impl Inference<'_, '_, '_> {
             }
             ExpressionPart::Conjunction(and) => {
                 let (left, right) = and.unpack();
-                let (left_true, left_false) = self.find_guards_in_expression_parts(left);
-                let (right_true, right_false) = self.find_guards_in_expression_parts(right);
-                return (
-                    merge_and(self.i_s, left_true, right_true),
-                    merge_or(self.i_s, left_false, right_false),
-                );
+                let left_frames = self.find_guards_in_expression_parts(left);
+                let right_frames = self.find_guards_in_expression_parts(right);
+                return merge_conjunction(self.i_s, Some(left_frames), right_frames);
             }
             ExpressionPart::Disjunction(or) => {
                 let (left, right) = or.unpack();
@@ -452,6 +487,17 @@ impl Inference<'_, '_, '_> {
             }
         }
         (Frame::default(), Frame::default())
+    }
+
+    fn new_comparison_part<'a>(
+        &mut self,
+        inf: &'a Inferred,
+        part: ExpressionPart,
+    ) -> ComparisonPart<'a> {
+        ComparisonPart {
+            inf,
+            key: self.key_from_expr_part(part),
+        }
     }
 
     fn find_comparison_guards(
@@ -483,6 +529,31 @@ impl Inference<'_, '_, '_> {
             }
         }
         None
+    }
+
+    fn find_comparison_chain_guards(
+        &mut self,
+        chain: Vec<ComparisonPart>,
+    ) -> Option<(Frame, Frame)> {
+        let mut frames = None;
+        for (i, part1) in chain.iter().enumerate() {
+            for (k, part2) in chain.iter().enumerate() {
+                if i == k {
+                    continue;
+                }
+                if let Some(key) = &part1.key {
+                    if let Some(new) = narrow_is_or_eq(
+                        self.i_s,
+                        key.clone(),
+                        &part1.inf.as_cow_type(self.i_s),
+                        &part2.inf.as_cow_type(self.i_s),
+                    ) {
+                        frames = Some(merge_conjunction(self.i_s, frames, new))
+                    }
+                }
+            }
+        }
+        frames
     }
 
     fn key_from_atom(&self, atom: Atom) -> Option<FlowKey> {
