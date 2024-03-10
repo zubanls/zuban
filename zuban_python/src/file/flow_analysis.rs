@@ -361,10 +361,50 @@ impl Inference<'_, '_, '_> {
                     debug!("maybe use __bool__ for narrowing");
                 }
             }
-            ExpressionPart::Comparisons(comparisons) => {
+            ExpressionPart::Comparisons(comps) => {
                 let mut frames: Option<(Frame, Frame)> = None;
-                for comparison in comparisons.iter() {
-                    if let Some(new) = self.find_comparison_guards(part, comparison) {
+                let mut iterator = comps.iter().peekable();
+                let mut left_inf = self.infer_expression_part(iterator.peek().unwrap().left());
+                while let Some(comparison) = iterator.next() {
+                    let mut invert = false;
+                    let left = comparison.left();
+                    let right = comparison.right();
+                    let right_inf = self.infer_expression_part(right);
+                    match comparison {
+                        ComparisonContent::Equals(..) => {}
+                        ComparisonContent::NotEquals(..) => {
+                            invert = true;
+                        }
+                        ComparisonContent::Is(..) => {}
+                        ComparisonContent::IsNot(..) => {
+                            invert = true;
+                        }
+                        ComparisonContent::In(..) => {
+                            debug!("TODO in");
+                            self.infer_comparison_part(comparison, left_inf, &right_inf);
+                            return (Frame::default(), Frame::default());
+                        }
+                        ComparisonContent::NotIn(..) => {
+                            debug!("TODO not in");
+                            self.infer_comparison_part(comparison, left_inf, &right_inf);
+                            return (Frame::default(), Frame::default());
+                        }
+                        ComparisonContent::Operation(..) => {
+                            self.infer_comparison_part(comparison, left_inf, &right_inf);
+                            return (Frame::default(), Frame::default());
+                        }
+                    };
+                    if let Some(mut new) = self.find_comparison_guards(
+                        ComparisonPart {
+                            inf: &left_inf,
+                            key: self.key_from_expr_part(left),
+                        },
+                        &right_inf,
+                        right,
+                    ) {
+                        if invert {
+                            new = (new.1, new.0)
+                        }
                         frames = Some(if let Some(old) = frames {
                             (
                                 merge_and(self.i_s, old.0, new.0),
@@ -374,6 +414,7 @@ impl Inference<'_, '_, '_> {
                             new
                         })
                     }
+                    left_inf = right_inf
                 }
                 if let Some(frames) = frames {
                     return frames;
@@ -415,47 +456,19 @@ impl Inference<'_, '_, '_> {
 
     fn find_comparison_guards(
         &mut self,
-        part: ExpressionPart,
-        comparison: ComparisonContent,
+        left: ComparisonPart,
+        right_inf: &Inferred,
+        right: ExpressionPart,
     ) -> Option<(Frame, Frame)> {
-        let mut invert = false;
-        let (left, right) = match comparison {
-            ComparisonContent::Equals(left, _, right) => (left, right),
-            ComparisonContent::NotEquals(left, _, right) => {
-                invert = true;
-                (left, right)
-            }
-            ComparisonContent::Is(left, _, right) => (left, right),
-            ComparisonContent::IsNot(left, _, right) => {
-                invert = true;
-                (left, right)
-            }
-            ComparisonContent::In(_, _, _) => {
-                debug!("TODO in");
-                self.infer_expression_part(part);
-                return Some((Frame::default(), Frame::default()));
-            }
-            ComparisonContent::NotIn(_, _, _) => {
-                debug!("TODO not in");
-                self.infer_expression_part(part);
-                return Some((Frame::default(), Frame::default()));
-            }
-            ComparisonContent::Operation(_) => {
-                self.infer_expression_part(part);
-                return Some((Frame::default(), Frame::default()));
-            }
-        };
-        let left_inf = self.infer_expression_part(left);
-        let right_inf = self.infer_expression_part(right);
-        if let Some(key) = self.key_from_expr_part(left) {
+        if let Some(key) = left.key {
             // Narrow Foo in `Foo is None`
             if let Some(result) = narrow_is_or_eq(
                 self.i_s,
                 key,
-                &left_inf.as_cow_type(self.i_s),
+                &left.inf.as_cow_type(self.i_s),
                 &right_inf.as_cow_type(self.i_s),
             ) {
-                return Some(if invert { (result.1, result.0) } else { result });
+                return Some(result);
             }
         }
         if let Some(key) = self.key_from_expr_part(right) {
@@ -464,9 +477,9 @@ impl Inference<'_, '_, '_> {
                 self.i_s,
                 key,
                 &right_inf.as_cow_type(self.i_s),
-                &left_inf.as_cow_type(self.i_s),
+                &left.inf.as_cow_type(self.i_s),
             ) {
-                return Some(if invert { (result.1, result.0) } else { result });
+                return Some(result);
             }
         }
         None
@@ -520,4 +533,9 @@ impl Inference<'_, '_, '_> {
             _ => None,
         }
     }
+}
+
+struct ComparisonPart<'a> {
+    key: Option<FlowKey>,
+    inf: &'a Inferred,
 }
