@@ -2762,10 +2762,6 @@ impl<'db> Comparisons<'db> {
             iterator,
         }
     }
-
-    pub fn right(&self) -> ExpressionPart<'db> {
-        ExpressionPart::new(self.node.nth_child(2))
-    }
 }
 
 pub struct ComparisonIterator<'db> {
