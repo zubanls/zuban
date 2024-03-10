@@ -448,8 +448,8 @@ impl Inference<'_, '_, '_> {
                             return (Frame::default(), Frame::default());
                         }
                         ComparisonContent::Operation(..) => {
-                            self.infer_comparison_part(comparison, left_inf, &right_inf);
-                            return (Frame::default(), Frame::default());
+                            self.infer_comparison_part(comparison, left_inf.clone(), &right_inf);
+                            continue;
                         }
                     };
                     let left_infos = self.new_comparison_part(left_inf, comparison.left());
