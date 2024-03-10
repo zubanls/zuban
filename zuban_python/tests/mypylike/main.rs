@@ -607,7 +607,6 @@ fn main() {
         let stem = file.file_stem().unwrap().to_owned();
         let file_name = stem.to_str().unwrap();
         for case in mypy_style_cases(file_name, &code) {
-            full_count += 1;
             if !filters.is_empty()
                 && !filters.contains(&case.name)
                 && !filters.iter().any(|s| s == file_name)
@@ -621,15 +620,14 @@ fn main() {
                 println!("Skipped: {}", case.name);
                 continue;
             }
+            let mut ran_in = 0;
             if !from_mypy_test_suite {
                 // Run our own tests both with mypy-compatible and without it.
-                if case.run(&mut projects, from_mypy_test_suite) {
-                    ran_count += 1;
-                }
+                ran_in += case.run(&mut projects, from_mypy_test_suite) as usize
             }
-            if case.run(&mut projects, true) {
-                ran_count += 1;
-            }
+            ran_in += case.run(&mut projects, true) as usize;
+            ran_count += ran_in;
+            full_count += ran_in;
         }
     }
     println!(
