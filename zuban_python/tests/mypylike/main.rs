@@ -111,8 +111,11 @@ impl<'name, 'code> TestCase<'name, 'code> {
         if self.file_name == "check-columns" || steps.flags.contains(&"--show-column-numbers") {
             diagnostics_config.show_column_numbers = true;
         }
-        let mypy_compatible =
+        let mut mypy_compatible =
             mypy_compatible_override || steps.flags.contains(&"--mypy-compatible");
+        if steps.flags.contains(&"--no-mypy-compatible") {
+            mypy_compatible = false;
+        }
         let extra_checks = steps.flags.contains(&"--extra-checks");
         let config = if steps.flags.contains(&"--strict") {
             TypeCheckerFlags {
