@@ -1380,114 +1380,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 self.infer_expression_part(expr);
                 Inferred::from_type(self.i_s.db.python_state.bool_type())
             }
-            ExpressionPart::Comparisons(cmps) => {
-                Inferred::gather_base_types(self.i_s, |gather| {
-                    let mut left_inf =
-                        self.infer_expression_part(cmps.iter().next().unwrap().left());
-                    for cmp in cmps.iter() {
-                        let right_inf = self.infer_expression_part(cmp.right());
-                        let result = match cmp {
-                            ComparisonContent::Equals(first, op, second)
-                            | ComparisonContent::NotEquals(first, op, second) => {
-                                let from = NodeRef::new(self.file, op.index());
-                                // TODO this does not implement __ne__ for NotEquals
-                                left_inf.type_lookup_and_execute(
-                                    self.i_s,
-                                    from,
-                                    "__eq__",
-                                    &KnownArgs::new(&right_inf, from),
-                                    &|_| todo!(),
-                                )
-                            }
-                            ComparisonContent::Is(first, _, second)
-                            | ComparisonContent::IsNot(first, _, second) => {
-                                Inferred::from_type(self.i_s.db.python_state.bool_type())
-                            }
-                            ComparisonContent::In(first, op, second)
-                            | ComparisonContent::NotIn(first, op, second) => {
-                                let from = NodeRef::new(self.file, op.index());
-                                right_inf.run_after_lookup_on_each_union_member(
-                                    self.i_s,
-                                    from,
-                                    "__contains__",
-                                    LookupKind::OnlyType,
-                                    &mut |r_type, lookup_result| {
-                                        if let Some(method) =
-                                            lookup_result.lookup.into_maybe_inferred()
-                                        {
-                                            method.execute_with_details(
-                                                self.i_s,
-                                                &KnownArgs::new(&left_inf, from),
-                                                &mut ResultContext::Unknown,
-                                                OnTypeError::new(&|i_s, _, _, types| {
-                                                    let right = r_type.format_short(i_s.db);
-                                                    from.add_issue(
-                                                        i_s,
-                                                        IssueType::UnsupportedOperand {
-                                                            operand: Box::from("in"),
-                                                            left: types
-                                                                .got
-                                                                .as_string(i_s.db)
-                                                                .into(),
-                                                            right,
-                                                        },
-                                                    );
-                                                }),
-                                            );
-                                        } else {
-                                            r_type
-                                                .lookup(
-                                                    self.i_s,
-                                                    from.file_index(),
-                                                    "__iter__",
-                                                    LookupKind::OnlyType,
-                                                    &mut ResultContext::Unknown,
-                                                    &|issue| from.add_issue(self.i_s, issue),
-                                                    &|_| {
-                                                        let right =
-                                                            right_inf.format_short(self.i_s);
-                                                        from.add_issue(
-                                                            self.i_s,
-                                                            IssueType::UnsupportedIn { right },
-                                                        )
-                                                    },
-                                                )
-                                                .into_inferred()
-                                                .execute(self.i_s, &NoArgs::new(from))
-                                                .type_lookup_and_execute(
-                                                    self.i_s,
-                                                    from,
-                                                    "__next__",
-                                                    &NoArgs::new(from),
-                                                    &|_| todo!(),
-                                                )
-                                                .as_cow_type(self.i_s)
-                                                .error_if_not_matches(
-                                                    self.i_s,
-                                                    &left_inf,
-                                                    |issue| from.add_issue(self.i_s, issue),
-                                                    |got, _| {
-                                                        Some(IssueType::UnsupportedOperand {
-                                                            operand: Box::from("in"),
-                                                            left: got,
-                                                            right: r_type.format_short(self.i_s.db),
-                                                        })
-                                                    },
-                                                );
-                                        }
-                                    },
-                                );
-                                Inferred::from_type(self.i_s.db.python_state.bool_type())
-                            }
-                            ComparisonContent::Operation(op) => {
-                                self.infer_detailed_operation(op, left_inf, &right_inf)
-                            }
-                        };
-                        left_inf = right_inf;
-                        gather(result)
-                    }
-                })
-            }
+            ExpressionPart::Comparisons(cmps) => Inferred::gather_base_types(self.i_s, |gather| {
+                let mut left_inf = self.infer_expression_part(cmps.iter().next().unwrap().left());
+                for cmp in cmps.iter() {
+                    let right_inf = self.infer_expression_part(cmp.right());
+                    gather(self.infer_comparison_part(cmp, left_inf, &right_inf));
+                    left_inf = right_inf;
+                }
+            }),
             ExpressionPart::Factor(f) => {
                 let (operand, right) = f.unpack();
                 let inf = self.infer_expression_part(right);
@@ -1557,6 +1457,102 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     from.add_issue(self.i_s, IssueType::AwaitOutsideFunction);
                     Inferred::new_any_from_error()
                 }
+            }
+        }
+    }
+
+    pub fn infer_comparison_part(
+        &mut self,
+        cmp: ComparisonContent,
+        left_inf: Inferred,
+        right_inf: &Inferred,
+    ) -> Inferred {
+        match cmp {
+            ComparisonContent::Equals(first, op, second)
+            | ComparisonContent::NotEquals(first, op, second) => {
+                let from = NodeRef::new(self.file, op.index());
+                // TODO this does not implement __ne__ for NotEquals
+                left_inf.type_lookup_and_execute(
+                    self.i_s,
+                    from,
+                    "__eq__",
+                    &KnownArgs::new(&right_inf, from),
+                    &|_| todo!(),
+                )
+            }
+            ComparisonContent::Is(first, _, second)
+            | ComparisonContent::IsNot(first, _, second) => {
+                Inferred::from_type(self.i_s.db.python_state.bool_type())
+            }
+            ComparisonContent::In(first, op, second)
+            | ComparisonContent::NotIn(first, op, second) => {
+                let from = NodeRef::new(self.file, op.index());
+                right_inf.run_after_lookup_on_each_union_member(
+                    self.i_s,
+                    from,
+                    "__contains__",
+                    LookupKind::OnlyType,
+                    &mut |r_type, lookup_result| {
+                        if let Some(method) = lookup_result.lookup.into_maybe_inferred() {
+                            method.execute_with_details(
+                                self.i_s,
+                                &KnownArgs::new(&left_inf, from),
+                                &mut ResultContext::Unknown,
+                                OnTypeError::new(&|i_s, _, _, types| {
+                                    let right = r_type.format_short(i_s.db);
+                                    from.add_issue(
+                                        i_s,
+                                        IssueType::UnsupportedOperand {
+                                            operand: Box::from("in"),
+                                            left: types.got.as_string(i_s.db).into(),
+                                            right,
+                                        },
+                                    );
+                                }),
+                            );
+                        } else {
+                            r_type
+                                .lookup(
+                                    self.i_s,
+                                    from.file_index(),
+                                    "__iter__",
+                                    LookupKind::OnlyType,
+                                    &mut ResultContext::Unknown,
+                                    &|issue| from.add_issue(self.i_s, issue),
+                                    &|_| {
+                                        let right = right_inf.format_short(self.i_s);
+                                        from.add_issue(self.i_s, IssueType::UnsupportedIn { right })
+                                    },
+                                )
+                                .into_inferred()
+                                .execute(self.i_s, &NoArgs::new(from))
+                                .type_lookup_and_execute(
+                                    self.i_s,
+                                    from,
+                                    "__next__",
+                                    &NoArgs::new(from),
+                                    &|_| todo!(),
+                                )
+                                .as_cow_type(self.i_s)
+                                .error_if_not_matches(
+                                    self.i_s,
+                                    &left_inf,
+                                    |issue| from.add_issue(self.i_s, issue),
+                                    |got, _| {
+                                        Some(IssueType::UnsupportedOperand {
+                                            operand: Box::from("in"),
+                                            left: got,
+                                            right: r_type.format_short(self.i_s.db),
+                                        })
+                                    },
+                                );
+                        }
+                    },
+                );
+                Inferred::from_type(self.i_s.db.python_state.bool_type())
+            }
+            ComparisonContent::Operation(op) => {
+                self.infer_detailed_operation(op, left_inf, &right_inf)
             }
         }
     }
