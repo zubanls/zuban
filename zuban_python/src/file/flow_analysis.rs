@@ -100,8 +100,11 @@ impl FlowAnalysis {
         self.frames.borrow_mut().pop().unwrap();
     }
 
-    fn with_frame(&self, frame: Frame, callable: impl FnOnce()) -> Frame {
-        if frame.unreachable {
+    fn with_frame(&self, db: &Database, frame: Frame, callable: impl FnOnce()) -> Frame {
+        if db.project.flags.mypy_compatible && frame.unreachable {
+            // Mypy does not analyze frames that are not reachable. However for normal interaction
+            // in an IDE yuo typically want to analyze those parts of code, even if they are
+            // unreachable.
             return frame;
         }
         self.frames.borrow_mut().push(frame);
@@ -299,11 +302,12 @@ impl Inference<'_, '_, '_> {
             Some(IfBlockType::If(if_expr, block)) => {
                 let (true_frame, false_frame) = self.find_guards_in_named_expr(if_expr);
                 FLOW_ANALYSIS.with(|fa| {
-                    let true_frame = fa.with_frame(true_frame, || {
+                    let true_frame = fa.with_frame(self.i_s.db, true_frame, || {
                         self.calc_block_diagnostics(block, class, func)
                     });
-                    let false_frame =
-                        fa.with_frame(false_frame, || self.process_ifs(if_blocks, class, func));
+                    let false_frame = fa.with_frame(self.i_s.db, false_frame, || {
+                        self.process_ifs(if_blocks, class, func)
+                    });
 
                     // TODO merge frames properly, this is just a special case
                     if false_frame.unreachable || true_frame.unreachable {

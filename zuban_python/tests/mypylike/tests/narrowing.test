@@ -1,0 +1,20 @@
+[case reachability_mypy_compatible]
+# flags: --mypy-compatible
+def foo(x: None) -> None:
+    if x is None:
+        return
+    else:
+        1()
+        if x:
+            reveal_type(x)
+
+[case reachability_no_mypy_compatible]
+# flags: --no-mypy-compatible
+def foo(x: None, y: int | None) -> None:
+    if x is None:
+        return
+    else:
+        1()  # E: "int" not callable
+        if y:
+            reveal_type(y)  # N: Revealed type is "int"
+            reveal_type(x)  # N: Revealed type is "None"
