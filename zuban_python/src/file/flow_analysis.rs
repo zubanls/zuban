@@ -370,61 +370,22 @@ impl Inference<'_, '_, '_> {
                 }
             }
             ExpressionPart::Comparisons(comparisons) => {
+                let mut frames: Option<(Frame, Frame)> = None;
                 for comparison in comparisons.iter() {
-                    let mut invert = false;
-                    let (left, right) = match comparison {
-                        ComparisonContent::Equals(left, _, right) => (left, right),
-                        ComparisonContent::NotEquals(left, _, right) => {
-                            invert = true;
-                            (left, right)
-                        }
-                        ComparisonContent::Is(left, _, right) => (left, right),
-                        ComparisonContent::IsNot(left, _, right) => {
-                            invert = true;
-                            (left, right)
-                        }
-                        ComparisonContent::In(_, _, _) => {
-                            debug!("TODO in");
-                            self.infer_expression_part(part);
-                            return (Frame::default(), Frame::default());
-                        }
-                        ComparisonContent::NotIn(_, _, _) => {
-                            debug!("TODO not in");
-                            self.infer_expression_part(part);
-                            return (Frame::default(), Frame::default());
-                        }
-                        ComparisonContent::Operation(_) => {
-                            self.infer_expression_part(part);
-                            return (Frame::default(), Frame::default());
-                        }
-                    };
-                    let left_inf = self.infer_expression_part(left);
-                    let right_inf = self.infer_expression_part(right);
-                    if let Some(key) = self.key_from_expr_part(left) {
-                        // Narrow Foo in `Foo is None`
-                        if let Some(result) = narrow_is_or_eq(
-                            self.i_s,
-                            key,
-                            &left_inf.as_cow_type(self.i_s),
-                            &right_inf.as_cow_type(self.i_s),
-                        ) {
-                            return if invert { (result.1, result.0) } else { result };
-                        }
+                    if let Some(new) = self.find_comparison_guards(part, comparison) {
+                        frames = Some(if let Some(old) = frames {
+                            (
+                                merge_and(self.i_s, old.0, new.0),
+                                merge_or(self.i_s, old.1, new.1),
+                            )
+                        } else {
+                            new
+                        })
                     }
-                    if let Some(key) = self.key_from_expr_part(right) {
-                        // Narrow Foo in `None is Foo`
-                        if let Some(result) = narrow_is_or_eq(
-                            self.i_s,
-                            key,
-                            &right_inf.as_cow_type(self.i_s),
-                            &left_inf.as_cow_type(self.i_s),
-                        ) {
-                            return if invert { (result.1, result.0) } else { result };
-                        }
-                    }
-                    return (Frame::default(), Frame::default());
                 }
-                todo!()
+                if let Some(frames) = frames {
+                    return frames;
+                }
             }
             ExpressionPart::Conjunction(and) => {
                 let (left, right) = and.unpack();
@@ -458,6 +419,65 @@ impl Inference<'_, '_, '_> {
             }
         }
         (Frame::default(), Frame::default())
+    }
+
+    fn find_comparison_guards(
+        &mut self,
+        part: ExpressionPart,
+        comparison: ComparisonContent,
+    ) -> Option<(Frame, Frame)> {
+        let mut invert = false;
+        let (left, right) = match comparison {
+            ComparisonContent::Equals(left, _, right) => (left, right),
+            ComparisonContent::NotEquals(left, _, right) => {
+                invert = true;
+                (left, right)
+            }
+            ComparisonContent::Is(left, _, right) => (left, right),
+            ComparisonContent::IsNot(left, _, right) => {
+                invert = true;
+                (left, right)
+            }
+            ComparisonContent::In(_, _, _) => {
+                debug!("TODO in");
+                self.infer_expression_part(part);
+                return Some((Frame::default(), Frame::default()));
+            }
+            ComparisonContent::NotIn(_, _, _) => {
+                debug!("TODO not in");
+                self.infer_expression_part(part);
+                return Some((Frame::default(), Frame::default()));
+            }
+            ComparisonContent::Operation(_) => {
+                self.infer_expression_part(part);
+                return Some((Frame::default(), Frame::default()));
+            }
+        };
+        let left_inf = self.infer_expression_part(left);
+        let right_inf = self.infer_expression_part(right);
+        if let Some(key) = self.key_from_expr_part(left) {
+            // Narrow Foo in `Foo is None`
+            if let Some(result) = narrow_is_or_eq(
+                self.i_s,
+                key,
+                &left_inf.as_cow_type(self.i_s),
+                &right_inf.as_cow_type(self.i_s),
+            ) {
+                return Some(if invert { (result.1, result.0) } else { result });
+            }
+        }
+        if let Some(key) = self.key_from_expr_part(right) {
+            // Narrow Foo in `None is Foo`
+            if let Some(result) = narrow_is_or_eq(
+                self.i_s,
+                key,
+                &right_inf.as_cow_type(self.i_s),
+                &left_inf.as_cow_type(self.i_s),
+            ) {
+                return Some(if invert { (result.1, result.0) } else { result });
+            }
+        }
+        None
     }
 
     fn key_from_atom(&self, atom: Atom) -> Option<FlowKey> {
