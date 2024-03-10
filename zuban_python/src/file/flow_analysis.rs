@@ -38,27 +38,27 @@ struct Entry {
     //widens_type: bool,
 }
 
-#[derive(Debug)]
-enum Frame {
-    Reachable { entries: Entries },
-    Unreachable,
-}
-
-impl Default for Frame {
-    fn default() -> Self {
-        Self::Reachable {
-            entries: Default::default(),
-        }
-    }
+#[derive(Debug, Default)]
+struct Frame {
+    entries: Entries,
+    unreachable: bool,
 }
 
 impl Frame {
+    fn new(entries: Entries) -> Self {
+        Self {
+            entries,
+            unreachable: false,
+        }
+    }
+
     fn from_type(key: FlowKey, type_: Type) -> Frame {
         match type_ {
-            Type::Never => Frame::Unreachable,
-            type_ => Frame::Reachable {
-                entries: vec![Entry { key, type_ }],
+            Type::Never => Frame {
+                unreachable: true,
+                ..Frame::default()
             },
+            type_ => Frame::new(vec![Entry { key, type_ }]),
         }
     }
 }
@@ -71,16 +71,9 @@ pub struct FlowAnalysis {
 impl FlowAnalysis {
     pub fn narrow_name(&self, name_link: PointLink) -> Option<Inferred> {
         for frame in self.frames.borrow().iter().rev() {
-            match frame {
-                Frame::Reachable { entries } => {
-                    for entry in entries {
-                        if entry.key == FlowKey::Name(name_link) {
-                            return Some(Inferred::from_type(entry.type_.clone()));
-                        }
-                    }
-                }
-                Frame::Unreachable => {
-                    todo!() //return Some(Inferred::from_type(Type::Never))
+            for entry in &frame.entries {
+                if entry.key == FlowKey::Name(name_link) {
+                    return Some(Inferred::from_type(entry.type_.clone()));
                 }
             }
         }
@@ -89,9 +82,7 @@ impl FlowAnalysis {
 
     fn overwrite_entries(&self, new_entries: Entries) {
         let mut frames = self.frames.borrow_mut();
-        let Frame::Reachable{ entries } = &mut frames.last_mut().unwrap() else {
-            unreachable!()
-        };
+        let entries = &mut frames.last_mut().unwrap().entries;
         'outer: for new_entry in new_entries {
             for entry in &mut *entries {
                 if entry.key == new_entry.key {
@@ -110,7 +101,7 @@ impl FlowAnalysis {
     }
 
     fn with_frame(&self, frame: Frame, callable: impl FnOnce()) -> Frame {
-        if matches!(frame, Frame::Unreachable) {
+        if frame.unreachable {
             return frame;
         }
         self.frames.borrow_mut().push(frame);
@@ -119,19 +110,20 @@ impl FlowAnalysis {
     }
 
     pub fn mark_current_frame_unreachable(&self) {
-        *self.frames.borrow_mut().last_mut().unwrap() = Frame::Unreachable
+        self.frames.borrow_mut().last_mut().unwrap().unreachable = true
     }
 }
 
-fn merge_and(i_s: &InferenceState, x: Frame, y: Frame) -> Frame {
-    let Frame::Reachable { entries: y_entries } = &y else {
-        return Frame::Unreachable
-    };
-    let Frame::Reachable { entries: mut x_entries } = x else {
-        return Frame::Unreachable
-    };
-    for x_entry in &mut x_entries {
-        for y_entry in y_entries {
+fn merge_and(i_s: &InferenceState, mut x: Frame, y: Frame) -> Frame {
+    if x.unreachable {
+        // TODO shouldn't we still merge here?
+        return x;
+    }
+    if y.unreachable {
+        return y;
+    }
+    for x_entry in &mut x.entries {
+        for y_entry in &y.entries {
             if &x_entry.key == &y_entry.key {
                 if let Some(t) = x_entry.type_.common_sub_type(i_s, &y_entry.type_) {
                     x_entry.type_ = t
@@ -140,19 +132,19 @@ fn merge_and(i_s: &InferenceState, x: Frame, y: Frame) -> Frame {
             }
         }
     }
-    Frame::Reachable { entries: x_entries }
+    x
 }
 
 fn merge_or(i_s: &InferenceState, x: Frame, y: Frame) -> Frame {
-    let Frame::Reachable { entries: y_entries } = &y else {
-        return x
-    };
-    let Frame::Reachable { entries: x_entries } = x else {
-        return y
-    };
+    if x.unreachable {
+        return y;
+    }
+    if y.unreachable {
+        return x;
+    }
     let mut new_entries = vec![];
-    for x_entry in x_entries {
-        for y_entry in y_entries {
+    for x_entry in x.entries {
+        for y_entry in &y.entries {
             // Only when both sides narrow the same type we actually have learned anything about
             // the expression.
             if &x_entry.key == &y_entry.key {
@@ -164,9 +156,7 @@ fn merge_or(i_s: &InferenceState, x: Frame, y: Frame) -> Frame {
             break;
         }
     }
-    Frame::Reachable {
-        entries: new_entries,
-    }
+    Frame::new(new_entries)
 }
 
 fn split_off_singleton(db: &Database, t: &Type, split_off: &Type) -> (Type, Type) {
@@ -316,13 +306,11 @@ impl Inference<'_, '_, '_> {
                         fa.with_frame(false_frame, || self.process_ifs(if_blocks, class, func));
 
                     // TODO merge frames properly, this is just a special case
-                    if matches!(false_frame, Frame::Unreachable)
-                        || matches!(true_frame, Frame::Unreachable)
-                    {
-                        if let Frame::Reachable { entries } = false_frame {
-                            fa.overwrite_entries(entries)
-                        } else if let Frame::Reachable { entries } = true_frame {
-                            fa.overwrite_entries(entries)
+                    if false_frame.unreachable || true_frame.unreachable {
+                        if !false_frame.unreachable {
+                            fa.overwrite_entries(false_frame.entries)
+                        } else if !true_frame.unreachable {
+                            fa.overwrite_entries(true_frame.entries)
                         } else {
                             debug!("TODO should probably be unreachable")
                         }
