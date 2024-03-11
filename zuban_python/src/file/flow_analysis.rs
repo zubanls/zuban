@@ -1,9 +1,9 @@
 use std::{cell::RefCell, rc::Rc};
 
 use parsa_python_ast::{
-    Atom, AtomContent, ComparisonContent, Expression, ExpressionContent, ExpressionPart,
-    IfBlockIterator, IfBlockType, IfStmt, NamedExpression, NamedExpressionContent, Primary,
-    PrimaryContent, PrimaryOrAtom, SliceType,
+    Argument, Arguments, ArgumentsDetails, Atom, AtomContent, ComparisonContent, Expression,
+    ExpressionContent, ExpressionPart, IfBlockIterator, IfBlockType, IfStmt, NamedExpression,
+    NamedExpressionContent, Primary, PrimaryContent, PrimaryOrAtom, SliceType,
 };
 
 use crate::{
@@ -516,11 +516,13 @@ impl Inference<'_, '_, '_> {
             }
             ExpressionPart::Primary(primary) => {
                 match primary.second() {
-                    PrimaryContent::Execution(execution) => {
+                    PrimaryContent::Execution(ArgumentsDetails::Node(args)) => {
                         let first = self.infer_primary_or_atom(primary.first());
                         if let Some(saved) = first.maybe_saved_link() {
                             if saved == self.i_s.db.python_state.isinstance_node_ref().as_link() {
-                                debug!("TODO isisinstance narrowing")
+                                if let Some(frames) = self.find_isinstance_frames(args) {
+                                    return frames;
+                                }
                             } else if saved
                                 == self.i_s.db.python_state.issubclass_node_ref().as_link()
                             {
@@ -556,6 +558,31 @@ impl Inference<'_, '_, '_> {
             inf,
             key: self.key_from_expr_part(part),
         }
+    }
+
+    fn infer_named_expr_with_key(&mut self, n: NamedExpression) -> InferredWithKey {
+        InferredWithKey {
+            inf: self.infer_named_expression(n),
+            key: self.key_from_expression(n.expression()),
+        }
+    }
+
+    fn find_isinstance_frames(&mut self, args: Arguments) -> Option<(Frame, Frame)> {
+        let mut iterator = args.iter();
+        let Argument::Positional(arg) = iterator.next()? else {
+            return None
+        };
+        let result = self.infer_named_expr_with_key(arg);
+        let key = result.key?;
+        let t = self.isinstance_or_issubclass_type(iterator.next()?)?;
+        todo!()
+    }
+
+    fn isinstance_or_issubclass_type(&mut self, arg: Argument) -> Option<Type> {
+        let Argument::Positional(arg) = arg else {
+            return None
+        };
+        None
     }
 
     fn find_comparison_guards(
@@ -660,6 +687,13 @@ impl Inference<'_, '_, '_> {
         match expr_part {
             ExpressionPart::Atom(atom) => self.key_from_atom(atom),
             ExpressionPart::Primary(primary) => self.key_from_primary(primary),
+            _ => None,
+        }
+    }
+
+    fn key_from_expression(&self, expression: Expression) -> Option<FlowKey> {
+        match expression.unpack() {
+            ExpressionContent::ExpressionPart(part) => self.key_from_expr_part(part),
             _ => None,
         }
     }
