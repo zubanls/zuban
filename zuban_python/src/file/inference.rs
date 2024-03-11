@@ -2707,7 +2707,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         ))
     }
 
-    fn add_issue(&self, node_index: NodeIndex, issue: IssueType) {
+    pub(crate) fn add_issue(&self, node_index: NodeIndex, issue: IssueType) {
         let from = NodeRef::new(self.file, node_index);
         from.add_issue(self.i_s, issue);
     }

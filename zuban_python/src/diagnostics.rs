@@ -174,7 +174,6 @@ pub(crate) enum IssueType {
 
     InvalidAssertType { actual: Box<str>, wanted: Box<str> },
 
-
     SuperUsedOutsideClass,
     SuperWithSingleArgumentNotSupported,
     SuperVarargsNotSupported,
@@ -327,6 +326,7 @@ pub(crate) enum IssueType {
     DisallowedAnyExplicit, // From --disallow-any-explicit
     UnimportedTypeBecomesAny { prefix: Box<str>, type_: Box<str> }, // From --diallow-any-unimported
     DisallowedAnyExpr { type_: Box<str> },
+    UnreachableStatement, // From --warn-unreachable
     RedundantCast { to: Box<str> }, // From --warn-redundant-casts
     ReturnedAnyWarning { expected: Box<str> }, // From --warn-return-any
 
@@ -402,6 +402,7 @@ impl IssueType {
             | TypedDictHasNoKeyForGet { .. } => "typeddict-item",
             TypedDictExtraKey { .. } | TypedDictHasNoKey { .. } => "typeddict-unknown-key",
 
+            UnreachableStatement => "unreachable",
             RedundantCast { .. } => "redundant-cast",
             ReturnedAnyWarning { .. } => "no-any-return",
 
@@ -812,6 +813,7 @@ impl<'db> Diagnostic<'db> {
                 "Any" => r#"Expression has type "Any""#.to_string(),
                 _ => format!(r#"Expression type contains "Any" ("{type_}")"#),
             },
+            UnreachableStatement => "Statement is unreachable".to_string(),
             RedundantCast { to } => format!(r#"Redundant cast to "{to}""#),
             ReturnedAnyWarning { expected } => format!(
                 r#"Returning Any from function declared to return "{expected}""#

@@ -138,6 +138,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 disallow_any_unimported: steps.flags.contains(&"--disallow-any-unimported"),
                 disallow_subclassing_any: steps.flags.contains(&"--disallow-subclassing-any"),
                 disallow_incomplete_defs: steps.flags.contains(&"--disallow-incomplete-defs"),
+                warn_unreachable: steps.flags.contains(&"--warn-unreachable"),
                 warn_redundant_casts: steps.flags.contains(&"--warn-redundant-casts"),
                 warn_return_any: steps.flags.contains(&"--warn-return-any"),
                 extra_checks,

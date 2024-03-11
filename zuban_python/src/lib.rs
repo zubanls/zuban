@@ -55,6 +55,7 @@ pub struct TypeCheckerFlags {
     pub disallow_any_expr: bool,
     pub disallow_subclassing_any: bool,
     pub disallow_incomplete_defs: bool,
+    pub warn_unreachable: bool,
     pub warn_redundant_casts: bool,
     pub warn_return_any: bool,
 
@@ -78,6 +79,7 @@ impl Default for TypeCheckerFlags {
             disallow_any_expr: false,
             disallow_subclassing_any: false,
             disallow_incomplete_defs: false,
+            warn_unreachable: false,
             warn_redundant_casts: false,
             warn_return_any: false,
             extra_checks: false,
@@ -102,6 +104,7 @@ impl TypeCheckerFlags {
             disallow_any_expr: false,
             disallow_subclassing_any: true,
             disallow_incomplete_defs: true,
+            warn_unreachable: false,
             warn_redundant_casts: true,
             warn_return_any: true,
             extra_checks: false,
