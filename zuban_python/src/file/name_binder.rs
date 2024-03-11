@@ -768,6 +768,14 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                     }
                     self.index_return_or_yield(&mut latest_return_or_yield, n.index());
                 }
+                InterestingNode::AssertStmt(assert_stmt) => {
+                    let (assert_expr, error_expr) = assert_stmt.unpack();
+                    self.index_non_block_node_full(&assert_expr, ordered, from_annotation);
+                    if let Some(error_expr) = error_expr {
+                        self.index_non_block_node_full(&error_expr, ordered, from_annotation);
+                    }
+                    self.references_need_flow_analysis = true;
+                }
                 InterestingNode::Lambda(lambda) => {
                     self.index_lambda_param_defaults(lambda, ordered);
                     self.unresolved_nodes.push(Unresolved::Lambda(lambda));
