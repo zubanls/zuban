@@ -1185,9 +1185,8 @@ testLiteralIntelligentIndexingTuples
 testLambdaInferenceUsesNarrowedTypes
 testVariadicAliasRecursiveUnpack
 testVariadicTupleCollectionCheck
-# narrowing if is
+# questionable implicit literal?
 testEnumReachabilityChecksIndirect
-testEnumReachabilityWithChainingDisjoint
 testEnumReachabilityWithChainingDirectConflict
 # Narrowing with previous and/or
 testRegression11705_Strict

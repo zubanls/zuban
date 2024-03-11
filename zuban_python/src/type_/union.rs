@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, collections::HashMap, rc::Rc};
 
 use super::{FormatStyle, Type};
 use crate::{
@@ -80,6 +80,7 @@ fn merge_simplified_union_type(
 ) -> MergeSimplifiedUnionResult {
     let mut new_types: Vec<UnionEntry> = vec![];
     let mut finished = true;
+    let mut had_enum_member = false;
     'outer: for additional in types {
         if additional.type_.has_any(i_s) {
             if !new_types
@@ -105,7 +106,7 @@ fn merge_simplified_union_type(
                     }
                 }
             }
-            _ => {
+            additional_t => {
                 for (i, current) in new_types.iter().enumerate() {
                     if current.type_.has_any(i_s) {
                         continue;
@@ -115,15 +116,14 @@ fn merge_simplified_union_type(
                         t => {
                             if let Type::Class(c) = t {
                                 if c.class(i_s.db).is_calculating_class_infos() {
-                                    if &additional.type_ == t {
+                                    if additional_t == t {
                                         continue 'outer;
                                     } else {
                                         continue;
                                     }
                                 }
                             }
-                            if additional
-                                .type_
+                            if additional_t
                                 .is_super_type_of(i_s, &mut Matcher::with_ignored_promotions(), t)
                                 .bool()
                             {
@@ -134,7 +134,7 @@ fn merge_simplified_union_type(
                             if t.is_super_type_of(
                                 i_s,
                                 &mut Matcher::with_ignored_promotions(),
-                                &additional.type_,
+                                additional_t,
                             )
                             .bool()
                             {
@@ -144,9 +144,16 @@ fn merge_simplified_union_type(
                         }
                     }
                 }
+                if matches!(additional_t, Type::EnumMember(_)) {
+                    had_enum_member = true;
+                }
             }
         }
         new_types.push(additional);
+    }
+    if had_enum_member {
+        // If all enum members are found in a union, just use an enum instance instead.
+        try_contracting_enum_members(&mut new_types)
     }
     if finished {
         MergeSimplifiedUnionResult::Done(match new_types.len() {
@@ -164,6 +171,35 @@ fn merge_simplified_union_type(
     } else {
         MergeSimplifiedUnionResult::NotDone(new_types)
     }
+}
+
+fn try_contracting_enum_members(entries: &mut Vec<UnionEntry>) {
+    let mut enum_counts = HashMap::new();
+    for (i, e) in entries.iter().enumerate() {
+        if let Type::EnumMember(member) = &e.type_ {
+            enum_counts
+                .entry(member.enum_.defined_at)
+                .or_insert((member.clone(), 0))
+                .1 += 1;
+        }
+    }
+    entries.retain_mut(|entry| {
+        if let Type::EnumMember(member) = &entry.type_ {
+            for (first_member, count) in enum_counts.values() {
+                if Rc::ptr_eq(&member.enum_, &first_member.enum_)
+                    && first_member.enum_.members.len() <= *count
+                {
+                    debug_assert_eq!(first_member.enum_.members.len(), *count);
+                    let should_retain = first_member.member_index == member.member_index;
+                    if should_retain {
+                        entry.type_ = Type::Enum(member.enum_.clone())
+                    }
+                    return should_retain;
+                }
+            }
+        }
+        true
+    })
 }
 
 #[derive(Debug, Clone, PartialEq)]

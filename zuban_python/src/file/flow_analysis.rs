@@ -131,6 +131,9 @@ fn merge_and(i_s: &InferenceState, mut x: Frame, y: Frame) -> Frame {
             if &x_entry.key == &y_entry.key {
                 if let Some(t) = x_entry.type_.common_sub_type(i_s, &y_entry.type_) {
                     x_entry.type_ = t
+                } else {
+                    x_entry.type_ = Type::Never;
+                    x.unreachable = true;
                 }
                 continue 'outer;
             }

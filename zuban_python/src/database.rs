@@ -32,7 +32,7 @@ use crate::{
     TypeCheckerFlags,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FileIndex(pub u32);
 type FileStateLoaders = Box<[Box<dyn FileStateLoader>]>;
 
@@ -408,7 +408,7 @@ pub enum Locality {
     Todo,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct PointLink {
     pub file: FileIndex,
     pub node_index: NodeIndex,
