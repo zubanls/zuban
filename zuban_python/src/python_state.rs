@@ -424,88 +424,33 @@ impl PythonState {
             dataclasses_file,
             "Field"
         );
-        db.python_state.builtins_isinstance_index = db
-            .python_state
-            .builtins()
-            .symbol_table
-            .lookup_symbol("isinstance")
-            .unwrap()
-            - NAME_TO_FUNCTION_DIFF;
-        db.python_state.builtins_issubclass_index = db
-            .python_state
-            .builtins()
-            .symbol_table
-            .lookup_symbol("issubclass")
-            .unwrap()
-            - NAME_TO_FUNCTION_DIFF;
-        db.python_state.builtins_callable_index = db
-            .python_state
-            .builtins()
-            .symbol_table
-            .lookup_symbol("callable")
-            .unwrap()
-            - NAME_TO_FUNCTION_DIFF;
-        db.python_state.builtins_hasattr_index = db
-            .python_state
-            .builtins()
-            .symbol_table
-            .lookup_symbol("hasattr")
-            .unwrap()
-            - NAME_TO_FUNCTION_DIFF;
-        db.python_state.dataclasses_field_index = db
-            .python_state
-            .dataclasses_file()
-            .symbol_table
-            .lookup_symbol("field")
-            .unwrap()
-            - NAME_TO_FUNCTION_DIFF;
-        db.python_state.dataclasses_replace_index = db
-            .python_state
-            .dataclasses_file()
-            .symbol_table
-            .lookup_symbol("replace")
-            .unwrap()
-            - NAME_TO_FUNCTION_DIFF;
 
-        db.python_state.abc_abstractmethod_index = db
-            .python_state
-            .abc()
-            .symbol_table
-            .lookup_symbol("abstractmethod")
-            .unwrap()
-            - NAME_TO_FUNCTION_DIFF;
+        macro_rules! cache_func_index {
+            ($attr_name:ident, $module_name:ident, $name:literal) => {
+                db.python_state.$attr_name = db
+                    .python_state
+                    .$module_name()
+                    .symbol_table
+                    .lookup_symbol($name)
+                    .unwrap()
+                    - NAME_TO_FUNCTION_DIFF;
+            };
+        }
+        cache_func_index!(builtins_isinstance_index, builtins, "isinstance");
+        cache_func_index!(builtins_issubclass_index, builtins, "issubclass");
+        cache_func_index!(builtins_callable_index, builtins, "callable");
+        cache_func_index!(builtins_hasattr_index, builtins, "hasattr");
 
-        db.python_state.collections_namedtuple_index = db
-            .python_state
-            .collections()
-            .symbol_table
-            .lookup_symbol("namedtuple")
-            .unwrap()
-            - NAME_TO_FUNCTION_DIFF;
+        cache_func_index!(typing_overload_index, typing, "overload");
+        cache_func_index!(typing_override_index, typing, "override");
+        cache_func_index!(typing_final_index, typing, "final");
 
-        db.python_state.typing_overload_index = db
-            .python_state
-            .typing()
-            .symbol_table
-            .lookup_symbol("overload")
-            .unwrap()
-            - NAME_TO_FUNCTION_DIFF;
+        cache_func_index!(dataclasses_field_index, dataclasses_file, "field");
+        cache_func_index!(dataclasses_replace_index, dataclasses_file, "replace");
 
-        db.python_state.typing_override_index = db
-            .python_state
-            .typing()
-            .symbol_table
-            .lookup_symbol("override")
-            .unwrap()
-            - NAME_TO_FUNCTION_DIFF;
+        cache_func_index!(abc_abstractmethod_index, abc, "abstractmethod");
 
-        db.python_state.typing_final_index = db
-            .python_state
-            .typing()
-            .symbol_table
-            .lookup_symbol("final")
-            .unwrap()
-            - NAME_TO_FUNCTION_DIFF;
+        cache_func_index!(collections_namedtuple_index, collections, "namedtuple");
 
         db.python_state.typing_mapping_get_index = db
             .python_state
