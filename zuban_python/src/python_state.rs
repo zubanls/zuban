@@ -333,7 +333,7 @@ impl PythonState {
         // calculated when a class is accessed. Normally this happens on access, but here we access
         // classes randomly via db.python_state. Therefore do the calculation here.
         macro_rules! cache_index {
-            ($attr_name:ident, $db:expr, $module_name:ident, $name:literal) => {
+            ($attr_name:ident, $module_name:ident, $name:literal) => {
                 let class_index = db
                     .python_state
                     .$module_name()
@@ -341,7 +341,7 @@ impl PythonState {
                     .lookup_symbol($name)
                     .unwrap()
                     - NAME_TO_CLASS_DIFF;
-                $db.python_state.$attr_name = class_index;
+                db.python_state.$attr_name = class_index;
                 let module = db.python_state.$module_name();
                 let class = Class::with_undefined_generics(NodeRef::new(module, class_index));
                 class.ensure_calculated_class_infos(
@@ -350,80 +350,67 @@ impl PythonState {
                 );
             };
         }
-        cache_index!(builtins_object_index, db, builtins, "object");
-        cache_index!(builtins_type_index, db, builtins, "type");
-        cache_index!(abc_abc_meta_index, db, abc, "ABCMeta");
-        cache_index!(types_module_type_index, db, types, "ModuleType");
-        cache_index!(enum_enum_meta_index, db, enum_file, "EnumMeta");
-        cache_index!(enum_enum_index, db, enum_file, "Enum");
-        cache_index!(enum_auto_index, db, enum_file, "auto");
-        cache_index!(builtins_list_index, db, builtins, "list");
-        cache_index!(builtins_dict_index, db, builtins, "dict");
-        cache_index!(builtins_set_index, db, builtins, "set");
-        cache_index!(builtins_bool_index, db, builtins, "bool");
-        cache_index!(builtins_int_index, db, builtins, "int");
-        cache_index!(builtins_float_index, db, builtins, "float");
-        cache_index!(builtins_complex_index, db, builtins, "complex");
-        cache_index!(builtins_tuple_index, db, builtins, "tuple");
-        cache_index!(builtins_function_index, db, builtins, "function");
-        cache_index!(builtins_base_exception_index, db, builtins, "BaseException");
-        cache_index!(builtins_exception_index, db, builtins, "Exception");
+        cache_index!(builtins_object_index, builtins, "object");
+        cache_index!(builtins_type_index, builtins, "type");
+        cache_index!(abc_abc_meta_index, abc, "ABCMeta");
+        cache_index!(types_module_type_index, types, "ModuleType");
+        cache_index!(enum_enum_meta_index, enum_file, "EnumMeta");
+        cache_index!(enum_enum_index, enum_file, "Enum");
+        cache_index!(enum_auto_index, enum_file, "auto");
+        cache_index!(builtins_list_index, builtins, "list");
+        cache_index!(builtins_dict_index, builtins, "dict");
+        cache_index!(builtins_set_index, builtins, "set");
+        cache_index!(builtins_bool_index, builtins, "bool");
+        cache_index!(builtins_int_index, builtins, "int");
+        cache_index!(builtins_float_index, builtins, "float");
+        cache_index!(builtins_complex_index, builtins, "complex");
+        cache_index!(builtins_tuple_index, builtins, "tuple");
+        cache_index!(builtins_function_index, builtins, "function");
+        cache_index!(builtins_base_exception_index, builtins, "BaseException");
+        cache_index!(builtins_exception_index, builtins, "Exception");
         cache_index!(
             builtins_base_exception_group_index,
-            db,
             builtins,
             "BaseExceptionGroup"
         );
-        cache_index!(
-            builtins_exception_group_index,
-            db,
-            builtins,
-            "ExceptionGroup"
-        );
-        cache_index!(builtins_str_index, db, builtins, "str");
-        cache_index!(builtins_bytes_index, db, builtins, "bytes");
-        cache_index!(builtins_bytearray_index, db, builtins, "bytearray");
-        cache_index!(builtins_memoryview_index, db, builtins, "memoryview");
-        cache_index!(builtins_slice_index, db, builtins, "slice");
-        cache_index!(builtins_classmethod_index, db, builtins, "classmethod");
-        cache_index!(builtins_staticmethod_index, db, builtins, "staticmethod");
-        cache_index!(builtins_property_index, db, builtins, "property");
+        cache_index!(builtins_exception_group_index, builtins, "ExceptionGroup");
+        cache_index!(builtins_str_index, builtins, "str");
+        cache_index!(builtins_bytes_index, builtins, "bytes");
+        cache_index!(builtins_bytearray_index, builtins, "bytearray");
+        cache_index!(builtins_memoryview_index, builtins, "memoryview");
+        cache_index!(builtins_slice_index, builtins, "slice");
+        cache_index!(builtins_classmethod_index, builtins, "classmethod");
+        cache_index!(builtins_staticmethod_index, builtins, "staticmethod");
+        cache_index!(builtins_property_index, builtins, "property");
         cache_index!(
             typeshed_supports_keys_and_get_item_index,
-            db,
             typeshed,
             "SupportsKeysAndGetItem"
         );
-        cache_index!(typing_namedtuple_index, db, typing, "NamedTuple");
-        cache_index!(typing_type_var, db, typing, "TypeVar");
-        cache_index!(typing_coroutine_index, db, typing, "Coroutine");
-        cache_index!(typing_iterator_index, db, typing, "Iterator");
-        cache_index!(typing_iterable_index, db, typing, "Iterable");
-        cache_index!(typing_generator_index, db, typing, "Generator");
-        cache_index!(typing_async_generator_index, db, typing, "AsyncGenerator");
-        cache_index!(typing_async_iterator_index, db, typing, "AsyncIterator");
-        cache_index!(typing_async_iterable_index, db, typing, "AsyncIterable");
-        cache_index!(typing_supports_index_index, db, typing, "SupportsIndex");
-        cache_index!(typing_typed_dict_index, db, typing, "_TypedDict");
-        cache_index!(typing_mapping_index, db, typing, "Mapping");
-        cache_index!(typing_special_form_index, db, typing, "_SpecialForm");
-        cache_index!(types_none_type_index, db, types, "NoneType");
-        cache_index!(types_ellipsis_type_index, db, types, "EllipsisType");
-        cache_index!(abc_abstractproperty_index, db, abc, "abstractproperty");
+        cache_index!(typing_namedtuple_index, typing, "NamedTuple");
+        cache_index!(typing_type_var, typing, "TypeVar");
+        cache_index!(typing_coroutine_index, typing, "Coroutine");
+        cache_index!(typing_iterator_index, typing, "Iterator");
+        cache_index!(typing_iterable_index, typing, "Iterable");
+        cache_index!(typing_generator_index, typing, "Generator");
+        cache_index!(typing_async_generator_index, typing, "AsyncGenerator");
+        cache_index!(typing_async_iterator_index, typing, "AsyncIterator");
+        cache_index!(typing_async_iterable_index, typing, "AsyncIterable");
+        cache_index!(typing_supports_index_index, typing, "SupportsIndex");
+        cache_index!(typing_typed_dict_index, typing, "_TypedDict");
+        cache_index!(typing_mapping_index, typing, "Mapping");
+        cache_index!(typing_special_form_index, typing, "_SpecialForm");
+        cache_index!(types_none_type_index, types, "NoneType");
+        cache_index!(types_ellipsis_type_index, types, "EllipsisType");
+        cache_index!(abc_abstractproperty_index, abc, "abstractproperty");
         cache_index!(
             functools_cached_property_index,
-            db,
             functools,
             "cached_property"
         );
-        cache_index!(dataclasses_kw_only_index, db, dataclasses_file, "KW_ONLY");
-        cache_index!(dataclasses_init_var_index, db, dataclasses_file, "InitVar");
-        cache_index!(
-            dataclasses_capital_field_index,
-            db,
-            dataclasses_file,
-            "Field"
-        );
+        cache_index!(dataclasses_kw_only_index, dataclasses_file, "KW_ONLY");
+        cache_index!(dataclasses_init_var_index, dataclasses_file, "InitVar");
+        cache_index!(dataclasses_capital_field_index, dataclasses_file, "Field");
 
         macro_rules! cache_func_index {
             ($attr_name:ident, $module_name:ident, $name:literal) => {
