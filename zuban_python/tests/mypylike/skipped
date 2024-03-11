@@ -927,6 +927,7 @@ testIsinstanceAndTypeVarValues*
 testIsinstanceWithUserDefinedTypeAndTypeVarValues
 testIsinstanceWithUserDefinedTypeAndTypeVarValues
 testIsinstanceWithUserDefinedTypeAndTypeVarValues2
+testTypeCheckOverloadImplementationTypeVarWithValueRestriction
 
 # - Overload does not consistently use the "@classmethod" decorator on all function signatures
 # - Overload does not consistently use the "@staticmethod" decorator on all function signatures
@@ -1067,13 +1068,10 @@ testWithStmtScopeComplexAssignments
 testWithStmtScopeAndClass
 testWithStmtScopeAndLambda
 
-# reachability todo
-testVariableInBlock
-# isinstance
+# isinstance error conditions
 testLiteralErrorsWithIsInstanceAndIsSubclass
 # isinstance narrowing
 testUnionGenericWithBoundedVariable
-testTypeCheckOverloadImplementationTypeVarWithValueRestriction
 testTypeCheckOverloadImplementationTypeVarDifferingUsage1
 testIntersectionUsingPromotion1
 testIntersectionUsingPromotion2
@@ -1083,29 +1081,15 @@ testIntersectionUsingPromotion5
 testIntersectionUsingPromotion6
 testIntersectionUsingPromotion7
 testIntersectionUsingPromotion8
-testCorrectIsinstanceWithForwardUnion
-testNewTypeWithIsInstanceAndIsSubclass
 testNarrowingDownNamedTupleUnion
-testRecursiveAliasViaNamedTuple
-testSimpleIsinstance
-testSimpleIsinstance2
-testSimpleIsinstance3
-testMultipleIsinstanceTests
-testMultipleIsinstanceTests2
-testIsinstanceAndElif
-testIsinstanceAndAnyType
-testIsinstanceAndGenericType
 testTupleMeetTupleAny
 testTupleMeetTupleAnyComplex
 testTupleMeetTupleAnyAfter
-testNamedTupleSubclassMulti
 testNarrowSelfType
 testRuntimeIterableProtocolCheck
-testColumnsSimpleIsinstance
 testTypeshedRecursiveTypesExample
 testTypedDictIsInstance
 testTypedDictIsInstanceABCs
-testRedundantCastWithIsinstance
 # isinstance in lambda
 testIsinstanceInInferredLambda
 # isinstance Intersection types
@@ -1117,6 +1101,7 @@ testIsInstanceAdHocIntersectionFineGrainedIncrementalUnreachaableToIntersection
 testIsInstanceAdHocIntersectionWithStrAndBytes
 testConcreteClassesInProtocolsIsInstance
 testConcreteClassesUnionInProtocolsIsInstance
+testNewTypeWithIsInstanceAndIsSubclass
 # issubclass narrowing
 testIsInstanceTypeIsSubclass
 testIsInstanceTypeTypeVar
@@ -1126,7 +1111,6 @@ testOnlyMethodProtocolUsableWithIsSubclass
 # "Cannot use isinstance() with TypedDict type"
 testTypedDictWithIsInstanceAndIsSubclass
 # isinstance & union
-testUnion1
 testUnion2
 testUnion3
 testUnionAnyIsInstance
@@ -1137,7 +1121,6 @@ testParamSpecLiteralJoin
 testUnionOrSyntaxInIsinstance
 testUnionOrSyntaxInIsinstanceNotSupported
 # --enable-recursive-aliases & isinstance
-testRecursiveAliasBasic
 testRecursiveAliasesRestrictions
 testRecursiveAliasesRestrictions2
 testRecursiveAliasBasicGenericInference

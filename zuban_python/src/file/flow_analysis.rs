@@ -575,14 +575,21 @@ impl Inference<'_, '_, '_> {
         let result = self.infer_named_expr_with_key(arg);
         let key = result.key?;
         let t = self.isinstance_or_issubclass_type(iterator.next()?)?;
-        todo!()
+        if iterator.next().is_some() {
+            return None;
+        }
+        Some((Frame::from_type(key, t), Frame::default()))
     }
 
     fn isinstance_or_issubclass_type(&mut self, arg: Argument) -> Option<Type> {
         let Argument::Positional(arg) = arg else {
             return None
         };
-        None
+        let expr = match arg.unpack() {
+            NamedExpressionContent::Expression(expr) => expr,
+            NamedExpressionContent::Definition(_, _) => todo!(),
+        };
+        self.compute_isinstance_target(arg).ok()
     }
 
     fn find_comparison_guards(
