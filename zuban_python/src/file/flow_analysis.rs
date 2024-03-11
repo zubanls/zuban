@@ -416,17 +416,15 @@ impl Inference<'_, '_, '_> {
                             // `foo == bar == None` needs special handling
                             while let Some(ComparisonContent::Equals(_, _, r)) = iterator.peek() {
                                 if eq_chain.is_empty() {
-                                    eq_chain.push(
-                                        self.new_comparison_part(
-                                            left_inf.clone(),
-                                            comparison.left(),
-                                        ),
-                                    );
+                                    eq_chain.push(self.new_inferred_with_key(
+                                        left_inf.clone(),
+                                        comparison.left(),
+                                    ));
                                     eq_chain
-                                        .push(self.new_comparison_part(right_inf.clone(), right));
+                                        .push(self.new_inferred_with_key(right_inf.clone(), right));
                                 }
                                 let new_inf = self.infer_expression_part(*r);
-                                eq_chain.push(self.new_comparison_part(new_inf, *r));
+                                eq_chain.push(self.new_inferred_with_key(new_inf, *r));
                                 iterator.next();
                             }
                             if !eq_chain.is_empty() {
@@ -443,17 +441,15 @@ impl Inference<'_, '_, '_> {
                             // `foo is bar is None` needs special handling
                             while let Some(ComparisonContent::Is(_, _, r)) = iterator.peek() {
                                 if is_chain.is_empty() {
-                                    is_chain.push(
-                                        self.new_comparison_part(
-                                            left_inf.clone(),
-                                            comparison.left(),
-                                        ),
-                                    );
+                                    is_chain.push(self.new_inferred_with_key(
+                                        left_inf.clone(),
+                                        comparison.left(),
+                                    ));
                                     is_chain
-                                        .push(self.new_comparison_part(right_inf.clone(), right));
+                                        .push(self.new_inferred_with_key(right_inf.clone(), right));
                                 }
                                 let new_inf = self.infer_expression_part(*r);
-                                is_chain.push(self.new_comparison_part(new_inf, *r));
+                                is_chain.push(self.new_inferred_with_key(new_inf, *r));
                                 iterator.next();
                             }
                             if !is_chain.is_empty() {
@@ -483,7 +479,7 @@ impl Inference<'_, '_, '_> {
                             continue;
                         }
                     };
-                    let left_infos = self.new_comparison_part(left_inf, comparison.left());
+                    let left_infos = self.new_inferred_with_key(left_inf, comparison.left());
                     if let Some(mut new) =
                         self.find_comparison_guards(left_infos, &right_inf, right)
                     {
@@ -551,8 +547,12 @@ impl Inference<'_, '_, '_> {
         (Frame::default(), Frame::default())
     }
 
-    fn new_comparison_part<'a>(&mut self, inf: Inferred, part: ExpressionPart) -> ComparisonPart {
-        ComparisonPart {
+    fn new_inferred_with_key<'a>(
+        &mut self,
+        inf: Inferred,
+        part: ExpressionPart,
+    ) -> InferredWithKey {
+        InferredWithKey {
             inf,
             key: self.key_from_expr_part(part),
         }
@@ -560,7 +560,7 @@ impl Inference<'_, '_, '_> {
 
     fn find_comparison_guards(
         &mut self,
-        left: ComparisonPart,
+        left: InferredWithKey,
         right_inf: &Inferred,
         right: ExpressionPart,
     ) -> Option<(Frame, Frame)> {
@@ -589,7 +589,10 @@ impl Inference<'_, '_, '_> {
         None
     }
 
-    fn find_comparison_chain_guards(&mut self, chain: &[ComparisonPart]) -> Option<(Frame, Frame)> {
+    fn find_comparison_chain_guards(
+        &mut self,
+        chain: &[InferredWithKey],
+    ) -> Option<(Frame, Frame)> {
         let mut frames = None;
         'outer: for (i, part1) in chain.iter().enumerate() {
             for (k, part2) in chain.iter().enumerate() {
@@ -662,7 +665,7 @@ impl Inference<'_, '_, '_> {
     }
 }
 
-struct ComparisonPart {
+struct InferredWithKey {
     key: Option<FlowKey>,
     inf: Inferred,
 }
