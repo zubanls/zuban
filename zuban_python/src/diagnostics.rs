@@ -173,6 +173,7 @@ pub(crate) enum IssueType {
     TypeVarTupleCannotBeSplit,
 
     InvalidAssertType { actual: Box<str>, wanted: Box<str> },
+    AssertionAlwaysTrueBecauseOfParentheses,
 
     SuperUsedOutsideClass,
     SuperWithSingleArgumentNotSupported,
@@ -1020,6 +1021,7 @@ impl<'db> Diagnostic<'db> {
             InvalidAssertType { actual, wanted } => format!(
                 r#"Expression is of type "{actual}", not "{wanted}""#
             ),
+            AssertionAlwaysTrueBecauseOfParentheses => "Assertion is always true, perhaps remove parentheses?".to_string(),
 
             SuperUsedOutsideClass => "\"super\" used outside class".to_string(),
             SuperWithSingleArgumentNotSupported => "\"super\" with a single argument not supported".to_string(),
