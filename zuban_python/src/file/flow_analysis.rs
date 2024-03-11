@@ -533,13 +533,19 @@ impl Inference<'_, '_, '_> {
                         let first = self.infer_primary_or_atom(primary.first());
                         if let Some(saved) = first.maybe_saved_link() {
                             if saved == self.i_s.db.python_state.isinstance_node_ref().as_link() {
-                                if let Some(frames) = self.find_isinstance_frames(args) {
+                                if let Some(frames) =
+                                    self.find_isinstance_or_issubclass_frames(args, false)
+                                {
                                     return frames;
                                 }
                             } else if saved
                                 == self.i_s.db.python_state.issubclass_node_ref().as_link()
                             {
-                                debug!("TODO issubclass narrowing")
+                                if let Some(frames) =
+                                    self.find_isinstance_or_issubclass_frames(args, true)
+                                {
+                                    return frames;
+                                }
                             } else if saved
                                 == self.i_s.db.python_state.callable_node_ref().as_link()
                             {
@@ -580,16 +586,23 @@ impl Inference<'_, '_, '_> {
         }
     }
 
-    fn find_isinstance_frames(&mut self, args: Arguments) -> Option<(Frame, Frame)> {
+    fn find_isinstance_or_issubclass_frames(
+        &mut self,
+        args: Arguments,
+        issubclass: bool,
+    ) -> Option<(Frame, Frame)> {
         let mut iterator = args.iter();
         let Argument::Positional(arg) = iterator.next()? else {
             return None
         };
         let result = self.infer_named_expr_with_key(arg);
         let key = result.key?;
-        let t = self.isinstance_or_issubclass_type(iterator.next()?)?;
+        let mut t = self.isinstance_or_issubclass_type(iterator.next()?)?;
         if iterator.next().is_some() {
             return None;
+        }
+        if issubclass && !matches!(t, Type::Never) {
+            t = Type::Type(Rc::new(t))
         }
         Some((Frame::from_type(key, t), Frame::default()))
     }
