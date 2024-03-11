@@ -68,7 +68,7 @@ pub struct PythonFile {
     pub points: Points,
     pub complex_points: ComplexValues,
     file_index: Cell<Option<FileIndex>>,
-    issues: Diagnostics,
+    pub issues: Diagnostics,
     pub star_imports: RefCell<Vec<StarImport>>,
     sub_files: RefCell<HashMap<CodeIndex, FileIndex>>,
     pub(crate) super_file: Option<FileIndex>,

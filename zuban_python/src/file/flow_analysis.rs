@@ -9,7 +9,7 @@ use parsa_python_ast::{
 use crate::{
     database::{Database, PointLink, PointType},
     debug,
-    diagnostics::IssueType,
+    diagnostics::{Issue, IssueType},
     inference_state::InferenceState,
     inferred::Inferred,
     matching::ResultContext,
@@ -315,9 +315,27 @@ impl Inference<'_, '_, '_> {
         match if_blocks.next() {
             Some(IfBlockType::If(if_expr, block)) => {
                 let (true_frame, false_frame) = self.find_guards_in_named_expr(if_expr);
+
+                let add_unreachable_error = |positions| {
+                    if self.i_s.db.project.flags.warn_unreachable {
+                        let (start_position, end_position) = positions;
+                        self.file.add_issue(
+                            self.i_s,
+                            Issue {
+                                type_: IssueType::UnreachableStatement,
+                                start_position,
+                                end_position,
+                            },
+                        )
+                    }
+                };
                 if true_frame.unreachable {
-                    //self.add_issue(block.index(), IssueType::UnreachableStatement)
+                    add_unreachable_error(block.statements_start_and_end())
                 }
+                if false_frame.unreachable {
+                    add_unreachable_error(if_blocks.next_block_start_and_last_block_end())
+                }
+
                 FLOW_ANALYSIS.with(|fa| {
                     let true_frame = fa.with_frame(self.i_s.db, true_frame, || {
                         self.calc_block_diagnostics(block, class, func)

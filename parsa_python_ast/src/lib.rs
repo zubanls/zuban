@@ -1018,6 +1018,16 @@ impl<'db> Iterator for TargetIterator<'db> {
 }
 
 impl<'db> Block<'db> {
+    pub fn statements_start_and_end(&self) -> (NodeIndex, NodeIndex) {
+        match self.unpack() {
+            BlockContent::Indented(stmts) => (
+                stmts.clone().next().unwrap().start(),
+                stmts.last().unwrap().end(),
+            ),
+            BlockContent::OneLine(s) => (s.start(), s.end()),
+        }
+    }
+
     pub fn unpack(&self) -> BlockContent<'db> {
         // simple_stmts | Newline Indent stmt+ Dedent
         let mut iterator = self.node.iter_children();
@@ -1082,11 +1092,28 @@ impl<'db> Iterator for RelevantUntypedNodes<'db> {
     }
 }
 
+#[derive(Clone)]
 pub struct StmtIterator<'db>(SiblingIterator<'db>);
 
 pub enum StmtOrError<'db> {
     Stmt(Stmt<'db>),
     Error(NodeIndex),
+}
+
+impl<'db> StmtOrError<'db> {
+    fn start(&self) -> NodeIndex {
+        match self {
+            Self::Stmt(stmt_) => stmt_.start(),
+            Self::Error(_) => todo!(),
+        }
+    }
+
+    fn end(&self) -> NodeIndex {
+        match self {
+            Self::Stmt(stmt_) => stmt_.end(),
+            Self::Error(_) => todo!(),
+        }
+    }
 }
 
 impl<'db> Iterator for StmtIterator<'db> {
@@ -1188,6 +1215,15 @@ pub enum IfBlockType<'db> {
 }
 
 pub struct IfBlockIterator<'db>(SiblingIterator<'db>);
+
+impl<'db> IfBlockIterator<'db> {
+    pub fn next_block_start_and_last_block_end(&self) -> (NodeIndex, NodeIndex) {
+        (
+            self.0.clone().next().unwrap().start(),
+            self.0.clone().last().unwrap().end(),
+        )
+    }
+}
 
 impl<'db> Iterator for IfBlockIterator<'db> {
     type Item = IfBlockType<'db>;
