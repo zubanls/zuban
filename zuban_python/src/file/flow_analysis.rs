@@ -428,6 +428,7 @@ impl Inference<'_, '_, '_> {
                             }
                             if !eq_chain.is_empty() {
                                 todo!();
+                                left_inf = eq_chain.into_iter().last().unwrap().inf;
                                 continue 'outer;
                             }
                         }
@@ -453,9 +454,10 @@ impl Inference<'_, '_, '_> {
                                 iterator.next();
                             }
                             if !is_chain.is_empty() {
-                                if let Some(new) = self.find_comparison_chain_guards(is_chain) {
+                                if let Some(new) = self.find_comparison_chain_guards(&is_chain) {
                                     frames = Some(merge_conjunction(self.i_s, frames, new));
                                 }
+                                left_inf = is_chain.into_iter().last().unwrap().inf;
                                 continue 'outer;
                             }
                         }
@@ -474,6 +476,7 @@ impl Inference<'_, '_, '_> {
                         }
                         ComparisonContent::Operation(..) => {
                             self.infer_comparison_part(comparison, left_inf.clone(), &right_inf);
+                            left_inf = right_inf;
                             continue;
                         }
                     };
@@ -484,7 +487,7 @@ impl Inference<'_, '_, '_> {
                         if invert {
                             new = (new.1, new.0)
                         }
-                        frames = Some(merge_conjunction(self.i_s, frames, new))
+                        frames = Some(merge_conjunction(self.i_s, frames, new));
                     }
                     left_inf = right_inf
                 }
@@ -561,10 +564,7 @@ impl Inference<'_, '_, '_> {
         None
     }
 
-    fn find_comparison_chain_guards(
-        &mut self,
-        chain: Vec<ComparisonPart>,
-    ) -> Option<(Frame, Frame)> {
+    fn find_comparison_chain_guards(&mut self, chain: &[ComparisonPart]) -> Option<(Frame, Frame)> {
         let mut frames = None;
         'outer: for (i, part1) in chain.iter().enumerate() {
             for (k, part2) in chain.iter().enumerate() {
