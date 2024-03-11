@@ -602,7 +602,43 @@ impl Inference<'_, '_, '_> {
             NamedExpressionContent::Expression(expr) => expr,
             NamedExpressionContent::Definition(_, _) => todo!(),
         };
-        self.compute_isinstance_target(arg).ok()
+
+        // One might think that we could just use type computation here for isinstance types. This
+        // is however not really working, because the types can also be inferred like
+        //
+        //     isinstance(foo, type(bar))
+
+        match expr.unpack() {
+            ExpressionContent::ExpressionPart(part) => {
+                self.isinstance_or_issubclass_type_for_expr_part(part)
+            }
+            _ => None,
+        }
+    }
+
+    fn isinstance_or_issubclass_type_for_expr_part(
+        &mut self,
+        part: ExpressionPart,
+    ) -> Option<Type> {
+        match part {
+            ExpressionPart::Disjunction(disjunction) => {
+                let (first, second) = disjunction.unpack();
+                let t1 = self.isinstance_or_issubclass_type_for_expr_part(first)?;
+                let t2 = self.isinstance_or_issubclass_type_for_expr_part(second)?;
+                //Some(t1.union(self.i_s.db, t2))
+                todo!()
+            }
+            _ => {
+                match self
+                    .infer_expression_part(part)
+                    .as_cow_type(self.i_s)
+                    .as_ref()
+                {
+                    Type::Type(t) => Some((**t).clone()),
+                    _ => None,
+                }
+            }
+        }
     }
 
     fn find_comparison_guards(

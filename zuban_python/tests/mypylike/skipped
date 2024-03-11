@@ -1071,6 +1071,7 @@ testWithStmtScopeAndLambda
 # isinstance error conditions
 testLiteralErrorsWithIsInstanceAndIsSubclass
 # isinstance narrowing
+testIsinstanceAndGenericType
 testUnionGenericWithBoundedVariable
 testTypeCheckOverloadImplementationTypeVarDifferingUsage1
 testIntersectionUsingPromotion1

@@ -3905,28 +3905,6 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         Ok(Inferred::from_type(type_))
     }
 
-    pub fn compute_isinstance_target(&mut self, named_expr: NamedExpression) -> Result<Type, ()> {
-        let mut x = type_computation_for_variable_annotation;
-        let node_ref = NodeRef::new(self.file, named_expr.index());
-        let mut comp = TypeComputation::new(
-            self,
-            node_ref.as_link(),
-            &mut x,
-            // TODO this is not a CastTarget
-            TypeComputationOrigin::CastTarget,
-        );
-
-        let t = comp.compute_type(named_expr.expression());
-        let Some(mut type_) = comp.as_type_or_error(t, node_ref) else {
-            return Err(())
-        };
-        let type_vars = comp.into_type_vars(|inf, recalculate_type_vars| {
-            type_ = recalculate_type_vars(&type_);
-        });
-        debug_assert!(type_vars.is_empty());
-        Ok(type_)
-    }
-
     pub fn compute_class_typed_dict_member(
         &mut self,
         name: StringSlice,
