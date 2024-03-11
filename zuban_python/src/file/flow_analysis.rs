@@ -518,7 +518,29 @@ impl Inference<'_, '_, '_> {
                     self.find_guards_in_expression_parts(inv.expression());
                 return (false_entries, true_entries);
             }
-            ExpressionPart::Primary(_) => {
+            ExpressionPart::Primary(primary) => {
+                match primary.second() {
+                    PrimaryContent::Execution(execution) => {
+                        let first = self.infer_primary_or_atom(primary.first());
+                        if let Some(saved) = first.maybe_saved_link() {
+                            if saved == self.i_s.db.python_state.isinstance_node_ref().as_link() {
+                                debug!("TODO isisinstance narrowing")
+                            } else if saved
+                                == self.i_s.db.python_state.issubclass_node_ref().as_link()
+                            {
+                                debug!("TODO issubclass narrowing")
+                            } else if saved
+                                == self.i_s.db.python_state.callable_node_ref().as_link()
+                            {
+                                debug!("TODO callable narrowing")
+                            } else if saved == self.i_s.db.python_state.hasattr_node_ref().as_link()
+                            {
+                                debug!("TODO hasattr narrowing")
+                            }
+                        }
+                    }
+                    _ => (),
+                }
                 self.infer_expression_part(part);
                 debug!("TODO primary guard")
             }

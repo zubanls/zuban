@@ -91,6 +91,10 @@ pub struct PythonState {
     builtins_classmethod_index: NodeIndex,
     builtins_staticmethod_index: NodeIndex,
     builtins_property_index: NodeIndex,
+    builtins_isinstance_index: NodeIndex,
+    builtins_issubclass_index: NodeIndex,
+    builtins_callable_index: NodeIndex,
+    builtins_hasattr_index: NodeIndex,
     pub builtins_int_mro: Box<[BaseClass]>,
     pub builtins_bool_mro: Box<[BaseClass]>,
     pub builtins_str_mro: Box<[BaseClass]>,
@@ -188,6 +192,10 @@ impl PythonState {
             builtins_classmethod_index: 0,
             builtins_staticmethod_index: 0,
             builtins_property_index: 0,
+            builtins_isinstance_index: 0,
+            builtins_issubclass_index: 0,
+            builtins_callable_index: 0,
+            builtins_hasattr_index: 0,
             builtins_int_mro: Box::new([]),   // will be set later
             builtins_bool_mro: Box::new([]),  // will be set later
             builtins_str_mro: Box::new([]),   // will be set later
@@ -416,6 +424,34 @@ impl PythonState {
             dataclasses_file,
             "Field"
         );
+        db.python_state.builtins_isinstance_index = db
+            .python_state
+            .builtins()
+            .symbol_table
+            .lookup_symbol("isinstance")
+            .unwrap()
+            - NAME_TO_FUNCTION_DIFF;
+        db.python_state.builtins_issubclass_index = db
+            .python_state
+            .builtins()
+            .symbol_table
+            .lookup_symbol("issubclass")
+            .unwrap()
+            - NAME_TO_FUNCTION_DIFF;
+        db.python_state.builtins_callable_index = db
+            .python_state
+            .builtins()
+            .symbol_table
+            .lookup_symbol("callable")
+            .unwrap()
+            - NAME_TO_FUNCTION_DIFF;
+        db.python_state.builtins_hasattr_index = db
+            .python_state
+            .builtins()
+            .symbol_table
+            .lookup_symbol("hasattr")
+            .unwrap()
+            - NAME_TO_FUNCTION_DIFF;
         db.python_state.dataclasses_field_index = db
             .python_state
             .dataclasses_file()
@@ -647,6 +683,10 @@ impl PythonState {
     attribute_node_ref!(builtins, pub classmethod_node_ref, builtins_classmethod_index);
     attribute_node_ref!(builtins, pub staticmethod_node_ref, builtins_staticmethod_index);
     attribute_node_ref!(builtins, pub property_node_ref, builtins_property_index);
+    attribute_node_ref!(builtins, pub isinstance_node_ref, builtins_isinstance_index);
+    attribute_node_ref!(builtins, pub issubclass_node_ref, builtins_issubclass_index);
+    attribute_node_ref!(builtins, pub callable_node_ref, builtins_callable_index);
+    attribute_node_ref!(builtins, pub hasattr_node_ref, builtins_hasattr_index);
     attribute_node_ref!(builtins, pub function_node_ref, builtins_function_index);
     attribute_node_ref!(
         builtins,
