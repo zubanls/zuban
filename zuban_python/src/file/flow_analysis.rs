@@ -300,6 +300,19 @@ fn split_truthy_and_falsey(db: &Database, t: &Type) -> Option<(Type, Type)> {
 }
 
 impl Inference<'_, '_, '_> {
+    pub fn flow_analysis_for_assert(&mut self, expr: Expression) {
+        let (true_frame, _) = self.find_guards_in_expr(expr);
+        FLOW_ANALYSIS.with(|fa| {
+            let mut frames = fa.frames.borrow_mut();
+            let new_frame = merge_and(
+                self.i_s,
+                std::mem::take(frames.last_mut().unwrap()),
+                true_frame,
+            );
+            *frames.last_mut().unwrap() = new_frame;
+        })
+    }
+
     pub fn flow_analysis_for_if_stmt(
         &mut self,
         if_stmt: IfStmt,

@@ -229,7 +229,7 @@ impl<'db> Inference<'db, '_, '_> {
                 SimpleStmtContent::NonlocalStmt(x) => {}
                 SimpleStmtContent::AssertStmt(assert_stmt) => {
                     let (expr, message_expr) = assert_stmt.unpack();
-                    self.infer_expression(expr);
+                    self.flow_analysis_for_assert(expr);
                     if let Some(message_expr) = message_expr {
                         self.infer_expression(message_expr);
                     }
