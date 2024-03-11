@@ -256,10 +256,10 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         for stmt_or_error in stmts {
             let stmt = match stmt_or_error {
                 StmtOrError::Stmt(stmt) => stmt,
-                StmtOrError::Error(node_index) => {
+                StmtOrError::Error(error) => {
                     if !last_was_an_error {
                         last_was_an_error = true;
-                        self.add_issue(node_index, IssueType::InvalidSyntax);
+                        self.add_issue(error.index(), IssueType::InvalidSyntax);
                     }
                     continue;
                 }

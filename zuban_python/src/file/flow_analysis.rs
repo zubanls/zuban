@@ -333,7 +333,10 @@ impl Inference<'_, '_, '_> {
                     add_unreachable_error(block.statements_start_and_end())
                 }
                 if false_frame.unreachable {
-                    add_unreachable_error(if_blocks.next_block_start_and_last_block_end())
+                    // If the if has no else or elif, nothing is "unreachable"
+                    if let Some(start_and_end) = if_blocks.next_block_start_and_last_block_end() {
+                        add_unreachable_error(start_and_end)
+                    }
                 }
 
                 FLOW_ANALYSIS.with(|fa| {

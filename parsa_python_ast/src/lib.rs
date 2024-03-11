@@ -1097,21 +1097,21 @@ pub struct StmtIterator<'db>(SiblingIterator<'db>);
 
 pub enum StmtOrError<'db> {
     Stmt(Stmt<'db>),
-    Error(NodeIndex),
+    Error(Error<'db>),
 }
 
 impl<'db> StmtOrError<'db> {
     fn start(&self) -> NodeIndex {
         match self {
             Self::Stmt(stmt_) => stmt_.start(),
-            Self::Error(_) => todo!(),
+            Self::Error(error) => error.start(),
         }
     }
 
     fn end(&self) -> NodeIndex {
         match self {
             Self::Stmt(stmt_) => stmt_.end(),
-            Self::Error(_) => todo!(),
+            Self::Error(error) => error.end(),
         }
     }
 }
@@ -1124,7 +1124,7 @@ impl<'db> Iterator for StmtIterator<'db> {
             if n.is_type(Nonterminal(stmt)) {
                 Some(Self::Item::Stmt(Stmt::new(n)))
             } else if n.is_error_recovery_node() {
-                Some(StmtOrError::Error(n.index))
+                Some(StmtOrError::Error(Error::new(n)))
             } else {
                 debug_assert!(
                     n.is_type(Terminal(TerminalType::Dedent))
@@ -1217,11 +1217,8 @@ pub enum IfBlockType<'db> {
 pub struct IfBlockIterator<'db>(SiblingIterator<'db>);
 
 impl<'db> IfBlockIterator<'db> {
-    pub fn next_block_start_and_last_block_end(&self) -> (NodeIndex, NodeIndex) {
-        (
-            self.0.clone().next().unwrap().start(),
-            self.0.clone().last().unwrap().end(),
-        )
+    pub fn next_block_start_and_last_block_end(&self) -> Option<(NodeIndex, NodeIndex)> {
+        Some((self.0.clone().next()?.start(), self.0.clone().last()?.end()))
     }
 }
 
@@ -3691,5 +3688,35 @@ impl<'db> NameOrKeywordLookup<'db> {
             PyNodeType::ErrorKeyword | PyNodeType::Keyword => Self::Keyword(Keyword::new(left)),
             Nonterminal(_) | ErrorNonterminal(_) => unreachable!("{}", left.type_str()),
         }
+    }
+}
+
+pub struct Error<'db> {
+    node: PyNode<'db>,
+}
+
+impl<'db> Error<'db> {
+    #[inline]
+    pub fn new(node: PyNode<'db>) -> Self {
+        Self { node }
+    }
+
+    #[inline]
+    pub fn index(&self) -> NodeIndex {
+        self.node.index
+    }
+
+    #[inline]
+    pub fn start(&self) -> CodeIndex {
+        self.node.start()
+    }
+
+    #[inline]
+    pub fn end(&self) -> CodeIndex {
+        self.node.end()
+    }
+
+    pub fn as_code(&self) -> &'db str {
+        self.node.as_code()
     }
 }
