@@ -1137,7 +1137,7 @@ impl Type {
         i_s: &InferenceState,
         value: &Inferred,
         add_issue: impl Fn(IssueType),
-        on_error: impl Fn(Box<str>, Box<str>) -> Option<IssueType>,
+        mut on_error: impl FnMut(Box<str>, Box<str>) -> Option<IssueType>,
     ) {
         self.error_if_not_matches_with_matcher(
             i_s,
@@ -1155,7 +1155,7 @@ impl Type {
         value: &Inferred,
         //callback: Option<impl FnOnce(Box<str>, Box<str>, &MismatchReason) -> NodeRef<'x>>,
         add_issue: impl Fn(IssueType),
-        on_error: impl FnOnce(Box<str>, Box<str>, &MismatchReason) -> Option<IssueType>,
+        mut on_error: impl FnMut(Box<str>, Box<str>, &MismatchReason) -> Option<IssueType>,
     ) {
         let value_type = value.as_cow_type(i_s);
         let matches = self.is_super_type_of(i_s, matcher, &value_type);

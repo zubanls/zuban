@@ -894,14 +894,19 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 if let Some(first_index) = first_defined_name(self.file, current_index) {
                     if current_index != first_index {
                         let inferred = self.infer_name_by_index(first_index);
+                        let mut had_error = false;
                         inferred.as_cow_type(i_s).error_if_not_matches(
                             i_s,
                             value,
                             |issue| from.add_issue(i_s, issue),
                             |got, expected| {
+                                had_error = true;
                                 Some(IssueType::IncompatibleAssignment { got, expected })
                             },
                         );
+                        if !had_error {
+                            self.flow_analysis_for_target(first_index, &value.as_cow_type(i_s));
+                        }
                         return;
                     }
                 }
@@ -2622,7 +2627,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         &mut self,
         result_context: &mut ResultContext,
         class: NodeRef,
-        on_mismatch: impl FnOnce(Box<str>, Box<str>) -> IssueType,
+        mut on_mismatch: impl FnMut(Box<str>, Box<str>) -> IssueType,
         comp: Comprehension,
     ) -> Type {
         let i_s = self.i_s;

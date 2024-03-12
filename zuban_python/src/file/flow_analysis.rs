@@ -3,7 +3,7 @@ use std::{cell::RefCell, rc::Rc};
 use parsa_python_ast::{
     Argument, Arguments, ArgumentsDetails, Atom, AtomContent, ComparisonContent, Expression,
     ExpressionContent, ExpressionPart, IfBlockIterator, IfBlockType, IfStmt, NamedExpression,
-    NamedExpressionContent, Primary, PrimaryContent, PrimaryOrAtom, SliceType,
+    NamedExpressionContent, NodeIndex, Primary, PrimaryContent, PrimaryOrAtom, SliceType,
 };
 
 use crate::{
@@ -371,6 +371,17 @@ impl Inference<'_, '_, '_> {
                 true_frame,
             );
             *frames.last_mut().unwrap() = new_frame;
+        })
+    }
+
+    pub fn flow_analysis_for_target(&mut self, first_name_index: NodeIndex, t: &Type) {
+        let key = FlowKey::Name(PointLink::new(self.file_index, first_name_index));
+        FLOW_ANALYSIS.with(|fa| {
+            fa.overwrite_entry(Entry {
+                key,
+                type_: t.clone(),
+                from_assignment: true,
+            })
         })
     }
 
