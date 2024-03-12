@@ -1087,7 +1087,6 @@ testOnlyMethodProtocolUsableWithIsSubclass
 # "Cannot use isinstance() with TypedDict type"
 testTypedDictWithIsInstanceAndIsSubclass
 # isinstance & union
-testGenericTypeAliasesUnion
 testParamSpecLiteralJoin
 testUnionOrSyntaxInIsinstance
 testUnionOrSyntaxInIsinstanceNotSupported
