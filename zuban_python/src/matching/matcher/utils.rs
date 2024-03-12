@@ -404,17 +404,21 @@ fn calculate_type_vars<'db: 'a, 'a>(
                         .is_sub_type_of(i_s, &mut matcher, expected)
                         .bool()
                     {
-                        for calc in matcher.iter_calculating() {
-                            // Make sure that the fallback is never used from a context.
-                            if calc.type_.has_any(i_s) || !calc.calculated() {
-                                calc.type_ = Bound::default()
-                            } else {
-                                calc.defined_by_result_context = true;
+                        for tv_matcher in &mut matcher.type_var_matchers {
+                            for calc in tv_matcher.calculating_type_args.iter_mut() {
+                                // Make sure that the fallback is never used from a context.
+                                if calc.type_.has_any(i_s) || !calc.calculated() {
+                                    calc.type_ = Bound::default()
+                                } else {
+                                    calc.defined_by_result_context = true;
+                                }
                             }
                         }
                     } else {
-                        for calc in matcher.iter_calculating() {
-                            calc.type_ = Bound::default()
+                        for tv_matcher in &mut matcher.type_var_matchers {
+                            for calc in tv_matcher.calculating_type_args.iter_mut() {
+                                calc.type_ = Bound::default()
+                            }
                         }
                         add_init_generics(&mut matcher, return_class)
                     }
@@ -423,12 +427,14 @@ fn calculate_type_vars<'db: 'a, 'a>(
                 let return_type = func_or_callable.return_type(i_s);
                 // Fill the type var arguments from context
                 return_type.is_sub_type_of(i_s, &mut matcher, expected);
-                for calc in matcher.iter_calculating() {
-                    // Make sure that the fallback is never used from a context.
-                    if calc.type_.has_any(i_s) || !calc.calculated() {
-                        calc.type_ = Bound::default()
-                    } else {
-                        calc.defined_by_result_context = true;
+                for tv_matcher in &mut matcher.type_var_matchers {
+                    for calc in tv_matcher.calculating_type_args.iter_mut() {
+                        // Make sure that the fallback is never used from a context.
+                        if calc.type_.has_any(i_s) || !calc.calculated() {
+                            calc.type_ = Bound::default()
+                        } else {
+                            calc.defined_by_result_context = true;
+                        }
                     }
                 }
             }

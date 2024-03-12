@@ -815,14 +815,6 @@ impl<'a> Matcher<'a> {
         MatcherFormatResult::Str(usage.format_without_matcher(format_data.db, params_style))
     }
 
-    fn iter_calculating(&mut self) -> std::slice::IterMut<CalculatingTypeArg> {
-        if let Some(type_var_matcher) = self.type_var_matchers.first_mut() {
-            type_var_matcher.calculating_type_args.iter_mut()
-        } else {
-            unreachable!()
-        }
-    }
-
     pub fn remove_self_from_callable(
         self,
         i_s: &InferenceState,
