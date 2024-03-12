@@ -426,26 +426,6 @@ testTypedDictWith__or__method_error
 testTypedDictWith__ror__method
 testTypedDictWith__ior__method
 
-# NoReturn
-testNoReturnTypeAlias
-testUnionWithNoReturn
-testOverloadsAndNoReturnNarrowWhenBlacklistingSubtype
-testOverloadsAndNoReturnNarrowWhenBlacklistingSubtype2
-testDontNeedAnnotationForCallable
-testLiteralCheckSubtypingStrictOptional
-testLiteralCheckSubtypingNoStrictOptional
-testNewAndInitNoReturn
-testOverloadedNewAndInitNoReturn
-testNoReturnImportFromTyping
-# --warn-no-return
-testNoReturnDisallowsReturn
-testNoReturnDisallowsImplicitReturn
-testNoReturnImplicitReturnCheckInDeferredNode
-testNoReturnInExpr
-testNoReturnAsync
-# --no-warn-no-return
-testNoWarnNoReturn
-
 # typing.no_type_check
 testNoTypeCheckDecoratorOnMethod1
 testNoTypeCheckDecoratorOnMethod2
@@ -1122,6 +1102,11 @@ testRecursiveAliasTuple
 testOptionalAssignAny1
 testOptionalAssignAny2
 testOptionalAssignAny3
+testNewAnalyzerBuiltinAliasesFixed
+testInferredTypeIsSimpleNestedList
+testInferredTypeIsSimpleNestedIterable
+testInferredTypeIsSimpleNestedListLoop
+testInferredTypeIsSimpleNestedIterableLoop
 # narrowing of foo.bar
 testNamedTupleUpdateNonRecursiveToRecursiveFine
 testNamedTupleUpdateNonRecursiveToRecursiveCoarse
@@ -1160,11 +1145,11 @@ testCastConfusion
 # Narrowing __bool__ / __len__
 testFinalWithoutBool
 testFinalWithoutBoolButWithLen
-# narrowing with assert
+# narrowing with assert regressions
 testIsInstanceTypeVsMetaclass
 testIsInstanceTypeVsUnionOfType
 testAssert
-
+# narrowing with assert
 testIsInstanceAdHocIntersectionIncrementalNoChange
 testIsInstanceAdHocIntersectionIncrementalNoChangeSameName
 testIsInstanceAdHocIntersectionIncrementalNoChangeTuple
@@ -1219,6 +1204,32 @@ testLambdaInferenceUsesNarrowedTypes
 testNarrowOptionalOutsideLambda
 testNarrowOptionalOutsideLambdaWithDeferred
 
+# NoReturn
+testNoReturnTypeAlias
+testUnionWithNoReturn
+testOverloadsAndNoReturnNarrowWhenBlacklistingSubtype
+testOverloadsAndNoReturnNarrowWhenBlacklistingSubtype2
+testDontNeedAnnotationForCallable
+testLiteralCheckSubtypingStrictOptional
+testLiteralCheckSubtypingNoStrictOptional
+testNewAndInitNoReturn
+testOverloadedNewAndInitNoReturn
+testNoReturnImportFromTyping
+# --warn-no-return
+testNoReturnDisallowsReturn
+testNoReturnDisallowsImplicitReturn
+testNoReturnImplicitReturnCheckInDeferredNode
+testNoReturnInExpr
+testNoReturnAsync
+# --no-warn-no-return
+testNoWarnNoReturn
+testOverloadsAndNoReturnNarrowTypeNoStrictOptional1
+testOverloadsAndNoReturnNarrowTypeWithStrictOptional1
+testOverloadsAndNoReturnNarrowTypeNoStrictOptional2
+testOverloadsAndNoReturnNarrowTypeWithStrictOptional2
+testOverloadsAndNoReturnNarrowTypeNoStrictOptional3
+testOverloadsAndNoReturnNarrowTypeWithStrictOptional3
+
 # None late binding, because it's None (x = None; x = 3)
 *PartialType*
 testAssigningAnyStrToNone
@@ -1245,21 +1256,6 @@ testCheckUntypedDefsSelf2
 testNoCrashOnPartialLambdaInference
 testUnpackUnionNoCrashOnPartialNone
 testUnpackUnionNoCrashOnPartialNone2
-
-# weird narrowing
-testInferredTypeIsSimpleNestedList
-testInferredTypeIsSimpleNestedIterable
-testInferredTypeIsSimpleNestedListLoop
-testInferredTypeIsSimpleNestedIterableLoop
-testNewAnalyzerBuiltinAliasesFixed
-testOverloadsAndNoReturnNarrowTypeNoStrictOptional1
-testOverloadsAndNoReturnNarrowTypeWithStrictOptional1
-testOverloadsAndNoReturnNarrowTypeNoStrictOptional2
-testOverloadsAndNoReturnNarrowTypeWithStrictOptional2
-testOverloadsAndNoReturnNarrowTypeNoStrictOptional3
-testOverloadsAndNoReturnNarrowTypeWithStrictOptional3
-# Maybe not even narrowing?
-testRefreshImportIfMypyElse1
 
 # Walrus tests
 testWalrus
@@ -1345,6 +1341,8 @@ testRedefineImportedFunctionViaImport
 
 # TYPE_CHECKING
 testIfTypeCheckingUnreachableClass
+# MYPY
+testRefreshImportIfMypyElse1
 # --always-true TRUTH
 testIfConditionsInDefinition
 testAlwaysTrueAlwaysFalseFlags
