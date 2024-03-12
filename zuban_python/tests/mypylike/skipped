@@ -1140,25 +1140,18 @@ testCastConfusion
 testBasicRecursiveNamedTuple
 testBasicRecursiveNamedTupleSpecial
 testBasicRecursiveNamedTupleClass
-testNamedTupleUpdateNonRecursiveToRecursiveFine
 testTupleOverlapDifferentTuples
-testUnpackUnionNoCrashOnPartialNone
-testUnpackUnionNoCrashOnPartialNone2
+testAliasRecursiveUnpackMultiple
+testVariadicAliasRecursiveUnpack
+# narrowing of foo.bar
+testNamedTupleUpdateNonRecursiveToRecursiveFine
 testNamedTupleUpdateNonRecursiveToRecursiveCoarse
+# narrowing of foo[0]
 testTupleTypeUpdateNonRecursiveToRecursiveCoarse
 testTypeAliasUpdateNonRecursiveToRecursiveCoarse
 testTypedDictUpdateNonRecursiveToRecursiveCoarse
-testNarrowedVariableInNestedFunctionBasic
-testNarrowedVariableInNestedFunctionMore1
-testNarrowedVariableInNestedFunctionMore2
-testAliasRecursiveUnpackMultiple
-testNarrowOnSelfInGeneric
-testNarrowedVariableInNestedModifiedInWalrus
 testTypedDictTypeNarrowingWithFinalKey
 testLiteralIntelligentIndexingTuples
-testLambdaInferenceUsesNarrowedTypes
-testVariadicAliasRecursiveUnpack
-testVariadicTupleCollectionCheck
 # questionable implicit literal?
 testEnumReachabilityChecksIndirect
 testEnumReachabilityWithChainingDirectConflict
@@ -1207,6 +1200,7 @@ testOperatorContainsNarrowsTypedDicts_unionWithList
 testOperatorContainsNarrowsTypedDicts_total
 testOperatorContainsNarrowsTypedDicts_partialThroughTotalFalse
 testOperatorContainsNarrowsTypedDicts_partialThroughNotRequired
+testVariadicTupleCollectionCheck
 # narrowing assignments regressions
 testAwaitOverloadSpecialCase
 testCompatibilityOfDynamicWithOtherTypes
@@ -1233,6 +1227,11 @@ testExceptionVariableReuseInDeferredNode5
 testExceptionVariableReuseInDeferredNode6
 # narrowing with dict keys
 testNarrowTypeForDictKeys
+# narrowing of nested scopes
+testNarrowedVariableInNestedFunctionBasic
+testNarrowedVariableInNestedFunctionMore1
+testNarrowedVariableInNestedFunctionMore2
+testLambdaInferenceUsesNarrowedTypes
 
 # None late binding, because it's None (x = None; x = 3)
 *PartialType*
@@ -1258,6 +1257,8 @@ testInheritedAttributeStrictOptional
 testIgnoreTypeInferenceError2
 testCheckUntypedDefsSelf2
 testNoCrashOnPartialLambdaInference
+testUnpackUnionNoCrashOnPartialNone
+testUnpackUnionNoCrashOnPartialNone2
 
 # Weird Name binder type definitions (overwritten?)
 testLiteralBinderLastValueErased
@@ -1278,6 +1279,23 @@ testOverloadsAndNoReturnNarrowTypeNoStrictOptional3
 testOverloadsAndNoReturnNarrowTypeWithStrictOptional3
 # Maybe not even narrowing?
 testRefreshImportIfMypyElse1
+
+# Walrus tests
+testWalrus
+testWalrusRedefined
+testWalrusConditionalTypeBinder
+testWalrusConditionalTypeCheck
+testWalrusConditionalTypeCheck2
+testWalrusAssignmentAndConditionScopeForLiteral
+testWalrusAssignmentAndConditionScopeForProperty
+testWalrusAssignmentAndConditionScopeForFunction
+testWalrusUsedBeforeDef
+testPossiblyUndefinedWithAssignmentExpr
+testGenericDictWithOverload
+testNarrowOnSelfInGeneric
+testNarrowedVariableInNestedModifiedInWalrus
+# "Assignment expression within a comprehension cannot be used in a class body"
+testNoCrashOnAssignmentExprClass
 
 # TypeGuard
 testSerializeTypeGuardFunction
@@ -1479,21 +1497,6 @@ testDel
 testReuseTryExceptionVariable
 testReuseDefinedTryExceptionVariable
 testRaiseFromStatement
-
-# Walrus tests
-testWalrus
-testWalrusRedefined
-testWalrusConditionalTypeBinder
-testWalrusConditionalTypeCheck
-testWalrusConditionalTypeCheck2
-testWalrusAssignmentAndConditionScopeForLiteral
-testWalrusAssignmentAndConditionScopeForProperty
-testWalrusAssignmentAndConditionScopeForFunction
-testWalrusUsedBeforeDef
-testPossiblyUndefinedWithAssignmentExpr
-testGenericDictWithOverload
-# "Assignment expression within a comprehension cannot be used in a class body"
-testNoCrashOnAssignmentExprClass
 
 # match statement
 testValuePattern
