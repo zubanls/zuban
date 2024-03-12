@@ -1119,9 +1119,6 @@ testRecursiveAliasesRestrictions
 testRecursiveAliasesRestrictions2
 testRecursiveAliasBasicGenericInference
 testRecursiveAliasNewStyleSupported
-#  --enable-recursive-aliases & is not None
-testTupleTypeUpdateNonRecursiveToRecursiveFine
-testTypeAliasUpdateNonRecursiveToRecursiveFine
 # narrowing if with literals
 testConditionalBoolLiteralUnionNarrowing
 testRecursiveAliasTuple
@@ -1141,6 +1138,8 @@ testTypeAliasUpdateNonRecursiveToRecursiveCoarse
 testTypedDictUpdateNonRecursiveToRecursiveCoarse
 testTypedDictTypeNarrowingWithFinalKey
 testLiteralIntelligentIndexingTuples
+testTupleTypeUpdateNonRecursiveToRecursiveFine
+testTypeAliasUpdateNonRecursiveToRecursiveFine
 # questionable implicit literal?
 testEnumReachabilityChecksIndirect
 testEnumReachabilityWithChainingDirectConflict
@@ -1170,8 +1169,6 @@ testIsInstanceTypeVsMetaclass
 testIsInstanceTypeVsUnionOfType
 testAssert
 
-testNarrowOptionalOutsideLambda
-testNarrowOptionalOutsideLambdaWithDeferred
 testIsInstanceAdHocIntersectionIncrementalNoChange
 testIsInstanceAdHocIntersectionIncrementalNoChangeSameName
 testIsInstanceAdHocIntersectionIncrementalNoChangeTuple
@@ -1223,6 +1220,8 @@ testNarrowedVariableInNestedFunctionBasic
 testNarrowedVariableInNestedFunctionMore1
 testNarrowedVariableInNestedFunctionMore2
 testLambdaInferenceUsesNarrowedTypes
+testNarrowOptionalOutsideLambda
+testNarrowOptionalOutsideLambdaWithDeferred
 
 # None late binding, because it's None (x = None; x = 3)
 *PartialType*
