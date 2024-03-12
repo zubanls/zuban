@@ -1071,7 +1071,6 @@ testWithStmtScopeAndLambda
 # isinstance error conditions
 testLiteralErrorsWithIsInstanceAndIsSubclass
 # isinstance narrowing
-testIsinstanceAndAnyType
 testIsinstanceAndGenericType
 testUnionGenericWithBoundedVariable
 testIntersectionUsingPromotion1
@@ -1111,12 +1110,7 @@ testOnlyMethodProtocolUsableWithIsSubclass
 # "Cannot use isinstance() with TypedDict type"
 testTypedDictWithIsInstanceAndIsSubclass
 # isinstance & union
-testUnion2
-testUnion3
-testUnionAnyIsInstance
-testNestedUnionsProcessedCorrectly
 testGenericTypeAliasesUnion
-testOverloadsIgnorePromotions
 testParamSpecLiteralJoin
 testUnionOrSyntaxInIsinstance
 testUnionOrSyntaxInIsinstanceNotSupported

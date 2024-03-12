@@ -12,7 +12,7 @@ use crate::{
     diagnostics::{Issue, IssueType},
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::ResultContext,
+    matching::{Match, ResultContext},
     type_::{EnumMember, Type},
     type_helpers::{Class, Function},
 };
@@ -672,7 +672,13 @@ impl Inference<'_, '_, '_> {
         // Please listen to "Red Hot Chili Peppers - Otherside" here.
         let mut other_side = Type::Never;
         for t in result.inf.as_cow_type(self.i_s).iter_with_unpacked_unions() {
-            if !true_type.is_simple_super_type_of(self.i_s, t).bool() {
+            if !matches!(
+                true_type.is_simple_super_type_of(self.i_s, t),
+                Match::True {
+                    with_any: false,
+                    ..
+                }
+            ) {
                 other_side.union_in_place(t.clone());
             }
         }
