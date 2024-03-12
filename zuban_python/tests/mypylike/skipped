@@ -1134,17 +1134,11 @@ testConditionalBoolLiteralUnionNarrowing
 testRecursiveAliasTuple
 # narrowing optional with if
 testOptionalTypeNarrowedByGenericCall3
-testOptionalTypeNarrowedByGenericCall5
-testOptionalTypeNarrowedInBooleanStatement
 testIsinstanceCases
-testOrCases
-testAndCases
 testOptionalAssignAny1
 testOptionalAssignAny2
 testOptionalAssignAny3
 testInferEqualsNotOptionalWithMultipleArgs
-testTernaryWithNone
-testNoneListTernary
 testCastConfusion
 testBasicRecursiveNamedTuple
 testBasicRecursiveNamedTupleSpecial
@@ -1181,6 +1175,13 @@ testUnionTruthinessTracking
 # or/and boolean logic over multiple terms
 testAndOr
 testRestrictedBoolAndOrWithGenerics
+testOptionalTypeNarrowedInBooleanStatement
+testOrCases
+testAndCases
+# ternary narrowing
+testTernaryWithNone
+testNoneListTernary
+testOptionalTypeNarrowedByGenericCall5
 # Narrowing __bool__ / __len__
 testFinalWithoutBool
 testFinalWithoutBoolButWithLen
