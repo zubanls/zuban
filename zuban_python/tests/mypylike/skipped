@@ -1057,11 +1057,8 @@ testIntersectionUsingPromotion4
 testIntersectionUsingPromotion5
 testIntersectionUsingPromotion6
 testIntersectionUsingPromotion8
-testNarrowingDownNamedTupleUnion
 testTypeshedRecursiveTypesExample
 testTypedDictIsInstance
-# isinstance in lambda
-testIsinstanceInInferredLambda
 # isinstance Intersection types
 testIsInstanceAdHocIntersectionFineGrainedIncrementalNoChange
 testIsInstanceAdHocIntersectionFineGrainedIncrementalIsInstanceChange
@@ -1141,6 +1138,7 @@ testTernaryWithNone
 testNoneListTernary
 testOptionalTypeNarrowedByGenericCall5
 testCastConfusion
+testIsinstanceInInferredLambda
 # Narrowing __bool__ / __len__
 testFinalWithoutBool
 testFinalWithoutBoolButWithLen

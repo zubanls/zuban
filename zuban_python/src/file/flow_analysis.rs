@@ -13,7 +13,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{Match, Matcher, ResultContext},
-    type_::{EnumMember, Type},
+    type_::{EnumMember, TupleArgs, Type, UnionType},
     type_helpers::{Class, Function},
 };
 
@@ -745,6 +745,20 @@ impl Inference<'_, '_, '_> {
                     .as_cow_type(self.i_s)
                     .as_ref()
                 {
+                    Type::Tuple(tup) => match &tup.args {
+                        TupleArgs::FixedLen(ts) => {
+                            let ts: Option<Vec<Type>> = ts
+                                .iter()
+                                .map(|t| match t {
+                                    Type::Type(t) => Some((**t).clone()),
+                                    _ => None,
+                                })
+                                .collect();
+                            Some(Type::Union(UnionType::from_types(ts?)))
+                        }
+                        TupleArgs::ArbitraryLen(t) => todo!(),
+                        TupleArgs::WithUnpack(_) => todo!(),
+                    },
                     Type::Type(t) => Some((**t).clone()),
                     _ => None,
                 }
