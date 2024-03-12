@@ -604,20 +604,15 @@ impl Type {
         }
     }
 
-    pub fn union(self, db: &Database, other: Type) -> Self {
-        self.union_with_details(db, other, false)
+    pub fn union(self, other: Type) -> Self {
+        self.union_with_details(other, false)
     }
 
-    pub fn make_optional(&mut self, db: &Database) {
-        *self = mem::replace(self, Self::Never).union_with_details(db, Type::None, true);
+    pub fn make_optional(&mut self) {
+        *self = mem::replace(self, Self::Never).union_with_details(Type::None, true);
     }
 
-    pub fn union_with_details(
-        self,
-        db: &Database,
-        other: Type,
-        mut format_as_optional: bool,
-    ) -> Self {
+    pub fn union_with_details(self, other: Type, mut format_as_optional: bool) -> Self {
         let entries = match self {
             Self::Union(u1) => {
                 let mut vec = u1.entries.into_vec();
@@ -686,15 +681,15 @@ impl Type {
     }
 
     pub fn union_in_place(&mut self, db: &Database, other: Type) {
-        *self = mem::replace(self, Self::Never).union(db, other);
+        *self = mem::replace(self, Self::Never).union(other);
     }
 
-    pub fn gather_union(db: &Database, callable: impl FnOnce(&mut dyn FnMut(Self))) -> Self {
+    pub fn gather_union(callable: impl FnOnce(&mut dyn FnMut(Self))) -> Self {
         let mut result: Option<Self> = None;
         let r = &mut result;
         callable(&mut |t| {
             *r = Some(match r.take() {
-                Some(i) => i.union(db, t),
+                Some(i) => i.union(t),
                 None => t,
             });
         });

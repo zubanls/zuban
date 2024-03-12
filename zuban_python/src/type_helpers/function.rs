@@ -1606,7 +1606,7 @@ impl GeneratorType {
                         let optional_union = |t1: Option<Type>, t2: Option<Type>| {
                             if let Some(t1) = t1 {
                                 if let Some(t2) = t2 {
-                                    Some(t1.union(db, t2))
+                                    Some(t1.union(t2))
                                 } else {
                                     Some(t1)
                                 }
@@ -1615,7 +1615,7 @@ impl GeneratorType {
                             }
                         };
                         Some(Self {
-                            yield_type: a.yield_type.union(db, b.yield_type),
+                            yield_type: a.yield_type.union(b.yield_type),
                             // TODO is taking the Union here correct, since its contravariant?
                             send_type: optional_union(a.send_type, b.send_type),
                             return_type: optional_union(a.return_type, b.return_type),

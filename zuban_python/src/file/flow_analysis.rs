@@ -250,7 +250,7 @@ fn split_off_singleton(db: &Database, t: &Type, split_off: &Type) -> (Type, Type
         _ => false,
     };
     let mut other_return = Type::Never;
-    let left = Type::gather_union(db, |gather| {
+    let left = Type::gather_union(|gather| {
         for sub_t in t.iter_with_unpacked_unions() {
             match sub_t {
                 Type::Any(_) => {

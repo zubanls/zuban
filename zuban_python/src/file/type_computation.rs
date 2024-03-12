@@ -870,7 +870,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             },
         };
         if is_implicit_optional {
-            type_.make_optional(i_s.db)
+            type_.make_optional()
         }
         type_storage_node_ref.insert_complex(ComplexPoint::TypeInstance(type_), Locality::Todo);
         annotation_node_ref.set_point(Point::new_simple_specific(
@@ -1313,7 +1313,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     }
                     if let Some(first) = self.as_type_or_error(first, node_ref_a) {
                         if let Some(second) = self.as_type_or_error(second, node_ref_b) {
-                            return TypeContent::Type(first.union(self.inference.i_s.db, second));
+                            return TypeContent::Type(first.union(second));
                         }
                     }
                     // We need to somehow track that it was an invalid union for checking aliases.
@@ -1323,7 +1323,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 let first = self.as_type(first, node_ref_a);
                 // TODO this should only merge in annotation contexts
                 let second = self.as_type(second, node_ref_b);
-                TypeContent::Type(first.union(self.inference.i_s.db, second))
+                TypeContent::Type(first.union(second))
             }
             _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
         }
@@ -2494,7 +2494,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         }
         let t = self.compute_slice_type(first);
         let format_as_optional = !t.is_union_like();
-        let mut t = t.union_with_details(self.inference.i_s.db, Type::None, format_as_optional);
+        let mut t = t.union_with_details(Type::None, format_as_optional);
         if let Type::Union(union_type) = &mut t {
             union_type.sort_for_priority();
         };
