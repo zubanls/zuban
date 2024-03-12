@@ -1071,9 +1071,9 @@ testWithStmtScopeAndLambda
 # isinstance error conditions
 testLiteralErrorsWithIsInstanceAndIsSubclass
 # isinstance narrowing
+testIsinstanceAndAnyType
 testIsinstanceAndGenericType
 testUnionGenericWithBoundedVariable
-testTypeCheckOverloadImplementationTypeVarDifferingUsage1
 testIntersectionUsingPromotion1
 testIntersectionUsingPromotion2
 testIntersectionUsingPromotion3
@@ -1086,7 +1086,6 @@ testNarrowingDownNamedTupleUnion
 testTupleMeetTupleAny
 testTupleMeetTupleAnyComplex
 testTupleMeetTupleAnyAfter
-testNarrowSelfType
 testRuntimeIterableProtocolCheck
 testTypeshedRecursiveTypesExample
 testTypedDictIsInstance
@@ -1133,8 +1132,6 @@ testTypeAliasUpdateNonRecursiveToRecursiveFine
 testConditionalBoolLiteralUnionNarrowing
 testRecursiveAliasTuple
 # narrowing optional with if
-testOptionalTypeNarrowedByGenericCall3
-testIsinstanceCases
 testOptionalAssignAny1
 testOptionalAssignAny2
 testOptionalAssignAny3

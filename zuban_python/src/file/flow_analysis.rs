@@ -265,7 +265,7 @@ fn split_off_singleton(db: &Database, t: &Type, split_off: &Type) -> (Type, Type
                                 let new_member =
                                     Type::EnumMember(EnumMember::new(enum_.clone(), i, false));
                                 if i == split.member_index {
-                                    other_return.union_in_place(db, new_member)
+                                    other_return.union_in_place(new_member)
                                 } else {
                                     gather(new_member)
                                 }
@@ -351,8 +351,8 @@ fn split_truthy_and_falsey(db: &Database, t: &Type) -> Option<(Type, Type)> {
                 let result = split_truthy_and_falsey(db, t);
                 had_split |= result.is_some();
                 let (new_true, new_false) = result.unwrap_or_else(|| (t.clone(), t.clone()));
-                truthy.union_in_place(db, new_true);
-                falsey.union_in_place(db, new_false);
+                truthy.union_in_place(new_true);
+                falsey.union_in_place(new_false);
             }
             had_split.then_some((truthy, falsey))
         }
@@ -660,14 +660,24 @@ impl Inference<'_, '_, '_> {
         };
         let result = self.infer_named_expr_with_key(arg);
         let key = result.key?;
-        let mut t = self.isinstance_or_issubclass_type(iterator.next()?)?;
+        let mut true_type = self.isinstance_or_issubclass_type(iterator.next()?)?;
         if iterator.next().is_some() {
             return None;
         }
-        if issubclass && !matches!(t, Type::Never) {
-            t = Type::Type(Rc::new(t))
+        if issubclass && !matches!(true_type, Type::Never) {
+            true_type = Type::Type(Rc::new(true_type))
         }
-        Some((Frame::from_type(key, t), Frame::default()))
+        // Please listen to "Red Hot Chili Peppers - Otherside" here.
+        let mut other_side = Type::Never;
+        for t in result.inf.as_cow_type(self.i_s).iter_with_unpacked_unions() {
+            if !true_type.is_simple_super_type_of(self.i_s, t).bool() {
+                other_side.union_in_place(t.clone());
+            }
+        }
+        Some((
+            Frame::from_type(key.clone(), true_type),
+            Frame::from_type(key, other_side),
+        ))
     }
 
     fn isinstance_or_issubclass_type(&mut self, arg: Argument) -> Option<Type> {

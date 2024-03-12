@@ -680,7 +680,7 @@ impl Type {
         Self::Union(t)
     }
 
-    pub fn union_in_place(&mut self, db: &Database, other: Type) {
+    pub fn union_in_place(&mut self, other: Type) {
         *self = mem::replace(self, Self::Never).union(other);
     }
 

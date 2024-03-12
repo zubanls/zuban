@@ -147,7 +147,7 @@ fn common_sub_type_for_union(
     for t in union.iter() {
         if let Some(found) = t.common_sub_type(i_s, other) {
             if let Some(result) = &mut result {
-                result.union_in_place(i_s.db, found)
+                result.union_in_place(found)
             } else {
                 result = Some(found)
             }
