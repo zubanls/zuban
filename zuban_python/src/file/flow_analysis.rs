@@ -81,6 +81,19 @@ impl FlowAnalysis {
         None
     }
 
+    fn merge_conditional(&self, true_frame: Frame, false_frame: Frame) {
+        // TODO merge frames properly, this is just a special case
+        if false_frame.unreachable || true_frame.unreachable {
+            if !false_frame.unreachable {
+                self.overwrite_entries(false_frame.entries)
+            } else if !true_frame.unreachable {
+                self.overwrite_entries(true_frame.entries)
+            } else {
+                debug!("TODO should probably be unreachable")
+            }
+        }
+    }
+
     fn overwrite_entries(&self, new_entries: Entries) {
         let mut frames = self.frames.borrow_mut();
         let entries = &mut frames.last_mut().unwrap().entries;
@@ -363,16 +376,7 @@ impl Inference<'_, '_, '_> {
                         self.process_ifs(if_blocks, class, func)
                     });
 
-                    // TODO merge frames properly, this is just a special case
-                    if false_frame.unreachable || true_frame.unreachable {
-                        if !false_frame.unreachable {
-                            fa.overwrite_entries(false_frame.entries)
-                        } else if !true_frame.unreachable {
-                            fa.overwrite_entries(true_frame.entries)
-                        } else {
-                            debug!("TODO should probably be unreachable")
-                        }
-                    }
+                    fa.merge_conditional(true_frame, false_frame);
                 });
             }
             Some(IfBlockType::Else(block)) => self.calc_block_diagnostics(block, class, func),
