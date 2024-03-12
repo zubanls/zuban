@@ -662,26 +662,28 @@ impl Inference<'_, '_, '_> {
         };
         let result = self.infer_named_expr_with_key(arg);
         let key = result.key?;
-        let mut true_type = self.isinstance_or_issubclass_type(iterator.next()?)?;
+        let mut isinstance_type = self.isinstance_or_issubclass_type(iterator.next()?)?;
         if iterator.next().is_some() {
             return None;
         }
-        if issubclass && !matches!(true_type, Type::Never) {
-            true_type = Type::Type(Rc::new(true_type))
+        if issubclass && !matches!(isinstance_type, Type::Never) {
+            isinstance_type = Type::Type(Rc::new(isinstance_type))
         }
         // Please listen to "Red Hot Chili Peppers - Otherside" here.
+        let mut true_type = Type::Never;
         let mut other_side = Type::Never;
         let matcher = &mut Matcher::with_ignored_promotions();
         for t in result.inf.as_cow_type(self.i_s).iter_with_unpacked_unions() {
-            if !matches!(
-                true_type.is_super_type_of(self.i_s, matcher, t),
+            match isinstance_type.is_super_type_of(self.i_s, matcher, t) {
+                Match::True { with_any: true, .. } => other_side.union_in_place(t.clone()),
                 Match::True {
-                    with_any: false,
-                    ..
-                }
-            ) {
-                other_side.union_in_place(t.clone());
+                    with_any: false, ..
+                } => true_type.union_in_place(t.clone()),
+                Match::False { .. } => other_side.union_in_place(t.clone()),
             }
+        }
+        if matches!(true_type, Type::Never) {
+            true_type = isinstance_type;
         }
         Some((
             Frame::from_type(key.clone(), true_type),
