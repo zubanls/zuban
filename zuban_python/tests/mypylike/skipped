@@ -1131,20 +1131,16 @@ testTypeAliasUpdateNonRecursiveToRecursiveFine
 # narrowing if with literals
 testConditionalBoolLiteralUnionNarrowing
 testRecursiveAliasTuple
-# narrowing optional with if
+# narrowing with Any troubles
 testOptionalAssignAny1
 testOptionalAssignAny2
 testOptionalAssignAny3
-testCastConfusion
-testBasicRecursiveNamedTuple
-testBasicRecursiveNamedTupleSpecial
-testBasicRecursiveNamedTupleClass
-testTupleOverlapDifferentTuples
-testAliasRecursiveUnpackMultiple
-testVariadicAliasRecursiveUnpack
 # narrowing of foo.bar
 testNamedTupleUpdateNonRecursiveToRecursiveFine
 testNamedTupleUpdateNonRecursiveToRecursiveCoarse
+testBasicRecursiveNamedTuple
+testBasicRecursiveNamedTupleSpecial
+testBasicRecursiveNamedTupleClass
 # narrowing of foo[0]
 testTupleTypeUpdateNonRecursiveToRecursiveCoarse
 testTypeAliasUpdateNonRecursiveToRecursiveCoarse
@@ -1171,6 +1167,7 @@ testAndCases
 testTernaryWithNone
 testNoneListTernary
 testOptionalTypeNarrowedByGenericCall5
+testCastConfusion
 # Narrowing __bool__ / __len__
 testFinalWithoutBool
 testFinalWithoutBoolButWithLen
@@ -1200,6 +1197,7 @@ testOperatorContainsNarrowsTypedDicts_total
 testOperatorContainsNarrowsTypedDicts_partialThroughTotalFalse
 testOperatorContainsNarrowsTypedDicts_partialThroughNotRequired
 testVariadicTupleCollectionCheck
+testTupleOverlapDifferentTuples
 # narrowing assignments regressions
 testAwaitOverloadSpecialCase
 testCompatibilityOfDynamicWithOtherTypes
