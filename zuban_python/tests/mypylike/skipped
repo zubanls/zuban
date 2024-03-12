@@ -1135,7 +1135,6 @@ testRecursiveAliasTuple
 testOptionalAssignAny1
 testOptionalAssignAny2
 testOptionalAssignAny3
-testInferEqualsNotOptionalWithMultipleArgs
 testCastConfusion
 testBasicRecursiveNamedTuple
 testBasicRecursiveNamedTupleSpecial

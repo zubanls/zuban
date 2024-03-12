@@ -504,9 +504,11 @@ impl Inference<'_, '_, '_> {
                                 iterator.next();
                             }
                             if !eq_chain.is_empty() {
-                                todo!();
-                                //left_inf = eq_chain.into_iter().last().unwrap().inf;
-                                //continue 'outer;
+                                if let Some(new) = self.find_comparison_chain_guards(&eq_chain) {
+                                    frames = Some(merge_conjunction(self.i_s, frames, new));
+                                }
+                                left_inf = eq_chain.into_iter().last().unwrap().inf;
+                                continue 'outer;
                             }
                         }
                         ComparisonContent::NotEquals(..) => {
