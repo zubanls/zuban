@@ -172,6 +172,8 @@ pub(crate) enum IssueType {
     VariadicUnpackMustBeTupleOrTypeVarTuple { type_: Box<str> },
     TypeVarTupleCannotBeSplit,
 
+    CannotUseIsinstanceWithTypedDict { func: &'static str },
+
     InvalidAssertType { actual: Box<str>, wanted: Box<str> },
     AssertionAlwaysTrueBecauseOfParentheses,
 
@@ -1017,6 +1019,8 @@ impl<'db> Diagnostic<'db> {
                 r#""{type_}" cannot be unpacked (must be tuple or TypeVarTuple)"#
             ),
             TypeVarTupleCannotBeSplit => "TypeVarTuple cannot be split".to_string(),
+
+            CannotUseIsinstanceWithTypedDict { func } => format!("Cannot use {func}() with TypedDict type"),
 
             InvalidAssertType { actual, wanted } => format!(
                 r#"Expression is of type "{actual}", not "{wanted}""#

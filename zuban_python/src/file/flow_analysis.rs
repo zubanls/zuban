@@ -662,7 +662,21 @@ impl Inference<'_, '_, '_> {
         };
         let result = self.infer_named_expr_with_key(arg);
         let key = result.key?;
-        let mut isinstance_type = self.isinstance_or_issubclass_type(iterator.next()?)?;
+        let type_node = iterator.next()?;
+        let mut isinstance_type = self.isinstance_or_issubclass_type(type_node)?;
+        for t in isinstance_type.iter_with_unpacked_unions() {
+            if matches!(t, Type::TypedDict(_)) {
+                self.add_issue(
+                    type_node.index(),
+                    IssueType::CannotUseIsinstanceWithTypedDict {
+                        func: match issubclass {
+                            false => "isinstance",
+                            true => "issubclass",
+                        },
+                    },
+                )
+            }
+        }
         if iterator.next().is_some() {
             return None;
         }
