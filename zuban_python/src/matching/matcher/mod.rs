@@ -867,11 +867,6 @@ impl<'a> Matcher<'a> {
 
     pub fn replace_type_var_likes_for_nested_context(&self, db: &Database, t: &Type) -> Type {
         self.replace_type_var_likes(db, t, |usage| {
-            if let TypeVarLike::TypeVar(tv) = usage.as_type_var_like() {
-                if let TypeVarKind::Bound(bound) = &tv.kind {
-                    return GenericItem::TypeArg(bound.clone());
-                }
-            }
             usage.as_type_var_like().as_any_generic_item()
         })
     }
