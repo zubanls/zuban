@@ -28,15 +28,15 @@ thread_local! {
 #[derive(Debug, Clone, PartialEq)]
 enum FlowKey {
     Name(PointLink),
-    Index(Rc<FlowKey>),
-    Member(Rc<FlowKey>, PointLink),
+    //Index(Rc<FlowKey>),
+    //Member(Rc<FlowKey>, PointLink),
 }
 
 #[derive(Debug)]
 struct Entry {
     key: FlowKey,
     type_: Type,
-    //widens_type: bool,
+    from_assignment: bool,
 }
 
 #[derive(Debug, Default)]
@@ -59,7 +59,11 @@ impl Frame {
                 unreachable: true,
                 ..Frame::default()
             },
-            type_ => Frame::new(vec![Entry { key, type_ }]),
+            type_ => Frame::new(vec![Entry {
+                key,
+                type_,
+                from_assignment: false,
+            }]),
         }
     }
 }
@@ -81,7 +85,12 @@ impl FlowAnalysis {
         None
     }
 
-    fn merge_conditional(&self, true_frame: Frame, false_frame: Frame) {
+    fn merge_conditional(
+        &self,
+        i_s: &InferenceState,
+        mut true_frame: Frame,
+        mut false_frame: Frame,
+    ) {
         // TODO merge frames properly, this is just a special case
         if false_frame.unreachable || true_frame.unreachable {
             if !false_frame.unreachable {
@@ -91,7 +100,45 @@ impl FlowAnalysis {
             } else {
                 debug!("TODO should probably be unreachable")
             }
+        } else {
+            self.merge_assignments_for_first_frame(i_s, &mut true_frame, &mut false_frame);
+            self.merge_assignments_for_first_frame(i_s, &mut false_frame, &mut true_frame);
         }
+    }
+
+    fn merge_assignments_for_first_frame(
+        &self,
+        i_s: &InferenceState,
+        first_frame: &mut Frame,
+        other_frame: &mut Frame,
+    ) {
+        for first_entry in &first_frame.entries {
+            if first_entry.from_assignment {
+                for other_entry in &mut other_frame.entries {
+                    if first_entry.key == other_entry.key {
+                        // Assign false to make sure it is not handled again from the other side.
+                        other_entry.from_assignment = false;
+                        self.overwrite_entry(Entry {
+                            key: first_entry.key.clone(),
+                            type_: other_entry.type_.simplified_union(i_s, &first_entry.type_),
+                            from_assignment: true,
+                        })
+                    }
+                }
+            }
+        }
+    }
+
+    fn overwrite_entry(&self, new_entry: Entry) {
+        let mut frames = self.frames.borrow_mut();
+        let entries = &mut frames.last_mut().unwrap().entries;
+        for entry in &mut *entries {
+            if entry.key == new_entry.key {
+                *entry = new_entry;
+                return;
+            }
+        }
+        entries.push(new_entry)
     }
 
     fn overwrite_entries(&self, new_entries: Entries) {
@@ -100,7 +147,7 @@ impl FlowAnalysis {
         'outer: for new_entry in new_entries {
             for entry in &mut *entries {
                 if entry.key == new_entry.key {
-                    entry.type_ = new_entry.type_;
+                    *entry = new_entry;
                     break 'outer;
                 }
             }
@@ -172,6 +219,7 @@ fn merge_or(i_s: &InferenceState, x: Frame, y: Frame) -> Frame {
                 new_entries.push(Entry {
                     key: x_entry.key,
                     type_: x_entry.type_.simplified_union(i_s, &y_entry.type_),
+                    from_assignment: x_entry.from_assignment || y_entry.from_assignment,
                 })
             }
             break;
@@ -376,7 +424,7 @@ impl Inference<'_, '_, '_> {
                         self.process_ifs(if_blocks, class, func)
                     });
 
-                    fa.merge_conditional(true_frame, false_frame);
+                    fa.merge_conditional(self.i_s, true_frame, false_frame);
                 });
             }
             Some(IfBlockType::Else(block)) => self.calc_block_diagnostics(block, class, func),
@@ -446,8 +494,8 @@ impl Inference<'_, '_, '_> {
                             }
                             if !eq_chain.is_empty() {
                                 todo!();
-                                left_inf = eq_chain.into_iter().last().unwrap().inf;
-                                continue 'outer;
+                                //left_inf = eq_chain.into_iter().last().unwrap().inf;
+                                //continue 'outer;
                             }
                         }
                         ComparisonContent::NotEquals(..) => {
