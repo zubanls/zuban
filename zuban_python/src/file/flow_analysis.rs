@@ -364,13 +364,7 @@ impl Inference<'_, '_, '_> {
     pub fn flow_analysis_for_assert(&mut self, expr: Expression) {
         let (true_frame, _) = self.find_guards_in_expr(expr);
         FLOW_ANALYSIS.with(|fa| {
-            let mut frames = fa.frames.borrow_mut();
-            let new_frame = merge_and(
-                self.i_s,
-                std::mem::take(frames.last_mut().unwrap()),
-                true_frame,
-            );
-            *frames.last_mut().unwrap() = new_frame;
+            fa.overwrite_entries(true_frame.entries);
         })
     }
 
@@ -686,7 +680,11 @@ impl Inference<'_, '_, '_> {
                 Match::False { .. } => other_side.union_in_place(t.clone()),
             }
         }
-        if matches!(true_type, Type::Never) {
+        if matches!(true_type, Type::Never)
+            || isinstance_type
+                .iter_with_unpacked_unions()
+                .any(|t| matches!(t, Type::Any(_)))
+        {
             true_type = isinstance_type;
         }
         Some((
@@ -780,6 +778,7 @@ impl Inference<'_, '_, '_> {
                         }
                         Some((**t).clone())
                     }
+                    Type::Any(cause) => Some(Type::Any(*cause)),
                     /*
                     Type::Literal(l) => {
                         cannot_use_with(self, "Literal")
