@@ -1048,9 +1048,6 @@ testWithStmtScopeComplexAssignments
 testWithStmtScopeAndClass
 testWithStmtScopeAndLambda
 
-# type -> type[any] issue
-testIsInstanceTypeIsSubclass
-testIsinstanceAndTypeType
 # new isinstance tests
 testIsinstanceNestedTuple
 testAssignmentSubtypes

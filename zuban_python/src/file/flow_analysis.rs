@@ -786,9 +786,20 @@ impl Inference<'_, '_, '_> {
                     */
                     _ => None,
                 };
+
                 let inf = self.infer_expression_part(part);
-                if inf.maybe_saved_specific(self.i_s.db) == Some(Specific::TypingAny) {
-                    return cannot_use_with(self, "Any");
+                match inf.maybe_saved_specific(self.i_s.db) {
+                    Some(Specific::TypingAny) => {
+                        return cannot_use_with(self, "Any");
+                    }
+                    Some(Specific::TypingType) => {
+                        if issubclass {
+                            todo!()
+                        } else {
+                            return Some(inf.as_type(self.i_s));
+                        }
+                    }
+                    _ => (),
                 }
 
                 match inf.as_cow_type(self.i_s).as_ref() {
