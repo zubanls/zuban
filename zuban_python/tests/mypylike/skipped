@@ -1093,8 +1093,6 @@ testIssubclassDeepHierarchy
 testIssubclassTuple
 testIssubclassBuiltins
 testIsinstanceTypeArgs
-testIsinstanceTypeArgsAliases
-testIssubclassTypeArgs
 testIssubclassWithMetaclasses
 testIssubclassWithMetaclassesStrictOptional
 testIsinstanceVariableSubstitution

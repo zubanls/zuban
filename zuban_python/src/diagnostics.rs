@@ -173,6 +173,7 @@ pub(crate) enum IssueType {
     TypeVarTupleCannotBeSplit,
 
     CannotUseIsinstanceWith { func: &'static str, with: &'static str },
+    CannotUseIsinstanceWithParametrizedGenerics,
 
     InvalidAssertType { actual: Box<str>, wanted: Box<str> },
     AssertionAlwaysTrueBecauseOfParentheses,
@@ -1021,6 +1022,8 @@ impl<'db> Diagnostic<'db> {
             TypeVarTupleCannotBeSplit => "TypeVarTuple cannot be split".to_string(),
 
             CannotUseIsinstanceWith { func, with } => format!("Cannot use {func}() with {with} type"),
+            CannotUseIsinstanceWithParametrizedGenerics =>
+                "Parameterized generics cannot be used with class or instance checks".to_string(),
 
             InvalidAssertType { actual, wanted } => format!(
                 r#"Expression is of type "{actual}", not "{wanted}""#

@@ -13,7 +13,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{Match, Matcher, ResultContext},
-    type_::{AnyCause, EnumMember, TupleArgs, Type, UnionType},
+    type_::{AnyCause, ClassGenerics, EnumMember, TupleArgs, Type, UnionType},
     type_helpers::{Class, Function},
 };
 
@@ -768,7 +768,18 @@ impl Inference<'_, '_, '_> {
             }
             _ => {
                 let check_t = |self_: &mut Self, t: &_| match t {
-                    Type::Type(t) => Some((**t).clone()),
+                    Type::Type(t) => {
+                        if let Type::Class(cls) = t.as_ref() {
+                            if !matches!(&cls.generics, ClassGenerics::NotDefinedYet) {
+                                self_.add_issue(
+                                    part.index(),
+                                    IssueType::CannotUseIsinstanceWithParametrizedGenerics,
+                                );
+                                return Some(Type::Any(AnyCause::FromError));
+                            }
+                        }
+                        Some((**t).clone())
+                    }
                     /*
                     Type::Literal(l) => {
                         cannot_use_with(self, "Literal")
