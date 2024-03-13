@@ -1082,8 +1082,6 @@ testIsInstanceTypeTypeVar
 testIsInstanceTypeSubclass
 testIsSubClassNarrowDownTypesOfTypeVariables
 testOnlyMethodProtocolUsableWithIsSubclass
-# "Cannot use isinstance() with TypedDict type"
-testTypedDictWithIsInstanceAndIsSubclass
 # --enable-recursive-aliases & isinstance
 testRecursiveAliasesRestrictions2
 testRecursiveAliasBasicGenericInference

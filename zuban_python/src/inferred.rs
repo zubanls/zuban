@@ -32,10 +32,10 @@ use crate::{
         TypedDict,
     },
     type_helpers::{
-        execute_assert_type, execute_super, execute_type, BoundMethod, BoundMethodFunction, Class,
-        FirstParamProperties, Function, Instance, LookupDetails, NewTypeClass, OverloadedFunction,
-        ParamSpecClass, RevealTypeFunction, TypeOrClass, TypeVarClass, TypeVarTupleClass,
-        TypingCast,
+        execute_assert_type, execute_isinstance, execute_issubclass, execute_super, execute_type,
+        BoundMethod, BoundMethodFunction, Class, FirstParamProperties, Function, Instance,
+        LookupDetails, NewTypeClass, OverloadedFunction, ParamSpecClass, RevealTypeFunction,
+        TypeOrClass, TypeVarClass, TypeVarTupleClass, TypingCast,
     },
 };
 
@@ -1662,6 +1662,8 @@ impl<'db: 'slf, 'slf> Inferred {
                                 )
                             }
                             Specific::BuiltinsSuper => return execute_super(i_s, args),
+                            Specific::BuiltinsIsinstance => return execute_isinstance(i_s, args),
+                            Specific::BuiltinsIssubclass => return execute_issubclass(i_s, args),
                             Specific::TypingTypeVarClass => {
                                 return TypeVarClass().execute(
                                     i_s,
@@ -2326,6 +2328,9 @@ pub fn specific_to_type<'db>(
             use_cached_annotation_or_type_comment(i_s, definition)
         }
         Specific::MaybeSelfParam => Cow::Borrowed(&Type::Self_),
+        Specific::BuiltinsIsinstance => todo!(),
+        Specific::BuiltinsIssubclass => todo!(),
+        Specific::BuiltinsSuper => todo!(),
         Specific::TypingTypeVarClass => todo!(),
         Specific::TypingTypeVarTupleClass => todo!(),
         Specific::TypingParamSpecClass => todo!(),

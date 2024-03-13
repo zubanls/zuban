@@ -7,7 +7,7 @@ use parsa_python_ast::{
 };
 
 use crate::{
-    database::{Database, PointLink, PointType},
+    database::{Database, PointLink, PointType, Specific},
     debug,
     diagnostics::{Issue, IssueType},
     inference_state::InferenceState,
@@ -596,24 +596,25 @@ impl Inference<'_, '_, '_> {
                 match primary.second() {
                     PrimaryContent::Execution(ArgumentsDetails::Node(args)) => {
                         let first = self.infer_primary_or_atom(primary.first());
-                        if let Some(saved) = first.maybe_saved_link() {
-                            if saved == self.i_s.db.python_state.isinstance_node_ref().as_link() {
+                        match first.maybe_saved_specific(self.i_s.db) {
+                            Some(Specific::BuiltinsIsinstance) => {
                                 if let Some(frames) =
                                     self.find_isinstance_or_issubclass_frames(args, false)
                                 {
                                     return frames;
                                 }
-                            } else if saved
-                                == self.i_s.db.python_state.issubclass_node_ref().as_link()
-                            {
+                            }
+                            Some(Specific::BuiltinsIssubclass) => {
                                 if let Some(frames) =
                                     self.find_isinstance_or_issubclass_frames(args, true)
                                 {
                                     return frames;
                                 }
-                            } else if saved
-                                == self.i_s.db.python_state.callable_node_ref().as_link()
-                            {
+                            }
+                            _ => (),
+                        }
+                        if let Some(saved) = first.maybe_saved_link() {
+                            if saved == self.i_s.db.python_state.callable_node_ref().as_link() {
                                 debug!("TODO callable narrowing")
                             } else if saved == self.i_s.db.python_state.hasattr_node_ref().as_link()
                             {
@@ -662,21 +663,10 @@ impl Inference<'_, '_, '_> {
         };
         let result = self.infer_named_expr_with_key(arg);
         let key = result.key?;
-        let type_node = iterator.next()?;
-        let mut isinstance_type = self.isinstance_or_issubclass_type(type_node)?;
-        for t in isinstance_type.iter_with_unpacked_unions() {
-            if matches!(t, Type::TypedDict(_)) {
-                self.add_issue(
-                    type_node.index(),
-                    IssueType::CannotUseIsinstanceWithTypedDict {
-                        func: match issubclass {
-                            false => "isinstance",
-                            true => "issubclass",
-                        },
-                    },
-                )
-            }
-        }
+        let Argument::Positional(type_arg) = iterator.next()? else {
+            return None
+        };
+        let mut isinstance_type = self.check_isinstance_or_issubclass_type(type_arg, issubclass)?;
         if iterator.next().is_some() {
             return None;
         }
@@ -705,10 +695,29 @@ impl Inference<'_, '_, '_> {
         ))
     }
 
-    fn isinstance_or_issubclass_type(&mut self, arg: Argument) -> Option<Type> {
-        let Argument::Positional(arg) = arg else {
-            return None
-        };
+    pub fn check_isinstance_or_issubclass_type(
+        &mut self,
+        arg: NamedExpression,
+        issubclass: bool,
+    ) -> Option<Type> {
+        let isinstance_type = self.isinstance_or_issubclass_type(arg)?;
+        for t in isinstance_type.iter_with_unpacked_unions() {
+            if matches!(t, Type::TypedDict(_)) {
+                self.add_issue(
+                    arg.index(),
+                    IssueType::CannotUseIsinstanceWithTypedDict {
+                        func: match issubclass {
+                            false => "isinstance",
+                            true => "issubclass",
+                        },
+                    },
+                )
+            }
+        }
+        Some(isinstance_type)
+    }
+
+    fn isinstance_or_issubclass_type(&mut self, arg: NamedExpression) -> Option<Type> {
         let expr = match arg.unpack() {
             NamedExpressionContent::Expression(expr) => expr,
             NamedExpressionContent::Definition(_, _) => todo!(),

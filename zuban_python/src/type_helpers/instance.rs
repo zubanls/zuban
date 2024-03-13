@@ -690,6 +690,43 @@ fn execute_super_internal<'db>(
     success(cls, 0)
 }
 
+pub(crate) fn execute_isinstance<'db>(
+    i_s: &InferenceState<'db, '_>,
+    args: &dyn Args<'db>,
+) -> Inferred {
+    execute_isinstance_or_issubclass(i_s, args, false)
+}
+
+pub(crate) fn execute_issubclass<'db>(
+    i_s: &InferenceState<'db, '_>,
+    args: &dyn Args<'db>,
+) -> Inferred {
+    execute_isinstance_or_issubclass(i_s, args, true)
+}
+
+fn execute_isinstance_or_issubclass<'db>(
+    i_s: &InferenceState<'db, '_>,
+    args: &dyn Args<'db>,
+    issubclass: bool,
+) -> Inferred {
+    if let Some((_, node_ref2)) = args.maybe_two_positional_args(i_s.db) {
+        if node_ref2
+            .file
+            .inference(i_s)
+            .check_isinstance_or_issubclass_type(node_ref2.as_named_expression(), issubclass)
+            .is_some()
+        {
+            return Inferred::from_type(i_s.db.python_state.bool_type());
+        }
+    };
+    let original_func_ref = match issubclass {
+        false => i_s.db.python_state.isinstance_node_ref(),
+        true => i_s.db.python_state.issubclass_node_ref(),
+    };
+    todo!()
+    //return Inferred::from_saved_node_ref(original_func_ref).execute(i_s, args)
+}
+
 fn get_relevant_type_for_super(db: &Database, t: &Type) -> Type {
     if let Type::Literal(l) = t {
         return db.python_state.literal_type(&l.kind);

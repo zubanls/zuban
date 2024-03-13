@@ -352,6 +352,8 @@ pub enum Specific {
     SimpleGeneric, // primary: primary '[' slices ']'
 
     BuiltinsSuper,
+    BuiltinsIsinstance,
+    BuiltinsIssubclass,
     TypingProtocol,
     TypingGeneric,
     TypingTuple,
