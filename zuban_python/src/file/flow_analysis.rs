@@ -732,12 +732,11 @@ impl Inference<'_, '_, '_> {
         part: ExpressionPart,
     ) -> Option<Type> {
         match part {
-            ExpressionPart::Disjunction(disjunction) => {
+            ExpressionPart::BitwiseOr(disjunction) => {
                 let (first, second) = disjunction.unpack();
                 let t1 = self.isinstance_or_issubclass_type_for_expr_part(first)?;
                 let t2 = self.isinstance_or_issubclass_type_for_expr_part(second)?;
-                //Some(t1.union(self.i_s.db, t2))
-                todo!()
+                Some(t1.union(t2))
             }
             _ => {
                 match self

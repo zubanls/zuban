@@ -1059,6 +1059,7 @@ testIntersectionUsingPromotion6
 testIntersectionUsingPromotion8
 testTypeshedRecursiveTypesExample
 testTypedDictIsInstance
+testParamSpecLiteralJoin
 # isinstance Intersection types
 testIsInstanceAdHocIntersectionFineGrainedIncrementalNoChange
 testIsInstanceAdHocIntersectionFineGrainedIncrementalIsInstanceChange
@@ -1083,10 +1084,6 @@ testIsSubClassNarrowDownTypesOfTypeVariables
 testOnlyMethodProtocolUsableWithIsSubclass
 # "Cannot use isinstance() with TypedDict type"
 testTypedDictWithIsInstanceAndIsSubclass
-# isinstance & union
-testParamSpecLiteralJoin
-testUnionOrSyntaxInIsinstance
-testUnionOrSyntaxInIsinstanceNotSupported
 # --enable-recursive-aliases & isinstance
 testRecursiveAliasesRestrictions2
 testRecursiveAliasBasicGenericInference
@@ -2415,6 +2412,7 @@ testNoSubcriptionOfStdlibCollections
 testTupleWithDifferentArgsPy38
 # Won't support Pyhton 3.9 specialities
 testDataclassWithMatchArgsOldVersion
+testUnionOrSyntaxInIsinstanceNotSupported
 
 # Won't support list/dict/tuple "is not subscriptable" (python <3.10)
 testNoSubscriptionOfBuiltinAliases
