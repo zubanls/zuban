@@ -748,6 +748,10 @@ impl Inference<'_, '_, '_> {
                 Some(t1.union(t2))
             }
             _ => {
+                let check_t = |t: &_| match t {
+                    Type::Type(t) => Some((**t).clone()),
+                    _ => None,
+                };
                 match self
                     .infer_expression_part(part)
                     .as_cow_type(self.i_s)
@@ -755,20 +759,13 @@ impl Inference<'_, '_, '_> {
                 {
                     Type::Tuple(tup) => match &tup.args {
                         TupleArgs::FixedLen(ts) => {
-                            let ts: Option<Vec<Type>> = ts
-                                .iter()
-                                .map(|t| match t {
-                                    Type::Type(t) => Some((**t).clone()),
-                                    _ => None,
-                                })
-                                .collect();
+                            let ts: Option<Vec<Type>> = ts.iter().map(|t| check_t(t)).collect();
                             Some(Type::Union(UnionType::from_types(ts?)))
                         }
                         TupleArgs::ArbitraryLen(t) => todo!(),
                         TupleArgs::WithUnpack(_) => todo!(),
                     },
-                    Type::Type(t) => Some((**t).clone()),
-                    _ => None,
+                    t => check_t(t),
                 }
             }
         }
