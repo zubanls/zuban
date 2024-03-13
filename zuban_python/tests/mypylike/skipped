@@ -1068,11 +1068,7 @@ testReturnAndFlow
 testUnreachableCode
 testUnreachableCode2
 testUnreachableWhileTrue
-testUnreachableAssertFalse
-testUnreachableAssertFalse2
 testUnreachableReturnOrAssertFalse
-testUnreachableTryReturnExceptRaise
-testUnreachableReturnLambda
 testIsinstanceShortcircuit
 testIsinstanceExpression
 testIsinstanceMultiAnd

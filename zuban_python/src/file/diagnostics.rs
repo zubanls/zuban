@@ -280,6 +280,11 @@ impl<'db> Inference<'db, '_, '_> {
                 debug_assert_eq!(point.type_(), PointType::NodeAnalysis);
                 continue;
             }
+            if self.is_unreachable() {
+                if self.i_s.db.project.flags.mypy_compatible {
+                    break;
+                }
+            }
 
             match stmt.unpack() {
                 StmtContent::SimpleStmts(simple_stmts) => {

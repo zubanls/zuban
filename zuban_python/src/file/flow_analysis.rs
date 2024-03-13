@@ -13,7 +13,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{Match, Matcher, ResultContext},
-    type_::{AnyCause, ClassGenerics, EnumMember, TupleArgs, Type, UnionType},
+    type_::{AnyCause, ClassGenerics, EnumMember, LiteralKind, TupleArgs, Type, UnionType},
     type_helpers::{Class, Function},
 };
 
@@ -53,13 +53,24 @@ impl Frame {
         }
     }
 
-    fn from_type(key: FlowKey, type_: Type) -> Frame {
+    fn new_unreachable() -> Self {
+        Self {
+            entries: Default::default(),
+            unreachable: true,
+        }
+    }
+
+    fn from_type_without_entry(t: Type) -> Self {
+        match t {
+            Type::Never => Self::new_unreachable(),
+            _ => Self::default(),
+        }
+    }
+
+    fn from_type(key: FlowKey, type_: Type) -> Self {
         match type_ {
-            Type::Never => Frame {
-                unreachable: true,
-                ..Frame::default()
-            },
-            type_ => Frame::new(vec![Entry {
+            Type::Never => Self::new_unreachable(),
+            type_ => Self::new(vec![Entry {
                 key,
                 type_,
                 from_assignment: false,
@@ -83,6 +94,10 @@ impl FlowAnalysis {
             }
         }
         None
+    }
+
+    fn is_unreachable(&self) -> bool {
+        self.frames.borrow().last().unwrap().unreachable
     }
 
     fn merge_conditional(
@@ -153,6 +168,11 @@ impl FlowAnalysis {
             }
             entries.push(new_entry)
         }
+    }
+
+    fn overwrite_frame(&self, new_frame: Frame) {
+        self.overwrite_entries(new_frame.entries);
+        self.frames.borrow_mut().last_mut().unwrap().unreachable |= new_frame.unreachable;
     }
 
     pub fn with_new_frame(&self, callable: impl FnOnce()) {
@@ -335,9 +355,22 @@ fn narrow_is_or_eq(
 
 fn split_truthy_and_falsey(db: &Database, t: &Type) -> Option<(Type, Type)> {
     fn split_truthy_and_falsey_single(t: &Type) -> Option<(Type, Type)> {
+        let check = |condition| {
+            if condition {
+                Some((t.clone(), Type::Never))
+            } else {
+                Some((Type::Never, t.clone()))
+            }
+        };
+        let falsey = || Some((Type::Never, t.clone()));
         match t {
             Type::None => Some((Type::Never, Type::None)),
-            Type::Literal(literal) => todo!(),
+            Type::Literal(literal) => match &literal.kind {
+                LiteralKind::Bool(b) => check(*b),
+                LiteralKind::Int(i) => check(*i != 0),
+                LiteralKind::String(s) => todo!(),
+                LiteralKind::Bytes(s) => todo!(),
+            },
             _ => None,
         }
     }
@@ -361,11 +394,13 @@ fn split_truthy_and_falsey(db: &Database, t: &Type) -> Option<(Type, Type)> {
 }
 
 impl Inference<'_, '_, '_> {
+    pub fn is_unreachable(&self) -> bool {
+        FLOW_ANALYSIS.with(|fa| fa.is_unreachable())
+    }
+
     pub fn flow_analysis_for_assert(&mut self, expr: Expression) {
         let (true_frame, _) = self.find_guards_in_expr(expr);
-        FLOW_ANALYSIS.with(|fa| {
-            fa.overwrite_entries(true_frame.entries);
-        })
+        FLOW_ANALYSIS.with(|fa| fa.overwrite_frame(true_frame))
     }
 
     pub fn flow_analysis_for_target(&mut self, first_name_index: NodeIndex, t: &Type) {
@@ -470,6 +505,14 @@ impl Inference<'_, '_, '_> {
                     }
                 } else {
                     debug!("maybe use __bool__ for narrowing");
+                }
+                if let Some((truthy, falsey)) =
+                    split_truthy_and_falsey(self.i_s.db, &inf.as_cow_type(self.i_s))
+                {
+                    return (
+                        Frame::from_type_without_entry(truthy),
+                        Frame::from_type_without_entry(falsey),
+                    );
                 }
             }
             ExpressionPart::Comparisons(comps) => {
