@@ -13,7 +13,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{Match, Matcher, ResultContext},
-    type_::{EnumMember, TupleArgs, Type, UnionType},
+    type_::{AnyCause, EnumMember, TupleArgs, Type, UnionType},
     type_helpers::{Class, Function},
 };
 
@@ -700,16 +700,17 @@ impl Inference<'_, '_, '_> {
         arg: NamedExpression,
         issubclass: bool,
     ) -> Option<Type> {
-        let isinstance_type = self.isinstance_or_issubclass_type(arg)?;
+        let isinstance_type = self.isinstance_or_issubclass_type(arg, issubclass)?;
         for t in isinstance_type.iter_with_unpacked_unions() {
             if matches!(t, Type::TypedDict(_)) {
                 self.add_issue(
                     arg.index(),
-                    IssueType::CannotUseIsinstanceWithTypedDict {
+                    IssueType::CannotUseIsinstanceWith {
                         func: match issubclass {
                             false => "isinstance",
                             true => "issubclass",
                         },
+                        with: "TypedDict",
                     },
                 )
             }
@@ -717,7 +718,11 @@ impl Inference<'_, '_, '_> {
         Some(isinstance_type)
     }
 
-    fn isinstance_or_issubclass_type(&mut self, arg: NamedExpression) -> Option<Type> {
+    fn isinstance_or_issubclass_type(
+        &mut self,
+        arg: NamedExpression,
+        issubclass: bool,
+    ) -> Option<Type> {
         let expr = match arg.unpack() {
             NamedExpressionContent::Expression(expr) => expr,
             NamedExpressionContent::Definition(_, _) => todo!(),
@@ -730,7 +735,7 @@ impl Inference<'_, '_, '_> {
 
         match expr.unpack() {
             ExpressionContent::ExpressionPart(part) => {
-                self.isinstance_or_issubclass_type_for_expr_part(part)
+                self.isinstance_or_issubclass_type_for_expr_part(part, issubclass)
             }
             _ => None,
         }
@@ -739,17 +744,33 @@ impl Inference<'_, '_, '_> {
     fn isinstance_or_issubclass_type_for_expr_part(
         &mut self,
         part: ExpressionPart,
+        issubclass: bool,
     ) -> Option<Type> {
         match part {
             ExpressionPart::BitwiseOr(disjunction) => {
                 let (first, second) = disjunction.unpack();
-                let t1 = self.isinstance_or_issubclass_type_for_expr_part(first)?;
-                let t2 = self.isinstance_or_issubclass_type_for_expr_part(second)?;
+                let t1 = self.isinstance_or_issubclass_type_for_expr_part(first, issubclass)?;
+                let t2 = self.isinstance_or_issubclass_type_for_expr_part(second, issubclass)?;
                 Some(t1.union(t2))
             }
             _ => {
-                let check_t = |t: &_| match t {
+                let check_t = |self_: &mut Self, t: &_| match t {
                     Type::Type(t) => Some((**t).clone()),
+                    /*
+                    Type::Literal(l) => {
+                        self_.add_issue(
+                            part.index(),
+                            IssueType::CannotUseIsinstanceWith {
+                                func: match issubclass {
+                                    false => "isinstance",
+                                    true => "issubclass",
+                                },
+                                with: "Literal",
+                            },
+                        );
+                        Some(Type::Any(AnyCause::FromError))
+                    }
+                    */
                     _ => None,
                 };
                 match self
@@ -759,13 +780,14 @@ impl Inference<'_, '_, '_> {
                 {
                     Type::Tuple(tup) => match &tup.args {
                         TupleArgs::FixedLen(ts) => {
-                            let ts: Option<Vec<Type>> = ts.iter().map(|t| check_t(t)).collect();
+                            let ts: Option<Vec<Type>> =
+                                ts.iter().map(|t| check_t(self, t)).collect();
                             Some(Type::Union(UnionType::from_types(ts?)))
                         }
                         TupleArgs::ArbitraryLen(t) => todo!(),
                         TupleArgs::WithUnpack(_) => todo!(),
                     },
-                    t => check_t(t),
+                    t => check_t(self, t),
                 }
             }
         }
