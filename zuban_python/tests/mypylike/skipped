@@ -1064,10 +1064,7 @@ testIsInstanceSubClassMemberHard
 testIsInstanceThreeUnion2
 testIsInstanceThreeUnion3
 testRemovingTypeRepeatedly
-testReturnAndFlow
-testUnreachableReturnOrAssertFalse
 testIsinstanceShortcircuit
-testIsinstanceExpression
 testIsinstanceMultiAnd
 testIsinstanceMultiAndSpecialCase
 testIsinstanceOfNonoverlapping
@@ -1200,6 +1197,7 @@ testNoneListTernary
 testOptionalTypeNarrowedByGenericCall5
 testCastConfusion
 testIsinstanceInInferredLambda
+testIsinstanceExpression
 # Narrowing __bool__ / __len__
 testFinalWithoutBool
 testFinalWithoutBoolButWithLen

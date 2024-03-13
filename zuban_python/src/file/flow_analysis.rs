@@ -113,7 +113,7 @@ impl FlowAnalysis {
             } else if !true_frame.unreachable {
                 self.overwrite_entries(true_frame.entries)
             } else {
-                debug!("TODO should probably be unreachable")
+                self.mark_current_frame_unreachable()
             }
         } else {
             self.merge_assignments_for_first_frame(i_s, &mut true_frame, &mut false_frame);
