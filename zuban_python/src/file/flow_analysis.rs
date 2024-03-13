@@ -13,7 +13,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{Match, Matcher, ResultContext},
-    type_::{AnyCause, EnumMember, TupleArgs, Type, UnionType},
+    type_::{EnumMember, TupleArgs, Type, UnionType},
     type_helpers::{Class, Function},
 };
 
