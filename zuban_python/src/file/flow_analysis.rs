@@ -13,7 +13,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{Match, Matcher, ResultContext},
-    type_::{EnumMember, TupleArgs, Type, UnionType},
+    type_::{AnyCause, EnumMember, TupleArgs, Type, UnionType},
     type_helpers::{Class, Function},
 };
 
@@ -746,6 +746,19 @@ impl Inference<'_, '_, '_> {
         part: ExpressionPart,
         issubclass: bool,
     ) -> Option<Type> {
+        let cannot_use_with = |self_: &mut Self, with| {
+            self_.add_issue(
+                part.index(),
+                IssueType::CannotUseIsinstanceWith {
+                    func: match issubclass {
+                        false => "isinstance",
+                        true => "issubclass",
+                    },
+                    with,
+                },
+            );
+            Some(Type::Any(AnyCause::FromError))
+        };
         match part {
             ExpressionPart::BitwiseOr(disjunction) => {
                 let (first, second) = disjunction.unpack();
@@ -758,26 +771,17 @@ impl Inference<'_, '_, '_> {
                     Type::Type(t) => Some((**t).clone()),
                     /*
                     Type::Literal(l) => {
-                        self_.add_issue(
-                            part.index(),
-                            IssueType::CannotUseIsinstanceWith {
-                                func: match issubclass {
-                                    false => "isinstance",
-                                    true => "issubclass",
-                                },
-                                with: "Literal",
-                            },
-                        );
-                        Some(Type::Any(AnyCause::FromError))
+                        cannot_use_with(self, "Literal")
                     }
                     */
                     _ => None,
                 };
-                match self
-                    .infer_expression_part(part)
-                    .as_cow_type(self.i_s)
-                    .as_ref()
-                {
+                let inf = self.infer_expression_part(part);
+                if inf.maybe_saved_specific(self.i_s.db) == Some(Specific::TypingAny) {
+                    return cannot_use_with(self, "Any");
+                }
+
+                match inf.as_cow_type(self.i_s).as_ref() {
                     Type::Tuple(tup) => match &tup.args {
                         TupleArgs::FixedLen(ts) => {
                             let ts: Option<Vec<Type>> =
