@@ -272,6 +272,23 @@ fn has_explicit_literal(t: &Type) -> bool {
         _ => false,
     })
 }
+
+fn has_custom_special_method(i_s: &InferenceState, t: &Type, method: &str) -> bool {
+    t.iter_with_unpacked_unions().any(|t| {
+        let cls = match t {
+            Type::Class(c) => c.class(i_s.db),
+            Type::Dataclass(dc) => dc.class(i_s.db),
+            _ => return false,
+        };
+        let details = cls.lookup_without_descriptors_and_custom_add_issue(i_s, method, |_| ());
+        details.lookup.is_some() && !details.class.originates_in_builtins_or_typing(i_s.db)
+    })
+}
+
+fn has_custom_eq(i_s: &InferenceState, t: &Type) -> bool {
+    has_custom_special_method(i_s, t, "__eq__") || has_custom_special_method(i_s, t, "__ne__")
+}
+
 fn split_off_singleton(db: &Database, t: &Type, split_off: &Type) -> (Type, Type) {
     let matches_singleton = |t: &_| match split_off {
         Type::None => split_off == t,
@@ -322,20 +339,23 @@ fn narrow_is_or_eq(
     right_t: &Type,
     is_eq: bool,
 ) -> Option<(Frame, Frame)> {
+    let split = |key: FlowKey| {
+        let (rest, none) = split_off_singleton(i_s.db, &left_t, right_t);
+        let result = (
+            Frame::from_type(key.clone(), none),
+            Frame::from_type(key, rest),
+        );
+        Some(result)
+    };
+
     match right_t {
         Type::EnumMember(member) if member.implicit => {
             let mut new_member = member.clone();
             new_member.implicit = false;
             narrow_is_or_eq(i_s, key, left_t, &Type::EnumMember(new_member), is_eq)
         }
-        Type::None | Type::EnumMember(_) => {
-            let (rest, none) = split_off_singleton(i_s.db, &left_t, right_t);
-            let result = (
-                Frame::from_type(key.clone(), none),
-                Frame::from_type(key, rest),
-            );
-            Some(result)
-        }
+        Type::None => split(key),
+        Type::EnumMember(_) => split(key),
         Type::Enum(enum_) if enum_.members.len() == 1 => {
             // Enums with a single item can be compared to that item.
             narrow_is_or_eq(
@@ -364,6 +384,9 @@ fn narrow_is_or_eq(
                         true_type.union_in_place(true_literal())
                     }
                     _ => {
+                        if has_custom_eq(i_s, sub_t) {
+                            return None;
+                        }
                         if sub_t.is_simple_super_type_of(i_s, right_t).bool() {
                             true_type.union_in_place(right_t.clone())
                         }

@@ -1288,6 +1288,22 @@ impl<'db: 'a, 'a> Class<'a> {
         )
     }
 
+    pub(crate) fn lookup_without_descriptors_and_custom_add_issue(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        name: &str,
+        add_issue: impl Fn(IssueType),
+    ) -> LookupDetails {
+        self.lookup_with_or_without_descriptors_internal(
+            i_s,
+            add_issue,
+            name,
+            LookupKind::Normal,
+            false,
+            false,
+        )
+    }
+
     pub(crate) fn lookup_with_custom_self_type(
         &self,
         i_s: &InferenceState<'db, '_>,
@@ -2301,6 +2317,17 @@ impl<'a> TypeOrClass<'a> {
 
     pub fn is_object(&self, db: &Database) -> bool {
         matches!(self, TypeOrClass::Class(c) if c.node_ref == db.python_state.object_node_ref())
+    }
+
+    pub fn originates_in_builtins_or_typing(&self, db: &Database) -> bool {
+        match self {
+            TypeOrClass::Class(c) => {
+                let class_file_index = c.node_ref.file_index();
+                class_file_index == db.python_state.builtins().file_index()
+                    || c.node_ref.file_index() == db.python_state.typing().file_index()
+            }
+            TypeOrClass::Type(_) => true,
+        }
     }
 }
 
