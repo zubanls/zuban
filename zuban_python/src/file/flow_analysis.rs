@@ -932,7 +932,10 @@ impl Inference<'_, '_, '_> {
                 let check_t = |self_: &mut Self, t: &_| match t {
                     Type::Type(t) => {
                         if let Type::Class(cls) = t.as_ref() {
-                            if !matches!(&cls.generics, ClassGenerics::NotDefinedYet) {
+                            if !matches!(
+                                &cls.generics,
+                                ClassGenerics::NotDefinedYet | ClassGenerics::None
+                            ) {
                                 self_.add_issue(
                                     part.index(),
                                     IssueType::CannotUseIsinstanceWithParametrizedGenerics,
@@ -973,7 +976,7 @@ impl Inference<'_, '_, '_> {
                                 ts.iter().map(|t| check_t(self, t)).collect();
                             Some(Type::Union(UnionType::from_types(ts?)))
                         }
-                        TupleArgs::ArbitraryLen(t) => todo!(),
+                        TupleArgs::ArbitraryLen(t) => check_t(self, t),
                         TupleArgs::WithUnpack(_) => todo!(),
                     },
                     t => check_t(self, t),
