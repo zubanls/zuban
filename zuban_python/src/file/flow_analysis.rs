@@ -14,7 +14,8 @@ use crate::{
     inferred::Inferred,
     matching::{Match, Matcher, ResultContext},
     type_::{
-        AnyCause, ClassGenerics, EnumMember, LiteralKind, TupleArgs, Type, TypeVarKind, UnionType,
+        AnyCause, ClassGenerics, EnumMember, Literal, LiteralKind, TupleArgs, Type, TypeVarKind,
+        UnionType,
     },
     type_helpers::{Class, Function},
 };
@@ -400,6 +401,19 @@ fn narrow_is_or_eq(
                         true_type.union_in_place(true_literal())
                     }
                     _ => {
+                        if let Type::Class(class) = sub_t {
+                            if let LiteralKind::Bool(b) = literal1.kind {
+                                if class.link == i_s.db.python_state.bool_node_ref().as_link() {
+                                    true_type.union_in_place(Type::Literal(Literal::new(
+                                        LiteralKind::Bool(b),
+                                    )));
+                                    false_type.union_in_place(Type::Literal(Literal::new(
+                                        LiteralKind::Bool(!b),
+                                    )));
+                                    continue;
+                                }
+                            }
+                        }
                         if has_custom_eq(i_s, sub_t) {
                             return None;
                         }
