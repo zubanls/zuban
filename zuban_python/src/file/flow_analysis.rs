@@ -370,7 +370,7 @@ fn narrow_is_or_eq(
             new_member.implicit = false;
             narrow_is_or_eq(i_s, key, left_t, &Type::EnumMember(new_member), is_eq)
         }
-        Type::None => split(key),
+        Type::None if !is_eq => split(key),
         Type::EnumMember(member) if !is_eq || !member.implicit => split(key),
         Type::Enum(enum_) if enum_.members.len() == 1 => {
             // Enums with a single item can be compared to that item.
