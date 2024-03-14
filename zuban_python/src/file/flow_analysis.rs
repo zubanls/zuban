@@ -401,18 +401,12 @@ fn narrow_is_or_eq(
                         true_type.union_in_place(true_literal())
                     }
                     _ => {
-                        if let Type::Class(class) = sub_t {
-                            if let LiteralKind::Bool(b) = literal1.kind {
-                                if class.link == i_s.db.python_state.bool_node_ref().as_link() {
-                                    true_type.union_in_place(Type::Literal(Literal::new(
-                                        LiteralKind::Bool(b),
-                                    )));
-                                    false_type.union_in_place(Type::Literal(Literal::new(
-                                        LiteralKind::Bool(!b),
-                                    )));
-                                    continue;
-                                }
-                            }
+                        if let Some((truthy, falsey)) =
+                            maybe_split_bool_from_literal(i_s.db, sub_t, &literal1.kind)
+                        {
+                            true_type.union_in_place(truthy);
+                            false_type.union_in_place(falsey);
+                            continue;
                         }
                         if has_custom_eq(i_s, sub_t) {
                             return None;
@@ -454,8 +448,26 @@ fn narrow_is_or_eq(
     }
 }
 
+fn maybe_split_bool_from_literal(
+    db: &Database,
+    t: &Type,
+    literal: &LiteralKind,
+) -> Option<(Type, Type)> {
+    if let Type::Class(class) = t {
+        if let LiteralKind::Bool(b) = literal {
+            if class.link == db.python_state.bool_node_ref().as_link() {
+                return Some((
+                    Type::Literal(Literal::new(LiteralKind::Bool(*b))),
+                    Type::Literal(Literal::new(LiteralKind::Bool(!*b))),
+                ));
+            }
+        }
+    }
+    None
+}
+
 fn split_truthy_and_falsey(db: &Database, t: &Type) -> Option<(Type, Type)> {
-    fn split_truthy_and_falsey_single(t: &Type) -> Option<(Type, Type)> {
+    let split_truthy_and_falsey_single = |t: &Type| {
         let check = |condition| {
             if condition {
                 Some((t.clone(), Type::Never))
@@ -472,9 +484,10 @@ fn split_truthy_and_falsey(db: &Database, t: &Type) -> Option<(Type, Type)> {
                 LiteralKind::String(s) => todo!(),
                 LiteralKind::Bytes(s) => todo!(),
             },
+            Type::Class(c) => maybe_split_bool_from_literal(db, t, &LiteralKind::Bool(true)),
             _ => None,
         }
-    }
+    };
 
     match t {
         Type::Union(union) => {
