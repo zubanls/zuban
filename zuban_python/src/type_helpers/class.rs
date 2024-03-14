@@ -457,7 +457,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
 
         if let Some(total) = typed_dict_total {
-            self.insert_typed_dict_definition(i_s, name_def, total)
+            self.insert_typed_dict_definition(i_s, name_def, total, is_final)
         };
 
         if let Some(enum_) = was_enum {
@@ -716,6 +716,16 @@ impl<'db: 'a, 'a> Class<'a> {
                                                 ))
                                         }
                                         class_kind = ClassKind::TypedDict;
+                                        if typed_dict.is_final {
+                                            NodeRef::new(self.node_ref.file, n.index()).add_issue(
+                                                i_s,
+                                                IssueType::CannotInheritFromFinalClass {
+                                                    class_name: Box::from(
+                                                        typed_dict.name.unwrap().as_str(i_s.db),
+                                                    ),
+                                                },
+                                            );
+                                        }
                                         continue;
                                     }
                                     _ => unreachable!(),
@@ -1628,11 +1638,18 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    fn insert_typed_dict_definition(&self, i_s: &InferenceState, name_def: NodeRef, total: bool) {
+    fn insert_typed_dict_definition(
+        &self,
+        i_s: &InferenceState,
+        name_def: NodeRef,
+        total: bool,
+        is_final: bool,
+    ) {
         let td = TypedDict::new_class_definition(
             self.name_string_slice(),
             self.node_ref.as_link(),
             self.type_vars(i_s).clone(),
+            is_final,
         );
         name_def.insert_complex(
             ComplexPoint::TypedDictDefinition(TypedDictDefinition::new(td.clone(), total)),
@@ -1656,6 +1673,8 @@ impl<'db: 'a, 'a> Class<'a> {
             {
                 match &base.type_ {
                     Type::TypedDict(td) => {
+                        let node_ref =
+                            NodeRef::new(self.node_ref.file, args.iter().nth(i).unwrap().index());
                         let Some(super_class_members) = td.maybe_calculated_members(i_s.db) else {
                             let super_cls = Class::from_non_generic_link(i_s.db, td.defined_at);
                             let tdd = super_cls.maybe_typed_dict_definition().unwrap();
@@ -1667,11 +1686,7 @@ impl<'db: 'a, 'a> Class<'a> {
                             );
                             return
                         };
-                        typed_dict_members.merge(
-                            i_s,
-                            NodeRef::new(self.node_ref.file, args.iter().nth(i).unwrap().index()),
-                            td.members(i_s.db),
-                        );
+                        typed_dict_members.merge(i_s, node_ref, td.members(i_s.db));
                     }
                     _ => (),
                 }

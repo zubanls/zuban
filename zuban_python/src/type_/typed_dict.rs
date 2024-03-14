@@ -62,6 +62,7 @@ pub struct TypedDict {
     members: OnceCell<Box<[TypedDictMember]>>,
     pub defined_at: PointLink,
     pub generics: TypedDictGenerics,
+    pub is_final: bool,
 }
 
 impl TypedDict {
@@ -76,6 +77,7 @@ impl TypedDict {
             members: OnceCell::from(members),
             defined_at,
             generics,
+            is_final: false,
         })
     }
 
@@ -95,6 +97,7 @@ impl TypedDict {
             members: OnceCell::from(members),
             defined_at,
             generics,
+            is_final: false,
         })
     }
 
@@ -102,6 +105,7 @@ impl TypedDict {
         name: StringSlice,
         defined_at: PointLink,
         type_var_likes: TypeVarLikes,
+        is_final: bool,
     ) -> Rc<Self> {
         let generics = if type_var_likes.is_empty() {
             TypedDictGenerics::None
@@ -113,6 +117,7 @@ impl TypedDict {
             members: OnceCell::new(),
             defined_at,
             generics,
+            is_final,
         })
     }
 
@@ -132,6 +137,7 @@ impl TypedDict {
             members,
             defined_at: self.defined_at,
             generics: TypedDictGenerics::Generics(generics),
+            is_final: self.is_final,
         })
     }
 
@@ -364,6 +370,7 @@ impl TypedDict {
             },
             defined_at: self.defined_at,
             generics,
+            is_final: self.is_final,
         })
     }
 

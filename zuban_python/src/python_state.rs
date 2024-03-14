@@ -977,6 +977,7 @@ fn typing_changes(
     set_typing_inference(t, "TypeVarTuple", Specific::TypingTypeVarTupleClass);
     set_typing_inference(t, "Annotated", Specific::TypingAnnotated);
     set_typing_inference(t, "Protocol", Specific::TypingProtocol);
+    setup_type_alias(typing_extensions, "final", typing, "final");
     // Not needed, because there's an import?
     //set_typing_inference(t, "Concatenate", Specific::TypingConcatenateClass);
     //set_typing_inference(t, "TypeAlias", Specific::TypingTypeAlias);
