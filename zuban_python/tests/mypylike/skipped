@@ -1049,7 +1049,6 @@ testWithStmtScopeAndClass
 testWithStmtScopeAndLambda
 
 # new narrowing tests
-testNarrowingEqualityRequiresExplicitStrLiteral
 testNarrowingEqualityDisabledForCustomEquality
 testNarrowingEqualityDisabledForCustomEqualityChain
 testNarrowingUnreachableCases

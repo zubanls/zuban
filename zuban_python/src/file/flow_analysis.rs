@@ -13,7 +13,9 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{Match, Matcher, ResultContext},
-    type_::{AnyCause, ClassGenerics, EnumMember, LiteralKind, TupleArgs, Type, UnionType},
+    type_::{
+        AnyCause, ClassGenerics, EnumMember, LiteralKind, TupleArgs, Type, TypeVarKind, UnionType,
+    },
     type_helpers::{Class, Function},
 };
 
@@ -260,6 +262,16 @@ fn merge_conjunction(
     }
 }
 
+fn has_explicit_literal(t: &Type) -> bool {
+    t.iter_with_unpacked_unions().any(|t| match t {
+        Type::Literal(literal) => !literal.implicit,
+        Type::TypeVar(tv) => match &tv.type_var.kind {
+            TypeVarKind::Bound(bound) => has_explicit_literal(bound),
+            _ => false,
+        },
+        _ => false,
+    })
+}
 fn split_off_singleton(db: &Database, t: &Type, split_off: &Type) -> (Type, Type) {
     let matches_singleton = |t: &_| match split_off {
         Type::None => split_off == t,
@@ -308,12 +320,13 @@ fn narrow_is_or_eq(
     key: FlowKey,
     left_t: &Type,
     right_t: &Type,
+    is_eq: bool,
 ) -> Option<(Frame, Frame)> {
     match right_t {
         Type::EnumMember(member) if member.implicit => {
             let mut new_member = member.clone();
             new_member.implicit = false;
-            narrow_is_or_eq(i_s, key, left_t, &Type::EnumMember(new_member))
+            narrow_is_or_eq(i_s, key, left_t, &Type::EnumMember(new_member), is_eq)
         }
         Type::None | Type::EnumMember(_) => {
             let (rest, none) = split_off_singleton(i_s.db, &left_t, right_t);
@@ -330,7 +343,42 @@ fn narrow_is_or_eq(
                 key,
                 left_t,
                 &Type::EnumMember(EnumMember::new(enum_.clone(), 0, false)),
+                is_eq,
             )
+        }
+        // Mypy does only want to narrow if there are explicit literals on one side. See also
+        // comments around testNarrowingEqualityFlipFlop.
+        Type::Literal(literal1)
+            if is_eq && (!literal1.implicit || has_explicit_literal(left_t)) =>
+        {
+            let mut true_type = Type::Never;
+            let mut false_type = Type::Never;
+            let true_literal = || {
+                let mut new_literal = literal1.clone();
+                new_literal.implicit = false;
+                Type::Literal(new_literal)
+            };
+            for sub_t in left_t.iter_with_unpacked_unions() {
+                match sub_t {
+                    Type::Literal(literal2) if literal1.value(i_s.db) == literal2.value(i_s.db) => {
+                        true_type.union_in_place(true_literal())
+                    }
+                    _ => {
+                        if sub_t.is_simple_super_type_of(i_s, right_t).bool() {
+                            true_type.union_in_place(right_t.clone())
+                        }
+                        false_type.union_in_place(sub_t.clone())
+                    }
+                }
+            }
+            if true_type == Type::Never {
+                return None;
+            }
+            let result = (
+                Frame::from_type(key.clone(), true_type),
+                Frame::from_type(key, false_type),
+            );
+            Some(result)
         }
         _ => match left_t {
             left_t @ Type::Union(union) => {
@@ -523,10 +571,12 @@ impl Inference<'_, '_, '_> {
                     let mut invert = false;
                     let right = comparison.right();
                     let right_inf = self.infer_expression_part(right);
+                    let mut is_eq = false;
                     match comparison {
                         ComparisonContent::Equals(..) => {
                             let mut eq_chain = vec![];
                             // `foo == bar == None` needs special handling
+                            is_eq = true;
                             while let Some(ComparisonContent::Equals(_, _, r)) = iterator.peek() {
                                 if eq_chain.is_empty() {
                                     eq_chain.push(self.new_inferred_with_key(
@@ -541,7 +591,9 @@ impl Inference<'_, '_, '_> {
                                 iterator.next();
                             }
                             if !eq_chain.is_empty() {
-                                if let Some(new) = self.find_comparison_chain_guards(&eq_chain) {
+                                if let Some(new) =
+                                    self.find_comparison_chain_guards(&eq_chain, is_eq)
+                                {
                                     frames = Some(merge_conjunction(self.i_s, frames, new));
                                 }
                                 left_inf = eq_chain.into_iter().last().unwrap().inf;
@@ -549,6 +601,7 @@ impl Inference<'_, '_, '_> {
                             }
                         }
                         ComparisonContent::NotEquals(..) => {
+                            is_eq = true;
                             invert = true;
                         }
                         ComparisonContent::Is(..) => {
@@ -568,7 +621,9 @@ impl Inference<'_, '_, '_> {
                                 iterator.next();
                             }
                             if !is_chain.is_empty() {
-                                if let Some(new) = self.find_comparison_chain_guards(&is_chain) {
+                                if let Some(new) =
+                                    self.find_comparison_chain_guards(&is_chain, is_eq)
+                                {
                                     frames = Some(merge_conjunction(self.i_s, frames, new));
                                 }
                                 left_inf = is_chain.into_iter().last().unwrap().inf;
@@ -596,7 +651,7 @@ impl Inference<'_, '_, '_> {
                     };
                     let left_infos = self.new_inferred_with_key(left_inf, comparison.left());
                     if let Some(mut new) =
-                        self.find_comparison_guards(left_infos, &right_inf, right)
+                        self.find_comparison_guards(left_infos, &right_inf, right, is_eq)
                     {
                         if invert {
                             new = (new.1, new.0)
@@ -866,6 +921,7 @@ impl Inference<'_, '_, '_> {
         left: InferredWithKey,
         right_inf: &Inferred,
         right: ExpressionPart,
+        is_eq: bool,
     ) -> Option<(Frame, Frame)> {
         if let Some(key) = left.key {
             // Narrow Foo in `Foo is None`
@@ -874,6 +930,7 @@ impl Inference<'_, '_, '_> {
                 key,
                 &left.inf.as_cow_type(self.i_s),
                 &right_inf.as_cow_type(self.i_s),
+                is_eq,
             ) {
                 return Some(result);
             }
@@ -885,6 +942,7 @@ impl Inference<'_, '_, '_> {
                 key,
                 &right_inf.as_cow_type(self.i_s),
                 &left.inf.as_cow_type(self.i_s),
+                is_eq,
             ) {
                 return Some(result);
             }
@@ -895,6 +953,7 @@ impl Inference<'_, '_, '_> {
     fn find_comparison_chain_guards(
         &mut self,
         chain: &[InferredWithKey],
+        is_eq: bool,
     ) -> Option<(Frame, Frame)> {
         let mut frames = None;
         'outer: for (i, part1) in chain.iter().enumerate() {
@@ -908,6 +967,7 @@ impl Inference<'_, '_, '_> {
                         key.clone(),
                         &part1.inf.as_cow_type(self.i_s),
                         &part2.inf.as_cow_type(self.i_s),
+                        is_eq,
                     ) {
                         frames = Some(merge_conjunction(self.i_s, frames, new));
                         continue 'outer;
