@@ -929,31 +929,6 @@ impl Inference<'_, '_, '_> {
                 Some(t1.union(t2))
             }
             _ => {
-                let check_t = |self_: &mut Self, t: &_| match t {
-                    Type::Type(t) => {
-                        if let Type::Class(cls) = t.as_ref() {
-                            if !matches!(
-                                &cls.generics,
-                                ClassGenerics::NotDefinedYet | ClassGenerics::None
-                            ) {
-                                self_.add_issue(
-                                    part.index(),
-                                    IssueType::CannotUseIsinstanceWithParametrizedGenerics,
-                                );
-                                return Some(Type::Any(AnyCause::FromError));
-                            }
-                        }
-                        Some((**t).clone())
-                    }
-                    Type::Any(cause) => Some(Type::Any(*cause)),
-                    /*
-                    Type::Literal(l) => {
-                        cannot_use_with(self, "Literal")
-                    }
-                    */
-                    _ => None,
-                };
-
                 let inf = self.infer_expression_part(part);
                 match inf.maybe_saved_specific(self.i_s.db) {
                     Some(Specific::TypingAny) => {
@@ -969,19 +944,51 @@ impl Inference<'_, '_, '_> {
                     _ => (),
                 }
 
-                match inf.as_cow_type(self.i_s).as_ref() {
-                    Type::Tuple(tup) => match &tup.args {
-                        TupleArgs::FixedLen(ts) => {
-                            let ts: Option<Vec<Type>> =
-                                ts.iter().map(|t| check_t(self, t)).collect();
-                            Some(Type::Union(UnionType::from_types(ts?)))
-                        }
-                        TupleArgs::ArbitraryLen(t) => check_t(self, t),
-                        TupleArgs::WithUnpack(_) => todo!(),
-                    },
-                    t => check_t(self, t),
-                }
+                self.process_isinstance_type(part, &inf.as_cow_type(self.i_s))
             }
+        }
+    }
+
+    fn process_isinstance_type(&mut self, part: ExpressionPart, t: &Type) -> Option<Type> {
+        match t {
+            Type::Tuple(tup) => match &tup.args {
+                TupleArgs::FixedLen(ts) => {
+                    let ts: Option<Vec<Type>> = ts
+                        .iter()
+                        .map(|t| self.process_isinstance_type(part, t))
+                        .collect();
+                    let ts = ts?;
+                    Some(match ts.len() {
+                        0 => Type::Never,
+                        1 => ts.into_iter().next().unwrap(),
+                        _ => Type::Union(UnionType::from_types(ts)),
+                    })
+                }
+                TupleArgs::ArbitraryLen(t) => self.process_isinstance_type(part, t),
+                TupleArgs::WithUnpack(_) => todo!(),
+            },
+            Type::Type(t) => {
+                if let Type::Class(cls) = t.as_ref() {
+                    if !matches!(
+                        &cls.generics,
+                        ClassGenerics::NotDefinedYet | ClassGenerics::None
+                    ) {
+                        self.add_issue(
+                            part.index(),
+                            IssueType::CannotUseIsinstanceWithParametrizedGenerics,
+                        );
+                        return Some(Type::Any(AnyCause::FromError));
+                    }
+                }
+                Some((**t).clone())
+            }
+            Type::Any(cause) => Some(Type::Any(*cause)),
+            /*
+            Type::Literal(l) => {
+                cannot_use_with(self, "Literal")
+            }
+            */
+            _ => None,
         }
     }
 
