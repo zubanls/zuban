@@ -384,7 +384,8 @@ fn narrow_is_or_eq(
         // Mypy does only want to narrow if there are explicit literals on one side. See also
         // comments around testNarrowingEqualityFlipFlop.
         Type::Literal(literal1)
-            if is_eq && (!literal1.implicit || has_explicit_literal(left_t)) =>
+            if is_eq && (!literal1.implicit || has_explicit_literal(left_t))
+                || !is_eq && matches!(literal1.kind, LiteralKind::Bool(_)) =>
         {
             let mut true_type = Type::Never;
             let mut false_type = Type::Never;

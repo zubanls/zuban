@@ -1042,6 +1042,9 @@ testWithStmtScopeAndLambda
 
 # union order issues
 testNarrowingEqualityDisabledForCustomEquality
+# bool literal type matching
+assign_bool_to_false_true_literal
+testBoolInTuplesRegression
 
 # new narrowing tests
 testNarrowingEqualityDisabledForCustomEqualityChain
@@ -1050,7 +1053,6 @@ testNarrowingUnreachableCases2
 testNarrowingIsInstanceFinalSubclass
 testNarrowingIsInstanceFinalSubclassWithUnions
 testNarrowingIsSubclassFinalSubclassWithTypeVar
-testNarrowingLiteralIdentityCheck
 testNarrowingBooleanIdentityCheck
 testNarrowingBooleanTruthiness
 testNarrowingBooleanBoolOp

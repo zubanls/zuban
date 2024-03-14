@@ -1,7 +1,8 @@
 use std::{borrow::Cow, collections::HashMap, rc::Rc};
 
-use super::{FormatStyle, Type};
+use super::{FormatStyle, LiteralKind, Type};
 use crate::{
+    database::Database,
     inference_state::InferenceState,
     matching::{FormatData, Matcher},
 };
@@ -81,6 +82,8 @@ fn merge_simplified_union_type(
     let mut new_types: Vec<UnionEntry> = vec![];
     let mut finished = true;
     let mut had_enum_member = false;
+    let mut had_true = false;
+    let mut had_false = false;
     'outer: for additional in types {
         if additional.type_.has_any(i_s) {
             if !new_types
@@ -144,8 +147,14 @@ fn merge_simplified_union_type(
                         }
                     }
                 }
-                if matches!(additional_t, Type::EnumMember(_)) {
-                    had_enum_member = true;
+                match additional_t {
+                    Type::EnumMember(_) => had_enum_member = true,
+                    Type::Literal(literal) => match &literal.kind {
+                        LiteralKind::Bool(true) => had_true = true,
+                        LiteralKind::Bool(false) => had_false = true,
+                        _ => (),
+                    },
+                    _ => (),
                 }
             }
         }
@@ -154,6 +163,9 @@ fn merge_simplified_union_type(
     if had_enum_member {
         // If all enum members are found in a union, just use an enum instance instead.
         try_contracting_enum_members(&mut new_types)
+    }
+    if had_false && had_true {
+        contract_bool_literals(i_s.db, &mut new_types)
     }
     if finished {
         MergeSimplifiedUnionResult::Done(match new_types.len() {
@@ -195,6 +207,23 @@ fn try_contracting_enum_members(entries: &mut Vec<UnionEntry>) {
                         entry.type_ = Type::Enum(member.enum_.clone())
                     }
                     return should_retain;
+                }
+            }
+        }
+        true
+    })
+}
+
+fn contract_bool_literals(db: &Database, entries: &mut Vec<UnionEntry>) {
+    let mut first = true;
+    entries.retain_mut(|entry| {
+        if let Type::Literal(literal) = &entry.type_ {
+            if matches!(&literal.kind, LiteralKind::Bool(_)) {
+                if first {
+                    first = false;
+                    entry.type_ = db.python_state.bool_type();
+                } else {
+                    return false;
                 }
             }
         }
