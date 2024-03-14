@@ -278,6 +278,8 @@ fn has_custom_special_method(i_s: &InferenceState, t: &Type, method: &str) -> bo
         let cls = match t {
             Type::Class(c) => c.class(i_s.db),
             Type::Dataclass(dc) => dc.class(i_s.db),
+            Type::Enum(enum_) => enum_.class(i_s.db),
+            Type::EnumMember(member) => member.enum_.class(i_s.db),
             _ => return false,
         };
         let details = cls.lookup_without_descriptors_and_custom_add_issue(i_s, method, |_| ());
@@ -289,7 +291,12 @@ fn has_custom_eq(i_s: &InferenceState, t: &Type) -> bool {
     has_custom_special_method(i_s, t, "__eq__") || has_custom_special_method(i_s, t, "__ne__")
 }
 
-fn split_off_singleton(db: &Database, t: &Type, split_off: &Type) -> (Type, Type) {
+fn split_off_singleton(
+    i_s: &InferenceState,
+    t: &Type,
+    split_off: &Type,
+    abort_on_custom_eq: bool,
+) -> Option<(Type, Type)> {
     let matches_singleton = |t: &_| match split_off {
         Type::None => split_off == t,
         Type::EnumMember(member1) => match t {
@@ -299,37 +306,45 @@ fn split_off_singleton(db: &Database, t: &Type, split_off: &Type) -> (Type, Type
         _ => false,
     };
     let mut other_return = Type::Never;
-    let left = Type::gather_union(|gather| {
-        for sub_t in t.iter_with_unpacked_unions() {
-            match sub_t {
-                Type::Any(_) => {
-                    // Any can be None or something else.
-                    other_return = split_off.clone();
-                    gather(sub_t.clone());
+    let mut left = Type::Never;
+    let mut add = |t| left.union_in_place(t);
+    for sub_t in t.iter_with_unpacked_unions() {
+        match sub_t {
+            Type::Any(_) => {
+                // Any can be None or something else.
+                other_return = split_off.clone();
+                add(sub_t.clone());
+            }
+            Type::Enum(enum_) => {
+                if abort_on_custom_eq && has_custom_eq(i_s, t) {
+                    return None;
                 }
-                Type::Enum(enum_) => {
-                    if let Type::EnumMember(split) = split_off {
-                        if enum_.defined_at == split.enum_.defined_at {
-                            for (i, _) in enum_.members.iter().enumerate() {
-                                let new_member =
-                                    Type::EnumMember(EnumMember::new(enum_.clone(), i, false));
-                                if i == split.member_index {
-                                    other_return.union_in_place(new_member)
-                                } else {
-                                    gather(new_member)
-                                }
+                if let Type::EnumMember(split) = split_off {
+                    if enum_.defined_at == split.enum_.defined_at {
+                        for (i, _) in enum_.members.iter().enumerate() {
+                            let new_member =
+                                Type::EnumMember(EnumMember::new(enum_.clone(), i, false));
+                            if i == split.member_index {
+                                other_return.union_in_place(new_member)
+                            } else {
+                                add(new_member)
                             }
-                            continue;
                         }
+                        continue;
                     }
-                    gather(sub_t.clone())
                 }
-                _ if matches_singleton(sub_t) => other_return = split_off.clone(),
-                _ => gather(sub_t.clone()),
+                add(sub_t.clone())
+            }
+            _ if matches_singleton(sub_t) => other_return = split_off.clone(),
+            _ => {
+                if abort_on_custom_eq && has_custom_eq(i_s, t) {
+                    return None;
+                }
+                add(sub_t.clone())
             }
         }
-    });
-    (left, other_return)
+    }
+    Some((left, other_return))
 }
 
 fn narrow_is_or_eq(
@@ -340,7 +355,7 @@ fn narrow_is_or_eq(
     is_eq: bool,
 ) -> Option<(Frame, Frame)> {
     let split = |key: FlowKey| {
-        let (rest, none) = split_off_singleton(i_s.db, &left_t, right_t);
+        let (rest, none) = split_off_singleton(i_s, &left_t, right_t, is_eq)?;
         let result = (
             Frame::from_type(key.clone(), none),
             Frame::from_type(key, rest),
@@ -355,7 +370,7 @@ fn narrow_is_or_eq(
             narrow_is_or_eq(i_s, key, left_t, &Type::EnumMember(new_member), is_eq)
         }
         Type::None => split(key),
-        Type::EnumMember(_) => split(key),
+        Type::EnumMember(member) if !is_eq || !member.implicit => split(key),
         Type::Enum(enum_) if enum_.members.len() == 1 => {
             // Enums with a single item can be compared to that item.
             narrow_is_or_eq(
@@ -410,7 +425,7 @@ fn narrow_is_or_eq(
                     .iter_with_unpacked_unions()
                     .any(|t| matches!(t, Type::None))
                 {
-                    let (new_left, _) = split_off_singleton(i_s.db, left_t, &Type::None);
+                    let (new_left, _) = split_off_singleton(i_s, left_t, &Type::None, is_eq)?;
                     if new_left.is_simple_sub_type_of(i_s, right_t).bool()
                         || new_left.is_simple_super_type_of(i_s, right_t).bool()
                     {

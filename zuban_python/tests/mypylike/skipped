@@ -1048,8 +1048,10 @@ testWithStmtScopeComplexAssignments
 testWithStmtScopeAndClass
 testWithStmtScopeAndLambda
 
-# new narrowing tests
+# union order issues
 testNarrowingEqualityDisabledForCustomEquality
+
+# new narrowing tests
 testNarrowingEqualityDisabledForCustomEqualityChain
 testNarrowingUnreachableCases
 testNarrowingUnreachableCases2
