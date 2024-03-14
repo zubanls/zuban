@@ -87,6 +87,7 @@ pub(crate) enum IssueType {
     ReturnInAsyncGenerator,
     OnlyClassTypeApplication,
     InvalidBaseClass,
+    CannotInheritFromFinalClass { class_name: Box<str> },
     IncompatibleBaseTuples,
     InvalidMetaclass,
     MetaclassMustInheritFromType,
@@ -848,6 +849,9 @@ impl<'db> Diagnostic<'db> {
             YieldFromInAsyncFunction => r#""yield from" in async function"#.to_string(),
             ReturnInAsyncGenerator => r#""return" with value in async generator is not allowed"#.to_string(),
             InvalidBaseClass => format!("Invalid base class {:?}", self.code_under_issue()),
+            CannotInheritFromFinalClass { class_name } => format!(
+                r#"Cannot inherit from final class "{class_name}""#
+            ),
             IncompatibleBaseTuples => "Class has two incompatible bases derived from tuple".to_string(),
             InvalidMetaclass => format!("Invalid metaclass {:?}", self.code_under_issue()),
             MetaclassMustInheritFromType =>

@@ -336,6 +336,7 @@ impl<'db: 'a, 'a> Class<'a> {
 
         let mut was_dataclass = None;
         let maybe_decorated = self.node().maybe_decorated();
+        let mut is_final = false;
         if let Some(decorated) = maybe_decorated {
             let mut inference = self.node_ref.file.inference(i_s);
 
@@ -359,8 +360,13 @@ impl<'db: 'a, 'a> Class<'a> {
                         }
                     }
                 }
-                if inference.infer_expression(expr).maybe_saved_link() == Some(dataclass_link) {
-                    dataclass_options = Some(DataclassOptions::default());
+                if let Some(maybe_link) = inference.infer_expression(expr).maybe_saved_link() {
+                    if maybe_link == i_s.db.python_state.typing_final().as_link() {
+                        is_final = true;
+                    }
+                    if maybe_link == dataclass_link {
+                        dataclass_options = Some(DataclassOptions::default());
+                    }
                 }
             }
             if let Some(dataclass_options) = dataclass_options {
@@ -391,6 +397,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
 
         let (mut class_infos, typed_dict_total) = self.calculate_class_infos(i_s, type_vars);
+        class_infos.is_final |= is_final;
         let mut was_enum = None;
         let mut was_enum_base = false;
         if let MetaclassState::Some(link) = class_infos.metaclass {
@@ -423,7 +430,7 @@ impl<'db: 'a, 'a> Class<'a> {
             for decorator in decorated.decorators().iter_reverse() {
                 if matches!(
                     decorator.as_code(),
-                    "@final\n" | "@type_check_only\n" | "@runtime_checkable\n"
+                    "@type_check_only\n" | "@runtime_checkable\n"
                 ) {
                     // TODO this branch should not be here!
                     continue;
@@ -575,6 +582,7 @@ impl<'db: 'a, 'a> Class<'a> {
         let mut is_new_named_tuple = false;
         let mut metaclass = MetaclassState::None;
         let mut has_slots = self.class_storage.slots.is_some();
+        let mut is_final = false;
         let arguments = self.node().arguments();
         if let Some(arguments) = arguments {
             // Check metaclass before checking all the arguments, because it has a preference over
@@ -721,6 +729,15 @@ impl<'db: 'a, 'a> Class<'a> {
                                             .add_issue(i_s, IssueType::CyclicDefinition { name });
                                     } else {
                                         let cached_class_infos = class.use_cached_class_infos(db);
+                                        if cached_class_infos.is_final {
+                                            is_final = cached_class_infos.is_final;
+                                            NodeRef::new(self.node_ref.file, n.index()).add_issue(
+                                                i_s,
+                                                IssueType::CannotInheritFromFinalClass {
+                                                    class_name: Box::from(class.name()),
+                                                },
+                                            );
+                                        }
                                         incomplete_mro |= cached_class_infos.incomplete_mro;
                                         has_slots |= cached_class_infos.has_slots;
                                         Self::update_metaclass(
@@ -795,12 +812,19 @@ impl<'db: 'a, 'a> Class<'a> {
                                 incomplete_mro = true;
                             }
                             CalculatedBaseClass::InvalidEnum(enum_) => {
+                                let name = enum_.name.as_str(i_s.db);
                                 NodeRef::new(self.node_ref.file, n.index()).add_issue(
                                     i_s,
-                                    IssueType::EnumWithMembersNotExtendable {
-                                        name: enum_.name.as_str(i_s.db).into(),
-                                    },
+                                    IssueType::EnumWithMembersNotExtendable { name: name.into() },
                                 );
+                                if enum_.class(i_s.db).use_cached_class_infos(i_s.db).is_final {
+                                    NodeRef::new(self.node_ref.file, n.index()).add_issue(
+                                        i_s,
+                                        IssueType::CannotInheritFromFinalClass {
+                                            class_name: Box::from(name),
+                                        },
+                                    );
+                                }
                                 incomplete_mro = true;
                             }
                             CalculatedBaseClass::Invalid => {
@@ -882,6 +906,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 class_kind,
                 has_slots,
                 protocol_members,
+                is_final,
             }),
             typed_dict_total,
         )

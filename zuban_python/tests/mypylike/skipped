@@ -939,7 +939,6 @@ testTypingSelfAllowAliasUseInFinalClasses
 testFinalClassWithAbstractAttributes
 testFinalClassWithoutABCMeta
 testFinalClassInheritedAbstractAttributes
-testEnumExplicitlyAndImplicitlyFinal
 testCannotSubclassFinalTypedDict
 testCannotSubclassFinalTypedDictWithForwardDeclarations
 testFinalDefiningProperty
@@ -1009,10 +1008,6 @@ testFinalAddFinalMethodOverride
 testFinalInDataclass
 # Final literal issues
 testEnumCreatedFromFinalValue
-# "Cannot inherit from final class "bool""
-testFinalClassNoInheritance
-testFinalClassNoInheritanceMulti
-testCannotExtendBoolUnlessIgnored
 # "Cannot access final instance attribute "x" on class object"
 testFinalDefiningTypevarsImplicit
 # Final "Protocol member PPS.attr expected settable variable, got read-only attribute"

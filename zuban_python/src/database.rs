@@ -1089,6 +1089,7 @@ pub struct ClassInfos {
     pub incomplete_mro: bool,
     pub protocol_members: Box<[ProtocolMember]>,
     pub has_slots: bool,
+    pub is_final: bool,
 }
 
 impl ClassInfos {
