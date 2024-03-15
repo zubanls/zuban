@@ -1153,11 +1153,17 @@ fn stdlib_container_item(db: &Database, t: &Type) -> Option<Type> {
     let item = match t {
         Type::Class(c) => {
             let class = c.class(db);
-            let generics = class.generics();
-            let Some(Generic::TypeArg(item)) = generics.iter(db).next() else {
-                unreachable!()
-            };
-            item.into_owned()
+            let n = class.node_ref;
+            let s = &db.python_state;
+            if n == s.list_node_ref() || n == s.dict_node_ref() || n == s.set_node_ref() {
+                let generics = class.generics();
+                let Some(Generic::TypeArg(item)) = generics.iter(db).next() else {
+                    unreachable!()
+                };
+                item.into_owned()
+            } else {
+                return None;
+            }
         }
         Type::Tuple(tup) => {
             debug!("TODO tuple container item");
