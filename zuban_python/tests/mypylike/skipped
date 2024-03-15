@@ -1258,7 +1258,6 @@ testNewAnalyzerNoCrashForwardRefToBrokenDoubleNewTypeClass
 # narrowing with in
 testNarrowTypeAfterInListNonOverlapping
 testNarrowTypeAfterInListNested
-testNarrowTypeAfterInTuple
 testNarrowTypeAfterInNamedTuple
 testNarrowTypeAfterInTypedDict
 testVariadicTupleCollectionCheck

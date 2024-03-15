@@ -15,8 +15,8 @@ use crate::{
     matching::{Generic, Match, Matcher, ResultContext},
     node_ref::NodeRef,
     type_::{
-        AnyCause, ClassGenerics, EnumMember, Literal, LiteralKind, TupleArgs, Type, TypeVarKind,
-        UnionType,
+        AnyCause, ClassGenerics, EnumMember, GenericItem, Literal, LiteralKind, TupleArgs, Type,
+        TypeVarKind, UnionType,
     },
     type_helpers::{Class, Function},
 };
@@ -1229,8 +1229,10 @@ fn stdlib_container_item(db: &Database, t: &Type) -> Option<Type> {
             }
         }
         Type::Tuple(tup) => {
-            debug!("TODO tuple container item");
-            return None;
+            let GenericItem::TypeArg(t) = tup.tuple_class_generics(db).nth(0.into()).unwrap() else {
+                unreachable!();
+            };
+            t.clone()
         }
         Type::TypedDict(td) => todo!(),
         _ => return None,
