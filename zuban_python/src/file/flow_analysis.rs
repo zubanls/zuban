@@ -1072,13 +1072,16 @@ impl Inference<'_, '_, '_> {
         if let Some(item) = stdlib_container_item(db, &right_inf.as_cow_type(self.i_s)) {
             if !item.iter_with_unpacked_unions().any(|t| t == &Type::None) {
                 if let Some(left_key) = self.key_from_expr_part(left_expr_part) {
-                    if let Some(t) = removed_optional(&left_inf.as_cow_type(self.i_s)) {
-                        let result = (Frame::from_type(left_key, t), Frame::default());
-                        return if op.as_code() == "in" {
-                            result
-                        } else {
-                            (result.1, result.0)
-                        };
+                    let left_t = left_inf.as_cow_type(self.i_s);
+                    if left_t.overlaps(self.i_s, &item) {
+                        if let Some(t) = removed_optional(&left_t) {
+                            let result = (Frame::from_type(left_key, t), Frame::default());
+                            return if op.as_code() == "in" {
+                                result
+                            } else {
+                                (result.1, result.0)
+                            };
+                        }
                     }
                 }
             }

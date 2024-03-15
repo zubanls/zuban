@@ -33,8 +33,8 @@ impl Type {
         }
 
         match self {
-            Type::Class(c) => match other {
-                Type::Class(c) => Self::overlaps_class(i_s, c.class(i_s.db), c.class(i_s.db)),
+            Type::Class(c1) => match other {
+                Type::Class(c2) => Self::overlaps_class(i_s, c1.class(i_s.db), c2.class(i_s.db)),
                 _ => false,
             },
             Type::Type(t1) => match other {
@@ -771,30 +771,24 @@ impl Type {
     pub fn overlaps_class(i_s: &InferenceState, class1: Class, class2: Class) -> bool {
         let check = {
             #[inline]
-            |i_s: &InferenceState, t1: &Type, t2: &Type| {
-                t1.maybe_class(i_s.db)
-                    .and_then(|c1| {
-                        t2.maybe_class(i_s.db).map(|c2| {
-                            c1.node_ref == c2.node_ref && {
-                                let type_vars = c1.type_vars(i_s);
-                                c1.generics().overlaps(i_s, c2.generics(), type_vars)
-                            }
-                        })
-                    })
-                    .unwrap_or(false)
+            |i_s: &InferenceState, c1: Class, c2: Class| {
+                c1.node_ref == c2.node_ref && {
+                    let type_vars = c1.type_vars(i_s);
+                    c1.generics().overlaps(i_s, c2.generics(), type_vars)
+                }
             }
         };
 
         for (_, c1) in class1.mro(i_s.db) {
             if let TypeOrClass::Class(c1) = c1 {
-                if Self::overlaps_class(i_s, c1, class2) {
+                if check(i_s, c1, class2) {
                     return true;
                 }
             }
         }
         for (_, c2) in class2.mro(i_s.db) {
             if let TypeOrClass::Class(c2) = c2 {
-                if Self::overlaps_class(i_s, class1, c2) {
+                if check(i_s, class1, c2) {
                     return true;
                 }
             }
