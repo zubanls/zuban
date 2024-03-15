@@ -488,7 +488,7 @@ impl Type {
         }
     }
 
-    pub fn remove_from_union(&self, maybe_remove: impl Fn(&Self) -> bool) -> Type {
+    pub fn remove_from_union(&self, mut maybe_remove: impl FnMut(&Self) -> bool) -> Type {
         match self {
             Type::Union(union) => {
                 let mut new_entries = vec![];

@@ -1064,11 +1064,12 @@ impl Inference<'_, '_, '_> {
         op: Operand,
         left_expr_part: ExpressionPart,
         left_inf: Inferred,
-        right: ExpressionPart,
+        right_expr_part: ExpressionPart,
         right_inf: &Inferred,
     ) -> (Frame, Frame) {
         self.infer_in_operator(NodeRef::new(self.file, op.index()), &left_inf, &right_inf);
-        if let Some(item) = stdlib_container_item(self.i_s.db, &right_inf.as_cow_type(self.i_s)) {
+        let db = self.i_s.db;
+        if let Some(item) = stdlib_container_item(db, &right_inf.as_cow_type(self.i_s)) {
             if !item.iter_with_unpacked_unions().any(|t| t == &Type::None) {
                 if let Some(left_key) = self.key_from_expr_part(left_expr_part) {
                     if let Some(t) = removed_optional(&left_inf.as_cow_type(self.i_s)) {
@@ -1079,6 +1080,55 @@ impl Inference<'_, '_, '_> {
                             (result.1, result.0)
                         };
                     }
+                }
+            }
+        }
+        // The right side can currently only be narrowed with TypedDicts
+        let right_t = right_inf.as_cow_type(self.i_s);
+        if right_t
+            .iter_with_unpacked_unions()
+            .any(|t| matches!(t, Type::TypedDict(_)))
+        {
+            if let Some(right_key) = self.key_from_expr_part(right_expr_part) {
+                let left_t = left_inf.as_cow_type(self.i_s);
+                let str_literals: Vec<_> = left_t
+                    .iter_with_unpacked_unions()
+                    .filter_map(|t| match t {
+                        Type::Literal(Literal {
+                            kind: LiteralKind::String(s),
+                            ..
+                        }) => Some(s.as_str(db)),
+                        _ => None,
+                    })
+                    .collect();
+                if !str_literals.is_empty() {
+                    let mut true_types = Type::Never;
+                    let false_types = right_t.remove_from_union(|t| match t {
+                        Type::TypedDict(td) => {
+                            for str_literal in &str_literals {
+                                for member in td.members(db) {
+                                    if member.name.as_str(db) == *str_literal {
+                                        true_types.union_in_place(t.clone());
+                                        return true;
+                                    }
+                                }
+                            }
+                            false
+                        }
+                        _ => {
+                            true_types.union_in_place(t.clone());
+                            false
+                        }
+                    });
+                    let result = (
+                        Frame::from_type(right_key.clone(), true_types),
+                        Frame::from_type(right_key, false_types),
+                    );
+                    return if op.as_code() == "in" {
+                        result
+                    } else {
+                        (result.1, result.0)
+                    };
                 }
             }
         }
