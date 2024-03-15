@@ -836,6 +836,12 @@ impl Inference<'_, '_, '_> {
         let mut other_side = Type::Never;
         let matcher = &mut Matcher::with_ignored_promotions();
         for t in result.inf.as_cow_type(self.i_s).iter_with_unpacked_unions() {
+            /*
+            if matches!(t, Type::Any(_)) {
+                true_type.union_in_place(t.clone());
+                other_side.union_in_place(t.clone());
+            }
+            */
             match isinstance_type.is_super_type_of(self.i_s, matcher, t) {
                 Match::True { with_any: true, .. } => other_side.union_in_place(t.clone()),
                 Match::True {
