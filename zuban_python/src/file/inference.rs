@@ -1492,74 +1492,83 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             ComparisonContent::In(first, op, second)
             | ComparisonContent::NotIn(first, op, second) => {
                 let from = NodeRef::new(self.file, op.index());
-                right_inf.run_after_lookup_on_each_union_member(
-                    self.i_s,
-                    from,
-                    "__contains__",
-                    LookupKind::OnlyType,
-                    &mut |r_type, lookup_result| {
-                        if let Some(method) = lookup_result.lookup.into_maybe_inferred() {
-                            method.execute_with_details(
-                                self.i_s,
-                                &KnownArgs::new(&left_inf, from),
-                                &mut ResultContext::Unknown,
-                                OnTypeError::new(&|i_s, _, _, types| {
-                                    let right = r_type.format_short(i_s.db);
-                                    from.add_issue(
-                                        i_s,
-                                        IssueType::UnsupportedOperand {
-                                            operand: Box::from("in"),
-                                            left: types.got.as_string(i_s.db).into(),
-                                            right,
-                                        },
-                                    );
-                                }),
-                            );
-                        } else {
-                            r_type
-                                .lookup(
-                                    self.i_s,
-                                    from.file_index(),
-                                    "__iter__",
-                                    LookupKind::OnlyType,
-                                    &mut ResultContext::Unknown,
-                                    &|issue| from.add_issue(self.i_s, issue),
-                                    &|_| {
-                                        let right = right_inf.format_short(self.i_s);
-                                        from.add_issue(self.i_s, IssueType::UnsupportedIn { right })
-                                    },
-                                )
-                                .into_inferred()
-                                .execute(self.i_s, &NoArgs::new(from))
-                                .type_lookup_and_execute(
-                                    self.i_s,
-                                    from,
-                                    "__next__",
-                                    &NoArgs::new(from),
-                                    &|_| todo!(),
-                                )
-                                .as_cow_type(self.i_s)
-                                .error_if_not_matches(
-                                    self.i_s,
-                                    &left_inf,
-                                    |issue| from.add_issue(self.i_s, issue),
-                                    |got, _| {
-                                        Some(IssueType::UnsupportedOperand {
-                                            operand: Box::from("in"),
-                                            left: got,
-                                            right: r_type.format_short(self.i_s.db),
-                                        })
-                                    },
-                                );
-                        }
-                    },
-                );
-                Inferred::from_type(self.i_s.db.python_state.bool_type())
+                self.infer_in_operator(from, left_inf, right_inf)
             }
             ComparisonContent::Operation(op) => {
                 self.infer_detailed_operation(op, left_inf, &right_inf)
             }
         }
+    }
+
+    pub fn infer_in_operator(
+        &mut self,
+        from: NodeRef,
+        left_inf: Inferred,
+        right_inf: &Inferred,
+    ) -> Inferred {
+        right_inf.run_after_lookup_on_each_union_member(
+            self.i_s,
+            from,
+            "__contains__",
+            LookupKind::OnlyType,
+            &mut |r_type, lookup_result| {
+                if let Some(method) = lookup_result.lookup.into_maybe_inferred() {
+                    method.execute_with_details(
+                        self.i_s,
+                        &KnownArgs::new(&left_inf, from),
+                        &mut ResultContext::Unknown,
+                        OnTypeError::new(&|i_s, _, _, types| {
+                            let right = r_type.format_short(i_s.db);
+                            from.add_issue(
+                                i_s,
+                                IssueType::UnsupportedOperand {
+                                    operand: Box::from("in"),
+                                    left: types.got.as_string(i_s.db).into(),
+                                    right,
+                                },
+                            );
+                        }),
+                    );
+                } else {
+                    r_type
+                        .lookup(
+                            self.i_s,
+                            from.file_index(),
+                            "__iter__",
+                            LookupKind::OnlyType,
+                            &mut ResultContext::Unknown,
+                            &|issue| from.add_issue(self.i_s, issue),
+                            &|_| {
+                                let right = right_inf.format_short(self.i_s);
+                                from.add_issue(self.i_s, IssueType::UnsupportedIn { right })
+                            },
+                        )
+                        .into_inferred()
+                        .execute(self.i_s, &NoArgs::new(from))
+                        .type_lookup_and_execute(
+                            self.i_s,
+                            from,
+                            "__next__",
+                            &NoArgs::new(from),
+                            &|_| todo!(),
+                        )
+                        .as_cow_type(self.i_s)
+                        .error_if_not_matches(
+                            self.i_s,
+                            &left_inf,
+                            |issue| from.add_issue(self.i_s, issue),
+                            |got, _| {
+                                Some(IssueType::UnsupportedOperand {
+                                    operand: Box::from("in"),
+                                    left: got,
+                                    right: r_type.format_short(self.i_s.db),
+                                })
+                            },
+                        );
+                }
+            },
+        );
+        Inferred::from_type(self.i_s.db.python_state.bool_type())
     }
 
     pub fn infer_lambda(&mut self, lambda: Lambda, result_context: &mut ResultContext) -> Inferred {

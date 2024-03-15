@@ -3,7 +3,7 @@ use std::{cell::RefCell, rc::Rc};
 use parsa_python_ast::{
     Argument, Arguments, ArgumentsDetails, Atom, AtomContent, ComparisonContent, Expression,
     ExpressionContent, ExpressionPart, IfBlockIterator, IfBlockType, IfStmt, NamedExpression,
-    NamedExpressionContent, NodeIndex, Primary, PrimaryContent, PrimaryOrAtom, SliceType,
+    NamedExpressionContent, NodeIndex, Operand, Primary, PrimaryContent, PrimaryOrAtom, SliceType,
 };
 
 use crate::{
@@ -13,6 +13,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{Match, Matcher, ResultContext},
+    node_ref::NodeRef,
     type_::{
         AnyCause, ClassGenerics, EnumMember, Literal, LiteralKind, TupleArgs, Type, TypeVarKind,
         UnionType,
@@ -699,15 +700,11 @@ impl Inference<'_, '_, '_> {
                         ComparisonContent::IsNot(..) => {
                             invert = true;
                         }
-                        ComparisonContent::In(..) => {
-                            debug!("TODO in");
-                            self.infer_comparison_part(comparison, left_inf, &right_inf);
-                            return (Frame::default(), Frame::default());
-                        }
-                        ComparisonContent::NotIn(..) => {
-                            debug!("TODO not in");
-                            self.infer_comparison_part(comparison, left_inf, &right_inf);
-                            return (Frame::default(), Frame::default());
+                        ComparisonContent::In(_, op, _) | ComparisonContent::NotIn(_, op, _) => {
+                            let new = self.guard_of_in_operator(op, left_inf, &right_inf);
+                            frames = Some(merge_conjunction(self.i_s, frames, new));
+                            left_inf = right_inf;
+                            continue;
                         }
                         ComparisonContent::Operation(..) => {
                             self.infer_comparison_part(comparison, left_inf.clone(), &right_inf);
@@ -1058,6 +1055,16 @@ impl Inference<'_, '_, '_> {
             }
         }
         frames
+    }
+
+    fn guard_of_in_operator(
+        &mut self,
+        op: Operand,
+        left_inf: Inferred,
+        right_inf: &Inferred,
+    ) -> (Frame, Frame) {
+        self.infer_in_operator(NodeRef::new(self.file, op.index()), left_inf, &right_inf);
+        (Frame::default(), Frame::default())
     }
 
     fn key_from_atom(&self, atom: Atom) -> Option<FlowKey> {
