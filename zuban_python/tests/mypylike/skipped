@@ -908,6 +908,7 @@ testIsinstanceWithUserDefinedTypeAndTypeVarValues
 testIsinstanceWithUserDefinedTypeAndTypeVarValues
 testIsinstanceWithUserDefinedTypeAndTypeVarValues2
 testTypeCheckOverloadImplementationTypeVarWithValueRestriction
+testOperatorContainsNarrowsTypedDicts_total
 
 # - Overload does not consistently use the "@classmethod" decorator on all function signatures
 # - Overload does not consistently use the "@staticmethod" decorator on all function signatures
@@ -1260,9 +1261,6 @@ testNarrowTypeAfterInListNested
 testNarrowTypeAfterInTuple
 testNarrowTypeAfterInNamedTuple
 testNarrowTypeAfterInTypedDict
-testOperatorContainsNarrowsTypedDicts_total
-testOperatorContainsNarrowsTypedDicts_partialThroughTotalFalse
-testOperatorContainsNarrowsTypedDicts_partialThroughNotRequired
 testVariadicTupleCollectionCheck
 testTupleOverlapDifferentTuples
 # narrowing assignments regressions

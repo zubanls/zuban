@@ -1105,13 +1105,26 @@ impl Inference<'_, '_, '_> {
                     let mut true_types = Type::Never;
                     let false_types = right_t.remove_from_union(|t| match t {
                         Type::TypedDict(td) => {
+                            let mut true_only_count = 0;
+                            let mut false_only_count = 0;
                             for str_literal in &str_literals {
-                                for member in td.members(db) {
-                                    if member.name.as_str(db) == *str_literal {
-                                        true_types.union_in_place(t.clone());
-                                        return true;
+                                if let Some(m) = td
+                                    .members(db)
+                                    .iter()
+                                    .find(|m| m.name.as_str(db) == *str_literal)
+                                {
+                                    if m.required {
+                                        true_only_count += 1;
                                     }
+                                } else {
+                                    false_only_count += 1;
                                 }
+                            }
+                            if true_only_count == str_literals.len() {
+                                true_types.union_in_place(t.clone());
+                                return true;
+                            } else if !td.is_final || false_only_count != str_literals.len() {
+                                true_types.union_in_place(t.clone());
                             }
                             false
                         }
