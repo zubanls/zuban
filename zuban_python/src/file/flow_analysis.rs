@@ -12,7 +12,7 @@ use crate::{
     diagnostics::{Issue, IssueType},
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{Match, Matcher, ResultContext},
+    matching::{Generic, Match, Matcher, ResultContext},
     node_ref::NodeRef,
     type_::{
         AnyCause, ClassGenerics, EnumMember, Literal, LiteralKind, TupleArgs, Type, TypeVarKind,
@@ -700,8 +700,10 @@ impl Inference<'_, '_, '_> {
                         ComparisonContent::IsNot(..) => {
                             invert = true;
                         }
-                        ComparisonContent::In(_, op, _) | ComparisonContent::NotIn(_, op, _) => {
-                            let new = self.guard_of_in_operator(op, left_inf, &right_inf);
+                        ComparisonContent::In(left, op, _)
+                        | ComparisonContent::NotIn(left, op, _) => {
+                            let new =
+                                self.guard_of_in_operator(op, left, left_inf, right, &right_inf);
                             frames = Some(merge_conjunction(self.i_s, frames, new));
                             left_inf = right_inf;
                             continue;
@@ -1060,10 +1062,26 @@ impl Inference<'_, '_, '_> {
     fn guard_of_in_operator(
         &mut self,
         op: Operand,
+        left_expr_part: ExpressionPart,
         left_inf: Inferred,
+        right: ExpressionPart,
         right_inf: &Inferred,
     ) -> (Frame, Frame) {
-        self.infer_in_operator(NodeRef::new(self.file, op.index()), left_inf, &right_inf);
+        self.infer_in_operator(NodeRef::new(self.file, op.index()), &left_inf, &right_inf);
+        if let Some(item) = stdlib_container_item(self.i_s.db, &right_inf.as_cow_type(self.i_s)) {
+            if !item.iter_with_unpacked_unions().any(|t| t == &Type::None) {
+                if let Some(left_key) = self.key_from_expr_part(left_expr_part) {
+                    if let Some(t) = removed_optional(&left_inf.as_cow_type(self.i_s)) {
+                        let result = (Frame::from_type(left_key, t), Frame::default());
+                        return if op.as_code() == "in" {
+                            result
+                        } else {
+                            (result.1, result.0)
+                        };
+                    }
+                }
+            }
+        }
         (Frame::default(), Frame::default())
     }
 
@@ -1127,4 +1145,41 @@ impl Inference<'_, '_, '_> {
 struct InferredWithKey {
     key: Option<FlowKey>,
     inf: Inferred,
+}
+
+fn stdlib_container_item(db: &Database, t: &Type) -> Option<Type> {
+    // Returns int for a list[int] or other containers. This is used for narrowing in. However
+    // we can only do this if we know how __contains__ works.
+    let item = match t {
+        Type::Class(c) => {
+            let class = c.class(db);
+            let generics = class.generics();
+            let Some(Generic::TypeArg(item)) = generics.iter(db).next() else {
+                unreachable!()
+            };
+            item.into_owned()
+        }
+        Type::Tuple(tup) => {
+            debug!("TODO tuple container item");
+            return None;
+        }
+        Type::TypedDict(td) => todo!(),
+        _ => return None,
+    };
+    if matches!(item, Type::Any(_)) {
+        return None;
+    }
+    if matches!(&item, Type::Class(c) if c.class(db).is_object_class(db)) {
+        return None;
+    }
+    Some(item)
+}
+
+fn removed_optional(full: &Type) -> Option<Type> {
+    for t in full.iter_with_unpacked_unions() {
+        if matches!(t, Type::None) {
+            return Some(full.remove_from_union(|t| matches!(t, Type::None)));
+        }
+    }
+    None
 }

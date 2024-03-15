@@ -1512,8 +1512,8 @@ impl<'db: 'a, 'a> Class<'a> {
             .any(|b| matches!(&b.type_, Type::Class(c) if link == c.link))
     }
 
-    pub fn is_object_class(&self, db: &Database) -> Match {
-        (self.node_ref == db.python_state.object_node_ref()).into()
+    pub fn is_object_class(&self, db: &Database) -> bool {
+        self.node_ref == db.python_state.object_node_ref()
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {

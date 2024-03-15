@@ -1492,7 +1492,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             ComparisonContent::In(first, op, second)
             | ComparisonContent::NotIn(first, op, second) => {
                 let from = NodeRef::new(self.file, op.index());
-                self.infer_in_operator(from, left_inf, right_inf)
+                self.infer_in_operator(from, &left_inf, right_inf)
             }
             ComparisonContent::Operation(op) => {
                 self.infer_detailed_operation(op, left_inf, &right_inf)
@@ -1503,7 +1503,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     pub fn infer_in_operator(
         &mut self,
         from: NodeRef,
-        left_inf: Inferred,
+        left_inf: &Inferred,
         right_inf: &Inferred,
     ) -> Inferred {
         right_inf.run_after_lookup_on_each_union_member(

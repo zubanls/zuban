@@ -488,6 +488,32 @@ impl Type {
         }
     }
 
+    pub fn remove_from_union(&self, maybe_remove: impl Fn(&Self) -> bool) -> Type {
+        match self {
+            Type::Union(union) => {
+                let mut new_entries = vec![];
+                for entry in union.entries.iter() {
+                    if !maybe_remove(&entry.type_) {
+                        new_entries.push(entry.clone())
+                    }
+                }
+                match new_entries.len() {
+                    0 => Type::Never,
+                    1 => new_entries.into_iter().next().unwrap().type_,
+                    _ => Type::Union(UnionType::new(new_entries)),
+                }
+            }
+            Type::Never => Type::Never,
+            t => {
+                if maybe_remove(t) {
+                    Type::Never
+                } else {
+                    t.clone()
+                }
+            }
+        }
+    }
+
     pub fn highest_union_format_index(&self) -> usize {
         match self {
             Type::Union(items) => items.entries.iter().map(|e| e.format_index).max().unwrap(),
