@@ -9,6 +9,8 @@ testIndexingTuples
 
 testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
 
+# typeshed upgrade
+testIncrementalDataclassesDunder
 # mypy upgrade
 testMultilineQuotedAnnotation
 testDataclassFieldWithPositionalArguments
