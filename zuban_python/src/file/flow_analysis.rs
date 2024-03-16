@@ -1219,16 +1219,21 @@ fn stdlib_container_item(db: &Database, t: &Type) -> Option<Type> {
     let item = match t {
         Type::Class(c) => {
             let class = c.class(db);
-            let n = class.node_ref;
-            let s = &db.python_state;
-            if n == s.list_node_ref() || n == s.dict_node_ref() || n == s.set_node_ref() {
-                let generics = class.generics();
-                let Some(Generic::TypeArg(item)) = generics.iter(db).next() else {
-                    unreachable!()
-                };
-                item.into_owned()
+            let infos = class.use_cached_class_infos(db);
+            if let Some(nt) = infos.maybe_named_tuple() {
+                return stdlib_container_item(db, &Type::Tuple(nt.as_tuple()));
             } else {
-                return None;
+                let n = class.node_ref;
+                let s = &db.python_state;
+                if n == s.list_node_ref() || n == s.dict_node_ref() || n == s.set_node_ref() {
+                    let generics = class.generics();
+                    let Some(Generic::TypeArg(item)) = generics.iter(db).next() else {
+                        unreachable!()
+                    };
+                    item.into_owned()
+                } else {
+                    return None;
+                }
             }
         }
         Type::Tuple(tup) => {
@@ -1236,6 +1241,9 @@ fn stdlib_container_item(db: &Database, t: &Type) -> Option<Type> {
                 unreachable!();
             };
             t.clone()
+        }
+        Type::NamedTuple(named_tup) => {
+            return stdlib_container_item(db, &Type::Tuple(named_tup.as_tuple()))
         }
         Type::TypedDict(td) => todo!(),
         _ => return None,
