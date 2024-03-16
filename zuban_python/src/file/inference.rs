@@ -1838,6 +1838,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         primary: Primary,
         result_context: &mut ResultContext,
     ) -> Inferred {
+        if let Some(inf) = self.narrow_primary(primary) {
+            return inf;
+        }
         let base = self.infer_primary_or_atom(primary.first());
         let result = self.infer_primary_or_primary_t_content(
             base,

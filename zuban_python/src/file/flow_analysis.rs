@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use parsa_python_ast::{
     Argument, Arguments, ArgumentsDetails, Atom, AtomContent, ComparisonContent, Expression,
-    ExpressionContent, ExpressionPart, IfBlockIterator, IfBlockType, IfStmt, NamedExpression,
+    ExpressionContent, ExpressionPart, IfBlockIterator, IfBlockType, IfStmt, Name, NamedExpression,
     NamedExpressionContent, NodeIndex, Operand, Primary, PrimaryContent, PrimaryOrAtom, SliceType,
 };
 
@@ -21,7 +21,7 @@ use crate::{
     type_helpers::{Class, Function},
 };
 
-use super::{first_defined_name, inference::Inference};
+use super::{first_defined_name, inference::Inference, PythonFile};
 
 type Entries = Vec<Entry>;
 
@@ -29,11 +29,23 @@ thread_local! {
     pub static FLOW_ANALYSIS: FlowAnalysis = FlowAnalysis::default();
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 enum FlowKey {
     Name(PointLink),
     //Index(Rc<FlowKey>),
-    //Member(Rc<FlowKey>, PointLink),
+    Member(Rc<FlowKey>, *const str),
+}
+
+impl PartialEq for FlowKey {
+    fn eq(&self, other: &Self) -> bool {
+        match self {
+            Self::Name(link1) => matches!(other, Self::Name(link2) if link1 == link2),
+            Self::Member(key1, s1) => match other {
+                Self::Member(key2, s2) => key1 == key2 && unsafe { &**s1 as &str == &**s1 as &str },
+                _ => false,
+            },
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -1153,20 +1165,11 @@ impl Inference<'_, '_, '_> {
 
     fn key_from_atom(&self, atom: Atom) -> Option<FlowKey> {
         match atom.unpack() {
-            AtomContent::Name(name) => {
-                let p = self.file.points.get(name.index());
-                if p.calculated() {
-                    debug_assert_eq!(p.type_(), PointType::Redirect);
-                    let def = p.node_index();
-                    let file = self.i_s.db.loaded_python_file(p.file_index());
-                    Some(FlowKey::Name(PointLink::new(
-                        p.file_index(),
-                        first_defined_name(file, def).unwrap_or(def),
-                    )))
-                } else {
-                    todo!()
-                }
-            }
+            AtomContent::Name(name) => Some(FlowKey::Name(name_definition_link(
+                self.i_s.db,
+                self.file,
+                name,
+            ))),
             _ => None,
         }
     }
@@ -1175,12 +1178,9 @@ impl Inference<'_, '_, '_> {
         let base = match primary.first() {
             PrimaryOrAtom::Primary(primary) => self.key_from_primary(primary),
             PrimaryOrAtom::Atom(atom) => self.key_from_atom(atom),
-        };
+        }?;
         match primary.second() {
-            PrimaryContent::Attribute(attr) => {
-                debug!("TODO implement primary key");
-                None
-            }
+            PrimaryContent::Attribute(attr) => Some(FlowKey::Member(Rc::new(base), attr.as_code())),
             PrimaryContent::GetItem(attr) => match attr {
                 SliceType::NamedExpression(_) => {
                     debug!("TODO GetItem key");
@@ -1205,6 +1205,59 @@ impl Inference<'_, '_, '_> {
             ExpressionContent::ExpressionPart(part) => self.key_from_expr_part(part),
             _ => None,
         }
+    }
+
+    pub fn narrow_primary(&self, primary: Primary) -> Option<Inferred> {
+        FLOW_ANALYSIS.with(|fa| {
+            for frame in fa.frames.borrow().iter().rev() {
+                for entry in &frame.entries {
+                    if self.matches_primary_entry(primary, &entry.key) {
+                        return Some(Inferred::from_type(entry.type_.clone()));
+                    }
+                }
+            }
+            None
+        })
+    }
+
+    fn matches_primary_entry(&self, primary: Primary, key: &FlowKey) -> bool {
+        match key {
+            FlowKey::Member(left, right) => {
+                match primary.second() {
+                    PrimaryContent::Attribute(attr) => {
+                        if attr.as_code() != unsafe { &**right as &str } {
+                            return false;
+                        }
+                    }
+                    _ => return false,
+                }
+                match primary.first() {
+                    PrimaryOrAtom::Primary(primary) => self.matches_primary_entry(primary, left),
+                    PrimaryOrAtom::Atom(atom) => {
+                        let FlowKey::Name(check_link) = left.as_ref() else {
+                            return false;
+                        };
+                        let AtomContent::Name(name) = atom.unpack() else {
+                            return false;
+                        };
+                        name_definition_link(self.i_s.db, self.file, name) == *check_link
+                    }
+                }
+            }
+            FlowKey::Name(_) => false,
+        }
+    }
+}
+
+fn name_definition_link(db: &Database, file: &PythonFile, name: Name) -> PointLink {
+    let p = file.points.get(name.index());
+    if p.calculated() {
+        debug_assert_eq!(p.type_(), PointType::Redirect);
+        let def = p.node_index();
+        let file = db.loaded_python_file(p.file_index());
+        PointLink::new(p.file_index(), first_defined_name(file, def).unwrap_or(def))
+    } else {
+        todo!()
     }
 }
 
