@@ -3,6 +3,9 @@ testBadEnumLoading
 testInvalidNamedTupleWithinFunction
 testVariadicUnpackWithRegularInstance
 testMisguidedSetItem
+testUnaryOpLiteral
+testNegativeIntLiteralWithFinal
+testIndexingTuples
 
 testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
 
@@ -11,12 +14,21 @@ testMultilineQuotedAnnotation
 testDataclassFieldWithPositionalArguments
 testCanCreateClassWithFunctionBasedTypedDictBase
 testTypeVarTupleInvariant
+testOverrideDecoratedProperty
+testInitTypedDictFromType
 
 # 3.12 type var syntax
 test695TypeAlias
 test695Class
 test695Function
 test695TypeVar
+test695TypeAliasType
+# TypeAliasType
+testTypeAliasType
+testTypeAliasTypeInvalid
+testTypeAliasTypeGeneric
+testTypeAliasTypeInvalidGeneric
+testTypeAliasTypeNoUnpackInTypeParams311
 
 # super with Type[...]
 testSuperWithAny
@@ -651,6 +663,9 @@ testErrorCodeUnsafeSuper_no_empty
 testAbstractBodyTurnsEmpty
 testAbstractBodyTurnsEmptyProtocol
 testAbstractBodyTurnsEmptyCoarse
+testSuperWithAbstractProperty
+testEmptyBodyNoSuperWarningWithoutStrict
+testEmptyBodyNoSuperWarningOptionalReturn
 # ""abstractmethod" used with a non-method"
 testAbstractNestedFunction
 testAbstractGlobalFunction
@@ -1425,6 +1440,11 @@ testTypeGuardWithPositionalOnlyArg
 testTypeGuardKeywordFollowingWalrus
 testWalrusTypeGuard
 testReplaceIsDataclass
+testStartUsingTypeGuard
+# TypeIs
+testNarrowedTypeNotSubtype
+testStartUsingTypeIs
+testTypeGuardToTypeIs
 
 # Function local self attribute name binding
 testOptionalDescriptorsBinder
@@ -1759,6 +1779,8 @@ testDictWithoutKeywordArgs
 testUninferableLambda
 testUninferableLambdaWithTypeError
 testDisallowAnyGenericsPlainList
+testInferenceWithUninhabitedType
+testLowercaseSettingOnTypeAnnotationHint
 # "Perhaps you need a type annotation for "x"? Suggestion: "List[str | int]""
 testInferredTypeSubTypeOfReturnType
 # --disallow-any-generics
