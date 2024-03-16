@@ -28,7 +28,7 @@ impl Type {
                 }
             }
             Type::Union(union_type2) => return union_type2.iter().any(|t| self.overlaps(i_s, t)),
-            Type::Any(_) => return false, // This is a fallback
+            Type::Any(_) => return true, // This is a fallback
             _ => (),
         }
 
