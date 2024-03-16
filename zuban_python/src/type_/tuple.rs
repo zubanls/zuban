@@ -500,7 +500,17 @@ impl TupleArgs {
         match self {
             Self::FixedLen(ts) => common_base_type(i_s, ts.iter()),
             Self::ArbitraryLen(t) => t.as_ref().clone(),
-            Self::WithUnpack(_) => i_s.db.python_state.object_type(),
+            Self::WithUnpack(with_unpack) => match &with_unpack.unpack {
+                TupleUnpack::TypeVarTuple(tvt) => i_s.db.python_state.object_type(),
+                TupleUnpack::ArbitraryLen(t) => common_base_type(
+                    i_s,
+                    with_unpack
+                        .before
+                        .iter()
+                        .chain(std::iter::once(t))
+                        .chain(with_unpack.after.iter()),
+                ),
+            },
         }
     }
 

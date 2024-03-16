@@ -1255,8 +1255,7 @@ testReModuleString
 testNoCrashForwardRefToBrokenDoubleNewType
 testNoCrashForwardRefToBrokenDoubleNewTypeClass
 testNewAnalyzerNoCrashForwardRefToBrokenDoubleNewTypeClass
-# narrowing with in
-testVariadicTupleCollectionCheck
+# narrowing `in` weird overlapping. Mypy correct?
 testTupleOverlapDifferentTuples
 # narrowing assignments regressions
 testAwaitOverloadSpecialCase
