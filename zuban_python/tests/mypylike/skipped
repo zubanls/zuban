@@ -3,9 +3,6 @@ testBadEnumLoading
 testInvalidNamedTupleWithinFunction
 testVariadicUnpackWithRegularInstance
 testMisguidedSetItem
-testUnaryOpLiteral
-testNegativeIntLiteralWithFinal
-testIndexingTuples
 
 testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
 

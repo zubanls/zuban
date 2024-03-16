@@ -1396,10 +1396,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             ExpressionPart::Factor(f) => {
                 let (operand, right) = f.unpack();
                 let inf = self.infer_expression_part(right);
-                if operand.as_code() == "-" {
+                if operand.as_code() != "~" {
                     match inf.maybe_literal(self.i_s.db) {
                         UnionValue::Single(literal) => {
                             if let LiteralKind::Int(i) = &literal.kind {
+                                if operand.as_code() == "+" {
+                                    // Rust weirdness: Why do we need to clone here?
+                                    return inf.clone();
+                                }
                                 return Inferred::from_type(Type::Literal(Literal {
                                     kind: LiteralKind::Int(-i),
                                     implicit: true,
