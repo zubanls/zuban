@@ -1245,7 +1245,7 @@ fn stdlib_container_item(db: &Database, t: &Type) -> Option<Type> {
         Type::NamedTuple(named_tup) => {
             return stdlib_container_item(db, &Type::Tuple(named_tup.as_tuple()))
         }
-        Type::TypedDict(td) => todo!(),
+        Type::TypedDict(td) => db.python_state.str_type(),
         _ => return None,
     };
     if matches!(item, Type::Any(_)) {

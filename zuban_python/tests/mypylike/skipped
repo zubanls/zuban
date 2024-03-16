@@ -1257,7 +1257,6 @@ testNoCrashForwardRefToBrokenDoubleNewTypeClass
 testNewAnalyzerNoCrashForwardRefToBrokenDoubleNewTypeClass
 # narrowing with in
 testNarrowTypeAfterInListNested
-testNarrowTypeAfterInTypedDict
 testVariadicTupleCollectionCheck
 testTupleOverlapDifferentTuples
 # narrowing assignments regressions
