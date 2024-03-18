@@ -599,6 +599,35 @@ impl Inference<'_, '_, '_> {
         }
     }
 
+    fn maybe_propagate_parent_union(&mut self) -> Option<Type> {
+        todo!()
+    }
+
+    fn propagate_parent_unions(
+        &mut self,
+        frame: &mut Frame,
+        parent_unions: &[(FlowKey, Inferred)],
+    ) {
+        let mut new_entries = vec![];
+        for (key, parent_union) in parent_unions {
+            for entry in &frame.entries {
+                let FlowKey::Member(base_key, _) = &entry.key else {
+                    continue;
+                };
+                if key == base_key.as_ref() {
+                    if let Some(type_) = self.maybe_propagate_parent_union() {
+                        new_entries.push(Entry {
+                            key: key.clone(),
+                            type_,
+                            from_assignment: false,
+                        });
+                    }
+                }
+            }
+        }
+        frame.entries.extend(new_entries);
+    }
+
     fn find_guards_in_named_expr(&mut self, named_expr: NamedExpression) -> (Frame, Frame) {
         match named_expr.unpack() {
             NamedExpressionContent::Expression(expr) => self.find_guards_in_expr(expr),
@@ -611,13 +640,18 @@ impl Inference<'_, '_, '_> {
 
     fn find_guards_in_expr(&mut self, expr: Expression) -> (Frame, Frame) {
         match expr.unpack() {
-            ExpressionContent::ExpressionPart(part) => self.find_guards_in_expression_parts(part),
+            ExpressionContent::ExpressionPart(part) => {
+                let mut result = self.find_guards_in_expression_parts(part);
+                self.propagate_parent_unions(&mut result.truthy, &result.parent_unions);
+                self.propagate_parent_unions(&mut result.falsey, &result.parent_unions);
+                (result.truthy, result.falsey)
+            }
             ExpressionContent::Ternary(_) => todo!(),
             ExpressionContent::Lambda(_) => todo!(),
         }
     }
 
-    fn find_guards_in_expression_parts(&mut self, part: ExpressionPart) -> (Frame, Frame) {
+    fn find_guards_in_expression_parts(&mut self, part: ExpressionPart) -> FramesWithParentUnions {
         match part {
             ExpressionPart::Atom(atom) => {
                 let inf = self.infer_atom(atom, &mut ResultContext::Unknown);
@@ -625,10 +659,11 @@ impl Inference<'_, '_, '_> {
                     if let Some((truthy, falsey)) =
                         split_truthy_and_falsey(self.i_s.db, &inf.as_cow_type(self.i_s))
                     {
-                        return (
-                            Frame::from_type(key.clone(), truthy),
-                            Frame::from_type(key, falsey),
-                        );
+                        return FramesWithParentUnions {
+                            truthy: Frame::from_type(key.clone(), truthy),
+                            falsey: Frame::from_type(key, falsey),
+                            ..Default::default()
+                        };
                     }
                 } else {
                     debug!("maybe use __bool__ for narrowing");
@@ -636,10 +671,11 @@ impl Inference<'_, '_, '_> {
                 if let Some((truthy, falsey)) =
                     split_truthy_and_falsey(self.i_s.db, &inf.as_cow_type(self.i_s))
                 {
-                    return (
-                        Frame::from_type_without_entry(truthy),
-                        Frame::from_type_without_entry(falsey),
-                    );
+                    return FramesWithParentUnions {
+                        truthy: Frame::from_type_without_entry(truthy),
+                        falsey: Frame::from_type_without_entry(falsey),
+                        ..Default::default()
+                    };
                 }
             }
             ExpressionPart::Comparisons(comps) => {
@@ -730,28 +766,47 @@ impl Inference<'_, '_, '_> {
                     left_infos = right_infos
                 }
                 if let Some(frames) = frames {
-                    return frames;
+                    return FramesWithParentUnions {
+                        truthy: frames.0,
+                        falsey: frames.1,
+                        // TODO fix  parent unions
+                        ..Default::default()
+                    };
                 }
             }
             ExpressionPart::Conjunction(and) => {
                 let (left, right) = and.unpack();
                 let left_frames = self.find_guards_in_expression_parts(left);
                 let right_frames = self.find_guards_in_expression_parts(right);
-                return merge_conjunction(self.i_s, Some(left_frames), right_frames);
+                let (truthy, falsey) = merge_conjunction(
+                    self.i_s,
+                    Some((left_frames.truthy, left_frames.falsey)),
+                    (right_frames.truthy, right_frames.falsey),
+                );
+                let mut parent_unions = left_frames.parent_unions;
+                parent_unions.extend(right_frames.parent_unions);
+                return FramesWithParentUnions {
+                    truthy,
+                    falsey,
+                    parent_unions,
+                };
             }
             ExpressionPart::Disjunction(or) => {
                 let (left, right) = or.unpack();
-                let (left_true, left_false) = self.find_guards_in_expression_parts(left);
-                let (right_true, right_false) = self.find_guards_in_expression_parts(right);
-                return (
-                    merge_or(self.i_s, left_true, right_true),
-                    merge_and(self.i_s, left_false, right_false),
-                );
+                let left_frames = self.find_guards_in_expression_parts(left);
+                let right_frames = self.find_guards_in_expression_parts(right);
+                let mut parent_unions = left_frames.parent_unions;
+                parent_unions.extend(right_frames.parent_unions);
+                return FramesWithParentUnions {
+                    truthy: merge_or(self.i_s, left_frames.truthy, right_frames.truthy),
+                    falsey: merge_and(self.i_s, left_frames.falsey, right_frames.falsey),
+                    parent_unions,
+                };
             }
             ExpressionPart::Inversion(inv) => {
-                let (true_entries, false_entries) =
-                    self.find_guards_in_expression_parts(inv.expression());
-                return (false_entries, true_entries);
+                let mut frames = self.find_guards_in_expression_parts(inv.expression());
+                (frames.truthy, frames.falsey) = (frames.falsey, frames.truthy);
+                return frames;
             }
             ExpressionPart::Primary(primary) => {
                 match primary.second() {
@@ -792,14 +847,14 @@ impl Inference<'_, '_, '_> {
                 self.infer_expression_part(part);
             }
         }
-        (Frame::default(), Frame::default())
+        FramesWithParentUnions::default()
     }
 
     fn find_isinstance_or_issubclass_frames(
         &mut self,
         args: Arguments,
         issubclass: bool,
-    ) -> Option<(Frame, Frame)> {
+    ) -> Option<FramesWithParentUnions> {
         let mut iterator = args.iter();
         let Argument::Positional(arg) = iterator.next()? else {
             return None
@@ -842,10 +897,11 @@ impl Inference<'_, '_, '_> {
         {
             true_type = isinstance_type;
         }
-        Some((
-            Frame::from_type(key.clone(), true_type),
-            Frame::from_type(key, other_side),
-        ))
+        Some(FramesWithParentUnions {
+            truthy: Frame::from_type(key.clone(), true_type),
+            falsey: Frame::from_type(key, other_side),
+            parent_unions: result.parent_unions,
+        })
     }
 
     pub fn check_isinstance_or_issubclass_type(
@@ -1279,6 +1335,13 @@ impl KeyWithParentUnions {
             parent_unions: vec![],
         }
     }
+}
+
+#[derive(Default)]
+struct FramesWithParentUnions {
+    truthy: Frame,
+    falsey: Frame,
+    parent_unions: Vec<(FlowKey, Inferred)>,
 }
 
 fn stdlib_container_item(db: &Database, t: &Type) -> Option<Type> {
