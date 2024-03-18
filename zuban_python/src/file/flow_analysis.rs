@@ -45,6 +45,7 @@ enum FlowKey {
 #[derive(Debug, Clone, PartialEq)]
 enum FlowKeyIndex {
     Int(usize),
+    Str(String),
 }
 
 impl PartialEq for FlowKey {
@@ -1345,6 +1346,9 @@ impl Inference<'_, '_, '_> {
                     AtomContent::Int(int) => int
                         .parse()
                         .and_then(|i| Some(FlowKeyIndex::Int(i.try_into().ok()?))),
+                    AtomContent::Strings(s) => {
+                        Some(FlowKeyIndex::Str(s.as_python_string().as_str()?.into()))
+                    }
                     _ => None,
                 };
             }
