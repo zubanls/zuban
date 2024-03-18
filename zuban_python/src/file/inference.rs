@@ -1860,7 +1860,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         result
     }
 
-    fn infer_primary_or_primary_t_content(
+    pub(super) fn infer_primary_or_primary_t_content(
         &mut self,
         base: Inferred,
         node_index: NodeIndex,

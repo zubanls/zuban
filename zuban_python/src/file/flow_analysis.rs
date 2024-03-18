@@ -645,11 +645,11 @@ impl Inference<'_, '_, '_> {
             ExpressionPart::Comparisons(comps) => {
                 let mut frames: Option<(Frame, Frame)> = None;
                 let mut iterator = comps.iter().peekable();
-                let mut left_inf = self.infer_expression_part(iterator.peek().unwrap().left());
+                let mut left_infos = self.key_from_expr_part(iterator.peek().unwrap().left());
                 'outer: while let Some(comparison) = iterator.next() {
                     let mut invert = false;
                     let right = comparison.right();
-                    let right_inf = self.infer_expression_part(right);
+                    let right_infos = self.key_from_expr_part(right);
                     let mut is_eq = false;
                     match comparison {
                         ComparisonContent::Equals(..) => {
@@ -658,15 +658,10 @@ impl Inference<'_, '_, '_> {
                             is_eq = true;
                             while let Some(ComparisonContent::Equals(_, _, r)) = iterator.peek() {
                                 if eq_chain.is_empty() {
-                                    eq_chain.push(self.new_inferred_with_key(
-                                        left_inf.clone(),
-                                        comparison.left(),
-                                    ));
-                                    eq_chain
-                                        .push(self.new_inferred_with_key(right_inf.clone(), right));
+                                    eq_chain.push(left_infos.clone());
+                                    eq_chain.push(right_infos.clone());
                                 }
-                                let new_inf = self.infer_expression_part(*r);
-                                eq_chain.push(self.new_inferred_with_key(new_inf, *r));
+                                eq_chain.push(self.key_from_expr_part(*r));
                                 iterator.next();
                             }
                             if !eq_chain.is_empty() {
@@ -675,7 +670,7 @@ impl Inference<'_, '_, '_> {
                                 {
                                     frames = Some(merge_conjunction(self.i_s, frames, new));
                                 }
-                                left_inf = eq_chain.into_iter().last().unwrap().inf;
+                                left_infos = eq_chain.into_iter().last().unwrap();
                                 continue 'outer;
                             }
                         }
@@ -688,15 +683,10 @@ impl Inference<'_, '_, '_> {
                             // `foo is bar is None` needs special handling
                             while let Some(ComparisonContent::Is(_, _, r)) = iterator.peek() {
                                 if is_chain.is_empty() {
-                                    is_chain.push(self.new_inferred_with_key(
-                                        left_inf.clone(),
-                                        comparison.left(),
-                                    ));
-                                    is_chain
-                                        .push(self.new_inferred_with_key(right_inf.clone(), right));
+                                    is_chain.push(left_infos.clone());
+                                    is_chain.push(right_infos.clone());
                                 }
-                                let new_inf = self.infer_expression_part(*r);
-                                is_chain.push(self.new_inferred_with_key(new_inf, *r));
+                                is_chain.push(self.key_from_expr_part(*r));
                                 iterator.next();
                             }
                             if !is_chain.is_empty() {
@@ -705,7 +695,7 @@ impl Inference<'_, '_, '_> {
                                 {
                                     frames = Some(merge_conjunction(self.i_s, frames, new));
                                 }
-                                left_inf = is_chain.into_iter().last().unwrap().inf;
+                                left_infos = is_chain.into_iter().last().unwrap();
                                 continue 'outer;
                             }
                         }
@@ -714,28 +704,30 @@ impl Inference<'_, '_, '_> {
                         }
                         ComparisonContent::In(left, op, _)
                         | ComparisonContent::NotIn(left, op, _) => {
-                            let new =
-                                self.guard_of_in_operator(op, left, left_inf, right, &right_inf);
+                            let new = self.guard_of_in_operator(op, left_infos, &right_infos);
                             frames = Some(merge_conjunction(self.i_s, frames, new));
-                            left_inf = right_inf;
+                            left_infos = right_infos;
                             continue;
                         }
                         ComparisonContent::Operation(..) => {
-                            self.infer_comparison_part(comparison, left_inf.clone(), &right_inf);
-                            left_inf = right_inf;
+                            self.infer_comparison_part(
+                                comparison,
+                                left_infos.inf,
+                                &right_infos.inf,
+                            );
+                            left_infos = right_infos;
                             continue;
                         }
                     };
-                    let left_infos = self.new_inferred_with_key(left_inf, comparison.left());
                     if let Some(mut new) =
-                        self.find_comparison_guards(left_infos, &right_inf, right, is_eq)
+                        self.find_comparison_guards(left_infos, &right_infos, is_eq)
                     {
                         if invert {
                             new = (new.1, new.0)
                         }
                         frames = Some(merge_conjunction(self.i_s, frames, new));
                     }
-                    left_inf = right_inf
+                    left_infos = right_infos
                 }
                 if let Some(frames) = frames {
                     return frames;
@@ -803,24 +795,6 @@ impl Inference<'_, '_, '_> {
         (Frame::default(), Frame::default())
     }
 
-    fn new_inferred_with_key<'a>(
-        &mut self,
-        inf: Inferred,
-        part: ExpressionPart,
-    ) -> InferredWithKey {
-        InferredWithKey {
-            inf,
-            key: self.key_from_expr_part(part),
-        }
-    }
-
-    fn infer_named_expr_with_key(&mut self, n: NamedExpression) -> InferredWithKey {
-        InferredWithKey {
-            inf: self.infer_named_expression(n),
-            key: self.key_from_expression(n.expression()),
-        }
-    }
-
     fn find_isinstance_or_issubclass_frames(
         &mut self,
         args: Arguments,
@@ -830,7 +804,7 @@ impl Inference<'_, '_, '_> {
         let Argument::Positional(arg) = iterator.next()? else {
             return None
         };
-        let result = self.infer_named_expr_with_key(arg);
+        let result = self.key_from_namedexpression(arg);
         let key = result.key?;
         let Argument::Positional(type_arg) = iterator.next()? else {
             return None
@@ -1011,9 +985,8 @@ impl Inference<'_, '_, '_> {
 
     fn find_comparison_guards(
         &mut self,
-        left: InferredWithKey,
-        right_inf: &Inferred,
-        right: ExpressionPart,
+        left: KeyWithParentUnions,
+        right: &KeyWithParentUnions,
         is_eq: bool,
     ) -> Option<(Frame, Frame)> {
         if let Some(key) = left.key {
@@ -1022,18 +995,18 @@ impl Inference<'_, '_, '_> {
                 self.i_s,
                 key,
                 &left.inf.as_cow_type(self.i_s),
-                &right_inf.as_cow_type(self.i_s),
+                &right.inf.as_cow_type(self.i_s),
                 is_eq,
             ) {
                 return Some(result);
             }
         }
-        if let Some(key) = self.key_from_expr_part(right) {
+        if let Some(key) = &right.key {
             // Narrow Foo in `None is Foo`
             if let Some(result) = narrow_is_or_eq(
                 self.i_s,
-                key,
-                &right_inf.as_cow_type(self.i_s),
+                key.clone(),
+                &right.inf.as_cow_type(self.i_s),
                 &left.inf.as_cow_type(self.i_s),
                 is_eq,
             ) {
@@ -1045,7 +1018,7 @@ impl Inference<'_, '_, '_> {
 
     fn find_comparison_chain_guards(
         &mut self,
-        chain: &[InferredWithKey],
+        chain: &[KeyWithParentUnions],
         is_eq: bool,
     ) -> Option<(Frame, Frame)> {
         let mut frames = None;
@@ -1074,17 +1047,15 @@ impl Inference<'_, '_, '_> {
     fn guard_of_in_operator(
         &mut self,
         op: Operand,
-        left_expr_part: ExpressionPart,
-        left_inf: Inferred,
-        right_expr_part: ExpressionPart,
-        right_inf: &Inferred,
+        left: KeyWithParentUnions,
+        right: &KeyWithParentUnions,
     ) -> (Frame, Frame) {
-        self.infer_in_operator(NodeRef::new(self.file, op.index()), &left_inf, &right_inf);
+        self.infer_in_operator(NodeRef::new(self.file, op.index()), &left.inf, &right.inf);
         let db = self.i_s.db;
-        if let Some(item) = stdlib_container_item(db, &right_inf.as_cow_type(self.i_s)) {
+        if let Some(item) = stdlib_container_item(db, &right.inf.as_cow_type(self.i_s)) {
             if !item.iter_with_unpacked_unions().any(|t| t == &Type::None) {
-                if let Some(left_key) = self.key_from_expr_part(left_expr_part) {
-                    let left_t = left_inf.as_cow_type(self.i_s);
+                if let Some(left_key) = left.key {
+                    let left_t = left.inf.as_cow_type(self.i_s);
                     if left_t.overlaps(self.i_s, &item) {
                         if let Some(t) = removed_optional(&left_t) {
                             let result = (Frame::from_type(left_key, t), Frame::default());
@@ -1099,13 +1070,13 @@ impl Inference<'_, '_, '_> {
             }
         }
         // The right side can currently only be narrowed with TypedDicts
-        let right_t = right_inf.as_cow_type(self.i_s);
+        let right_t = right.inf.as_cow_type(self.i_s);
         if right_t
             .iter_with_unpacked_unions()
             .any(|t| matches!(t, Type::TypedDict(_)))
         {
-            if let Some(right_key) = self.key_from_expr_part(right_expr_part) {
-                let left_t = left_inf.as_cow_type(self.i_s);
+            if let Some(right_key) = &right.key {
+                let left_t = left.inf.as_cow_type(self.i_s);
                 let str_literals: Vec<_> = left_t
                     .iter_with_unpacked_unions()
                     .filter_map(|t| match t {
@@ -1150,7 +1121,7 @@ impl Inference<'_, '_, '_> {
                     });
                     let result = (
                         Frame::from_type(right_key.clone(), true_types),
-                        Frame::from_type(right_key, false_types),
+                        Frame::from_type(right_key.clone(), false_types),
                     );
                     return if op.as_code() == "in" {
                         result
@@ -1174,36 +1145,61 @@ impl Inference<'_, '_, '_> {
         }
     }
 
-    fn key_from_primary(&self, primary: Primary) -> Option<FlowKey> {
-        let base = match primary.first() {
+    fn key_from_primary(&mut self, primary: Primary) -> KeyWithParentUnions {
+        let mut base = match primary.first() {
             PrimaryOrAtom::Primary(primary) => self.key_from_primary(primary),
-            PrimaryOrAtom::Atom(atom) => self.key_from_atom(atom),
-        }?;
-        match primary.second() {
-            PrimaryContent::Attribute(attr) => Some(FlowKey::Member(Rc::new(base), attr.as_code())),
-            PrimaryContent::GetItem(attr) => match attr {
-                SliceType::NamedExpression(_) => {
-                    debug!("TODO GetItem key");
-                    None
+            PrimaryOrAtom::Atom(atom) => KeyWithParentUnions::new(
+                self.infer_atom(atom, &mut ResultContext::Unknown),
+                self.key_from_atom(atom),
+            ),
+        };
+        let base_key = base.key.take();
+        let second = primary.second();
+        base.inf = self.infer_primary_or_primary_t_content(
+            base.inf,
+            primary.index(),
+            second,
+            false,
+            &mut ResultContext::Unknown,
+        );
+        match second {
+            PrimaryContent::Attribute(attr) => {
+                if let Some(base_key) = base_key {
+                    base.key = Some(FlowKey::Member(Rc::new(base_key), attr.as_code()));
                 }
-                _ => None,
-            },
-            PrimaryContent::Execution(_) => None,
+            }
+            PrimaryContent::GetItem(attr) => {
+                if let SliceType::NamedExpression(_) = attr {
+                    debug!("TODO GetItem key");
+                }
+            }
+            PrimaryContent::Execution(_) => (),
         }
+        base
     }
 
-    fn key_from_expr_part(&self, expr_part: ExpressionPart) -> Option<FlowKey> {
+    fn key_from_expr_part(&mut self, expr_part: ExpressionPart) -> KeyWithParentUnions {
         match expr_part {
-            ExpressionPart::Atom(atom) => self.key_from_atom(atom),
+            ExpressionPart::Atom(atom) => KeyWithParentUnions::new(
+                self.infer_atom(atom, &mut ResultContext::Unknown),
+                self.key_from_atom(atom),
+            ),
             ExpressionPart::Primary(primary) => self.key_from_primary(primary),
-            _ => None,
+            _ => KeyWithParentUnions::new(self.infer_expression_part(expr_part), None),
         }
     }
 
-    fn key_from_expression(&self, expression: Expression) -> Option<FlowKey> {
-        match expression.unpack() {
+    fn key_from_expression(&mut self, expr: Expression) -> KeyWithParentUnions {
+        match expr.unpack() {
             ExpressionContent::ExpressionPart(part) => self.key_from_expr_part(part),
-            _ => None,
+            _ => KeyWithParentUnions::new(self.infer_expression(expr), None),
+        }
+    }
+
+    fn key_from_namedexpression(&mut self, named_expr: NamedExpression) -> KeyWithParentUnions {
+        match named_expr.unpack() {
+            NamedExpressionContent::Expression(expr) => self.key_from_expression(expr),
+            NamedExpressionContent::Definition(name_def, expr) => todo!(),
         }
     }
 
@@ -1261,9 +1257,21 @@ fn name_definition_link(db: &Database, file: &PythonFile, name: Name) -> PointLi
     }
 }
 
-struct InferredWithKey {
+#[derive(Clone)]
+struct KeyWithParentUnions {
     key: Option<FlowKey>,
     inf: Inferred,
+    parent_unions: Vec<Inferred>,
+}
+
+impl KeyWithParentUnions {
+    fn new(inf: Inferred, key: Option<FlowKey>) -> Self {
+        Self {
+            key,
+            inf,
+            parent_unions: vec![],
+        }
+    }
 }
 
 fn stdlib_container_item(db: &Database, t: &Type) -> Option<Type> {

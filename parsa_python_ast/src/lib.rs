@@ -2885,7 +2885,7 @@ pub enum PrimaryTargetOrAtom<'db> {
     Atom(Atom<'db>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum PrimaryContent<'db> {
     Attribute(Name<'db>),
     Execution(ArgumentsDetails<'db>),
