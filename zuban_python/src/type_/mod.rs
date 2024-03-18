@@ -460,6 +460,14 @@ impl Type {
         Self::Class(GenericClass { link, generics })
     }
 
+    pub fn from_union_entries(entries: Vec<UnionEntry>) -> Self {
+        match entries.len() {
+            0 => Type::Never,
+            1 => entries.into_iter().next().unwrap().type_,
+            _ => Type::Union(UnionType::new(entries)),
+        }
+    }
+
     pub fn is_union_like(&self) -> bool {
         match self {
             Type::Union(_) => true,

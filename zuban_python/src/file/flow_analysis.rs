@@ -12,7 +12,7 @@ use crate::{
     diagnostics::{Issue, IssueType},
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{Generic, Match, Matcher, ResultContext},
+    matching::{Generic, LookupKind, Match, Matcher, ResultContext},
     node_ref::NodeRef,
     type_::{
         AnyCause, ClassGenerics, EnumMember, GenericItem, Literal, LiteralKind, TupleArgs, Type,
@@ -599,14 +599,44 @@ impl Inference<'_, '_, '_> {
         }
     }
 
-    fn maybe_propagate_parent_union(&mut self) -> Option<Type> {
-        todo!()
+    #[inline]
+    fn maybe_propagate_parent_union(
+        &mut self,
+        base_union: &UnionType,
+        child_entry: &Entry,
+    ) -> Option<Type> {
+        let replay = |t: &Type| match &child_entry.key {
+            FlowKey::Member(_, name) => t
+                .lookup(
+                    self.i_s,
+                    self.file_index,
+                    unsafe { &**name },
+                    LookupKind::Normal,
+                    &mut ResultContext::Unknown,
+                    &|_| todo!(),
+                    &|_| todo!(),
+                )
+                .into_inferred(),
+            FlowKey::Name(_) => unreachable!(),
+        };
+
+        let mut matching_entries = vec![];
+        for union_entry in base_union.entries.iter() {
+            if replay(&union_entry.type_)
+                .as_cow_type(self.i_s)
+                .overlaps(self.i_s, &child_entry.type_)
+            {
+                matching_entries.push(union_entry.clone());
+            }
+        }
+        (base_union.entries.len() != matching_entries.len())
+            .then(|| Type::from_union_entries(matching_entries))
     }
 
     fn propagate_parent_unions(
         &mut self,
         frame: &mut Frame,
-        parent_unions: &[(FlowKey, Inferred)],
+        parent_unions: &[(FlowKey, UnionType)],
     ) {
         let mut new_entries = vec![];
         for (key, parent_union) in parent_unions {
@@ -615,7 +645,7 @@ impl Inference<'_, '_, '_> {
                     continue;
                 };
                 if key == base_key.as_ref() {
-                    if let Some(type_) = self.maybe_propagate_parent_union() {
+                    if let Some(type_) = self.maybe_propagate_parent_union(parent_union, entry) {
                         new_entries.push(Entry {
                             key: key.clone(),
                             type_,
@@ -1235,7 +1265,10 @@ impl Inference<'_, '_, '_> {
         if let Some(base_key) = old_base_key {
             // Only in case of valid keys we want to add the unions.
             if base.key.is_some() && old_inf.is_union(self.i_s) {
-                base.parent_unions.push((base_key.clone(), old_inf))
+                let Type::Union(union_type) = old_inf.as_type(self.i_s) else {
+                    unreachable!()
+                };
+                base.parent_unions.push((base_key.clone(), union_type))
             }
         }
         base
@@ -1324,7 +1357,7 @@ fn name_definition_link(db: &Database, file: &PythonFile, name: Name) -> PointLi
 struct KeyWithParentUnions {
     key: Option<FlowKey>,
     inf: Inferred,
-    parent_unions: Vec<(FlowKey, Inferred)>,
+    parent_unions: Vec<(FlowKey, UnionType)>,
 }
 
 impl KeyWithParentUnions {
@@ -1341,7 +1374,7 @@ impl KeyWithParentUnions {
 struct FramesWithParentUnions {
     truthy: Frame,
     falsey: Frame,
-    parent_unions: Vec<(FlowKey, Inferred)>,
+    parent_unions: Vec<(FlowKey, UnionType)>,
 }
 
 fn stdlib_container_item(db: &Database, t: &Type) -> Option<Type> {
