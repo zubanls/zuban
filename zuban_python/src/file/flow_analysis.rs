@@ -32,8 +32,13 @@ thread_local! {
 #[derive(Debug, Clone)]
 enum FlowKey {
     Name(PointLink),
-    //Index(Rc<FlowKey>),
     Member(Rc<FlowKey>, *const str),
+    Index(Rc<FlowKey>, FlowKeyIndex),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+enum FlowKeyIndex {
+    Int(usize),
 }
 
 impl PartialEq for FlowKey {
@@ -42,6 +47,10 @@ impl PartialEq for FlowKey {
             Self::Name(link1) => matches!(other, Self::Name(link2) if link1 == link2),
             Self::Member(key1, s1) => match other {
                 Self::Member(key2, s2) => key1 == key2 && unsafe { &**s1 as &str == &**s1 as &str },
+                _ => false,
+            },
+            Self::Index(key1, index1) => match other {
+                Self::Index(key2, index2) => key1 == key2 && index1 == index2,
                 _ => false,
             },
         }
@@ -617,6 +626,13 @@ impl Inference<'_, '_, '_> {
                     &|_| todo!(),
                 )
                 .into_inferred(),
+            FlowKey::Index(_, index) =>
+            /*t.get_item(
+                self.i_s, None, slice_type, &mut ResultContext::Unknown
+            )*/
+            {
+                todo!()
+            }
             FlowKey::Name(_) => unreachable!(),
         };
 
@@ -641,7 +657,7 @@ impl Inference<'_, '_, '_> {
         let mut new_entries = vec![];
         for (key, parent_union) in parent_unions {
             for entry in &frame.entries {
-                let FlowKey::Member(base_key, _) = &entry.key else {
+                let (FlowKey::Member(base_key, _) | FlowKey::Index(base_key, _)) = &entry.key else {
                     continue;
                 };
                 if key == base_key.as_ref() {
@@ -1255,9 +1271,11 @@ impl Inference<'_, '_, '_> {
                     base.key = Some(FlowKey::Member(Rc::new(base_key.clone()), attr.as_code()));
                 }
             }
-            PrimaryContent::GetItem(attr) => {
-                if let SliceType::NamedExpression(_) = attr {
-                    debug!("TODO GetItem key");
+            PrimaryContent::GetItem(slice_type) => {
+                if let Some(index_key) = self.key_from_slice_type(slice_type) {
+                    if let Some(base_key) = &old_base_key {
+                        base.key = Some(FlowKey::Index(Rc::new(base_key.clone()), index_key));
+                    }
                 }
             }
             PrimaryContent::Execution(_) => (),
@@ -1299,6 +1317,20 @@ impl Inference<'_, '_, '_> {
         }
     }
 
+    fn key_from_slice_type(&mut self, slice_type: SliceType) -> Option<FlowKeyIndex> {
+        if let SliceType::NamedExpression(ne) = slice_type {
+            if let Some(atom) = ne.expression().maybe_unpacked_atom() {
+                return match atom {
+                    AtomContent::Int(int) => int
+                        .parse()
+                        .and_then(|i| Some(FlowKeyIndex::Int(i.try_into().ok()?))),
+                    _ => None,
+                };
+            }
+        }
+        None
+    }
+
     pub fn narrow_primary(&self, primary: Primary) -> Option<Inferred> {
         FLOW_ANALYSIS.with(|fa| {
             for frame in fa.frames.borrow().iter().rev() {
@@ -1313,6 +1345,18 @@ impl Inference<'_, '_, '_> {
     }
 
     fn matches_primary_entry(&self, primary: Primary, key: &FlowKey) -> bool {
+        let match_primary_first_part = |left: &Rc<_>| match primary.first() {
+            PrimaryOrAtom::Primary(primary) => self.matches_primary_entry(primary, left),
+            PrimaryOrAtom::Atom(atom) => {
+                let FlowKey::Name(check_link) = left.as_ref() else {
+                        return false;
+                    };
+                let AtomContent::Name(name) = atom.unpack() else {
+                        return false;
+                    };
+                name_definition_link(self.i_s.db, self.file, name) == *check_link
+            }
+        };
         match key {
             FlowKey::Member(left, right) => {
                 match primary.second() {
@@ -1334,6 +1378,15 @@ impl Inference<'_, '_, '_> {
                         };
                         name_definition_link(self.i_s.db, self.file, name) == *check_link
                     }
+                }
+            }
+            FlowKey::Index(left, right) => {
+                match primary.second() {
+                    PrimaryContent::GetItem(slice_type) => {
+                        // TODO
+                        return false;
+                    }
+                    _ => return false,
                 }
             }
             FlowKey::Name(_) => false,
