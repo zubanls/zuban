@@ -1843,7 +1843,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
         let base = self.infer_primary_or_atom(primary.first());
         let result = self.infer_primary_or_primary_t_content(
-            base,
+            &base,
             primary.index(),
             primary.second(),
             false,
@@ -1862,7 +1862,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
     pub(super) fn infer_primary_or_primary_t_content(
         &mut self,
-        base: Inferred,
+        base: &Inferred,
         node_index: NodeIndex,
         second: PrimaryContent,
         is_target: bool,
@@ -2151,7 +2151,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     fn _infer_primary_target(&mut self, primary_target: PrimaryTarget) -> Inferred {
         let first = self.infer_primary_target_or_atom(primary_target.first());
         self.infer_primary_or_primary_t_content(
-            first,
+            &first,
             primary_target.index(),
             primary_target.second(),
             true,

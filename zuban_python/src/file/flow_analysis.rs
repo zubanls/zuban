@@ -786,7 +786,7 @@ impl Inference<'_, '_, '_> {
                     _ => (),
                 }
                 self.infer_expression_part(part);
-                debug!("TODO primary guard")
+                debug!("TODO primary expressions like foo.bar truthy/falsey")
             }
             _ => {
                 self.infer_expression_part(part);
@@ -1153,10 +1153,11 @@ impl Inference<'_, '_, '_> {
                 self.key_from_atom(atom),
             ),
         };
-        let base_key = base.key.take();
+        let old_base_key = base.key.take();
         let second = primary.second();
+        let old_inf = base.inf;
         base.inf = self.infer_primary_or_primary_t_content(
-            base.inf,
+            &old_inf,
             primary.index(),
             second,
             false,
@@ -1164,8 +1165,8 @@ impl Inference<'_, '_, '_> {
         );
         match second {
             PrimaryContent::Attribute(attr) => {
-                if let Some(base_key) = base_key {
-                    base.key = Some(FlowKey::Member(Rc::new(base_key), attr.as_code()));
+                if let Some(base_key) = &old_base_key {
+                    base.key = Some(FlowKey::Member(Rc::new(base_key.clone()), attr.as_code()));
                 }
             }
             PrimaryContent::GetItem(attr) => {
@@ -1174,6 +1175,12 @@ impl Inference<'_, '_, '_> {
                 }
             }
             PrimaryContent::Execution(_) => (),
+        }
+        if let Some(base_key) = old_base_key {
+            // Only in case of valid keys we want to add the unions.
+            if base.key.is_some() && old_inf.is_union(self.i_s) {
+                base.parent_unions.push((base_key.clone(), old_inf))
+            }
         }
         base
     }
@@ -1261,7 +1268,7 @@ fn name_definition_link(db: &Database, file: &PythonFile, name: Name) -> PointLi
 struct KeyWithParentUnions {
     key: Option<FlowKey>,
     inf: Inferred,
-    parent_unions: Vec<Inferred>,
+    parent_unions: Vec<(FlowKey, Inferred)>,
 }
 
 impl KeyWithParentUnions {
