@@ -3,13 +3,15 @@ use std::{cell::RefCell, rc::Rc};
 use parsa_python_ast::{
     Argument, Arguments, ArgumentsDetails, Atom, AtomContent, ComparisonContent, Expression,
     ExpressionContent, ExpressionPart, IfBlockIterator, IfBlockType, IfStmt, Name, NamedExpression,
-    NamedExpressionContent, NodeIndex, Operand, Primary, PrimaryContent, PrimaryOrAtom, SliceType,
+    NamedExpressionContent, NodeIndex, Operand, Primary, PrimaryContent, PrimaryOrAtom,
+    SliceType as ASTSliceType,
 };
 
 use crate::{
     database::{Database, PointLink, PointType, Specific},
     debug,
     diagnostics::{Issue, IssueType},
+    getitem::SliceType,
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{Generic, LookupKind, Match, Matcher, ResultContext},
@@ -33,7 +35,11 @@ thread_local! {
 enum FlowKey {
     Name(PointLink),
     Member(Rc<FlowKey>, *const str),
-    Index(Rc<FlowKey>, FlowKeyIndex),
+    Index {
+        base_key: Rc<FlowKey>,
+        node_index: NodeIndex,
+        match_index: FlowKeyIndex,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -49,8 +55,16 @@ impl PartialEq for FlowKey {
                 Self::Member(key2, s2) => key1 == key2 && unsafe { &**s1 as &str == &**s1 as &str },
                 _ => false,
             },
-            Self::Index(key1, index1) => match other {
-                Self::Index(key2, index2) => key1 == key2 && index1 == index2,
+            Self::Index {
+                base_key: key1,
+                match_index: match_index1,
+                ..
+            } => match other {
+                Self::Index {
+                    base_key: key2,
+                    match_index: match_index2,
+                    ..
+                } => key1 == key2 && match_index1 == match_index2,
                 _ => false,
             },
         }
@@ -626,13 +640,16 @@ impl Inference<'_, '_, '_> {
                     &|_| todo!(),
                 )
                 .into_inferred(),
-            FlowKey::Index(_, index) =>
-            /*t.get_item(
-                self.i_s, None, slice_type, &mut ResultContext::Unknown
-            )*/
-            {
-                todo!()
-            }
+            FlowKey::Index { node_index, .. } => t.get_item(
+                self.i_s,
+                None,
+                &SliceType::new(
+                    self.file,
+                    *node_index,
+                    ASTSliceType::from_index(&self.file.tree, *node_index),
+                ),
+                &mut ResultContext::Unknown,
+            ),
             FlowKey::Name(_) => unreachable!(),
         };
 
@@ -657,7 +674,7 @@ impl Inference<'_, '_, '_> {
         let mut new_entries = vec![];
         for (key, parent_union) in parent_unions {
             for entry in &frame.entries {
-                let (FlowKey::Member(base_key, _) | FlowKey::Index(base_key, _)) = &entry.key else {
+                let (FlowKey::Member(base_key, _) | FlowKey::Index{base_key, ..}) = &entry.key else {
                     continue;
                 };
                 if key == base_key.as_ref() {
@@ -1274,7 +1291,11 @@ impl Inference<'_, '_, '_> {
             PrimaryContent::GetItem(slice_type) => {
                 if let Some(index_key) = self.key_from_slice_type(slice_type) {
                     if let Some(base_key) = &old_base_key {
-                        base.key = Some(FlowKey::Index(Rc::new(base_key.clone()), index_key));
+                        base.key = Some(FlowKey::Index {
+                            base_key: Rc::new(base_key.clone()),
+                            match_index: index_key,
+                            node_index: slice_type.index(),
+                        });
                     }
                 }
             }
@@ -1317,8 +1338,8 @@ impl Inference<'_, '_, '_> {
         }
     }
 
-    fn key_from_slice_type(&mut self, slice_type: SliceType) -> Option<FlowKeyIndex> {
-        if let SliceType::NamedExpression(ne) = slice_type {
+    fn key_from_slice_type(&mut self, slice_type: ASTSliceType) -> Option<FlowKeyIndex> {
+        if let ASTSliceType::NamedExpression(ne) = slice_type {
             if let Some(atom) = ne.expression().maybe_unpacked_atom() {
                 return match atom {
                     AtomContent::Int(int) => int
@@ -1331,7 +1352,7 @@ impl Inference<'_, '_, '_> {
         None
     }
 
-    pub fn narrow_primary(&self, primary: Primary) -> Option<Inferred> {
+    pub fn narrow_primary(&mut self, primary: Primary) -> Option<Inferred> {
         FLOW_ANALYSIS.with(|fa| {
             for frame in fa.frames.borrow().iter().rev() {
                 for entry in &frame.entries {
@@ -1344,7 +1365,7 @@ impl Inference<'_, '_, '_> {
         })
     }
 
-    fn matches_primary_entry(&self, primary: Primary, key: &FlowKey) -> bool {
+    fn matches_primary_entry(&mut self, primary: Primary, key: &FlowKey) -> bool {
         let match_primary_first_part = |left: &Rc<_>| match primary.first() {
             PrimaryOrAtom::Primary(primary) => self.matches_primary_entry(primary, left),
             PrimaryOrAtom::Atom(atom) => {
@@ -1380,15 +1401,19 @@ impl Inference<'_, '_, '_> {
                     }
                 }
             }
-            FlowKey::Index(left, right) => {
-                match primary.second() {
-                    PrimaryContent::GetItem(slice_type) => {
-                        // TODO
-                        return false;
+            FlowKey::Index {
+                base_key,
+                match_index,
+                ..
+            } => match primary.second() {
+                PrimaryContent::GetItem(slice_type) => {
+                    if let Some(other_index_key) = self.key_from_slice_type(slice_type) {
+                        return match_index == &other_index_key;
                     }
-                    _ => return false,
+                    false
                 }
-            }
+                _ => false,
+            },
             FlowKey::Name(_) => false,
         }
     }

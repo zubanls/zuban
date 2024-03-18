@@ -2901,6 +2901,20 @@ pub enum SliceType<'db> {
 }
 
 impl<'db> SliceType<'db> {
+    pub fn from_index(tree: &'db Tree, index: NodeIndex) -> Self {
+        let node = tree.0.node_by_index(index);
+        if node.is_type(Nonterminal(named_expression)) {
+            SliceType::NamedExpression(NamedExpression::new(node))
+        } else if node.is_type(Nonterminal(starred_expression)) {
+            SliceType::StarredExpression(StarredExpression::new(node))
+        } else if node.is_type(Nonterminal(slices)) {
+            SliceType::Slices(Slices::new(node))
+        } else {
+            debug_assert_eq!(node.type_(), Nonterminal(slice));
+            SliceType::Slice(Slice::new(node))
+        }
+    }
+
     pub fn index(&self) -> NodeIndex {
         match self {
             Self::Slices(s) => s.index(),
