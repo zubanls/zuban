@@ -82,7 +82,7 @@ impl Type {
             Type::TypedDict(_) => todo!(),
             Type::NamedTuple(_) => todo!(),
             Type::Enum(_) => todo!(),
-            Type::EnumMember(_) => todo!(),
+            Type::EnumMember(_) => self.is_simple_sub_type_of(i_s, other).bool(),
             Type::Super { .. } => todo!(),
             Type::CustomBehavior(_) => false,
         }
