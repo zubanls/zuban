@@ -675,24 +675,23 @@ impl Inference<'_, '_, '_> {
         frame: &mut Frame,
         parent_unions: &[(FlowKey, UnionType)],
     ) {
-        let mut new_entries = vec![];
-        for (key, parent_union) in parent_unions {
+        for (key, parent_union) in parent_unions.iter().rev() {
             for entry in &frame.entries {
                 let (FlowKey::Member(base_key, _) | FlowKey::Index{base_key, ..}) = &entry.key else {
                     continue;
                 };
                 if key == base_key.as_ref() {
                     if let Some(type_) = self.maybe_propagate_parent_union(parent_union, entry) {
-                        new_entries.push(Entry {
+                        frame.entries.push(Entry {
                             key: key.clone(),
                             type_,
                             from_assignment: false,
                         });
+                        break;
                     }
                 }
             }
         }
-        frame.entries.extend(new_entries);
     }
 
     fn find_guards_in_named_expr(&mut self, named_expr: NamedExpression) -> (Frame, Frame) {
