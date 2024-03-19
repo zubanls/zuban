@@ -1165,7 +1165,6 @@ testInferredTypeIsSimpleNestedIterable
 testInferredTypeIsSimpleNestedListLoop
 testInferredTypeIsSimpleNestedIterableLoop
 # narrowing of foo.bar
-testNarrowingTypedDictParentMultipleKeys
 testNarrowingNestedTypedDicts
 testNarrowingParentWithParentMixtures
 testNarrowingParentsHierarchy

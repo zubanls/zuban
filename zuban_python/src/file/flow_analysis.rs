@@ -461,9 +461,6 @@ fn narrow_is_or_eq(
                     }
                 }
             }
-            if true_type == Type::Never {
-                return None;
-            }
             let result = (
                 Frame::from_type(key.clone(), true_type),
                 Frame::from_type(key, false_type),
