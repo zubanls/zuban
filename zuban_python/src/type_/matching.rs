@@ -79,7 +79,10 @@ impl Type {
             Type::Module(file_index) => todo!(),
             Type::Namespace(file_index) => todo!(),
             Type::Dataclass(_) => todo!(),
-            Type::TypedDict(_) => todo!(),
+            Type::TypedDict(_) => {
+                self.is_simple_sub_type_of(i_s, other).bool()
+                    || self.is_simple_super_type_of(i_s, other).bool()
+            }
             Type::NamedTuple(_) => todo!(),
             Type::Enum(_) => todo!(),
             Type::EnumMember(_) => self.is_simple_sub_type_of(i_s, other).bool(),
