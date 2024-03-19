@@ -1085,7 +1085,6 @@ testIntersectionUsingPromotion2
 testIntersectionUsingPromotion4
 testIntersectionUsingPromotion5
 testIntersectionUsingPromotion6
-testIntersectionUsingPromotion8
 testTypeshedRecursiveTypesExample
 testTypedDictIsInstance
 testParamSpecLiteralJoin
@@ -1186,14 +1185,11 @@ testTupleTypeUpdateNonRecursiveToRecursiveFine
 testTypeAliasUpdateNonRecursiveToRecursiveFine
 # questionable implicit literal?
 testEnumReachabilityChecksIndirect
-testEnumReachabilityWithChainingDirectConflict
 # Narrowing with previous and/or
 testRegression11705_Strict
 testRegression11705_NoStrict
 testIsinstanceAndOr
 # narrowing if and boolean check with or/and
-testRestrictedTypeAnd
-testRestrictedTypeOr
 testUnionTruthinessTracking
 # or/and boolean logic over multiple terms
 testAndOr
@@ -1243,7 +1239,6 @@ testNarrowingLenUnionWithUnreachable
 # narrowing with assert regressions
 testAssert
 # narrowing with assert
-testTypedDictUpdate3
 testReModuleBytes
 testReModuleString
 testNoCrashForwardRefToBrokenDoubleNewType
