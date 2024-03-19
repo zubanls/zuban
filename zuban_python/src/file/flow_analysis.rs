@@ -290,11 +290,17 @@ fn merge_or(i_s: &InferenceState, x: Frame, y: Frame) -> Frame {
 
 fn merge_conjunction(
     i_s: &InferenceState,
-    old: Option<(Frame, Frame)>,
-    new: (Frame, Frame),
-) -> (Frame, Frame) {
+    old: Option<FramesWithParentUnions>,
+    new: FramesWithParentUnions,
+) -> FramesWithParentUnions {
     if let Some(old) = old {
-        (merge_and(i_s, old.0, new.0), merge_or(i_s, old.1, new.1))
+        let mut parent_unions = old.parent_unions;
+        parent_unions.extend(new.parent_unions);
+        FramesWithParentUnions {
+            truthy: merge_and(i_s, old.truthy, new.truthy),
+            falsey: merge_or(i_s, old.falsey, new.falsey),
+            parent_unions,
+        }
     } else {
         new
     }
@@ -743,13 +749,13 @@ impl Inference<'_, '_, '_> {
                 }
             }
             ExpressionPart::Comparisons(comps) => {
-                let mut frames: Option<(Frame, Frame)> = None;
+                let mut frames: Option<FramesWithParentUnions> = None;
                 let mut iterator = comps.iter().peekable();
                 let mut left_infos = self.key_from_expr_part(iterator.peek().unwrap().left());
                 'outer: while let Some(comparison) = iterator.next() {
                     let mut invert = false;
                     let right = comparison.right();
-                    let right_infos = self.key_from_expr_part(right);
+                    let mut right_infos = self.key_from_expr_part(right);
                     let mut is_eq = false;
                     match comparison {
                         ComparisonContent::Equals(..) => {
@@ -804,7 +810,7 @@ impl Inference<'_, '_, '_> {
                         }
                         ComparisonContent::In(left, op, _)
                         | ComparisonContent::NotIn(left, op, _) => {
-                            let new = self.guard_of_in_operator(op, left_infos, &right_infos);
+                            let new = self.guard_of_in_operator(op, left_infos, &mut right_infos);
                             frames = Some(merge_conjunction(self.i_s, frames, new));
                             left_infos = right_infos;
                             continue;
@@ -820,40 +826,24 @@ impl Inference<'_, '_, '_> {
                         }
                     };
                     if let Some(mut new) =
-                        self.find_comparison_guards(left_infos, &right_infos, is_eq)
+                        self.find_comparison_guards(left_infos, &mut right_infos, is_eq)
                     {
                         if invert {
-                            new = (new.1, new.0)
+                            (new.falsey, new.truthy) = (new.truthy, new.falsey);
                         }
                         frames = Some(merge_conjunction(self.i_s, frames, new));
                     }
                     left_infos = right_infos
                 }
                 if let Some(frames) = frames {
-                    return FramesWithParentUnions {
-                        truthy: frames.0,
-                        falsey: frames.1,
-                        // TODO fix  parent unions
-                        ..Default::default()
-                    };
+                    return frames;
                 }
             }
             ExpressionPart::Conjunction(and) => {
                 let (left, right) = and.unpack();
                 let left_frames = self.find_guards_in_expression_parts(left);
                 let right_frames = self.find_guards_in_expression_parts(right);
-                let (truthy, falsey) = merge_conjunction(
-                    self.i_s,
-                    Some((left_frames.truthy, left_frames.falsey)),
-                    (right_frames.truthy, right_frames.falsey),
-                );
-                let mut parent_unions = left_frames.parent_unions;
-                parent_unions.extend(right_frames.parent_unions);
-                return FramesWithParentUnions {
-                    truthy,
-                    falsey,
-                    parent_unions,
-                };
+                return merge_conjunction(self.i_s, Some(left_frames), right_frames);
             }
             ExpressionPart::Disjunction(or) => {
                 let (left, right) = or.unpack();
@@ -1106,31 +1096,41 @@ impl Inference<'_, '_, '_> {
     fn find_comparison_guards(
         &mut self,
         left: KeyWithParentUnions,
-        right: &KeyWithParentUnions,
+        right: &mut KeyWithParentUnions,
         is_eq: bool,
-    ) -> Option<(Frame, Frame)> {
+    ) -> Option<FramesWithParentUnions> {
         if let Some(key) = left.key {
             // Narrow Foo in `Foo is None`
-            if let Some(result) = narrow_is_or_eq(
+            if let Some((truthy, falsey)) = narrow_is_or_eq(
                 self.i_s,
                 key,
                 &left.inf.as_cow_type(self.i_s),
                 &right.inf.as_cow_type(self.i_s),
                 is_eq,
             ) {
-                return Some(result);
+                return Some(FramesWithParentUnions {
+                    truthy,
+                    falsey,
+                    parent_unions: left.parent_unions,
+                });
             }
         }
         if let Some(key) = &right.key {
             // Narrow Foo in `None is Foo`
-            if let Some(result) = narrow_is_or_eq(
+            if let Some((truthy, falsey)) = narrow_is_or_eq(
                 self.i_s,
                 key.clone(),
                 &right.inf.as_cow_type(self.i_s),
                 &left.inf.as_cow_type(self.i_s),
                 is_eq,
             ) {
-                return Some(result);
+                return Some(FramesWithParentUnions {
+                    truthy,
+                    falsey,
+                    // Taking it here is fine, because we don't want these to be duplicated
+                    // entries from different comparisons
+                    parent_unions: std::mem::take(&mut right.parent_unions),
+                });
             }
         }
         None
@@ -1140,7 +1140,7 @@ impl Inference<'_, '_, '_> {
         &mut self,
         chain: &[KeyWithParentUnions],
         is_eq: bool,
-    ) -> Option<(Frame, Frame)> {
+    ) -> Option<FramesWithParentUnions> {
         let mut frames = None;
         'outer: for (i, part1) in chain.iter().enumerate() {
             for (k, part2) in chain.iter().enumerate() {
@@ -1148,13 +1148,19 @@ impl Inference<'_, '_, '_> {
                     continue;
                 }
                 if let Some(key) = &part1.key {
-                    if let Some(new) = narrow_is_or_eq(
+                    if let Some((truthy, falsey)) = narrow_is_or_eq(
                         self.i_s,
                         key.clone(),
                         &part1.inf.as_cow_type(self.i_s),
                         &part2.inf.as_cow_type(self.i_s),
                         is_eq,
                     ) {
+                        let new = FramesWithParentUnions {
+                            truthy,
+                            falsey,
+                            // TODO couldn't we avoid this clone?
+                            parent_unions: part1.parent_unions.clone(),
+                        };
                         frames = Some(merge_conjunction(self.i_s, frames, new));
                         continue 'outer;
                     }
@@ -1168,9 +1174,24 @@ impl Inference<'_, '_, '_> {
         &mut self,
         op: Operand,
         left: KeyWithParentUnions,
-        right: &KeyWithParentUnions,
-    ) -> (Frame, Frame) {
+        right: &mut KeyWithParentUnions,
+    ) -> FramesWithParentUnions {
         self.infer_in_operator(NodeRef::new(self.file, op.index()), &left.inf, &right.inf);
+        let maybe_invert = |truthy, falsey, parent_unions| {
+            if op.as_code() == "in" {
+                FramesWithParentUnions {
+                    truthy,
+                    falsey,
+                    parent_unions,
+                }
+            } else {
+                FramesWithParentUnions {
+                    truthy: falsey,
+                    falsey: truthy,
+                    parent_unions,
+                }
+            }
+        };
         let db = self.i_s.db;
         if let Some(item) = stdlib_container_item(db, &right.inf.as_cow_type(self.i_s)) {
             if !item.iter_with_unpacked_unions().any(|t| t == &Type::None) {
@@ -1178,12 +1199,11 @@ impl Inference<'_, '_, '_> {
                     let left_t = left.inf.as_cow_type(self.i_s);
                     if left_t.overlaps(self.i_s, &item) {
                         if let Some(t) = removed_optional(&left_t) {
-                            let result = (Frame::from_type(left_key, t), Frame::default());
-                            return if op.as_code() == "in" {
-                                result
-                            } else {
-                                (result.1, result.0)
-                            };
+                            return maybe_invert(
+                                Frame::from_type(left_key, t),
+                                Frame::default(),
+                                left.parent_unions,
+                            );
                         }
                     }
                 }
@@ -1239,19 +1259,17 @@ impl Inference<'_, '_, '_> {
                             false
                         }
                     });
-                    let result = (
+                    return maybe_invert(
                         Frame::from_type(right_key.clone(), true_types),
                         Frame::from_type(right_key.clone(), false_types),
+                        // Taking it here is fine, because we don't want these to be duplicated
+                        // entries from different comparisons
+                        std::mem::take(&mut right.parent_unions),
                     );
-                    return if op.as_code() == "in" {
-                        result
-                    } else {
-                        (result.1, result.0)
-                    };
                 }
             }
         }
-        (Frame::default(), Frame::default())
+        FramesWithParentUnions::default()
     }
 
     fn key_from_atom(&self, atom: Atom) -> Option<FlowKey> {
