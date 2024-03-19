@@ -837,15 +837,29 @@ impl Inference<'_, '_, '_> {
             }
             ExpressionPart::Conjunction(and) => {
                 let (left, right) = and.unpack();
-                let left_frames = self.find_guards_in_expression_parts(left);
-                let right_frames = self.find_guards_in_expression_parts(right);
+                let mut left_frames = self.find_guards_in_expression_parts(left);
+                let mut right_frames = None;
+                left_frames.truthy = FLOW_ANALYSIS.with(|fa| {
+                    fa.with_frame(self.i_s.db, left_frames.truthy, || {
+                        right_frames = Some(self.find_guards_in_expression_parts(right));
+                    })
+                });
+                let right_frames =
+                    right_frames.unwrap_or_else(|| FramesWithParentUnions::default());
                 return merge_conjunction(self.i_s, Some(left_frames), right_frames);
             }
             ExpressionPart::Disjunction(or) => {
                 let (left, right) = or.unpack();
-                let left_frames = self.find_guards_in_expression_parts(left);
-                let right_frames = self.find_guards_in_expression_parts(right);
+                let mut left_frames = self.find_guards_in_expression_parts(left);
                 let mut parent_unions = left_frames.parent_unions;
+                let mut right_frames = None;
+                left_frames.falsey = FLOW_ANALYSIS.with(|fa| {
+                    fa.with_frame(self.i_s.db, left_frames.falsey, || {
+                        right_frames = Some(self.find_guards_in_expression_parts(right));
+                    })
+                });
+                let right_frames =
+                    right_frames.unwrap_or_else(|| FramesWithParentUnions::default());
                 parent_unions.extend(right_frames.parent_unions);
                 return FramesWithParentUnions {
                     truthy: merge_or(self.i_s, left_frames.truthy, right_frames.truthy),

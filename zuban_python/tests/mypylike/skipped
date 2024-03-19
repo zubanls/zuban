@@ -1189,8 +1189,6 @@ testEnumReachabilityChecksIndirect
 testRegression11705_Strict
 testRegression11705_NoStrict
 testIsinstanceAndOr
-# narrowing if and boolean check with or/and
-testUnionTruthinessTracking
 # or/and boolean logic over multiple terms
 testAndOr
 testRestrictedBoolAndOrWithGenerics
