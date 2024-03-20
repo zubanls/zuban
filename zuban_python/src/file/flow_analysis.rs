@@ -100,6 +100,18 @@ impl Frame {
         }
     }
 
+    fn add_entry(&mut self, i_s: &InferenceState, entry: Entry) {
+        for old_entry in &mut self.entries {
+            if old_entry.key == entry.key {
+                if let Some(new) = old_entry.type_.common_sub_type(i_s, &entry.type_) {
+                    old_entry.type_ = new;
+                }
+                return;
+            }
+        }
+        self.entries.push(entry)
+    }
+
     fn from_type_without_entry(t: Type) -> Self {
         match t {
             Type::Never => Self::new_unreachable(),
@@ -682,11 +694,14 @@ impl Inference<'_, '_, '_> {
                 };
                 if key == base_key.as_ref() {
                     if let Some(type_) = self.maybe_propagate_parent_union(parent_union, entry) {
-                        frame.entries.push(Entry {
-                            key: key.clone(),
-                            type_,
-                            from_assignment: false,
-                        });
+                        frame.add_entry(
+                            self.i_s,
+                            Entry {
+                                key: key.clone(),
+                                type_,
+                                from_assignment: false,
+                            },
+                        );
                         break;
                     }
                 }
@@ -720,6 +735,14 @@ impl Inference<'_, '_, '_> {
     fn find_guards_in_expression_parts(&mut self, part: ExpressionPart) -> FramesWithParentUnions {
         match part {
             ExpressionPart::Atom(atom) => {
+                if let AtomContent::NamedExpression(named_expr) = atom.unpack() {
+                    let (truthy, falsey) = self.find_guards_in_named_expr(named_expr);
+                    return FramesWithParentUnions {
+                        falsey,
+                        truthy,
+                        ..Default::default()
+                    };
+                }
                 let inf = self.infer_atom(atom, &mut ResultContext::Unknown);
                 if let Some(key) = self.key_from_atom(atom) {
                     if let Some((truthy, falsey)) =
