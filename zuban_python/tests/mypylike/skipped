@@ -1240,7 +1240,7 @@ testNewAnalyzerNoCrashForwardRefToBrokenDoubleNewTypeClass
 testNarrowingEqualityFlipFlop
 # narrowing `in` weird overlapping. Mypy correct?
 testTupleOverlapDifferentTuples
-# narrowing assignments regressions
+# narrowing assignments regressions after `foo =` narrowing
 testAwaitOverloadSpecialCase
 testCompatibilityOfDynamicWithOtherTypes
 testMiscBinaryOperators
@@ -1248,8 +1248,15 @@ testGenericFunctionAsOverloadItem
 testImportAndAssignToModule
 testParamSpecSubtypeChecking1
 testMultipleAssignmentWithNonTupleRvalue
+testComplexWithLvalue
 testAssignAnyToUnion
 testUnionOfVariableLengthTupleUnpacking
+# statement narrowing regressions after `foo.bar =` narrowing
+testDescriptorGetSetDifferentTypes
+testCheckUntypedDefsSelf3
+testTypeVariableAsTypeArgument
+testImportWithinBlock
+testUnionMultiassignIndexedWithError
 # narrowing assignments
 testDynamicWithMemberAccess
 testTupleCompatibleWithSequence

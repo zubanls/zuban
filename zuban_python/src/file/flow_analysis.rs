@@ -4,7 +4,7 @@ use parsa_python_ast::{
     Argument, Arguments, ArgumentsDetails, Atom, AtomContent, ComparisonContent, Expression,
     ExpressionContent, ExpressionPart, IfBlockIterator, IfBlockType, IfStmt, Name, NamedExpression,
     NamedExpressionContent, NodeIndex, Operand, Primary, PrimaryContent, PrimaryOrAtom,
-    SliceType as ASTSliceType,
+    PrimaryTarget, PrimaryTargetOrAtom, SliceType as ASTSliceType,
 };
 
 use crate::{
@@ -592,6 +592,16 @@ impl Inference<'_, '_, '_> {
     pub fn narrow_target_name_from_assignment(&mut self, first_name_index: NodeIndex, t: &Type) {
         let key = FlowKey::Name(PointLink::new(self.file_index, first_name_index));
         self.narrow_from_assignment(key, t)
+    }
+
+    pub fn narrow_primary_target_from_assignment(
+        &mut self,
+        primary_target: PrimaryTarget,
+        t: &Type,
+    ) {
+        if let Some(key) = self.key_from_primary_target(primary_target) {
+            self.narrow_from_assignment(key, t)
+        }
     }
 
     fn narrow_from_assignment(&mut self, key: FlowKey, t: &Type) {
@@ -1443,6 +1453,18 @@ impl Inference<'_, '_, '_> {
             }
         } else {
             None
+        }
+    }
+
+    fn key_from_primary_target(&self, primary_target: PrimaryTarget) -> Option<FlowKey> {
+        let base_key = match primary_target.first() {
+            PrimaryTargetOrAtom::PrimaryTarget(t) => self.key_from_primary_target(t),
+            PrimaryTargetOrAtom::Atom(atom) => self.key_from_atom(atom),
+        }?;
+        match primary_target.second() {
+            PrimaryContent::Attribute(n) => Some(FlowKey::Member(Rc::new(base_key), n.as_code())),
+            PrimaryContent::Execution(_) => None,
+            PrimaryContent::GetItem(slice_type) => None,
         }
     }
 

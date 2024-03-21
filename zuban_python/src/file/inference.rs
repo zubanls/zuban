@@ -934,6 +934,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     if is_definition {
                         self.add_issue(primary_target.index(), IssueType::InvalidTypeDeclaration);
                     }
+                    self.narrow_primary_target_from_assignment(
+                        primary_target,
+                        &value.as_cow_type(self.i_s),
+                    );
                     let base = base.as_cow_type(i_s);
                     let node_ref = NodeRef::new(self.file, primary_target.index());
                     for t in base.iter_with_unpacked_unions() {
@@ -1041,7 +1045,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     i_s,
                     SliceType::new(self.file, primary_target.index(), slice_type),
                     value,
-                )
+                );
+                //self.narrow_primary_target_from_assignment(primary_target, &value.as_cow_type(self.i_s))
             }
             Target::Tuple(_) | Target::Starred(_) => unreachable!(),
         }
