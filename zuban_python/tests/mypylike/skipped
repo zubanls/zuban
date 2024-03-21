@@ -1178,7 +1178,6 @@ testInferredTypeIsSimpleNestedIterableLoop
 # narrowing of foo.bar
 testNarrowingParentWithParentMixtures
 testMemberAssignmentChanges
-testIsInstanceSubClassMemberHard
 # narrowing of foo[0]
 testTypedDictTypeNarrowingWithFinalKey
 testLiteralIntelligentIndexingTuples
@@ -1302,6 +1301,7 @@ testComplicatedBlocks
 testIsInstanceThreeUnion2
 testIsInstanceThreeUnion3
 testRemovingTypeRepeatedly
+testIsInstanceSubClassMemberHard
 # narowing for comprehensions if
 testComprehensionIsInstance
 # narrowing of nested scopes

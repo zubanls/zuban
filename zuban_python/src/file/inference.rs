@@ -905,7 +905,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             },
                         );
                         if !had_error {
-                            self.flow_analysis_for_target(first_index, &value.as_cow_type(i_s));
+                            self.narrow_target_name_from_assignment(
+                                first_index,
+                                &value.as_cow_type(i_s),
+                            );
                         }
                         return;
                     }
