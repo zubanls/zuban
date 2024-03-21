@@ -42,6 +42,17 @@ enum FlowKey {
     },
 }
 
+impl FlowKey {
+    fn is_child_of(&self, search_key: &FlowKey) -> bool {
+        match self {
+            Self::Name(_) => false,
+            Self::Member(base_key, _) | Self::Index { base_key, .. } => {
+                &**base_key == search_key || base_key.is_child_of(search_key)
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 enum FlowKeyIndex {
     Int(usize),
@@ -225,6 +236,15 @@ impl FlowAnalysis {
     fn overwrite_frame(&self, new_frame: Frame) {
         self.overwrite_entries(new_frame.entries);
         self.frames.borrow_mut().last_mut().unwrap().unreachable |= new_frame.unreachable;
+    }
+
+    fn invalidate_child_entries_in_last_frame(&self, key: &FlowKey) {
+        self.frames
+            .borrow_mut()
+            .last_mut()
+            .unwrap()
+            .entries
+            .retain(|entry| !entry.key.is_child_of(key))
     }
 
     pub fn with_new_frame(&self, callable: impl FnOnce()) {
@@ -572,6 +592,7 @@ impl Inference<'_, '_, '_> {
     pub fn flow_analysis_for_target(&mut self, first_name_index: NodeIndex, t: &Type) {
         let key = FlowKey::Name(PointLink::new(self.file_index, first_name_index));
         FLOW_ANALYSIS.with(|fa| {
+            fa.invalidate_child_entries_in_last_frame(&key);
             fa.overwrite_entry(Entry {
                 key,
                 type_: t.clone(),

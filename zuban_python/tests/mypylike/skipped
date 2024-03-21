@@ -1177,7 +1177,6 @@ testInferredTypeIsSimpleNestedListLoop
 testInferredTypeIsSimpleNestedIterableLoop
 # narrowing of foo.bar
 testNarrowingParentWithParentMixtures
-testIsInstanceSubClassReset
 testMemberAssignmentChanges
 testIsInstanceSubClassMemberHard
 # narrowing of foo[0]
