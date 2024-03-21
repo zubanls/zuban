@@ -13,7 +13,7 @@ use crate::{
     diagnostics::{Issue, IssueType},
     getitem::SliceType,
     inference_state::InferenceState,
-    inferred::Inferred,
+    inferred::{Inferred, UnionValue},
     matching::{Generic, LookupKind, Match, Matcher, ResultContext},
     node_ref::NodeRef,
     type_::{
@@ -1427,19 +1427,23 @@ impl Inference<'_, '_, '_> {
 
     fn key_from_slice_type(&mut self, slice_type: ASTSliceType) -> Option<FlowKeyIndex> {
         if let ASTSliceType::NamedExpression(ne) = slice_type {
-            if let Some(atom) = ne.expression().maybe_unpacked_atom() {
-                return match atom {
-                    AtomContent::Int(int) => int
-                        .parse()
-                        .and_then(|i| Some(FlowKeyIndex::Int(i.try_into().ok()?))),
-                    AtomContent::Strings(s) => {
-                        Some(FlowKeyIndex::Str(s.as_python_string().as_str()?.into()))
-                    }
-                    _ => None,
-                };
+            match self
+                .infer_expression(ne.expression())
+                .maybe_literal(self.i_s.db)
+            {
+                UnionValue::Single(Literal {
+                    kind: LiteralKind::Int(i),
+                    ..
+                }) => Some(FlowKeyIndex::Int(i.try_into().ok()?)),
+                UnionValue::Single(Literal {
+                    kind: LiteralKind::String(s),
+                    ..
+                }) => Some(FlowKeyIndex::Str(s.as_str(self.i_s.db).into())),
+                _ => None,
             }
+        } else {
+            None
         }
-        None
     }
 
     fn maybe_has_primary_entry(&mut self, primary: Primary) -> Option<(FlowKey, Inferred)> {

@@ -1179,7 +1179,6 @@ testInferredTypeIsSimpleNestedIterableLoop
 testNarrowingParentWithParentMixtures
 testMemberAssignmentChanges
 # narrowing of foo[0]
-testTypedDictTypeNarrowingWithFinalKey
 testLiteralIntelligentIndexingTuples
 # questionable implicit literal?
 testEnumReachabilityChecksIndirect
