@@ -984,6 +984,12 @@ impl Inference<'_, '_, '_> {
         {
             true_type = isinstance_type;
         }
+        debug!(
+            "Narrowed {} because of isinstance to {} and other side to {}",
+            arg.as_code(),
+            true_type.format_short(self.i_s.db),
+            other_side.format_short(self.i_s.db)
+        );
         Some(FramesWithParentUnions {
             truthy: Frame::from_type(key.clone(), true_type),
             falsey: Frame::from_type(key, other_side),
@@ -1407,11 +1413,16 @@ impl Inference<'_, '_, '_> {
         None
     }
 
-    pub fn narrow_primary(&mut self, primary: Primary) -> Option<Inferred> {
+    pub fn maybe_infer_narrowed_primary(&mut self, primary: Primary) -> Option<Inferred> {
         FLOW_ANALYSIS.with(|fa| {
             for frame in fa.frames.borrow().iter().rev() {
                 for entry in &frame.entries {
                     if self.matches_primary_entry(primary, &entry.key) {
+                        debug!(
+                            "Use narrowed {} as {}",
+                            primary.as_code(),
+                            entry.type_.format_short(self.i_s.db)
+                        );
                         return Some(Inferred::from_type(entry.type_.clone()));
                     }
                 }
