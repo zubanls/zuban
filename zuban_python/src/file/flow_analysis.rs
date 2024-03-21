@@ -1323,6 +1323,10 @@ impl Inference<'_, '_, '_> {
     }
 
     fn key_from_primary(&mut self, primary: Primary) -> KeyWithParentUnions {
+        if let Some((key, inf)) = self.maybe_has_primary_entry(primary) {
+            return KeyWithParentUnions::new(inf, Some(key.clone()));
+        }
+
         let mut base = match primary.first() {
             PrimaryOrAtom::Primary(primary) => self.key_from_primary(primary),
             PrimaryOrAtom::Atom(atom) => KeyWithParentUnions::new(
@@ -1413,7 +1417,7 @@ impl Inference<'_, '_, '_> {
         None
     }
 
-    pub fn maybe_infer_narrowed_primary(&mut self, primary: Primary) -> Option<Inferred> {
+    fn maybe_has_primary_entry(&mut self, primary: Primary) -> Option<(FlowKey, Inferred)> {
         FLOW_ANALYSIS.with(|fa| {
             for frame in fa.frames.borrow().iter().rev() {
                 for entry in &frame.entries {
@@ -1423,12 +1427,16 @@ impl Inference<'_, '_, '_> {
                             primary.as_code(),
                             entry.type_.format_short(self.i_s.db)
                         );
-                        return Some(Inferred::from_type(entry.type_.clone()));
+                        return Some((entry.key.clone(), Inferred::from_type(entry.type_.clone())));
                     }
                 }
             }
             None
         })
+    }
+
+    pub fn maybe_infer_narrowed_primary(&mut self, primary: Primary) -> Option<Inferred> {
+        self.maybe_has_primary_entry(primary).map(|x| x.1)
     }
 
     fn matches_primary_entry(&mut self, primary: Primary, key: &FlowKey) -> bool {

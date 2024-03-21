@@ -1077,6 +1077,7 @@ testNarrowingWithAnyOps
 # isinstance error conditions
 testLiteralErrorsWithIsInstanceAndIsSubclass
 # isinstance narrowing
+testNarrowingNestedUnionOfTypedDicts
 testIsinstanceIgnoredImportDualAny
 testNoneAndGenericTypesOverlapNoStrictOptional
 testIsinstanceMultiAnd
@@ -1176,7 +1177,6 @@ testInferredTypeIsSimpleNestedListLoop
 testInferredTypeIsSimpleNestedIterableLoop
 # narrowing of foo.bar
 testNarrowingParentWithParentMixtures
-testIsInstanceSubClassMember
 testIsInstanceSubClassReset
 testMemberAssignmentChanges
 testIsInstanceSubClassMemberHard
@@ -1285,6 +1285,7 @@ testUnreachableTryExceptElse
 testUnreachableTryReturnFinally1
 testUnreachableTryReturnFinally2
 # while/for
+testIsInstanceSubClassMember
 testModifyLoop
 testModifyLoop2
 testModifyLoop3
