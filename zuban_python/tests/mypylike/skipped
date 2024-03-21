@@ -1178,8 +1178,6 @@ testInferredTypeIsSimpleNestedIterableLoop
 # narrowing of foo.bar
 testNarrowingParentWithParentMixtures
 testMemberAssignmentChanges
-# narrowing of foo[0]
-testLiteralIntelligentIndexingTuples
 # questionable implicit literal?
 testEnumReachabilityChecksIndirect
 # Narrowing with previous and/or
