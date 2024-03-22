@@ -1016,11 +1016,7 @@ impl Inference<'_, '_, '_> {
                 Match::False { .. } => other_side.union_in_place(t.clone()),
             }
         }
-        if matches!(true_type, Type::Never)
-            || isinstance_type
-                .iter_with_unpacked_unions()
-                .any(|t| matches!(t, Type::Any(_)))
-        {
+        if matches!(true_type, Type::Never) || isinstance_type.is_any_or_any_in_union() {
             true_type = isinstance_type;
         }
         debug!(

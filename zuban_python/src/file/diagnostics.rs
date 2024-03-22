@@ -1061,9 +1061,7 @@ impl<'db> Inference<'db, '_, '_> {
                     if i_s.db.project.flags.warn_return_any
                         && matches!(inf.as_cow_type(i_s).as_ref(), Type::Any(_))
                         && t.as_ref() != &i_s.db.python_state.object_type()
-                        && !t
-                            .iter_with_unpacked_unions()
-                            .any(|t| matches!(t, Type::Any(_)))
+                        && !t.is_any_or_any_in_union()
                     {
                         NodeRef::new(self.file, star_expressions.index()).add_issue(
                             i_s,

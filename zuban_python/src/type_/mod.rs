@@ -480,6 +480,11 @@ impl Type {
         matches!(self, Type::Any(_))
     }
 
+    pub fn is_any_or_any_in_union(&self) -> bool {
+        self.iter_with_unpacked_unions()
+            .any(|t| matches!(t, Type::Any(_)))
+    }
+
     pub fn into_iter_with_unpacked_unions(self) -> impl Iterator<Item = UnionEntry> {
         match self {
             Type::Union(items) => TypeIterator::Union(items.entries.into_vec().into_iter()),
