@@ -2874,7 +2874,11 @@ pub fn first_defined_name(file: &PythonFile, name_index: NodeIndex) -> Option<No
     if !point.calculated() {
         return None;
     }
-    debug_assert_eq!(point.type_(), PointType::MultiDefinition, "{point:?}");
+    if point.type_() != PointType::MultiDefinition {
+        // Happens e.g. for the definition of builtins.type
+        debug_assert_eq!(point.type_(), PointType::Specific, "{point:?}");
+        return None;
+    }
     let mut current = point.node_index();
     loop {
         let point = file.points.get(current);
