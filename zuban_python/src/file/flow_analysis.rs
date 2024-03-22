@@ -148,10 +148,10 @@ pub struct FlowAnalysis {
 }
 
 impl FlowAnalysis {
-    pub fn narrow_name(&self, name_link: PointLink) -> Option<Inferred> {
+    fn lookup_narrowed_key(&self, lookup_key: FlowKey) -> Option<Inferred> {
         for frame in self.frames.borrow().iter().rev() {
             for entry in &frame.entries {
-                if entry.key == FlowKey::Name(name_link) {
+                if entry.key == lookup_key {
                     return Some(Inferred::from_type(entry.type_.clone()));
                 }
             }
@@ -582,6 +582,10 @@ fn split_truthy_and_falsey(db: &Database, t: &Type) -> Option<(Type, Type)> {
 impl Inference<'_, '_, '_> {
     pub fn is_unreachable(&self) -> bool {
         FLOW_ANALYSIS.with(|fa| fa.is_unreachable())
+    }
+
+    pub fn lookup_narrowed_name(&self, name_link: PointLink) -> Option<Inferred> {
+        FLOW_ANALYSIS.with(|fa| fa.lookup_narrowed_key(FlowKey::Name(name_link)))
     }
 
     pub fn flow_analysis_for_assert(&mut self, expr: Expression) {

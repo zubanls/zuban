@@ -13,7 +13,6 @@ use crate::{
     },
     debug,
     diagnostics::IssueType,
-    file::flow_analysis::FLOW_ANALYSIS,
     getitem::SliceType,
     imports::{find_ancestor, global_import, python_import, ImportResult},
     inference_state::InferenceState,
@@ -2307,10 +2306,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     let next_node_index = point.node_index();
                     if point.needs_flow_analysis() {
                         debug_assert!(Name::maybe_by_index(&self.file.tree, node_index).is_some());
-                        if let Some(inf) = FLOW_ANALYSIS
-                            .with(|fa| fa.narrow_name(PointLink::new(file_index, next_node_index)))
+                        if let Some(result) =
+                            self.lookup_narrowed_name(PointLink::new(file_index, next_node_index))
                         {
-                            return inf;
+                            return result;
                         }
                     }
                     debug_assert!(
