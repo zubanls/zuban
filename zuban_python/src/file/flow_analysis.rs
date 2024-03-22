@@ -589,22 +589,18 @@ impl Inference<'_, '_, '_> {
         FLOW_ANALYSIS.with(|fa| fa.overwrite_frame(true_frame))
     }
 
-    pub fn narrow_target_name_from_assignment(&mut self, first_name_index: NodeIndex, t: &Type) {
+    pub fn save_narrowed_name_target(&mut self, first_name_index: NodeIndex, t: &Type) {
         let key = FlowKey::Name(PointLink::new(self.file_index, first_name_index));
-        self.narrow_from_assignment(key, t)
+        self.save_narrowed(key, t)
     }
 
-    pub fn narrow_primary_target_from_assignment(
-        &mut self,
-        primary_target: PrimaryTarget,
-        t: &Type,
-    ) {
+    pub fn save_narrowed_primary_target(&mut self, primary_target: PrimaryTarget, t: &Type) {
         if let Some(key) = self.key_from_primary_target(primary_target) {
-            self.narrow_from_assignment(key, t)
+            self.save_narrowed(key, t)
         }
     }
 
-    fn narrow_from_assignment(&mut self, key: FlowKey, t: &Type) {
+    fn save_narrowed(&mut self, key: FlowKey, t: &Type) {
         FLOW_ANALYSIS.with(|fa| {
             fa.invalidate_child_entries_in_last_frame(&key);
             fa.overwrite_entry(Entry {

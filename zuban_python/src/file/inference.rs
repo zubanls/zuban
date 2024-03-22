@@ -905,10 +905,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             },
                         );
                         if !had_error {
-                            self.narrow_target_name_from_assignment(
-                                first_index,
-                                &value.as_cow_type(i_s),
-                            );
+                            self.save_narrowed_name_target(first_index, &value.as_cow_type(i_s));
                         }
                         return;
                     }
@@ -934,10 +931,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     if is_definition {
                         self.add_issue(primary_target.index(), IssueType::InvalidTypeDeclaration);
                     }
-                    self.narrow_primary_target_from_assignment(
-                        primary_target,
-                        &value.as_cow_type(self.i_s),
-                    );
+                    self.save_narrowed_primary_target(primary_target, &value.as_cow_type(self.i_s));
                     let base = base.as_cow_type(i_s);
                     let node_ref = NodeRef::new(self.file, primary_target.index());
                     for t in base.iter_with_unpacked_unions() {
