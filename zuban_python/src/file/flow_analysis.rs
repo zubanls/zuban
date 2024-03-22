@@ -1456,7 +1456,7 @@ impl Inference<'_, '_, '_> {
         }
     }
 
-    fn key_from_primary_target(&self, primary_target: PrimaryTarget) -> Option<FlowKey> {
+    fn key_from_primary_target(&mut self, primary_target: PrimaryTarget) -> Option<FlowKey> {
         let base_key = match primary_target.first() {
             PrimaryTargetOrAtom::PrimaryTarget(t) => self.key_from_primary_target(t),
             PrimaryTargetOrAtom::Atom(atom) => self.key_from_atom(atom),
@@ -1464,7 +1464,10 @@ impl Inference<'_, '_, '_> {
         match primary_target.second() {
             PrimaryContent::Attribute(n) => Some(FlowKey::Member(Rc::new(base_key), n.as_code())),
             PrimaryContent::Execution(_) => None,
-            PrimaryContent::GetItem(slice_type) => None,
+            PrimaryContent::GetItem(slice_type) => {
+                //self.key_from_slice_type(slice_type).map(|match_index| FlowKey::Index { base_key: Rc::new(base_key), node_index: slice_type.index(), match_index })
+                None
+            }
         }
     }
 

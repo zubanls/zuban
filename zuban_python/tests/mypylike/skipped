@@ -1065,8 +1065,6 @@ testBoolInTuplesRegression
 # isinstance error conditions
 testLiteralErrorsWithIsInstanceAndIsSubclass
 # unsorted narrowing tests
-testNarrowingEqualityDisabledForCustomEqualityChain
-testNarrowingUsingTypeVar
 testNarrowingParentWithParentMixtures
 testNarrowingNestedUnionOfTypedDicts
 testIsinstanceIgnoredImportDualAny
@@ -1333,6 +1331,7 @@ testTypeNotEqualsCheck
 testTypeNotEqualsCheckUsingIsNot
 testNarrowInElseCaseIfFinal
 testNarrowInIfCaseIfFinalUsingIsNot
+testNarrowingUsingTypeVar
 
 # NoReturn
 testNoReturnTypeAlias
@@ -2033,6 +2032,7 @@ testTypedDictOverlapWithDictNonTotalNonOverlapping
 testTypedDictOverlapWithDictEmpty
 testStrictAndStrictEquality
 testStrictEqualityWithRecursiveMapTypes
+testNarrowingEqualityDisabledForCustomEqualityChain
 
 # --show-column-numbers and tuple targets
 testColumnsAssignment
