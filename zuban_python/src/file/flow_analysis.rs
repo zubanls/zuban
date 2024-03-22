@@ -17,8 +17,8 @@ use crate::{
     matching::{Generic, LookupKind, Match, Matcher, ResultContext},
     node_ref::NodeRef,
     type_::{
-        AnyCause, ClassGenerics, EnumMember, GenericItem, Literal, LiteralKind, TupleArgs, Type,
-        TypeVarKind, UnionType,
+        simplified_union_from_iterators, AnyCause, ClassGenerics, EnumMember, GenericItem, Literal,
+        LiteralKind, TupleArgs, Type, TypeVarKind, UnionType,
     },
     type_helpers::{Class, Function},
 };
@@ -994,6 +994,15 @@ impl Inference<'_, '_, '_> {
         if iterator.next().is_some() {
             return None;
         }
+        if isinstance_type.is_any() {
+            // Parent unions are not narrowed, because with Any we know essentially nothing
+            // about the type and its parents except that it can be anything.
+            return Some(FramesWithParentUnions {
+                truthy: Frame::from_type(key, isinstance_type),
+                falsey: Frame::default(),
+                parent_unions: vec![],
+            });
+        }
         if issubclass && !matches!(isinstance_type, Type::Never) {
             isinstance_type = Type::Type(Rc::new(isinstance_type))
         }
@@ -1136,7 +1145,7 @@ impl Inference<'_, '_, '_> {
                     Some(match ts.len() {
                         0 => Type::Never,
                         1 => ts.into_iter().next().unwrap(),
-                        _ => Type::Union(UnionType::from_types(ts)),
+                        _ => simplified_union_from_iterators(self.i_s, ts.iter()),
                     })
                 }
                 TupleArgs::ArbitraryLen(t) => self.process_isinstance_type(part, t),
