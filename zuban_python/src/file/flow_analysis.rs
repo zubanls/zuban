@@ -584,8 +584,12 @@ impl Inference<'_, '_, '_> {
         FLOW_ANALYSIS.with(|fa| fa.is_unreachable())
     }
 
-    pub fn lookup_narrowed_name(&self, name_link: PointLink) -> Option<Inferred> {
+    pub fn maybe_lookup_narrowed_name(&self, name_link: PointLink) -> Option<Inferred> {
         FLOW_ANALYSIS.with(|fa| fa.lookup_narrowed_key(FlowKey::Name(name_link)))
+    }
+
+    pub fn maybe_lookup_narrowed_primary(&mut self, primary: Primary) -> Option<Inferred> {
+        self.maybe_has_primary_entry(primary).map(|x| x.1)
     }
 
     pub fn flow_analysis_for_assert(&mut self, expr: Expression) {
@@ -1487,10 +1491,6 @@ impl Inference<'_, '_, '_> {
             }
             None
         })
-    }
-
-    pub fn maybe_infer_narrowed_primary(&mut self, primary: Primary) -> Option<Inferred> {
-        self.maybe_has_primary_entry(primary).map(|x| x.1)
     }
 
     fn matches_primary_entry(&mut self, primary: Primary, key: &FlowKey) -> bool {

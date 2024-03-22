@@ -1839,7 +1839,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         primary: Primary,
         result_context: &mut ResultContext,
     ) -> Inferred {
-        if let Some(inf) = self.maybe_infer_narrowed_primary(primary) {
+        if let Some(inf) = self.maybe_lookup_narrowed_primary(primary) {
             return inf;
         }
         let base = self.infer_primary_or_atom(primary.first());
@@ -2306,8 +2306,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     let next_node_index = point.node_index();
                     if point.needs_flow_analysis() {
                         debug_assert!(Name::maybe_by_index(&self.file.tree, node_index).is_some());
-                        if let Some(result) =
-                            self.lookup_narrowed_name(PointLink::new(file_index, next_node_index))
+                        if let Some(result) = self
+                            .maybe_lookup_narrowed_name(PointLink::new(file_index, next_node_index))
                         {
                             return result;
                         }
