@@ -1362,10 +1362,6 @@ impl Inference<'_, '_, '_> {
     }
 
     fn key_from_primary(&mut self, primary: Primary) -> KeyWithParentUnions {
-        if let Some((key, inf)) = self.maybe_has_primary_entry(primary) {
-            return KeyWithParentUnions::new(inf, Some(key.clone()));
-        }
-
         let mut base = match primary.first() {
             PrimaryOrAtom::Primary(primary) => self.key_from_primary(primary),
             PrimaryOrAtom::Atom(atom) => KeyWithParentUnions::new(
@@ -1373,9 +1369,30 @@ impl Inference<'_, '_, '_> {
                 self.key_from_atom(atom),
             ),
         };
-        let old_base_key = base.key.take();
-        let second = primary.second();
         let old_inf = base.inf;
+        let old_base_key = base.key.take();
+        let maybe_union = || {
+            old_inf.is_union(self.i_s).then(|| {
+                let Type::Union(union_type) = old_inf.as_type(self.i_s) else {
+                    unreachable!()
+                };
+                union_type
+            })
+        };
+
+        if let Some((key, inf)) = self.maybe_has_primary_entry(primary) {
+            let mut parent_unions = base.parent_unions;
+            if let Some(union_type) = maybe_union() {
+                parent_unions.push((old_base_key.unwrap(), union_type));
+            }
+            return KeyWithParentUnions {
+                inf,
+                key: Some(key.clone()),
+                parent_unions,
+            };
+        }
+
+        let second = primary.second();
         base.inf = self.infer_primary_or_primary_t_content(
             &old_inf,
             primary.index(),
@@ -1404,11 +1421,10 @@ impl Inference<'_, '_, '_> {
         }
         if let Some(base_key) = old_base_key {
             // Only in case of valid keys we want to add the unions.
-            if base.key.is_some() && old_inf.is_union(self.i_s) {
-                let Type::Union(union_type) = old_inf.as_type(self.i_s) else {
-                    unreachable!()
-                };
-                base.parent_unions.push((base_key.clone(), union_type))
+            if base.key.is_some() {
+                if let Some(union_type) = maybe_union() {
+                    base.parent_unions.push((base_key.clone(), union_type))
+                }
             }
         }
         base

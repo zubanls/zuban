@@ -1066,7 +1066,6 @@ testBoolInTuplesRegression
 testLiteralErrorsWithIsInstanceAndIsSubclass
 # unsorted narrowing tests
 testNarrowingParentWithParentMixtures
-testNarrowingNestedUnionOfTypedDicts
 testIsinstanceIgnoredImportDualAny
 testNoneAndGenericTypesOverlapNoStrictOptional
 testIsinstanceMultiAnd
