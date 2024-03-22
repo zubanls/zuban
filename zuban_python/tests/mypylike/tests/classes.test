@@ -485,3 +485,13 @@ y = Bar(1.0)  # E: No overload variant of "Bar" matches argument type "float" \
               # N:     def __init__(self: Foo[float, U], y: U) -> Bar[Any]
 
 reveal_type(y)  # N: Revealed type is "Any"
+
+[case class_union_attribute_assignment]
+from typing import Union
+
+class Foo:
+    x: Union[str, int] = ''
+
+f = Foo()
+f.x = ''
+f.x = 1

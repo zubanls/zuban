@@ -1074,6 +1074,7 @@ testNarrowingWithDef
 testNarrowingWithTupleOfTypes
 testNarrowingWithTupleOfTypesPy310Plus
 testNarrowingWithAnyOps
+testNarrowingParentWithParentMixtures
 # isinstance error conditions
 testLiteralErrorsWithIsInstanceAndIsSubclass
 # isinstance narrowing
@@ -1175,9 +1176,6 @@ testInferredTypeIsSimpleNestedList
 testInferredTypeIsSimpleNestedIterable
 testInferredTypeIsSimpleNestedListLoop
 testInferredTypeIsSimpleNestedIterableLoop
-# narrowing of foo.bar
-testNarrowingParentWithParentMixtures
-testMemberAssignmentChanges
 # questionable implicit literal?
 testEnumReachabilityChecksIndirect
 # Narrowing with previous and/or

@@ -107,64 +107,62 @@ impl<'a> Instance<'a> {
             });
         }
 
-        for t in inf.as_cow_type(i_s).iter_with_unpacked_unions() {
-            match t {
-                Type::Class(c) => {
-                    let descriptor = c.class(i_s.db);
-                    if let Some(__set__) = Instance::new(descriptor, None)
-                        .type_lookup(i_s, add_issue, "__set__")
-                        .into_maybe_inferred()
-                    {
-                        let inst = self.as_inferred(i_s);
-                        calculate_descriptor(i_s, from, __set__, inst, value);
-                        continue;
-                    } else if let Some(inf) = Instance::new(descriptor, None).bind_dunder_get(
-                        i_s,
-                        add_issue,
-                        self.class.as_type(i_s.db),
-                    ) {
-                        // It feels weird that a descriptor that only defines __get__ should
-                        // match the value with __get__'s return type. But this makes sense:
-                        // When a descriptor does not define __set__, writing Foo().bar = 3 will
-                        // write Foo.__dict__['bar'] = true instead of changing anything on
-                        // the class attribute Foo.bar.
-                        // Here we ensure that the contract that the __get__ descriptor gives us is
-                        // not violated.
-                        check_compatible(&inf.as_cow_type(i_s), value);
-                        continue;
-                    }
+        let assign_to = inf.as_cow_type(i_s);
+        match assign_to.as_ref() {
+            Type::Class(c) => {
+                let descriptor = c.class(i_s.db);
+                if let Some(__set__) = Instance::new(descriptor, None)
+                    .type_lookup(i_s, add_issue, "__set__")
+                    .into_maybe_inferred()
+                {
+                    let inst = self.as_inferred(i_s);
+                    calculate_descriptor(i_s, from, __set__, inst, value);
+                    return;
+                } else if let Some(inf) = Instance::new(descriptor, None).bind_dunder_get(
+                    i_s,
+                    add_issue,
+                    self.class.as_type(i_s.db),
+                ) {
+                    // It feels weird that a descriptor that only defines __get__ should
+                    // match the value with __get__'s return type. But this makes sense:
+                    // When a descriptor does not define __set__, writing Foo().bar = 3 will
+                    // write Foo.__dict__['bar'] = true instead of changing anything on
+                    // the class attribute Foo.bar.
+                    // Here we ensure that the contract that the __get__ descriptor gives us is
+                    // not violated.
+                    check_compatible(&inf.as_cow_type(i_s), value);
+                    return;
                 }
-                Type::Callable(c) if matches!(c.kind, FunctionKind::Property { .. }) => {
-                    match c.kind {
-                        FunctionKind::Property {
-                            writable: false, ..
-                        } => {
-                            if let TypeOrClass::Class(class) = lookup_details.class {
-                                property_is_read_only(class.name().into())
-                            } else {
-                                todo!()
-                            }
-                        }
-                        FunctionKind::Property { writable: true, .. } => {
-                            check_compatible(&c.return_type, value);
-                        }
-                        _ => unreachable!(),
-                    }
-                    continue;
-                }
-                Type::Callable(c) => {
-                    if !matches!(&c.params, CallableParams::Any(_)) {
-                        add_issue(IssueType::CannotAssignToAMethod);
-                    }
-                }
-                _ => {}
             }
-
-            if !matches!(t, Type::Any(_)) {
-                self.class.check_slots(i_s, add_issue, name_str);
+            Type::Callable(c) if matches!(c.kind, FunctionKind::Property { .. }) => {
+                match c.kind {
+                    FunctionKind::Property {
+                        writable: false, ..
+                    } => {
+                        if let TypeOrClass::Class(class) = lookup_details.class {
+                            property_is_read_only(class.name().into())
+                        } else {
+                            todo!()
+                        }
+                    }
+                    FunctionKind::Property { writable: true, .. } => {
+                        check_compatible(&c.return_type, value);
+                    }
+                    _ => unreachable!(),
+                }
+                return;
             }
-            check_compatible(t, value)
+            Type::Callable(c) => {
+                if !matches!(&c.params, CallableParams::Any(_)) {
+                    add_issue(IssueType::CannotAssignToAMethod);
+                }
+            }
+            _ => {}
         }
+        if !assign_to.iter_with_unpacked_unions().any(|t| t.is_any()) {
+            self.class.check_slots(i_s, add_issue, name_str);
+        }
+        check_compatible(assign_to.as_ref(), value)
     }
 
     pub(crate) fn bind_dunder_get(
