@@ -1524,11 +1524,9 @@ impl Inference<'_, '_, '_> {
                 ..
             } => match primary.second() {
                 PrimaryContent::GetItem(slice_type) => {
-                    /*
                     if !match_primary_first_part(base_key) {
-                        return false
+                        return false;
                     }
-                    */
                     if let Some(other_index_key) = self.key_from_slice_type(slice_type) {
                         return match_index == &other_index_key;
                     }
