@@ -1218,11 +1218,23 @@ pub enum IfBlockType<'db> {
     Else(Block<'db>),
 }
 
+impl<'db> IfBlockType<'db> {
+    fn start_of_first_block_stmt(&self) -> CodeIndex {
+        match self {
+            Self::If(_, block_) | Self::Else(block_) => block_.statements_start_and_end().0,
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct IfBlockIterator<'db>(SiblingIterator<'db>);
 
 impl<'db> IfBlockIterator<'db> {
     pub fn next_block_start_and_last_block_end(&self) -> Option<(NodeIndex, NodeIndex)> {
-        Some((self.0.clone().next()?.start(), self.0.clone().last()?.end()))
+        Some((
+            self.clone().next()?.start_of_first_block_stmt(),
+            self.0.clone().last()?.end(),
+        ))
     }
 }
 
