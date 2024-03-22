@@ -1494,20 +1494,20 @@ impl Inference<'_, '_, '_> {
     }
 
     fn matches_primary_entry(&mut self, primary: Primary, key: &FlowKey) -> bool {
-        let match_primary_first_part = |left: &Rc<_>| match primary.first() {
-            PrimaryOrAtom::Primary(primary) => self.matches_primary_entry(primary, left),
+        let mut match_primary_first_part = |base_key: &Rc<_>| match primary.first() {
+            PrimaryOrAtom::Primary(primary) => self.matches_primary_entry(primary, base_key),
             PrimaryOrAtom::Atom(atom) => {
-                let FlowKey::Name(check_link) = left.as_ref() else {
-                        return false;
-                    };
+                let FlowKey::Name(check_link) = base_key.as_ref() else {
+                    return false;
+                };
                 let AtomContent::Name(name) = atom.unpack() else {
-                        return false;
-                    };
+                    return false;
+                };
                 name_definition_link(self.i_s.db, self.file, name) == *check_link
             }
         };
         match key {
-            FlowKey::Member(left, right) => {
+            FlowKey::Member(base_key, right) => {
                 match primary.second() {
                     PrimaryContent::Attribute(attr) => {
                         if attr.as_code() != unsafe { &**right as &str } {
@@ -1516,18 +1516,7 @@ impl Inference<'_, '_, '_> {
                     }
                     _ => return false,
                 }
-                match primary.first() {
-                    PrimaryOrAtom::Primary(primary) => self.matches_primary_entry(primary, left),
-                    PrimaryOrAtom::Atom(atom) => {
-                        let FlowKey::Name(check_link) = left.as_ref() else {
-                            return false;
-                        };
-                        let AtomContent::Name(name) = atom.unpack() else {
-                            return false;
-                        };
-                        name_definition_link(self.i_s.db, self.file, name) == *check_link
-                    }
-                }
+                match_primary_first_part(base_key)
             }
             FlowKey::Index {
                 base_key,
@@ -1535,6 +1524,11 @@ impl Inference<'_, '_, '_> {
                 ..
             } => match primary.second() {
                 PrimaryContent::GetItem(slice_type) => {
+                    /*
+                    if !match_primary_first_part(base_key) {
+                        return false
+                    }
+                    */
                     if let Some(other_index_key) = self.key_from_slice_type(slice_type) {
                         return match_index == &other_index_key;
                     }
