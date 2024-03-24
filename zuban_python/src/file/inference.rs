@@ -1328,7 +1328,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         self.infer_expression_part_with_context(node, &mut ResultContext::Unknown)
     }
 
-    pub fn infer_expression_part_with_context(
+    fn infer_expression_part_with_context(
         &mut self,
         node: ExpressionPart,
         result_context: &mut ResultContext,
@@ -1576,7 +1576,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         Inferred::from_type(self.i_s.db.python_state.bool_type())
     }
 
-    pub fn infer_lambda(&mut self, lambda: Lambda, result_context: &mut ResultContext) -> Inferred {
+    fn infer_lambda(&mut self, lambda: Lambda, result_context: &mut ResultContext) -> Inferred {
         let check_defaults = |inference: &mut Inference| {
             let (params, expr) = lambda.unpack();
             for param in params {
@@ -2148,7 +2148,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         gatherer.into_tuple(self, iterator)
     }
 
-    check_point_cache_with!(pub infer_primary_target, Self::_infer_primary_target, PrimaryTarget);
+    check_point_cache_with!(
+        infer_primary_target,
+        Self::_infer_primary_target,
+        PrimaryTarget
+    );
     fn _infer_primary_target(&mut self, primary_target: PrimaryTarget) -> Inferred {
         let first = self.infer_primary_target_or_atom(primary_target.first());
         self.infer_primary_or_primary_t_content(
@@ -2562,11 +2566,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             "{name_def:?}",
         );
         self.infer_name_definition(name_def)
-    }
-
-    pub fn infer_by_node_index(&mut self, node_index: NodeIndex) -> Inferred {
-        self.check_point_cache(node_index)
-            .unwrap_or_else(|| todo!())
     }
 
     fn infer_for_if_clauses(&mut self, for_if_clauses: ForIfClauses) {
