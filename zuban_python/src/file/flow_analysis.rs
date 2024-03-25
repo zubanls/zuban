@@ -1010,10 +1010,11 @@ impl Inference<'_, '_, '_> {
         let mut true_type = Type::Never;
         let mut other_side = Type::Never;
         let matcher = &mut Matcher::with_ignored_promotions();
+        let db = self.i_s.db;
         for t in result
             .inf
             .as_cow_type(self.i_s)
-            .iter_with_unpacked_unionsv2(self.i_s.db)
+            .iter_with_unpacked_unionsv2(db)
         {
             /*
             if matches!(t, Type::Any(_)) {
@@ -1029,14 +1030,14 @@ impl Inference<'_, '_, '_> {
                 Match::False { .. } => other_side.union_in_place(t.clone()),
             }
         }
-        if matches!(true_type, Type::Never) || isinstance_type.is_any_or_any_in_union() {
+        if matches!(true_type, Type::Never) || isinstance_type.is_any_or_any_in_union(db) {
             true_type = isinstance_type;
         }
         debug!(
             "Narrowed {} because of isinstance to {} and other side to {}",
             arg.as_code(),
-            true_type.format_short(self.i_s.db),
-            other_side.format_short(self.i_s.db)
+            true_type.format_short(db),
+            other_side.format_short(db)
         );
         Some(FramesWithParentUnions {
             truthy: Frame::from_type(key.clone(), true_type),

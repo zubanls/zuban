@@ -480,8 +480,8 @@ impl Type {
         matches!(self, Type::Any(_))
     }
 
-    pub fn is_any_or_any_in_union(&self) -> bool {
-        self.iter_with_unpacked_unions()
+    pub fn is_any_or_any_in_union(&self, db: &Database) -> bool {
+        self.iter_with_unpacked_unionsv2(db)
             .any(|t| matches!(t, Type::Any(_)))
     }
 
