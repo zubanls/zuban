@@ -501,6 +501,18 @@ impl Type {
         }
     }
 
+    pub fn iter_with_unpacked_unionsv2<'a>(
+        &'a self,
+        db: &'a Database,
+    ) -> impl Iterator<Item = &Type> {
+        match self {
+            Type::Union(items) => TypeRefIterator::Union(items.iter()),
+            Type::Never => TypeRefIterator::Finished,
+            Type::RecursiveType(rec) => rec.calculated_type(db).iter_with_unpacked_unionsv2(db),
+            t => TypeRefIterator::Single(t),
+        }
+    }
+
     pub fn remove_from_union(&self, mut maybe_remove: impl FnMut(&Self) -> bool) -> Type {
         match self {
             Type::Union(union) => {
