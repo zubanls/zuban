@@ -2513,7 +2513,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             t => self.as_type(t, content.as_node_ref()),
         };
-        if t.iter_with_unpacked_unions()
+        if t.iter_with_unpacked_unions_without_unpacking_recursive_types()
             .any(|t| matches!(t, Type::Type(_)))
         {
             t = Type::Any(AnyCause::FromError);
@@ -4003,7 +4003,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
 }
 
 fn is_invalid_recursive_alias(db: &Database, t: &Type) -> bool {
-    t.iter_with_unpacked_unions().any(|t| matches!(t, Type::RecursiveType(rec) if rec.has_alias_origin(db) && rec.calculating(db)))
+    t.iter_with_unpacked_unions_without_unpacking_recursive_types().any(|t| matches!(t, Type::RecursiveType(rec) if rec.has_alias_origin(db) && rec.calculating(db)))
 }
 
 fn detect_diverging_alias(db: &Database, type_var_likes: &TypeVarLikes, t: &Type) -> bool {
@@ -4043,17 +4043,19 @@ fn check_for_and_replace_type_type_in_finished_alias(
     //  will probably just be ignored and should need additional logic to be recognized.
     //  see also the test type_type_alias_circular
     if alias.type_if_valid().find_in_type(&mut |t| match t {
-        Type::Type(t) => t.iter_with_unpacked_unions().any(|t| match t {
-            Type::RecursiveType(recursive_alias) => {
-                !recursive_alias.calculating(i_s.db)
-                    && recursive_alias.has_alias_origin(i_s.db)
-                    && recursive_alias
-                        .calculated_type(i_s.db)
-                        .iter_with_unpacked_unions()
-                        .any(|t| matches!(t, Type::Type(_)))
-            }
-            _ => false,
-        }),
+        Type::Type(t) => t
+            .iter_with_unpacked_unions_without_unpacking_recursive_types()
+            .any(|t| match t {
+                Type::RecursiveType(recursive_alias) => {
+                    !recursive_alias.calculating(i_s.db)
+                        && recursive_alias.has_alias_origin(i_s.db)
+                        && recursive_alias
+                            .calculated_type(i_s.db)
+                            .iter_with_unpacked_unions_without_unpacking_recursive_types()
+                            .any(|t| matches!(t, Type::Type(_)))
+                }
+                _ => false,
+            }),
         _ => false,
     }) {
         alias_origin.add_issue(i_s, IssueType::TypeCannotContainAnotherType);

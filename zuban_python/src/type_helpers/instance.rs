@@ -160,7 +160,7 @@ impl<'a> Instance<'a> {
             _ => {}
         }
         if !assign_to
-            .iter_with_unpacked_unionsv2(i_s.db)
+            .iter_with_unpacked_unions(i_s.db)
             .any(|t| t.is_any())
         {
             self.class.check_slots(i_s, add_issue, name_str);

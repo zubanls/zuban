@@ -481,7 +481,7 @@ impl Type {
     }
 
     pub fn is_any_or_any_in_union(&self, db: &Database) -> bool {
-        self.iter_with_unpacked_unionsv2(db)
+        self.iter_with_unpacked_unions(db)
             .any(|t| matches!(t, Type::Any(_)))
     }
 
@@ -493,7 +493,9 @@ impl Type {
         }
     }
 
-    pub fn iter_with_unpacked_unions(&self) -> impl Iterator<Item = &Type> {
+    pub fn iter_with_unpacked_unions_without_unpacking_recursive_types(
+        &self,
+    ) -> impl Iterator<Item = &Type> {
         match self {
             Type::Union(items) => TypeRefIterator::Union(items.iter()),
             Type::Never => TypeRefIterator::Finished,
@@ -501,14 +503,14 @@ impl Type {
         }
     }
 
-    pub fn iter_with_unpacked_unionsv2<'a>(
+    pub fn iter_with_unpacked_unions<'a>(
         &'a self,
         db: &'a Database,
     ) -> impl Iterator<Item = &Type> {
         match self {
             Type::Union(items) => TypeRefIterator::Union(items.iter()),
             Type::Never => TypeRefIterator::Finished,
-            Type::RecursiveType(rec) => rec.calculated_type(db).iter_with_unpacked_unionsv2(db),
+            Type::RecursiveType(rec) => rec.calculated_type(db).iter_with_unpacked_unions(db),
             t => TypeRefIterator::Single(t),
         }
     }
@@ -1096,24 +1098,27 @@ impl Type {
     }
 
     pub fn is_literal_or_literal_in_tuple(&self) -> bool {
-        self.iter_with_unpacked_unions().any(|t| match t {
-            Type::Literal(_) | Type::EnumMember(_) => true,
-            Type::Tuple(tup) => match &tup.args {
-                TupleArgs::FixedLen(ts) => ts.iter().any(|t| t.is_literal_or_literal_in_tuple()),
-                TupleArgs::ArbitraryLen(t) => t.is_literal_or_literal_in_tuple(),
-                TupleArgs::WithUnpack(unpack) => {
-                    unpack
-                        .before
-                        .iter()
-                        .any(|t| t.is_literal_or_literal_in_tuple())
-                        || unpack
-                            .after
+        self.iter_with_unpacked_unions_without_unpacking_recursive_types()
+            .any(|t| match t {
+                Type::Literal(_) | Type::EnumMember(_) => true,
+                Type::Tuple(tup) => match &tup.args {
+                    TupleArgs::FixedLen(ts) => {
+                        ts.iter().any(|t| t.is_literal_or_literal_in_tuple())
+                    }
+                    TupleArgs::ArbitraryLen(t) => t.is_literal_or_literal_in_tuple(),
+                    TupleArgs::WithUnpack(unpack) => {
+                        unpack
+                            .before
                             .iter()
                             .any(|t| t.is_literal_or_literal_in_tuple())
-                }
-            },
-            _ => false,
-        })
+                            || unpack
+                                .after
+                                .iter()
+                                .any(|t| t.is_literal_or_literal_in_tuple())
+                    }
+                },
+                _ => false,
+            })
     }
 
     pub fn mro<'db: 'x, 'x>(&'x self, db: &'db Database) -> MroIterator<'db, 'x> {
@@ -1282,7 +1287,7 @@ impl Type {
         find: &impl Fn(&Type) -> Option<T>,
     ) -> Result<T, UniqueInUnpackedUnionError> {
         let mut found = Err(UniqueInUnpackedUnionError::None);
-        for t in self.iter_with_unpacked_unionsv2(db) {
+        for t in self.iter_with_unpacked_unions(db) {
             let new = match t {
                 Type::TypeVar(_) if matcher.might_have_defined_type_vars() => matcher
                     .replace_type_var_likes_for_nested_context(db, t)

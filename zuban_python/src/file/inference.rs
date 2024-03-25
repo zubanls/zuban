@@ -936,7 +936,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     self.save_narrowed_primary_target(primary_target, &value.as_cow_type(self.i_s));
                     let base = base.as_cow_type(i_s);
                     let node_ref = NodeRef::new(self.file, primary_target.index());
-                    for t in base.iter_with_unpacked_unionsv2(i_s.db) {
+                    for t in base.iter_with_unpacked_unions(i_s.db) {
                         if let Some(cls) = t.maybe_class(i_s.db) {
                             Instance::new(cls, None).check_set_descriptor(
                                 i_s,
@@ -1060,7 +1060,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 // TODO what about never? The loop will never be executed.
                 for union_part in value
                     .as_cow_type(self.i_s)
-                    .iter_with_unpacked_unionsv2(self.i_s.db)
+                    .iter_with_unpacked_unions(self.i_s.db)
                 {
                     if union_part == &self.i_s.db.python_state.str_type() {
                         value_node_ref.add_issue(self.i_s, IssueType::UnpackingAStringIsDisallowed)
@@ -1702,7 +1702,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 LookupKind::OnlyType,
                 &mut |l_type, lookup_result| {
                     let left_op_method = lookup_result.lookup.into_maybe_inferred();
-                    for r_type in right.as_cow_type(i_s).iter_with_unpacked_unionsv2(i_s.db) {
+                    for r_type in right.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
                         let instance;
                         let (r_defined_in, right_op_method) = match r_type {
                             Type::Class(r_class) => {

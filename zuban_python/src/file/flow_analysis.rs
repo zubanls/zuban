@@ -338,11 +338,11 @@ fn merge_conjunction(
     }
 }
 
-fn has_explicit_literal(t: &Type) -> bool {
-    t.iter_with_unpacked_unions().any(|t| match t {
+fn has_explicit_literal(db: &Database, t: &Type) -> bool {
+    t.iter_with_unpacked_unions(db).any(|t| match t {
         Type::Literal(literal) => !literal.implicit,
         Type::TypeVar(tv) => match &tv.type_var.kind {
-            TypeVarKind::Bound(bound) => has_explicit_literal(bound),
+            TypeVarKind::Bound(bound) => has_explicit_literal(db, bound),
             _ => false,
         },
         _ => false,
@@ -350,7 +350,7 @@ fn has_explicit_literal(t: &Type) -> bool {
 }
 
 fn has_custom_special_method(i_s: &InferenceState, t: &Type, method: &str) -> bool {
-    t.iter_with_unpacked_unionsv2(i_s.db).any(|t| {
+    t.iter_with_unpacked_unions(i_s.db).any(|t| {
         let cls = match t {
             Type::Class(c) => c.class(i_s.db),
             Type::Dataclass(dc) => dc.class(i_s.db),
@@ -384,7 +384,7 @@ fn split_off_singleton(
     let mut other_return = Type::Never;
     let mut left = Type::Never;
     let mut add = |t| left.union_in_place(t);
-    for sub_t in t.iter_with_unpacked_unionsv2(i_s.db) {
+    for sub_t in t.iter_with_unpacked_unions(i_s.db) {
         match sub_t {
             Type::Any(_) => {
                 // Any can be None or something else.
@@ -460,7 +460,7 @@ fn narrow_is_or_eq(
         // Mypy does only want to narrow if there are explicit literals on one side. See also
         // comments around testNarrowingEqualityFlipFlop.
         Type::Literal(literal1)
-            if is_eq && (!literal1.implicit || has_explicit_literal(left_t))
+            if is_eq && (!literal1.implicit || has_explicit_literal(i_s.db, left_t))
                 || !is_eq && matches!(literal1.kind, LiteralKind::Bool(_)) =>
         {
             let mut true_type = Type::Never;
@@ -470,7 +470,7 @@ fn narrow_is_or_eq(
                 new_literal.implicit = false;
                 Type::Literal(new_literal)
             };
-            for sub_t in left_t.iter_with_unpacked_unionsv2(i_s.db) {
+            for sub_t in left_t.iter_with_unpacked_unions(i_s.db) {
                 match sub_t {
                     Type::Literal(literal2) if literal1.value(i_s.db) == literal2.value(i_s.db) => {
                         true_type.union_in_place(true_literal())
@@ -503,7 +503,7 @@ fn narrow_is_or_eq(
             left_t @ Type::Union(union) => {
                 // Remove None from left, if the right types match everything except None.
                 if left_t
-                    .iter_with_unpacked_unionsv2(i_s.db)
+                    .iter_with_unpacked_unions(i_s.db)
                     .any(|t| matches!(t, Type::None))
                 {
                     let (new_left, _) = split_off_singleton(i_s, left_t, &Type::None, is_eq)?;
@@ -1014,7 +1014,7 @@ impl Inference<'_, '_, '_> {
         for t in result
             .inf
             .as_cow_type(self.i_s)
-            .iter_with_unpacked_unionsv2(db)
+            .iter_with_unpacked_unions(db)
         {
             /*
             if matches!(t, Type::Any(_)) {
@@ -1052,7 +1052,7 @@ impl Inference<'_, '_, '_> {
         issubclass: bool,
     ) -> Option<Type> {
         let isinstance_type = self.isinstance_or_issubclass_type(arg, issubclass)?;
-        for t in isinstance_type.iter_with_unpacked_unionsv2(self.i_s.db) {
+        for t in isinstance_type.iter_with_unpacked_unions(self.i_s.db) {
             if matches!(t, Type::TypedDict(_)) {
                 self.add_issue(
                     arg.index(),
@@ -1282,14 +1282,11 @@ impl Inference<'_, '_, '_> {
         };
         let db = self.i_s.db;
         if let Some(item) = stdlib_container_item(db, &right.inf.as_cow_type(self.i_s)) {
-            if !item
-                .iter_with_unpacked_unionsv2(db)
-                .any(|t| t == &Type::None)
-            {
+            if !item.iter_with_unpacked_unions(db).any(|t| t == &Type::None) {
                 if let Some(left_key) = left.key {
                     let left_t = left.inf.as_cow_type(self.i_s);
                     if left_t.overlaps(self.i_s, &item) {
-                        if let Some(t) = removed_optional(&left_t) {
+                        if let Some(t) = removed_optional(db, &left_t) {
                             return maybe_invert(
                                 Frame::from_type(left_key, t),
                                 Frame::default(),
@@ -1303,13 +1300,13 @@ impl Inference<'_, '_, '_> {
         // The right side can currently only be narrowed with TypedDicts
         let right_t = right.inf.as_cow_type(self.i_s);
         if right_t
-            .iter_with_unpacked_unionsv2(db)
+            .iter_with_unpacked_unions(db)
             .any(|t| matches!(t, Type::TypedDict(_)))
         {
             if let Some(right_key) = &right.key {
                 let left_t = left.inf.as_cow_type(self.i_s);
                 let str_literals: Vec<_> = left_t
-                    .iter_with_unpacked_unionsv2(db)
+                    .iter_with_unpacked_unions(db)
                     .filter_map(|t| match t {
                         Type::Literal(Literal {
                             kind: LiteralKind::String(s),
@@ -1648,8 +1645,8 @@ fn stdlib_container_item(db: &Database, t: &Type) -> Option<Type> {
     Some(item)
 }
 
-fn removed_optional(full: &Type) -> Option<Type> {
-    for t in full.iter_with_unpacked_unions() {
+fn removed_optional(db: &Database, full: &Type) -> Option<Type> {
+    for t in full.iter_with_unpacked_unions(db) {
         if matches!(t, Type::None) {
             return Some(full.remove_from_union(|t| matches!(t, Type::None)));
         }
