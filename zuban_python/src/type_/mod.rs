@@ -1282,11 +1282,8 @@ impl Type {
         find: &impl Fn(&Type) -> Option<T>,
     ) -> Result<T, UniqueInUnpackedUnionError> {
         let mut found = Err(UniqueInUnpackedUnionError::None);
-        for t in self.iter_with_unpacked_unions() {
+        for t in self.iter_with_unpacked_unionsv2(db) {
             let new = match t {
-                Type::RecursiveType(r) => r
-                    .calculated_type(db)
-                    .find_unique_type_in_unpacked_union(db, matcher, find),
                 Type::TypeVar(_) if matcher.might_have_defined_type_vars() => matcher
                     .replace_type_var_likes_for_nested_context(db, t)
                     .find_unique_type_in_unpacked_union(db, matcher, find),

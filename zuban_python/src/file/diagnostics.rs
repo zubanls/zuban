@@ -1394,7 +1394,7 @@ impl<'db> Inference<'db, '_, '_> {
         // False.
         if !function
             .return_type(self.i_s)
-            .iter_with_unpacked_unions()
+            .iter_with_unpacked_unionsv2(self.i_s.db)
             .any(|t| t == &self.i_s.db.python_state.bool_type())
         {
             return;

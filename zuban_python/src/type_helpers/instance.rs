@@ -159,7 +159,10 @@ impl<'a> Instance<'a> {
             }
             _ => {}
         }
-        if !assign_to.iter_with_unpacked_unions().any(|t| t.is_any()) {
+        if !assign_to
+            .iter_with_unpacked_unionsv2(i_s.db)
+            .any(|t| t.is_any())
+        {
             self.class.check_slots(i_s, add_issue, name_str);
         }
         check_compatible(assign_to.as_ref(), value)
