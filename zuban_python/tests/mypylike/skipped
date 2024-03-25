@@ -8,6 +8,14 @@ testRecursiveAliasBasicGenericInference
 
 testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
 
+testPlusAssign
+testMinusAssign
+testMulAssign
+testMatMulAssign
+testDivAssign
+testPowAssign
+testAdditionalOperatorsInOpAssign
+
 # mypy upgrade
 testMultilineQuotedAnnotation
 testDataclassFieldWithPositionalArguments

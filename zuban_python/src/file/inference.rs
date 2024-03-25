@@ -681,42 +681,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 );
                 let had_error = Cell::new(false);
                 if had_lookup_error.get() {
-                    result = left.type_lookup_and_execute_with_details(
-                        self.i_s,
-                        node_ref,
-                        op_infos.magic_method,
-                        &KnownArgs::new(&right, node_ref),
-                        &|type_| {
-                            let left = type_.format_short(self.i_s.db);
-                            node_ref.add_issue(
-                                self.i_s,
-                                IssueType::UnsupportedLeftOperand {
-                                    operand: Box::from(aug_assign.operand()),
-                                    left,
-                                },
-                            );
-                        },
-                        OnTypeError::with_overload_mismatch(
-                            &|_, _, _, _| had_error.set(true),
-                            Some(&|| had_error.set(true)),
-                        ),
-                    );
+                    result =
+                        self.infer_detailed_operation(right_side.index(), op_infos, left, &right)
                 }
 
-                let n = NodeRef::new(self.file, right_side.index());
-                if had_error.get() {
-                    n.add_issue(
-                        self.i_s,
-                        IssueType::UnsupportedOperand {
-                            operand: Box::from(aug_assign.operand()),
-                            left: left.format_short(self.i_s),
-                            right: right.format_short(self.i_s),
-                        },
-                    )
-                }
                 let AssignmentContent::AugAssign(target, ..) = assignment.unpack() else {
                     unreachable!()
                 };
+                let n = NodeRef::new(self.file, right_side.index());
                 self.assign_single_target(target, n, &result, false, |index| {
                     // There is no need to save this, because it's never used
                 })
@@ -1517,7 +1489,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 self.infer_in_operator(from, &left_inf, right_inf)
             }
             ComparisonContent::Operation(op) => {
-                self.infer_detailed_operation(op, left_inf, &right_inf)
+                self.infer_detailed_operation(op.index, op.infos, left_inf, &right_inf)
             }
         }
     }
@@ -1687,12 +1659,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     fn infer_operation(&mut self, op: Operation) -> Inferred {
         let left = self.infer_expression_part(op.left);
         let right = self.infer_expression_part(op.right);
-        self.infer_detailed_operation(op, left, &right)
+        self.infer_detailed_operation(op.index, op.infos, left, &right)
     }
 
     fn infer_detailed_operation(
         &mut self,
-        op: Operation,
+        error_index: NodeIndex,
+        op_infos: OpInfos,
         left: Inferred,
         right: &Inferred,
     ) -> Inferred {
@@ -1702,14 +1675,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             ReverseThenNormal,
         }
 
-        let from = NodeRef::new(self.file, op.index);
+        let from = NodeRef::new(self.file, error_index);
         let mut had_error = false;
         let i_s = self.i_s;
         let result = Inferred::gather_simplified_union(i_s, |add_to_union| {
             left.run_after_lookup_on_each_union_member(
                 i_s,
                 from,
-                op.infos.magic_method,
+                op_infos.magic_method,
                 LookupKind::OnlyType,
                 &mut |l_type, lookup_result| {
                     let left_op_method = lookup_result.lookup.into_maybe_inferred();
@@ -1721,7 +1694,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 let l = instance.lookup_with_details(
                                     i_s,
                                     |issue| from.add_issue(i_s, issue),
-                                    op.infos.reverse_magic_method,
+                                    op_infos.reverse_magic_method,
                                     LookupKind::OnlyType,
                                 );
                                 (Some(l.class), l.lookup.into_maybe_inferred())
@@ -1732,7 +1705,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     .lookup(
                                         i_s,
                                         from.file_index(),
-                                        op.infos.reverse_magic_method,
+                                        op_infos.reverse_magic_method,
                                         LookupKind::OnlyType,
                                         &mut ResultContext::Unknown,
                                         &|_| todo!(),
@@ -1746,7 +1719,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         let get_strategy = || {
                             // Check for shortcuts first (in Mypy it's called
                             // `op_methods_that_shortcut`)
-                            if op.infos.shortcut_when_same_type {
+                            if op_infos.shortcut_when_same_type {
                                 if let Some(left_instance) = l_type.maybe_class(i_s.db) {
                                     if let Some(right_instance) = r_type.maybe_class(i_s.db) {
                                         if left_instance.node_ref == right_instance.node_ref {
@@ -1810,12 +1783,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     || matches!(strategy, LookupStrategy::ShortCircuit))
                             {
                                 IssueType::UnsupportedLeftOperand {
-                                    operand: Box::from(op.infos.operand),
+                                    operand: Box::from(op_infos.operand),
                                     left: l_type.format_short(i_s.db),
                                 }
                             } else {
                                 IssueType::UnsupportedOperand {
-                                    operand: Box::from(op.infos.operand),
+                                    operand: Box::from(op_infos.operand),
                                     left: l_type.format_short(i_s.db),
                                     right: r_type.format_short(i_s.db),
                                 }
