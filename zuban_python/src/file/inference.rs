@@ -1358,7 +1358,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let op = term.as_operation();
                 // Mypy special cases the case [...] * n where n is an int (see check_list_multiply
                 // in mypy)
-                if op.operand == "*" {
+                if op.infos.operand == "*" {
                     if let ExpressionPart::Atom(atom) = op.left {
                         if matches!(atom.unpack(), AtomContent::List(_)) {
                             if self
@@ -1709,7 +1709,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             left.run_after_lookup_on_each_union_member(
                 i_s,
                 from,
-                op.magic_method,
+                op.infos.magic_method,
                 LookupKind::OnlyType,
                 &mut |l_type, lookup_result| {
                     let left_op_method = lookup_result.lookup.into_maybe_inferred();
@@ -1721,7 +1721,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 let l = instance.lookup_with_details(
                                     i_s,
                                     |issue| from.add_issue(i_s, issue),
-                                    op.reverse_magic_method,
+                                    op.infos.reverse_magic_method,
                                     LookupKind::OnlyType,
                                 );
                                 (Some(l.class), l.lookup.into_maybe_inferred())
@@ -1732,7 +1732,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     .lookup(
                                         i_s,
                                         from.file_index(),
-                                        op.reverse_magic_method,
+                                        op.infos.reverse_magic_method,
                                         LookupKind::OnlyType,
                                         &mut ResultContext::Unknown,
                                         &|_| todo!(),
@@ -1810,12 +1810,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     || matches!(strategy, LookupStrategy::ShortCircuit))
                             {
                                 IssueType::UnsupportedLeftOperand {
-                                    operand: Box::from(op.operand),
+                                    operand: Box::from(op.infos.operand),
                                     left: l_type.format_short(i_s.db),
                                 }
                             } else {
                                 IssueType::UnsupportedOperand {
-                                    operand: Box::from(op.operand),
+                                    operand: Box::from(op.infos.operand),
                                     left: l_type.format_short(i_s.db),
                                     right: r_type.format_short(i_s.db),
                                 }

@@ -2592,12 +2592,16 @@ impl<'db> BitwiseXor<'db> {
     }
 }
 
-pub struct Operation<'db> {
-    pub left: ExpressionPart<'db>,
+pub struct OpInfos {
+    pub operand: &'static str,
     pub magic_method: &'static str,
     pub reverse_magic_method: &'static str,
-    pub operand: &'static str,
+}
+
+pub struct Operation<'db> {
+    pub left: ExpressionPart<'db>,
     pub right: ExpressionPart<'db>,
+    pub infos: OpInfos,
     pub index: NodeIndex,
     pub shortcut_when_same_type: bool,
 }
@@ -2616,9 +2620,11 @@ impl<'db> Operation<'db> {
         let right = ExpressionPart::new(iter.next().unwrap());
         Self {
             left,
-            magic_method,
-            reverse_magic_method,
-            operand,
+            infos: OpInfos {
+                operand,
+                magic_method,
+                reverse_magic_method,
+            },
             right,
             index: node.index,
             shortcut_when_same_type,
@@ -2678,9 +2684,11 @@ impl<'db> Sum<'db> {
         };
         Operation {
             left,
-            magic_method,
-            reverse_magic_method,
-            operand,
+            infos: OpInfos {
+                operand,
+                magic_method,
+                reverse_magic_method,
+            },
             right,
             index: self.node.index,
             shortcut_when_same_type: true,
@@ -2708,9 +2716,11 @@ impl<'db> Term<'db> {
         };
         Operation {
             left,
-            magic_method,
-            reverse_magic_method,
-            operand,
+            infos: OpInfos {
+                operand,
+                magic_method,
+                reverse_magic_method,
+            },
             right,
             index: self.node.index,
             shortcut_when_same_type: true,
@@ -2732,9 +2742,11 @@ impl<'db> ShiftExpr<'db> {
         };
         Operation {
             left,
-            magic_method,
-            reverse_magic_method,
-            operand,
+            infos: OpInfos {
+                operand,
+                magic_method,
+                reverse_magic_method,
+            },
             right,
             index: self.node.index,
             shortcut_when_same_type: true,
@@ -2750,9 +2762,11 @@ impl<'db> Power<'db> {
         let right = ExpressionPart::new(iter.next().unwrap());
         Operation {
             left,
-            magic_method: "__pow__",
-            reverse_magic_method: "__rpow__",
-            operand: "**",
+            infos: OpInfos {
+                operand: "**",
+                magic_method: "__pow__",
+                reverse_magic_method: "__rpow__",
+            },
             right,
             index: self.node.index,
             shortcut_when_same_type: true,
@@ -2877,9 +2891,11 @@ impl<'db> Iterator for ComparisonIterator<'db> {
         };
         Some(ComparisonContent::Operation(Operation {
             left,
-            magic_method,
-            reverse_magic_method,
-            operand,
+            infos: OpInfos {
+                operand,
+                magic_method,
+                reverse_magic_method,
+            },
             right,
             index: op.index,
             shortcut_when_same_type: false,
