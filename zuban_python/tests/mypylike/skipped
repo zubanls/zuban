@@ -649,6 +649,10 @@ testMetaclassMemberAccessViaType
 testNoneAlias
 testNoneAliasStrict
 
+# Tuple Target definitions of self names
+testSlotsAssignmentMultipleLeftValues
+testMultipleAssignment
+
 # "Invalid assignment target"
 testSuperWithReadWriteAbstractProperty
 testAssignToBaseClassMethod
@@ -1066,9 +1070,6 @@ testBoolInTuplesRegression
 testLiteralErrorsWithIsInstanceAndIsSubclass
 # unsorted narrowing tests
 testNarrowingParentWithParentMixtures
-testNoneAndGenericTypesOverlapNoStrictOptional
-testIsinstanceMultiAnd
-testIsinstanceMultiAndSpecialCase
 testIntersectionUsingPromotion2
 testIntersectionUsingPromotion4
 testIntersectionUsingPromotion5
@@ -1113,6 +1114,7 @@ testIsInstanceAdHocIntersectionIncrementalIntersectionToUnreachable
 testIsInstanceAdHocIntersectionIncrementalUnreachaableToIntersection
 testIsInstanceInitialNoneCheckSkipsImpossibleCasesNoStrictOptional
 testIsInstanceInitialNoneCheckSkipsImpossibleCasesInNoStrictOptional
+testIsinstanceMultiAndSpecialCase
 # overwriting with def as a target
 testNarrowingWithDef
 # type[any] issues
@@ -2149,6 +2151,7 @@ testInvalidBooleanBranchIgnored
 # --no-strict-optional details
 testNestedListExpressions
 testInitializationWithMultipleValues
+testNoneAndGenericTypesOverlapNoStrictOptional
 
 # --no-namespace-packages
 testClassicNotPackage

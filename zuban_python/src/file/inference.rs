@@ -474,6 +474,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         return result;
                     }
                 }
+                Target::NameExpression(primary_target, _) => {
+                    debug!("TODO enable context for named expr");
+                    continue;
+                }
                 _ => {
                     if let Some(inferred) = self.infer_target(target, false) {
                         return Some(inferred);
@@ -856,9 +860,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             // TODO it's a bit weird that we cannot just call self.infer_name_definition here
             Target::Name(name_def) => first_defined_name(self.file, name_def.name_index())
                 .map(|i| self.infer_name_by_index(i)),
-            Target::NameExpression(primary_target, name_def_node) => {
-                debug!("TODO enable context for named expr");
-                None
+            Target::NameExpression(primary_target, _) => {
+                Some(self.infer_primary_target(primary_target))
             }
             Target::IndexExpression(t) if infer_index_expression => {
                 Some(self.infer_primary_target(t))
