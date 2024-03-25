@@ -2596,6 +2596,7 @@ pub struct OpInfos {
     pub operand: &'static str,
     pub magic_method: &'static str,
     pub reverse_magic_method: &'static str,
+    pub shortcut_when_same_type: bool,
 }
 
 pub struct Operation<'db> {
@@ -2603,7 +2604,6 @@ pub struct Operation<'db> {
     pub right: ExpressionPart<'db>,
     pub infos: OpInfos,
     pub index: NodeIndex,
-    pub shortcut_when_same_type: bool,
 }
 
 impl<'db> Operation<'db> {
@@ -2624,10 +2624,10 @@ impl<'db> Operation<'db> {
                 operand,
                 magic_method,
                 reverse_magic_method,
+                shortcut_when_same_type,
             },
             right,
             index: node.index,
-            shortcut_when_same_type,
         }
     }
 }
@@ -2688,10 +2688,10 @@ impl<'db> Sum<'db> {
                 operand,
                 magic_method,
                 reverse_magic_method,
+                shortcut_when_same_type: true,
             },
             right,
             index: self.node.index,
-            shortcut_when_same_type: true,
         }
     }
 }
@@ -2720,10 +2720,10 @@ impl<'db> Term<'db> {
                 operand,
                 magic_method,
                 reverse_magic_method,
+                shortcut_when_same_type: true,
             },
             right,
             index: self.node.index,
-            shortcut_when_same_type: true,
         }
     }
 }
@@ -2746,10 +2746,10 @@ impl<'db> ShiftExpr<'db> {
                 operand,
                 magic_method,
                 reverse_magic_method,
+                shortcut_when_same_type: true,
             },
             right,
             index: self.node.index,
-            shortcut_when_same_type: true,
         }
     }
 }
@@ -2766,10 +2766,10 @@ impl<'db> Power<'db> {
                 operand: "**",
                 magic_method: "__pow__",
                 reverse_magic_method: "__rpow__",
+                shortcut_when_same_type: true,
             },
             right,
             index: self.node.index,
-            shortcut_when_same_type: true,
         }
     }
 }
@@ -2895,10 +2895,10 @@ impl<'db> Iterator for ComparisonIterator<'db> {
                 operand,
                 magic_method,
                 reverse_magic_method,
+                shortcut_when_same_type: false,
             },
             right,
             index: op.index,
-            shortcut_when_same_type: false,
         }))
     }
 }
