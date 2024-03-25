@@ -2633,34 +2633,44 @@ impl<'db> Operation<'db> {
 }
 
 impl<'db> AugAssign<'db> {
-    pub fn magic_methods(&self) -> (&'static str, &'static str, &'static str) {
+    pub fn magic_methods(&self) -> (&'static str, OpInfos) {
         let code = self.node.as_code();
-        match code.as_bytes().first().unwrap() {
-            b'+' => ("__iadd__", "__add__", "__radd__"),
-            b'-' => ("__isub__", "__sub__", "__rsub__"),
-            b'*' => {
-                if code.as_bytes().get(1).unwrap() == &b'*' {
-                    ("__ipow__", "__pow__", "__rpow__")
-                } else {
-                    ("__imul__", "__mul__", "__rmul__")
+        let (inplace, magic_method, reverse_magic_method, operand) =
+            match code.as_bytes().first().unwrap() {
+                b'+' => ("__iadd__", "__add__", "__radd__", "+"),
+                b'-' => ("__isub__", "__sub__", "__rsub__", "-"),
+                b'*' => {
+                    if code.as_bytes().get(1).unwrap() == &b'*' {
+                        ("__ipow__", "__pow__", "__rpow__", "**")
+                    } else {
+                        ("__imul__", "__mul__", "__rmul__", "*")
+                    }
                 }
-            }
-            b'/' => {
-                if code.as_bytes().get(1).unwrap() == &b'/' {
-                    ("__ifloordiv__", "__floordiv__", "__rfloordiv__")
-                } else {
-                    ("__itruediv__", "__truediv__", "__rtruediv__")
+                b'/' => {
+                    if code.as_bytes().get(1).unwrap() == &b'/' {
+                        ("__ifloordiv__", "__floordiv__", "__rfloordiv__", "//")
+                    } else {
+                        ("__itruediv__", "__truediv__", "__rtruediv__", "/")
+                    }
                 }
-            }
-            b'%' => ("__imod__", "__mod__", "__rmod__"),
-            b'&' => ("__iand__", "__and__", "__rand__"),
-            b'|' => ("__ior__", "__or__", "__ror__"),
-            b'^' => ("__ixor__", "__xor__", "__rxor__"),
-            b'<' => ("__ilshift__", "__lshift__", "__rlshift__"),
-            b'>' => ("__irshift__", "__rshift__", "__rrshift__"),
-            b'@' => ("__imatmul__", "__matmul__", "__rmatmul__"),
-            _ => unreachable!(),
-        }
+                b'%' => ("__imod__", "__mod__", "__rmod__", "%"),
+                b'&' => ("__iand__", "__and__", "__rand__", "&"),
+                b'|' => ("__ior__", "__or__", "__ror__", "|"),
+                b'^' => ("__ixor__", "__xor__", "__rxor__", "^"),
+                b'<' => ("__ilshift__", "__lshift__", "__rlshift__", "<<"),
+                b'>' => ("__irshift__", "__rshift__", "__rrshift__", ">>"),
+                b'@' => ("__imatmul__", "__matmul__", "__rmatmul__", "@"),
+                _ => unreachable!(),
+            };
+        (
+            inplace,
+            OpInfos {
+                operand,
+                magic_method,
+                reverse_magic_method,
+                shortcut_when_same_type: true,
+            },
+        )
     }
 
     pub fn operand(&self) -> &'db str {

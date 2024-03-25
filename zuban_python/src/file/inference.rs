@@ -665,7 +665,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
             }
             AssignmentContent::AugAssign(target, aug_assign, right_side) => {
-                let (inplace, normal, reverse) = aug_assign.magic_methods();
+                let (inplace_method, op_infos) = aug_assign.magic_methods();
                 let right =
                     self.infer_assignment_right_side(right_side, &mut ResultContext::Unknown);
                 let Some(left) = self.infer_target(target, true) else {
@@ -675,7 +675,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let mut result = left.type_lookup_and_execute(
                     self.i_s,
                     node_ref,
-                    inplace,
+                    inplace_method,
                     &KnownArgs::new(&right, node_ref),
                     &|type_| had_lookup_error.set(true),
                 );
@@ -684,7 +684,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     result = left.type_lookup_and_execute_with_details(
                         self.i_s,
                         node_ref,
-                        normal,
+                        op_infos.magic_method,
                         &KnownArgs::new(&right, node_ref),
                         &|type_| {
                             let left = type_.format_short(self.i_s.db);
