@@ -15,7 +15,7 @@ use crate::{
     },
     debug,
     diagnostics::{Issue, IssueType},
-    file::Inference,
+    file::{inference::AssignKind, Inference},
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::{infer_class_method, AttributeKind, Inferred},
@@ -401,7 +401,7 @@ impl<'db> Inference<'db, '_, '_> {
                     target,
                     enter_result,
                     NodeRef::new(self.file, with_item.index()),
-                    true,
+                    AssignKind::Normal,
                 )
             }
         }
@@ -1109,7 +1109,7 @@ impl<'db> Inference<'db, '_, '_> {
                 .infer_all(self.i_s)
         };
         debug!("For loop input: {}", element.format_short(self.i_s));
-        self.assign_targets(star_targets.as_target(), element, from, false);
+        self.assign_targets(star_targets.as_target(), element, from, AssignKind::Normal);
         self.file.points.set(
             star_targets.index(),
             Point::new_node_analysis(Locality::Todo),

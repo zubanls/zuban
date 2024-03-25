@@ -552,12 +552,18 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         node_ref: NodeRef,
     ) {
         let inf_annot = self.use_cached_annotation(annotation);
-        self.assign_single_target(target, node_ref, &inf_annot, true, |index| {
-            self.file.points.set(
-                index,
-                Point::new_redirect(self.file.file_index(), annotation.index(), Locality::Todo),
-            );
-        })
+        self.assign_single_target(
+            target,
+            node_ref,
+            &inf_annot,
+            AssignKind::Annotation,
+            |index| {
+                self.file.points.set(
+                    index,
+                    Point::new_redirect(self.file.file_index(), annotation.index(), Locality::Todo),
+                );
+            },
+        )
     }
 
     pub fn cache_assignment_nodes(&mut self, assignment: Assignment) {
@@ -582,7 +588,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             AssignmentContent::Normal(targets, right_side) => {
                 let type_comment_result = self.check_for_type_comment(assignment);
 
-                let is_definition = type_comment_result.is_some();
+                let assign_kind = match type_comment_result.is_some() {
+                    true => AssignKind::Annotation,
+                    false => AssignKind::Normal,
+                };
                 let right = if let Some(type_comment) = type_comment_result {
                     let right = self.infer_assignment_right_side(
                         right_side,
@@ -613,7 +622,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 };
                 let n = NodeRef::new(self.file, right_side.index());
                 for target in targets {
-                    self.assign_targets(target, right.clone(), n, is_definition)
+                    self.assign_targets(target, right.clone(), n, assign_kind)
                 }
             }
             AssignmentContent::WithAnnotation(target, annotation, right_side) => {
@@ -621,9 +630,15 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 match self.file.points.get(annotation.index()).maybe_specific() {
                     Some(Specific::TypingTypeAlias) => {
                         let inf = self.compute_explicit_type_assignment(assignment);
-                        self.assign_single_target(target, node_ref, &inf.clone(), true, |index| {
-                            inf.save_redirect(self.i_s, self.file, index);
-                        });
+                        self.assign_single_target(
+                            target,
+                            node_ref,
+                            &inf.clone(),
+                            AssignKind::Annotation,
+                            |index| {
+                                inf.save_redirect(self.i_s, self.file, index);
+                            },
+                        );
                     }
                     Some(Specific::TypingFinal) => {
                         let (right, index) = if let Some(right_side) = right_side {
@@ -645,7 +660,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             target,
                             NodeRef::new(self.file, index),
                             &right.clone(),
-                            true,
+                            AssignKind::Annotation,
                             |index| {
                                 right.save_redirect(self.i_s, self.file, index);
                             },
@@ -689,7 +704,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     unreachable!()
                 };
                 let n = NodeRef::new(self.file, right_side.index());
-                self.assign_single_target(target, n, &result, false, |index| {
+                self.assign_single_target(target, n, &result, AssignKind::AugAssign, |index| {
                     // There is no need to save this, because it's never used
                 })
             }
@@ -869,7 +884,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         target: Target,
         from: NodeRef,
         value: &Inferred,
-        is_definition: bool,
+        assign_kind: AssignKind,
         save: impl FnOnce(NodeIndex),
     ) {
         let i_s = self.i_s;
@@ -889,7 +904,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 Some(IssueType::IncompatibleAssignment { got, expected })
                             },
                         );
-                        if !had_error {
+                        if !had_error && matches!(assign_kind, AssignKind::Normal) {
                             self.save_narrowed_name_target(first_index, &value.as_cow_type(i_s));
                         }
                         return;
@@ -913,10 +928,15 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         );
                     }
                 } else {
-                    if is_definition {
+                    if matches!(assign_kind, AssignKind::Annotation) {
                         self.add_issue(primary_target.index(), IssueType::InvalidTypeDeclaration);
                     }
-                    self.save_narrowed_primary_target(primary_target, &value.as_cow_type(self.i_s));
+                    if matches!(assign_kind, AssignKind::Normal) {
+                        self.save_narrowed_primary_target(
+                            primary_target,
+                            &value.as_cow_type(self.i_s),
+                        );
+                    }
                     let base = base.as_cow_type(i_s);
                     let node_ref = NodeRef::new(self.file, primary_target.index());
                     for t in base.iter_with_unpacked_unions(i_s.db) {
@@ -1014,7 +1034,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
             Target::IndexExpression(primary_target) => {
                 let base = self.infer_primary_target_or_atom(primary_target.first());
-                if is_definition {
+                if matches!(assign_kind, AssignKind::Annotation) {
                     self.add_issue(primary_target.index(), IssueType::UnexpectedTypeDeclaration);
                 }
                 let PrimaryContent::GetItem(slice_type) = primary_target.second() else {
@@ -1036,7 +1056,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         target: Target,
         value: Inferred,
         value_node_ref: NodeRef,
-        is_definition: bool,
+        assign_kind: AssignKind,
     ) {
         match target {
             Target::Tuple(targets) => {
@@ -1056,7 +1076,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     targets.clone(),
                                     it,
                                     value_node_ref,
-                                    is_definition,
+                                    assign_kind,
                                 )
                             }
                         }
@@ -1064,7 +1084,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             targets.clone(),
                             value_iterator,
                             value_node_ref,
-                            is_definition,
+                            assign_kind,
                         ),
                     }
                 }
@@ -1075,11 +1095,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     starred.as_target(),
                     Inferred::new_list_of(self.i_s.db, Type::Any(AnyCause::FromError)),
                     value_node_ref,
-                    is_definition,
+                    assign_kind,
                 );
             }
             _ => {
-                self.assign_single_target(target, value_node_ref, &value, is_definition, |index| {
+                self.assign_single_target(target, value_node_ref, &value, assign_kind, |index| {
                     // Since it's possible that we are assigning unions to tuple/star targets, we
                     // iterate over the different possibilities and end up with name definitions
                     // that are already set. In those cases we use the "old" types and merge them.
@@ -1095,7 +1115,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         targets: TargetIterator,
         mut value_iterator: IteratorContent,
         value_node_ref: NodeRef,
-        is_definition: bool,
+        assign_kind: AssignKind,
     ) {
         let (star_count, expected_lens) = targets_len_infos(targets.clone());
         let mut had_issue = false;
@@ -1173,7 +1193,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     target,
                     Inferred::new_any_from_error(),
                     value_node_ref,
-                    is_definition,
+                    assign_kind,
                 );
             }
             return;
@@ -1200,10 +1220,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         Type::Any(AnyCause::Todo),
                     ))
                 }
-                self.assign_targets(new_target, value, value_node_ref, is_definition);
+                self.assign_targets(new_target, value, value_node_ref, assign_kind);
             } else {
                 let value = value_iterator.unpack_next();
-                self.assign_targets(target, value, value_node_ref, is_definition);
+                self.assign_targets(target, value, value_node_ref, assign_kind);
             }
         }
     }
@@ -2576,7 +2596,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 base.iter(self.i_s, NodeRef::new(self.file, expr_part.index()))
                     .infer_all(self.i_s)
             };
-            self.assign_targets(targets.as_target(), inf, clause_node_ref, false);
+            self.assign_targets(
+                targets.as_target(),
+                inf,
+                clause_node_ref,
+                AssignKind::Normal,
+            );
             for comp_if in comp_ifs {
                 self.infer_expression_part(comp_if.expression_part());
             }
@@ -2929,4 +2954,11 @@ fn targets_len_infos(targets: TargetIterator) -> (usize, TupleLenInfos) {
             TupleLenInfos::FixedLen(before)
         },
     )
+}
+
+#[derive(Copy, Clone)]
+pub enum AssignKind {
+    Annotation, // `a: int = 1` or `a = 1 # type: int
+    Normal,     // a = 1
+    AugAssign,  // a += 1
 }
