@@ -4,6 +4,7 @@ testInvalidNamedTupleWithinFunction
 testVariadicUnpackWithRegularInstance
 testMisguidedSetItem
 testTypeshedRecursiveTypesExample
+testRecursiveAliasBasicGenericInference
 
 testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
 
@@ -104,6 +105,8 @@ testCrashInJoinOfSelfRecursiveNamedTuples
 testGenericJoinRecursiveTypes
 testRecursiveAliasWithRecursiveInstance
 testBasicRecursiveGenericNamedTuple
+testTypeAliasUpdateNonRecursiveToRecursiveFine
+testTypeAliasUpdateNonRecursiveToRecursiveCoarse
 # Recursive Alias wrong type var inference --enable-recursive-aliases
 testRecursiveAliasesJoins
 # Recursive alias union type var inference --enable-recursive-aliases
@@ -1139,18 +1142,13 @@ testNarrowingIsSubclassNoneType1
 testNarrowingIsSubclassNoneType2
 testNarrowingIsSubclassNoneType3
 testNarrowingIsSubclassNoneType4
-# --enable-recursive-aliases & isinstance
-testRecursiveAliasesRestrictions2
-testRecursiveAliasBasicGenericInference
-testRecursiveAliasNewStyleSupported
-# recursive stack overflows
-testTypeAliasUpdateNonRecursiveToRecursiveFine
-testTypeAliasUpdateNonRecursiveToRecursiveCoarse
 # recursive type formatting
 testBasicRecursiveNamedTuple
 testBasicRecursiveNamedTupleSpecial
 testTupleTypeUpdateNonRecursiveToRecursiveCoarse
 testTupleTypeUpdateNonRecursiveToRecursiveFine
+testRecursiveAliasesRestrictions2
+testRecursiveAliasNewStyleSupported
 # narrowing if with literals
 testConditionalBoolLiteralUnionNarrowing
 testRecursiveAliasTuple
