@@ -1075,8 +1075,6 @@ testIntersectionUsingPromotion4
 testIntersectionUsingPromotion5
 testIntersectionUsingPromotion6
 testTypeshedRecursiveTypesExample
-testTypedDictIsInstance
-testParamSpecLiteralJoin
 # isinstance Intersection types
 testNarrowingIsInstanceFinalSubclass
 testNarrowingIsInstanceFinalSubclassWithUnions
@@ -1191,6 +1189,7 @@ testOptionalTypeNarrowedByGenericCall5
 testCastConfusion
 testIsinstanceInInferredLambda
 testIsinstanceExpression
+testParamSpecLiteralJoin
 # Narrowing __bool__ / __len__
 testFinalWithoutBool
 testFinalWithoutBoolButWithLen
