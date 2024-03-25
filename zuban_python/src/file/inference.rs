@@ -855,22 +855,33 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    fn infer_target(&mut self, target: Target, infer_index_expression: bool) -> Option<Inferred> {
+    fn infer_target(&mut self, target: Target, from_aug_assign: bool) -> Option<Inferred> {
         match target {
-            // TODO it's a bit weird that we cannot just call self.infer_name_definition here
-            Target::Name(name_def) => first_defined_name(self.file, name_def.name_index())
-                .map(|i| self.infer_name_by_index(i)),
+            Target::Name(name_def) => {
+                first_defined_name(self.file, name_def.name_index()).map(|first_index| {
+                    // The first definition is always responsible for how a name is defined.
+                    // So we try to look up active narrowings first or we try to lookup the first
+                    // name.
+                    if from_aug_assign {
+                        if let Some(result) = self.maybe_lookup_narrowed_name(PointLink::new(
+                            self.file_index,
+                            first_index,
+                        )) {
+                            return result;
+                        }
+                    }
+                    self.infer_name_by_index(first_index)
+                })
+            }
             Target::NameExpression(primary_target, _) => {
                 Some(self.infer_primary_target(primary_target))
             }
-            Target::IndexExpression(t) if infer_index_expression => {
-                Some(self.infer_primary_target(t))
-            }
+            Target::IndexExpression(t) if from_aug_assign => Some(self.infer_primary_target(t)),
             Target::Tuple(targets) => {
                 Some(Inferred::from_type(Type::Tuple(Tuple::new_fixed_length(
                     targets
                         .map(|target| {
-                            self.infer_target(target, infer_index_expression)
+                            self.infer_target(target, from_aug_assign)
                                 .map(|i| i.as_type(self.i_s))
                                 .unwrap_or(Type::Any(AnyCause::Todo))
                         })

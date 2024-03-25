@@ -585,7 +585,16 @@ impl Inference<'_, '_, '_> {
     }
 
     pub fn maybe_lookup_narrowed_name(&self, name_link: PointLink) -> Option<Inferred> {
-        FLOW_ANALYSIS.with(|fa| fa.lookup_narrowed_key(FlowKey::Name(name_link)))
+        let result = FLOW_ANALYSIS.with(|fa| fa.lookup_narrowed_key(FlowKey::Name(name_link)));
+
+        if let Some(result) = &result {
+            debug!(
+                "Use narrowed {} as {}",
+                NodeRef::from_link(self.i_s.db, name_link).as_code(),
+                result.format_short(self.i_s)
+            );
+        }
+        result
     }
 
     pub fn maybe_lookup_narrowed_primary(&mut self, primary: Primary) -> Option<Inferred> {
