@@ -117,7 +117,7 @@ file: 0-186
        Keyword: 92-93 "*"
        name_definition: 93-97
         Name: 93-97 "args"
-       annotation: 97-102
+       star_annotation: 97-102
         Keyword: 97-98 ":"
         expression: 99-102
          atom: 99-102

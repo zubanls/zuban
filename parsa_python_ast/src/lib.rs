@@ -280,7 +280,7 @@ create_nonterminal_structs!(
     StarredExpression: starred_expression
     StarStarExpression: double_starred_expression
     Expression: expression
-    Ternary: expression
+    Ternary: ternary
     NamedExpression: named_expression
 
     SimpleStmts: simple_stmts
@@ -740,14 +740,13 @@ impl<'db> DictStarred<'db> {
 
 impl<'db> Expression<'db> {
     pub fn unpack(self) -> ExpressionContent<'db> {
-        let mut iter = self.node.iter_children();
-        let first = iter.next().unwrap();
-        if first.is_type(Nonterminal(lambda)) {
-            ExpressionContent::Lambda(Lambda::new(first))
-        } else if iter.next().is_none() {
-            ExpressionContent::ExpressionPart(ExpressionPart::new(first))
+        let node = self.node.nth_child(0);
+        if node.is_type(Nonterminal(lambda)) {
+            ExpressionContent::Lambda(Lambda::new(node))
+        } else if node.is_type(Nonterminal(ternary)) {
+            ExpressionContent::Ternary(Ternary::new(node))
         } else {
-            ExpressionContent::Ternary(Ternary::new(self.node))
+            ExpressionContent::ExpressionPart(ExpressionPart::new(node))
         }
     }
 

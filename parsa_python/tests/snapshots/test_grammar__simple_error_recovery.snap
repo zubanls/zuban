@@ -8,22 +8,23 @@ file: 0-15
    Error(simple_stmt): 1-8
     Error(star_expressions): 1-8
      Error(expression): 1-8
-      Error(disjunction): 1-8
-       Error(conjunction): 1-8
-        Error(inversion): 1-8
-         Error(comparison): 1-8
-          Error(bitwise_or): 1-8
-           Error(bitwise_xor): 1-8
-            Error(bitwise_and): 1-8
-             Error(shift_expr): 1-8
-              Error(sum): 1-8
-               sum: 1-6
-                atom: 1-2
-                 Name: 1-2 "a"
-                Keyword: 3-4 "+"
-                atom: 5-6
-                 Number: 5-6 "3"
-               Keyword: 7-8 "+"
+      Error(ternary): 1-8
+       Error(disjunction): 1-8
+        Error(conjunction): 1-8
+         Error(inversion): 1-8
+          Error(comparison): 1-8
+           Error(bitwise_or): 1-8
+            Error(bitwise_xor): 1-8
+             Error(bitwise_and): 1-8
+              Error(shift_expr): 1-8
+               Error(sum): 1-8
+                sum: 1-6
+                 atom: 1-2
+                  Name: 1-2 "a"
+                 Keyword: 3-4 "+"
+                 atom: 5-6
+                  Number: 5-6 "3"
+                Keyword: 7-8 "+"
  stmt: 8-9
   Newline: 8-9 "\n"
  stmt: 9-15

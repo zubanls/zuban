@@ -16,23 +16,24 @@ file: 0-21
    Error(simple_stmt): 5-10
     Error(star_expressions): 5-10
      Error(expression): 5-10
-      Error(disjunction): 5-10
-       Error(conjunction): 5-10
-        Error(inversion): 5-10
-         Error(comparison): 5-10
-          Error(bitwise_or): 5-10
-           Error(bitwise_xor): 5-10
-            Error(bitwise_and): 5-10
-             Error(shift_expr): 5-10
-              Error(sum): 5-10
-               atom: 5-8
-                Keyword: 5-6 "("
-                named_expression: 6-7
-                 expression: 6-7
-                  atom: 6-7
-                   Number: 6-7 "1"
-                Keyword: 7-8 ")"
-               Keyword: 9-10 "+"
+      Error(ternary): 5-10
+       Error(disjunction): 5-10
+        Error(conjunction): 5-10
+         Error(inversion): 5-10
+          Error(comparison): 5-10
+           Error(bitwise_or): 5-10
+            Error(bitwise_xor): 5-10
+             Error(bitwise_and): 5-10
+              Error(shift_expr): 5-10
+               Error(sum): 5-10
+                atom: 5-8
+                 Keyword: 5-6 "("
+                 named_expression: 6-7
+                  expression: 6-7
+                   atom: 6-7
+                    Number: 6-7 "1"
+                 Keyword: 7-8 ")"
+                Keyword: 9-10 "+"
  Error(stmt): 11-12
   Error(ErrorToken): 11-12 "?"
  stmt: 13-17

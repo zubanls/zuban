@@ -258,7 +258,8 @@ create_grammar!(
     // -----------
 
     expressions: ",".expression+ [","]
-    expression: disjunction ["if" disjunction "else" expression] | lambda
+    expression: ternary | lambda
+    ternary:? disjunction ["if" disjunction "else" expression]
 
     yield_expr: "yield" [yield_from | star_expressions]
     yield_from: "from" expression
