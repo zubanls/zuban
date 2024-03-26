@@ -79,6 +79,8 @@ pub(crate) enum IssueType {
     TooManyAssignmentTargetsForVariadicUnpack,
     UnpackingAStringIsDisallowed,
     StarredExpressionOnlyNoTarget,
+    BreakOutsideLoop,
+    ContinueOutsideLoop,
     StmtOutsideFunction { keyword: &'static str },
     YieldOrYieldFromInsideComprehension { keyword: &'static str },
     AwaitOutsideFunction,
@@ -841,6 +843,8 @@ impl<'db> Diagnostic<'db> {
             UnpackingAStringIsDisallowed => "Unpacking a string is disallowed".to_string(),
             StarredExpressionOnlyNoTarget =>
                 "can't use starred expression here".to_string(),
+            BreakOutsideLoop => "\"break\" outside loop".to_string(),
+            ContinueOutsideLoop => "\"continue\" outside loop".to_string(),
             StmtOutsideFunction{keyword} => format!("{keyword:?} outside function"),
             YieldOrYieldFromInsideComprehension { keyword } => format!(
                 "{keyword:?} inside comprehension or generator expression"

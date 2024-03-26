@@ -243,8 +243,8 @@ impl<'db> Inference<'db, '_, '_> {
                         self.infer_expression(message_expr);
                     }
                 }
-                SimpleStmtContent::BreakStmt(x) => {}
-                SimpleStmtContent::ContinueStmt(x) => {}
+                SimpleStmtContent::BreakStmt(b) => self.flow_analysis_for_break_stmt(b),
+                SimpleStmtContent::ContinueStmt(c) => self.flow_analysis_for_continue_stmt(c),
                 SimpleStmtContent::DelStmt(d) => {
                     self.calc_del_stmt_diagnostics(d.target());
                 }
@@ -303,18 +303,13 @@ impl<'db> Inference<'db, '_, '_> {
                     self.flow_analysis_for_if_stmt(if_stmt, class, func)
                 }
                 StmtContent::ForStmt(for_stmt) => {
-                    self.calc_for_stmt_diagnostics(for_stmt, class, func, false)
+                    self.flow_analysis_for_for_stmt(for_stmt, class, func, false)
                 }
                 StmtContent::TryStmt(try_stmt) => {
                     self.calc_try_stmt_diagnostics(try_stmt, class, func)
                 }
                 StmtContent::WhileStmt(while_stmt) => {
-                    let (condition, block, else_block) = while_stmt.unpack();
-                    self.infer_named_expression(condition);
-                    self.calc_block_diagnostics(block, class, func);
-                    if let Some(else_block) = else_block {
-                        self.calc_block_diagnostics(else_block.block(), class, func)
-                    }
+                    self.flow_analysis_for_while_stmt(while_stmt, class, func)
                 }
                 StmtContent::WithStmt(with_stmt) => {
                     self.calc_with_stmt(with_stmt, class, func, false)
@@ -327,7 +322,7 @@ impl<'db> Inference<'db, '_, '_> {
                         self.calc_function_diagnostics(func, class)
                     }
                     AsyncStmtContent::ForStmt(for_stmt) => {
-                        self.calc_for_stmt_diagnostics(for_stmt, class, func, true)
+                        self.flow_analysis_for_for_stmt(for_stmt, class, func, true)
                     }
                     AsyncStmtContent::WithStmt(with_stmt) => {
                         self.calc_with_stmt(with_stmt, class, func, true)
@@ -1114,21 +1109,6 @@ impl<'db> Inference<'db, '_, '_> {
             star_targets.index(),
             Point::new_node_analysis(Locality::Todo),
         );
-    }
-
-    fn calc_for_stmt_diagnostics(
-        &mut self,
-        for_stmt: ForStmt,
-        class: Option<Class>,
-        func: Option<&Function>,
-        is_async: bool,
-    ) {
-        let (star_targets, star_exprs, block, else_block) = for_stmt.unpack();
-        self.cache_for_stmt_names(star_targets, star_exprs, is_async);
-        self.calc_block_diagnostics(block, class, func);
-        if let Some(else_block) = else_block {
-            self.calc_block_diagnostics(else_block.block(), class, func);
-        }
     }
 
     fn calc_try_stmt_diagnostics(

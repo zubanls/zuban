@@ -843,6 +843,7 @@ testDecoratedConstructorsBad
 
 # "Cannot assign to a type"
 testAssignToNestedClassViaClass
+testAssignToTypeDef
 
 # Unsupported class scoped import
 testClassScopeImports
@@ -1686,6 +1687,7 @@ testSubtypingFunctionsImplicitNames
 testAssignToFuncDefViaGlobalDecl2
 testTypeOfGlobalUsed
 testGlobalWithoutInitialization
+testInvalidGlobalDecl
 
 # Nonlocal
 testInvalidNonlocalDecl
@@ -2238,15 +2240,11 @@ testErrorCodeFormatCall
 testTypeUsingTypeCErrorUnsupportedType
 testTypeUsingTypeCTuple
 
-# syntax not yet supported
-# ""break" outside loop"
+# ""break" outside loop" for untyped functions
 testBreakOutsideLoop
 testNoCrashOnBreakOutsideLoopFunction
 testNoCrashOnBreakOutsideLoopClass
 testContinueOutsideLoop
-testInvalidGlobalDecl
-testAssignToTypeDef
-testSemanticAnalysisBlockingError
 
 # "unknown encoding: uft-8"
 testInvalidEncoding

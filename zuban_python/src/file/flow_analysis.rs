@@ -1,10 +1,14 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{
+    cell::{Cell, RefCell},
+    rc::Rc,
+};
 
 use parsa_python_ast::{
-    Argument, Arguments, ArgumentsDetails, Atom, AtomContent, ComparisonContent, Expression,
-    ExpressionContent, ExpressionPart, IfBlockIterator, IfBlockType, IfStmt, Name, NamedExpression,
-    NamedExpressionContent, NodeIndex, Operand, Primary, PrimaryContent, PrimaryOrAtom,
-    PrimaryTarget, PrimaryTargetOrAtom, SliceType as ASTSliceType,
+    Argument, Arguments, ArgumentsDetails, Atom, AtomContent, Block, BreakStmt, ComparisonContent,
+    ContinueStmt, ElseBlock, Expression, ExpressionContent, ExpressionPart, ForStmt,
+    IfBlockIterator, IfBlockType, IfStmt, Name, NamedExpression, NamedExpressionContent, NodeIndex,
+    Operand, Primary, PrimaryContent, PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom,
+    SliceType as ASTSliceType, WhileStmt,
 };
 
 use crate::{
@@ -145,6 +149,7 @@ impl Frame {
 #[derive(Debug, Default)]
 pub struct FlowAnalysis {
     frames: RefCell<Vec<Frame>>,
+    current_break_index: Cell<Option<usize>>,
 }
 
 impl FlowAnalysis {
@@ -635,6 +640,66 @@ impl Inference<'_, '_, '_> {
         func: Option<&Function>,
     ) {
         self.process_ifs(if_stmt.iter_blocks(), class, func)
+    }
+
+    pub fn flow_analysis_for_while_stmt(
+        &mut self,
+        while_stmt: WhileStmt,
+        class: Option<Class>,
+        func: Option<&Function>,
+    ) {
+        //self.process_ifs(if_stmt.iter_blocks(), class, func)
+        let (condition, block, else_block) = while_stmt.unpack();
+        self.infer_named_expression(condition);
+        self.process_loop(block, else_block, class, func)
+    }
+
+    fn process_loop(
+        &mut self,
+        block: Block,
+        else_block: Option<ElseBlock>,
+        class: Option<Class>,
+        func: Option<&Function>,
+    ) {
+        FLOW_ANALYSIS.with(|fa| {
+            let old = fa.current_break_index.take();
+            fa.current_break_index.set(Some(0));
+            self.calc_block_diagnostics(block, class, func);
+            if let Some(else_block) = else_block {
+                self.calc_block_diagnostics(else_block.block(), class, func)
+            }
+            fa.current_break_index.set(old);
+        })
+    }
+
+    pub fn flow_analysis_for_break_stmt(&mut self, while_stmt: BreakStmt) {
+        FLOW_ANALYSIS.with(|fa| {
+            let Some(index) = fa.current_break_index.get() else {
+                self.add_issue(while_stmt.index(), IssueType::BreakOutsideLoop);
+                return;
+            };
+        });
+    }
+
+    pub fn flow_analysis_for_continue_stmt(&mut self, while_stmt: ContinueStmt) {
+        FLOW_ANALYSIS.with(|fa| {
+            let Some(index) = fa.current_break_index.get() else {
+                self.add_issue(while_stmt.index(), IssueType::ContinueOutsideLoop);
+                return;
+            };
+        });
+    }
+
+    pub fn flow_analysis_for_for_stmt(
+        &mut self,
+        for_stmt: ForStmt,
+        class: Option<Class>,
+        func: Option<&Function>,
+        is_async: bool,
+    ) {
+        let (star_targets, star_exprs, block, else_block) = for_stmt.unpack();
+        self.cache_for_stmt_names(star_targets, star_exprs, is_async);
+        self.process_loop(block, else_block, class, func)
     }
 
     fn process_ifs(
