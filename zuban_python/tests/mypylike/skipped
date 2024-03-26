@@ -1267,7 +1267,6 @@ testUnreachableTryExceptElse
 testUnreachableTryReturnFinally1
 testUnreachableTryReturnFinally2
 # while/for
-testIsInstanceSubClassMember
 testModifyLoop
 testModifyLoop2
 testModifyLoop3
