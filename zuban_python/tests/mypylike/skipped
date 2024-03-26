@@ -98,6 +98,7 @@ testOrOperationInferredFromContext
 # ternary context inference
 testTernaryWithNone
 testOptionalTypeNarrowedByGenericCall5
+testNoneListTernary
 testIsinstanceInInferredLambda
 
 # No recursion tests
@@ -1175,8 +1176,6 @@ testOptionalTypeNarrowedInBooleanStatement
 testOrCases
 testAndCases
 testIsinstanceShortcircuit
-# ternary narrowing
-testNoneListTernary
 # Narrowing __bool__ / __len__
 testFinalWithoutBool
 testFinalWithoutBoolButWithLen

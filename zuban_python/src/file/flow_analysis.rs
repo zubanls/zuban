@@ -558,8 +558,7 @@ fn split_truthy_and_falsey(db: &Database, t: &Type) -> Option<(Type, Type)> {
             Type::Literal(literal) => match &literal.kind {
                 LiteralKind::Bool(b) => check(*b),
                 LiteralKind::Int(i) => check(*i != 0),
-                LiteralKind::String(s) => todo!(),
-                LiteralKind::Bytes(s) => todo!(),
+                _ => None,
             },
             Type::Class(c) => maybe_split_bool_from_literal(db, t, &LiteralKind::Bool(true)),
             _ => None,
