@@ -1212,9 +1212,6 @@ testAssert
 # narrowing with assert
 testReModuleBytes
 testReModuleString
-testNoCrashForwardRefToBrokenDoubleNewType
-testNoCrashForwardRefToBrokenDoubleNewTypeClass
-testNewAnalyzerNoCrashForwardRefToBrokenDoubleNewTypeClass
 testNarrowingEqualityFlipFlop
 # narrowing `in` weird overlapping. Mypy correct?
 testTupleOverlapDifferentTuples
