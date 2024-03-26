@@ -1280,8 +1280,6 @@ testWhileLinkedList
 testUnreachableWhileTrue
 testComplicatedBlocks
 testIsInstanceSubClassMemberHard
-# while regressions
-testWhileAndElse
 # narowing for comprehensions if
 testComprehensionIsInstance
 # narrowing of nested scopes

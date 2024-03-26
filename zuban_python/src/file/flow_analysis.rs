@@ -1450,7 +1450,7 @@ impl Inference<'_, '_, '_> {
                 self.i_s.db,
                 self.file,
                 name,
-            ))),
+            )?)),
             _ => None,
         }
     }
@@ -1613,7 +1613,7 @@ impl Inference<'_, '_, '_> {
                 let AtomContent::Name(name) = atom.unpack() else {
                     return false;
                 };
-                name_definition_link(self.i_s.db, self.file, name) == *check_link
+                name_definition_link(self.i_s.db, self.file, name) == Some(*check_link)
             }
         };
         match key {
@@ -1649,13 +1649,19 @@ impl Inference<'_, '_, '_> {
     }
 }
 
-fn name_definition_link(db: &Database, file: &PythonFile, name: Name) -> PointLink {
+fn name_definition_link(db: &Database, file: &PythonFile, name: Name) -> Option<PointLink> {
     let p = file.points.get(name.index());
     if p.calculated() {
-        debug_assert_eq!(p.type_(), PointType::Redirect);
+        if p.type_() != PointType::Redirect {
+            // For example Any due to an unresolved name.
+            return None;
+        }
         let def = p.node_index();
         let file = db.loaded_python_file(p.file_index());
-        PointLink::new(p.file_index(), first_defined_name(file, def).unwrap_or(def))
+        Some(PointLink::new(
+            p.file_index(),
+            first_defined_name(file, def).unwrap_or(def),
+        ))
     } else {
         todo!()
     }
