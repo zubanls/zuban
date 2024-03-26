@@ -1296,24 +1296,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 self.infer_expression_part_with_context(n, result_context)
             }
             ExpressionContent::Lambda(l) => self.infer_lambda(l, result_context),
-            ExpressionContent::Ternary(t) => {
-                let (if_, condition, else_) = t.unpack();
-                self.infer_expression_part(condition);
-                let if_inf = self.infer_expression_part_with_context(if_, result_context);
-                let else_inf = self.infer_expression_with_context(else_, result_context);
-
-                // Mypy has a weird way of doing this:
-                // https://github.com/python/mypy/blob/ff81a1c7abc91d9984fc73b9f2b9eab198001c8e/mypy/checkexpr.py#L5310-L5317
-                if result_context.expects_union(self.i_s) {
-                    if_inf.simplified_union(self.i_s, else_inf)
-                } else {
-                    let second = else_inf.as_cow_type(self.i_s);
-                    let t = if_inf
-                        .as_cow_type(self.i_s)
-                        .common_base_type(self.i_s, &second);
-                    Inferred::from_type(t)
-                }
-            }
+            ExpressionContent::Ternary(t) => self.flow_analysis_for_ternary(t, result_context),
         };
         // We only save the result if nothing is there, yet. It could be that we pass this function
         // twice, when for example a class F(List[X]) is created, where X = F and X is defined
@@ -1337,7 +1320,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         self.infer_expression_part_with_context(node, &mut ResultContext::Unknown)
     }
 
-    fn infer_expression_part_with_context(
+    pub fn infer_expression_part_with_context(
         &mut self,
         node: ExpressionPart,
         result_context: &mut ResultContext,

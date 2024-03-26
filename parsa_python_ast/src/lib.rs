@@ -139,6 +139,7 @@ pub enum InterestingNode<'db> {
     YieldExpr(YieldExpr<'db>),
     ReturnStmt(ReturnStmt<'db>),
     AssertStmt(AssertStmt<'db>),
+    Ternary(Ternary<'db>),
 }
 pub struct InterestingNodes<'db>(SearchIterator<'db>);
 
@@ -157,6 +158,8 @@ impl<'db> Iterator for InterestingNodes<'db> {
                 InterestingNode::Lambda(Lambda::new(n))
             } else if n.is_type(Nonterminal(assert_stmt)) {
                 InterestingNode::AssertStmt(AssertStmt::new(n))
+            } else if n.is_type(Nonterminal(ternary)) {
+                InterestingNode::Ternary(Ternary::new(n))
             } else if n.is_type(Nonterminal(comprehension)) {
                 InterestingNode::Comprehension(Comprehension::new(n))
             } else {
@@ -233,6 +236,7 @@ macro_rules! create_struct {
                     Nonterminal(return_stmt),
                     Nonterminal(assert_stmt),
                     Nonterminal(dict_comprehension),
+                    Nonterminal(ternary),
                 ];
                 InterestingNodes(self.node.search(SEARCH_NAMES, true))
             }

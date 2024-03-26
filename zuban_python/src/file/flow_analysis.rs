@@ -8,7 +8,7 @@ use parsa_python_ast::{
     ContinueStmt, ElseBlock, Expression, ExpressionContent, ExpressionPart, ForStmt,
     IfBlockIterator, IfBlockType, IfStmt, Name, NamedExpression, NamedExpressionContent, NodeIndex,
     Operand, Primary, PrimaryContent, PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom,
-    SliceType as ASTSliceType, WhileStmt,
+    SliceType as ASTSliceType, Ternary, WhileStmt,
 };
 
 use crate::{
@@ -633,6 +633,46 @@ impl Inference<'_, '_, '_> {
         })
     }
 
+    pub fn flow_analysis_for_ternary(
+        &mut self,
+        t: Ternary,
+        result_context: &mut ResultContext,
+    ) -> Inferred {
+        let (if_, condition, else_) = t.unpack();
+        let (true_frame, false_frame) = self.find_guards_in_expr_part(condition);
+        FLOW_ANALYSIS.with(|fa| {
+            let mut if_inf = None;
+            let mut else_inf = None;
+            dbg!(&true_frame, &false_frame, if_, else_);
+            let true_frame = fa.with_frame(self.i_s.db, true_frame, || {
+                if_inf = Some(self.infer_expression_part_with_context(if_, result_context));
+            });
+            let false_frame = fa.with_frame(self.i_s.db, false_frame, || {
+                else_inf = Some(self.infer_expression_with_context(else_, result_context));
+            });
+
+            fa.merge_conditional(self.i_s, true_frame, false_frame);
+            let Some(if_inf) = if_inf else {
+                return else_inf.unwrap_or_else(|| todo!())
+            };
+            let Some(else_inf) = else_inf else {
+                return if_inf
+            };
+
+            // Mypy has a weird way of doing this:
+            // https://github.com/python/mypy/blob/ff81a1c7abc91d9984fc73b9f2b9eab198001c8e/mypy/checkexpr.py#L5310-L5317
+            if result_context.expects_union(self.i_s) {
+                if_inf.simplified_union(self.i_s, else_inf)
+            } else {
+                let second = else_inf.as_cow_type(self.i_s);
+                let t = if_inf
+                    .as_cow_type(self.i_s)
+                    .common_base_type(self.i_s, &second);
+                Inferred::from_type(t)
+            }
+        })
+    }
+
     pub fn flow_analysis_for_if_stmt(
         &mut self,
         if_stmt: IfStmt,
@@ -857,6 +897,13 @@ impl Inference<'_, '_, '_> {
             ExpressionContent::Ternary(_) => todo!(),
             ExpressionContent::Lambda(_) => todo!(),
         }
+    }
+
+    fn find_guards_in_expr_part(&mut self, part: ExpressionPart) -> (Frame, Frame) {
+        let mut result = self.find_guards_in_expression_parts(part);
+        self.propagate_parent_unions(&mut result.truthy, &result.parent_unions);
+        self.propagate_parent_unions(&mut result.falsey, &result.parent_unions);
+        (result.truthy, result.falsey)
     }
 
     fn find_guards_in_expression_parts(&mut self, part: ExpressionPart) -> FramesWithParentUnions {

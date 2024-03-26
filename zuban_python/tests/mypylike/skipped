@@ -95,6 +95,10 @@ testUnificationDictWithEmptyListRight
 testOperatorWithEmptyListAndSum
 testOrOperationWithGenericOperands
 testOrOperationInferredFromContext
+# ternary context inference
+testTernaryWithNone
+testOptionalTypeNarrowedByGenericCall5
+testIsinstanceInInferredLambda
 
 # No recursion tests
 testNoRecursiveExpandInstanceUnionCrashGeneric
@@ -1172,13 +1176,7 @@ testOrCases
 testAndCases
 testIsinstanceShortcircuit
 # ternary narrowing
-testTernaryWithNone
 testNoneListTernary
-testOptionalTypeNarrowedByGenericCall5
-testCastConfusion
-testIsinstanceInInferredLambda
-testIsinstanceExpression
-testParamSpecLiteralJoin
 # Narrowing __bool__ / __len__
 testFinalWithoutBool
 testFinalWithoutBoolButWithLen

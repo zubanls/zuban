@@ -792,6 +792,13 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 InterestingNode::DictComprehension(comp) => {
                     self.index_dict_comprehension(comp, ordered);
                 }
+                InterestingNode::Ternary(ternary) => {
+                    let (if_, condition, else_) = ternary.unpack();
+                    self.index_non_block_node_full(&condition, ordered, from_annotation);
+                    self.references_need_flow_analysis = true;
+                    self.index_non_block_node_full(&if_, ordered, from_annotation);
+                    self.index_non_block_node_full(&else_, ordered, from_annotation);
+                }
             }
         }
         latest_return_or_yield
