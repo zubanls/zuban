@@ -642,7 +642,6 @@ impl Inference<'_, '_, '_> {
         FLOW_ANALYSIS.with(|fa| {
             let mut if_inf = None;
             let mut else_inf = None;
-            dbg!(&true_frame, &false_frame, if_, else_);
             let true_frame = fa.with_frame(self.i_s.db, true_frame, || {
                 if_inf = Some(self.infer_expression_part_with_context(if_, result_context));
             });
