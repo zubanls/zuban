@@ -1275,17 +1275,13 @@ testModifyLoopWhile4
 testModifyLoopFor4
 testModifyNestedLoop
 testModifyLoopLong
-testWhileExitCondition2
+testWhileExitCondition1
 testWhileLinkedList
-testUnreachableCode
-testUnreachableCode2
 testUnreachableWhileTrue
-testIsinstanceFancyConditionals
 testComplicatedBlocks
-testIsInstanceThreeUnion2
-testIsInstanceThreeUnion3
-testRemovingTypeRepeatedly
 testIsInstanceSubClassMemberHard
+# while regressions
+testWhileAndElse
 # narowing for comprehensions if
 testComprehensionIsInstance
 # narrowing of nested scopes

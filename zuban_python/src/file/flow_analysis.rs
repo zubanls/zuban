@@ -648,27 +648,35 @@ impl Inference<'_, '_, '_> {
         class: Option<Class>,
         func: Option<&Function>,
     ) {
-        //self.process_ifs(if_stmt.iter_blocks(), class, func)
         let (condition, block, else_block) = while_stmt.unpack();
-        self.infer_named_expression(condition);
-        self.process_loop(block, else_block, class, func)
+        self.process_loop(Some(condition), block, else_block, class, func)
     }
 
     fn process_loop(
         &mut self,
+        if_expr: Option<NamedExpression>,
         block: Block,
         else_block: Option<ElseBlock>,
         class: Option<Class>,
         func: Option<&Function>,
     ) {
         FLOW_ANALYSIS.with(|fa| {
-            let old = fa.current_break_index.take();
-            fa.current_break_index.set(Some(0));
-            self.calc_block_diagnostics(block, class, func);
-            if let Some(else_block) = else_block {
-                self.calc_block_diagnostics(else_block.block(), class, func)
-            }
-            fa.current_break_index.set(old);
+            let (true_frame, false_frame) = if let Some(if_expr) = if_expr {
+                self.find_guards_in_named_expr(if_expr)
+            } else {
+                (Frame::default(), Frame::default())
+            };
+            fa.with_frame(self.i_s.db, true_frame, || {
+                let old = fa.current_break_index.take();
+                fa.current_break_index.set(Some(0));
+                self.calc_block_diagnostics(block, class, func);
+                fa.current_break_index.set(old);
+            });
+            fa.with_frame(self.i_s.db, false_frame, || {
+                if let Some(else_block) = else_block {
+                    self.calc_block_diagnostics(else_block.block(), class, func)
+                }
+            });
         })
     }
 
@@ -678,6 +686,7 @@ impl Inference<'_, '_, '_> {
                 self.add_issue(while_stmt.index(), IssueType::BreakOutsideLoop);
                 return;
             };
+            fa.mark_current_frame_unreachable();
         });
     }
 
@@ -687,6 +696,7 @@ impl Inference<'_, '_, '_> {
                 self.add_issue(while_stmt.index(), IssueType::ContinueOutsideLoop);
                 return;
             };
+            fa.mark_current_frame_unreachable();
         });
     }
 
@@ -699,7 +709,7 @@ impl Inference<'_, '_, '_> {
     ) {
         let (star_targets, star_exprs, block, else_block) = for_stmt.unpack();
         self.cache_for_stmt_names(star_targets, star_exprs, is_async);
-        self.process_loop(block, else_block, class, func)
+        self.process_loop(None, block, else_block, class, func)
     }
 
     fn process_ifs(
