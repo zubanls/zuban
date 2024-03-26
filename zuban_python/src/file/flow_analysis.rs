@@ -666,17 +666,21 @@ impl Inference<'_, '_, '_> {
             } else {
                 (Frame::default(), Frame::default())
             };
-            fa.with_frame(self.i_s.db, true_frame, || {
+            let after_while = fa.with_frame(self.i_s.db, true_frame, || {
                 let old = fa.current_break_index.take();
                 fa.current_break_index.set(Some(0));
                 self.calc_block_diagnostics(block, class, func);
                 fa.current_break_index.set(old);
             });
-            fa.with_frame(self.i_s.db, false_frame, || {
-                if let Some(else_block) = else_block {
+            if let Some(else_block) = else_block {
+                //let else_frame = merge_or(self.i_s, false_frame, after_while);
+                let else_frame = false_frame;
+                let after_else = fa.with_frame(self.i_s.db, else_frame, || {
                     self.calc_block_diagnostics(else_block.block(), class, func)
-                }
-            });
+                });
+                //fa.overwrite_frame(after_else);
+            } else {
+            }
         })
     }
 
