@@ -1505,6 +1505,14 @@ impl Inference<'_, '_, '_> {
     }
 
     fn key_from_primary(&mut self, primary: Primary) -> KeyWithParentUnions {
+        let second = primary.second();
+        if matches!(second, PrimaryContent::Execution(_)) {
+            return KeyWithParentUnions::new(
+                self.infer_primary(primary, &mut ResultContext::Unknown),
+                None,
+            );
+        }
+
         let mut base = match primary.first() {
             PrimaryOrAtom::Primary(primary) => self.key_from_primary(primary),
             PrimaryOrAtom::Atom(atom) => KeyWithParentUnions::new(
@@ -1535,7 +1543,6 @@ impl Inference<'_, '_, '_> {
             };
         }
 
-        let second = primary.second();
         base.inf = self.infer_primary_or_primary_t_content(
             &old_inf,
             primary.index(),
@@ -1560,7 +1567,7 @@ impl Inference<'_, '_, '_> {
                     }
                 }
             }
-            PrimaryContent::Execution(_) => (),
+            PrimaryContent::Execution(_) => unreachable!(),
         }
         if let Some(base_key) = old_base_key {
             // Only in case of valid keys we want to add the unions.
