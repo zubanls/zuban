@@ -515,12 +515,12 @@ impl Type {
         }
     }
 
-    pub fn remove_from_union(&self, mut maybe_remove: impl FnMut(&Self) -> bool) -> Type {
+    pub fn retain_in_union(&self, mut maybe_retain: impl FnMut(&Self) -> bool) -> Type {
         match self {
             Type::Union(union) => {
                 let mut new_entries = vec![];
                 for entry in union.entries.iter() {
-                    if !maybe_remove(&entry.type_) {
+                    if maybe_retain(&entry.type_) {
                         new_entries.push(entry.clone())
                     }
                 }
@@ -532,10 +532,10 @@ impl Type {
             }
             Type::Never => Type::Never,
             t => {
-                if maybe_remove(t) {
-                    Type::Never
-                } else {
+                if maybe_retain(t) {
                     t.clone()
+                } else {
+                    Type::Never
                 }
             }
         }

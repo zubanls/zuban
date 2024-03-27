@@ -1349,8 +1349,8 @@ impl Inference<'_, '_, '_> {
                         falsey: match is_final {
                             true => Frame::from_type(
                                 key,
-                                inf.as_cow_type(i_s).remove_from_union(|t| {
-                                    t.is_simple_same_type(i_s, truthy).bool()
+                                inf.as_cow_type(i_s).retain_in_union(|t| {
+                                    !t.is_simple_same_type(i_s, truthy).bool()
                                 }),
                             ),
                             false => Frame::default(),
@@ -1481,7 +1481,7 @@ impl Inference<'_, '_, '_> {
                     .collect();
                 if !str_literals.is_empty() {
                     let mut true_types = Type::Never;
-                    let false_types = right_t.remove_from_union(|t| match t {
+                    let false_types = right_t.retain_in_union(|t| match t {
                         Type::TypedDict(td) => {
                             let mut true_only_count = 0;
                             let mut false_only_count = 0;
@@ -1500,15 +1500,15 @@ impl Inference<'_, '_, '_> {
                             }
                             if true_only_count == str_literals.len() {
                                 true_types.union_in_place(t.clone());
-                                return true;
+                                return false;
                             } else if !td.is_final || false_only_count != str_literals.len() {
                                 true_types.union_in_place(t.clone());
                             }
-                            false
+                            true
                         }
                         _ => {
                             true_types.union_in_place(t.clone());
-                            false
+                            true
                         }
                     });
                     return maybe_invert(
@@ -1880,7 +1880,7 @@ fn stdlib_container_item(db: &Database, t: &Type) -> Option<Type> {
 fn removed_optional(db: &Database, full: &Type) -> Option<Type> {
     for t in full.iter_with_unpacked_unions(db) {
         if matches!(t, Type::None) {
-            return Some(full.remove_from_union(|t| matches!(t, Type::None)));
+            return Some(full.retain_in_union(|t| !matches!(t, Type::None)));
         }
     }
     None
