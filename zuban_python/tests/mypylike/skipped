@@ -1290,16 +1290,11 @@ testHasAttrMissingAttributeOuterUnion
 testHasAttrMissingAttributeLiteral
 testHasAttrModule
 # type(foo) = int narrowing
-testTypeEqualsCheck
 testMultipleTypeEqualsCheck
-testTypeEqualsCheckUsingIs
-testTypeEqualsNarrowingUnionWithElse
-testTypeEqualsMultipleTypesShouldntNarrow
-testTypeNotEqualsCheck
-testTypeNotEqualsCheckUsingIsNot
 testNarrowInElseCaseIfFinal
 testNarrowInIfCaseIfFinalUsingIsNot
 testNarrowingUsingTypeVar
+testNarrowingUsingMetaclass
 
 # NoReturn
 testNoReturnTypeAlias

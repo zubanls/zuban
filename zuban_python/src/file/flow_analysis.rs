@@ -1320,39 +1320,57 @@ impl Inference<'_, '_, '_> {
         right: &mut ComparisonPartInfos,
         is_eq: bool,
     ) -> Option<FramesWithParentUnions> {
-        if let Some(ComparisonKey::Normal(key)) = left.key {
-            // Narrow Foo in `Foo is None`
-            if let Some((truthy, falsey)) = narrow_is_or_eq(
-                self.i_s,
-                key,
-                &left.inf.as_cow_type(self.i_s),
-                &right.inf.as_cow_type(self.i_s),
-                is_eq,
-            ) {
-                return Some(FramesWithParentUnions {
-                    truthy,
-                    falsey,
-                    parent_unions: left.parent_unions,
-                });
+        match left.key {
+            Some(ComparisonKey::Normal(key)) => {
+                // Narrow Foo in `Foo is None`
+                if let Some((truthy, falsey)) = narrow_is_or_eq(
+                    self.i_s,
+                    key,
+                    &left.inf.as_cow_type(self.i_s),
+                    &right.inf.as_cow_type(self.i_s),
+                    is_eq,
+                ) {
+                    return Some(FramesWithParentUnions {
+                        truthy,
+                        falsey,
+                        parent_unions: left.parent_unions,
+                    });
+                }
             }
+            Some(ComparisonKey::TypeOf { key, inf }) => {
+                if let Type::Type(truthy) = right.inf.as_cow_type(self.i_s).as_ref() {
+                    return Some(FramesWithParentUnions {
+                        truthy: Frame::from_type(key, (**truthy).clone()),
+                        falsey: Frame::default(),
+                        parent_unions: left.parent_unions,
+                    });
+                }
+            }
+            None => (),
         }
-        if let Some(ComparisonKey::Normal(key)) = &right.key {
-            // Narrow Foo in `None is Foo`
-            if let Some((truthy, falsey)) = narrow_is_or_eq(
-                self.i_s,
-                key.clone(),
-                &right.inf.as_cow_type(self.i_s),
-                &left.inf.as_cow_type(self.i_s),
-                is_eq,
-            ) {
-                return Some(FramesWithParentUnions {
-                    truthy,
-                    falsey,
-                    // Taking it here is fine, because we don't want these to be duplicated
-                    // entries from different comparisons
-                    parent_unions: std::mem::take(&mut right.parent_unions),
-                });
+        match &right.key {
+            Some(ComparisonKey::Normal(key)) => {
+                // Narrow Foo in `None is Foo`
+                if let Some((truthy, falsey)) = narrow_is_or_eq(
+                    self.i_s,
+                    key.clone(),
+                    &right.inf.as_cow_type(self.i_s),
+                    &left.inf.as_cow_type(self.i_s),
+                    is_eq,
+                ) {
+                    return Some(FramesWithParentUnions {
+                        truthy,
+                        falsey,
+                        // Taking it here is fine, because we don't want these to be duplicated
+                        // entries from different comparisons
+                        parent_unions: std::mem::take(&mut right.parent_unions),
+                    });
+                }
             }
+            Some(ComparisonKey::TypeOf { key, inf }) => {
+                todo!()
+            }
+            None => (),
         }
         None
     }
