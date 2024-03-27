@@ -942,11 +942,11 @@ impl Inference<'_, '_, '_> {
             ExpressionPart::Comparisons(comps) => {
                 let mut frames: Option<FramesWithParentUnions> = None;
                 let mut iterator = comps.iter().peekable();
-                let mut left_infos = self.key_from_expr_part(iterator.peek().unwrap().left());
+                let mut left_infos = self.comparison_part_infos(iterator.peek().unwrap().left());
                 'outer: while let Some(comparison) = iterator.next() {
                     let mut invert = false;
                     let right = comparison.right();
-                    let mut right_infos = self.key_from_expr_part(right);
+                    let mut right_infos = self.comparison_part_infos(right);
                     let mut is_eq = false;
                     match comparison {
                         ComparisonContent::Equals(..) => {
@@ -958,7 +958,7 @@ impl Inference<'_, '_, '_> {
                                     eq_chain.push(left_infos.clone());
                                     eq_chain.push(right_infos.clone());
                                 }
-                                eq_chain.push(self.key_from_expr_part(*r));
+                                eq_chain.push(self.comparison_part_infos(*r));
                                 iterator.next();
                             }
                             if !eq_chain.is_empty() {
@@ -983,7 +983,7 @@ impl Inference<'_, '_, '_> {
                                     is_chain.push(left_infos.clone());
                                     is_chain.push(right_infos.clone());
                                 }
-                                is_chain.push(self.key_from_expr_part(*r));
+                                is_chain.push(self.comparison_part_infos(*r));
                                 iterator.next();
                             }
                             if !is_chain.is_empty() {
@@ -1316,11 +1316,11 @@ impl Inference<'_, '_, '_> {
 
     fn find_comparison_guards(
         &mut self,
-        left: KeyWithParentUnions,
-        right: &mut KeyWithParentUnions,
+        left: ComparisonPartInfos,
+        right: &mut ComparisonPartInfos,
         is_eq: bool,
     ) -> Option<FramesWithParentUnions> {
-        if let Some(key) = left.key {
+        if let Some(ComparisonKey::Normal(key)) = left.key {
             // Narrow Foo in `Foo is None`
             if let Some((truthy, falsey)) = narrow_is_or_eq(
                 self.i_s,
@@ -1336,7 +1336,7 @@ impl Inference<'_, '_, '_> {
                 });
             }
         }
-        if let Some(key) = &right.key {
+        if let Some(ComparisonKey::Normal(key)) = &right.key {
             // Narrow Foo in `None is Foo`
             if let Some((truthy, falsey)) = narrow_is_or_eq(
                 self.i_s,
@@ -1359,7 +1359,7 @@ impl Inference<'_, '_, '_> {
 
     fn find_comparison_chain_guards(
         &mut self,
-        chain: &[KeyWithParentUnions],
+        chain: &[ComparisonPartInfos],
         is_eq: bool,
     ) -> Option<FramesWithParentUnions> {
         let mut frames = None;
@@ -1368,7 +1368,7 @@ impl Inference<'_, '_, '_> {
                 if i == k {
                     continue;
                 }
-                if let Some(key) = &part1.key {
+                if let Some(ComparisonKey::Normal(key)) = &part1.key {
                     if let Some((truthy, falsey)) = narrow_is_or_eq(
                         self.i_s,
                         key.clone(),
@@ -1394,8 +1394,8 @@ impl Inference<'_, '_, '_> {
     fn guard_of_in_operator(
         &mut self,
         op: Operand,
-        left: KeyWithParentUnions,
-        right: &mut KeyWithParentUnions,
+        left: ComparisonPartInfos,
+        right: &mut ComparisonPartInfos,
     ) -> FramesWithParentUnions {
         self.infer_in_operator(NodeRef::new(self.file, op.index()), &left.inf, &right.inf);
         let maybe_invert = |truthy, falsey, parent_unions| {
@@ -1416,7 +1416,7 @@ impl Inference<'_, '_, '_> {
         let db = self.i_s.db;
         if let Some(item) = stdlib_container_item(db, &right.inf.as_cow_type(self.i_s)) {
             if !item.iter_with_unpacked_unions(db).any(|t| t == &Type::None) {
-                if let Some(left_key) = left.key {
+                if let Some(ComparisonKey::Normal(left_key)) = left.key {
                     let left_t = left.inf.as_cow_type(self.i_s);
                     if left_t.overlaps(self.i_s, &item) {
                         if let Some(t) = removed_optional(db, &left_t) {
@@ -1436,7 +1436,7 @@ impl Inference<'_, '_, '_> {
             .iter_with_unpacked_unions(db)
             .any(|t| matches!(t, Type::TypedDict(_)))
         {
-            if let Some(right_key) = &right.key {
+            if let Some(ComparisonKey::Normal(right_key)) = &right.key {
                 let left_t = left.inf.as_cow_type(self.i_s);
                 let str_literals: Vec<_> = left_t
                     .iter_with_unpacked_unions(db)
@@ -1703,6 +1703,49 @@ impl Inference<'_, '_, '_> {
             FlowKey::Name(_) => false,
         }
     }
+
+    fn comparison_part_infos(&mut self, expr_part: ExpressionPart) -> ComparisonPartInfos {
+        let mut check_for_call = || {
+            let ExpressionPart::Primary(primary) = expr_part else {
+                return None
+            };
+            let PrimaryContent::Execution(ArgumentsDetails::Node(args)) = primary.second() else {
+                return None;
+            };
+            let mut args_iterator = args.iter();
+            let Argument::Positional(first_arg) = args_iterator.next().unwrap() else {
+                return None;
+            };
+            if args_iterator.next().is_some() {
+                return None;
+            }
+
+            let pre_exec = self.infer_primary_or_atom(primary.first());
+            if pre_exec.maybe_saved_specific(self.i_s.db) == Some(Specific::TypingType) {
+                let with_key = self.key_from_namedexpression(first_arg);
+                if let Some(key) = with_key.key {
+                    let full_inf = self.infer_expression_part(expr_part);
+                    return Some(ComparisonPartInfos {
+                        key: Some(ComparisonKey::TypeOf {
+                            key,
+                            inf: with_key.inf,
+                        }),
+                        inf: full_inf,
+                        parent_unions: with_key.parent_unions,
+                    });
+                }
+            }
+            None
+        };
+        check_for_call().unwrap_or_else(|| {
+            let k = self.key_from_expr_part(expr_part);
+            ComparisonPartInfos {
+                key: k.key.map(|k| ComparisonKey::Normal(k)),
+                inf: k.inf,
+                parent_unions: k.parent_unions,
+            }
+        })
+    }
 }
 
 fn name_definition_link(db: &Database, file: &PythonFile, name: Name) -> Option<PointLink> {
@@ -1738,6 +1781,18 @@ impl KeyWithParentUnions {
             parent_unions: vec![],
         }
     }
+}
+
+#[derive(Clone)]
+enum ComparisonKey {
+    Normal(FlowKey),
+    TypeOf { key: FlowKey, inf: Inferred },
+}
+#[derive(Clone)]
+struct ComparisonPartInfos {
+    key: Option<ComparisonKey>,
+    inf: Inferred,
+    parent_unions: Vec<(FlowKey, UnionType)>,
 }
 
 #[derive(Default)]
