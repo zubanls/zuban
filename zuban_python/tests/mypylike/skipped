@@ -1207,9 +1207,6 @@ testNarrowingLenTupleSubclass
 testNarrowingLenTupleSubclassCustomNotAllowed
 testNarrowingLenTupleSubclassPreciseNotAllowed
 testNarrowingLenUnionWithUnreachable
-# narrowing with assert
-testReModuleBytes
-testReModuleString
 # narrowing `in` weird overlapping. Mypy correct?
 testTupleOverlapDifferentTuples
 # narrowing assignments regressions after `foo =` narrowing

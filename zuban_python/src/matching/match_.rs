@@ -76,7 +76,9 @@ impl Match {
             if r.bool() {
                 return r;
             }
-            result &= r;
+            if !matches!(result, Self::False { similar: true, .. }) {
+                result = r;
+            }
         }
         result
     }
