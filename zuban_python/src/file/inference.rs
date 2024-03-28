@@ -1491,7 +1491,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let from = NodeRef::new(self.file, op.index());
                 self.infer_in_operator(from, &left_inf, right_inf)
             }
-            ComparisonContent::Operation(op) => {
+            ComparisonContent::Ordering(op) => {
                 self.infer_detailed_operation(op.index, op.infos, left_inf, &right_inf)
             }
         }

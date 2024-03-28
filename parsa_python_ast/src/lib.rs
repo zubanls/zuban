@@ -2827,7 +2827,7 @@ pub enum ComparisonContent<'db> {
     IsNot(ExpressionPart<'db>, Operand<'db>, ExpressionPart<'db>),
     In(ExpressionPart<'db>, Operand<'db>, ExpressionPart<'db>),
     NotIn(ExpressionPart<'db>, Operand<'db>, ExpressionPart<'db>),
-    Operation(Operation<'db>),
+    Ordering(Operation<'db>),
 }
 
 impl<'db> ComparisonContent<'db> {
@@ -2840,7 +2840,7 @@ impl<'db> ComparisonContent<'db> {
             | IsNot(left, _, _)
             | In(left, _, _)
             | NotIn(left, _, _) => *left,
-            Operation(operation) => operation.left,
+            Ordering(operation) => operation.left,
         }
     }
 
@@ -2853,7 +2853,7 @@ impl<'db> ComparisonContent<'db> {
             | IsNot(_, _, right)
             | In(_, _, right)
             | NotIn(_, _, right) => *right,
-            Operation(operation) => operation.right,
+            Ordering(operation) => operation.right,
         }
     }
 }
@@ -2902,7 +2902,7 @@ impl<'db> Iterator for ComparisonIterator<'db> {
             "not" => return Some(ComparisonContent::NotIn(left, Operand::new(op), right)),
             _ => unreachable!(),
         };
-        Some(ComparisonContent::Operation(Operation {
+        Some(ComparisonContent::Ordering(Operation {
             left,
             infos: OpInfos {
                 operand,

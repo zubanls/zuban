@@ -1084,7 +1084,7 @@ impl Inference<'_, '_, '_> {
                 ComparisonContent::In(left, op, _) | ComparisonContent::NotIn(left, op, _) => {
                     Some(self.guard_of_in_operator(op, left_infos, &mut right_infos))
                 }
-                ComparisonContent::Operation(..) => {
+                ComparisonContent::Ordering(..) => {
                     self.infer_comparison_part(comparison, left_infos.inf, &right_infos.inf);
                     left_infos = right_infos;
                     continue;
