@@ -1291,8 +1291,6 @@ testHasAttrMissingAttributeLiteral
 testHasAttrModule
 # type(foo) = int narrowing
 testMultipleTypeEqualsCheck
-testNarrowingUsingTypeVar
-testNarrowingUsingMetaclass
 
 # NoReturn
 testNoReturnTypeAlias

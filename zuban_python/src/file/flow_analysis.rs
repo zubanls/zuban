@@ -1339,18 +1339,29 @@ impl Inference<'_, '_, '_> {
                 }
             }
             Some(ComparisonKey::TypeOf { key, inf }) => {
-                if let Type::Type(truthy) = right.inf.as_cow_type(i_s).as_ref() {
-                    let is_final = match truthy.as_ref() {
-                        Type::Class(c) => c.class(i_s.db).use_cached_class_infos(i_s.db).is_final,
+                if let Type::Type(base_truthy) = right.inf.as_cow_type(i_s).as_ref() {
+                    let mut truthy = (**base_truthy).clone();
+                    let is_final = match &truthy {
+                        Type::Class(c) => {
+                            if c.class(i_s.db).is_metaclass(i_s.db) {
+                                // For now ignore this, Mypy has only very few tests about this.
+                                return None;
+                            }
+                            c.class(i_s.db).use_cached_class_infos(i_s.db).is_final
+                        }
                         _ => false,
                     };
+                    let inf_t = inf.as_cow_type(i_s);
+                    if !truthy.is_simple_sub_type_of(i_s, &inf_t).bool() {
+                        truthy = Type::Never;
+                    }
                     return Some(FramesWithParentUnions {
-                        truthy: Frame::from_type(key.clone(), (**truthy).clone()),
+                        truthy: Frame::from_type(key.clone(), truthy),
                         falsey: match is_final {
                             true => Frame::from_type(
                                 key,
-                                inf.as_cow_type(i_s).retain_in_union(|t| {
-                                    !t.is_simple_same_type(i_s, truthy).bool()
+                                inf_t.retain_in_union(|t| {
+                                    !t.is_simple_same_type(i_s, base_truthy).bool()
                                 }),
                             ),
                             false => Frame::default(),
