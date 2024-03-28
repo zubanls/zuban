@@ -95,6 +95,7 @@ pub struct PythonState {
     builtins_issubclass_index: NodeIndex,
     builtins_callable_index: NodeIndex,
     builtins_hasattr_index: NodeIndex,
+    builtins_len_index: NodeIndex,
     pub builtins_int_mro: Box<[BaseClass]>,
     pub builtins_bool_mro: Box<[BaseClass]>,
     pub builtins_str_mro: Box<[BaseClass]>,
@@ -196,6 +197,7 @@ impl PythonState {
             builtins_issubclass_index: 0,
             builtins_callable_index: 0,
             builtins_hasattr_index: 0,
+            builtins_len_index: 0,
             builtins_int_mro: Box::new([]),   // will be set later
             builtins_bool_mro: Box::new([]),  // will be set later
             builtins_str_mro: Box::new([]),   // will be set later
@@ -431,6 +433,7 @@ impl PythonState {
         cache_func_index!(builtins_issubclass_index, builtins, "issubclass");
         cache_func_index!(builtins_callable_index, builtins, "callable");
         cache_func_index!(builtins_hasattr_index, builtins, "hasattr");
+        cache_func_index!(builtins_len_index, builtins, "len");
 
         cache_func_index!(typing_overload_index, typing, "overload");
         cache_func_index!(typing_override_index, typing, "override");
@@ -622,6 +625,7 @@ impl PythonState {
     attribute_node_ref!(builtins, pub issubclass_node_ref, builtins_issubclass_index);
     attribute_node_ref!(builtins, pub callable_node_ref, builtins_callable_index);
     attribute_node_ref!(builtins, pub hasattr_node_ref, builtins_hasattr_index);
+    attribute_node_ref!(builtins, pub len_node_ref, builtins_len_index);
     attribute_node_ref!(builtins, pub function_node_ref, builtins_function_index);
     attribute_node_ref!(
         builtins,

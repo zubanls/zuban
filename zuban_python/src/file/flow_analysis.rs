@@ -1370,6 +1370,32 @@ impl Inference<'_, '_, '_> {
                     });
                 }
             }
+            Some(ComparisonKey::Len { key, inf }) => {
+                if let Type::Literal(Literal {
+                    kind: LiteralKind::Int(n),
+                    ..
+                }) = right.inf.as_cow_type(i_s).as_ref()
+                {
+                    if let Ok(n) = (*n).try_into() {
+                        let inf_t = inf.as_cow_type(i_s);
+                        let retain = |t: &Type, negative| match t {
+                            Type::Tuple(tup) => match &tup.args {
+                                TupleArgs::FixedLen(ts) => (ts.len() == n) != negative,
+                                TupleArgs::ArbitraryLen(_) => todo!(),
+                                TupleArgs::WithUnpack(_) => todo!(),
+                            },
+                            _ => true,
+                        };
+                        let truthy = inf_t.retain_in_union(|t| retain(t, false));
+                        let falsey = inf_t.retain_in_union(|t| retain(t, true));
+                        return Some(FramesWithParentUnions {
+                            truthy: Frame::from_type(key.clone(), truthy),
+                            falsey: Frame::from_type(key.clone(), falsey),
+                            parent_unions: left.parent_unions,
+                        });
+                    }
+                }
+            }
             None => (),
         }
         match &right.key {
@@ -1392,6 +1418,9 @@ impl Inference<'_, '_, '_> {
                 }
             }
             Some(ComparisonKey::TypeOf { key, inf }) => {
+                todo!()
+            }
+            Some(ComparisonKey::Len { key, inf }) => {
                 todo!()
             }
             None => (),
@@ -1763,21 +1792,30 @@ impl Inference<'_, '_, '_> {
             }
 
             let pre_exec = self.infer_primary_or_atom(primary.first());
-            if pre_exec.maybe_saved_specific(self.i_s.db) == Some(Specific::TypingType) {
+            let db = self.i_s.db;
+            let mut as_infos = |is_len| {
                 let with_key = self.key_from_namedexpression(first_arg);
-                if let Some(key) = with_key.key {
+                with_key.key.map(|key| {
                     let full_inf = self.infer_expression_part(expr_part);
-                    return Some(ComparisonPartInfos {
-                        key: Some(ComparisonKey::TypeOf {
-                            key,
-                            inf: with_key.inf,
+                    let inf = with_key.inf;
+                    ComparisonPartInfos {
+                        key: Some(match is_len {
+                            false => ComparisonKey::TypeOf { key, inf },
+                            true => ComparisonKey::Len { key, inf },
                         }),
                         inf: full_inf,
                         parent_unions: with_key.parent_unions,
-                    });
-                }
+                    }
+                })
+            };
+            if pre_exec.maybe_saved_specific(db) == Some(Specific::TypingType) {
+                as_infos(false)
+            } else if pre_exec.maybe_saved_link() == Some(db.python_state.len_node_ref().as_link())
+            {
+                as_infos(true)
+            } else {
+                None
             }
-            None
         };
         check_for_call().unwrap_or_else(|| {
             let k = self.key_from_expr_part(expr_part);
@@ -1828,8 +1866,10 @@ impl KeyWithParentUnions {
 #[derive(Clone)]
 enum ComparisonKey {
     Normal(FlowKey),
-    TypeOf { key: FlowKey, inf: Inferred },
+    TypeOf { key: FlowKey, inf: Inferred }, // For type(x) == int
+    Len { key: FlowKey, inf: Inferred },    // For len(x) == 2
 }
+
 #[derive(Clone)]
 struct ComparisonPartInfos {
     key: Option<ComparisonKey>,
