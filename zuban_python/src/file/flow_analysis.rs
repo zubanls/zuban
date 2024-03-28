@@ -5,7 +5,7 @@ use std::{
 
 use parsa_python_ast::{
     Argument, Arguments, ArgumentsDetails, Atom, AtomContent, Block, BreakStmt, ComparisonContent,
-    ContinueStmt, ElseBlock, Expression, ExpressionContent, ExpressionPart, ForStmt,
+    Comparisons, ContinueStmt, ElseBlock, Expression, ExpressionContent, ExpressionPart, ForStmt,
     IfBlockIterator, IfBlockType, IfStmt, Name, NamedExpression, NamedExpressionContent, NodeIndex,
     Operand, Primary, PrimaryContent, PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom,
     SliceType as ASTSliceType, Ternary, WhileStmt,
@@ -943,83 +943,7 @@ impl Inference<'_, '_, '_> {
                 }
             }
             ExpressionPart::Comparisons(comps) => {
-                let mut frames: Option<FramesWithParentUnions> = None;
-                let mut iterator = comps.iter().peekable();
-                let mut left_infos = self.comparison_part_infos(iterator.peek().unwrap().left());
-                while let Some(comparison) = iterator.next() {
-                    let mut invert = false;
-                    let right = comparison.right();
-                    let mut right_infos = self.comparison_part_infos(right);
-                    let new = match comparison {
-                        ComparisonContent::Equals(..) => {
-                            let mut eq_chain = vec![];
-                            // `foo == bar == None` needs special handling
-                            while let Some(ComparisonContent::Equals(_, _, r)) = iterator.peek() {
-                                if eq_chain.is_empty() {
-                                    eq_chain.push(left_infos.clone());
-                                    eq_chain.push(right_infos.clone());
-                                }
-                                eq_chain.push(self.comparison_part_infos(*r));
-                                iterator.next();
-                            }
-                            if eq_chain.is_empty() {
-                                self.find_comparison_guards(left_infos, &mut right_infos, true)
-                            } else {
-                                let result = self.find_comparison_chain_guards(&eq_chain, true);
-                                right_infos = eq_chain.into_iter().last().unwrap();
-                                result
-                            }
-                        }
-                        ComparisonContent::NotEquals(..) => {
-                            invert = true;
-                            self.find_comparison_guards(left_infos, &mut right_infos, true)
-                        }
-                        ComparisonContent::Is(..) => {
-                            let mut is_chain = vec![];
-                            // `foo is bar is None` needs special handling
-                            while let Some(ComparisonContent::Is(_, _, r)) = iterator.peek() {
-                                if is_chain.is_empty() {
-                                    is_chain.push(left_infos.clone());
-                                    is_chain.push(right_infos.clone());
-                                }
-                                is_chain.push(self.comparison_part_infos(*r));
-                                iterator.next();
-                            }
-                            if is_chain.is_empty() {
-                                self.find_comparison_guards(left_infos, &mut right_infos, false)
-                            } else {
-                                let result = self.find_comparison_chain_guards(&is_chain, false);
-                                right_infos = is_chain.into_iter().last().unwrap();
-                                result
-                            }
-                        }
-                        ComparisonContent::IsNot(..) => {
-                            invert = true;
-                            self.find_comparison_guards(left_infos, &mut right_infos, false)
-                        }
-                        ComparisonContent::In(left, op, _)
-                        | ComparisonContent::NotIn(left, op, _) => {
-                            Some(self.guard_of_in_operator(op, left_infos, &mut right_infos))
-                        }
-                        ComparisonContent::Operation(..) => {
-                            self.infer_comparison_part(
-                                comparison,
-                                left_infos.inf,
-                                &right_infos.inf,
-                            );
-                            left_infos = right_infos;
-                            continue;
-                        }
-                    };
-                    if let Some(mut new) = new {
-                        if invert {
-                            (new.falsey, new.truthy) = (new.truthy, new.falsey);
-                        }
-                        frames = Some(merge_conjunction(self.i_s, frames, new));
-                    }
-                    left_infos = right_infos
-                }
-                if let Some(frames) = frames {
+                if let Some(frames) = self.find_guards_in_comparisons(comps) {
                     return frames;
                 }
             }
@@ -1100,6 +1024,81 @@ impl Inference<'_, '_, '_> {
             }
         }
         FramesWithParentUnions::default()
+    }
+
+    fn find_guards_in_comparisons(&mut self, comps: Comparisons) -> Option<FramesWithParentUnions> {
+        let mut frames: Option<FramesWithParentUnions> = None;
+        let mut iterator = comps.iter().peekable();
+        let mut left_infos = self.comparison_part_infos(iterator.peek().unwrap().left());
+        while let Some(comparison) = iterator.next() {
+            let mut invert = false;
+            let right = comparison.right();
+            let mut right_infos = self.comparison_part_infos(right);
+            let new = match comparison {
+                ComparisonContent::Equals(..) => {
+                    let mut eq_chain = vec![];
+                    // `foo == bar == None` needs special handling
+                    while let Some(ComparisonContent::Equals(_, _, r)) = iterator.peek() {
+                        if eq_chain.is_empty() {
+                            eq_chain.push(left_infos.clone());
+                            eq_chain.push(right_infos.clone());
+                        }
+                        eq_chain.push(self.comparison_part_infos(*r));
+                        iterator.next();
+                    }
+                    if eq_chain.is_empty() {
+                        self.find_comparison_guards(left_infos, &mut right_infos, true)
+                    } else {
+                        let result = self.find_comparison_chain_guards(&eq_chain, true);
+                        right_infos = eq_chain.into_iter().last().unwrap();
+                        result
+                    }
+                }
+                ComparisonContent::NotEquals(..) => {
+                    invert = true;
+                    self.find_comparison_guards(left_infos, &mut right_infos, true)
+                }
+                ComparisonContent::Is(..) => {
+                    let mut is_chain = vec![];
+                    // `foo is bar is None` needs special handling
+                    while let Some(ComparisonContent::Is(_, _, r)) = iterator.peek() {
+                        if is_chain.is_empty() {
+                            is_chain.push(left_infos.clone());
+                            is_chain.push(right_infos.clone());
+                        }
+                        is_chain.push(self.comparison_part_infos(*r));
+                        iterator.next();
+                    }
+                    if is_chain.is_empty() {
+                        self.find_comparison_guards(left_infos, &mut right_infos, false)
+                    } else {
+                        let result = self.find_comparison_chain_guards(&is_chain, false);
+                        right_infos = is_chain.into_iter().last().unwrap();
+                        result
+                    }
+                }
+                ComparisonContent::IsNot(..) => {
+                    invert = true;
+                    self.find_comparison_guards(left_infos, &mut right_infos, false)
+                }
+                ComparisonContent::In(left, op, _) | ComparisonContent::NotIn(left, op, _) => {
+                    Some(self.guard_of_in_operator(op, left_infos, &mut right_infos))
+                }
+                ComparisonContent::Operation(..) => {
+                    self.infer_comparison_part(comparison, left_infos.inf, &right_infos.inf);
+                    left_infos = right_infos;
+                    continue;
+                }
+            };
+            if let Some(mut new) = new {
+                if invert {
+                    (new.falsey, new.truthy) = (new.truthy, new.falsey);
+                }
+                frames = Some(merge_conjunction(self.i_s, frames, new));
+            }
+            left_infos = right_infos
+        }
+        frames
     }
 
     fn find_isinstance_or_issubclass_frames(
