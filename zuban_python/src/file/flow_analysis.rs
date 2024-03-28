@@ -22,7 +22,7 @@ use crate::{
     node_ref::NodeRef,
     type_::{
         simplified_union_from_iterators, AnyCause, ClassGenerics, EnumMember, GenericItem, Literal,
-        LiteralKind, TupleArgs, Type, TypeVarKind, UnionType,
+        LiteralKind, Tuple, TupleArgs, Type, TypeVarKind, UnionType,
     },
     type_helpers::{Class, Function},
 };
@@ -30,6 +30,8 @@ use crate::{
 use super::{first_defined_name, inference::Inference, PythonFile};
 
 type Entries = Vec<Entry>;
+
+const MAX_PRECISE_TUPLE_SIZE: usize = 8; // Constant taken from Mypy
 
 thread_local! {
     pub static FLOW_ANALYSIS: FlowAnalysis = FlowAnalysis::default();
@@ -1378,16 +1380,38 @@ impl Inference<'_, '_, '_> {
                 {
                     if let Ok(n) = (*n).try_into() {
                         let inf_t = inf.as_cow_type(i_s);
-                        let retain = |t: &Type, negative| match t {
-                            Type::Tuple(tup) => match &tup.args {
-                                TupleArgs::FixedLen(ts) => (ts.len() == n) != negative,
-                                TupleArgs::ArbitraryLen(_) => todo!(),
-                                TupleArgs::WithUnpack(_) => todo!(),
-                            },
-                            _ => true,
+                        let retain = |full: &Type, negative| {
+                            let mut out = Type::Never;
+                            for part_t in full.iter_with_unpacked_unions(i_s.db) {
+                                match part_t {
+                                    Type::Tuple(tup) => match &tup.args {
+                                        TupleArgs::FixedLen(ts) => {
+                                            if (ts.len() == n) == negative {
+                                                continue;
+                                            }
+                                        }
+                                        TupleArgs::ArbitraryLen(t) => {
+                                            if n <= MAX_PRECISE_TUPLE_SIZE && !negative {
+                                                out.union_in_place(Type::Tuple(
+                                                    Tuple::new_fixed_length(
+                                                        std::iter::repeat_with(|| (**t).clone())
+                                                            .take(n)
+                                                            .collect(),
+                                                    ),
+                                                ));
+                                                continue;
+                                            }
+                                        }
+                                        TupleArgs::WithUnpack(_) => todo!(),
+                                    },
+                                    _ => (),
+                                }
+                                out.union_in_place(part_t.clone())
+                            }
+                            out
                         };
-                        let truthy = inf_t.retain_in_union(|t| retain(t, false));
-                        let falsey = inf_t.retain_in_union(|t| retain(t, true));
+                        let truthy = retain(&inf_t, false);
+                        let falsey = retain(&inf_t, true);
                         return Some(FramesWithParentUnions {
                             truthy: Frame::from_type(key.clone(), truthy),
                             falsey: Frame::from_type(key.clone(), falsey),
