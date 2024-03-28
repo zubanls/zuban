@@ -30,6 +30,7 @@ use crate::{
 use super::{first_defined_name, inference::Inference, PythonFile};
 
 type Entries = Vec<Entry>;
+type ParentUnions = Vec<(FlowKey, UnionType)>;
 
 const MAX_PRECISE_TUPLE_SIZE: usize = 8; // Constant taken from Mypy
 
@@ -1318,7 +1319,7 @@ impl Inference<'_, '_, '_> {
 
     fn find_comparison_guards(
         &mut self,
-        left: ComparisonPartInfos,
+        mut left: ComparisonPartInfos,
         right: &mut ComparisonPartInfos,
         is_eq: bool,
     ) -> Option<FramesWithParentUnions> {
@@ -1373,51 +1374,9 @@ impl Inference<'_, '_, '_> {
                 }
             }
             Some(ComparisonKey::Len { key, inf }) => {
-                if let Type::Literal(Literal {
-                    kind: LiteralKind::Int(n),
-                    ..
-                }) = right.inf.as_cow_type(i_s).as_ref()
-                {
-                    if let Ok(n) = (*n).try_into() {
-                        let inf_t = inf.as_cow_type(i_s);
-                        let retain = |full: &Type, negative| {
-                            let mut out = Type::Never;
-                            for part_t in full.iter_with_unpacked_unions(i_s.db) {
-                                match part_t {
-                                    Type::Tuple(tup) => match &tup.args {
-                                        TupleArgs::FixedLen(ts) => {
-                                            if (ts.len() == n) == negative {
-                                                continue;
-                                            }
-                                        }
-                                        TupleArgs::ArbitraryLen(t) => {
-                                            if n <= MAX_PRECISE_TUPLE_SIZE && !negative {
-                                                out.union_in_place(Type::Tuple(
-                                                    Tuple::new_fixed_length(
-                                                        std::iter::repeat_with(|| (**t).clone())
-                                                            .take(n)
-                                                            .collect(),
-                                                    ),
-                                                ));
-                                                continue;
-                                            }
-                                        }
-                                        TupleArgs::WithUnpack(_) => todo!(),
-                                    },
-                                    _ => (),
-                                }
-                                out.union_in_place(part_t.clone())
-                            }
-                            out
-                        };
-                        let truthy = retain(&inf_t, false);
-                        let falsey = retain(&inf_t, true);
-                        return Some(FramesWithParentUnions {
-                            truthy: Frame::from_type(key.clone(), truthy),
-                            falsey: Frame::from_type(key.clone(), falsey),
-                            parent_unions: left.parent_unions,
-                        });
-                    }
+                let result = narrow_len(i_s, &key, &inf, &mut left.parent_unions, &right.inf);
+                if result.is_some() {
+                    return result;
                 }
             }
             None => (),
@@ -1874,7 +1833,7 @@ fn name_definition_link(db: &Database, file: &PythonFile, name: Name) -> Option<
 struct KeyWithParentUnions {
     key: Option<FlowKey>,
     inf: Inferred,
-    parent_unions: Vec<(FlowKey, UnionType)>,
+    parent_unions: ParentUnions,
 }
 
 impl KeyWithParentUnions {
@@ -1898,14 +1857,14 @@ enum ComparisonKey {
 struct ComparisonPartInfos {
     key: Option<ComparisonKey>,
     inf: Inferred,
-    parent_unions: Vec<(FlowKey, UnionType)>,
+    parent_unions: ParentUnions,
 }
 
 #[derive(Default)]
 struct FramesWithParentUnions {
     truthy: Frame,
     falsey: Frame,
-    parent_unions: Vec<(FlowKey, UnionType)>,
+    parent_unions: ParentUnions,
 }
 
 fn stdlib_container_item(db: &Database, t: &Type) -> Option<Type> {
@@ -1956,6 +1915,58 @@ fn removed_optional(db: &Database, full: &Type) -> Option<Type> {
     for t in full.iter_with_unpacked_unions(db) {
         if matches!(t, Type::None) {
             return Some(full.retain_in_union(|t| !matches!(t, Type::None)));
+        }
+    }
+    None
+}
+
+fn narrow_len(
+    i_s: &InferenceState,
+    key: &FlowKey,
+    inferred_type_param: &Inferred,
+    parent_unions: &mut ParentUnions,
+    other_inf: &Inferred,
+) -> Option<FramesWithParentUnions> {
+    if let Type::Literal(Literal {
+        kind: LiteralKind::Int(n),
+        ..
+    }) = other_inf.as_cow_type(i_s).as_ref()
+    {
+        if let Ok(n) = (*n).try_into() {
+            let inf_t = inferred_type_param.as_cow_type(i_s);
+            let retain = |full: &Type, negative| {
+                let mut out = Type::Never;
+                for part_t in full.iter_with_unpacked_unions(i_s.db) {
+                    match part_t {
+                        Type::Tuple(tup) => match &tup.args {
+                            TupleArgs::FixedLen(ts) => {
+                                if (ts.len() == n) == negative {
+                                    continue;
+                                }
+                            }
+                            TupleArgs::ArbitraryLen(t) => {
+                                if n <= MAX_PRECISE_TUPLE_SIZE && !negative {
+                                    out.union_in_place(Type::Tuple(Tuple::new_fixed_length(
+                                        std::iter::repeat_with(|| (**t).clone()).take(n).collect(),
+                                    )));
+                                    continue;
+                                }
+                            }
+                            TupleArgs::WithUnpack(_) => todo!(),
+                        },
+                        _ => (),
+                    }
+                    out.union_in_place(part_t.clone())
+                }
+                out
+            };
+            let truthy = retain(&inf_t, false);
+            let falsey = retain(&inf_t, true);
+            return Some(FramesWithParentUnions {
+                truthy: Frame::from_type(key.clone(), truthy),
+                falsey: Frame::from_type(key.clone(), falsey),
+                parent_unions: std::mem::take(parent_unions),
+            });
         }
     }
     None
