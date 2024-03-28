@@ -18,3 +18,13 @@ def foo(x: None, y: int | None) -> None:
         if y:
             reveal_type(y)  # N: Revealed type is "int"
             reveal_type(x)  # N: Revealed type is "None"
+
+[case narrow_len_yoda_like]
+from typing import Any, Union, Tuple
+
+x: Union[Tuple[int, int], Tuple[int, int, int]]
+x: Any
+if 2 == len(x):
+    reveal_type(x) # N: Revealed type is "Tuple[int, int]"
+else:
+    reveal_type(x) # N: Revealed type is "Tuple[int, int, int]"

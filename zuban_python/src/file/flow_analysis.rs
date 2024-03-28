@@ -1404,7 +1404,10 @@ impl Inference<'_, '_, '_> {
                 todo!()
             }
             Some(ComparisonKey::Len { key, inf }) => {
-                todo!()
+                let result = narrow_len(i_s, &key, &inf, &mut right.parent_unions, &left.inf);
+                if result.is_some() {
+                    return result;
+                }
             }
             None => (),
         }
