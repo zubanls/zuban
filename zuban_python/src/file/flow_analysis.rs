@@ -1084,10 +1084,34 @@ impl Inference<'_, '_, '_> {
                 ComparisonContent::In(left, op, _) | ComparisonContent::NotIn(left, op, _) => {
                     Some(self.guard_of_in_operator(op, left_infos, &mut right_infos))
                 }
-                ComparisonContent::Ordering(..) => {
-                    self.infer_comparison_part(comparison, left_infos.inf, &right_infos.inf);
-                    left_infos = right_infos;
-                    continue;
+                ComparisonContent::Ordering(operation) => {
+                    let mut result = None;
+                    if let Some(ComparisonKey::Len { key, inf }) = &left_infos.key {
+                        result = narrow_len(
+                            self.i_s,
+                            &key,
+                            &inf,
+                            &mut left_infos.parent_unions,
+                            &right_infos.inf,
+                            match operation.infos.operand {
+                                ">" => LenNarrowing::GreaterThan,
+                                "<" => LenNarrowing::LowerThan,
+                                ">=" => LenNarrowing::GreaterEquals,
+                                "<=" => LenNarrowing::LowerEquals,
+                                _ => unreachable!(),
+                            },
+                        );
+                    } else if let Some(ComparisonKey::Len { key, inf }) = &right_infos.key {
+                        todo!()
+                    }
+
+                    if result.is_some() {
+                        result
+                    } else {
+                        self.infer_comparison_part(comparison, left_infos.inf, &right_infos.inf);
+                        left_infos = right_infos;
+                        continue;
+                    }
                 }
             };
             if let Some(mut new) = new {
@@ -1363,7 +1387,14 @@ impl Inference<'_, '_, '_> {
                 }
             }
             Some(ComparisonKey::Len { key, inf }) => {
-                let result = narrow_len(i_s, &key, &inf, &mut left.parent_unions, &right.inf);
+                let result = narrow_len(
+                    i_s,
+                    &key,
+                    &inf,
+                    &mut left.parent_unions,
+                    &right.inf,
+                    LenNarrowing::Equals,
+                );
                 if result.is_some() {
                     return result;
                 }
@@ -1393,7 +1424,14 @@ impl Inference<'_, '_, '_> {
                 todo!()
             }
             Some(ComparisonKey::Len { key, inf }) => {
-                let result = narrow_len(i_s, &key, &inf, &mut right.parent_unions, &left.inf);
+                let result = narrow_len(
+                    i_s,
+                    &key,
+                    &inf,
+                    &mut right.parent_unions,
+                    &left.inf,
+                    LenNarrowing::Equals,
+                );
                 if result.is_some() {
                     return result;
                 }
@@ -1912,12 +1950,21 @@ fn removed_optional(db: &Database, full: &Type) -> Option<Type> {
     None
 }
 
+enum LenNarrowing {
+    Equals, // NotEquals will be done by inverting in a separate place
+    GreaterThan,
+    LowerThan,
+    GreaterEquals,
+    LowerEquals,
+}
+
 fn narrow_len(
     i_s: &InferenceState,
     key: &FlowKey,
     inferred_type_param: &Inferred,
     parent_unions: &mut ParentUnions,
     other_inf: &Inferred,
+    kind: LenNarrowing,
 ) -> Option<FramesWithParentUnions> {
     if let Type::Literal(Literal {
         kind: LiteralKind::Int(n),
@@ -1932,7 +1979,15 @@ fn narrow_len(
                     match part_t {
                         Type::Tuple(tup) => match &tup.args {
                             TupleArgs::FixedLen(ts) => {
-                                if (ts.len() == n) == negative {
+                                let len = ts.len();
+                                let matches = match kind {
+                                    LenNarrowing::Equals => len == n,
+                                    LenNarrowing::GreaterThan => len > n,
+                                    LenNarrowing::LowerThan => len < n,
+                                    LenNarrowing::GreaterEquals => len >= n,
+                                    LenNarrowing::LowerEquals => len <= n,
+                                };
+                                if matches == negative {
                                     continue;
                                 }
                             }

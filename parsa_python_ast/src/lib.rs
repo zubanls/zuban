@@ -2595,6 +2595,7 @@ impl<'db> BitwiseXor<'db> {
     }
 }
 
+#[derive(Copy, Clone)]
 pub struct OpInfos {
     pub operand: &'static str,
     pub magic_method: &'static str,
@@ -2602,6 +2603,7 @@ pub struct OpInfos {
     pub shortcut_when_same_type: bool,
 }
 
+#[derive(Copy, Clone)]
 pub struct Operation<'db> {
     pub left: ExpressionPart<'db>,
     pub right: ExpressionPart<'db>,
@@ -2820,6 +2822,7 @@ impl<'db> Factor<'db> {
     }
 }
 
+#[derive(Copy, Clone)]
 pub enum ComparisonContent<'db> {
     Equals(ExpressionPart<'db>, Operand<'db>, ExpressionPart<'db>),
     NotEquals(ExpressionPart<'db>, Operand<'db>, ExpressionPart<'db>),
