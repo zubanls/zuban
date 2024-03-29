@@ -22,7 +22,7 @@ use crate::{
     node_ref::NodeRef,
     type_::{
         simplified_union_from_iterators, AnyCause, ClassGenerics, EnumMember, GenericItem, Literal,
-        LiteralKind, Tuple, TupleArgs, Type, TypeVarKind, UnionType,
+        LiteralKind, Tuple, TupleArgs, TupleUnpack, Type, TypeVarKind, UnionType, WithUnpack,
     },
     type_helpers::{Class, Function},
 };
@@ -1992,11 +1992,58 @@ fn narrow_len(
                                 }
                             }
                             TupleArgs::ArbitraryLen(t) => {
-                                if n <= MAX_PRECISE_TUPLE_SIZE && !negative {
+                                let mut invert = false;
+                                let element_count = match kind {
+                                    LenNarrowing::Equals => None,
+                                    LenNarrowing::GreaterThan => {
+                                        invert = true;
+                                        Some(n as isize)
+                                    }
+                                    LenNarrowing::LowerThan => Some(n as isize),
+                                    LenNarrowing::GreaterEquals => {
+                                        invert = true;
+                                        Some(n as isize + 1)
+                                    }
+                                    LenNarrowing::LowerEquals => Some(n as isize + 1),
+                                };
+                                let as_repeated_t =
+                                    |n| std::iter::repeat_with(|| (**t).clone()).take(n).collect();
+                                let mut add_tuple_of_len = |n| {
                                     out.union_in_place(Type::Tuple(Tuple::new_fixed_length(
-                                        std::iter::repeat_with(|| (**t).clone()).take(n).collect(),
+                                        as_repeated_t(n),
                                     )));
-                                    continue;
+                                };
+                                if n <= MAX_PRECISE_TUPLE_SIZE {
+                                    if let Some(element_count) = element_count {
+                                        if let Ok(count) =
+                                            <isize as TryInto<usize>>::try_into(element_count)
+                                        {
+                                            // TODO test invert
+                                            if invert == negative {
+                                                for i in 0..count {
+                                                    add_tuple_of_len(i);
+                                                }
+                                            } else {
+                                                out.union_in_place(Type::Tuple(Tuple::new(
+                                                    TupleArgs::WithUnpack(WithUnpack {
+                                                        before: as_repeated_t(n),
+                                                        unpack: TupleUnpack::ArbitraryLen(
+                                                            (**t).clone(),
+                                                        ),
+                                                        after: Rc::new([]),
+                                                    }),
+                                                )))
+                                            }
+                                        } else {
+                                            todo!()
+                                        }
+                                        continue;
+                                    } else {
+                                        if !negative {
+                                            add_tuple_of_len(n);
+                                            continue;
+                                        }
+                                    }
                                 }
                             }
                             TupleArgs::WithUnpack(_) => todo!(),
