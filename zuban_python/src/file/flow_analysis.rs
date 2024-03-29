@@ -1093,16 +1093,17 @@ impl Inference<'_, '_, '_> {
                             &inf,
                             &mut left_infos.parent_unions,
                             &right_infos.inf,
-                            match operation.infos.operand {
-                                ">" => LenNarrowing::GreaterThan,
-                                "<" => LenNarrowing::LowerThan,
-                                ">=" => LenNarrowing::GreaterEquals,
-                                "<=" => LenNarrowing::LowerEquals,
-                                _ => unreachable!(),
-                            },
+                            LenNarrowing::from_operand(operation.infos.operand),
                         );
                     } else if let Some(ComparisonKey::Len { key, inf }) = &right_infos.key {
-                        todo!()
+                        result = narrow_len(
+                            self.i_s,
+                            &key,
+                            &inf,
+                            &mut right_infos.parent_unions,
+                            &left_infos.inf,
+                            LenNarrowing::from_operand(operation.infos.operand),
+                        );
                     }
 
                     if result.is_some() {
@@ -1956,6 +1957,18 @@ enum LenNarrowing {
     LowerThan,
     GreaterEquals,
     LowerEquals,
+}
+
+impl LenNarrowing {
+    fn from_operand(operand: &str) -> Self {
+        match operand {
+            ">" => LenNarrowing::GreaterThan,
+            "<" => LenNarrowing::LowerThan,
+            ">=" => LenNarrowing::GreaterEquals,
+            "<=" => LenNarrowing::LowerEquals,
+            _ => unreachable!(),
+        }
+    }
 }
 
 fn narrow_len(
