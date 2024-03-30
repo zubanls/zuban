@@ -1951,6 +1951,7 @@ fn removed_optional(db: &Database, full: &Type) -> Option<Type> {
     None
 }
 
+#[derive(Copy, Clone)]
 enum LenNarrowing {
     Equals, // NotEquals will be done by inverting in a separate place
     GreaterThan,
@@ -2000,78 +2001,13 @@ fn narrow_len(
                 let mut out = Type::Never;
                 for part_t in full.iter_with_unpacked_unions(i_s.db) {
                     match part_t {
-                        Type::Tuple(tup) => match &tup.args {
-                            TupleArgs::FixedLen(ts) => {
-                                let len = ts.len();
-                                let matches = match kind {
-                                    LenNarrowing::Equals => len == n,
-                                    LenNarrowing::GreaterThan => len > n,
-                                    LenNarrowing::LowerThan => len < n,
-                                    LenNarrowing::GreaterEquals => len >= n,
-                                    LenNarrowing::LowerEquals => len <= n,
-                                };
-                                if matches == negative {
-                                    continue;
-                                }
+                        Type::Tuple(tup) => {
+                            if narrow_len_for_tuples(n, &tup.args, negative, kind, |t| {
+                                out.union_in_place(t)
+                            }) {
+                                continue;
                             }
-                            TupleArgs::ArbitraryLen(t) => {
-                                let mut invert = false;
-                                let element_count = match kind {
-                                    LenNarrowing::Equals => None,
-                                    LenNarrowing::GreaterThan => {
-                                        invert = true;
-                                        Some(n as isize)
-                                    }
-                                    LenNarrowing::LowerThan => Some(n as isize - 1),
-                                    LenNarrowing::GreaterEquals => {
-                                        invert = true;
-                                        Some(n as isize - 1)
-                                    }
-                                    LenNarrowing::LowerEquals => Some(n as isize),
-                                };
-                                let as_repeated_t =
-                                    |n| std::iter::repeat_with(|| (**t).clone()).take(n).collect();
-                                let mut add_tuple_of_len = |n| {
-                                    out.union_in_place(Type::Tuple(Tuple::new_fixed_length(
-                                        as_repeated_t(n),
-                                    )));
-                                };
-                                if n <= MAX_PRECISE_TUPLE_SIZE {
-                                    if let Some(element_count) = element_count {
-                                        if let Ok(count) =
-                                            <isize as TryInto<usize>>::try_into(element_count)
-                                        {
-                                            if invert == negative {
-                                                for i in 0..count + 1 {
-                                                    add_tuple_of_len(i);
-                                                }
-                                            } else {
-                                                out.union_in_place(Type::Tuple(Tuple::new(
-                                                    TupleArgs::WithUnpack(WithUnpack {
-                                                        before: as_repeated_t(count + 1),
-                                                        unpack: TupleUnpack::ArbitraryLen(
-                                                            (**t).clone(),
-                                                        ),
-                                                        after: Rc::new([]),
-                                                    }),
-                                                )));
-                                            }
-                                            continue;
-                                        } else if invert == negative {
-                                            // This leads to unreachable, because the
-                                            // len(...) < 0 does never exist.
-                                            continue;
-                                        }
-                                    } else {
-                                        if negative == invert {
-                                            add_tuple_of_len(n);
-                                            continue;
-                                        }
-                                    }
-                                }
-                            }
-                            TupleArgs::WithUnpack(_) => todo!(),
-                        },
+                        }
                         _ => (),
                     }
                     out.union_in_place(part_t.clone())
@@ -2088,4 +2024,77 @@ fn narrow_len(
         }
     }
     None
+}
+
+fn narrow_len_for_tuples(
+    n: usize,
+    tuple_args: &TupleArgs,
+    negative: bool,
+    kind: LenNarrowing,
+    mut add_type: impl FnMut(Type),
+) -> bool {
+    match tuple_args {
+        TupleArgs::FixedLen(ts) => {
+            let len = ts.len();
+            let matches = match kind {
+                LenNarrowing::Equals => len == n,
+                LenNarrowing::GreaterThan => len > n,
+                LenNarrowing::LowerThan => len < n,
+                LenNarrowing::GreaterEquals => len >= n,
+                LenNarrowing::LowerEquals => len <= n,
+            };
+            if matches == negative {
+                return true;
+            }
+        }
+        TupleArgs::ArbitraryLen(t) => {
+            let mut invert = false;
+            let element_count = match kind {
+                LenNarrowing::Equals => None,
+                LenNarrowing::GreaterThan => {
+                    invert = true;
+                    Some(n as isize)
+                }
+                LenNarrowing::LowerThan => Some(n as isize - 1),
+                LenNarrowing::GreaterEquals => {
+                    invert = true;
+                    Some(n as isize - 1)
+                }
+                LenNarrowing::LowerEquals => Some(n as isize),
+            };
+            let as_repeated_t = |n| std::iter::repeat_with(|| (**t).clone()).take(n).collect();
+            let mut add_tuple_of_len = |n| {
+                add_type(Type::Tuple(Tuple::new_fixed_length(as_repeated_t(n))));
+            };
+            if n <= MAX_PRECISE_TUPLE_SIZE {
+                if let Some(element_count) = element_count {
+                    if let Ok(count) = <isize as TryInto<usize>>::try_into(element_count) {
+                        if invert == negative {
+                            for i in 0..count + 1 {
+                                add_tuple_of_len(i);
+                            }
+                        } else {
+                            add_type(Type::Tuple(Tuple::new(TupleArgs::WithUnpack(WithUnpack {
+                                before: as_repeated_t(count + 1),
+                                unpack: TupleUnpack::ArbitraryLen((**t).clone()),
+                                after: Rc::new([]),
+                            }))));
+                        }
+                        return true;
+                    } else if invert == negative {
+                        // This leads to unreachable, because the
+                        // len(...) < 0 does never exist.
+                        return true;
+                    }
+                } else {
+                    if negative == invert {
+                        add_tuple_of_len(n);
+                        return true;
+                    }
+                }
+            }
+        }
+        TupleArgs::WithUnpack(_) => todo!(),
+    }
+    false
 }
