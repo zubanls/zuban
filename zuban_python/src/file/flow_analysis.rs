@@ -1102,7 +1102,7 @@ impl Inference<'_, '_, '_> {
                             &inf,
                             &mut right_infos.parent_unions,
                             &left_infos.inf,
-                            LenNarrowing::from_operand(operation.infos.operand),
+                            LenNarrowing::from_operand(operation.infos.operand).invert(),
                         );
                     }
 
@@ -1969,6 +1969,16 @@ impl LenNarrowing {
             _ => unreachable!(),
         }
     }
+
+    fn invert(self) -> Self {
+        match self {
+            Self::Equals => Self::Equals,
+            Self::GreaterThan => Self::LowerThan,
+            Self::LowerThan => Self::GreaterThan,
+            Self::GreaterEquals => Self::LowerEquals,
+            Self::LowerEquals => Self::GreaterEquals,
+        }
+    }
 }
 
 fn narrow_len(
@@ -2012,12 +2022,12 @@ fn narrow_len(
                                         invert = true;
                                         Some(n as isize)
                                     }
-                                    LenNarrowing::LowerThan => Some(n as isize),
+                                    LenNarrowing::LowerThan => Some(n as isize - 1),
                                     LenNarrowing::GreaterEquals => {
                                         invert = true;
-                                        Some(n as isize + 1)
+                                        Some(n as isize - 1)
                                     }
-                                    LenNarrowing::LowerEquals => Some(n as isize + 1),
+                                    LenNarrowing::LowerEquals => Some(n as isize),
                                 };
                                 let as_repeated_t =
                                     |n| std::iter::repeat_with(|| (**t).clone()).take(n).collect();
@@ -2031,28 +2041,29 @@ fn narrow_len(
                                         if let Ok(count) =
                                             <isize as TryInto<usize>>::try_into(element_count)
                                         {
-                                            // TODO test invert
                                             if invert == negative {
-                                                for i in 0..count {
+                                                for i in 0..count + 1 {
                                                     add_tuple_of_len(i);
                                                 }
                                             } else {
                                                 out.union_in_place(Type::Tuple(Tuple::new(
                                                     TupleArgs::WithUnpack(WithUnpack {
-                                                        before: as_repeated_t(n),
+                                                        before: as_repeated_t(count + 1),
                                                         unpack: TupleUnpack::ArbitraryLen(
                                                             (**t).clone(),
                                                         ),
                                                         after: Rc::new([]),
                                                     }),
-                                                )))
+                                                )));
                                             }
-                                        } else {
-                                            todo!()
+                                            continue;
+                                        } else if invert == negative {
+                                            // This leads to unreachable, because the
+                                            // len(...) < 0 does never exist.
+                                            continue;
                                         }
-                                        continue;
                                     } else {
-                                        if !negative {
+                                        if negative == invert {
                                             add_tuple_of_len(n);
                                             continue;
                                         }

@@ -28,3 +28,75 @@ if 2 == len(x):
     reveal_type(x) # N: Revealed type is "Tuple[int, int]"
 else:
     reveal_type(x) # N: Revealed type is "Tuple[int, int, int]"
+
+[case narrow_unreachable_len1]
+# flags: --warn-unreachable --mypy-compatible
+from typing import Tuple
+
+x: Tuple[int, ...]
+if str():
+    if len(x) >= 0:
+        reveal_type(x)  # N: Revealed type is "tuple[int, ...]"
+    else:
+        reveal_type(x)  # E: Statement is unreachable
+
+if str():
+    if len(x) <= 0:
+        reveal_type(x)  # N: Revealed type is "tuple[()]"
+    else:
+        reveal_type(x)  # N: Revealed type is "tuple[int, Unpack[Tuple[int, ...]]]"
+
+if str():
+    if 0 >= len(x):
+        reveal_type(x)  # N: Revealed type is "tuple[()]"
+    else:
+        reveal_type(x)  # N: Revealed type is "tuple[int, Unpack[Tuple[int, ...]]]"
+
+if str():
+    if len(x) <= 1:
+        reveal_type(x)  # N: Revealed type is "tuple[()] | tuple[int]"
+    else:
+        reveal_type(x)  # N: Revealed type is "tuple[int, int, Unpack[tuple[int, ...]]]"
+
+if str():
+    if 1 >= len(x):
+        reveal_type(x)  # N: Revealed type is "tuple[()] | tuple[int]"
+    else:
+        reveal_type(x)  # N: Revealed type is "tuple[int, int, Unpack[tuple[int, ...]]]"
+
+
+[case narrow_unreachable_len2]
+# flags: --warn-unreachable --mypy-compatible
+from typing import Tuple
+
+x: Tuple[int, ...]
+
+if str():
+    if 0 > len(x):
+        reveal_type(x)  # E: Statement is unreachable
+    else:
+        reveal_type(x)  # N: Revealed type is "tuple[int, ...]"
+
+if str():
+    if 1 > len(x):
+        reveal_type(x)  # N: Revealed type is "tuple[()]"
+    else:
+        reveal_type(x)  # N: Revealed type is "tuple[int, Unpack[Tuple[int, ...]]]"
+
+if str():
+    if 2 > len(x):
+        reveal_type(x)  # N: Revealed type is "tuple[()] | tuple[int]"
+    else:
+        reveal_type(x)  # N: Revealed type is "tuple[int, int, Unpack[tuple[int, ...]]]"
+
+if str():
+    if 0 < len(x):
+        reveal_type(x)  # N: Revealed type is "tuple[int, Unpack[Tuple[int, ...]]]"
+    else:
+        reveal_type(x)  # N: Revealed type is "tuple[()]"
+
+if str():
+    if len(x) < 0:
+        reveal_type(x)  # E: Statement is unreachable
+    else:
+        reveal_type(x)  # N: Revealed type is "tuple[int, ...]"
