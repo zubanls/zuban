@@ -1048,16 +1048,16 @@ impl Inference<'_, '_, '_> {
                         iterator.next();
                     }
                     if eq_chain.is_empty() {
-                        self.find_comparison_guards(left_infos, &right_infos, true)
+                        find_comparison_guards(self.i_s, left_infos, &right_infos, true)
                     } else {
-                        let result = self.find_comparison_chain_guards(&eq_chain, true);
+                        let result = find_comparison_chain_guards(self.i_s, &eq_chain, true);
                         right_infos = eq_chain.into_iter().last().unwrap();
                         result
                     }
                 }
                 ComparisonContent::NotEquals(..) => {
                     invert = true;
-                    self.find_comparison_guards(left_infos, &right_infos, true)
+                    find_comparison_guards(self.i_s, left_infos, &right_infos, true)
                 }
                 ComparisonContent::Is(..) => {
                     let mut is_chain = vec![];
@@ -1071,16 +1071,16 @@ impl Inference<'_, '_, '_> {
                         iterator.next();
                     }
                     if is_chain.is_empty() {
-                        self.find_comparison_guards(left_infos, &right_infos, false)
+                        find_comparison_guards(self.i_s, left_infos, &right_infos, false)
                     } else {
-                        let result = self.find_comparison_chain_guards(&is_chain, false);
+                        let result = find_comparison_chain_guards(self.i_s, &is_chain, false);
                         right_infos = is_chain.into_iter().last().unwrap();
                         result
                     }
                 }
                 ComparisonContent::IsNot(..) => {
                     invert = true;
-                    self.find_comparison_guards(left_infos, &right_infos, false)
+                    find_comparison_guards(self.i_s, left_infos, &right_infos, false)
                 }
                 ComparisonContent::In(left, op, _) | ComparisonContent::NotIn(left, op, _) => {
                     Some(self.guard_of_in_operator(op, left_infos, &right_infos))
@@ -1330,42 +1330,6 @@ impl Inference<'_, '_, '_> {
             */
             _ => None,
         }
-    }
-
-    fn find_comparison_guards(
-        &mut self,
-        left: ComparisonPartInfos,
-        right: &ComparisonPartInfos,
-        is_eq: bool,
-    ) -> Option<FramesWithParentUnions> {
-        let i_s = self.i_s;
-        if let Some(result) = check_for_comparison_guard(i_s, &left, &right.inf, is_eq) {
-            return Some(result);
-        }
-        if let Some(result) = check_for_comparison_guard(i_s, right, &left.inf, is_eq) {
-            return Some(result);
-        }
-        None
-    }
-
-    fn find_comparison_chain_guards(
-        &mut self,
-        chain: &[ComparisonPartInfos],
-        is_eq: bool,
-    ) -> Option<FramesWithParentUnions> {
-        let mut frames = None;
-        'outer: for (i, part1) in chain.iter().enumerate() {
-            for (k, part2) in chain.iter().enumerate() {
-                if i == k {
-                    continue;
-                }
-                if let Some(new) = check_for_comparison_guard(self.i_s, part1, &part2.inf, is_eq) {
-                    frames = Some(merge_conjunction(self.i_s, frames, new));
-                    continue 'outer;
-                }
-            }
-        }
-        frames
     }
 
     fn guard_of_in_operator(
@@ -1842,6 +1806,41 @@ fn removed_optional(db: &Database, full: &Type) -> Option<Type> {
         }
     }
     None
+}
+
+fn find_comparison_guards(
+    i_s: &InferenceState,
+    left: ComparisonPartInfos,
+    right: &ComparisonPartInfos,
+    is_eq: bool,
+) -> Option<FramesWithParentUnions> {
+    if let Some(result) = check_for_comparison_guard(i_s, &left, &right.inf, is_eq) {
+        return Some(result);
+    }
+    if let Some(result) = check_for_comparison_guard(i_s, right, &left.inf, is_eq) {
+        return Some(result);
+    }
+    None
+}
+
+fn find_comparison_chain_guards(
+    i_s: &InferenceState,
+    chain: &[ComparisonPartInfos],
+    is_eq: bool,
+) -> Option<FramesWithParentUnions> {
+    let mut frames = None;
+    'outer: for (i, part1) in chain.iter().enumerate() {
+        for (k, part2) in chain.iter().enumerate() {
+            if i == k {
+                continue;
+            }
+            if let Some(new) = check_for_comparison_guard(i_s, part1, &part2.inf, is_eq) {
+                frames = Some(merge_conjunction(i_s, frames, new));
+                continue 'outer;
+            }
+        }
+    }
+    frames
 }
 
 fn check_for_comparison_guard(
