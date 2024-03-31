@@ -1176,9 +1176,9 @@ testOptionalTypeNarrowedInBooleanStatement
 testOrCases
 testAndCases
 testIsinstanceShortcircuit
-# Narrowing __bool__ / __len__
 testFinalWithoutBool
 testFinalWithoutBoolButWithLen
+# Narrowing __bool__ / __len__
 testNarrowingLenAnyListElseNotAffected
 testNarrowingLenMultiple
 testNarrowingLenBothSidesHomogeneousTuple

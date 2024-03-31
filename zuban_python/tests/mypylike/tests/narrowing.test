@@ -127,3 +127,10 @@ if len(x) == 2:
     reveal_type(x)  # N: Revealed type is "Tuple[Any, Any, fallback=__main__.Point2D]"
 else:
     reveal_type(x)  # N: Revealed type is "Tuple[Any, Any, Any, fallback=__main__.Point3D]"
+
+[case narrowing_type_of_other_side]
+x: Any
+if int == type(x):
+    reveal_type(x)  # N: Revealed type is "int"
+else:
+    reveal_type(x)  # N: Revealed type is "Any"

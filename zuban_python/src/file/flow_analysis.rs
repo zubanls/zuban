@@ -1339,106 +1339,11 @@ impl Inference<'_, '_, '_> {
         is_eq: bool,
     ) -> Option<FramesWithParentUnions> {
         let i_s = self.i_s;
-        match left.key {
-            Some(ComparisonKey::Normal(key)) => {
-                // Narrow Foo in `Foo is None`
-                if let Some((truthy, falsey)) = narrow_is_or_eq(
-                    i_s,
-                    key,
-                    &left.inf.as_cow_type(i_s),
-                    &right.inf.as_cow_type(i_s),
-                    is_eq,
-                ) {
-                    return Some(FramesWithParentUnions {
-                        truthy,
-                        falsey,
-                        parent_unions: left.parent_unions,
-                    });
-                }
-            }
-            Some(ComparisonKey::TypeOf { key, inf }) => {
-                if let Type::Type(base_truthy) = right.inf.as_cow_type(i_s).as_ref() {
-                    let mut truthy = (**base_truthy).clone();
-                    let is_final = match &truthy {
-                        Type::Class(c) => {
-                            if c.class(i_s.db).is_metaclass(i_s.db) {
-                                // For now ignore this, Mypy has only very few tests about this.
-                                return None;
-                            }
-                            c.class(i_s.db).use_cached_class_infos(i_s.db).is_final
-                        }
-                        _ => false,
-                    };
-                    let inf_t = inf.as_cow_type(i_s);
-                    if !truthy.is_simple_sub_type_of(i_s, &inf_t).bool() {
-                        truthy = Type::Never;
-                    }
-                    return Some(FramesWithParentUnions {
-                        truthy: Frame::from_type(key.clone(), truthy),
-                        falsey: match is_final {
-                            true => Frame::from_type(
-                                key,
-                                inf_t.retain_in_union(|t| {
-                                    !t.is_simple_same_type(i_s, base_truthy).bool()
-                                }),
-                            ),
-                            false => Frame::default(),
-                        },
-                        parent_unions: left.parent_unions,
-                    });
-                }
-            }
-            Some(ComparisonKey::Len { key, inf }) => {
-                let result = narrow_len(
-                    i_s,
-                    &key,
-                    &inf,
-                    &mut left.parent_unions,
-                    &right.inf,
-                    LenNarrowing::Equals,
-                );
-                if result.is_some() {
-                    return result;
-                }
-            }
-            None => (),
+        if let Some(result) = check_for_comparison_guard(i_s, &mut left, &right.inf, is_eq) {
+            return Some(result);
         }
-        match &right.key {
-            Some(ComparisonKey::Normal(key)) => {
-                // Narrow Foo in `None is Foo`
-                if let Some((truthy, falsey)) = narrow_is_or_eq(
-                    i_s,
-                    key.clone(),
-                    &right.inf.as_cow_type(i_s),
-                    &left.inf.as_cow_type(i_s),
-                    is_eq,
-                ) {
-                    return Some(FramesWithParentUnions {
-                        truthy,
-                        falsey,
-                        // Taking it here is fine, because we don't want these to be duplicated
-                        // entries from different comparisons
-                        parent_unions: std::mem::take(&mut right.parent_unions),
-                    });
-                }
-            }
-            Some(ComparisonKey::TypeOf { key, inf }) => {
-                todo!()
-            }
-            Some(ComparisonKey::Len { key, inf }) => {
-                let result = narrow_len(
-                    i_s,
-                    &key,
-                    &inf,
-                    &mut right.parent_unions,
-                    &left.inf,
-                    LenNarrowing::Equals,
-                );
-                if result.is_some() {
-                    return result;
-                }
-            }
-            None => (),
+        if let Some(result) = check_for_comparison_guard(i_s, right, &left.inf, is_eq) {
+            return Some(result);
         }
         None
     }
@@ -1950,6 +1855,73 @@ fn removed_optional(db: &Database, full: &Type) -> Option<Type> {
         }
     }
     None
+}
+
+fn check_for_comparison_guard(
+    i_s: &InferenceState,
+    checking_side: &mut ComparisonPartInfos,
+    other_side_inf: &Inferred,
+    is_eq: bool,
+) -> Option<FramesWithParentUnions> {
+    match checking_side.key.as_ref()? {
+        ComparisonKey::Normal(key) => {
+            // Narrow Foo in `Foo is None`
+            let (truthy, falsey) = narrow_is_or_eq(
+                i_s,
+                key.clone(),
+                &checking_side.inf.as_cow_type(i_s),
+                &other_side_inf.as_cow_type(i_s),
+                is_eq,
+            )?;
+            Some(FramesWithParentUnions {
+                truthy,
+                falsey,
+                parent_unions: std::mem::take(&mut checking_side.parent_unions),
+            })
+        }
+        ComparisonKey::TypeOf { key, inf } => {
+            if let Type::Type(base_truthy) = other_side_inf.as_cow_type(i_s).as_ref() {
+                let mut truthy = (**base_truthy).clone();
+                let is_final = match &truthy {
+                    Type::Class(c) => {
+                        if c.class(i_s.db).is_metaclass(i_s.db) {
+                            // For now ignore this, Mypy has only very few tests about this.
+                            return None;
+                        }
+                        c.class(i_s.db).use_cached_class_infos(i_s.db).is_final
+                    }
+                    _ => false,
+                };
+                let inf_t = inf.as_cow_type(i_s);
+                if !truthy.is_simple_sub_type_of(i_s, &inf_t).bool() {
+                    truthy = Type::Never;
+                }
+                Some(FramesWithParentUnions {
+                    truthy: Frame::from_type(key.clone(), truthy),
+                    falsey: match is_final {
+                        true => Frame::from_type(
+                            key.clone(),
+                            inf_t.retain_in_union(|t| {
+                                !t.is_simple_same_type(i_s, base_truthy).bool()
+                            }),
+                        ),
+                        false => Frame::default(),
+                    },
+                    parent_unions: std::mem::take(&mut checking_side.parent_unions),
+                })
+            } else {
+                None
+            }
+        }
+        ComparisonKey::Len { key, inf } => Some(narrow_len(
+            i_s,
+            &key,
+            &inf,
+            &mut checking_side.parent_unions,
+            &other_side_inf,
+            LenNarrowing::Equals,
+        )?),
+    }
 }
 
 #[derive(Copy, Clone)]
