@@ -15,8 +15,8 @@ use crate::{
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
     matching::{
-        AvoidRecursionFor, FormatData, Generics, IteratorContent, LookupResult, OnTypeError,
-        ResultContext,
+        AvoidRecursionFor, FormatData, Generics, IteratorContent, LookupKind, LookupResult,
+        OnTypeError, ResultContext,
     },
     new_class,
     node_ref::NodeRef,
@@ -146,7 +146,7 @@ impl NamedTuple {
         name: &str,
         from_type: bool,
         as_self: Option<&dyn Fn() -> Type>,
-    ) -> LookupDetails {
+    ) -> LookupDetails<'static> {
         let mut attr_kind = AttributeKind::Attribute;
         let type_ = match name {
             "__new__" => Type::Callable(self.__new__.clone()),
@@ -269,16 +269,25 @@ impl NamedTuple {
         name: &str,
         as_self: Option<&dyn Fn() -> Type>,
     ) -> LookupDetails {
+        // TODO use or_else like in lookups
         self.lookup_internal(i_s, name, true, as_self)
     }
 
-    pub fn lookup(
+    pub(crate) fn lookup<'a>(
         &self,
-        i_s: &InferenceState,
+        i_s: &'a InferenceState,
+        add_issue: &dyn Fn(IssueType),
         name: &str,
         as_self: Option<&dyn Fn() -> Type>,
-    ) -> LookupDetails {
+    ) -> LookupDetails<'a> {
         self.lookup_internal(i_s, name, false, as_self)
+            .or_else(move || {
+                i_s.db
+                    .python_state
+                    .typing_named_tuple_class()
+                    .instance()
+                    .lookup_with_details(i_s, add_issue, name, LookupKind::Normal)
+            })
     }
 }
 

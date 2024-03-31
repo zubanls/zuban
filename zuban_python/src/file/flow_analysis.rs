@@ -2008,6 +2008,14 @@ fn narrow_len(
                                 continue;
                             }
                         }
+                        Type::NamedTuple(nt) => {
+                            let TupleArgs::FixedLen(tup_args) = &nt.as_tuple_ref().args else {
+                                unreachable!();
+                            };
+                            if matches_fixed_len_tuple_len(tup_args, n, kind) == negative {
+                                continue;
+                            }
+                        }
                         _ => (),
                     }
                     out.union_in_place(part_t.clone())
@@ -2026,6 +2034,17 @@ fn narrow_len(
     None
 }
 
+fn matches_fixed_len_tuple_len(ts: &[Type], n: usize, kind: LenNarrowing) -> bool {
+    let len = ts.len();
+    match kind {
+        LenNarrowing::Equals => len == n,
+        LenNarrowing::GreaterThan => len > n,
+        LenNarrowing::LowerThan => len < n,
+        LenNarrowing::GreaterEquals => len >= n,
+        LenNarrowing::LowerEquals => len <= n,
+    }
+}
+
 fn narrow_len_for_tuples(
     n: usize,
     tuple_args: &TupleArgs,
@@ -2035,15 +2054,7 @@ fn narrow_len_for_tuples(
 ) -> bool {
     match tuple_args {
         TupleArgs::FixedLen(ts) => {
-            let len = ts.len();
-            let matches = match kind {
-                LenNarrowing::Equals => len == n,
-                LenNarrowing::GreaterThan => len > n,
-                LenNarrowing::LowerThan => len < n,
-                LenNarrowing::GreaterEquals => len >= n,
-                LenNarrowing::LowerEquals => len <= n,
-            };
-            if matches == negative {
+            if matches_fixed_len_tuple_len(ts, n, kind) == negative {
                 return true;
             }
         }

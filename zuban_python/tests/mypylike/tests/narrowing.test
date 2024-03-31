@@ -100,3 +100,30 @@ if str():
         reveal_type(x)  # E: Statement is unreachable
     else:
         reveal_type(x)  # N: Revealed type is "tuple[int, ...]"
+
+[case narrowing_named_tuple_calls1]
+# Like testNarrowingLenUnionOfNamedTuples, but with direct calls instead of classes
+from typing import NamedTuple, Union
+
+Point2D = NamedTuple("Point2D", [('x', int), ('y', int)])
+Point3D = NamedTuple("Point3D", [('x', int), ('y', int), ('z', int)])
+
+x: Union[Point2D, Point3D]
+if len(x) == 2:
+    reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, builtins.int, fallback=__main__.Point2D]"
+else:
+    reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, builtins.int, builtins.int, fallback=__main__.Point3D]"
+
+[case narrowing_named_tuple_calls2]
+# Like testNarrowingLenUnionOfNamedTuples, but with direct calls instead of classes
+from typing import NamedTuple, Union
+from collections import namedtuple
+
+Point2D = namedtuple("Point2D", ['x', 'y'])
+Point3D = namedtuple("Point3D", ['x', 'y', 'z'])
+
+x: Union[Point2D, Point3D]
+if len(x) == 2:
+    reveal_type(x)  # N: Revealed type is "Tuple[Any, Any, fallback=__main__.Point2D]"
+else:
+    reveal_type(x)  # N: Revealed type is "Tuple[Any, Any, Any, fallback=__main__.Point3D]"

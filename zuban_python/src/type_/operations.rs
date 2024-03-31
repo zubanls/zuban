@@ -240,7 +240,10 @@ impl Type {
                 self,
                 lookup_on_typed_dict(td.clone(), i_s, add_issue, name, kind),
             ),
-            Type::NamedTuple(nt) => callable(self, nt.lookup(i_s, name, Some(&|| self.clone()))),
+            Type::NamedTuple(nt) => callable(
+                self,
+                nt.lookup(i_s, add_issue, name, Some(&|| self.clone())),
+            ),
             Type::Never => (),
             Type::NewType(new_type) => new_type.type_(i_s).run_after_lookup_on_each_union_member(
                 i_s,
