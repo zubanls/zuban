@@ -1273,8 +1273,6 @@ testHasAttrMissingAttributeUnion
 testHasAttrMissingAttributeOuterUnion
 testHasAttrMissingAttributeLiteral
 testHasAttrModule
-# type(foo) = int narrowing
-testMultipleTypeEqualsCheck
 
 # NoReturn
 testNoReturnTypeAlias

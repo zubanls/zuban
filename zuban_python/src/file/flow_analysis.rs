@@ -1868,6 +1868,10 @@ fn check_for_comparison_guard(
         ComparisonKey::TypeOf { key, inf } => {
             if let Type::Type(base_truthy) = other_side_inf.as_cow_type(i_s).as_ref() {
                 let mut truthy = (**base_truthy).clone();
+                if matches!(base_truthy.as_ref(), Type::Any(_)) {
+                    // Narrowing to Any has no value and will only worsen type information.
+                    return None;
+                }
                 let is_final = match &truthy {
                     Type::Class(c) => {
                         if c.class(i_s.db).is_metaclass(i_s.db) {
