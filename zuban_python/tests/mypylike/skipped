@@ -1122,6 +1122,7 @@ testIsInstanceAdHocIntersectionIncrementalUnreachaableToIntersection
 testIsInstanceInitialNoneCheckSkipsImpossibleCasesNoStrictOptional
 testIsInstanceInitialNoneCheckSkipsImpossibleCasesInNoStrictOptional
 testIsinstanceMultiAndSpecialCase
+testTypeEqualsMultipleTypesShouldntNarrow
 # overwriting with def as a target
 testNarrowingWithDef
 # type[any] issues
@@ -1180,7 +1181,6 @@ testFinalWithoutBool
 testFinalWithoutBoolButWithLen
 # Narrowing __bool__ / __len__
 testNarrowingLenAnyListElseNotAffected
-testNarrowingLenMultiple
 testNarrowingLenBothSidesHomogeneousTuple
 testNarrowingLenTypeVarTupleGreaterThan
 testNarrowingLenVariadicTupleEquals

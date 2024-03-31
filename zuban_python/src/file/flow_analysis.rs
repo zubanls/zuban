@@ -1048,7 +1048,7 @@ impl Inference<'_, '_, '_> {
                         iterator.next();
                     }
                     if eq_chain.is_empty() {
-                        self.find_comparison_guards(left_infos, &mut right_infos, true)
+                        self.find_comparison_guards(left_infos, &right_infos, true)
                     } else {
                         let result = self.find_comparison_chain_guards(&eq_chain, true);
                         right_infos = eq_chain.into_iter().last().unwrap();
@@ -1057,7 +1057,7 @@ impl Inference<'_, '_, '_> {
                 }
                 ComparisonContent::NotEquals(..) => {
                     invert = true;
-                    self.find_comparison_guards(left_infos, &mut right_infos, true)
+                    self.find_comparison_guards(left_infos, &right_infos, true)
                 }
                 ComparisonContent::Is(..) => {
                     let mut is_chain = vec![];
@@ -1071,7 +1071,7 @@ impl Inference<'_, '_, '_> {
                         iterator.next();
                     }
                     if is_chain.is_empty() {
-                        self.find_comparison_guards(left_infos, &mut right_infos, false)
+                        self.find_comparison_guards(left_infos, &right_infos, false)
                     } else {
                         let result = self.find_comparison_chain_guards(&is_chain, false);
                         right_infos = is_chain.into_iter().last().unwrap();
@@ -1080,10 +1080,10 @@ impl Inference<'_, '_, '_> {
                 }
                 ComparisonContent::IsNot(..) => {
                     invert = true;
-                    self.find_comparison_guards(left_infos, &mut right_infos, false)
+                    self.find_comparison_guards(left_infos, &right_infos, false)
                 }
                 ComparisonContent::In(left, op, _) | ComparisonContent::NotIn(left, op, _) => {
-                    Some(self.guard_of_in_operator(op, left_infos, &mut right_infos))
+                    Some(self.guard_of_in_operator(op, left_infos, &right_infos))
                 }
                 ComparisonContent::Ordering(operation) => {
                     let mut result = None;
@@ -1092,7 +1092,7 @@ impl Inference<'_, '_, '_> {
                             self.i_s,
                             &key,
                             &inf,
-                            &mut left_infos.parent_unions,
+                            &left_infos.parent_unions,
                             &right_infos.inf,
                             LenNarrowing::from_operand(operation.infos.operand),
                         );
@@ -1101,7 +1101,7 @@ impl Inference<'_, '_, '_> {
                             self.i_s,
                             &key,
                             &inf,
-                            &mut right_infos.parent_unions,
+                            &right_infos.parent_unions,
                             &left_infos.inf,
                             LenNarrowing::from_operand(operation.infos.operand).invert(),
                         );
@@ -1334,12 +1334,12 @@ impl Inference<'_, '_, '_> {
 
     fn find_comparison_guards(
         &mut self,
-        mut left: ComparisonPartInfos,
-        right: &mut ComparisonPartInfos,
+        left: ComparisonPartInfos,
+        right: &ComparisonPartInfos,
         is_eq: bool,
     ) -> Option<FramesWithParentUnions> {
         let i_s = self.i_s;
-        if let Some(result) = check_for_comparison_guard(i_s, &mut left, &right.inf, is_eq) {
+        if let Some(result) = check_for_comparison_guard(i_s, &left, &right.inf, is_eq) {
             return Some(result);
         }
         if let Some(result) = check_for_comparison_guard(i_s, right, &left.inf, is_eq) {
@@ -1359,23 +1359,9 @@ impl Inference<'_, '_, '_> {
                 if i == k {
                     continue;
                 }
-                if let Some(ComparisonKey::Normal(key)) = &part1.key {
-                    if let Some((truthy, falsey)) = narrow_is_or_eq(
-                        self.i_s,
-                        key.clone(),
-                        &part1.inf.as_cow_type(self.i_s),
-                        &part2.inf.as_cow_type(self.i_s),
-                        is_eq,
-                    ) {
-                        let new = FramesWithParentUnions {
-                            truthy,
-                            falsey,
-                            // TODO couldn't we avoid this clone?
-                            parent_unions: part1.parent_unions.clone(),
-                        };
-                        frames = Some(merge_conjunction(self.i_s, frames, new));
-                        continue 'outer;
-                    }
+                if let Some(new) = check_for_comparison_guard(self.i_s, part1, &part2.inf, is_eq) {
+                    frames = Some(merge_conjunction(self.i_s, frames, new));
+                    continue 'outer;
                 }
             }
         }
@@ -1386,7 +1372,7 @@ impl Inference<'_, '_, '_> {
         &mut self,
         op: Operand,
         left: ComparisonPartInfos,
-        right: &mut ComparisonPartInfos,
+        right: &ComparisonPartInfos,
     ) -> FramesWithParentUnions {
         self.infer_in_operator(NodeRef::new(self.file, op.index()), &left.inf, &right.inf);
         let maybe_invert = |truthy, falsey, parent_unions| {
@@ -1414,7 +1400,7 @@ impl Inference<'_, '_, '_> {
                             return maybe_invert(
                                 Frame::from_type(left_key, t),
                                 Frame::default(),
-                                left.parent_unions,
+                                left.parent_unions.into_inner(),
                             );
                         }
                     }
@@ -1476,7 +1462,7 @@ impl Inference<'_, '_, '_> {
                         Frame::from_type(right_key.clone(), false_types),
                         // Taking it here is fine, because we don't want these to be duplicated
                         // entries from different comparisons
-                        std::mem::take(&mut right.parent_unions),
+                        std::mem::take(&mut right.parent_unions.borrow_mut()),
                     );
                 }
             }
@@ -1724,7 +1710,7 @@ impl Inference<'_, '_, '_> {
                             true => ComparisonKey::Len { key, inf },
                         }),
                         inf: full_inf,
-                        parent_unions: with_key.parent_unions,
+                        parent_unions: RefCell::new(with_key.parent_unions),
                     }
                 })
             };
@@ -1742,7 +1728,7 @@ impl Inference<'_, '_, '_> {
             ComparisonPartInfos {
                 key: k.key.map(|k| ComparisonKey::Normal(k)),
                 inf: k.inf,
-                parent_unions: k.parent_unions,
+                parent_unions: RefCell::new(k.parent_unions),
             }
         })
     }
@@ -1794,7 +1780,8 @@ enum ComparisonKey {
 struct ComparisonPartInfos {
     key: Option<ComparisonKey>,
     inf: Inferred,
-    parent_unions: ParentUnions,
+    // This is a RefCell to be able to take it out of the comparison part infos easily
+    parent_unions: RefCell<ParentUnions>,
 }
 
 #[derive(Default)]
@@ -1859,7 +1846,7 @@ fn removed_optional(db: &Database, full: &Type) -> Option<Type> {
 
 fn check_for_comparison_guard(
     i_s: &InferenceState,
-    checking_side: &mut ComparisonPartInfos,
+    checking_side: &ComparisonPartInfos,
     other_side_inf: &Inferred,
     is_eq: bool,
 ) -> Option<FramesWithParentUnions> {
@@ -1876,7 +1863,7 @@ fn check_for_comparison_guard(
             Some(FramesWithParentUnions {
                 truthy,
                 falsey,
-                parent_unions: std::mem::take(&mut checking_side.parent_unions),
+                parent_unions: std::mem::take(&mut checking_side.parent_unions.borrow_mut()),
             })
         }
         ComparisonKey::TypeOf { key, inf } => {
@@ -1907,7 +1894,7 @@ fn check_for_comparison_guard(
                         ),
                         false => Frame::default(),
                     },
-                    parent_unions: std::mem::take(&mut checking_side.parent_unions),
+                    parent_unions: std::mem::take(&mut checking_side.parent_unions.borrow_mut()),
                 })
             } else {
                 None
@@ -1917,7 +1904,7 @@ fn check_for_comparison_guard(
             i_s,
             &key,
             &inf,
-            &mut checking_side.parent_unions,
+            &checking_side.parent_unions,
             &other_side_inf,
             LenNarrowing::Equals,
         )?),
@@ -1959,7 +1946,7 @@ fn narrow_len(
     i_s: &InferenceState,
     key: &FlowKey,
     inferred_type_param: &Inferred,
-    parent_unions: &mut ParentUnions,
+    parent_unions: &RefCell<ParentUnions>,
     other_inf: &Inferred,
     kind: LenNarrowing,
 ) -> Option<FramesWithParentUnions> {
@@ -2008,7 +1995,7 @@ fn narrow_len(
             return Some(FramesWithParentUnions {
                 truthy: Frame::from_type(key.clone(), truthy),
                 falsey: Frame::from_type(key.clone(), falsey),
-                parent_unions: std::mem::take(parent_unions),
+                parent_unions: std::mem::take(&mut parent_unions.borrow_mut()),
             });
         }
     }
