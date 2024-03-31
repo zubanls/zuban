@@ -1190,9 +1190,6 @@ testNarrowingLenBareExpressionTypeVarTuple
 testNarrowingLenBareExpressionWithNonePrecise
 testNarrowingLenMixWithAnyPrecise
 testNarrowingLenMixWithAnyImprecise
-testNarrowingLenTupleSubclass
-testNarrowingLenTupleSubclassCustomNotAllowed
-testNarrowingLenTupleSubclassPreciseNotAllowed
 testNarrowingLenUnionWithUnreachable
 # narrowing `in` weird overlapping. Mypy correct?
 testTupleOverlapDifferentTuples
@@ -2395,6 +2392,10 @@ testTypingExtensionsSuggestion
 
 # Probably won't support: invalid version numbers for # flags: --python-version 3.99
 testFeatureVersionSuggestion
+
+# Probably won't support: NamedTuple subclass narrowing, this won't be
+# supported, once PreciseTupleTypes is a complete feature.
+testNarrowingLenTupleSubclass
 
 # Probably won't support: typing._promote
 testListWithDucktypeCompatibility

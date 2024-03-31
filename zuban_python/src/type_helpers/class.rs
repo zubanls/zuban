@@ -41,9 +41,9 @@ use crate::{
         infer_typed_dict_total_argument, infer_value_on_member, AnyCause, CallableContent,
         CallableLike, CallableParam, CallableParams, ClassGenerics, Dataclass, DataclassOptions,
         DbString, Enum, EnumMemberDefinition, FormatStyle, FunctionKind, FunctionOverload,
-        GenericClass, GenericsList, NamedTuple, ParamType, StringSlice, Tuple, Type, TypeVarLike,
-        TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember, TypedDictMemberGatherer,
-        Variance,
+        GenericClass, GenericsList, NamedTuple, ParamType, StringSlice, Tuple, TupleArgs, Type,
+        TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypedDict, TypedDictMember,
+        TypedDictMemberGatherer, Variance,
     },
 };
 
@@ -1540,14 +1540,18 @@ impl<'db: 'a, 'a> Class<'a> {
                     for (_, type_or_class) in self.mro(format_data.db) {
                         if let TypeOrClass::Type(t) = type_or_class {
                             if let Type::Tuple(tup) = t.as_ref() {
-                                return tup.format_with_fallback(
-                                    format_data,
-                                    &format!(", fallback={result}"),
-                                );
+                                if matches!(
+                                    tup.args,
+                                    TupleArgs::FixedLen(_) | TupleArgs::WithUnpack(_)
+                                ) {
+                                    return tup.format_with_fallback(
+                                        format_data,
+                                        &format!(", fallback={result}"),
+                                    );
+                                }
                             }
                         }
                     }
-                    unreachable!()
                 }
                 _ => (),
             }
