@@ -2049,33 +2049,33 @@ fn narrow_len_for_tuples(
         }
         TupleArgs::ArbitraryLen(t) => {
             let mut invert = false;
-            let element_count = match kind {
+            let lower_than = match kind {
                 LenNarrowing::Equals => None,
                 LenNarrowing::GreaterThan => {
                     invert = true;
-                    Some(n as isize)
+                    Some(n + 1)
                 }
-                LenNarrowing::LowerThan => Some(n as isize - 1),
+                LenNarrowing::LowerThan => Some(n),
                 LenNarrowing::GreaterEquals => {
                     invert = true;
-                    Some(n as isize - 1)
+                    Some(n)
                 }
-                LenNarrowing::LowerEquals => Some(n as isize),
+                LenNarrowing::LowerEquals => Some(n + 1),
             };
             let as_repeated_t = |n| std::iter::repeat_with(|| (**t).clone()).take(n).collect();
             let mut add_tuple_of_len = |n| {
                 add_type(Type::Tuple(Tuple::new_fixed_length(as_repeated_t(n))));
             };
             if n <= MAX_PRECISE_TUPLE_SIZE {
-                if let Some(element_count) = element_count {
-                    if let Ok(count) = <isize as TryInto<usize>>::try_into(element_count) {
+                if let Some(lower_than) = lower_than {
+                    if lower_than > 0 {
                         if invert == negative {
-                            for i in 0..count + 1 {
+                            for i in 0..lower_than {
                                 add_tuple_of_len(i);
                             }
                         } else {
                             add_type(Type::Tuple(Tuple::new(TupleArgs::WithUnpack(WithUnpack {
-                                before: as_repeated_t(count + 1),
+                                before: as_repeated_t(lower_than),
                                 unpack: TupleUnpack::ArbitraryLen((**t).clone()),
                                 after: Rc::new([]),
                             }))));
