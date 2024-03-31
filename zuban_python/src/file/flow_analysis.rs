@@ -2094,7 +2094,27 @@ fn narrow_len_for_tuples(
                 }
             }
         }
-        TupleArgs::WithUnpack(_) => todo!(),
+        TupleArgs::WithUnpack(with_unpack) => {
+            let min_len = with_unpack.before.len() + with_unpack.after.len();
+            let mut invert = false;
+            let lower_than = match kind {
+                LenNarrowing::Equals => None,
+                LenNarrowing::GreaterThan => {
+                    invert = true;
+                    Some(n + 1)
+                }
+                LenNarrowing::LowerThan => Some(n),
+                LenNarrowing::GreaterEquals => {
+                    invert = true;
+                    Some(n)
+                }
+                LenNarrowing::LowerEquals => Some(n + 1),
+            };
+            if (lower_than.unwrap_or(n) <= min_len) && invert == negative {
+                // This is unreachable, so no type is added.
+                return true;
+            }
+        }
     }
     false
 }
