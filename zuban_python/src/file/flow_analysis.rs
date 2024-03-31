@@ -22,7 +22,8 @@ use crate::{
     node_ref::NodeRef,
     type_::{
         simplified_union_from_iterators, AnyCause, ClassGenerics, EnumMember, GenericItem, Literal,
-        LiteralKind, Tuple, TupleArgs, TupleUnpack, Type, TypeVarKind, UnionType, WithUnpack,
+        LiteralKind, NamedTuple, Tuple, TupleArgs, TupleUnpack, Type, TypeVarKind, UnionType,
+        WithUnpack,
     },
     type_helpers::{Class, Function},
 };
@@ -2009,11 +2010,19 @@ fn narrow_len(
                             }
                         }
                         Type::NamedTuple(nt) => {
-                            let TupleArgs::FixedLen(tup_args) = &nt.as_tuple_ref().args else {
-                                unreachable!();
-                            };
-                            if matches_fixed_len_tuple_len(tup_args, n, kind) == negative {
+                            if matches_fixed_len_namedtuple_len(nt, n, kind) == negative {
                                 continue;
+                            }
+                        }
+                        Type::Class(c) => {
+                            if let Some(nt) = c
+                                .class(i_s.db)
+                                .use_cached_class_infos(i_s.db)
+                                .maybe_named_tuple()
+                            {
+                                if matches_fixed_len_namedtuple_len(nt, n, kind) == negative {
+                                    continue;
+                                }
                             }
                         }
                         _ => (),
@@ -2032,6 +2041,13 @@ fn narrow_len(
         }
     }
     None
+}
+
+fn matches_fixed_len_namedtuple_len(nt: &NamedTuple, n: usize, kind: LenNarrowing) -> bool {
+    let TupleArgs::FixedLen(ts) = &nt.as_tuple_ref().args else {
+        unreachable!();
+    };
+    matches_fixed_len_tuple_len(ts, n, kind)
 }
 
 fn matches_fixed_len_tuple_len(ts: &[Type], n: usize, kind: LenNarrowing) -> bool {
