@@ -8,7 +8,7 @@ use super::{
 };
 use crate::{
     inference_state::InferenceState,
-    type_::{Tuple, TupleArgs},
+    type_::{Tuple, TupleArgs, TupleUnpack},
 };
 
 impl Type {
@@ -37,7 +37,26 @@ impl Type {
                         }
                         Type::Tuple(Tuple::new_fixed_length(entries.into()))
                     }
-                    _ => todo!(),
+                    (FixedLen(ts), WithUnpack(w_u)) | (WithUnpack(w_u), FixedLen(ts)) => {
+                        let fetch_in_between =
+                            ts.len().checked_sub(w_u.before.len() + w_u.after.len())?;
+                        let mut entries = vec![];
+                        let middle_t = match &w_u.unpack {
+                            TupleUnpack::TypeVarTuple(_) => todo!(),
+                            TupleUnpack::ArbitraryLen(t) => t,
+                        };
+                        dbg!(w_u, ts);
+                        dbg!(fetch_in_between);
+                        let between = std::iter::repeat(middle_t).take(fetch_in_between);
+                        for (t1, t2) in ts
+                            .iter()
+                            .zip(w_u.before.iter().chain(between).chain(w_u.after.iter()))
+                        {
+                            entries.push(t1.common_sub_type(i_s, &t2)?)
+                        }
+                        Type::Tuple(Tuple::new_fixed_length(entries.into()))
+                    }
+                    (x, y) => todo!("{x:?} {y:?}"),
                 })
             }
             (Type::TypedDict(td1), Type::TypedDict(td2)) => Some(td1.union(i_s, &td2)),
