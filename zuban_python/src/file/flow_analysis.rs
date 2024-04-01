@@ -2091,22 +2091,47 @@ fn narrow_len_for_tuples(
                 // This is unreachable, so no type is added.
                 return true;
             }
+            /*
+            if lower_than.unwrap_or(n) > MAX_PRECISE_TUPLE_SIZE {
+                return false
+            }
+            */
             let middle = match &with_unpack.unpack {
                 TupleUnpack::ArbitraryLen(t) => t,
                 TupleUnpack::TypeVarTuple(_) => return false,
             };
-            if let Some(lower_than) = lower_than {
-            } else if !negative {
-                let x = std::iter::repeat_with(|| middle).take(n - min_len);
+            let middle_iter = |middle_len| std::iter::repeat_with(|| middle).take(middle_len);
+            let mut add_fixed_len_tuple = |middle_len| {
                 add_type(Type::Tuple(Tuple::new_fixed_length(
                     with_unpack
                         .before
                         .iter()
-                        .chain(x)
+                        .chain(middle_iter(middle_len))
                         .chain(with_unpack.after.iter())
                         .cloned()
                         .collect(),
                 )));
+            };
+            if let Some(lower_than) = lower_than {
+                if invert == negative {
+                    for i in 0..(lower_than - min_len) {
+                        add_fixed_len_tuple(i);
+                    }
+                } else {
+                    add_type(Type::Tuple(Tuple::new(TupleArgs::WithUnpack(WithUnpack {
+                        before: with_unpack
+                            .before
+                            .iter()
+                            .chain(middle_iter(lower_than - min_len))
+                            .cloned()
+                            .collect(),
+                        unpack: with_unpack.unpack.clone(),
+                        after: with_unpack.after.clone(),
+                    }))));
+                }
+                return true;
+            } else if !negative {
+                add_fixed_len_tuple(n - min_len);
                 return true;
             }
         }
