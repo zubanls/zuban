@@ -134,3 +134,15 @@ if int == type(x):
     reveal_type(x)  # N: Revealed type is "int"
 else:
     reveal_type(x)  # N: Revealed type is "Any"
+
+[case avoid_narrowing_of_len_with_big_unpack]
+from typing import Tuple
+from typing_extensions import Unpack
+
+VarTuple = Tuple[int, Unpack[Tuple[str, ...]]]
+
+x: VarTuple
+if len(x) < 30:
+    reveal_type(x) # N: Revealed type is "builtins.tuple[builtins.int, Unpack[Tuple[str, ...]]]"
+else:
+    reveal_type(x) # N: Revealed type is "builtins.tuple[builtins.int, Unpack[Tuple[str, ...]]]"

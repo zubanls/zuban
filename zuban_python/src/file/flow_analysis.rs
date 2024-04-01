@@ -2091,11 +2091,9 @@ fn narrow_len_for_tuples(
                 // This is unreachable, so no type is added.
                 return true;
             }
-            /*
             if lower_than.unwrap_or(n) > MAX_PRECISE_TUPLE_SIZE {
-                return false
+                return false;
             }
-            */
             let middle = match &with_unpack.unpack {
                 TupleUnpack::ArbitraryLen(t) => t,
                 TupleUnpack::TypeVarTuple(_) => return false,
