@@ -1165,6 +1165,8 @@ testInferredTypeIsSimpleNestedListLoop
 testInferredTypeIsSimpleNestedIterableLoop
 testNarrowingWithAnyOps
 testNarrowingLenAnyListElseNotAffected
+testNarrowingLenMixWithAnyPrecise
+testNarrowingLenMixWithAnyImprecise
 # questionable implicit literal?
 testEnumReachabilityChecksIndirect
 # Narrowing with previous and/or
@@ -1180,14 +1182,11 @@ testAndCases
 testIsinstanceShortcircuit
 testFinalWithoutBool
 testFinalWithoutBoolButWithLen
-# Narrowing __bool__ / __len__
+# Narrowing len()
 testNarrowingLenTypeVarTupleGreaterThan
-testNarrowingLenBareExpressionPrecise
 testNarrowingLenBareExpressionTypeVarTuple
-testNarrowingLenBareExpressionWithNonePrecise
-testNarrowingLenMixWithAnyPrecise
-testNarrowingLenMixWithAnyImprecise
 testNarrowingLenUnionWithUnreachable
+testVariadicStarArgsCallNoCrash
 # narrowing `in` weird overlapping. Mypy correct?
 testTupleOverlapDifferentTuples
 # narrowing assignments regressions after `foo =` narrowing

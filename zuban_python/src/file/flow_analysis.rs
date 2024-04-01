@@ -564,6 +564,17 @@ fn split_truthy_and_falsey(db: &Database, t: &Type) -> Option<(Type, Type)> {
                 LiteralKind::Int(i) => check(*i != 0),
                 _ => None,
             },
+            Type::Tuple(tup) => match &tup.args {
+                TupleArgs::ArbitraryLen(t) => Some((
+                    Type::Tuple(Tuple::new(TupleArgs::WithUnpack(WithUnpack {
+                        before: Rc::new([(**t).clone()]),
+                        unpack: TupleUnpack::ArbitraryLen((**t).clone()),
+                        after: Rc::new([]),
+                    }))),
+                    Type::Tuple(Tuple::new_fixed_length(Rc::new([]))),
+                )),
+                _ => None,
+            },
             Type::Class(c) => maybe_split_bool_from_literal(db, t, &LiteralKind::Bool(true)),
             _ => None,
         }
