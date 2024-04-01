@@ -933,6 +933,7 @@ fn typing_changes(
     set_typing_inference(typing, "TypeAlias", Specific::TypingTypeAlias);
     set_typing_inference(typing, "Self", Specific::TypingSelf);
     set_typing_inference(typing, "Annotated", Specific::TypingAnnotated);
+    set_typing_inference(typing, "NoReturn", Specific::TypingNoReturn);
     set_typing_inference(typing, "Required", Specific::TypingRequired);
     set_typing_inference(typing, "NotRequired", Specific::TypingNotRequired);
     set_typing_inference(typing, "reveal_type", Specific::RevealTypeFunction);

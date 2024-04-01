@@ -76,6 +76,7 @@ pub(super) enum SpecialType {
     Self_,
     Final,
     Annotated,
+    NoReturn,
     ClassVar,
     MypyExtensionsParamType(Specific),
     CallableParam(CallableParam),
@@ -1004,6 +1005,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     ));
                 }
                 SpecialType::Any => return Some(Type::Any(AnyCause::Explicit)),
+                SpecialType::NoReturn => return Some(Type::Never),
                 SpecialType::Type => {
                     if db.project.flags.disallow_any_generics {
                         self.add_issue(
@@ -1417,6 +1419,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         SpecialType::Type => self.compute_type_get_item_on_type(s),
                         SpecialType::Tuple => self.compute_type_get_item_on_tuple(s),
                         SpecialType::Any => todo!(),
+                        SpecialType::NoReturn => todo!(),
                         SpecialType::Protocol => {
                             self.expect_type_var_like_args(s, "Protocol");
                             TypeContent::SpecialType(SpecialType::ProtocolWithGenerics)
@@ -4378,6 +4381,7 @@ fn check_special_type(point: Point) -> Option<SpecialType> {
             Specific::TypingFinal => SpecialType::Final,
             Specific::TypingSelf => SpecialType::Self_,
             Specific::TypingAnnotated => SpecialType::Annotated,
+            Specific::TypingNoReturn => SpecialType::NoReturn,
             Specific::TypingTuple => SpecialType::Tuple,
             Specific::TypingTypedDict => SpecialType::TypingTypedDict,
             Specific::TypingRequired => SpecialType::Required,
