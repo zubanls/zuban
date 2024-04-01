@@ -2051,9 +2051,10 @@ fn narrow_len_for_tuples(
             }
         }
         TupleArgs::ArbitraryLen(t) => {
-            let as_repeated_t = |n| std::iter::repeat_with(|| (**t).clone()).take(n).collect();
+            let as_repeated_t =
+                |t: &Type, n| std::iter::repeat_with(|| t.clone()).take(n).collect();
             let mut add_tuple_of_len = |n| {
-                add_type(Type::Tuple(Tuple::new_fixed_length(as_repeated_t(n))));
+                add_type(Type::Tuple(Tuple::new_fixed_length(as_repeated_t(t, n))));
             };
             if n <= MAX_PRECISE_TUPLE_SIZE {
                 if let Some(lower_than) = lower_than() {
@@ -2064,7 +2065,7 @@ fn narrow_len_for_tuples(
                             }
                         } else {
                             add_type(Type::Tuple(Tuple::new(TupleArgs::WithUnpack(WithUnpack {
-                                before: as_repeated_t(lower_than),
+                                before: as_repeated_t(t, lower_than),
                                 unpack: TupleUnpack::ArbitraryLen((**t).clone()),
                                 after: Rc::new([]),
                             }))));
@@ -2085,8 +2086,27 @@ fn narrow_len_for_tuples(
         }
         TupleArgs::WithUnpack(with_unpack) => {
             let min_len = with_unpack.before.len() + with_unpack.after.len();
-            if (lower_than().unwrap_or(n) <= min_len) && invert == negative {
+            let lower_than = lower_than();
+            if (lower_than.unwrap_or(n) <= min_len) && invert == negative {
                 // This is unreachable, so no type is added.
+                return true;
+            }
+            let middle = match &with_unpack.unpack {
+                TupleUnpack::ArbitraryLen(t) => t,
+                TupleUnpack::TypeVarTuple(_) => return false,
+            };
+            if let Some(lower_than) = lower_than {
+            } else if !negative {
+                let x = std::iter::repeat_with(|| middle).take(n - min_len);
+                add_type(Type::Tuple(Tuple::new_fixed_length(
+                    with_unpack
+                        .before
+                        .iter()
+                        .chain(x)
+                        .chain(with_unpack.after.iter())
+                        .cloned()
+                        .collect(),
+                )));
                 return true;
             }
         }

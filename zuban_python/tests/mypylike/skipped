@@ -1182,7 +1182,6 @@ testFinalWithoutBool
 testFinalWithoutBoolButWithLen
 # Narrowing __bool__ / __len__
 testNarrowingLenTypeVarTupleGreaterThan
-testNarrowingLenVariadicTupleEquals
 testNarrowingLenVariadicTupleGreaterThan
 testNarrowingLenBareExpressionPrecise
 testNarrowingLenBareExpressionTypeVarTuple
