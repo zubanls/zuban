@@ -483,6 +483,8 @@ testVariadicTupleSubtyping
 testTypeVarTuplePep646Callable
 testTypeVarTuplePep646CallableStarArgs
 testVariadicTupleInProtocol
+# TypeVarTuple as unpacked varargs
+testVariadicStarArgsCallNoCrash
 
 # import order
 testTypeAliasesToNamedTuple
@@ -1186,7 +1188,6 @@ testFinalWithoutBoolButWithLen
 testNarrowingLenTypeVarTupleGreaterThan
 testNarrowingLenBareExpressionTypeVarTuple
 testNarrowingLenUnionWithUnreachable
-testVariadicStarArgsCallNoCrash
 # narrowing `in` weird overlapping. Mypy correct?
 testTupleOverlapDifferentTuples
 # narrowing assignments regressions after `foo =` narrowing

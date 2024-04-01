@@ -550,7 +550,13 @@ pub(crate) fn match_arguments_against_params<
             if should_generate_errors {
                 missing_params.push(p.param);
             }
-            debug!("Arguments for {:?} missing", p.param.name(i_s.db));
+            debug!(
+                "Arguments for {:?} missing",
+                p.param
+                    .name(i_s.db)
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| format!("#{i}"))
+            );
             continue;
         }
         let mut match_arg = |argument: &Arg<'db, '_>, expected: Cow<Type>| {
