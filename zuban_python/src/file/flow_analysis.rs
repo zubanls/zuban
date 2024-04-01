@@ -2030,6 +2030,20 @@ fn narrow_len_for_tuples(
     kind: LenNarrowing,
     mut add_type: impl FnMut(Type),
 ) -> bool {
+    let mut invert = false;
+    let mut lower_than = || match kind {
+        LenNarrowing::Equals => None,
+        LenNarrowing::GreaterThan => {
+            invert = true;
+            Some(n + 1)
+        }
+        LenNarrowing::LowerThan => Some(n),
+        LenNarrowing::GreaterEquals => {
+            invert = true;
+            Some(n)
+        }
+        LenNarrowing::LowerEquals => Some(n + 1),
+    };
     match tuple_args {
         TupleArgs::FixedLen(ts) => {
             if matches_fixed_len_tuple_len(ts, n, kind) == negative {
@@ -2037,26 +2051,12 @@ fn narrow_len_for_tuples(
             }
         }
         TupleArgs::ArbitraryLen(t) => {
-            let mut invert = false;
-            let lower_than = match kind {
-                LenNarrowing::Equals => None,
-                LenNarrowing::GreaterThan => {
-                    invert = true;
-                    Some(n + 1)
-                }
-                LenNarrowing::LowerThan => Some(n),
-                LenNarrowing::GreaterEquals => {
-                    invert = true;
-                    Some(n)
-                }
-                LenNarrowing::LowerEquals => Some(n + 1),
-            };
             let as_repeated_t = |n| std::iter::repeat_with(|| (**t).clone()).take(n).collect();
             let mut add_tuple_of_len = |n| {
                 add_type(Type::Tuple(Tuple::new_fixed_length(as_repeated_t(n))));
             };
             if n <= MAX_PRECISE_TUPLE_SIZE {
-                if let Some(lower_than) = lower_than {
+                if let Some(lower_than) = lower_than() {
                     if lower_than > 0 {
                         if invert == negative {
                             for i in 0..lower_than {
@@ -2085,21 +2085,7 @@ fn narrow_len_for_tuples(
         }
         TupleArgs::WithUnpack(with_unpack) => {
             let min_len = with_unpack.before.len() + with_unpack.after.len();
-            let mut invert = false;
-            let lower_than = match kind {
-                LenNarrowing::Equals => None,
-                LenNarrowing::GreaterThan => {
-                    invert = true;
-                    Some(n + 1)
-                }
-                LenNarrowing::LowerThan => Some(n),
-                LenNarrowing::GreaterEquals => {
-                    invert = true;
-                    Some(n)
-                }
-                LenNarrowing::LowerEquals => Some(n + 1),
-            };
-            if (lower_than.unwrap_or(n) <= min_len) && invert == negative {
+            if (lower_than().unwrap_or(n) <= min_len) && invert == negative {
                 // This is unreachable, so no type is added.
                 return true;
             }

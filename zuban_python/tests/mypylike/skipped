@@ -1164,6 +1164,7 @@ testInferredTypeIsSimpleNestedIterable
 testInferredTypeIsSimpleNestedListLoop
 testInferredTypeIsSimpleNestedIterableLoop
 testNarrowingWithAnyOps
+testNarrowingLenAnyListElseNotAffected
 # questionable implicit literal?
 testEnumReachabilityChecksIndirect
 # Narrowing with previous and/or
@@ -1180,7 +1181,6 @@ testIsinstanceShortcircuit
 testFinalWithoutBool
 testFinalWithoutBoolButWithLen
 # Narrowing __bool__ / __len__
-testNarrowingLenAnyListElseNotAffected
 testNarrowingLenTypeVarTupleGreaterThan
 testNarrowingLenVariadicTupleEquals
 testNarrowingLenVariadicTupleGreaterThan

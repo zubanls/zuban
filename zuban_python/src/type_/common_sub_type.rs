@@ -45,8 +45,6 @@ impl Type {
                             TupleUnpack::TypeVarTuple(_) => todo!(),
                             TupleUnpack::ArbitraryLen(t) => t,
                         };
-                        dbg!(w_u, ts);
-                        dbg!(fetch_in_between);
                         let between = std::iter::repeat(middle_t).take(fetch_in_between);
                         for (t1, t2) in ts
                             .iter()
