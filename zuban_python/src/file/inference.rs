@@ -894,18 +894,27 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 if let Some(first_index) = first_defined_name(self.file, current_index) {
                     if current_index != first_index {
                         let original_inf = self.infer_name_by_index(first_index);
-                        let mut had_error = false;
-                        original_inf.as_cow_type(i_s).error_if_not_matches(
-                            i_s,
-                            value,
-                            |issue| from.add_issue(i_s, issue),
-                            |got, expected| {
-                                had_error = true;
-                                Some(IssueType::IncompatibleAssignment { got, expected })
-                            },
-                        );
-                        if !had_error && matches!(assign_kind, AssignKind::Normal) {
-                            self.save_narrowed_name_target(first_index, &value.as_cow_type(i_s));
+                        let original_t = original_inf.as_cow_type(i_s);
+                        let check_for_error = || {
+                            original_t.error_if_not_matches(
+                                i_s,
+                                value,
+                                |issue| from.add_issue(i_s, issue),
+                                |got, expected| {
+                                    Some(IssueType::IncompatibleAssignment { got, expected })
+                                },
+                            );
+                        };
+                        if matches!(assign_kind, AssignKind::Normal) {
+                            if !self.narrow_or_widen_name_target(
+                                first_index,
+                                &original_t,
+                                &value.as_cow_type(i_s),
+                            ) {
+                                check_for_error()
+                            }
+                        } else {
+                            check_for_error()
                         }
                         return;
                     }

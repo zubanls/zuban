@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     cell::{Cell, RefCell},
     rc::Rc,
 };
@@ -96,6 +97,7 @@ struct Entry {
     key: FlowKey,
     type_: Type,
     from_assignment: bool,
+    widens: bool, // e.g. if a type is defined as None and later made an optional.
 }
 
 #[derive(Debug, Default)]
@@ -145,6 +147,7 @@ impl Frame {
                 key,
                 type_,
                 from_assignment: false,
+                widens: false,
             }]),
         }
     }
@@ -209,6 +212,7 @@ impl FlowAnalysis {
                             key: first_entry.key.clone(),
                             type_: other_entry.type_.simplified_union(i_s, &first_entry.type_),
                             from_assignment: true,
+                            widens: first_entry.widens || other_entry.widens,
                         })
                     }
                 }
@@ -321,6 +325,7 @@ fn merge_or(i_s: &InferenceState, x: Frame, y: Frame) -> Frame {
                     key: x_entry.key,
                     type_: x_entry.type_.simplified_union(i_s, &y_entry.type_),
                     from_assignment: x_entry.from_assignment || y_entry.from_assignment,
+                    widens: x_entry.widens | y_entry.widens,
                 })
             }
             break;
@@ -625,24 +630,44 @@ impl Inference<'_, '_, '_> {
         FLOW_ANALYSIS.with(|fa| fa.overwrite_frame(true_frame))
     }
 
-    pub fn save_narrowed_name_target(&mut self, first_name_index: NodeIndex, t: &Type) {
+    pub fn narrow_or_widen_name_target(
+        &mut self,
+        first_name_index: NodeIndex,
+        declaration_t: &Type,
+        current_t: &Type,
+    ) -> bool {
+        let mut widens = false;
+        let mut to_be_saved = Cow::Borrowed(current_t);
+        if !declaration_t
+            .is_simple_super_type_of(self.i_s, current_t)
+            .bool()
+        {
+            if matches!(declaration_t, Type::None) {
+                to_be_saved = Cow::Owned(current_t.clone().union(declaration_t.clone()));
+                widens = true;
+            } else {
+                return false;
+            }
+        }
         let key = FlowKey::Name(PointLink::new(self.file_index, first_name_index));
-        self.save_narrowed(key, t)
+        self.save_narrowed(key, to_be_saved, widens);
+        true
     }
 
     pub fn save_narrowed_primary_target(&mut self, primary_target: PrimaryTarget, t: &Type) {
         if let Some(key) = self.key_from_primary_target(primary_target) {
-            self.save_narrowed(key, t)
+            self.save_narrowed(key, Cow::Borrowed(t), false)
         }
     }
 
-    fn save_narrowed(&mut self, key: FlowKey, t: &Type) {
+    fn save_narrowed(&mut self, key: FlowKey, t: Cow<Type>, widens: bool) {
         FLOW_ANALYSIS.with(|fa| {
             fa.invalidate_child_entries_in_last_frame(&key);
             fa.overwrite_entry(Entry {
                 key,
-                type_: t.clone(),
+                type_: t.into_owned(),
                 from_assignment: true,
+                widens,
             })
         })
     }
@@ -880,6 +905,7 @@ impl Inference<'_, '_, '_> {
                                 key: key.clone(),
                                 type_,
                                 from_assignment: false,
+                                widens: false,
                             },
                         );
                         break;
