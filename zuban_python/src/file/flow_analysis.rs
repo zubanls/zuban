@@ -92,7 +92,7 @@ impl PartialEq for FlowKey {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Entry {
     key: FlowKey,
     type_: Type,
@@ -202,7 +202,7 @@ impl FlowAnalysis {
         first_frame: &mut Frame,
         other_frame: &mut Frame,
     ) {
-        for first_entry in &first_frame.entries {
+        'outer: for first_entry in &first_frame.entries {
             if first_entry.from_assignment {
                 for other_entry in &mut other_frame.entries {
                     if first_entry.key == other_entry.key {
@@ -213,8 +213,12 @@ impl FlowAnalysis {
                             type_: other_entry.type_.simplified_union(i_s, &first_entry.type_),
                             from_assignment: true,
                             widens: first_entry.widens || other_entry.widens,
-                        })
+                        });
+                        continue 'outer;
                     }
+                }
+                if first_entry.widens {
+                    self.overwrite_entry(first_entry.clone())
                 }
             }
         }
