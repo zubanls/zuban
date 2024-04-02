@@ -1,5 +1,4 @@
 use std::{
-    borrow::Cow,
     cell::{Cell, RefCell},
     rc::Rc,
 };
@@ -218,7 +217,14 @@ impl FlowAnalysis {
                     }
                 }
                 if first_entry.widens {
-                    self.overwrite_entry(first_entry.clone())
+                    let declaration_t = Type::None;
+                    let entry = Entry {
+                        key: first_entry.key.clone(),
+                        type_: first_entry.type_.clone().union(declaration_t),
+                        from_assignment: first_entry.from_assignment,
+                        widens: first_entry.widens,
+                    };
+                    self.overwrite_entry(entry)
                 }
             }
         }
@@ -641,35 +647,33 @@ impl Inference<'_, '_, '_> {
         current_t: &Type,
     ) -> bool {
         let mut widens = false;
-        let mut to_be_saved = Cow::Borrowed(current_t);
         if !declaration_t
             .is_simple_super_type_of(self.i_s, current_t)
             .bool()
         {
             if matches!(declaration_t, Type::None) {
-                to_be_saved = Cow::Owned(current_t.clone().union(declaration_t.clone()));
                 widens = true;
             } else {
                 return false;
             }
         }
         let key = FlowKey::Name(PointLink::new(self.file_index, first_name_index));
-        self.save_narrowed(key, to_be_saved, widens);
+        self.save_narrowed(key, current_t, widens);
         true
     }
 
     pub fn save_narrowed_primary_target(&mut self, primary_target: PrimaryTarget, t: &Type) {
         if let Some(key) = self.key_from_primary_target(primary_target) {
-            self.save_narrowed(key, Cow::Borrowed(t), false)
+            self.save_narrowed(key, t, false)
         }
     }
 
-    fn save_narrowed(&mut self, key: FlowKey, t: Cow<Type>, widens: bool) {
+    fn save_narrowed(&mut self, key: FlowKey, t: &Type, widens: bool) {
         FLOW_ANALYSIS.with(|fa| {
             fa.invalidate_child_entries_in_last_frame(&key);
             fa.overwrite_entry(Entry {
                 key,
-                type_: t.into_owned(),
+                type_: t.clone(),
                 from_assignment: true,
                 widens,
             })
