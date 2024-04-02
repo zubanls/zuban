@@ -1272,8 +1272,6 @@ testOverloadsAndNoReturnNarrowTypeWithStrictOptional3
 # None late binding, because it's None (x = None; x = 3)
 testEnumWithPartialTypes
 testPartialTypeContextWithTwoLambdas
-testPartialTypeErrorSpecialCase1
-testPartialTypeErrorSpecialCase3
 testLocalPartialTypesWithGlobalInitializedToNone
 testLocalPartialTypesWithGlobalInitializedToNone2
 testLocalPartialTypesWithGlobalInitializedToNone3
@@ -1363,7 +1361,6 @@ testDontMarkUnreachableAfterInferenceUninhabited3
 testNeedAnnotationForCallable
 testPartialDefaultDict*
 testInferenceOfFor1
-testInferenceOfFor2
 testInferenceOfFor3
 testInferLocalVariableTypeWithUnderspecifiedGenericType
 testLocalVariableInferenceFromEmptyList
