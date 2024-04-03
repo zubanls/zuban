@@ -430,7 +430,8 @@ fn calculate_type_vars<'db: 'a, 'a>(
                 for tv_matcher in &mut matcher.type_var_matchers {
                     for calc in tv_matcher.calculating_type_args.iter_mut() {
                         // Make sure that the fallback is never used from a context.
-                        if calc.type_.has_any(i_s) || !calc.calculated() {
+                        // Also None as a type is a partial type, so don't use that either.
+                        if calc.type_.has_any(i_s) || calc.type_.is_none() || !calc.calculated() {
                             calc.type_ = Bound::default()
                         } else {
                             calc.defined_by_result_context = true;

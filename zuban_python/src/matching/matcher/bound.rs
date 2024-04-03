@@ -319,6 +319,17 @@ impl Bound {
             Self::Uncalculated { fallback: None } => false,
         }
     }
+
+    pub fn is_none(&self) -> bool {
+        match self {
+            Self::Invariant(k) | Self::Upper(k) | Self::Lower(k) => k.is_none(),
+            Self::UpperAndLower(lower, upper) => lower.is_none() || upper.is_none(),
+            Self::Uncalculated {
+                fallback: Some(fallback),
+            } => matches!(fallback, Type::None),
+            Self::Uncalculated { fallback: None } => false,
+        }
+    }
 }
 
 impl BoundKind {
@@ -420,6 +431,13 @@ impl BoundKind {
             Self::TypeVar(t) => t.has_any(i_s),
             Self::TypeVarTuple(ts) => ts.has_any(i_s),
             Self::ParamSpec(params) => params.has_any(i_s),
+        }
+    }
+
+    fn is_none(&self) -> bool {
+        match self {
+            Self::TypeVar(t) => matches!(t, Type::None),
+            _ => false,
         }
     }
 
