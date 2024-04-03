@@ -647,15 +647,13 @@ impl Inference<'_, '_, '_> {
         current_t: &Type,
     ) -> bool {
         let mut widens = false;
-        if !declaration_t
+        if matches!(declaration_t, Type::None) && !matches!(current_t, Type::None) {
+            widens = true;
+        } else if !declaration_t
             .is_simple_super_type_of(self.i_s, current_t)
             .bool()
         {
-            if matches!(declaration_t, Type::None) {
-                widens = true;
-            } else {
-                return false;
-            }
+            return false;
         }
         let key = FlowKey::Name(PointLink::new(self.file_index, first_name_index));
         self.save_narrowed(key, current_t, widens);
