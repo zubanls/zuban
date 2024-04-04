@@ -1152,6 +1152,9 @@ testEnumReachabilityChecksIndirect
 testRegression11705_Strict
 testRegression11705_NoStrict
 testIsinstanceAndOr
+# Right operand of "and" is never evaluated
+testNoneAndStringIsNone
+testInvalidBooleanBranchIgnored
 # or/and boolean logic over multiple terms
 testAndOr
 testRestrictedBoolAndOrWithGenerics
@@ -1274,6 +1277,10 @@ testOverloadsAndNoReturnNarrowTypeNoStrictOptional2
 testOverloadsAndNoReturnNarrowTypeWithStrictOptional2
 testOverloadsAndNoReturnNarrowTypeNoStrictOptional3
 testOverloadsAndNoReturnNarrowTypeWithStrictOptional3
+# --warn-unreachable "Statement is unreachable"
+testNamedTupleWithBoolNarrowsToBool
+testUnreachableWithStdlibContextManagersNoStrictOptional
+testSpecialTypingProtocols
 
 # None late binding, because it's None (x = None; x = 3)
 testEnumWithPartialTypes
@@ -2096,17 +2103,6 @@ testDoNotFollowImportToNonStubFile
 testFollowImportsSkip
 testSubclassingAnySilentImports
 testSubclassingAnySilentImports2
-
-# --warn-unreachable "Statement is unreachable"
-testOperatorContainsNarrowsTypedDicts_final
-testNamedTupleWithBoolNarrowsToBool
-testUnreachableWithStdlibContextManagers
-testUnreachableWithStdlibContextManagersNoStrictOptional
-testSpecialTypingProtocols
-testTypeVarTupleWithIsInstance
-# Right operand of "and" is never evaluated
-testNoneAndStringIsNone
-testInvalidBooleanBranchIgnored
 
 # --no-strict-optional details
 testNestedListExpressions
