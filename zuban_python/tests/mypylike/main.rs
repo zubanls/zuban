@@ -75,6 +75,7 @@ lazy_static::lazy_static! {
     static ref REPLACE_TUPLE: Regex = Regex::new(r"\bTuple\b").unwrap();
     static ref REPLACE_MYPY: Regex = Regex::new(r"`-?\d+").unwrap();
     static ref REPLACE_MYPY_ELLIPSIS: Regex = Regex::new(r"\bellipsis\b").unwrap();
+    static ref REPLACE_MYPY_NO_RETURN: Regex = Regex::new(r"\bNoReturn\b").unwrap();
 }
 
 #[derive(Default, Clone, Debug)]
@@ -532,6 +533,7 @@ fn cleanup_mypy_issues(mut s: &str) -> Option<String> {
     let s = REPLACE_MYPY.replace_all(&s, "");
     // Mypy has a bit of a different handling for ellipsis when reading it from typeshed.
     let s = REPLACE_MYPY_ELLIPSIS.replace_all(&s, "EllipsisType");
+    let s = REPLACE_MYPY_NO_RETURN.replace_all(&s, "Never");
     Some(replace_annoyances(s.replace("tmp/", "")))
 }
 
