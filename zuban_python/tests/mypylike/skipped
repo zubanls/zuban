@@ -915,6 +915,7 @@ testIsinstanceWithUserDefinedTypeAndTypeVarValues2
 testNarrowingIsSubclassFinalSubclassWithTypeVar
 testTypeCheckOverloadImplementationTypeVarWithValueRestriction
 testOperatorContainsNarrowsTypedDicts_total
+testUnreachableFlagWithGenerics
 
 # - Overload does not consistently use the "@classmethod" decorator on all function signatures
 # - Overload does not consistently use the "@staticmethod" decorator on all function signatures
@@ -1155,6 +1156,9 @@ testIsinstanceAndOr
 # Right operand of "and" is never evaluated
 testNoneAndStringIsNone
 testInvalidBooleanBranchIgnored
+testUnreachableFlagExpressions
+testUnreachableFlagMiscTestCaseMissingMethod
+testUnreachableNoReturnBinaryOps
 # or/and boolean logic over multiple terms
 testAndOr
 testRestrictedBoolAndOrWithGenerics
@@ -1215,6 +1219,7 @@ testUnreachableTryExcept
 testUnreachableTryExceptElse
 testUnreachableTryReturnFinally1
 testUnreachableTryReturnFinally2
+testUnreachableFlagTryBlocks
 # while/for
 testModifyLoop
 testModifyLoop2
@@ -1228,6 +1233,7 @@ testWhileLinkedList
 testUnreachableWhileTrue
 testComplicatedBlocks
 testIsInstanceSubClassMemberHard
+testUnreachableFlagWithBadControlFlow2
 # narowing for comprehensions if
 testComprehensionIsInstance
 # narrowing of nested scopes
@@ -1281,6 +1287,28 @@ testOverloadsAndNoReturnNarrowTypeWithStrictOptional3
 testNamedTupleWithBoolNarrowsToBool
 testUnreachableWithStdlibContextManagersNoStrictOptional
 testSpecialTypingProtocols
+# New unreachable tests
+testNeverVariants
+testUnreachableLiteral
+testUnreachableWhenSuperclassIsAny
+testUnreachableWhenSuperclassIsAnyNoStrictOptional
+testUnreachableFlagWithBadControlFlow3
+testUnreachableFlagStatementAfterReturn
+testUnreachableFlagContextManagersNoSuppress
+testUnreachableFlagContextManagersSuppressed
+testUnreachableFlagContextManagersSuppressedNoStrictOptional
+testUnreachableFlagContextAsyncManagersNoSuppress
+testUnreachableFlagContextAsyncManagersSuppressed
+testUnreachableFlagContextAsyncManagersAbnormal
+testUnreachableUntypedFunction
+testUnreachableCheckedUntypedFunction
+testUnreachableLiteralFrom__bool__
+testUnreachableModuleBody2
+testSetitemNoReturn
+# unreachable after Never return
+testUnreachableFlagOkWithDeadStatements
+testUnreachableModuleBody1
+testUnreachableFlagWithTerminalBranchInDeferredNode
 
 # None late binding, because it's None (x = None; x = 3)
 testEnumWithPartialTypes
@@ -1477,13 +1505,27 @@ testConditionalRedefinitionOfAnUnconditionalFunctionDefinition2
 testIncompatibleConditionalMethodDefinition
 testRedefineImportedFunctionViaImport
 
-# TYPE_CHECKING
+# TYPE_CHECKING / PY2 / PY3 / MYPY
 testIfTypeCheckingUnreachableClass
-# MYPY
+testConditionalTypeAliasPY3
+testConditionalAssignmentPY2
+testConditionalImport
+testNegatedMypyConditional
+testMypyConditional
+testTypeCheckingConditional
+testTypeCheckingConditionalFromImport
+testNegatedTypeCheckingConditional
+testUndefinedTypeCheckingConditional
+testUnreachabilityAndElifPY3
+testConditionalAssertWithoutElse
+testShortCircuitInExpression
 testRefreshImportIfMypyElse1
+testUnreachableFlagIgnoresSemanticAnalysisUnreachable
 # --always-true TRUTH
 testIfConditionsInDefinition
 testAlwaysTrueAlwaysFalseFlags
+testSemanticAnalysisFalseButTypeNarrowingTrue
+testSemanticAnalysisTrueButTypeNarrowingFalse
 
 # if sys.version
 testNewAnalyzerVersionCheck
@@ -1492,6 +1534,30 @@ testPromoteMemoryviewToBytes
 testDataclassesBadInit
 testDataclassFieldDoesNotFailOnKwargsUnpacking
 testOverloadSpecialCase
+testSysVersionInfoSliced8
+testSysVersionInfoSliced9
+testSysPlatform1
+testSysVersionInfoClass
+testSysVersionInfoImport
+testSysVersionInfoVariable
+testSysVersionInfoInFunction
+testSysPlatformInMethod
+testSysPlatformInFunctionImport1
+testSysPlatformInFunctionImport2
+testSysPlatformInFunctionImport3
+testSysPlatformInMethodImport2
+testCustomSysVersionInfo
+testCustomSysVersionInfo2
+testCustomSysPlatform
+testCustomSysPlatform2
+testCustomSysPlatformStartsWith
+testUnreachableAfterToplevelAssert
+testUnreachableAfterToplevelAssert2
+testUnreachableAfterToplevelAssert3
+testUnreachableAfterToplevelAssert4
+testUnreachableAfterToplevelAssertImport
+testShortCircuitAndWithConditionalAssignment
+testShortCircuitOrWithConditionalAssignment
 # NamedTuple magic attribute __match_args__ in py >= 3.10
 testNamedTupleHasMatchArgs
 
