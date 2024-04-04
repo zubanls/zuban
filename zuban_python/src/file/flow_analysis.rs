@@ -270,10 +270,11 @@ impl FlowAnalysis {
             .retain(|entry| !entry.key.is_child_of(key))
     }
 
-    pub fn with_new_frame(&self, callable: impl FnOnce()) {
+    pub fn with_new_frame_and_return_unreachable(&self, callable: impl FnOnce()) -> bool {
         self.frames.borrow_mut().push(Frame::default());
         callable();
-        self.frames.borrow_mut().pop().unwrap();
+        let frame = self.frames.borrow_mut().pop().unwrap();
+        frame.unreachable
     }
 
     fn with_frame(&self, db: &Database, frame: Frame, callable: impl FnOnce()) -> Frame {

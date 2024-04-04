@@ -122,7 +122,7 @@ lazy_static::lazy_static! {
 impl<'db> Inference<'db, '_, '_> {
     pub fn calculate_diagnostics(&mut self) {
         FLOW_ANALYSIS.with(|fa| {
-            fa.with_new_frame(|| {
+            fa.with_new_frame_and_return_unreachable(|| {
                 self.calc_stmts_diagnostics(self.file.tree.root().iter_stmts(), None, None);
             })
         });
@@ -694,10 +694,10 @@ impl<'db> Inference<'db, '_, '_> {
     fn calc_function_diagnostics(&mut self, f: FunctionDef, class: Option<Class>) {
         let function = Function::new(NodeRef::new(self.file, f.index()), class);
         FLOW_ANALYSIS.with(|fa| {
-            fa.with_new_frame(|| self.calc_function_diagnostics_internal(function, f, class));
-            if matches!(function.return_type(self.i_s).as_ref(), Type::Never)
-                && !fa.is_unreachable()
-            {
+            let unreachable = fa.with_new_frame_and_return_unreachable(|| {
+                self.calc_function_diagnostics_internal(function, f, class)
+            });
+            if matches!(function.return_type(self.i_s).as_ref(), Type::Never) && !unreachable {
                 self.add_issue(
                     f.name().index(),
                     IssueType::ImplicitReturnInFunctionWithNeverReturn,
@@ -1056,9 +1056,7 @@ impl<'db> Inference<'db, '_, '_> {
                         return_stmt.index(),
                         IssueType::ReturnStmtInFunctionWithNeverReturn,
                     );
-                    return;
-                }
-                if let Some(star_expressions) = return_stmt.star_expressions() {
+                } else if let Some(star_expressions) = return_stmt.star_expressions() {
                     if func.is_generator() {
                         if func.is_async() {
                             NodeRef::new(self.file, star_expressions.index())
@@ -1103,6 +1101,7 @@ impl<'db> Inference<'db, '_, '_> {
                 }
             }
         }
+        FLOW_ANALYSIS.with(|fa| fa.mark_current_frame_unreachable());
     }
 
     pub fn cache_for_stmt_names(
