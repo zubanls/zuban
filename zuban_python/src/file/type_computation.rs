@@ -4381,7 +4381,7 @@ fn check_special_type(point: Point) -> Option<SpecialType> {
             Specific::TypingFinal => SpecialType::Final,
             Specific::TypingSelf => SpecialType::Self_,
             Specific::TypingAnnotated => SpecialType::Annotated,
-            Specific::TypingNoReturn => SpecialType::NoReturn,
+            Specific::TypingNeverOrNoReturn => SpecialType::NoReturn,
             Specific::TypingTuple => SpecialType::Tuple,
             Specific::TypingTypedDict => SpecialType::TypingTypedDict,
             Specific::TypingRequired => SpecialType::Required,

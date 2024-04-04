@@ -374,7 +374,7 @@ pub enum Specific {
     TypingLiteral,
     TypingSelf,
     TypingAnnotated,
-    TypingNoReturn,
+    TypingNeverOrNoReturn,
     TypingAny,
     TypingDataclassTransform,
     TypingTypedDict,
