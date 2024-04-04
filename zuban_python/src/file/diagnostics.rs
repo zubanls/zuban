@@ -1101,7 +1101,6 @@ impl<'db> Inference<'db, '_, '_> {
                 }
             }
         }
-        FLOW_ANALYSIS.with(|fa| fa.mark_current_frame_unreachable());
     }
 
     pub fn cache_for_stmt_names(
