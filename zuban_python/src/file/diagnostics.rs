@@ -1036,8 +1036,15 @@ impl<'db> Inference<'db, '_, '_> {
         if let Some(func) = func {
             if let Some(annotation) = func.return_annotation() {
                 let i_s = self.i_s;
+                let mut t = self.use_cached_return_annotation_type(annotation);
+                if matches!(t.as_ref(), Type::Never) {
+                    self.add_issue(
+                        return_stmt.index(),
+                        IssueType::ReturnStmtInFunctionWithNeverReturn,
+                    );
+                    return;
+                }
                 if let Some(star_expressions) = return_stmt.star_expressions() {
-                    let mut t = self.use_cached_return_annotation_type(annotation);
                     if func.is_generator() {
                         if func.is_async() {
                             NodeRef::new(self.file, star_expressions.index())
