@@ -692,13 +692,27 @@ impl<'db> Inference<'db, '_, '_> {
     }
 
     fn calc_function_diagnostics(&mut self, f: FunctionDef, class: Option<Class>) {
-        FLOW_ANALYSIS
-            .with(|fa| fa.with_new_frame(|| self.calc_function_diagnostics_internal(f, class)))
+        let function = Function::new(NodeRef::new(self.file, f.index()), class);
+        FLOW_ANALYSIS.with(|fa| {
+            fa.with_new_frame(|| self.calc_function_diagnostics_internal(function, f, class));
+            if matches!(function.return_type(self.i_s).as_ref(), Type::Never)
+                && !fa.is_unreachable()
+            {
+                self.add_issue(
+                    f.name().index(),
+                    IssueType::ImplicitReturnInFunctionWithNeverReturn,
+                );
+            }
+        })
     }
 
-    fn calc_function_diagnostics_internal(&mut self, f: FunctionDef, class: Option<Class>) {
+    fn calc_function_diagnostics_internal(
+        &mut self,
+        function: Function,
+        f: FunctionDef,
+        class: Option<Class>,
+    ) {
         let i_s = self.i_s;
-        let function = Function::new(NodeRef::new(self.file, f.index()), class);
         let decorator_ref = function.decorator_ref();
         let mut is_overload_member = false;
         let inf = function.as_inferred_from_name(i_s);

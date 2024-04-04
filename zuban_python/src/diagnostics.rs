@@ -36,6 +36,7 @@ pub(crate) enum IssueType {
     InvalidGeneratorReturnType,
     InvalidAsyncGeneratorReturnType,
     ReturnStmtInFunctionWithNeverReturn,
+    ImplicitReturnInFunctionWithNeverReturn,
     YieldFromCannotBeApplied { to: Box<str> },
     YieldValueExpected,
     IncompatibleAssignment { got: Box<str>, expected: Box<str> },
@@ -572,6 +573,8 @@ impl<'db> Diagnostic<'db> {
                 r#"The return type of an async generator function should be "AsyncGenerator" or one of its supertypes"#.to_string(),
             ReturnStmtInFunctionWithNeverReturn =>
                 "Return statement in function which does not return".to_string(),
+            ImplicitReturnInFunctionWithNeverReturn =>
+                "Implicit return in function which does not return".to_string(),
             YieldFromCannotBeApplied { to } => format!(r#""yield from" can't be applied to "{to}""#),
             YieldValueExpected => "Yield value expected".to_string(),
             IncompatibleAssignment{got, expected} => format!(

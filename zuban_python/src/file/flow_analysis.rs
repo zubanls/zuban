@@ -170,7 +170,7 @@ impl FlowAnalysis {
         None
     }
 
-    fn is_unreachable(&self) -> bool {
+    pub fn is_unreachable(&self) -> bool {
         self.frames.borrow().last().unwrap().unreachable
     }
 

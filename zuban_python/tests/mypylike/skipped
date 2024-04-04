@@ -1267,9 +1267,12 @@ testOverloadsAndNoReturnNarrowWhenBlacklistingSubtype
 testOverloadsAndNoReturnNarrowWhenBlacklistingSubtype2
 testNewAndInitNoReturn
 testOverloadedNewAndInitNoReturn
-# --warn-no-return
-testNoReturnDisallowsImplicitReturn
 testNoReturnAsync
+testNoReturnDisallowsReturn
+testNoReturnWithoutImplicitReturn
+testNoReturnImplicitReturnCheckInDeferredNode
+testNoReturnInExpr
+testNoReturnImportFromTyping
 # --warn-unreachable "Statement is unreachable"
 testNamedTupleWithBoolNarrowsToBool
 testUnreachableWithStdlibContextManagersNoStrictOptional
@@ -1295,6 +1298,7 @@ testSetitemNoReturn
 testUnreachableFlagOkWithDeadStatements
 testUnreachableModuleBody1
 testUnreachableFlagWithTerminalBranchInDeferredNode
+testNoReturnNoWarnNoReturn
 
 # None late binding, because it's None (x = None; x = 3)
 testEnumWithPartialTypes
