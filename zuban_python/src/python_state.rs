@@ -1000,6 +1000,7 @@ fn typing_changes(
     for module in [typing, mypy_extensions, typing_extensions] {
         set_typing_inference(module, "TypedDict", Specific::TypingTypedDict);
     }
+    set_typing_inference(mypy_extensions, "NoReturn", Specific::TypingNeverOrNoReturn);
 }
 
 fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
@@ -1029,6 +1030,7 @@ fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
         "replace",
         "isinstance",
         "issubclass",
+        "NoReturn",
     ]
     .contains(&name)
     {

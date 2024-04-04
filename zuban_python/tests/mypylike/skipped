@@ -1268,7 +1268,6 @@ testOverloadsAndNoReturnNarrowWhenBlacklistingSubtype2
 testNewAndInitNoReturn
 testOverloadedNewAndInitNoReturn
 testNoReturnImportFromTyping
-testNoReturnVariable
 # --warn-no-return
 testNoReturnDisallowsReturn
 testNoReturnDisallowsImplicitReturn
@@ -1288,7 +1287,6 @@ testNamedTupleWithBoolNarrowsToBool
 testUnreachableWithStdlibContextManagersNoStrictOptional
 testSpecialTypingProtocols
 # New unreachable tests
-testNeverVariants
 testUnreachableLiteral
 testUnreachableWhenSuperclassIsAny
 testUnreachableWhenSuperclassIsAnyNoStrictOptional
