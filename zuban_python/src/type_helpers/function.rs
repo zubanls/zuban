@@ -1,9 +1,9 @@
 use std::{borrow::Cow, cell::Cell, fmt, rc::Rc};
 
 use parsa_python_ast::{
-    Decorated, Decorator, ExpressionContent, ExpressionPart, FunctionDef, FunctionParent,
-    NodeIndex, Param as ASTParam, ParamKind, PrimaryContent, PrimaryOrAtom, ReturnAnnotation,
-    ReturnOrYield,
+    BlockContent, Decorated, Decorator, ExpressionContent, ExpressionPart, FunctionDef,
+    FunctionParent, NodeIndex, Param as ASTParam, ParamKind, PrimaryContent, PrimaryOrAtom,
+    ReturnAnnotation, ReturnOrYield, SimpleStmt, SimpleStmtContent, StmtOrError,
 };
 
 use crate::{
@@ -109,6 +109,43 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             iterator.next();
         }
         iterator.any(|p| p.annotation().is_none())
+    }
+
+    pub fn has_trivial_body(&self, i_s: &InferenceState) -> bool {
+        let check_simple_stmt = |simple_stmt: Option<SimpleStmt>| {
+            let Some(simple_stmt) = simple_stmt else {
+                return false;
+            };
+            match simple_stmt.unpack() {
+                SimpleStmtContent::PassStmt(_) => true,
+                SimpleStmtContent::StarExpressions(star_exprs) => star_exprs
+                    .maybe_simple_expression()
+                    .is_some_and(|expr| expr.is_ellipsis_literal()),
+                SimpleStmtContent::RaiseStmt(_) => false, // TODO check for NotImplementedError
+                _ => false,
+            }
+        };
+        match self.node().body().unpack() {
+            BlockContent::OneLine(simple_stmt) => {
+                check_simple_stmt(simple_stmt.maybe_single_simple_stmt())
+            }
+            BlockContent::Indented(mut stmts) => {
+                let StmtOrError::Stmt(mut first_stmt) = stmts.next().unwrap() else {
+                    return false
+                };
+                if first_stmt.maybe_single_string_literal().is_some() {
+                    // Is a docstr, skip.
+                    let StmtOrError::Stmt(s) = stmts.next().unwrap() else {
+                        return false
+                    };
+                    first_stmt = s;
+                }
+                if stmts.next().is_some() {
+                    return false;
+                }
+                check_simple_stmt(first_stmt.maybe_single_simple_stmt())
+            }
+        }
     }
 
     pub fn iter_args_with_params<'b, AI: Iterator<Item = Arg<'db, 'b>>>(

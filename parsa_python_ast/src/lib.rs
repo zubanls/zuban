@@ -1378,6 +1378,19 @@ impl<'db> Stmt<'db> {
             StmtContent::Newline
         }
     }
+
+    pub fn maybe_single_string_literal(&self) -> Option<StringLiteral<'db>> {
+        self.maybe_single_simple_stmt()?
+            .maybe_simple_expression()?
+            .maybe_single_string_literal()
+    }
+
+    pub fn maybe_single_simple_stmt(&self) -> Option<SimpleStmt<'db>> {
+        match self.unpack() {
+            StmtContent::SimpleStmts(simple) => simple.maybe_single_simple_stmt(),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -1487,6 +1500,12 @@ impl<'db> SimpleStmts<'db> {
     pub fn iter(&self) -> SimpleStmtIterator<'db> {
         SimpleStmtIterator(self.node.iter_children().step_by(2))
     }
+
+    pub fn maybe_single_simple_stmt(&self) -> Option<SimpleStmt<'db>> {
+        let mut iterator = self.iter();
+        let first_stmt = iterator.next().unwrap();
+        iterator.next().is_none().then_some(first_stmt)
+    }
 }
 
 pub struct SimpleStmtIterator<'db>(StepBy<SiblingIterator<'db>>);
@@ -1548,6 +1567,14 @@ impl<'db> SimpleStmt<'db> {
             .then(|| Assignment::new(child))
     }
 
+    pub fn maybe_simple_expression(&self) -> Option<Expression<'db>> {
+        let child = self.node.nth_child(0);
+        child
+            .is_type(Nonterminal(star_expressions))
+            .then(|| StarExpressions::new(child).maybe_simple_expression())
+            .flatten()
+    }
+
     pub fn maybe_import_from(&self) -> Option<ImportFrom<'db>> {
         let child = self.node.nth_child(0);
         child
@@ -1585,6 +1612,13 @@ impl<'db> StarExpressions<'db> {
             }
         } else {
             StarExpressionContent::Tuple(StarExpressionsTuple::new(self.node))
+        }
+    }
+
+    pub fn maybe_simple_expression(&self) -> Option<Expression<'db>> {
+        match self.unpack() {
+            StarExpressionContent::Expression(expr) => Some(expr),
+            _ => None,
         }
     }
 }
@@ -1856,6 +1890,10 @@ impl<'db> FunctionDef<'db> {
             ret_annot.map(ReturnAnnotation::new),
             Block::new(iterator.next().unwrap()),
         )
+    }
+
+    pub fn body(&self) -> Block<'db> {
+        self.unpack().3
     }
 }
 

@@ -710,7 +710,11 @@ impl<'db> Inference<'db, '_, '_> {
             let unreachable = fa.with_new_frame_and_return_unreachable(|| {
                 self.calc_function_diagnostics_internal(function, f, class)
             });
-            if matches!(function.return_type(self.i_s).as_ref(), Type::Never) && !unreachable {
+            if matches!(function.return_type(self.i_s).as_ref(), Type::Never)
+                && !unreachable
+                && !(self.i_s.db.project.flags.allow_empty_bodies
+                    && function.has_trivial_body(self.i_s))
+            {
                 self.add_issue(
                     f.name().index(),
                     IssueType::ImplicitReturnInFunctionWithNeverReturn,
