@@ -281,7 +281,20 @@ impl<'db> Inference<'db, '_, '_> {
                 continue;
             }
             if self.is_unreachable() {
+                if self.i_s.db.project.flags.warn_unreachable {
+                    self.file.add_issue(
+                        self.i_s,
+                        Issue {
+                            type_: IssueType::UnreachableStatement,
+                            start_position: stmt.start(),
+                            end_position: stmt.end(),
+                        },
+                    )
+                }
                 if self.i_s.db.project.flags.mypy_compatible {
+                    // Mypy does not analyze frames that are not reachable. However for normal interaction
+                    // in an IDE you typically want to analyze those parts of code, even if they are
+                    // unreachable.
                     break;
                 }
             }

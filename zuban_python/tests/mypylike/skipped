@@ -1278,7 +1278,6 @@ testUnreachableWithStdlibContextManagersNoStrictOptional
 testSpecialTypingProtocols
 # New unreachable tests
 testUnreachableLiteral
-testUnreachableFlagStatementAfterReturn
 testUnreachableWhenSuperclassIsAny
 testUnreachableWhenSuperclassIsAnyNoStrictOptional
 testUnreachableFlagWithBadControlFlow3
@@ -1298,6 +1297,9 @@ testUnreachableFlagOkWithDeadStatements
 testUnreachableModuleBody1
 testUnreachableFlagWithTerminalBranchInDeferredNode
 testNoReturnNoWarnNoReturn
+# yield after return is sometimes ok.
+testIntentionallyEmptyGeneratorFunction
+testIntentionallyEmptyGeneratorFunction_None
 
 # None late binding, because it's None (x = None; x = 3)
 testEnumWithPartialTypes

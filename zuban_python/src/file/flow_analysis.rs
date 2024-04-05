@@ -14,7 +14,7 @@ use parsa_python_ast::{
 use crate::{
     database::{Database, PointLink, PointType, Specific},
     debug,
-    diagnostics::{Issue, IssueType},
+    diagnostics::IssueType,
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::{Inferred, UnionValue},
@@ -278,12 +278,6 @@ impl FlowAnalysis {
     }
 
     fn with_frame(&self, db: &Database, frame: Frame, callable: impl FnOnce()) -> Frame {
-        if db.project.flags.mypy_compatible && frame.unreachable {
-            // Mypy does not analyze frames that are not reachable. However for normal interaction
-            // in an IDE yuo typically want to analyze those parts of code, even if they are
-            // unreachable.
-            return frame;
-        }
         self.frames.borrow_mut().push(frame);
         callable();
         self.frames.borrow_mut().pop().unwrap()
@@ -810,29 +804,6 @@ impl Inference<'_, '_, '_> {
         match if_blocks.next() {
             Some(IfBlockType::If(if_expr, block)) => {
                 let (true_frame, false_frame) = self.find_guards_in_named_expr(if_expr);
-
-                let add_unreachable_error = |positions| {
-                    if self.i_s.db.project.flags.warn_unreachable {
-                        let (start_position, end_position) = positions;
-                        self.file.add_issue(
-                            self.i_s,
-                            Issue {
-                                type_: IssueType::UnreachableStatement,
-                                start_position,
-                                end_position,
-                            },
-                        )
-                    }
-                };
-                if true_frame.unreachable {
-                    add_unreachable_error(block.statements_start_and_end())
-                }
-                if false_frame.unreachable {
-                    // If the if has no else or elif, nothing is "unreachable"
-                    if let Some(start_and_end) = if_blocks.next_block_start_and_last_block_end() {
-                        add_unreachable_error(start_and_end)
-                    }
-                }
 
                 FLOW_ANALYSIS.with(|fa| {
                     let true_frame = fa.with_frame(self.i_s.db, true_frame, || {
