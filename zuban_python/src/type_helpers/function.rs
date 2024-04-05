@@ -16,7 +16,7 @@ use crate::{
     diagnostics::{Issue, IssueType},
     file::{
         first_defined_name, use_cached_param_annotation_type, PythonFile, TypeComputation,
-        TypeComputationOrigin, TypeVarCallbackReturn,
+        TypeComputationOrigin, TypeVarCallbackReturn, FLOW_ANALYSIS,
     },
     inference_state::InferenceState,
     inferred::Inferred,
@@ -1202,7 +1202,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             Some(on_type_error),
         );
         let result = if let Some(return_annotation) = return_annotation {
-            self.apply_type_args_in_return_annotation(
+            self.apply_type_args_in_return_annotation_and_maybe_mark_unreachable(
                 i_s,
                 calculated_type_vars,
                 replace_self_type,
@@ -1232,7 +1232,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         result
     }
 
-    fn apply_type_args_in_return_annotation(
+    fn apply_type_args_in_return_annotation_and_maybe_mark_unreachable(
         &self,
         i_s: &InferenceState<'db, '_>,
         calculated_type_vars: CalculatedTypeArgs,
@@ -1246,6 +1246,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             .file
             .inference(i_s)
             .use_cached_return_annotation_type(return_annotation);
+
+        if matches!(return_type.as_ref(), Type::Never) {
+            FLOW_ANALYSIS.with(|fa| fa.mark_current_frame_unreachable())
+        }
 
         if result_context.expect_not_none(i_s)
             && matches!(return_type.as_ref(), Type::None)

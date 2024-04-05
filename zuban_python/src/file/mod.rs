@@ -13,6 +13,7 @@ pub use file_state::{
     File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, Leaf, PythonFileLoader,
     Vfs,
 };
+pub use flow_analysis::FLOW_ANALYSIS;
 pub use inference::first_defined_name;
 use inference::Inference;
 pub use python_file::{ComplexValues, PythonFile};
