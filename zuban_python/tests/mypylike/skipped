@@ -75,8 +75,10 @@ testUnpackIterableClassWithOverloadedIter
 testUnpackIterableClassWithOverloadedIter2
 # Overload union math for __init__
 overload_union_math_on_class_init_constrained
-# union math for None vs. TypeVar
+# union math vs. type var
 testOverloadDetectsPossibleMatchesWithGenerics
+testOverloadsAndNoReturnNarrowWhenBlacklistingSubtype
+testOverloadsAndNoReturnNarrowWhenBlacklistingSubtype2
 # overload *args should be used if a list of never/any is given?
 testOverloadVarargsSelection
 # overload Any unclear why Mypy decides like this
@@ -385,6 +387,9 @@ updateDataclassTransformParameterViaParentClass
 updateBaseClassToUseDataclassTransform
 frozenInheritanceViaDefault
 testDataclassReplaceOptional
+
+# namedtuple unsure if we refactor it
+testNamedTupleWithBoolNarrowsToBool
 
 # int | str leads to object instead of Any when using Enum().value?
 testEnumValueInhomogenous
@@ -1262,14 +1267,10 @@ testHasAttrMissingAttributeOuterUnion
 testHasAttrMissingAttributeLiteral
 testHasAttrModule
 
-# NoReturn
-testOverloadsAndNoReturnNarrowWhenBlacklistingSubtype
-testOverloadsAndNoReturnNarrowWhenBlacklistingSubtype2
+# NoReturn / --warn-unreachable "Statement is unreachable"
 testNewAndInitNoReturn
 testOverloadedNewAndInitNoReturn
 testNoReturnAsync
-# --warn-unreachable "Statement is unreachable"
-testNamedTupleWithBoolNarrowsToBool
 testUnreachableWithStdlibContextManagersNoStrictOptional
 testSpecialTypingProtocols
 # New unreachable tests
