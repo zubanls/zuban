@@ -1273,7 +1273,6 @@ testHasAttrModule
 # NoReturn / --warn-unreachable "Statement is unreachable"
 testNewAndInitNoReturn
 testOverloadedNewAndInitNoReturn
-testUnreachableLiteral
 testUnreachableLiteralFrom__bool__
 testUnreachableFlagContextManagersSuppressed
 testUnreachableFlagContextManagersSuppressedNoStrictOptional

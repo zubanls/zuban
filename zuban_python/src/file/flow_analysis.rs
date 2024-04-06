@@ -928,44 +928,57 @@ impl Inference<'_, '_, '_> {
     }
 
     fn find_guards_in_expression_parts(&mut self, part: ExpressionPart) -> FramesWithParentUnions {
+        self.find_guards_in_expression_parts_inner(part)
+            .unwrap_or_else(|inf| {
+                if let Some((truthy, falsey)) =
+                    split_truthy_and_falsey(self.i_s.db, &inf.as_cow_type(self.i_s))
+                {
+                    FramesWithParentUnions {
+                        truthy: Frame::from_type_without_entry(truthy),
+                        falsey: Frame::from_type_without_entry(falsey),
+                        ..Default::default()
+                    }
+                } else {
+                    FramesWithParentUnions::default()
+                }
+            })
+    }
+
+    fn find_guards_in_expression_parts_inner(
+        &mut self,
+        part: ExpressionPart,
+    ) -> Result<FramesWithParentUnions, Inferred> {
         match part {
             ExpressionPart::Atom(atom) => {
                 if let AtomContent::NamedExpression(named_expr) = atom.unpack() {
                     let (truthy, falsey) = self.find_guards_in_named_expr(named_expr);
-                    return FramesWithParentUnions {
+                    return Ok(FramesWithParentUnions {
                         falsey,
                         truthy,
                         ..Default::default()
-                    };
+                    });
                 }
                 let inf = self.infer_atom(atom, &mut ResultContext::Unknown);
                 if let Some(key) = self.key_from_atom(atom) {
                     if let Some((truthy, falsey)) =
                         split_truthy_and_falsey(self.i_s.db, &inf.as_cow_type(self.i_s))
                     {
-                        return FramesWithParentUnions {
+                        return Ok(FramesWithParentUnions {
                             truthy: Frame::from_type(key.clone(), truthy),
                             falsey: Frame::from_type(key, falsey),
                             ..Default::default()
-                        };
+                        });
                     }
                 } else {
                     debug!("maybe use __bool__ for narrowing");
                 }
-                if let Some((truthy, falsey)) =
-                    split_truthy_and_falsey(self.i_s.db, &inf.as_cow_type(self.i_s))
-                {
-                    return FramesWithParentUnions {
-                        truthy: Frame::from_type_without_entry(truthy),
-                        falsey: Frame::from_type_without_entry(falsey),
-                        ..Default::default()
-                    };
-                }
+                return Err(inf);
             }
             ExpressionPart::Comparisons(comps) => {
                 if let Some(frames) = self.find_guards_in_comparisons(comps) {
-                    return frames;
+                    return Ok(frames);
                 }
+                return Ok(FramesWithParentUnions::default());
             }
             ExpressionPart::Conjunction(and) => {
                 let (left, right) = and.unpack();
@@ -978,7 +991,7 @@ impl Inference<'_, '_, '_> {
                 });
                 let right_frames =
                     right_frames.unwrap_or_else(|| FramesWithParentUnions::default());
-                return merge_conjunction(self.i_s, Some(left_frames), right_frames);
+                return Ok(merge_conjunction(self.i_s, Some(left_frames), right_frames));
             }
             ExpressionPart::Disjunction(or) => {
                 let (left, right) = or.unpack();
@@ -993,16 +1006,16 @@ impl Inference<'_, '_, '_> {
                 let right_frames =
                     right_frames.unwrap_or_else(|| FramesWithParentUnions::default());
                 parent_unions.extend(right_frames.parent_unions);
-                return FramesWithParentUnions {
+                return Ok(FramesWithParentUnions {
                     truthy: merge_or(self.i_s, left_frames.truthy, right_frames.truthy),
                     falsey: merge_and(self.i_s, left_frames.falsey, right_frames.falsey),
                     parent_unions,
-                };
+                });
             }
             ExpressionPart::Inversion(inv) => {
                 let mut frames = self.find_guards_in_expression_parts(inv.expression());
                 (frames.truthy, frames.falsey) = (frames.falsey, frames.truthy);
-                return frames;
+                return Ok(frames);
             }
             ExpressionPart::Primary(primary) => {
                 match primary.second() {
@@ -1013,14 +1026,14 @@ impl Inference<'_, '_, '_> {
                                 if let Some(frames) =
                                     self.find_isinstance_or_issubclass_frames(args, false)
                                 {
-                                    return frames;
+                                    return Ok(frames);
                                 }
                             }
                             Some(Specific::BuiltinsIssubclass) => {
                                 if let Some(frames) =
                                     self.find_isinstance_or_issubclass_frames(args, true)
                                 {
-                                    return frames;
+                                    return Ok(frames);
                                 }
                             }
                             _ => (),
@@ -1036,14 +1049,11 @@ impl Inference<'_, '_, '_> {
                     }
                     _ => (),
                 }
-                self.infer_expression_part(part);
                 debug!("TODO primary expressions like foo.bar truthy/falsey")
             }
-            _ => {
-                self.infer_expression_part(part);
-            }
+            _ => (),
         }
-        FramesWithParentUnions::default()
+        Err(self.infer_expression_part(part))
     }
 
     fn find_guards_in_comparisons(&mut self, comps: Comparisons) -> Option<FramesWithParentUnions> {
