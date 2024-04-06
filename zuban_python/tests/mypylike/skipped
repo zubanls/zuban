@@ -1108,6 +1108,7 @@ testIsInstanceInitialNoneCheckSkipsImpossibleCasesNoStrictOptional
 testIsInstanceInitialNoneCheckSkipsImpossibleCasesInNoStrictOptional
 testIsinstanceMultiAndSpecialCase
 testTypeEqualsMultipleTypesShouldntNarrow
+testSpecialTypingProtocols
 # overwriting with def as a target
 testNarrowingWithDef
 # type[any] issues
@@ -1152,6 +1153,8 @@ testNarrowingWithAnyOps
 testNarrowingLenAnyListElseNotAffected
 testNarrowingLenMixWithAnyPrecise
 testNarrowingLenMixWithAnyImprecise
+testUnreachableWhenSuperclassIsAny
+testUnreachableWhenSuperclassIsAnyNoStrictOptional
 # questionable implicit literal?
 testEnumReachabilityChecksIndirect
 # Narrowing with previous and/or
@@ -1270,18 +1273,12 @@ testHasAttrModule
 # NoReturn / --warn-unreachable "Statement is unreachable"
 testNewAndInitNoReturn
 testOverloadedNewAndInitNoReturn
-testUnreachableWithStdlibContextManagersNoStrictOptional
-testSpecialTypingProtocols
-# New unreachable tests
 testUnreachableLiteral
-testUnreachableWhenSuperclassIsAny
-testUnreachableWhenSuperclassIsAnyNoStrictOptional
+testUnreachableLiteralFrom__bool__
 testUnreachableFlagContextManagersSuppressed
 testUnreachableFlagContextManagersSuppressedNoStrictOptional
 testUnreachableFlagContextAsyncManagersSuppressed
 testUnreachableFlagContextAsyncManagersAbnormal
-testUnreachableUntypedFunction
-testUnreachableLiteralFrom__bool__
 # unreachable after Never return
 testUnreachableFlagOkWithDeadStatements
 testUnreachableFlagWithTerminalBranchInDeferredNode
@@ -2159,6 +2156,7 @@ testSubclassingAnySilentImports
 testSubclassingAnySilentImports2
 
 # --no-strict-optional details
+testUnreachableWithStdlibContextManagersNoStrictOptional
 testNestedListExpressions
 testInitializationWithMultipleValues
 testNoneAndGenericTypesOverlapNoStrictOptional
