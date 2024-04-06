@@ -925,12 +925,7 @@ impl Inference<'_, '_, '_> {
 
     fn find_guards_in_expr(&mut self, expr: Expression) -> (Frame, Frame) {
         match expr.unpack() {
-            ExpressionContent::ExpressionPart(part) => {
-                let mut result = self.find_guards_in_expression_parts(part);
-                self.propagate_parent_unions(&mut result.truthy, &result.parent_unions);
-                self.propagate_parent_unions(&mut result.falsey, &result.parent_unions);
-                (result.truthy, result.falsey)
-            }
+            ExpressionContent::ExpressionPart(part) => self.find_guards_in_expr_part(part),
             ExpressionContent::Ternary(_) => todo!(),
             ExpressionContent::Lambda(_) => todo!(),
         }
