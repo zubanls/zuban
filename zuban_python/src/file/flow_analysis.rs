@@ -613,6 +613,10 @@ impl Inference<'_, '_, '_> {
         FLOW_ANALYSIS.with(|fa| fa.is_unreachable())
     }
 
+    pub fn mark_current_frame_unreachable(&self) {
+        FLOW_ANALYSIS.with(|fa| fa.mark_current_frame_unreachable())
+    }
+
     pub fn maybe_lookup_narrowed_name(&self, name_link: PointLink) -> Option<Inferred> {
         let result = FLOW_ANALYSIS.with(|fa| fa.lookup_narrowed_key(FlowKey::Name(name_link)));
 

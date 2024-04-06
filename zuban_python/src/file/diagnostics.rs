@@ -201,7 +201,7 @@ impl<'db> Inference<'db, '_, '_> {
                 }
                 SimpleStmtContent::ReturnStmt(return_stmt) => {
                     self.calc_return_stmt_diagnostics(func, return_stmt);
-                    FLOW_ANALYSIS.with(|fa| fa.mark_current_frame_unreachable())
+                    self.mark_current_frame_unreachable()
                 }
                 SimpleStmtContent::YieldExpr(yield_expr) => {
                     self.infer_yield_expr(yield_expr, &mut ResultContext::ExpectUnused);
@@ -213,6 +213,7 @@ impl<'db> Inference<'db, '_, '_> {
                             self.check_valid_raise_type(from_expr, true)
                         }
                     }
+                    self.mark_current_frame_unreachable()
                 }
                 SimpleStmtContent::ImportFrom(import_from) => {
                     if class.is_some() && func.is_none() {

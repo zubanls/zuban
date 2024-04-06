@@ -112,6 +112,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     pub fn has_trivial_body(&self, i_s: &InferenceState) -> bool {
+        // In Mypy this is called "is_trivial_body"
         let check_simple_stmt = |simple_stmt: Option<SimpleStmt>| {
             let Some(simple_stmt) = simple_stmt else {
                 return false;
