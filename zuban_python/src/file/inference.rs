@@ -4,7 +4,7 @@ use parsa_python_ast::*;
 
 use super::{
     diagnostics::await_aiter_and_next, on_argument_type_error, utils::infer_dict_like, File,
-    PythonFile,
+    PythonFile, FLOW_ANALYSIS,
 };
 use crate::{
     arguments::{KnownArgs, NoArgs, SimpleArgs},
@@ -2919,6 +2919,9 @@ pub fn await_(
         .as_cow_type(i_s)
         .as_ref(),
     );
+    if matches!(t, Type::Never) {
+        FLOW_ANALYSIS.with(|fa| fa.mark_current_frame_unreachable())
+    }
     if expect_not_none && matches!(t, Type::None) {
         from.add_issue(i_s, IssueType::DoesNotReturnAValue("Function".into()));
         Inferred::new_any_from_error()

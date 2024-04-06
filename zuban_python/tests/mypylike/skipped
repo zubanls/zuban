@@ -1270,7 +1270,6 @@ testHasAttrModule
 # NoReturn / --warn-unreachable "Statement is unreachable"
 testNewAndInitNoReturn
 testOverloadedNewAndInitNoReturn
-testNoReturnAsync
 testUnreachableWithStdlibContextManagersNoStrictOptional
 testSpecialTypingProtocols
 # New unreachable tests
