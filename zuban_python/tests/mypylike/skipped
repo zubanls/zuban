@@ -1167,6 +1167,7 @@ testInvalidBooleanBranchIgnored
 testUnreachableFlagExpressions
 testUnreachableFlagMiscTestCaseMissingMethod
 testUnreachableNoReturnBinaryOps
+testUnreachableLiteralFrom__bool__
 # or/and boolean logic over multiple terms
 testAndOr
 testRestrictedBoolAndOrWithGenerics
@@ -1243,6 +1244,11 @@ testUnreachableWhileTrue
 testComplicatedBlocks
 testIsInstanceSubClassMemberHard
 testUnreachableFlagWithBadControlFlow2
+# with
+testUnreachableFlagContextManagersSuppressed
+testUnreachableFlagContextManagersSuppressedNoStrictOptional
+testUnreachableFlagContextAsyncManagersSuppressed
+testUnreachableFlagContextAsyncManagersAbnormal
 # narowing for comprehensions if
 testComprehensionIsInstance
 # narrowing of nested scopes
@@ -1273,11 +1279,6 @@ testHasAttrModule
 # NoReturn / --warn-unreachable "Statement is unreachable"
 testNewAndInitNoReturn
 testOverloadedNewAndInitNoReturn
-testUnreachableLiteralFrom__bool__
-testUnreachableFlagContextManagersSuppressed
-testUnreachableFlagContextManagersSuppressedNoStrictOptional
-testUnreachableFlagContextAsyncManagersSuppressed
-testUnreachableFlagContextAsyncManagersAbnormal
 # unreachable after Never return
 testUnreachableFlagOkWithDeadStatements
 testUnreachableFlagWithTerminalBranchInDeferredNode

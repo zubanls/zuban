@@ -21,9 +21,9 @@ use crate::{
     matching::{Generic, LookupKind, Match, Matcher, ResultContext},
     node_ref::NodeRef,
     type_::{
-        simplified_union_from_iterators, AnyCause, ClassGenerics, EnumMember, GenericItem, Literal,
-        LiteralKind, NamedTuple, Tuple, TupleArgs, TupleUnpack, Type, TypeVarKind, UnionType,
-        WithUnpack,
+        simplified_union_from_iterators, AnyCause, CallableLike, ClassGenerics, EnumMember,
+        GenericItem, Literal, LiteralKind, NamedTuple, Tuple, TupleArgs, TupleUnpack, Type,
+        TypeVarKind, UnionType, WithUnpack,
     },
     type_helpers::{Class, Function},
 };
@@ -557,7 +557,7 @@ fn maybe_split_bool_from_literal(
     None
 }
 
-fn split_truthy_and_falsey(db: &Database, t: &Type) -> Option<(Type, Type)> {
+fn split_truthy_and_falsey(i_s: &InferenceState, t: &Type) -> Option<(Type, Type)> {
     let split_truthy_and_falsey_single = |t: &Type| {
         let check = |condition| {
             if condition {
@@ -566,14 +566,15 @@ fn split_truthy_and_falsey(db: &Database, t: &Type) -> Option<(Type, Type)> {
                 Some((Type::Never, t.clone()))
             }
         };
+        let check_literal = |literal: &Literal| match &literal.kind {
+            LiteralKind::Bool(b) => check(*b),
+            LiteralKind::Int(i) => check(*i != 0),
+            _ => None,
+        };
         let falsey = || Some((Type::Never, t.clone()));
         match t {
             Type::None => Some((Type::Never, Type::None)),
-            Type::Literal(literal) => match &literal.kind {
-                LiteralKind::Bool(b) => check(*b),
-                LiteralKind::Int(i) => check(*i != 0),
-                _ => None,
-            },
+            Type::Literal(literal) => check_literal(literal),
             Type::Tuple(tup) => match &tup.args {
                 TupleArgs::ArbitraryLen(t) => Some((
                     Type::Tuple(Tuple::new(TupleArgs::WithUnpack(WithUnpack {
@@ -585,7 +586,22 @@ fn split_truthy_and_falsey(db: &Database, t: &Type) -> Option<(Type, Type)> {
                 )),
                 _ => None,
             },
-            Type::Class(c) => maybe_split_bool_from_literal(db, t, &LiteralKind::Bool(true)),
+            Type::Class(c) => maybe_split_bool_from_literal(i_s.db, t, &LiteralKind::Bool(true))
+                .or_else(|| {
+                    let Some(CallableLike::Callable(callable)) = c
+                        .class(i_s.db)
+                        .lookup_without_descriptors_and_custom_add_issue(i_s, "__bool__", |_| ())
+                        .lookup
+                        .into_inferred()
+                        .as_cow_type(i_s)
+                        .maybe_callable(i_s) else {
+                        return None
+                    };
+                    match &callable.return_type {
+                        Type::Literal(literal) => check_literal(literal),
+                        _ => None,
+                    }
+                }),
             _ => None,
         }
     };
@@ -596,7 +612,7 @@ fn split_truthy_and_falsey(db: &Database, t: &Type) -> Option<(Type, Type)> {
             let mut falsey = Type::Never;
             let mut had_split = false;
             for t in union.iter() {
-                let result = split_truthy_and_falsey(db, t);
+                let result = split_truthy_and_falsey(i_s, t);
                 had_split |= result.is_some();
                 let (new_true, new_false) = result.unwrap_or_else(|| (t.clone(), t.clone()));
                 truthy.union_in_place(new_true);
@@ -931,7 +947,7 @@ impl Inference<'_, '_, '_> {
         self.find_guards_in_expression_parts_inner(part)
             .unwrap_or_else(|inf| {
                 if let Some((truthy, falsey)) =
-                    split_truthy_and_falsey(self.i_s.db, &inf.as_cow_type(self.i_s))
+                    split_truthy_and_falsey(self.i_s, &inf.as_cow_type(self.i_s))
                 {
                     FramesWithParentUnions {
                         truthy: Frame::from_type_without_entry(truthy),
@@ -961,7 +977,7 @@ impl Inference<'_, '_, '_> {
                 let inf = self.infer_atom(atom, &mut ResultContext::Unknown);
                 if let Some(key) = self.key_from_atom(atom) {
                     if let Some((truthy, falsey)) =
-                        split_truthy_and_falsey(self.i_s.db, &inf.as_cow_type(self.i_s))
+                        split_truthy_and_falsey(self.i_s, &inf.as_cow_type(self.i_s))
                     {
                         return Ok(FramesWithParentUnions {
                             truthy: Frame::from_type(key.clone(), truthy),
@@ -969,8 +985,6 @@ impl Inference<'_, '_, '_> {
                             ..Default::default()
                         });
                     }
-                } else {
-                    debug!("maybe use __bool__ for narrowing");
                 }
                 return Err(inf);
             }
