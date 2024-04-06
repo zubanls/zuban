@@ -344,6 +344,9 @@ testNewAnalyzerNameConflictsAndMultiLineDefinition
 
 # object.__new__(cls) -> Self where object.__new__(int) leads to Never
 testOverride__new__AndCallObject
+# __new__ return types with Never
+testNewAndInitNoReturn
+testOverloadedNewAndInitNoReturn
 
 # Self type classmethod access with type vars(no Self)
 testSelfTypeClone
@@ -1275,10 +1278,6 @@ testHasAttrMissingAttributeUnion
 testHasAttrMissingAttributeOuterUnion
 testHasAttrMissingAttributeLiteral
 testHasAttrModule
-
-# NoReturn / --warn-unreachable "Statement is unreachable"
-testNewAndInitNoReturn
-testOverloadedNewAndInitNoReturn
 # unreachable after Never return
 testUnreachableFlagOkWithDeadStatements
 testUnreachableFlagWithTerminalBranchInDeferredNode
