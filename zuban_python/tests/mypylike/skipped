@@ -1263,7 +1263,6 @@ testHasAttrMissingAttributeLiteral
 testHasAttrModule
 
 # NoReturn
-testUnionWithNoReturn
 testOverloadsAndNoReturnNarrowWhenBlacklistingSubtype
 testOverloadsAndNoReturnNarrowWhenBlacklistingSubtype2
 testNewAndInitNoReturn

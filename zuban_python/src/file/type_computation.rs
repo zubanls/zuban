@@ -2451,38 +2451,38 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         &mut self,
         slice_type: SliceType,
     ) -> TypeContent<'static, 'static> {
-        let iterator = slice_type.iter();
-        if let SliceTypeIterator::SliceOrSimple(s) = iterator {
-            let t = self.compute_slice_type_content(s);
-            let t = self.as_type(t, s.as_node_ref());
-            TypeContent::Type(t)
-        } else {
-            let mut entries = vec![];
-            let mut format_index = 0;
-            for slice_or_simple in iterator {
-                let t = self.compute_slice_type_content(slice_or_simple);
-                let type_ = self.as_type(t, slice_or_simple.as_node_ref());
-                match type_ {
-                    Type::Union(u) => {
-                        let length = u.entries.len();
-                        for mut new_entry in u.entries.into_vec() {
-                            new_entry.format_index += format_index;
-                            entries.push(new_entry);
-                        }
-                        format_index += length;
+        let mut entries = vec![];
+        let mut format_index = 0;
+        for slice_or_simple in slice_type.iter() {
+            let t = self.compute_slice_type_content(slice_or_simple);
+            let type_ = self.as_type(t, slice_or_simple.as_node_ref());
+            match type_ {
+                Type::Never => continue,
+                Type::Union(u) => {
+                    let length = u.entries.len();
+                    for mut new_entry in u.entries.into_vec() {
+                        new_entry.format_index += format_index;
+                        entries.push(new_entry);
                     }
-                    _ => {
-                        entries.push(UnionEntry {
-                            type_,
-                            format_index,
-                        });
-                        format_index += 1;
-                    }
+                    format_index += length;
+                }
+                _ => {
+                    entries.push(UnionEntry {
+                        type_,
+                        format_index,
+                    });
+                    format_index += 1;
                 }
             }
-            let mut t = UnionType::new(entries);
-            t.sort_for_priority();
-            TypeContent::Type(Type::Union(t))
+        }
+        match entries.len() {
+            0 => todo!(),
+            1 => TypeContent::Type(entries.into_iter().next().unwrap().type_),
+            _ => {
+                let mut t = UnionType::new(entries);
+                t.sort_for_priority();
+                TypeContent::Type(Type::Union(t))
+            }
         }
     }
 
