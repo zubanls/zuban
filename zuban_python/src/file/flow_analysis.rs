@@ -1025,14 +1025,22 @@ impl Inference<'_, '_, '_> {
                 if let Some((truthy, falsey)) =
                     split_truthy_and_falsey(self.i_s, &inf.as_cow_type(self.i_s))
                 {
-                    (
-                        inf,
-                        FramesWithParentUnions {
-                            truthy: Frame::from_type_without_entry(truthy),
-                            falsey: Frame::from_type_without_entry(falsey),
-                            ..Default::default()
-                        },
-                    )
+                    let frames = FramesWithParentUnions {
+                        truthy: Frame::from_type_without_entry(truthy),
+                        falsey: Frame::from_type_without_entry(falsey),
+                        ..Default::default()
+                    };
+                    let as_s = |frame: &Frame| match frame.unreachable {
+                        true => "reachable",
+                        false => "unreachable",
+                    };
+                    debug!(
+                        "Split reachability for {} into true: {} and false: {}",
+                        part.as_code(),
+                        as_s(&frames.truthy),
+                        as_s(&frames.falsey)
+                    );
+                    (inf, frames)
                 } else {
                     (inf, FramesWithParentUnions::default())
                 }
@@ -1061,6 +1069,16 @@ impl Inference<'_, '_, '_> {
                     if let Some((truthy, falsey)) =
                         split_truthy_and_falsey(self.i_s, &inf.as_cow_type(self.i_s))
                     {
+                        let as_s = |frame: &Frame| match frame.unreachable {
+                            true => "reachable",
+                            false => "unreachable",
+                        };
+                        debug!(
+                            "Narrowed {} to true: {} and false: {}",
+                            atom.as_code(),
+                            truthy.format_short(self.i_s.db),
+                            falsey.format_short(self.i_s.db)
+                        );
                         return Ok((
                             inf,
                             FramesWithParentUnions {
