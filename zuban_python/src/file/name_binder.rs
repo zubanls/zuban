@@ -694,6 +694,13 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     ) -> NodeIndex {
         let mut latest_return_or_yield = 0;
         for n in node.search_interesting_nodes() {
+            let mut check_bool_op = |(left, right)| {
+                self.index_non_block_node_full(&left, ordered, from_annotation);
+                let old_value = self.references_need_flow_analysis;
+                self.references_need_flow_analysis = true;
+                self.index_non_block_node_full(&right, ordered, from_annotation);
+                self.references_need_flow_analysis = old_value;
+            };
             match n {
                 InterestingNode::Name(name) => {
                     match name.parent() {
@@ -727,6 +734,8 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                         }
                     }
                 }
+                InterestingNode::Conjunction(conjunction) => check_bool_op(conjunction.unpack()),
+                InterestingNode::Disjunction(disjunction) => check_bool_op(disjunction.unpack()),
                 InterestingNode::YieldExpr(n) => {
                     let is_yield_from = match n.unpack() {
                         YieldExprContent::StarExpressions(s) => {

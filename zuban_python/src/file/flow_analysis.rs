@@ -1105,40 +1105,36 @@ impl Inference<'_, '_, '_> {
                 (frames.truthy, frames.falsey) = (frames.falsey, frames.truthy);
                 return Ok((inf, frames));
             }
-            ExpressionPart::Primary(primary) => {
-                match primary.second() {
-                    PrimaryContent::Execution(ArgumentsDetails::Node(args)) => {
-                        let first = self.infer_primary_or_atom(primary.first());
-                        match first.maybe_saved_specific(self.i_s.db) {
-                            Some(Specific::BuiltinsIsinstance) => {
-                                if let Some(frames) =
-                                    self.find_isinstance_or_issubclass_frames(args, false)
-                                {
-                                    return Ok((Inferred::new_bool(self.i_s.db), frames));
-                                }
-                            }
-                            Some(Specific::BuiltinsIssubclass) => {
-                                if let Some(frames) =
-                                    self.find_isinstance_or_issubclass_frames(args, true)
-                                {
-                                    return Ok((Inferred::new_bool(self.i_s.db), frames));
-                                }
-                            }
-                            _ => (),
-                        }
-                        if let Some(saved) = first.maybe_saved_link() {
-                            if saved == self.i_s.db.python_state.callable_node_ref().as_link() {
-                                debug!("TODO callable narrowing")
-                            } else if saved == self.i_s.db.python_state.hasattr_node_ref().as_link()
+            ExpressionPart::Primary(primary) => match primary.second() {
+                PrimaryContent::Execution(ArgumentsDetails::Node(args)) => {
+                    let first = self.infer_primary_or_atom(primary.first());
+                    match first.maybe_saved_specific(self.i_s.db) {
+                        Some(Specific::BuiltinsIsinstance) => {
+                            if let Some(frames) =
+                                self.find_isinstance_or_issubclass_frames(args, false)
                             {
-                                debug!("TODO hasattr narrowing")
+                                return Ok((Inferred::new_bool(self.i_s.db), frames));
                             }
+                        }
+                        Some(Specific::BuiltinsIssubclass) => {
+                            if let Some(frames) =
+                                self.find_isinstance_or_issubclass_frames(args, true)
+                            {
+                                return Ok((Inferred::new_bool(self.i_s.db), frames));
+                            }
+                        }
+                        _ => (),
+                    }
+                    if let Some(saved) = first.maybe_saved_link() {
+                        if saved == self.i_s.db.python_state.callable_node_ref().as_link() {
+                            debug!("TODO callable narrowing")
+                        } else if saved == self.i_s.db.python_state.hasattr_node_ref().as_link() {
+                            debug!("TODO hasattr narrowing")
                         }
                     }
-                    _ => (),
                 }
-                debug!("TODO primary expressions like foo.bar truthy/falsey")
-            }
+                _ => (),
+            },
             _ => (),
         }
         Err(self.infer_expression_part(part))
