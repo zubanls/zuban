@@ -1112,6 +1112,7 @@ testIsInstanceInitialNoneCheckSkipsImpossibleCasesInNoStrictOptional
 testIsinstanceMultiAndSpecialCase
 testTypeEqualsMultipleTypesShouldntNarrow
 testIsinstanceOrIsinstance
+testIsinstanceAndOr
 testSpecialTypingProtocols
 # overwriting with def as a target
 testNarrowingWithDef
@@ -1164,11 +1165,6 @@ testEnumReachabilityChecksIndirect
 # Narrowing with previous and/or
 testRegression11705_Strict
 testRegression11705_NoStrict
-testIsinstanceAndOr
-# Right operand of "and" is never evaluated
-testNoneAndStringIsNone
-testInvalidBooleanBranchIgnored
-testUnreachableFlagMiscTestCaseMissingMethod
 # or/and boolean logic over multiple terms
 testAndOr
 testRestrictedBoolAndOrWithGenerics
@@ -1282,6 +1278,8 @@ testNoReturnInExpr
 # yield after return is sometimes ok.
 testIntentionallyEmptyGeneratorFunction
 testIntentionallyEmptyGeneratorFunction_None
+# "Function "property_decorator_missing" could always be true in boolean context"
+testUnreachableFlagMiscTestCaseMissingMethod
 
 # None late binding, because it's None (x = None; x = 3)
 testEnumWithPartialTypes
@@ -1298,6 +1296,9 @@ testNoCrashOnPartialLambdaInference
 testUnpackUnionNoCrashOnPartialNone2
 # partial types with untyped defs
 testCheckUntypedDefsSelf2
+# None no late bound?
+testNoneAndStringIsNone
+testInvalidBooleanBranchIgnored
 
 # List/Set/Dict/Tuple Inferring type of variable when initialized to an empty collection
 testInferListInitialized*

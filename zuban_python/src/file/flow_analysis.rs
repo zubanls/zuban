@@ -859,12 +859,13 @@ impl Inference<'_, '_, '_> {
                 and.index(),
                 IssueType::RightOperandIsNeverOperated { right: "and" },
             )
+        } else {
+            left_frames.truthy = FLOW_ANALYSIS.with(|fa| {
+                fa.with_frame(self.i_s.db, left_frames.truthy, || {
+                    right_infos = Some(self.find_guards_in_expression_parts(right));
+                })
+            });
         }
-        left_frames.truthy = FLOW_ANALYSIS.with(|fa| {
-            fa.with_frame(self.i_s.db, left_frames.truthy, || {
-                right_infos = Some(self.find_guards_in_expression_parts(right));
-            })
-        });
         let (inf, right_frames) = if let Some((right_inf, right_frames)) = right_infos {
             (
                 left_inf
@@ -889,16 +890,17 @@ impl Inference<'_, '_, '_> {
         let (left, right) = or.unpack();
         let (left_inf, mut left_frames) = self.find_guards_in_expression_parts(left);
         let mut right_infos = None;
-        left_frames.falsey = FLOW_ANALYSIS.with(|fa| {
-            fa.with_frame(self.i_s.db, left_frames.falsey, || {
-                right_infos = Some(self.find_guards_in_expression_parts(right));
-            })
-        });
         if left_frames.falsey.unreachable {
             self.add_issue(
                 or.index(),
                 IssueType::RightOperandIsNeverOperated { right: "or" },
             )
+        } else {
+            left_frames.falsey = FLOW_ANALYSIS.with(|fa| {
+                fa.with_frame(self.i_s.db, left_frames.falsey, || {
+                    right_infos = Some(self.find_guards_in_expression_parts(right));
+                })
+            });
         }
 
         let (inf, right_frames) = if let Some((right_inf, right_frames)) = right_infos {
