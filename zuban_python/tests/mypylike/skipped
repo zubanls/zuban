@@ -1111,6 +1111,7 @@ testIsInstanceInitialNoneCheckSkipsImpossibleCasesNoStrictOptional
 testIsInstanceInitialNoneCheckSkipsImpossibleCasesInNoStrictOptional
 testIsinstanceMultiAndSpecialCase
 testTypeEqualsMultipleTypesShouldntNarrow
+testIsinstanceOrIsinstance
 testSpecialTypingProtocols
 # overwriting with def as a target
 testNarrowingWithDef
@@ -1167,10 +1168,8 @@ testIsinstanceAndOr
 # Right operand of "and" is never evaluated
 testNoneAndStringIsNone
 testInvalidBooleanBranchIgnored
-testUnreachableFlagExpressions
 testUnreachableFlagMiscTestCaseMissingMethod
 testUnreachableNoReturnBinaryOps
-testUnreachableLiteralFrom__bool__
 # or/and boolean logic over multiple terms
 testAndOr
 testRestrictedBoolAndOrWithGenerics
@@ -1281,6 +1280,7 @@ testHasAttrModule
 # unreachable after Never return
 testUnreachableFlagOkWithDeadStatements
 testUnreachableFlagWithTerminalBranchInDeferredNode
+testNoReturnInExpr
 # yield after return is sometimes ok.
 testIntentionallyEmptyGeneratorFunction
 testIntentionallyEmptyGeneratorFunction_None

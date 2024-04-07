@@ -5,7 +5,7 @@ use std::{
 
 use parsa_python_ast::{
     Argument, Arguments, ArgumentsDetails, Atom, AtomContent, Block, BreakStmt, ComparisonContent,
-    Comparisons, Conjunction, ContinueStmt, ElseBlock, Expression, ExpressionContent,
+    Comparisons, Conjunction, ContinueStmt, Disjunction, ElseBlock, Expression, ExpressionContent,
     ExpressionPart, ForStmt, IfBlockIterator, IfBlockType, IfStmt, Name, NamedExpression,
     NamedExpressionContent, NodeIndex, Operand, Primary, PrimaryContent, PrimaryOrAtom,
     PrimaryTarget, PrimaryTargetOrAtom, SliceType as ASTSliceType, Ternary, WhileStmt,
@@ -877,6 +877,42 @@ impl Inference<'_, '_, '_> {
         (inf, left_frames, right_frames)
     }
 
+    pub fn flow_analysis_for_disjunction(&mut self, or: Disjunction) -> Inferred {
+        self.check_disjunction(or).0
+    }
+
+    fn check_disjunction(
+        &mut self,
+        or: Disjunction,
+    ) -> (Inferred, FramesWithParentUnions, FramesWithParentUnions) {
+        let (left, right) = or.unpack();
+        let (left_inf, mut left_frames) = self.find_guards_in_expression_parts(left);
+        let mut right_infos = None;
+        left_frames.falsey = FLOW_ANALYSIS.with(|fa| {
+            fa.with_frame(self.i_s.db, left_frames.falsey, || {
+                right_infos = Some(self.find_guards_in_expression_parts(right));
+            })
+        });
+        if left_frames.falsey.unreachable {
+            self.add_issue(
+                or.index(),
+                IssueType::RightOperandIsNeverOperated { right: "or" },
+            )
+        }
+
+        let (inf, right_frames) = if let Some((right_inf, right_frames)) = right_infos {
+            (
+                left_inf
+                    .filter_truthy_or_falsey(self.i_s, true)
+                    .simplified_union(self.i_s, right_inf),
+                right_frames,
+            )
+        } else {
+            (left_inf, FramesWithParentUnions::default())
+        };
+        (inf, left_frames, right_frames)
+    }
+
     #[inline]
     fn maybe_propagate_parent_union(
         &mut self,
@@ -1049,20 +1085,11 @@ impl Inference<'_, '_, '_> {
                 return Ok((inf, merge_conjunction(self.i_s, Some(left), right)));
             }
             ExpressionPart::Disjunction(or) => {
-                let (left, right) = or.unpack();
-                let (left_inf, mut left_frames) = self.find_guards_in_expression_parts(left);
+                let (inf, left_frames, right_frames) = self.check_disjunction(or);
                 let mut parent_unions = left_frames.parent_unions;
-                let mut right_frames = None;
-                left_frames.falsey = FLOW_ANALYSIS.with(|fa| {
-                    fa.with_frame(self.i_s.db, left_frames.falsey, || {
-                        right_frames = Some(self.find_guards_in_expression_parts(right).1);
-                    })
-                });
-                let right_frames =
-                    right_frames.unwrap_or_else(|| FramesWithParentUnions::default());
                 parent_unions.extend(right_frames.parent_unions);
                 return Ok((
-                    Inferred::new_bool(self.i_s.db),
+                    inf,
                     FramesWithParentUnions {
                         truthy: merge_or(self.i_s, left_frames.truthy, right_frames.truthy),
                         falsey: merge_and(self.i_s, left_frames.falsey, right_frames.falsey),

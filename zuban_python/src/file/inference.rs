@@ -1366,14 +1366,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             ExpressionPart::BitwiseOr(or) => self.infer_operation(or.as_operation()),
             ExpressionPart::BitwiseAnd(and) => self.infer_operation(and.as_operation()),
             ExpressionPart::BitwiseXor(xor) => self.infer_operation(xor.as_operation()),
-            ExpressionPart::Disjunction(or) => {
-                let (first, second) = or.unpack();
-                let first = self.infer_expression_part(first);
-                let second = self.infer_expression_part(second);
-                first
-                    .filter_truthy_or_falsey(self.i_s, true)
-                    .simplified_union(self.i_s, second)
-            }
+            ExpressionPart::Disjunction(or) => self.flow_analysis_for_disjunction(or),
             ExpressionPart::Conjunction(and) => self.flow_analysis_for_conjunction(and),
             ExpressionPart::Inversion(inversion) => {
                 let expr = inversion.expression();
