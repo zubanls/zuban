@@ -620,6 +620,7 @@ fn split_truthy_and_falsey(i_s: &InferenceState, t: &Type) -> Option<(Type, Type
             }
             had_split.then_some((truthy, falsey))
         }
+        Type::Never => Some((Type::Never, Type::Never)),
         _ => split_truthy_and_falsey_single(t),
     }
 }
