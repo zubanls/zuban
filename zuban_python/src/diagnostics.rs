@@ -337,6 +337,7 @@ pub(crate) enum IssueType {
     UnimportedTypeBecomesAny { prefix: Box<str>, type_: Box<str> }, // From --diallow-any-unimported
     DisallowedAnyExpr { type_: Box<str> },
     UnreachableStatement, // From --warn-unreachable
+    RightOperandIsNeverOperated { right: &'static str }, // From --warn-unreachable
     RedundantCast { to: Box<str> }, // From --warn-redundant-casts
     ReturnedAnyWarning { expected: Box<str> }, // From --warn-return-any
 
@@ -412,7 +413,7 @@ impl IssueType {
             | TypedDictHasNoKeyForGet { .. } => "typeddict-item",
             TypedDictExtraKey { .. } | TypedDictHasNoKey { .. } => "typeddict-unknown-key",
 
-            UnreachableStatement => "unreachable",
+            UnreachableStatement | RightOperandIsNeverOperated { .. } => "unreachable",
             RedundantCast { .. } => "redundant-cast",
             ReturnedAnyWarning { .. } => "no-any-return",
 
@@ -828,6 +829,9 @@ impl<'db> Diagnostic<'db> {
                 _ => format!(r#"Expression type contains "Any" ("{type_}")"#),
             },
             UnreachableStatement => "Statement is unreachable".to_string(),
+            RightOperandIsNeverOperated { right } => format!(
+                r#"Right operand of "{right}" is never evaluated"#
+            ),
             RedundantCast { to } => format!(r#"Redundant cast to "{to}""#),
             ReturnedAnyWarning { expected } => format!(
                 r#"Returning Any from function declared to return "{expected}""#

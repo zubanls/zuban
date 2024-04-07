@@ -5,10 +5,10 @@ use std::{
 
 use parsa_python_ast::{
     Argument, Arguments, ArgumentsDetails, Atom, AtomContent, Block, BreakStmt, ComparisonContent,
-    Comparisons, ContinueStmt, ElseBlock, Expression, ExpressionContent, ExpressionPart, ForStmt,
-    IfBlockIterator, IfBlockType, IfStmt, Name, NamedExpression, NamedExpressionContent, NodeIndex,
-    Operand, Primary, PrimaryContent, PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom,
-    SliceType as ASTSliceType, Ternary, WhileStmt,
+    Comparisons, Conjunction, ContinueStmt, ElseBlock, Expression, ExpressionContent,
+    ExpressionPart, ForStmt, IfBlockIterator, IfBlockType, IfStmt, Name, NamedExpression,
+    NamedExpressionContent, NodeIndex, Operand, Primary, PrimaryContent, PrimaryOrAtom,
+    PrimaryTarget, PrimaryTargetOrAtom, SliceType as ASTSliceType, Ternary, WhileStmt,
 };
 
 use crate::{
@@ -842,6 +842,41 @@ impl Inference<'_, '_, '_> {
         }
     }
 
+    pub fn flow_analysis_for_conjunction(&mut self, and: Conjunction) -> Inferred {
+        self.check_conjunction(and).0
+    }
+
+    fn check_conjunction(
+        &mut self,
+        and: Conjunction,
+    ) -> (Inferred, FramesWithParentUnions, FramesWithParentUnions) {
+        let (left, right) = and.unpack();
+        let (left_inf, mut left_frames) = self.find_guards_in_expression_parts(left);
+        let mut right_infos = None;
+        if left_frames.truthy.unreachable {
+            self.add_issue(
+                and.index(),
+                IssueType::RightOperandIsNeverOperated { right: "and" },
+            )
+        }
+        left_frames.truthy = FLOW_ANALYSIS.with(|fa| {
+            fa.with_frame(self.i_s.db, left_frames.truthy, || {
+                right_infos = Some(self.find_guards_in_expression_parts(right));
+            })
+        });
+        let (inf, right_frames) = if let Some((right_inf, right_frames)) = right_infos {
+            (
+                left_inf
+                    .filter_truthy_or_falsey(self.i_s, false)
+                    .simplified_union(self.i_s, right_inf),
+                right_frames,
+            )
+        } else {
+            (left_inf, FramesWithParentUnions::default())
+        };
+        (inf, left_frames, right_frames)
+    }
+
     #[inline]
     fn maybe_propagate_parent_union(
         &mut self,
@@ -1009,20 +1044,9 @@ impl Inference<'_, '_, '_> {
                 ));
             }
             ExpressionPart::Conjunction(and) => {
-                let (left, right) = and.unpack();
-                let (left_inf, mut left_frames) = self.find_guards_in_expression_parts(left);
-                let mut right_frames = None;
-                left_frames.truthy = FLOW_ANALYSIS.with(|fa| {
-                    fa.with_frame(self.i_s.db, left_frames.truthy, || {
-                        right_frames = Some(self.find_guards_in_expression_parts(right).1);
-                    })
-                });
-                let right_frames =
-                    right_frames.unwrap_or_else(|| FramesWithParentUnions::default());
-                return Ok((
-                    Inferred::new_bool(self.i_s.db),
-                    merge_conjunction(self.i_s, Some(left_frames), right_frames),
-                ));
+                let (inf, left, right) = self.check_conjunction(and);
+
+                return Ok((inf, merge_conjunction(self.i_s, Some(left), right)));
             }
             ExpressionPart::Disjunction(or) => {
                 let (left, right) = or.unpack();
