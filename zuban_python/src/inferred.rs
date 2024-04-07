@@ -139,6 +139,10 @@ impl<'db: 'slf, 'slf> Inferred {
         Self::from_type(Type::Any(cause))
     }
 
+    pub fn new_bool(db: &Database) -> Self {
+        Self::from_type(db.python_state.bool_type())
+    }
+
     pub fn new_file_reference(index: FileIndex) -> Self {
         // TODO maybe remove this and UnsavedFileReference??? unused??
         Self {
