@@ -165,10 +165,8 @@ pub struct FlowAnalysis {
 impl FlowAnalysis {
     fn lookup_narrowed_key(&self, lookup_key: FlowKey) -> Option<Inferred> {
         for frame in self.frames.borrow().iter().rev() {
-            for entry in &frame.entries {
-                if entry.key == lookup_key {
-                    return Some(Inferred::from_type(entry.type_.clone()));
-                }
+            if let Some(entry) = frame.lookup_entry(&lookup_key) {
+                return Some(Inferred::from_type(entry.type_.clone()));
             }
         }
         None
