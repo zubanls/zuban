@@ -139,6 +139,10 @@ impl Frame {
         }
     }
 
+    fn lookup_entry(&self, key: &FlowKey) -> Option<&Entry> {
+        self.entries.iter().find(|entry| &entry.key == key)
+    }
+
     fn from_type(key: FlowKey, type_: Type) -> Self {
         match type_ {
             Type::Never => Self::new_unreachable(),
@@ -588,8 +592,15 @@ fn split_truthy_and_falsey(i_s: &InferenceState, t: &Type) -> Option<(Type, Type
             },
             Type::Class(c) => maybe_split_bool_from_literal(i_s.db, t, &LiteralKind::Bool(true))
                 .or_else(|| {
-                    let Some(CallableLike::Callable(callable)) = c
-                        .class(i_s.db)
+                    let class = c.class(i_s.db);
+                    if let Some(nt) = class.use_cached_class_infos(i_s.db).maybe_named_tuple() {
+                        if nt.params().is_empty() {
+                            todo!()
+                        } else {
+                            return Some((t.clone(), Type::Never));
+                        }
+                    }
+                    let Some(CallableLike::Callable(callable)) = class
                         .lookup_without_descriptors_and_custom_add_issue(i_s, "__bool__", |_| ())
                         .lookup
                         .into_inferred()
@@ -854,6 +865,7 @@ impl Inference<'_, '_, '_> {
         let (left, right) = and.unpack();
         let (left_inf, mut left_frames) = self.find_guards_in_expression_parts(left);
         let mut right_infos = None;
+        let had_first_left_entry = !left_frames.falsey.entries.is_empty();
         if left_frames.truthy.unreachable {
             self.add_issue(
                 and.index(),
@@ -867,8 +879,13 @@ impl Inference<'_, '_, '_> {
             });
         }
         let (inf, right_frames) = if let Some((right_inf, right_frames)) = right_infos {
-            (
+            let narrowed_left_inf = if had_first_left_entry {
+                Inferred::from_type(left_frames.falsey.entries[0].type_.clone())
+            } else {
                 left_inf
+            };
+            (
+                narrowed_left_inf
                     .filter_truthy_or_falsey(self.i_s, false)
                     .simplified_union(self.i_s, right_inf),
                 right_frames,

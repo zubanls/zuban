@@ -1064,6 +1064,7 @@ testNarrowingEqualityDisabledForCustomEquality
 assign_bool_to_false_true_literal
 testBoolInTuplesRegression
 
+testRestrictedTypeAnd
 # isinstance error conditions
 testLiteralErrorsWithIsInstanceAndIsSubclass
 # unsorted narrowing tests
@@ -1162,9 +1163,6 @@ testUnreachableWhenSuperclassIsAny
 testUnreachableWhenSuperclassIsAnyNoStrictOptional
 # questionable implicit literal?
 testEnumReachabilityChecksIndirect
-# Narrowing with previous and/or
-testRegression11705_Strict
-testRegression11705_NoStrict
 # or/and boolean logic over multiple terms
 testAndOr
 testRestrictedBoolAndOrWithGenerics
@@ -2158,6 +2156,7 @@ testUnreachableWithStdlibContextManagersNoStrictOptional
 testNestedListExpressions
 testInitializationWithMultipleValues
 testNoneAndGenericTypesOverlapNoStrictOptional
+testNamedTupleAsConditionalStrictOptionalDisabled
 
 # --no-namespace-packages
 testClassicNotPackage
