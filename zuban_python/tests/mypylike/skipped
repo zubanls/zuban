@@ -177,6 +177,9 @@ testNestedListAssignment
 testNestedListAssignmentToTuple
 # Tuple a, *li = ta: "List item 0 has incompatible type "A"; expected "int""
 testAssignmentToStarFromTupleType
+# empty tuple as iterator ("Need type annotation for "x"")
+testAssignmentToStarMissingAnnotation
+testForLoopOverEmptyTuple
 
 # Special-case type inference of empty collections https://github.com/python/mypy/pull/16122
 testInferenceWorksWithEmptyCollectionsUnion
@@ -247,6 +250,8 @@ testParamSpecInferredFromLambda
 # lambda --new-type-inference
 testInferenceAgainstGenericLambdas
 testGenericLambdaGenericMethodNoCrash
+testUninferableLambda
+testUninferableLambdaWithTypeError
 # lambda context recursion
 testRejectCovariantArgumentInLambda
 # i_s missing current class
@@ -1290,8 +1295,8 @@ testLocalPartialTypesAccessPartialNoneAttribute
 testLocalPartialTypesAccessPartialNoneAttribute2
 testPartialTypeProtocol
 testPartialTypeInNestedClass
-testNoCrashOnPartialLambdaInference
 testUnpackUnionNoCrashOnPartialNone2
+testSuggestPep604AnnotationForPartialNone
 # partial types with untyped defs
 testCheckUntypedDefsSelf2
 # None no late bound?
@@ -1344,43 +1349,38 @@ testPartiallyInitializedToNoneAndThenToPartialList
 testPartiallyInitializedToNoneAndThenReadPartialList
 testPartiallyInitializedToNoneAndPartialListAndLeftPartial
 testPartiallyInitializedToNoneAndThenToIncompleteType-skip
-
-# Need type annotation for "X"
+# With "Need type annotation for "X""
+testNoCrashOnPartialLambdaInference
 testNewAnalyzerLessErrorsNeedAnnotation
+testNoCrashOnPartialMember
+testInferenceOfFor1
+testInferenceOfFor3
+testLocalVariableInferenceFromEmptyList
+testNoPartialInSupertypeAsContext
+testOverridePartialAttributeWithMethod
+testAccessingClassAttributeWithTypeInferenceIssue2
+testTypeAnnotationNeededMultipleAssignment
+testTupleWithoutContext
+testReusingInferredForIndex2
+testDictWithoutKeywordArgs
+testInferenceWithUninhabitedType
+testDisallowAnyGenericsPlainList
+testColumnNeedTypeAnnotation
+testLowercaseSettingOnTypeAnnotationHint
+testPartialDefaultDict*
+
+# Unknown return generics and therefore "Need type annotation for "X""
+testGenericFunctionOnReturnTypeOnly
 testNewAnalyzerLessErrorsNeedAnnotationNested
 testErrorInTypeCheckSecondPassThroughPropagation
-testGenericFunctionOnReturnTypeOnly
 testUnderspecifiedInferenceResult
-testNoCrashOnPartialMember
 testDontMarkUnreachableAfterInferenceUninhabited
 testDontMarkUnreachableAfterInferenceUninhabited2
 testDontMarkUnreachableAfterInferenceUninhabited3
 testNeedAnnotationForCallable
-testPartialDefaultDict*
-testInferenceOfFor1
-testInferenceOfFor3
 testInferLocalVariableTypeWithUnderspecifiedGenericType
-testLocalVariableInferenceFromEmptyList
-testNoPartialInSupertypeAsContext
-testSuggestPep604AnnotationForPartialNone
-testSelfTypeRestrictedMethodOverloadInitFallBacks
-testOverridePartialAttributeWithMethod
-testInheritanceAndAttributeAssignment
-testAssignmentToAttributeInMultipleMethods
-testAccessingClassAttributeWithTypeInferenceIssue2
-testTypeAnnotationNeededMultipleAssignment
-testAssignmentToStarMissingAnnotation
-testForLoopOverEmptyTuple
-testTupleWithoutContext
-testReusingInferredForIndex2
 testErrorCodeNeedTypeAnnotation
-testColumnNeedTypeAnnotation
-testDictWithoutKeywordArgs
-testUninferableLambda
-testUninferableLambdaWithTypeError
-testDisallowAnyGenericsPlainList
-testInferenceWithUninhabitedType
-testLowercaseSettingOnTypeAnnotationHint
+testSelfTypeRestrictedMethodOverloadInitFallBacks
 # "Perhaps you need a type annotation for "x"? Suggestion: "List[str | int]""
 testInferredTypeSubTypeOfReturnType
 # --disallow-any-generics
@@ -1427,6 +1427,8 @@ testPropertyGetterBody
 # self assignment validation
 testSlotsAssignmentWithMethodReassign
 testTypeVarTupleNewSyntaxGenerics
+testInheritanceAndAttributeAssignment
+testAssignmentToAttributeInMultipleMethods
 # "NamedTuple type as an attribute is not supported"
 testAssignNamedTupleAsAttribute
 testNoCrashUnsupportedNamedTuple
