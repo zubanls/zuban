@@ -391,6 +391,11 @@ pub enum Specific {
     MypyExtensionsDefaultNamedArg,
     MypyExtensionsVarArg,
     MypyExtensionsKwArg,
+    // PartialNone,
+    // PartialList,
+    // PartialDict,
+    // PartialSet,
+    // PartialDefaultDict,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
