@@ -1296,9 +1296,6 @@ testUnpackUnionNoCrashOnPartialNone2
 testSuggestPep604AnnotationForPartialNone
 # partial types with untyped defs
 testCheckUntypedDefsSelf2
-# None no late bound?
-testNoneAndStringIsNone
-testInvalidBooleanBranchIgnored
 
 # List/Set/Dict/Tuple Inferring type of variable when initialized to an empty collection
 testInferListInitialized*
