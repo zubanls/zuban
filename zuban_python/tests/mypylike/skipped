@@ -87,6 +87,10 @@ testTypeVarTupleOverloadMatch
 testTupleOverloadZipAny
 
 # Union of empty lists dicts sets with used ones
+testOperatorWithEmptyListAndSum
+testOrOperationWithGenericOperands
+testOrOperationInferredFromContext
+# ternary context inference
 testUnificationEmptyListLeft
 testUnificationEmptyListRight
 testUnificationEmptySetLeft
@@ -94,10 +98,6 @@ testUnificationEmptyDictLeft
 testUnificationEmptyDictRight
 testUnificationDictWithEmptyListLeft
 testUnificationDictWithEmptyListRight
-testOperatorWithEmptyListAndSum
-testOrOperationWithGenericOperands
-testOrOperationInferredFromContext
-# ternary context inference
 testTernaryWithNone
 testOptionalTypeNarrowedByGenericCall5
 testNoneListTernary
@@ -147,6 +147,7 @@ testSelfReferentialSubscriptExpression
 testNewAnalyzerMemberNameMatchesNamedTuple
 testVariableTypeWithQualifiedName
 testNewAnalyzerMemberNameMatchesTypedDict
+testConditionalExceptionAliasOverride
 # TypedDict definition circle: A = TypedDict('A', {'a': 'A'})
 testCrashOnSelfRecursiveTypedDictVar
 testBasicRecursiveTypedDictCall
@@ -1287,7 +1288,6 @@ testUnreachableFlagMiscTestCaseMissingMethod
 
 # None late binding, because it's None (x = None; x = 3)
 testLocalPartialTypesWithClassAttributeInitializedToNone
-testLocalPartialTypesWithNestedFunction3
 testLocalPartialTypesWithInheritance3
 testLocalPartialTypesBinderSpecialCase
 testLocalPartialTypesAccessPartialNoneAttribute
@@ -1296,6 +1296,11 @@ testUnpackUnionNoCrashOnPartialNone2
 testSuggestPep604AnnotationForPartialNone
 # partial types with untyped defs
 testCheckUntypedDefsSelf2
+# Make x an Optional if else contains `x = None`
+testOptionalBackwards1
+testOptionalBackwards2
+testOptionalBackwards3
+testOptionalBackwards4
 
 # List/Set/Dict/Tuple Inferring type of variable when initialized to an empty collection
 testInferListInitialized*
@@ -1422,6 +1427,8 @@ testOptionalDescriptorsBinder
 testUnionDescriptorsBinder
 testSubclassDescriptorsBinder
 testPropertyGetterBody
+# All conditional function variants must have identical signatures (flow analysis)
+testUnionOrderEquivalence
 # self assignment validation
 testSlotsAssignmentWithMethodReassign
 testTypeVarTupleNewSyntaxGenerics
@@ -1431,28 +1438,10 @@ testAssignmentToAttributeInMultipleMethods
 testAssignNamedTupleAsAttribute
 testNoCrashUnsupportedNamedTuple
 
-# All conditional function variants must have identical signatures (flow analysis)
-testUnionOrderEquivalence
-
 # "Incompatible import of "y" (imported name has type "str", local name has type "int")"
 testAssignAndConditionalImport
 testAssignAndConditionalStarImport
 testImportedVariableViaImport
-
-# Multi definition ifs
-testNewAnalyzerFirstAliasTargetWins
-testNewAnalyzerFirstVarDefinitionWins
-testOptionalBackwards1
-testOptionalBackwards2
-testOptionalBackwards3
-testOptionalBackwards4
-# Multi definition name binder issues where essentially the same type is defined?
-testOverrideByIdemAliasReversed
-testOverrideByIdemAliasGeneric
-testOverrideByIdemAliasImported
-testConditionalExceptionAliasOverride
-# comprehensions Scoping (actually Python 3.10 name lookup behavior)
-testListComprehensionSpecialScoping
 
 # Conditional definitions
 testNewAnalyzerConditionalFunc
@@ -1607,6 +1596,7 @@ testDataclassesInheritingDuplicateField
 testPropertyAndFieldRedefinitionNoCrash
 testModuleLevelGetattrImportFromAsTwice
 testFinalClassVariableRedefinitionDoesNotCrash
+testNewAnalyzerFirstVarDefinitionWins
 # redefinition overload
 testRedefinedOverloadedFunction
 testFakeOverloadCrash
@@ -1760,6 +1750,7 @@ testNonlocalAndGlobalDecl
 testNewAnalyzerRedefinedNonlocal
 testTypeOfOuterMostNonlocalUsed
 testTypeOfNonlocalUsed
+testLocalPartialTypesWithNestedFunction3
 
 # __init__ None needed
 testInitReturnTypeError
