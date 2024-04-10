@@ -1082,7 +1082,7 @@ fn setup_type_alias(typing: &PythonFile, name: &str, target_file: &PythonFile, t
     debug_assert!(!typing.points.get(node_index).calculated());
     let target_node_index = target_file.symbol_table.lookup_symbol(target_name).unwrap();
     typing.points.set(
-        node_index, // Set it on name definition
+        node_index, // Set it on name
         Point::new_redirect(target_file.file_index(), target_node_index, Locality::Stmt),
     );
 }

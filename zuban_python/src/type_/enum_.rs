@@ -230,7 +230,7 @@ pub fn infer_value_on_member(
                 node_ref
                     .file
                     .inference(&i_s.with_enum_calculation_mode())
-                    .infer_name(name)
+                    .infer_name_of_definition(name)
             } else {
                 let expr = node_ref.as_expression();
                 node_ref.file.inference(i_s).infer_expression(expr)

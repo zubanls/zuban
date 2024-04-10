@@ -138,7 +138,7 @@ impl<'db> Inference<'db, '_, '_> {
                 .add_issue(self.i_s, IssueType::GetattributeInvalidAtModuleLevel)
         }
         if let Some(index) = self.file.symbol_table.lookup_symbol("__getattr__") {
-            let actual = self.infer_name_by_index(index);
+            let actual = self.infer_name_of_definition_by_index(index);
             let actual = actual.as_cow_type(self.i_s);
             let Type::Callable(callable) = &self.i_s.db.python_state.valid_getattr_supertype else {
                 unreachable!();
@@ -663,7 +663,7 @@ impl<'db> Inference<'db, '_, '_> {
             .class_symbol_table
             .lookup_symbol("__slots__")
         {
-            let inf = self.infer_name_by_index(node_index);
+            let inf = self.infer_name_of_definition_by_index(node_index);
             let t = inf.as_cow_type(&i_s);
             if !t
                 .is_simple_sub_type_of(&i_s, &i_s.db.python_state.iterable_of_str)

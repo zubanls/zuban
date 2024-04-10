@@ -83,7 +83,9 @@ impl<'a> Module<'a> {
                 inf: if is_import {
                     Inferred::from_saved_link(link)
                 } else {
-                    self.file.inference(i_s).infer_name_by_index(index)
+                    self.file
+                        .inference(i_s)
+                        .infer_name_of_definition_by_index(index)
                 },
             }
         } else if let Some(sub_module) = self.sub_module(i_s.db, name) {
@@ -102,7 +104,7 @@ impl<'a> Module<'a> {
                 i_s.db
                     .loaded_python_file(link.file)
                     .inference(i_s)
-                    .infer_name_by_index(link.node_index)
+                    .infer_name_of_definition_by_index(link.node_index)
             };
             LookupResult::GotoName { name: link, inf }
         } else if let Some(inf) = self.maybe_execute_getattr(i_s, &add_issue) {
@@ -130,7 +132,7 @@ impl<'a> Module<'a> {
                 .db
                 .loaded_python_file(link.file)
                 .inference(i_s)
-                .infer_name_by_index(link.node_index);
+                .infer_name_of_definition_by_index(link.node_index);
             inf.execute(
                 i_s,
                 &KnownArgsWithCustomAddIssue::new(

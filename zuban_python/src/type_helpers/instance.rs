@@ -331,7 +331,7 @@ impl<'a> Instance<'a> {
                                     .node_ref
                                     .file
                                     .inference(&i_s)
-                                    .infer_name_by_index(self_symbol)
+                                    .infer_name_of_definition_by_index(self_symbol)
                                     .resolve_class_type_vars(&i_s, &self.class, &c),
                             },
                         };

@@ -235,7 +235,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         if let Some(original_name_index) = first_defined_name(self.file, name_def.name().index()) {
             let from = NodeRef::new(self.file, name_def.index());
             let import_inferred = self.infer_name_definition(name_def);
-            self.infer_name_by_index(original_name_index)
+            self.infer_name_of_definition_by_index(original_name_index)
                 .as_cow_type(self.i_s)
                 .error_if_not_matches(
                     self.i_s,
@@ -857,7 +857,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             return result;
                         }
                     }
-                    self.infer_name_by_index(first_index)
+                    self.infer_name_of_definition_by_index(first_index)
                 })
             }
             Target::NameExpression(primary_target, _) => {
@@ -893,7 +893,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let current_index = name_def.name_index();
                 if let Some(first_index) = first_defined_name(self.file, current_index) {
                     if current_index != first_index {
-                        let original_inf = self.infer_name_by_index(first_index);
+                        let original_inf = self.infer_name_of_definition_by_index(first_index);
                         let original_t = original_inf.as_cow_type(i_s);
                         let check_for_error = || {
                             original_t.error_if_not_matches(
@@ -2316,7 +2316,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 let name =
                                     Name::maybe_by_index(&inference.file.tree, next_node_index);
                                 if let Some(name) = name {
-                                    inference.infer_name(name)
+                                    inference.infer_name_of_definition(name)
                                 } else if let Some(expr) = Expression::maybe_by_index(
                                     &inference.file.tree,
                                     next_node_index,
@@ -2499,39 +2499,18 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             })
     }
 
-    pub fn infer_name_by_index(&mut self, node_index: NodeIndex) -> Inferred {
-        self.infer_name(Name::by_index(&self.file.tree, node_index))
+    pub fn infer_name_of_definition_by_index(&mut self, node_index: NodeIndex) -> Inferred {
+        self.infer_name_of_definition(Name::by_index(&self.file.tree, node_index))
     }
 
-    pub fn infer_name(&mut self, name: Name) -> Inferred {
+    pub fn infer_name_of_definition(&mut self, name: Name) -> Inferred {
         let point = self.file.points.get(name.index());
         if point.calculated() {
             if let Some(inf) = self.check_point_cache(name.index()) {
                 return inf;
             }
         }
-        match name.name_definition() {
-            Some(name_def) => self.infer_name_definition(name_def),
-            None => {
-                todo!()
-                /* TODO maybe use this???
-                if name_def.is_reference() {
-                    // References are not calculated by the name binder for star imports and
-                    // lookups.
-                    if let Some(primary) = name_def.maybe_primary_parent() {
-                        return self.infer_primary(primary);
-                    } else {
-                        todo!(
-                            "star import {} {name_def:?} {:?}",
-                            self.file.file_path(self.i_s.db),
-                            self.file.byte_to_line_column(name_def.start())
-                        )
-                    }
-                } else {
-                }
-                */
-            }
-        }
+        self.infer_name_definition(name.name_definition().unwrap())
     }
 
     check_point_cache_with!(pub infer_name_definition, Self::_infer_name_definition, NameDefinition);

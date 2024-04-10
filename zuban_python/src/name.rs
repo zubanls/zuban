@@ -143,7 +143,9 @@ impl<'db> Name<'db> for TreeName<'db, PythonFile, ASTName<'db>> {
 
     fn infer(&self) -> Inferred {
         let i_s = InferenceState::new(self.db);
-        self.file.inference(&i_s).infer_name(self.ast_name)
+        self.file
+            .inference(&i_s)
+            .infer_name_of_definition(self.ast_name)
     }
 
     fn goto(&self) -> Names<'db> {

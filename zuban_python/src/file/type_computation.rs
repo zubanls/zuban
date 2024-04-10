@@ -4588,7 +4588,10 @@ pub(super) fn check_type_name<'db: 'file, 'file>(
                     )
                 }
             } else {
-                name_node_ref.file.inference(i_s).infer_name(new_name);
+                name_node_ref
+                    .file
+                    .inference(i_s)
+                    .infer_name_of_definition(new_name);
                 check_type_name(i_s, name_node_ref)
             }
         }
