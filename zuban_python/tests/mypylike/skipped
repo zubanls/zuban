@@ -248,6 +248,7 @@ testMatchProtocolAgainstOverloadWithAmbiguity
 # lambda infer callable after type params after it.
 testParamSpecInferredFromLambda
 # lambda --new-type-inference
+testPartialTypeContextWithTwoLambdas
 testInferenceAgainstGenericLambdas
 testGenericLambdaGenericMethodNoCrash
 testUninferableLambda
@@ -1285,16 +1286,12 @@ testIntentionallyEmptyGeneratorFunction_None
 testUnreachableFlagMiscTestCaseMissingMethod
 
 # None late binding, because it's None (x = None; x = 3)
-testEnumWithPartialTypes
-testPartialTypeContextWithTwoLambdas
 testLocalPartialTypesWithClassAttributeInitializedToNone
 testLocalPartialTypesWithNestedFunction3
 testLocalPartialTypesWithInheritance3
 testLocalPartialTypesBinderSpecialCase
 testLocalPartialTypesAccessPartialNoneAttribute
 testLocalPartialTypesAccessPartialNoneAttribute2
-testPartialTypeProtocol
-testPartialTypeInNestedClass
 testUnpackUnionNoCrashOnPartialNone2
 testSuggestPep604AnnotationForPartialNone
 # partial types with untyped defs
@@ -1349,6 +1346,8 @@ testPartiallyInitializedToNoneAndThenToPartialList
 testPartiallyInitializedToNoneAndThenReadPartialList
 testPartiallyInitializedToNoneAndPartialListAndLeftPartial
 testPartiallyInitializedToNoneAndThenToIncompleteType-skip
+# as self attrs
+testPartialTypeInNestedClass
 # With "Need type annotation for "X""
 testNoCrashOnPartialLambdaInference
 testNewAnalyzerLessErrorsNeedAnnotation
@@ -1368,6 +1367,8 @@ testDisallowAnyGenericsPlainList
 testColumnNeedTypeAnnotation
 testLowercaseSettingOnTypeAnnotationHint
 testPartialDefaultDict*
+testEnumWithPartialTypes
+testPartialTypeProtocol
 
 # Unknown return generics and therefore "Need type annotation for "X""
 testGenericFunctionOnReturnTypeOnly
