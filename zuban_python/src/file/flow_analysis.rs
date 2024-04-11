@@ -877,15 +877,14 @@ impl Inference<'_, '_, '_> {
             });
         }
         let (inf, right_frames) = if let Some((right_inf, right_frames)) = right_infos {
-            let narrowed_left_inf = if had_first_left_entry {
-                Inferred::from_type(left_frames.falsey.entries[0].type_.clone())
-            } else {
-                left_inf
-            };
+            let left_t = left_inf.as_cow_type(self.i_s);
             (
-                narrowed_left_inf
-                    .filter_truthy_or_falsey(self.i_s, false)
-                    .simplified_union(self.i_s, right_inf),
+                Inferred::from_type(
+                    split_truthy_and_falsey(self.i_s, &left_t)
+                        .map(|(_, falsey)| falsey)
+                        .unwrap_or_else(|| left_t.into_owned()),
+                )
+                .simplified_union(self.i_s, right_inf),
                 right_frames,
             )
         } else {
@@ -919,10 +918,14 @@ impl Inference<'_, '_, '_> {
         }
 
         let (inf, right_frames) = if let Some((right_inf, right_frames)) = right_infos {
+            let left_t = left_inf.as_cow_type(self.i_s);
             (
-                left_inf
-                    .filter_truthy_or_falsey(self.i_s, true)
-                    .simplified_union(self.i_s, right_inf),
+                Inferred::from_type(
+                    split_truthy_and_falsey(self.i_s, &left_t)
+                        .map(|(truthy, _)| truthy)
+                        .unwrap_or_else(|| left_t.into_owned()),
+                )
+                .simplified_union(self.i_s, right_inf),
                 right_frames,
             )
         } else {

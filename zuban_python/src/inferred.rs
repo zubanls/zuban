@@ -729,20 +729,6 @@ impl<'db: 'slf, 'slf> Inferred {
         )
     }
 
-    pub fn filter_truthy_or_falsey(&self, i_s: &InferenceState, wanted: bool) -> Inferred {
-        Self::gather_simplified_union(i_s, |gather| {
-            for t in self.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
-                gather(Inferred::from_type(match t {
-                    Type::None if wanted => continue,
-                    Type::Class(c) if c.link == i_s.db.python_state.bool_node_ref().as_link() => {
-                        Type::Literal(DbLiteral::new(LiteralKind::Bool(wanted)))
-                    }
-                    _ => t.clone(),
-                }))
-            }
-        })
-    }
-
     #[inline]
     pub fn gather_base_types(
         i_s: &InferenceState,
