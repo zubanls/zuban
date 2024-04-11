@@ -86,10 +86,11 @@ testTypeVarTupleOverloadMatch
 # overload x should be preferred over an *x alternative
 testTupleOverloadZipAny
 
-# Union of empty lists dicts sets with used ones
-testOperatorWithEmptyListAndSum
+# Union/addition of empty lists dicts sets with used ones
 testOrOperationWithGenericOperands
 testOrOperationInferredFromContext
+testOperatorWithEmptyListAndSum
+testInWithInvalidArgs
 # ternary context inference
 testUnificationEmptyListLeft
 testUnificationEmptyListRight
@@ -772,20 +773,6 @@ testAsyncForErrorNote
 testNoneClassVariableInInit
 testMultipleAssignmentNoneClassVariableInInit
 
-# supertype context inference
-testUseSupertypeAsInferenceContextPartialErrorProperty
-testUseSupertypeAsInferenceContextConflict
-testSetDescriptorOnClass
-testInheritanceFromGenericWithImplicitDynamic
-testInWithInvalidArgs
-testClassOrderOfError
-# supertype context regressions
-testNoneAnyFallbackDescriptor
-testNoCrashForwardRefOverloadIncrementalClass
-testSelfRefNTIncremental3
-testMutuallyRecursiveNamedTuplesJoin
-testNamedTupleNestedClassRecheck
-
 # More information needed
 # "Read-only property cannot override read-write property"
 testDataclassIncompatibleOverrides
@@ -1418,6 +1405,7 @@ testSlotsAssignmentWithMethodReassign
 testTypeVarTupleNewSyntaxGenerics
 testInheritanceAndAttributeAssignment
 testAssignmentToAttributeInMultipleMethods
+testInheritanceFromGenericWithImplicitDynamic
 # Issues with overrides, because of self definitions
 testVariableSubclassAssignment
 testClassOneErrorPerLine
@@ -1430,6 +1418,18 @@ testTypingSelfInternalSafe
 testTypingSelfClashInBodies
 # subclass preferred over class for types
 testAddBaseClassAttributeCausingErrorInSubclass
+# supertype context inference
+testUseSupertypeAsInferenceContextPartialErrorProperty
+testSetDescriptorOnClass
+testClassOrderOfError
+# Need type annotation when different base classes define different lists
+testUseSupertypeAsInferenceContextConflict
+# supertype context regressions
+testNoneAnyFallbackDescriptor
+testNoCrashForwardRefOverloadIncrementalClass
+testSelfRefNTIncremental3
+testMutuallyRecursiveNamedTuplesJoin
+testNamedTupleNestedClassRecheck
 
 # "NamedTuple type as an attribute is not supported"
 testAssignNamedTupleAsAttribute
