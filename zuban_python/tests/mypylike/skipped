@@ -1403,25 +1403,25 @@ testUnionOrderEquivalence
 # self assignment validation
 testSlotsAssignmentWithMethodReassign
 testTypeVarTupleNewSyntaxGenerics
-testInheritanceAndAttributeAssignment
 testAssignmentToAttributeInMultipleMethods
 testInheritanceFromGenericWithImplicitDynamic
-# Issues with overrides, because of self definitions
+# Confusions with overrides, because of self definitions
 testVariableSubclassAssignment
 testClassOneErrorPerLine
 testAttributeDefOrder1
 testAttributeDefOrder2
 testChangeBaseClassAttributeType
+testInheritanceAndAttributeAssignment
 # verify class definitions when setting self.foo
 testInferAttributeTypeAndAssignInInit
 testTypingSelfInternalSafe
 testTypingSelfClashInBodies
-# subclass preferred over class for types
+# subclass or superclass preferred over class for types
 testAddBaseClassAttributeCausingErrorInSubclass
-# supertype context inference
+testClassOrderOfError
+# supertype context inference where descriptors are executed as if it was an instance
 testUseSupertypeAsInferenceContextPartialErrorProperty
 testSetDescriptorOnClass
-testClassOrderOfError
 # Need type annotation when different base classes define different lists
 testUseSupertypeAsInferenceContextConflict
 # supertype context regressions
