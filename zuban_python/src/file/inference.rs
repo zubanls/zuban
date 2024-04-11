@@ -874,6 +874,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
         let check_base_class = |name_def: NameDefinition| {
             self.i_s.current_class().and_then(|cls| {
+                if cls.is_calculating_class_infos() {
+                    return None;
+                }
                 cls.lookup_without_descriptors_and_custom_add_issue_ignore_self(
                     self.i_s,
                     name_def.as_code(),

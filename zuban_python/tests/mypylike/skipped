@@ -1426,10 +1426,6 @@ testClassOrderOfError
 testUseSupertypeAsInferenceContextConflict
 # supertype context regressions
 testNoneAnyFallbackDescriptor
-testNoCrashForwardRefOverloadIncrementalClass
-testSelfRefNTIncremental3
-testMutuallyRecursiveNamedTuplesJoin
-testNamedTupleNestedClassRecheck
 
 # "NamedTuple type as an attribute is not supported"
 testAssignNamedTupleAsAttribute
