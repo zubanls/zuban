@@ -557,7 +557,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             node_ref,
             &inf_annot,
             AssignKind::Annotation,
-            |index| {
+            |index, _| {
                 self.file.points.set(
                     index,
                     Point::new_redirect(self.file.file_index(), annotation.index(), Locality::Todo),
@@ -633,10 +633,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         self.assign_single_target(
                             target,
                             node_ref,
-                            &inf.clone(),
+                            &inf,
                             AssignKind::Annotation,
-                            |index| {
-                                inf.save_redirect(self.i_s, self.file, index);
+                            |index, inf| {
+                                inf.clone().save_redirect(self.i_s, self.file, index);
                             },
                         );
                     }
@@ -659,10 +659,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         self.assign_single_target(
                             target,
                             NodeRef::new(self.file, index),
-                            &right.clone(),
+                            &right,
                             AssignKind::Annotation,
-                            |index| {
-                                right.save_redirect(self.i_s, self.file, index);
+                            |index, right| {
+                                right.clone().save_redirect(self.i_s, self.file, index);
                             },
                         );
                     }
@@ -704,7 +704,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     unreachable!()
                 };
                 let n = NodeRef::new(self.file, right_side.index());
-                self.assign_single_target(target, n, &result, AssignKind::AugAssign, |index| {
+                self.assign_single_target(target, n, &result, AssignKind::AugAssign, |index, _| {
                     // There is no need to save this, because it's never used
                 })
             }
@@ -910,14 +910,21 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         from: NodeRef,
         value: &Inferred,
         assign_kind: AssignKind,
-        save: impl FnOnce(NodeIndex),
+        save: impl FnOnce(NodeIndex, &Inferred),
     ) {
         let i_s = self.i_s;
         match target {
             Target::Name(name_def) => {
                 let current_index = name_def.name_index();
                 if let Some(first_index) = first_defined_name(self.file, current_index) {
-                    if current_index != first_index {
+                    if current_index == first_index {
+                        /*
+                        if matches!(value.as_cow_type(i_s).as_ref(), Type::None) {
+                            self.file.points.set(name_def.index(), Point::new_simple_specific(Specific::PartialNone, Locality::Todo));
+                            return
+                        }
+                        */
+                    } else {
                         let original_inf = self.infer_name_of_definition_by_index(first_index);
                         let original_t = original_inf.as_cow_type(i_s);
                         let check_for_error = || {
@@ -943,8 +950,37 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         }
                         return;
                     }
+                    save(name_def.index(), value);
+                } else if value.maybe_saved_specific(i_s.db) == Some(Specific::None)
+                    && assign_kind == AssignKind::Normal
+                    && i_s.db.project.flags.local_partial_types
+                    && !i_s.current_class().is_some_and(|c| {
+                        c.lookup_without_descriptors_and_custom_add_issue_ignore_self(
+                            self.i_s,
+                            name_def.as_code(),
+                            |_| todo!(),
+                        )
+                        .lookup
+                        .is_some()
+                    })
+                {
+                    self.add_issue(
+                        name_def.index(),
+                        IssueType::NeedTypeAnnotation {
+                            for_: name_def.as_code().into(),
+                            hint: "Optional[<type>]",
+                        },
+                    );
+                    // Save Optional[Any]
+                    save(
+                        name_def.index(),
+                        &Inferred::from_type(
+                            Type::Any(AnyCause::FromError).union_with_details(Type::None, true),
+                        ),
+                    );
+                } else {
+                    save(name_def.index(), value);
                 }
-                save(name_def.index());
             }
             Target::NameExpression(primary_target, name_definition) => {
                 let base = self.infer_primary_target_or_atom(primary_target.first());
@@ -1064,7 +1100,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                 }
                 // This mostly needs to be saved for self names
-                save(name_definition.index());
+                save(name_definition.index(), value);
             }
             Target::IndexExpression(primary_target) => {
                 let base = self.infer_primary_target_or_atom(primary_target.first());
@@ -1133,13 +1169,19 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 );
             }
             _ => {
-                self.assign_single_target(target, value_node_ref, &value, assign_kind, |index| {
-                    // Since it's possible that we are assigning unions to tuple/star targets, we
-                    // iterate over the different possibilities and end up with name definitions
-                    // that are already set. In those cases we use the "old" types and merge them.
-                    // In Mypy that is called "accumulate_type_assignments".
-                    NodeRef::new(self.file, index).accumulate_types(self.i_s, &value)
-                })
+                self.assign_single_target(
+                    target,
+                    value_node_ref,
+                    &value,
+                    assign_kind,
+                    |index, value| {
+                        // Since it's possible that we are assigning unions to tuple/star targets, we
+                        // iterate over the different possibilities and end up with name definitions
+                        // that are already set. In those cases we use the "old" types and merge them.
+                        // In Mypy that is called "accumulate_type_assignments".
+                        NodeRef::new(self.file, index).accumulate_types(self.i_s, value)
+                    },
+                )
             }
         };
     }
@@ -2941,7 +2983,7 @@ fn targets_len_infos(targets: TargetIterator) -> (usize, TupleLenInfos) {
     )
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum AssignKind {
     Annotation, // `a: int = 1` or `a = 1 # type: int
     Normal,     // a = 1

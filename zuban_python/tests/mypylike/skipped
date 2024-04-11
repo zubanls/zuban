@@ -1258,13 +1258,8 @@ testIntentionallyEmptyGeneratorFunction_None
 testUnreachableFlagMiscTestCaseMissingMethod
 
 # None late binding, because it's None (x = None; x = 3)
-testLocalPartialTypesWithClassAttributeInitializedToNone
 testLocalPartialTypesWithInheritance3
-testLocalPartialTypesBinderSpecialCase
-testLocalPartialTypesAccessPartialNoneAttribute
-testLocalPartialTypesAccessPartialNoneAttribute2
 testUnpackUnionNoCrashOnPartialNone2
-testSuggestPep604AnnotationForPartialNone
 # partial types with untyped defs
 testCheckUntypedDefsSelf2
 # Make x an Optional if else contains `x = None`
