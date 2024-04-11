@@ -844,22 +844,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
     fn infer_target(&mut self, target: Target, from_aug_assign: bool) -> Option<Inferred> {
         match target {
-            Target::Name(name_def) => {
-                first_defined_name(self.file, name_def.name_index()).map(|first_index| {
-                    // The first definition is always responsible for how a name is defined.
-                    // So we try to look up active narrowings first or we try to lookup the first
-                    // name.
-                    if from_aug_assign {
-                        if let Some(result) = self.maybe_lookup_narrowed_name(PointLink::new(
-                            self.file_index,
-                            first_index,
-                        )) {
-                            return result;
-                        }
-                    }
-                    self.infer_name_of_definition_by_index(first_index)
-                })
-            }
+            Target::Name(name_def) => self.infer_name_target(name_def, from_aug_assign),
             Target::NameExpression(primary_target, _) => {
                 Some(self.infer_primary_target(primary_target))
             }
@@ -877,6 +862,43 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
             _ => None,
         }
+    }
+
+    fn infer_name_target(
+        &mut self,
+        name_def: NameDefinition,
+        from_aug_assign: bool,
+    ) -> Option<Inferred> {
+        if name_def.as_code() == "__slots__" {
+            return None;
+        }
+        let check_base_class = |name_def: NameDefinition| {
+            self.i_s.current_class().and_then(|cls| {
+                cls.lookup_without_descriptors_and_custom_add_issue_ignore_self(
+                    self.i_s,
+                    name_def.as_code(),
+                    |_| todo!(),
+                )
+                .lookup
+                .into_maybe_inferred()
+            })
+        };
+        first_defined_name(self.file, name_def.name_index())
+            .map(|first_index| {
+                // The first definition is always responsible for how a name is defined.
+                // So we try to look up active narrowings first or we try to lookup the first
+                // name.
+                if from_aug_assign {
+                    if let Some(result) = self
+                        .maybe_lookup_narrowed_name(PointLink::new(self.file_index, first_index))
+                    {
+                        return result;
+                    }
+                }
+                // TODO check base class!
+                self.infer_name_of_definition_by_index(first_index)
+            })
+            .or_else(|| check_base_class(name_def))
     }
 
     fn assign_single_target(

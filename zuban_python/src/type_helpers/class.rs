@@ -1339,6 +1339,22 @@ impl<'db: 'a, 'a> Class<'a> {
         )
     }
 
+    pub(crate) fn lookup_without_descriptors_and_custom_add_issue_ignore_self(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        name: &str,
+        add_issue: impl Fn(IssueType),
+    ) -> LookupDetails {
+        self.lookup_with_or_without_descriptors_internal(
+            i_s,
+            add_issue,
+            name,
+            LookupKind::Normal,
+            false,
+            true,
+        )
+    }
+
     pub(crate) fn lookup_with_custom_self_type(
         &self,
         i_s: &InferenceState<'db, '_>,
