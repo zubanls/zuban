@@ -1161,12 +1161,10 @@ testGenericFunctionAsOverloadItem
 testImportAndAssignToModule
 testParamSpecSubtypeChecking1
 testMultipleAssignmentWithNonTupleRvalue
-testComplexWithLvalue
 testAssignAnyToUnion
 testUnionOfVariableLengthTupleUnpacking
 # statement narrowing regressions after `foo.bar =` narrowing
 testDescriptorGetSetDifferentTypes
-testCheckUntypedDefsSelf3
 testTypeVariableAsTypeArgument
 testImportWithinBlock
 testUnionMultiassignIndexedWithError
