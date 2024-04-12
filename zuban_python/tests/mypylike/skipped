@@ -1358,8 +1358,6 @@ testCheckDisallowAnyGenericsStubOnly
 # Walrus tests
 testWalrus
 testWalrusRedefined
-testWalrusConditionalTypeBinder
-testWalrusConditionalTypeCheck2
 testWalrusAssignmentAndConditionScopeForLiteral
 testNarrowOnSelfInGeneric
 testNarrowedVariableInNestedModifiedInWalrus

@@ -6,9 +6,10 @@ use std::{
 use parsa_python_ast::{
     Argument, Arguments, ArgumentsDetails, Atom, AtomContent, Block, BreakStmt, ComparisonContent,
     Comparisons, Conjunction, ContinueStmt, Disjunction, ElseBlock, Expression, ExpressionContent,
-    ExpressionPart, ForStmt, IfBlockIterator, IfBlockType, IfStmt, Name, NamedExpression,
-    NamedExpressionContent, NodeIndex, Operand, Primary, PrimaryContent, PrimaryOrAtom,
-    PrimaryTarget, PrimaryTargetOrAtom, SliceType as ASTSliceType, Ternary, WhileStmt,
+    ExpressionPart, ForStmt, IfBlockIterator, IfBlockType, IfStmt, Name, NameDefinition,
+    NamedExpression, NamedExpressionContent, NodeIndex, Operand, Primary, PrimaryContent,
+    PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, SliceType as ASTSliceType, Ternary,
+    WhileStmt,
 };
 
 use crate::{
@@ -1036,11 +1037,7 @@ impl Inference<'_, '_, '_> {
                         walrus_truthy.format_short(self.i_s.db),
                         walrus_falsey.format_short(self.i_s.db)
                     );
-                    let name_index = name_def.name_index();
-                    let key = FlowKey::Name(PointLink::new(
-                        self.file_index,
-                        first_defined_name(self.file, name_index).unwrap_or(name_index),
-                    ));
+                    let key = self.key_from_name_def(name_def);
                     truthy.add_entry_from_type(self.i_s, key.clone(), walrus_truthy);
                     falsey.add_entry_from_type(self.i_s, key, walrus_falsey);
                 }
@@ -1615,15 +1612,31 @@ impl Inference<'_, '_, '_> {
         FramesWithParentUnions::default()
     }
 
+    fn key_from_name_def(&self, name_def: NameDefinition) -> FlowKey {
+        let name_index = name_def.name_index();
+        FlowKey::Name(PointLink::new(
+            self.file_index,
+            first_defined_name(self.file, name_index).unwrap_or(name_index),
+        ))
+    }
+
     fn key_from_atom(&self, atom: Atom) -> Option<FlowKey> {
         match atom.unpack() {
-            AtomContent::Name(name) => Some(FlowKey::Name(name_definition_link(
-                self.i_s.db,
-                self.file,
-                name,
-            )?)),
-            _ => None,
-        }
+            AtomContent::Name(name) => {
+                return Some(FlowKey::Name(name_definition_link(
+                    self.i_s.db,
+                    self.file,
+                    name,
+                )?))
+            }
+            AtomContent::NamedExpression(named_expr) => {
+                if let NamedExpressionContent::Walrus(walrus) = named_expr.unpack() {
+                    return Some(self.key_from_name_def(walrus.unpack().0));
+                }
+            }
+            _ => (),
+        };
+        None
     }
 
     fn key_from_primary(&mut self, primary: Primary) -> KeyWithParentUnions {
