@@ -132,6 +132,18 @@ impl Frame {
         self.entries.push(entry)
     }
 
+    fn add_entry_from_type(&mut self, i_s: &InferenceState, key: FlowKey, type_: Type) {
+        self.add_entry(
+            i_s,
+            Entry {
+                key,
+                type_,
+                from_assignment: false,
+                widens: false,
+            },
+        )
+    }
+
     fn from_type_without_entry(t: Type) -> Self {
         match t {
             Type::Never => Self::new_unreachable(),
@@ -1012,9 +1024,23 @@ impl Inference<'_, '_, '_> {
     ) -> (Inferred, Frame, Frame) {
         match named_expr.unpack() {
             NamedExpressionContent::Expression(expr) => self.find_guards_in_expr(expr),
-            NamedExpressionContent::Definition(name, expr) => {
-                debug!("TODO Flow control for walrus");
-                self.find_guards_in_expr(expr)
+            NamedExpressionContent::Definition(name_def, expr) => {
+                let (inf, mut truthy, mut falsey) = self.find_guards_in_expr(expr);
+                if let Some((walrus_truthy, walrus_falsey)) =
+                    split_truthy_and_falsey(self.i_s, &inf.as_cow_type(self.i_s))
+                {
+                    debug!(
+                        "Narrowed {} to true: {} and false: {}",
+                        named_expr.as_code(),
+                        walrus_truthy.format_short(self.i_s.db),
+                        walrus_falsey.format_short(self.i_s.db)
+                    );
+                    if let Some(key) = self.key_from_name(name_def.name()) {
+                        truthy.add_entry_from_type(self.i_s, key.clone(), walrus_truthy);
+                        falsey.add_entry_from_type(self.i_s, key, walrus_falsey);
+                    }
+                }
+                (inf, truthy, falsey)
             }
         }
     }
@@ -1074,10 +1100,6 @@ impl Inference<'_, '_, '_> {
                 if let Some((truthy, falsey)) =
                     split_truthy_and_falsey(self.i_s, &inf.as_cow_type(self.i_s))
                 {
-                    let as_s = |frame: &Frame| match frame.unreachable {
-                        true => "reachable",
-                        false => "unreachable",
-                    };
                     debug!(
                         "Narrowed {} to true: {} and false: {}",
                         part.as_code(),
@@ -1589,13 +1611,17 @@ impl Inference<'_, '_, '_> {
         FramesWithParentUnions::default()
     }
 
+    fn key_from_name(&self, name: Name) -> Option<FlowKey> {
+        Some(FlowKey::Name(name_definition_link(
+            self.i_s.db,
+            self.file,
+            name,
+        )?))
+    }
+
     fn key_from_atom(&self, atom: Atom) -> Option<FlowKey> {
         match atom.unpack() {
-            AtomContent::Name(name) => Some(FlowKey::Name(name_definition_link(
-                self.i_s.db,
-                self.file,
-                name,
-            )?)),
+            AtomContent::Name(name) => self.key_from_name(name),
             _ => None,
         }
     }

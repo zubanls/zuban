@@ -2592,6 +2592,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 StmtLike::Stmt(stmt) => {
                     self.cache_stmt_name(stmt, NodeRef::new(self.file, name_def.index()));
                 }
+                StmtLike::WalrusAssignment(walrus) => {
+                    self.infer_expression(walrus.expression()).save_redirect(
+                        self.i_s,
+                        self.file,
+                        name_def.index(),
+                    );
+                }
                 _ => todo!("{stmt_like:?}"),
             }
         }

@@ -542,6 +542,7 @@ pub enum StmtLike<'db> {
     Lambda(Lambda<'db>),
     Comprehension(Comprehension<'db>),
     DictComprehension(DictComprehension<'db>),
+    WalrusAssignment(NamedExpression<'db>),
 }
 
 impl<'db> StmtLike<'db> {
@@ -553,6 +554,7 @@ impl<'db> StmtLike<'db> {
             StmtLike::Lambda(n) => n.index(),
             StmtLike::Comprehension(n) => n.index(),
             StmtLike::DictComprehension(n) => n.index(),
+            StmtLike::WalrusAssignment(n) => n.index(),
         }
     }
 }
@@ -3295,6 +3297,7 @@ impl<'db> NameDefinition<'db> {
                 Nonterminal(lambda),
                 Nonterminal(comprehension),
                 Nonterminal(dict_comprehension),
+                Nonterminal(named_expression),
             ])
             .expect("There should always be a stmt");
         if stmt_node.is_type(Nonterminal(simple_stmts)) {
@@ -3307,6 +3310,8 @@ impl<'db> NameDefinition<'db> {
             StmtLike::Comprehension(Comprehension::new(stmt_node))
         } else if stmt_node.is_type(Nonterminal(dict_comprehension)) {
             StmtLike::DictComprehension(DictComprehension::new(stmt_node))
+        } else if stmt_node.is_type(Nonterminal(named_expression)) {
+            StmtLike::WalrusAssignment(NamedExpression::new(stmt_node))
         } else {
             unreachable!()
         }
