@@ -269,7 +269,8 @@ create_grammar!(
     star_named_expressions: ",".star_named_expression+ [","]
     star_named_expression:? "*" disjunction | named_expression
 
-    named_expression: name_definition ":=" expression | expression
+    named_expression: walrus | expression
+    walrus: name_definition ":=" expression
 
     disjunction:? [disjunction "or"] conjunction
     conjunction:? [conjunction "and"] inversion

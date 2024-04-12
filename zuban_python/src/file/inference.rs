@@ -1344,12 +1344,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         named_expr: NamedExpression,
         result_context: &mut ResultContext,
     ) -> Inferred {
-        match named_expr.unpack() {
-            NamedExpressionContent::Expression(expr)
-            | NamedExpressionContent::Definition(_, expr) => {
-                self.infer_expression_with_context(expr, result_context)
-            }
-        }
+        self.infer_expression_with_context(named_expr.expression(), result_context)
     }
 
     pub fn infer_expression(&mut self, expr: Expression) -> Inferred {
@@ -2592,7 +2587,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 StmtLike::Stmt(stmt) => {
                     self.cache_stmt_name(stmt, NodeRef::new(self.file, name_def.index()));
                 }
-                StmtLike::WalrusAssignment(walrus) => {
+                StmtLike::Walrus(walrus) => {
                     self.infer_expression(walrus.expression()).save_redirect(
                         self.i_s,
                         self.file,

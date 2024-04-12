@@ -101,12 +101,13 @@ file: 0-66
            Name: 53-54 "f"
         Keyword: 54-55 ","
         named_expression: 56-60
-         name_definition: 56-57
-          Name: 56-57 "c"
-         Keyword: 57-59 ":="
-         expression: 59-60
-          atom: 59-60
-           Number: 59-60 "3"
+         walrus: 56-60
+          name_definition: 56-57
+           Name: 56-57 "c"
+          Keyword: 57-59 ":="
+          expression: 59-60
+           atom: 59-60
+            Number: 59-60 "3"
        Keyword: 60-61 "]"
      Keyword: 62-63 "="
      star_expressions: 64-65

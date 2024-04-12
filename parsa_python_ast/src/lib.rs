@@ -294,6 +294,7 @@ create_nonterminal_structs!(
     Expression: expression
     Ternary: ternary
     NamedExpression: named_expression
+    Walrus: walrus
 
     SimpleStmts: simple_stmts
     SimpleStmt: simple_stmt
@@ -466,7 +467,7 @@ impl<'db> Name<'db> {
             .parent_until(&[
                 Nonterminal(assignment),
                 Nonterminal(stmt),
-                Nonterminal(named_expression),
+                Nonterminal(walrus),
                 Nonterminal(lambda),
                 Nonterminal(t_primary),
             ])
@@ -542,7 +543,7 @@ pub enum StmtLike<'db> {
     Lambda(Lambda<'db>),
     Comprehension(Comprehension<'db>),
     DictComprehension(DictComprehension<'db>),
-    WalrusAssignment(NamedExpression<'db>),
+    Walrus(Walrus<'db>),
 }
 
 impl<'db> StmtLike<'db> {
@@ -554,7 +555,7 @@ impl<'db> StmtLike<'db> {
             StmtLike::Lambda(n) => n.index(),
             StmtLike::Comprehension(n) => n.index(),
             StmtLike::DictComprehension(n) => n.index(),
-            StmtLike::WalrusAssignment(n) => n.index(),
+            StmtLike::Walrus(n) => n.index(),
         }
     }
 }
@@ -954,7 +955,7 @@ impl<'db> NamedExpression<'db> {
     pub fn expression(&self) -> Expression<'db> {
         match self.unpack() {
             NamedExpressionContent::Expression(expr) => expr,
-            NamedExpressionContent::Definition(_, expr) => expr,
+            NamedExpressionContent::Walrus(walrus_) => walrus_.expression(),
         }
     }
 
@@ -963,8 +964,7 @@ impl<'db> NamedExpression<'db> {
         if node.is_type(Nonterminal(expression)) {
             NamedExpressionContent::Expression(Expression::new(node))
         } else {
-            let expr = self.node.nth_child(2);
-            NamedExpressionContent::Definition(NameDefinition::new(node), Expression::new(expr))
+            NamedExpressionContent::Walrus(Walrus::new(node))
         }
     }
 
@@ -987,7 +987,21 @@ impl<'db> NamedExpression<'db> {
 
 pub enum NamedExpressionContent<'db> {
     Expression(Expression<'db>),
-    Definition(NameDefinition<'db>, Expression<'db>),
+    Walrus(Walrus<'db>),
+}
+
+impl<'db> Walrus<'db> {
+    pub fn unpack(&self) -> (NameDefinition<'db>, Expression<'db>) {
+        let mut iterator = self.node.iter_children();
+        let name_def = iterator.next().unwrap();
+        iterator.next();
+        let expr = iterator.next().unwrap();
+        (NameDefinition::new(name_def), Expression::new(expr))
+    }
+
+    pub fn expression(&self) -> Expression<'db> {
+        Expression::new(self.node.nth_child(2))
+    }
 }
 
 impl<'db> ForStmt<'db> {
@@ -3281,7 +3295,7 @@ impl<'db> NameDefinition<'db> {
                 Nonterminal(comprehension),
                 Nonterminal(dict_comprehension),
                 Nonterminal(lambda),
-                Nonterminal(named_expression),
+                Nonterminal(walrus),
                 Nonterminal(stmt),
             ])
             .expect("There should always be a stmt");
@@ -3297,7 +3311,7 @@ impl<'db> NameDefinition<'db> {
                 Nonterminal(lambda),
                 Nonterminal(comprehension),
                 Nonterminal(dict_comprehension),
-                Nonterminal(named_expression),
+                Nonterminal(walrus),
             ])
             .expect("There should always be a stmt");
         if stmt_node.is_type(Nonterminal(simple_stmts)) {
@@ -3310,8 +3324,8 @@ impl<'db> NameDefinition<'db> {
             StmtLike::Comprehension(Comprehension::new(stmt_node))
         } else if stmt_node.is_type(Nonterminal(dict_comprehension)) {
             StmtLike::DictComprehension(DictComprehension::new(stmt_node))
-        } else if stmt_node.is_type(Nonterminal(named_expression)) {
-            StmtLike::WalrusAssignment(NamedExpression::new(stmt_node))
+        } else if stmt_node.is_type(Nonterminal(walrus)) {
+            StmtLike::Walrus(Walrus::new(stmt_node))
         } else {
             unreachable!()
         }

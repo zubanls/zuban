@@ -1024,7 +1024,8 @@ impl Inference<'_, '_, '_> {
     ) -> (Inferred, Frame, Frame) {
         match named_expr.unpack() {
             NamedExpressionContent::Expression(expr) => self.find_guards_in_expr(expr),
-            NamedExpressionContent::Definition(name_def, expr) => {
+            NamedExpressionContent::Walrus(walrus) => {
+                let (name_def, expr) = walrus.unpack();
                 let (inf, mut truthy, mut falsey) = self.find_guards_in_expr(expr);
                 if let Some((walrus_truthy, walrus_falsey)) =
                     split_truthy_and_falsey(self.i_s, &inf.as_cow_type(self.i_s))
@@ -1404,7 +1405,7 @@ impl Inference<'_, '_, '_> {
     ) -> Option<Type> {
         let expr = match arg.unpack() {
             NamedExpressionContent::Expression(expr) => expr,
-            NamedExpressionContent::Definition(_, _) => todo!(),
+            NamedExpressionContent::Walrus(_) => todo!(),
         };
 
         // One might think that we could just use type computation here for isinstance types. This
@@ -1723,7 +1724,7 @@ impl Inference<'_, '_, '_> {
     fn key_from_namedexpression(&mut self, named_expr: NamedExpression) -> KeyWithParentUnions {
         match named_expr.unpack() {
             NamedExpressionContent::Expression(expr) => self.key_from_expression(expr),
-            NamedExpressionContent::Definition(name_def, expr) => todo!(),
+            NamedExpressionContent::Walrus(_) => todo!(),
         }
     }
 

@@ -14,12 +14,13 @@ file: 0-36
        Keyword: 2-3 "("
        arguments: 3-16
         named_expression: 3-9
-         name_definition: 3-6
-          Name: 3-6 "bar"
-         Keyword: 6-8 ":="
-         expression: 8-9
-          atom: 8-9
-           Number: 8-9 "1"
+         walrus: 3-9
+          name_definition: 3-6
+           Name: 3-6 "bar"
+          Keyword: 6-8 ":="
+          expression: 8-9
+           atom: 8-9
+            Number: 8-9 "1"
         Keyword: 9-10 ","
         kwargs: 11-16
          kwarg: 11-16
