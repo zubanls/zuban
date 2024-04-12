@@ -146,3 +146,26 @@ if len(x) < 30:
     reveal_type(x) # N: Revealed type is "builtins.tuple[builtins.int, Unpack[Tuple[str, ...]]]"
 else:
     reveal_type(x) # N: Revealed type is "builtins.tuple[builtins.int, Unpack[Tuple[str, ...]]]"
+
+[case narrow_attribute_split]
+class Foo:
+    x: int | None
+
+foo: Foo
+
+foo.x + 1 # E: Unsupported operand types for + ("None" and "int") \
+          # N: Left operand is of type "int | None"
+
+if foo.x:
+    foo.x + 1
+
+[case narrow_getitem_split]
+foo: list[int | None]
+
+foo[0] + 1 # E: Unsupported operand types for + ("None" and "int") \
+           # N: Left operand is of type "int | None"
+
+if foo[0]:
+    foo[0] + 1
+    foo[1] + 1 # E: Unsupported operand types for + ("None" and "int") \
+               # N: Left operand is of type "int | None"

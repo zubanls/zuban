@@ -1069,6 +1069,33 @@ impl Inference<'_, '_, '_> {
         &mut self,
         part: ExpressionPart,
     ) -> Result<(Inferred, FramesWithParentUnions), Inferred> {
+        let narrow_from_key = |key: Option<FlowKey>, inf: Inferred, parent_unions| {
+            if let Some(key) = key {
+                if let Some((truthy, falsey)) =
+                    split_truthy_and_falsey(self.i_s, &inf.as_cow_type(self.i_s))
+                {
+                    let as_s = |frame: &Frame| match frame.unreachable {
+                        true => "reachable",
+                        false => "unreachable",
+                    };
+                    debug!(
+                        "Narrowed {} to true: {} and false: {}",
+                        part.as_code(),
+                        truthy.format_short(self.i_s.db),
+                        falsey.format_short(self.i_s.db)
+                    );
+                    return Ok((
+                        inf,
+                        FramesWithParentUnions {
+                            truthy: Frame::from_type(key.clone(), truthy),
+                            falsey: Frame::from_type(key, falsey),
+                            parent_unions,
+                        },
+                    ));
+                }
+            }
+            Err(inf)
+        };
         match part {
             ExpressionPart::Atom(atom) => {
                 if let AtomContent::NamedExpression(named_expr) = atom.unpack() {
@@ -1083,31 +1110,7 @@ impl Inference<'_, '_, '_> {
                     ));
                 }
                 let inf = self.infer_atom(atom, &mut ResultContext::Unknown);
-                if let Some(key) = self.key_from_atom(atom) {
-                    if let Some((truthy, falsey)) =
-                        split_truthy_and_falsey(self.i_s, &inf.as_cow_type(self.i_s))
-                    {
-                        let as_s = |frame: &Frame| match frame.unreachable {
-                            true => "reachable",
-                            false => "unreachable",
-                        };
-                        debug!(
-                            "Narrowed {} to true: {} and false: {}",
-                            atom.as_code(),
-                            truthy.format_short(self.i_s.db),
-                            falsey.format_short(self.i_s.db)
-                        );
-                        return Ok((
-                            inf,
-                            FramesWithParentUnions {
-                                truthy: Frame::from_type(key.clone(), truthy),
-                                falsey: Frame::from_type(key, falsey),
-                                ..Default::default()
-                            },
-                        ));
-                    }
-                }
-                return Err(inf);
+                return narrow_from_key(self.key_from_atom(atom), inf, Default::default());
             }
             ExpressionPart::Comparisons(comps) => {
                 if let Some(frames) = self.find_guards_in_comparisons(comps) {
@@ -1169,7 +1172,10 @@ impl Inference<'_, '_, '_> {
                         }
                     }
                 }
-                _ => (),
+                _ => {
+                    let infos = self.key_from_primary(primary);
+                    return narrow_from_key(infos.key, infos.inf, infos.parent_unions);
+                }
             },
             _ => (),
         }
