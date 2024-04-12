@@ -1036,10 +1036,13 @@ impl Inference<'_, '_, '_> {
                         walrus_truthy.format_short(self.i_s.db),
                         walrus_falsey.format_short(self.i_s.db)
                     );
-                    if let Some(key) = self.key_from_name(name_def.name()) {
-                        truthy.add_entry_from_type(self.i_s, key.clone(), walrus_truthy);
-                        falsey.add_entry_from_type(self.i_s, key, walrus_falsey);
-                    }
+                    let name_index = name_def.name_index();
+                    let key = FlowKey::Name(PointLink::new(
+                        self.file_index,
+                        first_defined_name(self.file, name_index).unwrap_or(name_index),
+                    ));
+                    truthy.add_entry_from_type(self.i_s, key.clone(), walrus_truthy);
+                    falsey.add_entry_from_type(self.i_s, key, walrus_falsey);
                 }
                 (inf, truthy, falsey)
             }
@@ -1612,17 +1615,13 @@ impl Inference<'_, '_, '_> {
         FramesWithParentUnions::default()
     }
 
-    fn key_from_name(&self, name: Name) -> Option<FlowKey> {
-        Some(FlowKey::Name(name_definition_link(
-            self.i_s.db,
-            self.file,
-            name,
-        )?))
-    }
-
     fn key_from_atom(&self, atom: Atom) -> Option<FlowKey> {
         match atom.unpack() {
-            AtomContent::Name(name) => self.key_from_name(name),
+            AtomContent::Name(name) => Some(FlowKey::Name(name_definition_link(
+                self.i_s.db,
+                self.file,
+                name,
+            )?)),
             _ => None,
         }
     }

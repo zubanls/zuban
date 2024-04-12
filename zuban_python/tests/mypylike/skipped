@@ -1310,6 +1310,7 @@ testPartiallyInitializedToNoneAndThenToPartialList
 testPartiallyInitializedToNoneAndThenReadPartialList
 testPartiallyInitializedToNoneAndPartialListAndLeftPartial
 testPartiallyInitializedToNoneAndThenToIncompleteType-skip
+testWalrusPartialTypes
 # as self attrs
 testPartialTypeInNestedClass
 # With "Need type annotation for "X""
@@ -1358,17 +1359,10 @@ testCheckDisallowAnyGenericsStubOnly
 testWalrus
 testWalrusRedefined
 testWalrusConditionalTypeBinder
-testWalrusConditionalTypeCheck
 testWalrusConditionalTypeCheck2
 testWalrusAssignmentAndConditionScopeForLiteral
-testWalrusAssignmentAndConditionScopeForProperty
-testWalrusAssignmentAndConditionScopeForFunction
-testWalrusUsedBeforeDef
-testPossiblyUndefinedWithAssignmentExpr
-testGenericDictWithOverload
 testNarrowOnSelfInGeneric
 testNarrowedVariableInNestedModifiedInWalrus
-testWalrusPartialTypes
 # "Assignment expression within a comprehension cannot be used in a class body"
 testNoCrashOnAssignmentExprClass
 
@@ -1509,6 +1503,9 @@ testNamedTupleHasMatchArgs
 # "Name "C" is used before definition"
 testNewAnalyzerNewTypeForwardClassAliasReversed
 testBanPathologicalRecursiveTuples
+testWalrusUsedBeforeDef
+# --enable-error-code possibly-undefined "Name "x" may be undefined"
+testPossiblyUndefinedWithAssignmentExpr
 # undefined += 1 where undefined is a NameError
 testOperatorAssignment
 inplace_operator_on_undefined_target
