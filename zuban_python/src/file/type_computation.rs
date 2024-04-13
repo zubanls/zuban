@@ -4619,7 +4619,8 @@ pub(super) fn check_type_name<'db: 'file, 'file>(
             }
         }),
         TypeLike::Other => {
-            todo!()
+            // Happens currently with walrus assignments
+            TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(name_node_ref))
         }
     }
 }
