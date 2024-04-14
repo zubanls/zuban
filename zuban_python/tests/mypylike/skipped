@@ -902,6 +902,7 @@ testNarrowingIsSubclassFinalSubclassWithTypeVar
 testTypeCheckOverloadImplementationTypeVarWithValueRestriction
 testOperatorContainsNarrowsTypedDicts_total
 testUnreachableFlagWithGenerics
+testNarrowOnSelfInGeneric
 
 # - Overload does not consistently use the "@classmethod" decorator on all function signatures
 # - Overload does not consistently use the "@staticmethod" decorator on all function signatures
@@ -1226,6 +1227,7 @@ testNarrowedVariableInNestedFunctionMore2
 testLambdaInferenceUsesNarrowedTypes
 testNarrowOptionalOutsideLambda
 testNarrowOptionalOutsideLambdaWithDeferred
+testNarrowedVariableInNestedModifiedInWalrus
 # global/local lookup in func of narrowed value in different scope
 testLocalPartialTypesWithGlobalInitializedToNone4
 testAttributePartiallyInitializedToNoneWithMissingAnnotation
@@ -1358,9 +1360,6 @@ testCheckDisallowAnyGenericsStubOnly
 # Walrus tests
 testWalrus
 testWalrusRedefined
-testWalrusAssignmentAndConditionScopeForLiteral
-testNarrowOnSelfInGeneric
-testNarrowedVariableInNestedModifiedInWalrus
 # "Assignment expression within a comprehension cannot be used in a class body"
 testNoCrashOnAssignmentExprClass
 
