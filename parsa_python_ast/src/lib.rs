@@ -142,6 +142,7 @@ pub enum InterestingNode<'db> {
     Ternary(Ternary<'db>),
     Comprehension(Comprehension<'db>),
     DictComprehension(DictComprehension<'db>),
+    Walrus(Walrus<'db>),
 }
 pub struct InterestingNodes<'db>(SearchIterator<'db>);
 
@@ -168,9 +169,11 @@ impl<'db> Iterator for InterestingNodes<'db> {
                 InterestingNode::Ternary(Ternary::new(n))
             } else if n.is_type(Nonterminal(comprehension)) {
                 InterestingNode::Comprehension(Comprehension::new(n))
-            } else {
-                debug_assert_eq!(n.type_(), Nonterminal(dict_comprehension));
+            } else if n.is_type(Nonterminal(dict_comprehension)) {
                 InterestingNode::DictComprehension(DictComprehension::new(n))
+            } else {
+                debug_assert_eq!(n.type_(), Nonterminal(walrus));
+                InterestingNode::Walrus(Walrus::new(n))
             }
         })
     }
@@ -991,6 +994,10 @@ pub enum NamedExpressionContent<'db> {
 }
 
 impl<'db> Walrus<'db> {
+    pub fn name_def(&self) -> NameDefinition<'db> {
+        NameDefinition::new(self.node.nth_child(0))
+    }
+
     pub fn unpack(&self) -> (NameDefinition<'db>, Expression<'db>) {
         let mut iterator = self.node.iter_children();
         let name_def = iterator.next().unwrap();

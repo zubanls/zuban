@@ -808,6 +808,11 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                     self.index_non_block_node_full(&if_, ordered, from_annotation);
                     self.index_non_block_node_full(&else_, ordered, from_annotation);
                 }
+                InterestingNode::Walrus(walrus) => {
+                    let (name_def, expr) = walrus.unpack();
+                    self.index_non_block_node_full(&expr, ordered, from_annotation);
+                    self.add_new_definition(name_def, Point::new_uncalculated())
+                }
             }
         }
         latest_return_or_yield
