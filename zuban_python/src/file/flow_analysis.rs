@@ -1028,6 +1028,8 @@ impl Inference<'_, '_, '_> {
             NamedExpressionContent::Walrus(walrus) => {
                 let (name_def, expr) = walrus.unpack();
                 let (inf, mut truthy, mut falsey) = self.find_guards_in_expr(expr);
+                let inf = inf.avoid_implicit_literal(self.i_s);
+                let inf = self.save_walrus(name_def, inf);
                 if let Some((walrus_truthy, walrus_falsey)) =
                     split_truthy_and_falsey(self.i_s, &inf.as_cow_type(self.i_s))
                 {

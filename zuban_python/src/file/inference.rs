@@ -1350,10 +1350,16 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
             NamedExpressionContent::Walrus(walrus) => {
                 let (name_def, expr) = walrus.unpack();
-                self.infer_expression_with_context(named_expr.expression(), result_context)
-                    .save_redirect(self.i_s, self.file, name_def.index())
+                let inf =
+                    self.infer_expression_with_context(named_expr.expression(), result_context);
+                self.save_walrus(name_def, inf)
             }
         }
+    }
+
+    pub fn save_walrus(&self, name_def: NameDefinition, inf: Inferred) -> Inferred {
+        inf.avoid_implicit_literal(self.i_s)
+            .save_redirect(self.i_s, self.file, name_def.index())
     }
 
     pub fn infer_expression(&mut self, expr: Expression) -> Inferred {
@@ -2597,11 +2603,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     self.cache_stmt_name(stmt, NodeRef::new(self.file, name_def.index()));
                 }
                 StmtLike::Walrus(walrus) => {
-                    self.infer_expression(walrus.expression()).save_redirect(
-                        self.i_s,
-                        self.file,
-                        name_def.index(),
-                    );
+                    let inf = self.infer_expression(walrus.expression());
+                    self.save_walrus(name_def, inf);
                 }
                 _ => todo!("{stmt_like:?}"),
             }
@@ -2723,6 +2726,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 matcher.replace_type_var_likes_for_unknown_type_vars(i_s.db, &inner_expected)
             })
             .unwrap_or_else(|| self.infer_named_expression(comp_expr).as_type(i_s))
+            .avoid_implicit_literal(i_s.db)
     }
 
     fn infer_list_comprehension(
