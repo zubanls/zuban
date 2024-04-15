@@ -36,7 +36,7 @@ enum Unresolved<'db> {
     Name(Name<'db>),
 }
 
-pub(crate) struct NameBinder<'db, 'a> {
+pub(crate) struct NameBinder<'db> {
     mypy_compatible: bool,
     tree: &'db Tree,
     type_: NameBinderType,
@@ -54,10 +54,10 @@ pub(crate) struct NameBinder<'db, 'a> {
     file_index: FileIndex,
     references_need_flow_analysis: bool,
     #[allow(dead_code)] // TODO remove this
-    parent: Option<&'a NameBinder<'db, 'a>>,
+    parent: Option<*mut NameBinder<'db>>,
 }
 
-impl<'db, 'a> NameBinder<'db, 'a> {
+impl<'db> NameBinder<'db> {
     fn new(
         mypy_compatible: bool,
         tree: &'db Tree,
@@ -68,7 +68,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         issues: &'db Diagnostics,
         star_imports: &'db RefCell<Vec<StarImport>>,
         file_index: FileIndex,
-        parent: Option<&'a Self>,
+        parent: Option<*mut Self>,
     ) -> Self {
         Self {
             mypy_compatible,
@@ -99,11 +99,8 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         issues: &'db Diagnostics,
         star_imports: &'db RefCell<Vec<StarImport>>,
         file_index: FileIndex,
-        func: impl FnOnce(&mut NameBinder<'db, 'db>),
-    ) -> SymbolTable
-    where
-        'a: 'db,
-    {
+        func: impl FnOnce(&mut NameBinder<'db>),
+    ) -> SymbolTable {
         let mut binder = NameBinder::new(
             mypy_compatible,
             tree,
@@ -131,7 +128,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         &mut self,
         type_: NameBinderType,
         scope_node: NodeIndex,
-        func: impl FnOnce(&mut NameBinder<'db, '_>),
+        func: impl FnOnce(&mut NameBinder<'db>),
     ) -> SymbolTable {
         let mut name_binder = NameBinder::new(
             self.mypy_compatible,
@@ -835,7 +832,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         &mut self,
         clause: &ForIfClause<'db>,
         clauses: &mut ForIfClauseIterator<'db>,
-        on_expr: impl FnOnce(&mut NameBinder<'db, '_>),
+        on_expr: impl FnOnce(&mut NameBinder<'db>),
     ) {
         let (targets, ifs) = match clause {
             ForIfClause::Sync(sync_for_if_clause) | ForIfClause::Async(sync_for_if_clause) => {

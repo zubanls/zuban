@@ -231,7 +231,7 @@ impl<'db> PythonFile {
     fn with_global_binder(
         &'db self,
         project: &PythonProject,
-        func: impl FnOnce(&mut NameBinder<'db, 'db>),
+        func: impl FnOnce(&mut NameBinder<'db>),
     ) {
         self.symbol_table
             .replace_table(NameBinder::with_global_binder(
