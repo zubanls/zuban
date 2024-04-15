@@ -1521,11 +1521,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let db = self.inference.i_s.db;
         match base {
             TypeContent::Module(f) => {
-                if let Some(index) = f.symbol_table.lookup_symbol(name.as_str()) {
-                    self.inference.file.points.set(
-                        name.index(),
-                        Point::new_redirect(f.file_index(), index, Locality::Todo),
-                    );
+                if let Some(link) = f.lookup_global(name.as_str()) {
+                    self.inference
+                        .file
+                        .points
+                        .set(name.index(), link.into_point_redirect());
                     self.compute_type_name(name)
                 } else {
                     let module = Module::new(f);

@@ -2,9 +2,9 @@ use parsa_python_ast::*;
 
 use super::type_computation::cache_name_on_class;
 use crate::{
-    database::{Locality, Point, PointLink, PointType, Specific},
+    database::{PointLink, PointType, Specific},
     diagnostics::IssueType,
-    file::{file_state::File, PythonFile},
+    file::PythonFile,
     getitem::{SliceOrSimple, SliceType},
     inference_state::InferenceState,
     node_ref::NodeRef,
@@ -126,11 +126,10 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
                 match base {
                     BaseLookup::Module(f) => {
                         // TODO this is a bit weird. shouldn't this just do a goto?
-                        if let Some(index) = f.symbol_table.lookup_symbol(name.as_str()) {
-                            self.file.points.set(
-                                name.index(),
-                                Point::new_redirect(f.file_index(), index, Locality::Todo),
-                            );
+                        if let Some(link) = f.lookup_global(name.as_str()) {
+                            self.file
+                                .points
+                                .set(name.index(), link.into_point_redirect());
                             self.find_in_name(name)
                         } else {
                             BaseLookup::Other

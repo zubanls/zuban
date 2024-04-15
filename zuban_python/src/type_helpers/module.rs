@@ -1,6 +1,6 @@
 use crate::{
     arguments::KnownArgsWithCustomAddIssue,
-    database::{Database, FileIndex, PointLink},
+    database::{Database, FileIndex},
     debug,
     diagnostics::IssueType,
     file::{File, PythonFile},
@@ -76,8 +76,8 @@ impl<'a> Module<'a> {
         name: &str,
         is_import: bool,
     ) -> LookupResult {
-        if let Some(index) = self.file.symbol_table.lookup_symbol(name) {
-            let link = PointLink::new(self.file.file_index(), index);
+        if let Some(link) = self.file.lookup_global(name) {
+            let link = link.into();
             LookupResult::GotoName {
                 name: link,
                 inf: if is_import {
@@ -85,7 +85,7 @@ impl<'a> Module<'a> {
                 } else {
                     self.file
                         .inference(i_s)
-                        .infer_name_of_definition_by_index(index)
+                        .infer_name_of_definition_by_index(link.node_index)
                 },
             }
         } else if let Some(sub_module) = self.sub_module(i_s.db, name) {

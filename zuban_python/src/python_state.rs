@@ -326,6 +326,8 @@ impl PythonState {
             .python_state
             .dataclasses_file()
             .symbol_table
+            .get()
+            .unwrap()
             .lookup_symbol("dataclass")
             .unwrap()
             - NAME_TO_FUNCTION_DIFF;
@@ -340,6 +342,8 @@ impl PythonState {
                     .python_state
                     .$module_name()
                     .symbol_table
+                    .get()
+                    .unwrap()
                     .lookup_symbol($name)
                     .unwrap()
                     - NAME_TO_CLASS_DIFF;
@@ -358,6 +362,8 @@ impl PythonState {
                     .python_state
                     .$module_name()
                     .symbol_table
+                    .get()
+                    .unwrap()
                     .lookup_symbol($name)
                     .unwrap()
                     - NAME_TO_FUNCTION_DIFF;
@@ -1004,7 +1010,12 @@ fn typing_changes(
 }
 
 fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
-    let node_index = file.symbol_table.lookup_symbol(name).unwrap();
+    let node_index = file
+        .symbol_table
+        .get()
+        .unwrap()
+        .lookup_symbol(name)
+        .unwrap();
     if ![
         "cast",
         "type",
@@ -1049,7 +1060,12 @@ fn set_specific(file: &PythonFile, node_index: NodeIndex, specific: Specific) {
 }
 
 fn set_custom_behavior(file: &PythonFile, name: &str, custom: CustomBehavior) {
-    let node_index = file.symbol_table.lookup_symbol(name).unwrap();
+    let node_index = file
+        .symbol_table
+        .get()
+        .unwrap()
+        .lookup_symbol(name)
+        .unwrap();
     NodeRef::new(file, node_index).insert_complex(
         ComplexPoint::TypeInstance(Type::CustomBehavior(custom)),
         Locality::Stmt,
@@ -1078,9 +1094,19 @@ fn set_custom_behavior_method(
 */
 
 fn setup_type_alias(typing: &PythonFile, name: &str, target_file: &PythonFile, target_name: &str) {
-    let node_index = typing.symbol_table.lookup_symbol(name).unwrap();
+    let node_index = typing
+        .symbol_table
+        .get()
+        .unwrap()
+        .lookup_symbol(name)
+        .unwrap();
     debug_assert!(!typing.points.get(node_index).calculated());
-    let target_node_index = target_file.symbol_table.lookup_symbol(target_name).unwrap();
+    let target_node_index = target_file
+        .symbol_table
+        .get()
+        .unwrap()
+        .lookup_symbol(target_name)
+        .unwrap();
     typing.points.set(
         node_index, // Set it on name
         Point::new_redirect(target_file.file_index(), target_node_index, Locality::Stmt),
@@ -1099,7 +1125,12 @@ fn set_assignments_cached(file: &PythonFile, name_node: NodeIndex) {
 }
 
 fn set_mypy_extension_specific(file: &PythonFile, name: &str, specific: Specific) -> NodeIndex {
-    let node_index = file.symbol_table.lookup_symbol(name).unwrap();
+    let node_index = file
+        .symbol_table
+        .get()
+        .unwrap()
+        .lookup_symbol(name)
+        .unwrap();
     let name_def_node_index = node_index - NAME_DEF_TO_NAME_DIFFERENCE;
     // Act on the name def index and not the name.
     let old_point = file.points.get(name_def_node_index);

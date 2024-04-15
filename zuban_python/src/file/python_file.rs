@@ -1,5 +1,5 @@
 use std::{
-    cell::{Cell, RefCell},
+    cell::{Cell, OnceCell, RefCell},
     collections::HashMap,
     fmt,
     rc::Rc,
@@ -63,7 +63,7 @@ impl ComplexValues {
 
 pub struct PythonFile {
     pub tree: Tree, // TODO should probably not be public
-    pub symbol_table: SymbolTable,
+    pub symbol_table: OnceCell<SymbolTable>,
     //all_names_bloom_filter: Option<BloomFilter<&str>>,
     pub points: Points,
     pub complex_points: ComplexValues,
@@ -78,7 +78,7 @@ pub struct PythonFile {
 
 impl File for PythonFile {
     fn ensure_initialized(&self, project: &PythonProject) {
-        if self.points.get(0).calculated() {
+        if self.symbol_table.get().is_some() {
             // It was already done.
             return;
         }
@@ -234,7 +234,7 @@ impl<'db> PythonFile {
         func: impl FnOnce(&mut NameBinder<'db>),
     ) {
         self.symbol_table
-            .replace_table(NameBinder::with_global_binder(
+            .set(NameBinder::with_global_binder(
                 project.flags.mypy_compatible,
                 &self.tree,
                 &self.points,
@@ -244,6 +244,7 @@ impl<'db> PythonFile {
                 self.file_index.get().unwrap(),
                 func,
             ))
+            .unwrap()
     }
 
     pub fn inference<'file, 'i_s>(
@@ -259,6 +260,8 @@ impl<'db> PythonFile {
 
     pub fn lookup_global(&self, name: &str) -> Option<LocalityLink> {
         self.symbol_table
+            .get()
+            .unwrap()
             .lookup_symbol(name)
             .map(|node_index| LocalityLink {
                 file: self.file_index(),

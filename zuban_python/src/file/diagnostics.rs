@@ -133,12 +133,12 @@ impl<'db> Inference<'db, '_, '_> {
             }
         }
 
-        if let Some(index) = self.file.symbol_table.lookup_symbol("__getattribute__") {
-            NodeRef::new(self.file, index)
+        if let Some(link) = self.file.lookup_global("__getattribute__") {
+            NodeRef::new(self.file, link.node_index)
                 .add_issue(self.i_s, IssueType::GetattributeInvalidAtModuleLevel)
         }
-        if let Some(index) = self.file.symbol_table.lookup_symbol("__getattr__") {
-            let actual = self.infer_name_of_definition_by_index(index);
+        if let Some(link) = self.file.lookup_global("__getattr__") {
+            let actual = self.infer_name_of_definition_by_index(link.node_index);
             let actual = actual.as_cow_type(self.i_s);
             let Type::Callable(callable) = &self.i_s.db.python_state.valid_getattr_supertype else {
                 unreachable!();
@@ -148,7 +148,7 @@ impl<'db> Inference<'db, '_, '_> {
                 .is_simple_super_type_of(self.i_s, &actual)
                 .bool()
             {
-                NodeRef::new(self.file, index).add_issue(
+                NodeRef::new(self.file, link.node_index).add_issue(
                     self.i_s,
                     IssueType::InvalidSpecialMethodSignature {
                         type_: actual.format_short(self.i_s.db),

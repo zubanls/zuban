@@ -2328,8 +2328,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     continue;
                 }
                 if let Some(other_file) = star_import.to_file(self) {
-                    if let Some(symbol) = other_file.symbol_table.lookup_symbol(name) {
-                        return Some(PointLink::new(other_file.file_index(), symbol));
+                    if let Some(link) = other_file.lookup_global(name) {
+                        return Some(link.into());
                     }
                     if let Some(l) = other_file
                         .inference(self.i_s)
@@ -2348,8 +2348,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
 
             let super_file = self.i_s.db.loaded_python_file(*super_file);
-            if let Some(symbol) = super_file.symbol_table.lookup_symbol(name) {
-                return Some(PointLink::new(super_file.file_index(), symbol));
+            if let Some(link) = super_file.lookup_global(name) {
+                return Some(link.into());
             }
             super_file
                 .inference(self.i_s)
