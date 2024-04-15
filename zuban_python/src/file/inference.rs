@@ -1359,12 +1359,32 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 self.infer_expression_with_context(named_expr.expression(), result_context)
             }
             NamedExpressionContent::Walrus(walrus) => {
-                let (name_def, expr) = walrus.unpack();
-                let inf =
-                    self.infer_expression_with_context(named_expr.expression(), result_context);
-                self.save_walrus(name_def, inf)
+                self.infer_walrus(walrus, Some(result_context))
             }
         }
+    }
+
+    fn infer_walrus(
+        &mut self,
+        walrus: Walrus,
+        result_context: Option<&mut ResultContext>,
+    ) -> Inferred {
+        let (name_def, expr) = walrus.unpack();
+
+        let inf = if let Some(inf) = self.infer_name_target(name_def, false) {
+            self.infer_expression_with_context(
+                expr,
+                &mut ResultContext::Known(&inf.as_cow_type(self.i_s)),
+            )
+        } else {
+            if let Some(result_context) = result_context {
+                self.infer_expression_with_context(expr, result_context)
+            } else {
+                self.infer_expression(expr)
+            }
+        };
+
+        self.save_walrus(name_def, inf)
     }
 
     pub fn save_walrus(&mut self, name_def: NameDefinition, inf: Inferred) -> Inferred {
@@ -2617,8 +2637,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     self.cache_stmt_name(stmt, NodeRef::new(self.file, name_def.index()));
                 }
                 StmtLike::Walrus(walrus) => {
-                    let inf = self.infer_expression(walrus.expression());
-                    self.save_walrus(name_def, inf);
+                    self.infer_walrus(walrus, None);
                 }
                 _ => todo!("{stmt_like:?}"),
             }

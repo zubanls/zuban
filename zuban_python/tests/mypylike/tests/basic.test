@@ -220,3 +220,8 @@ bla: Literal[False, True] = blo
 
 if int():
     blo = bla
+
+[case walrus_context]
+foo: list[int]
+(foo := reveal_type([]))  # N: Revealed type is "list[int]"
+reveal_type(foo)  # N: Revealed type is "list[int]"
