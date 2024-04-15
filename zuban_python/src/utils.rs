@@ -215,7 +215,7 @@ impl SymbolTable {
         self.symbols.len()
     }
 
-    pub fn add_or_replace_symbol(&self, name: Name) -> Option<NodeIndex> {
+    pub fn add_or_replace_symbol(&mut self, name: Name) -> Option<NodeIndex> {
         self.symbols
             .insert(HashableRawStr::new(name.as_str()), name.index())
     }

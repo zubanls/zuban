@@ -151,7 +151,13 @@ impl<'db> NameBinder<'db> {
         }
         // Annotation names are also und
         for annotation_name in &binder.annotation_names {
-            binder.try_to_process_reference(*annotation_name, false);
+            try_to_process_reference_for_symbol_table(
+                &mut binder.symbol_table,
+                binder.file_index,
+                binder.points,
+                *annotation_name,
+                false,
+            );
         }
         binder.symbol_table
     }
@@ -181,7 +187,7 @@ impl<'db> NameBinder<'db> {
             names_to_be_resolved_in_parent,
             annotation_names,
             unresolved_class_self_vars,
-            symbol_table,
+            mut symbol_table,
             ..
         } = name_binder;
         self.unresolved_class_self_vars
@@ -194,7 +200,7 @@ impl<'db> NameBinder<'db> {
         self.unresolved_nodes.extend(unresolved_nodes);
         for annotation_name in annotation_names {
             if !try_to_process_reference_for_symbol_table(
-                &symbol_table,
+                &mut symbol_table,
                 self.file_index,
                 self.points,
                 annotation_name,
@@ -984,9 +990,9 @@ impl<'db> NameBinder<'db> {
     }
 
     #[inline]
-    fn try_to_process_reference(&self, name: Name<'db>, needs_flow_analysis: bool) -> bool {
+    fn try_to_process_reference(&mut self, name: Name<'db>, needs_flow_analysis: bool) -> bool {
         try_to_process_reference_for_symbol_table(
-            &self.symbol_table,
+            &mut self.symbol_table,
             self.file_index,
             self.points,
             name,
@@ -996,7 +1002,13 @@ impl<'db> NameBinder<'db> {
 
     fn index_unordered_references(&mut self) {
         for &(needs_flow_analysis, name) in &self.unordered_references {
-            if !self.try_to_process_reference(name, needs_flow_analysis) {
+            if !try_to_process_reference_for_symbol_table(
+                &mut self.symbol_table,
+                self.file_index,
+                self.points,
+                name,
+                needs_flow_analysis,
+            ) {
                 self.names_to_be_resolved_in_parent.push(name);
             }
         }
@@ -1079,7 +1091,7 @@ fn gather_slots(file_index: FileIndex, assignment: Assignment) -> Option<Box<[St
 
 #[inline]
 fn try_to_process_reference_for_symbol_table(
-    symbol_table: &SymbolTable,
+    symbol_table: &mut SymbolTable,
     file_index: FileIndex,
     points: &Points,
     name: Name,
