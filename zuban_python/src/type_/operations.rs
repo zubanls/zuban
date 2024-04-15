@@ -11,7 +11,7 @@ use crate::{
     arguments::{Args, NoArgs},
     database::FileIndex,
     debug,
-    diagnostics::IssueType,
+    diagnostics::IssueKind,
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
@@ -35,7 +35,7 @@ impl Type {
         name: &str,
         lookup_kind: LookupKind,
         result_context: &mut ResultContext,
-        add_issue: &dyn Fn(IssueType),
+        add_issue: &dyn Fn(IssueKind),
         on_lookup_error: OnLookupError,
     ) -> LookupResult {
         let mut result: Option<LookupResult> = None;
@@ -92,7 +92,7 @@ impl Type {
         name: &str,
         kind: LookupKind,
         result_context: &mut ResultContext,
-        add_issue: &dyn Fn(IssueType),
+        add_issue: &dyn Fn(IssueKind),
         callable: &mut impl FnMut(&Type, LookupDetails),
     ) {
         match self {
@@ -229,7 +229,7 @@ impl Type {
                     mro_index + 1,
                 );
                 if matches!(&l.lookup, LookupResult::None) {
-                    add_issue(IssueType::UndefinedInSuperclass { name: name.into() });
+                    add_issue(IssueKind::UndefinedInSuperclass { name: name.into() });
                     callable(self, LookupDetails::any(AnyCause::FromError));
                     return;
                 }
@@ -289,7 +289,7 @@ impl Type {
         let not_possible = || {
             slice_type
                 .as_node_ref()
-                .add_issue(i_s, IssueType::OnlyClassTypeApplication);
+                .add_issue(i_s, IssueKind::OnlyClassTypeApplication);
             slice_type.infer(i_s);
             Inferred::new_any_from_error()
         };
@@ -335,7 +335,7 @@ impl Type {
                     {
                         slice_type.as_node_ref().add_issue(
                             i_s,
-                            IssueType::EnumIndexShouldBeAString {
+                            IssueKind::EnumIndexShouldBeAString {
                                 actual: enum_index.format_short(i_s),
                             },
                         );
@@ -452,7 +452,7 @@ impl Type {
                 let t = self.format_short(i_s.db);
                 args.add_issue(
                     i_s,
-                    IssueType::NotCallable {
+                    IssueKind::NotCallable {
                         type_: format!("\"{}\"", t).into(),
                     },
                 );
@@ -465,7 +465,7 @@ impl Type {
         let on_error = |t: &Type| {
             from.add_issue(
                 i_s,
-                IssueType::NotIterable {
+                IssueKind::NotIterable {
                     type_: format!("\"{}\"", t.format_short(i_s.db)).into(),
                 },
             );
@@ -520,7 +520,7 @@ impl Type {
 
 pub(crate) fn attribute_access_of_type(
     i_s: &InferenceState,
-    add_issue: &dyn Fn(IssueType),
+    add_issue: &dyn Fn(IssueKind),
     name: &str,
     kind: LookupKind,
     result_context: &mut ResultContext,

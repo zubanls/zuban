@@ -17,7 +17,7 @@ use crate::{
     arguments::{Arg, ArgKind, InferredArg},
     database::PointLink,
     debug,
-    diagnostics::IssueType,
+    diagnostics::IssueKind,
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{matcher::bound::Bound, maybe_class_usage, ErrorTypes, GotType, LookupKind},
@@ -35,7 +35,7 @@ pub(crate) fn calculate_callable_init_type_vars_and_return<'db: 'a, 'a>(
     class: &Class,
     callable: Callable<'a>,
     args: impl Iterator<Item = Arg<'db, 'a>>,
-    add_issue: impl Fn(IssueType),
+    add_issue: impl Fn(IssueKind),
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError>,
 ) -> CalculatedTypeArgs {
@@ -55,7 +55,7 @@ pub(crate) fn calculate_class_init_type_vars_and_return<'db: 'a, 'a>(
     class: &Class,
     function: Function<'a, 'a>,
     args: impl Iterator<Item = Arg<'db, 'a>>,
-    add_issue: impl Fn(IssueType),
+    add_issue: impl Fn(IssueKind),
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError>,
 ) -> CalculatedTypeArgs {
@@ -75,7 +75,7 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
     class: &Class,
     func_or_callable: FunctionOrCallable<'a>,
     args: impl Iterator<Item = Arg<'db, 'a>>,
-    add_issue: impl Fn(IssueType),
+    add_issue: impl Fn(IssueKind),
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError>,
 ) -> CalculatedTypeArgs {
@@ -274,7 +274,7 @@ pub(crate) fn calculate_function_type_vars_and_return<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     function: Function<'a, 'a>,
     args: impl Iterator<Item = Arg<'db, 'a>>,
-    add_issue: impl Fn(IssueType),
+    add_issue: impl Fn(IssueKind),
     skip_first_param: bool,
     type_vars: &TypeVarLikes,
     match_in_definition: PointLink,
@@ -307,7 +307,7 @@ pub(crate) fn calculate_callable_type_vars_and_return<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     callable: Callable<'a>,
     args: impl Iterator<Item = Arg<'db, 'a>>,
-    add_issue: impl Fn(IssueType),
+    add_issue: impl Fn(IssueKind),
     skip_first_param: bool,
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError>,
@@ -353,7 +353,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
     func_or_callable: FunctionOrCallable<'a>,
     return_class: Option<&Class>,
     mut args: impl Iterator<Item = Arg<'db, 'a>>,
-    add_issue: impl Fn(IssueType),
+    add_issue: impl Fn(IssueKind),
     skip_first_param: bool,
     match_in_definition: PointLink,
     result_context: &mut ResultContext,
@@ -382,7 +382,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
                 if !m.bool() {
                     had_wrong_init_type_var = true;
                     if on_type_error.is_some() {
-                        add_issue(IssueType::ArgumentIssue(
+                        add_issue(IssueKind::ArgumentIssue(
                             "Invalid self type in __init__".into(),
                         ))
                     }
@@ -490,7 +490,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
     let (m, type_arguments, type_var_likes) = matcher.into_type_arguments(i_s.db);
     if !m.bool() {
         if on_type_error.is_some() {
-            add_issue(IssueType::ArgumentTypeIssue(
+            add_issue(IssueKind::ArgumentTypeIssue(
                 "Incompatible callable argument with type vars".into(),
             ))
         }
@@ -528,7 +528,7 @@ pub(crate) fn match_arguments_against_params<
     i_s: &InferenceState<'db, '_>,
     matcher: &mut Matcher,
     func_or_callable: FunctionOrCallable,
-    add_issue: &impl Fn(IssueType),
+    add_issue: &impl Fn(IssueKind),
     on_type_error: Option<OnTypeError>,
     mut args_with_params: InferrableParamIterator<'db, 'x, impl Iterator<Item = P>, P, AI>,
 ) -> SignatureMatch {
@@ -538,7 +538,7 @@ pub(crate) fn match_arguments_against_params<
     };
     let too_few_arguments = || {
         let s = diagnostic_string(" for ").unwrap_or_else(|| Box::from(""));
-        add_issue(IssueType::TooFewArguments(s));
+        add_issue(IssueKind::TooFewArguments(s));
     };
     let should_generate_errors = on_type_error.is_some();
     let mut missing_params = vec![];
@@ -595,7 +595,7 @@ pub(crate) fn match_arguments_against_params<
                         MismatchReason::ConstraintMismatch { expected, type_var } => {
                             argument.add_issue(
                                 i_s,
-                                IssueType::InvalidTypeVarValue {
+                                IssueKind::InvalidTypeVarValue {
                                     type_var_name: Box::from(type_var.name(i_s.db)),
                                     of: diagnostic_string("").unwrap_or(Box::from("function")),
                                     actual: expected.format(&FormatData::new_short(i_s.db)),
@@ -623,7 +623,7 @@ pub(crate) fn match_arguments_against_params<
                                 let cls2 = Class::from_non_generic_node_ref(node_ref);
                                 if cls2.is_protocol(i_s.db) {
                                     add_issue(
-                                        IssueType::OnlyConcreteClassAllowedWhereTypeExpected {
+                                        IssueKind::OnlyConcreteClassAllowedWhereTypeExpected {
                                             type_: expected.format_short(i_s.db),
                                         },
                                     )
@@ -695,7 +695,7 @@ pub(crate) fn match_arguments_against_params<
                 for arg in args.iter() {
                     if arg.in_args_or_kwargs_and_arbitrary_len() {
                         if unpack.is_some() {
-                            add_issue(IssueType::ArgumentIssue(
+                            add_issue(IssueKind::ArgumentIssue(
                                 "Passing multiple variadic unpacks in a call is not supported"
                                     .into(),
                             ));
@@ -717,7 +717,7 @@ pub(crate) fn match_arguments_against_params<
                             }
                             InferredArg::StarredWithUnpack(with_unpack) => {
                                 if unpack.is_some() {
-                                    add_issue(IssueType::ArgumentIssue("Passing multiple variadic unpacks in a call is not supported".into()));
+                                    add_issue(IssueKind::ArgumentIssue("Passing multiple variadic unpacks in a call is not supported".into()));
                                     return SignatureMatch::False { similar: false };
                                 }
                                 before.extend_from_slice(&with_unpack.before);
@@ -815,14 +815,14 @@ pub(crate) fn match_arguments_against_params<
                 }
             }
         };
-        arg.add_issue(i_s, IssueType::ArgumentIssue(s.into()));
+        arg.add_issue(i_s, IssueKind::ArgumentIssue(s.into()));
     };
     if args_with_params.too_many_positional_arguments {
         matches = Match::new_false();
         if should_generate_errors {
             let mut s = "Too many positional arguments".to_owned();
             s += diagnostic_string(" for ").as_deref().unwrap_or("");
-            add_issue(IssueType::ArgumentIssue(s.into()));
+            add_issue(IssueKind::ArgumentIssue(s.into()));
         }
     } else if args_with_params.has_unused_arguments() {
         matches = Match::new_false();
@@ -838,7 +838,7 @@ pub(crate) fn match_arguments_against_params<
             }
             if too_many {
                 let s = diagnostic_string(" for ").unwrap_or_else(|| Box::from(""));
-                add_issue(IssueType::TooManyArguments(s));
+                add_issue(IssueKind::TooManyArguments(s));
             }
         } else {
             debug!("Too many arguments found");
@@ -859,7 +859,7 @@ pub(crate) fn match_arguments_against_params<
         let add_missing_kw_issue = |param_name| {
             let mut s = format!("Missing named argument {:?}", param_name);
             s += diagnostic_string(" for ").as_deref().unwrap_or("");
-            add_issue(IssueType::ArgumentIssue(s.into()));
+            add_issue(IssueKind::ArgumentIssue(s.into()));
         };
         for param in &missing_params {
             let param_kind = param.kind(i_s.db);
@@ -899,7 +899,7 @@ pub(crate) fn match_arguments_against_params<
             )),
         } {
             s += diagnostic_string(" to ").as_deref().unwrap_or("");
-            add_issue(IssueType::ArgumentIssue(s.into()));
+            add_issue(IssueKind::ArgumentIssue(s.into()));
         };
     } else if missing_unpacked_typed_dict_names.is_some_and(|t| !t.is_empty())
         || args_with_params

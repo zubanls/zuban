@@ -9,7 +9,7 @@ use crate::{
         PointType, Specific,
     },
     debug,
-    diagnostics::IssueType,
+    diagnostics::IssueKind,
     file::{
         maybe_saved_annotation, on_argument_type_error, use_cached_annotation_or_type_comment,
         File, PythonFile,
@@ -592,7 +592,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     let r = NodeRef::new(file, index);
                     r.add_issue(
                         i_s,
-                        IssueType::CyclicDefinition {
+                        IssueKind::CyclicDefinition {
                             name: Box::from(r.as_code()),
                         },
                     );
@@ -757,7 +757,7 @@ impl<'db: 'slf, 'slf> Inferred {
         i_s: &InferenceState,
         instance: Type,
         func_class: Class,
-        add_issue: impl Fn(IssueType),
+        add_issue: impl Fn(IssueKind),
         mro_index: MroIndex,
     ) -> Option<(Self, AttributeKind)> {
         self.bind_instance_descriptors_internal(
@@ -775,7 +775,7 @@ impl<'db: 'slf, 'slf> Inferred {
         i_s: &InferenceState,
         instance: Type,
         attribute_class: Class,
-        add_issue: impl Fn(IssueType),
+        add_issue: impl Fn(IssueKind),
         mro_index: MroIndex,
         apply_descriptors_kind: ApplyDescriptorsKind,
     ) -> Option<(Self, AttributeKind)> {
@@ -802,7 +802,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     &attribute_class,
                                     &first_type,
                                 ) {
-                                    add_issue(IssueType::InvalidSelfArgument {
+                                    add_issue(IssueKind::InvalidSelfArgument {
                                         argument_type: instance.format_short(i_s.db),
                                         function_name: Box::from(func.name()),
                                         callable: func
@@ -940,7 +940,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                                 &o.functions,
                                                 Some(attribute_class),
                                             );
-                                            let t = IssueType::InvalidClassMethodFirstArgument {
+                                            let t = IssueKind::InvalidClassMethodFirstArgument {
                                                 argument_type: Type::Type(Rc::new(instance))
                                                     .format_short(i_s.db),
                                                 function_name: Box::from(overload.name(i_s.db)),
@@ -1035,7 +1035,7 @@ impl<'db: 'slf, 'slf> Inferred {
         i_s: &InferenceState,
         instance: Type,
         attribute_class: Class,
-        add_issue: impl Fn(IssueType),
+        add_issue: impl Fn(IssueKind),
         mro_index: MroIndex,
         t: &Type,
         apply_descriptors_kind: ApplyDescriptorsKind,
@@ -1076,7 +1076,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         {
                             (Inferred::from_type(t), AttributeKind::Property { writable })
                         } else {
-                            add_issue(IssueType::InvalidSelfArgument {
+                            add_issue(IssueKind::InvalidSelfArgument {
                                 argument_type: instance.format_short(i_s.db),
                                 function_name: Box::from(
                                     c.name.as_ref().map(|n| n.as_str(i_s.db)).unwrap_or(""),
@@ -1100,7 +1100,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     let instance_cls = instance_cls.class(i_s.db);
                     let result = infer_class_method(i_s, instance_cls, attribute_class, c);
                     if result.is_none() {
-                        let t = IssueType::InvalidClassMethodFirstArgument {
+                        let t = IssueKind::InvalidClassMethodFirstArgument {
                             argument_type: Type::Type(Rc::new(instance)).format_short(i_s.db),
                             function_name: c.name(i_s.db).into(),
                             callable: t.format_short(i_s.db),
@@ -1156,7 +1156,7 @@ impl<'db: 'slf, 'slf> Inferred {
         i_s: &InferenceState,
         class: &Class,
         attribute_class: Class, // The (sub-)class in which an attribute is defined
-        add_issue: impl Fn(IssueType),
+        add_issue: impl Fn(IssueKind),
         apply_descriptor: bool,
     ) -> Option<(Self, AttributeKind)> {
         let mut attr_kind = AttributeKind::Attribute;
@@ -1189,7 +1189,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             if specific == Specific::AnnotationOrTypeCommentWithTypeVars
                                 && apply_descriptor
                             {
-                                add_issue(IssueType::AmbigousClassVariableAccess);
+                                add_issue(IssueKind::AmbigousClassVariableAccess);
                             }
                             let mut t = use_cached_annotation_or_type_comment(
                                 i_s,
@@ -1296,7 +1296,7 @@ impl<'db: 'slf, 'slf> Inferred {
         i_s: &InferenceState,
         class: &Class,
         attribute_class: Class, // The (sub-)class in which an attribute is defined
-        add_issue: impl Fn(IssueType),
+        add_issue: impl Fn(IssueKind),
         apply_descriptor: bool,
         t: &Type,
     ) -> Option<Option<Self>> {
@@ -1316,7 +1316,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 FunctionKind::Classmethod { .. } => {
                     let result = infer_class_method(i_s, *class, attribute_class, c);
                     if result.is_none() {
-                        let inv = IssueType::InvalidSelfArgument {
+                        let inv = IssueKind::InvalidSelfArgument {
                             argument_type: class.as_type_type(i_s).format_short(i_s.db),
                             function_name: c.name(i_s.db).into(),
                             callable: t.format_short(i_s.db),
@@ -1738,7 +1738,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 )
                             }
                             Specific::TypingAny => {
-                                args.add_issue(i_s, IssueType::AnyNotCallable);
+                                args.add_issue(i_s, IssueKind::AnyNotCallable);
                                 args.iter().calculate_diagnostics(i_s);
                                 return Inferred::new_any_from_error();
                             }
@@ -1783,7 +1783,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 }
                                 args.add_issue(
                                     i_s,
-                                    IssueType::NotCallable {
+                                    IssueKind::NotCallable {
                                         type_: Box::from("\"<typing special form>\""),
                                     },
                                 );
@@ -1820,7 +1820,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 } else {
                                     args.add_issue(
                                         i_s,
-                                        IssueType::TooFewArguments(
+                                        IssueKind::TooFewArguments(
                                             format!(" for \"{}\"", new_type.name(i_s.db)).into(),
                                         ),
                                     );
@@ -1828,7 +1828,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 if iterator.next().is_some() {
                                     args.add_issue(
                                         i_s,
-                                        IssueType::TooManyArguments(
+                                        IssueKind::TooManyArguments(
                                             format!(" for \"{}\"", new_type.name(i_s.db)).into(),
                                         ),
                                     );
@@ -1841,7 +1841,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     PointType::FileReference => {
                         args.add_issue(
                             i_s,
-                            IssueType::NotCallable {
+                            IssueKind::NotCallable {
                                 type_: Box::from("Module"),
                             },
                         );
@@ -1968,19 +1968,19 @@ impl<'db: 'slf, 'slf> Inferred {
             &|_| {
                 slice_type.as_node_ref().add_issue(
                     i_s,
-                    IssueType::UnsupportedSetItemTarget(self.format_short(i_s)),
+                    IssueKind::UnsupportedSetItemTarget(self.format_short(i_s)),
                 )
             },
             OnTypeError::new(&|i_s, function, arg, types| {
                 let ErrorStrs { got, expected } = types.as_boxed_strs(i_s);
                 let type_ = if arg.index == 1 {
-                    IssueType::InvalidGetItem {
+                    IssueKind::InvalidGetItem {
                         type_: self.format_short(i_s),
                         actual: got,
                         expected,
                     }
                 } else {
-                    IssueType::InvalidSetItemTarget { got, expected }
+                    IssueKind::InvalidSetItemTarget { got, expected }
                 };
                 from.add_issue(i_s, type_)
             }),
@@ -2373,7 +2373,7 @@ pub fn add_attribute_error(
 ) {
     let object = match t {
         Type::Module(f) => {
-            node_ref.add_issue(i_s, IssueType::ModuleAttributeError { name: name.into() });
+            node_ref.add_issue(i_s, IssueKind::ModuleAttributeError { name: name.into() });
             return;
         }
         _ => format!("{:?}", t.format_short(i_s.db)).into(),
@@ -2386,7 +2386,7 @@ pub fn add_attribute_error(
                 let type_var_name = usage.type_var.name(i_s.db);
                 node_ref.add_issue(
                     i_s,
-                    IssueType::UnionAttributeErrorOfUpperBound(format!(
+                    IssueKind::UnionAttributeErrorOfUpperBound(format!(
                         r#"Item {object} of the upper bound "{bound}" of type variable "{type_var_name}" has no attribute "{name}""#
                     ).into())
                 );
@@ -2397,8 +2397,8 @@ pub fn add_attribute_error(
     node_ref.add_issue(
         i_s,
         match full_type.is_union_like() {
-            false => IssueType::AttributeError { object, name },
-            true => IssueType::UnionAttributeError {
+            false => IssueKind::AttributeError { object, name },
+            true => IssueKind::UnionAttributeError {
                 object,
                 union: full_type.format_short(i_s.db),
                 name,

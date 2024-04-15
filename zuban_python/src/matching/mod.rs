@@ -30,7 +30,7 @@ pub use utils::{
 use crate::{
     arguments::Arg,
     database::Database,
-    diagnostics::IssueType,
+    diagnostics::IssueKind,
     inference_state::InferenceState,
     inferred::Inferred,
     type_::{AnyCause, Tuple, TupleUnpack, Type, WithUnpack},
@@ -161,23 +161,23 @@ impl ErrorTypes<'_> {
         }
     }
 
-    pub(crate) fn add_mismatch_notes(&self, add_issue: impl Fn(IssueType)) {
+    pub(crate) fn add_mismatch_notes(&self, add_issue: impl Fn(IssueKind)) {
         match self.reason {
             MismatchReason::SequenceInsteadOfListNeeded => {
-                add_issue(IssueType::InvariantNote {
+                add_issue(IssueKind::InvariantNote {
                     actual: "List",
                     maybe: "Sequence",
                 });
             }
             MismatchReason::MappingInsteadOfDictNeeded => {
-                add_issue(IssueType::InvariantNote {
+                add_issue(IssueKind::InvariantNote {
                     actual: "Dict",
                     maybe: "Mapping",
                 });
             }
             MismatchReason::ProtocolMismatches { notes } => {
                 for note in notes.iter() {
-                    add_issue(IssueType::Note(note.clone()));
+                    add_issue(IssueKind::Note(note.clone()));
                 }
             }
             _ => (),

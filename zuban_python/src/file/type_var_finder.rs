@@ -3,7 +3,7 @@ use parsa_python_ast::*;
 use super::type_computation::cache_name_on_class;
 use crate::{
     database::{PointLink, PointType, Specific},
-    diagnostics::IssueType,
+    diagnostics::IssueKind,
     file::PythonFile,
     getitem::{SliceOrSimple, SliceType},
     inference_state::InferenceState,
@@ -155,7 +155,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
                         if self.generic_or_protocol_slice.is_some() {
                             self.had_generic_or_protocol_issue = true;
                             NodeRef::new(self.file, primary.index())
-                                .add_issue(self.i_s, IssueType::EnsureSingleGenericOrProtocol);
+                                .add_issue(self.i_s, IssueKind::EnsureSingleGenericOrProtocol);
                         }
                         self.generic_or_protocol_slice =
                             Some(SliceType::new(self.file, primary.index(), slice_type));
@@ -213,7 +213,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
                                 if self.class.is_some() {
                                     NodeRef::new(self.file, name.index()).add_issue(
                                         self.i_s,
-                                        IssueType::MultipleTypeVarTuplesInClassDef,
+                                        IssueKind::MultipleTypeVarTuplesInClassDef,
                                     );
                                 }
                                 return BaseLookup::Other;
@@ -223,7 +223,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
                         if let Some(force_index) = self.current_generic_or_protocol_index {
                             if old_index < force_index {
                                 NodeRef::new(self.file, name.index())
-                                    .add_issue(self.i_s, IssueType::DuplicateTypeVar)
+                                    .add_issue(self.i_s, IssueKind::DuplicateTypeVar)
                             } else if old_index != force_index {
                                 self.type_var_manager.move_index(old_index, force_index);
                             }
@@ -273,7 +273,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
         if slice_type.iter().count() < self.type_var_manager.len() {
             slice_type
                 .as_node_ref()
-                .add_issue(self.i_s, IssueType::IncompleteGenericOrProtocolTypeVars)
+                .add_issue(self.i_s, IssueKind::IncompleteGenericOrProtocolTypeVars)
         }
     }
 }

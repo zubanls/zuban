@@ -11,7 +11,7 @@ use crate::{
 #[derive(Debug)]
 #[allow(dead_code)]  // TODO remove this
 #[rustfmt::skip]  // This is way more readable if we are not auto-formatting this.
-pub(crate) enum IssueType {
+pub(crate) enum IssueKind {
     InvalidSyntax,
     InvalidSyntaxInTypeComment { type_comment: Box<str> },
     InvalidSyntaxInTypeAnnotation,
@@ -347,9 +347,9 @@ pub(crate) enum IssueType {
     Note(Box<str>),
 }
 
-impl IssueType {
+impl IssueKind {
     pub fn mypy_error_code(&self) -> Option<&'static str> {
-        use IssueType::*;
+        use IssueKind::*;
         Some(match &self {
             Note(_) | InvariantNote { .. } => return None,
             InvalidSyntax | InvalidSyntaxInTypeComment { .. } | InvalidSyntaxInTypeAnnotation => {
@@ -424,7 +424,7 @@ impl IssueType {
 
     fn mypy_error_supercode(&self) -> Option<&'static str> {
         // See also https://mypy.readthedocs.io/en/stable/error_codes.html#subcodes-of-error-codes
-        use IssueType::*;
+        use IssueKind::*;
         match &self {
             TypedDictExtraKey { .. } | TypedDictHasNoKey { .. } => Some("typeddict-item"),
             CannotAssignToAMethod => Some("assignment"),
@@ -435,23 +435,23 @@ impl IssueType {
 
 #[derive(Debug)]
 pub struct Issue {
-    pub(crate) type_: IssueType,
+    pub(crate) kind: IssueKind,
     pub start_position: CodeIndex,
     pub end_position: CodeIndex,
 }
 
 impl Issue {
-    pub(crate) fn from_node_index(tree: &Tree, node_index: NodeIndex, type_: IssueType) -> Self {
+    pub(crate) fn from_node_index(tree: &Tree, node_index: NodeIndex, kind: IssueKind) -> Self {
         Self {
-            type_,
+            kind,
             start_position: tree.node_start_position(node_index),
             end_position: tree.node_end_position(node_index),
         }
     }
 
-    pub(crate) fn from_string_slice(s: StringSlice, type_: IssueType) -> Self {
+    pub(crate) fn from_string_slice(s: StringSlice, kind: IssueKind) -> Self {
         Self {
-            type_,
+            kind,
             start_position: s.start,
             end_position: s.end,
         }
@@ -526,11 +526,11 @@ impl<'db> Diagnostic<'db> {
     }
 
     pub fn mypy_error_code(&self) -> &'static str {
-        self.issue.type_.mypy_error_code().unwrap_or("note")
+        self.issue.kind.mypy_error_code().unwrap_or("note")
     }
 
     pub fn as_string(&self, config: &DiagnosticConfig) -> String {
-        let mut type_ = "error";
+        let mut kind = "error";
         // TODO REMOVE mypy removal
         let mut path = self
             .db
@@ -542,8 +542,8 @@ impl<'db> Diagnostic<'db> {
         let line_column = self.start_position().line_and_column();
         let line = line_column.0;
         let mut additional_notes = vec![];
-        use IssueType::*;
-        let error = match &self.issue.type_ {
+        use IssueKind::*;
+        let error = match &self.issue.kind {
             InvalidSyntax => "invalid syntax".to_string(),
             InvalidSyntaxInTypeComment { type_comment } => format!(
                 r#"Syntax error in type comment "{type_comment}""#
@@ -1342,7 +1342,7 @@ impl<'db> Diagnostic<'db> {
             ),
 
             InvariantNote{actual, maybe} => {
-                type_ = "note";
+                kind = "note";
                 let suffix = match *actual {
                     "List" => "",
                     "Dict" => " in the value type",
@@ -1355,18 +1355,18 @@ impl<'db> Diagnostic<'db> {
                 )
             }
             AnnotationInUntypedFunction => {
-                type_ = "note";
+                kind = "note";
                 "By default the bodies of untyped functions are not checked, \
                  consider using --check-untyped-defs".to_string()
             }
             Note(s) => {
-                type_ = "note";
+                kind = "note";
                 s.clone().into()
             }
         };
-        let mut result = fmt_line(config, path, line_column, type_, &error);
+        let mut result = fmt_line(config, path, line_column, kind, &error);
         if config.show_error_codes {
-            if let Some(mypy_error_code) = self.issue.type_.mypy_error_code() {
+            if let Some(mypy_error_code) = self.issue.kind.mypy_error_code() {
                 result += &format!("  [{mypy_error_code}]");
             }
         }
@@ -1407,11 +1407,11 @@ pub struct DiagnosticConfig {
 }
 
 impl DiagnosticConfig {
-    pub(crate) fn should_be_reported(&self, type_: &IssueType) -> bool {
+    pub(crate) fn should_be_reported(&self, type_: &IssueKind) -> bool {
         match type_ {
-            IssueType::ImportAttributeError { .. }
-            | IssueType::ModuleNotFound { .. }
-            | IssueType::ModuleAttributeError { .. } => !self.ignore_missing_imports,
+            IssueKind::ImportAttributeError { .. }
+            | IssueKind::ModuleNotFound { .. }
+            | IssueKind::ModuleAttributeError { .. } => !self.ignore_missing_imports,
             _ => true,
         }
     }
@@ -1430,8 +1430,8 @@ impl Diagnostics {
         if let Some(specific) = maybe_ignored {
             if let Some(specific) = specific {
                 // It's possible to write # type: ignore   [ xyz , name-defined ]
-                let e = issue.type_.mypy_error_code();
-                let super_ = issue.type_.mypy_error_supercode();
+                let e = issue.kind.mypy_error_code();
+                let super_ = issue.kind.mypy_error_supercode();
                 if specific.split(',').any(|specific| {
                     let code = specific.trim_matches(' ');
                     e == Some(code) || super_ == Some(code) || e.is_none()
@@ -1448,7 +1448,7 @@ impl Diagnostics {
         let last_issue = self.0.last().unwrap();
         if let Some(s) = add_not_covered_note {
             self.0.push(Box::pin(Issue {
-                type_: IssueType::Note(
+                kind: IssueKind::Note(
                     format!(r#"Error code "{s}" not covered by "type: ignore" comment"#).into(),
                 ),
                 start_position: last_issue.start_position,
@@ -1474,6 +1474,6 @@ mod tests {
         use std::mem::size_of;
 
         use super::*;
-        assert_eq!(size_of::<IssueType>(), 56);
+        assert_eq!(size_of::<IssueKind>(), 56);
     }
 }

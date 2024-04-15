@@ -13,7 +13,7 @@ use super::{
 use crate::{
     arguments::{Arg, ArgKind, Args, SimpleArgs},
     database::{Database, Locality, Point, Specific},
-    diagnostics::{Issue, IssueType},
+    diagnostics::{Issue, IssueKind},
     file::{File, PythonFile},
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
@@ -136,8 +136,8 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                     NodeRef::new(file, arguments.index()).add_issue(
                         i_s,
                         match dataclass.options.frozen {
-                            false => IssueType::DataclassCannotInheritNonFrozenFromFrozen,
-                            true => IssueType::DataclassCannotInheritFrozenFromNonFrozen,
+                            false => IssueKind::DataclassCannotInheritNonFrozenFromFrozen,
+                            true => IssueKind::DataclassCannotInheritFrozenFromNonFrozen,
                         },
                     );
                 }
@@ -180,7 +180,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                             }
                             n.add_issue(
                                 i_s,
-                                IssueType::DataclassAttributeMayOnlyBeOverriddenByAnotherAttribute,
+                                IssueKind::DataclassAttributeMayOnlyBeOverriddenByAnotherAttribute,
                             );
                         }
                     }
@@ -221,7 +221,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                     }
                     Some(Specific::TypingTypeAlias) => {
                         NodeRef::new(file, assignment.index())
-                            .add_issue(i_s, IssueType::DataclassContainsTypeAlias);
+                            .add_issue(i_s, IssueKind::DataclassContainsTypeAlias);
                         continue;
                     }
                     _ => (),
@@ -276,7 +276,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
             Type::Class(c) if c.link == db.python_state.dataclasses_kw_only_link() => {
                 if had_kw_only_marker {
                     NodeRef::new(file, infos.name_index)
-                        .add_issue(i_s, IssueType::DataclassMultipleKwOnly);
+                        .add_issue(i_s, IssueKind::DataclassMultipleKwOnly);
                 } else {
                     had_kw_only_marker = true;
                 }
@@ -318,7 +318,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
         {
             if latest_default_issue.is_none() {
                 let name = next_param.name.as_ref().unwrap();
-                let issue_type = IssueType::DataclassNoDefaultAfterDefault;
+                let issue_type = IssueKind::DataclassNoDefaultAfterDefault;
                 let DbString::StringSlice(name) = name else {
                     unreachable!();
                 };
@@ -349,7 +349,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
             {
                 NodeRef::new(file, node_index).add_issue(
                     i_s,
-                    IssueType::DataclassCustomOrderMethodNotAllowed { method_name },
+                    IssueKind::DataclassCustomOrderMethodNotAllowed { method_name },
                 );
             }
         }
@@ -449,7 +449,7 @@ fn field_options_from_args<'db>(
     };
     for arg in args.iter() {
         if matches!(arg.kind, ArgKind::Inferred { .. }) {
-            arg.add_issue(i_s, IssueType::DataclassUnpackingKwargsInField);
+            arg.add_issue(i_s, IssueKind::DataclassUnpackingKwargsInField);
             continue;
         }
         if let Some(key) = arg.keyword_name(i_s.db) {
@@ -509,7 +509,7 @@ pub fn check_dataclass_options<'db>(
     }
     if !options.eq && options.order {
         options.eq = true;
-        args.add_issue(i_s, IssueType::DataclassOrderEnabledButNotEq);
+        args.add_issue(i_s, IssueKind::DataclassOrderEnabledButNotEq);
     }
     options
 }
@@ -605,7 +605,7 @@ fn run_on_dataclass(
         if let Some(from) = from {
             from.add_issue(
                 i_s,
-                IssueType::DataclassReplaceExpectedDataclassInTypeVarBound {
+                IssueKind::DataclassReplaceExpectedDataclassInTypeVarBound {
                     got: tv.name(i_s.db).into(),
                 },
             );
@@ -634,7 +634,7 @@ fn run_on_dataclass(
             if let Some(from) = from {
                 from.add_issue(
                     i_s,
-                    IssueType::DataclassReplaceExpectedDataclass {
+                    IssueKind::DataclassReplaceExpectedDataclass {
                         got: t.format_short(i_s.db),
                     },
                 );
@@ -696,7 +696,7 @@ pub fn dataclass_init_func<'a>(self_: &'a Rc<Dataclass>, db: &Database) -> &'a C
 pub(crate) fn lookup_on_dataclass_type<'a>(
     self_: &'a Rc<Dataclass>,
     i_s: &'a InferenceState,
-    add_issue: impl Fn(IssueType),
+    add_issue: impl Fn(IssueKind),
     name: &str,
     kind: LookupKind,
 ) -> LookupDetails<'a> {
@@ -796,7 +796,7 @@ pub fn lookup_dataclass_symbol<'db: 'a, 'a>(
 pub(crate) fn lookup_on_dataclass<'a>(
     self_: &'a Rc<Dataclass>,
     i_s: &'a InferenceState,
-    add_issue: impl Fn(IssueType),
+    add_issue: impl Fn(IssueKind),
     name: &str,
 ) -> LookupDetails<'a> {
     let (result, attr_kind) = lookup_symbol_internal(self_.clone(), i_s, name);

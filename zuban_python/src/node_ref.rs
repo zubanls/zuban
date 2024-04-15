@@ -11,7 +11,7 @@ use crate::{
         ClassStorage, ComplexPoint, Database, FileIndex, Locality, Point, PointLink, PointType,
         TypeAlias,
     },
-    diagnostics::{Issue, IssueType},
+    diagnostics::{Issue, IssueKind},
     file::{File, PythonFile},
     inference_state::InferenceState,
     inferred::Inferred,
@@ -246,8 +246,8 @@ impl<'file> NodeRef<'file> {
         self.file.tree.code_of_index(self.node_index)
     }
 
-    pub(crate) fn add_issue(&self, i_s: &InferenceState, issue_type: IssueType) {
-        let issue = Issue::from_node_index(&self.file.tree, self.node_index, issue_type);
+    pub(crate) fn add_issue(&self, i_s: &InferenceState, kind: IssueKind) {
+        let issue = Issue::from_node_index(&self.file.tree, self.node_index, kind);
         self.file.add_issue(i_s, issue)
     }
 

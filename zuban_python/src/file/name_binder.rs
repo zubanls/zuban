@@ -8,7 +8,7 @@ use crate::{
         Specific,
     },
     debug,
-    diagnostics::{Diagnostics, Issue, IssueType},
+    diagnostics::{Diagnostics, Issue, IssueKind},
     file::{python_file::StarImport, ComplexValues},
     type_::StringSlice,
     utils::SymbolTable,
@@ -212,14 +212,14 @@ impl<'db> NameBinder<'db> {
         symbol_table
     }
 
-    fn add_issue(&self, node_index: NodeIndex, type_: IssueType) {
-        let issue = Issue::from_node_index(self.tree, node_index, type_);
+    fn add_issue(&self, node_index: NodeIndex, kind: IssueKind) {
+        let issue = Issue::from_node_index(self.tree, node_index, kind);
         let maybe_ignored = self
             .tree
             .type_ignore_comment_for(issue.start_position, issue.end_position);
         match self.issues.add_if_not_ignored(issue, maybe_ignored) {
-            Ok(issue) => debug!("New name binder issue: {:?}", issue.type_),
-            Err(issue) => debug!("New ignored name binder issue: {:?}", issue.type_),
+            Ok(issue) => debug!("New name binder issue: {:?}", issue.kind),
+            Err(issue) => debug!("New ignored name binder issue: {:?}", issue.kind),
         }
     }
 
@@ -306,7 +306,7 @@ impl<'db> NameBinder<'db> {
                 StmtOrError::Error(error) => {
                     if !last_was_an_error {
                         last_was_an_error = true;
-                        self.add_issue(error.index(), IssueType::InvalidSyntax);
+                        self.add_issue(error.index(), IssueKind::InvalidSyntax);
                     }
                     continue;
                 }
@@ -769,14 +769,14 @@ impl<'db> NameBinder<'db> {
                     };
                     match self.kind {
                         NameBinderKind::Function { is_async: true } if is_yield_from => {
-                            self.add_issue(n.index(), IssueType::YieldFromInAsyncFunction)
+                            self.add_issue(n.index(), IssueKind::YieldFromInAsyncFunction)
                         }
                         NameBinderKind::Function { .. } => (),
                         NameBinderKind::Comprehension => self.add_issue(
                             n.index(),
-                            IssueType::YieldOrYieldFromInsideComprehension { keyword },
+                            IssueKind::YieldOrYieldFromInsideComprehension { keyword },
                         ),
-                        _ => self.add_issue(n.index(), IssueType::StmtOutsideFunction { keyword }),
+                        _ => self.add_issue(n.index(), IssueKind::StmtOutsideFunction { keyword }),
                     }
                     self.index_return_or_yield(&mut latest_return_or_yield, n.index());
                 }
@@ -784,7 +784,7 @@ impl<'db> NameBinder<'db> {
                     if !matches!(self.kind, NameBinderKind::Function { .. }) {
                         self.add_issue(
                             n.index(),
-                            IssueType::StmtOutsideFunction { keyword: "return" },
+                            IssueKind::StmtOutsideFunction { keyword: "return" },
                         )
                     }
                     if let Some(return_expr) = n.star_expressions() {

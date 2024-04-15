@@ -13,7 +13,7 @@ use crate::{
         PointLink, PointType, Specific,
     },
     debug,
-    diagnostics::{Issue, IssueType},
+    diagnostics::{Issue, IssueKind},
     file::{
         first_defined_name, use_cached_param_annotation_type, PythonFile, TypeComputation,
         TypeComputationOrigin, TypeVarCallbackReturn, FLOW_ANALYSIS,
@@ -311,11 +311,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             if let Type::TypeVar(t) = self.return_type(i_s).as_ref() {
                 if unbound_type_vars.contains(&TypeVarLike::TypeVar(t.type_var.clone())) {
                     let node_ref = self.expect_return_annotation_node_ref();
-                    node_ref.add_issue(i_s, IssueType::TypeVarInReturnButNotArgument);
+                    node_ref.add_issue(i_s, IssueKind::TypeVarInReturnButNotArgument);
                     if let TypeVarKind::Bound(bound) = &t.type_var.kind {
                         node_ref.add_issue(
                             i_s,
-                            IssueType::Note(
+                            IssueKind::Note(
                                 format!(
                                     "Consider using the upper bound \"{}\" instead",
                                     bound.format_short(i_s.db)
@@ -492,7 +492,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     match wrong {
                         WrongPositionalCount::TooMany => {
                             NodeRef::new(file, self.expect_decorated_node().index())
-                                .add_issue(i_s, IssueType::TooManyArguments(" for property".into()))
+                                .add_issue(i_s, IssueKind::TooManyArguments(" for property".into()))
                         }
                         // IssueType::MethodWithoutArguments will be checked and added later.
                         WrongPositionalCount::TooFew => (),
@@ -523,7 +523,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let decorated = self.expect_decorated_node();
         let used_with_a_non_method = |name| {
             NodeRef::new(self.node_ref.file, decorated.index())
-                .add_issue(i_s, IssueType::UsedWithANonMethod { name })
+                .add_issue(i_s, IssueKind::UsedWithANonMethod { name })
         };
 
         let mut inferred = Inferred::from_type(self.as_type(i_s, FirstParamProperties::None));
@@ -548,7 +548,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 )
             {
                 NodeRef::new(self.node_ref.file, decorator.index())
-                    .add_issue(i_s, IssueType::DecoratorOnTopOfPropertyNotSupported);
+                    .add_issue(i_s, IssueKind::DecoratorOnTopOfPropertyNotSupported);
                 break;
             }
 
@@ -558,7 +558,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         FunctionKind::Property { .. } => {
                             if is_overload {
                                 NodeRef::new(self.node_ref.file, decorator.index())
-                                    .add_issue(i_s, IssueType::OverloadedPropertyNotSupported);
+                                    .add_issue(i_s, IssueKind::OverloadedPropertyNotSupported);
                                 return None;
                             }
                             if self.class.is_none() {
@@ -568,14 +568,14 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                             if !matches!(kind, FunctionKind::Function { .. }) {
                                 NodeRef::new(self.node_ref.file, decorator.index()).add_issue(
                                     i_s,
-                                    IssueType::OnlyInstanceMethodsCanBeDecoratedWithProperty,
+                                    IssueKind::OnlyInstanceMethodsCanBeDecoratedWithProperty,
                                 );
                             }
                         }
                         FunctionKind::Classmethod { .. } => {
                             if kind == FunctionKind::Staticmethod {
                                 NodeRef::new(self.node_ref.file, decorated.index())
-                                    .add_issue(i_s, IssueType::InvalidClassmethodAndStaticmethod);
+                                    .add_issue(i_s, IssueKind::InvalidClassmethodAndStaticmethod);
                                 return None;
                             }
                             if self.class.is_none() {
@@ -586,7 +586,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         FunctionKind::Staticmethod => {
                             if matches!(kind, FunctionKind::Classmethod { .. }) {
                                 NodeRef::new(self.node_ref.file, decorated.index())
-                                    .add_issue(i_s, IssueType::InvalidClassmethodAndStaticmethod)
+                                    .add_issue(i_s, IssueKind::InvalidClassmethodAndStaticmethod)
                             }
                             if self.class.is_none() {
                                 used_with_a_non_method("staticmethod");
@@ -610,7 +610,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         if !self.is_dynamic() && !is_typed(&dec_inf, false).unwrap_or(true) {
                             NodeRef::new(self.node_ref.file, decorator.index()).add_issue(
                                 i_s,
-                                IssueType::UntypedDecorator {
+                                IssueKind::UntypedDecorator {
                                     name: self.name().into(),
                                 },
                             );
@@ -641,7 +641,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             if t.has_any(i_s) {
                 let got = (!matches!(t.as_ref(), Type::Any(_))).then(|| t.format_short(i_s.db));
                 NodeRef::new(self.node_ref.file, self.node().name().index())
-                    .add_issue(i_s, IssueType::UntypedFunctionAfterDecorator { got })
+                    .add_issue(i_s, IssueKind::UntypedFunctionAfterDecorator { got })
             }
         }
         if matches!(
@@ -713,7 +713,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 debug_assert_eq!(func_ref.point().specific(), Specific::Function);
                 func_ref.add_issue(
                     i_s,
-                    IssueType::UnexpectedDefinitionForProperty {
+                    IssueKind::UnexpectedDefinitionForProperty {
                         name: self.name().into(),
                     },
                 );
@@ -734,7 +734,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 PropertyModifier::JustADecorator => {
                     NodeRef::new(file, decorator.index()).add_issue(
                         i_s,
-                        IssueType::OnlySupportedTopDecoratorSetter {
+                        IssueKind::OnlySupportedTopDecoratorSetter {
                             name: self.name().into(),
                         },
                     );
@@ -838,7 +838,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             if next_details.is_overload {
                 if let Some(implementation) = &implementation {
                     NodeRef::from_link(i_s.db, implementation.function_link)
-                        .add_issue(i_s, IssueType::OverloadImplementationNotLast)
+                        .add_issue(i_s, IssueKind::OverloadImplementationNotLast)
                 }
                 add_func(next_details.inferred)
             } else {
@@ -871,7 +871,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         NodeRef::new(func_ref.file, next_func.expect_decorated_node().index())
                             .add_issue(
                                 i_s,
-                                IssueType::NotCallable {
+                                IssueKind::NotCallable {
                                     type_: format!("\"{}\"", t.format_short(i_s.db)).into(),
                                 },
                             )
@@ -888,22 +888,22 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         };
         if let Some(kind) = inconsistent_function_kind {
             NodeRef::new(self.node_ref.file, self.expect_decorated_node().index())
-                .add_issue(i_s, IssueType::OverloadInconsistentKind { kind })
+                .add_issue(i_s, IssueKind::OverloadInconsistentKind { kind })
         }
         if functions.len() < 2 && !should_error_out {
             self.node_ref
-                .add_issue(i_s, IssueType::OverloadSingleNotAllowed);
+                .add_issue(i_s, IssueKind::OverloadSingleNotAllowed);
         } else if implementation.is_none()
             && !file.is_stub(i_s.db)
             && self.class.map(|c| !c.is_protocol(i_s.db)).unwrap_or(true)
         {
             name_def_node_ref(functions.last().unwrap().defined_at)
-                .add_issue(i_s, IssueType::OverloadImplementationNeeded);
+                .add_issue(i_s, IssueKind::OverloadImplementationNeeded);
         }
         if let Some(implementation) = &implementation {
             if file.is_stub(i_s.db) {
                 name_def_node_ref(implementation.function_link)
-                    .add_issue(i_s, IssueType::OverloadStubImplementationNotAllowed);
+                    .add_issue(i_s, IssueKind::OverloadStubImplementationNotAllowed);
             }
         }
         debug_assert!(!functions.is_empty());
@@ -913,12 +913,12 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         })
     }
 
-    pub(crate) fn add_issue_for_declaration(&self, i_s: &InferenceState, type_: IssueType) {
+    pub(crate) fn add_issue_for_declaration(&self, i_s: &InferenceState, kind: IssueKind) {
         let node = self.node();
         self.node_ref.file.add_issue(
             i_s,
             Issue {
-                type_,
+                kind,
                 start_position: node.start(),
                 end_position: node.end_position_of_colon(),
             },
@@ -928,13 +928,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     pub(crate) fn add_issue_onto_start_including_decorator(
         &self,
         i_s: &InferenceState,
-        type_: IssueType,
+        kind: IssueKind,
     ) {
         let node = self.node();
         if let Some(decorated) = node.maybe_decorated() {
-            NodeRef::new(self.node_ref.file, decorated.index()).add_issue(i_s, type_)
+            NodeRef::new(self.node_ref.file, decorated.index()).add_issue(i_s, kind)
         } else {
-            self.add_issue_for_declaration(i_s, type_)
+            self.add_issue_for_declaration(i_s, kind)
         }
     }
 
@@ -1215,7 +1215,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             if i_s.db.project.flags.disallow_untyped_calls && self.is_dynamic() {
                 args.add_issue(
                     i_s,
-                    IssueType::CallToUntypedFunction {
+                    IssueKind::CallToUntypedFunction {
                         name: self.name().into(),
                     },
                 )
@@ -1258,7 +1258,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         {
             args.add_issue(
                 i_s,
-                IssueType::DoesNotReturnAValue(self.diagnostic_string().into()),
+                IssueKind::DoesNotReturnAValue(self.diagnostic_string().into()),
             );
             return Inferred::new_any_from_error();
         }

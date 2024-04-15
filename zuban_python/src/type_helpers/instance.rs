@@ -7,7 +7,7 @@ use crate::{
     arguments::{Args, CombinedArgs, InferredArg, KnownArgs, KnownArgsWithCustomAddIssue, NoArgs},
     database::{Database, PointLink, Specific},
     debug,
-    diagnostics::IssueType,
+    diagnostics::IssueKind,
     file::{on_argument_type_error, File},
     getitem::SliceType,
     inference_state::InferenceState,
@@ -50,7 +50,7 @@ impl<'a> Instance<'a> {
 
         let name_str = name.as_str();
         let property_is_read_only = |class_name| {
-            add_issue(IssueType::PropertyIsReadOnly {
+            add_issue(IssueKind::PropertyIsReadOnly {
                 class_name,
                 property_name: name_str.into(),
             });
@@ -64,7 +64,7 @@ impl<'a> Instance<'a> {
         }
         let check_compatible = |t: &Type, value: &_| {
             t.error_if_not_matches(i_s, value, add_issue, |got, expected| {
-                Some(IssueType::IncompatibleAssignment { got, expected })
+                Some(IssueKind::IncompatibleAssignment { got, expected })
             })
         };
 
@@ -102,7 +102,7 @@ impl<'a> Instance<'a> {
             return
         };
         if inf.maybe_saved_specific(i_s.db) == Some(Specific::AnnotationOrTypeCommentClassVar) {
-            add_issue(IssueType::CannotAssignToClassVarViaInstance {
+            add_issue(IssueKind::CannotAssignToClassVarViaInstance {
                 name: name_str.into(),
             });
         }
@@ -154,7 +154,7 @@ impl<'a> Instance<'a> {
             }
             Type::Callable(c) => {
                 if !matches!(&c.params, CallableParams::Any(_)) {
-                    add_issue(IssueType::CannotAssignToAMethod);
+                    add_issue(IssueKind::CannotAssignToAMethod);
                 }
             }
             _ => {}
@@ -171,7 +171,7 @@ impl<'a> Instance<'a> {
     pub(crate) fn bind_dunder_get(
         &self,
         i_s: &InferenceState,
-        add_issue: impl Fn(IssueType),
+        add_issue: impl Fn(IssueKind),
         instance: Type,
     ) -> Option<Inferred> {
         self.type_lookup(i_s, &add_issue, "__get__")
@@ -208,9 +208,9 @@ impl<'a> Instance<'a> {
             args.add_issue(
                 i_s,
                 if self.class.node_ref == i_s.db.python_state.function_node_ref() {
-                    IssueType::UnknownFunctionNotCallable
+                    IssueKind::UnknownFunctionNotCallable
                 } else {
-                    IssueType::NotCallable {
+                    IssueKind::NotCallable {
                         type_: format!("{:?}", t).into(),
                     }
                 },
@@ -258,7 +258,7 @@ impl<'a> Instance<'a> {
         if !self.class.incomplete_mro(i_s.db) {
             from.add_issue(
                 i_s,
-                IssueType::NotIterable {
+                IssueKind::NotIterable {
                     type_: format!("{:?}", self.class.format_short(i_s.db)).into(),
                 },
             );
@@ -269,7 +269,7 @@ impl<'a> Instance<'a> {
     pub(crate) fn lookup_with_explicit_self_binding(
         &self,
         i_s: &'a InferenceState,
-        add_issue: &dyn Fn(IssueType),
+        add_issue: &dyn Fn(IssueKind),
         name: &str,
         kind: LookupKind,
         super_count: usize,
@@ -391,7 +391,7 @@ impl<'a> Instance<'a> {
     pub(crate) fn lookup_and_maybe_ignore_super_count(
         &self,
         i_s: &'a InferenceState,
-        add_issue: impl Fn(IssueType),
+        add_issue: impl Fn(IssueKind),
         name: &str,
         kind: LookupKind,
         super_count: usize,
@@ -404,7 +404,7 @@ impl<'a> Instance<'a> {
     pub(crate) fn lookup(
         &self,
         i_s: &InferenceState,
-        add_issue: impl Fn(IssueType),
+        add_issue: impl Fn(IssueKind),
         name: &str,
         kind: LookupKind,
     ) -> LookupResult {
@@ -414,7 +414,7 @@ impl<'a> Instance<'a> {
     pub(crate) fn lookup_with_details(
         &self,
         i_s: &'a InferenceState,
-        add_issue: impl Fn(IssueType),
+        add_issue: impl Fn(IssueKind),
         name: &str,
         kind: LookupKind,
     ) -> LookupDetails<'a> {
@@ -424,7 +424,7 @@ impl<'a> Instance<'a> {
     pub(crate) fn lookup_on_self(
         &self,
         i_s: &'a InferenceState,
-        add_issue: &dyn Fn(IssueType),
+        add_issue: &dyn Fn(IssueKind),
         name: &str,
         kind: LookupKind,
     ) -> LookupDetails<'a> {
@@ -448,7 +448,7 @@ impl<'a> Instance<'a> {
     pub(crate) fn type_lookup(
         &self,
         i_s: &InferenceState,
-        add_issue: impl Fn(IssueType),
+        add_issue: impl Fn(IssueKind),
         name: &str,
     ) -> LookupResult {
         self.lookup(i_s, add_issue, name, LookupKind::OnlyType)
@@ -499,7 +499,7 @@ impl<'a> Instance<'a> {
                             let strs = types.as_boxed_strs(i_s);
                             arg.add_issue(
                                 i_s,
-                                IssueType::InvalidGetItem {
+                                IssueKind::InvalidGetItem {
                                     type_: self.class.format_short(i_s.db),
                                     actual: strs.got,
                                     expected: strs.expected,
@@ -518,7 +518,7 @@ impl<'a> Instance<'a> {
         }
         from.add_issue(
             i_s,
-            IssueType::NotIndexable {
+            IssueKind::NotIndexable {
                 type_: self.class.format_short(i_s.db),
             },
         );
@@ -545,7 +545,7 @@ fn calculate_descriptor(
                 let strs = types.as_boxed_strs(i_s);
                 from.add_issue(
                     i_s,
-                    IssueType::IncompatibleAssignment {
+                    IssueKind::IncompatibleAssignment {
                         got: strs.got,
                         expected: strs.expected,
                     },
@@ -617,18 +617,18 @@ pub(crate) fn execute_super<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Args<
 fn execute_super_internal<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Args<'db>,
-) -> Result<Inferred, IssueType> {
+) -> Result<Inferred, IssueKind> {
     let mut iterator = args.iter();
     let mut next_arg = || {
         iterator.next().map(|arg| match arg.is_keyword_argument() {
             false => match arg.in_args_or_kwargs_and_arbitrary_len() {
                 false => match arg.infer(i_s, &mut ResultContext::Unknown) {
                     InferredArg::Inferred(inf) => Ok(inf),
-                    _ => Err(IssueType::SuperOnlyAcceptsPositionalArguments),
+                    _ => Err(IssueKind::SuperOnlyAcceptsPositionalArguments),
                 },
-                true => Err(IssueType::SuperVarargsNotSupported),
+                true => Err(IssueKind::SuperVarargsNotSupported),
             },
-            true => Err(IssueType::SuperOnlyAcceptsPositionalArguments),
+            true => Err(IssueKind::SuperOnlyAcceptsPositionalArguments),
         })
     };
     let success = |c: GenericClass, mro_index| {
@@ -646,17 +646,17 @@ fn execute_super_internal<'db>(
             match get_relevant_type_for_super(i_s.db, result?.as_cow_type(i_s).as_ref()) {
                 Type::Type(t) => {
                     if !matches!(t.as_ref(), Type::Class(..)) {
-                        return Err(IssueType::SuperUnsupportedArgument { argument_index: 1 });
+                        return Err(IssueKind::SuperUnsupportedArgument { argument_index: 1 });
                     }
                     if matches!(t.as_ref(), Type::Class(c)
                             if c.link == i_s.db.python_state.object_node_ref().as_link())
                     {
-                        return Err(IssueType::SuperTargetClassHasNoBaseClass);
+                        return Err(IssueKind::SuperTargetClassHasNoBaseClass);
                     }
                     t.as_ref().clone()
                 }
                 Type::Any(cause) => Type::Any(cause),
-                _ => return Err(IssueType::SuperArgument1MustBeTypeObject),
+                _ => return Err(IssueKind::SuperArgument1MustBeTypeObject),
             }
         }
         None => {
@@ -665,28 +665,28 @@ fn execute_super_internal<'db>(
             if let Some(cls) = i_s.current_class() {
                 return success(cls.as_generic_class(i_s.db), 0);
             } else {
-                return Err(IssueType::SuperUsedOutsideClass);
+                return Err(IssueKind::SuperUsedOutsideClass);
             }
         }
     };
     let instance = match next_arg() {
         Some(result) => result?,
-        None => return Err(IssueType::SuperWithSingleArgumentNotSupported),
+        None => return Err(IssueKind::SuperWithSingleArgumentNotSupported),
     };
     let cls = match get_relevant_type_for_super(i_s.db, &instance.as_cow_type(i_s)) {
         Type::Self_ => i_s.current_class().unwrap().as_generic_class(i_s.db),
         Type::Class(g) => g,
         Type::Any(cause) => return Ok(Inferred::new_any(cause)),
-        _ => return Err(IssueType::SuperUnsupportedArgument { argument_index: 2 }),
+        _ => return Err(IssueKind::SuperUnsupportedArgument { argument_index: 2 }),
     };
     if !first_type
         .is_simple_super_type_of(i_s, &instance.as_cow_type(i_s))
         .bool()
     {
-        return Err(IssueType::SuperArgument2MustBeAnInstanceOfArgument1);
+        return Err(IssueKind::SuperArgument2MustBeAnInstanceOfArgument1);
     }
     if iterator.next().is_some() {
-        return Err(IssueType::TooManyArguments(" for \"super\"".into()));
+        return Err(IssueKind::TooManyArguments(" for \"super\"".into()));
     }
     success(cls, 0)
 }

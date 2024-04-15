@@ -20,7 +20,7 @@ use crate::{
         TypedDictDefinition,
     },
     debug,
-    diagnostics::IssueType,
+    diagnostics::IssueKind,
     file::{
         use_cached_annotation_type, CalculatedBaseClass, File, PythonFile, TypeComputation,
         TypeComputationOrigin, TypeVarCallbackReturn, TypeVarFinder,
@@ -148,7 +148,7 @@ impl<'db: 'a, 'a> Class<'a> {
         let Some(inf) = __init__.into_maybe_inferred() else {
             if self.is_protocol(i_s.db) {
                 if !from_type_type {
-                    args.add_issue(i_s, IssueType::CannotInstantiateProtocol {
+                    args.add_issue(i_s, IssueKind::CannotInstantiateProtocol {
                         name: self.name().into()
                     })
                 }
@@ -386,7 +386,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 if dataclass.options.slots && class.lookup_symbol(i_s, "__slots__").is_some() {
                     class.node_ref.add_issue(
                         i_s,
-                        IssueType::DataclassPlusExplicitSlots {
+                        IssueKind::DataclassPlusExplicitSlots {
                             class_name: class.name().into(),
                         },
                     )
@@ -404,7 +404,7 @@ impl<'db: 'a, 'a> Class<'a> {
             if link == i_s.db.python_state.enum_meta_link() {
                 was_enum_base = true;
                 if !self.use_cached_type_vars(i_s.db).is_empty() {
-                    self.node_ref.add_issue(i_s, IssueType::EnumCannotBeGeneric);
+                    self.node_ref.add_issue(i_s, IssueKind::EnumCannotBeGeneric);
                 }
                 class_infos.class_kind = ClassKind::Enum;
                 let members = self.enum_members(i_s);
@@ -502,7 +502,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         if had_new > 1 {
                             self.node_ref.add_issue(
                                 i_s,
-                                IssueType::EnumMultipleMixinNew {
+                                IssueKind::EnumMultipleMixinNew {
                                     extra: c.format(&FormatData::with_style(
                                         i_s.db,
                                         FormatStyle::Qualified,
@@ -516,7 +516,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         Some(after) if !is_enum => {
                             self.node_ref.add_issue(
                                 i_s,
-                                IssueType::EnumMixinNotAllowedAfterEnum {
+                                IssueKind::EnumMixinNotAllowedAfterEnum {
                                     after: after.format(&FormatData::with_style(
                                         i_s.db,
                                         FormatStyle::Qualified,
@@ -622,14 +622,14 @@ impl<'db: 'a, 'a> Class<'a> {
                                     )
                                 } else {
                                     node_ref
-                                        .add_issue(i_s, IssueType::MetaclassMustInheritFromType);
+                                        .add_issue(i_s, IssueKind::MetaclassMustInheritFromType);
                                 }
                             }
                             CalculatedBaseClass::Unknown => {
                                 if i_s.db.project.flags.disallow_subclassing_any {
                                     NodeRef::new(self.node_ref.file, kwarg.index()).add_issue(
                                         i_s,
-                                        IssueType::DisallowedAnyMetaclass {
+                                        IssueKind::DisallowedAnyMetaclass {
                                             class: expr.as_code().into(),
                                         },
                                     );
@@ -637,7 +637,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                 metaclass = MetaclassState::Unknown
                             }
                             _ => {
-                                node_ref.add_issue(i_s, IssueType::InvalidMetaclass);
+                                node_ref.add_issue(i_s, IssueKind::InvalidMetaclass);
                             }
                         }
                     }
@@ -676,7 +676,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                     .find_map(|base| base.check_duplicate_base_class(db, &t))
                                 {
                                     NodeRef::new(self.node_ref.file, n.index())
-                                        .add_issue(i_s, IssueType::DuplicateBaseClass { name });
+                                        .add_issue(i_s, IssueKind::DuplicateBaseClass { name });
                                     incomplete_mro = true;
                                     continue;
                                 }
@@ -719,7 +719,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                         if typed_dict.is_final {
                                             NodeRef::new(self.node_ref.file, n.index()).add_issue(
                                                 i_s,
-                                                IssueType::CannotInheritFromFinalClass {
+                                                IssueKind::CannotInheritFromFinalClass {
                                                     class_name: Box::from(
                                                         typed_dict.name.unwrap().as_str(i_s.db),
                                                     ),
@@ -736,14 +736,14 @@ impl<'db: 'a, 'a> Class<'a> {
                                         bases.pop();
                                         incomplete_mro = true;
                                         NodeRef::new(self.node_ref.file, n.index())
-                                            .add_issue(i_s, IssueType::CyclicDefinition { name });
+                                            .add_issue(i_s, IssueKind::CyclicDefinition { name });
                                     } else {
                                         let cached_class_infos = class.use_cached_class_infos(db);
                                         if cached_class_infos.is_final {
                                             is_final = cached_class_infos.is_final;
                                             NodeRef::new(self.node_ref.file, n.index()).add_issue(
                                                 i_s,
-                                                IssueType::CannotInheritFromFinalClass {
+                                                IssueKind::CannotInheritFromFinalClass {
                                                     class_name: Box::from(class.name()),
                                                 },
                                             );
@@ -795,7 +795,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                 if had_new_typed_dict {
                                     NodeRef::new(self.node_ref.file, n.index()).add_issue(
                                         i_s,
-                                        IssueType::DuplicateBaseClass {
+                                        IssueKind::DuplicateBaseClass {
                                             name: "TypedDict".into(),
                                         },
                                     );
@@ -814,7 +814,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                 if i_s.db.project.flags.disallow_subclassing_any {
                                     NodeRef::new(self.node_ref.file, n.index()).add_issue(
                                         i_s,
-                                        IssueType::DisallowedAnySubclass {
+                                        IssueKind::DisallowedAnySubclass {
                                             class: n.as_code().into(),
                                         },
                                     );
@@ -825,12 +825,12 @@ impl<'db: 'a, 'a> Class<'a> {
                                 let name = enum_.name.as_str(i_s.db);
                                 NodeRef::new(self.node_ref.file, n.index()).add_issue(
                                     i_s,
-                                    IssueType::EnumWithMembersNotExtendable { name: name.into() },
+                                    IssueKind::EnumWithMembersNotExtendable { name: name.into() },
                                 );
                                 if enum_.class(i_s.db).use_cached_class_infos(i_s.db).is_final {
                                     NodeRef::new(self.node_ref.file, n.index()).add_issue(
                                         i_s,
-                                        IssueType::CannotInheritFromFinalClass {
+                                        IssueKind::CannotInheritFromFinalClass {
                                             class_name: Box::from(name),
                                         },
                                     );
@@ -839,7 +839,7 @@ impl<'db: 'a, 'a> Class<'a> {
                             }
                             CalculatedBaseClass::Invalid => {
                                 NodeRef::new(self.node_ref.file, n.index())
-                                    .add_issue(i_s, IssueType::InvalidBaseClass);
+                                    .add_issue(i_s, IssueKind::InvalidBaseClass);
                                 incomplete_mro = true;
                             }
                         };
@@ -854,11 +854,11 @@ impl<'db: 'a, 'a> Class<'a> {
                     }
                     Argument::Star(starred) => {
                         NodeRef::new(self.node_ref.file, starred.index())
-                            .add_issue(i_s, IssueType::InvalidBaseClass);
+                            .add_issue(i_s, IssueKind::InvalidBaseClass);
                     }
                     Argument::StarStar(double_starred) => {
                         NodeRef::new(self.node_ref.file, double_starred.index())
-                            .add_issue(i_s, IssueType::InvalidBaseClass);
+                            .add_issue(i_s, IssueKind::InvalidBaseClass);
                     }
                 }
             }
@@ -867,7 +867,7 @@ impl<'db: 'a, 'a> Class<'a> {
             ClassKind::TypedDict => {
                 if bases.iter().any(|t| !matches!(t, Type::TypedDict(_))) {
                     NodeRef::new(self.node_ref.file, arguments.unwrap().index())
-                        .add_issue(i_s, IssueType::TypedDictBasesMustBeTypedDicts);
+                        .add_issue(i_s, IssueKind::TypedDictBasesMustBeTypedDicts);
                 }
             }
             ClassKind::Protocol => {
@@ -878,14 +878,14 @@ impl<'db: 'a, 'a> Class<'a> {
                     })
                 }) {
                     NodeRef::new(self.node_ref.file, arguments.unwrap().index())
-                        .add_issue(i_s, IssueType::BasesOfProtocolMustBeProtocol);
+                        .add_issue(i_s, IssueKind::BasesOfProtocolMustBeProtocol);
                 }
             }
             _ => (),
         }
         if is_new_named_tuple && bases.len() > 1 {
             NodeRef::new(self.node_ref.file, arguments.unwrap().index())
-                .add_issue(i_s, IssueType::NamedTupleShouldBeASingleBase);
+                .add_issue(i_s, IssueKind::NamedTupleShouldBeASingleBase);
         }
 
         let mro = linearize_mro(i_s, self, &bases);
@@ -896,7 +896,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 if let Some(found_tuple_like) = found_tuple_like {
                     if found_tuple_like != &base.type_ {
                         NodeRef::new(self.node_ref.file, arguments.unwrap().index())
-                            .add_issue(i_s, IssueType::IncompatibleBaseTuples);
+                            .add_issue(i_s, IssueKind::IncompatibleBaseTuples);
                     }
                 } else {
                     found_tuple_like = Some(&base.type_);
@@ -949,7 +949,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         if t2.is_simple_sub_type_of(i_s, &t1).bool() {
                             *current = new
                         } else {
-                            node_ref.add_issue(i_s, IssueType::MetaclassConflict);
+                            node_ref.add_issue(i_s, IssueKind::MetaclassConflict);
                         }
                     }
                 }
@@ -1292,7 +1292,7 @@ impl<'db: 'a, 'a> Class<'a> {
     pub(crate) fn lookup_and_class_and_maybe_ignore_self(
         &self,
         i_s: &InferenceState<'db, '_>,
-        add_issue: impl Fn(IssueType),
+        add_issue: impl Fn(IssueKind),
         name: &str,
         kind: LookupKind,
         ignore_self: bool,
@@ -1327,7 +1327,7 @@ impl<'db: 'a, 'a> Class<'a> {
         &self,
         i_s: &InferenceState<'db, '_>,
         name: &str,
-        add_issue: impl Fn(IssueType),
+        add_issue: impl Fn(IssueKind),
     ) -> LookupDetails {
         self.lookup_with_or_without_descriptors_internal(
             i_s,
@@ -1343,7 +1343,7 @@ impl<'db: 'a, 'a> Class<'a> {
         &self,
         i_s: &InferenceState<'db, '_>,
         name: &str,
-        add_issue: impl Fn(IssueType),
+        add_issue: impl Fn(IssueKind),
     ) -> LookupDetails {
         self.lookup_with_or_without_descriptors_internal(
             i_s,
@@ -1358,7 +1358,7 @@ impl<'db: 'a, 'a> Class<'a> {
     pub(crate) fn lookup_with_custom_self_type(
         &self,
         i_s: &InferenceState<'db, '_>,
-        add_issue: impl Fn(IssueType),
+        add_issue: impl Fn(IssueKind),
         name: &str,
         kind: LookupKind,
         as_type_type: impl Fn() -> Type,
@@ -1369,7 +1369,7 @@ impl<'db: 'a, 'a> Class<'a> {
     fn lookup_with_or_without_descriptors_internal(
         &self,
         i_s: &InferenceState<'db, '_>,
-        add_issue: impl Fn(IssueType),
+        add_issue: impl Fn(IssueKind),
         name: &str,
         kind: LookupKind,
         use_descriptors: bool,
@@ -1389,7 +1389,7 @@ impl<'db: 'a, 'a> Class<'a> {
     fn lookup_internal_detailed(
         &self,
         i_s: &InferenceState<'db, '_>,
-        add_issue: impl Fn(IssueType),
+        add_issue: impl Fn(IssueKind),
         name: &str,
         kind: LookupKind,
         use_descriptors: bool,
@@ -1412,7 +1412,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 if let TypeOrClass::Class(in_class) = in_class {
                     if class_infos.has_slots {
                         if self.in_slots(i_s.db, name) {
-                            add_issue(IssueType::SlotsConflictWithClassVariableAccess {
+                            add_issue(IssueKind::SlotsConflictWithClassVariableAccess {
                                 name: name.into(),
                             })
                         }
@@ -1638,7 +1638,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                 Decoratee::FunctionDef(_) | Decoratee::AsyncFunctionDef(_)
                             ) => {}
                         _ => NodeRef::new(file, stmt.index())
-                            .add_issue(i_s, IssueType::InvalidStmtInNamedTuple),
+                            .add_issue(i_s, IssueKind::InvalidStmtInNamedTuple),
                     }
                 }
             }
@@ -1729,7 +1729,7 @@ impl<'db: 'a, 'a> Class<'a> {
                             typed_dict_definition.total,
                         ),
                         _ => NodeRef::new(file, stmt.index())
-                            .add_issue(i_s, IssueType::TypedDictInvalidMember),
+                            .add_issue(i_s, IssueKind::TypedDictInvalidMember),
                     }
                 }
             }
@@ -1769,7 +1769,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         .as_name()
                         .is_assignment_annotation_without_definition()
                     {
-                        name_node_ref.add_issue(i_s, IssueType::EnumMembersAttributeOverwritten)
+                        name_node_ref.add_issue(i_s, IssueKind::EnumMembersAttributeOverwritten)
                     }
                 }
                 continue;
@@ -1792,7 +1792,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 if point.calculated() && point.type_() == PointType::MultiDefinition {
                     NodeRef::new(self.node_ref.file, point.node_index()).add_issue(
                         i_s,
-                        IssueType::EnumReusedMemberName {
+                        IssueKind::EnumReusedMemberName {
                             enum_name: self.name().into(),
                             member_name: name_node_ref.as_code().into(),
                         },
@@ -1986,7 +1986,7 @@ impl<'db: 'a, 'a> Class<'a> {
     pub(crate) fn lookup(
         &self,
         i_s: &InferenceState,
-        add_issue: impl Fn(IssueType),
+        add_issue: impl Fn(IssueKind),
         name: &str,
         kind: LookupKind,
     ) -> LookupResult {
@@ -1996,7 +1996,7 @@ impl<'db: 'a, 'a> Class<'a> {
     pub(crate) fn lookup_with_details(
         &self,
         i_s: &InferenceState<'db, '_>,
-        add_issue: impl Fn(IssueType),
+        add_issue: impl Fn(IssueKind),
         name: &str,
         kind: LookupKind,
     ) -> LookupDetails<'a> {
@@ -2070,7 +2070,7 @@ impl<'db: 'a, 'a> Class<'a> {
     pub(crate) fn check_slots(
         &self,
         i_s: &InferenceState,
-        add_issue: impl Fn(IssueType),
+        add_issue: impl Fn(IssueKind),
         name: &str,
     ) {
         for (_, type_or_class) in self.mro_maybe_without_object(i_s.db, true) {
@@ -2101,7 +2101,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 }
             }
         }
-        add_issue(IssueType::AssigningToNameOutsideOfSlots {
+        add_issue(IssueKind::AssigningToNameOutsideOfSlots {
             name: name.into(),
             class: self.format(&FormatData::with_style(i_s.db, FormatStyle::Qualified)),
         })
@@ -2110,7 +2110,7 @@ impl<'db: 'a, 'a> Class<'a> {
     pub(crate) fn check_self_definition(
         &self,
         i_s: &InferenceState,
-        add_issue: impl Fn(IssueType),
+        add_issue: impl Fn(IssueKind),
         name: &str,
     ) {
         let (lookup, _, _) = self.lookup_and_class_and_maybe_ignore_self_internal(i_s, name, false);
@@ -2304,7 +2304,7 @@ fn add_inconsistency_issue(i_s: &InferenceState, class: &Class) {
     )
     .add_issue(
         i_s,
-        IssueType::InconsistentMro {
+        IssueKind::InconsistentMro {
             name: class.name().into(),
         },
     );
@@ -2483,7 +2483,7 @@ fn find_stmt_named_tuple_types(
                 AssignmentContent::WithAnnotation(Target::Name(name), annot, default) => {
                     if default.is_none() && vec.last().is_some_and(|last| last.has_default) {
                         NodeRef::new(file, assignment.index())
-                            .add_issue(i_s, IssueType::NamedTupleNonDefaultFieldFollowsDefault);
+                            .add_issue(i_s, IssueKind::NamedTupleNonDefaultFieldFollowsDefault);
                         continue;
                     }
                     file.inference(i_s)
@@ -2492,7 +2492,7 @@ fn find_stmt_named_tuple_types(
                     if name.as_code().starts_with('_') {
                         NodeRef::new(file, name.index()).add_issue(
                             i_s,
-                            IssueType::NamedTupleNameCannotStartWithUnderscore {
+                            IssueKind::NamedTupleNameCannotStartWithUnderscore {
                                 field_name: name.as_code().into(),
                             },
                         )
@@ -2507,7 +2507,7 @@ fn find_stmt_named_tuple_types(
                     }
                 }
                 _ => NodeRef::new(file, assignment.index())
-                    .add_issue(i_s, IssueType::InvalidStmtInNamedTuple),
+                    .add_issue(i_s, IssueKind::InvalidStmtInNamedTuple),
             },
             _ => (),
         }
@@ -2527,7 +2527,7 @@ fn find_stmt_typed_dict_types(
                 AssignmentContent::WithAnnotation(Target::Name(name_def), annot, right_side) => {
                     if right_side.is_some() {
                         NodeRef::new(file, assignment.index())
-                            .add_issue(i_s, IssueType::TypedDictInvalidMemberRightSide);
+                            .add_issue(i_s, IssueKind::TypedDictInvalidMemberRightSide);
                     }
                     if let Err(issue) = vec.add(
                         i_s.db,
@@ -2542,7 +2542,7 @@ fn find_stmt_typed_dict_types(
                 }
                 AssignmentContent::Normal(targets, _) => {
                     NodeRef::new(file, assignment.index())
-                        .add_issue(i_s, IssueType::TypedDictInvalidMember);
+                        .add_issue(i_s, IssueKind::TypedDictInvalidMember);
                     for target in targets {
                         if let Target::Name(name_def) = target {
                             // Add those names regardless, because an error was already added.
@@ -2562,7 +2562,7 @@ fn find_stmt_typed_dict_types(
                     }
                 }
                 _ => NodeRef::new(file, assignment.index())
-                    .add_issue(i_s, IssueType::TypedDictInvalidMember),
+                    .add_issue(i_s, IssueKind::TypedDictInvalidMember),
             },
             _ => (),
         }

@@ -9,7 +9,7 @@ use crate::{
     arguments::{unpack_star_star, Arg, Args},
     database::Database,
     debug,
-    diagnostics::IssueType,
+    diagnostics::IssueKind,
     file::{Inference, PythonFile},
     getitem::Simple,
     inference_state::InferenceState,
@@ -153,7 +153,7 @@ impl<'db> Inference<'db, '_, '_> {
                         }
                         None => {
                             missing_keys.clear(); // We do not want an error message anymore.
-                            node_ref.add_issue(i_s, IssueType::TypedDictKeysMustBeStringLiteral);
+                            node_ref.add_issue(i_s, IssueKind::TypedDictKeysMustBeStringLiteral);
                         }
                     }
                 }
@@ -184,7 +184,7 @@ impl<'db> Inference<'db, '_, '_> {
                         t if is_any_dict(i_s.db, t) => (),
                         t => node_ref.add_issue(
                             i_s,
-                            IssueType::TypedDictUnsupportedTypeInStarStar {
+                            IssueKind::TypedDictUnsupportedTypeInStarStar {
                                 type_: t.format_short(i_s.db),
                             },
                         ),
@@ -202,7 +202,7 @@ impl<'db> Inference<'db, '_, '_> {
         if !missing_keys.is_empty() {
             dict_node_ref.add_issue(
                 i_s,
-                IssueType::TypedDictMissingKeys {
+                IssueKind::TypedDictMissingKeys {
                     typed_dict: typed_dict
                         .name_or_fallback(&FormatData::new_short(i_s.db))
                         .into(),
@@ -250,7 +250,7 @@ impl<'db> Inference<'db, '_, '_> {
                         had_error = true;
                         NodeRef::new(self.file, key_value.index()).add_issue(
                             i_s,
-                            IssueType::DictMemberMismatch {
+                            IssueKind::DictMemberMismatch {
                                 item: i,
                                 got_pair: format!(
                                     r#""{}": "{}""#,
@@ -277,7 +277,7 @@ impl<'db> Inference<'db, '_, '_> {
                             had_error = true;
                             NodeRef::new(self.file, starred.index()).add_issue(
                                 i_s,
-                                IssueType::UnpackedDictMemberMismatch {
+                                IssueKind::UnpackedDictMemberMismatch {
                                     item: i,
                                     got: mapping.format_short(i_s),
                                     expected: format!(
@@ -421,7 +421,7 @@ fn check_list_with_context<'db>(
                 |issue| NodeRef::new(file, index).add_issue(i_s, issue),
                 |got, expected, _: &MismatchReason| {
                     had_error = true;
-                    Some(IssueType::ListItemMismatch {
+                    Some(IssueKind::ListItemMismatch {
                         item,
                         got,
                         expected,
@@ -470,7 +470,7 @@ pub fn on_argument_type_error(
     };
     arg.add_issue(
         i_s,
-        IssueType::ArgumentTypeIssue(
+        IssueKind::ArgumentTypeIssue(
             format!(
                 "Argument {}{} has incompatible type {got}; expected \"{}\"",
                 arg.human_readable_index(i_s.db),

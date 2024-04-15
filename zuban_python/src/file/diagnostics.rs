@@ -14,7 +14,7 @@ use crate::{
         Specific,
     },
     debug,
-    diagnostics::{Issue, IssueType},
+    diagnostics::{Issue, IssueKind},
     file::{inference::AssignKind, Inference},
     getitem::SliceType,
     inference_state::InferenceState,
@@ -135,7 +135,7 @@ impl<'db> Inference<'db, '_, '_> {
 
         if let Some(link) = self.file.lookup_global("__getattribute__") {
             NodeRef::new(self.file, link.node_index)
-                .add_issue(self.i_s, IssueType::GetattributeInvalidAtModuleLevel)
+                .add_issue(self.i_s, IssueKind::GetattributeInvalidAtModuleLevel)
         }
         if let Some(link) = self.file.lookup_global("__getattr__") {
             let actual = self.infer_name_of_definition_by_index(link.node_index);
@@ -150,7 +150,7 @@ impl<'db> Inference<'db, '_, '_> {
             {
                 NodeRef::new(self.file, link.node_index).add_issue(
                     self.i_s,
-                    IssueType::InvalidSpecialMethodSignature {
+                    IssueKind::InvalidSpecialMethodSignature {
                         type_: actual.format_short(self.i_s.db),
                         special_method: "__getattr__",
                     },
@@ -190,7 +190,7 @@ impl<'db> Inference<'db, '_, '_> {
                     }) {
                         NodeRef::new(self.file, assignment.index()).add_issue(
                             self.i_s,
-                            IssueType::ProtocolMembersMustHaveExplicitlyDeclaredTypes,
+                            IssueKind::ProtocolMembersMustHaveExplicitlyDeclaredTypes,
                         );
                     }
 
@@ -218,7 +218,7 @@ impl<'db> Inference<'db, '_, '_> {
                 SimpleStmtContent::ImportFrom(import_from) => {
                     if class.is_some() && func.is_none() {
                         NodeRef::new(self.file, simple_stmt.index())
-                            .add_issue(self.i_s, IssueType::UnsupportedClassScopedImport);
+                            .add_issue(self.i_s, IssueKind::UnsupportedClassScopedImport);
                     }
                     self.cache_import_from(import_from);
                 }
@@ -236,7 +236,7 @@ impl<'db> Inference<'db, '_, '_> {
                     {
                         self.add_issue(
                             expr.index(),
-                            IssueType::AssertionAlwaysTrueBecauseOfParentheses,
+                            IssueKind::AssertionAlwaysTrueBecauseOfParentheses,
                         );
                     }
                     self.flow_analysis_for_assert(expr);
@@ -261,7 +261,7 @@ impl<'db> Inference<'db, '_, '_> {
             allow_none,
         ) {
             NodeRef::new(self.file, expr.index())
-                .add_issue(self.i_s, IssueType::BaseExceptionExpectedForRaise);
+                .add_issue(self.i_s, IssueKind::BaseExceptionExpectedForRaise);
         }
     }
 
@@ -286,7 +286,7 @@ impl<'db> Inference<'db, '_, '_> {
                     self.file.add_issue(
                         self.i_s,
                         Issue {
-                            type_: IssueType::UnreachableStatement,
+                            kind: IssueKind::UnreachableStatement,
                             start_position: stmt.start(),
                             end_position: stmt.end(),
                         },
@@ -433,10 +433,10 @@ impl<'db> Inference<'db, '_, '_> {
                             continue
                         };
                         let n = NodeRef::new(self.file, p.index());
-                        n.add_issue(self.i_s, IssueType::Note("Revealed type is \"Any\"".into()));
+                        n.add_issue(self.i_s, IssueKind::Note("Revealed type is \"Any\"".into()));
                         n.add_issue(
                             self.i_s,
-                            IssueType::Note(
+                            IssueKind::Note(
                                 "'reveal_type' always outputs 'Any' in unchecked functions".into(),
                             ),
                         );
@@ -452,7 +452,7 @@ impl<'db> Inference<'db, '_, '_> {
                     };
                     if is_type_definition {
                         NodeRef::new(self.file, a.index())
-                            .add_issue(self.i_s, IssueType::AnnotationInUntypedFunction);
+                            .add_issue(self.i_s, IssueKind::AnnotationInUntypedFunction);
                     }
                 }
                 RelevantUntypedNode::ImportFrom(i) => self.cache_import_from(i),
@@ -520,7 +520,7 @@ impl<'db> Inference<'db, '_, '_> {
                         {
                             NodeRef::new(self.file, arguments.unwrap().index()).add_issue(
                                 &i_s,
-                                IssueType::TypeVarVarianceIncompatibleWithParentType {
+                                IssueKind::TypeVarVarianceIncompatibleWithParentType {
                                     type_var_name: tv.type_var.name(i_s.db).into(),
                                 },
                             );
@@ -560,7 +560,7 @@ impl<'db> Inference<'db, '_, '_> {
                                 c.node().arguments().unwrap().iter().nth(i).unwrap().index();
                             NodeRef::new(self.file, index).add_issue(
                                 self.i_s,
-                                IssueType::MultipleInheritanceIncompatibility {
+                                IssueKind::MultipleInheritanceIncompatibility {
                                     name: name.into(),
                                     class1: base1.name(db).into(),
                                     class2: base2.name(db).into(),
@@ -671,7 +671,7 @@ impl<'db> Inference<'db, '_, '_> {
             {
                 NodeRef::new(self.file, node_index).add_issue(
                     &i_s,
-                    IssueType::InvalidSlotsDefinition {
+                    IssueKind::InvalidSlotsDefinition {
                         actual: t.format_short(i_s.db),
                     },
                 )
@@ -688,11 +688,11 @@ impl<'db> Inference<'db, '_, '_> {
                     // Apparently Mypy raises two issues here.
                     from.add_issue(
                         self.i_s,
-                        IssueType::ProtocolMembersCannotHaveSelfVariableDefinitions,
+                        IssueKind::ProtocolMembersCannotHaveSelfVariableDefinitions,
                     );
                     from.add_issue(
                         self.i_s,
-                        IssueType::AttributeError {
+                        IssueKind::AttributeError {
                             object: format!("\"{}\"", c.name()).into(),
                             name: name.into(),
                         },
@@ -716,7 +716,7 @@ impl<'db> Inference<'db, '_, '_> {
             {
                 self.add_issue(
                     f.name().index(),
-                    IssueType::ImplicitReturnInFunctionWithNeverReturn,
+                    IssueKind::ImplicitReturnInFunctionWithNeverReturn,
                 );
             }
         })
@@ -742,7 +742,7 @@ impl<'db> Inference<'db, '_, '_> {
                     if is_overload_unmatchable(i_s, c1, c2) {
                         NodeRef::from_link(i_s.db, c2.defined_at).add_issue(
                             i_s,
-                            IssueType::OverloadUnmatchable {
+                            IssueKind::OverloadUnmatchable {
                                 matchable_signature_index: i + 1,
                                 unmatchable_signature_index: i + k + 2,
                             },
@@ -755,7 +755,7 @@ impl<'db> Inference<'db, '_, '_> {
                     {
                         NodeRef::from_link(i_s.db, c1.defined_at).add_issue(
                             i_s,
-                            IssueType::OverloadIncompatibleReturnTypes {
+                            IssueKind::OverloadIncompatibleReturnTypes {
                                 first_signature_index: i + 1,
                                 second_signature_index: i + k + 2,
                             },
@@ -774,7 +774,7 @@ impl<'db> Inference<'db, '_, '_> {
         {
             function
                 .node_ref
-                .add_issue(i_s, IssueType::MethodWithoutArguments)
+                .add_issue(i_s, IssueKind::MethodWithoutArguments)
         }
 
         // Make sure the type vars are properly pre-calculated
@@ -800,7 +800,7 @@ impl<'db> Inference<'db, '_, '_> {
                                     // def foo(x: int = ...) -> int: ...
                                     return None;
                                 }
-                                Some(IssueType::IncompatibleDefaultArgument {
+                                Some(IssueKind::IncompatibleDefaultArgument {
                                     argument_name: Box::from(param.name_definition().as_code()),
                                     got,
                                     expected,
@@ -823,7 +823,7 @@ impl<'db> Inference<'db, '_, '_> {
                 {
                     if !["__init__", "__new__", "__post_init__"].contains(&name.as_code()) {
                         NodeRef::new(self.file, annotation.index())
-                            .add_issue(i_s, IssueType::TypeVarCovariantInParamType);
+                            .add_issue(i_s, IssueKind::TypeVarCovariantInParamType);
                     }
                 }
 
@@ -846,7 +846,7 @@ impl<'db> Inference<'db, '_, '_> {
                         if !overlapping_names.is_empty() {
                             function.add_issue_for_declaration(
                                 i_s,
-                                IssueType::TypedDictArgumentNameOverlapWithUnpack {
+                                IssueKind::TypedDictArgumentNameOverlapWithUnpack {
                                     names: overlapping_names.join(", ").into(),
                                 },
                             );
@@ -860,7 +860,7 @@ impl<'db> Inference<'db, '_, '_> {
         if had_missing_annotation {
             function
                 .node_ref
-                .add_issue(i_s, IssueType::FunctionMissingParamAnnotations);
+                .add_issue(i_s, IssueKind::FunctionMissingParamAnnotations);
         }
 
         if let Some(return_annotation) = return_annotation {
@@ -868,7 +868,7 @@ impl<'db> Inference<'db, '_, '_> {
             if matches!(t.as_ref(), Type::TypeVar(tv) if tv.type_var.variance == Variance::Contravariant)
             {
                 NodeRef::new(self.file, return_annotation.index())
-                    .add_issue(i_s, IssueType::TypeVarContravariantInReturnType);
+                    .add_issue(i_s, IssueKind::TypeVarContravariantInReturnType);
             }
             if function.is_generator() {
                 let expected = if function.is_async() {
@@ -879,17 +879,17 @@ impl<'db> Inference<'db, '_, '_> {
                 if !t.is_simple_super_type_of(i_s, &expected).bool() {
                     if function.is_async() {
                         NodeRef::new(self.file, return_annotation.index())
-                            .add_issue(i_s, IssueType::InvalidAsyncGeneratorReturnType);
+                            .add_issue(i_s, IssueKind::InvalidAsyncGeneratorReturnType);
                     } else {
                         NodeRef::new(self.file, return_annotation.index())
-                            .add_issue(i_s, IssueType::InvalidGeneratorReturnType);
+                            .add_issue(i_s, IssueKind::InvalidGeneratorReturnType);
                     }
                 }
             }
         } else if flags.disallow_incomplete_defs {
             function
                 .node_ref
-                .add_issue(i_s, IssueType::FunctionMissingReturnAnnotation);
+                .add_issue(i_s, IssueKind::FunctionMissingReturnAnnotation);
         }
 
         let is_dynamic = function.is_dynamic();
@@ -907,12 +907,12 @@ impl<'db> Inference<'db, '_, '_> {
                 function.return_annotation().is_none(),
             ) {
                 (true, true) => {
-                    function.add_issue_for_declaration(i_s, IssueType::FunctionIsDynamic)
+                    function.add_issue_for_declaration(i_s, IssueKind::FunctionIsDynamic)
                 }
                 (true, false) => function
-                    .add_issue_for_declaration(i_s, IssueType::FunctionMissingParamAnnotations),
+                    .add_issue_for_declaration(i_s, IssueKind::FunctionMissingParamAnnotations),
                 (false, true) => function
-                    .add_issue_for_declaration(i_s, IssueType::FunctionMissingReturnAnnotation),
+                    .add_issue_for_declaration(i_s, IssueKind::FunctionMissingReturnAnnotation),
                 (false, false) => (),
             }
         }
@@ -935,7 +935,7 @@ impl<'db> Inference<'db, '_, '_> {
                     if !class.as_type(i_s.db).is_simple_super_type_of(i_s, t).bool() {
                         function.expect_return_annotation_node_ref().add_issue(
                             i_s,
-                            IssueType::NewIncompatibleReturnType {
+                            IssueKind::NewIncompatibleReturnType {
                                 returns: t.format_short(i_s.db),
                                 must_return: class.format_short(i_s.db),
                             },
@@ -947,7 +947,7 @@ impl<'db> Inference<'db, '_, '_> {
                 Type::Enum(e) if e.class == class.node_ref.as_link() => (),
                 t => function.expect_return_annotation_node_ref().add_issue(
                     i_s,
-                    IssueType::NewMustReturnAnInstance {
+                    IssueKind::NewMustReturnAnInstance {
                         got: t.format_short(i_s.db),
                     },
                 ),
@@ -980,7 +980,7 @@ impl<'db> Inference<'db, '_, '_> {
                                 NodeRef::new(self.file, return_annotation.expression().index())
                                     .add_issue(
                                         i_s,
-                                        IssueType::MustReturnNone {
+                                        IssueKind::MustReturnNone {
                                             function_name: function.name().into(),
                                         },
                                     )
@@ -1004,7 +1004,7 @@ impl<'db> Inference<'db, '_, '_> {
                         {
                             function.add_issue_for_declaration(
                                 self.i_s,
-                                IssueType::InvalidSpecialMethodSignature {
+                                IssueKind::InvalidSpecialMethodSignature {
                                     type_: func_type.format_short(self.i_s.db),
                                     special_method: "__getattr__",
                                 },
@@ -1042,7 +1042,7 @@ impl<'db> Inference<'db, '_, '_> {
                 .function(self.i_s.db, None)
                 .add_issue_onto_start_including_decorator(
                     self.i_s,
-                    IssueType::OverloadImplementationReturnTypeIncomplete { signature_index },
+                    IssueKind::OverloadImplementationReturnTypeIncomplete { signature_index },
                 );
         }
 
@@ -1057,7 +1057,7 @@ impl<'db> Inference<'db, '_, '_> {
                 .function(self.i_s.db, None)
                 .add_issue_onto_start_including_decorator(
                     self.i_s,
-                    IssueType::OverloadImplementationArgumentsNotBroadEnough { signature_index },
+                    IssueKind::OverloadImplementationArgumentsNotBroadEnough { signature_index },
                 );
         }
     }
@@ -1070,13 +1070,13 @@ impl<'db> Inference<'db, '_, '_> {
                 if matches!(t.as_ref(), Type::Never) {
                     self.add_issue(
                         return_stmt.index(),
-                        IssueType::ReturnStmtInFunctionWithNeverReturn,
+                        IssueKind::ReturnStmtInFunctionWithNeverReturn,
                     );
                 } else if let Some(star_expressions) = return_stmt.star_expressions() {
                     if func.is_generator() {
                         if func.is_async() {
                             NodeRef::new(self.file, star_expressions.index())
-                                .add_issue(i_s, IssueType::ReturnInAsyncGenerator);
+                                .add_issue(i_s, IssueKind::ReturnInAsyncGenerator);
                             return;
                         } else {
                             t = Cow::Owned(
@@ -1095,7 +1095,7 @@ impl<'db> Inference<'db, '_, '_> {
                     {
                         NodeRef::new(self.file, star_expressions.index()).add_issue(
                             i_s,
-                            IssueType::ReturnedAnyWarning {
+                            IssueKind::ReturnedAnyWarning {
                                 expected: t.format_short(i_s.db),
                             },
                         )
@@ -1106,7 +1106,7 @@ impl<'db> Inference<'db, '_, '_> {
                         |issue| {
                             NodeRef::new(self.file, star_expressions.index()).add_issue(i_s, issue)
                         },
-                        |got, expected| Some(IssueType::IncompatibleReturn { got, expected }),
+                        |got, expected| Some(IssueKind::IncompatibleReturn { got, expected }),
                     );
                 } else {
                     debug!("TODO what about an implicit None?");
@@ -1165,7 +1165,7 @@ impl<'db> Inference<'db, '_, '_> {
                             ExceptType::ContainsOnlyBaseExceptions
                         ) {
                             NodeRef::new(self.file, expression.index())
-                                .add_issue(self.i_s, IssueType::BaseExceptionExpected);
+                                .add_issue(self.i_s, IssueKind::BaseExceptionExpected);
                         }
                     }
                     self.calc_block_diagnostics(block, class, func)
@@ -1179,12 +1179,12 @@ impl<'db> Inference<'db, '_, '_> {
                         ExceptType::HasExceptionGroup => {
                             NodeRef::new(self.file, expression.index()).add_issue(
                                 self.i_s,
-                                IssueType::ExceptStarIsNotAllowedToBeAnExceptionGroup,
+                                IssueKind::ExceptStarIsNotAllowedToBeAnExceptionGroup,
                             );
                         }
                         ExceptType::Invalid => {
                             NodeRef::new(self.file, expression.index())
-                                .add_issue(self.i_s, IssueType::BaseExceptionExpected);
+                                .add_issue(self.i_s, IssueKind::BaseExceptionExpected);
                         }
                     }
                     self.calc_block_diagnostics(block, class, func)
@@ -1262,7 +1262,7 @@ impl<'db> Inference<'db, '_, '_> {
         let invalid_signature = || {
             func.add_issue_for_declaration(
                 i_s,
-                IssueType::InvalidSignature {
+                IssueKind::InvalidSignature {
                     signature: func
                         .as_type(i_s, FirstParamProperties::None)
                         .format_short(i_s.db),
@@ -1346,7 +1346,7 @@ impl<'db> Inference<'db, '_, '_> {
                     {
                         from.add_issue(
                             i_s,
-                            IssueType::OperatorSignaturesAreUnsafelyOverlapping {
+                            IssueKind::OperatorSignaturesAreUnsafelyOverlapping {
                                 reverse_name: short_reverse_name.into(),
                                 reverse_class: func.class.unwrap().format_short(i_s.db),
                                 forward_class: forward.format_short(i_s.db),
@@ -1364,7 +1364,7 @@ impl<'db> Inference<'db, '_, '_> {
                     Type::Any(_) | Type::CustomBehavior(_) => (),
                     _ => from.add_issue(
                         i_s,
-                        IssueType::ForwardOperatorIsNotCallable {
+                        IssueKind::ForwardOperatorIsNotCallable {
                             forward_name: normal_magic,
                         },
                     ),
@@ -1396,7 +1396,7 @@ impl<'db> Inference<'db, '_, '_> {
         {
             func.add_issue_for_declaration(
                 self.i_s,
-                IssueType::SignaturesAreIncompatible {
+                IssueKind::SignaturesAreIncompatible {
                     name1: func.name().into(),
                     name2: normal_magic_name,
                 },
@@ -1435,7 +1435,7 @@ impl<'db> Inference<'db, '_, '_> {
             }
         }
         if had_return {
-            function.add_issue_for_declaration(self.i_s, IssueType::IncorrectExitReturn);
+            function.add_issue_for_declaration(self.i_s, IssueKind::IncorrectExitReturn);
         }
     }
 }
@@ -1532,7 +1532,7 @@ pub fn await_aiter_and_next(i_s: &InferenceState, base: Inferred, from: NodeRef)
         base.type_lookup_and_execute(i_s, from, "__aiter__", &NoArgs::new(from), &|t| {
             from.add_issue(
                 i_s,
-                IssueType::AsyncNotIterable {
+                IssueKind::AsyncNotIterable {
                     type_: t.format_short(i_s.db),
                 },
             )
@@ -1638,7 +1638,7 @@ fn find_and_check_override(
             None,
         )
     } else if has_override_decorator {
-        from.add_issue(i_s, IssueType::MissingBaseForOverride { name: name.into() });
+        from.add_issue(i_s, IssueKind::MissingBaseForOverride { name: name.into() });
     }
 }
 
@@ -1712,7 +1712,7 @@ fn check_override(
                 Function::new(NodeRef::new(from.file, func.index()), None)
                     .add_issue_onto_start_including_decorator(
                         i_s,
-                        IssueType::ReadOnlyPropertyCannotOverwriteReadWriteProperty,
+                        IssueKind::ReadOnlyPropertyCannotOverwriteReadWriteProperty,
                     );
             }
         }
@@ -1723,13 +1723,13 @@ fn check_override(
         }
         (ClassVar, AnnotatedAttribute) => from.add_issue(
             i_s,
-            IssueType::CannotOverrideClassVariableWithInstanceVariable {
+            IssueKind::CannotOverrideClassVariableWithInstanceVariable {
                 base_class: original_class_name(i_s.db, &original_class).into(),
             },
         ),
         (AnnotatedAttribute, ClassVar) => from.add_issue(
             i_s,
-            IssueType::CannotOverrideInstanceVariableWithClassVariable {
+            IssueKind::CannotOverrideInstanceVariableWithClassVariable {
                 base_class: original_class_name(i_s.db, &original_class).into(),
             },
         ),
@@ -1760,7 +1760,7 @@ fn check_override(
                     };
                     let t1 = got_c.erase_func_type_vars_for_type(db, t1);
                     if !t1.is_simple_super_type_of(i_s, &t2).bool() {
-                        let issue = IssueType::ArgumentIncompatibleWithSupertype {
+                        let issue = IssueKind::ArgumentIncompatibleWithSupertype {
                             message: format!(
                                 r#"Argument {} of "{name}" is incompatible with supertype "{supertype}"; supertype defines the argument type as "{}""#,
                                 i + 1,
@@ -1774,7 +1774,7 @@ fn check_override(
                                 from.file.add_issue(
                                     i_s,
                                     Issue {
-                                        type_: issue,
+                                        kind: issue,
                                         start_position: s.start,
                                         end_position: s.end,
                                     },
@@ -1800,7 +1800,7 @@ fn check_override(
                         async_note = Some(format!(r#"Consider declaring "{name}" in supertype "{supertype}" without "async""#).into())
                     }
 
-                    let issue = IssueType::ReturnTypeIncompatibleWithSupertype {
+                    let issue = IssueKind::ReturnTypeIncompatibleWithSupertype {
                         message: format!(
                             r#"Return type "{}" of "{name}" incompatible with return type "{}" in supertype "{supertype}""#,
                             got_ret.format_short(db),
@@ -1830,7 +1830,7 @@ fn check_override(
                                 emitted = true;
                                 from.add_issue(
                                     i_s,
-                                    IssueType::OverloadOrderMustMatchSupertype {
+                                    IssueKind::OverloadOrderMustMatchSupertype {
                                         name: name.into(),
                                         base_class: original_class_name(db, &original_class).into(),
                                     },
@@ -1846,7 +1846,7 @@ fn check_override(
                 emitted = true;
                 from.add_issue(
                     i_s,
-                    IssueType::IncompatibleAssignmentInSubclass {
+                    IssueKind::IncompatibleAssignmentInSubclass {
                         got: override_t.format_short(i_s.db),
                         expected: original_t.format_short(i_s.db),
                         base_class: original_class_name(i_s.db, &original_class).into(),
@@ -1887,7 +1887,7 @@ fn check_override(
                 )
             }
 
-            let issue = IssueType::SignatureIncompatibleWithSupertype {
+            let issue = IssueKind::SignatureIncompatibleWithSupertype {
                 name: name.into(),
                 base_class: original_class_name(i_s.db, &original_class).into(),
                 notes: notes.into(),
@@ -2016,7 +2016,7 @@ fn check_protocol_type_var_variances(i_s: &InferenceState, class: Class) {
         if tv.variance != expected_variance {
             NodeRef::new(class.node_ref.file, class.node().name().index()).add_issue(
                 i_s,
-                IssueType::ProtocolWrongVariance {
+                IssueKind::ProtocolWrongVariance {
                     type_var_name: tv.name(i_s.db).into(),
                     actual_variance: tv.variance,
                     expected_variance,

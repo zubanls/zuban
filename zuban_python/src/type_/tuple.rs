@@ -8,7 +8,7 @@ use crate::{
     arguments::Args,
     database::Database,
     debug,
-    diagnostics::IssueType,
+    diagnostics::IssueKind,
     getitem::{SliceType, SliceTypeContent},
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
@@ -135,7 +135,7 @@ impl Tuple {
                         let out_of_range = |variadic_max_len| {
                             slice_type.as_argument_node_ref().add_issue(
                                 i_s,
-                                IssueType::TupleIndexOutOfRange { variadic_max_len },
+                                IssueKind::TupleIndexOutOfRange { variadic_max_len },
                             );
                             Some(Inferred::new_any_from_error())
                         };
@@ -229,7 +229,7 @@ impl Tuple {
                     if step == 0 {
                         slice_type
                             .as_node_ref()
-                            .add_issue(i_s, IssueType::TupleSliceStepCannotBeZero);
+                            .add_issue(i_s, IssueKind::TupleSliceStepCannotBeZero);
                         return Inferred::from_type(Type::Tuple(
                             Self::new_arbitrary_length_with_any_from_error(),
                         ));
@@ -288,7 +288,7 @@ impl Tuple {
                                 let ambiguous = || {
                                     slice_type
                                         .as_node_ref()
-                                        .add_issue(i_s, IssueType::AmbigousSliceOfVariadicTuple);
+                                        .add_issue(i_s, IssueKind::AmbigousSliceOfVariadicTuple);
                                     Inferred::from_type(Type::Tuple(
                                         Self::new_arbitrary_length_with_any_from_error(),
                                     ))
@@ -614,7 +614,7 @@ fn merge_types(mut original: Vec<Type>, new: Rc<[Type]>) -> Rc<[Type]> {
 pub(crate) fn lookup_on_tuple<'x>(
     tuple: &'x Rc<Tuple>,
     i_s: &'x InferenceState,
-    add_issue: impl Fn(IssueType),
+    add_issue: impl Fn(IssueKind),
     name: &str,
 ) -> LookupDetails<'x> {
     lookup_tuple_magic_methods(tuple.clone(), name).or_else(|| {

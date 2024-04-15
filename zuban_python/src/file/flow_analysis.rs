@@ -15,7 +15,7 @@ use parsa_python_ast::{
 use crate::{
     database::{Database, PointLink, PointType, Specific},
     debug,
-    diagnostics::IssueType,
+    diagnostics::IssueKind,
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::{Inferred, UnionValue},
@@ -810,7 +810,7 @@ impl Inference<'_, '_, '_> {
     pub fn flow_analysis_for_break_stmt(&mut self, while_stmt: BreakStmt) {
         FLOW_ANALYSIS.with(|fa| {
             let Some(index) = fa.current_break_index.get() else {
-                self.add_issue(while_stmt.index(), IssueType::BreakOutsideLoop);
+                self.add_issue(while_stmt.index(), IssueKind::BreakOutsideLoop);
                 return;
             };
             fa.mark_current_frame_unreachable();
@@ -820,7 +820,7 @@ impl Inference<'_, '_, '_> {
     pub fn flow_analysis_for_continue_stmt(&mut self, while_stmt: ContinueStmt) {
         FLOW_ANALYSIS.with(|fa| {
             let Some(index) = fa.current_break_index.get() else {
-                self.add_issue(while_stmt.index(), IssueType::ContinueOutsideLoop);
+                self.add_issue(while_stmt.index(), IssueKind::ContinueOutsideLoop);
                 return;
             };
             fa.mark_current_frame_unreachable();
@@ -880,7 +880,7 @@ impl Inference<'_, '_, '_> {
         if left_frames.truthy.unreachable {
             self.add_issue(
                 and.index(),
-                IssueType::RightOperandIsNeverOperated { right: "and" },
+                IssueKind::RightOperandIsNeverOperated { right: "and" },
             )
         } else {
             left_frames.truthy = FLOW_ANALYSIS.with(|fa| {
@@ -920,7 +920,7 @@ impl Inference<'_, '_, '_> {
         if left_frames.falsey.unreachable {
             self.add_issue(
                 or.index(),
-                IssueType::RightOperandIsNeverOperated { right: "or" },
+                IssueKind::RightOperandIsNeverOperated { right: "or" },
             )
         } else {
             left_frames.falsey = FLOW_ANALYSIS.with(|fa| {
@@ -1385,7 +1385,7 @@ impl Inference<'_, '_, '_> {
             if matches!(t, Type::TypedDict(_)) {
                 self.add_issue(
                     arg.index(),
-                    IssueType::CannotUseIsinstanceWith {
+                    IssueKind::CannotUseIsinstanceWith {
                         func: match issubclass {
                             false => "isinstance",
                             true => "issubclass",
@@ -1429,7 +1429,7 @@ impl Inference<'_, '_, '_> {
         let cannot_use_with = |self_: &mut Self, with| {
             self_.add_issue(
                 part.index(),
-                IssueType::CannotUseIsinstanceWith {
+                IssueKind::CannotUseIsinstanceWith {
                     func: match issubclass {
                         false => "isinstance",
                         true => "issubclass",
@@ -1493,7 +1493,7 @@ impl Inference<'_, '_, '_> {
                     ) {
                         self.add_issue(
                             part.index(),
-                            IssueType::CannotUseIsinstanceWithParametrizedGenerics,
+                            IssueKind::CannotUseIsinstanceWithParametrizedGenerics,
                         );
                         return Some(Type::Any(AnyCause::FromError));
                     }

@@ -9,7 +9,7 @@ use super::{
 use crate::{
     arguments::{ArgIterator, ArgKind, Args, KeywordArg},
     database::{ComplexPoint, Database, FileIndex, PointLink},
-    diagnostics::IssueType,
+    diagnostics::IssueKind,
     file::{File, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn},
     getitem::SliceType,
     inference_state::InferenceState,
@@ -276,7 +276,7 @@ impl NamedTuple {
     pub(crate) fn lookup<'a>(
         &self,
         i_s: &'a InferenceState,
-        add_issue: &dyn Fn(IssueType),
+        add_issue: &dyn Fn(IssueKind),
         name: &str,
         as_self: Option<&dyn Fn() -> Type>,
     ) -> LookupDetails<'a> {
@@ -333,7 +333,7 @@ fn check_named_tuple_name<'x, 'y>(
         todo!()
     };
     let ArgKind::Positional(pos) = first_arg.kind else {
-        first_arg.add_issue(i_s, IssueType::UnexpectedArgumentsTo { name: "namedtuple" });
+        first_arg.add_issue(i_s, IssueKind::UnexpectedArgumentsTo { name: "namedtuple" });
         return None
     };
     let expr = pos.node_ref.as_named_expression().expression();
@@ -341,7 +341,7 @@ fn check_named_tuple_name<'x, 'y>(
         .maybe_single_string_literal()
         .map(|py_string| (pos.node_ref, py_string));
     let Some(mut string_slice) = StringSlice::from_string_in_expression(pos.node_ref.file_index(), expr) else {
-        pos.node_ref.add_issue(i_s, IssueType::NamedTupleExpectsStringLiteralAsFirstArg { name: executable_name });
+        pos.node_ref.add_issue(i_s, IssueKind::NamedTupleExpectsStringLiteralAsFirstArg { name: executable_name });
         return None
     };
     let py_string = expr.maybe_single_string_literal()?;
@@ -351,7 +351,7 @@ fn check_named_tuple_name<'x, 'y>(
         if should != is {
             pos.node_ref.add_issue(
                 i_s,
-                IssueType::NamedTupleFirstArgumentMismatch {
+                IssueKind::NamedTupleFirstArgumentMismatch {
                     should: should.into(),
                     is: is.into(),
                 },
@@ -362,7 +362,7 @@ fn check_named_tuple_name<'x, 'y>(
     let Some(second_arg) = iterator.next() else {
         if executable_name != "namedtuple" {
             // For namedtuple this is already handled by type checking.
-            args.add_issue(i_s, IssueType::TooFewArguments(r#" for "NamedTuple()""#.into()));
+            args.add_issue(i_s, IssueKind::TooFewArguments(r#" for "NamedTuple()""#.into()));
         }
         return None
     };
@@ -386,7 +386,7 @@ pub(crate) fn new_typing_named_tuple(
     if iterator.next().is_some() {
         args.add_issue(
             i_s,
-            IssueType::TooManyArguments(" for \"NamedTuple()\"".into()),
+            IssueKind::TooManyArguments(" for \"NamedTuple()\"".into()),
         );
         return None;
     }
@@ -396,7 +396,7 @@ pub(crate) fn new_typing_named_tuple(
         _ => {
             second_node_ref.add_issue(
                 i_s,
-                IssueType::InvalidSecondArgumentToNamedTuple { name: "NamedTuple" },
+                IssueKind::InvalidSecondArgumentToNamedTuple { name: "NamedTuple" },
             );
             return None;
         }
@@ -416,7 +416,7 @@ pub(crate) fn new_typing_named_tuple(
         check_named_tuple_has_no_fields_with_underscore(i_s, "NamedTuple", args, &params);
         let type_var_likes = comp.into_type_vars(|_, _| ());
         if in_type_definition && !type_var_likes.is_empty() {
-            args.add_issue(i_s, IssueType::NamedTupleGenericInClassDefinition);
+            args.add_issue(i_s, IssueKind::NamedTupleGenericInClassDefinition);
             return None;
         }
         let callable = CallableContent {
@@ -460,7 +460,7 @@ pub(crate) fn new_collections_named_tuple(
         };
             let Some(string_slice) = StringSlice::from_string_in_expression(second_node_ref.file.file_index(), ne.expression()) else {
                 NodeRef::new(second_node_ref.file, ne.index())
-                    .add_issue(i_s, IssueType::StringLiteralExpectedAsNamedTupleItem);
+                    .add_issue(i_s, IssueKind::StringLiteralExpectedAsNamedTupleItem);
                 continue
             };
             add_param(string_slice.into())
@@ -490,7 +490,7 @@ pub(crate) fn new_collections_named_tuple(
         _ => {
             second_node_ref.add_issue(
                 i_s,
-                IssueType::InvalidSecondArgumentToNamedTuple { name: "namedtuple" },
+                IssueKind::InvalidSecondArgumentToNamedTuple { name: "namedtuple" },
             );
             return None;
         }
@@ -508,14 +508,14 @@ pub(crate) fn new_collections_named_tuple(
                 Some(AtomContent::List(list)) => list.unpack(),
                 Some(AtomContent::Tuple(tuple)) => tuple.iter(),
                 _ => {
-                    arg.add_issue(i_s, IssueType::NamedTupleDefaultsShouldBeListOrTuple);
+                    arg.add_issue(i_s, IssueKind::NamedTupleDefaultsShouldBeListOrTuple);
                     return None;
                 }
             };
             let member_count = params.len() - 1;
             let defaults_count = defaults_iterator.count();
             let skip = if defaults_count > member_count {
-                arg.add_issue(i_s, IssueType::NamedTupleToManyDefaults);
+                arg.add_issue(i_s, IssueKind::NamedTupleToManyDefaults);
                 0
             } else {
                 member_count - defaults_count
@@ -559,7 +559,7 @@ fn check_named_tuple_has_no_fields_with_underscore(
     if !field_names_with_underscore.is_empty() {
         args.add_issue(
             i_s,
-            IssueType::NamedTupleNamesCannotStartWithUnderscore {
+            IssueKind::NamedTupleNamesCannotStartWithUnderscore {
                 name,
                 field_names: field_names_with_underscore.join(", ").into(),
             },

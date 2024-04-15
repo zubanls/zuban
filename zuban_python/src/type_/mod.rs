@@ -62,7 +62,7 @@ use crate::{
     arguments::Args,
     database::{Database, FileIndex, PointLink},
     debug,
-    diagnostics::IssueType,
+    diagnostics::IssueKind,
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{
@@ -1187,8 +1187,8 @@ impl Type {
         &self,
         i_s: &InferenceState,
         value: &Inferred,
-        add_issue: impl Fn(IssueType),
-        mut on_error: impl FnMut(Box<str>, Box<str>) -> Option<IssueType>,
+        add_issue: impl Fn(IssueKind),
+        mut on_error: impl FnMut(Box<str>, Box<str>) -> Option<IssueKind>,
     ) {
         self.error_if_not_matches_with_matcher(
             i_s,
@@ -1205,8 +1205,8 @@ impl Type {
         matcher: &mut Matcher,
         value: &Inferred,
         //callback: Option<impl FnOnce(Box<str>, Box<str>, &MismatchReason) -> NodeRef<'x>>,
-        add_issue: impl Fn(IssueType),
-        mut on_error: impl FnMut(Box<str>, Box<str>, &MismatchReason) -> Option<IssueType>,
+        add_issue: impl Fn(IssueKind),
+        mut on_error: impl FnMut(Box<str>, Box<str>, &MismatchReason) -> Option<IssueKind>,
     ) {
         let value_type = value.as_cow_type(i_s);
         let matches = self.is_super_type_of(i_s, matcher, &value_type);

@@ -2,7 +2,7 @@ use crate::{
     arguments::KnownArgsWithCustomAddIssue,
     database::{Database, FileIndex},
     debug,
-    diagnostics::IssueType,
+    diagnostics::IssueKind,
     file::{File, PythonFile},
     imports::{python_import, ImportResult},
     inference_state::InferenceState,
@@ -63,7 +63,7 @@ impl<'a> Module<'a> {
     pub(crate) fn lookup(
         &self,
         i_s: &InferenceState,
-        add_issue: impl Fn(IssueType),
+        add_issue: impl Fn(IssueKind),
         name: &str,
     ) -> LookupResult {
         self.lookup_with_is_import(i_s, add_issue, name, false)
@@ -72,7 +72,7 @@ impl<'a> Module<'a> {
     pub(crate) fn lookup_with_is_import(
         &self,
         i_s: &InferenceState,
-        add_issue: impl Fn(IssueType),
+        add_issue: impl Fn(IssueKind),
         name: &str,
         is_import: bool,
     ) -> LookupResult {
@@ -125,7 +125,7 @@ impl<'a> Module<'a> {
     pub(crate) fn maybe_execute_getattr(
         &self,
         i_s: &InferenceState,
-        add_issue: &'a dyn Fn(IssueType),
+        add_issue: &'a dyn Fn(IssueKind),
     ) -> Option<Inferred> {
         self.file.lookup_global("__getattr__").map(|link| {
             let inf = i_s

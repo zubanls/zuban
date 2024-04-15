@@ -11,7 +11,7 @@ use super::{
 use crate::{
     arguments::{ArgKind, Args},
     database::{Database, ParentScope, PointLink},
-    diagnostics::IssueType,
+    diagnostics::IssueKind,
     file::File,
     inference_state::InferenceState,
     inferred::{AttributeKind, Inferred},
@@ -147,7 +147,7 @@ impl Enum {
 
 pub(crate) fn lookup_on_enum_class<'a>(
     i_s: &InferenceState<'a, '_>,
-    add_issue: impl Fn(IssueType),
+    add_issue: impl Fn(IssueKind),
     enum_: &Rc<Enum>,
     name: &str,
     result_context: &mut ResultContext,
@@ -173,7 +173,7 @@ pub(crate) fn lookup_on_enum_class<'a>(
 
 pub(crate) fn lookup_on_enum_instance<'a>(
     i_s: &'a InferenceState,
-    add_issue: impl Fn(IssueType),
+    add_issue: impl Fn(IssueKind),
     enum_: &'a Rc<Enum>,
     name: &str,
     result_context: &mut ResultContext,
@@ -202,7 +202,7 @@ pub(crate) fn lookup_on_enum_instance<'a>(
 
 fn lookup_on_enum_instance_fallback<'a>(
     i_s: &'a InferenceState,
-    add_issue: impl Fn(IssueType),
+    add_issue: impl Fn(IssueKind),
     enum_: &'a Rc<Enum>,
     name: &str,
 ) -> LookupDetails<'a> {
@@ -273,7 +273,7 @@ pub fn infer_value_on_member(
 
 pub(crate) fn lookup_on_enum_member_instance<'a>(
     i_s: &'a InferenceState,
-    add_issue: impl Fn(IssueType),
+    add_issue: impl Fn(IssueKind),
     member: &'a EnumMember,
     name: &str,
 ) -> LookupDetails<'a> {
@@ -368,7 +368,7 @@ pub(crate) fn execute_functional_enum<'db>(
             _ => {
                 args.add_issue(
                     i_s,
-                    IssueType::EnumUnexpectedArguments {
+                    IssueKind::EnumUnexpectedArguments {
                         name: class.name().into(),
                     },
                 );
@@ -380,7 +380,7 @@ pub(crate) fn execute_functional_enum<'db>(
     let fields_infos = fields_infos.unwrap();
 
     let Type::Literal(Literal { kind: LiteralKind::String(name), .. }) = name_infos.1.as_type(i_s) else {
-        name_infos.0.add_issue(i_s, IssueType::EnumFirstArgMustBeString);
+        name_infos.0.add_issue(i_s, IssueKind::EnumFirstArgMustBeString);
         return None
     };
 
@@ -389,7 +389,7 @@ pub(crate) fn execute_functional_enum<'db>(
     if members.len() == 0 {
         fields_infos.0.add_issue(
             i_s,
-            IssueType::EnumNeedsAtLeastOneItem {
+            IssueKind::EnumNeedsAtLeastOneItem {
                 name: class.name().into(),
             },
         );
@@ -423,7 +423,7 @@ impl EnumMembers {
         if self.0.iter().any(|t| t.name(i_s.db) == member_name) {
             node_ref.add_issue(
                 i_s,
-                IssueType::EnumReusedMemberName {
+                IssueKind::EnumReusedMemberName {
                     enum_name: enum_name.as_str(i_s.db).into(),
                     member_name: member_name.into(),
                 },
@@ -446,7 +446,7 @@ fn gather_functional_enum_members(
     expression: Expression,
 ) -> Option<Box<[EnumMemberDefinition]>> {
     let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) = expression.unpack() else {
-        node_ref.add_issue(i_s, IssueType::EnumInvalidSecondArgument);
+        node_ref.add_issue(i_s, IssueKind::EnumInvalidSecondArgument);
         return None
     };
 
@@ -496,7 +496,7 @@ fn gather_functional_enum_members(
         if add_from_iterator(iterator).is_none() {
             NodeRef::new(node_ref.file, atom.index()).add_issue(
                 i_s,
-                IssueType::EnumWithTupleOrListExpectsStringPairs {
+                IssueKind::EnumWithTupleOrListExpectsStringPairs {
                     name: class.name().into(),
                 },
             );
@@ -527,7 +527,7 @@ fn gather_functional_enum_members(
         AtomContent::Dict(d) => {
             for element in d.iter_elements() {
                 let DictElement::KeyValue(kv) = element else {
-                    node_ref.add_issue(i_s, IssueType::EnumWithDictRequiresStringLiterals {
+                    node_ref.add_issue(i_s, IssueKind::EnumWithDictRequiresStringLiterals {
                         name: class.name().into(),
                     });
                     return None
@@ -537,7 +537,7 @@ fn gather_functional_enum_members(
                     node_ref.file.file_index(),
                     key,
                 ) else {
-                    node_ref.add_issue(i_s, IssueType::EnumWithDictRequiresStringLiterals {
+                    node_ref.add_issue(i_s, IssueKind::EnumWithDictRequiresStringLiterals {
                         name: class.name().into(),
                     });
                     return None
@@ -573,7 +573,7 @@ fn gather_functional_enum_members(
                     return Some(members.into_boxed_slice());
                 }
             }
-            node_ref.add_issue(i_s, IssueType::EnumInvalidSecondArgument);
+            node_ref.add_issue(i_s, IssueKind::EnumInvalidSecondArgument);
             return None;
         }
     };

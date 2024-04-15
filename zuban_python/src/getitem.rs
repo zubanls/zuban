@@ -7,7 +7,7 @@ use crate::{
     arguments::{ArgIterator, Args},
     database::PointsBackup,
     debug,
-    diagnostics::IssueType,
+    diagnostics::IssueKind,
     file::{infer_index, PythonFile},
     inference_state::InferenceState,
     inferred::Inferred,
@@ -168,7 +168,7 @@ impl<'file> Slice<'file> {
                     && !t.is_simple_sub_type_of(i_s, &Type::None).bool()
                 {
                     NodeRef::new(self.file, expr.index())
-                        .add_issue(i_s, IssueType::InvalidSliceIndex);
+                        .add_issue(i_s, IssueKind::InvalidSliceIndex);
                 }
             }
         };

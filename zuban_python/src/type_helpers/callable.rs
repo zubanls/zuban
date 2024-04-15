@@ -2,7 +2,7 @@ use super::Class;
 use crate::{
     arguments::Args,
     database::Database,
-    diagnostics::IssueType,
+    diagnostics::IssueKind,
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{calculate_callable_type_vars_and_return, OnTypeError, ResultContext},
@@ -55,7 +55,7 @@ impl<'a> Callable<'a> {
         if result_context.expect_not_none(i_s) && matches!(&return_type, Type::None) {
             args.add_issue(
                 i_s,
-                IssueType::DoesNotReturnAValue(
+                IssueKind::DoesNotReturnAValue(
                     self.diagnostic_string(i_s.db)
                         .unwrap_or_else(|| "Function".into())
                         .into(),

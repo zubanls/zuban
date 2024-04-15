@@ -8,7 +8,7 @@ use parsa_python_ast::{
 use crate::{
     database::{Database, PointsBackup},
     debug,
-    diagnostics::IssueType,
+    diagnostics::IssueKind,
     file::PythonFile,
     getitem::{SliceType, SliceTypeContent, Slices},
     inferred::Inferred,
@@ -23,7 +23,7 @@ pub(crate) trait Args<'db>: std::fmt::Debug {
     // This is not the case in the grammar, but here we want that.
     fn iter(&self) -> ArgIterator<'db, '_>;
     fn as_node_ref(&self) -> Option<NodeRef>;
-    fn add_issue(&self, i_s: &InferenceState, issue: IssueType) {
+    fn add_issue(&self, i_s: &InferenceState, issue: IssueKind) {
         self.as_node_ref()
             .expect("Otherwise add_issue should be implemented")
             .add_issue(i_s, issue)
@@ -197,7 +197,7 @@ impl<'a> KnownArgs<'a> {
 }
 
 impl<'a> KnownArgsWithCustomAddIssue<'a> {
-    pub(crate) fn new(inferred: &'a Inferred, add_issue: &'a dyn Fn(IssueType)) -> Self {
+    pub(crate) fn new(inferred: &'a Inferred, add_issue: &'a dyn Fn(IssueKind)) -> Self {
         Self {
             inferred,
             add_issue: CustomAddIssue(add_issue),
@@ -219,7 +219,7 @@ impl<'db, 'a> Args<'db> for KnownArgsWithCustomAddIssue<'a> {
         })
     }
 
-    fn add_issue(&self, i_s: &InferenceState, issue: IssueType) {
+    fn add_issue(&self, i_s: &InferenceState, issue: IssueKind) {
         self.add_issue.0(issue)
     }
 
@@ -250,7 +250,7 @@ impl<'db, 'a> Args<'db> for CombinedArgs<'db, 'a> {
         self.args2.starting_line()
     }
 
-    fn add_issue(&self, i_s: &InferenceState, issue: IssueType) {
+    fn add_issue(&self, i_s: &InferenceState, issue: IssueKind) {
         self.args2.add_issue(i_s, issue)
     }
 
@@ -294,7 +294,7 @@ impl<'db> PositionalArg<'db, '_> {
             )
     }
 
-    pub(crate) fn add_issue(&self, i_s: &InferenceState, issue: IssueType) {
+    pub(crate) fn add_issue(&self, i_s: &InferenceState, issue: IssueKind) {
         self.node_ref.add_issue(i_s, issue)
     }
 }
@@ -319,7 +319,7 @@ impl<'db> KeywordArg<'db, '_> {
             .infer_expression_with_context(self.expression, result_context)
     }
 
-    pub(crate) fn add_issue(&self, i_s: &InferenceState, issue: IssueType) {
+    pub(crate) fn add_issue(&self, i_s: &InferenceState, issue: IssueKind) {
         self.node_ref.add_issue(i_s, issue)
     }
 }
@@ -474,7 +474,7 @@ impl<'db, 'a> Arg<'db, 'a> {
         }
     }
 
-    pub(crate) fn add_issue(&self, i_s: &InferenceState, issue: IssueType) {
+    pub(crate) fn add_issue(&self, i_s: &InferenceState, issue: IssueKind) {
         match self.as_node_ref() {
             Ok(node_ref) => node_ref.add_issue(i_s, issue),
             Err(add_issue) => add_issue.0(issue),
@@ -778,7 +778,7 @@ impl<'db, 'a> Iterator for ArgIteratorBase<'db, 'a> {
                                     debug!("Keyword is type {}", key.format_short(i_s.db));
                                     node_ref.add_issue(
                                         i_s,
-                                        IssueType::ArgumentIssue(Box::from(
+                                        IssueKind::ArgumentIssue(Box::from(
                                             "Keywords must be strings",
                                         )),
                                     );
@@ -787,7 +787,7 @@ impl<'db, 'a> Iterator for ArgIteratorBase<'db, 'a> {
                             } else {
                                 node_ref.add_issue(
                                     i_s,
-                                    IssueType::ArgumentTypeIssue(
+                                    IssueKind::ArgumentTypeIssue(
                                         format!(
                                             "Argument after ** must be a mapping, not \"{}\"",
                                             type_.format_short(i_s.db),
@@ -1130,7 +1130,7 @@ impl<'db, 'a> Args<'db> for NoArgs<'a> {
 }
 
 #[derive(Clone, Copy)]
-pub struct CustomAddIssue<'a>(&'a dyn Fn(IssueType));
+pub struct CustomAddIssue<'a>(&'a dyn Fn(IssueKind));
 
 impl std::fmt::Debug for CustomAddIssue<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

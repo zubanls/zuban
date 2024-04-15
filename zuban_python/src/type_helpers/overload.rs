@@ -5,7 +5,7 @@ use crate::{
     arguments::{Arg, ArgIterator, ArgKind, Args, InferredArg},
     database::Database,
     debug,
-    diagnostics::IssueType,
+    diagnostics::IssueKind,
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{
@@ -250,7 +250,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 self.overload.iter_functions().next().unwrap(),
                 self.class,
             ));
-            let t = IssueType::OverloadMismatch {
+            let t = IssueKind::OverloadMismatch {
                 name: (on_type_error.generate_diagnostic_string)(&f_or_c, i_s.db)
                     .unwrap_or_else(|| todo!())
                     .into(),
@@ -275,7 +275,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         mut args: ArgIterator<'db, 'x>,
         skip_first_argument: bool,
         non_union_args: &mut Vec<Arg<'db, 'x>>,
-        add_issue: &impl Fn(IssueType),
+        add_issue: &impl Fn(IssueKind),
         search_init: bool,
         class: Option<&Class>,
     ) -> UnionMathResult {

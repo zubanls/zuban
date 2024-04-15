@@ -10,7 +10,7 @@ use super::{
 use crate::{
     arguments::{ArgKind, Args},
     database::{ComplexPoint, Database, PointLink, TypedDictDefinition},
-    diagnostics::IssueType,
+    diagnostics::IssueKind,
     file::{infer_string_index, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn},
     getitem::{SliceType, SliceTypeContent},
     inference_state::InferenceState,
@@ -321,7 +321,7 @@ impl TypedDict {
                             if add_errors {
                                 simple.as_node_ref().add_issue(
                                     i_s,
-                                    IssueType::TypedDictHasNoKeyForGet {
+                                    IssueKind::TypedDictHasNoKeyForGet {
                                         typed_dict: self
                                             .format(&FormatData::new_short(i_s.db))
                                             .into(),
@@ -405,7 +405,7 @@ pub struct TypedDictMemberGatherer {
 }
 
 impl TypedDictMemberGatherer {
-    pub(crate) fn add(&mut self, db: &Database, member: TypedDictMember) -> Result<(), IssueType> {
+    pub(crate) fn add(&mut self, db: &Database, member: TypedDictMember) -> Result<(), IssueKind> {
         let key = member.name.as_str(db);
         if let Some((i, m)) = self
             .members
@@ -414,10 +414,10 @@ impl TypedDictMemberGatherer {
             .find(|(_, m)| m.name.as_str(db) == key)
         {
             if i >= self.first_after_merge_index {
-                Err(IssueType::TypedDictDuplicateKey { key: key.into() })
+                Err(IssueKind::TypedDictDuplicateKey { key: key.into() })
             } else {
                 *m = member;
-                Err(IssueType::TypedDictOverwritingKeyWhileExtending { key: key.into() })
+                Err(IssueKind::TypedDictOverwritingKeyWhileExtending { key: key.into() })
             }
         } else {
             self.members.push(member);
@@ -435,7 +435,7 @@ impl TypedDictMemberGatherer {
             {
                 node_ref.add_issue(
                     i_s,
-                    IssueType::TypedDictOverwritingKeyWhileMerging { key: key.into() },
+                    IssueKind::TypedDictOverwritingKeyWhileMerging { key: key.into() },
                 );
                 *current = to_add.clone(); // Mypy prioritizes this...
             } else {
@@ -453,9 +453,9 @@ impl TypedDictMemberGatherer {
 fn add_access_key_must_be_string_literal_issue(
     db: &Database,
     td: &TypedDict,
-    add_issue: impl FnOnce(IssueType),
+    add_issue: impl FnOnce(IssueKind),
 ) {
-    add_issue(IssueType::TypedDictAccessKeyMustBeStringLiteral {
+    add_issue(IssueKind::TypedDictAccessKeyMustBeStringLiteral {
         keys: join_with_commas(
             td.members(db)
                 .iter()
@@ -478,12 +478,12 @@ fn new_typed_dict_internal<'db>(
         todo!()
     };
     let ArgKind::Positional(first) = first_arg.kind else {
-        args.add_issue(i_s, IssueType::UnexpectedArgumentsToTypedDict);
+        args.add_issue(i_s, IssueKind::UnexpectedArgumentsToTypedDict);
         return None
     };
     let expr = first.node_ref.as_named_expression().expression();
     let Some(name) = StringSlice::from_string_in_expression(first.node_ref.file_index(), expr) else {
-        first.node_ref.add_issue(i_s, IssueType::TypedDictFirstArgMustBeString);
+        first.node_ref.add_issue(i_s, IssueKind::TypedDictFirstArgMustBeString);
         return None
     };
 
@@ -496,7 +496,7 @@ fn new_typed_dict_internal<'db>(
         if name != definition_name.as_code() {
             first.node_ref.add_issue(
                 i_s,
-                IssueType::TypedDictNameMismatch {
+                IssueKind::TypedDictNameMismatch {
                     string_name: Box::from(name),
                     variable_name: Box::from(definition_name.as_code()),
                 },
@@ -507,7 +507,7 @@ fn new_typed_dict_internal<'db>(
     }
 
     let Some(second_arg) = iterator.next() else {
-        args.add_issue(i_s, IssueType::TooFewArguments(" for TypedDict()".into()));
+        args.add_issue(i_s, IssueKind::TooFewArguments(" for TypedDict()".into()));
         return None
     };
     let ArgKind::Positional(second) = second_arg.kind else {
@@ -531,17 +531,17 @@ fn new_typed_dict_internal<'db>(
                     r#"Unexpected keyword argument "{}" for "TypedDict""#,
                     kw.key
                 );
-                kw.add_issue(i_s, IssueType::ArgumentIssue(s.into()));
+                kw.add_issue(i_s, IssueKind::ArgumentIssue(s.into()));
                 return None;
             }
             _ => {
-                args.add_issue(i_s, IssueType::UnexpectedArgumentsToTypedDict);
+                args.add_issue(i_s, IssueKind::UnexpectedArgumentsToTypedDict);
                 return None;
             }
         };
     }
     if iterator.next().is_some() {
-        args.add_issue(i_s, IssueType::TooManyArguments(" for \"TODO()\"".into()));
+        args.add_issue(i_s, IssueKind::TooManyArguments(" for \"TODO()\"".into()));
         return None;
     }
     let dct_iterator = match atom_content {
@@ -549,7 +549,7 @@ fn new_typed_dict_internal<'db>(
         _ => {
             second
                 .node_ref
-                .add_issue(i_s, IssueType::TypedDictSecondArgMustBeDict);
+                .add_issue(i_s, IssueKind::TypedDictSecondArgMustBeDict);
             return None;
         }
     };
@@ -567,7 +567,7 @@ fn new_typed_dict_internal<'db>(
             DictElement::KeyValue(key_value) => {
                 let Some(name) = StringSlice::from_string_in_expression(first.node_ref.file_index(), key_value.key()) else {
                     NodeRef::new(first.node_ref.file, key_value.key().index())
-                        .add_issue(i_s, IssueType::TypedDictInvalidFieldName);
+                        .add_issue(i_s, IssueKind::TypedDictInvalidFieldName);
                     return None
                 };
                 if let Err(issue) = members.add(
@@ -581,7 +581,7 @@ fn new_typed_dict_internal<'db>(
             }
             DictElement::Star(d) => {
                 NodeRef::new(first.node_ref.file, d.index())
-                    .add_issue(i_s, IssueType::TypedDictInvalidFieldName);
+                    .add_issue(i_s, IssueKind::TypedDictInvalidFieldName);
                 return None;
             }
         };
@@ -604,12 +604,12 @@ fn new_typed_dict_internal<'db>(
 pub(crate) fn infer_typed_dict_total_argument(
     i_s: &InferenceState,
     inf: Inferred,
-    add_issue: impl Fn(IssueType),
+    add_issue: impl Fn(IssueKind),
 ) -> Option<bool> {
     if let Some(total) = inf.maybe_bool_literal(i_s) {
         Some(total)
     } else {
-        add_issue(IssueType::TypedDictTotalMustBeTrueOrFalse);
+        add_issue(IssueKind::TypedDictTotalMustBeTrueOrFalse);
         None
     }
 }
@@ -668,7 +668,7 @@ fn typed_dict_setdefault_internal<'db>(
                 {
                     args.add_issue(
                         i_s,
-                        IssueType::TypedDictSetdefaultWrongDefaultType {
+                        IssueKind::TypedDictSetdefaultWrongDefaultType {
                             got: default.format_short(i_s),
                             expected: member.type_.format_short(i_s.db),
                         },
@@ -745,7 +745,7 @@ fn typed_dict_get_or_pop_internal<'db>(
                 if is_pop && member.required {
                     args.add_issue(
                         i_s,
-                        IssueType::TypedDictKeyCannotBeDeleted {
+                        IssueKind::TypedDictKeyCannotBeDeleted {
                             typed_dict: td.format(&FormatData::new_short(i_s.db)).into(),
                             key: key.into(),
                         },
@@ -756,7 +756,7 @@ fn typed_dict_get_or_pop_internal<'db>(
                 if is_pop {
                     args.add_issue(
                         i_s,
-                        IssueType::TypedDictHasNoKey {
+                        IssueKind::TypedDictHasNoKey {
                             typed_dict: td.format(&FormatData::new_short(i_s.db)).into(),
                             key: key.into(),
                         },
@@ -780,7 +780,7 @@ fn typed_dict_get_or_pop_internal<'db>(
         }
     } else {
         if is_pop {
-            args.add_issue(i_s, IssueType::TypedDictKeysMustBeStringLiteral);
+            args.add_issue(i_s, IssueKind::TypedDictKeysMustBeStringLiteral);
         }
         infer_default(&mut ResultContext::Unknown)?;
         Some(Inferred::from_type(i_s.db.python_state.object_type()))
@@ -883,7 +883,7 @@ fn typed_dict_setitem_internal<'db>(
                 &value,
                 |issue| args.add_issue(i_s, issue),
                 |got, expected| {
-                    Some(IssueType::TypedDictKeySetItemIncompatibleType {
+                    Some(IssueKind::TypedDictKeySetItemIncompatibleType {
                         key: key.into(),
                         got,
                         expected,
@@ -893,7 +893,7 @@ fn typed_dict_setitem_internal<'db>(
         } else {
             args.add_issue(
                 i_s,
-                IssueType::TypedDictHasNoKey {
+                IssueKind::TypedDictHasNoKey {
                     typed_dict: td.format(&FormatData::new_short(i_s.db)).into(),
                     key: key.into(),
                 },
@@ -986,7 +986,7 @@ pub(crate) fn initialize_typed_dict<'db>(
     let mut matcher = Matcher::new_typed_dict_matcher(&typed_dict);
     if let Some(first_arg) = iterator.next().filter(|arg| !arg.is_keyword_argument()) {
         if let Some(next_arg) = iterator.next() {
-            next_arg.add_issue(i_s, IssueType::TypedDictWrongArgumentsInConstructor);
+            next_arg.add_issue(i_s, IssueKind::TypedDictWrongArgumentsInConstructor);
             return Inferred::new_any_from_error();
         }
         first_arg.infer(
@@ -1014,7 +1014,7 @@ pub(crate) fn initialize_typed_dict<'db>(
 pub(crate) fn lookup_on_typed_dict<'a>(
     typed_dict: Rc<TypedDict>,
     i_s: &'a InferenceState,
-    add_issue: impl Fn(IssueType),
+    add_issue: impl Fn(IssueKind),
     name: &str,
     kind: LookupKind,
 ) -> LookupDetails<'a> {
@@ -1044,7 +1044,7 @@ pub(crate) fn infer_typed_dict_item(
     i_s: &InferenceState,
     typed_dict: &TypedDict,
     matcher: &mut Matcher,
-    add_issue: impl Fn(IssueType),
+    add_issue: impl Fn(IssueKind),
     key: &str,
     extra_keys: &mut Vec<String>,
     infer: impl FnOnce(&mut ResultContext) -> Inferred,
@@ -1061,7 +1061,7 @@ pub(crate) fn infer_typed_dict_item(
             &inferred,
             add_issue,
             |got, expected, _: &MismatchReason| {
-                Some(IssueType::TypedDictIncompatibleType {
+                Some(IssueKind::TypedDictIncompatibleType {
                     key: key.into(),
                     got,
                     expected,
@@ -1116,7 +1116,7 @@ pub(crate) fn check_typed_dict_call<'db>(
     if !missing_keys.is_empty() {
         args.add_issue(
             i_s,
-            IssueType::TypedDictMissingKeys {
+            IssueKind::TypedDictMissingKeys {
                 typed_dict: typed_dict
                     .name_or_fallback(&FormatData::new_short(i_s.db))
                     .into(),
@@ -1134,10 +1134,10 @@ pub(crate) fn check_typed_dict_call<'db>(
 pub(crate) fn maybe_add_extra_keys_issue(
     db: &Database,
     typed_dict: &TypedDict,
-    add_issue: impl Fn(IssueType),
+    add_issue: impl Fn(IssueKind),
     mut extra_keys: Vec<String>,
 ) {
-    add_issue(IssueType::TypedDictExtraKey {
+    add_issue(IssueKind::TypedDictExtraKey {
         key: match extra_keys.len() {
             0 => return,
             1 => format!("\"{}\"", extra_keys.remove(0)).into(),

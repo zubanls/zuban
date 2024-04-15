@@ -12,7 +12,7 @@ use crate::{
         ComplexPoint, Database, FileIndex, Locality, Point, PointLink, PointType, Specific,
     },
     debug,
-    diagnostics::IssueType,
+    diagnostics::IssueKind,
     getitem::SliceType,
     imports::{find_ancestor, global_import, python_import, ImportResult},
     inference_state::InferenceState,
@@ -242,7 +242,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     &import_inferred,
                     |issue| from.add_issue(self.i_s, issue),
                     |got, expected| {
-                        Some(IssueType::IncompatibleImportAssignment {
+                        Some(IssueKind::IncompatibleImportAssignment {
                             name: name_def.as_code().into(),
                             got,
                             expected,
@@ -261,7 +261,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let maybe_level_file = (level > 0)
             .then(|| {
                 find_ancestor(self.i_s.db, self.file, level).or_else(|| {
-                    self.add_issue(imp.index(), IssueType::NoParentModule);
+                    self.add_issue(imp.index(), IssueKind::NoParentModule);
                     None
                 })
             })
@@ -303,7 +303,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             LookupResult::None => {
                                 self.add_issue(
                                     import_name.index(),
-                                    IssueType::ImportAttributeError {
+                                    IssueKind::ImportAttributeError {
                                         module_name: Box::from(imp.qualified_name(self.i_s.db)),
                                         name: Box::from(import_name.as_str()),
                                     },
@@ -367,7 +367,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             None => {
                 self.add_issue(
                     name.index(),
-                    IssueType::ModuleNotFound {
+                    IssueKind::ModuleNotFound {
                         module_name: Box::from(name.as_str()),
                     },
                 );
@@ -437,7 +437,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             } else {
                 let module_name =
                     format!("{}.{}", import_result.qualified_name(i_s.db), name.as_str()).into();
-                self_.add_issue(name.index(), IssueType::ModuleNotFound { module_name });
+                self_.add_issue(name.index(), IssueKind::ModuleNotFound { module_name });
             }
             result
         };
@@ -525,7 +525,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                 }
             }
-            Some(IssueType::IncompatibleAssignment { got, expected })
+            Some(IssueKind::IncompatibleAssignment { got, expected })
         };
         expected.error_if_not_matches(
             self.i_s,
@@ -652,7 +652,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         } else {
                             self.add_issue(
                                 annotation.index(),
-                                IssueType::FinalWithoutInitializerAndType,
+                                IssueKind::FinalWithoutInitializerAndType,
                             );
                             (Inferred::new_any_from_error(), annotation.index())
                         };
@@ -760,7 +760,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         &inf,
                         |issue| from.add_issue(i_s, issue),
                         |got, expected| {
-                            Some(IssueType::IncompatibleTypes {
+                            Some(IssueKind::IncompatibleTypes {
                                 cause: "\"yield\"",
                                 got,
                                 expected,
@@ -782,7 +782,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     &|_| {
                         from.add_issue(
                             i_s,
-                            IssueType::YieldFromCannotBeApplied {
+                            IssueKind::YieldFromCannotBeApplied {
                                 to: expr_result.format_short(i_s),
                             },
                         )
@@ -800,7 +800,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     &yields,
                     |issue| from.add_issue(i_s, issue),
                     |got, expected| {
-                        Some(IssueType::IncompatibleTypes {
+                        Some(IssueKind::IncompatibleTypes {
                             cause: "\"yield from\"",
                             got,
                             expected,
@@ -814,7 +814,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         Inferred::from_type(return_type)
                     } else {
                         if result_context.expect_not_none(i_s) {
-                            from.add_issue(i_s, IssueType::DoesNotReturnAValue("Function".into()));
+                            from.add_issue(i_s, IssueKind::DoesNotReturnAValue("Function".into()));
                             Inferred::new_any_from_error()
                         } else {
                             Inferred::new_none()
@@ -831,7 +831,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     .is_simple_super_type_of(i_s, &Type::None)
                     .bool()
                 {
-                    from.add_issue(i_s, IssueType::YieldValueExpected);
+                    from.add_issue(i_s, IssueKind::YieldValueExpected);
                 }
             }
         }
@@ -933,7 +933,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 value,
                                 |issue| from.add_issue(i_s, issue),
                                 |got, expected| {
-                                    Some(IssueType::IncompatibleAssignment { got, expected })
+                                    Some(IssueKind::IncompatibleAssignment { got, expected })
                                 },
                             );
                         };
@@ -966,7 +966,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 {
                     self.add_issue(
                         name_def.index(),
-                        IssueType::NeedTypeAnnotation {
+                        IssueKind::NeedTypeAnnotation {
                             for_: name_def.as_code().into(),
                             hint: "Optional[<type>]",
                         },
@@ -999,7 +999,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                 } else {
                     if matches!(assign_kind, AssignKind::Annotation) {
-                        self.add_issue(primary_target.index(), IssueType::InvalidTypeDeclaration);
+                        self.add_issue(primary_target.index(), IssueKind::InvalidTypeDeclaration);
                     }
                     if matches!(assign_kind, AssignKind::Normal) {
                         self.save_narrowed_primary_target(
@@ -1022,7 +1022,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         let property_is_read_only = |class_name| {
                             from.add_issue(
                                 i_s,
-                                IssueType::PropertyIsReadOnly {
+                                IssueKind::PropertyIsReadOnly {
                                     class_name,
                                     property_name: name_definition.as_code().into(),
                                 },
@@ -1064,7 +1064,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 .into_maybe_inferred()
                                 .map(|inf| {
                                     if inf.as_cow_type(i_s).is_func_or_overload_not_any_callable() {
-                                        from.add_issue(i_s, IssueType::CannotAssignToAMethod);
+                                        from.add_issue(i_s, IssueKind::CannotAssignToAMethod);
                                     }
                                     inf
                                 })
@@ -1094,7 +1094,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             value,
                             |issue| from.add_issue(i_s, issue),
                             |got, expected| {
-                                Some(IssueType::IncompatibleAssignment { got, expected })
+                                Some(IssueKind::IncompatibleAssignment { got, expected })
                             },
                         );
                     }
@@ -1105,7 +1105,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             Target::IndexExpression(primary_target) => {
                 let base = self.infer_primary_target_or_atom(primary_target.first());
                 if matches!(assign_kind, AssignKind::Annotation) {
-                    self.add_issue(primary_target.index(), IssueType::UnexpectedTypeDeclaration);
+                    self.add_issue(primary_target.index(), IssueKind::UnexpectedTypeDeclaration);
                 }
                 let PrimaryContent::GetItem(slice_type) = primary_target.second() else {
                     unreachable!();
@@ -1136,7 +1136,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     .iter_with_unpacked_unions(self.i_s.db)
                 {
                     if union_part == &self.i_s.db.python_state.str_type() {
-                        value_node_ref.add_issue(self.i_s, IssueType::UnpackingAStringIsDisallowed)
+                        value_node_ref.add_issue(self.i_s, IssueKind::UnpackingAStringIsDisallowed)
                     }
                     let value_iterator = union_part.iter(self.i_s, value_node_ref);
                     match value_iterator {
@@ -1203,9 +1203,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     value_node_ref.add_issue(
                         self.i_s,
                         if actual < expected {
-                            IssueType::TooFewValuesToUnpack { actual, expected }
+                            IssueKind::TooFewValuesToUnpack { actual, expected }
                         } else {
-                            IssueType::TooManyValuesToUnpack { actual, expected }
+                            IssueKind::TooManyValuesToUnpack { actual, expected }
                         },
                     );
                     true
@@ -1213,7 +1213,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 (WithStar { before, after }, FixedLen(actual)) if before + after > actual => {
                     value_node_ref.add_issue(
                         self.i_s,
-                        IssueType::TooFewValuesToUnpack {
+                        IssueKind::TooFewValuesToUnpack {
                             actual,
                             expected: before + after,
                         },
@@ -1232,14 +1232,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 ) if before1 > before2 || after1 > after2 => {
                     value_node_ref.add_issue(
                         self.i_s,
-                        IssueType::TooManyAssignmentTargetsForVariadicUnpack,
+                        IssueKind::TooManyAssignmentTargetsForVariadicUnpack,
                     );
                     true
                 }
                 (FixedLen(expected), WithStar { before, after }) => {
                     value_node_ref.add_issue(
                         self.i_s,
-                        IssueType::VariadicTupleUnpackingRequiresStarTarget,
+                        IssueKind::VariadicTupleUnpackingRequiresStarTarget,
                     );
                     true
                 }
@@ -1258,7 +1258,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 .unwrap();
             self.add_issue(
                 star_target.index(),
-                IssueType::MultipleStarredExpressionsInAssignment,
+                IssueKind::MultipleStarredExpressionsInAssignment,
             );
         }
 
@@ -1326,7 +1326,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
             }
             StarExpressionContent::StarExpression(expr) => {
-                self.add_issue(expr.index(), IssueType::StarredExpressionOnlyNoTarget);
+                self.add_issue(expr.index(), IssueKind::StarredExpressionOnlyNoTarget);
                 Inferred::new_any_from_error()
             }
             StarExpressionContent::Tuple(tuple) => self
@@ -1387,7 +1387,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             if t.has_any(self.i_s) {
                 self.add_issue(
                     expr.index(),
-                    IssueType::DisallowedAnyExpr {
+                    IssueKind::DisallowedAnyExpr {
                         type_: t.format_short(self.i_s.db),
                     },
                 );
@@ -1495,7 +1495,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         let got = type_.format_short(self.i_s.db);
                         node_ref.add_issue(
                             self.i_s,
-                            IssueType::UnsupportedOperandForUnary { operand, got },
+                            IssueKind::UnsupportedOperandForUnary { operand, got },
                         )
                     },
                 )
@@ -1518,11 +1518,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             result_context.expect_not_none(self.i_s),
                         )
                     } else {
-                        from.add_issue(self.i_s, IssueType::AwaitOutsideCoroutine);
+                        from.add_issue(self.i_s, IssueKind::AwaitOutsideCoroutine);
                         Inferred::new_any_from_error()
                     }
                 } else {
-                    from.add_issue(self.i_s, IssueType::AwaitOutsideFunction);
+                    from.add_issue(self.i_s, IssueKind::AwaitOutsideFunction);
                     Inferred::new_any_from_error()
                 }
             }
@@ -1584,7 +1584,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             let right = r_type.format_short(i_s.db);
                             from.add_issue(
                                 i_s,
-                                IssueType::UnsupportedOperand {
+                                IssueKind::UnsupportedOperand {
                                     operand: Box::from("in"),
                                     left: types.got.as_string(i_s.db).into(),
                                     right,
@@ -1603,7 +1603,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             &|issue| from.add_issue(self.i_s, issue),
                             &|_| {
                                 let right = right_inf.format_short(self.i_s);
-                                from.add_issue(self.i_s, IssueType::UnsupportedIn { right })
+                                from.add_issue(self.i_s, IssueKind::UnsupportedIn { right })
                             },
                         )
                         .into_inferred()
@@ -1621,7 +1621,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             &left_inf,
                             |issue| from.add_issue(self.i_s, issue),
                             |got, _| {
-                                Some(IssueType::UnsupportedOperand {
+                                Some(IssueKind::UnsupportedOperand {
                                     operand: Box::from("in"),
                                     left: got,
                                     right: r_type.format_short(self.i_s.db),
@@ -1690,7 +1690,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             )
                             .bool()
                             {
-                                self.add_issue(lambda.index(), IssueType::CannotInferLambdaParams);
+                                self.add_issue(lambda.index(), IssueKind::CannotInferLambdaParams);
                                 c.params = CallableParams::Simple(params.into());
                             }
                         }
@@ -1851,12 +1851,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 && (right_op_method.is_none()
                                     || matches!(strategy, LookupStrategy::ShortCircuit))
                             {
-                                IssueType::UnsupportedLeftOperand {
+                                IssueKind::UnsupportedLeftOperand {
                                     operand: Box::from(op_infos.operand),
                                     left: l_type.format_short(i_s.db),
                                 }
                             } else {
-                                IssueType::UnsupportedOperand {
+                                IssueKind::UnsupportedOperand {
                                     operand: Box::from(op_infos.operand),
                                     left: l_type.format_short(i_s.db),
                                     right: r_type.format_short(i_s.db),
@@ -1882,7 +1882,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 .into(),
                 (true, true) => Box::from("Both left and right operands are unions"),
             };
-            from.add_issue(self.i_s, IssueType::Note(note));
+            from.add_issue(self.i_s, IssueKind::Note(note));
         }
         debug!(
             "Operation between {} and {} results in {}",
@@ -2275,7 +2275,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     // TODO check star imports
                     self.add_issue(
                         name.index(),
-                        IssueType::NameError {
+                        IssueKind::NameError {
                             name: Box::from(name.as_str()),
                         },
                     );
@@ -2290,7 +2290,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         // TODO what about underscore or other vars?
                         self.add_issue(
                             name.index(),
-                            IssueType::Note(
+                            IssueKind::Note(
                                 format!(
                                     "Did you forget to import it from \"typing\"? \
                              (Suggestion: \"from typing import {name_str}\")",
@@ -2669,7 +2669,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 } else {
                     self.add_issue(
                         expr.index(),
-                        IssueType::DictComprehensionMismatch {
+                        IssueKind::DictComprehensionMismatch {
                             part,
                             got: t.format_short(i_s.db),
                             expected: expected_t.format_short(i_s.db),
@@ -2693,7 +2693,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         &mut self,
         result_context: &mut ResultContext,
         class: NodeRef,
-        mut on_mismatch: impl FnMut(Box<str>, Box<str>) -> IssueType,
+        mut on_mismatch: impl FnMut(Box<str>, Box<str>) -> IssueKind,
         comp: Comprehension,
     ) -> Type {
         let i_s = self.i_s;
@@ -2733,7 +2733,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let t = self.infer_comprehension_expr_with_context(
             result_context,
             self.i_s.db.python_state.list_node_ref(),
-            |got, expected| IssueType::ListComprehensionMismatch { got, expected },
+            |got, expected| IssueKind::ListComprehensionMismatch { got, expected },
             comp,
         );
         Inferred::from_type(new_class!(
@@ -2750,7 +2750,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let t = self.infer_comprehension_expr_with_context(
             result_context,
             self.i_s.db.python_state.set_node_ref(),
-            |got, expected| IssueType::SetComprehensionMismatch { got, expected },
+            |got, expected| IssueKind::SetComprehensionMismatch { got, expected },
             comp,
         );
         Inferred::from_type(new_class!(
@@ -2767,7 +2767,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let t = self.infer_comprehension_expr_with_context(
             result_context,
             self.i_s.db.python_state.generator_node_ref(),
-            |got, expected| IssueType::GeneratorComprehensionMismatch { got, expected },
+            |got, expected| IssueKind::GeneratorComprehensionMismatch { got, expected },
             comp,
         );
         Inferred::from_type(new_class!(
@@ -2778,7 +2778,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         ))
     }
 
-    pub(crate) fn add_issue(&self, node_index: NodeIndex, issue: IssueType) {
+    pub(crate) fn add_issue(&self, node_index: NodeIndex, issue: IssueKind) {
         let from = NodeRef::new(self.file, node_index);
         from.add_issue(self.i_s, issue);
     }
@@ -2952,7 +2952,7 @@ pub fn await_(
         inf.type_lookup_and_execute(i_s, from, "__await__", &NoArgs::new(from), &|t| {
             from.add_issue(
                 i_s,
-                IssueType::IncompatibleTypes {
+                IssueKind::IncompatibleTypes {
                     cause: no_lookup_cause,
                     got: t.format_short(i_s.db),
                     expected: "Awaitable[Any]".into(),
@@ -2966,7 +2966,7 @@ pub fn await_(
         FLOW_ANALYSIS.with(|fa| fa.mark_current_frame_unreachable())
     }
     if expect_not_none && matches!(t, Type::None) {
-        from.add_issue(i_s, IssueType::DoesNotReturnAValue("Function".into()));
+        from.add_issue(i_s, IssueKind::DoesNotReturnAValue("Function".into()));
         Inferred::new_any_from_error()
     } else {
         Inferred::from_type(t)

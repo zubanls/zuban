@@ -27,7 +27,7 @@ use crate::{
     arguments::{Arg, ArgKind, InferredArg},
     database::{Database, PointLink},
     debug,
-    diagnostics::IssueType,
+    diagnostics::IssueKind,
     inference_state::InferenceState,
     type_::{
         match_tuple_type_arguments, AnyCause, CallableContent, CallableParam, CallableParams,
@@ -666,7 +666,7 @@ impl<'a> Matcher<'a> {
         usage: &ParamSpecUsage,
         args: Box<[Arg<'db, 'b>]>,
         func_or_callable: FunctionOrCallable,
-        add_issue: &dyn Fn(IssueType),
+        add_issue: &dyn Fn(IssueKind),
         on_type_error: Option<OnTypeError>,
     ) -> SignatureMatch {
         let func_class = self.func_or_callable.and_then(|f| f.class());
