@@ -15,7 +15,7 @@ use crate::{
 };
 
 #[derive(PartialEq, Debug)]
-enum NameBinderType {
+enum NameBinderKind {
     Global,
     Function { is_async: bool },
     Class,
@@ -45,7 +45,7 @@ struct UnresolvedClass<'db> {
 pub(crate) struct NameBinder<'db> {
     mypy_compatible: bool,
     tree: &'db Tree,
-    type_: NameBinderType,
+    kind: NameBinderKind,
     scope_node: NodeIndex,
     symbol_table: SymbolTable,
     points: &'db Points,
@@ -67,7 +67,7 @@ impl<'db> NameBinder<'db> {
     fn new(
         mypy_compatible: bool,
         tree: &'db Tree,
-        type_: NameBinderType,
+        kind: NameBinderKind,
         scope_node: NodeIndex,
         points: &'db Points,
         complex_points: &'db ComplexValues,
@@ -79,7 +79,7 @@ impl<'db> NameBinder<'db> {
         Self {
             mypy_compatible,
             tree,
-            type_,
+            kind,
             scope_node,
             points,
             complex_points,
@@ -110,7 +110,7 @@ impl<'db> NameBinder<'db> {
         let mut binder = NameBinder::new(
             mypy_compatible,
             tree,
-            NameBinderType::Global,
+            NameBinderKind::Global,
             0,
             points,
             complex_points,
@@ -164,14 +164,14 @@ impl<'db> NameBinder<'db> {
 
     fn with_nested(
         &mut self,
-        type_: NameBinderType,
+        kind: NameBinderKind,
         scope_node: NodeIndex,
         func: impl FnOnce(&mut NameBinder<'db>),
     ) -> SymbolTable {
         let mut name_binder = NameBinder::new(
             self.mypy_compatible,
             self.tree,
-            type_,
+            kind,
             scope_node,
             self.points,
             self.complex_points,
@@ -224,7 +224,7 @@ impl<'db> NameBinder<'db> {
     }
 
     fn add_new_walrus_definition(&mut self, name_def: NameDefinition<'db>) {
-        if matches!(self.type_, NameBinderType::Comprehension) {
+        if matches!(self.kind, NameBinderKind::Comprehension) {
             // Walrus `:=` operators are available outside of comprehensions and therefore need to
             // be added to the parent.
             unsafe { &mut *self.parent.unwrap() }.add_new_walrus_definition(name_def)
@@ -265,8 +265,11 @@ impl<'db> NameBinder<'db> {
         self.points.set(name_def.index(), point);
     }
 
-    fn add_point_definition(&mut self, name_def: NameDefinition<'db>, type_: Specific) {
-        self.add_new_definition(name_def, Point::new_simple_specific(type_, Locality::Stmt));
+    fn add_point_definition(&mut self, name_def: NameDefinition<'db>, specific: Specific) {
+        self.add_new_definition(
+            name_def,
+            Point::new_simple_specific(specific, Locality::Stmt),
+        );
     }
 
     fn add_redirect_definition(&mut self, name_def: NameDefinition<'db>, node_index: NodeIndex) {
@@ -399,7 +402,7 @@ impl<'db> NameBinder<'db> {
     }
 
     fn close(&mut self) {
-        if self.type_ != NameBinderType::Class {
+        if self.kind != NameBinderKind::Class {
             while let Some(n) = self.unresolved_nodes.pop() {
                 match n {
                     Unresolved::Name(name) => {
@@ -413,13 +416,13 @@ impl<'db> NameBinder<'db> {
                         is_async,
                     } => {
                         let symbol_table = self.with_nested(
-                            NameBinderType::Function { is_async },
+                            NameBinderKind::Function { is_async },
                             func.index(),
                             |binder| binder.index_function_body(func, is_method),
                         );
                     }
                     Unresolved::Lambda(lambda) => {
-                        self.with_nested(NameBinderType::Lambda, lambda.index(), |binder| {
+                        self.with_nested(NameBinderKind::Lambda, lambda.index(), |binder| {
                             binder.index_lambda(lambda)
                         });
                     }
@@ -619,7 +622,7 @@ impl<'db> NameBinder<'db> {
     fn index_class(&mut self, class_def: ClassDef<'db>, is_decorated: bool) {
         let self_symbol_table = SymbolTable::default();
         let class_symbol_table =
-            self.with_nested(NameBinderType::Class, class_def.index(), |binder| {
+            self.with_nested(NameBinderKind::Class, class_def.index(), |binder| {
                 let (arguments, block) = class_def.unpack();
                 if let Some(arguments) = arguments {
                     binder.index_non_block_node(&arguments, true);
@@ -629,10 +632,10 @@ impl<'db> NameBinder<'db> {
         self.unresolved_class_self_vars.push(UnresolvedClass {
             class_def,
             class_symbol_table,
-            parent_scope: match self.type_ {
-                NameBinderType::Global => ParentScope::Module,
-                NameBinderType::Class => ParentScope::Class(self.scope_node),
-                NameBinderType::Function { .. } => ParentScope::Function(self.scope_node),
+            parent_scope: match self.kind {
+                NameBinderKind::Global => ParentScope::Module,
+                NameBinderKind::Class => ParentScope::Class(self.scope_node),
+                NameBinderKind::Function { .. } => ParentScope::Function(self.scope_node),
                 _ => unreachable!(),
             },
         });
@@ -764,12 +767,12 @@ impl<'db> NameBinder<'db> {
                         true => "yield from",
                         false => "yield",
                     };
-                    match self.type_ {
-                        NameBinderType::Function { is_async: true } if is_yield_from => {
+                    match self.kind {
+                        NameBinderKind::Function { is_async: true } if is_yield_from => {
                             self.add_issue(n.index(), IssueType::YieldFromInAsyncFunction)
                         }
-                        NameBinderType::Function { .. } => (),
-                        NameBinderType::Comprehension => self.add_issue(
+                        NameBinderKind::Function { .. } => (),
+                        NameBinderKind::Comprehension => self.add_issue(
                             n.index(),
                             IssueType::YieldOrYieldFromInsideComprehension { keyword },
                         ),
@@ -778,7 +781,7 @@ impl<'db> NameBinder<'db> {
                     self.index_return_or_yield(&mut latest_return_or_yield, n.index());
                 }
                 InterestingNode::ReturnStmt(n) => {
-                    if !matches!(self.type_, NameBinderType::Function { .. }) {
+                    if !matches!(self.kind, NameBinderKind::Function { .. }) {
                         self.add_issue(
                             n.index(),
                             IssueType::StmtOutsideFunction { keyword: "return" },
@@ -870,7 +873,7 @@ impl<'db> NameBinder<'db> {
             }
         };
         // TODO this is not exactly correct for named expressions and their scopes.
-        self.with_nested(NameBinderType::Comprehension, clause.index(), |binder| {
+        self.with_nested(NameBinderKind::Comprehension, clause.index(), |binder| {
             binder.index_non_block_node(&targets, true);
             for if_ in ifs {
                 binder.index_non_block_node(&if_, true);
@@ -895,7 +898,7 @@ impl<'db> NameBinder<'db> {
         // now we just do.
         self.unresolved_nodes.push(Unresolved::FunctionDef {
             func,
-            is_method: self.type_ == NameBinderType::Class,
+            is_method: self.kind == NameBinderKind::Class,
             is_async,
         });
 
@@ -923,7 +926,7 @@ impl<'db> NameBinder<'db> {
         self.points.set(
             func.index(),
             Point::new_simple_specific(
-                if !matches!(self.type_, NameBinderType::Function { .. })
+                if !matches!(self.kind, NameBinderKind::Function { .. })
                     || return_annotation.is_some()
                 {
                     if is_decorated {
@@ -991,7 +994,7 @@ impl<'db> NameBinder<'db> {
 
     #[inline]
     fn maybe_add_reference(&mut self, name: Name<'db>, ordered: bool, needs_flow_analysis: bool) {
-        if !ordered || self.mypy_compatible && self.type_ != NameBinderType::Class {
+        if !ordered || self.mypy_compatible && self.kind != NameBinderKind::Class {
             self.unordered_references.push((needs_flow_analysis, name));
         } else if !self.try_to_process_reference(name, needs_flow_analysis) {
             self.names_to_be_resolved_in_parent.push(name);
