@@ -36,6 +36,12 @@ enum Unresolved<'db> {
     Name(Name<'db>),
 }
 
+struct UnresolvedClass<'db> {
+    class_def: ClassDef<'db>,
+    parent_scope: ParentScope,
+    class_symbol_table: SymbolTable,
+}
+
 pub(crate) struct NameBinder<'db> {
     mypy_compatible: bool,
     tree: &'db Tree,
@@ -49,7 +55,7 @@ pub(crate) struct NameBinder<'db> {
     unordered_references: Vec<(bool, Name<'db>)>,
     unresolved_nodes: Vec<Unresolved<'db>>,
     names_to_be_resolved_in_parent: Vec<Name<'db>>,
-    unresolved_self_vars: Vec<ClassDef<'db>>,
+    unresolved_class_self_vars: Vec<UnresolvedClass<'db>>,
     annotation_names: Vec<Name<'db>>,
     file_index: FileIndex,
     references_need_flow_analysis: bool,
@@ -83,7 +89,7 @@ impl<'db> NameBinder<'db> {
             unordered_references: vec![],
             unresolved_nodes: vec![],
             names_to_be_resolved_in_parent: vec![],
-            unresolved_self_vars: vec![],
+            unresolved_class_self_vars: vec![],
             annotation_names: vec![],
             references_need_flow_analysis: false,
             file_index,
@@ -115,9 +121,35 @@ impl<'db> NameBinder<'db> {
         );
         func(&mut binder);
         binder.close();
-        while let Some(class_def) = binder.unresolved_self_vars.pop() {
-            binder.index_self_vars(class_def);
+
+        // At the end of
+        while let Some(unresolved_class) = binder.unresolved_class_self_vars.pop() {
+            let self_symbol_table = binder.index_self_vars(unresolved_class.class_def);
+            let mut slots = None;
+            if let Some(slots_index) = unresolved_class
+                .class_symbol_table
+                .lookup_symbol("__slots__")
+            {
+                if let Some(assignment) =
+                    Name::by_index(tree, slots_index).maybe_assignment_definition_name()
+                {
+                    slots = gather_slots(file_index, assignment);
+                }
+            }
+            binder.complex_points.insert(
+                binder.points,
+                unresolved_class.class_def.index(),
+                ComplexPoint::Class(Box::new(ClassStorage {
+                    class_symbol_table: unresolved_class.class_symbol_table,
+                    self_symbol_table,
+                    parent_scope: unresolved_class.parent_scope,
+                    promote_to: Default::default(),
+                    slots,
+                })),
+                Locality::File,
+            );
         }
+        // Annotation names are also und
         for annotation_name in &binder.annotation_names {
             binder.try_to_process_reference(*annotation_name, false);
         }
@@ -148,11 +180,12 @@ impl<'db> NameBinder<'db> {
             unresolved_nodes,
             names_to_be_resolved_in_parent,
             annotation_names,
-            unresolved_self_vars,
+            unresolved_class_self_vars,
             symbol_table,
             ..
         } = name_binder;
-        self.unresolved_self_vars.extend(unresolved_self_vars);
+        self.unresolved_class_self_vars
+            .extend(unresolved_class_self_vars);
         self.unresolved_nodes.extend(
             names_to_be_resolved_in_parent
                 .into_iter()
@@ -568,41 +601,26 @@ impl<'db> NameBinder<'db> {
         self.merge_latest_return_or_yield(latest1, latest2)
     }
 
-    fn index_class(&mut self, class: ClassDef<'db>, is_decorated: bool) {
+    fn index_class(&mut self, class_def: ClassDef<'db>, is_decorated: bool) {
         let self_symbol_table = SymbolTable::default();
-        let class_symbol_table = self.with_nested(NameBinderType::Class, class.index(), |binder| {
-            let (arguments, block) = class.unpack();
-            if let Some(arguments) = arguments {
-                binder.index_non_block_node(&arguments, true);
-            }
-            binder.index_block(block, true);
+        let class_symbol_table =
+            self.with_nested(NameBinderType::Class, class_def.index(), |binder| {
+                let (arguments, block) = class_def.unpack();
+                if let Some(arguments) = arguments {
+                    binder.index_non_block_node(&arguments, true);
+                }
+                binder.index_block(block, true);
+            });
+        self.unresolved_class_self_vars.push(UnresolvedClass {
+            class_def,
+            class_symbol_table,
+            parent_scope: match self.type_ {
+                NameBinderType::Global => ParentScope::Module,
+                NameBinderType::Class => ParentScope::Class(self.scope_node),
+                NameBinderType::Function { .. } => ParentScope::Function(self.scope_node),
+                _ => unreachable!(),
+            },
         });
-        self.unresolved_self_vars.push(class);
-        let mut slots = None;
-        if let Some(slots_index) = class_symbol_table.lookup_symbol("__slots__") {
-            if let Some(assignment) =
-                Name::by_index(self.tree, slots_index).maybe_assignment_definition_name()
-            {
-                slots = gather_slots(self.file_index, assignment);
-            }
-        }
-        self.complex_points.insert(
-            self.points,
-            class.index(),
-            ComplexPoint::Class(Box::new(ClassStorage {
-                class_symbol_table,
-                self_symbol_table,
-                parent_scope: match self.type_ {
-                    NameBinderType::Global => ParentScope::Module,
-                    NameBinderType::Class => ParentScope::Class(self.scope_node),
-                    NameBinderType::Function { .. } => ParentScope::Function(self.scope_node),
-                    _ => unreachable!(),
-                },
-                promote_to: Default::default(),
-                slots,
-            })),
-            Locality::File,
-        );
         // Need to first index the class, because the class body does not have access to
         // the class name.
         /*
@@ -614,24 +632,19 @@ impl<'db> NameBinder<'db> {
             );
         } else {
         */
-        self.add_new_definition(class.name_definition(), Point::new_uncalculated());
+        self.add_new_definition(class_def.name_definition(), Point::new_uncalculated());
         //}
     }
 
-    fn index_self_vars(&mut self, class: ClassDef<'db>) {
-        let symbol_table = match self
-            .complex_points
-            .get(self.points.get(class.index()).complex_index())
-        {
-            ComplexPoint::Class(storage) => &storage.self_symbol_table,
-            _ => unreachable!(),
-        };
+    fn index_self_vars(&mut self, class: ClassDef<'db>) -> SymbolTable {
+        let mut symbol_table = SymbolTable::default();
         for (self_name, name) in class.search_potential_self_assignments() {
             if self.is_self_param(self_name) {
                 // TODO shouldn't this be multi definitions as well?
                 symbol_table.add_or_replace_symbol(name);
             }
         }
+        symbol_table
     }
 
     fn is_self_param(&self, name: Name<'db>) -> bool {
