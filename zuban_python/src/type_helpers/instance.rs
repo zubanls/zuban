@@ -459,7 +459,7 @@ impl<'a> Instance<'a> {
             &self.class.class_storage.class_symbol_table,
             &self.class.class_storage.self_symbol_table,
         ] {
-            for (name, _) in unsafe { table.iter_on_finished_table() } {
+            for (name, _) in table.iter_on_finished_table() {
                 callable(name)
             }
         }

@@ -121,46 +121,6 @@ impl<T: ?Sized + Unpin> std::ops::IndexMut<usize> for InsertOnlyVec<T> {
     }
 }
 
-impl<K: Eq + Hash, V: fmt::Debug + Clone> InsertOnlyHashMap<K, V> {
-    // unsafe, because the vec might be changed during its use.
-    pub fn get(&self, key: &K) -> Option<V> {
-        unsafe { &*self.map.get() }.get(key).cloned()
-    }
-
-    pub fn len(&self) -> usize {
-        let map = unsafe { &mut *self.map.get() };
-        map.len()
-    }
-
-    pub fn insert(&self, key: K, value: V) -> Option<V> {
-        let map = unsafe { &mut *self.map.get() };
-        map.insert(key, value)
-    }
-
-    unsafe fn iter(&self) -> impl Iterator<Item = (&K, &V)> {
-        let map = &mut *self.map.get();
-        map.iter()
-    }
-}
-
-impl<K, V> Default for InsertOnlyHashMap<K, V> {
-    fn default() -> Self {
-        Self {
-            map: UnsafeCell::new(HashMap::new()),
-        }
-    }
-}
-
-impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for InsertOnlyHashMap<K, V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        unsafe { &*self.map.get() }.fmt(f)
-    }
-}
-
-pub struct InsertOnlyHashMap<K, V> {
-    map: UnsafeCell<HashMap<K, V>>,
-}
-
 pub struct HashableRawStr {
     ptr: *const str,
 }
@@ -202,11 +162,11 @@ pub struct SymbolTable {
     // The name symbol table comes from compiler theory, it's basically a mapping of a name to a
     // pointer. To avoid wasting space, we don't use a pointer here, instead we use the node index,
     // which acts as one.
-    symbols: InsertOnlyHashMap<HashableRawStr, NodeIndex>,
+    symbols: HashMap<HashableRawStr, NodeIndex>,
 }
 
 impl SymbolTable {
-    pub unsafe fn iter_on_finished_table(&self) -> impl Iterator<Item = (&str, &NodeIndex)> {
+    pub fn iter_on_finished_table(&self) -> impl Iterator<Item = (&str, &NodeIndex)> {
         // This should only ever be called on a table that is not still mutated.
         self.symbols.iter().map(|(k, v)| (k.as_str(), v))
     }
@@ -221,12 +181,7 @@ impl SymbolTable {
     }
 
     pub fn lookup_symbol(&self, name: &str) -> Option<NodeIndex> {
-        self.symbols.get(&HashableRawStr::new(name))
-    }
-
-    pub fn replace_table(&self, new: SymbolTable) {
-        let map = unsafe { &mut *self.symbols.map.get() };
-        *map = new.symbols.map.into_inner();
+        self.symbols.get(&HashableRawStr::new(name)).copied()
     }
 }
 

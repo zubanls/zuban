@@ -575,7 +575,7 @@ impl<'db> Inference<'db, '_, '_> {
             &c.class_storage.class_symbol_table,
             &c.class_storage.self_symbol_table,
         ] {
-            for (name, index) in unsafe { table.iter_on_finished_table() } {
+            for (name, index) in table.iter_on_finished_table() {
                 if ["__init__", "__new__", "__init_subclass__", "__slots__"].contains(&name)
                     || is_private(name)
                 {
@@ -678,9 +678,7 @@ impl<'db> Inference<'db, '_, '_> {
             }
         }
         if matches!(class_infos.class_kind, ClassKind::Protocol) {
-            for (name, name_index) in
-                unsafe { c.class_storage.self_symbol_table.iter_on_finished_table() }
-            {
+            for (name, name_index) in c.class_storage.self_symbol_table.iter_on_finished_table() {
                 if c.class_storage
                     .class_symbol_table
                     .lookup_symbol(name)
