@@ -15,6 +15,13 @@ testCanCreateClassWithFunctionBasedTypedDictBase
 testTypeVarTupleInvariant
 testOverrideDecoratedProperty
 testInitTypedDictFromType
+testInitTypedDictFromTypeGeneric
+testUnpackNewSyntaxInvalidCallableAlias
+testYieldFromUnionOfGenerators
+testYieldFromInvalidUnionReturn
+testYieldFromUnionOfGeneratorWithIterableStr
+testYieldIteratorReturn
+testAliasToCallableWithUnpackInvalid
 
 # 3.12 type var syntax
 test695TypeAlias
