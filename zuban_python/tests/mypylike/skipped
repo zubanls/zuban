@@ -1254,6 +1254,7 @@ testIntentionallyEmptyGeneratorFunction
 testIntentionallyEmptyGeneratorFunction_None
 # "Function "property_decorator_missing" could always be true in boolean context"
 testUnreachableFlagMiscTestCaseMissingMethod
+testWalrus
 
 # None late binding, because it's None (x = None; x = 3)
 testLocalPartialTypesWithInheritance3
@@ -1358,7 +1359,6 @@ testGenericTypedDictAlias
 testCheckDisallowAnyGenericsStubOnly
 
 # Walrus tests
-testWalrus
 testWalrusRedefined
 testWalrusAssignmentEmptyCollection
 # "Assignment expression within a comprehension cannot be used in a class body"
