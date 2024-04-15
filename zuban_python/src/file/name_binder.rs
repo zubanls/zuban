@@ -4,7 +4,7 @@ use parsa_python_ast::*;
 
 use crate::{
     database::{
-        ClassStorage, ComplexPoint, FileIndex, Locality, ParentScope, Point, PointType, Points,
+        ClassStorage, ComplexPoint, FileIndex, Locality, ParentScope, Point, PointKind, Points,
         Specific,
     },
     debug,
@@ -238,7 +238,7 @@ impl<'db> NameBinder<'db> {
             loop {
                 let point = self.points.get(latest_name_index);
                 if point.calculated()
-                    && point.type_() == PointType::MultiDefinition
+                    && point.kind() == PointKind::MultiDefinition
                     && point.node_index() > first
                 {
                     debug_assert_ne!(latest_name_index, point.node_index());
@@ -667,14 +667,14 @@ impl<'db> NameBinder<'db> {
 
     fn is_self_param(&self, name: Name<'db>) -> bool {
         let point = self.points.get(name.index());
-        if point.calculated() && point.type_() == PointType::Redirect {
+        if point.calculated() && point.kind() == PointKind::Redirect {
             let param_index = point.node_index();
             // Points to the name and not the name definition, therefore check that.
             // It should be safe to check the index before, because the name binder only ever
             // redirects to ame definitions.
             let param_point = self.points.get(param_index - 1);
             if param_point.calculated()
-                && param_point.type_() == PointType::Specific
+                && param_point.kind() == PointKind::Specific
                 && param_point.specific() == Specific::MaybeSelfParam
             {
                 return true;

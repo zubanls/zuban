@@ -9,7 +9,7 @@ use super::{
 use crate::{
     arguments::{KnownArgs, NoArgs, SimpleArgs},
     database::{
-        ComplexPoint, Database, FileIndex, Locality, Point, PointLink, PointType, Specific,
+        ComplexPoint, Database, FileIndex, Locality, Point, PointKind, PointLink, Specific,
     },
     debug,
     diagnostics::IssueKind,
@@ -55,10 +55,10 @@ macro_rules! check_point_cache_with {
                         node.index(),
                         {
                             let point = self.file.points.get(node.index());
-                            match point.type_() {
-                                PointType::Specific => format!("{:?}", point.specific()),
-                                PointType::Redirect => format!("Redirect {}:{}", point.file_index(), point.node_index()),
-                                _ => format!("{:?}", point.type_()),
+                            match point.kind() {
+                                PointKind::Specific => format!("{:?}", point.specific()),
+                                PointKind::Redirect => format!("Redirect {}:{}", point.file_index(), point.node_index()),
+                                _ => format!("{:?}", point.kind()),
                             }
                         },
                     );
@@ -2363,8 +2363,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let point = self.file.points.get(node_index);
         point
             .calculated()
-            .then(|| match point.type_() {
-                PointType::Redirect => {
+            .then(|| match point.kind() {
+                PointKind::Redirect => {
                     let file_index = point.file_index();
                     let next_node_index = point.node_index();
                     if point.needs_flow_analysis() {
@@ -2423,7 +2423,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         )
                     }
                 }
-                PointType::Specific => match point.specific() {
+                PointKind::Specific => match point.specific() {
                     specific @ (Specific::Param | Specific::MaybeSelfParam) => {
                         let name_def = NameDefinition::by_index(&self.file.tree, node_index);
                         // Performance: This could be improved by not needing to lookup all the
@@ -2523,8 +2523,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         let name_def = NameDefinition::by_index(&self.file.tree, node_index);
                         let class = name_def.expect_class_def();
                         // Avoid overwriting multi definitions
-                        if self.file.points.get(name_def.name().index()).type_()
-                            == PointType::MultiDefinition
+                        if self.file.points.get(name_def.name().index()).kind()
+                            == PointKind::MultiDefinition
                         {
                             todo!()
                         }
@@ -2538,16 +2538,16 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                     _ => Inferred::new_saved(self.file, node_index),
                 },
-                PointType::MultiDefinition => {
+                PointKind::MultiDefinition => {
                     // MultiDefinition means we are on a Name that has a NameDefinition as a
                     // parent.
                     let name = Name::by_index(&self.file.tree, node_index);
                     self.infer_name_definition(name.name_definition().unwrap())
                 }
-                PointType::Complex | PointType::FileReference => {
+                PointKind::Complex | PointKind::FileReference => {
                     Inferred::new_saved(self.file, node_index)
                 }
-                PointType::NodeAnalysis => {
+                PointKind::NodeAnalysis => {
                     unreachable!(
                         "Invalid NodeAnalysis, should not happen on node index {node_index:?}"
                     );
@@ -2916,16 +2916,16 @@ pub fn first_defined_name(file: &PythonFile, name_index: NodeIndex) -> Option<No
     if !point.calculated() {
         return None;
     }
-    if point.type_() != PointType::MultiDefinition {
+    if point.kind() != PointKind::MultiDefinition {
         // Happens e.g. for the definition of builtins.type
-        debug_assert_eq!(point.type_(), PointType::Specific, "{point:?}");
+        debug_assert_eq!(point.kind(), PointKind::Specific, "{point:?}");
         return None;
     }
     let mut current = point.node_index();
     loop {
         let point = file.points.get(current);
         debug_assert!(point.calculated());
-        debug_assert_eq!(point.type_(), PointType::MultiDefinition);
+        debug_assert_eq!(point.kind(), PointKind::MultiDefinition);
         // Here we circle through multi definitions to find the first one.
         // Note that multi definition links loop, i.e. A -> B -> C -> A.
         let next = point.node_index();

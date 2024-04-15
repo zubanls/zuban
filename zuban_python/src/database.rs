@@ -73,25 +73,25 @@ pub struct Point {
 
 impl Point {
     #[inline]
-    fn calculate_flags(type_: PointType, rest: u32, locality: Locality) -> u32 {
+    fn calculate_flags(kind: PointKind, rest: u32, locality: Locality) -> u32 {
         debug_assert!(rest & !REST_MASK == 0);
         rest | IS_ANALIZED_MASK
             | (locality as u32) << LOCALITY_BIT_INDEX
-            | (type_ as u32) << TYPE_BIT_INDEX
+            | (kind as u32) << TYPE_BIT_INDEX
     }
 
     pub fn new_redirect(file: FileIndex, node_index: NodeIndex, locality: Locality) -> Self {
-        let flags = Self::calculate_flags(PointType::Redirect, file.0, locality);
+        let flags = Self::calculate_flags(PointKind::Redirect, file.0, locality);
         Self { flags, node_index }
     }
 
     pub fn new_multi_definition(node_index: NodeIndex, locality: Locality) -> Self {
-        let flags = Self::calculate_flags(PointType::MultiDefinition, 0, locality);
+        let flags = Self::calculate_flags(PointKind::MultiDefinition, 0, locality);
         Self { flags, node_index }
     }
 
     pub fn new_complex_point(complex_index: u32, locality: Locality) -> Self {
-        let flags = Self::calculate_flags(PointType::Complex, complex_index, locality);
+        let flags = Self::calculate_flags(PointKind::Complex, complex_index, locality);
         Self {
             flags,
             node_index: 0,
@@ -99,7 +99,7 @@ impl Point {
     }
 
     pub fn new_simple_specific(type_: Specific, locality: Locality) -> Self {
-        let flags = Self::calculate_flags(PointType::Specific, type_ as u32, locality);
+        let flags = Self::calculate_flags(PointKind::Specific, type_ as u32, locality);
         Self {
             flags,
             node_index: 0,
@@ -118,7 +118,7 @@ impl Point {
     }
 
     pub fn new_file_reference(file: FileIndex, locality: Locality) -> Self {
-        let flags = Self::calculate_flags(PointType::FileReference, file.0, locality);
+        let flags = Self::calculate_flags(PointKind::FileReference, file.0, locality);
         Self {
             flags,
             node_index: 0,
@@ -127,14 +127,14 @@ impl Point {
 
     pub fn new_node_analysis(locality: Locality) -> Self {
         Self {
-            flags: Self::calculate_flags(PointType::NodeAnalysis, 0, locality),
+            flags: Self::calculate_flags(PointKind::NodeAnalysis, 0, locality),
             node_index: 0,
         }
     }
 
     pub fn new_node_analysis_with_node_index(locality: Locality, node_index: NodeIndex) -> Self {
         Self {
-            flags: Self::calculate_flags(PointType::NodeAnalysis, node_index, locality),
+            flags: Self::calculate_flags(PointKind::NodeAnalysis, node_index, locality),
             node_index,
         }
     }
@@ -151,7 +151,7 @@ impl Point {
         self
     }
 
-    pub fn type_(self) -> PointType {
+    pub fn kind(self) -> PointKind {
         debug_assert!(self.calculated());
         unsafe { mem::transmute((self.flags & TYPE_MASK) >> TYPE_BIT_INDEX) }
     }
@@ -175,23 +175,23 @@ impl Point {
 
     pub fn file_index(self) -> FileIndex {
         debug_assert!(
-            self.type_() == PointType::Redirect || self.type_() == PointType::FileReference,
+            self.kind() == PointKind::Redirect || self.kind() == PointKind::FileReference,
             "{:?}",
-            self.type_()
+            self.kind()
         );
         FileIndex(self.flags & REST_MASK)
     }
 
     pub fn complex_index(self) -> usize {
         debug_assert!(
-            self.type_() == PointType::Complex,
+            self.kind() == PointKind::Complex,
             "Expected complex, got {self:?}",
         );
         (self.flags & REST_MASK) as usize
     }
 
     pub fn maybe_complex_index(self) -> Option<usize> {
-        if self.calculated() && self.type_() == PointType::Complex {
+        if self.calculated() && self.kind() == PointKind::Complex {
             return Some(self.complex_index());
         }
         None
@@ -199,21 +199,21 @@ impl Point {
 
     pub fn node_index(self) -> NodeIndex {
         debug_assert!(
-            self.type_() == PointType::Redirect
-                || self.type_() == PointType::NodeAnalysis
-                || self.type_() == PointType::MultiDefinition
+            self.kind() == PointKind::Redirect
+                || self.kind() == PointKind::NodeAnalysis
+                || self.kind() == PointKind::MultiDefinition
         );
         self.node_index
     }
 
     pub fn as_redirected_node_ref<'db>(self, db: &'db Database) -> NodeRef<'db> {
-        debug_assert!(self.type_() == PointType::Redirect);
+        debug_assert!(self.kind() == PointKind::Redirect);
         let file = db.loaded_python_file(self.file_index());
         NodeRef::new(file, self.node_index())
     }
 
     pub fn maybe_specific(self) -> Option<Specific> {
-        if self.type_() == PointType::Specific {
+        if self.kind() == PointKind::Specific {
             Some(self.specific())
         } else {
             None
@@ -221,7 +221,7 @@ impl Point {
     }
 
     pub fn specific(self) -> Specific {
-        debug_assert!(self.type_() == PointType::Specific, "{:?}", self);
+        debug_assert!(self.kind() == PointKind::Specific, "{:?}", self);
         unsafe { mem::transmute(self.flags & SPECIFIC_MASK) }
     }
 }
@@ -234,13 +234,13 @@ impl fmt::Debug for Point {
         } else if !self.calculated() {
             s.field("calculated", &self.calculated());
         } else {
-            s.field("type", &self.type_())
+            s.field("type", &self.kind())
                 .field("locality", &self.locality())
                 .field("node_index", &self.node_index);
-            if self.type_() == PointType::Specific {
+            if self.kind() == PointKind::Specific {
                 s.field("specific", &self.specific());
             }
-            if self.type_() == PointType::Redirect || self.type_() == PointType::FileReference {
+            if self.kind() == PointKind::Redirect || self.kind() == PointKind::FileReference {
                 s.field("file_index", &self.file_index().0);
             }
         }
@@ -299,7 +299,7 @@ pub struct PointsBackup {
 
 #[derive(Debug, PartialEq, Eq)]
 #[repr(u32)]
-pub enum PointType {
+pub enum PointKind {
     Specific,
     Redirect,
     MultiDefinition,
@@ -1171,7 +1171,7 @@ mod tests {
         assert_eq!(p.flags & !IS_ANALIZED_MASK, 0);
         assert_eq!(p.node_index, 0);
         assert!(p.calculated());
-        assert_eq!(p.type_(), PointType::Specific);
+        assert_eq!(p.kind(), PointKind::Specific);
         assert_eq!(p.specific(), Specific::ReservedBecauseUnused);
     }
 }

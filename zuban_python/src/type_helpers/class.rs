@@ -16,7 +16,7 @@ use crate::{
     arguments::{Args, KnownArgs, SimpleArgs},
     database::{
         BaseClass, ClassInfos, ClassKind, ClassStorage, ComplexPoint, Database, Locality,
-        MetaclassState, ParentScope, Point, PointLink, PointType, ProtocolMember,
+        MetaclassState, ParentScope, Point, PointKind, PointLink, ProtocolMember,
         TypedDictDefinition,
     },
     debug,
@@ -249,7 +249,7 @@ impl<'db: 'a, 'a> Class<'a> {
         node_ref: NodeRef<'a>,
         point: Point,
     ) -> &'a TypeVarLikes {
-        if point.type_() == PointType::NodeAnalysis {
+        if point.kind() == PointKind::NodeAnalysis {
             &db.python_state.empty_type_var_likes
         } else {
             match node_ref.complex().unwrap() {
@@ -1789,7 +1789,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 .is_none()
             {
                 let point = name_node_ref.point();
-                if point.calculated() && point.type_() == PointType::MultiDefinition {
+                if point.calculated() && point.kind() == PointKind::MultiDefinition {
                     NodeRef::new(self.node_ref.file, point.node_index()).add_issue(
                         i_s,
                         IssueKind::EnumReusedMemberName {

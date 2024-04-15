@@ -2,7 +2,7 @@ use parsa_python_ast::*;
 
 use super::type_computation::cache_name_on_class;
 use crate::{
-    database::{PointLink, PointType, Specific},
+    database::{PointKind, PointLink, Specific},
     diagnostics::IssueKind,
     file::PythonFile,
     getitem::{SliceOrSimple, SliceType},
@@ -137,8 +137,8 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
                     }
                     BaseLookup::Class(link) => {
                         let cls = Class::from_non_generic_link(self.i_s.db, link);
-                        let point_type = cache_name_on_class(cls, self.file, name);
-                        if point_type == PointType::Redirect {
+                        let point_kind = cache_name_on_class(cls, self.file, name);
+                        if point_kind == PointKind::Redirect {
                             self.find_in_name(name)
                         } else {
                             BaseLookup::Other
@@ -199,7 +199,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
     fn find_in_name(&mut self, name: Name) -> BaseLookup<'db> {
         // TODO this whole check is way too hacky.
         let point = self.file.points.get(name.index());
-        if point.calculated() && point.type_() == PointType::Redirect {
+        if point.calculated() && point.kind() == PointKind::Redirect {
             let node_ref = point.as_redirected_node_ref(self.i_s.db);
             return match follow_name(self.i_s, node_ref) {
                 Ok(type_var_like) => {
@@ -325,7 +325,7 @@ fn follow_name<'db>(
                 let p = node_ref
                     .add_to_node_index(-(NAME_DEF_TO_NAME_DIFFERENCE as i64))
                     .point();
-                if p.calculated() && p.type_() == PointType::Redirect {
+                if p.calculated() && p.kind() == PointKind::Redirect {
                     let new = p.as_redirected_node_ref(i_s.db);
                     if new.maybe_name().is_some() {
                         return follow_name(i_s, new);
@@ -337,12 +337,12 @@ fn follow_name<'db>(
                     .add_to_node_index(-(NAME_DEF_TO_NAME_DIFFERENCE as i64))
                     .point();
                 if p.calculated() {
-                    if p.type_() == PointType::Redirect {
+                    if p.kind() == PointKind::Redirect {
                         let new = p.as_redirected_node_ref(i_s.db);
                         if new.maybe_name().is_some() {
                             return follow_name(i_s, new);
                         }
-                    } else if p.type_() == PointType::FileReference {
+                    } else if p.kind() == PointKind::FileReference {
                         let file = i_s.db.loaded_python_file(p.file_index());
                         return Err(BaseLookup::Module(file));
                     }

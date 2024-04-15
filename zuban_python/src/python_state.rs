@@ -4,7 +4,7 @@ use parsa_python_ast::{NodeIndex, TypeLike, NAME_DEF_TO_NAME_DIFFERENCE};
 
 use crate::{
     database::{
-        BaseClass, ComplexPoint, Database, FileIndex, Locality, Point, PointLink, PointType,
+        BaseClass, ComplexPoint, Database, FileIndex, Locality, Point, PointKind, PointLink,
         Specific,
     },
     file::{File, PythonFile},
@@ -1138,7 +1138,7 @@ fn set_mypy_extension_specific(file: &PythonFile, name: &str, specific: Specific
         node_index - 1,
         Point::new_simple_specific(specific, Locality::Stmt),
     );
-    debug_assert!(old_point.type_() == PointType::Redirect);
+    debug_assert!(old_point.kind() == PointKind::Redirect);
     let result = old_point.node_index();
     debug_assert!(matches!(
         file.points.get(result).maybe_specific(),

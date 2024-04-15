@@ -6,7 +6,7 @@ use super::TypeVarFinder;
 use crate::{
     arguments::SimpleArgs,
     database::{
-        ComplexPoint, Database, Locality, Point, PointLink, PointType, Specific, TypeAlias,
+        ComplexPoint, Database, Locality, Point, PointKind, PointLink, Specific, TypeAlias,
     },
     debug,
     diagnostics::{Issue, IssueKind},
@@ -1642,12 +1642,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         primary: Primary,
         name: Name<'x>,
     ) -> TypeContent<'db, 'x> {
-        let point_type = cache_name_on_class(cls, self.inference.file, name);
-        if point_type == PointType::Redirect {
+        let point_kind = cache_name_on_class(cls, self.inference.file, name);
+        if point_kind == PointKind::Redirect {
             self.compute_type_name(name)
         } else {
             debug!("TypeComputation: Attribute on class not found");
-            debug_assert_eq!(point_type, PointType::Specific);
+            debug_assert_eq!(point_kind, PointKind::Specific);
             self.add_issue_for_index(primary.index(), IssueKind::TypeNotFound);
             TypeContent::Unknown(AnyCause::FromError)
         }
@@ -3710,15 +3710,15 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
     pub(super) fn lookup_type_name(&mut self, name: Name<'x>) -> TypeNameLookup<'db, 'x> {
         let point = self.file.points.get(name.index());
         debug_assert!(self.file.points.get(name.index()).calculated());
-        match point.type_() {
-            PointType::Specific => match point.specific() {
+        match point.kind() {
+            PointKind::Specific => match point.specific() {
                 Specific::AnyDueToError => TypeNameLookup::Unknown(AnyCause::Todo),
                 _ => todo!(),
             },
-            PointType::Redirect => {
+            PointKind::Redirect => {
                 check_type_name(self.i_s, point.as_redirected_node_ref(self.i_s.db))
             }
-            PointType::FileReference => {
+            PointKind::FileReference => {
                 let file = self.i_s.db.loaded_python_file(point.file_index());
                 TypeNameLookup::Module(file)
             }
@@ -4364,7 +4364,7 @@ pub(super) fn assignment_type_node_ref<'x>(
 
 #[inline]
 fn check_special_type(point: Point) -> Option<SpecialType> {
-    if point.type_() == PointType::Specific {
+    if point.kind() == PointKind::Specific {
         Some(match point.specific() {
             Specific::TypingUnion => SpecialType::Union,
             Specific::TypingOptional => SpecialType::Optional,
@@ -4434,7 +4434,7 @@ fn load_cached_type(node_ref: NodeRef) -> TypeNameLookup {
         }
     } else {
         let point = node_ref.point();
-        if point.type_() == PointType::MultiDefinition {
+        if point.kind() == PointKind::MultiDefinition {
             debug!("TODO check if this is the right place for this kind of stuff.");
             TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(node_ref))
         } else {
@@ -4458,12 +4458,12 @@ pub(super) fn check_type_name<'db: 'file, 'file>(
     //
     // It's important to check that it's a name. Otherwise it redirects to some random place.
     if point.calculated() {
-        if point.type_() == PointType::Redirect {
+        if point.kind() == PointKind::Redirect {
             let new = point.as_redirected_node_ref(i_s.db);
             if new.maybe_name().is_some() {
                 return check_type_name(i_s, new);
             }
-        } else if point.type_() == PointType::FileReference {
+        } else if point.kind() == PointKind::FileReference {
             let file = i_s.db.loaded_python_file(point.file_index());
             return TypeNameLookup::Module(file);
         }
@@ -4554,12 +4554,12 @@ pub(super) fn check_type_name<'db: 'file, 'file>(
                 name_node_ref.add_to_node_index(-(NAME_DEF_TO_NAME_DIFFERENCE as i64));
             let p = name_def_ref.point();
             if p.calculated() {
-                if p.type_() == PointType::Redirect {
+                if p.kind() == PointKind::Redirect {
                     let new = p.as_redirected_node_ref(i_s.db);
                     if new.maybe_name().is_some() {
                         return check_type_name(i_s, new);
                     }
-                } else if p.type_() == PointType::FileReference {
+                } else if p.kind() == PointKind::FileReference {
                     let file = i_s.db.loaded_python_file(p.file_index());
                     return TypeNameLookup::Module(file);
                 }
@@ -4625,13 +4625,13 @@ pub(super) fn check_type_name<'db: 'file, 'file>(
     }
 }
 
-pub(super) fn cache_name_on_class(cls: Class, file: &PythonFile, name: Name) -> PointType {
+pub(super) fn cache_name_on_class(cls: Class, file: &PythonFile, name: Name) -> PointKind {
     // This is needed to lookup names on a class and set the redirect there. It does not modify the
     // class at all.
     let name_node_ref = NodeRef::new(file, name.index());
     let point = name_node_ref.point();
     if point.calculated() {
-        return point.type_();
+        return point.kind();
     }
     name_node_ref.set_point(
         if let Some(index) = cls
@@ -4667,8 +4667,8 @@ pub fn use_cached_simple_generic_type<'db>(
     let i_s = &InferenceState::new(db);
     let mut inference = file.inference(i_s);
     debug_assert_eq!(
-        inference.file.points.get(expr.index()).type_(),
-        PointType::Redirect
+        inference.file.points.get(expr.index()).kind(),
+        PointKind::Redirect
     );
     let inferred = inference.check_point_cache(expr.index()).unwrap();
     inferred.expect_class_or_simple_generic(i_s)

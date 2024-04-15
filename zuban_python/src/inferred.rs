@@ -5,8 +5,8 @@ use parsa_python_ast::{NodeIndex, PrimaryContent, PythonString, SliceType as AST
 use crate::{
     arguments::{Args, CombinedArgs, InferredArg, KnownArgs, KnownArgsWithCustomAddIssue},
     database::{
-        ComplexPoint, Database, FileIndex, Locality, OverloadDefinition, Point, PointLink,
-        PointType, Specific,
+        ComplexPoint, Database, FileIndex, Locality, OverloadDefinition, Point, PointKind,
+        PointLink, Specific,
     },
     debug,
     diagnostics::IssueKind,
@@ -345,7 +345,7 @@ impl<'db: 'slf, 'slf> Inferred {
         if let InferredState::Saved(link) = &self.state {
             let definition = NodeRef::from_link(i_s.db, *link);
             let point = definition.point();
-            if point.type_() == PointType::Specific {
+            if point.kind() == PointKind::Specific {
                 generics = Self::expect_class_generics(definition, point);
             }
         }
@@ -359,15 +359,15 @@ impl<'db: 'slf, 'slf> Inferred {
         };
         let node_ref = NodeRef::from_link(i_s.db, *link);
         let point = node_ref.point();
-        match point.type_() {
-            PointType::Complex => {
+        match point.kind() {
+            PointKind::Complex => {
                 let complex = node_ref.file.complex_points.get(point.complex_index());
                 let ComplexPoint::Class(c) = complex else {
                     unreachable!();
                 };
                 *link
             }
-            PointType::Specific => match point.specific() {
+            PointKind::Specific => match point.specific() {
                 Specific::SimpleGeneric => {
                     let inferred = node_ref
                         .file
@@ -676,8 +676,8 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::Saved(link) => {
                 let node_ref = NodeRef::from_link(i_s.db, link);
                 let point = node_ref.point();
-                match point.type_() {
-                    PointType::Specific => {
+                match point.kind() {
+                    PointKind::Specific => {
                         if !matches!(
                             point.specific(),
                             Specific::IntLiteral
@@ -688,7 +688,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             return self;
                         }
                     }
-                    PointType::Complex => {
+                    PointKind::Complex => {
                         if !matches!(node_ref.complex().unwrap(), ComplexPoint::TypeInstance(_)) {
                             return self;
                         }
@@ -783,8 +783,8 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::Saved(definition) => {
                 let node_ref = NodeRef::from_link(i_s.db, *definition);
                 let point = node_ref.point();
-                match point.type_() {
-                    PointType::Specific => match point.specific() {
+                match point.kind() {
+                    PointKind::Specific => match point.specific() {
                         Specific::Function => {
                             let func = prepare_func(i_s, *definition, attribute_class);
                             let attr_kind = AttributeKind::DefMethod;
@@ -901,7 +901,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         }
                         _ => (),
                     },
-                    PointType::Complex => {
+                    PointKind::Complex => {
                         match node_ref.complex().unwrap() {
                             ComplexPoint::FunctionOverload(o) => {
                                 let attr_kind = match o.kind() {
@@ -1164,8 +1164,8 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::Saved(definition) => {
                 let node_ref = NodeRef::from_link(i_s.db, *definition);
                 let point = node_ref.point();
-                match point.type_() {
-                    PointType::Specific => match point.specific() {
+                match point.kind() {
+                    PointKind::Specific => match point.specific() {
                         Specific::Function => {
                             let func = Function::new(node_ref, Some(attribute_class));
                             let t = func.as_type(i_s, FirstParamProperties::MethodAccessedOnClass);
@@ -1225,7 +1225,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         }
                         _ => (),
                     },
-                    PointType::Complex => match node_ref.complex().unwrap() {
+                    PointKind::Complex => match node_ref.complex().unwrap() {
                         ComplexPoint::FunctionOverload(o) => match o.kind() {
                             FunctionKind::Function { .. } => {
                                 return Some((
@@ -1384,8 +1384,8 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::Saved(definition) => {
                 let node_ref = NodeRef::from_link(i_s.db, *definition);
                 let point = node_ref.point();
-                match point.type_() {
-                    PointType::Specific => match point.specific() {
+                match point.kind() {
+                    PointKind::Specific => match point.specific() {
                         Specific::Function => {
                             let func = Function::new(node_ref, Some(attribute_class));
                             let result = infer_class_method(
@@ -1410,7 +1410,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         }
                         _ => (),
                     },
-                    PointType::Complex => match node_ref.complex().unwrap() {
+                    PointKind::Complex => match node_ref.complex().unwrap() {
                         ComplexPoint::FunctionOverload(o) => {
                             return infer_overloaded_class_method(i_s, *class, attribute_class, o)
                         }
@@ -1456,7 +1456,7 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     fn expect_class_generics(definition: NodeRef, point: Point) -> ClassGenerics {
-        debug_assert_eq!(point.type_(), PointType::Specific);
+        debug_assert_eq!(point.kind(), PointKind::Specific);
         debug_assert_eq!(point.specific(), Specific::SimpleGeneric);
         let PrimaryContent::GetItem(slice_type) = definition.as_primary().second() else {
             unreachable!();
@@ -1482,7 +1482,7 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::Saved(reference) => {
                 let node_ref = NodeRef::from_link(i_s.db, *reference);
                 let point = node_ref.point();
-                if point.type_() == PointType::Specific {
+                if point.kind() == PointKind::Specific {
                     if matches!(
                         point.specific(),
                         Specific::AnnotationOrTypeCommentWithTypeVars
@@ -1639,8 +1639,8 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::Saved(link) => {
                 let node_ref = NodeRef::from_link(i_s.db, *link);
                 let point = node_ref.point();
-                match point.type_() {
-                    PointType::Specific => {
+                match point.kind() {
+                    PointKind::Specific => {
                         let specific = point.specific();
                         match specific {
                             Specific::Function => {
@@ -1757,7 +1757,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             _ => (),
                         }
                     }
-                    PointType::Complex => {
+                    PointKind::Complex => {
                         match node_ref.file.complex_points.get(point.complex_index()) {
                             ComplexPoint::FunctionOverload(overload) => {
                                 return OverloadedFunction::new(&overload.functions, None).execute(
@@ -1838,7 +1838,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             _ => (),
                         }
                     }
-                    PointType::FileReference => {
+                    PointKind::FileReference => {
                         args.add_issue(
                             i_s,
                             IssueKind::NotCallable {
@@ -2253,13 +2253,13 @@ fn type_of_complex<'db: 'x, 'x>(
 fn saved_as_type<'db>(i_s: &InferenceState<'db, '_>, definition: PointLink) -> Cow<'db, Type> {
     let definition = NodeRef::from_link(i_s.db, definition);
     let point = definition.point();
-    match point.type_() {
-        PointType::Specific => specific_to_type(i_s, definition, point.specific()),
-        PointType::Complex => {
+    match point.kind() {
+        PointKind::Specific => specific_to_type(i_s, definition, point.specific()),
+        PointKind::Complex => {
             let complex = definition.file.complex_points.get(point.complex_index());
             type_of_complex(i_s, complex, Some(definition))
         }
-        PointType::FileReference => Cow::Owned(Type::Module(point.file_index())),
+        PointKind::FileReference => Cow::Owned(Type::Module(point.file_index())),
         x => unreachable!("{x:?}"),
     }
 }

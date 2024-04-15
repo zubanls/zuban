@@ -8,7 +8,7 @@ use parsa_python_ast::{
 
 use crate::{
     database::{
-        ClassStorage, ComplexPoint, Database, FileIndex, Locality, Point, PointLink, PointType,
+        ClassStorage, ComplexPoint, Database, FileIndex, Locality, Point, PointKind, PointLink,
         TypeAlias,
     },
     diagnostics::{Issue, IssueKind},
@@ -100,7 +100,7 @@ impl<'file> NodeRef<'file> {
         if !point.calculated() {
             return None;
         }
-        if let PointType::Complex = point.type_() {
+        if let PointKind::Complex = point.kind() {
             Some(self.file.complex_points.get(point.complex_index()))
         } else {
             None
@@ -266,7 +266,7 @@ impl<'file> NodeRef<'file> {
     pub fn maybe_redirect<'db>(&self, db: &'db Database) -> Option<NodeRef<'db>> {
         let p = self.point();
         debug_assert!(p.calculated());
-        (p.type_() == PointType::Redirect).then(|| p.as_redirected_node_ref(db))
+        (p.kind() == PointKind::Redirect).then(|| p.as_redirected_node_ref(db))
     }
 }
 

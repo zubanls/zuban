@@ -10,7 +10,7 @@ use super::{flow_analysis::FLOW_ANALYSIS, inference::await_, on_argument_type_er
 use crate::{
     arguments::{CombinedArgs, KnownArgs, NoArgs},
     database::{
-        ClassKind, ComplexPoint, Database, Locality, OverloadImplementation, Point, PointType,
+        ClassKind, ComplexPoint, Database, Locality, OverloadImplementation, Point, PointKind,
         Specific,
     },
     debug,
@@ -278,7 +278,7 @@ impl<'db> Inference<'db, '_, '_> {
             };
             let point = self.file.points.get(stmt.index());
             if point.calculated() {
-                debug_assert_eq!(point.type_(), PointType::NodeAnalysis);
+                debug_assert_eq!(point.kind(), PointKind::NodeAnalysis);
                 continue;
             }
             if self.is_unreachable() {
@@ -1127,7 +1127,7 @@ impl<'db> Inference<'db, '_, '_> {
     ) {
         let star_targets_point = self.file.points.get(star_targets.index());
         if star_targets_point.calculated() {
-            debug_assert_eq!(star_targets_point.type_(), PointType::NodeAnalysis);
+            debug_assert_eq!(star_targets_point.kind(), PointKind::NodeAnalysis);
             return;
         }
         let inf = self.infer_star_expressions(star_exprs, &mut ResultContext::Unknown);

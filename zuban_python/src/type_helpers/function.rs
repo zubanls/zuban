@@ -10,7 +10,7 @@ use crate::{
     arguments::{Arg, Args, KnownArgs},
     database::{
         ComplexPoint, Database, Locality, OverloadDefinition, OverloadImplementation, Point,
-        PointLink, PointType, Specific,
+        PointKind, PointLink, Specific,
     },
     debug,
     diagnostics::{Issue, IssueKind},
@@ -699,13 +699,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             if !point.calculated() {
                 break;
             }
-            debug_assert_eq!(point.type_(), PointType::MultiDefinition);
+            debug_assert_eq!(point.kind(), PointKind::MultiDefinition);
             current_name_index = point.node_index();
             if current_name_index <= first_index {
                 break;
             }
             let redirect_point = file.points.get(current_name_index - 1);
-            debug_assert_eq!(redirect_point.type_(), PointType::Redirect);
+            debug_assert_eq!(redirect_point.kind(), PointKind::Redirect);
             let func_ref = NodeRef::new(file, redirect_point.node_index());
             let next_func = Self::new(func_ref, self.class);
 
@@ -777,13 +777,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             if !point.calculated() {
                 break;
             }
-            debug_assert_eq!(point.type_(), PointType::MultiDefinition);
+            debug_assert_eq!(point.kind(), PointKind::MultiDefinition);
             current_name_index = point.node_index();
             if current_name_index <= first_index {
                 break;
             }
             let redirect_point = file.points.get(current_name_index - 1);
-            debug_assert_eq!(redirect_point.type_(), PointType::Redirect);
+            debug_assert_eq!(redirect_point.kind(), PointKind::Redirect);
             let func_ref = NodeRef::new(file, redirect_point.node_index());
             let next_func = Self::new(func_ref, self.class);
             let next_details = match func_ref.point().maybe_specific() {

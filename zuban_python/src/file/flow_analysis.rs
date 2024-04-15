@@ -13,7 +13,7 @@ use parsa_python_ast::{
 };
 
 use crate::{
-    database::{Database, PointLink, PointType, Specific},
+    database::{Database, PointKind, PointLink, Specific},
     debug,
     diagnostics::IssueKind,
     getitem::SliceType,
@@ -1895,7 +1895,7 @@ impl Inference<'_, '_, '_> {
 fn name_definition_link(db: &Database, file: &PythonFile, name: Name) -> Option<PointLink> {
     let p = file.points.get(name.index());
     if p.calculated() {
-        if p.type_() != PointType::Redirect {
+        if p.kind() != PointKind::Redirect {
             // For example Any due to an unresolved name.
             return None;
         }
