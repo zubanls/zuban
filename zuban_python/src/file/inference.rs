@@ -864,7 +864,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    fn infer_name_target(
+    pub fn infer_name_target(
         &mut self,
         name_def: NameDefinition,
         from_aug_assign: bool,

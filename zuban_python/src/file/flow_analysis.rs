@@ -722,7 +722,7 @@ impl Inference<'_, '_, '_> {
         result_context: &mut ResultContext,
     ) -> Inferred {
         let (if_, condition, else_) = t.unpack();
-        let (_, true_frame, false_frame) = self.find_guards_in_expr_part(condition);
+        let (_, true_frame, false_frame) = self.find_guards_in_expr_part(condition, result_context);
         FLOW_ANALYSIS.with(|fa| {
             let mut if_inf = None;
             let mut else_inf = None;
@@ -1027,7 +1027,15 @@ impl Inference<'_, '_, '_> {
             NamedExpressionContent::Expression(expr) => self.find_guards_in_expr(expr),
             NamedExpressionContent::Walrus(walrus) => {
                 let (name_def, expr) = walrus.unpack();
-                let (inf, mut truthy, mut falsey) = self.find_guards_in_expr(expr);
+                let (inf, mut truthy, mut falsey) =
+                    if let Some(inf) = self.infer_name_target(name_def, false) {
+                        self.find_guards_in_expr_with_context(
+                            expr,
+                            &mut ResultContext::Known(&inf.as_cow_type(self.i_s)),
+                        )
+                    } else {
+                        self.find_guards_in_expr(expr)
+                    };
                 let inf = self.save_walrus(name_def, inf);
                 if let Some((walrus_truthy, walrus_falsey)) =
                     split_truthy_and_falsey(self.i_s, &inf.as_cow_type(self.i_s))
@@ -1048,15 +1056,30 @@ impl Inference<'_, '_, '_> {
     }
 
     fn find_guards_in_expr(&mut self, expr: Expression) -> (Inferred, Frame, Frame) {
+        self.find_guards_in_expr_with_context(expr, &mut ResultContext::Unknown)
+    }
+
+    fn find_guards_in_expr_with_context(
+        &mut self,
+        expr: Expression,
+        result_context: &mut ResultContext,
+    ) -> (Inferred, Frame, Frame) {
         match expr.unpack() {
-            ExpressionContent::ExpressionPart(part) => self.find_guards_in_expr_part(part),
+            ExpressionContent::ExpressionPart(part) => {
+                self.find_guards_in_expr_part(part, result_context)
+            }
             ExpressionContent::Ternary(_) => todo!(),
             ExpressionContent::Lambda(_) => todo!(),
         }
     }
 
-    fn find_guards_in_expr_part(&mut self, part: ExpressionPart) -> (Inferred, Frame, Frame) {
-        let (inf, mut result) = self.find_guards_in_expression_parts(part);
+    fn find_guards_in_expr_part(
+        &mut self,
+        part: ExpressionPart,
+        result_context: &mut ResultContext,
+    ) -> (Inferred, Frame, Frame) {
+        let (inf, mut result) =
+            self.find_guards_in_expression_parts_with_context(part, result_context);
         self.propagate_parent_unions(&mut result.truthy, &result.parent_unions);
         self.propagate_parent_unions(&mut result.falsey, &result.parent_unions);
         (inf, result.truthy, result.falsey)
@@ -1066,7 +1089,15 @@ impl Inference<'_, '_, '_> {
         &mut self,
         part: ExpressionPart,
     ) -> (Inferred, FramesWithParentUnions) {
-        self.find_guards_in_expression_parts_inner(part)
+        self.find_guards_in_expression_parts_with_context(part, &mut ResultContext::Unknown)
+    }
+
+    fn find_guards_in_expression_parts_with_context(
+        &mut self,
+        part: ExpressionPart,
+        result_context: &mut ResultContext,
+    ) -> (Inferred, FramesWithParentUnions) {
+        self.find_guards_in_expression_parts_inner(part, result_context)
             .unwrap_or_else(|inf| {
                 if let Some((truthy, falsey)) =
                     split_truthy_and_falsey(self.i_s, &inf.as_cow_type(self.i_s))
@@ -1096,6 +1127,7 @@ impl Inference<'_, '_, '_> {
     fn find_guards_in_expression_parts_inner(
         &mut self,
         part: ExpressionPart,
+        result_context: &mut ResultContext,
     ) -> Result<(Inferred, FramesWithParentUnions), Inferred> {
         let narrow_from_key = |key: Option<FlowKey>, inf: Inferred, parent_unions| {
             if let Some(key) = key {
@@ -1133,7 +1165,7 @@ impl Inference<'_, '_, '_> {
                         },
                     ));
                 }
-                let inf = self.infer_atom(atom, &mut ResultContext::Unknown);
+                let inf = self.infer_atom(atom, result_context);
                 return narrow_from_key(self.key_from_atom(atom), inf, Default::default());
             }
             ExpressionPart::Comparisons(comps) => {
@@ -1203,7 +1235,7 @@ impl Inference<'_, '_, '_> {
             },
             _ => (),
         }
-        Err(self.infer_expression_part(part))
+        Err(self.infer_expression_part_with_context(part, result_context))
     }
 
     fn find_guards_in_comparisons(&mut self, comps: Comparisons) -> Option<FramesWithParentUnions> {
