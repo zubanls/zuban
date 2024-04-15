@@ -1360,6 +1360,7 @@ testCheckDisallowAnyGenericsStubOnly
 # Walrus tests
 testWalrus
 testWalrusRedefined
+testWalrusAssignmentEmptyCollection
 # "Assignment expression within a comprehension cannot be used in a class body"
 testNoCrashOnAssignmentExprClass
 

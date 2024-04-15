@@ -904,6 +904,81 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             .or_else(|| check_base_class(name_def))
     }
 
+    fn assign_to_name_def(
+        &mut self,
+        name_def: NameDefinition,
+        from: NodeRef,
+        value: &Inferred,
+        assign_kind: AssignKind,
+        save: impl FnOnce(NodeIndex, &Inferred),
+    ) {
+        let current_index = name_def.name_index();
+        let i_s = self.i_s;
+        if let Some(first_index) = first_defined_name(self.file, current_index) {
+            if current_index == first_index {
+                /*
+                if matches!(value.as_cow_type(i_s).as_ref(), Type::None) {
+                    self.file.points.set(name_def.index(), Point::new_simple_specific(Specific::PartialNone, Locality::Todo));
+                    return
+                }
+                */
+            } else {
+                let original_inf = self.infer_name_of_definition_by_index(first_index);
+                let original_t = original_inf.as_cow_type(i_s);
+                let check_for_error = || {
+                    original_t.error_if_not_matches(
+                        i_s,
+                        value,
+                        |issue| from.add_issue(i_s, issue),
+                        |got, expected| Some(IssueKind::IncompatibleAssignment { got, expected }),
+                    );
+                };
+                if matches!(assign_kind, AssignKind::Normal) {
+                    if !self.narrow_or_widen_name_target(
+                        first_index,
+                        &original_t,
+                        &value.as_cow_type(i_s),
+                    ) {
+                        check_for_error()
+                    }
+                } else {
+                    check_for_error()
+                }
+                return;
+            }
+            save(name_def.index(), value);
+        } else if value.maybe_saved_specific(i_s.db) == Some(Specific::None)
+            && assign_kind == AssignKind::Normal
+            && i_s.db.project.flags.local_partial_types
+            && !i_s.current_class().is_some_and(|c| {
+                c.lookup_without_descriptors_and_custom_add_issue_ignore_self(
+                    self.i_s,
+                    name_def.as_code(),
+                    |_| todo!(),
+                )
+                .lookup
+                .is_some()
+            })
+        {
+            self.add_issue(
+                name_def.index(),
+                IssueKind::NeedTypeAnnotation {
+                    for_: name_def.as_code().into(),
+                    hint: "Optional[<type>]",
+                },
+            );
+            // Save Optional[Any]
+            save(
+                name_def.index(),
+                &Inferred::from_type(
+                    Type::Any(AnyCause::FromError).union_with_details(Type::None, true),
+                ),
+            );
+        } else {
+            save(name_def.index(), value);
+        }
+    }
+
     fn assign_single_target(
         &mut self,
         target: Target,
@@ -915,72 +990,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let i_s = self.i_s;
         match target {
             Target::Name(name_def) => {
-                let current_index = name_def.name_index();
-                if let Some(first_index) = first_defined_name(self.file, current_index) {
-                    if current_index == first_index {
-                        /*
-                        if matches!(value.as_cow_type(i_s).as_ref(), Type::None) {
-                            self.file.points.set(name_def.index(), Point::new_simple_specific(Specific::PartialNone, Locality::Todo));
-                            return
-                        }
-                        */
-                    } else {
-                        let original_inf = self.infer_name_of_definition_by_index(first_index);
-                        let original_t = original_inf.as_cow_type(i_s);
-                        let check_for_error = || {
-                            original_t.error_if_not_matches(
-                                i_s,
-                                value,
-                                |issue| from.add_issue(i_s, issue),
-                                |got, expected| {
-                                    Some(IssueKind::IncompatibleAssignment { got, expected })
-                                },
-                            );
-                        };
-                        if matches!(assign_kind, AssignKind::Normal) {
-                            if !self.narrow_or_widen_name_target(
-                                first_index,
-                                &original_t,
-                                &value.as_cow_type(i_s),
-                            ) {
-                                check_for_error()
-                            }
-                        } else {
-                            check_for_error()
-                        }
-                        return;
-                    }
-                    save(name_def.index(), value);
-                } else if value.maybe_saved_specific(i_s.db) == Some(Specific::None)
-                    && assign_kind == AssignKind::Normal
-                    && i_s.db.project.flags.local_partial_types
-                    && !i_s.current_class().is_some_and(|c| {
-                        c.lookup_without_descriptors_and_custom_add_issue_ignore_self(
-                            self.i_s,
-                            name_def.as_code(),
-                            |_| todo!(),
-                        )
-                        .lookup
-                        .is_some()
-                    })
-                {
-                    self.add_issue(
-                        name_def.index(),
-                        IssueKind::NeedTypeAnnotation {
-                            for_: name_def.as_code().into(),
-                            hint: "Optional[<type>]",
-                        },
-                    );
-                    // Save Optional[Any]
-                    save(
-                        name_def.index(),
-                        &Inferred::from_type(
-                            Type::Any(AnyCause::FromError).union_with_details(Type::None, true),
-                        ),
-                    );
-                } else {
-                    save(name_def.index(), value);
-                }
+                self.assign_to_name_def(name_def, from, value, assign_kind, save)
             }
             Target::NameExpression(primary_target, name_definition) => {
                 let base = self.infer_primary_target_or_atom(primary_target.first());
@@ -1357,9 +1367,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    pub fn save_walrus(&self, name_def: NameDefinition, inf: Inferred) -> Inferred {
-        inf.avoid_implicit_literal(self.i_s)
-            .save_redirect(self.i_s, self.file, name_def.index())
+    pub fn save_walrus(&mut self, name_def: NameDefinition, inf: Inferred) -> Inferred {
+        let from = NodeRef::new(self.file, name_def.index());
+        let inf = inf.avoid_implicit_literal(self.i_s);
+        self.assign_to_name_def(name_def, from, &inf, AssignKind::Normal, |index, value| {
+            value.clone().save_redirect(self.i_s, self.file, index);
+        });
+        self.check_point_cache(name_def.index()).unwrap_or(inf)
     }
 
     pub fn infer_expression(&mut self, expr: Expression) -> Inferred {
