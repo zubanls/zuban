@@ -53,6 +53,8 @@ pub(crate) struct NameBinder<'db, 'a> {
     annotation_names: Vec<Name<'db>>,
     file_index: FileIndex,
     references_need_flow_analysis: bool,
+    #[allow(dead_code)] // TODO remove this
+    parent: Option<&'a NameBinder<'db, 'a>>,
 }
 
 impl<'db, 'a> NameBinder<'db, 'a> {
@@ -67,6 +69,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         issues: &'db Diagnostics,
         star_imports: &'db RefCell<Vec<StarImport>>,
         file_index: FileIndex,
+        parent: Option<&'a Self>,
     ) -> Self {
         Self {
             mypy_compatible,
@@ -85,6 +88,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             annotation_names: vec![],
             references_need_flow_analysis: false,
             file_index,
+            parent,
         }
     }
 
@@ -112,6 +116,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             issues,
             star_imports,
             file_index,
+            None,
         );
         func(&mut binder);
         binder.close();
@@ -141,6 +146,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             self.issues,
             self.star_imports,
             self.file_index,
+            Some(self),
         );
         func(&mut name_binder);
         name_binder.close();
