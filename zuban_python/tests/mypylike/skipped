@@ -149,6 +149,7 @@ testNewAnalyzerMemberNameMatchesNamedTuple
 testVariableTypeWithQualifiedName
 testNewAnalyzerMemberNameMatchesTypedDict
 testConditionalExceptionAliasOverride
+testWalrusRedefined
 # TypedDict definition circle: A = TypedDict('A', {'a': 'A'})
 testCrashOnSelfRecursiveTypedDictVar
 testBasicRecursiveTypedDictCall
@@ -1358,11 +1359,6 @@ testGenericTypedDictAlias
 # "Subscripting classes that are not generic at runtime may require escaping"
 testCheckDisallowAnyGenericsStubOnly
 
-# Walrus tests
-testWalrusRedefined
-# "Assignment expression within a comprehension cannot be used in a class body"
-testNoCrashOnAssignmentExprClass
-
 # TypeGuard
 testSerializeTypeGuardFunction
 testTypeGuardWithPositionalOnlyArg
@@ -2252,6 +2248,8 @@ testReturnEmptyTuple
 testColumnSyntaxErrorInTypeAnnotation
 # Syntax error in type comment, because used `# type:` twice
 testErrorCodeTypeIgnoreMisspelled2
+# SyntaxError "Assignment expression within a comprehension cannot be used in a class body"
+testNoCrashOnAssignmentExprClass
 
 # invalid syntax, and therefore name errors, names should probably be Any
 testModifyTwoFilesOneWithBlockingError1
