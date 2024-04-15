@@ -41,7 +41,7 @@ pub(crate) struct NameBinder<'db, 'a> {
     tree: &'db Tree,
     type_: NameBinderType,
     scope_node: NodeIndex,
-    symbol_table: &'a SymbolTable,
+    symbol_table: SymbolTable,
     points: &'db Points,
     complex_points: &'db ComplexValues,
     issues: &'db Diagnostics,
@@ -63,7 +63,6 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         tree: &'db Tree,
         type_: NameBinderType,
         scope_node: NodeIndex,
-        symbol_table: &'a SymbolTable,
         points: &'db Points,
         complex_points: &'db ComplexValues,
         issues: &'db Diagnostics,
@@ -76,11 +75,11 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             tree,
             type_,
             scope_node,
-            symbol_table,
             points,
             complex_points,
             issues,
             star_imports,
+            symbol_table: SymbolTable::default(),
             unordered_references: vec![],
             unresolved_nodes: vec![],
             names_to_be_resolved_in_parent: vec![],
@@ -95,14 +94,14 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     pub(crate) fn with_global_binder(
         mypy_compatible: bool,
         tree: &'db Tree,
-        symbol_table: &'a SymbolTable,
         points: &'db Points,
         complex_points: &'db ComplexValues,
         issues: &'db Diagnostics,
         star_imports: &'db RefCell<Vec<StarImport>>,
         file_index: FileIndex,
         func: impl FnOnce(&mut NameBinder<'db, 'db>),
-    ) where
+    ) -> SymbolTable
+    where
         'a: 'db,
     {
         let mut binder = NameBinder::new(
@@ -110,7 +109,6 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             tree,
             NameBinderType::Global,
             0,
-            symbol_table,
             points,
             complex_points,
             issues,
@@ -126,21 +124,20 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         for annotation_name in &binder.annotation_names {
             binder.try_to_process_reference(*annotation_name, false);
         }
+        binder.symbol_table
     }
 
     fn with_nested(
         &mut self,
         type_: NameBinderType,
         scope_node: NodeIndex,
-        symbol_table: &'_ SymbolTable,
         func: impl FnOnce(&mut NameBinder<'db, '_>),
-    ) {
+    ) -> SymbolTable {
         let mut name_binder = NameBinder::new(
             self.mypy_compatible,
             self.tree,
             type_,
             scope_node,
-            symbol_table,
             self.points,
             self.complex_points,
             self.issues,
@@ -155,6 +152,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             names_to_be_resolved_in_parent,
             annotation_names,
             unresolved_self_vars,
+            symbol_table,
             ..
         } = name_binder;
         self.unresolved_self_vars.extend(unresolved_self_vars);
@@ -166,7 +164,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         self.unresolved_nodes.extend(unresolved_nodes);
         for annotation_name in annotation_names {
             if !try_to_process_reference_for_symbol_table(
-                symbol_table,
+                &symbol_table,
                 self.file_index,
                 self.points,
                 annotation_name,
@@ -175,6 +173,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 self.annotation_names.push(annotation_name);
             }
         }
+        symbol_table
     }
 
     fn add_issue(&self, node_index: NodeIndex, type_: IssueType) {
@@ -368,22 +367,16 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                         is_method,
                         is_async,
                     } => {
-                        let symbol_table = SymbolTable::default();
-                        self.with_nested(
+                        let symbol_table = self.with_nested(
                             NameBinderType::Function { is_async },
                             func.index(),
-                            &symbol_table,
                             |binder| binder.index_function_body(func, is_method),
                         );
                     }
                     Unresolved::Lambda(lambda) => {
-                        let symbol_table = SymbolTable::default();
-                        self.with_nested(
-                            NameBinderType::Lambda,
-                            lambda.index(),
-                            &symbol_table,
-                            |binder| binder.index_lambda(lambda),
-                        );
+                        self.with_nested(NameBinderType::Lambda, lambda.index(), |binder| {
+                            binder.index_lambda(lambda)
+                        });
                     }
                     Unresolved::Comprehension(comp) => self.index_comprehension(comp, true),
                     Unresolved::DictComprehension(comp) => {
@@ -579,20 +572,14 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     }
 
     fn index_class(&mut self, class: ClassDef<'db>, is_decorated: bool) {
-        let class_symbol_table = SymbolTable::default();
         let self_symbol_table = SymbolTable::default();
-        self.with_nested(
-            NameBinderType::Class,
-            class.index(),
-            &class_symbol_table,
-            |binder| {
-                let (arguments, block) = class.unpack();
-                if let Some(arguments) = arguments {
-                    binder.index_non_block_node(&arguments, true);
-                }
-                binder.index_block(block, true);
-            },
-        );
+        let class_symbol_table = self.with_nested(NameBinderType::Class, class.index(), |binder| {
+            let (arguments, block) = class.unpack();
+            if let Some(arguments) = arguments {
+                binder.index_non_block_node(&arguments, true);
+            }
+            binder.index_block(block, true);
+        });
         self.unresolved_self_vars.push(class);
         let mut slots = None;
         if let Some(slots_index) = class_symbol_table.lookup_symbol("__slots__") {
@@ -858,24 +845,18 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             }
         };
         // TODO this is not exactly correct for named expressions and their scopes.
-        let symbol_table = SymbolTable::default();
-        self.with_nested(
-            NameBinderType::Comprehension,
-            clause.index(),
-            &symbol_table,
-            |binder| {
-                binder.index_non_block_node(&targets, true);
-                for if_ in ifs {
-                    binder.index_non_block_node(&if_, true);
-                }
+        self.with_nested(NameBinderType::Comprehension, clause.index(), |binder| {
+            binder.index_non_block_node(&targets, true);
+            for if_ in ifs {
+                binder.index_non_block_node(&if_, true);
+            }
 
-                if let Some(clause) = clauses.next() {
-                    binder.index_comprehension_clause(&clause, clauses, on_expr);
-                } else {
-                    on_expr(binder)
-                }
-            },
-        );
+            if let Some(clause) = clauses.next() {
+                binder.index_comprehension_clause(&clause, clauses, on_expr);
+            } else {
+                on_expr(binder)
+            }
+        });
     }
 
     fn index_function_name_and_param_defaults(
@@ -995,7 +976,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     #[inline]
     fn try_to_process_reference(&self, name: Name<'db>, needs_flow_analysis: bool) -> bool {
         try_to_process_reference_for_symbol_table(
-            self.symbol_table,
+            &self.symbol_table,
             self.file_index,
             self.points,
             name,

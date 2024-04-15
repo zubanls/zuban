@@ -233,17 +233,17 @@ impl<'db> PythonFile {
         project: &PythonProject,
         func: impl FnOnce(&mut NameBinder<'db, 'db>),
     ) {
-        NameBinder::with_global_binder(
-            project.flags.mypy_compatible,
-            &self.tree,
-            &self.symbol_table,
-            &self.points,
-            &self.complex_points,
-            &self.issues,
-            &self.star_imports,
-            self.file_index.get().unwrap(),
-            func,
-        )
+        self.symbol_table
+            .replace_table(NameBinder::with_global_binder(
+                project.flags.mypy_compatible,
+                &self.tree,
+                &self.points,
+                &self.complex_points,
+                &self.issues,
+                &self.star_imports,
+                self.file_index.get().unwrap(),
+                func,
+            ))
     }
 
     pub fn inference<'file, 'i_s>(

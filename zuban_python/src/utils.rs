@@ -223,6 +223,11 @@ impl SymbolTable {
     pub fn lookup_symbol(&self, name: &str) -> Option<NodeIndex> {
         self.symbols.get(&HashableRawStr::new(name))
     }
+
+    pub fn replace_table(&self, new: SymbolTable) {
+        let map = unsafe { &mut *self.symbols.map.get() };
+        *map = new.symbols.map.into_inner();
+    }
 }
 
 pub struct VecRefWrapper<'a, T: 'a>(pub Ref<'a, Vec<T>>);
