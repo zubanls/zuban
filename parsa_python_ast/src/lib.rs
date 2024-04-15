@@ -248,6 +248,7 @@ macro_rules! create_struct {
                     Nonterminal(ternary),
                     Nonterminal(comprehension),
                     Nonterminal(dict_comprehension),
+                    Nonterminal(walrus),
                 ];
                 InterestingNodes(self.node.search(SEARCH_NAMES, true))
             }

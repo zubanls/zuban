@@ -223,6 +223,15 @@ impl<'db> NameBinder<'db> {
         }
     }
 
+    fn add_new_walrus_definition(&mut self, name_def: NameDefinition<'db>) {
+        if matches!(self.type_, NameBinderType::Comprehension) {
+            // Walrus `:=` operators are available outside of comprehensions and therefore need to
+            // be added to the parent.
+            unsafe { &mut *self.parent.unwrap() }.add_new_walrus_definition(name_def)
+        }
+        self.add_new_definition(name_def, Point::new_uncalculated())
+    }
+
     fn add_new_definition(&mut self, name_def: NameDefinition<'db>, point: Point) {
         if let Some(first) = self.symbol_table.lookup_symbol(name_def.as_code()) {
             let mut latest_name_index = first;
@@ -814,7 +823,7 @@ impl<'db> NameBinder<'db> {
                 InterestingNode::Walrus(walrus) => {
                     let (name_def, expr) = walrus.unpack();
                     self.index_non_block_node_full(&expr, ordered, from_annotation);
-                    self.add_new_definition(name_def, Point::new_uncalculated())
+                    self.add_new_walrus_definition(name_def)
                 }
             }
         }
