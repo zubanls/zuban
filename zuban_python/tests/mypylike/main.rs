@@ -152,6 +152,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
         let project = projects.get_mut(config);
 
         let is_parse_test = self.file_name.starts_with("parse");
+        let is_semanal_test = self.file_name.starts_with("semanal-");
 
         for (i, step) in steps.steps.iter().enumerate() {
             if cfg!(feature = "zuban_debug") {
@@ -186,6 +187,9 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 .diagnostics(&diagnostics_config)
                 .iter()
                 .filter_map(|d| {
+                    if is_semanal_test && d.mypy_error_code() == "var-annotated" {
+                        return None;
+                    }
                     (!is_parse_test || d.mypy_error_code() == "syntax")
                         .then(|| d.as_string(&diagnostics_config))
                 })

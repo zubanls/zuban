@@ -25,8 +25,9 @@ use crate::{
     node_ref::NodeRef,
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, FunctionKind, Literal,
-        LiteralKind, Namespace, ParamType, StarParamType, StarStarParamType, StringSlice, Tuple,
-        TupleArgs, TupleUnpack, Type, UnionEntry, UnionType, Variance, WithUnpack,
+        LiteralKind, Namespace, NeverCause, ParamType, StarParamType, StarStarParamType,
+        StringSlice, Tuple, TupleArgs, TupleUnpack, Type, UnionEntry, UnionType, Variance,
+        WithUnpack,
     },
     type_helpers::{
         lookup_in_namespace, Class, FirstParamKind, Function, GeneratorType, Instance, Module,
@@ -975,8 +976,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 if let Some(partial) =
                     value.maybe_new_partial(i_s, NodeRef::new(self.file, name_def.index()))
                 {
-                    //save(name_def.index(), value);
-                    //return
+                    save(name_def.index(), &partial);
+                    return;
                 }
             }
             save(name_def.index(), value);
@@ -2079,7 +2080,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     elements @ StarLikeExpressionIterator::Elements(_) => {
                         self.create_list_or_set_generics(elements)
                     }
-                    StarLikeExpressionIterator::Empty => Type::Any(AnyCause::Todo), // TODO shouldn't this be Never?
+                    StarLikeExpressionIterator::Empty => Type::Never(NeverCause::Inference), // TODO shouldn't this be Never?
                 };
                 return Inferred::from_type(new_class!(
                     i_s.db.python_state.list_node_ref().as_link(),

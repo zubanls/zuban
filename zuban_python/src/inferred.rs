@@ -27,9 +27,9 @@ use crate::{
     type_::{
         execute_collections_named_tuple, execute_type_of_type, execute_typing_named_tuple,
         new_typed_dict, AnyCause, CallableContent, CallableParams, ClassGenerics, DbString, Enum,
-        FunctionKind, FunctionOverload, GenericItem, GenericsList, Literal as DbLiteral,
-        LiteralKind, LiteralValue, NeverCause, NewType, Type, TypeVarKind, TypeVarLike,
-        TypeVarLikes, TypedDict,
+        FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList,
+        Literal as DbLiteral, LiteralKind, LiteralValue, NeverCause, NewType, Type, TypeVarKind,
+        TypeVarLike, TypeVarLikes, TypedDict,
     },
     type_helpers::{
         execute_assert_type, execute_isinstance, execute_issubclass, execute_super, execute_type,
@@ -305,18 +305,26 @@ impl<'db: 'slf, 'slf> Inferred {
                 },
             )
         }
-        let Type::Class(c) = t else {
+        let Type::Class(GenericClass { link, generics: ClassGenerics::List(generics) }) = t else {
             return None;
         };
-        let specific = if c.link == i_s.db.python_state.list_node_ref().as_link() {
+        let specific = if *link == i_s.db.python_state.list_node_ref().as_link() {
             Specific::PartialList
-        } else if c.link == i_s.db.python_state.dict_node_ref().as_link() {
+        } else if *link == i_s.db.python_state.dict_node_ref().as_link() {
             Specific::PartialDict
-        } else if c.link == i_s.db.python_state.set_node_ref().as_link() {
+        } else if *link == i_s.db.python_state.set_node_ref().as_link() {
             Specific::PartialSet
         } else {
             return None;
         };
+        for generic in generics.iter() {
+            if !matches!(
+                generic,
+                GenericItem::TypeArg(Type::Never(NeverCause::Inference))
+            ) {
+                return None;
+            }
+        }
         Some(Self {
             state: InferredState::UnsavedSpecific(specific),
         })
