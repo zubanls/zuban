@@ -1976,6 +1976,25 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let node_ref = NodeRef::new(self.file, node_index);
         match second {
             PrimaryContent::Attribute(name) => {
+                if let Some(specific) = base.maybe_saved_specific(self.i_s.db) {
+                    match specific {
+                        Specific::PartialList => match name.as_code() {
+                            "append" => todo!(),
+                            "extend" => todo!(),
+                            _ => (),
+                        },
+                        Specific::PartialDict => match name.as_code() {
+                            "update" => todo!(),
+                            _ => (),
+                        },
+                        Specific::PartialSet => match name.as_code() {
+                            "add" | "discard" => todo!(),
+                            "update" => todo!(),
+                            _ => (),
+                        },
+                        _ => (),
+                    }
+                }
                 debug!("Lookup {}.{}", base.format_short(self.i_s), name.as_str());
                 base.lookup_with_result_context(
                     self.i_s,
