@@ -388,9 +388,9 @@ pub enum Specific {
     MypyExtensionsVarArg,
     MypyExtensionsKwArg,
     PartialNone,
-    // PartialList,
-    // PartialDict,
-    // PartialSet,
+    PartialList,
+    PartialDict,
+    PartialSet,
     // PartialDefaultDict,
 }
 

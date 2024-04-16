@@ -971,6 +971,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 ),
             );
         } else {
+            if assign_kind == AssignKind::Normal {
+                if let Some(partial) = value.maybe_new_partial(i_s.db) {
+                    //save(name_def.index(), value);
+                    //return
+                }
+            }
             save(name_def.index(), value);
         }
     }
