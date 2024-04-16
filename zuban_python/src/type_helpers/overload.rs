@@ -13,7 +13,7 @@ use crate::{
         replace_class_type_vars_in_callable, ArgumentIndexWithParam, FormatData,
         FunctionOrCallable, OnTypeError, ResultContext, SignatureMatch,
     },
-    type_::{AnyCause, FunctionOverload, ReplaceSelf, Type},
+    type_::{AnyCause, FunctionOverload, NeverCause, ReplaceSelf, Type},
 };
 
 #[derive(Debug)]
@@ -306,7 +306,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 let Type::Union(u) = inf.as_type(i_s) else {
                     unreachable!()
                 };
-                let mut unioned = Type::Never;
+                let mut unioned = Type::Never(NeverCause::Other);
                 let mut first_similar = None;
                 let mut mismatch = false;
                 for entry in u.entries.into_vec().into_iter() {

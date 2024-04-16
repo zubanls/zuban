@@ -31,9 +31,9 @@ use crate::{
     inference_state::InferenceState,
     type_::{
         match_tuple_type_arguments, AnyCause, CallableContent, CallableParam, CallableParams,
-        DbString, GenericItem, GenericsList, ParamSpecArg, ParamSpecUsage, ParamType, ReplaceSelf,
-        StarParamType, TupleArgs, TupleUnpack, Type, TypeArgs, TypeVarKind, TypeVarLike,
-        TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict,
+        DbString, GenericItem, GenericsList, NeverCause, ParamSpecArg, ParamSpecUsage, ParamType,
+        ReplaceSelf, StarParamType, TupleArgs, TupleUnpack, Type, TypeArgs, TypeVarKind,
+        TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarTupleUsage, TypeVarUsage, TypedDict,
         TypedDictGenerics, Variance, WithUnpack,
     },
     type_helpers::{Callable, Class, Function},
@@ -873,7 +873,9 @@ impl<'a> Matcher<'a> {
 
     pub fn replace_type_var_likes_for_unknown_type_vars(&self, db: &Database, t: &Type) -> Type {
         self.replace_type_var_likes(db, t, |usage| {
-            usage.as_type_var_like().as_never_generic_item()
+            usage
+                .as_type_var_like()
+                .as_never_generic_item(NeverCause::Inference)
         })
     }
 

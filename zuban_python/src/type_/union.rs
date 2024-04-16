@@ -1,6 +1,6 @@
 use std::{borrow::Cow, collections::HashMap, rc::Rc};
 
-use super::{FormatStyle, LiteralKind, Type};
+use super::{FormatStyle, LiteralKind, NeverCause, Type};
 use crate::{
     database::Database,
     inference_state::InferenceState,
@@ -169,7 +169,7 @@ fn merge_simplified_union_type(
     }
     if finished {
         MergeSimplifiedUnionResult::Done(match new_types.len() {
-            0 => Type::Never,
+            0 => Type::Never(NeverCause::Other),
             1 => new_types.into_iter().next().unwrap().type_,
             _ => {
                 let mut union = UnionType {

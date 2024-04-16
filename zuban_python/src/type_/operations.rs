@@ -244,7 +244,7 @@ impl Type {
                 self,
                 nt.lookup(i_s, add_issue, name, Some(&|| self.clone())),
             ),
-            Type::Never => (),
+            Type::Never(_) => (),
             Type::NewType(new_type) => new_type.type_(i_s).run_after_lookup_on_each_union_member(
                 i_s,
                 None,
@@ -441,7 +441,7 @@ impl Type {
                 args.iter().calculate_diagnostics(i_s);
                 Inferred::new_any(*cause)
             }
-            Type::Never => {
+            Type::Never(_) => {
                 args.iter().calculate_diagnostics(i_s);
                 Inferred::new_any(AnyCause::Todo)
             }

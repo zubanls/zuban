@@ -4,8 +4,8 @@ use parsa_python_ast::ParamKind;
 
 use super::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, GenericItem, GenericsList,
-    ParamType, ParamTypeDetails, StarParamType, StarStarParamType, Tuple, TupleArgs, TupleUnpack,
-    Type, TypeVarLike, Variance, WithUnpack,
+    NeverCause, ParamType, ParamTypeDetails, StarParamType, StarStarParamType, Tuple, TupleArgs,
+    TupleUnpack, Type, TypeVarLike, Variance, WithUnpack,
 };
 use crate::{
     database::Database,
@@ -25,7 +25,7 @@ impl Type {
             */
             Type::None | Type::Union(_) => return Some(self.simplified_union(i_s, other)),
             Type::Any(cause) => return Some(Type::Any(*cause)),
-            Type::Never => return Some(t2.clone()),
+            Type::Never(_) => return Some(t2.clone()),
             _ => None,
         };
 
@@ -98,7 +98,7 @@ pub fn common_base_type<'x, I: Iterator<Item = &'x Type>>(i_s: &InferenceState, 
         }
         result.into_owned()
     } else {
-        Type::Never
+        Type::Never(NeverCause::Other)
     }
 }
 
@@ -432,7 +432,8 @@ impl TupleArgs {
                     let new_unpack = match (&w1.unpack, &w2.unpack) {
                         (TupleUnpack::ArbitraryLen(t1), TupleUnpack::ArbitraryLen(t2)) => {
                             TupleUnpack::ArbitraryLen(
-                                t1.common_sub_type(i_s, t2).unwrap_or(Type::Never),
+                                t1.common_sub_type(i_s, t2)
+                                    .unwrap_or(Type::Never(NeverCause::Other)),
                             )
                         }
                         (TupleUnpack::TypeVarTuple(tvt1), TupleUnpack::TypeVarTuple(tvt2)) => {
@@ -450,14 +451,20 @@ impl TupleArgs {
                             .before
                             .iter()
                             .zip(w2.before.iter())
-                            .map(|(t1, t2)| t1.common_sub_type(i_s, t2).unwrap_or(Type::Never))
+                            .map(|(t1, t2)| {
+                                t1.common_sub_type(i_s, t2)
+                                    .unwrap_or(Type::Never(NeverCause::Other))
+                            })
                             .collect(),
                         unpack: new_unpack,
                         after: w1
                             .after
                             .iter()
                             .zip(w2.after.iter())
-                            .map(|(t1, t2)| t1.common_sub_type(i_s, t2).unwrap_or(Type::Never))
+                            .map(|(t1, t2)| {
+                                t1.common_sub_type(i_s, t2)
+                                    .unwrap_or(Type::Never(NeverCause::Other))
+                            })
                             .collect(),
                     })
                 }

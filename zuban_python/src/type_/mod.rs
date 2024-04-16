@@ -452,7 +452,7 @@ pub enum Type {
     Self_,
     None,
     Any(AnyCause),
-    Never,
+    Never(NeverCause),
 }
 
 impl Type {
@@ -462,7 +462,7 @@ impl Type {
 
     pub fn from_union_entries(entries: Vec<UnionEntry>) -> Self {
         match entries.len() {
-            0 => Type::Never,
+            0 => Type::Never(NeverCause::Other),
             1 => entries.into_iter().next().unwrap().type_,
             _ => Type::Union(UnionType::new(entries)),
         }
@@ -488,7 +488,7 @@ impl Type {
     pub fn into_iter_with_unpacked_unions(self) -> impl Iterator<Item = UnionEntry> {
         match self {
             Type::Union(items) => TypeIterator::Union(items.entries.into_vec().into_iter()),
-            Type::Never => TypeIterator::Finished,
+            Type::Never(_) => TypeIterator::Finished,
             t => TypeIterator::Single(t),
         }
     }
@@ -498,7 +498,7 @@ impl Type {
     ) -> impl Iterator<Item = &Type> {
         match self {
             Type::Union(items) => TypeRefIterator::Union(items.iter()),
-            Type::Never => TypeRefIterator::Finished,
+            Type::Never(_) => TypeRefIterator::Finished,
             t => TypeRefIterator::Single(t),
         }
     }
@@ -509,7 +509,7 @@ impl Type {
     ) -> impl Iterator<Item = &Type> {
         match self {
             Type::Union(items) => TypeRefIterator::Union(items.iter()),
-            Type::Never => TypeRefIterator::Finished,
+            Type::Never(_) => TypeRefIterator::Finished,
             Type::RecursiveType(rec) => rec.calculated_type(db).iter_with_unpacked_unions(db),
             t => TypeRefIterator::Single(t),
         }
@@ -525,17 +525,17 @@ impl Type {
                     }
                 }
                 match new_entries.len() {
-                    0 => Type::Never,
+                    0 => Type::Never(NeverCause::Other),
                     1 => new_entries.into_iter().next().unwrap().type_,
                     _ => Type::Union(UnionType::new(new_entries)),
                 }
             }
-            Type::Never => Type::Never,
+            Type::Never(cause) => Type::Never(*cause),
             t => {
                 if maybe_retain(t) {
                     t.clone()
                 } else {
-                    Type::Never
+                    Type::Never(NeverCause::Other)
                 }
             }
         }
@@ -544,7 +544,7 @@ impl Type {
     pub fn highest_union_format_index(&self) -> usize {
         match self {
             Type::Union(items) => items.entries.iter().map(|e| e.format_index).max().unwrap(),
-            Type::Never => 0,
+            Type::Never(_) => 0,
             _ => 1,
         }
     }
@@ -662,7 +662,8 @@ impl Type {
     }
 
     pub fn make_optional(&mut self) {
-        *self = mem::replace(self, Self::Never).union_with_details(Type::None, true);
+        *self =
+            mem::replace(self, Self::Never(NeverCause::Other)).union_with_details(Type::None, true);
     }
 
     pub fn union_with_details(self, other: Type, mut format_as_optional: bool) -> Self {
@@ -679,7 +680,7 @@ impl Type {
                             }
                         }
                     }
-                    Type::Never => (), // `X | Never is always X`
+                    Type::Never(_) => (), // `X | Never is always X`
                     _ => {
                         if !vec.iter().any(|t| t.type_ == other) {
                             vec.push(UnionEntry {
@@ -692,7 +693,7 @@ impl Type {
                 format_as_optional |= u1.format_as_optional;
                 vec
             }
-            Self::Never => return other,
+            Self::Never(_) => return other,
             _ => match other {
                 Self::Union(u) => {
                     format_as_optional |= u.format_as_optional;
@@ -708,7 +709,7 @@ impl Type {
                     }
                 }
                 _ => {
-                    if self == other || matches!(other, Type::Never) {
+                    if self == other || matches!(other, Type::Never(_)) {
                         return self;
                     } else {
                         vec![
@@ -734,7 +735,7 @@ impl Type {
     }
 
     pub fn union_in_place(&mut self, other: Type) {
-        *self = mem::replace(self, Self::Never).union(other);
+        *self = mem::replace(self, Self::Never(NeverCause::Other)).union(other);
     }
 
     pub fn gather_union(callable: impl FnOnce(&mut dyn FnMut(Self))) -> Self {
@@ -746,7 +747,7 @@ impl Type {
                 None => t,
             });
         });
-        result.unwrap_or_else(|| Type::Never)
+        result.unwrap_or_else(|| Type::Never(NeverCause::Other))
     }
 
     pub fn format_short(&self, db: &Database) -> Box<str> {
@@ -771,7 +772,7 @@ impl Type {
             Self::Callable(content) => content.format(format_data).into(),
             Self::Any(_) => Box::from("Any"),
             Self::None => Box::from("None"),
-            Self::Never => Box::from("Never"),
+            Self::Never(_) => Box::from("Never"),
             Self::Literal(literal) => literal.format(format_data),
             Self::NewType(n) => n.format(format_data),
             Self::RecursiveType(rec) => {
@@ -878,7 +879,7 @@ impl Type {
             Self::Class(..)
             | Self::Any(_)
             | Self::None
-            | Self::Never
+            | Self::Never(_)
             | Self::Literal { .. }
             | Self::Module(_)
             | Self::Self_
@@ -968,7 +969,7 @@ impl Type {
                 ..
             })
             | Self::None
-            | Self::Never
+            | Self::Never(_)
             | Self::Literal { .. } => false,
             Self::Any(_) => true,
             Self::NewType(n) => n.type_(i_s).has_any(i_s),
@@ -1684,4 +1685,17 @@ pub enum AnyCause {
     ModuleNotFound,
     Internal,
     Todo, // Used for cases where it's currently unclear what the cause should be.
+}
+
+#[derive(Debug, Eq, Copy, Clone)]
+pub enum NeverCause {
+    Explicit,
+    Inference,
+    Other,
+}
+
+impl PartialEq for NeverCause {
+    fn eq(&self, other: &Self) -> bool {
+        true
+    }
 }

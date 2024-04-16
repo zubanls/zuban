@@ -28,8 +28,8 @@ use crate::{
     node_ref::NodeRef,
     type_::{
         format_callable_params, AnyCause, CallableContent, CallableParams, ClassGenerics, DbString,
-        FunctionKind, FunctionOverload, GenericItem, GenericsList, Literal, LiteralKind, TupleArgs,
-        Type, TypeVarLike, Variance,
+        FunctionKind, FunctionOverload, GenericItem, GenericsList, Literal, LiteralKind,
+        NeverCause, TupleArgs, Type, TypeVarLike, Variance,
     },
     type_helpers::{
         is_private, Class, FirstParamProperties, Function, GeneratorType, Instance, LookupDetails,
@@ -709,7 +709,7 @@ impl<'db> Inference<'db, '_, '_> {
             let unreachable = fa.with_new_frame_and_return_unreachable(|| {
                 self.calc_function_diagnostics_internal(function, f, class)
             });
-            if matches!(function.return_type(self.i_s).as_ref(), Type::Never)
+            if matches!(function.return_type(self.i_s).as_ref(), Type::Never(_))
                 && !unreachable
                 && !(self.i_s.db.project.flags.allow_empty_bodies
                     && function.has_trivial_body(self.i_s))
@@ -1067,7 +1067,7 @@ impl<'db> Inference<'db, '_, '_> {
             if let Some(annotation) = func.return_annotation() {
                 let i_s = self.i_s;
                 let mut t = self.use_cached_return_annotation_type(annotation);
-                if matches!(t.as_ref(), Type::Never) {
+                if matches!(t.as_ref(), Type::Never(_)) {
                     self.add_issue(
                         return_stmt.index(),
                         IssueKind::ReturnStmtInFunctionWithNeverReturn,
@@ -1467,7 +1467,7 @@ fn valid_raise_type(i_s: &InferenceState, from: NodeRef, t: &Type, allow_none: b
             _ => false,
         },
         Type::Any(_) => true,
-        Type::Never => todo!(),
+        Type::Never(_) => todo!(),
         Type::Union(union) => union
             .iter()
             .all(|t| valid_raise_type(i_s, from, t, allow_none)),
@@ -1988,7 +1988,7 @@ fn check_protocol_type_var_variances(i_s: &InferenceState, class: Class) {
                                 GenericItem::TypeArg(if is_upper {
                                     i_s.db.python_state.object_type()
                                 } else {
-                                    Type::Never
+                                    Type::Never(NeverCause::Other)
                                 })
                             } else {
                                 tv_like.as_any_generic_item()

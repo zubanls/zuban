@@ -4,8 +4,8 @@ use parsa_python_ast::{AtomContent, DictElement};
 
 use super::{
     replace::ReplaceTypeVarLike, utils::method_with_fallback, AnyCause, CallableParam,
-    CustomBehavior, DbString, FormatStyle, GenericsList, ParamType, ReplaceSelf, StringSlice, Type,
-    TypeVarLikes,
+    CustomBehavior, DbString, FormatStyle, GenericsList, NeverCause, ParamType, ReplaceSelf,
+    StringSlice, Type, TypeVarLikes,
 };
 use crate::{
     arguments::{ArgKind, Args},
@@ -216,7 +216,7 @@ impl TypedDict {
                     if m1.required != m2.required
                         || !m1.type_.is_simple_same_type(i_s, &m2.type_).bool()
                     {
-                        return Type::Never;
+                        return Type::Never(NeverCause::Other);
                     }
                     continue 'outer;
                 }

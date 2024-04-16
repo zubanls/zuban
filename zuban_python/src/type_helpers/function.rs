@@ -1242,7 +1242,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             .inference(i_s)
             .use_cached_return_annotation_type(return_annotation);
 
-        if matches!(return_type.as_ref(), Type::Never) && !self.is_async() {
+        if matches!(return_type.as_ref(), Type::Never(_)) && !self.is_async() {
             FLOW_ANALYSIS.with(|fa| fa.mark_current_frame_unreachable())
         }
 

@@ -11,8 +11,8 @@ use crate::{
     inference_state::InferenceState,
     matching::Param,
     type_::{
-        AnyCause, CallableParams, GenericItem, GenericsList, ParamSpecArg, ParamType, Type,
-        TypeArgs, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikes, TypeVarUsage, Variance,
+        AnyCause, CallableParams, GenericItem, GenericsList, NeverCause, ParamSpecArg, ParamType,
+        Type, TypeArgs, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikes, TypeVarUsage, Variance,
     },
     type_helpers::{Callable, Class, Function},
 };
@@ -116,7 +116,9 @@ impl CalculatingTypeArg {
                 GenericItem::TypeArg(fallback)
             } else {
                 match type_var_like {
-                    TypeVarLike::TypeVar(_) => GenericItem::TypeArg(Type::Never),
+                    TypeVarLike::TypeVar(_) => {
+                        GenericItem::TypeArg(Type::Never(NeverCause::Inference))
+                    }
                     // TODO TypeVarTuple: this feels wrong, should maybe be never?
                     TypeVarLike::TypeVarTuple(_) => {
                         GenericItem::TypeArgs(TypeArgs::new_fixed_length(Rc::new([])))

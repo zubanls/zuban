@@ -50,7 +50,7 @@ impl Type {
                 _ => false,
             },
             Type::Any(_) => true,
-            Type::Never => todo!(),
+            Type::Never(_) => todo!(),
             Type::Literal(literal1) => match other {
                 Type::Literal(literal2) => literal1.value(i_s.db) == literal2.value(i_s.db),
                 _ => i_s
@@ -121,7 +121,7 @@ impl Type {
                     with_any: matcher.is_matching_reverse(),
                 }
             }
-            Type::Never => matches!(value_type, Type::Never).into(),
+            Type::Never(_) => matches!(value_type, Type::Never(_)).into(),
             Type::Tuple(t1) => match value_type {
                 Type::Tuple(t2) => {
                     Self::matches_tuple(i_s, matcher, t1, t2, variance).similar_if_false()
@@ -493,7 +493,7 @@ impl Type {
                 let t = n2.type_(i_s);
                 return self.matches(i_s, matcher, t, variance);
             }
-            Type::Never if variance == Variance::Covariant => return Match::new_true(), // Never is assignable to anything
+            Type::Never(_) if variance == Variance::Covariant => return Match::new_true(), // Never is assignable to anything
             Type::Self_ if variance == Variance::Covariant => {
                 if let Some(cls) = i_s.current_class() {
                     return self.simple_matches(i_s, &cls.as_type(i_s.db), variance);

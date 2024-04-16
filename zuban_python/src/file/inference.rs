@@ -2999,7 +2999,7 @@ pub fn await_(
         .as_cow_type(i_s)
         .as_ref(),
     );
-    if matches!(t, Type::Never) {
+    if matches!(t, Type::Never(_)) {
         FLOW_ANALYSIS.with(|fa| fa.mark_current_frame_unreachable())
     }
     if expect_not_none && matches!(t, Type::None) {

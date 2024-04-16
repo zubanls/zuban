@@ -43,7 +43,7 @@ impl Type {
         match self {
             Type::Any(cause) => Type::Any(*cause),
             Type::None => Type::None,
-            Type::Never => Type::Never,
+            Type::Never(cause) => Type::Never(*cause),
             Type::Class(c) => Type::new_class(c.link, c.generics.map_list(replace_generics)),
             Type::FunctionOverload(overload) => {
                 Type::FunctionOverload(overload.map_functions(|functions| {
@@ -195,7 +195,7 @@ impl Type {
         match self {
             Type::Any(cause) => Type::Any(*cause),
             Type::None => Type::None,
-            Type::Never => Type::Never,
+            Type::Never(cause) => Type::Never(*cause),
             Type::Class(c) => Type::Class(GenericClass {
                 link: c.link,
                 generics: c.generics.map_list(rewrite_generics),

@@ -2,7 +2,7 @@ use std::{ops::AddAssign, rc::Rc};
 
 use super::{
     replace::ReplaceTypeVarLike, AnyCause, CallableContent, CallableParams, GenericItem,
-    GenericsList, ReplaceSelf, TupleArgs, TupleUnpack, Type, TypeArgs, WithUnpack,
+    GenericsList, NeverCause, ReplaceSelf, TupleArgs, TupleUnpack, Type, TypeArgs, WithUnpack,
 };
 use crate::{
     database::{Database, PointLink},
@@ -478,11 +478,11 @@ impl TypeVarLike {
         }
     }
 
-    pub fn as_never_generic_item(&self) -> GenericItem {
+    pub fn as_never_generic_item(&self, cause: NeverCause) -> GenericItem {
         match self {
-            TypeVarLike::TypeVar(_) => GenericItem::TypeArg(Type::Never),
+            TypeVarLike::TypeVar(_) => GenericItem::TypeArg(Type::Never(cause)),
             TypeVarLike::TypeVarTuple(_) => {
-                GenericItem::TypeArgs(TypeArgs::new_arbitrary_length(Type::Never))
+                GenericItem::TypeArgs(TypeArgs::new_arbitrary_length(Type::Never(cause)))
             }
             TypeVarLike::ParamSpec(_) => todo!(),
         }

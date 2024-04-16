@@ -19,7 +19,7 @@ use crate::{
     node_ref::NodeRef,
     type_::{
         check_typed_dict_call, infer_typed_dict_item, maybe_add_extra_keys_issue, AnyCause,
-        Literal, LiteralKind, LiteralValue, Type, TypedDict, TypedDictGenerics,
+        Literal, LiteralKind, LiteralValue, NeverCause, Type, TypedDict, TypedDictGenerics,
     },
     Inferred,
 };
@@ -60,7 +60,7 @@ impl<'db> Inference<'db, '_, '_> {
             }
         }
         // Just because we defined a final int somewhere, we should probably not infer that.
-        result.unwrap_or(Type::Never)
+        result.unwrap_or(Type::Never(NeverCause::Other))
     }
 
     pub fn infer_list_literal_from_context(

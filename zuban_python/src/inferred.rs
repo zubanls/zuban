@@ -28,8 +28,8 @@ use crate::{
         execute_collections_named_tuple, execute_type_of_type, execute_typing_named_tuple,
         new_typed_dict, AnyCause, CallableContent, CallableParams, ClassGenerics, DbString, Enum,
         FunctionKind, FunctionOverload, GenericItem, GenericsList, Literal as DbLiteral,
-        LiteralKind, LiteralValue, NewType, Type, TypeVarKind, TypeVarLike, TypeVarLikes,
-        TypedDict,
+        LiteralKind, LiteralValue, NeverCause, NewType, Type, TypeVarKind, TypeVarLike,
+        TypeVarLikes, TypedDict,
     },
     type_helpers::{
         execute_assert_type, execute_isinstance, execute_issubclass, execute_super, execute_type,
@@ -737,7 +737,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 None => inferred,
             });
         });
-        result.unwrap_or_else(|| Inferred::from_type(Type::Never))
+        result.unwrap_or_else(|| Inferred::from_type(Type::Never(NeverCause::Other)))
     }
 
     pub fn simplified_union(self, i_s: &InferenceState, other: Self) -> Self {
@@ -760,7 +760,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 None => inferred,
             });
         });
-        result.unwrap_or_else(|| Inferred::from_type(Type::Never))
+        result.unwrap_or_else(|| Inferred::from_type(Type::Never(NeverCause::Other)))
     }
 
     fn common_base_type(&self, i_s: &InferenceState, other: &Self) -> Self {

@@ -24,8 +24,8 @@ use crate::{
     node_ref::NodeRef,
     type_::{
         match_unpack, CallableContent, CallableParams, CallableWithParent, ClassGenerics,
-        GenericItem, GenericsList, ParamSpecTypeVars, ReplaceSelf, TupleArgs, TupleUnpack, Type,
-        TypeVarLikes, TypeVarManager, Variance, WithUnpack,
+        GenericItem, GenericsList, NeverCause, ParamSpecTypeVars, ReplaceSelf, TupleArgs,
+        TupleUnpack, Type, TypeVarLikes, TypeVarManager, Variance, WithUnpack,
     },
     type_helpers::{Callable, Class, Function},
 };
@@ -254,7 +254,9 @@ impl CalculatedTypeArgs {
             if !unused_type_vars.is_empty() {
                 type_ = type_.replace_type_var_likes(i_s.db, &mut |usage| {
                     if usage.in_definition() == self.in_definition {
-                        usage.as_type_var_like().as_never_generic_item()
+                        usage
+                            .as_type_var_like()
+                            .as_never_generic_item(NeverCause::Inference)
                     } else {
                         usage.into_generic_item()
                     }

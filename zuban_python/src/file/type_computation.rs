@@ -22,8 +22,8 @@ use crate::{
         new_collections_named_tuple, new_typing_named_tuple, AnyCause, CallableContent,
         CallableParam, CallableParams, CallableWithParent, ClassGenerics, Dataclass, DbString,
         Enum, EnumMember, FunctionKind, GenericClass, GenericItem, GenericsList, Literal,
-        LiteralKind, NamedTuple, Namespace, NewType, ParamSpecArg, ParamSpecUsage, ParamType,
-        RecursiveType, StarParamType, StarStarParamType, StringSlice, Tuple, TupleArgs,
+        LiteralKind, NamedTuple, Namespace, NeverCause, NewType, ParamSpecArg, ParamSpecUsage,
+        ParamType, RecursiveType, StarParamType, StarStarParamType, StringSlice, Tuple, TupleArgs,
         TupleUnpack, Type, TypeArgs, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage,
         TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, TypedDict,
         TypedDictGenerics, TypedDictMember, UnionEntry, UnionType, WithUnpack,
@@ -76,7 +76,7 @@ pub(super) enum SpecialType {
     Self_,
     Final,
     Annotated,
-    NoReturn,
+    Never,
     ClassVar,
     MypyExtensionsParamType(Specific),
     CallableParam(CallableParam),
@@ -1005,7 +1005,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     ));
                 }
                 SpecialType::Any => return Some(Type::Any(AnyCause::Explicit)),
-                SpecialType::NoReturn => return Some(Type::Never),
+                SpecialType::Never => return Some(Type::Never(NeverCause::Explicit)),
                 SpecialType::Type => {
                     if db.project.flags.disallow_any_generics {
                         self.add_issue(
@@ -1419,7 +1419,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         SpecialType::Type => self.compute_type_get_item_on_type(s),
                         SpecialType::Tuple => self.compute_type_get_item_on_tuple(s),
                         SpecialType::Any => todo!(),
-                        SpecialType::NoReturn => todo!(),
+                        SpecialType::Never => todo!(),
                         SpecialType::Protocol => {
                             self.expect_type_var_like_args(s, "Protocol");
                             TypeContent::SpecialType(SpecialType::ProtocolWithGenerics)
@@ -2451,7 +2451,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             let t = self.compute_slice_type_content(slice_or_simple);
             let type_ = self.as_type(t, slice_or_simple.as_node_ref());
             match type_ {
-                Type::Never => continue,
+                Type::Never(_) => continue,
                 Type::Union(u) => {
                     let length = u.entries.len();
                     for mut new_entry in u.entries.into_vec() {
@@ -4375,7 +4375,7 @@ fn check_special_type(point: Point) -> Option<SpecialType> {
             Specific::TypingFinal => SpecialType::Final,
             Specific::TypingSelf => SpecialType::Self_,
             Specific::TypingAnnotated => SpecialType::Annotated,
-            Specific::TypingNeverOrNoReturn => SpecialType::NoReturn,
+            Specific::TypingNeverOrNoReturn => SpecialType::Never,
             Specific::TypingTuple => SpecialType::Tuple,
             Specific::TypingTypedDict => SpecialType::TypingTypedDict,
             Specific::TypingRequired => SpecialType::Required,

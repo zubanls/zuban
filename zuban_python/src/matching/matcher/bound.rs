@@ -7,8 +7,9 @@ use crate::{
     inference_state::InferenceState,
     matching::{matches_params_with_variance, ParamsStyle},
     type_::{
-        match_tuple_type_arguments, AnyCause, CallableParams, GenericItem, ParamSpecArg, TupleArgs,
-        Type, TypeArgs, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage, Variance,
+        match_tuple_type_arguments, AnyCause, CallableParams, GenericItem, NeverCause,
+        ParamSpecArg, TupleArgs, Type, TypeArgs, TypeVar, TypeVarKind, TypeVarLike,
+        TypeVarLikeUsage, Variance,
     },
     type_helpers::Class,
 };
@@ -89,7 +90,7 @@ impl Bound {
                     }
                     _ => (),
                 }
-                Type::Never.format(format_data)
+                Type::Never(NeverCause::Other).format(format_data)
             }
         })
     }
@@ -375,7 +376,8 @@ impl BoundKind {
     fn common_sub_type(&self, i_s: &InferenceState, other: &Self) -> Option<Self> {
         match (self, other) {
             (Self::TypeVar(t1), Self::TypeVar(t2)) => Some(Self::TypeVar(
-                t1.common_sub_type(i_s, t2).unwrap_or(Type::Never),
+                t1.common_sub_type(i_s, t2)
+                    .unwrap_or(Type::Never(NeverCause::Inference)),
             )),
             (Self::TypeVarTuple(tup1), Self::TypeVarTuple(tup2)) => todo!(),
             (Self::ParamSpec(params1), Self::ParamSpec(params2)) => {

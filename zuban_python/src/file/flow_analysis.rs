@@ -23,8 +23,8 @@ use crate::{
     node_ref::NodeRef,
     type_::{
         simplified_union_from_iterators, AnyCause, CallableLike, ClassGenerics, EnumMember,
-        GenericItem, Literal, LiteralKind, NamedTuple, Tuple, TupleArgs, TupleUnpack, Type,
-        TypeVarKind, UnionType, WithUnpack,
+        GenericItem, Literal, LiteralKind, NamedTuple, NeverCause, Tuple, TupleArgs, TupleUnpack,
+        Type, TypeVarKind, UnionType, WithUnpack,
     },
     type_helpers::{Class, Function},
 };
@@ -147,7 +147,7 @@ impl Frame {
 
     fn from_type_without_entry(t: Type) -> Self {
         match t {
-            Type::Never => Self::new_unreachable(),
+            Type::Never(_) => Self::new_unreachable(),
             _ => Self::default(),
         }
     }
@@ -158,7 +158,7 @@ impl Frame {
 
     fn from_type(key: FlowKey, type_: Type) -> Self {
         match type_ {
-            Type::Never => Self::new_unreachable(),
+            Type::Never(_) => Self::new_unreachable(),
             type_ => Self::new(vec![Entry {
                 key,
                 type_,
@@ -317,7 +317,7 @@ fn merge_and(i_s: &InferenceState, mut x: Frame, y: Frame) -> Frame {
                 if let Some(t) = x_entry.type_.common_sub_type(i_s, &y_entry.type_) {
                     x_entry.type_ = t
                 } else {
-                    x_entry.type_ = Type::Never;
+                    x_entry.type_ = Type::Never(NeverCause::Other);
                     x.unreachable = true;
                 }
                 continue 'outer;
@@ -415,8 +415,8 @@ fn split_off_singleton(
         },
         _ => false,
     };
-    let mut other_return = Type::Never;
-    let mut left = Type::Never;
+    let mut other_return = Type::Never(NeverCause::Other);
+    let mut left = Type::Never(NeverCause::Other);
     let mut add = |t| left.union_in_place(t);
     for sub_t in t.iter_with_unpacked_unions(i_s.db) {
         match sub_t {
@@ -497,8 +497,8 @@ fn narrow_is_or_eq(
             if is_eq && (!literal1.implicit || has_explicit_literal(i_s.db, left_t))
                 || !is_eq && matches!(literal1.kind, LiteralKind::Bool(_)) =>
         {
-            let mut true_type = Type::Never;
-            let mut false_type = Type::Never;
+            let mut true_type = Type::Never(NeverCause::Other);
+            let mut false_type = Type::Never(NeverCause::Other);
             let true_literal = || {
                 let mut new_literal = literal1.clone();
                 new_literal.implicit = false;
@@ -576,9 +576,9 @@ fn split_truthy_and_falsey(i_s: &InferenceState, t: &Type) -> Option<(Type, Type
     let split_truthy_and_falsey_single = |t: &Type| {
         let check = |condition| {
             if condition {
-                Some((t.clone(), Type::Never))
+                Some((t.clone(), Type::Never(NeverCause::Other)))
             } else {
-                Some((Type::Never, t.clone()))
+                Some((Type::Never(NeverCause::Other), t.clone()))
             }
         };
         let check_literal = |literal: &Literal| match &literal.kind {
@@ -586,9 +586,9 @@ fn split_truthy_and_falsey(i_s: &InferenceState, t: &Type) -> Option<(Type, Type
             LiteralKind::Int(i) => check(*i != 0),
             _ => None,
         };
-        let falsey = || Some((Type::Never, t.clone()));
+        let falsey = || Some((Type::Never(NeverCause::Other), t.clone()));
         match t {
-            Type::None => Some((Type::Never, Type::None)),
+            Type::None => Some((Type::Never(NeverCause::Other), Type::None)),
             Type::Literal(literal) => check_literal(literal),
             Type::Tuple(tup) => match &tup.args {
                 TupleArgs::ArbitraryLen(t) => Some((
@@ -608,7 +608,7 @@ fn split_truthy_and_falsey(i_s: &InferenceState, t: &Type) -> Option<(Type, Type
                         if nt.params().is_empty() {
                             todo!()
                         } else {
-                            return Some((t.clone(), Type::Never));
+                            return Some((t.clone(), Type::Never(NeverCause::Other)));
                         }
                     }
                     let Some(CallableLike::Callable(callable)) = class
@@ -630,8 +630,8 @@ fn split_truthy_and_falsey(i_s: &InferenceState, t: &Type) -> Option<(Type, Type
 
     match t {
         Type::Union(union) => {
-            let mut truthy = Type::Never;
-            let mut falsey = Type::Never;
+            let mut truthy = Type::Never(NeverCause::Other);
+            let mut falsey = Type::Never(NeverCause::Other);
             let mut had_split = false;
             for t in union.iter() {
                 let result = split_truthy_and_falsey(i_s, t);
@@ -642,7 +642,7 @@ fn split_truthy_and_falsey(i_s: &InferenceState, t: &Type) -> Option<(Type, Type
             }
             had_split.then_some((truthy, falsey))
         }
-        Type::Never => Some((Type::Never, Type::Never)),
+        Type::Never(cause) => Some((Type::Never(*cause), Type::Never(*cause))),
         _ => split_truthy_and_falsey_single(t),
     }
 }
@@ -1365,12 +1365,12 @@ impl Inference<'_, '_, '_> {
                 parent_unions: vec![],
             });
         }
-        if issubclass && !matches!(isinstance_type, Type::Never) {
+        if issubclass && !matches!(isinstance_type, Type::Never(_)) {
             isinstance_type = Type::Type(Rc::new(isinstance_type))
         }
         // Please listen to "Red Hot Chili Peppers - Otherside" here.
-        let mut true_type = Type::Never;
-        let mut other_side = Type::Never;
+        let mut true_type = Type::Never(NeverCause::Other);
+        let mut other_side = Type::Never(NeverCause::Other);
         let matcher = &mut Matcher::with_ignored_promotions();
         let db = self.i_s.db;
         for t in result
@@ -1392,7 +1392,7 @@ impl Inference<'_, '_, '_> {
                 Match::False { .. } => other_side.union_in_place(t.clone()),
             }
         }
-        if matches!(true_type, Type::Never) || isinstance_type.is_any_or_any_in_union(db) {
+        if matches!(true_type, Type::Never(_)) || isinstance_type.is_any_or_any_in_union(db) {
             true_type = isinstance_type;
         }
         debug!(
@@ -1510,7 +1510,7 @@ impl Inference<'_, '_, '_> {
                         .collect();
                     let ts = ts?;
                     Some(match ts.len() {
-                        0 => Type::Never,
+                        0 => Type::Never(NeverCause::Other),
                         1 => ts.into_iter().next().unwrap(),
                         _ => simplified_union_from_iterators(self.i_s, ts.iter()),
                     })
@@ -1601,7 +1601,7 @@ impl Inference<'_, '_, '_> {
                     })
                     .collect();
                 if !str_literals.is_empty() {
-                    let mut true_types = Type::Never;
+                    let mut true_types = Type::Never(NeverCause::Other);
                     let false_types = right_t.retain_in_union(|t| match t {
                         Type::TypedDict(td) => {
                             let mut true_only_count = 0;
@@ -2111,7 +2111,7 @@ fn check_for_comparison_guard(
                 };
                 let inf_t = inf.as_cow_type(i_s);
                 if !truthy.is_simple_sub_type_of(i_s, &inf_t).bool() {
-                    truthy = Type::Never;
+                    truthy = Type::Never(NeverCause::Other);
                 }
                 Some(FramesWithParentUnions {
                     truthy: Frame::from_type(key.clone(), truthy),
@@ -2188,7 +2188,7 @@ fn narrow_len(
         if let Ok(n) = (*n).try_into() {
             let inf_t = inferred_type_param.as_cow_type(i_s);
             let retain = |full: &Type, negative| {
-                let mut out = Type::Never;
+                let mut out = Type::Never(NeverCause::Other);
                 for part_t in full.iter_with_unpacked_unions(i_s.db) {
                     match part_t {
                         Type::Tuple(tup) => {
