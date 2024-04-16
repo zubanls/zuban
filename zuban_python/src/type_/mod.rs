@@ -1055,6 +1055,10 @@ impl Type {
         }
     }
 
+    pub fn has_never_from_inference(&self) -> bool {
+        self.find_in_type(&mut |t| matches!(t, Type::Never(NeverCause::Inference)))
+    }
+
     pub fn is_subclassable(&self, db: &Database) -> bool {
         match self {
             Self::Class(_)

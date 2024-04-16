@@ -52,7 +52,7 @@ pub(crate) enum IssueKind {
     DictMemberMismatch { item: usize, got_pair: Box<str>, expected_pair: Box<str> },
     UnpackedDictMemberMismatch { item: usize, got: Box<str>, expected: Box<str> },
     CannotInferLambdaParams,
-    NeedTypeAnnotation { for_: Box<str>, hint: &'static str },
+    NeedTypeAnnotation { for_: Box<str>, hint: Option<&'static str> },
 
     Redefinition { line: usize },
     ModuleNotFound { module_name: Box<str> },
@@ -405,6 +405,7 @@ impl IssueKind {
             AnnotationInUntypedFunction => "annotation-unchecked",
             AwaitOutsideFunction => "top-level-await",
             AwaitOutsideCoroutine => "await-not-async",
+            NeedTypeAnnotation { .. } => "var-annotated",
 
             TypedDictNameMismatch { .. } | NamedTupleFirstArgumentMismatch { .. } => "name-match",
             TypedDictMissingKeys { .. }
@@ -622,9 +623,12 @@ impl<'db> Diagnostic<'db> {
                 r#"Unpacked dict entry {item} has incompatible type "{got}"; expected "{expected}""#,
             ),
             CannotInferLambdaParams => "Cannot infer type of lambda".to_string(),
-            NeedTypeAnnotation { for_, hint } => format!(
-                r#"Need type annotation for "{for_}" (hint: "{for_}: {hint} = ...")"#
-            ),
+            NeedTypeAnnotation { for_, hint } => match hint {
+                Some(hint) => format!(
+                    r#"Need type annotation for "{for_}" (hint: "{for_}: {hint} = ...")"#
+                ),
+                None => format!(r#"Need type annotation for "{for_}""#),
+            },
 
             Redefinition{line} => {
                 format!("Name {:?} already defined line {line}", self.code_under_issue())

@@ -960,7 +960,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 name_def.index(),
                 IssueKind::NeedTypeAnnotation {
                     for_: name_def.as_code().into(),
-                    hint: "Optional[<type>]",
+                    hint: Some("Optional[<type>]"),
                 },
             );
             // Save Optional[Any]
@@ -972,7 +972,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             );
         } else {
             if assign_kind == AssignKind::Normal {
-                if let Some(partial) = value.maybe_new_partial(i_s.db) {
+                if let Some(partial) =
+                    value.maybe_new_partial(i_s, NodeRef::new(self.file, name_def.index()))
+                {
                     //save(name_def.index(), value);
                     //return
                 }

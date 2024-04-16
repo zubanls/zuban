@@ -292,15 +292,27 @@ impl<'db: 'slf, 'slf> Inferred {
             .and_then(|link| NodeRef::from_link(db, link).point().maybe_specific())
     }
 
-    pub fn maybe_new_partial(&self, db: &Database) -> Option<Inferred> {
-        let Some(ComplexPoint::TypeInstance(Type::Class(c))) = self.maybe_complex_point(db) else {
+    pub fn maybe_new_partial(&self, i_s: &InferenceState, from: NodeRef) -> Option<Inferred> {
+        let Some(ComplexPoint::TypeInstance(t)) = self.maybe_complex_point(i_s.db) else {
             return None
         };
-        let specific = if c.link == db.python_state.list_node_ref().as_link() {
+        if t.has_never_from_inference() {
+            from.add_issue(
+                i_s,
+                IssueKind::NeedTypeAnnotation {
+                    for_: from.as_code().into(),
+                    hint: None,
+                },
+            )
+        }
+        let Type::Class(c) = t else {
+            return None;
+        };
+        let specific = if c.link == i_s.db.python_state.list_node_ref().as_link() {
             Specific::PartialList
-        } else if c.link == db.python_state.dict_node_ref().as_link() {
+        } else if c.link == i_s.db.python_state.dict_node_ref().as_link() {
             Specific::PartialDict
-        } else if c.link == db.python_state.set_node_ref().as_link() {
+        } else if c.link == i_s.db.python_state.set_node_ref().as_link() {
             Specific::PartialSet
         } else {
             return None;

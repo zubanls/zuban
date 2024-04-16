@@ -1345,26 +1345,22 @@ testLowercaseSettingOnTypeAnnotationHint
 testPartialDefaultDict*
 testEnumWithPartialTypes
 testPartialTypeProtocol
-
-# Unknown return generics and therefore "Need type annotation for "X""
-testGenericFunctionOnReturnTypeOnly
-testNewAnalyzerLessErrorsNeedAnnotationNested
-testErrorInTypeCheckSecondPassThroughPropagation
-testUnderspecifiedInferenceResult
-testDontMarkUnreachableAfterInferenceUninhabited
-testDontMarkUnreachableAfterInferenceUninhabited2
-testDontMarkUnreachableAfterInferenceUninhabited3
-testNeedAnnotationForCallable
-testInferLocalVariableTypeWithUnderspecifiedGenericType
 testErrorCodeNeedTypeAnnotation
-testSelfTypeRestrictedMethodOverloadInitFallBacks
+
+# Never not rewritten to Any for "Need type annotation for "X""
+testNewAnalyzerLessErrorsNeedAnnotationNested
+testUnderspecifiedInferenceResult
+testNeedAnnotationForCallable
+# Regressions of "Need type annotation for "X"
+testConstructInstanceWith__new__
+testClassWith__new__AndCompatibilityWithType
+testGenericClassWith__new__
+testOverloaded__new__
 # "Perhaps you need a type annotation for "x"? Suggestion: "List[str | int]""
 testInferredTypeSubTypeOfReturnType
 # --disallow-any-generics
 testDisallowAnyGenericsForAliasesInRuntimeContext
 testGenericTypedDictAlias
-# "Subscripting classes that are not generic at runtime may require escaping"
-testCheckDisallowAnyGenericsStubOnly
 
 # TypeGuard
 testSerializeTypeGuardFunction
@@ -2547,6 +2543,8 @@ testTupleWithDifferentArgsPy38
 # Won't support Pyhton 3.9 specialities
 testDataclassWithMatchArgsOldVersion
 testUnionOrSyntaxInIsinstanceNotSupported
+# "Subscripting classes that are not generic at runtime may require escaping"
+testCheckDisallowAnyGenericsStubOnly
 
 # Won't support list/dict/tuple "is not subscriptable" (python <3.10)
 testNoSubscriptionOfBuiltinAliases
