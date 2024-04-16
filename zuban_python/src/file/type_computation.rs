@@ -767,7 +767,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     if !is_implicit_optional =>
                 {
                     debug_assert!(type_storage_node_ref.point().calculated());
-                    annotation_node_ref.set_point(Point::new_simple_specific(
+                    annotation_node_ref.set_point(Point::new_specific(
                         Specific::AnnotationOrTypeCommentSimpleClassInstance,
                         Locality::Todo,
                     ));
@@ -781,7 +781,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 ) =>
                 {
                     debug_assert!(!is_implicit_optional);
-                    annotation_node_ref.set_point(Point::new_simple_specific(
+                    annotation_node_ref.set_point(Point::new_specific(
                         match special {
                             SpecialType::TypeAlias => Specific::TypingTypeAlias,
                             SpecialType::Final => Specific::TypingFinal,
@@ -874,7 +874,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             type_.make_optional()
         }
         type_storage_node_ref.insert_complex(ComplexPoint::TypeInstance(type_), Locality::Todo);
-        annotation_node_ref.set_point(Point::new_simple_specific(
+        annotation_node_ref.set_point(Point::new_specific(
             if is_class_var {
                 Specific::AnnotationOrTypeCommentClassVar
             } else if self.has_type_vars_or_self {
@@ -1556,10 +1556,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                 self.add_issue_for_index(primary.index(), IssueKind::TypeNotFound);
                                 self.inference.file.points.set(
                                     name.index(),
-                                    Point::new_simple_specific(
-                                        Specific::AnyDueToError,
-                                        Locality::Todo,
-                                    ),
+                                    Point::new_specific(Specific::AnyDueToError, Locality::Todo),
                                 );
                                 TypeContent::Unknown(AnyCause::FromError)
                             }
@@ -1982,10 +1979,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             // We have no unfinished iterator and can therefore safely return.
             let node_ref = NodeRef::new(self.inference.file, primary.unwrap().index())
                 .to_db_lifetime(self.inference.i_s.db);
-            node_ref.set_point(Point::new_simple_specific(
-                Specific::SimpleGeneric,
-                Locality::Todo,
-            ));
+            node_ref.set_point(Point::new_specific(Specific::SimpleGeneric, Locality::Todo));
             Some((
                 node_ref,
                 match slice_type.ast_node {
@@ -3747,7 +3741,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                     if let Some(tuple) = expr.maybe_tuple() {
                         let type_ =
                             inference.calc_type_comment_tuple(assignment_node_ref, tuple.iter());
-                        NodeRef::new(f, index).set_point(Point::new_simple_specific(
+                        NodeRef::new(f, index).set_point(Point::new_specific(
                             Specific::AnnotationOrTypeCommentWithTypeVars,
                             Locality::Todo,
                         ));
@@ -4641,7 +4635,7 @@ pub(super) fn cache_name_on_class(cls: Class, file: &PythonFile, name: Name) -> 
         {
             Point::new_redirect(cls.node_ref.file.file_index(), index, Locality::Todo)
         } else {
-            Point::new_simple_specific(Specific::AnyDueToError, Locality::Todo)
+            Point::new_specific(Specific::AnyDueToError, Locality::Todo)
         },
     );
     cache_name_on_class(cls, file, name)

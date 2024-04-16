@@ -720,12 +720,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 continue;
             }
             // Make sure this is not calculated again.
-            next_func
-                .decorator_ref()
-                .set_point(Point::new_simple_specific(
-                    Specific::OverloadUnreachable,
-                    Locality::File,
-                ));
+            next_func.decorator_ref().set_point(Point::new_specific(
+                Specific::OverloadUnreachable,
+                Locality::File,
+            ));
 
             let decorated = next_func.expect_decorated_node();
             let mut iterator = decorated.decorators().iter();
@@ -792,12 +790,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         d
                     } else {
                         should_error_out = true;
-                        next_func
-                            .decorator_ref()
-                            .set_point(Point::new_simple_specific(
-                                Specific::OverloadUnreachable,
-                                Locality::File,
-                            ));
+                        next_func.decorator_ref().set_point(Point::new_specific(
+                            Specific::OverloadUnreachable,
+                            Locality::File,
+                        ));
                         continue;
                     }
                 }
@@ -828,12 +824,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             if next_details.has_decorator {
                 // To make sure overloads aren't executed another time and to separate these
                 // functions from the other ones, mark them unreachable here.
-                next_func
-                    .decorator_ref()
-                    .set_point(Point::new_simple_specific(
-                        Specific::OverloadUnreachable,
-                        Locality::File,
-                    ));
+                next_func.decorator_ref().set_point(Point::new_specific(
+                    Specific::OverloadUnreachable,
+                    Locality::File,
+                ));
             }
             if next_details.is_overload {
                 if let Some(implementation) = &implementation {

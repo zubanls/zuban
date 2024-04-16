@@ -98,7 +98,7 @@ impl Point {
         }
     }
 
-    pub fn new_simple_specific(type_: Specific, locality: Locality) -> Self {
+    pub fn new_specific(type_: Specific, locality: Locality) -> Self {
         let flags = Self::calculate_flags(PointKind::Specific, type_ as u32, locality);
         Self {
             flags,
@@ -111,10 +111,6 @@ impl Point {
             flags: Specific::Calculating as u32,
             node_index: 0,
         }
-    }
-
-    pub fn new_specific(type_: Specific, node_index: NodeIndex, locality: Locality) -> Self {
-        todo!()
     }
 
     pub fn new_file_reference(file: FileIndex, locality: Locality) -> Self {
@@ -1167,7 +1163,7 @@ mod tests {
     #[test]
     fn test_emtpy_point() {
         use super::*;
-        let p = Point::new_simple_specific(Specific::ReservedBecauseUnused, Locality::Stmt);
+        let p = Point::new_specific(Specific::ReservedBecauseUnused, Locality::Stmt);
         assert_eq!(p.flags & !IS_ANALIZED_MASK, 0);
         assert_eq!(p.node_index, 0);
         assert!(p.calculated());

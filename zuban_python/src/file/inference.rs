@@ -213,9 +213,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             self.save_namespace(as_name_def.index(), namespace.clone());
                             continue;
                         }
-                        None => {
-                            Point::new_simple_specific(Specific::ModuleNotFound, Locality::Todo)
-                        }
+                        None => Point::new_specific(Specific::ModuleNotFound, Locality::Todo),
                     };
                     self.file.points.set(as_name_def.index(), point);
                     self.check_import_type(as_name_def);
@@ -279,7 +277,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         Point::new_file_reference(file_index, Locality::Todo)
                     }
                     Some(ImportResult::Namespace { .. }) => todo!(),
-                    None => Point::new_simple_specific(Specific::ModuleNotFound, Locality::Todo),
+                    None => Point::new_specific(Specific::ModuleNotFound, Locality::Todo),
                 };
                 self.file.points.set(keyword.index(), point);
             }
@@ -308,13 +306,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                         name: Box::from(import_name.as_str()),
                                     },
                                 );
-                                Point::new_simple_specific(Specific::ModuleNotFound, Locality::Todo)
+                                Point::new_specific(Specific::ModuleNotFound, Locality::Todo)
                             }
                         },
                         // Means one of the imports before failed.
-                        None => {
-                            Point::new_simple_specific(Specific::ModuleNotFound, Locality::Todo)
-                        }
+                        None => Point::new_specific(Specific::ModuleNotFound, Locality::Todo),
                     };
 
                     self.file.points.set(name_def.index(), point);
@@ -371,7 +367,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         module_name: Box::from(name.as_str()),
                     },
                 );
-                Point::new_simple_specific(Specific::ModuleNotFound, Locality::Todo)
+                Point::new_specific(Specific::ModuleNotFound, Locality::Todo)
             }
         };
         if let Some(name_def) = name_def {
@@ -2034,7 +2030,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
                 _ => literal,
             };
-            let point = Point::new_simple_specific(specific, Locality::Todo);
+            let point = Point::new_specific(specific, Locality::Todo);
             Inferred::new_and_save(self.file, index, point)
         };
 
@@ -2116,7 +2112,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 return self.infer_named_expression_with_context(named_expression, result_context)
             }
         };
-        let point = Point::new_simple_specific(specific, Locality::Todo);
+        let point = Point::new_specific(specific, Locality::Todo);
         Inferred::new_and_save(self.file, atom.index(), point)
     }
 
@@ -2285,9 +2281,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
         let builtins = self.i_s.db.python_state.builtins();
         let point = match name_str {
-            "reveal_type" => {
-                Point::new_simple_specific(Specific::RevealTypeFunction, Locality::Stmt)
-            }
+            "reveal_type" => Point::new_specific(Specific::RevealTypeFunction, Locality::Stmt),
             "__builtins__" => Point::new_file_reference(builtins.file_index(), Locality::Todo),
             _ => {
                 if let Some(link) = builtins.lookup_global(name.as_str()) {
@@ -2339,7 +2333,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             ),
                         );
                     }
-                    Point::new_simple_specific(Specific::AnyDueToError, Locality::Todo)
+                    Point::new_specific(Specific::AnyDueToError, Locality::Todo)
                 }
             }
         };
@@ -2602,7 +2596,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         self.file.file_index(),
                         node_ref.as_code()
                     );
-                    node_ref.set_point(Point::new_simple_specific(Specific::Cycle, Locality::Todo));
+                    node_ref.set_point(Point::new_specific(Specific::Cycle, Locality::Todo));
                     Some(Inferred::new_cycle())
                 } else {
                     None

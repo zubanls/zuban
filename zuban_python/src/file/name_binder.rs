@@ -266,10 +266,7 @@ impl<'db> NameBinder<'db> {
     }
 
     fn add_point_definition(&mut self, name_def: NameDefinition<'db>, specific: Specific) {
-        self.add_new_definition(
-            name_def,
-            Point::new_simple_specific(specific, Locality::Stmt),
-        );
+        self.add_new_definition(name_def, Point::new_specific(specific, Locality::Stmt));
     }
 
     fn add_redirect_definition(&mut self, name_def: NameDefinition<'db>, node_index: NodeIndex) {
@@ -925,7 +922,7 @@ impl<'db> NameBinder<'db> {
 
         self.points.set(
             func.index(),
-            Point::new_simple_specific(
+            Point::new_specific(
                 if !matches!(self.kind, NameBinderKind::Function { .. })
                     || return_annotation.is_some()
                 {

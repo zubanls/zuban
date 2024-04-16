@@ -1053,10 +1053,8 @@ fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
 }
 
 fn set_specific(file: &PythonFile, node_index: NodeIndex, specific: Specific) {
-    file.points.set(
-        node_index,
-        Point::new_simple_specific(specific, Locality::Stmt),
-    );
+    file.points
+        .set(node_index, Point::new_specific(specific, Locality::Stmt));
 }
 
 fn set_custom_behavior(file: &PythonFile, name: &str, custom: CustomBehavior) {
@@ -1136,7 +1134,7 @@ fn set_mypy_extension_specific(file: &PythonFile, name: &str, specific: Specific
     let old_point = file.points.get(name_def_node_index);
     file.points.set(
         node_index - 1,
-        Point::new_simple_specific(specific, Locality::Stmt),
+        Point::new_specific(specific, Locality::Stmt),
     );
     debug_assert!(old_point.kind() == PointKind::Redirect);
     let result = old_point.node_index();

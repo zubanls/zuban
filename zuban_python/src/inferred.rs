@@ -579,7 +579,7 @@ impl<'db: 'slf, 'slf> Inferred {
             }
             InferredState::UnsavedComplex(complex) => match complex {
                 ComplexPoint::TypeInstance(Type::None) => {
-                    Point::new_simple_specific(Specific::None, Locality::Todo)
+                    Point::new_specific(Specific::None, Locality::Todo)
                 }
                 _ => {
                     file.complex_points
@@ -598,7 +598,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     );
                     specific = Specific::AnyDueToError;
                 }
-                Point::new_simple_specific(specific, Locality::Todo)
+                Point::new_specific(specific, Locality::Todo)
             }
             InferredState::UnsavedFileReference(file_index) => {
                 Point::new_file_reference(file_index, Locality::Todo)
