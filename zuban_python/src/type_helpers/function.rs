@@ -1005,8 +1005,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 },
             )
         };
-        let mut callable =
-            self.internal_as_type(i_s, params, self_type_var_usage.is_some(), as_type);
+        let mut callable = self.internal_as_type(i_s, params, self_type_var_usage, as_type);
         callable.type_vars = TypeVarLikes::from_vec(type_vars);
         if matches!(first, FirstParamProperties::Skip { .. }) {
             // Now the first param was removed, so everything is considered as having an
@@ -1026,7 +1025,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         &self,
         i_s: &InferenceState,
         params: impl Iterator<Item = FunctionParam<'a>>,
-        has_self_type_var_usage: bool,
+        self_type_var_usage: Option<&TypeVarUsage>,
         mut as_type: impl FnMut(&Type) -> Type,
     ) -> CallableContent {
         let mut params = params.peekable();
@@ -1078,13 +1077,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         NodeRef::new(self.node_ref.file, p.param.name_definition().index());
                     if name_ref.point().maybe_specific() == Some(Specific::MaybeSelfParam) {
                         if self.is_dunder_new() {
-                            if has_self_type_var_usage {
-                                Type::Type(Rc::new(Type::Self_))
+                            if let Some(type_var_usage) = self_type_var_usage {
+                                Type::Type(Rc::new(Type::TypeVar(type_var_usage.clone())))
                             } else {
                                 self.class.unwrap().as_type_type(i_s)
                             }
-                        } else if has_self_type_var_usage {
-                            as_type(&Type::Self_)
+                        } else if let Some(type_var_usage) = self_type_var_usage {
+                            Type::TypeVar(type_var_usage.clone())
                         } else {
                             match kind {
                                 FunctionKind::Function { .. } | FunctionKind::Property { .. } => {

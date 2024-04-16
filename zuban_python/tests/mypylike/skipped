@@ -1351,11 +1351,6 @@ testErrorCodeNeedTypeAnnotation
 testNewAnalyzerLessErrorsNeedAnnotationNested
 testUnderspecifiedInferenceResult
 testNeedAnnotationForCallable
-# Regressions of "Need type annotation for "X"
-testConstructInstanceWith__new__
-testClassWith__new__AndCompatibilityWithType
-testGenericClassWith__new__
-testOverloaded__new__
 # "Perhaps you need a type annotation for "x"? Suggestion: "List[str | int]""
 testInferredTypeSubTypeOfReturnType
 # --disallow-any-generics

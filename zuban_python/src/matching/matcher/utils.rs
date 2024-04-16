@@ -267,7 +267,6 @@ impl CalculatedTypeArgs {
         if std::cfg!(debug_assertions) {
             type_.search_type_vars(&mut |usage| debug_assert!(usage.temporary_matcher_id() == 0));
         }
-        debug!("Resolved type vars: {}", type_.format_short(i_s.db));
         Inferred::from_type(type_)
     }
 }
