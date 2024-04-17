@@ -1950,10 +1950,20 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         };
         let i_s = self.i_s;
         let base = self.infer_primary_or_atom(primary_method.first());
-        let try_to_save = |partial_class_link| {
+        let try_to_save = |partial_class_link, unwrap_from_iterable| {
             let args = SimpleArgs::new(*i_s, self.file, primary.index(), execution);
             let arg = args.maybe_single_positional_arg(i_s, &mut ResultContext::Unknown)?;
-            let t = arg.as_type(i_s).avoid_implicit_literal(i_s.db);
+            let mut t = arg.as_type(i_s).avoid_implicit_literal(i_s.db);
+            if unwrap_from_iterable {
+                t = t.mro(i_s.db).find_map(|(_, type_or_class)| {
+                    if let TypeOrClass::Class(maybe_iterable_cls) = type_or_class {
+                        if maybe_iterable_cls.node_ref == i_s.db.python_state.iterable_node_ref() {
+                            return Some(maybe_iterable_cls.nth_type_argument(i_s.db, 0));
+                        }
+                    }
+                    None
+                })?;
+            }
             let resolved_partial = new_class!(partial_class_link, t,);
             debug!(
                 r#"Infer partial for "{}" as "{}""#,
@@ -1966,8 +1976,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         };
         match base.maybe_saved_specific(i_s.db)? {
             Specific::PartialList => match method_name.as_code() {
-                "append" => try_to_save(i_s.db.python_state.list_node_ref().as_link()),
-                "extend" => todo!(),
+                "append" => try_to_save(i_s.db.python_state.list_node_ref().as_link(), false),
+                "extend" => try_to_save(i_s.db.python_state.list_node_ref().as_link(), true),
                 _ => None,
             },
             Specific::PartialDict => match method_name.as_code() {
@@ -1975,8 +1985,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 _ => None,
             },
             Specific::PartialSet => match method_name.as_code() {
-                "add" | "discard" => try_to_save(i_s.db.python_state.set_node_ref().as_link()),
-                "update" => todo!(),
+                "add" | "discard" => {
+                    try_to_save(i_s.db.python_state.set_node_ref().as_link(), false)
+                }
+                "update" => try_to_save(i_s.db.python_state.set_node_ref().as_link(), true),
                 _ => None,
             },
             _ => None,
