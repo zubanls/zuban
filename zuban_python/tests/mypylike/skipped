@@ -1308,11 +1308,7 @@ testGeneratorExpressionNestedIndex
 testMultipleForIndexVars
 testEmptyListExpression
 # append etc regressions
-testEnclosingScopeLambdaNoCrashExplicit
 testGenericFunctionOnReturnTypeOnly
-testAddPackage3
-testDeleteFileWithinPackage
-testDeletePackage3
 # List/Set/Dict/Tuple Inferring type of variable when initialized to an empty collection
 testInferListInitializedToEmptyAndNotAnnotated
 testInferListInitializedToEmptyAndReadBeforeAppend

@@ -1959,6 +1959,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     return None;
                 }
                 self.infer_primary(prim, &mut ResultContext::Unknown)
+                    .save_redirect(i_s, self.file, prim.index())
             }
             PrimaryOrAtom::Atom(atom) => self.infer_atom(atom, &mut ResultContext::Unknown),
         };
@@ -2007,7 +2008,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    pub fn infer_primary(
+    // Primary is not saved by this function, but can be saved by other stuff and to avoid
+    // re-executing, we check the point cache here.
+    check_point_cache_with!(pub infer_primary, Self::_infer_primary, Primary, result_context);
+    pub fn _infer_primary(
         &mut self,
         primary: Primary,
         result_context: &mut ResultContext,
