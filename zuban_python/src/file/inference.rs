@@ -1949,7 +1949,19 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             return None
         };
         let i_s = self.i_s;
-        let base = self.infer_primary_or_atom(primary_method.first());
+        let base = match primary_method.first() {
+            PrimaryOrAtom::Primary(prim) => {
+                // Only care about very specific cases here.
+                if !matches!(prim.first(), PrimaryOrAtom::Atom(_)) {
+                    return None;
+                }
+                if !matches!(prim.second(), PrimaryContent::Attribute(_)) {
+                    return None;
+                }
+                self.infer_primary(prim, &mut ResultContext::Unknown)
+            }
+            PrimaryOrAtom::Atom(atom) => self.infer_atom(atom, &mut ResultContext::Unknown),
+        };
         let try_to_save = |partial_class_link, unwrap_from_iterable| {
             let args = SimpleArgs::new(*i_s, self.file, primary.index(), execution);
             let arg = args.maybe_single_positional_arg(i_s, &mut ResultContext::Unknown)?;
