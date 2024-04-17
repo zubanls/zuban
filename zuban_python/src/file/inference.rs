@@ -7,7 +7,7 @@ use super::{
     PythonFile, FLOW_ANALYSIS,
 };
 use crate::{
-    arguments::{KnownArgs, NoArgs, SimpleArgs},
+    arguments::{Args, KnownArgs, NoArgs, SimpleArgs},
     database::{
         ComplexPoint, Database, FileIndex, Locality, Point, PointKind, PointLink, Specific,
     },
@@ -1938,12 +1938,60 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         result
     }
 
+    fn try_to_infer_partial_from_primary(&mut self, primary: Primary) -> Option<Inferred> {
+        let PrimaryContent::Execution(execution) = primary.second() else {
+            return None
+        };
+        let PrimaryOrAtom::Primary(primary_method) = primary.first() else {
+            return None
+        };
+        let PrimaryContent::Attribute(method_name) = primary_method.second() else {
+            return None
+        };
+        let i_s = self.i_s;
+        let base = self.infer_primary_or_atom(primary_method.first());
+        let try_to_save = |partial_class_link| {
+            let args = SimpleArgs::new(*i_s, self.file, primary.index(), execution);
+            let arg = args.maybe_single_positional_arg(i_s, &mut ResultContext::Unknown)?;
+            let t = arg.as_type(i_s).avoid_implicit_literal(i_s.db);
+            let resolved_partial = new_class!(partial_class_link, t,);
+            debug!(
+                r#"Infer partial for "{}" as "{}""#,
+                primary.as_code(),
+                resolved_partial.format_short(i_s.db)
+            );
+            NodeRef::from_link(i_s.db, base.maybe_saved_link().unwrap())
+                .insert_complex(ComplexPoint::TypeInstance(resolved_partial), Locality::Todo);
+            Some(Inferred::new_none())
+        };
+        match base.maybe_saved_specific(i_s.db)? {
+            Specific::PartialList => match method_name.as_code() {
+                "append" => try_to_save(i_s.db.python_state.list_node_ref().as_link()),
+                "extend" => todo!(),
+                _ => None,
+            },
+            Specific::PartialDict => match method_name.as_code() {
+                "update" => todo!(),
+                _ => None,
+            },
+            Specific::PartialSet => match method_name.as_code() {
+                "add" | "discard" => try_to_save(i_s.db.python_state.set_node_ref().as_link()),
+                "update" => todo!(),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
     pub fn infer_primary(
         &mut self,
         primary: Primary,
         result_context: &mut ResultContext,
     ) -> Inferred {
-        if let Some(inf) = self.maybe_lookup_narrowed_primary(primary) {
+        if let Some(inf) = self
+            .maybe_lookup_narrowed_primary(primary)
+            .or_else(|| self.try_to_infer_partial_from_primary(primary))
+        {
             return inf;
         }
         let base = self.infer_primary_or_atom(primary.first());
@@ -1976,25 +2024,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let node_ref = NodeRef::new(self.file, node_index);
         match second {
             PrimaryContent::Attribute(name) => {
-                if let Some(specific) = base.maybe_saved_specific(self.i_s.db) {
-                    match specific {
-                        Specific::PartialList => match name.as_code() {
-                            "append" => todo!(),
-                            "extend" => todo!(),
-                            _ => (),
-                        },
-                        Specific::PartialDict => match name.as_code() {
-                            "update" => todo!(),
-                            _ => (),
-                        },
-                        Specific::PartialSet => match name.as_code() {
-                            "add" | "discard" => todo!(),
-                            "update" => todo!(),
-                            _ => (),
-                        },
-                        _ => (),
-                    }
-                }
                 debug!("Lookup {}.{}", base.format_short(self.i_s), name.as_str());
                 base.lookup_with_result_context(
                     self.i_s,

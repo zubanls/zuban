@@ -184,6 +184,14 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn format(&self, i_s: &InferenceState, format_data: &FormatData) -> Box<str> {
+        if let Some(specific) = self.maybe_saved_specific(i_s.db) {
+            match specific {
+                Specific::PartialList => return "List[<Partial>]".into(),
+                Specific::PartialDict => return "Dict[<Partial>, <Partial>]".into(),
+                Specific::PartialSet => return "Set[<Partial>]".into(),
+                _ => (),
+            }
+        }
         self.as_cow_type(i_s).format(format_data)
     }
 
@@ -296,37 +304,42 @@ impl<'db: 'slf, 'slf> Inferred {
         let Some(ComplexPoint::TypeInstance(t)) = self.maybe_complex_point(i_s.db) else {
             return None
         };
-        if t.has_never_from_inference() {
-            from.add_issue(
-                i_s,
-                IssueKind::NeedTypeAnnotation {
-                    for_: from.as_code().into(),
-                    hint: None,
-                },
-            )
-        }
-        let Type::Class(GenericClass { link, generics: ClassGenerics::List(generics) }) = t else {
-            return None;
-        };
-        let specific = if *link == i_s.db.python_state.list_node_ref().as_link() {
-            Specific::PartialList
-        } else if *link == i_s.db.python_state.dict_node_ref().as_link() {
-            Specific::PartialDict
-        } else if *link == i_s.db.python_state.set_node_ref().as_link() {
-            Specific::PartialSet
-        } else {
-            return None;
-        };
-        for generic in generics.iter() {
-            if !matches!(
-                generic,
-                GenericItem::TypeArg(Type::Never(NeverCause::Inference))
-            ) {
+        let check_for_partial = || {
+            let Type::Class(GenericClass { link, generics: ClassGenerics::List(generics) }) = t else {
                 return None;
+            };
+            let specific = if *link == i_s.db.python_state.list_node_ref().as_link() {
+                Specific::PartialList
+            } else if *link == i_s.db.python_state.dict_node_ref().as_link() {
+                Specific::PartialDict
+            } else if *link == i_s.db.python_state.set_node_ref().as_link() {
+                Specific::PartialSet
+            } else {
+                return None;
+            };
+            for generic in generics.iter() {
+                if !matches!(
+                    generic,
+                    GenericItem::TypeArg(Type::Never(NeverCause::Inference))
+                ) {
+                    return None;
+                }
             }
-        }
-        Some(Self {
-            state: InferredState::UnsavedSpecific(specific),
+            Some(Self {
+                state: InferredState::UnsavedSpecific(specific),
+            })
+        };
+        check_for_partial().or_else(|| {
+            if t.has_never_from_inference() {
+                from.add_issue(
+                    i_s,
+                    IssueKind::NeedTypeAnnotation {
+                        for_: from.as_code().into(),
+                        hint: None,
+                    },
+                )
+            }
+            None
         })
     }
 
