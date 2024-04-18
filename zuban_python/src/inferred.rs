@@ -2379,33 +2379,15 @@ pub fn specific_to_type<'db>(
         }
         Specific::MaybeSelfParam => Cow::Borrowed(&Type::Self_),
         Specific::PartialList => {
-            definition.add_issue(
-                i_s,
-                IssueKind::NeedTypeAnnotation {
-                    for_: definition.as_code().into(),
-                    hint: Some("List[<type>]"),
-                },
-            );
+            definition.add_need_type_annotation_issue(i_s, "List[<type>]");
             Cow::Borrowed(&i_s.db.python_state.list_of_any)
         }
         Specific::PartialDict => {
-            definition.add_issue(
-                i_s,
-                IssueKind::NeedTypeAnnotation {
-                    for_: definition.as_code().into(),
-                    hint: Some("Dict[<type>, <type>]"),
-                },
-            );
+            definition.add_need_type_annotation_issue(i_s, "Dict[<type>, <type>]");
             Cow::Borrowed(&i_s.db.python_state.dict_of_any)
         }
         Specific::PartialSet => {
-            definition.add_issue(
-                i_s,
-                IssueKind::NeedTypeAnnotation {
-                    for_: definition.as_code().into(),
-                    hint: Some("Set[<type>]"),
-                },
-            );
+            definition.add_need_type_annotation_issue(i_s, "Set[<type>]");
             Cow::Borrowed(&i_s.db.python_state.set_of_any)
         }
         Specific::BuiltinsIsinstance => todo!(),

@@ -251,6 +251,18 @@ impl<'file> NodeRef<'file> {
         self.file.add_issue(i_s, issue)
     }
 
+    pub fn add_need_type_annotation_issue(&self, i_s: &InferenceState, hint: &'static str) {
+        if !i_s.db.project.flags.allow_untyped_globals {
+            self.add_issue(
+                i_s,
+                IssueKind::NeedTypeAnnotation {
+                    for_: self.as_code().into(),
+                    hint: Some(hint),
+                },
+            );
+        }
+    }
+
     pub fn maybe_name_of_function(&self) -> Option<FunctionDef<'file>> {
         NodeRef::new(self.file, self.node_index - NAME_TO_FUNCTION_DIFF).maybe_function()
     }
