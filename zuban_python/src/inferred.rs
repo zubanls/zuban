@@ -610,7 +610,16 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::Saved(definition) => {
                 // Overwriting strings needs to be possible, because of string annotations
                 if p.calculated()
-                    && !matches!(p.maybe_specific(), Some(Specific::String | Specific::Cycle))
+                    && !matches!(
+                        p.maybe_specific(),
+                        Some(
+                            Specific::String
+                                | Specific::Cycle
+                                | Specific::PartialList
+                                | Specific::PartialDict
+                                | Specific::PartialSet
+                        )
+                    )
                 {
                     if ignore_if_already_saved {
                         return self;
@@ -2369,6 +2378,15 @@ pub fn specific_to_type<'db>(
             use_cached_annotation_or_type_comment(i_s, definition)
         }
         Specific::MaybeSelfParam => Cow::Borrowed(&Type::Self_),
+        Specific::PartialList => {
+            todo!()
+        }
+        Specific::PartialDict => {
+            todo!()
+        }
+        Specific::PartialSet => {
+            todo!()
+        }
         Specific::BuiltinsIsinstance => todo!(),
         Specific::BuiltinsIssubclass => todo!(),
         Specific::BuiltinsSuper => todo!(),

@@ -884,19 +884,30 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             })
         };
         first_defined_name(self.file, name_def.name_index())
-            .map(|first_index| {
+            .and_then(|first_index| {
                 // The first definition is always responsible for how a name is defined.
                 // So we try to look up active narrowings first or we try to lookup the first
                 // name.
+                let name_def_ref =
+                    NodeRef::new(self.file, first_index - NAME_DEF_TO_NAME_DIFFERENCE);
+                let point = name_def_ref.point();
+                if point.calculated()
+                    && matches!(
+                        point.maybe_specific(),
+                        Some(Specific::PartialList | Specific::PartialDict | Specific::PartialSet)
+                    )
+                {
+                    return None;
+                }
                 if from_aug_assign {
                     if let Some(result) = self
                         .maybe_lookup_narrowed_name(PointLink::new(self.file_index, first_index))
                     {
-                        return result;
+                        return Some(result);
                     }
                 }
                 // TODO check base class!
-                self.infer_name_of_definition_by_index(first_index)
+                Some(self.infer_name_of_definition_by_index(first_index))
             })
             .or_else(|| check_base_class(name_def))
     }
@@ -921,6 +932,25 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 */
             } else {
                 let original_inf = self.infer_name_of_definition_by_index(first_index);
+                match original_inf.maybe_saved_specific(i_s.db) {
+                    Some(Specific::PartialList) => {
+                        if value
+                            .as_cow_type(i_s)
+                            .maybe_class(i_s.db)
+                            .is_some_and(|c| c.node_ref == i_s.db.python_state.list_node_ref())
+                        {
+                            value.clone().save_redirect(
+                                i_s,
+                                self.file,
+                                first_index - NAME_DEF_TO_NAME_DIFFERENCE,
+                            );
+                            return;
+                        }
+                    }
+                    Some(Specific::PartialDict) => {}
+                    Some(Specific::PartialSet) => {}
+                    _ => (),
+                }
                 let original_t = original_inf.as_cow_type(i_s);
                 let check_for_error = || {
                     original_t.error_if_not_matches(
