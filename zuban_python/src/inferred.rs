@@ -2378,15 +2378,9 @@ pub fn specific_to_type<'db>(
             use_cached_annotation_or_type_comment(i_s, definition)
         }
         Specific::MaybeSelfParam => Cow::Borrowed(&Type::Self_),
-        Specific::PartialList => {
-            todo!()
-        }
-        Specific::PartialDict => {
-            todo!()
-        }
-        Specific::PartialSet => {
-            todo!()
-        }
+        Specific::PartialList => Cow::Borrowed(&i_s.db.python_state.list_of_any),
+        Specific::PartialDict => Cow::Borrowed(&i_s.db.python_state.dict_of_any),
+        Specific::PartialSet => Cow::Borrowed(&i_s.db.python_state.set_of_any),
         Specific::BuiltinsIsinstance => todo!(),
         Specific::BuiltinsIssubclass => todo!(),
         Specific::BuiltinsSuper => todo!(),

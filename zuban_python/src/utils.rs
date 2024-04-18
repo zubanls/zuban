@@ -40,7 +40,7 @@ macro_rules! debug {
 
 #[macro_export]
 macro_rules! new_class {
-    ($link:expr, $($arg:expr),+,) => {
+    ($link:expr, $($arg:expr),+$(,)?) => {
         $crate::type_::Type::new_class(
             $link,
             $crate::type_::ClassGenerics::List($crate::type_::GenericsList::new_generics(Rc::new([
