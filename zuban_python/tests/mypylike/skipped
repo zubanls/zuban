@@ -1292,7 +1292,6 @@ testEmptyListExpression
 # append etc regressions
 testGenericFunctionOnReturnTypeOnly
 # List/Set/Dict/Tuple Inferring type of variable when initialized to an empty collection
-testInferListTypeFromEmptyListAndAny
 testInferListInitializedToEmptyAndNotAnnotated
 testInferListInitializedToEmptyAndReadBeforeAppend
 testInferListInitializedToEmptyAndIncompleteTypeInAppend

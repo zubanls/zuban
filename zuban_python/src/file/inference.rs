@@ -934,9 +934,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let original_inf = self.infer_name_of_definition_by_index(first_index);
                 match original_inf.maybe_saved_specific(i_s.db) {
                     Some(Specific::PartialList) => {
-                        if value
-                            .as_cow_type(i_s)
-                            .maybe_class(i_s.db)
+                        let t = value.as_cow_type(i_s);
+                        if t.maybe_class(i_s.db)
                             .is_some_and(|c| c.node_ref == i_s.db.python_state.list_node_ref())
                         {
                             value.clone().save_redirect(
@@ -944,6 +943,15 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 self.file,
                                 first_index - NAME_DEF_TO_NAME_DIFFERENCE,
                             );
+                            return;
+                        }
+                        if t.is_any() {
+                            Inferred::from_type(i_s.db.python_state.list_of_any.clone())
+                                .save_redirect(
+                                    i_s,
+                                    self.file,
+                                    first_index - NAME_DEF_TO_NAME_DIFFERENCE,
+                                );
                             return;
                         }
                     }
@@ -1998,14 +2006,18 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             let arg = args.maybe_single_positional_arg(i_s, &mut ResultContext::Unknown)?;
             let mut t = arg.as_type(i_s).avoid_implicit_literal(i_s.db);
             if unwrap_from_iterable {
-                t = t.mro(i_s.db).find_map(|(_, type_or_class)| {
-                    if let TypeOrClass::Class(maybe_iterable_cls) = type_or_class {
-                        if maybe_iterable_cls.node_ref == i_s.db.python_state.iterable_node_ref() {
-                            return Some(maybe_iterable_cls.nth_type_argument(i_s.db, 0));
+                if !t.is_any() {
+                    t = t.mro(i_s.db).find_map(|(_, type_or_class)| {
+                        if let TypeOrClass::Class(maybe_iterable_cls) = type_or_class {
+                            if maybe_iterable_cls.node_ref
+                                == i_s.db.python_state.iterable_node_ref()
+                            {
+                                return Some(maybe_iterable_cls.nth_type_argument(i_s.db, 0));
+                            }
                         }
-                    }
-                    None
-                })?;
+                        None
+                    })?;
+                }
             }
             let resolved_partial = new_class!(partial_class_link, t,);
             debug!(
