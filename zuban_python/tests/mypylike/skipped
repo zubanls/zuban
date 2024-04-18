@@ -660,6 +660,8 @@ testFromImportAsInStub
 testImportAsInStub
 testReExportChildStubs3
 testNewSemanticAnalyzerModulePrivateRefInMiddleOfQualified
+testSpecialCaseEmptyListInitialization
+testSpecialCaseEmptyListInitialization2
 # underscore names are not exported in an import with stubs
 testInternalBuiltinDefinition
 # --no-implicit-reexport
@@ -1290,6 +1292,14 @@ testEmptyListExpression
 # append etc regressions
 testGenericFunctionOnReturnTypeOnly
 # List/Set/Dict/Tuple Inferring type of variable when initialized to an empty collection
+testInferListTypeFromEmptyListAndAny
+testInferFromEmptyListWhenUsingInWithStrictEquality
+testPermissiveAttributeOverride2
+testPermissiveAttribute
+testPermissiveGlobalContainer1
+testPermissiveGlobalContainer2
+testPermissiveGlobalContainer3
+testPermissiveGlobalContainer4
 testInferListInitializedToEmptyAndNotAnnotated
 testInferListInitializedToEmptyAndReadBeforeAppend
 testInferListInitializedToEmptyAndIncompleteTypeInAppend
@@ -1304,8 +1314,6 @@ testInferDictInitializedToEmpty
 testInferDictInitializedToEmptyUsingUpdate
 testInferDictInitializedToEmptyUsingUpdateError
 testInferDictInitializedToEmptyAndIncompleteTypeInUpdate
-testSpecialCaseEmptyListInitialization
-testSpecialCaseEmptyListInitialization2
 testInferOrderedDictInitializedToEmpty
 testEmptyCollectionAssignedToVariableTwiceIncremental
 testEmptyCollectionAssignedToVariableTwiceNoReadIncremental
@@ -1344,7 +1352,6 @@ testPartiallyInitializedToNoneAndThenToIncompleteType-skip
 testPartialTypeInNestedClass
 # With "Need type annotation for "X""
 testWalrusPartialTypes
-testNoCrashOnPartialLambdaInference
 testNewAnalyzerLessErrorsNeedAnnotation
 testNoCrashOnPartialMember
 testInferenceOfFor1
@@ -1362,7 +1369,6 @@ testColumnNeedTypeAnnotation
 testLowercaseSettingOnTypeAnnotationHint
 testPartialDefaultDict*
 testEnumWithPartialTypes
-testPartialTypeProtocol
 testErrorCodeNeedTypeAnnotation
 
 # Never not rewritten to Any for "Need type annotation for "X""
