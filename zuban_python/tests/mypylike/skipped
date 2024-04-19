@@ -1292,6 +1292,7 @@ testInferListInitializedToEmptyAndReadBeforeAppendInFunction
 testEnumWithPartialTypes
 testNewAnalyzerLessErrorsNeedAnnotation
 testInferDictInitializedToEmptyUsingUpdateError
+testInferListInitializedToEmptyAndAssigned
 # ????
 testIgnoreTypeInferenceErrorAndMultipleAssignment
 testLocalPartialTypesWithGlobalInitializedToEmptyDict3
@@ -1310,6 +1311,7 @@ testDisallowAnyGenericsPlainList
 testLowercaseSettingOnTypeAnnotationHint
 testErrorCodeNeedTypeAnnotation
 testInferenceWithUninhabitedType
+testMultipassAndPartialTypesSpecialCase3
 # needs error because only reassignments with other partial
 testEmptyCollectionAssignedToVariableTwiceIncremental
 testEmptyCollectionAssignedToVariableTwiceNoReadIncremental
@@ -1330,9 +1332,6 @@ testInferSetTypeFromInplaceOr
 testDictWithoutKeywordArgs
 # explicit any context should lead to Dict[Any, Any]? might be ok?
 testGenericDictWithOverload
-# dict full assignment like `x = {1: ""}`
-testInferListInitializedToEmptyAndAssigned
-testMultipassAndPartialTypesSpecialCase3
 # OrderedDict
 testInferOrderedDictInitializedToEmpty
 # defaultdict

@@ -935,32 +935,44 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 */
             } else {
                 let original_inf = self.infer_name_of_definition_by_index(first_index);
-                match original_inf.maybe_saved_specific(i_s.db) {
-                    Some(Specific::PartialList) => {
-                        let t = value.as_cow_type(i_s);
-                        if t.maybe_class(i_s.db)
-                            .is_some_and(|c| c.node_ref == i_s.db.python_state.list_node_ref())
-                        {
-                            value.clone().save_redirect(
-                                i_s,
-                                self.file,
-                                first_index - NAME_DEF_TO_NAME_DIFFERENCE,
-                            );
-                            return;
-                        }
-                        if t.is_any() {
-                            Inferred::from_type(i_s.db.python_state.list_of_any.clone())
-                                .save_redirect(
-                                    i_s,
-                                    self.file,
-                                    first_index - NAME_DEF_TO_NAME_DIFFERENCE,
-                                );
-                            return;
-                        }
+                let maybe_overwrite_partial = |class_node_ref, type_when_any: &Type| {
+                    let t = value.as_cow_type(i_s);
+                    if t.maybe_class(i_s.db)
+                        .is_some_and(|c| c.node_ref == class_node_ref)
+                    {
+                        value.clone().save_redirect(
+                            i_s,
+                            self.file,
+                            first_index - NAME_DEF_TO_NAME_DIFFERENCE,
+                        );
+                        return true;
                     }
-                    Some(Specific::PartialDict) => {}
-                    Some(Specific::PartialSet) => {}
-                    _ => (),
+                    if t.is_any() {
+                        Inferred::from_type(type_when_any.clone()).save_redirect(
+                            i_s,
+                            self.file,
+                            first_index - NAME_DEF_TO_NAME_DIFFERENCE,
+                        );
+                        return true;
+                    }
+                    false
+                };
+                let is_done = match original_inf.maybe_saved_specific(i_s.db) {
+                    Some(Specific::PartialList) => maybe_overwrite_partial(
+                        i_s.db.python_state.list_node_ref(),
+                        &i_s.db.python_state.list_of_any,
+                    ),
+                    Some(Specific::PartialDict) => maybe_overwrite_partial(
+                        i_s.db.python_state.dict_node_ref(),
+                        &i_s.db.python_state.dict_of_any,
+                    ),
+                    Some(Specific::PartialSet) => {
+                        todo!()
+                    }
+                    _ => false,
+                };
+                if is_done {
+                    return;
                 }
                 let original_t = original_inf.as_cow_type(i_s);
                 let check_for_error = || {
