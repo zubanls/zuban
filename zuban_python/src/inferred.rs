@@ -2050,6 +2050,13 @@ impl<'db: 'slf, 'slf> Inferred {
     pub fn iter(self, i_s: &InferenceState, from: NodeRef) -> IteratorContent {
         self.as_cow_type(i_s).iter(i_s, from)
     }
+
+    pub fn is_saved_partial(&self, db: &Database) -> bool {
+        matches!(
+            self.maybe_saved_specific(db),
+            Some(Specific::PartialList | Specific::PartialDict | Specific::PartialSet)
+        )
+    }
 }
 
 fn load_bound_method<'db: 'a, 'a, 'b>(

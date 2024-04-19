@@ -464,6 +464,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     let PrimaryContent::GetItem(slice) = t.second() else {
                         unreachable!();
                     };
+                    if base.is_saved_partial(self.i_s.db) {
+                        return None;
+                    }
                     let result = base
                         .as_cow_type(self.i_s)
                         .setitem_context(self.i_s, &SliceType::new(self.file, t.index(), slice));
@@ -1163,11 +1166,23 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let PrimaryContent::GetItem(slice_type) = primary_target.second() else {
                     unreachable!();
                 };
-                base.type_check_set_item(
-                    i_s,
-                    SliceType::new(self.file, primary_target.index(), slice_type),
-                    value,
-                );
+                let s_t = SliceType::new(self.file, primary_target.index(), slice_type);
+                if base.maybe_saved_specific(i_s.db) == Some(Specific::PartialDict) {
+                    let new_dict = new_class!(
+                        i_s.db.python_state.dict_node_ref().as_link(),
+                        s_t.infer(i_s).as_type(i_s),
+                        value.as_type(i_s),
+                    );
+                    debug!(
+                        r#"Infer dict assignment partial for "{}" as "{}""#,
+                        primary_target.as_code(),
+                        new_dict.format_short(i_s.db)
+                    );
+                    NodeRef::from_link(i_s.db, base.maybe_saved_link().unwrap())
+                        .insert_complex(ComplexPoint::TypeInstance(new_dict), Locality::Todo);
+                } else {
+                    base.type_check_set_item(i_s, s_t, value);
+                }
                 //self.narrow_primary_target_from_assignment(primary_target, &value.as_cow_type(self.i_s))
             }
             Target::Tuple(_) | Target::Starred(_) => unreachable!(),
