@@ -1299,7 +1299,9 @@ impl Type {
                         .replace_type_var_likes_for_nested_context(db, t)
                         .find_unique_type_in_unpacked_union(db, matcher, find);
                     match new {
-                        err @ Err(UniqueInUnpackedUnionError::Multiple) => return err,
+                        Err(UniqueInUnpackedUnionError::Multiple) => return new,
+                        // Avoid overwriting current results
+                        Err(UniqueInUnpackedUnionError::None) => (),
                         Ok(_) if found.is_ok() => return Err(UniqueInUnpackedUnionError::Multiple),
                         _ => found = new,
                     }
@@ -1671,6 +1673,7 @@ impl CallableLike {
     }
 }
 
+#[derive(Debug)]
 enum UniqueInUnpackedUnionError {
     None,
     Multiple,

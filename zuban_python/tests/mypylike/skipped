@@ -1279,9 +1279,6 @@ testOptionalBackwards4
 
 # list context is Never and should be something else
 testContextForAttributeDeclaredInInit
-testUnionWithGenericTypeItemContext
-testUnionWithGenericTypeItemContextAndStrictOptional
-testUnionWithGenericTypeItemContextInMethod
 testTypeInferenceContextAndYield
 testTupleWithUnionContext
 # append etc regressions
