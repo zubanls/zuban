@@ -1293,10 +1293,17 @@ impl Type {
     ) -> Result<T, UniqueInUnpackedUnionError> {
         let mut found = Err(UniqueInUnpackedUnionError::None);
         for t in self.iter_with_unpacked_unions(db) {
-            let new = match t {
-                Type::TypeVar(_) if matcher.might_have_defined_type_vars() => matcher
-                    .replace_type_var_likes_for_nested_context(db, t)
-                    .find_unique_type_in_unpacked_union(db, matcher, find),
+            match t {
+                Type::TypeVar(_) if matcher.might_have_defined_type_vars() => {
+                    let new = matcher
+                        .replace_type_var_likes_for_nested_context(db, t)
+                        .find_unique_type_in_unpacked_union(db, matcher, find);
+                    match new {
+                        err @ Err(UniqueInUnpackedUnionError::Multiple) => return err,
+                        Ok(_) if found.is_ok() => return Err(UniqueInUnpackedUnionError::Multiple),
+                        _ => found = new,
+                    }
+                }
                 _ => {
                     if let Some(x) = find(t) {
                         if found.is_ok() {
@@ -1305,13 +1312,7 @@ impl Type {
                             found = Ok(x)
                         }
                     }
-                    continue;
                 }
-            };
-            match new {
-                err @ Err(UniqueInUnpackedUnionError::Multiple) => return err,
-                Ok(_) if found.is_ok() => return Err(UniqueInUnpackedUnionError::Multiple),
-                _ => found = new,
             }
         }
         found
