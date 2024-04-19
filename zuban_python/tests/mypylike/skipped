@@ -1279,7 +1279,6 @@ testOptionalBackwards4
 
 # list context is Never and should be something else
 testContextForAttributeDeclaredInInit
-testTupleWithUnionContext
 # append etc regressions
 testGenericFunctionOnReturnTypeOnly
 # ????

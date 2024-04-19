@@ -2,7 +2,6 @@ use std::fmt;
 
 use super::Matcher;
 use crate::{
-    debug,
     node_ref::NodeRef,
     type_::{AnyCause, TupleArgs, Type},
     type_helpers::Class,
@@ -129,23 +128,28 @@ impl<'a> ResultContext<'a, '_> {
         mut callable: impl FnMut(TupleContextIterator) -> T,
     ) -> T {
         self.with_type_if_exists_and_replace_type_var_likes(i_s, |type_| {
-            match type_ {
-                Type::Tuple(tup) => Some(match &tup.args {
-                    TupleArgs::FixedLen(ts) => callable(TupleContextIterator::FixedLen(ts.iter())),
-                    TupleArgs::ArbitraryLen(t) => callable(TupleContextIterator::ArbitraryLen(t)),
-                    TupleArgs::WithUnpack(_) => callable(TupleContextIterator::Unknown),
-                }),
-                Type::Union(items) => {
-                    debug!("TODO union tuple inference context ignored");
-                    None
+            for t in type_.iter_with_unpacked_unions(i_s.db) {
+                match t {
+                    Type::Tuple(tup) => {
+                        return Some(match &tup.args {
+                            TupleArgs::FixedLen(ts) => {
+                                callable(TupleContextIterator::FixedLen(ts.iter()))
+                            }
+                            TupleArgs::ArbitraryLen(t) => {
+                                callable(TupleContextIterator::ArbitraryLen(t))
+                            }
+                            TupleArgs::WithUnpack(_) => callable(TupleContextIterator::Unknown),
+                        })
+                    }
+                    // Case x: Iterable[int] = (1, 1)
+                    Type::Class(c) if c.link == i_s.db.python_state.iterable_link() => {
+                        let t = c.class(i_s.db).nth_type_argument(i_s.db, 0);
+                        return Some(callable(TupleContextIterator::ArbitraryLen(&t)));
+                    }
+                    _ => (),
                 }
-                // Case x: Iterable[int] = (1, 1)
-                Type::Class(c) if c.link == i_s.db.python_state.iterable_link() => {
-                    let t = c.class(i_s.db).nth_type_argument(i_s.db, 0);
-                    Some(callable(TupleContextIterator::ArbitraryLen(&t)))
-                }
-                _ => None,
             }
+            None
         })
         .flatten()
         .unwrap_or_else(|| {
