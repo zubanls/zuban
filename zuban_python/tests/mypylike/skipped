@@ -1288,7 +1288,6 @@ testTupleWithUnionContext
 testGenericFunctionOnReturnTypeOnly
 # ????
 testEnumWithPartialTypes
-testNewAnalyzerLessErrorsNeedAnnotation
 testIgnoreTypeInferenceErrorAndMultipleAssignment
 testLocalPartialTypesWithGlobalInitializedToEmptyDict3
 testPartialTypeErrorSpecialCase4
@@ -1311,6 +1310,7 @@ testDictWithoutKeywordArgs
 # needs error because only reassignments with other partial
 testEmptyCollectionAssignedToVariableTwiceIncremental
 testEmptyCollectionAssignedToVariableTwiceNoReadIncremental
+testNewAnalyzerLessErrorsNeedAnnotation
 # Needs error, because nested partial "Need type annotation for "X""
 testInferListInitializedToEmptyAndIncompleteTypeInAppend
 testInferDictInitializedToEmptyAndIncompleteTypeInUpdate

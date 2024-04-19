@@ -53,7 +53,7 @@ const NEEDS_FLOW_ANALYSIS_BIT_INDEX: usize = 26;
 // const IS_NULLABLE_BIT_INDEX: usize = 25;
 const TYPE_BIT_INDEX: usize = 22; // Uses 3 bits
 
-const REST_MASK: u32 = 0b11_1111_1111_1111_1111_1111;
+const REST_MASK: u32 = (1 << TYPE_BIT_INDEX) - 1;
 const SPECIFIC_BIT_LEN: u32 = 8;
 const SPECIFIC_MASK: u32 = (1 << SPECIFIC_BIT_LEN) - 1; // 8 bits
                                                         // const MAX_TYPE_VAR: u32 = 0xFF; // 256
