@@ -2016,10 +2016,23 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
             PrimaryOrAtom::Atom(atom) => self.infer_atom(atom, &mut ResultContext::Unknown),
         };
-        let try_to_save = |partial_class_link, unwrap_from_iterable| {
+        let first_arg_as_t = || {
             let args = SimpleArgs::new(*i_s, self.file, primary.index(), execution);
             let arg = args.maybe_single_positional_arg(i_s, &mut ResultContext::Unknown)?;
-            let mut t = arg.as_type(i_s).avoid_implicit_literal(i_s.db);
+            Some(arg.as_type(i_s).avoid_implicit_literal(i_s.db))
+        };
+        let save_partial = |resolved_partial: Type| {
+            debug!(
+                r#"Infer partial for "{}" as "{}""#,
+                primary.as_code(),
+                resolved_partial.format_short(i_s.db)
+            );
+            NodeRef::from_link(i_s.db, base.maybe_saved_link().unwrap())
+                .insert_complex(ComplexPoint::TypeInstance(resolved_partial), Locality::Todo);
+            Some(Inferred::new_none())
+        };
+        let try_to_save = |partial_class_link, unwrap_from_iterable| {
+            let mut t = first_arg_as_t()?;
             if unwrap_from_iterable {
                 if !t.is_any() {
                     t = t.mro(i_s.db).find_map(|(_, type_or_class)| {
@@ -2034,15 +2047,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     })?;
                 }
             }
-            let resolved_partial = new_class!(partial_class_link, t,);
-            debug!(
-                r#"Infer partial for "{}" as "{}""#,
-                primary.as_code(),
-                resolved_partial.format_short(i_s.db)
-            );
-            NodeRef::from_link(i_s.db, base.maybe_saved_link().unwrap())
-                .insert_complex(ComplexPoint::TypeInstance(resolved_partial), Locality::Todo);
-            Some(Inferred::new_none())
+            save_partial(new_class!(partial_class_link, t))
         };
         match base.maybe_saved_specific(i_s.db)? {
             Specific::PartialList => match method_name.as_code() {
@@ -2051,7 +2056,16 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 _ => None,
             },
             Specific::PartialDict => match method_name.as_code() {
-                "update" => todo!(),
+                "update" => {
+                    let t = first_arg_as_t()?;
+                    let dct_node_ref = i_s.db.python_state.dict_node_ref();
+                    if t.is_any() {
+                        save_partial(new_class!(dct_node_ref.as_link(), t))
+                    } else {
+                        (t.maybe_class(i_s.db)?.node_ref == dct_node_ref)
+                            .then(|| save_partial(t))?
+                    }
+                }
                 _ => None,
             },
             Specific::PartialSet => match method_name.as_code() {
