@@ -1328,10 +1328,8 @@ testInferListTypeFromInplaceAdd
 testInferSetTypeFromInplaceOr
 # dict() set() list()
 testDictWithoutKeywordArgs
-# dict Any -> Never regressions
+# explicit any context should lead to Dict[Any, Any]? might be ok?
 testGenericDictWithOverload
-testTypedDictUnpackUntypedDict
-testNoInvalidTypeInDynamicFunctions
 # dict full assignment like `x = {1: ""}`
 testInferListInitializedToEmptyAndAssigned
 testMultipassAndPartialTypesSpecialCase3
