@@ -752,7 +752,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
         match yield_expr.unpack() {
             YieldExprContent::StarExpressions(s) => {
-                let inf = self.infer_star_expressions(s, &mut ResultContext::Unknown);
+                let inf = self
+                    .infer_star_expressions(s, &mut ResultContext::Known(&generator.yield_type));
                 Inferred::from_type(generator.yield_type)
                     .as_cow_type(i_s)
                     .error_if_not_matches(
