@@ -252,7 +252,11 @@ impl<'file> NodeRef<'file> {
     }
 
     pub fn add_need_type_annotation_issue(&self, i_s: &InferenceState, hint: &'static str) {
-        if !i_s.db.project.flags.allow_untyped_globals {
+        let point = self.point();
+        let mut partial_flags = point.partial_flags();
+        if !partial_flags.reported_error && !i_s.db.project.flags.allow_untyped_globals {
+            partial_flags.reported_error = true;
+            self.set_point(point.set_partial_flags(partial_flags));
             self.add_issue(
                 i_s,
                 IssueKind::NeedTypeAnnotation {

@@ -54,14 +54,20 @@ const NEEDS_FLOW_ANALYSIS_BIT_INDEX: usize = 26;
 const TYPE_BIT_INDEX: usize = 22; // Uses 3 bits
 
 const REST_MASK: u32 = 0b11_1111_1111_1111_1111_1111;
-const SPECIFIC_MASK: u32 = 0xFF; // 8 bits
-                                 // const MAX_TYPE_VAR: u32 = 0xFF; // 256
-                                 // const FILE_MASK: u32 = 0xFFFFFF; // 24 bits
+const SPECIFIC_BIT_LEN: u32 = 8;
+const SPECIFIC_MASK: u32 = (1 << SPECIFIC_BIT_LEN) - 1; // 8 bits
+                                                        // const MAX_TYPE_VAR: u32 = 0xFF; // 256
+                                                        // const FILE_MASK: u32 = 0xFFFFFF; // 24 bits
 const IS_ANALIZED_MASK: u32 = 1 << IS_ANALIZED_BIT_INDEX;
 const NEEDS_FLOW_ANALYSIS_MASK: u32 = 1 << NEEDS_FLOW_ANALYSIS_BIT_INDEX;
 // const IS_NULLABLE_MASK: u32 = 1 << IS_NULLABLE_MASK_BIT_INDEX;
 const LOCALITY_MASK: u32 = 0b111 << LOCALITY_BIT_INDEX;
 const TYPE_MASK: u32 = 0b111 << TYPE_BIT_INDEX;
+
+const PARTIAL_NULLABLE_INDEX: u32 = SPECIFIC_BIT_LEN + 1;
+const PARTIAL_NULLABLE_MASK: u32 = 1 << PARTIAL_NULLABLE_INDEX;
+const PARTIAL_REPORTED_ERROR_INDEX: u32 = SPECIFIC_BIT_LEN + 2;
+const PARTIAL_REPORTED_ERROR_MASK: u32 = 1 << PARTIAL_REPORTED_ERROR_INDEX;
 
 // const IS_EXTERN_MASK: u32 = 1 << 30;
 
@@ -219,6 +225,39 @@ impl Point {
     pub fn specific(self) -> Specific {
         debug_assert!(self.kind() == PointKind::Specific, "{:?}", self);
         unsafe { mem::transmute(self.flags & SPECIFIC_MASK) }
+    }
+
+    pub fn partial_flags(self) -> PartialFlags {
+        debug_assert!(
+            matches!(
+                self.specific(),
+                Specific::PartialList | Specific::PartialDict | Specific::PartialSet
+            ),
+            "{:?}",
+            self
+        );
+        PartialFlags {
+            nullable: self.flags & PARTIAL_NULLABLE_MASK != 0,
+            reported_error: self.flags & PARTIAL_REPORTED_ERROR_MASK != 0,
+        }
+    }
+
+    pub fn set_partial_flags(self, partial_flags: PartialFlags) -> Point {
+        debug_assert!(
+            matches!(
+                self.specific(),
+                Specific::PartialList | Specific::PartialDict | Specific::PartialSet
+            ),
+            "{:?}",
+            self
+        );
+        let mut flags = self.flags & !PARTIAL_NULLABLE_MASK & !PARTIAL_REPORTED_ERROR_MASK;
+        flags |= (partial_flags.nullable as u32) << PARTIAL_NULLABLE_INDEX;
+        flags |= (partial_flags.reported_error as u32) << PARTIAL_REPORTED_ERROR_INDEX;
+        Point {
+            flags,
+            node_index: self.node_index,
+        }
     }
 }
 
@@ -443,6 +482,11 @@ impl LocalityLink {
     pub fn into_point_redirect(self) -> Point {
         Point::new_redirect(self.file, self.node_index, self.locality)
     }
+}
+
+pub struct PartialFlags {
+    pub nullable: bool,
+    pub reported_error: bool,
 }
 
 // This is a core data structure and it should be kept as small as possible, because it's used in

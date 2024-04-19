@@ -1286,14 +1286,9 @@ testTypeInferenceContextAndYield
 testTupleWithUnionContext
 # append etc regressions
 testGenericFunctionOnReturnTypeOnly
-# too many errors
-testInferListInitializedToEmptyAndReadBeforeAppend
-testInferListInitializedToEmptyAndReadBeforeAppendInFunction
+# ????
 testEnumWithPartialTypes
 testNewAnalyzerLessErrorsNeedAnnotation
-testInferDictInitializedToEmptyUsingUpdateError
-testInferListInitializedToEmptyAndAssigned
-# ????
 testIgnoreTypeInferenceErrorAndMultipleAssignment
 testLocalPartialTypesWithGlobalInitializedToEmptyDict3
 testPartialTypeErrorSpecialCase4
@@ -1312,6 +1307,7 @@ testLowercaseSettingOnTypeAnnotationHint
 testErrorCodeNeedTypeAnnotation
 testInferenceWithUninhabitedType
 testMultipassAndPartialTypesSpecialCase3
+testDictWithoutKeywordArgs
 # needs error because only reassignments with other partial
 testEmptyCollectionAssignedToVariableTwiceIncremental
 testEmptyCollectionAssignedToVariableTwiceNoReadIncremental
@@ -1328,8 +1324,6 @@ testMultipleForIndexVars
 testInferFromEmptyDictWhenUsingIn
 testInferListTypeFromInplaceAdd
 testInferSetTypeFromInplaceOr
-# dict() set() list()
-testDictWithoutKeywordArgs
 # explicit any context should lead to Dict[Any, Any]? might be ok?
 testGenericDictWithOverload
 # OrderedDict
