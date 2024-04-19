@@ -1335,6 +1335,13 @@ testInferDictInitializedToEmptyAndIncompleteTypeInUpdate
 testMultipassAndPartialTypes3
 testMultipassAndPartialTypes4
 testMultipassAndPartialTypesSpecialCase2
+# dict Any -> Never regressions
+testGenericDictWithOverload
+testInferDictInitializedToEmptyAndUpdatedFromMethod
+testPassingEmptyDictWithStars
+testSuperWithNonPositionalArguments
+testTypedDictUnpackUntypedDict
+testNoInvalidTypeInDynamicFunctions
 # dict full assignment like `x = {1: ""}`
 testInferListInitializedToEmptyAndAssigned
 testMultipassAndPartialTypesSpecialCase3

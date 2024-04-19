@@ -329,8 +329,8 @@ impl<'db> Inference<'db, '_, '_> {
         if matches!(dict_elements, DictElementIterator::Empty) {
             return Inferred::from_type(new_class!(
                 i_s.db.python_state.dict_node_ref().as_link(),
-                Type::Any(AnyCause::Todo),
-                Type::Any(AnyCause::Todo),
+                Type::Never(NeverCause::Inference),
+                Type::Never(NeverCause::Inference),
             ));
         }
         let mut values = Inferred::new_any(AnyCause::Todo);

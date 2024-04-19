@@ -2198,7 +2198,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     elements @ StarLikeExpressionIterator::Elements(_) => {
                         self.create_list_or_set_generics(elements)
                     }
-                    StarLikeExpressionIterator::Empty => Type::Never(NeverCause::Inference), // TODO shouldn't this be Never?
+                    StarLikeExpressionIterator::Empty => Type::Never(NeverCause::Inference),
                 };
                 return Inferred::from_type(new_class!(
                     i_s.db.python_state.list_node_ref().as_link(),
@@ -2222,7 +2222,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     ))
                     .save_redirect(i_s, self.file, atom.index());
                 } else {
-                    todo!()
+                    // A set can never be empty, because at that point it's a dict: `{}`
+                    unreachable!()
                 }
             }
             SetComprehension(comp) => return self.infer_set_comprehension(comp, result_context),
