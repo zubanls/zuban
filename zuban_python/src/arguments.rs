@@ -774,7 +774,7 @@ impl<'db, 'a> Iterator for ArgIteratorBase<'db, 'a> {
                             let unpacked = unpack_star_star(i_s, &type_);
                             let s = i_s.db.python_state.str_type();
                             let value = if let Some((key, value)) = unpacked {
-                                if !key.is_simple_same_type(i_s, &s).bool() {
+                                if !key.is_simple_sub_type_of(i_s, &s).bool() {
                                     debug!("Keyword is type {}", key.format_short(i_s.db));
                                     node_ref.add_issue(
                                         i_s,

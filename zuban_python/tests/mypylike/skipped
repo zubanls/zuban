@@ -1330,9 +1330,6 @@ testInferSetTypeFromInplaceOr
 testDictWithoutKeywordArgs
 # dict Any -> Never regressions
 testGenericDictWithOverload
-testInferDictInitializedToEmptyAndUpdatedFromMethod
-testPassingEmptyDictWithStars
-testSuperWithNonPositionalArguments
 testTypedDictUnpackUntypedDict
 testNoInvalidTypeInDynamicFunctions
 # dict full assignment like `x = {1: ""}`
