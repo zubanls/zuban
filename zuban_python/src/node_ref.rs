@@ -9,7 +9,7 @@ use parsa_python_ast::{
 use crate::{
     database::{
         ClassStorage, ComplexPoint, Database, FileIndex, Locality, Point, PointKind, PointLink,
-        TypeAlias,
+        Specific, TypeAlias,
     },
     diagnostics::{Issue, IssueKind},
     file::{File, PythonFile},
@@ -251,7 +251,13 @@ impl<'file> NodeRef<'file> {
         self.file.add_issue(i_s, issue)
     }
 
-    pub fn add_need_type_annotation_issue(&self, i_s: &InferenceState, hint: &'static str) {
+    pub fn add_need_type_annotation_issue(&self, i_s: &InferenceState, specific: Specific) {
+        let hint = match specific {
+            Specific::PartialList => "List[<type>]",
+            Specific::PartialDict => "Dict[<type>, <type>]",
+            Specific::PartialSet => "Set[<type>]",
+            _ => unreachable!(),
+        };
         let point = self.point();
         let mut partial_flags = point.partial_flags();
         if !partial_flags.reported_error && !i_s.db.project.flags.allow_untyped_globals {

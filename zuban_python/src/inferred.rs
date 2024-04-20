@@ -2052,10 +2052,8 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn is_saved_partial(&self, db: &Database) -> bool {
-        matches!(
-            self.maybe_saved_specific(db),
-            Some(Specific::PartialList | Specific::PartialDict | Specific::PartialSet)
-        )
+        self.maybe_saved_specific(db)
+            .is_some_and(|specific| specific.is_partial())
     }
 }
 
@@ -2386,15 +2384,15 @@ pub fn specific_to_type<'db>(
         }
         Specific::MaybeSelfParam => Cow::Borrowed(&Type::Self_),
         Specific::PartialList => {
-            definition.add_need_type_annotation_issue(i_s, "List[<type>]");
+            definition.add_need_type_annotation_issue(i_s, specific);
             Cow::Borrowed(&i_s.db.python_state.list_of_any)
         }
         Specific::PartialDict => {
-            definition.add_need_type_annotation_issue(i_s, "Dict[<type>, <type>]");
+            definition.add_need_type_annotation_issue(i_s, specific);
             Cow::Borrowed(&i_s.db.python_state.dict_of_any)
         }
         Specific::PartialSet => {
-            definition.add_need_type_annotation_issue(i_s, "Set[<type>]");
+            definition.add_need_type_annotation_issue(i_s, specific);
             Cow::Borrowed(&i_s.db.python_state.set_of_any)
         }
         Specific::BuiltinsIsinstance => todo!(),

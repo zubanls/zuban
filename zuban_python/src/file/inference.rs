@@ -1030,6 +1030,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 if let Some(partial) =
                     value.maybe_new_partial(i_s, NodeRef::new(self.file, name_def.index()))
                 {
+                    FLOW_ANALYSIS.with(|fa| {
+                        fa.add_partial(PointLink::new(self.file_index, name_def.index()))
+                    });
                     save(name_def.index(), &partial);
                     return;
                 }

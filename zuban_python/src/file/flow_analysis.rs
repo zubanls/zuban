@@ -173,6 +173,7 @@ impl Frame {
 pub struct FlowAnalysis {
     frames: RefCell<Vec<Frame>>,
     current_break_index: Cell<Option<usize>>,
+    partials_in_module: RefCell<Vec<PointLink>>,
 }
 
 impl FlowAnalysis {
@@ -300,6 +301,23 @@ impl FlowAnalysis {
 
     pub fn mark_current_frame_unreachable(&self) {
         self.frames.borrow_mut().last_mut().unwrap().unreachable = true
+    }
+
+    pub fn add_partial(&self, defined_at: PointLink) {
+        self.partials_in_module.borrow_mut().push(defined_at)
+    }
+
+    pub fn check_for_unfinished_partials(&self, i_s: &InferenceState) {
+        let mut partials = self.partials_in_module.borrow_mut();
+        for partial in partials.iter() {
+            let node_ref = NodeRef::from_link(i_s.db, *partial);
+            if let Some(specific) = node_ref.point().maybe_specific() {
+                if specific.is_partial() {
+                    node_ref.add_need_type_annotation_issue(i_s, specific)
+                }
+            }
+        }
+        partials.clear()
     }
 }
 

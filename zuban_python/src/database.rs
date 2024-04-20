@@ -433,6 +433,15 @@ pub enum Specific {
     // PartialDefaultDict,
 }
 
+impl Specific {
+    pub fn is_partial(self) -> bool {
+        matches!(
+            self,
+            Specific::PartialList | Specific::PartialDict | Specific::PartialSet
+        )
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 #[repr(u32)]
 pub enum Locality {

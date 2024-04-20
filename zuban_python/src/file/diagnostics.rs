@@ -124,7 +124,8 @@ impl<'db> Inference<'db, '_, '_> {
         FLOW_ANALYSIS.with(|fa| {
             fa.with_new_frame_and_return_unreachable(|| {
                 self.calc_stmts_diagnostics(self.file.tree.root().iter_stmts(), None, None);
-            })
+            });
+            fa.check_for_unfinished_partials(self.i_s)
         });
         for complex_point in unsafe { self.file.complex_points.iter() } {
             if let ComplexPoint::NewTypeDefinition(n) = complex_point {
