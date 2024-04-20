@@ -2007,25 +2007,25 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         result
     }
 
-    fn try_to_infer_partial_from_primary(&mut self, primary: Primary) -> Option<Inferred> {
+    fn try_to_infer_partial_from_primary(&mut self, primary: Primary) {
         let PrimaryContent::Execution(execution) = primary.second() else {
-            return None
+            return
         };
         let PrimaryOrAtom::Primary(primary_method) = primary.first() else {
-            return None
+            return
         };
         let PrimaryContent::Attribute(method_name) = primary_method.second() else {
-            return None
+            return
         };
         let i_s = self.i_s;
         let base = match primary_method.first() {
             PrimaryOrAtom::Primary(prim) => {
                 // Only care about very specific cases here.
                 if !matches!(prim.first(), PrimaryOrAtom::Atom(_)) {
-                    return None;
+                    return;
                 }
                 if !matches!(prim.second(), PrimaryContent::Attribute(_)) {
-                    return None;
+                    return;
                 }
                 self.infer_primary(prim, &mut ResultContext::Unknown)
                     .save_redirect(i_s, self.file, prim.index())
@@ -2045,7 +2045,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             );
             NodeRef::from_link(i_s.db, base.maybe_saved_link().unwrap())
                 .insert_complex(ComplexPoint::TypeInstance(resolved_partial), Locality::Todo);
-            Some(Inferred::new_none())
+            Some(())
         };
         let try_to_save = |partial_class_link, unwrap_from_iterable| {
             let mut t = first_arg_as_t()?;
@@ -2065,34 +2065,44 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
             save_partial(new_class!(partial_class_link, t))
         };
-        match base.maybe_saved_specific(i_s.db)? {
-            Specific::PartialList => match method_name.as_code() {
-                "append" => try_to_save(i_s.db.python_state.list_node_ref().as_link(), false),
-                "extend" => try_to_save(i_s.db.python_state.list_node_ref().as_link(), true),
-                _ => None,
+        match base.maybe_saved_specific(i_s.db) {
+            Some(Specific::PartialList) => match method_name.as_code() {
+                "append" => {
+                    try_to_save(i_s.db.python_state.list_node_ref().as_link(), false);
+                }
+                "extend" => {
+                    try_to_save(i_s.db.python_state.list_node_ref().as_link(), true);
+                }
+                _ => (),
             },
-            Specific::PartialDict => match method_name.as_code() {
+            Some(Specific::PartialDict) => match method_name.as_code() {
                 "update" => {
-                    let t = first_arg_as_t()?;
+                    let Some(t) = first_arg_as_t() else {
+                        return
+                    };
                     let dct_node_ref = i_s.db.python_state.dict_node_ref();
                     if t.is_any() {
-                        save_partial(new_class!(dct_node_ref.as_link(), t))
-                    } else {
-                        (t.maybe_class(i_s.db)?.node_ref == dct_node_ref)
-                            .then(|| save_partial(t))?
+                        save_partial(new_class!(dct_node_ref.as_link(), t));
+                    } else if t
+                        .maybe_class(i_s.db)
+                        .is_some_and(|c| c.node_ref == dct_node_ref)
+                    {
+                        save_partial(t);
                     }
                 }
-                _ => None,
+                _ => (),
             },
-            Specific::PartialSet => match method_name.as_code() {
+            Some(Specific::PartialSet) => match method_name.as_code() {
                 "add" | "discard" => {
-                    try_to_save(i_s.db.python_state.set_node_ref().as_link(), false)
+                    try_to_save(i_s.db.python_state.set_node_ref().as_link(), false);
                 }
-                "update" => try_to_save(i_s.db.python_state.set_node_ref().as_link(), true),
-                _ => None,
+                "update" => {
+                    try_to_save(i_s.db.python_state.set_node_ref().as_link(), true);
+                }
+                _ => (),
             },
-            _ => None,
-        }
+            _ => (),
+        };
     }
 
     // Primary is not saved by this function, but can be saved by other stuff and to avoid
@@ -2103,12 +2113,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         primary: Primary,
         result_context: &mut ResultContext,
     ) -> Inferred {
-        if let Some(inf) = self
-            .maybe_lookup_narrowed_primary(primary)
-            .or_else(|| self.try_to_infer_partial_from_primary(primary))
-        {
+        if let Some(inf) = self.maybe_lookup_narrowed_primary(primary) {
             return inf;
         }
+        self.try_to_infer_partial_from_primary(primary);
         let base = self.infer_primary_or_atom(primary.first());
         let result = self.infer_primary_or_primary_t_content(
             &base,

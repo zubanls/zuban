@@ -1282,7 +1282,6 @@ testContextForAttributeDeclaredInInit
 # ????
 testEnumWithPartialTypes
 testIgnoreTypeInferenceErrorAndMultipleAssignment
-testPartialTypeErrorSpecialCase4
 testWalrusPartialTypes
 # No "Need type annotation for "X"", because untyped update exists
 testInferDictInitializedToEmptyAndUpdatedFromMethodUnannotated
