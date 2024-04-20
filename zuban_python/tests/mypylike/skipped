@@ -1279,12 +1279,9 @@ testOptionalBackwards4
 
 # list context is Never and should be something else
 testContextForAttributeDeclaredInInit
-# append etc regressions
-testGenericFunctionOnReturnTypeOnly
 # ????
 testEnumWithPartialTypes
 testIgnoreTypeInferenceErrorAndMultipleAssignment
-testLocalPartialTypesWithGlobalInitializedToEmptyDict3
 testPartialTypeErrorSpecialCase4
 testWalrusPartialTypes
 # Empty [] {} and no usage -> "Need type annotation for "X""
@@ -1302,6 +1299,7 @@ testErrorCodeNeedTypeAnnotation
 testInferenceWithUninhabitedType
 testMultipassAndPartialTypesSpecialCase3
 testDictWithoutKeywordArgs
+testGenericFunctionOnReturnTypeOnly
 # needs error because only reassignments with other partial
 testEmptyCollectionAssignedToVariableTwiceIncremental
 testEmptyCollectionAssignedToVariableTwiceNoReadIncremental
