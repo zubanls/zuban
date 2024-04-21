@@ -1242,7 +1242,9 @@ impl Inference<'_, '_, '_> {
                         if saved == self.i_s.db.python_state.callable_node_ref().as_link() {
                             debug!("TODO callable narrowing")
                         } else if saved == self.i_s.db.python_state.hasattr_node_ref().as_link() {
-                            debug!("TODO hasattr narrowing")
+                            if let Some(frames) = self.guard_hasattr(args, true) {
+                                return Ok((Inferred::new_bool(self.i_s.db), frames));
+                            }
                         }
                     }
                 }
@@ -1559,6 +1561,36 @@ impl Inference<'_, '_, '_> {
             */
             _ => None,
         }
+    }
+
+    fn guard_hasattr(
+        &mut self,
+        args: Arguments,
+        issubclass: bool,
+    ) -> Option<FramesWithParentUnions> {
+        let mut iterator = args.iter();
+        let Argument::Positional(arg) = iterator.next()? else {
+            return None
+        };
+        let result = self.key_from_namedexpression(arg);
+        let key = result.key?;
+        let Argument::Positional(str_arg) = iterator.next()? else {
+            return None
+        };
+        let attr_inf = self.infer_named_expression(str_arg);
+        let attr = attr_inf.maybe_string_literal(self.i_s)?;
+        Some(FramesWithParentUnions {
+            truthy: Frame::new(vec![Entry {
+                // TODO this ptr is COMPLETLY UNSAFE
+                key: FlowKey::Member(Rc::new(key), attr.as_str(self.i_s.db)),
+                type_: Type::Any(AnyCause::Todo),
+                from_assignment: false,
+                widens: false,
+            }]),
+            falsey: Frame::default(),
+            // TODO correct?
+            parent_unions: ParentUnions::default(),
+        })
     }
 
     fn guard_of_in_operator(
