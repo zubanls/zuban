@@ -61,6 +61,8 @@ impl Type {
             (Type::Callable(c1), Type::Callable(c2)) => {
                 Some(Type::Callable(common_sub_type_for_callables(i_s, c1, c2)))
             }
+            (Type::Any(_), _) => Some(other.clone()),
+            (_, Type::Any(_)) => Some(self.clone()),
             _ => {
                 if self.is_simple_sub_type_of(i_s, other).bool() {
                     Some(self.clone())

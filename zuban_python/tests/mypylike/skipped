@@ -1243,7 +1243,6 @@ testLocalPartialTypesWithGlobalInitializedToNone4
 testAttributePartiallyInitializedToNoneWithMissingAnnotation
 testIncompatibleInheritedAttributeNoStrictOptional
 # hasattr
-testHasAttrPreciseType
 testHasAttrMissingAttributeUnion
 # unreachable after Never return
 testUnreachableFlagOkWithDeadStatements
