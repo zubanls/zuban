@@ -1576,21 +1576,44 @@ impl Inference<'_, '_, '_> {
         };
         let attr_inf = self.infer_named_expression(str_arg);
         let attr = attr_inf.maybe_string_literal(self.i_s)?;
-        if self
-            .check_attr(&result.inf.as_cow_type(self.i_s), attr.as_str(self.i_s.db))
-            .is_some()
+
+        let mut all_have_attr = true;
+        let mut attr_t = Type::Never(NeverCause::Other);
+        let mut falsey_parent = Type::Never(NeverCause::Other);
+        for t in result
+            .inf
+            .as_cow_type(self.i_s)
+            .iter_with_unpacked_unions(self.i_s.db)
         {
+            if let Some(inf) = self
+                .check_attr(&t, attr.as_str(self.i_s.db))
+                .into_maybe_inferred()
+            {
+                attr_t.union_in_place(inf.as_type(self.i_s));
+            } else {
+                attr_t.union_in_place(Type::Any(AnyCause::Todo));
+                falsey_parent.union_in_place(t.clone());
+                all_have_attr = false;
+            }
+        }
+        if all_have_attr {
+            // It's a bit weird, but in the case where all union parts have an attr, Mypy does not
+            // perform any narrowing.
             return None;
         }
         Some(FramesWithParentUnions {
             truthy: Frame::new(vec![Entry {
-                key: FlowKey::Member(Rc::new(key), attr),
-                type_: Type::Any(AnyCause::Todo),
+                key: FlowKey::Member(Rc::new(key.clone()), attr),
+                type_: attr_t,
                 from_assignment: false,
                 widens: false,
             }]),
-            falsey: Frame::default(),
-            // TODO correct?
+            falsey: match falsey_parent {
+                // Frames should not be unreachable, because people might be checking for deleted
+                // attributes.
+                Type::Never(_) => Frame::default(),
+                _ => Frame::from_type(key, falsey_parent),
+            },
             parent_unions: ParentUnions::default(),
         })
     }
