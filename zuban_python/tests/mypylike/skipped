@@ -1247,7 +1247,6 @@ testHasAttrExistingAttribute
 testHasAttrDoesntInterfereGetAttr
 testHasAttrDeferred
 testHasAttrDoesntInterfereModuleGetAttr
-testHasAttrMissingAttributeNested
 testHasAttrPreciseType
 testHasAttrMissingAttributeUnion
 testHasAttrModule

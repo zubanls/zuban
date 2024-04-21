@@ -22,9 +22,9 @@ use crate::{
     matching::{Generic, LookupKind, Match, Matcher, ResultContext},
     node_ref::NodeRef,
     type_::{
-        simplified_union_from_iterators, AnyCause, CallableLike, ClassGenerics, EnumMember,
-        GenericItem, Literal, LiteralKind, NamedTuple, NeverCause, Tuple, TupleArgs, TupleUnpack,
-        Type, TypeVarKind, UnionType, WithUnpack,
+        simplified_union_from_iterators, AnyCause, CallableLike, ClassGenerics, DbString,
+        EnumMember, GenericItem, Literal, LiteralKind, NamedTuple, NeverCause, StringSlice, Tuple,
+        TupleArgs, TupleUnpack, Type, TypeVarKind, UnionType, WithUnpack,
     },
     type_helpers::{Class, Function},
 };
@@ -43,7 +43,7 @@ thread_local! {
 #[derive(Debug, Clone)]
 enum FlowKey {
     Name(PointLink),
-    Member(Rc<FlowKey>, *const str),
+    Member(Rc<FlowKey>, DbString),
     Index {
         base_key: Rc<FlowKey>,
         node_index: NodeIndex,
@@ -52,28 +52,20 @@ enum FlowKey {
 }
 
 impl FlowKey {
-    fn is_child_of(&self, search_key: &FlowKey) -> bool {
+    fn is_child_of(&self, db: &Database, search_key: &FlowKey) -> bool {
         match self {
             Self::Name(_) => false,
             Self::Member(base_key, _) | Self::Index { base_key, .. } => {
-                &**base_key == search_key || base_key.is_child_of(search_key)
+                base_key.equals(db, search_key) || base_key.is_child_of(db, search_key)
             }
         }
     }
-}
 
-#[derive(Debug, Clone, PartialEq)]
-enum FlowKeyIndex {
-    Int(usize),
-    Str(String),
-}
-
-impl PartialEq for FlowKey {
-    fn eq(&self, other: &Self) -> bool {
+    fn equals(&self, db: &Database, other: &Self) -> bool {
         match self {
             Self::Name(link1) => matches!(other, Self::Name(link2) if link1 == link2),
             Self::Member(key1, s1) => match other {
-                Self::Member(key2, s2) => key1 == key2 && unsafe { &**s1 as &str == &**s1 as &str },
+                Self::Member(key2, s2) => key1.equals(db, key2) && s1.as_str(db) == s2.as_str(db),
                 _ => false,
             },
             Self::Index {
@@ -85,11 +77,17 @@ impl PartialEq for FlowKey {
                     base_key: key2,
                     match_index: match_index2,
                     ..
-                } => key1 == key2 && match_index1 == match_index2,
+                } => key1.equals(db, key2) && match_index1 == match_index2,
                 _ => false,
             },
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+enum FlowKeyIndex {
+    Int(usize),
+    Str(String),
 }
 
 #[derive(Debug, Clone)]
@@ -123,7 +121,7 @@ impl Frame {
 
     fn add_entry(&mut self, i_s: &InferenceState, entry: Entry) {
         for old_entry in &mut self.entries {
-            if old_entry.key == entry.key {
+            if old_entry.key.equals(i_s.db, &entry.key) {
                 if let Some(new) = old_entry.type_.common_sub_type(i_s, &entry.type_) {
                     old_entry.type_ = new;
                 }
@@ -152,8 +150,8 @@ impl Frame {
         }
     }
 
-    fn lookup_entry(&self, key: &FlowKey) -> Option<&Entry> {
-        self.entries.iter().find(|entry| &entry.key == key)
+    fn lookup_entry(&self, db: &Database, key: &FlowKey) -> Option<&Entry> {
+        self.entries.iter().find(|entry| entry.key.equals(db, key))
     }
 
     fn from_type(key: FlowKey, type_: Type) -> Self {
@@ -177,9 +175,9 @@ pub struct FlowAnalysis {
 }
 
 impl FlowAnalysis {
-    fn lookup_narrowed_key(&self, lookup_key: FlowKey) -> Option<Inferred> {
+    fn lookup_narrowed_key(&self, db: &Database, lookup_key: FlowKey) -> Option<Inferred> {
         for frame in self.frames.borrow().iter().rev() {
-            if let Some(entry) = frame.lookup_entry(&lookup_key) {
+            if let Some(entry) = frame.lookup_entry(db, &lookup_key) {
                 return Some(Inferred::from_type(entry.type_.clone()));
             }
         }
@@ -199,9 +197,9 @@ impl FlowAnalysis {
         // TODO merge frames properly, this is just a special case
         if false_frame.unreachable || true_frame.unreachable {
             if !false_frame.unreachable {
-                self.overwrite_entries(false_frame.entries)
+                self.overwrite_entries(i_s.db, false_frame.entries)
             } else if !true_frame.unreachable {
-                self.overwrite_entries(true_frame.entries)
+                self.overwrite_entries(i_s.db, true_frame.entries)
             } else {
                 self.mark_current_frame_unreachable()
             }
@@ -220,15 +218,18 @@ impl FlowAnalysis {
         'outer: for first_entry in &first_frame.entries {
             if first_entry.from_assignment {
                 for other_entry in &mut other_frame.entries {
-                    if first_entry.key == other_entry.key {
+                    if first_entry.key.equals(i_s.db, &other_entry.key) {
                         // Assign false to make sure it is not handled again from the other side.
                         other_entry.from_assignment = false;
-                        self.overwrite_entry(Entry {
-                            key: first_entry.key.clone(),
-                            type_: other_entry.type_.simplified_union(i_s, &first_entry.type_),
-                            from_assignment: true,
-                            widens: first_entry.widens || other_entry.widens,
-                        });
+                        self.overwrite_entry(
+                            i_s.db,
+                            Entry {
+                                key: first_entry.key.clone(),
+                                type_: other_entry.type_.simplified_union(i_s, &first_entry.type_),
+                                from_assignment: true,
+                                widens: first_entry.widens || other_entry.widens,
+                            },
+                        );
                         continue 'outer;
                     }
                 }
@@ -240,17 +241,17 @@ impl FlowAnalysis {
                         from_assignment: first_entry.from_assignment,
                         widens: first_entry.widens,
                     };
-                    self.overwrite_entry(entry)
+                    self.overwrite_entry(i_s.db, entry)
                 }
             }
         }
     }
 
-    fn overwrite_entry(&self, new_entry: Entry) {
+    fn overwrite_entry(&self, db: &Database, new_entry: Entry) {
         let mut frames = self.frames.borrow_mut();
         let entries = &mut frames.last_mut().unwrap().entries;
         for entry in &mut *entries {
-            if entry.key == new_entry.key {
+            if entry.key.equals(db, &new_entry.key) {
                 *entry = new_entry;
                 return;
             }
@@ -258,12 +259,12 @@ impl FlowAnalysis {
         entries.push(new_entry)
     }
 
-    fn overwrite_entries(&self, new_entries: Entries) {
+    fn overwrite_entries(&self, db: &Database, new_entries: Entries) {
         let mut frames = self.frames.borrow_mut();
         let entries = &mut frames.last_mut().unwrap().entries;
         'outer: for new_entry in new_entries {
             for entry in &mut *entries {
-                if entry.key == new_entry.key {
+                if entry.key.equals(db, &new_entry.key) {
                     *entry = new_entry;
                     break 'outer;
                 }
@@ -272,18 +273,18 @@ impl FlowAnalysis {
         }
     }
 
-    fn overwrite_frame(&self, new_frame: Frame) {
-        self.overwrite_entries(new_frame.entries);
+    fn overwrite_frame(&self, db: &Database, new_frame: Frame) {
+        self.overwrite_entries(db, new_frame.entries);
         self.frames.borrow_mut().last_mut().unwrap().unreachable |= new_frame.unreachable;
     }
 
-    fn invalidate_child_entries_in_last_frame(&self, key: &FlowKey) {
+    fn invalidate_child_entries_in_last_frame(&self, db: &Database, key: &FlowKey) {
         self.frames
             .borrow_mut()
             .last_mut()
             .unwrap()
             .entries
-            .retain(|entry| !entry.key.is_child_of(key))
+            .retain(|entry| !entry.key.is_child_of(db, key))
     }
 
     pub fn with_new_frame_and_return_unreachable(&self, callable: impl FnOnce()) -> bool {
@@ -331,7 +332,7 @@ fn merge_and(i_s: &InferenceState, mut x: Frame, y: Frame) -> Frame {
     }
     'outer: for y_entry in y.entries {
         for x_entry in &mut x.entries {
-            if &x_entry.key == &y_entry.key {
+            if x_entry.key.equals(i_s.db, &y_entry.key) {
                 if let Some(t) = x_entry.type_.common_sub_type(i_s, &y_entry.type_) {
                     x_entry.type_ = t
                 } else {
@@ -358,7 +359,7 @@ fn merge_or(i_s: &InferenceState, x: Frame, y: Frame) -> Frame {
         for y_entry in &y.entries {
             // Only when both sides narrow the same type we actually have learned anything about
             // the expression.
-            if &x_entry.key == &y_entry.key {
+            if x_entry.key.equals(i_s.db, &y_entry.key) {
                 new_entries.push(Entry {
                     key: x_entry.key,
                     type_: x_entry.type_.simplified_union(i_s, &y_entry.type_),
@@ -675,7 +676,8 @@ impl Inference<'_, '_, '_> {
     }
 
     pub fn maybe_lookup_narrowed_name(&self, name_link: PointLink) -> Option<Inferred> {
-        let result = FLOW_ANALYSIS.with(|fa| fa.lookup_narrowed_key(FlowKey::Name(name_link)));
+        let result =
+            FLOW_ANALYSIS.with(|fa| fa.lookup_narrowed_key(self.i_s.db, FlowKey::Name(name_link)));
 
         if let Some(result) = &result {
             debug!(
@@ -693,7 +695,7 @@ impl Inference<'_, '_, '_> {
 
     pub fn flow_analysis_for_assert(&mut self, expr: Expression) {
         let (_, true_frame, _) = self.find_guards_in_expr(expr);
-        FLOW_ANALYSIS.with(|fa| fa.overwrite_frame(true_frame))
+        FLOW_ANALYSIS.with(|fa| fa.overwrite_frame(self.i_s.db, true_frame))
     }
 
     pub fn narrow_or_widen_name_target(
@@ -724,13 +726,16 @@ impl Inference<'_, '_, '_> {
 
     fn save_narrowed(&mut self, key: FlowKey, t: &Type, widens: bool) {
         FLOW_ANALYSIS.with(|fa| {
-            fa.invalidate_child_entries_in_last_frame(&key);
-            fa.overwrite_entry(Entry {
-                key,
-                type_: t.clone(),
-                from_assignment: true,
-                widens,
-            })
+            fa.invalidate_child_entries_in_last_frame(self.i_s.db, &key);
+            fa.overwrite_entry(
+                self.i_s.db,
+                Entry {
+                    key,
+                    type_: t.clone(),
+                    from_assignment: true,
+                    widens,
+                },
+            )
         })
     }
 
@@ -819,7 +824,7 @@ impl Inference<'_, '_, '_> {
                 let after_else = fa.with_frame(self.i_s.db, else_frame, || {
                     self.calc_block_diagnostics(else_block.block(), class, func)
                 });
-                //fa.overwrite_frame(after_else);
+                //fa.overwrite_frame(self.i_s.db, after_else);
             } else {
             }
         })
@@ -976,7 +981,7 @@ impl Inference<'_, '_, '_> {
                 .lookup(
                     self.i_s,
                     self.file_index,
-                    unsafe { &**name },
+                    name.as_str(self.i_s.db),
                     LookupKind::Normal,
                     &mut ResultContext::Unknown,
                     &|_| todo!(),
@@ -1019,7 +1024,7 @@ impl Inference<'_, '_, '_> {
                 let (FlowKey::Member(base_key, _) | FlowKey::Index{base_key, ..}) = &entry.key else {
                     continue;
                 };
-                if key == base_key.as_ref() {
+                if key.equals(self.i_s.db, base_key) {
                     if let Some(type_) = self.maybe_propagate_parent_union(parent_union, entry) {
                         frame.add_entry(
                             self.i_s,
@@ -1578,11 +1583,9 @@ impl Inference<'_, '_, '_> {
             return None
         };
         let attr_inf = self.infer_named_expression(str_arg);
-        let attr = attr_inf.maybe_string_literal(self.i_s)?;
         Some(FramesWithParentUnions {
             truthy: Frame::new(vec![Entry {
-                // TODO this ptr is COMPLETLY UNSAFE
-                key: FlowKey::Member(Rc::new(key), attr.as_str(self.i_s.db)),
+                key: FlowKey::Member(Rc::new(key), attr_inf.maybe_string_literal(self.i_s)?),
                 type_: Type::Any(AnyCause::Todo),
                 from_assignment: false,
                 widens: false,
@@ -1771,7 +1774,10 @@ impl Inference<'_, '_, '_> {
         match second {
             PrimaryContent::Attribute(attr) => {
                 if let Some(base_key) = &old_base_key {
-                    base.key = Some(FlowKey::Member(Rc::new(base_key.clone()), attr.as_code()));
+                    base.key = Some(FlowKey::Member(
+                        Rc::new(base_key.clone()),
+                        DbString::StringSlice(StringSlice::from_name(self.file_index, attr)),
+                    ));
                 }
             }
             PrimaryContent::GetItem(slice_type) => {
@@ -1850,7 +1856,10 @@ impl Inference<'_, '_, '_> {
             PrimaryTargetOrAtom::Atom(atom) => self.key_from_atom(atom),
         }?;
         match primary_target.second() {
-            PrimaryContent::Attribute(n) => Some(FlowKey::Member(Rc::new(base_key), n.as_code())),
+            PrimaryContent::Attribute(n) => Some(FlowKey::Member(
+                Rc::new(base_key),
+                DbString::StringSlice(StringSlice::from_name(self.file_index, n)),
+            )),
             PrimaryContent::Execution(_) => None,
             PrimaryContent::GetItem(slice_type) => {
                 //self.key_from_slice_type(slice_type).map(|match_index| FlowKey::Index { base_key: Rc::new(base_key), node_index: slice_type.index(), match_index })
@@ -1878,6 +1887,7 @@ impl Inference<'_, '_, '_> {
     }
 
     fn matches_primary_entry(&mut self, primary: Primary, key: &FlowKey) -> bool {
+        let db = self.i_s.db;
         let mut match_primary_first_part = |base_key: &Rc<_>| match primary.first() {
             PrimaryOrAtom::Primary(primary) => self.matches_primary_entry(primary, base_key),
             PrimaryOrAtom::Atom(atom) => {
@@ -1887,14 +1897,14 @@ impl Inference<'_, '_, '_> {
                 let AtomContent::Name(name) = atom.unpack() else {
                     return false;
                 };
-                name_definition_link(self.i_s.db, self.file, name) == Some(*check_link)
+                name_definition_link(db, self.file, name) == Some(*check_link)
             }
         };
         match key {
             FlowKey::Member(base_key, right) => {
                 match primary.second() {
                     PrimaryContent::Attribute(attr) => {
-                        if attr.as_code() != unsafe { &**right as &str } {
+                        if attr.as_code() != right.as_str(db) {
                             return false;
                         }
                     }
