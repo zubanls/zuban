@@ -19,7 +19,7 @@ use crate::{
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::{Inferred, UnionValue},
-    matching::{Generic, LookupKind, Match, Matcher, ResultContext},
+    matching::{Generic, LookupKind, LookupResult, Match, Matcher, ResultContext},
     node_ref::NodeRef,
     type_::{
         simplified_union_from_iterators, AnyCause, CallableLike, ClassGenerics, DbString,
@@ -977,17 +977,9 @@ impl Inference<'_, '_, '_> {
         child_entry: &Entry,
     ) -> Option<Type> {
         let replay = |t: &Type| match &child_entry.key {
-            FlowKey::Member(_, name) => t
-                .lookup(
-                    self.i_s,
-                    self.file_index,
-                    name.as_str(self.i_s.db),
-                    LookupKind::Normal,
-                    &mut ResultContext::Unknown,
-                    &|_| todo!(),
-                    &|_| todo!(),
-                )
-                .into_inferred(),
+            FlowKey::Member(_, name) => {
+                self.check_attr(t, name.as_str(self.i_s.db)).into_inferred()
+            }
             FlowKey::Index { node_index, .. } => t.get_item(
                 self.i_s,
                 None,
@@ -1583,9 +1575,16 @@ impl Inference<'_, '_, '_> {
             return None
         };
         let attr_inf = self.infer_named_expression(str_arg);
+        let attr = attr_inf.maybe_string_literal(self.i_s)?;
+        if self
+            .check_attr(&result.inf.as_cow_type(self.i_s), attr.as_str(self.i_s.db))
+            .is_some()
+        {
+            return None;
+        }
         Some(FramesWithParentUnions {
             truthy: Frame::new(vec![Entry {
-                key: FlowKey::Member(Rc::new(key), attr_inf.maybe_string_literal(self.i_s)?),
+                key: FlowKey::Member(Rc::new(key), attr),
                 type_: Type::Any(AnyCause::Todo),
                 from_assignment: false,
                 widens: false,
@@ -1982,6 +1981,18 @@ impl Inference<'_, '_, '_> {
                 parent_unions: RefCell::new(k.parent_unions),
             }
         })
+    }
+
+    fn check_attr(&self, t: &Type, attr: &str) -> LookupResult {
+        t.lookup(
+            self.i_s,
+            self.file_index,
+            attr,
+            LookupKind::Normal,
+            &mut ResultContext::Unknown,
+            &|_| todo!(),
+            &|_| (), // OnLookupError is irrelevant for us here.
+        )
     }
 }
 

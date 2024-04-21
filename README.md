@@ -60,3 +60,4 @@ with debug enabled:
 - variables don't need to actually be initialized:
   - foo: str
   - dataclasses `__init__` is overwritten and therefore members are not necessarily initialized.
+- hasattr narrowing uses `Any` instead of `object`
