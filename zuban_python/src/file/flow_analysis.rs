@@ -1601,19 +1601,15 @@ impl Inference<'_, '_, '_> {
             // perform any narrowing.
             return None;
         }
+        let falsey = match falsey_parent {
+            // Frames should not be unreachable, because people might be checking for deleted
+            // attributes.
+            Type::Never(_) => Frame::default(),
+            _ => Frame::from_type(key.clone(), falsey_parent),
+        };
         Some(FramesWithParentUnions {
-            truthy: Frame::new(vec![Entry {
-                key: FlowKey::Member(Rc::new(key.clone()), attr),
-                type_: attr_t,
-                from_assignment: false,
-                widens: false,
-            }]),
-            falsey: match falsey_parent {
-                // Frames should not be unreachable, because people might be checking for deleted
-                // attributes.
-                Type::Never(_) => Frame::default(),
-                _ => Frame::from_type(key, falsey_parent),
-            },
+            truthy: Frame::from_type(FlowKey::Member(Rc::new(key), attr), attr_t),
+            falsey,
             parent_unions: ParentUnions::default(),
         })
     }
