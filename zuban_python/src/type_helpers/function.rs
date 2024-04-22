@@ -809,12 +809,15 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 break;
             }
             let func_ref = NodeRef::new(file, current_name_index - NAME_TO_FUNCTION_DIFF);
-            let (next_func, next_details) = match func_ref.point().maybe_specific() {
+            let Some(next_func_def) = func_ref.maybe_function() else {
+                todo!("probably just some other definition like foo = 3?")
+            };
+            let next_func = Self::new(func_ref, self.class);
+            next_func.ensure_cached_type_vars(i_s);
+            let next_details = match func_ref.point().maybe_specific() {
                 Some(Specific::DecoratedFunction) => {
-                    let next_func = Self::new(func_ref, self.class);
-                    next_func.ensure_cached_type_vars(i_s);
                     if let Some(d) = next_func.calculate_decorated_function_details(i_s) {
-                        (next_func, d)
+                        d
                     } else {
                         should_error_out = true;
                         next_func.decorator_ref().set_point(Point::new_specific(
@@ -824,29 +827,22 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         continue;
                     }
                 }
-                Some(Specific::Function) => {
-                    let next_func = Self::new(func_ref, self.class);
-                    next_func.ensure_cached_type_vars(i_s);
-                    (
-                        next_func,
-                        FunctionDetails {
-                            inferred: Inferred::from_type(
-                                next_func.as_type(i_s, FirstParamProperties::None),
-                            ),
-                            kind: FunctionKind::Function {
-                                had_first_self_or_class_annotation: self
-                                    .node()
-                                    .params()
-                                    .iter()
-                                    .next()
-                                    .is_some_and(|p| p.annotation().is_some()),
-                            },
-                            is_overload: false,
-                            has_decorator: false,
-                        },
-                    )
-                }
-                _ => todo!("probably just some other definition like foo = 3?"),
+                Some(Specific::Function) => FunctionDetails {
+                    inferred: Inferred::from_type(
+                        next_func.as_type(i_s, FirstParamProperties::None),
+                    ),
+                    kind: FunctionKind::Function {
+                        had_first_self_or_class_annotation: self
+                            .node()
+                            .params()
+                            .iter()
+                            .next()
+                            .is_some_and(|p| p.annotation().is_some()),
+                    },
+                    is_overload: false,
+                    has_decorator: false,
+                },
+                _ => unreachable!(),
             };
             if !details.kind.is_same_base_kind(next_details.kind) {
                 if matches!(details.kind, FunctionKind::Function { .. }) {
