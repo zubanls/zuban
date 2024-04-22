@@ -1061,10 +1061,6 @@ fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
         assert!(!p, "{:?}", p);
         set_assignments_cached(file, node_index);
     }
-    set_specific(file, node_index, specific)
-}
-
-fn set_specific(file: &PythonFile, node_index: NodeIndex, specific: Specific) {
     file.points
         .set(node_index, Point::new_specific(specific, Locality::Stmt));
 }
