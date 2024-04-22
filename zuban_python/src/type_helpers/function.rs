@@ -735,8 +735,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 break;
             }
             let func_ref = NodeRef::new(file, current_name_index - NAME_TO_FUNCTION_DIFF);
-            if func_ref.point().specific() != Specific::DecoratedFunction {
-                debug_assert_eq!(func_ref.point().specific(), Specific::Function);
+            let Some(decorated) = func_ref.maybe_function().and_then(|f| f.maybe_decorated()) else {
                 func_ref.add_issue(
                     i_s,
                     IssueKind::UnexpectedDefinitionForProperty {
@@ -744,7 +743,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     },
                 );
                 continue;
-            }
+            };
             let next_func = Self::new(func_ref, self.class);
 
             // Make sure this is not calculated again.
@@ -753,7 +752,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 Locality::File,
             ));
 
-            let decorated = next_func.expect_decorated_node();
             let mut iterator = decorated.decorators().iter();
             let decorator = iterator.next().unwrap();
             match is_property_modifier(decorator) {
