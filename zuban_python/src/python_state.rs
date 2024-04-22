@@ -36,6 +36,16 @@ macro_rules! attribute_node_ref {
     };
 }
 
+macro_rules! attribute_link {
+    ($module_name:ident, $vis:vis $name:ident, $attr:ident) => {
+        #[inline]
+        $vis fn $name(&self) -> PointLink {
+            debug_assert!(self.$attr != 0);
+            NodeRef::new(self.$module_name(), self.$attr).as_link()
+        }
+    };
+}
+
 macro_rules! node_ref_to_class {
     ($vis:vis $name:ident, $from_node_ref:ident) => {
         #[inline]
@@ -686,6 +696,30 @@ impl PythonState {
         typeshed_supports_keys_and_get_item_index
     );
     attribute_node_ref!(enum_file, pub enum_node_ref, enum_enum_index);
+    attribute_node_ref!(
+        collections,
+        collections_named_tuple_node_ref,
+        collections_namedtuple_index
+    );
+
+    attribute_link!(abc, pub abc_meta_link, abc_abc_meta_index);
+    attribute_link!(abc, pub abstractmethod_link, abc_abstractmethod_index);
+    attribute_link!(abc, pub abstractproperty_link, abc_abstractproperty_index);
+    attribute_link!(functools, pub cached_property_link, functools_cached_property_index);
+    attribute_link!(enum_file, pub enum_meta_link, enum_enum_meta_index);
+    attribute_link!(enum_file, pub enum_auto_link, enum_auto_index);
+    attribute_link!(typing, pub overload_link, typing_overload_index);
+    attribute_link!(typing, pub coroutine_link, typing_coroutine_index);
+    attribute_link!(typing, pub generator_link, typing_generator_index);
+    attribute_link!(typing, pub iterator_link, typing_iterator_index);
+    attribute_link!(typing, pub iterable_link, typing_iterable_index);
+    attribute_link!(typing, pub async_generator_link, typing_async_generator_index);
+    attribute_link!(typing, pub async_iterator_link, typing_async_iterator_index);
+    attribute_link!(typing, pub async_iterable_link, typing_async_iterable_index);
+    attribute_link!(dataclasses_file, pub dataclasses_kw_only_link, dataclasses_kw_only_index);
+    attribute_link!(dataclasses_file, pub dataclasses_init_var_link, dataclasses_init_var_index);
+    attribute_link!(dataclasses_file, pub dataclasses_field_link, dataclasses_field_index);
+    attribute_link!(dataclasses_file, pub dataclasses_capital_field_link, dataclasses_capital_field_index);
 
     node_ref_to_class!(pub object_class, object_node_ref);
     node_ref_to_class!(int, int_node_ref);
@@ -745,83 +779,7 @@ impl PythonState {
     }
 
     pub fn collections_namedtuple_function(&self) -> Function {
-        Function::new(
-            NodeRef::new(self.collections(), self.collections_namedtuple_index),
-            None,
-        )
-    }
-
-    pub fn abc_meta_link(&self) -> PointLink {
-        debug_assert!(self.abc_abc_meta_index != 0);
-        PointLink::new(self.abc().file_index(), self.abc_abc_meta_index)
-    }
-
-    pub fn abstractmethod_link(&self) -> PointLink {
-        debug_assert!(self.abc_abstractmethod_index != 0);
-        PointLink::new(self.abc().file_index(), self.abc_abstractmethod_index)
-    }
-
-    pub fn abstractproperty_link(&self) -> PointLink {
-        debug_assert!(self.abc_abstractproperty_index != 0);
-        PointLink::new(self.abc().file_index(), self.abc_abstractproperty_index)
-    }
-
-    pub fn cached_property_link(&self) -> PointLink {
-        debug_assert!(self.functools_cached_property_index != 0);
-        PointLink::new(
-            self.functools().file_index(),
-            self.functools_cached_property_index,
-        )
-    }
-
-    pub fn enum_meta_link(&self) -> PointLink {
-        debug_assert!(self.enum_enum_meta_index != 0);
-        PointLink::new(self.enum_file().file_index(), self.enum_enum_meta_index)
-    }
-
-    pub fn enum_auto_link(&self) -> PointLink {
-        debug_assert!(self.enum_auto_index != 0);
-        PointLink::new(self.enum_file().file_index(), self.enum_auto_index)
-    }
-
-    pub fn overload_link(&self) -> PointLink {
-        self.typing_overload().as_link()
-    }
-
-    pub fn coroutine_link(&self) -> PointLink {
-        debug_assert!(self.typing_coroutine_index != 0);
-        PointLink::new(self.typing().file_index(), self.typing_coroutine_index)
-    }
-
-    pub fn generator_link(&self) -> PointLink {
-        self.generator_node_ref().as_link()
-    }
-
-    pub fn iterator_link(&self) -> PointLink {
-        debug_assert!(self.typing_iterator_index != 0);
-        PointLink::new(self.typing().file_index(), self.typing_iterator_index)
-    }
-
-    pub fn iterable_link(&self) -> PointLink {
-        self.iterable_node_ref().as_link()
-    }
-
-    pub fn async_generator_link(&self) -> PointLink {
-        debug_assert!(self.typing_async_generator_index != 0);
-        PointLink::new(
-            self.typing().file_index(),
-            self.typing_async_generator_index,
-        )
-    }
-
-    pub fn async_iterator_link(&self) -> PointLink {
-        debug_assert!(self.typing_async_iterator_index != 0);
-        PointLink::new(self.typing().file_index(), self.typing_async_iterator_index)
-    }
-
-    pub fn async_iterable_link(&self) -> PointLink {
-        debug_assert!(self.typing_async_iterable_index != 0);
-        PointLink::new(self.typing().file_index(), self.typing_async_iterable_index)
+        Function::new(self.collections_named_tuple_node_ref(), None)
     }
 
     pub fn mapping_get_function<'class>(&self, class: Class<'class>) -> Function<'_, 'class> {
@@ -833,38 +791,6 @@ impl PythonState {
         PointLink::new(
             self.dataclasses_file().file_index(),
             self.dataclasses_dataclass_index,
-        )
-    }
-
-    pub fn dataclasses_kw_only_link(&self) -> PointLink {
-        debug_assert!(self.dataclasses_kw_only_index != 0);
-        PointLink::new(
-            self.dataclasses_file().file_index(),
-            self.dataclasses_kw_only_index,
-        )
-    }
-
-    pub fn dataclasses_init_var_link(&self) -> PointLink {
-        debug_assert!(self.dataclasses_init_var_index != 0);
-        PointLink::new(
-            self.dataclasses_file().file_index(),
-            self.dataclasses_init_var_index,
-        )
-    }
-
-    pub fn dataclasses_field_link(&self) -> PointLink {
-        debug_assert!(self.dataclasses_field_index != 0);
-        PointLink::new(
-            self.dataclasses_file().file_index(),
-            self.dataclasses_field_index,
-        )
-    }
-
-    fn dataclasses_capital_field_link(&self) -> PointLink {
-        debug_assert!(self.dataclasses_capital_field_index != 0);
-        PointLink::new(
-            self.dataclasses_file().file_index(),
-            self.dataclasses_capital_field_index,
         )
     }
 
