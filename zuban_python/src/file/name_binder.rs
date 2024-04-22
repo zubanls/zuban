@@ -916,14 +916,8 @@ impl<'db> NameBinder<'db> {
         self.points.set(
             func.index(),
             Point::new_specific(
-                if !matches!(self.kind, NameBinderKind::Function { .. })
-                    || return_annotation.is_some()
-                {
-                    if is_decorated {
-                        Specific::DecoratedFunction
-                    } else {
-                        Specific::Function
-                    }
+                if is_decorated {
+                    Specific::DecoratedFunction
                 } else {
                     Specific::Function
                 },
