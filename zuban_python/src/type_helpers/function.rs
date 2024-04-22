@@ -4,7 +4,6 @@ use parsa_python_ast::{
     BlockContent, Decorated, Decorator, ExpressionContent, ExpressionPart, FunctionDef,
     FunctionParent, NodeIndex, Param as ASTParam, ParamKind, PrimaryContent, PrimaryOrAtom,
     ReturnAnnotation, ReturnOrYield, SimpleStmt, SimpleStmtContent, StmtOrError,
-    NAME_DEF_TO_NAME_DIFFERENCE,
 };
 
 use crate::{
