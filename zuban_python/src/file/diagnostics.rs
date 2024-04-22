@@ -706,6 +706,10 @@ impl<'db> Inference<'db, '_, '_> {
 
     fn calc_function_diagnostics(&mut self, f: FunctionDef, class: Option<Class>) {
         let function = Function::new(NodeRef::new(self.file, f.index()), class);
+        function.cache_func(
+            self.i_s,
+            NodeRef::new(self.file, function.node().name_definition().index()),
+        );
         FLOW_ANALYSIS.with(|fa| {
             let unreachable = fa.with_new_frame_and_return_unreachable(|| {
                 self.calc_function_diagnostics_internal(function, f, class)

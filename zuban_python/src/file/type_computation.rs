@@ -4533,8 +4533,11 @@ pub(super) fn check_type_name<'db: 'file, 'file>(
         TypeLike::Function(f) => TypeNameLookup::InvalidVariable(InvalidVariableType::Function({
             let name_def_ref =
                 name_node_ref.add_to_node_index(-(NAME_DEF_TO_NAME_DIFFERENCE as i64));
-            if let Some(special) = check_special_type(name_def_ref.point()) {
-                return TypeNameLookup::SpecialType(special);
+            let name_def_point = name_def_ref.point();
+            if name_def_point.calculated() {
+                if let Some(special) = check_special_type(name_def_point) {
+                    return TypeNameLookup::SpecialType(special);
+                }
             }
             let point = name_node_ref.point();
             if point.calculated() && point.maybe_specific() == Some(Specific::CollectionsNamedTuple)

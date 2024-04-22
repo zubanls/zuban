@@ -114,6 +114,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             stmt.index(),
             stmt.short_debug().trim()
         );
+        let cache_func_def = |func_def: FunctionDef| {
+            Function::new(NodeRef::new(self.file, func_def.index()), None)
+                .cache_func(self.i_s, name_def)
+        };
         match stmt.unpack() {
             StmtContent::ForStmt(for_stmt) => {
                 name_def.set_point(Point::new_calculating());
@@ -124,9 +128,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 // TODO do the async case as well
             }
             StmtContent::ClassDef(cls) => self.cache_class(name_def, cls),
+            StmtContent::FunctionDef(func_def) => cache_func_def(func_def),
             StmtContent::Decorated(decorated) => match decorated.decoratee() {
                 Decoratee::ClassDef(cls) => self.cache_class(name_def, cls),
-                _ => unreachable!(),
+                Decoratee::FunctionDef(func_def) => cache_func_def(func_def),
+                Decoratee::AsyncFunctionDef(func_def) => cache_func_def(func_def),
             },
             StmtContent::TryStmt(try_stmt) => {
                 for block in try_stmt.iter_blocks() {
@@ -170,6 +176,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                 }
             }
+            StmtContent::AsyncStmt(async_stmt) => match async_stmt.unpack() {
+                AsyncStmtContent::FunctionDef(func_def) => cache_func_def(func_def),
+                _ => unreachable!(),
+            },
             _ => unreachable!("Found type {:?}", stmt.short_debug()),
         }
     }

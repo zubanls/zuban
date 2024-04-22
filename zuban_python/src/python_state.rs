@@ -4,8 +4,7 @@ use parsa_python_ast::{NodeIndex, TypeLike, NAME_DEF_TO_NAME_DIFFERENCE};
 
 use crate::{
     database::{
-        BaseClass, ComplexPoint, Database, FileIndex, Locality, Point, PointKind, PointLink,
-        Specific,
+        BaseClass, ComplexPoint, Database, FileIndex, Locality, Point, PointLink, Specific,
     },
     file::{File, PythonFile},
     inferred::Inferred,
@@ -1144,18 +1143,16 @@ fn set_mypy_extension_specific(file: &PythonFile, name: &str, specific: Specific
         .unwrap();
     let name_def_node_index = node_index - NAME_DEF_TO_NAME_DIFFERENCE;
     // Act on the name def index and not the name.
-    let old_point = file.points.get(name_def_node_index);
     file.points.set(
         name_def_node_index,
         Point::new_specific(specific, Locality::Stmt),
     );
-    debug_assert!(old_point.kind() == PointKind::Redirect);
-    let result = old_point.node_index();
+    let function_index = node_index - NAME_TO_FUNCTION_DIFF;
     debug_assert!(matches!(
-        file.points.get(result).maybe_specific(),
+        file.points.get(function_index).maybe_specific(),
         Some(Specific::Function | Specific::DecoratedFunction)
     ));
-    result
+    function_index
 }
 
 fn calculate_mro_for_class(db: &Database, class: Class) -> Box<[BaseClass]> {

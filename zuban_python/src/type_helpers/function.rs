@@ -384,6 +384,14 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
+    pub fn cache_func(&self, i_s: &InferenceState, name_def: NodeRef) {
+        name_def.set_point(Point::new_redirect(
+            self.node_ref.file_index(),
+            self.node_ref.node_index,
+            Locality::Stmt,
+        ));
+    }
+
     pub fn decorator_ref(&self) -> NodeRef {
         // To save the generics just use the ( operator's storage.
         // + 1 for def; + 2 for name + 1 for (...) + 1 for (
@@ -705,13 +713,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             if current_name_index <= first_index {
                 break;
             }
-            let redirect_point = file
-                .points
-                .get(current_name_index - NAME_DEF_TO_NAME_DIFFERENCE);
-            debug_assert_eq!(redirect_point.kind(), PointKind::Redirect);
-            let func_ref = NodeRef::new(file, redirect_point.node_index());
-            let next_func = Self::new(func_ref, self.class);
-
+            let func_ref = NodeRef::new(file, current_name_index - NAME_TO_FUNCTION_DIFF);
             if func_ref.point().specific() != Specific::DecoratedFunction {
                 debug_assert_eq!(func_ref.point().specific(), Specific::Function);
                 func_ref.add_issue(
@@ -722,6 +724,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 );
                 continue;
             }
+            let next_func = Self::new(func_ref, self.class);
+
             // Make sure this is not calculated again.
             next_func.decorator_ref().set_point(Point::new_specific(
                 Specific::OverloadUnreachable,
@@ -783,16 +787,12 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             if current_name_index <= first_index {
                 break;
             }
-            let redirect_point = file
-                .points
-                .get(current_name_index - NAME_DEF_TO_NAME_DIFFERENCE);
-            debug_assert_eq!(redirect_point.kind(), PointKind::Redirect);
-            let func_ref = NodeRef::new(file, redirect_point.node_index());
-            let next_func = Self::new(func_ref, self.class);
-            let next_details = match func_ref.point().maybe_specific() {
+            let func_ref = NodeRef::new(file, current_name_index - NAME_TO_FUNCTION_DIFF);
+            let (next_func, next_details) = match func_ref.point().maybe_specific() {
                 Some(Specific::DecoratedFunction) => {
+                    let next_func = Self::new(func_ref, self.class);
                     if let Some(d) = next_func.calculate_decorated_function_details(i_s) {
-                        d
+                        (next_func, d)
                     } else {
                         should_error_out = true;
                         next_func.decorator_ref().set_point(Point::new_specific(
@@ -802,22 +802,28 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         continue;
                     }
                 }
-                Some(Specific::Function) => FunctionDetails {
-                    inferred: Inferred::from_type(
-                        next_func.as_type(i_s, FirstParamProperties::None),
-                    ),
-                    kind: FunctionKind::Function {
-                        had_first_self_or_class_annotation: self
-                            .node()
-                            .params()
-                            .iter()
-                            .next()
-                            .is_some_and(|p| p.annotation().is_some()),
-                    },
-                    is_overload: false,
-                    has_decorator: false,
-                },
-                _ => unreachable!(),
+                Some(Specific::Function) => {
+                    let next_func = Self::new(func_ref, self.class);
+                    (
+                        next_func,
+                        FunctionDetails {
+                            inferred: Inferred::from_type(
+                                next_func.as_type(i_s, FirstParamProperties::None),
+                            ),
+                            kind: FunctionKind::Function {
+                                had_first_self_or_class_annotation: self
+                                    .node()
+                                    .params()
+                                    .iter()
+                                    .next()
+                                    .is_some_and(|p| p.annotation().is_some()),
+                            },
+                            is_overload: false,
+                            has_decorator: false,
+                        },
+                    )
+                }
+                _ => todo!("probably just some other definition like foo = 3?"),
             };
             if !details.kind.is_same_base_kind(next_details.kind) {
                 if matches!(details.kind, FunctionKind::Function { .. }) {

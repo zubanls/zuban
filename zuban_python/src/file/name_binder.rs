@@ -269,13 +269,6 @@ impl<'db> NameBinder<'db> {
         self.add_new_definition(name_def, Point::new_specific(specific, Locality::Stmt));
     }
 
-    fn add_redirect_definition(&mut self, name_def: NameDefinition<'db>, node_index: NodeIndex) {
-        self.add_new_definition(
-            name_def,
-            Point::new_redirect(self.file_index, node_index, Locality::Stmt),
-        );
-    }
-
     pub(crate) fn index_file(&mut self, file_node: File<'db>) {
         self.index_stmts(file_node.iter_stmts(), true);
     }
@@ -918,7 +911,7 @@ impl<'db> NameBinder<'db> {
             self.index_annotation_expression(&return_annotation.expression());
         }
 
-        self.add_redirect_definition(name_def, func.index());
+        self.add_new_definition(name_def, Point::new_uncalculated());
 
         self.points.set(
             func.index(),
