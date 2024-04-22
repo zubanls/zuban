@@ -1146,7 +1146,7 @@ fn set_mypy_extension_specific(file: &PythonFile, name: &str, specific: Specific
     // Act on the name def index and not the name.
     let old_point = file.points.get(name_def_node_index);
     file.points.set(
-        node_index - 1,
+        name_def_node_index,
         Point::new_specific(specific, Locality::Stmt),
     );
     debug_assert!(old_point.kind() == PointKind::Redirect);

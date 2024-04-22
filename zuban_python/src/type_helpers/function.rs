@@ -4,6 +4,7 @@ use parsa_python_ast::{
     BlockContent, Decorated, Decorator, ExpressionContent, ExpressionPart, FunctionDef,
     FunctionParent, NodeIndex, Param as ASTParam, ParamKind, PrimaryContent, PrimaryOrAtom,
     ReturnAnnotation, ReturnOrYield, SimpleStmt, SimpleStmtContent, StmtOrError,
+    NAME_DEF_TO_NAME_DIFFERENCE,
 };
 
 use crate::{
@@ -704,7 +705,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             if current_name_index <= first_index {
                 break;
             }
-            let redirect_point = file.points.get(current_name_index - 1);
+            let redirect_point = file
+                .points
+                .get(current_name_index - NAME_DEF_TO_NAME_DIFFERENCE);
             debug_assert_eq!(redirect_point.kind(), PointKind::Redirect);
             let func_ref = NodeRef::new(file, redirect_point.node_index());
             let next_func = Self::new(func_ref, self.class);
@@ -780,7 +783,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             if current_name_index <= first_index {
                 break;
             }
-            let redirect_point = file.points.get(current_name_index - 1);
+            let redirect_point = file
+                .points
+                .get(current_name_index - NAME_DEF_TO_NAME_DIFFERENCE);
             debug_assert_eq!(redirect_point.kind(), PointKind::Redirect);
             let func_ref = NodeRef::new(file, redirect_point.node_index());
             let next_func = Self::new(func_ref, self.class);
@@ -1379,6 +1384,8 @@ impl<'a> Iterator for ReturnOrYieldIterator<'a> {
             let point = self.file.points.get(self.next_node_index);
             let index = self.next_node_index;
             self.next_node_index = point.node_index();
+            // - 1 because the index points to the next yield/return literal. The parent of those
+            // literals are then `return_stmt` and `yield_expr` terminals.
             Some(ReturnOrYield::by_index(&self.file.tree, index - 1))
         }
     }
