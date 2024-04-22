@@ -4399,41 +4399,32 @@ fn check_special_type(point: Point) -> Option<SpecialType> {
 }
 
 fn load_cached_type(node_ref: NodeRef) -> TypeNameLookup {
-    if let Some(complex) = node_ref.complex() {
-        match complex {
-            ComplexPoint::TypeAlias(a) => {
-                if a.calculating() {
-                    // This means it's a recursive type definition.
-                    TypeNameLookup::RecursiveAlias(node_ref.as_link())
-                } else if !a.is_valid() {
-                    let assignment = NodeRef::new(
-                        node_ref.file,
-                        node_ref.node_index - ASSIGNMENT_TYPE_CACHE_OFFSET,
-                    )
-                    .expect_assignment();
-                    let name_def = assignment
-                        .maybe_simple_type_expression_assignment()
-                        .unwrap()
-                        .0;
-                    debug!("Found invalid type alias: {}", name_def.as_code());
-                    TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(NodeRef::new(
-                        node_ref.file,
-                        name_def.index(),
-                    )))
-                } else {
-                    TypeNameLookup::TypeAlias(a)
-                }
+    match node_ref.complex().unwrap() {
+        ComplexPoint::TypeAlias(a) => {
+            if a.calculating() {
+                // This means it's a recursive type definition.
+                TypeNameLookup::RecursiveAlias(node_ref.as_link())
+            } else if !a.is_valid() {
+                let assignment = NodeRef::new(
+                    node_ref.file,
+                    node_ref.node_index - ASSIGNMENT_TYPE_CACHE_OFFSET,
+                )
+                .expect_assignment();
+                let name_def = assignment
+                    .maybe_simple_type_expression_assignment()
+                    .unwrap()
+                    .0;
+                debug!("Found invalid type alias: {}", name_def.as_code());
+                TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(NodeRef::new(
+                    node_ref.file,
+                    name_def.index(),
+                )))
+            } else {
+                TypeNameLookup::TypeAlias(a)
             }
-            ComplexPoint::TypeVarLike(t) => TypeNameLookup::TypeVarLike(t.clone()),
-            _ => unreachable!("Expected an Alias or TypeVarLike, but received something weird"),
         }
-    } else {
-        let point = node_ref.point();
-        if point.kind() == PointKind::MultiDefinition {
-            TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(node_ref))
-        } else {
-            TypeNameLookup::SpecialType(check_special_type(point).unwrap())
-        }
+        ComplexPoint::TypeVarLike(t) => TypeNameLookup::TypeVarLike(t.clone()),
+        _ => unreachable!("Expected an Alias or TypeVarLike, but received something weird"),
     }
 }
 
