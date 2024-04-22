@@ -868,12 +868,14 @@ impl PythonState {
         )
     }
 
-    pub fn dataclasses_replace(&self) -> Function {
+    pub fn dataclasses_replace(&self, i_s: &InferenceState) -> Function {
         debug_assert!(self.dataclasses_replace_index != 0);
-        Function::new(
+        let func = Function::new(
             NodeRef::new(self.dataclasses_file(), self.dataclasses_replace_index),
             None,
-        )
+        );
+        func.ensure_cached_type_vars(i_s);
+        func
     }
 
     pub fn mypy_extensions_arg_func(&self, db: &Database, specific: Specific) -> Inferred {
@@ -886,8 +888,9 @@ impl PythonState {
             Specific::MypyExtensionsKwArg => self.mypy_extensions_kw_arg_func,
             _ => unreachable!(),
         };
-        Function::new(NodeRef::new(self.mypy_extensions(), node_index), None)
-            .decorated(&InferenceState::new(db))
+        let func = Function::new(NodeRef::new(self.mypy_extensions(), node_index), None);
+        func.ensure_cached_type_vars(&InferenceState::new(db));
+        func.decorated(&InferenceState::new(db))
     }
 
     fn literal_node_ref(&self, literal_kind: &LiteralKind) -> NodeRef {

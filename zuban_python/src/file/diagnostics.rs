@@ -706,10 +706,7 @@ impl<'db> Inference<'db, '_, '_> {
 
     fn calc_function_diagnostics(&mut self, f: FunctionDef, class: Option<Class>) {
         let function = Function::new(NodeRef::new(self.file, f.index()), class);
-        function.cache_func(
-            self.i_s,
-            NodeRef::new(self.file, function.node().name_definition().index()),
-        );
+        function.cache_func(self.i_s);
         FLOW_ANALYSIS.with(|fa| {
             let unreachable = fa.with_new_frame_and_return_unreachable(|| {
                 self.calc_function_diagnostics_internal(function, f, class)
@@ -782,8 +779,6 @@ impl<'db> Inference<'db, '_, '_> {
                 .add_issue(i_s, IssueKind::MethodWithoutArguments)
         }
 
-        // Make sure the type vars are properly pre-calculated
-        function.type_vars(i_s);
         let (name, params, return_annotation, block) = f.unpack();
         if !is_overload_member {
             // Check defaults here.

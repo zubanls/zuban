@@ -2093,7 +2093,6 @@ fn prepare_func<'db, 'class>(
 ) -> Function<'db, 'class> {
     let node_ref = NodeRef::from_link(i_s.db, definition);
     let func = Function::new(node_ref, Some(func_class));
-    func.type_vars(i_s); // Cache annotations
     func
 }
 

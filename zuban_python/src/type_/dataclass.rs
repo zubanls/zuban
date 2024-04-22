@@ -415,11 +415,12 @@ fn calculate_field_arg(
                     // TODO hack executing this before actually using it, makes sure that we are
                     // not in a class context and it does not cross polute it that way. This should
                     // be cleaned up once the name binder was reworked.
-                    Function::new(
+                    let func = Function::new(
                         NodeRef::from_link(i_s.db, i_s.db.python_state.dataclasses_field_link()),
                         None,
-                    )
-                    .decorated(&InferenceState::new(i_s.db));
+                    );
+                    func.cache_func(i_s);
+                    func.decorated(&InferenceState::new(i_s.db));
 
                     let left = file.inference(i_s).infer_primary_or_atom(primary.first());
                     if left.maybe_saved_link() == Some(i_s.db.python_state.dataclasses_field_link())
@@ -586,7 +587,7 @@ pub(crate) fn dataclasses_replace<'db>(
         }
     }
     // Execute the original function (in typeshed).
-    return i_s.db.python_state.dataclasses_replace().execute(
+    return i_s.db.python_state.dataclasses_replace(i_s).execute(
         i_s,
         args,
         result_context,

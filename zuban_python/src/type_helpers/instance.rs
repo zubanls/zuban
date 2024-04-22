@@ -2,7 +2,7 @@ use std::{borrow::Cow, rc::Rc};
 
 use parsa_python_ast::Name;
 
-use super::{class::TypeOrClass, Class, MroIterator};
+use super::{class::TypeOrClass, Class, Function, MroIterator};
 use crate::{
     arguments::{Args, CombinedArgs, InferredArg, KnownArgs, KnownArgsWithCustomAddIssue, NoArgs},
     database::{Database, PointLink, Specific},
@@ -724,6 +724,7 @@ fn execute_isinstance_or_issubclass<'db>(
         false => i_s.db.python_state.isinstance_node_ref(),
         true => i_s.db.python_state.issubclass_node_ref(),
     };
+    Function::new(original_func_ref, None).ensure_cached_type_vars(i_s);
     Inferred::from_saved_node_ref(original_func_ref).execute(i_s, args)
 }
 

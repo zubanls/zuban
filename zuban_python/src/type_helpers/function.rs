@@ -231,9 +231,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     pub fn type_vars(&self, i_s: &InferenceState<'db, '_>) -> &'a TypeVarLikes {
-        // To save the generics just use the ( operator's storage.
-        // + 1 for def; + 2 for name + 1 for (...)
-        let type_var_reference = self.node_ref.add_to_node_index(4);
+        let type_var_reference = self.type_var_reference();
         if type_var_reference.point().calculated() {
             if let Some(complex) = type_var_reference.complex() {
                 match complex {
@@ -242,6 +240,21 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 }
             }
             return &i_s.db.python_state.empty_type_var_likes;
+        } else {
+            unreachable!()
+        }
+    }
+
+    fn type_var_reference(&self) -> NodeRef<'a> {
+        // To save the generics just use the ( operator's storage.
+        // + 1 for def; + 2 for name + 1 for (...)
+        self.node_ref.add_to_node_index(4)
+    }
+
+    pub fn ensure_cached_type_vars(&self, i_s: &InferenceState<'db, '_>) {
+        let type_var_reference = self.type_var_reference();
+        if type_var_reference.point().calculated() {
+            return;
         }
         let func_node = self.node();
         let implicit_optional = i_s.db.project.flags.implicit_optional;
@@ -333,7 +346,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 .insert_complex(ComplexPoint::TypeVarLikes(type_vars), Locality::Todo),
         }
         debug_assert!(type_var_reference.point().calculated());
-        self.type_vars(i_s)
     }
 
     fn remap_param_spec(
@@ -383,12 +395,23 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
-    pub fn cache_func(&self, i_s: &InferenceState, name_def: NodeRef) {
-        name_def.set_point(Point::new_redirect(
-            self.node_ref.file_index(),
-            self.node_ref.node_index,
-            Locality::Stmt,
-        ));
+    pub fn cache_func(&self, i_s: &InferenceState) {
+        self.cache_func_with_name_def(
+            i_s,
+            NodeRef::new(self.node_ref.file, self.node().name_definition().index()),
+        )
+    }
+
+    pub fn cache_func_with_name_def(&self, i_s: &InferenceState, name_def: NodeRef) {
+        // TODO move this into the if above
+        if !name_def.point().calculated() {
+            self.ensure_cached_type_vars(i_s);
+            name_def.set_point(Point::new_redirect(
+                self.node_ref.file_index(),
+                self.node_ref.node_index,
+                Locality::Todo,
+            ));
+        }
     }
 
     pub fn decorator_ref(&self) -> NodeRef {
@@ -790,6 +813,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             let (next_func, next_details) = match func_ref.point().maybe_specific() {
                 Some(Specific::DecoratedFunction) => {
                     let next_func = Self::new(func_ref, self.class);
+                    next_func.ensure_cached_type_vars(i_s);
                     if let Some(d) = next_func.calculate_decorated_function_details(i_s) {
                         (next_func, d)
                     } else {
@@ -803,6 +827,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 }
                 Some(Specific::Function) => {
                     let next_func = Self::new(func_ref, self.class);
+                    next_func.ensure_cached_type_vars(i_s);
                     (
                         next_func,
                         FunctionDetails {

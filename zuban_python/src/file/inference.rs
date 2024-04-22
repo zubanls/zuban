@@ -115,8 +115,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             stmt.short_debug().trim()
         );
         let cache_func_def = |func_def: FunctionDef| {
-            Function::new(NodeRef::new(self.file, func_def.index()), None)
-                .cache_func(self.i_s, name_def)
+            Function::new(
+                NodeRef::new(self.file, func_def.index()),
+                self.i_s.current_class().copied(),
+            )
+            .cache_func_with_name_def(self.i_s, name_def)
         };
         match stmt.unpack() {
             StmtContent::ForStmt(for_stmt) => {
@@ -2659,7 +2662,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     NodeRef::new(self.file, func_node.index()),
                                     self.i_s.current_class().copied(),
                                 );
-                                func.type_vars(self.i_s);
+                                func.ensure_cached_type_vars(self.i_s);
 
                                 if let Some(annotation) = name_def.maybe_param_annotation() {
                                     self.use_cached_param_annotation(annotation)
