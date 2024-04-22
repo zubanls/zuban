@@ -4382,6 +4382,7 @@ fn check_special_type(point: Point) -> Option<SpecialType> {
             Specific::TypingNotRequired => SpecialType::NotRequired,
             Specific::TypingClassVar => SpecialType::ClassVar,
             Specific::TypingNamedTuple => SpecialType::TypingNamedTuple,
+            Specific::CollectionsNamedTuple => SpecialType::CollectionsNamedTuple,
             Specific::MypyExtensionsArg
             | Specific::MypyExtensionsDefaultArg
             | Specific::MypyExtensionsNamedArg
@@ -4540,10 +4541,6 @@ pub(super) fn check_type_name<'db: 'file, 'file>(
                 }
             }
             let point = name_node_ref.point();
-            if point.calculated() && point.maybe_specific() == Some(Specific::CollectionsNamedTuple)
-            {
-                return TypeNameLookup::SpecialType(SpecialType::CollectionsNamedTuple);
-            }
             Function::new(NodeRef::new(name_node_ref.file, f.index()), None)
         })),
         TypeLike::ImportFromAsName(_) | TypeLike::DottedAsName(_) => {
