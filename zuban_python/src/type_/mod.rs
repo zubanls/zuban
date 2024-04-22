@@ -1385,6 +1385,15 @@ impl Type {
             _ => Type::Any(AnyCause::FromError),
         }
     }
+
+    pub fn maybe_fixed_len_tuple(&self) -> Option<&[Type]> {
+        if let Type::Tuple(tup) = self {
+            if let TupleArgs::FixedLen(ts) = &tup.args {
+                return Some(ts);
+            }
+        }
+        None
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

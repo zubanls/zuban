@@ -501,7 +501,6 @@ testOverloadOnProtocol
 testSimpleRuntimeProtocolCheck
 
 # Unpack fixed length TypeVarTuple
-testTypeVarTuplePep646TypeVarStarArgsFixedLengthTuple
 testTypeVarTupleNewSyntaxCallables
 # subtyping arbitrary length unpacks
 testVariadicTupleSubtyping

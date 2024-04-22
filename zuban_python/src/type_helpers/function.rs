@@ -69,7 +69,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     matches!(
                         point.maybe_specific(),
                         Some(Specific::Function | Specific::DecoratedFunction),
-                    ),
+                    ) || matches!(node_ref.complex(), Some(ComplexPoint::TypeInstance(_))),
                     "{:?}",
                     point
                 );
@@ -296,6 +296,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             &mut on_type_var,
             TypeComputationOrigin::ParamTypeCommentOrAnnotation,
         );
+        let mut star_annotation = None;
         for param in func_node.params().iter() {
             if let Some(annotation) = param.annotation() {
                 let mut is_implicit_optional = false;
@@ -306,11 +307,15 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         }
                     }
                 }
+                let param_kind = param.kind();
                 type_computation.cache_param_annotation(
                     annotation,
-                    param.kind(),
+                    param_kind,
                     is_implicit_optional,
-                )
+                );
+                if param_kind == ParamKind::Star {
+                    star_annotation = Some(annotation);
+                }
             }
         }
         if let Some(return_annot) = func_node.return_annotation() {
@@ -354,6 +359,19 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
         debug_assert!(type_var_reference.point().calculated());
 
+        if let Some(annotation) = star_annotation {
+            let t = inference.use_cached_param_annotation_type(annotation);
+            if let Some(_) = t.maybe_fixed_len_tuple() {
+                // Save a callable, because we have something like `*foo: *tuple[int, str]`, which
+                // basically means two mandatory positional only arguments. But this is not part of
+                // the type system. Therefore just write a proper callable definition.
+                self.node_ref.insert_complex(
+                    ComplexPoint::TypeInstance(self.as_type(i_s, FirstParamProperties::None)),
+                    Locality::Todo,
+                );
+                return;
+            }
+        }
         self.node_ref.set_point(Point::new_specific(
             if func_node.maybe_decorated().is_some() {
                 Specific::DecoratedFunction
@@ -405,9 +423,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
 
     pub fn as_inferred_from_name(&self, i_s: &InferenceState) -> Inferred {
         match self.node_ref.point().maybe_specific() {
-            Some(Specific::Function) => Inferred::from_saved_node_ref(self.node_ref),
             Some(Specific::DecoratedFunction) => self.decorated(i_s),
-            _ => unreachable!(),
+            _ => Inferred::from_saved_node_ref(self.node_ref),
         }
     }
 
@@ -478,7 +495,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 .iter()
                 .next()
                 .is_some_and(|p| p.annotation().is_some());
-        if self.node_ref.point().specific() == Specific::DecoratedFunction {
+        if self.node_ref.point().maybe_specific() == Some(Specific::DecoratedFunction) {
             // Ensure it's cached
             let inf = self.decorated(i_s);
             if inf.maybe_saved_specific(i_s.db) == Some(Specific::OverloadUnreachable) {
@@ -500,6 +517,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     had_first_self_or_class_annotation: had_first_annotation,
                 },
             }
+        } else if let Some(ComplexPoint::TypeInstance(Type::Callable(c))) = self.node_ref.complex()
+        {
+            c.kind
         } else {
             FunctionKind::Function {
                 had_first_self_or_class_annotation: had_first_annotation,
@@ -989,7 +1009,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             FirstParamProperties::MethodAccessedOnClass => {
                 let mut needs_self_type_variable = self.return_type(i_s).has_self_type();
                 for param in self.iter_params().skip(1) {
-                    if let Some(t) = param.annotation(i_s) {
+                    if let Some(t) = param.annotation(i_s.db) {
                         needs_self_type_variable |= t.has_self_type();
                     }
                 }
@@ -1073,18 +1093,16 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         mut as_type: impl FnMut(&Type) -> Type,
     ) -> CallableContent {
         let mut params = params.peekable();
-        let had_first_annotation =
-            self.class.is_none() || params.peek().is_some_and(|p| p.annotation(i_s).is_some());
-        let kind = match self.node_ref.point().specific() {
-            Specific::DecoratedFunction => kind_of_decorators(
-                i_s,
-                self.node_ref.file,
-                self.expect_decorated_node(),
-                had_first_annotation,
-            ),
-            _ => FunctionKind::Function {
+        let had_first_annotation = self.class.is_none()
+            || params
+                .peek()
+                .is_some_and(|p| p.annotation(i_s.db).is_some());
+        let kind = if let Some(decorated) = self.node().maybe_decorated() {
+            kind_of_decorators(i_s, self.node_ref.file, decorated, had_first_annotation)
+        } else {
+            FunctionKind::Function {
                 had_first_self_or_class_annotation: had_first_annotation,
-            },
+            }
         };
         let return_type = self.return_type(i_s);
         let mut return_type = as_type(&return_type);
@@ -1114,6 +1132,23 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut had_param_spec_args = false;
         let file_index = self.node_ref.file_index();
         while let Some(p) = params.next() {
+            if p.param.kind() == ParamKind::Star {
+                if let Some(ts) = p
+                    .annotation(i_s.db)
+                    .as_ref()
+                    .and_then(|t| t.maybe_fixed_len_tuple())
+                {
+                    // e.g. `*foo: *tuple[int, str]`, needs to be treated separtely, because this
+                    // implies two mandatory positional only arguments. But this is not part of the
+                    // type system.
+                    for t in ts {
+                        new_params.push(CallableParam::new_anonymous(ParamType::PositionalOnly(
+                            t.clone(),
+                        )));
+                    }
+                    continue;
+                }
+            }
             let specific = p.specific(i_s.db);
             let mut as_t = |t: Option<Cow<_>>| {
                 t.map(|t| as_type(&t)).unwrap_or({
@@ -1214,7 +1249,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     pub fn first_param_annotation_type(&self, i_s: &InferenceState<'db, '_>) -> Option<Cow<Type>> {
-        self.iter_params().next().and_then(|p| p.annotation(i_s))
+        self.iter_params().next().and_then(|p| p.annotation(i_s.db))
     }
 
     pub(super) fn execute_internal(
@@ -1437,10 +1472,10 @@ pub struct FunctionParam<'x> {
 }
 
 impl<'db: 'x, 'x> FunctionParam<'x> {
-    pub fn annotation(&self, i_s: &InferenceState<'db, '_>) -> Option<Cow<'x, Type>> {
+    fn annotation(&self, db: &'db Database) -> Option<Cow<'x, Type>> {
         self.param
             .annotation()
-            .map(|annotation| use_cached_param_annotation_type(i_s.db, self.file, annotation))
+            .map(|annotation| use_cached_param_annotation_type(db, self.file, annotation))
     }
 
     pub fn has_default_or_stars(&self, db: &Database) -> bool {
@@ -1458,10 +1493,7 @@ impl<'x> Param<'x> for FunctionParam<'x> {
     }
 
     fn specific<'db: 'x>(&self, db: &'db Database) -> WrappedParamType<'x> {
-        let t = self
-            .param
-            .annotation()
-            .map(|annotation| use_cached_param_annotation_type(db, self.file, annotation));
+        let t = self.annotation(db);
 
         fn expect_borrowed<'a>(t: &Cow<'a, Type>) -> &'a Type {
             let Cow::Borrowed(t) = t else {
@@ -1488,7 +1520,9 @@ impl<'x> Param<'x> for FunctionParam<'x> {
                             unreachable!()
                         };
                         match &tup.args {
-                            TupleArgs::FixedLen(..) => todo!(),
+                            // This case is handled earlier and functions should also be changed to
+                            // callables in that case.
+                            TupleArgs::FixedLen(..) => unreachable!(),
                             TupleArgs::ArbitraryLen(t) => {
                                 WrappedStar::ArbitraryLen(Some(Cow::Borrowed(t.as_ref())))
                             }
