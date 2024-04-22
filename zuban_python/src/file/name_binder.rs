@@ -912,18 +912,6 @@ impl<'db> NameBinder<'db> {
         }
 
         self.add_new_definition(name_def, Point::new_uncalculated());
-
-        self.points.set(
-            func.index(),
-            Point::new_specific(
-                if is_decorated {
-                    Specific::DecoratedFunction
-                } else {
-                    Specific::Function
-                },
-                Locality::Stmt,
-            ),
-        );
     }
 
     pub(crate) fn index_function_body(&mut self, func: FunctionDef<'db>, is_method: bool) {

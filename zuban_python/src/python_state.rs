@@ -1,6 +1,6 @@
 use std::{ptr::null, rc::Rc};
 
-use parsa_python_ast::{NodeIndex, TypeLike, NAME_DEF_TO_NAME_DIFFERENCE};
+use parsa_python_ast::{FunctionDef, NodeIndex, TypeLike, NAME_DEF_TO_NAME_DIFFERENCE};
 
 use crate::{
     database::{
@@ -1073,10 +1073,7 @@ fn set_mypy_extension_specific(file: &PythonFile, name: &str, specific: Specific
         Point::new_specific(specific, Locality::Stmt),
     );
     let function_index = node_index - NAME_TO_FUNCTION_DIFF;
-    debug_assert!(matches!(
-        file.points.get(function_index).maybe_specific(),
-        Some(Specific::Function | Specific::DecoratedFunction)
-    ));
+    debug_assert!(FunctionDef::maybe_by_index(&file.tree, function_index).is_some());
     function_index
 }
 

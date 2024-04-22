@@ -61,14 +61,20 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     // - "function_def_parameters" to save calculated type vars
     // - "(" for decorator caching
     pub fn new(node_ref: NodeRef<'a>, class: Option<Class<'class>>) -> Self {
-        debug_assert!(
-            matches!(
-                node_ref.point().maybe_specific(),
-                Some(Specific::Function | Specific::DecoratedFunction),
-            ),
-            "{:?}",
-            node_ref.point()
-        );
+        if std::cfg!(debug_assertions) {
+            debug_assert!(node_ref.maybe_function().is_some());
+            let point = node_ref.point();
+            if point.calculated() {
+                debug_assert!(
+                    matches!(
+                        point.maybe_specific(),
+                        Some(Specific::Function | Specific::DecoratedFunction),
+                    ),
+                    "{:?}",
+                    point
+                );
+            }
+        }
         Self { node_ref, class }
     }
 
@@ -256,6 +262,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         if type_var_reference.point().calculated() {
             return;
         }
+
         let func_node = self.node();
         let implicit_optional = i_s.db.project.flags.implicit_optional;
         let mut inference = self.node_ref.file.inference(i_s);
@@ -346,6 +353,15 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 .insert_complex(ComplexPoint::TypeVarLikes(type_vars), Locality::Todo),
         }
         debug_assert!(type_var_reference.point().calculated());
+
+        self.node_ref.set_point(Point::new_specific(
+            if func_node.maybe_decorated().is_some() {
+                Specific::DecoratedFunction
+            } else {
+                Specific::Function
+            },
+            Locality::Todo,
+        ));
     }
 
     fn remap_param_spec(
