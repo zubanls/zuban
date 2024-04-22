@@ -4425,17 +4425,14 @@ fn load_cached_type(node_ref: NodeRef) -> TypeNameLookup {
                 }
             }
             ComplexPoint::TypeVarLike(t) => TypeNameLookup::TypeVarLike(t.clone()),
-            _ => unreachable!("{complex:?}"),
+            _ => unreachable!("Expected an Alias or TypeVarLike, but received something weird"),
         }
     } else {
         let point = node_ref.point();
         if point.kind() == PointKind::MultiDefinition {
-            debug!("TODO check if this is the right place for this kind of stuff.");
             TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(node_ref))
         } else {
-            TypeNameLookup::SpecialType(
-                check_special_type(point).unwrap_or_else(|| todo!("{point:?}")),
-            )
+            TypeNameLookup::SpecialType(check_special_type(point).unwrap())
         }
     }
 }
