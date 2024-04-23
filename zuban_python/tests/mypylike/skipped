@@ -1101,6 +1101,7 @@ testTypeEqualsMultipleTypesShouldntNarrow
 testIsinstanceOrIsinstance
 testIsinstanceAndOr
 testSpecialTypingProtocols
+testTypeGuardMultipleCondition-xfail
 # overwriting with def as a target
 testNarrowingWithDef
 # type[any] issues
@@ -1348,7 +1349,6 @@ testTypeGuardMethodOverride
 testTypeGuardNestedRestrictionAny
 testTypeGuardComprehensionSubtype
 testTypeGuardNestedRestrictionUnionIsInstance
-testTypeGuardMultipleCondition-xfail
 testTypeGuardAsFunctionArg
 testTypeGuardAsGenericFunctionArg
 testTypeGuardAsOverloadedFunctionArg
