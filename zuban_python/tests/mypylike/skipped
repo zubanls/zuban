@@ -1339,7 +1339,6 @@ testDisallowAnyGenericsForAliasesInRuntimeContext
 testGenericTypedDictAlias
 
 # TypeGuard
-testTypeGuardCallArgsNone
 testTypeGuardTypeVarReturn
 testTypeGuardIsBool
 testTypeGuardHigherOrder

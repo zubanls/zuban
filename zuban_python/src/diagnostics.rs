@@ -223,6 +223,8 @@ pub(crate) enum IssueKind {
     BaseExceptionExpectedForRaise,
     ExceptStarIsNotAllowedToBeAnExceptionGroup,
 
+    TypeGuardFunctionsMustHaveArgument { name: &'static str },
+
     TupleIndexOutOfRange { variadic_max_len: Option<usize> },
     TupleSliceStepCannotBeZero,  // Not in mypy
     AmbigousSliceOfVariadicTuple,
@@ -1178,6 +1180,10 @@ impl<'db> Diagnostic<'db> {
                 "Exception must be derived from BaseException".to_string(),
             ExceptStarIsNotAllowedToBeAnExceptionGroup =>
                 "Exception type in except* cannot derive from BaseExceptionGroup".to_string(),
+
+            TypeGuardFunctionsMustHaveArgument { name } => format!(
+                "{name} functions must have a positional argument"
+            ),
 
             TupleIndexOutOfRange { variadic_max_len } => {
                 if let Some(len) = variadic_max_len {

@@ -318,7 +318,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 }
             }
         }
-        let type_guard = func_node.return_annotation().and_then(|return_annot| {
+        let mut type_guard = func_node.return_annotation().and_then(|return_annot| {
             in_result_type.set(true);
             type_computation.cache_return_annotation(return_annot)
         });
@@ -367,6 +367,21 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 // basically means two mandatory positional only arguments. But this is not part of
                 // the type system. Therefore just write a proper callable definition.
                 needs_callable = true;
+            }
+        }
+        if let Some(guard) = type_guard.as_ref() {
+            if func_node.params().iter().next().is_none() {
+                self.add_issue_for_declaration(
+                    i_s,
+                    IssueKind::TypeGuardFunctionsMustHaveArgument {
+                        name: if guard.from_type_is {
+                            "\"TypeIs\""
+                        } else {
+                            "TypeGuard"
+                        },
+                    },
+                );
+                type_guard = None;
             }
         }
         if needs_callable || type_guard.is_some() {
