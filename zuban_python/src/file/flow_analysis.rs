@@ -24,7 +24,7 @@ use crate::{
     type_::{
         simplified_union_from_iterators, AnyCause, CallableLike, ClassGenerics, DbString,
         EnumMember, GenericItem, Literal, LiteralKind, NamedTuple, NeverCause, StringSlice, Tuple,
-        TupleArgs, TupleUnpack, Type, TypeVarKind, UnionType, WithUnpack,
+        TupleArgs, TupleUnpack, Type, TypeGuardInfo, TypeVarKind, UnionType, WithUnpack,
     },
     type_helpers::{Class, Function},
 };
@@ -1239,9 +1239,14 @@ impl Inference<'_, '_, '_> {
                         if saved == self.i_s.db.python_state.callable_node_ref().as_link() {
                             debug!("TODO callable narrowing")
                         } else if saved == self.i_s.db.python_state.hasattr_node_ref().as_link() {
-                            if let Some(frames) = self.guard_hasattr(args, true) {
+                            if let Some(frames) = self.guard_hasattr(args) {
                                 return Ok((Inferred::new_bool(self.i_s.db), frames));
                             }
+                        }
+                    }
+                    if let Some(guard) = first.maybe_type_guard(self.i_s.db) {
+                        if let Some(frames) = self.guard_type_guard(args, guard) {
+                            return Ok((Inferred::new_bool(self.i_s.db), frames));
                         }
                     }
                 }
@@ -1560,11 +1565,7 @@ impl Inference<'_, '_, '_> {
         }
     }
 
-    fn guard_hasattr(
-        &mut self,
-        args: Arguments,
-        issubclass: bool,
-    ) -> Option<FramesWithParentUnions> {
+    fn guard_hasattr(&mut self, args: Arguments) -> Option<FramesWithParentUnions> {
         let mut iterator = args.iter();
         let Argument::Positional(arg) = iterator.next()? else {
             return None
@@ -1611,6 +1612,23 @@ impl Inference<'_, '_, '_> {
             truthy: Frame::from_type(FlowKey::Member(Rc::new(key), attr), attr_t),
             falsey,
             parent_unions: ParentUnions::default(),
+        })
+    }
+
+    fn guard_type_guard(
+        &mut self,
+        args: Arguments,
+        guard: &TypeGuardInfo,
+    ) -> Option<FramesWithParentUnions> {
+        let Argument::Positional(arg) = args.iter().next()? else {
+            return None
+        };
+        let infos = self.key_from_namedexpression(arg);
+        let key = infos.key?;
+        Some(FramesWithParentUnions {
+            truthy: Frame::from_type(key, guard.type_.clone()),
+            falsey: Frame::default(),
+            parent_unions: infos.parent_unions,
         })
     }
 

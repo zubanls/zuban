@@ -1339,11 +1339,9 @@ testDisallowAnyGenericsForAliasesInRuntimeContext
 testGenericTypedDictAlias
 
 # TypeGuard
-testTypeGuardWithPositionalOnlyArg
 testTypeGuardKeywordFollowingWalrus
 testWalrusTypeGuard
 testReplaceIsDataclass
-testStartUsingTypeGuard
 # TypeIs
 testNarrowedTypeNotSubtype
 testStartUsingTypeIs
