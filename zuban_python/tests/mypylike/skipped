@@ -1102,6 +1102,7 @@ testIsinstanceOrIsinstance
 testIsinstanceAndOr
 testSpecialTypingProtocols
 testTypeGuardMultipleCondition-xfail
+testTypeIsMultipleCondition
 # overwriting with def as a target
 testNarrowingWithDef
 # type[any] issues
@@ -1362,6 +1363,32 @@ testNoCrashOnDunderCallTypeGuard
 testReplaceIsDataclass
 testStaticMethodTypeGuard
 # TypeIs
+testTypeIsWithTypeVar
+testTypeIsTypeVarReturn
+testTypeIsNonzeroFloat
+testTypeIsMethod
+testTypeIsOverload
+testTypeIsInAnd
+testAssignToTypeIsedVariable3
+testTypeIsNestedRestrictionAny
+testTypeIsComprehensionSubtype
+testTypeIsNestedRestrictionUnionIsInstance
+testTypeIsAsFunctionArg
+testTypeIsAsGenericFunctionArg
+testTypeIsAsOverloadedFunctionArg
+testTypeIsSubtypingVariance
+testTypeIsWithIdentityGeneric
+testTypeIsWithGenericOnSecondParam
+testTypeIsWithGenericInstance
+testTypeIsWithTupleGeneric
+testTypeIsErroneousDefinitionFails
+testStaticMethodTypeIs
+testTypeIsKwargFollowingThroughOverloaded
+testNoCrashOnDunderCallTypeIs
+testTypeIsTypeGuardNoSubtyping
+# TypeIs "Narrowed type "int" is not a subtype of input type "str""
+testTypeIsMustBeSubtypeFunctions
+testTypeIsMustBeSubtypeMethods
 testNarrowedTypeNotSubtype
 
 # Function local self attribute name binding
