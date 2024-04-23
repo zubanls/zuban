@@ -178,7 +178,11 @@ impl<'a> Matcher<'a> {
                 .as_ref()
                 .filter(|g2| guard1.from_type_is == g2.from_type_is)
             {
-                result &= guard1.type_.is_super_type_of(i_s, self, &guard2.type_);
+                if guard1.from_type_is {
+                    result &= guard1.type_.is_same_type(i_s, self, &guard2.type_);
+                } else {
+                    result &= guard1.type_.is_super_type_of(i_s, self, &guard2.type_);
+                }
             } else {
                 result = Match::new_false();
             }
