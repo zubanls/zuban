@@ -669,12 +669,7 @@ impl CallableContent {
                 )
             }
             CallableParams::Any(_) => {
-                let mut s = format!("def {name}(*Any, **Any)");
-                if self.return_type != Type::None {
-                    s += " -> ";
-                    s += &self.return_type.format(format_data);
-                }
-                s.into()
+                self.format_pretty_function_with_params(format_data, name, &"*Any, **Any")
             }
         }
     }
