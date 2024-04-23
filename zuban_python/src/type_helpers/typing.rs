@@ -248,13 +248,14 @@ pub(crate) fn execute_assert_type<'db>(
     if first_type.as_ref() != second_type.as_ref() {
         let mut format_data = FormatData::new_short(i_s.db);
         format_data.hide_implicit_literals = false;
-        args.add_issue(
-            i_s,
-            IssueKind::InvalidAssertType {
-                actual: first_type.format(&format_data),
-                wanted: second_type.format(&format_data),
-            },
-        );
+        let mut actual = first_type.format(&format_data);
+        let mut wanted = second_type.format(&format_data);
+        if actual == wanted {
+            format_data.verbose = true;
+            actual = first_type.format(&format_data);
+            wanted = second_type.format(&format_data);
+        }
+        args.add_issue(i_s, IssueKind::InvalidAssertType { actual, wanted });
     }
     first
 }
