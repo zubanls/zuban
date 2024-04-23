@@ -1344,8 +1344,6 @@ testWalrusTypeGuard
 testReplaceIsDataclass
 # TypeIs
 testNarrowedTypeNotSubtype
-testStartUsingTypeIs
-testTypeGuardToTypeIs
 
 # Function local self attribute name binding
 testOptionalDescriptorsBinder

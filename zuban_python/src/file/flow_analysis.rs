@@ -1626,8 +1626,23 @@ impl Inference<'_, '_, '_> {
         let infos = self.key_from_namedexpression(arg);
         let key = infos.key?;
         Some(FramesWithParentUnions {
+            falsey: if guard.from_type_is {
+                let t = Type::gather_union(|gather| {
+                    for t in infos
+                        .inf
+                        .as_cow_type(self.i_s)
+                        .iter_with_unpacked_unions(self.i_s.db)
+                    {
+                        if !t.is_simple_sub_type_of(self.i_s, &guard.type_).bool() {
+                            gather(t.clone())
+                        }
+                    }
+                });
+                Frame::from_type(key.clone(), t)
+            } else {
+                Frame::default()
+            },
             truthy: Frame::from_type(key, guard.type_.clone()),
-            falsey: Frame::default(),
             parent_unions: infos.parent_unions,
         })
     }
