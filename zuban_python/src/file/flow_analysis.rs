@@ -1876,7 +1876,11 @@ impl Inference<'_, '_, '_> {
     fn key_from_namedexpression(&mut self, named_expr: NamedExpression) -> KeyWithParentUnions {
         match named_expr.unpack() {
             NamedExpressionContent::Expression(expr) => self.key_from_expression(expr),
-            NamedExpressionContent::Walrus(_) => todo!(),
+            NamedExpressionContent::Walrus(walrus) => KeyWithParentUnions {
+                key: Some(self.key_from_name_def(walrus.name_def())),
+                inf: self.infer_walrus(walrus, None),
+                parent_unions: ParentUnions::default(),
+            },
         }
     }
 

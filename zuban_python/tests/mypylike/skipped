@@ -1340,7 +1340,6 @@ testGenericTypedDictAlias
 
 # TypeGuard
 testTypeGuardKeywordFollowingWalrus
-testWalrusTypeGuard
 testReplaceIsDataclass
 # TypeIs
 testNarrowedTypeNotSubtype

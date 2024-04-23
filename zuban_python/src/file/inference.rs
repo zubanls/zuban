@@ -1451,7 +1451,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    fn infer_walrus(
+    pub fn infer_walrus(
         &mut self,
         walrus: Walrus,
         result_context: Option<&mut ResultContext>,
