@@ -318,10 +318,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 }
             }
         }
-        if let Some(return_annot) = func_node.return_annotation() {
+        let type_guard = func_node.return_annotation().and_then(|return_annot| {
             in_result_type.set(true);
-            type_computation.cache_return_annotation(return_annot);
-        }
+            type_computation.cache_return_annotation(return_annot)
+        });
         let type_vars = type_computation.into_type_vars(|inf, recalculate_type_vars| {
             for param in func_node.params().iter() {
                 if let Some(annotation) = param.annotation() {
@@ -997,13 +997,27 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     pub fn as_callable(
         &self,
         i_s: &InferenceState,
-        first: FirstParamProperties,
+        first_param: FirstParamProperties,
+    ) -> CallableContent {
+        self.as_callable_with_options(
+            i_s,
+            AsCallableOptions {
+                first_param,
+                return_type: self.return_type(i_s),
+            },
+        )
+    }
+
+    pub fn as_callable_with_options(
+        &self,
+        i_s: &InferenceState,
+        options: AsCallableOptions,
     ) -> CallableContent {
         let mut params = self.iter_params().peekable();
         let mut self_type_var_usage = None;
         let defined_at = self.node_ref.as_link();
         let mut type_vars = self.type_vars(i_s).as_vec();
-        match first {
+        match options.first_param {
             FirstParamProperties::MethodAccessedOnClass => {
                 let mut needs_self_type_variable = self.return_type(i_s).has_self_type();
                 for param in self.iter_params().skip(1) {
@@ -1033,7 +1047,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let self_type_var_usage = self_type_var_usage.as_ref();
 
         let as_type = |t: &Type| {
-            if matches!(first, FirstParamProperties::None) {
+            if matches!(options.first_param, FirstParamProperties::None) {
                 return t.clone();
             }
             let Some(func_class) = self.class else {
@@ -1059,7 +1073,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 &|| {
                     if let Some(self_type_var_usage) = self_type_var_usage {
                         Type::TypeVar(self_type_var_usage.clone())
-                    } else if let FirstParamProperties::Skip { to_self_instance } = first {
+                    } else if let FirstParamProperties::Skip { to_self_instance } =
+                        options.first_param
+                    {
                         to_self_instance()
                     } else {
                         Type::Self_
@@ -1067,9 +1083,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 },
             )
         };
-        let mut callable = self.internal_as_type(i_s, params, self_type_var_usage, as_type);
+        let return_type = as_type(&options.return_type);
+        let mut callable =
+            self.internal_as_type(i_s, params, self_type_var_usage, as_type, return_type);
         callable.type_vars = TypeVarLikes::from_vec(type_vars);
-        if matches!(first, FirstParamProperties::Skip { .. }) {
+        if matches!(options.first_param, FirstParamProperties::Skip { .. }) {
             // Now the first param was removed, so everything is considered as having an
             // annotation (even if it's an implicit Any).
             callable
@@ -1089,6 +1107,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         params: impl Iterator<Item = FunctionParam<'a>>,
         self_type_var_usage: Option<&TypeVarUsage>,
         mut as_type: impl FnMut(&Type) -> Type,
+        mut return_type: Type,
     ) -> CallableContent {
         let mut params = params.peekable();
         let had_first_annotation = self.class.is_none()
@@ -1102,8 +1121,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 had_first_self_or_class_annotation: had_first_annotation,
             }
         };
-        let return_type = self.return_type(i_s);
-        let mut return_type = as_type(&return_type);
         if self.is_async() && !self.is_generator() {
             return_type = new_class!(
                 i_s.db.python_state.coroutine_link(),
@@ -1441,6 +1458,11 @@ pub enum FirstParamProperties<'a> {
     },
     MethodAccessedOnClass,
     None,
+}
+
+pub struct AsCallableOptions<'a> {
+    first_param: FirstParamProperties<'a>,
+    return_type: Cow<'a, Type>,
 }
 
 pub struct ReturnOrYieldIterator<'a> {

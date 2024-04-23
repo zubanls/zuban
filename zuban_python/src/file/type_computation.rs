@@ -713,13 +713,26 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         }
     }
 
-    pub fn cache_return_annotation(&mut self, annotation: ReturnAnnotation) {
-        self.cache_annotation_or_type_comment(
+    pub fn cache_return_annotation(
+        &mut self,
+        annotation: ReturnAnnotation,
+    ) -> Option<TypeGuardInfo> {
+        let expr = annotation.expression();
+        let mut type_guard = None;
+        self.cache_annotation_or_type_comment_detailed(
             annotation.index(),
-            annotation.expression(),
+            |slf| match slf.compute_type(expr) {
+                TypeContent::TypeGuardInfo(guard) => {
+                    type_guard = Some(guard);
+                    TypeContent::Type(self.inference.i_s.db.python_state.bool_type())
+                }
+                type_content => type_content,
+            },
+            NodeRef::new(self.inference.file, expr.index()),
             false,
             None,
         );
+        type_guard
     }
 
     fn cache_annotation_or_type_comment(
