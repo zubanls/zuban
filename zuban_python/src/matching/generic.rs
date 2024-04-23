@@ -49,7 +49,7 @@ impl<'a> Generic<'a> {
             Self::ParamSpecArg(args) => Some(match &args.params {
                 CallableParams::Simple(params) => format!(
                     "[{}]",
-                    &format_callable_params(format_data, None, false, params.iter(), false)
+                    &format_callable_params(format_data, false, params.iter(), false)
                 )
                 .into(),
                 CallableParams::Any(_) => Box::from("Any"),

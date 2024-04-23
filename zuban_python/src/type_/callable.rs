@@ -636,7 +636,6 @@ impl CallableContent {
             CallableParams::Simple(params) => {
                 let mut params = format_callable_params(
                     format_data,
-                    None,
                     avoid_self_annotation && not_reveal_type,
                     params.iter(),
                     format_data.style != FormatStyle::MypyRevealType,
@@ -693,7 +692,7 @@ impl CallableContent {
         if format_data.style != FormatStyle::MypyRevealType
             || !matches!(self.return_type, Type::None)
         {
-            let result_string = format_function_type(format_data, &self.return_type, None);
+            let result_string = self.return_type.format(format_data);
             format!("def {type_var_str}{name}({params}) -> {result_string}").into()
         } else {
             format!("def {type_var_str}{name}({params})").into()
@@ -794,7 +793,6 @@ pub enum WrongPositionalCount {
 
 pub fn format_callable_params<'db: 'x, 'x, P: Param<'x>>(
     format_data: &FormatData<'db, '_, '_, '_>,
-    class: Option<Class>,
     avoid_self_annotation: bool,
     params: impl Iterator<Item = P>,
     show_additional_information: bool,
@@ -809,9 +807,9 @@ pub fn format_callable_params<'db: 'x, 'x, P: Param<'x>>(
             | WrappedParamType::PositionalOrKeyword(t)
             | WrappedParamType::KeywordOnly(t)
             | WrappedParamType::Star(WrappedStar::ArbitraryLen(t))
-            | WrappedParamType::StarStar(WrappedStarStar::ValueType(t)) => t
-                .as_ref()
-                .map(|t| format_function_type(format_data, t, class)),
+            | WrappedParamType::StarStar(WrappedStarStar::ValueType(t)) => {
+                t.as_ref().map(|t| t.format(format_data))
+            }
             WrappedParamType::Star(WrappedStar::ParamSpecArgs(u)) => todo!(),
             WrappedParamType::Star(WrappedStar::UnpackedTuple(tup)) => {
                 Some(tup.format_with_simplified_unpack(format_data)).into()
@@ -870,20 +868,4 @@ pub fn format_callable_params<'db: 'x, 'x, P: Param<'x>>(
         args += ", /";
     }
     args
-}
-
-fn format_function_type(format_data: &FormatData, t: &Type, class: Option<Class>) -> Box<str> {
-    if let Some(func_class) = class {
-        let t = t.replace_type_var_likes_and_self(
-            format_data.db,
-            &mut |usage| {
-                maybe_class_usage(format_data.db, &func_class, &usage)
-                    .unwrap_or_else(|| usage.into_generic_item())
-            },
-            &|| todo!(),
-        );
-        t.format(format_data)
-    } else {
-        t.format(format_data)
-    }
 }

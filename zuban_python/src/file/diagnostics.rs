@@ -611,7 +611,6 @@ impl<'db> Inference<'db, '_, '_> {
                             Some(&|| {
                                 let params = format_callable_params(
                                     &FormatData::new_short(i_s.db),
-                                    None,
                                     false,
                                     __post_init__.expect_simple_params().iter(),
                                     false,
