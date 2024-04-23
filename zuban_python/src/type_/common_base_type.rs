@@ -5,7 +5,7 @@ use parsa_python_ast::ParamKind;
 use super::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, GenericItem, GenericsList,
     NeverCause, ParamType, ParamTypeDetails, StarParamType, StarStarParamType, Tuple, TupleArgs,
-    TupleUnpack, Type, TypeVarLike, Variance, WithUnpack,
+    TupleUnpack, Type, TypeGuardInfo, TypeVarLike, Variance, WithUnpack,
 };
 use crate::{
     database::Database,
@@ -244,6 +244,7 @@ fn common_base_for_callables(
                         kind: c1.kind,
                         // TODO why do we just use the first type vars here???
                         type_vars: c1.type_vars.clone(),
+                        guard: common_base_guard(i_s, &c1.guard, &c2.guard),
                         params,
                         return_type: c1.return_type.common_base_type(i_s, &c2.return_type),
                     }));
@@ -264,6 +265,7 @@ fn common_base_for_callables(
                         defined_at: c1.defined_at,
                         kind: c1.kind,
                         type_vars: c1.type_vars.clone(),
+                        guard: common_base_guard(i_s, &c1.guard, &c2.guard),
                         params: CallableParams::WithParamSpec(pre1.clone(), spec1.clone()),
                         return_type: c1.return_type.common_base_type(i_s, &c2.return_type),
                     }));
@@ -387,6 +389,15 @@ fn common_params_by_iterable<'x>(
     } else {
         todo!()
     }
+}
+
+fn common_base_guard(
+    i_s: &InferenceState,
+    guard1: &Option<TypeGuardInfo>,
+    guard2: &Option<TypeGuardInfo>,
+) -> Option<TypeGuardInfo> {
+    // For now do nothing.
+    None
 }
 
 fn common_base_for_tuple_against_type(

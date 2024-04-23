@@ -1121,6 +1121,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             kind: FunctionKind::Function {
                 had_first_self_or_class_annotation: had_first_annotation,
             },
+            guard: None,
             params,
             type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
             return_type,

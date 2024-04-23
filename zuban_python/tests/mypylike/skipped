@@ -1338,6 +1338,8 @@ testInferredTypeSubTypeOfReturnType
 testDisallowAnyGenericsForAliasesInRuntimeContext
 testGenericTypedDictAlias
 
+# TypeGuard regression
+testCallableArgument
 # TypeGuard
 testSerializeTypeGuardFunction
 testTypeGuardWithPositionalOnlyArg

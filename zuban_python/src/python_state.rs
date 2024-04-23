@@ -510,6 +510,7 @@ impl PythonState {
                 had_first_self_or_class_annotation: true,
             },
             type_vars: s.empty_type_var_likes.clone(),
+            guard: None,
             params: CallableParams::Simple(Rc::new([
                 CallableParam::new_anonymous(ParamType::PositionalOnly(Type::Any(
                     AnyCause::Internal,
@@ -884,6 +885,7 @@ fn typing_changes(
     set_typing_inference(typing, "NoReturn", Specific::TypingNeverOrNoReturn);
     set_typing_inference(typing, "Required", Specific::TypingRequired);
     set_typing_inference(typing, "NotRequired", Specific::TypingNotRequired);
+    set_typing_inference(typing, "TypeGuard", Specific::TypingTypeGuard);
     set_typing_inference(typing, "reveal_type", Specific::RevealTypeFunction);
     set_typing_inference(typing, "assert_type", Specific::AssertTypeFunction);
     set_typing_inference(
@@ -930,6 +932,8 @@ fn typing_changes(
     set_typing_inference(t, "TypeVarTuple", Specific::TypingTypeVarTupleClass);
     set_typing_inference(t, "Annotated", Specific::TypingAnnotated);
     set_typing_inference(t, "Protocol", Specific::TypingProtocol);
+    set_typing_inference(t, "TypeGuard", Specific::TypingTypeGuard);
+    set_typing_inference(t, "TypeIs", Specific::TypingTypeIs);
     setup_type_alias(typing_extensions, "final", typing, "final");
     // Not needed, because there's an import?
     //set_typing_inference(t, "Concatenate", Specific::TypingConcatenateClass);
@@ -983,6 +987,8 @@ fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
         "isinstance",
         "issubclass",
         "NoReturn",
+        "TypeGuard",
+        "TypeIs",
     ]
     .contains(&name)
     {

@@ -379,6 +379,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                 _ => i_s.db.python_state.empty_type_var_likes.clone(),
             },
             params: CallableParams::Simple(params.into()),
+            guard: None,
             return_type: Type::Any(AnyCause::Todo),
         },
         __post_init__: CallableContent {
@@ -390,6 +391,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
             },
             type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
             params: CallableParams::Simple(post_init_params.into()),
+            guard: None,
             return_type: Type::None,
         },
     }
@@ -837,6 +839,7 @@ fn order_func(self_: Rc<Dataclass>, i_s: &InferenceState) -> LookupResult {
                 name: None,
                 has_default: false,
             }])),
+            guard: None,
             return_type: i_s.db.python_state.bool_type(),
         },
     ))));
@@ -870,6 +873,7 @@ fn type_order_func(self_: Rc<Dataclass>, i_s: &InferenceState) -> LookupResult {
                     has_default: false,
                 },
             ])),
+            guard: None,
             return_type: i_s.db.python_state.bool_type(),
         },
     ))));

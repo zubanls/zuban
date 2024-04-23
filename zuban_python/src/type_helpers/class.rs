@@ -1653,6 +1653,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 had_first_self_or_class_annotation: true,
             },
             type_vars: self.use_cached_type_vars(i_s.db).clone(),
+            guard: None,
             params: CallableParams::Simple(Rc::from(vec)),
             return_type: Type::Self_,
         }

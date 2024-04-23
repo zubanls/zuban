@@ -24,8 +24,8 @@ use crate::{
         Enum, EnumMember, FunctionKind, GenericClass, GenericItem, GenericsList, Literal,
         LiteralKind, NamedTuple, Namespace, NeverCause, NewType, ParamSpecArg, ParamSpecUsage,
         ParamType, RecursiveType, StarParamType, StarStarParamType, StringSlice, Tuple, TupleArgs,
-        TupleUnpack, Type, TypeArgs, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage,
-        TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, TypedDict,
+        TupleUnpack, Type, TypeArgs, TypeGuardInfo, TypeVar, TypeVarKind, TypeVarLike,
+        TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, TypedDict,
         TypedDictGenerics, TypedDictMember, UnionEntry, UnionType, WithUnpack,
     },
     type_helpers::{start_namedtuple_params, Class, Function, Module},
@@ -78,6 +78,8 @@ pub(super) enum SpecialType {
     Annotated,
     Never,
     ClassVar,
+    TypeGuard,
+    TypeIs,
     MypyExtensionsParamType(Specific),
     CallableParam(CallableParam),
 }
@@ -247,6 +249,7 @@ enum TypeContent<'db, 'a> {
     Required(Type),
     Final(Type),
     NotRequired(Type),
+    TypeGuardInfo(TypeGuardInfo),
     Unknown(AnyCause),
 }
 
@@ -1192,6 +1195,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     ),
                 );
             }
+            TypeContent::TypeGuardInfo(_) => todo!(),
         }
         None
     }
@@ -1460,6 +1464,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         SpecialType::Concatenate => self.compute_type_get_item_on_concatenate(s),
                         SpecialType::Annotated => self.compute_get_item_on_annotated(s),
                         SpecialType::ClassVar => self.compute_get_item_on_class_var(s),
+                        SpecialType::TypeGuard => self.compute_get_item_on_type_guard(s, false),
+                        SpecialType::TypeIs => self.compute_get_item_on_type_guard(s, true),
                     },
                     TypeContent::RecursiveAlias(link) => {
                         self.is_recursive_alias = true;
@@ -1506,6 +1512,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     TypeContent::Required(_) => todo!(),
                     TypeContent::NotRequired(_) => todo!(),
                     TypeContent::Final(_) => todo!(),
+                    TypeContent::TypeGuardInfo(_) => todo!(),
                     TypeContent::Unknown(cause) => TypeContent::Unknown(cause),
                 }
             }
@@ -1629,6 +1636,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::Required(_) => todo!(),
             TypeContent::NotRequired(_) => todo!(),
             TypeContent::Final(_) => todo!(),
+            TypeContent::TypeGuardInfo(_) => todo!(),
             TypeContent::Unknown(cause) => TypeContent::Unknown(cause),
         }
     }
@@ -2407,10 +2415,18 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let content = if slice_type.iter().count() == 2 {
             let mut iterator = slice_type.iter();
             let params = self.calculate_callable_params(iterator.next().unwrap(), false, false);
-            let return_type = iterator
-                .next()
-                .map(|slice_content| self.compute_slice_type(slice_content))
-                .unwrap_or(Type::Any(AnyCause::Todo));
+            let mut guard = None;
+            let return_type = if let Some(s) = iterator.next() {
+                match self.compute_slice_type_content(s) {
+                    TypeContent::TypeGuardInfo(g) => {
+                        guard = Some(g);
+                        db.python_state.bool_type()
+                    }
+                    type_content => self.as_type(type_content, s.as_node_ref()),
+                }
+            } else {
+                Type::Any(AnyCause::Todo)
+            };
             Rc::new(CallableContent {
                 name: None,
                 class_name: None,
@@ -2425,6 +2441,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     .python_state
                     .empty_type_var_likes
                     .clone(),
+                guard,
                 params,
                 return_type,
             })
@@ -2827,6 +2844,22 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 TypeContent::ClassVar(self.compute_slice_type(first))
             }
         }
+    }
+
+    fn compute_get_item_on_type_guard(
+        &mut self,
+        slice_type: SliceType,
+        from_type_is: bool,
+    ) -> TypeContent<'db, 'db> {
+        let mut iterator = slice_type.iter();
+        let first = iterator.next().unwrap();
+        if iterator.next().is_some() {
+            todo!()
+        }
+        TypeContent::TypeGuardInfo(TypeGuardInfo {
+            type_: self.compute_slice_type(first),
+            from_type_is,
+        })
     }
 
     fn compute_type_get_item_on_required_like(
@@ -4382,6 +4415,8 @@ fn check_special_type(point: Point) -> Option<SpecialType> {
             Specific::TypingNotRequired => SpecialType::NotRequired,
             Specific::TypingClassVar => SpecialType::ClassVar,
             Specific::TypingNamedTuple => SpecialType::TypingNamedTuple,
+            Specific::TypingTypeGuard => SpecialType::TypeGuard,
+            Specific::TypingTypeIs => SpecialType::TypeIs,
             Specific::CollectionsNamedTuple => SpecialType::CollectionsNamedTuple,
             Specific::MypyExtensionsArg
             | Specific::MypyExtensionsDefaultArg

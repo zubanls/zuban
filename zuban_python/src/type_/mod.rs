@@ -21,7 +21,7 @@ use parsa_python_ast::{CodeIndex, Expression, Name, PythonString};
 pub(crate) use self::{
     callable::{
         format_callable_params, CallableContent, CallableParam, CallableParams, ParamType,
-        ParamTypeDetails, StarParamType, StarStarParamType, WrongPositionalCount,
+        ParamTypeDetails, StarParamType, StarStarParamType, TypeGuardInfo, WrongPositionalCount,
     },
     common_base_type::common_base_type,
     dataclass::{

@@ -173,6 +173,7 @@ impl NamedTuple {
                         had_first_self_or_class_annotation: true,
                     },
                     type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
+                    guard: None,
                     params: CallableParams::Simple(params.into()),
                     return_type: as_self.map(|as_self| as_self()).unwrap_or(Type::Self_),
                 })
@@ -193,6 +194,7 @@ impl NamedTuple {
                         had_first_self_or_class_annotation: true,
                     },
                     type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
+                    guard: None,
                     params: CallableParams::Simple(params.into()),
                     return_type: new_class!(
                         i_s.db.python_state.dict_node_ref().as_link(),
@@ -225,6 +227,7 @@ impl NamedTuple {
                         had_first_self_or_class_annotation: true,
                     },
                     type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
+                    guard: None,
                     params: CallableParams::Simple(params.into()),
                     return_type: as_self.map(|as_self| as_self()).unwrap_or(Type::Self_),
                 })
@@ -426,6 +429,7 @@ pub(crate) fn new_typing_named_tuple(
                 had_first_self_or_class_annotation: true,
             },
             type_vars: type_var_likes,
+            guard: None,
             params: CallableParams::Simple(Rc::from(params)),
             return_type: Type::Self_,
         };
@@ -534,6 +538,7 @@ pub(crate) fn new_collections_named_tuple(
             had_first_self_or_class_annotation: true,
         },
         type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
+        guard: None,
         params: CallableParams::Simple(Rc::from(params)),
         return_type: Type::Self_,
     };

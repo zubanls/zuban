@@ -4,8 +4,8 @@ use super::{
     simplified_union_from_iterators_with_format_index, type_var_likes::CallableId, CallableContent,
     CallableParam, CallableParams, ClassGenerics, Dataclass, GenericClass, GenericItem,
     GenericsList, NamedTuple, ParamSpecArg, ParamType, RecursiveType, StarParamType,
-    StarStarParamType, Tuple, TupleArgs, Type, TypeArgs, TypeVarLike, TypeVarLikeUsage,
-    TypeVarLikes, TypeVarManager, TypedDictGenerics, UnionEntry, UnionType,
+    StarStarParamType, Tuple, TupleArgs, Type, TypeArgs, TypeGuardInfo, TypeVarLike,
+    TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypedDictGenerics, UnionEntry, UnionType,
 };
 use crate::{
     database::{Database, PointLink},
@@ -315,8 +315,35 @@ impl CallableContent {
             type_vars: type_vars
                 .map(TypeVarLikes::from_vec)
                 .unwrap_or_else(|| db.python_state.empty_type_var_likes.clone()),
+            guard: self
+                .guard
+                .as_ref()
+                .map(|g| g.replace_type_var_likes_and_self(db, callable, replace_self)),
             params,
             return_type,
+        }
+    }
+}
+
+impl TypeGuardInfo {
+    pub fn replace_type_var_likes_and_self(
+        &self,
+        db: &Database,
+        callable: ReplaceTypeVarLike,
+        replace_self: ReplaceSelf,
+    ) -> Self {
+        Self {
+            type_: self
+                .type_
+                .replace_type_var_likes_and_self(db, callable, replace_self),
+            from_type_is: self.from_type_is,
+        }
+    }
+
+    fn rewrite_late_bound_callables<T: CallableId>(&self, manager: &TypeVarManager<T>) -> Self {
+        Self {
+            type_: self.type_.rewrite_late_bound_callables(manager),
+            from_type_is: self.from_type_is,
         }
     }
 }
@@ -331,6 +358,10 @@ fn rc_callable_rewrite_late_bound_callables<T: CallableId>(
         defined_at: slf.defined_at,
         kind: slf.kind,
         type_vars: manager.type_vars_for_callable(slf),
+        guard: slf
+            .guard
+            .as_ref()
+            .map(|g| g.rewrite_late_bound_callables(manager)),
         params: slf.params.rewrite_late_bound_callables(manager),
         return_type: slf.return_type.rewrite_late_bound_callables(manager),
     })

@@ -443,7 +443,14 @@ pub struct CallableContent {
     pub kind: FunctionKind,
     pub type_vars: TypeVarLikes,
     pub params: CallableParams,
+    pub guard: Option<TypeGuardInfo>,
     pub return_type: Type,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TypeGuardInfo {
+    pub type_: Type,
+    pub from_type_is: bool, // true when TypeIs[...], false when TypeGuard[...]
 }
 
 impl CallableContent {
@@ -468,6 +475,7 @@ impl CallableContent {
             },
             type_vars,
             params: CallableParams::Any(cause),
+            guard: None,
             return_type: Type::Any(cause),
         }
     }

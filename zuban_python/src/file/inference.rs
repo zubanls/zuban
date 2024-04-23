@@ -1845,6 +1845,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         had_first_self_or_class_annotation: true,
                     },
                     type_vars: self.i_s.db.python_state.empty_type_var_likes.clone(),
+                    guard: None,
                     params: CallableParams::Simple(params.map(to_callable_param).collect()),
                     return_type: result.as_type(self.i_s),
                 };

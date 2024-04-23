@@ -4,7 +4,7 @@ use parsa_python_ast::ParamKind;
 
 use super::{
     AnyCause, CallableContent, CallableParam, CallableParams, ParamType, StarParamType,
-    StarStarParamType, Type, UnionType,
+    StarStarParamType, Type, TypeGuardInfo, UnionType,
 };
 use crate::{
     inference_state::InferenceState,
@@ -110,6 +110,7 @@ fn common_sub_type_for_callables(
                 defined_at: c1.defined_at,
                 kind: c1.kind,
                 type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
+                guard: common_sub_type_for_guard(i_s, &c1.guard, &c2.guard),
                 params,
                 return_type,
             });
@@ -155,6 +156,15 @@ fn common_sub_type_params(
     } else {
         todo!()
     }
+}
+
+fn common_sub_type_for_guard(
+    i_s: &InferenceState,
+    guard1: &Option<TypeGuardInfo>,
+    guard2: &Option<TypeGuardInfo>,
+) -> Option<TypeGuardInfo> {
+    // For now do nothing.
+    None
 }
 
 fn common_sub_type_for_union(
