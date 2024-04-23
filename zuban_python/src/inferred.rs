@@ -26,10 +26,10 @@ use crate::{
     node_ref::NodeRef,
     type_::{
         execute_collections_named_tuple, execute_type_of_type, execute_typing_named_tuple,
-        new_typed_dict, AnyCause, CallableContent, CallableParams, ClassGenerics, DbString, Enum,
-        FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList,
-        Literal as DbLiteral, LiteralKind, LiteralValue, NeverCause, NewType, Type, TypeGuardInfo,
-        TypeVarKind, TypeVarLike, TypeVarLikes, TypedDict,
+        new_typed_dict, AnyCause, CallableContent, CallableLike, CallableParams, ClassGenerics,
+        DbString, Enum, FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList,
+        Literal as DbLiteral, LiteralKind, LiteralValue, NeverCause, NewType, Type, TypeVarKind,
+        TypeVarLike, TypeVarLikes, TypedDict,
     },
     type_helpers::{
         execute_assert_type, execute_isinstance, execute_issubclass, execute_super, execute_type,
@@ -300,11 +300,9 @@ impl<'db: 'slf, 'slf> Inferred {
             .and_then(|link| NodeRef::from_link(db, link).point().maybe_specific())
     }
 
-    pub fn maybe_type_guard(&'slf self, db: &'slf Database) -> Option<&'slf TypeGuardInfo> {
-        if let ComplexPoint::TypeInstance(Type::Callable(callable)) =
-            self.maybe_complex_point(db)?
-        {
-            callable.guard.as_ref()
+    pub fn maybe_type_guard_callable(&self, i_s: &InferenceState) -> Option<CallableLike> {
+        if let ComplexPoint::TypeInstance(t) = self.maybe_complex_point(i_s.db)? {
+            t.maybe_callable(i_s)
         } else {
             None
         }

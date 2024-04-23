@@ -24,7 +24,7 @@ use crate::{
     type_::{
         simplified_union_from_iterators, AnyCause, CallableLike, ClassGenerics, DbString,
         EnumMember, GenericItem, Literal, LiteralKind, NamedTuple, NeverCause, StringSlice, Tuple,
-        TupleArgs, TupleUnpack, Type, TypeGuardInfo, TypeVarKind, UnionType, WithUnpack,
+        TupleArgs, TupleUnpack, Type, TypeVarKind, UnionType, WithUnpack,
     },
     type_helpers::{Class, Function},
 };
@@ -1244,8 +1244,8 @@ impl Inference<'_, '_, '_> {
                             }
                         }
                     }
-                    if let Some(guard) = first.maybe_type_guard(self.i_s.db) {
-                        if let Some(frames) = self.guard_type_guard(args, guard) {
+                    if let Some(c) = first.maybe_type_guard_callable(self.i_s) {
+                        if let Some(frames) = self.guard_type_guard(args, c) {
                             return Ok((Inferred::new_bool(self.i_s.db), frames));
                         }
                     }
@@ -1618,8 +1618,12 @@ impl Inference<'_, '_, '_> {
     fn guard_type_guard(
         &mut self,
         args: Arguments,
-        guard: &TypeGuardInfo,
+        might_have_guard: CallableLike,
     ) -> Option<FramesWithParentUnions> {
+        let guard = match &might_have_guard {
+            CallableLike::Callable(c) => c.guard.as_ref()?,
+            CallableLike::Overload(o) => todo!(),
+        };
         let Argument::Positional(arg) = args.iter().next()? else {
             return None
         };
