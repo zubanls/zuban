@@ -1101,12 +1101,24 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     );
                 }
                 SpecialType::Optional => {
-                    self.add_issue(node_ref, IssueKind::OptionalMustHaveOneArgument);
+                    self.add_issue(
+                        node_ref,
+                        IssueKind::MustHaveOneArgument {
+                            name: "Optional[...]",
+                        },
+                    );
                 }
                 SpecialType::Unpack => {
                     self.add_issue(node_ref, IssueKind::UnpackRequiresExactlyOneArgument);
                 }
                 SpecialType::Final => self.add_issue(node_ref, IssueKind::FinalInWrongPlace),
+                SpecialType::TypeGuard => self.add_issue(
+                    node_ref,
+                    IssueKind::MustHaveOneArgument { name: "TypeGuard" },
+                ),
+                SpecialType::TypeIs => {
+                    self.add_issue(node_ref, IssueKind::MustHaveOneArgument { name: "TypeIs" })
+                }
                 _ => {
                     self.add_issue(node_ref, IssueKind::InvalidType(Box::from("Invalid type")));
                 }
@@ -2517,7 +2529,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut iterator = slice_type.iter();
         let first = iterator.next().unwrap();
         if let Some(next) = iterator.next() {
-            self.add_issue(next.as_node_ref(), IssueKind::OptionalMustHaveOneArgument);
+            self.add_issue(
+                next.as_node_ref(),
+                IssueKind::MustHaveOneArgument {
+                    name: "Optional[...]",
+                },
+            );
         }
         let t = self.compute_slice_type(first);
         let format_as_optional = !t.is_union_like();
@@ -2867,7 +2884,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut iterator = slice_type.iter();
         let first = iterator.next().unwrap();
         if iterator.next().is_some() {
-            todo!()
+            let name = if from_type_is { "TypeIs" } else { "TypeGuard" };
+            self.add_issue(
+                slice_type.as_node_ref(),
+                IssueKind::MustHaveOneArgument { name },
+            )
         }
         TypeContent::TypeGuardInfo(TypeGuardInfo {
             type_: self.compute_slice_type(first),

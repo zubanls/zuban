@@ -117,7 +117,7 @@ pub(crate) enum IssueKind {
     SubclassOfFinalCannotExist { final_class: Box<str>, other_class: Box<str> },
     NewTypeCannotUseProtocols,
     BasesOfProtocolMustBeProtocol,
-    OptionalMustHaveOneArgument,
+    MustHaveOneArgument { name: &'static str },
     TypeCannotContainAnotherType,
     InvalidRecursiveTypeAliasUnionOfItself { target: &'static str },
     InvalidRecursiveTypeAliasTypeVarNesting,
@@ -918,8 +918,9 @@ impl<'db> Diagnostic<'db> {
             ),
             NewTypeCannotUseProtocols => "NewType cannot be used with protocol classes".to_string(),
             BasesOfProtocolMustBeProtocol => "All bases of a protocol must be protocols".to_string(),
-            OptionalMustHaveOneArgument =>
-                "Optional[...] must have exactly one type argument".to_string(),
+            MustHaveOneArgument { name } => format!(
+                "{name} must have exactly one type argument"
+            ),
             TypeCannotContainAnotherType =>
                 "Type[...] can't contain another Type[...]".to_string(),
             InvalidRecursiveTypeAliasUnionOfItself { target } => format!(
