@@ -625,15 +625,9 @@ impl CallableContent {
         avoid_self_annotation: bool,
         add_classmethod_param: bool,
     ) -> Box<str> {
-        let db = format_data.db;
-        let not_reveal_type = format_data.style != FormatStyle::MypyRevealType;
-        let name = self
-            .name
-            .as_ref()
-            .and_then(|s| not_reveal_type.then(|| s.as_str(db)))
-            .unwrap_or("");
         match &self.params {
             CallableParams::Simple(params) => {
+                let not_reveal_type = format_data.style != FormatStyle::MypyRevealType;
                 let mut params = format_callable_params(
                     format_data,
                     avoid_self_annotation && not_reveal_type,
@@ -650,7 +644,7 @@ impl CallableContent {
                         params = "cls, ".to_string() + &params;
                     }
                 }
-                self.format_pretty_function_with_params(format_data, name, &params)
+                self.format_pretty_function_with_params(format_data, &params)
             }
             CallableParams::WithParamSpec(pre_types, usage) => {
                 let prefix = if pre_types.is_empty() {
@@ -661,15 +655,14 @@ impl CallableContent {
                         join_with_commas(pre_types.iter().map(|t| t.format(format_data).into()))
                     )
                 };
-                let spec = usage.param_spec.name(db);
+                let spec = usage.param_spec.name(format_data.db);
                 self.format_pretty_function_with_params(
                     format_data,
-                    name,
                     &format!("{prefix}*{spec}.args, **{spec}.kwargs"),
                 )
             }
             CallableParams::Any(_) => {
-                self.format_pretty_function_with_params(format_data, name, &"*Any, **Any")
+                self.format_pretty_function_with_params(format_data, &"*Any, **Any")
             }
         }
     }
@@ -677,9 +670,15 @@ impl CallableContent {
     fn format_pretty_function_with_params(
         &self,
         format_data: &FormatData,
-        name: &str,
         params: &str,
     ) -> Box<str> {
+        let name = self
+            .name
+            .as_ref()
+            .and_then(|s| {
+                (format_data.style != FormatStyle::MypyRevealType).then(|| s.as_str(format_data.db))
+            })
+            .unwrap_or("");
         let type_var_string =
             (!self.type_vars.is_empty()).then(|| self.type_vars.format(format_data));
         let type_var_str = type_var_string.as_deref().unwrap_or("");
