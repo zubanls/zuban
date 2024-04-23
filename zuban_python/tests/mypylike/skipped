@@ -1340,7 +1340,6 @@ testGenericTypedDictAlias
 
 # TypeGuard
 testTypeGuardTypeVarReturn
-testTypeGuardIsBool
 testTypeGuardHigherOrder
 testTypeGuardMethod
 testTypeGuardRequiresPositionalArgs

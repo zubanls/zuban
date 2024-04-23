@@ -1220,7 +1220,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     ),
                 );
             }
-            TypeContent::TypeGuardInfo(_) => todo!(),
+            TypeContent::TypeGuardInfo(_) => {
+                return Some(self.inference.i_s.db.python_state.bool_type())
+            }
         }
         None
     }
