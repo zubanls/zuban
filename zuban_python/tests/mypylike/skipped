@@ -384,6 +384,7 @@ testClassmethodAndNonMethod
 invalidExplicitOverride
 # Error for staticmethod: "Overloaded function implementation does not accept all possible arguments of signature 1"
 testOverloadWithSwappedDecorators2
+testTypeVarTupleNewSyntaxCallables
 # "Static methods cannot use Self type"
 testTypingSelfClassMethod
 
@@ -500,8 +501,6 @@ testProtocolAndRuntimeAreDefinedAlsoInTypingExtensions
 testOverloadOnProtocol
 testSimpleRuntimeProtocolCheck
 
-# Unpack fixed length TypeVarTuple
-testTypeVarTupleNewSyntaxCallables
 # subtyping arbitrary length unpacks
 testVariadicTupleSubtyping
 # TypeVarTuple kind of works correctly, but mypy checks args first before callables

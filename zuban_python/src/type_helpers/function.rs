@@ -586,7 +586,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         &self,
         i_s: &InferenceState,
     ) -> Option<FunctionDetails> {
-        let decorated = self.expect_decorated_node();
+        let decorated = self.node().maybe_decorated()?;
         let used_with_a_non_method = |name| {
             NodeRef::new(self.node_ref.file, decorated.index())
                 .add_issue(i_s, IssueKind::UsedWithANonMethod { name })
@@ -848,11 +848,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             };
             let next_func = Self::new(func_ref, self.class);
             next_func.ensure_cached_type_vars(i_s);
-            let next_details = match func_ref.point().maybe_specific() {
-                Some(Specific::DecoratedFunction) => {
-                    if let Some(d) = next_func.calculate_decorated_function_details(i_s) {
-                        d
-                    } else {
+            let next_details = match next_func.calculate_decorated_function_details(i_s) {
+                Some(d) => d,
+                None => {
+                    if next_func_def.maybe_decorated().is_some() {
                         should_error_out = true;
                         next_func.decorator_ref().set_point(Point::new_specific(
                             Specific::OverloadUnreachable,
@@ -860,23 +859,22 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         ));
                         continue;
                     }
+                    FunctionDetails {
+                        inferred: Inferred::from_type(
+                            next_func.as_type(i_s, FirstParamProperties::None),
+                        ),
+                        kind: FunctionKind::Function {
+                            had_first_self_or_class_annotation: self
+                                .node()
+                                .params()
+                                .iter()
+                                .next()
+                                .is_some_and(|p| p.annotation().is_some()),
+                        },
+                        is_overload: false,
+                        has_decorator: false,
+                    }
                 }
-                Some(Specific::Function) => FunctionDetails {
-                    inferred: Inferred::from_type(
-                        next_func.as_type(i_s, FirstParamProperties::None),
-                    ),
-                    kind: FunctionKind::Function {
-                        had_first_self_or_class_annotation: self
-                            .node()
-                            .params()
-                            .iter()
-                            .next()
-                            .is_some_and(|p| p.annotation().is_some()),
-                    },
-                    is_overload: false,
-                    has_decorator: false,
-                },
-                _ => unreachable!(),
             };
             if !details.kind.is_same_base_kind(next_details.kind) {
                 if matches!(details.kind, FunctionKind::Function { .. }) {
