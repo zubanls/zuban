@@ -453,6 +453,17 @@ pub struct TypeGuardInfo {
     pub from_type_is: bool, // true when TypeIs[...], false when TypeGuard[...]
 }
 
+impl TypeGuardInfo {
+    pub fn format(&self, format_data: &FormatData) -> String {
+        let name = if self.from_type_is {
+            "TypeIs"
+        } else {
+            "TypeGuard"
+        };
+        format!("{name}[{}]", self.type_.format(format_data))
+    }
+}
+
 impl CallableContent {
     pub fn new_any(type_vars: TypeVarLikes, cause: AnyCause) -> Self {
         Self::new_any_internal(PointLink::new(FileIndex(0), 0), type_vars, cause)
@@ -687,7 +698,7 @@ impl CallableContent {
             || !matches!(self.return_type, Type::None)
         {
             let result_string = match self.guard.as_ref() {
-                Some(guard) => format!("TypeGuard[{}]", guard.type_.format(format_data)).into(),
+                Some(guard) => guard.format(format_data).into(),
                 None => self.return_type.format(format_data),
             };
             format!("def {type_var_str}{name}({params}) -> {result_string}").into()
