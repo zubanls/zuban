@@ -1464,10 +1464,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         }
                         SpecialType::TypingTypedDict => todo!(),
                         SpecialType::Required => {
-                            self.compute_type_get_item_on_required_like(s, "Required")
+                            self.compute_type_get_item_on_required_like(s, "Required[]")
                         }
                         SpecialType::NotRequired => {
-                            self.compute_type_get_item_on_required_like(s, "NotRequired")
+                            self.compute_type_get_item_on_required_like(s, "NotRequired[]")
                         }
                         SpecialType::Callable => self.compute_type_get_item_on_callable(s),
                         SpecialType::MypyExtensionsParamType(_) => todo!(),
@@ -2899,21 +2899,19 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     fn compute_type_get_item_on_required_like(
         &mut self,
         slice_type: SliceType,
-        case: &str,
+        case: &'static str,
     ) -> TypeContent<'static, 'static> {
         let mut iterator = slice_type.iter();
         let first = iterator.next().unwrap();
         if let Some(next) = iterator.next() {
             self.add_issue(
                 next.as_node_ref(),
-                IssueKind::InvalidType(
-                    format!("{case}[] must have exactly one type argument").into(),
-                ),
+                IssueKind::MustHaveOneArgument { name: case },
             );
             TypeContent::Unknown(AnyCause::FromError)
         } else {
             let t = self.compute_slice_type(first);
-            if case == "Required" {
+            if case == "Required[]" {
                 TypeContent::Required(t)
             } else {
                 TypeContent::NotRequired(t)
