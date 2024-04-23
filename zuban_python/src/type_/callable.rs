@@ -651,14 +651,7 @@ impl CallableContent {
                         params = "cls, ".to_string() + &params;
                     }
                 }
-                format_pretty_function_with_params(
-                    format_data,
-                    None,
-                    &self.type_vars,
-                    Some(&self.return_type),
-                    name,
-                    &params,
-                )
+                self.format_pretty_function_with_params(format_data, name, &params)
             }
             CallableParams::WithParamSpec(pre_types, usage) => {
                 let prefix = if pre_types.is_empty() {
@@ -670,11 +663,8 @@ impl CallableContent {
                     )
                 };
                 let spec = usage.param_spec.name(db);
-                format_pretty_function_with_params(
+                self.format_pretty_function_with_params(
                     format_data,
-                    None,
-                    &self.type_vars,
-                    Some(&self.return_type),
                     name,
                     &format!("{prefix}*{spec}.args, **{spec}.kwargs"),
                 )
@@ -687,6 +677,26 @@ impl CallableContent {
                 }
                 s.into()
             }
+        }
+    }
+
+    fn format_pretty_function_with_params(
+        &self,
+        format_data: &FormatData,
+        name: &str,
+        params: &str,
+    ) -> Box<str> {
+        let type_var_string =
+            (!self.type_vars.is_empty()).then(|| self.type_vars.format(format_data));
+        let type_var_str = type_var_string.as_deref().unwrap_or("");
+
+        if format_data.style != FormatStyle::MypyRevealType
+            || !matches!(self.return_type, Type::None)
+        {
+            let result_string = format_function_type(format_data, &self.return_type, None);
+            format!("def {type_var_str}{name}({params}) -> {result_string}").into()
+        } else {
+            format!("def {type_var_str}{name}({params})").into()
         }
     }
 
@@ -860,28 +870,6 @@ pub fn format_callable_params<'db: 'x, 'x, P: Param<'x>>(
         args += ", /";
     }
     args
-}
-
-fn format_pretty_function_with_params(
-    format_data: &FormatData,
-    class: Option<Class>,
-    type_vars: &TypeVarLikes,
-    return_type: Option<&Type>,
-    name: &str,
-    params: &str,
-) -> Box<str> {
-    let type_var_string = (!type_vars.is_empty()).then(|| type_vars.format(format_data));
-    let type_var_str = type_var_string.as_deref().unwrap_or("");
-    let result_string = return_type
-        .as_ref()
-        .filter(|t| format_data.style != FormatStyle::MypyRevealType || !matches!(t, Type::None))
-        .map(|t| format_function_type(format_data, t, class));
-
-    if let Some(result_string) = result_string {
-        format!("def {type_var_str}{name}({params}) -> {result_string}").into()
-    } else {
-        format!("def {type_var_str}{name}({params})").into()
-    }
 }
 
 fn format_function_type(format_data: &FormatData, t: &Type, class: Option<Class>) -> Box<str> {
