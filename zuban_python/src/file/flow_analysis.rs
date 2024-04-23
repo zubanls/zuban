@@ -22,9 +22,9 @@ use crate::{
     matching::{Generic, LookupKind, LookupResult, Match, Matcher, ResultContext},
     node_ref::NodeRef,
     type_::{
-        simplified_union_from_iterators, AnyCause, CallableLike, ClassGenerics, DbString,
-        EnumMember, GenericItem, Literal, LiteralKind, NamedTuple, NeverCause, StringSlice, Tuple,
-        TupleArgs, TupleUnpack, Type, TypeVarKind, UnionType, WithUnpack,
+        simplified_union_from_iterators, AnyCause, CallableLike, CallableParams, ClassGenerics,
+        DbString, EnumMember, GenericItem, Literal, LiteralKind, NamedTuple, NeverCause,
+        StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarKind, UnionType, WithUnpack,
     },
     type_helpers::{Class, Function},
 };
@@ -1620,14 +1620,33 @@ impl Inference<'_, '_, '_> {
         args: Arguments,
         might_have_guard: CallableLike,
     ) -> Option<FramesWithParentUnions> {
-        let guard = match &might_have_guard {
-            CallableLike::Callable(c) => c.guard.as_ref()?,
+        let callable = match &might_have_guard {
+            CallableLike::Callable(c) => c,
             CallableLike::Overload(o) => todo!(),
         };
-        let Argument::Positional(arg) = args.iter().next()? else {
-            return None
+        let guard = callable.guard.as_ref()?;
+        let mut find_arg = || {
+            let CallableParams::Simple(c_params) = &callable.params else {
+                return None
+            };
+            let first_param = c_params.iter().next()?;
+            for arg in args.iter() {
+                match arg {
+                    Argument::Positional(arg) => return Some(self.key_from_namedexpression(arg)),
+                    Argument::Keyword(kwarg) => {
+                        let first_param_name = first_param.name.as_ref()?;
+                        let (name, expr) = kwarg.unpack();
+                        if name.as_code() == first_param_name.as_str(self.i_s.db) {
+                            return Some(self.key_from_expression(expr));
+                        }
+                    }
+                    _ => return None,
+                }
+            }
+            None
         };
-        let infos = self.key_from_namedexpression(arg);
+
+        let infos = find_arg()?;
         let key = infos.key?;
         Some(FramesWithParentUnions {
             falsey: if guard.from_type_is {
