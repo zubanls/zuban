@@ -359,18 +359,31 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
         debug_assert!(type_var_reference.point().calculated());
 
+        let mut needs_callable = false;
         if let Some(annotation) = star_annotation {
             let t = inference.use_cached_param_annotation_type(annotation);
             if let Some(_) = t.maybe_fixed_len_tuple() {
                 // Save a callable, because we have something like `*foo: *tuple[int, str]`, which
                 // basically means two mandatory positional only arguments. But this is not part of
                 // the type system. Therefore just write a proper callable definition.
-                self.node_ref.insert_complex(
-                    ComplexPoint::TypeInstance(self.as_type(i_s, FirstParamProperties::None)),
-                    Locality::Todo,
-                );
-                return;
+                needs_callable = true;
             }
+        }
+        if needs_callable || type_guard.is_some() {
+            let options = AsCallableOptions {
+                first_param: FirstParamProperties::None,
+                return_type: match type_guard.as_ref() {
+                    Some(guard) => Cow::Owned(i_s.db.python_state.bool_type()),
+                    None => self.return_type(i_s),
+                },
+            };
+            let mut callable = self.as_callable_with_options(i_s, options);
+            callable.guard = type_guard;
+            self.node_ref.insert_complex(
+                ComplexPoint::TypeInstance(Type::Callable(Rc::new(callable))),
+                Locality::Todo,
+            );
+            return;
         }
         self.node_ref.set_point(Point::new_specific(
             if func_node.maybe_decorated().is_some() {

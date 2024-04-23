@@ -686,7 +686,10 @@ impl CallableContent {
         if format_data.style != FormatStyle::MypyRevealType
             || !matches!(self.return_type, Type::None)
         {
-            let result_string = self.return_type.format(format_data);
+            let result_string = match self.guard.as_ref() {
+                Some(guard) => format!("TypeGuard[{}]", guard.type_.format(format_data)).into(),
+                None => self.return_type.format(format_data),
+            };
             format!("def {type_var_str}{name}({params}) -> {result_string}").into()
         } else {
             format!("def {type_var_str}{name}({params})").into()
