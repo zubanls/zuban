@@ -1230,6 +1230,8 @@ testUnreachableFlagContextAsyncManagersSuppressed
 testUnreachableFlagContextAsyncManagersAbnormal
 # narowing for comprehensions if
 testComprehensionIsInstance
+testTypeIsComprehensionSubtype
+testTypeGuardComprehensionSubtype
 # narrowing of nested scopes
 testNarrowedVariableInNestedFunctionBasic
 testNarrowedVariableInNestedFunctionMore1
@@ -1348,7 +1350,6 @@ testTypeGuardRequiresPositionalArgs
 testTypeGuardOverload
 testTypeGuardMethodOverride
 testTypeGuardNestedRestrictionAny
-testTypeGuardComprehensionSubtype
 testTypeGuardNestedRestrictionUnionIsInstance
 testTypeGuardAsFunctionArg
 testTypeGuardAsGenericFunctionArg
@@ -1371,7 +1372,6 @@ testTypeIsOverload
 testTypeIsInAnd
 testAssignToTypeIsedVariable3
 testTypeIsNestedRestrictionAny
-testTypeIsComprehensionSubtype
 testTypeIsNestedRestrictionUnionIsInstance
 testTypeIsAsFunctionArg
 testTypeIsAsGenericFunctionArg
@@ -1385,7 +1385,6 @@ testTypeIsErroneousDefinitionFails
 testStaticMethodTypeIs
 testTypeIsKwargFollowingThroughOverloaded
 testNoCrashOnDunderCallTypeIs
-testTypeIsTypeGuardNoSubtyping
 # TypeIs "Narrowed type "int" is not a subtype of input type "str""
 testTypeIsMustBeSubtypeFunctions
 testTypeIsMustBeSubtypeMethods

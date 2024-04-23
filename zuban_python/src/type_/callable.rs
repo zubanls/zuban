@@ -620,7 +620,11 @@ impl CallableContent {
         if format_data.style == FormatStyle::MypyRevealType {
             return self.format_pretty(format_data).into();
         }
-        let result = self.return_type.format(format_data);
+        let result = if let Some(guard) = self.guard.as_ref() {
+            guard.format(format_data).into()
+        } else {
+            self.return_type.format(format_data)
+        };
         let params = self.params.format(format_data, ParamsStyle::CallableParams);
         format!("Callable[{params}, {result}]")
     }
