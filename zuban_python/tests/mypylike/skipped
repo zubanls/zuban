@@ -1103,6 +1103,8 @@ testIsinstanceAndOr
 testSpecialTypingProtocols
 testTypeGuardMultipleCondition-xfail
 testTypeIsMultipleCondition
+testTypeGuardNestedRestrictionUnionIsInstance
+testTypeIsNestedRestrictionUnionIsInstance
 # overwriting with def as a target
 testNarrowingWithDef
 # type[any] issues
@@ -1149,6 +1151,8 @@ testNarrowingLenMixWithAnyPrecise
 testNarrowingLenMixWithAnyImprecise
 testUnreachableWhenSuperclassIsAny
 testUnreachableWhenSuperclassIsAnyNoStrictOptional
+testTypeGuardNestedRestrictionAny
+testTypeIsNestedRestrictionAny
 # questionable implicit literal?
 testEnumReachabilityChecksIndirect
 # or/and boolean logic over multiple terms
@@ -1344,17 +1348,10 @@ testGenericTypedDictAlias
 
 # TypeGuard
 testTypeGuardTypeVarReturn
-testTypeGuardHigherOrder
-testTypeGuardMethod
 testTypeGuardRequiresPositionalArgs
 testTypeGuardOverload
-testTypeGuardMethodOverride
-testTypeGuardNestedRestrictionAny
-testTypeGuardNestedRestrictionUnionIsInstance
-testTypeGuardAsFunctionArg
 testTypeGuardAsGenericFunctionArg
 testTypeGuardAsOverloadedFunctionArg
-testTypeGuardSubtypingVariance
 testTypeGuardWithIdentityGeneric
 testTypeGuardWithGenericInstance
 testTypeGuardWithTupleGeneric
@@ -1367,13 +1364,9 @@ testStaticMethodTypeGuard
 testTypeIsWithTypeVar
 testTypeIsTypeVarReturn
 testTypeIsNonzeroFloat
-testTypeIsMethod
 testTypeIsOverload
 testTypeIsInAnd
 testAssignToTypeIsedVariable3
-testTypeIsNestedRestrictionAny
-testTypeIsNestedRestrictionUnionIsInstance
-testTypeIsAsFunctionArg
 testTypeIsAsGenericFunctionArg
 testTypeIsAsOverloadedFunctionArg
 testTypeIsWithIdentityGeneric
