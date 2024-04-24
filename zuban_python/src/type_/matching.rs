@@ -659,6 +659,18 @@ impl Type {
                 }
                 matches!(class1.nth_type_argument(i_s.db, 0), Type::Any(_)).into()
             }
+            Type::TypeVar(tv) if class1.node_ref == i_s.db.python_state.object_node_ref() => {
+                // This is a bit special. We need to match object here, because object :> T and it
+                // will not create the proper generics otherwise.
+                matcher
+                    .match_or_add_type_var_reverse_if_responsible(
+                        i_s,
+                        tv,
+                        &i_s.db.python_state.object_type(),
+                        variance,
+                    )
+                    .unwrap_or_else(|| Match::new_false())
+            }
             _ => Match::new_false(),
         }
     }

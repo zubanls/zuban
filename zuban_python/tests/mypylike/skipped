@@ -259,6 +259,8 @@ testMatchProtocolAgainstOverloadWithAmbiguity
 
 # lambda infer callable after type params after it.
 testParamSpecInferredFromLambda
+testTypeGuardOverload
+testTypeIsOverload
 # lambda --new-type-inference
 testPartialTypeContextWithTwoLambdas
 testInferenceAgainstGenericLambdas
@@ -1350,17 +1352,15 @@ testInferredTypeSubTypeOfReturnType
 testDisallowAnyGenericsForAliasesInRuntimeContext
 testGenericTypedDictAlias
 
+testUpperBoundAsInferenceFallback
+testTypeVarWithValueInferredFromObjectReturnTypeContext
 # TypeGuard
-testTypeGuardOverload
-testTypeGuardAsOverloadedFunctionArg
 testTypeGuardErroneousDefinitionFails
 testTypeGuardKwargFollowingThroughOverloaded
 testStaticMethodTypeGuard
 testTypeGuardClassMethod
 testReplaceIsDataclass
 # TypeIs
-testTypeIsOverload
-testTypeIsAsOverloadedFunctionArg
 testTypeIsErroneousDefinitionFails
 testTypeIsKwargFollowingThroughOverloaded
 testStaticMethodTypeIs
