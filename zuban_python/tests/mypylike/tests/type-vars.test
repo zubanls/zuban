@@ -7,6 +7,6 @@ g1(f)
 def g2(f: Callable[[int], int]) -> None: pass
 g2(f)
 def g3(f: Callable[[object], object]) -> None: pass
-g3(f)  # E: Argument 1 to "g3" has incompatible type "Callable[[T], T]"; expected "Callable[[object], object]"
+g3(f)  # E: Value of type variable "T" of "g3" cannot be "object"
 def g4(f: Callable[[int], str]) -> None: pass
 g4(f)  # E: Argument 1 to "g4" has incompatible type "Callable[[T], T]"; expected "Callable[[int], str]"

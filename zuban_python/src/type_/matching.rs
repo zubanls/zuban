@@ -659,7 +659,10 @@ impl Type {
                 }
                 matches!(class1.nth_type_argument(i_s.db, 0), Type::Any(_)).into()
             }
-            Type::TypeVar(tv) if class1.node_ref == i_s.db.python_state.object_node_ref() => {
+            Type::TypeVar(tv)
+                if class1.node_ref == i_s.db.python_state.object_node_ref()
+                    && matches!(tv.type_var.kind, TypeVarKind::Unrestricted) =>
+            {
                 // This is a bit special. We need to match object here, because object :> T and it
                 // will not create the proper generics otherwise.
                 matcher
