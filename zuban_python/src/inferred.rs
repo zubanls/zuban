@@ -301,11 +301,12 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn maybe_type_guard_callable(&self, i_s: &InferenceState) -> Option<CallableLike> {
-        if let ComplexPoint::TypeInstance(t) = self.maybe_complex_point(i_s.db)? {
-            t.maybe_callable(i_s)
-        } else {
-            None
+        if self.maybe_saved_specific(i_s.db) == Some(Specific::Function) {
+            // Normal functions are never type guards. To avoid moving that into a Callable (for
+            // performance), we can just return here.
+            return None;
         }
+        self.as_cow_type(i_s).maybe_callable(i_s)
     }
 
     pub fn maybe_new_partial(&self, i_s: &InferenceState, from: NodeRef) -> Option<Inferred> {

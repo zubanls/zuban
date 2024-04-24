@@ -1234,20 +1234,23 @@ impl Inference<'_, '_, '_> {
                                 return Ok((Inferred::new_bool(self.i_s.db), frames));
                             }
                         }
-                        _ => (),
-                    }
-                    if let Some(saved) = first.maybe_saved_link() {
-                        if saved == self.i_s.db.python_state.callable_node_ref().as_link() {
-                            debug!("TODO callable narrowing")
-                        } else if saved == self.i_s.db.python_state.hasattr_node_ref().as_link() {
-                            if let Some(frames) = self.guard_hasattr(args) {
-                                return Ok((Inferred::new_bool(self.i_s.db), frames));
+                        _ => {
+                            if let Some(saved) = first.maybe_saved_link() {
+                                if saved == self.i_s.db.python_state.callable_node_ref().as_link() {
+                                    debug!("TODO callable narrowing")
+                                } else if saved
+                                    == self.i_s.db.python_state.hasattr_node_ref().as_link()
+                                {
+                                    if let Some(frames) = self.guard_hasattr(args) {
+                                        return Ok((Inferred::new_bool(self.i_s.db), frames));
+                                    }
+                                }
                             }
-                        }
-                    }
-                    if let Some(c) = first.maybe_type_guard_callable(self.i_s) {
-                        if let Some(frames) = self.guard_type_guard(arg_details, args, c) {
-                            return Ok((Inferred::new_bool(self.i_s.db), frames));
+                            if let Some(c) = first.maybe_type_guard_callable(self.i_s) {
+                                if let Some(frames) = self.guard_type_guard(arg_details, args, c) {
+                                    return Ok((Inferred::new_bool(self.i_s.db), frames));
+                                }
+                            }
                         }
                     }
                 }

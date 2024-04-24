@@ -1351,18 +1351,15 @@ testTypeGuardKeywordFollowingWalrus
 testTypeGuardClassMethod
 testTypeIsClassMethod
 # TypeGuard
-testTypeGuardTypeVarReturn
 testTypeGuardRequiresPositionalArgs
 testTypeGuardOverload
 testTypeGuardAsGenericFunctionArg
 testTypeGuardAsOverloadedFunctionArg
 testTypeGuardErroneousDefinitionFails
 testTypeGuardKwargFollowingThroughOverloaded
-testNoCrashOnDunderCallTypeGuard
 testReplaceIsDataclass
 testStaticMethodTypeGuard
 # TypeIs
-testTypeIsTypeVarReturn
 testTypeIsNonzeroFloat
 testTypeIsOverload
 testTypeIsInAnd
@@ -1372,7 +1369,6 @@ testTypeIsAsOverloadedFunctionArg
 testTypeIsErroneousDefinitionFails
 testStaticMethodTypeIs
 testTypeIsKwargFollowingThroughOverloaded
-testNoCrashOnDunderCallTypeIs
 # TypeIs "Narrowed type "int" is not a subtype of input type "str""
 testTypeIsMustBeSubtypeFunctions
 testTypeIsMustBeSubtypeMethods
