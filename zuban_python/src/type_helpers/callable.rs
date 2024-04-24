@@ -63,6 +63,25 @@ impl<'a> Callable<'a> {
             );
             return Inferred::new_any_from_error();
         }
+        self.execute_for_custom_return_type(
+            i_s,
+            args,
+            skip_first_argument,
+            return_type,
+            on_type_error,
+            result_context,
+        )
+    }
+
+    pub(crate) fn execute_for_custom_return_type<'db>(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        args: &dyn Args<'db>,
+        skip_first_argument: bool,
+        return_type: &Type,
+        on_type_error: OnTypeError,
+        result_context: &mut ResultContext,
+    ) -> Inferred {
         let calculated_type_vars = calculate_callable_type_vars_and_return(
             i_s,
             *self,

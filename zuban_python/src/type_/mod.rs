@@ -922,7 +922,7 @@ impl Type {
         }
     }
 
-    fn has_type_vars(&self) -> bool {
+    pub fn has_type_vars(&self) -> bool {
         let mut result = false;
         self.search_type_vars(&mut |_| result = true);
         result

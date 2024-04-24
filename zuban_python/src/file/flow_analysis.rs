@@ -13,23 +13,24 @@ use parsa_python_ast::{
 };
 
 use crate::{
+    arguments::SimpleArgs,
     database::{Database, PointKind, PointLink, Specific},
     debug,
     diagnostics::IssueKind,
     getitem::SliceType,
     inference_state::InferenceState,
     inferred::{Inferred, UnionValue},
-    matching::{Generic, LookupKind, LookupResult, Match, Matcher, ResultContext},
+    matching::{Generic, LookupKind, LookupResult, Match, Matcher, OnTypeError, ResultContext},
     node_ref::NodeRef,
     type_::{
         simplified_union_from_iterators, AnyCause, CallableLike, CallableParams, ClassGenerics,
         DbString, EnumMember, GenericItem, Literal, LiteralKind, NamedTuple, NeverCause,
         StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarKind, UnionType, WithUnpack,
     },
-    type_helpers::{Class, Function},
+    type_helpers::{Callable, Class, Function},
 };
 
-use super::{first_defined_name, inference::Inference, PythonFile};
+use super::{first_defined_name, inference::Inference, on_argument_type_error, PythonFile};
 
 type Entries = Vec<Entry>;
 type ParentUnions = Vec<(FlowKey, UnionType)>;
@@ -1216,7 +1217,7 @@ impl Inference<'_, '_, '_> {
                 return Ok((inf, frames));
             }
             ExpressionPart::Primary(primary) => match primary.second() {
-                PrimaryContent::Execution(ArgumentsDetails::Node(args)) => {
+                PrimaryContent::Execution(arg_details @ ArgumentsDetails::Node(args)) => {
                     let first = self.infer_primary_or_atom(primary.first());
                     match first.maybe_saved_specific(self.i_s.db) {
                         Some(Specific::BuiltinsIsinstance) => {
@@ -1245,7 +1246,7 @@ impl Inference<'_, '_, '_> {
                         }
                     }
                     if let Some(c) = first.maybe_type_guard_callable(self.i_s) {
-                        if let Some(frames) = self.guard_type_guard(args, c) {
+                        if let Some(frames) = self.guard_type_guard(arg_details, args, c) {
                             return Ok((Inferred::new_bool(self.i_s.db), frames));
                         }
                     }
@@ -1617,6 +1618,7 @@ impl Inference<'_, '_, '_> {
 
     fn guard_type_guard(
         &mut self,
+        args_details: ArgumentsDetails,
         args: Arguments,
         might_have_guard: CallableLike,
     ) -> Option<FramesWithParentUnions> {
@@ -1647,7 +1649,17 @@ impl Inference<'_, '_, '_> {
         };
 
         let infos = find_arg()?;
+        let resolved_guard_t = Callable::new(callable, self.i_s.current_class().copied())
+            .execute_for_custom_return_type(
+                self.i_s,
+                &SimpleArgs::new(*self.i_s, self.file, args.index(), args_details),
+                false,
+                &guard.type_,
+                OnTypeError::new(&on_argument_type_error),
+                &mut ResultContext::Unknown,
+            );
         let key = infos.key?;
+        let resolved_guard_t = resolved_guard_t.as_cow_type(self.i_s);
         Some(FramesWithParentUnions {
             falsey: if guard.from_type_is {
                 let t = Type::gather_union(|gather| {
@@ -1656,7 +1668,7 @@ impl Inference<'_, '_, '_> {
                         .as_cow_type(self.i_s)
                         .iter_with_unpacked_unions(self.i_s.db)
                     {
-                        if !t.is_simple_sub_type_of(self.i_s, &guard.type_).bool() {
+                        if !t.is_simple_sub_type_of(self.i_s, &resolved_guard_t).bool() {
                             gather(t.clone())
                         }
                     }
@@ -1665,7 +1677,7 @@ impl Inference<'_, '_, '_> {
             } else {
                 Frame::default()
             },
-            truthy: Frame::from_type(key, guard.type_.clone()),
+            truthy: Frame::from_type(key, resolved_guard_t.into_owned()),
             parent_unions: infos.parent_unions,
         })
     }
