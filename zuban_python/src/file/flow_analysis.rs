@@ -1671,7 +1671,10 @@ impl Inference<'_, '_, '_> {
                         .as_cow_type(self.i_s)
                         .iter_with_unpacked_unions(self.i_s.db)
                     {
-                        if !t.is_simple_sub_type_of(self.i_s, &resolved_guard_t).bool() {
+                        if !resolved_guard_t
+                            .is_simple_super_type_of(self.i_s, t)
+                            .non_any_match()
+                        {
                             gather(t.clone())
                         }
                     }

@@ -239,6 +239,8 @@ testTypeVarTuplePep646TypeVarStarArgs
 testTypeVarTupleParamSpecInteraction
 testParamSpecSubtypeChecking2
 testParamSpecNestedApplyPosVsNamed
+testTypeGuardAsGenericFunctionArg
+testTypeIsAsGenericFunctionArg
 # Callable remapping over overload leads to a mapped overload (this is special cased for only one arg and decorator like behavior, see also is_generic_decorator_overload_call)
 testRegularGenericDecoratorOverload
 testParamSpecDecoratorOverload
@@ -1350,7 +1352,6 @@ testGenericTypedDictAlias
 
 # TypeGuard
 testTypeGuardOverload
-testTypeGuardAsGenericFunctionArg
 testTypeGuardAsOverloadedFunctionArg
 testTypeGuardErroneousDefinitionFails
 testTypeGuardKwargFollowingThroughOverloaded
@@ -1359,13 +1360,11 @@ testTypeGuardClassMethod
 testReplaceIsDataclass
 # TypeIs
 testTypeIsOverload
-testTypeIsAsGenericFunctionArg
 testTypeIsAsOverloadedFunctionArg
 testTypeIsErroneousDefinitionFails
 testTypeIsKwargFollowingThroughOverloaded
 testStaticMethodTypeIs
 testTypeIsClassMethod
-testTypeIsInAnd
 # TypeIs "Narrowed type "int" is not a subtype of input type "str""
 testTypeIsMustBeSubtypeFunctions
 testTypeIsMustBeSubtypeMethods
