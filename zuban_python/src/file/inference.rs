@@ -1457,6 +1457,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         result_context: Option<&mut ResultContext>,
     ) -> Inferred {
         let (name_def, expr) = walrus.unpack();
+        if let Some(inferred) = self.check_point_cache(name_def.index()) {
+            return inferred;
+        }
 
         let inf = if let Some(inf) = self.infer_name_target(name_def, false) {
             self.infer_expression_with_context(
