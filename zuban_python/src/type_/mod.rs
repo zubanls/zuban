@@ -874,7 +874,10 @@ impl Type {
             Self::Tuple(tup) => tup.args.search_type_vars(found_type_var),
             Self::Callable(content) => {
                 content.params.search_type_vars(found_type_var);
-                content.return_type.search_type_vars(found_type_var)
+                content.return_type.search_type_vars(found_type_var);
+                if let Some(guard) = content.guard.as_ref() {
+                    guard.type_.search_type_vars(found_type_var)
+                }
             }
             Self::Class(..)
             | Self::Any(_)

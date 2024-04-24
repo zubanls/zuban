@@ -604,7 +604,10 @@ impl CallableContent {
         i_s: &InferenceState,
         already_checked: &mut Vec<Rc<RecursiveType>>,
     ) -> bool {
-        self.return_type.has_any_internal(i_s, already_checked)
+        self.guard
+            .as_ref()
+            .is_some_and(|guard| guard.type_.has_any_internal(i_s, already_checked))
+            || self.return_type.has_any_internal(i_s, already_checked)
             || self.params.has_any_internal(i_s, already_checked)
     }
 
@@ -613,7 +616,11 @@ impl CallableContent {
     }
 
     pub fn find_in_type(&self, check: &mut impl FnMut(&Type) -> bool) -> bool {
-        self.return_type.find_in_type(check) || self.params.find_in_type(check)
+        self.guard
+            .as_ref()
+            .is_some_and(|guard| guard.type_.find_in_type(check))
+            || self.return_type.find_in_type(check)
+            || self.params.find_in_type(check)
     }
 
     pub fn format(&self, format_data: &FormatData) -> String {
