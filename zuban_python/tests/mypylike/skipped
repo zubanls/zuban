@@ -1106,6 +1106,7 @@ testTypeIsMultipleCondition
 testTypeGuardNestedRestrictionUnionIsInstance
 testTypeIsNestedRestrictionUnionIsInstance
 testAssignToTypeIsedVariable3
+testTypeIsNonzeroFloat
 # overwriting with def as a target
 testNarrowingWithDef
 # type[any] issues
@@ -1348,7 +1349,6 @@ testDisallowAnyGenericsForAliasesInRuntimeContext
 testGenericTypedDictAlias
 
 # TypeGuard
-testTypeGuardRequiresPositionalArgs
 testTypeGuardOverload
 testTypeGuardAsGenericFunctionArg
 testTypeGuardAsOverloadedFunctionArg
@@ -1358,15 +1358,14 @@ testStaticMethodTypeGuard
 testTypeGuardClassMethod
 testReplaceIsDataclass
 # TypeIs
-testTypeIsNonzeroFloat
 testTypeIsOverload
-testTypeIsInAnd
 testTypeIsAsGenericFunctionArg
 testTypeIsAsOverloadedFunctionArg
 testTypeIsErroneousDefinitionFails
 testTypeIsKwargFollowingThroughOverloaded
 testStaticMethodTypeIs
 testTypeIsClassMethod
+testTypeIsInAnd
 # TypeIs "Narrowed type "int" is not a subtype of input type "str""
 testTypeIsMustBeSubtypeFunctions
 testTypeIsMustBeSubtypeMethods
