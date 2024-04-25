@@ -173,11 +173,6 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
                                     n = NodeRef::new(file, decorated.index());
                                 }
                             }
-                            if n.point().calculated()
-                                && n.point().maybe_specific() == Some(Specific::DecoratedFunction)
-                            {
-                                // Mypy adds the issue to the decorator
-                            }
                             n.add_issue(
                                 i_s,
                                 IssueKind::DataclassAttributeMayOnlyBeOverriddenByAnotherAttribute,
