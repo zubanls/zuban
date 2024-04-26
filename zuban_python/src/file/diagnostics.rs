@@ -764,7 +764,7 @@ impl<'db> Inference<'db, '_, '_> {
                     }
                 }
             }
-        } else if function.node_ref.point().maybe_specific() == Some(Specific::DecoratedFunction)
+        } else if decorator_ref.point().calculated()
             && decorator_ref.point().maybe_specific() == Some(Specific::OverloadUnreachable)
         {
             is_overload_member = true;
