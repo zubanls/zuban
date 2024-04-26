@@ -16,7 +16,7 @@ use crate::{
     arguments::{Args, KnownArgs, SimpleArgs},
     database::{
         BaseClass, ClassInfos, ClassKind, ClassStorage, ComplexPoint, Database, Locality,
-        MetaclassState, ParentScope, Point, PointKind, PointLink, ProtocolMember,
+        MetaclassState, ParentScope, Point, PointKind, PointLink, ProtocolMember, Specific,
         TypedDictDefinition,
     },
     debug,
@@ -349,8 +349,8 @@ impl<'db: 'a, 'a> Class<'a> {
                 {
                     if inference
                         .infer_primary_or_atom(primary.first())
-                        .maybe_saved_link()
-                        == Some(dataclass_link)
+                        .maybe_saved_specific(i_s.db)
+                        == Some(Specific::DataclassesDataclass)
                     {
                         if let PrimaryContent::Execution(exec) = primary.second() {
                             let args =
@@ -360,13 +360,15 @@ impl<'db: 'a, 'a> Class<'a> {
                         }
                     }
                 }
-                if let Some(maybe_link) = inference.infer_expression(expr).maybe_saved_link() {
+                let inf = inference.infer_expression(expr);
+                if let Some(maybe_link) = inf.maybe_saved_link() {
                     if maybe_link == i_s.db.python_state.typing_final().as_link() {
                         is_final = true;
                     }
-                    if maybe_link == dataclass_link {
-                        dataclass_options = Some(DataclassOptions::default());
-                    }
+                }
+
+                if inf.maybe_saved_specific(i_s.db) == Some(Specific::DataclassesDataclass) {
+                    dataclass_options = Some(DataclassOptions::default());
                 }
             }
             if let Some(dataclass_options) = dataclass_options {
@@ -435,11 +437,29 @@ impl<'db: 'a, 'a> Class<'a> {
                     // TODO this branch should not be here!
                     continue;
                 }
+                let named_expr = decorator.named_expression();
+                if let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) =
+                    named_expr.expression().unpack()
+                {
+                    if self
+                        .node_ref
+                        .file
+                        .inference(i_s)
+                        .infer_primary_or_atom(primary.first())
+                        .maybe_saved_specific(i_s.db)
+                        == Some(Specific::DataclassesDataclass)
+                    {
+                        continue;
+                    }
+                }
                 let decorate = self
                     .node_ref
                     .file
                     .inference(i_s)
-                    .infer_named_expression(decorator.named_expression());
+                    .infer_named_expression(named_expr);
+                if decorate.maybe_saved_specific(i_s.db) == Some(Specific::DataclassesDataclass) {
+                    continue;
+                }
                 inferred = decorate.execute(
                     i_s,
                     &KnownArgs::new(

@@ -313,6 +313,11 @@ impl PythonState {
             s.typing_extensions(),
             s.mypy_extensions(),
         );
+        set_typing_inference(
+            &s.dataclasses_file(),
+            "dataclass",
+            Specific::DataclassesDataclass,
+        );
 
         let mypy_extensions = unsafe { &*s.mypy_extensions };
         s.mypy_extensions_arg_func =
@@ -801,7 +806,7 @@ impl PythonState {
             NodeRef::new(self.dataclasses_file(), self.dataclasses_replace_index),
             None,
         );
-        func.ensure_cached_type_vars(i_s);
+        func.ensure_cached_func(i_s);
         func
     }
 
@@ -816,7 +821,7 @@ impl PythonState {
             _ => unreachable!(),
         };
         let func = Function::new(NodeRef::new(self.mypy_extensions(), node_index), None);
-        func.ensure_cached_type_vars(&InferenceState::new(db));
+        func.ensure_cached_func(&InferenceState::new(db));
         func.decorated(&InferenceState::new(db))
     }
 
@@ -981,6 +986,7 @@ fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
         "Self",
         "reveal_type",
         "assert_type",
+        "dataclass",
         "dataclass_transform",
         "super",
         "replace",

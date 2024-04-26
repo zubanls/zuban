@@ -2666,7 +2666,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     NodeRef::new(self.file, func_node.index()),
                                     self.i_s.current_class().copied(),
                                 );
-                                func.ensure_cached_type_vars(self.i_s);
+                                func.ensure_cached_func(self.i_s);
 
                                 if let Some(annotation) = name_def.maybe_param_annotation() {
                                     self.use_cached_param_annotation(annotation)

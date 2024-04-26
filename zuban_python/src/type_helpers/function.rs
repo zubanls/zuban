@@ -2,8 +2,8 @@ use std::{borrow::Cow, cell::Cell, fmt, rc::Rc};
 
 use parsa_python_ast::{
     BlockContent, Decorated, Decorator, ExpressionContent, ExpressionPart, FunctionDef,
-    FunctionParent, NodeIndex, Param as ASTParam, ParamKind, PrimaryContent, PrimaryOrAtom,
-    ReturnAnnotation, ReturnOrYield, SimpleStmt, SimpleStmtContent, StmtOrError,
+    FunctionParent, NodeIndex, Param as ASTParam, ParamAnnotation, ParamKind, PrimaryContent,
+    PrimaryOrAtom, ReturnAnnotation, ReturnOrYield, SimpleStmt, SimpleStmtContent, StmtOrError,
 };
 
 use crate::{
@@ -32,8 +32,8 @@ use crate::{
         AnyCause, CallableContent, CallableLike, CallableParam, CallableParams, ClassGenerics,
         DbString, FunctionKind, FunctionOverload, GenericClass, GenericItem, ParamSpecUsage,
         ParamType, ReplaceSelf, StarParamType, StarStarParamType, StringSlice, TupleArgs, Type,
-        TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
-        TypeVarName, TypeVarUsage, Variance, WrongPositionalCount,
+        TypeGuardInfo, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
+        TypeVarManager, TypeVarName, TypeVarUsage, Variance, WrongPositionalCount,
     },
     type_helpers::{Class, Module},
     utils::{rc_slice_into_vec, rc_unwrap_or_clone},
@@ -259,12 +259,82 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         self.node_ref.add_to_node_index(4)
     }
 
-    pub fn ensure_cached_type_vars(&self, i_s: &InferenceState<'db, '_>) {
-        let type_var_reference = self.type_var_reference();
-        if type_var_reference.point().calculated() {
+    pub fn ensure_cached_func(&self, i_s: &InferenceState<'db, '_>) {
+        if self.node_ref.point().calculated() {
             return;
         }
+        if let Some(callable_t) = self.ensure_cached_type_vars(i_s) {
+            self.node_ref
+                .insert_complex(ComplexPoint::TypeInstance(callable_t), Locality::Todo);
+            return;
+        }
+        if let Some(decorated) = self.node().maybe_decorated() {
+            self.decorated(i_s)
+                .save_redirect(i_s, self.node_ref.file, self.node_ref.node_index);
+        } else {
+            self.node_ref
+                .set_point(Point::new_specific(Specific::Function, Locality::Todo));
+        }
+    }
 
+    fn ensure_cached_type_vars(&self, i_s: &InferenceState<'db, '_>) -> Option<Type> {
+        let type_var_reference = self.type_var_reference();
+        if type_var_reference.point().calculated() {
+            return None; // TODO this feels wrong, because below we only sometimes calculate the callable
+        }
+        let (type_vars, mut type_guard, star_annotation) = self.cache_type_vars(i_s);
+        match type_vars.len() {
+            0 => type_var_reference.set_point(Point::new_node_analysis(Locality::Todo)),
+            _ => type_var_reference
+                .insert_complex(ComplexPoint::TypeVarLikes(type_vars), Locality::Todo),
+        }
+        debug_assert!(type_var_reference.point().calculated());
+
+        let mut needs_callable = false;
+        if let Some(annotation) = star_annotation {
+            let t = use_cached_param_annotation_type(i_s.db, self.node_ref.file, annotation);
+            if let Some(_) = t.maybe_fixed_len_tuple() {
+                // Save a callable, because we have something like `*foo: *tuple[int, str]`, which
+                // basically means two mandatory positional only arguments. But this is not part of
+                // the type system. Therefore just write a proper callable definition.
+                needs_callable = true;
+            }
+        }
+        let func_node = self.node();
+        if let Some(guard) = type_guard.as_ref() {
+            if func_node.params().iter().next().is_none() {
+                self.add_issue_for_declaration(
+                    i_s,
+                    IssueKind::TypeGuardFunctionsMustHaveArgument {
+                        name: if guard.from_type_is {
+                            "\"TypeIs\""
+                        } else {
+                            "TypeGuard"
+                        },
+                    },
+                );
+                type_guard = None;
+            }
+        }
+        if needs_callable || type_guard.is_some() {
+            let options = AsCallableOptions {
+                first_param: FirstParamProperties::None,
+                return_type: match type_guard.as_ref() {
+                    Some(guard) => Cow::Owned(i_s.db.python_state.bool_type()),
+                    None => self.return_type(i_s),
+                },
+            };
+            let mut callable = self.as_callable_with_options(i_s, options);
+            callable.guard = type_guard;
+            return Some(Type::Callable(Rc::new(callable)));
+        }
+        None
+    }
+
+    fn cache_type_vars(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+    ) -> (TypeVarLikes, Option<TypeGuardInfo>, Option<ParamAnnotation>) {
         let func_node = self.node();
         let implicit_optional = i_s.db.project.flags.implicit_optional;
         let mut inference = self.node_ref.file.inference(i_s);
@@ -320,7 +390,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 }
             }
         }
-        let mut type_guard = func_node.return_annotation().and_then(|return_annot| {
+        let type_guard = func_node.return_annotation().and_then(|return_annot| {
             in_result_type.set(true);
             type_computation.cache_return_annotation(return_annot)
         });
@@ -354,66 +424,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 }
             }
         }
-        match type_vars.len() {
-            0 => type_var_reference.set_point(Point::new_node_analysis(Locality::Todo)),
-            _ => type_var_reference
-                .insert_complex(ComplexPoint::TypeVarLikes(type_vars), Locality::Todo),
-        }
-        debug_assert!(type_var_reference.point().calculated());
-
-        let mut needs_callable = false;
-        if let Some(annotation) = star_annotation {
-            let t = inference.use_cached_param_annotation_type(annotation);
-            if let Some(_) = t.maybe_fixed_len_tuple() {
-                // Save a callable, because we have something like `*foo: *tuple[int, str]`, which
-                // basically means two mandatory positional only arguments. But this is not part of
-                // the type system. Therefore just write a proper callable definition.
-                needs_callable = true;
-            }
-        }
-        if let Some(guard) = type_guard.as_ref() {
-            if func_node.params().iter().next().is_none() {
-                self.add_issue_for_declaration(
-                    i_s,
-                    IssueKind::TypeGuardFunctionsMustHaveArgument {
-                        name: if guard.from_type_is {
-                            "\"TypeIs\""
-                        } else {
-                            "TypeGuard"
-                        },
-                    },
-                );
-                type_guard = None;
-            }
-        }
-        if needs_callable || type_guard.is_some() {
-            let options = AsCallableOptions {
-                first_param: FirstParamProperties::None,
-                return_type: match type_guard.as_ref() {
-                    Some(guard) => Cow::Owned(i_s.db.python_state.bool_type()),
-                    None => self.return_type(i_s),
-                },
-            };
-            let mut callable = self.as_callable_with_options(i_s, options);
-            callable.guard = type_guard;
-            self.node_ref.insert_complex(
-                ComplexPoint::TypeInstance(Type::Callable(Rc::new(callable))),
-                Locality::Todo,
-            );
-            return;
-        }
-        self.node_ref.set_point(Point::new_specific(
-            if func_node.maybe_decorated().is_some() {
-                Specific::DecoratedFunction
-            } else {
-                Specific::Function
-            },
-            Locality::Todo,
-        ));
-        if let Some(decorated) = func_node.maybe_decorated() {
-            self.decorated(i_s)
-                .save_redirect(i_s, self.node_ref.file, self.node_ref.node_index);
-        }
+        (type_vars, type_guard, star_annotation)
     }
 
     fn remap_param_spec(
@@ -471,7 +482,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
 
     pub fn cache_func_with_name_def(&self, i_s: &InferenceState, name_def: NodeRef) {
         if !name_def.point().calculated() {
-            self.ensure_cached_type_vars(i_s);
+            self.ensure_cached_func(i_s);
             name_def.set_point(Point::new_redirect(
                 self.node_ref.file_index(),
                 self.node_ref.node_index,
@@ -900,7 +911,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 todo!("probably just some other definition like foo = 3?")
             };
             let next_func = Self::new(func_ref, self.class);
-            next_func.ensure_cached_type_vars(i_s);
+            let new_t = next_func.ensure_cached_type_vars(i_s);
             let next_details = match next_func.calculate_decorated_function_details(i_s) {
                 Some(d) => d,
                 None => {

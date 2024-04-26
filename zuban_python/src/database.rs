@@ -421,6 +421,7 @@ pub enum Specific {
     AssertTypeFunction,
     TypingNamedTuple,      // typing.NamedTuple
     CollectionsNamedTuple, // collections.namedtuple
+    DataclassesDataclass,
 
     MypyExtensionsArg,
     MypyExtensionsDefaultArg,
