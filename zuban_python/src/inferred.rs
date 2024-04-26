@@ -627,6 +627,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 | Specific::PartialList
                                 | Specific::PartialDict
                                 | Specific::PartialSet
+                                | Specific::DecoratedFunction
                         )
                     )
                 {

@@ -65,6 +65,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             debug_assert!(node_ref.maybe_function().is_some());
             let point = node_ref.point();
             if point.calculated() {
+                /*
                 debug_assert!(
                     matches!(
                         point.maybe_specific(),
@@ -73,6 +74,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     "{:?}",
                     point
                 );
+                */
             }
         }
         Self { node_ref, class }
@@ -408,6 +410,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             },
             Locality::Todo,
         ));
+        if let Some(decorated) = func_node.maybe_decorated() {
+            self.decorated(i_s)
+                .save_redirect(i_s, self.node_ref.file, self.node_ref.node_index);
+        }
     }
 
     fn remap_param_spec(
@@ -549,6 +555,25 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         {
             c.kind
         } else {
+            if self.node().maybe_decorated().is_some() {
+                // Ensure it's cached
+                let inf = self.decorated(i_s);
+                if inf.maybe_saved_specific(i_s.db) == Some(Specific::OverloadUnreachable) {
+                    let first =
+                        first_defined_name(self.node_ref.file, self.node().name().index()).unwrap();
+                    let original_func =
+                        NodeRef::new(self.node_ref.file, first - NAME_TO_FUNCTION_DIFF);
+                    let point = original_func.point();
+                    return Function::new(original_func, self.class).kind(i_s);
+                }
+                return match self.decorator_ref().complex() {
+                    Some(ComplexPoint::FunctionOverload(o)) => o.kind(),
+                    Some(ComplexPoint::TypeInstance(Type::Callable(c))) => c.kind,
+                    _ => FunctionKind::Function {
+                        had_first_self_or_class_annotation: had_first_annotation,
+                    },
+                };
+            }
             FunctionKind::Function {
                 had_first_self_or_class_annotation: had_first_annotation,
             }

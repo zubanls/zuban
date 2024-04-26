@@ -392,6 +392,7 @@ impl PythonState {
         cache_index!(abc_abc_meta_index, abc, "ABCMeta");
         cache_index!(types_module_type_index, types, "ModuleType");
         cache_index!(enum_enum_meta_index, enum_file, "EnumMeta");
+        cache_func_index!(typing_overload_index, typing, "overload");
         cache_index!(enum_enum_index, enum_file, "Enum");
         cache_index!(enum_auto_index, enum_file, "auto");
 
@@ -456,7 +457,6 @@ impl PythonState {
         cache_func_index!(builtins_hasattr_index, builtins, "hasattr");
         cache_func_index!(builtins_len_index, builtins, "len");
 
-        cache_func_index!(typing_overload_index, typing, "overload");
         cache_func_index!(typing_override_index, typing, "override");
 
         cache_func_index!(dataclasses_field_index, dataclasses_file, "field");
