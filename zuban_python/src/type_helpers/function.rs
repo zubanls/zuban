@@ -260,9 +260,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             if let Some(class) = self.class {
                 let class = Class::with_self_generics(i_s.db, class.node_ref);
                 Self::new(self.node_ref, Some(class))
-                    .decorated_to_be_saved(&i_s.with_class_context(&class))
+                    .decorated_to_be_saved(&i_s.with_class_context(&class), decorated)
             } else {
-                self.decorated_to_be_saved(i_s)
+                self.decorated_to_be_saved(i_s, decorated)
             }
             .save_redirect(i_s, self.node_ref.file, self.node_ref.node_index);
         } else {
@@ -521,13 +521,15 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
-    fn decorated_to_be_saved(&self, i_s: &InferenceState<'db, '_>) -> Inferred {
-        let node = self.node();
-        let Some(details) = self.calculate_decorated_function_details(i_s) else {
+    fn decorated_to_be_saved(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        decorated: Decorated,
+    ) -> Inferred {
+        let Some(details) = self.calculate_decorated_function_details(i_s, decorated) else {
             return Inferred::new_any_from_error()
         };
 
-        let func_node = self.node();
         let file = self.node_ref.file;
         if details.is_overload {
             return if let Some(overload) = self.calculate_next_overload_items(i_s, details) {
@@ -575,8 +577,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     fn calculate_decorated_function_details(
         &self,
         i_s: &InferenceState,
+        decorated: Decorated,
     ) -> Option<FunctionDetails> {
-        let decorated = self.node().maybe_decorated()?;
         let used_with_a_non_method = |name| {
             NodeRef::new(self.node_ref.file, decorated.index())
                 .add_issue(i_s, IssueKind::UsedWithANonMethod { name })
@@ -842,10 +844,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             };
             let next_func = Self::new(func_ref, self.class);
             let new_t = next_func.ensure_cached_type_vars(i_s);
-            let next_details = match next_func.calculate_decorated_function_details(i_s) {
+            let next_maybe_decorated = next_func_def.maybe_decorated();
+            let next_details = match next_maybe_decorated.and_then(|decorated| {
+                next_func.calculate_decorated_function_details(i_s, decorated)
+            }) {
                 Some(d) => d,
                 None => {
-                    if next_func_def.maybe_decorated().is_some() {
+                    if next_maybe_decorated.is_some() {
                         should_error_out = true;
                         next_func.node_ref.set_point(Point::new_specific(
                             Specific::OverloadUnreachable,
