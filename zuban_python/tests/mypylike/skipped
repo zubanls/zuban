@@ -918,6 +918,24 @@ testOperatorContainsNarrowsTypedDicts_total
 testUnreachableFlagWithGenerics
 testNarrowOnSelfInGeneric
 
+# TypeVar defaults
+testTypeVarDefaultsBasic
+testTypeVarDefaultsValid
+testTypeVarDefaultsInvalid
+testTypeVarDefaultsInvalid2
+testTypeVarDefaultsInvalid3
+testTypeVarDefaultsFunctions
+testTypeVarDefaultsClass1
+testTypeVarDefaultsClass2
+testTypeVarDefaultsClass3
+testTypeVarDefaultsClassRecursive1
+testTypeVarDefaultsClassRecursiveMultipleFiles
+testTypeVarDefaultsTypeAlias1
+testTypeVarDefaultsTypeAlias2
+testTypeVarDefaultsTypeAlias3
+testTypeVarDefaultsTypeAliasRecursive1
+testTypeVarDefaultsTypeAliasRecursive2
+
 # - Overload does not consistently use the "@classmethod" decorator on all function signatures
 # - Overload does not consistently use the "@staticmethod" decorator on all function signatures
 testOverloadWithInconsistentStaticMethods

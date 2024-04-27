@@ -9,8 +9,7 @@ use std::{
 use regex::{Captures, Regex, Replacer};
 use zuban_python::{DiagnosticConfig, Project, ProjectOptions, TypeCheckerFlags};
 
-const SKIP_MYPY_TEST_FILES: [&str; 32] = [
-    "check-typevar-defaults.test",
+const SKIP_MYPY_TEST_FILES: [&str; 31] = [
     // Narrowing tests
     "check-redefine.test",
     "check-possibly-undefined.test",
