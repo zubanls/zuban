@@ -269,8 +269,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             return;
         }
         if let Some(decorated) = self.node().maybe_decorated() {
-            self.decorated(i_s)
-                .save_redirect(i_s, self.node_ref.file, self.node_ref.node_index);
+            self.decorated(i_s);
         } else {
             self.node_ref
                 .set_point(Point::new_specific(Specific::Function, Locality::Todo));
@@ -491,30 +490,23 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
-    pub fn decorator_ref(&self) -> NodeRef {
-        // To save the generics just use the ( operator's storage.
-        // + 1 for def; + 2 for name + 1 for (...) + 1 for (
-        self.node_ref.add_to_node_index(5)
-    }
-
     pub fn decorated(&self, i_s: &InferenceState<'db, '_>) -> Inferred {
-        let decorator_ref = self.decorator_ref();
-        if decorator_ref.point().calculated() {
+        if self.node_ref.point().calculated() {
             return self
                 .node_ref
                 .file
                 .inference(i_s)
-                .check_point_cache(decorator_ref.node_index)
+                .check_point_cache(self.node_ref.node_index)
                 .unwrap();
         }
         if let Some(class) = self.class {
             let class = Class::with_self_generics(i_s.db, class.node_ref);
             Self::new(self.node_ref, Some(class))
-                .decorated_to_be_saved(&i_s.with_class_context(&class), decorator_ref)
+                .decorated_to_be_saved(&i_s.with_class_context(&class))
         } else {
-            self.decorated_to_be_saved(i_s, decorator_ref)
+            self.decorated_to_be_saved(i_s)
         }
-        .save_redirect(i_s, decorator_ref.file, decorator_ref.node_index)
+        .save_redirect(i_s, self.node_ref.file, self.node_ref.node_index)
     }
 
     pub fn is_dunder_new(&self) -> bool {
@@ -555,7 +547,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     todo!("does this ever really happen?")
                 }
             }
-            match self.decorator_ref().complex() {
+            match self.node_ref.complex() {
                 Some(ComplexPoint::FunctionOverload(o)) => o.kind(),
                 Some(ComplexPoint::TypeInstance(Type::Callable(c))) => c.kind,
                 _ => FunctionKind::Function {
@@ -577,7 +569,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     let point = original_func.point();
                     return Function::new(original_func, self.class).kind(i_s);
                 }
-                return match self.decorator_ref().complex() {
+                return match self.node_ref.complex() {
                     Some(ComplexPoint::FunctionOverload(o)) => o.kind(),
                     Some(ComplexPoint::TypeInstance(Type::Callable(c))) => c.kind,
                     _ => FunctionKind::Function {
@@ -591,11 +583,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
-    fn decorated_to_be_saved(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        decorator_ref: NodeRef,
-    ) -> Inferred {
+    fn decorated_to_be_saved(&self, i_s: &InferenceState<'db, '_>) -> Inferred {
         let node = self.node();
         let Some(details) = self.calculate_decorated_function_details(i_s) else {
             return Inferred::new_any_from_error()
@@ -845,9 +833,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 continue;
             };
             let next_func = Self::new(func_ref, self.class);
+            let new_t = next_func.ensure_cached_type_vars(i_s);
+            if new_t.is_some() {
+                todo!()
+            }
 
             // Make sure this is not calculated again.
-            next_func.decorator_ref().set_point(Point::new_specific(
+            next_func.node_ref.set_point(Point::new_specific(
                 Specific::OverloadUnreachable,
                 Locality::File,
             ));
@@ -917,7 +909,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 None => {
                     if next_func_def.maybe_decorated().is_some() {
                         should_error_out = true;
-                        next_func.decorator_ref().set_point(Point::new_specific(
+                        next_func.node_ref.set_point(Point::new_specific(
                             Specific::OverloadUnreachable,
                             Locality::File,
                         ));
@@ -950,7 +942,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             if next_details.has_decorator {
                 // To make sure overloads aren't executed another time and to separate these
                 // functions from the other ones, mark them unreachable here.
-                next_func.decorator_ref().set_point(Point::new_specific(
+                next_func.node_ref.set_point(Point::new_specific(
                     Specific::OverloadUnreachable,
                     Locality::File,
                 ));

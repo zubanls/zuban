@@ -730,10 +730,9 @@ impl<'db> Inference<'db, '_, '_> {
         class: Option<Class>,
     ) {
         let i_s = self.i_s;
-        let decorator_ref = function.decorator_ref();
         let mut is_overload_member = false;
         let inf = function.as_inferred_from_name(i_s);
-        if let Some(ComplexPoint::FunctionOverload(o)) = decorator_ref.complex() {
+        if let Some(ComplexPoint::FunctionOverload(o)) = function.node_ref.complex() {
             is_overload_member = true;
             for (i, c1) in o.iter_functions().enumerate() {
                 if let Some(implementation) = &o.implementation {
@@ -764,8 +763,7 @@ impl<'db> Inference<'db, '_, '_> {
                     }
                 }
             }
-        } else if decorator_ref.point().calculated()
-            && decorator_ref.point().maybe_specific() == Some(Specific::OverloadUnreachable)
+        } else if function.node_ref.point().maybe_specific() == Some(Specific::OverloadUnreachable)
         {
             is_overload_member = true;
         }
