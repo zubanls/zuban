@@ -1,6 +1,6 @@
 use std::{ptr::null, rc::Rc};
 
-use parsa_python_ast::{FunctionDef, NodeIndex, TypeLike, NAME_DEF_TO_NAME_DIFFERENCE};
+use parsa_python_ast::{FunctionDef, NodeIndex, NAME_DEF_TO_NAME_DIFFERENCE};
 
 use crate::{
     database::{
@@ -961,42 +961,6 @@ fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
         .unwrap()
         .lookup_symbol(name)
         .unwrap();
-    if ![
-        "cast",
-        "type",
-        "tuple",
-        "NewType",
-        "TypeVar",
-        "TypeVarTuple",
-        "NamedTuple",
-        "namedtuple",
-        "TypedDict",
-        "Required",
-        "NotRequired",
-        "LiteralString",
-        "Concatenate",
-        "ParamSpec",
-        "Unpack",
-        "TypeAlias",
-        "Self",
-        "reveal_type",
-        "assert_type",
-        "dataclass",
-        "dataclass_transform",
-        "super",
-        "replace",
-        "isinstance",
-        "issubclass",
-        "NoReturn",
-        "TypeGuard",
-        "TypeIs",
-    ]
-    .contains(&name)
-    {
-        let p = file.points.get(node_index).calculated();
-        assert!(!p, "{:?}", p);
-        set_assignments_cached(file, node_index);
-    }
     file.points
         .set(node_index, Point::new_specific(specific, Locality::Stmt));
 }
@@ -1053,17 +1017,6 @@ fn setup_type_alias(typing: &PythonFile, name: &str, target_file: &PythonFile, t
         node_index, // Set it on name
         Point::new_redirect(target_file.file_index(), target_node_index, Locality::Stmt),
     );
-}
-
-fn set_assignments_cached(file: &PythonFile, name_node: NodeIndex) {
-    // To avoid getting overwritten we also have to set the assignments to a proper state.
-    let name = NodeRef::new(file, name_node).as_name();
-    if let TypeLike::Assignment(assignment) = name.expect_type() {
-        file.points
-            .set(assignment.index(), Point::new_node_analysis(Locality::Stmt));
-    } else {
-        unreachable!();
-    }
 }
 
 fn set_mypy_extension_specific(file: &PythonFile, name: &str, specific: Specific) -> NodeIndex {
