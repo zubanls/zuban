@@ -513,30 +513,22 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 .iter()
                 .next()
                 .is_some_and(|p| p.annotation().is_some());
-        if let Some(ComplexPoint::TypeInstance(Type::Callable(c))) = self.node_ref.complex() {
-            c.kind
-        } else {
-            if self.node().maybe_decorated().is_some() {
-                // Ensure it's cached
-                let inf = self.decorated(i_s);
-                if inf.maybe_saved_specific(i_s.db) == Some(Specific::OverloadUnreachable) {
+        match self.node_ref.complex() {
+            Some(ComplexPoint::TypeInstance(Type::Callable(c))) => c.kind,
+            Some(ComplexPoint::FunctionOverload(o)) => o.kind(),
+            _ => {
+                if self.node_ref.point().maybe_specific() == Some(Specific::OverloadUnreachable) {
                     let first =
                         first_defined_name(self.node_ref.file, self.node().name().index()).unwrap();
                     let original_func =
                         NodeRef::new(self.node_ref.file, first - NAME_TO_FUNCTION_DIFF);
                     let point = original_func.point();
-                    return Function::new(original_func, self.class).kind(i_s);
-                }
-                return match self.node_ref.complex() {
-                    Some(ComplexPoint::FunctionOverload(o)) => o.kind(),
-                    Some(ComplexPoint::TypeInstance(Type::Callable(c))) => c.kind,
-                    _ => FunctionKind::Function {
+                    Function::new(original_func, self.class).kind(i_s)
+                } else {
+                    FunctionKind::Function {
                         had_first_self_or_class_annotation: had_first_annotation,
-                    },
-                };
-            }
-            FunctionKind::Function {
-                had_first_self_or_class_annotation: had_first_annotation,
+                    }
+                }
             }
         }
     }
