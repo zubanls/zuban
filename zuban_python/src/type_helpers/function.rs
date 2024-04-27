@@ -251,23 +251,27 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         if self.node_ref.point().calculated() {
             return;
         }
-        if let Some(callable_t) = self.ensure_cached_type_vars(i_s) {
-            self.node_ref
-                .insert_complex(ComplexPoint::TypeInstance(callable_t), Locality::Todo);
-            return;
-        }
+        let maybe_computed = self.ensure_cached_type_vars(i_s);
         if let Some(decorated) = self.node().maybe_decorated() {
             if let Some(class) = self.class {
                 let class = Class::with_self_generics(i_s.db, class.node_ref);
-                Self::new(self.node_ref, Some(class))
-                    .decorated_to_be_saved(&i_s.with_class_context(&class), decorated)
+                Self::new(self.node_ref, Some(class)).decorated_to_be_saved(
+                    &i_s.with_class_context(&class),
+                    decorated,
+                    maybe_computed,
+                )
             } else {
-                self.decorated_to_be_saved(i_s, decorated)
+                self.decorated_to_be_saved(i_s, decorated, maybe_computed)
             }
             .save_redirect(i_s, self.node_ref.file, self.node_ref.node_index);
         } else {
-            self.node_ref
-                .set_point(Point::new_specific(Specific::Function, Locality::Todo));
+            if let Some(callable_t) = maybe_computed {
+                self.node_ref
+                    .insert_complex(ComplexPoint::TypeInstance(callable_t), Locality::Todo);
+            } else {
+                self.node_ref
+                    .set_point(Point::new_specific(Specific::Function, Locality::Todo));
+            }
         }
     }
 
@@ -525,8 +529,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         &self,
         i_s: &InferenceState<'db, '_>,
         decorated: Decorated,
+        base_t: Option<Type>,
     ) -> Inferred {
-        let Some(details) = self.calculate_decorated_function_details(i_s, decorated) else {
+        let Some(details) = self.calculate_decorated_function_details(i_s, decorated, base_t) else {
             return Inferred::new_any_from_error()
         };
 
@@ -578,13 +583,16 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         &self,
         i_s: &InferenceState,
         decorated: Decorated,
+        base_t: Option<Type>,
     ) -> Option<FunctionDetails> {
         let used_with_a_non_method = |name| {
             NodeRef::new(self.node_ref.file, decorated.index())
                 .add_issue(i_s, IssueKind::UsedWithANonMethod { name })
         };
 
-        let mut inferred = Inferred::from_type(self.as_type(i_s, FirstParamProperties::None));
+        let mut inferred = Inferred::from_type(
+            base_t.unwrap_or_else(|| self.as_type(i_s, FirstParamProperties::None)),
+        );
         let had_first_annotation = self.class.is_none()
             || self
                 .node()
@@ -846,7 +854,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             let new_t = next_func.ensure_cached_type_vars(i_s);
             let next_maybe_decorated = next_func_def.maybe_decorated();
             let next_details = match next_maybe_decorated.and_then(|decorated| {
-                next_func.calculate_decorated_function_details(i_s, decorated)
+                next_func.calculate_decorated_function_details(i_s, decorated, new_t)
             }) {
                 Some(d) => d,
                 None => {

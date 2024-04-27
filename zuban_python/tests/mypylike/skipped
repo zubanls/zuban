@@ -1355,14 +1355,10 @@ testGenericTypedDictAlias
 # TypeGuard
 testTypeGuardErroneousDefinitionFails
 testTypeGuardKwargFollowingThroughOverloaded
-testStaticMethodTypeGuard
-testTypeGuardClassMethod
 testReplaceIsDataclass
 # TypeIs
 testTypeIsErroneousDefinitionFails
 testTypeIsKwargFollowingThroughOverloaded
-testStaticMethodTypeIs
-testTypeIsClassMethod
 # TypeIs "Narrowed type "int" is not a subtype of input type "str""
 testTypeIsMustBeSubtypeFunctions
 testTypeIsMustBeSubtypeMethods
