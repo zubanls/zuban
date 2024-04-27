@@ -243,7 +243,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     fn type_var_reference(&self) -> NodeRef<'a> {
         // To save the generics just use the ( operator's storage.
         // + 1 for def; + 2 for name + 1 for (...)
-        self.node_ref.add_to_node_index(4)
+        self.node_ref
+            .add_to_node_index(NAME_TO_FUNCTION_DIFF as i64 + 1)
     }
 
     pub fn ensure_cached_func(&self, i_s: &InferenceState<'db, '_>) {
