@@ -257,7 +257,14 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             return;
         }
         if let Some(decorated) = self.node().maybe_decorated() {
-            self.decorated(i_s);
+            if let Some(class) = self.class {
+                let class = Class::with_self_generics(i_s.db, class.node_ref);
+                Self::new(self.node_ref, Some(class))
+                    .decorated_to_be_saved(&i_s.with_class_context(&class))
+            } else {
+                self.decorated_to_be_saved(i_s)
+            }
+            .save_redirect(i_s, self.node_ref.file, self.node_ref.node_index);
         } else {
             self.node_ref
                 .set_point(Point::new_specific(Specific::Function, Locality::Todo));
@@ -469,25 +476,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 Locality::Todo,
             ));
         }
-    }
-
-    fn decorated(&self, i_s: &InferenceState<'db, '_>) -> Inferred {
-        if self.node_ref.point().calculated() {
-            return self
-                .node_ref
-                .file
-                .inference(i_s)
-                .check_point_cache(self.node_ref.node_index)
-                .unwrap();
-        }
-        if let Some(class) = self.class {
-            let class = Class::with_self_generics(i_s.db, class.node_ref);
-            Self::new(self.node_ref, Some(class))
-                .decorated_to_be_saved(&i_s.with_class_context(&class))
-        } else {
-            self.decorated_to_be_saved(i_s)
-        }
-        .save_redirect(i_s, self.node_ref.file, self.node_ref.node_index)
     }
 
     pub fn is_dunder_new(&self) -> bool {
