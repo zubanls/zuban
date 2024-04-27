@@ -16,7 +16,7 @@ use crate::{
     arguments::{Args, KnownArgs, SimpleArgs},
     database::{
         BaseClass, ClassInfos, ClassKind, ClassStorage, ComplexPoint, Database, Locality,
-        MetaclassState, ParentScope, Point, PointKind, PointLink, ProtocolMember, Specific,
+        MetaclassState, ParentScope, Point, PointKind, PointLink, ProtocolMember,
         TypedDictDefinition,
     },
     debug,

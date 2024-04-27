@@ -731,7 +731,6 @@ impl<'db> Inference<'db, '_, '_> {
     ) {
         let i_s = self.i_s;
         let mut is_overload_member = false;
-        let inf = function.as_inferred_from_name(i_s);
         if let Some(ComplexPoint::FunctionOverload(o)) = function.node_ref.complex() {
             is_overload_member = true;
             for (i, c1) in o.iter_functions().enumerate() {

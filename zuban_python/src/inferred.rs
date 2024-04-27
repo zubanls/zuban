@@ -627,7 +627,6 @@ impl<'db: 'slf, 'slf> Inferred {
                                 | Specific::PartialList
                                 | Specific::PartialDict
                                 | Specific::PartialSet
-                                | Specific::DecoratedFunction
                         )
                     )
                 {
@@ -709,11 +708,6 @@ impl<'db: 'slf, 'slf> Inferred {
                         return Some(FunctionOrOverload::Function(Function::new(
                             definition, class,
                         )));
-                    }
-                    Some(Specific::DecoratedFunction) => {
-                        return Function::new(definition, class)
-                            .decorated(i_s)
-                            .init_as_function(i_s, class)
                     }
                     _ => (),
                 }
@@ -900,28 +894,6 @@ impl<'db: 'slf, 'slf> Inferred {
                                     attr_kind,
                                 ))
                             };
-                        }
-                        Specific::DecoratedFunction => {
-                            let func = prepare_func(i_s, *definition, attribute_class);
-                            let mut result =
-                                func.decorated(i_s).bind_instance_descriptors_internal(
-                                    i_s,
-                                    instance,
-                                    attribute_class,
-                                    add_issue,
-                                    mro_index,
-                                    // Class vars are remapped separatly
-                                    apply_descriptors_kind,
-                                );
-                            result.as_mut().map(|result| {
-                                result.1 = match func.kind(i_s) {
-                                    FunctionKind::Staticmethod => AttributeKind::Staticmethod,
-                                    FunctionKind::Function { .. } => AttributeKind::DefMethod,
-                                    FunctionKind::Classmethod { .. } => AttributeKind::Classmethod,
-                                    FunctionKind::Property { .. } => result.1,
-                                };
-                            });
-                            return result;
                         }
                         // TODO this should have the case of Specific::AnnotationOrTypeCommentClassVar as well
                         Specific::AnnotationOrTypeCommentWithTypeVars
@@ -1241,17 +1213,6 @@ impl<'db: 'slf, 'slf> Inferred {
                             let t = func.as_type(i_s, FirstParamProperties::MethodAccessedOnClass);
                             return Some((Inferred::from_type(t), AttributeKind::Attribute));
                         }
-                        Specific::DecoratedFunction => {
-                            return Function::new(node_ref, Some(attribute_class))
-                                .decorated(i_s)
-                                .bind_class_descriptors(
-                                    i_s,
-                                    class,
-                                    attribute_class,
-                                    add_issue,
-                                    apply_descriptor,
-                                );
-                        }
                         specific @ (Specific::AnnotationOrTypeCommentWithoutTypeVars
                         | Specific::AnnotationOrTypeCommentClassVar
                         | Specific::AnnotationOrTypeCommentWithTypeVars
@@ -1469,14 +1430,6 @@ impl<'db: 'slf, 'slf> Inferred {
                             } else {
                                 todo!()
                             }
-                        }
-                        Specific::DecoratedFunction => {
-                            let func = Function::new(node_ref, Some(attribute_class));
-                            return func.decorated(i_s).bind_new_descriptors(
-                                i_s,
-                                class,
-                                class_of_attribute,
-                            );
                         }
                         _ => (),
                     },
@@ -2380,11 +2333,6 @@ pub fn specific_to_type<'db>(
             Function::new(definition, i_s.current_class().copied())
                 .as_type(i_s, FirstParamProperties::None),
         ),
-        Specific::DecoratedFunction => {
-            let func = Function::new(definition, i_s.current_class().copied());
-            // Caches the decorated inference properly
-            saved_as_type(i_s, func.decorated(i_s).maybe_saved_link().unwrap())
-        }
         Specific::AnnotationOrTypeCommentSimpleClassInstance
         | Specific::AnnotationOrTypeCommentWithoutTypeVars
         | Specific::AnnotationOrTypeCommentWithTypeVars

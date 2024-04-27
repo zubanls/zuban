@@ -63,19 +63,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     pub fn new(node_ref: NodeRef<'a>, class: Option<Class<'class>>) -> Self {
         if std::cfg!(debug_assertions) {
             debug_assert!(node_ref.maybe_function().is_some());
-            let point = node_ref.point();
-            if point.calculated() {
-                /*
-                debug_assert!(
-                    matches!(
-                        point.maybe_specific(),
-                        Some(Specific::Function | Specific::DecoratedFunction),
-                    ) || matches!(node_ref.complex(), Some(ComplexPoint::TypeInstance(_))),
-                    "{:?}",
-                    point
-                );
-                */
-            }
         }
         Self { node_ref, class }
     }
@@ -465,13 +452,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
-    pub fn as_inferred_from_name(&self, i_s: &InferenceState) -> Inferred {
-        match self.node_ref.point().maybe_specific() {
-            Some(Specific::DecoratedFunction) => self.decorated(i_s),
-            _ => Inferred::from_saved_node_ref(self.node_ref),
-        }
-    }
-
     pub fn cache_func(&self, i_s: &InferenceState) {
         self.cache_func_with_name_def(
             i_s,
@@ -532,30 +512,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 .iter()
                 .next()
                 .is_some_and(|p| p.annotation().is_some());
-        if self.node_ref.point().maybe_specific() == Some(Specific::DecoratedFunction) {
-            // Ensure it's cached
-            let inf = self.decorated(i_s);
-            if inf.maybe_saved_specific(i_s.db) == Some(Specific::OverloadUnreachable) {
-                let first =
-                    first_defined_name(self.node_ref.file, self.node().name().index()).unwrap();
-                let original_func = NodeRef::new(self.node_ref.file, first - NAME_TO_FUNCTION_DIFF);
-                let point = original_func.point();
-                if point.calculated() && point.maybe_specific() == Some(Specific::DecoratedFunction)
-                {
-                    return Function::new(original_func, self.class).kind(i_s);
-                } else {
-                    todo!("does this ever really happen?")
-                }
-            }
-            match self.node_ref.complex() {
-                Some(ComplexPoint::FunctionOverload(o)) => o.kind(),
-                Some(ComplexPoint::TypeInstance(Type::Callable(c))) => c.kind,
-                _ => FunctionKind::Function {
-                    had_first_self_or_class_annotation: had_first_annotation,
-                },
-            }
-        } else if let Some(ComplexPoint::TypeInstance(Type::Callable(c))) = self.node_ref.complex()
-        {
+        if let Some(ComplexPoint::TypeInstance(Type::Callable(c))) = self.node_ref.complex() {
             c.kind
         } else {
             if self.node().maybe_decorated().is_some() {
