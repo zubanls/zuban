@@ -471,7 +471,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
-    pub fn decorated(&self, i_s: &InferenceState<'db, '_>) -> Inferred {
+    fn decorated(&self, i_s: &InferenceState<'db, '_>) -> Inferred {
         if self.node_ref.point().calculated() {
             return self
                 .node_ref

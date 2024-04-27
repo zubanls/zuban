@@ -417,7 +417,6 @@ fn calculate_field_arg(
                         None,
                     );
                     func.cache_func(i_s);
-                    func.decorated(&InferenceState::new(i_s.db));
 
                     let left = file.inference(i_s).infer_primary_or_atom(primary.first());
                     if left.maybe_saved_link() == Some(i_s.db.python_state.dataclasses_field_link())

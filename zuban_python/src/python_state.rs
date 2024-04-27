@@ -817,7 +817,7 @@ impl PythonState {
         };
         let func = Function::new(NodeRef::new(self.mypy_extensions(), node_index), None);
         func.ensure_cached_func(&InferenceState::new(db));
-        func.decorated(&InferenceState::new(db))
+        Inferred::from_saved_node_ref(func.node_ref)
     }
 
     fn literal_node_ref(&self, literal_kind: &LiteralKind) -> NodeRef {
