@@ -668,6 +668,7 @@ fn maybe_param_spec(
             todo!()
         }
 
+        let mut default = None;
         for arg in iterator {
             match arg.kind {
                 ArgKind::Keyword(KeywordArg {
@@ -676,12 +677,12 @@ fn maybe_param_spec(
                     expression,
                     ..
                 }) if key == "default" => {
-                    if let Some(t) = node_ref
+                    if let Some(c) = node_ref
                         .file
                         .inference(i_s)
-                        .compute_type_var_constraint(expression)
+                        .compute_param_spec_default(expression)
                     {
-                        todo!()
+                        default = Some(c)
                     } else {
                         todo!()
                     }
@@ -709,6 +710,7 @@ fn maybe_param_spec(
                 file: name_node.file_index(),
                 node_index: py_string.index(),
             },
+            default,
         })))
     } else {
         args.add_issue(

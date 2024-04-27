@@ -566,6 +566,7 @@ impl PartialEq for TypeVarTuple {
 #[derive(Debug, Clone)]
 pub struct ParamSpec {
     pub name_string: PointLink,
+    pub default: Option<CallableParams>,
 }
 
 impl ParamSpec {

@@ -2181,7 +2181,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         }
     }
 
-    fn check_param(&mut self, t: TypeContent, index: NodeIndex) -> CallableParam {
+    fn check_param(&mut self, t: TypeContent, from: NodeRef) -> CallableParam {
         let param_type = match t {
             TypeContent::SpecialType(SpecialType::CallableParam(p)) => return p,
             TypeContent::Unpacked(TypeOrUnpack::Type(Type::TypedDict(td))) => {
@@ -2197,12 +2197,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::SpecialType(SpecialType::Unpack) => {
                 ParamType::Star(StarParamType::ArbitraryLen(
                     // Creates an Any.
-                    self.as_type(t, NodeRef::new(self.inference.file, index)),
+                    self.as_type(t, from),
                 ))
             }
-            _ => {
-                ParamType::PositionalOnly(self.as_type(t, NodeRef::new(self.inference.file, index)))
-            }
+            _ => ParamType::PositionalOnly(self.as_type(t, from)),
         };
         CallableParam {
             type_: param_type,
@@ -2238,7 +2236,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     todo!()
                 }
             },
-            _ => self.check_param(t, index),
+            _ => self.check_param(t, NodeRef::new(self.inference.file, index)),
         };
         if let Some(previous) = params.last() {
             let prev_kind = previous.type_.param_kind();
@@ -2358,32 +2356,20 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let SliceOrSimple::Simple(n) = first else {
             todo!();
         };
-        let calc_params =
-            |slf: &mut Self| match slf.compute_slice_type_content(first) {
-                TypeContent::ParamSpec(p) => CallableParams::WithParamSpec(Rc::new([]), p),
-                TypeContent::SpecialType(SpecialType::Any) if from_class_generics => {
-                    CallableParams::Any(AnyCause::Explicit)
-                }
-                TypeContent::Unknown(cause) => CallableParams::Any(cause),
-                TypeContent::Concatenate(p) => p,
-                t if allow_aesthetic_class_simplification => CallableParams::Simple(Rc::new([
-                    slf.check_param(t, first.as_node_ref().node_index)
-                ])),
-                _ => {
-                    if from_class_generics {
-                        slf.add_issue(
-                            n.as_node_ref(),
-                            IssueKind::InvalidParamSpecGenerics {
-                                got: Box::from(n.named_expr.as_code()),
-                            },
-                        );
-                    } else {
-                        slf.add_issue(n.as_node_ref(), IssueKind::InvalidCallableParams);
-                    }
-                    CallableParams::Any(AnyCause::FromError)
-                }
-            };
-        match n.named_expr.expression().maybe_unpacked_atom() {
+        self.calculate_callable_params_for_expr(
+            n.named_expr.expression(),
+            from_class_generics,
+            allow_aesthetic_class_simplification,
+        )
+    }
+
+    fn calculate_callable_params_for_expr(
+        &mut self,
+        expr: Expression,
+        from_class_generics: bool,
+        allow_aesthetic_class_simplification: bool,
+    ) -> CallableParams {
+        match expr.maybe_unpacked_atom() {
             Some(AtomContent::List(list)) => {
                 let mut params = vec![];
                 for i in list.unpack() {
@@ -2423,7 +2409,31 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 CallableParams::Simple(Rc::from(params))
             }
             Some(AtomContent::Ellipsis) => CallableParams::Any(AnyCause::Explicit),
-            _ => calc_params(self),
+            _ => match self.compute_type(expr) {
+                TypeContent::ParamSpec(p) => CallableParams::WithParamSpec(Rc::new([]), p),
+                TypeContent::SpecialType(SpecialType::Any) if from_class_generics => {
+                    CallableParams::Any(AnyCause::Explicit)
+                }
+                TypeContent::Unknown(cause) => CallableParams::Any(cause),
+                TypeContent::Concatenate(p) => p,
+                t if allow_aesthetic_class_simplification => CallableParams::Simple(Rc::new([
+                    self.check_param(t, NodeRef::new(self.inference.file, expr.index())),
+                ])),
+                _ => {
+                    let node_ref = NodeRef::new(self.inference.file, expr.index());
+                    if from_class_generics {
+                        self.add_issue(
+                            node_ref,
+                            IssueKind::InvalidParamSpecGenerics {
+                                got: Box::from(expr.as_code()),
+                            },
+                        );
+                    } else {
+                        self.add_issue(node_ref, IssueKind::InvalidCallableParams);
+                    }
+                    CallableParams::Any(AnyCause::FromError)
+                }
+            },
         }
     }
 
@@ -3993,7 +4003,11 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         member
     }
 
-    pub fn compute_type_var_constraint(&mut self, expr: Expression) -> Option<Type> {
+    fn within_type_var_like_definition<T>(
+        &mut self,
+        node_ref: NodeRef,
+        callback: impl FnOnce(TypeComputation) -> T,
+    ) -> T {
         let mut on_type_var =
             |i_s: &InferenceState, _: &_, type_var_like: TypeVarLike, current_callable| {
                 if let Some(class) = i_s.current_class() {
@@ -4007,30 +4021,42 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 }
                 todo!()
             };
-        let node_ref = NodeRef::new(self.file, expr.index());
-        let mut comp = TypeComputation::new(
+        let comp = TypeComputation::new(
             self,
             node_ref.as_link(),
             &mut on_type_var,
             TypeComputationOrigin::Constraint,
         );
-        let t = comp.compute_type(expr);
-        match t {
-            TypeContent::InvalidVariable(invalid @ InvalidVariableType::Literal(_)) => {
-                invalid.add_issue(
-                    comp.inference.i_s.db,
-                    |t| node_ref.add_issue(comp.inference.i_s, t),
-                    comp.origin,
-                );
-                None
+        callback(comp)
+    }
+
+    pub fn compute_type_var_constraint(&mut self, expr: Expression) -> Option<Type> {
+        let node_ref = NodeRef::new(self.file, expr.index());
+        self.within_type_var_like_definition(node_ref, |mut comp| {
+            match comp.compute_type(expr) {
+                TypeContent::InvalidVariable(invalid @ InvalidVariableType::Literal(_)) => {
+                    invalid.add_issue(
+                        comp.inference.i_s.db,
+                        |t| node_ref.add_issue(comp.inference.i_s, t),
+                        comp.origin,
+                    );
+                    None
+                }
+                TypeContent::InvalidVariable(_) => {
+                    // TODO this is a bit weird and should probably generate other errors
+                    node_ref.add_issue(comp.inference.i_s, IssueKind::TypeVarTypeExpected);
+                    None
+                }
+                t => Some(comp.as_type(t, node_ref)),
             }
-            TypeContent::InvalidVariable(_) => {
-                // TODO this is a bit weird and should probably generate other errors
-                node_ref.add_issue(comp.inference.i_s, IssueKind::TypeVarTypeExpected);
-                None
-            }
-            _ => Some(comp.as_type(t, node_ref)),
-        }
+        })
+    }
+
+    pub fn compute_param_spec_default(&mut self, expr: Expression) -> Option<CallableParams> {
+        let node_ref = NodeRef::new(self.file, expr.index());
+        self.within_type_var_like_definition(node_ref, |mut comp| {
+            Some(comp.calculate_callable_params_for_expr(expr, false, false))
+        })
     }
 
     pub fn compute_new_type_constraint(&mut self, expr: Expression) -> Type {
