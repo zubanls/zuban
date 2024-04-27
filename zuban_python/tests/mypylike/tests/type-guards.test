@@ -1,0 +1,27 @@
+[case check_guard_type_errors]
+from typing_extensions import TypeGuard
+
+def foo(a: object, b: int) -> TypeGuard[bytes]: pass
+
+a = object()
+
+if foo(a, ""):  # E: Argument 2 to "foo" has incompatible type "str"; expected "int"
+    reveal_type(a)  # N: Revealed type is "bytes"
+
+[case check_guard_type_errors_with_overloads]
+from typing import overload, Union
+from typing_extensions import TypeGuard
+
+@overload
+def foo(a: object, b: int) -> TypeGuard[bytes]: pass
+@overload
+def foo(a: object, b: bytes) -> TypeGuard[bytes]: pass
+def foo(a, b): ...
+
+a = object()
+
+if foo(a, ""):  # E: No overload variant of "foo" matches argument types "object", "str" \
+                # N: Possible overload variants: \
+                # N:     def foo(a: object, b: int) -> TypeGuard[bytes] \
+                # N:     def foo(a: object, b: bytes) -> TypeGuard[bytes]
+    reveal_type(a)  # N: Revealed type is "object"

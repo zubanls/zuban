@@ -31,7 +31,7 @@ use crate::{
     type_helpers::{Callable, Class, Function},
 };
 
-use super::{first_defined_name, inference::Inference, PythonFile};
+use super::{first_defined_name, inference::Inference, on_argument_type_error, PythonFile};
 
 type Entries = Vec<Entry>;
 type ParentUnions = Vec<(FlowKey, UnionType)>;
@@ -1627,10 +1627,13 @@ impl Inference<'_, '_, '_> {
         might_have_guard: CallableLike,
     ) -> Option<FramesWithParentUnions> {
         match &might_have_guard {
-            CallableLike::Callable(c) => self.check_type_guard_callable(args_details, args, c),
+            CallableLike::Callable(c) => {
+                self.check_type_guard_callable(args_details, args, c, false)
+            }
             CallableLike::Overload(o) => {
                 for c in o.iter_functions() {
-                    if let y @ Some(_) = self.check_type_guard_callable(args_details, args, c) {
+                    if let y @ Some(_) = self.check_type_guard_callable(args_details, args, c, true)
+                    {
                         return y;
                     }
                 }
@@ -1644,6 +1647,7 @@ impl Inference<'_, '_, '_> {
         args_details: ArgumentsDetails,
         args: Arguments,
         callable: &CallableContent,
+        from_overload: bool,
     ) -> Option<FramesWithParentUnions> {
         let guard = callable.guard.as_ref()?;
         let mut find_arg = || {
@@ -1677,7 +1681,13 @@ impl Inference<'_, '_, '_> {
                 &SimpleArgs::new(*self.i_s, self.file, args.index(), args_details),
                 false,
                 &guard.type_,
-                OnTypeError::new(&|_, _, _, _| had_error.set(true)),
+                OnTypeError::new(&|i_s, error_text, arg, types| {
+                    if from_overload {
+                        had_error.set(true)
+                    } else {
+                        on_argument_type_error(i_s, error_text, arg, types)
+                    }
+                }),
                 &mut ResultContext::Unknown,
             );
         if had_error.get() {
