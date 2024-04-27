@@ -411,6 +411,8 @@ updateDataclassTransformParameterViaParentClass
 updateBaseClassToUseDataclassTransform
 frozenInheritanceViaDefault
 testDataclassReplaceOptional
+# dataclass weird replace case
+testReplaceIsDataclass
 
 # namedtuple unsure if we refactor it
 testNamedTupleWithBoolNarrowsToBool
@@ -1352,10 +1354,6 @@ testInferredTypeSubTypeOfReturnType
 testDisallowAnyGenericsForAliasesInRuntimeContext
 testGenericTypedDictAlias
 
-# TypeGuard / TypeIs
-testTypeGuardErroneousDefinitionFails
-testTypeIsErroneousDefinitionFails
-testReplaceIsDataclass
 # TypeIs "Narrowed type "int" is not a subtype of input type "str""
 testTypeIsMustBeSubtypeFunctions
 testTypeIsMustBeSubtypeMethods

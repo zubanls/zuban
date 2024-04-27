@@ -247,6 +247,37 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             .add_to_node_index(NAME_TO_FUNCTION_DIFF as i64 + 1)
     }
 
+    fn avoid_invalid_typeguard_signatures(
+        &self,
+        i_s: &InferenceState,
+        callable: &mut CallableContent,
+    ) {
+        if let Some(guard) = callable.guard.as_ref() {
+            let mut param_iterator = self.node().params().iter();
+            if self.class.is_some() && !matches!(callable.kind, FunctionKind::Staticmethod) {
+                param_iterator.next();
+            }
+            if !param_iterator.next().is_some_and(|p| {
+                matches!(
+                    p.kind(),
+                    ParamKind::PositionalOnly | ParamKind::PositionalOrKeyword
+                )
+            }) {
+                self.add_issue_for_declaration(
+                    i_s,
+                    IssueKind::TypeGuardFunctionsMustHaveArgument {
+                        name: if guard.from_type_is {
+                            "\"TypeIs\""
+                        } else {
+                            "TypeGuard"
+                        },
+                    },
+                );
+                callable.guard = None;
+            }
+        }
+    }
+
     pub fn ensure_cached_func(&self, i_s: &InferenceState<'db, '_>) {
         if self.node_ref.point().calculated() {
             return;
@@ -265,9 +296,12 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             }
             .save_redirect(i_s, self.node_ref.file, self.node_ref.node_index);
         } else {
-            if let Some(callable_t) = maybe_computed {
-                self.node_ref
-                    .insert_complex(ComplexPoint::TypeInstance(callable_t), Locality::Todo);
+            if let Some(mut callable_t) = maybe_computed {
+                self.avoid_invalid_typeguard_signatures(i_s, &mut callable_t);
+                self.node_ref.insert_complex(
+                    ComplexPoint::TypeInstance(Type::Callable(Rc::new(callable_t))),
+                    Locality::Todo,
+                );
             } else {
                 self.node_ref
                     .set_point(Point::new_specific(Specific::Function, Locality::Todo));
@@ -275,12 +309,12 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
-    fn ensure_cached_type_vars(&self, i_s: &InferenceState<'db, '_>) -> Option<Type> {
+    fn ensure_cached_type_vars(&self, i_s: &InferenceState<'db, '_>) -> Option<CallableContent> {
         let type_var_reference = self.type_var_reference();
         if type_var_reference.point().calculated() {
             return None; // TODO this feels wrong, because below we only sometimes calculate the callable
         }
-        let (type_vars, mut type_guard, star_annotation) = self.cache_type_vars(i_s);
+        let (type_vars, type_guard, star_annotation) = self.cache_type_vars(i_s);
         match type_vars.len() {
             0 => type_var_reference.set_point(Point::new_node_analysis(Locality::Todo)),
             _ => type_var_reference
@@ -298,22 +332,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 needs_callable = true;
             }
         }
-        let func_node = self.node();
-        if let Some(guard) = type_guard.as_ref() {
-            if func_node.params().iter().next().is_none() {
-                self.add_issue_for_declaration(
-                    i_s,
-                    IssueKind::TypeGuardFunctionsMustHaveArgument {
-                        name: if guard.from_type_is {
-                            "\"TypeIs\""
-                        } else {
-                            "TypeGuard"
-                        },
-                    },
-                );
-                type_guard = None;
-            }
-        }
         if needs_callable || type_guard.is_some() {
             let options = AsCallableOptions {
                 first_param: FirstParamProperties::None,
@@ -324,7 +342,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             };
             let mut callable = self.as_callable_with_options(i_s, options);
             callable.guard = type_guard;
-            return Some(Type::Callable(Rc::new(callable)));
+            return Some(callable);
         }
         None
     }
@@ -529,7 +547,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         &self,
         i_s: &InferenceState<'db, '_>,
         decorated: Decorated,
-        base_t: Option<Type>,
+        base_t: Option<CallableContent>,
     ) -> Inferred {
         let Some(details) = self.calculate_decorated_function_details(i_s, decorated, base_t) else {
             return Inferred::new_any_from_error()
@@ -583,7 +601,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         &self,
         i_s: &InferenceState,
         decorated: Decorated,
-        base_t: Option<Type>,
+        base_t: Option<CallableContent>,
     ) -> Option<FunctionDetails> {
         let used_with_a_non_method = |name| {
             NodeRef::new(self.node_ref.file, decorated.index())
@@ -591,7 +609,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         };
 
         let mut inferred = Inferred::from_type(
-            base_t.unwrap_or_else(|| self.as_type(i_s, FirstParamProperties::None)),
+            base_t
+                .map(|c| Type::Callable(Rc::new(c)))
+                .unwrap_or_else(|| self.as_type(i_s, FirstParamProperties::None)),
         );
         let had_first_annotation = self.class.is_none()
             || self
@@ -700,6 +720,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             callable.name = Some(DbString::StringSlice(self.name_string_slice()));
             callable.class_name = self.class.map(|c| c.name_string_slice());
             callable.kind = kind;
+            self.avoid_invalid_typeguard_signatures(i_s, &mut callable);
             *inferred = Inferred::from_type(Type::Callable(Rc::new(callable)));
         };
         if i_s.db.project.flags.disallow_any_decorated {
