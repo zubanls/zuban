@@ -313,11 +313,6 @@ impl PythonState {
             s.typing_extensions(),
             s.mypy_extensions(),
         );
-        set_typing_inference(
-            &s.dataclasses_file(),
-            "dataclass",
-            Specific::DataclassesDataclass,
-        );
 
         let mypy_extensions = unsafe { &*s.mypy_extensions };
         s.mypy_extensions_arg_func =

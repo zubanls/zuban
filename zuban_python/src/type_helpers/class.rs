@@ -349,8 +349,8 @@ impl<'db: 'a, 'a> Class<'a> {
                 {
                     if inference
                         .infer_primary_or_atom(primary.first())
-                        .maybe_saved_specific(i_s.db)
-                        == Some(Specific::DataclassesDataclass)
+                        .maybe_saved_link()
+                        == Some(dataclass_link)
                     {
                         if let PrimaryContent::Execution(exec) = primary.second() {
                             let args =
@@ -367,7 +367,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     }
                 }
 
-                if inf.maybe_saved_specific(i_s.db) == Some(Specific::DataclassesDataclass) {
+                if inf.maybe_saved_link() == Some(dataclass_link) {
                     dataclass_options = Some(DataclassOptions::default());
                 }
             }
@@ -437,29 +437,11 @@ impl<'db: 'a, 'a> Class<'a> {
                     // TODO this branch should not be here!
                     continue;
                 }
-                let named_expr = decorator.named_expression();
-                if let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) =
-                    named_expr.expression().unpack()
-                {
-                    if self
-                        .node_ref
-                        .file
-                        .inference(i_s)
-                        .infer_primary_or_atom(primary.first())
-                        .maybe_saved_specific(i_s.db)
-                        == Some(Specific::DataclassesDataclass)
-                    {
-                        continue;
-                    }
-                }
                 let decorate = self
                     .node_ref
                     .file
                     .inference(i_s)
-                    .infer_named_expression(named_expr);
-                if decorate.maybe_saved_specific(i_s.db) == Some(Specific::DataclassesDataclass) {
-                    continue;
-                }
+                    .infer_named_expression(decorator.named_expression());
                 inferred = decorate.execute(
                     i_s,
                     &KnownArgs::new(
