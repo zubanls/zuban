@@ -538,6 +538,10 @@ impl TypeVar {
                 );
             }
         }
+        if let Some(default) = &self.default {
+            s += " = ";
+            s += &default.format(format_data);
+        }
         s
     }
 }
@@ -557,7 +561,17 @@ impl TypeVarTuple {
     }
 
     pub fn format(&self, format_data: &FormatData) -> String {
-        self.name(format_data.db).into()
+        if let Some(default) = &self.default {
+            format!(
+                "{} = Unpack[tuple[{}]]",
+                self.name(format_data.db),
+                default
+                    .format(format_data)
+                    .unwrap_or_else(|| "TODO format empty tuple".into())
+            )
+        } else {
+            self.name(format_data.db).into()
+        }
     }
 }
 
@@ -582,7 +596,15 @@ impl ParamSpec {
     }
 
     fn format(&self, format_data: &FormatData) -> String {
-        self.name(format_data.db).into()
+        if let Some(default) = &self.default {
+            format!(
+                "{} = [{}]",
+                self.name(format_data.db),
+                default.format(format_data, ParamsStyle::Unreachable)
+            )
+        } else {
+            self.name(format_data.db).into()
+        }
     }
 }
 
@@ -827,16 +849,26 @@ impl TypeVarLikeUsage {
 
     pub fn format_without_matcher(&self, db: &Database, params_style: ParamsStyle) -> Box<str> {
         match self {
-            Self::TypeVar(type_var_usage) => type_var_usage.type_var.name(db).into(),
-            Self::TypeVarTuple(t) => format!("Unpack[{}]", t.type_var_tuple.name(db)).into(),
-            Self::ParamSpec(p) => {
-                let name = p.param_spec.name(db);
-                match params_style {
-                    ParamsStyle::CallableParams => name.into(),
-                    ParamsStyle::CallableParamsInner => format!("**{}", name).into(),
-                    ParamsStyle::Unreachable => unreachable!(),
+            Self::TypeVar(usage) => {
+                let mut s = usage.type_var.name(db).to_owned();
+                if let Some(default) = &usage.type_var.default {
+                    s += " = ";
+                    s += &default.format(&FormatData::new_short(db));
                 }
+                s.into()
             }
+            Self::TypeVarTuple(t) => format!(
+                "Unpack[{}]",
+                t.type_var_tuple.format(&FormatData::new_short(db))
+            )
+            .into(),
+            Self::ParamSpec(p) => match params_style {
+                ParamsStyle::CallableParams => {
+                    p.param_spec.format(&&FormatData::new_short(db)).into()
+                }
+                ParamsStyle::CallableParamsInner => format!("**{}", p.param_spec.name(db)).into(),
+                ParamsStyle::Unreachable => unreachable!(),
+            },
         }
     }
 }

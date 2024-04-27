@@ -919,7 +919,6 @@ testUnreachableFlagWithGenerics
 testNarrowOnSelfInGeneric
 
 # TypeVar defaults
-testTypeVarDefaultsBasic
 testTypeVarDefaultsValid
 testTypeVarDefaultsInvalid
 testTypeVarDefaultsInvalid2
