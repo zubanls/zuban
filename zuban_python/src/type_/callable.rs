@@ -747,6 +747,7 @@ impl CallableContent {
             let self_type_var = Rc::new(TypeVar {
                 name_string: TypeVarName::Self_,
                 kind: TypeVarKind::Bound(bound),
+                default: None,
                 variance: Variance::Invariant,
             });
             self_type_var_usage = Some(TypeVarUsage::new(

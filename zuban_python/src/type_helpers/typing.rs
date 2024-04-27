@@ -328,6 +328,7 @@ fn maybe_type_var(
 
         let mut constraints = vec![];
         let mut bound = None;
+        let mut default = None;
         let mut covariant = false;
         let mut contravariant = false;
         for arg in iterator {
@@ -398,6 +399,17 @@ fn maybe_type_var(
                             return None;
                         }
                     }
+                    "default" => {
+                        if let Some(t) = node_ref
+                            .file
+                            .inference(i_s)
+                            .compute_type_var_constraint(expression)
+                        {
+                            default = Some(t)
+                        } else {
+                            todo!()
+                        }
+                    }
                     _ => {
                         node_ref.add_issue(
                             i_s,
@@ -434,6 +446,7 @@ fn maybe_type_var(
                 node_index: py_string.index(),
             }),
             kind,
+            default,
             variance: match (covariant, contravariant) {
                 (false, false) => Variance::Invariant,
                 (true, false) => Variance::Covariant,

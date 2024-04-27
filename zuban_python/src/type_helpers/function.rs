@@ -1080,6 +1080,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         name_string: TypeVarName::Self_,
                         kind: TypeVarKind::Bound(self.class.unwrap().as_type(i_s.db)),
                         variance: Variance::Invariant,
+                        default: None,
                     });
                     self_type_var_usage = Some(TypeVarUsage::new(
                         self_type_var.clone(),

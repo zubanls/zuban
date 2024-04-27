@@ -506,6 +506,7 @@ pub enum TypeVarKind {
 pub struct TypeVar {
     pub name_string: TypeVarName,
     pub kind: TypeVarKind,
+    pub default: Option<Type>,
     pub variance: Variance,
 }
 

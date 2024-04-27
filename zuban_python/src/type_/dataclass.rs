@@ -843,6 +843,7 @@ fn type_order_func(self_: Rc<Dataclass>, i_s: &InferenceState) -> LookupResult {
     let type_var = Rc::new(TypeVar {
         name_string: TypeVarName::Self_,
         kind: TypeVarKind::Unrestricted,
+        default: None,
         variance: Variance::Invariant,
     });
     let tv_usage = TypeVarUsage::new(type_var.clone(), self_.class.link, 0.into());
