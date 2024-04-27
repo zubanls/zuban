@@ -403,11 +403,12 @@ fn maybe_type_var(
                         if let Some(t) = node_ref
                             .file
                             .inference(i_s)
-                            .compute_type_var_constraint(expression)
+                            .compute_type_var_default(expression)
                         {
                             default = Some(t)
                         } else {
-                            todo!()
+                            node_ref.add_issue(i_s, IssueKind::TypeVarInvalidDefault);
+                            return None;
                         }
                     }
                     _ => {
@@ -560,7 +561,8 @@ fn maybe_type_var_tuple(
                         {
                             default = Some(type_args);
                         } else {
-                            todo!()
+                            node_ref.add_issue(i_s, IssueKind::TypeVarTupleInvalidDefault);
+                            return None;
                         }
                     }
                     _ => {
@@ -683,7 +685,8 @@ fn maybe_param_spec(
                     {
                         default = Some(c)
                     } else {
-                        todo!()
+                        node_ref.add_issue(i_s, IssueKind::ParamSpecInvalidDefault);
+                        return None;
                     }
                 }
                 ArgKind::Inferred { .. }

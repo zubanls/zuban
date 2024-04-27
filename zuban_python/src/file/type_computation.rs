@@ -2363,6 +2363,19 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             from_class_generics,
             allow_aesthetic_class_simplification,
         )
+        .unwrap_or_else(|| {
+            if from_class_generics {
+                self.add_issue(
+                    n.as_node_ref(),
+                    IssueKind::InvalidParamSpecGenerics {
+                        got: Box::from(n.named_expr.as_code()),
+                    },
+                );
+            } else {
+                self.add_issue(n.as_node_ref(), IssueKind::InvalidCallableParams);
+            }
+            CallableParams::Any(AnyCause::FromError)
+        })
     }
 
     fn calculate_callable_params_for_expr(
@@ -2370,8 +2383,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         expr: Expression,
         from_class_generics: bool,
         allow_aesthetic_class_simplification: bool,
-    ) -> CallableParams {
-        match expr.maybe_unpacked_atom() {
+    ) -> Option<CallableParams> {
+        Some(match expr.maybe_unpacked_atom() {
             Some(AtomContent::List(list)) => {
                 let mut params = vec![];
                 for i in list.unpack() {
@@ -2421,22 +2434,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 t if allow_aesthetic_class_simplification => CallableParams::Simple(Rc::new([
                     self.check_param(t, NodeRef::new(self.inference.file, expr.index())),
                 ])),
-                _ => {
-                    let node_ref = NodeRef::new(self.inference.file, expr.index());
-                    if from_class_generics {
-                        self.add_issue(
-                            node_ref,
-                            IssueKind::InvalidParamSpecGenerics {
-                                got: Box::from(expr.as_code()),
-                            },
-                        );
-                    } else {
-                        self.add_issue(node_ref, IssueKind::InvalidCallableParams);
-                    }
-                    CallableParams::Any(AnyCause::FromError)
-                }
+                _ => return None,
             },
-        }
+        })
     }
 
     fn compute_type_get_item_on_callable(
@@ -4054,10 +4054,18 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         })
     }
 
+    pub fn compute_type_var_default(&mut self, expr: Expression) -> Option<Type> {
+        let node_ref = NodeRef::new(self.file, expr.index());
+        self.within_type_var_like_definition(node_ref, |mut comp| {
+            let tc = comp.compute_type(expr);
+            Some(comp.as_type(tc, node_ref))
+        })
+    }
+
     pub fn compute_param_spec_default(&mut self, expr: Expression) -> Option<CallableParams> {
         let node_ref = NodeRef::new(self.file, expr.index());
         self.within_type_var_like_definition(node_ref, |mut comp| {
-            Some(comp.calculate_callable_params_for_expr(expr, false, false))
+            comp.calculate_callable_params_for_expr(expr, false, false)
         })
     }
 
@@ -4067,7 +4075,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             TypeContent::Unpacked(unpacked) => Some(TypeArgs::new(
                 comp.use_tuple_unpack(unpacked, node_ref).as_tuple_args(),
             )),
-            _ => todo!(),
+            _ => None,
         })
     }
 

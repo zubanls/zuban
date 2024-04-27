@@ -144,6 +144,9 @@ pub(crate) enum IssueKind {
     TypeVarLikeFirstArgMustBeString{ class_name: &'static str },
     TypeVarVarianceMustBeBool { argument: &'static str },
     TypeVarTypeExpected,
+    TypeVarInvalidDefault,
+    TypeVarTupleInvalidDefault,
+    ParamSpecInvalidDefault,
     TypeVarNameMismatch {
         class_name: &'static str,
         string_name: Box<str>,
@@ -991,6 +994,11 @@ impl<'db> Diagnostic<'db> {
                 "TypeVar \"{argument}\" may only be a literal bool"
             ),
             TypeVarTypeExpected => "Type expected".to_string(),
+            TypeVarInvalidDefault => "TypeVar \"default\" must be a type".to_string(),
+            TypeVarTupleInvalidDefault =>
+                "The default argument to TypeVarTuple must be an Unpacked tuple".to_string(),
+            ParamSpecInvalidDefault =>
+                "The default argument to ParamSpec must be a list expression, ellipsis, or a ParamSpec".to_string(),
             TypeVarNameMismatch{class_name, string_name, variable_name} => format!(
                 "String argument 1 \"{string_name}\" to {class_name}(...) does not \
                  match variable name \"{variable_name}\""
