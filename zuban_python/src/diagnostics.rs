@@ -224,6 +224,7 @@ pub(crate) enum IssueKind {
     ExceptStarIsNotAllowedToBeAnExceptionGroup,
 
     TypeGuardFunctionsMustHaveArgument { name: &'static str },
+    TypeIsNarrowedTypeIsNotSubtypeOfInput { narrowed_t: Box<str>, input_t: Box<str> },
 
     TupleIndexOutOfRange { variadic_max_len: Option<usize> },
     TupleSliceStepCannotBeZero,  // Not in mypy
@@ -408,6 +409,7 @@ impl IssueKind {
             AwaitOutsideFunction => "top-level-await",
             AwaitOutsideCoroutine => "await-not-async",
             NeedTypeAnnotation { .. } => "var-annotated",
+            TypeIsNarrowedTypeIsNotSubtypeOfInput { .. } => "narrowed-type-not-subtype",
 
             TypedDictNameMismatch { .. } | NamedTupleFirstArgumentMismatch { .. } => "name-match",
             TypedDictMissingKeys { .. }
@@ -1183,6 +1185,9 @@ impl<'db> Diagnostic<'db> {
 
             TypeGuardFunctionsMustHaveArgument { name } => format!(
                 "{name} functions must have a positional argument"
+            ),
+            TypeIsNarrowedTypeIsNotSubtypeOfInput { narrowed_t, input_t} => format!(
+                r#"Narrowed type "{narrowed_t}" is not a subtype of input type "{input_t}""#
             ),
 
             TupleIndexOutOfRange { variadic_max_len } => {

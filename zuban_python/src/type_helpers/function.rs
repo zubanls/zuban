@@ -257,7 +257,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             if self.class.is_some() && !matches!(callable.kind, FunctionKind::Staticmethod) {
                 param_iterator.next();
             }
-            if !param_iterator.next().is_some_and(|p| {
+            let first_param = param_iterator.next();
+            if !first_param.is_some_and(|p| {
                 matches!(
                     p.kind(),
                     ParamKind::PositionalOnly | ParamKind::PositionalOrKeyword
@@ -274,6 +275,27 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     },
                 );
                 callable.guard = None;
+                return;
+            }
+            if guard.from_type_is {
+                if let Some(param) = first_param {
+                    if let Some(annotation) = param.annotation() {
+                        let annotation_t = use_cached_param_annotation_type(
+                            i_s.db,
+                            self.node_ref.file,
+                            annotation,
+                        );
+                        if !guard.type_.is_simple_sub_type_of(i_s, &annotation_t).bool() {
+                            self.add_issue_for_declaration(
+                                i_s,
+                                IssueKind::TypeIsNarrowedTypeIsNotSubtypeOfInput {
+                                    narrowed_t: guard.type_.format_short(i_s.db),
+                                    input_t: annotation_t.format_short(i_s.db),
+                                },
+                            );
+                        }
+                    }
+                }
             }
         }
     }

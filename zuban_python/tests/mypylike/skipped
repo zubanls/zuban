@@ -1354,11 +1354,6 @@ testInferredTypeSubTypeOfReturnType
 testDisallowAnyGenericsForAliasesInRuntimeContext
 testGenericTypedDictAlias
 
-# TypeIs "Narrowed type "int" is not a subtype of input type "str""
-testTypeIsMustBeSubtypeFunctions
-testTypeIsMustBeSubtypeMethods
-testNarrowedTypeNotSubtype
-
 # Function local self attribute name binding
 testOptionalDescriptorsBinder
 testUnionDescriptorsBinder
