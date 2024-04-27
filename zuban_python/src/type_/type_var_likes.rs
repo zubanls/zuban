@@ -397,26 +397,9 @@ impl TypeVarLikes {
         format!(
             "[{}] ",
             join_with_commas(self.iter().map(|t| match t {
-                TypeVarLike::TypeVar(t) => {
-                    let mut s = t.name(format_data.db).to_owned();
-                    match &t.kind {
-                        TypeVarKind::Unrestricted => (),
-                        TypeVarKind::Bound(bound) => {
-                            s += &format!(" <: {}", bound.format(format_data));
-                        }
-                        TypeVarKind::Constraints(constraints) => {
-                            s += &format!(
-                                " in ({})",
-                                join_with_commas(
-                                    constraints.iter().map(|t| t.format(format_data).into())
-                                )
-                            );
-                        }
-                    }
-                    s
-                }
-                TypeVarLike::TypeVarTuple(tvt) => tvt.name(format_data.db).into(),
-                TypeVarLike::ParamSpec(s) => s.name(format_data.db).into(),
+                TypeVarLike::TypeVar(t) => t.format(format_data),
+                TypeVarLike::TypeVarTuple(tvt) => tvt.format(format_data),
+                TypeVarLike::ParamSpec(s) => s.format(format_data),
             }))
         )
     }
@@ -540,6 +523,23 @@ impl TypeVar {
             TypeVarName::Self_ => Box::from("Self"),
         }
     }
+
+    pub fn format(&self, format_data: &FormatData) -> String {
+        let mut s = self.name(format_data.db).to_owned();
+        match &self.kind {
+            TypeVarKind::Unrestricted => (),
+            TypeVarKind::Bound(bound) => {
+                s += &format!(" <: {}", bound.format(format_data));
+            }
+            TypeVarKind::Constraints(constraints) => {
+                s += &format!(
+                    " in ({})",
+                    join_with_commas(constraints.iter().map(|t| t.format(format_data).into()))
+                );
+            }
+        }
+        s
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -554,6 +554,10 @@ impl TypeVarTuple {
             .maybe_str()
             .unwrap()
             .content()
+    }
+
+    pub fn format(&self, format_data: &FormatData) -> String {
+        self.name(format_data.db).into()
     }
 }
 
@@ -575,6 +579,10 @@ impl ParamSpec {
             .maybe_str()
             .unwrap()
             .content()
+    }
+
+    fn format(&self, format_data: &FormatData) -> String {
+        self.name(format_data.db).into()
     }
 }
 
