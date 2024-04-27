@@ -1154,8 +1154,12 @@ impl<'db: 'slf, 'slf> Inferred {
                         result.map(|c| (callable_into_inferred(c), AttributeKind::Classmethod)),
                     );
                 }
-                // Static methods can be passed out without any remapping.
-                FunctionKind::Staticmethod => (),
+                FunctionKind::Staticmethod => {
+                    return Some(Some((
+                        Inferred::from_type(t.clone()),
+                        AttributeKind::Staticmethod,
+                    )))
+                }
             },
             Type::CustomBehavior(custom) => {
                 return Some(Some((

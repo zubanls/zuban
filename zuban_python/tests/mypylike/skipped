@@ -1352,8 +1352,6 @@ testInferredTypeSubTypeOfReturnType
 testDisallowAnyGenericsForAliasesInRuntimeContext
 testGenericTypedDictAlias
 
-testClassStaticMethodSubclassing
-testStaticAndClassMethodsInProtocols
 # TypeGuard
 testTypeGuardErroneousDefinitionFails
 testTypeGuardKwargFollowingThroughOverloaded
