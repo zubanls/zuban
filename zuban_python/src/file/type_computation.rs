@@ -618,7 +618,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     false,
                     Some(&|slf, tc| {
                         let wrapped = slf.wrap_in_unpack(tc, from);
-                        Type::Tuple(slf.use_tuple_unpack(wrapped, from).as_tuple())
+                        Type::Tuple(Tuple::new(
+                            slf.use_tuple_unpack(wrapped, from).as_tuple_args(),
+                        ))
                     }),
                 )
             }
@@ -4059,6 +4061,16 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         })
     }
 
+    pub fn compute_type_var_tuple_default(&mut self, expr: Expression) -> Option<TypeArgs> {
+        let node_ref = NodeRef::new(self.file, expr.index());
+        self.within_type_var_like_definition(node_ref, |mut comp| match comp.compute_type(expr) {
+            TypeContent::Unpacked(unpacked) => Some(TypeArgs::new(
+                comp.use_tuple_unpack(unpacked, node_ref).as_tuple_args(),
+            )),
+            _ => todo!(),
+        })
+    }
+
     pub fn compute_new_type_constraint(&mut self, expr: Expression) -> Type {
         let mut x = type_computation_for_variable_annotation;
         let node_ref = NodeRef::new(self.file, expr.index());
@@ -4170,8 +4182,8 @@ enum TypeCompTupleUnpack {
 }
 
 impl TypeCompTupleUnpack {
-    fn as_tuple(self) -> Rc<Tuple> {
-        Tuple::new(match self {
+    fn as_tuple_args(self) -> TupleArgs {
+        match self {
             Self::TypeVarTuple(tvt) => TupleArgs::WithUnpack(WithUnpack {
                 before: Rc::from([]),
                 unpack: TupleUnpack::TypeVarTuple(tvt),
@@ -4180,7 +4192,7 @@ impl TypeCompTupleUnpack {
             Self::ArbitraryLen(t) => TupleArgs::ArbitraryLen(t),
             Self::FixedLen(ts) => TupleArgs::FixedLen(ts.into()),
             Self::WithUnpack(with_unpack) => TupleArgs::WithUnpack(with_unpack),
-        })
+        }
     }
 }
 

@@ -545,7 +545,7 @@ impl TypeVar {
 #[derive(Debug, Clone)]
 pub struct TypeVarTuple {
     pub name_string: PointLink,
-    pub default: Option<Type>,
+    pub default: Option<TypeArgs>,
 }
 
 impl TypeVarTuple {

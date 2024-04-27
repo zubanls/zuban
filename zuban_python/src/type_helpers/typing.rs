@@ -534,7 +534,7 @@ fn maybe_type_var_tuple(
             todo!()
         }
 
-        let default = None;
+        let mut default = None;
         for arg in iterator {
             match arg.kind {
                 ArgKind::Positional(_) => {
@@ -553,13 +553,12 @@ fn maybe_type_var_tuple(
                     ..
                 }) => match key {
                     "default" => {
-                        if let Some(t) = node_ref
+                        if let Some(type_args) = node_ref
                             .file
                             .inference(i_s)
-                            .compute_type_var_constraint(expression)
+                            .compute_type_var_tuple_default(expression)
                         {
-                            //default = Some(t);
-                            todo!()
+                            default = Some(type_args);
                         } else {
                             todo!()
                         }
