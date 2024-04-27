@@ -23,14 +23,15 @@ use crate::{
     matching::{Generic, LookupKind, LookupResult, Match, Matcher, OnTypeError, ResultContext},
     node_ref::NodeRef,
     type_::{
-        simplified_union_from_iterators, AnyCause, CallableLike, CallableParams, ClassGenerics,
-        DbString, EnumMember, GenericItem, Literal, LiteralKind, NamedTuple, NeverCause,
-        StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarKind, UnionType, WithUnpack,
+        simplified_union_from_iterators, AnyCause, CallableContent, CallableLike, CallableParams,
+        ClassGenerics, DbString, EnumMember, GenericItem, Literal, LiteralKind, NamedTuple,
+        NeverCause, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarKind, UnionType,
+        WithUnpack,
     },
     type_helpers::{Callable, Class, Function},
 };
 
-use super::{first_defined_name, inference::Inference, on_argument_type_error, PythonFile};
+use super::{first_defined_name, inference::Inference, PythonFile};
 
 type Entries = Vec<Entry>;
 type ParentUnions = Vec<(FlowKey, UnionType)>;
@@ -1625,10 +1626,25 @@ impl Inference<'_, '_, '_> {
         args: Arguments,
         might_have_guard: CallableLike,
     ) -> Option<FramesWithParentUnions> {
-        let callable = match &might_have_guard {
-            CallableLike::Callable(c) => c,
-            CallableLike::Overload(o) => todo!(),
-        };
+        match &might_have_guard {
+            CallableLike::Callable(c) => self.check_type_guard_callable(args_details, args, c),
+            CallableLike::Overload(o) => {
+                for c in o.iter_functions() {
+                    if let y @ Some(_) = self.check_type_guard_callable(args_details, args, c) {
+                        return y;
+                    }
+                }
+                None
+            }
+        }
+    }
+
+    fn check_type_guard_callable(
+        &mut self,
+        args_details: ArgumentsDetails,
+        args: Arguments,
+        callable: &CallableContent,
+    ) -> Option<FramesWithParentUnions> {
         let guard = callable.guard.as_ref()?;
         let mut find_arg = || {
             let CallableParams::Simple(c_params) = &callable.params else {
@@ -1652,16 +1668,21 @@ impl Inference<'_, '_, '_> {
         };
 
         let infos = find_arg()?;
+        let key = infos.key?;
+
+        let had_error = Cell::new(false);
         let resolved_guard_t = Callable::new(callable, self.i_s.current_class().copied())
             .execute_for_custom_return_type(
                 self.i_s,
                 &SimpleArgs::new(*self.i_s, self.file, args.index(), args_details),
                 false,
                 &guard.type_,
-                OnTypeError::new(&on_argument_type_error),
+                OnTypeError::new(&|_, _, _, _| had_error.set(true)),
                 &mut ResultContext::Unknown,
             );
-        let key = infos.key?;
+        if had_error.get() {
+            return None;
+        }
         let resolved_guard_t = resolved_guard_t.as_cow_type(self.i_s);
         Some(FramesWithParentUnions {
             falsey: if guard.from_type_is {

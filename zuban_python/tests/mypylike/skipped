@@ -1352,13 +1352,10 @@ testInferredTypeSubTypeOfReturnType
 testDisallowAnyGenericsForAliasesInRuntimeContext
 testGenericTypedDictAlias
 
-# TypeGuard
+# TypeGuard / TypeIs
 testTypeGuardErroneousDefinitionFails
-testTypeGuardKwargFollowingThroughOverloaded
-testReplaceIsDataclass
-# TypeIs
 testTypeIsErroneousDefinitionFails
-testTypeIsKwargFollowingThroughOverloaded
+testReplaceIsDataclass
 # TypeIs "Narrowed type "int" is not a subtype of input type "str""
 testTypeIsMustBeSubtypeFunctions
 testTypeIsMustBeSubtypeMethods
