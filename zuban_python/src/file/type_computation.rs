@@ -2132,7 +2132,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             .iter()
             .filter(|tvl| tvl.has_default())
             .count();
+        let mut expected_minimum = None;
         let mismatch = if default_count > 0 && !has_type_var_tuple {
+            expected_minimum = Some(expected - has_type_var_tuple as usize - default_count);
             !((expected - default_count) <= given && given <= expected)
         } else {
             given != expected
@@ -2143,6 +2145,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 GenericCounts {
                     given,
                     expected: expected - has_type_var_tuple as usize,
+                    expected_minimum,
                     at_least_expected: has_type_var_tuple,
                 },
             );
@@ -4856,6 +4859,7 @@ pub struct TypeCommentDetails<'db> {
 #[derive(Debug)]
 pub struct GenericCounts {
     pub expected: usize,
+    pub expected_minimum: Option<usize>,
     pub given: usize,
     pub at_least_expected: bool,
 }

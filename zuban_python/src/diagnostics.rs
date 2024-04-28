@@ -682,6 +682,12 @@ impl<'db> Diagnostic<'db> {
                         counts.expected,
                         counts.given,
                     )
+                } else if let Some(expected_minimum) = counts.expected_minimum {
+                    format!(
+                        "{class:?} expects between {expected_minimum} and {} type arguments, but {} given",
+                        counts.expected,
+                        counts.given,
+                    )
                 } else {
                     match counts.expected {
                         0 => format!("{class:?} expects no type arguments, but {} given", counts.given),
