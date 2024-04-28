@@ -696,16 +696,26 @@ impl<'db> Diagnostic<'db> {
                     }
                 }
             }
-            TypeAliasArgumentIssue{counts} => format!(
-                "Bad number of arguments for type alias, expected {}{}, given {}",
-                if counts.at_least_expected {
-                    "at least "
+            TypeAliasArgumentIssue{counts} => {
+                if let Some(expected_minimum) = counts.expected_minimum {
+                    format!(
+                        "Bad number of arguments for type alias, expected between {expected_minimum} and {}, given {}",
+                        counts.expected,
+                        counts.given,
+                    )
                 } else {
-                    ""
-                },
-                counts.expected,
-                counts.given,
-            ),
+                    format!(
+                        "Bad number of arguments for type alias, expected {}{}, given {}",
+                        if counts.at_least_expected {
+                            "at least "
+                        } else {
+                            ""
+                        },
+                        counts.expected,
+                        counts.given,
+                    )
+                }
+            }
             ModuleNotFound{module_name} => format!(
                 "Cannot find implementation or library stub for module named {module_name:?}",
             ),

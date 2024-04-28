@@ -992,7 +992,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 self.add_module_issue(node_ref, &n.qualified_name());
             }
             TypeContent::TypeAlias(a) => {
-                if db.project.flags.disallow_any_generics && !a.type_vars.is_empty() {
+                if db.project.flags.disallow_any_generics && a.type_vars.contains_non_default() {
                     self.add_issue(
                         node_ref,
                         IssueKind::MissingTypeParameters {
@@ -2130,14 +2130,18 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         }
         let default_count = type_var_likes
             .iter()
-            .filter(|tvl| tvl.has_default())
+            .filter(|tvl| tvl.has_default() && !matches!(tvl, TypeVarLike::TypeVarTuple(_)))
             .count();
         let mut expected_minimum = None;
-        let mismatch = if default_count > 0 && !has_type_var_tuple {
-            expected_minimum = Some(expected - has_type_var_tuple as usize - default_count);
-            !((expected - default_count) <= given && given <= expected)
+        let mismatch = if has_type_var_tuple {
+            given != expected //given >= expected - default_count
         } else {
-            given != expected
+            if default_count > 0 {
+                expected_minimum = Some(expected - has_type_var_tuple as usize - default_count);
+                !((expected - default_count) <= given && given <= expected)
+            } else {
+                given != expected
+            }
         };
         if mismatch {
             on_count_mismatch(
