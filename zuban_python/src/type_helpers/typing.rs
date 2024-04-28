@@ -441,6 +441,28 @@ fn maybe_type_var(
         } else {
             TypeVarKind::Unrestricted
         };
+        if let Some(default) = &default {
+            match &kind {
+                TypeVarKind::Bound(bound) => {
+                    if !default.is_simple_sub_type_of(i_s, bound).bool() {
+                        args.add_issue(i_s, IssueKind::TypeVarDefaultMustBeASubtypeOfBound);
+                        return None;
+                    }
+                }
+                TypeVarKind::Constraints(constraints) => {
+                    for constraint in constraints.iter() {
+                        if !default.is_simple_sub_type_of(i_s, constraint).bool() {
+                            args.add_issue(
+                                i_s,
+                                IssueKind::TypeVarDefaultMustBeASubtypeOfConstraints,
+                            );
+                            return None;
+                        }
+                    }
+                }
+                TypeVarKind::Unrestricted => (),
+            }
+        }
         Some(TypeVarLike::TypeVar(Rc::new(TypeVar {
             name_string: TypeVarName::PointLink(PointLink {
                 file: name_node.file_index(),

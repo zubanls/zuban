@@ -920,7 +920,6 @@ testNarrowOnSelfInGeneric
 
 # TypeVar defaults
 testTypeVarDefaultsValid
-testTypeVarDefaultsInvalid2
 testTypeVarDefaultsInvalid3
 testTypeVarDefaultsFunctions
 testTypeVarDefaultsClass1
