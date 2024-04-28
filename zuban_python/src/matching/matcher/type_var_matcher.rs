@@ -119,14 +119,18 @@ impl CalculatingTypeArg {
                     TypeVarLike::TypeVar(_) => {
                         type_var_like.as_never_generic_item(NeverCause::Inference)
                     }
-                    // TODO TypeVarTuple: this feels wrong, should maybe be never?
-                    TypeVarLike::TypeVarTuple(_) => {
-                        GenericItem::TypeArgs(TypeArgs::new_fixed_length(Rc::new([])))
-                    }
-                    // TODO ParamSpec: this feels wrong, should maybe be never?
-                    TypeVarLike::ParamSpec(_) => {
-                        GenericItem::ParamSpecArg(ParamSpecArg::new_any(AnyCause::Todo))
-                    }
+                    TypeVarLike::TypeVarTuple(tvt) => match &tvt.default {
+                        Some(default) => GenericItem::TypeArgs(default.clone()),
+                        // TODO TypeVarTuple: this feels wrong, should maybe be never?
+                        None => GenericItem::TypeArgs(TypeArgs::new_fixed_length(Rc::new([]))),
+                    },
+                    TypeVarLike::ParamSpec(param_spec) => match &param_spec.default {
+                        Some(default) => {
+                            GenericItem::ParamSpecArg(ParamSpecArg::new(default.clone(), None))
+                        }
+                        // TODO ParamSpec: this feels wrong, should maybe be never?
+                        None => GenericItem::ParamSpecArg(ParamSpecArg::new_any(AnyCause::Todo)),
+                    },
                 }
             }
         })

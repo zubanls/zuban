@@ -1,4 +1,4 @@
-use std::{borrow::Cow, rc::Rc};
+use std::{borrow::Cow, cell::Cell, rc::Rc};
 
 use parsa_python_ast::{SliceType as ASTSliceType, *};
 
@@ -2093,14 +2093,21 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         generics.insert(i - 1, generic_item);
                     }
                     given += 1;
+                    let args = type_args.as_type_arguments(
+                        self,
+                        type_var_likes.len() == 1 && slice_type.iter().count() == 1,
+                    );
                     generics.insert(
                         i,
-                        GenericItem::TypeArgs(TypeArgs {
-                            args: type_args.as_type_arguments(
-                                self,
-                                type_var_likes.len() == 1 && slice_type.iter().count() == 1,
-                            ),
-                        }),
+                        GenericItem::TypeArgs(
+                            if let Some(default) =
+                                tvt.default.as_ref().filter(|_| args.empty_not_explicit)
+                            {
+                                default.clone()
+                            } else {
+                                TypeArgs { args: args.args }
+                            },
+                        ),
                     );
                     break;
                 }
@@ -2176,7 +2183,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         }
         TypeContent::Type(Type::Tuple(Tuple::new(
             TypeArgIterator::new(slice_type.iter())
-                .as_type_arguments(self, slice_type.iter().count() == 1),
+                .as_type_arguments(self, slice_type.iter().count() == 1)
+                .args,
         )))
     }
 
@@ -4387,11 +4395,12 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
         &mut self,
         type_computation: &mut TypeComputation,
         allow_empty_tuple: bool,
-    ) -> TupleArgs {
+    ) -> TupleArgsDetails {
         let mut before = vec![];
         let mut after = vec![];
         let mut unpack = None;
 
+        let empty_not_explicit = Cell::new(true);
         let add_unpack = |type_computation: &mut TypeComputation,
                           from,
                           u,
@@ -4416,6 +4425,7 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
             } else {
                 *unpack = Some(new_unpack);
             }
+            empty_not_explicit.set(false);
         };
         if let Some((from, current_unpack)) = self.current_unpack.take() {
             add_unpack(
@@ -4428,6 +4438,7 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
             )
         }
         for s in self.slices.by_ref() {
+            empty_not_explicit.set(false);
             if let Some(already_analyzed) = self.reverse_already_analyzed {
                 if already_analyzed == s.as_node_ref() {
                     break;
@@ -4470,19 +4481,22 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
                 &mut after,
             )
         }
-        if let Some(unpack) = unpack {
-            match unpack {
-                TupleUnpack::ArbitraryLen(t) if before.is_empty() && after.is_empty() => {
-                    TupleArgs::ArbitraryLen(Box::new(t))
+        TupleArgsDetails {
+            empty_not_explicit: empty_not_explicit.get(),
+            args: if let Some(unpack) = unpack {
+                match unpack {
+                    TupleUnpack::ArbitraryLen(t) if before.is_empty() && after.is_empty() => {
+                        TupleArgs::ArbitraryLen(Box::new(t))
+                    }
+                    _ => TupleArgs::WithUnpack(WithUnpack {
+                        before: before.into(),
+                        unpack,
+                        after: after.into(),
+                    }),
                 }
-                _ => TupleArgs::WithUnpack(WithUnpack {
-                    before: before.into(),
-                    unpack,
-                    after: after.into(),
-                }),
-            }
-        } else {
-            TupleArgs::FixedLen(before.into())
+            } else {
+                TupleArgs::FixedLen(before.into())
+            },
         }
     }
 }
@@ -4856,6 +4870,11 @@ pub fn maybe_saved_annotation(node_ref: NodeRef) -> Option<&Type> {
         return Some(t);
     }
     None
+}
+
+struct TupleArgsDetails {
+    args: TupleArgs,
+    empty_not_explicit: bool, // Explicit would be something like Unpack[Tuple[()]]
 }
 
 pub struct TypeCommentDetails<'db> {
