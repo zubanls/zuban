@@ -361,6 +361,10 @@ impl TypeVarLikes {
         self.0.is_empty()
     }
 
+    pub fn contains_non_default(&self) -> bool {
+        self.iter().any(|tv| !tv.has_default())
+    }
+
     pub fn find(
         &self,
         type_var_like: TypeVarLike,
@@ -429,6 +433,14 @@ impl TypeVarLike {
         }
     }
 
+    pub fn has_default(&self) -> bool {
+        match self {
+            TypeVarLike::TypeVar(tv) => tv.default.is_some(),
+            TypeVarLike::TypeVarTuple(tvt) => tvt.default.is_some(),
+            TypeVarLike::ParamSpec(param_spec) => param_spec.default.is_some(),
+        }
+    }
+
     pub fn as_type_var_like_usage(
         &self,
         index: TypeVarIndex,
@@ -451,13 +463,22 @@ impl TypeVarLike {
 
     pub fn as_any_generic_item(&self) -> GenericItem {
         match self {
-            TypeVarLike::TypeVar(_) => GenericItem::TypeArg(Type::Any(AnyCause::Todo)),
-            TypeVarLike::TypeVarTuple(_) => {
-                GenericItem::TypeArgs(TypeArgs::new_arbitrary_length(Type::Any(AnyCause::Todo)))
-            }
-            TypeVarLike::ParamSpec(_) => {
-                GenericItem::ParamSpecArg(ParamSpecArg::new_any(AnyCause::Todo))
-            }
+            TypeVarLike::TypeVar(tv) => match &tv.default {
+                Some(default) => GenericItem::TypeArg(default.clone()),
+                None => GenericItem::TypeArg(Type::Any(AnyCause::Todo)),
+            },
+            TypeVarLike::TypeVarTuple(tvt) => match &tvt.default {
+                Some(default) => GenericItem::TypeArgs(default.clone()),
+                None => {
+                    GenericItem::TypeArgs(TypeArgs::new_arbitrary_length(Type::Any(AnyCause::Todo)))
+                }
+            },
+            TypeVarLike::ParamSpec(param_spec) => match &param_spec.default {
+                Some(default) => {
+                    GenericItem::ParamSpecArg(ParamSpecArg::new(default.clone(), None))
+                }
+                None => GenericItem::ParamSpecArg(ParamSpecArg::new_any(AnyCause::Todo)),
+            },
         }
     }
 
