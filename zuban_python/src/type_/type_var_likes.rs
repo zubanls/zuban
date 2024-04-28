@@ -484,10 +484,14 @@ impl TypeVarLike {
 
     pub fn as_never_generic_item(&self, cause: NeverCause) -> GenericItem {
         match self {
-            TypeVarLike::TypeVar(_) => GenericItem::TypeArg(Type::Never(cause)),
-            TypeVarLike::TypeVarTuple(_) => {
-                GenericItem::TypeArgs(TypeArgs::new_arbitrary_length(Type::Never(cause)))
-            }
+            TypeVarLike::TypeVar(tv) => match &tv.default {
+                Some(default) => GenericItem::TypeArg(default.clone()),
+                None => GenericItem::TypeArg(Type::Never(cause)),
+            },
+            TypeVarLike::TypeVarTuple(tvt) => match &tvt.default {
+                Some(default) => GenericItem::TypeArgs(default.clone()),
+                None => GenericItem::TypeArgs(TypeArgs::new_arbitrary_length(Type::Never(cause))),
+            },
             TypeVarLike::ParamSpec(_) => todo!(),
         }
     }

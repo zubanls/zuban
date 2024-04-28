@@ -117,7 +117,7 @@ impl CalculatingTypeArg {
             } else {
                 match type_var_like {
                     TypeVarLike::TypeVar(_) => {
-                        GenericItem::TypeArg(Type::Never(NeverCause::Inference))
+                        type_var_like.as_never_generic_item(NeverCause::Inference)
                     }
                     // TODO TypeVarTuple: this feels wrong, should maybe be never?
                     TypeVarLike::TypeVarTuple(_) => {

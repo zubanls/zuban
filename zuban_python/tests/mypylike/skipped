@@ -922,7 +922,6 @@ testNarrowOnSelfInGeneric
 testTypeVarDefaultsValid
 testTypeVarDefaultsInvalid3
 testTypeVarDefaultsFunctions
-testTypeVarDefaultsClass1
 testTypeVarDefaultsClass2
 testTypeVarDefaultsClass3
 testTypeVarDefaultsClassRecursive1
@@ -1363,6 +1362,7 @@ testMultipassAndPartialTypes4
 testNewAnalyzerLessErrorsNeedAnnotationNested
 testUnderspecifiedInferenceResult
 testNeedAnnotationForCallable
+testTypeVarDefaultsClass1
 # "Perhaps you need a type annotation for "x"? Suggestion: "List[str | int]""
 testInferredTypeSubTypeOfReturnType
 # --disallow-any-generics
