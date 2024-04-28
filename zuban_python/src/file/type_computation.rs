@@ -2069,17 +2069,20 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         break;
                     }
                 }
-                TypeVarLike::TypeVarTuple(_) => {
+                TypeVarLike::TypeVarTuple(tvt) => {
                     let slice_type_len = slice_type.iter().count();
                     for (i, type_var_like) in type_var_iterator.by_ref().rev() {
                         let generic_item = match type_var_like {
                             TypeVarLike::TypeVar(type_var) => {
-                                let Some((from, t)) = type_args.next_type_argument_back(self) else {
+                                if let Some((from, t)) = type_args.next_type_argument_back(self) {
+                                    given += 1;
+                                    self.check_constraints(&type_var, from, |_| t.clone(), get_of);
+                                    GenericItem::TypeArg(t)
+                                } else if let Some(default) = &type_var.default {
+                                    GenericItem::TypeArg(default.clone())
+                                } else {
                                     break 'outer;
-                                } ;
-                                given += 1;
-                                self.check_constraints(&type_var, from, |_| t.clone(), get_of);
-                                GenericItem::TypeArg(t)
+                                }
                             }
                             TypeVarLike::ParamSpec(param_spec) => {
                                 todo!()
@@ -2134,7 +2137,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             .count();
         let mut expected_minimum = None;
         let mismatch = if has_type_var_tuple {
-            given != expected //given >= expected - default_count
+            given < expected - default_count
         } else {
             if default_count > 0 {
                 expected_minimum = Some(expected - has_type_var_tuple as usize - default_count);
