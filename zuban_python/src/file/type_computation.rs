@@ -2063,6 +2063,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         given += 1;
                         self.check_constraints(&type_var, node_ref, |_| t.clone(), get_of);
                         GenericItem::TypeArg(t)
+                    } else if let Some(default) = &type_var.default {
+                        GenericItem::TypeArg(default.clone())
                     } else {
                         break;
                     }
@@ -2099,7 +2101,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     );
                     break;
                 }
-                TypeVarLike::ParamSpec(_) => {
+                TypeVarLike::ParamSpec(param_spec) => {
                     given += 1;
                     if expected == 1 && slice_type.iter().count() != 1 {
                         // PEP 612 allows us to write C[int, str] instead of C[[int, str]],
@@ -2110,6 +2112,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         GenericItem::ParamSpecArg(ParamSpecArg::new(params, None))
                     } else if let Some(spec) = type_args.next_param_spec(self, expected == 1) {
                         GenericItem::ParamSpecArg(spec)
+                    } else if let Some(default) = &param_spec.default {
+                        GenericItem::ParamSpecArg(ParamSpecArg::new(default.clone(), None))
                     } else {
                         break;
                     }
@@ -2124,7 +2128,16 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 given += 1;
             }
         }
-        if given != expected {
+        let default_count = type_var_likes
+            .iter()
+            .filter(|tvl| tvl.has_default())
+            .count();
+        let mismatch = if default_count > 0 && !has_type_var_tuple {
+            !((expected - default_count) <= given && given <= expected)
+        } else {
+            given != expected
+        };
+        if mismatch {
             on_count_mismatch(
                 self,
                 GenericCounts {
