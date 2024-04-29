@@ -12,7 +12,7 @@ use crate::{
     matching::Param,
     type_::{
         AnyCause, CallableParams, GenericItem, GenericsList, NeverCause, ParamType, Type, TypeVar,
-        TypeVarKind, TypeVarLike, TypeVarLikes, TypeVarUsage, Variance,
+        TypeVarKind, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
     },
     type_helpers::{Callable, Class, Function},
 };
@@ -148,11 +148,11 @@ impl TypeVarMatcher {
     pub fn set_all_contained_type_vars_to_any(
         &mut self,
         i_s: &InferenceState,
-        type_: &Type,
+        search_type_vars: impl FnOnce(&mut dyn FnMut(TypeVarLikeUsage)),
         matcher_index: u32,
         cause: AnyCause,
     ) {
-        type_.search_type_vars(&mut |usage| {
+        search_type_vars(&mut |usage: TypeVarLikeUsage| {
             if usage.in_definition() == self.match_in_definition {
                 let temporary_matcher_id = usage.temporary_matcher_id();
                 if temporary_matcher_id == 0 || temporary_matcher_id == matcher_index {

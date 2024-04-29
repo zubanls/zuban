@@ -953,7 +953,28 @@ impl<'a> Matcher<'a> {
         cause: AnyCause,
     ) {
         for (i, tvm) in self.type_var_matchers.iter_mut().enumerate() {
-            tvm.set_all_contained_type_vars_to_any(i_s, type_, i as u32, cause)
+            tvm.set_all_contained_type_vars_to_any(
+                i_s,
+                |callback| type_.search_type_vars(callback),
+                i as u32,
+                cause,
+            )
+        }
+    }
+
+    pub fn set_all_contained_type_vars_to_any_in_callable_params(
+        &mut self,
+        i_s: &InferenceState,
+        p: &CallableParams,
+        cause: AnyCause,
+    ) {
+        for (i, tvm) in self.type_var_matchers.iter_mut().enumerate() {
+            tvm.set_all_contained_type_vars_to_any(
+                i_s,
+                |callback| p.search_type_vars(callback),
+                i as u32,
+                cause,
+            )
         }
     }
 

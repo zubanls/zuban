@@ -919,8 +919,6 @@ testUnreachableFlagWithGenerics
 testNarrowOnSelfInGeneric
 
 # ParamSpec Never regressions
-testParamSpecInferredFromAny
-testParamSpecOverUnannotatedDecorator
 testParamSpecInTypeAliasConcatenate
 # TypeVar defaults
 testTypeVarDefaultsValid
