@@ -12,7 +12,7 @@ use crate::{
     matching::Param,
     type_::{
         AnyCause, CallableParams, GenericItem, GenericsList, NeverCause, ParamSpecArg, ParamType,
-        Type, TypeArgs, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikes, TypeVarUsage, Variance,
+        Type, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikes, TypeVarUsage, Variance,
     },
     type_helpers::{Callable, Class, Function},
 };
@@ -119,11 +119,9 @@ impl CalculatingTypeArg {
                     TypeVarLike::TypeVar(_) => {
                         type_var_like.as_never_generic_item(NeverCause::Inference)
                     }
-                    TypeVarLike::TypeVarTuple(tvt) => match &tvt.default {
-                        Some(default) => GenericItem::TypeArgs(default.clone()),
-                        // TODO TypeVarTuple: this feels wrong, should maybe be never?
-                        None => GenericItem::TypeArgs(TypeArgs::new_fixed_length(Rc::new([]))),
-                    },
+                    TypeVarLike::TypeVarTuple(tvt) => {
+                        type_var_like.as_never_generic_item(NeverCause::Inference)
+                    }
                     TypeVarLike::ParamSpec(param_spec) => match &param_spec.default {
                         Some(default) => {
                             GenericItem::ParamSpecArg(ParamSpecArg::new(default.clone(), None))
