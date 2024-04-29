@@ -492,7 +492,13 @@ impl TypeVarLike {
                 Some(default) => GenericItem::TypeArgs(default.clone()),
                 None => GenericItem::TypeArgs(TypeArgs::new_arbitrary_length(Type::Never(cause))),
             },
-            TypeVarLike::ParamSpec(_) => todo!(),
+            TypeVarLike::ParamSpec(param_spec) => match &param_spec.default {
+                Some(default) => {
+                    GenericItem::ParamSpecArg(ParamSpecArg::new(default.clone(), None))
+                }
+                // TODO ParamSpec: this feels wrong, should maybe be never?
+                None => GenericItem::ParamSpecArg(ParamSpecArg::new_any(AnyCause::Todo)),
+            },
         }
     }
 }

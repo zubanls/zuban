@@ -11,8 +11,8 @@ use crate::{
     inference_state::InferenceState,
     matching::Param,
     type_::{
-        AnyCause, CallableParams, GenericItem, GenericsList, NeverCause, ParamSpecArg, ParamType,
-        Type, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikes, TypeVarUsage, Variance,
+        AnyCause, CallableParams, GenericItem, GenericsList, NeverCause, ParamType, Type, TypeVar,
+        TypeVarKind, TypeVarLike, TypeVarLikes, TypeVarUsage, Variance,
     },
     type_helpers::{Callable, Class, Function},
 };
@@ -115,21 +115,7 @@ impl CalculatingTypeArg {
             if let Some(fallback) = fallback {
                 GenericItem::TypeArg(fallback)
             } else {
-                match type_var_like {
-                    TypeVarLike::TypeVar(_) => {
-                        type_var_like.as_never_generic_item(NeverCause::Inference)
-                    }
-                    TypeVarLike::TypeVarTuple(tvt) => {
-                        type_var_like.as_never_generic_item(NeverCause::Inference)
-                    }
-                    TypeVarLike::ParamSpec(param_spec) => match &param_spec.default {
-                        Some(default) => {
-                            GenericItem::ParamSpecArg(ParamSpecArg::new(default.clone(), None))
-                        }
-                        // TODO ParamSpec: this feels wrong, should maybe be never?
-                        None => GenericItem::ParamSpecArg(ParamSpecArg::new_any(AnyCause::Todo)),
-                    },
-                }
+                type_var_like.as_never_generic_item(NeverCause::Inference)
             }
         })
     }
