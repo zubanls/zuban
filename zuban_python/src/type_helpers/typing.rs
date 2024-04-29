@@ -7,7 +7,7 @@ use crate::{
     diagnostics::IssueKind,
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{CouldBeALiteral, FormatData, OnTypeError, ResultContext},
+    matching::{CouldBeALiteral, FormatData, Matcher, OnTypeError, ResultContext},
     node_ref::NodeRef,
     type_::{
         ClassGenerics, FormatStyle, NewType, ParamSpec, Type, TypeVar, TypeVarKind, TypeVarLike,
@@ -450,14 +450,17 @@ fn maybe_type_var(
                     }
                 }
                 TypeVarKind::Constraints(constraints) => {
-                    for constraint in constraints.iter() {
-                        if !default.is_simple_sub_type_of(i_s, constraint).bool() {
-                            args.add_issue(
+                    if !constraints.iter().any(|constraint| {
+                        default
+                            .is_sub_type_of(
                                 i_s,
-                                IssueKind::TypeVarDefaultMustBeASubtypeOfConstraints,
-                            );
-                            return None;
-                        }
+                                &mut Matcher::with_ignored_promotions(),
+                                constraint,
+                            )
+                            .bool()
+                    }) {
+                        args.add_issue(i_s, IssueKind::TypeVarDefaultMustBeASubtypeOfConstraints);
+                        return None;
                     }
                 }
                 TypeVarKind::Unrestricted => (),

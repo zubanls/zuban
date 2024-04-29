@@ -921,7 +921,6 @@ testNarrowOnSelfInGeneric
 # TypeVar defaults
 testTypeVarDefaultsValid
 testTypeVarDefaultsInvalid3
-testTypeVarDefaultsFunctions
 testTypeVarDefaultsClassRecursive1
 testTypeVarDefaultsClassRecursiveMultipleFiles
 testTypeVarDefaultsTypeAliasRecursive1
