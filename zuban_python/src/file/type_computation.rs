@@ -4041,13 +4041,15 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         node_ref: NodeRef,
         callback: impl FnOnce(TypeComputation) -> T,
     ) -> T {
+        let in_definition = node_ref.as_link();
         let mut on_type_var = |i_s: &InferenceState, _: &_, type_var_like, _| {
-            i_s.find_parent_type_var(&type_var_like)
-                .unwrap_or_else(|| todo!())
+            i_s.find_parent_type_var(&type_var_like).unwrap_or_else(
+                || todo!(), // TypeVarCallbackReturn::TypeVarLike(type_var_like.as_type_var_like_usage(?, in_definition))
+            )
         };
         let comp = TypeComputation::new(
             self,
-            node_ref.as_link(),
+            in_definition,
             &mut on_type_var,
             TypeComputationOrigin::Constraint,
         );
