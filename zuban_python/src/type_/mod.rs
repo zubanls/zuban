@@ -1059,7 +1059,23 @@ impl Type {
     }
 
     pub fn has_never_from_inference(&self) -> bool {
-        self.find_in_type(&mut |t| matches!(t, Type::Never(NeverCause::Inference)))
+        self.find_in_type(&mut |t| match t {
+            Type::Never(NeverCause::Inference) => true,
+            Type::Callable(c) => matches!(c.params, CallableParams::Never(NeverCause::Inference)),
+            Type::Class(c) => match &c.generics {
+                ClassGenerics::List(list) => list.iter().any(|g| {
+                    matches!(
+                        g,
+                        GenericItem::ParamSpecArg(ParamSpecArg {
+                            params: CallableParams::Never(NeverCause::Inference),
+                            ..
+                        })
+                    )
+                }),
+                _ => false,
+            },
+            _ => false,
+        })
     }
 
     pub fn is_subclassable(&self, db: &Database) -> bool {

@@ -918,11 +918,14 @@ testOperatorContainsNarrowsTypedDicts_total
 testUnreachableFlagWithGenerics
 testNarrowOnSelfInGeneric
 
+# ParamSpec Never regressions
+testParamSpecInferredFromAny
+testParamSpecOverUnannotatedDecorator
+testParamSpecInTypeAliasConcatenate
 # TypeVar defaults
 testTypeVarDefaultsValid
 testTypeVarDefaultsInvalid3
 testTypeVarDefaultsFunctions
-testTypeVarDefaultsClass2
 testTypeVarDefaultsClassRecursive1
 testTypeVarDefaultsClassRecursiveMultipleFiles
 testTypeVarDefaultsTypeAliasRecursive1
@@ -1359,6 +1362,7 @@ testNewAnalyzerLessErrorsNeedAnnotationNested
 testUnderspecifiedInferenceResult
 testNeedAnnotationForCallable
 testTypeVarDefaultsClass1
+testTypeVarDefaultsClass2
 testTypeVarDefaultsClass3
 # "Perhaps you need a type annotation for "x"? Suggestion: "List[str | int]""
 testInferredTypeSubTypeOfReturnType

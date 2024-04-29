@@ -88,6 +88,7 @@ fn matches_params_detailed(
             // TODO should probably set usage to any
         }
         Any(_) => (),
+        Never(_) => (),
     };
 
     match (params1, params2) {
@@ -144,6 +145,8 @@ fn matches_params_detailed(
             }
             matcher.match_or_add_param_spec(i_s, types, param_spec, params1.iter(), inner_variance)
         }
+        (_, Never(cause)) => Match::new_true(),
+        (Never(cause), _) => Match::new_false(),
     }
 }
 

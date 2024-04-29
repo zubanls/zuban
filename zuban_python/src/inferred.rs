@@ -2149,7 +2149,7 @@ fn proper_classmethod_callable(
             callable.params = CallableParams::Simple(Rc::from(vec));
         }
         CallableParams::WithParamSpec(_, _) => todo!(),
-        CallableParams::Any(_) => (),
+        CallableParams::Any(_) | CallableParams::Never(_) => (),
     };
 
     let type_vars = RefCell::new(type_vars);

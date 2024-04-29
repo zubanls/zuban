@@ -785,6 +785,7 @@ impl<'a> Matcher<'a> {
                     }
                 }
             }
+            CallableParams::Never(_) => todo!(),
         }
     }
 

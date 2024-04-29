@@ -464,7 +464,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
                     args,
                 ),
             ),
-            CallableParams::Any(_) => SignatureMatch::new_true(),
+            CallableParams::Any(_) | CallableParams::Never(_) => SignatureMatch::new_true(),
             CallableParams::WithParamSpec(pre_types, param_spec) => {
                 if !pre_types.is_empty() {
                     //dbg!(pre_types, args.collect::<Vec<_>>());

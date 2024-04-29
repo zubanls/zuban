@@ -86,10 +86,10 @@ impl CallableParams {
             CallableParams::Simple(params1) => match &other {
                 CallableParams::Simple(params2) => common_sub_type_params(i_s, &params1, &params2),
                 CallableParams::WithParamSpec(_, _) => todo!(),
-                CallableParams::Any(_) => todo!(),
+                CallableParams::Any(_) | CallableParams::Never(_) => todo!(),
             },
             CallableParams::WithParamSpec(_, _) => todo!(),
-            CallableParams::Any(_) => todo!(),
+            CallableParams::Any(_) | CallableParams::Never(_) => todo!(),
         }
     }
 }

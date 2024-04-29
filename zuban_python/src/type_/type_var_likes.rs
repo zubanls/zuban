@@ -497,7 +497,7 @@ impl TypeVarLike {
                     GenericItem::ParamSpecArg(ParamSpecArg::new(default.clone(), None))
                 }
                 // TODO ParamSpec: this feels wrong, should maybe be never?
-                None => GenericItem::ParamSpecArg(ParamSpecArg::new_any(AnyCause::Todo)),
+                None => GenericItem::ParamSpecArg(ParamSpecArg::new_never(cause)),
             },
         }
     }
@@ -729,6 +729,13 @@ impl ParamSpecArg {
     pub fn new_any(cause: AnyCause) -> Self {
         Self {
             params: CallableParams::Any(cause),
+            type_vars: None,
+        }
+    }
+
+    pub fn new_never(cause: NeverCause) -> Self {
+        Self {
+            params: CallableParams::Never(cause),
             type_vars: None,
         }
     }

@@ -3,9 +3,9 @@ use std::{borrow::Cow, rc::Rc};
 use parsa_python_ast::ParamKind;
 
 use super::{
-    AnyCause, DbString, FunctionKind, ParamSpecUsage, RecursiveType, StringSlice, Tuple, Type,
-    TypeVar, TypeVarKind, TypeVarLike, TypeVarLikes, TypeVarName, TypeVarUsage, TypedDict,
-    Variance,
+    AnyCause, DbString, FunctionKind, NeverCause, ParamSpecUsage, RecursiveType, StringSlice,
+    Tuple, Type, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikes, TypeVarName, TypeVarUsage,
+    TypedDict, Variance,
 };
 use crate::{
     database::{Database, FileIndex, PointLink},
@@ -263,6 +263,7 @@ pub enum CallableParams {
     Simple(Rc<[CallableParam]>),
     WithParamSpec(Rc<[Type]>, ParamSpecUsage),
     Any(AnyCause),
+    Never(NeverCause),
 }
 
 impl CallableParams {
@@ -314,6 +315,7 @@ impl CallableParams {
                 }
             }
             Self::Any(_) => return Box::from("..."),
+            Self::Never(_) => return Box::from("Never"),
         };
         let params = parts.join(", ");
         match style {
@@ -351,6 +353,7 @@ impl CallableParams {
                 .iter()
                 .any(|t| t.has_any_internal(i_s, already_checked)),
             Self::Any(_) => true,
+            Self::Never(_) => false,
         }
     }
 
@@ -379,7 +382,7 @@ impl CallableParams {
 
     pub fn search_type_vars<C: FnMut(TypeVarLikeUsage) + ?Sized>(&self, found_type_var: &mut C) {
         match self {
-            CallableParams::Simple(params) => {
+            Self::Simple(params) => {
                 for param in params.iter() {
                     match &param.type_ {
                         ParamType::PositionalOnly(t)
@@ -404,8 +407,8 @@ impl CallableParams {
                     }
                 }
             }
-            CallableParams::Any(_) => (),
-            CallableParams::WithParamSpec(pre, spec) => {
+            Self::Any(_) | Self::Never(_) => (),
+            Self::WithParamSpec(pre, spec) => {
                 for t in pre.iter() {
                     t.search_type_vars(found_type_var)
                 }
@@ -416,7 +419,7 @@ impl CallableParams {
 
     pub fn find_in_type(&self, check: &mut impl FnMut(&Type) -> bool) -> bool {
         match self {
-            CallableParams::Simple(params) => params.iter().any(|param| match &param.type_ {
+            Self::Simple(params) => params.iter().any(|param| match &param.type_ {
                 ParamType::PositionalOnly(t)
                 | ParamType::PositionalOrKeyword(t)
                 | ParamType::KeywordOnly(t)
@@ -427,10 +430,8 @@ impl CallableParams {
                 ParamType::StarStar(StarStarParamType::ParamSpecKwargs(_)) => false,
                 ParamType::StarStar(StarStarParamType::UnpackTypedDict(_)) => todo!(),
             }),
-            CallableParams::Any(_) => false,
-            CallableParams::WithParamSpec(types, param_spec) => {
-                types.iter().any(|t| t.find_in_type(check))
-            }
+            Self::Any(_) | Self::Never(_) => false,
+            Self::WithParamSpec(types, param_spec) => types.iter().any(|t| t.find_in_type(check)),
         }
     }
 }
@@ -520,6 +521,7 @@ impl CallableContent {
                 todo!()
             }
             CallableParams::Any(cause) => CallableParams::Any(*cause),
+            CallableParams::Never(cause) => CallableParams::Never(*cause),
         };
         Some(c)
     }
@@ -534,6 +536,7 @@ impl CallableContent {
                 todo!()
             }
             CallableParams::Any(cause) => Some(Type::Any(*cause)),
+            CallableParams::Never(cause) => Some(Type::Never(*cause)),
         }
     }
 
@@ -557,6 +560,7 @@ impl CallableContent {
                 todo!()
             }
             CallableParams::Any(cause) => Some(Type::Any(*cause)),
+            CallableParams::Never(cause) => Some(Type::Never(*cause)),
         }
     }
 
@@ -577,7 +581,7 @@ impl CallableContent {
                 }
             },
             CallableParams::WithParamSpec(_, _) => Some(WrongPositionalCount::TooMany),
-            CallableParams::Any(_) => None,
+            CallableParams::Any(_) | CallableParams::Never(_) => None,
         }
     }
 
@@ -686,6 +690,7 @@ impl CallableContent {
             CallableParams::Any(_) => {
                 self.format_pretty_function_with_params(format_data, &"*Any, **Any")
             }
+            CallableParams::Never(_) => "Never".into(),
         }
     }
 
@@ -801,7 +806,7 @@ impl CallableContent {
                 .all(|t| t.type_.maybe_type().is_some_and(|t| has_unannotated(t))),
             CallableParams::Any(cause) => !matches!(cause, AnyCause::Unannotated),
             // Should probably never happen?!
-            CallableParams::WithParamSpec(..) => true,
+            CallableParams::WithParamSpec(..) | CallableParams::Never(_) => true,
         }
     }
 }

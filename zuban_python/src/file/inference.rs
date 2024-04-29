@@ -2739,6 +2739,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                 CallableParams::Any(cause) => {
                                                     Inferred::new_any(*cause)
                                                 }
+                                                CallableParams::Never(_) => todo!(),
                                                 CallableParams::WithParamSpec(_, _) => todo!(),
                                             };
                                         } else {

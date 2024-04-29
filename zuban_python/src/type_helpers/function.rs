@@ -494,6 +494,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         let types = rc_slice_into_vec(pre);
                         CallableParams::WithParamSpec(into_types(types, pre_params), p)
                     }
+                    CallableParams::Never(cause) => CallableParams::Never(cause),
                 },
                 _ => unreachable!(),
             },

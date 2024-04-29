@@ -251,7 +251,7 @@ fn common_base_for_callables(
                 }
             }
             CallableParams::WithParamSpec(_, _) => (),
-            CallableParams::Any(_) => todo!(),
+            CallableParams::Any(_) | CallableParams::Never(_) => todo!(),
         },
         CallableParams::WithParamSpec(pre1, spec1) => match &c2.params {
             CallableParams::WithParamSpec(pre2, spec2) => {
@@ -273,7 +273,7 @@ fn common_base_for_callables(
             }
             _ => (),
         },
-        CallableParams::Any(_) => todo!(),
+        CallableParams::Any(_) | CallableParams::Never(_) => todo!(),
     }
     i_s.db.python_state.function_type()
 }
