@@ -561,7 +561,7 @@ impl CallableParams {
                             types.append(&mut rc_slice_into_vec(new_types));
                             CallableParams::WithParamSpec(types.into(), p)
                         }
-                        CallableParams::Never(cause) => todo!(),
+                        CallableParams::Never(cause) => CallableParams::Never(cause),
                     }
                 }
             }

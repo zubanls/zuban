@@ -918,8 +918,6 @@ testOperatorContainsNarrowsTypedDicts_total
 testUnreachableFlagWithGenerics
 testNarrowOnSelfInGeneric
 
-# ParamSpec Never regressions
-testParamSpecInTypeAliasConcatenate
 # TypeVar defaults
 testTypeVarDefaultsValid
 testTypeVarDefaultsInvalid3
