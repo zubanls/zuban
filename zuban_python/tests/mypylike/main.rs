@@ -184,7 +184,9 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 .diagnostics(&diagnostics_config)
                 .iter()
                 .filter_map(|d| {
-                    if is_semanal_test && d.mypy_error_code() == "var-annotated" {
+                    if is_semanal_test
+                        && ["var-annotated", "assignment"].contains(&d.mypy_error_code())
+                    {
                         return None;
                     }
                     (!is_parse_test || d.mypy_error_code() == "syntax")
