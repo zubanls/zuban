@@ -1482,7 +1482,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     pub(crate) fn check_for_redefinition(
-        &self,
+        &mut self,
         name_def: NodeRef,
         add_issue: impl FnOnce(IssueKind),
     ) {
@@ -1491,7 +1491,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         if let Some(first) = first_defined_name_of_multi_def(self.file, name_index) {
             let first_ref = NodeRef::new(self.file, first);
             let mut line = first_ref.line();
-            if self.i_s.db.project.flags.mypy_compatible {
+            let i_s = self.i_s;
+            if i_s.db.project.flags.mypy_compatible {
                 // Mypy uses the line of the first decorator as the definition line. This feels
                 // weird, because the name is what matters, so in our implementation we use a
                 // different line.
@@ -1502,13 +1503,20 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     line = NodeRef::new(self.file, decorated.index()).line();
                 }
             }
-            let suffix = match first_ref
-                .as_name()
-                .name_definition()
-                .unwrap()
-                .maybe_import()
-            {
-                Some(x) => Box::from("(possibly by an import)"),
+            let first_name_def = first_ref.as_name().name_definition().unwrap();
+            let suffix = match first_name_def.maybe_import() {
+                Some(import_parent) => {
+                    let mut s = "(possibly by an import)";
+                    if matches!(
+                        self.infer_name_definition(first_name_def)
+                            .as_cow_type(i_s)
+                            .as_ref(),
+                        Type::Module(_)
+                    ) {
+                        s = "(by an import)";
+                    }
+                    Box::from(s)
+                }
                 None => format!("on line {line}").into(),
             };
             add_issue(IssueKind::Redefinition {
