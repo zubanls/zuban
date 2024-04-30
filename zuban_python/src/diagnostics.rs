@@ -540,6 +540,19 @@ impl<'db> Diagnostic<'db> {
         self.issue.kind.mypy_error_code().unwrap_or("note")
     }
 
+    pub fn is_mypy_semanal_error(&self) -> bool {
+        // Mypy has semanal-*.test tests that only use Mypy's semantic analysis part instead of
+        // full type checking, which leads to not all errors being relevant. Here we filter only
+        // for the relevant ones.
+        use IssueKind::*;
+        !self
+            .issue
+            .kind
+            .mypy_error_code()
+            .is_some_and(|c| ["var-annotated", "assignment"].contains(&c))
+            && !matches!(self.issue.kind, NotIterable { .. })
+    }
+
     pub fn as_string(&self, config: &DiagnosticConfig) -> String {
         let mut kind = "error";
         // TODO REMOVE mypy removal
