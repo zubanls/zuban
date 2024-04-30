@@ -524,7 +524,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 name_def
                     .file
                     .inference(i_s)
-                    .check_for_redefinition(name_def);
+                    .check_for_redefinition(name_def, |issue| {
+                        self.add_issue_onto_start_including_decorator(i_s, issue)
+                    });
             }
         }
     }

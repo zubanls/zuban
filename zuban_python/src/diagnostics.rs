@@ -54,7 +54,7 @@ pub(crate) enum IssueKind {
     CannotInferLambdaParams,
     NeedTypeAnnotation { for_: Box<str>, hint: Option<&'static str> },
 
-    Redefinition { suffix: Box<str> },
+    Redefinition { name: Box<str>, suffix: Box<str> },
     ModuleNotFound { module_name: Box<str> },
     NoParentModule,
     TypeNotFound,
@@ -369,6 +369,7 @@ impl IssueKind {
             | AsyncNotIterable { .. }
             | NotIterable { .. } => "attr-defined",
             NameError { .. } => "name-defined",
+            Redefinition { .. } => "no-redef",
             UnionAttributeError { .. } | UnionAttributeErrorOfUpperBound(..) => "union-attr",
             ArgumentTypeIssue(_) | SuperArgument1MustBeTypeObject => "arg-type",
             ArgumentIssue { .. } | TooManyArguments { .. } | TooFewArguments { .. } => "call-arg",
@@ -639,9 +640,7 @@ impl<'db> Diagnostic<'db> {
                 None => format!(r#"Need type annotation for "{for_}""#),
             },
 
-            Redefinition{suffix} => {
-                format!("Name {:?} already defined {suffix}", self.code_under_issue())
-            }
+            Redefinition{name, suffix} => format!(r#"Name "{name}" already defined {suffix}"#),
             ArgumentIssue(s) | ArgumentTypeIssue(s) | InvalidType(s) => s.clone().into(),
             TooManyArguments(rest) => format!("Too many arguments{rest}"),
             TooFewArguments(rest) => format!("Too few arguments{rest}"),

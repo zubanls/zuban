@@ -23,6 +23,7 @@ use crate::{
     },
     new_class,
     node_ref::NodeRef,
+    python_state::NAME_TO_FUNCTION_DIFF,
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, FunctionKind, Literal,
         LiteralKind, Namespace, NeverCause, ParamType, StarParamType, StarStarParamType,
@@ -197,7 +198,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             let class = Class::new(definition, cls_storage, Generics::NotDefinedYet, None);
             // Make sure the type vars are properly pre-calculated
             class.ensure_calculated_class_infos(self.i_s, name_def);
-            self.check_for_redefinition(name_def)
+            self.check_for_redefinition(name_def, |issue| name_def.add_issue(self.i_s, issue))
         }
     }
 
@@ -1480,11 +1481,27 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         self.save_walrus(name_def, inf)
     }
 
-    pub fn check_for_redefinition(&self, name_def: NodeRef) {
+    pub(crate) fn check_for_redefinition(
+        &self,
+        name_def: NodeRef,
+        add_issue: impl FnOnce(IssueKind),
+    ) {
         let name_index = name_def.node_index + NAME_DEF_TO_NAME_DIFFERENCE;
         debug_assert_eq!(name_def.file_index(), self.file_index);
         if let Some(first) = first_defined_name_of_multi_def(self.file, name_index) {
             let first_ref = NodeRef::new(self.file, first);
+            let mut line = first_ref.line();
+            if self.i_s.db.project.flags.mypy_compatible {
+                // Mypy uses the line of the first decorator as the definition line. This feels
+                // weird, because the name is what matters, so in our implementation we use a
+                // different line.
+                if let Some(decorated) = NodeRef::new(self.file, first - NAME_TO_FUNCTION_DIFF)
+                    .maybe_function()
+                    .and_then(|func| func.maybe_decorated())
+                {
+                    line = NodeRef::new(self.file, decorated.index()).line();
+                }
+            }
             let suffix = match first_ref
                 .as_name()
                 .name_definition()
@@ -1492,9 +1509,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 .maybe_import()
             {
                 Some(x) => Box::from("(possibly by an import)"),
-                None => format!("on line {}", first_ref.line()).into(),
+                None => format!("on line {line}").into(),
             };
-            self.add_issue(name_index, IssueKind::Redefinition { suffix })
+            add_issue(IssueKind::Redefinition {
+                name: name_def.as_code().into(),
+                suffix,
+            })
         }
     }
 
