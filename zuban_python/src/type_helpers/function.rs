@@ -933,14 +933,12 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     inconsistent_function_kind = Some(details.kind)
                 }
             }
-            if next_details.has_decorator {
-                // To make sure overloads aren't executed another time and to separate these
-                // functions from the other ones, mark them unreachable here.
-                next_func.node_ref.set_point(Point::new_specific(
-                    Specific::OverloadUnreachable,
-                    Locality::File,
-                ));
-            }
+            // To make sure overloads aren't executed another time and to separate these
+            // functions from the other ones, mark them unreachable here.
+            next_func.node_ref.set_point(Point::new_specific(
+                Specific::OverloadUnreachable,
+                Locality::File,
+            ));
             if next_details.is_overload {
                 if let Some(implementation) = &implementation {
                     NodeRef::from_link(i_s.db, implementation.function_link)
