@@ -549,8 +549,18 @@ impl<'db> Diagnostic<'db> {
             .issue
             .kind
             .mypy_error_code()
-            .is_some_and(|c| ["var-annotated", "assignment"].contains(&c))
-            && !matches!(self.issue.kind, NotIterable { .. })
+            .is_some_and(|c| ["var-annotated", "assignment", "annotation-unchecked"].contains(&c))
+            && !matches!(
+                self.issue.kind,
+                NotIterable { .. }
+                    | OverloadUnmatchable { .. }
+                    | OverloadImplementationArgumentsNotBroadEnough { .. }
+                    | TypeVarInReturnButNotArgument { .. }
+                    | OnlyClassTypeApplication { .. }
+                    | UnsupportedClassScopedImport { .. }
+                    | CannotInheritFromFinalClass { .. }
+                    | InvalidAssertType { .. }
+            )
     }
 
     pub fn as_string(&self, config: &DiagnosticConfig) -> String {
