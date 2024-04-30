@@ -54,7 +54,7 @@ pub(crate) enum IssueKind {
     CannotInferLambdaParams,
     NeedTypeAnnotation { for_: Box<str>, hint: Option<&'static str> },
 
-    Redefinition { line: usize },
+    Redefinition { suffix: Box<str> },
     ModuleNotFound { module_name: Box<str> },
     NoParentModule,
     TypeNotFound,
@@ -639,8 +639,8 @@ impl<'db> Diagnostic<'db> {
                 None => format!(r#"Need type annotation for "{for_}""#),
             },
 
-            Redefinition{line} => {
-                format!("Name {:?} already defined line {line}", self.code_under_issue())
+            Redefinition{suffix} => {
+                format!("Name {:?} already defined {suffix}", self.code_under_issue())
             }
             ArgumentIssue(s) | ArgumentTypeIssue(s) | InvalidType(s) => s.clone().into(),
             TooManyArguments(rest) => format!("Too many arguments{rest}"),

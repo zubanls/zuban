@@ -1472,6 +1472,7 @@ testSysPlatformInFunctionImport1
 testSysPlatformInFunctionImport2
 testSysPlatformInFunctionImport3
 testSysPlatformInMethodImport2
+testSkippedClass4
 testCustomSysVersionInfo
 testCustomSysVersionInfo2
 testCustomSysPlatform
@@ -1516,7 +1517,10 @@ testRedefineTypevar4
 testImportTwoModulesWithSameNameInFunction
 testImportTwoModulesWithSameNameInGlobalContext
 testTypeRedeclarationNoSpuriousWarnings
-testDuplicateDef*
+testDuplicateDefDec
+testDuplicateDefOverload
+testDuplicateDefNT
+testDuplicateDefTypedDict
 testTypeVarClassDup
 testAliasDup
 testImportFuncDup

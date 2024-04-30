@@ -1,7 +1,7 @@
 [case self_as_base_class]
 from typing import Self
 class Foo(Self): ...  # E: Self type is only allowed in annotations within class definition
-class Foo(list[Self]): ...  # E: Self type is only allowed in annotations within class definition
+class Foo2(list[Self]): ...  # E: Self type is only allowed in annotations within class definition
 
 [case self_as_nested_base_class]
 from typing import Self

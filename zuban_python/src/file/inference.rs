@@ -197,6 +197,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             let class = Class::new(definition, cls_storage, Generics::NotDefinedYet, None);
             // Make sure the type vars are properly pre-calculated
             class.ensure_calculated_class_infos(self.i_s, name_def);
+            self.check_for_redefinition(name_def)
         }
     }
 
@@ -1477,6 +1478,15 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         };
 
         self.save_walrus(name_def, inf)
+    }
+
+    fn check_for_redefinition(&mut self, name_def: NodeRef) {
+        let name_index = name_def.node_index + NAME_DEF_TO_NAME_DIFFERENCE;
+        debug_assert_eq!(name_def.file_index(), self.file_index);
+        if let Some(first) = first_defined_name_of_multi_def(self.file, name_index) {
+            let suffix = Box::from("(possibly by an import)");
+            self.add_issue(name_index, IssueKind::Redefinition { suffix })
+        }
     }
 
     pub fn save_walrus(&mut self, name_def: NameDefinition, inf: Inferred) -> Inferred {
