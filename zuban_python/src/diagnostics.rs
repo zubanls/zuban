@@ -545,22 +545,27 @@ impl<'db> Diagnostic<'db> {
         // full type checking, which leads to not all errors being relevant. Here we filter only
         // for the relevant ones.
         use IssueKind::*;
-        !self
-            .issue
-            .kind
-            .mypy_error_code()
-            .is_some_and(|c| ["var-annotated", "assignment", "annotation-unchecked"].contains(&c))
-            && !matches!(
-                self.issue.kind,
-                NotIterable { .. }
-                    | OverloadUnmatchable { .. }
-                    | OverloadImplementationArgumentsNotBroadEnough { .. }
-                    | TypeVarInReturnButNotArgument { .. }
-                    | OnlyClassTypeApplication { .. }
-                    | UnsupportedClassScopedImport { .. }
-                    | CannotInheritFromFinalClass { .. }
-                    | InvalidAssertType { .. }
-            )
+        !self.issue.kind.mypy_error_code().is_some_and(|c| {
+            [
+                "var-annotated",
+                "assignment",
+                "annotation-unchecked",
+                "index",
+            ]
+            .contains(&c)
+        }) && !matches!(
+            self.issue.kind,
+            NotIterable { .. }
+                | OverloadUnmatchable { .. }
+                | OverloadImplementationArgumentsNotBroadEnough { .. }
+                | TypeVarInReturnButNotArgument { .. }
+                | OnlyClassTypeApplication { .. }
+                | UnsupportedClassScopedImport { .. }
+                | CannotInheritFromFinalClass { .. }
+                | InvalidAssertType { .. }
+                | BaseExceptionExpected
+                | BaseExceptionExpectedForRaise
+        )
     }
 
     pub fn as_string(&self, config: &DiagnosticConfig) -> String {
