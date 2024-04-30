@@ -556,6 +556,7 @@ impl<'db> Diagnostic<'db> {
         }) && !matches!(
             self.issue.kind,
             NotIterable { .. }
+                | AttributeError { .. }
                 | OverloadUnmatchable { .. }
                 | OverloadImplementationArgumentsNotBroadEnough { .. }
                 | TypeVarInReturnButNotArgument { .. }
