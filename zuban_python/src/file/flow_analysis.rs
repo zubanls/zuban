@@ -1825,7 +1825,7 @@ impl Inference<'_, '_, '_> {
         let name_index = name_def.name_index();
         FlowKey::Name(PointLink::new(
             self.file_index,
-            first_defined_name(self.file, name_index).unwrap_or(name_index),
+            first_defined_name(self.file, name_index),
         ))
     }
 
@@ -2135,7 +2135,7 @@ fn name_definition_link(db: &Database, file: &PythonFile, name: Name) -> Option<
         let file = db.loaded_python_file(p.file_index());
         Some(PointLink::new(
             p.file_index(),
-            first_defined_name(file, def).unwrap_or(def),
+            first_defined_name(file, def),
         ))
     } else {
         todo!()

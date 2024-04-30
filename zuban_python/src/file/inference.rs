@@ -244,7 +244,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         // Check stuff like
         //     foo: str
         //     import foo
-        if let Some(original_name_index) = first_defined_name(self.file, name_def.name().index()) {
+        if let Some(original_name_index) =
+            first_defined_name_of_multi_def(self.file, name_def.name().index())
+        {
             let from = NodeRef::new(self.file, name_def.index());
             let import_inferred = self.infer_name_definition(name_def);
             self.infer_name_of_definition_by_index(original_name_index)
@@ -900,7 +902,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 .into_maybe_inferred()
             })
         };
-        first_defined_name(self.file, name_def.name_index())
+        first_defined_name_of_multi_def(self.file, name_def.name_index())
             .and_then(|first_index| {
                 // The first definition is always responsible for how a name is defined.
                 // So we try to look up active narrowings first or we try to lookup the first
@@ -939,7 +941,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     ) {
         let current_index = name_def.name_index();
         let i_s = self.i_s;
-        if let Some(first_index) = first_defined_name(self.file, current_index) {
+        if let Some(first_index) = first_defined_name_of_multi_def(self.file, current_index) {
             if current_index == first_index {
                 /*
                 if matches!(value.as_cow_type(i_s).as_ref(), Type::None) {
@@ -3141,7 +3143,16 @@ fn get_generator_return_type(db: &Database, t: &Type) -> Type {
     }
 }
 
-pub fn first_defined_name(file: &PythonFile, name_index: NodeIndex) -> Option<NodeIndex> {
+pub fn first_defined_name(file: &PythonFile, name_index: NodeIndex) -> NodeIndex {
+    first_defined_name_of_multi_def(file, name_index).unwrap_or(name_index)
+}
+
+pub fn first_defined_name_of_multi_def(
+    file: &PythonFile,
+    name_index: NodeIndex,
+) -> Option<NodeIndex> {
+    // Returns the first definition, if the name_index is a later definition.
+
     let point = file.points.get(name_index);
     if !point.calculated() {
         return None;

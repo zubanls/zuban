@@ -551,8 +551,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             Some(ComplexPoint::FunctionOverload(o)) => o.kind(),
             _ => {
                 if self.node_ref.point().maybe_specific() == Some(Specific::OverloadUnreachable) {
-                    let first =
-                        first_defined_name(self.node_ref.file, self.node().name().index()).unwrap();
+                    let first = first_defined_name(self.node_ref.file, self.node().name().index());
                     let original_func =
                         NodeRef::new(self.node_ref.file, first - NAME_TO_FUNCTION_DIFF);
                     let point = original_func.point();
