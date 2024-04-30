@@ -117,12 +117,12 @@ def check_bound1(x: Type[T]) -> None:
         reveal_type(var)  # N: Revealed type is "builtins.int"
 
 U = TypeVar("U", bound=Foo | Bar)
-def check_bound1(x: Type[U]) -> None:
+def check_bound2(x: Type[U]) -> None:
     for var in x:
         reveal_type(var)  # N: Revealed type is "builtins.int | builtins.str"
 
 V = TypeVar("V", bound=Bar | Baz | Spam)
-def check_bound1(x: Type[V]) -> None:
+def check_bound3(x: Type[V]) -> None:
     for var in x:  # E: "Type[Baz]" object is not iterable \
                    # E: "Type[Spam]" object is not iterable
         reveal_type(var)  # N: Revealed type is "builtins.str | Any"

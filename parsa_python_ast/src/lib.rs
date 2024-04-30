@@ -3310,6 +3310,27 @@ impl<'db> NameDefinition<'db> {
         node.is_type(Nonterminal(assignment))
     }
 
+    pub fn maybe_import(&self) -> Option<NameImportParent> {
+        let node = self
+            .node
+            .parent_until(&[
+                Nonterminal(stmt),
+                Nonterminal(import_from_as_name),
+                Nonterminal(dotted_as_name),
+            ])
+            .unwrap();
+        if node.is_type(Nonterminal(stmt)) {
+            None
+        } else if node.is_type(Nonterminal(import_from_as_name)) {
+            Some(NameImportParent::ImportFromAsName(ImportFromAsName::new(
+                node,
+            )))
+        } else {
+            debug_assert_eq!(node.type_(), Nonterminal(dotted_as_name));
+            Some(NameImportParent::DottedAsName(DottedAsName::new(node)))
+        }
+    }
+
     pub fn expect_stmt_like_ancestor(&self) -> StmtLike<'db> {
         let stmt_node = self
             .node
@@ -3375,6 +3396,11 @@ impl<'db> NameDefinition<'db> {
         }
         None
     }
+}
+
+pub enum NameImportParent<'db> {
+    ImportFromAsName(ImportFromAsName<'db>),
+    DottedAsName(DottedAsName<'db>),
 }
 
 impl<'db> Atom<'db> {

@@ -520,6 +520,12 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 self.node_ref.node_index,
                 Locality::Todo,
             ));
+            if self.node_ref.point().maybe_specific() != Some(Specific::OverloadUnreachable) {
+                name_def
+                    .file
+                    .inference(i_s)
+                    .check_for_redefinition(name_def);
+            }
         }
     }
 

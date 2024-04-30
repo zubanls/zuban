@@ -119,7 +119,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 NodeRef::new(self.file, func_def.index()),
                 self.i_s.current_class().copied(),
             )
-            .cache_func_with_name_def(self.i_s, name_def)
+            .cache_func_with_name_def(self.i_s, name_def);
         };
         match stmt.unpack() {
             StmtContent::ForStmt(for_stmt) => {
@@ -1480,11 +1480,20 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         self.save_walrus(name_def, inf)
     }
 
-    fn check_for_redefinition(&mut self, name_def: NodeRef) {
+    pub fn check_for_redefinition(&self, name_def: NodeRef) {
         let name_index = name_def.node_index + NAME_DEF_TO_NAME_DIFFERENCE;
         debug_assert_eq!(name_def.file_index(), self.file_index);
         if let Some(first) = first_defined_name_of_multi_def(self.file, name_index) {
-            let suffix = Box::from("(possibly by an import)");
+            let first_ref = NodeRef::new(self.file, first);
+            let suffix = match first_ref
+                .as_name()
+                .name_definition()
+                .unwrap()
+                .maybe_import()
+            {
+                Some(x) => Box::from("(possibly by an import)"),
+                None => format!("on line {}", first_ref.line()).into(),
+            };
             self.add_issue(name_index, IssueKind::Redefinition { suffix })
         }
     }
