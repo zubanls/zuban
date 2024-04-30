@@ -26,7 +26,7 @@ use crate::{
 
 impl<'db> Inference<'db, '_, '_> {
     pub fn create_list_or_set_generics<'x>(
-        &mut self,
+        &self,
         elements: impl Iterator<Item = StarLikeExpression<'x>>,
     ) -> Type {
         let mut result: Option<Type> = None;
@@ -64,7 +64,7 @@ impl<'db> Inference<'db, '_, '_> {
     }
 
     pub fn infer_list_literal_from_context(
-        &mut self,
+        &self,
         list: List,
         result_context: &mut ResultContext,
     ) -> Option<Inferred> {
@@ -92,7 +92,7 @@ impl<'db> Inference<'db, '_, '_> {
 
     // For {..}
     pub fn infer_dict_literal_from_context(
-        &mut self,
+        &self,
         dict: Dict,
         result_context: &mut ResultContext,
     ) -> Option<Inferred> {
@@ -118,7 +118,7 @@ impl<'db> Inference<'db, '_, '_> {
     }
 
     fn check_typed_dict_literal_with_context(
-        &mut self,
+        &self,
         matcher: &mut Matcher,
         typed_dict: Rc<TypedDict>,
         dict: Dict,
@@ -219,7 +219,7 @@ impl<'db> Inference<'db, '_, '_> {
     }
 
     fn check_dict_literal_with_context(
-        &mut self,
+        &self,
         matcher: &mut Matcher,
         key_t: &Type,
         value_t: &Type,
@@ -232,7 +232,7 @@ impl<'db> Inference<'db, '_, '_> {
         // result generic;
         let mut had_error = false;
         let i_s = self.i_s;
-        let mut inference = self.file.inference(i_s);
+        let inference = self.file.inference(i_s);
         for (i, key_value) in dict.iter_elements().enumerate() {
             match key_value {
                 DictElement::KeyValue(key_value) => {
@@ -306,7 +306,7 @@ impl<'db> Inference<'db, '_, '_> {
 
     // For dict(..)
     pub(crate) fn infer_dict_call_from_context(
-        &mut self,
+        &self,
         args: &dyn Args<'db>,
         result_context: &mut ResultContext,
     ) -> Option<Inferred> {
@@ -323,7 +323,7 @@ impl<'db> Inference<'db, '_, '_> {
             .flatten()
     }
 
-    pub fn dict_literal_without_context(&mut self, dict: Dict) -> Inferred {
+    pub fn dict_literal_without_context(&self, dict: Dict) -> Inferred {
         let dict_elements = dict.iter_elements();
         let i_s = self.i_s;
         if matches!(dict_elements, DictElementIterator::Empty) {
@@ -372,7 +372,7 @@ impl<'db> Inference<'db, '_, '_> {
         ))
     }
 
-    pub fn parse_int(&mut self, int: Int, result_context: &mut ResultContext) -> Option<i64> {
+    pub fn parse_int(&self, int: Int, result_context: &mut ResultContext) -> Option<i64> {
         let result = int.parse();
         if result.is_none() {
             todo!("Add diagnostic?");
@@ -438,7 +438,7 @@ fn check_list_with_context<'db>(
                 });
             }
         };
-        let mut inference = file.inference(i_s);
+        let inference = file.inference(i_s);
         match element {
             StarLikeExpression::NamedExpression(e) => {
                 let inferred =

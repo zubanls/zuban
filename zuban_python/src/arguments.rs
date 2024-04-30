@@ -647,7 +647,7 @@ impl<'db, 'a> ArgIteratorBase<'db, 'a> {
             } => iterator
                 .map(|(_, arg)| {
                     let mut prefix = "".to_owned();
-                    let mut inference = file.inference(&i_s);
+                    let inference = file.inference(&i_s);
                     let inf = match arg {
                         ASTArgument::Positional(named_expr) => {
                             inference.infer_named_expression(named_expr)

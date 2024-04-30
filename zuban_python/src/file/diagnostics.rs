@@ -120,7 +120,7 @@ lazy_static::lazy_static! {
 }
 
 impl<'db> Inference<'db, '_, '_> {
-    pub fn calculate_diagnostics(&mut self) {
+    pub fn calculate_diagnostics(&self) {
         FLOW_ANALYSIS.with(|fa| {
             fa.with_new_frame_and_return_unreachable(|| {
                 self.calc_stmts_diagnostics(self.file.tree.root().iter_stmts(), None, None);
@@ -161,7 +161,7 @@ impl<'db> Inference<'db, '_, '_> {
     }
 
     fn calc_simple_stmts_diagnostics(
-        &mut self,
+        &self,
         simple_stmts: SimpleStmts,
         class: Option<Class>,
         func: Option<&Function>,
@@ -254,7 +254,7 @@ impl<'db> Inference<'db, '_, '_> {
         }
     }
 
-    fn check_valid_raise_type(&mut self, expr: Expression, allow_none: bool) {
+    fn check_valid_raise_type(&self, expr: Expression, allow_none: bool) {
         if !valid_raise_type(
             self.i_s,
             NodeRef::new(self.file, expr.index()),
@@ -267,7 +267,7 @@ impl<'db> Inference<'db, '_, '_> {
     }
 
     fn calc_stmts_diagnostics(
-        &mut self,
+        &self,
         stmts: StmtIterator,
         class: Option<Class>,
         func: Option<&Function>,
@@ -352,7 +352,7 @@ impl<'db> Inference<'db, '_, '_> {
     }
 
     fn calc_with_stmt(
-        &mut self,
+        &self,
         with_stmt: WithStmt,
         class: Option<Class>,
         func: Option<&Function>,
@@ -418,7 +418,7 @@ impl<'db> Inference<'db, '_, '_> {
         self.calc_block_diagnostics(block, class, func);
     }
 
-    fn calc_untyped_block_diagnostics(&mut self, block: Block) {
+    fn calc_untyped_block_diagnostics(&self, block: Block) {
         for interesting in block.search_relevant_untyped_nodes() {
             match interesting {
                 RelevantUntypedNode::Primary(p) => {
@@ -469,7 +469,7 @@ impl<'db> Inference<'db, '_, '_> {
     }
 
     pub fn calc_block_diagnostics(
-        &mut self,
+        &self,
         block: Block,
         class: Option<Class>,
         func: Option<&Function>,
@@ -482,7 +482,7 @@ impl<'db> Inference<'db, '_, '_> {
         }
     }
 
-    fn calc_class_diagnostics(&mut self, class: ClassDef) {
+    fn calc_class_diagnostics(&self, class: ClassDef) {
         let (arguments, block) = class.unpack();
         let name_def = NodeRef::new(self.file, class.name_definition().index());
         debug!("TODO this from is completely wrong and should never be used.");
@@ -498,7 +498,7 @@ impl<'db> Inference<'db, '_, '_> {
             return;
         }
         let i_s = self.i_s.with_diagnostic_class_context(&c);
-        let mut inference = self.file.inference(&i_s);
+        let inference = self.file.inference(&i_s);
         inference.calc_block_diagnostics(block, Some(c), None);
 
         for (i, base1) in c.bases(db).enumerate() {
@@ -703,7 +703,7 @@ impl<'db> Inference<'db, '_, '_> {
         }
     }
 
-    fn calc_function_diagnostics(&mut self, f: FunctionDef, class: Option<Class>) {
+    fn calc_function_diagnostics(&self, f: FunctionDef, class: Option<Class>) {
         let function = Function::new(NodeRef::new(self.file, f.index()), class);
         function.cache_func(self.i_s);
         FLOW_ANALYSIS.with(|fa| {
@@ -724,7 +724,7 @@ impl<'db> Inference<'db, '_, '_> {
     }
 
     fn calc_function_diagnostics_internal(
-        &mut self,
+        &self,
         function: Function,
         f: FunctionDef,
         class: Option<Class>,
@@ -891,7 +891,7 @@ impl<'db> Inference<'db, '_, '_> {
         let is_dynamic = function.is_dynamic();
         let args = NoArgs::new(NodeRef::new(self.file, f.index()));
         let function_i_s = &mut i_s.with_diagnostic_func_and_args(&function, &args);
-        let mut inference = self.file.inference(function_i_s);
+        let inference = self.file.inference(function_i_s);
         if !is_dynamic || flags.check_untyped_defs {
             inference.calc_block_diagnostics(block, None, Some(&function))
         } else {
@@ -1018,7 +1018,7 @@ impl<'db> Inference<'db, '_, '_> {
     }
 
     fn calc_overload_implementation_diagnostics(
-        &mut self,
+        &self,
         overload_item: &CallableContent,
         implementation: &OverloadImplementation,
         signature_index: usize,
@@ -1058,7 +1058,7 @@ impl<'db> Inference<'db, '_, '_> {
         }
     }
 
-    fn calc_return_stmt_diagnostics(&mut self, func: Option<&Function>, return_stmt: ReturnStmt) {
+    fn calc_return_stmt_diagnostics(&self, func: Option<&Function>, return_stmt: ReturnStmt) {
         if let Some(func) = func {
             if let Some(annotation) = func.return_annotation() {
                 let i_s = self.i_s;
@@ -1116,7 +1116,7 @@ impl<'db> Inference<'db, '_, '_> {
     }
 
     pub fn cache_for_stmt_names(
-        &mut self,
+        &self,
         star_targets: StarTargets,
         star_exprs: StarExpressions,
         is_async: bool,
@@ -1143,7 +1143,7 @@ impl<'db> Inference<'db, '_, '_> {
     }
 
     fn calc_try_stmt_diagnostics(
-        &mut self,
+        &self,
         try_stmt: TryStmt,
         class: Option<Class>,
         func: Option<&Function>,
@@ -1191,14 +1191,11 @@ impl<'db> Inference<'db, '_, '_> {
         }
     }
 
-    pub fn calc_fstring_diagnostics(&mut self, fstring: FString) {
+    pub fn calc_fstring_diagnostics(&self, fstring: FString) {
         self.calc_fstring_content_diagnostics(fstring.iter_content())
     }
 
-    fn calc_fstring_content_diagnostics<'x>(
-        &mut self,
-        iter: impl Iterator<Item = FStringContent<'x>>,
-    ) {
+    fn calc_fstring_content_diagnostics<'x>(&self, iter: impl Iterator<Item = FStringContent<'x>>) {
         for content in iter {
             match content {
                 FStringContent::FStringExpr(e) => {
@@ -1213,7 +1210,7 @@ impl<'db> Inference<'db, '_, '_> {
         }
     }
 
-    fn calc_del_stmt_diagnostics(&mut self, target: Target) {
+    fn calc_del_stmt_diagnostics(&self, target: Target) {
         match target {
             Target::Name(name_def) => debug!("TODO del name"),
             Target::NameExpression(primary_target, name_def) => {
@@ -1400,7 +1397,7 @@ impl<'db> Inference<'db, '_, '_> {
         }
     }
 
-    fn check_magic_exit(&mut self, function: Function) {
+    fn check_magic_exit(&self, function: Function) {
         // Check if __exit__ has the return type bool and raise an error if all returns return
         // False.
         if !function

@@ -338,7 +338,7 @@ impl<'db: 'a, 'a> Class<'a> {
         let maybe_decorated = self.node().maybe_decorated();
         let mut is_final = false;
         if let Some(decorated) = maybe_decorated {
-            let mut inference = self.node_ref.file.inference(i_s);
+            let inference = self.node_ref.file.inference(i_s);
 
             let mut dataclass_options = None;
             let dataclass_link = i_s.db.python_state.dataclasses_dataclass();
@@ -962,7 +962,7 @@ impl<'db: 'a, 'a> Class<'a> {
 
     fn check_total_typed_dict_argument(&self, i_s: &InferenceState, args: ASTArguments) -> bool {
         let mut total = true;
-        let mut inference = self.node_ref.file.inference(i_s);
+        let inference = self.node_ref.file.inference(i_s);
         for argument in args.iter() {
             if let Argument::Keyword(kwarg) = argument {
                 let (name, expr) = kwarg.unpack();

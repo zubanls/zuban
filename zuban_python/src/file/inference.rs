@@ -45,7 +45,7 @@ pub struct Inference<'db: 'file, 'file, 'i_s> {
 
 macro_rules! check_point_cache_with {
     ($vis:vis $name:ident, $func:path, $ast:ident $(, $result_context:ident )?) => {
-        $vis fn $name(&mut self, node: $ast $(, $result_context : &mut ResultContext)?) -> $crate::inferred::Inferred {
+        $vis fn $name(&self, node: $ast $(, $result_context : &mut ResultContext)?) -> $crate::inferred::Inferred {
             debug_indent(|| {
                 if let Some(inferred) = self.check_point_cache(node.index()) {
                     debug!(
@@ -82,7 +82,7 @@ macro_rules! check_point_cache_with {
 }
 
 impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
-    fn cache_simple_stmts_name(&mut self, simple_stmts: SimpleStmts, name_def: NodeRef) {
+    fn cache_simple_stmts_name(&self, simple_stmts: SimpleStmts, name_def: NodeRef) {
         debug!(
             "Infer stmt (#{}, {}:{}): {:?}",
             self.file.byte_to_line_column(simple_stmts.start()).0,
@@ -107,7 +107,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    fn cache_stmt_name(&mut self, stmt: Stmt, name_def: NodeRef) {
+    fn cache_stmt_name(&self, stmt: Stmt, name_def: NodeRef) {
         debug!(
             "Infer stmt (#{}, {}:{}): {:?}",
             self.file.byte_to_line_column(stmt.start()).0,
@@ -188,7 +188,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    pub fn cache_class(&mut self, name_def: NodeRef, class_node: ClassDef) {
+    pub fn cache_class(&self, name_def: NodeRef, class_node: ClassDef) {
         if !name_def.point().calculated() {
             let definition = NodeRef::new(self.file, class_node.index());
             let ComplexPoint::Class(cls_storage) = definition.complex().unwrap() else {
@@ -202,7 +202,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    pub(super) fn cache_import_name(&mut self, imp: ImportName) {
+    pub(super) fn cache_import_name(&self, imp: ImportName) {
         if self.file.points.get(imp.index()).calculated() {
             return;
         }
@@ -242,7 +242,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             .set(imp.index(), Point::new_node_analysis(Locality::Todo));
     }
 
-    fn check_import_type(&mut self, name_def: NameDefinition) {
+    fn check_import_type(&self, name_def: NameDefinition) {
         // Check stuff like
         //     foo: str
         //     import foo
@@ -268,7 +268,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    pub(super) fn cache_import_from(&mut self, imp: ImportFrom) {
+    pub(super) fn cache_import_from(&self, imp: ImportFrom) {
         if self.file.points.get(imp.index()).calculated() {
             return;
         }
@@ -342,7 +342,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     fn lookup_import_from_target(
-        &mut self,
+        &self,
         from_first_part: &ImportResult,
         import_name: Name,
     ) -> LookupResult {
@@ -399,7 +399,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     fn infer_import_dotted_name(
-        &mut self,
+        &self,
         dotted: DottedName,
         base: Option<ImportResult>,
     ) -> Option<ImportResult> {
@@ -471,7 +471,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     fn inferred_context_for_simple_assignment(
-        &mut self,
+        &self,
         targets: AssignmentTargetIterator,
     ) -> Option<Inferred> {
         for target in targets {
@@ -505,7 +505,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         None
     }
 
-    fn set_calculating_on_target(&mut self, target: Target) {
+    fn set_calculating_on_target(&self, target: Target) {
         match target {
             Target::Name(name_def) => {
                 self.file
@@ -553,7 +553,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     pub fn check_right_side_against_annotation(
-        &mut self,
+        &self,
         expected: &Type,
         right_side: AssignmentRightSide,
     ) {
@@ -562,12 +562,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         self.check_right_side_against_expected(expected, right, right_side)
     }
 
-    pub fn assign_for_annotation(
-        &mut self,
-        annotation: Annotation,
-        target: Target,
-        node_ref: NodeRef,
-    ) {
+    pub fn assign_for_annotation(&self, annotation: Annotation, target: Target, node_ref: NodeRef) {
         let inf_annot = self.use_cached_annotation(annotation);
         self.assign_single_target(
             target,
@@ -583,7 +578,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         )
     }
 
-    pub fn cache_assignment_nodes(&mut self, assignment: Assignment) {
+    pub fn cache_assignment_nodes(&self, assignment: Assignment) {
         let node_ref = NodeRef::new(self.file, assignment.index());
         if node_ref.point().calculated() {
             return;
@@ -732,7 +727,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     fn infer_assignment_right_side(
-        &mut self,
+        &self,
         right: AssignmentRightSide,
         result_context: &mut ResultContext,
     ) -> Inferred {
@@ -747,7 +742,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     pub fn infer_yield_expr(
-        &mut self,
+        &self,
         yield_expr: YieldExpr,
         result_context: &mut ResultContext,
     ) -> Inferred {
@@ -860,7 +855,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    fn infer_target(&mut self, target: Target, from_aug_assign: bool) -> Option<Inferred> {
+    fn infer_target(&self, target: Target, from_aug_assign: bool) -> Option<Inferred> {
         match target {
             Target::Name(name_def) => self.infer_name_target(name_def, from_aug_assign),
             Target::NameExpression(primary_target, _) => {
@@ -883,7 +878,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     pub fn infer_name_target(
-        &mut self,
+        &self,
         name_def: NameDefinition,
         from_aug_assign: bool,
     ) -> Option<Inferred> {
@@ -934,7 +929,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     fn assign_to_name_def(
-        &mut self,
+        &self,
         name_def: NameDefinition,
         from: NodeRef,
         value: &Inferred,
@@ -1059,7 +1054,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     fn assign_single_target(
-        &mut self,
+        &self,
         target: Target,
         from: NodeRef,
         value: &Inferred,
@@ -1223,7 +1218,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     pub(super) fn assign_targets(
-        &mut self,
+        &self,
         target: Target,
         value: Inferred,
         value_node_ref: NodeRef,
@@ -1288,7 +1283,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     fn assign_tuple_target(
-        &mut self,
+        &self,
         targets: TargetIterator,
         mut value_iterator: IteratorContent,
         value_node_ref: NodeRef,
@@ -1406,7 +1401,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     pub fn infer_star_expressions(
-        &mut self,
+        &self,
         exprs: StarExpressions,
         result_context: &mut ResultContext,
     ) -> Inferred {
@@ -1436,12 +1431,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    pub fn infer_named_expression(&mut self, named_expr: NamedExpression) -> Inferred {
+    pub fn infer_named_expression(&self, named_expr: NamedExpression) -> Inferred {
         self.infer_named_expression_with_context(named_expr, &mut ResultContext::Unknown)
     }
 
     pub fn infer_named_expression_with_context(
-        &mut self,
+        &self,
         named_expr: NamedExpression,
         result_context: &mut ResultContext,
     ) -> Inferred {
@@ -1456,7 +1451,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     pub fn infer_walrus(
-        &mut self,
+        &self,
         walrus: Walrus,
         result_context: Option<&mut ResultContext>,
     ) -> Inferred {
@@ -1482,7 +1477,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     pub(crate) fn check_for_redefinition(
-        &mut self,
+        &self,
         name_def: NodeRef,
         add_issue: impl FnOnce(IssueKind),
     ) {
@@ -1526,7 +1521,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    pub fn save_walrus(&mut self, name_def: NameDefinition, inf: Inferred) -> Inferred {
+    pub fn save_walrus(&self, name_def: NameDefinition, inf: Inferred) -> Inferred {
         let from = NodeRef::new(self.file, name_def.index());
         let inf = inf.avoid_implicit_literal(self.i_s);
         self.assign_to_name_def(name_def, from, &inf, AssignKind::Normal, |index, value| {
@@ -1535,7 +1530,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         self.check_point_cache(name_def.index()).unwrap_or(inf)
     }
 
-    pub fn infer_expression(&mut self, expr: Expression) -> Inferred {
+    pub fn infer_expression(&self, expr: Expression) -> Inferred {
         self.infer_expression_with_context(expr, &mut ResultContext::Unknown)
     }
 
@@ -1546,7 +1541,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         result_context
     );
     fn infer_expression_without_cache(
-        &mut self,
+        &self,
         expr: Expression,
         result_context: &mut ResultContext,
     ) -> Inferred {
@@ -1575,12 +1570,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         inferred
     }
 
-    pub fn infer_expression_part(&mut self, node: ExpressionPart) -> Inferred {
+    pub fn infer_expression_part(&self, node: ExpressionPart) -> Inferred {
         self.infer_expression_part_with_context(node, &mut ResultContext::Unknown)
     }
 
     pub fn infer_expression_part_with_context(
-        &mut self,
+        &self,
         node: ExpressionPart,
         result_context: &mut ResultContext,
     ) -> Inferred {
@@ -1709,7 +1704,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     pub fn infer_comparison_part(
-        &mut self,
+        &self,
         cmp: ComparisonContent,
         left_inf: Inferred,
         right_inf: &Inferred,
@@ -1743,7 +1738,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     pub fn infer_in_operator(
-        &mut self,
+        &self,
         from: NodeRef,
         left_inf: &Inferred,
         right_inf: &Inferred,
@@ -1813,12 +1808,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         Inferred::from_type(self.i_s.db.python_state.bool_type())
     }
 
-    fn infer_lambda(&mut self, lambda: Lambda, result_context: &mut ResultContext) -> Inferred {
-        let check_defaults = |inference: &mut Inference| {
+    fn infer_lambda(&self, lambda: Lambda, result_context: &mut ResultContext) -> Inferred {
+        let check_defaults = || {
             let (params, expr) = lambda.unpack();
             for param in params {
                 if let Some(default) = param.default() {
-                    inference.infer_expression(default);
+                    self.infer_expression(default);
                 }
             }
         };
@@ -1849,8 +1844,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 if let Type::Callable(c) = type_ {
                     let i_s = self.i_s.with_lambda_callable(c);
                     let (params, expr) = lambda.unpack();
-                    let mut inference = self.file.inference(&i_s);
-                    check_defaults(&mut inference);
+                    let inference = self.file.inference(&i_s);
+                    check_defaults();
                     let result = inference.infer_expression_without_cache(
                         expr,
                         &mut ResultContext::Known(&c.return_type),
@@ -1886,7 +1881,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             .flatten()
             .unwrap_or_else(|| {
                 let (params, expr) = lambda.unpack();
-                check_defaults(self);
+                check_defaults();
                 let result =
                     self.infer_expression_without_cache(expr, &mut ResultContext::ExpectUnused);
                 let c = CallableContent {
@@ -1905,14 +1900,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             })
     }
 
-    fn infer_operation(&mut self, op: Operation) -> Inferred {
+    fn infer_operation(&self, op: Operation) -> Inferred {
         let left = self.infer_expression_part(op.left);
         let right = self.infer_expression_part(op.right);
         self.infer_detailed_operation(op.index, op.infos, left, &right)
     }
 
     fn infer_detailed_operation(
-        &mut self,
+        &self,
         error_index: NodeIndex,
         op_infos: OpInfos,
         left: Inferred,
@@ -2073,7 +2068,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         result
     }
 
-    fn try_to_infer_partial_from_primary(&mut self, primary: Primary) {
+    fn try_to_infer_partial_from_primary(&self, primary: Primary) {
         let PrimaryContent::Execution(execution) = primary.second() else {
             return
         };
@@ -2174,11 +2169,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     // Primary is not saved by this function, but can be saved by other stuff and to avoid
     // re-executing, we check the point cache here.
     check_point_cache_with!(pub infer_primary, Self::_infer_primary, Primary, result_context);
-    pub fn _infer_primary(
-        &mut self,
-        primary: Primary,
-        result_context: &mut ResultContext,
-    ) -> Inferred {
+    pub fn _infer_primary(&self, primary: Primary, result_context: &mut ResultContext) -> Inferred {
         if let Some(inf) = self.maybe_lookup_narrowed_primary(primary) {
             return inf;
         }
@@ -2203,7 +2194,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     pub(super) fn infer_primary_or_primary_t_content(
-        &mut self,
+        &self,
         base: &Inferred,
         node_index: NodeIndex,
         second: PrimaryContent,
@@ -2247,7 +2238,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    pub fn infer_primary_or_atom(&mut self, p: PrimaryOrAtom) -> Inferred {
+    pub fn infer_primary_or_atom(&self, p: PrimaryOrAtom) -> Inferred {
         match p {
             PrimaryOrAtom::Primary(primary) => {
                 self.infer_primary(primary, &mut ResultContext::Unknown)
@@ -2257,7 +2248,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     check_point_cache_with!(pub infer_atom, Self::_infer_atom, Atom, result_context);
-    fn _infer_atom(&mut self, atom: Atom, result_context: &mut ResultContext) -> Inferred {
+    fn _infer_atom(&self, atom: Atom, result_context: &mut ResultContext) -> Inferred {
         let i_s = self.i_s;
         let check_literal = |result_context: &ResultContext, i_s, index, literal| {
             let specific = match result_context.could_be_a_literal(i_s) {
@@ -2364,7 +2355,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     fn infer_tuple_iterator<'x>(
-        &mut self,
+        &self,
         iterator: impl ClonableTupleIterator<'x>,
         result_context: &mut ResultContext,
     ) -> Inferred {
@@ -2395,7 +2386,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
             fn into_tuple<'x>(
                 self,
-                inference: &mut Inference,
+                inference: &Inference,
                 iterator: impl ClonableTupleIterator<'x>,
             ) -> Inferred {
                 let content = if self.is_arbitrary_length {
@@ -2495,7 +2486,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         Self::_infer_primary_target,
         PrimaryTarget
     );
-    fn _infer_primary_target(&mut self, primary_target: PrimaryTarget) -> Inferred {
+    fn _infer_primary_target(&self, primary_target: PrimaryTarget) -> Inferred {
         let first = self.infer_primary_target_or_atom(primary_target.first());
         self.infer_primary_or_primary_t_content(
             &first,
@@ -2507,7 +2498,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         .save_redirect(self.i_s, self.file, primary_target.index())
     }
 
-    pub fn infer_primary_target_or_atom(&mut self, t: PrimaryTargetOrAtom) -> Inferred {
+    pub fn infer_primary_target_or_atom(&self, t: PrimaryTargetOrAtom) -> Inferred {
         match t {
             PrimaryTargetOrAtom::Atom(atom) => self.infer_atom(atom, &mut ResultContext::Unknown),
             PrimaryTargetOrAtom::PrimaryTarget(p) => self.infer_primary_target(p),
@@ -2515,7 +2506,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     check_point_cache_with!(pub infer_name_reference, Self::_infer_name_reference, Name);
-    fn _infer_name_reference(&mut self, name: Name) -> Inferred {
+    fn _infer_name_reference(&self, name: Name) -> Inferred {
         // If it's not inferred already through the name binder, it's either a star import, a
         // builtin or really missing.
         let name_str = name.as_str();
@@ -2589,7 +2580,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         self.infer_name_reference(name)
     }
 
-    pub fn lookup_from_star_import(&mut self, name: &str, check_local: bool) -> Option<PointLink> {
+    pub fn lookup_from_star_import(&self, name: &str, check_local: bool) -> Option<PointLink> {
         if !name.starts_with('_') {
             for star_import in self.file.star_imports.borrow().iter() {
                 // TODO these feel a bit weird and do not include parent functions (when in a
@@ -2640,7 +2631,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    pub fn check_point_cache(&mut self, node_index: NodeIndex) -> Option<Inferred> {
+    pub fn check_point_cache(&self, node_index: NodeIndex) -> Option<Inferred> {
         let point = self.file.points.get(node_index);
         point
             .calculated()
@@ -2660,7 +2651,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         file_index != self.file.file_index() || next_node_index != node_index,
                         "{file_index}:{node_index}"
                     );
-                    let infer = |inference: &mut Inference| {
+                    let infer = |inference: &Inference| {
                         let point = inference.file.points.get(next_node_index);
                         inference
                             .check_point_cache(next_node_index)
@@ -2852,11 +2843,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             })
     }
 
-    pub fn infer_name_of_definition_by_index(&mut self, node_index: NodeIndex) -> Inferred {
+    pub fn infer_name_of_definition_by_index(&self, node_index: NodeIndex) -> Inferred {
         self.infer_name_of_definition(Name::by_index(&self.file.tree, node_index))
     }
 
-    pub fn infer_name_of_definition(&mut self, name: Name) -> Inferred {
+    pub fn infer_name_of_definition(&self, name: Name) -> Inferred {
         let point = self.file.points.get(name.index());
         if point.calculated() {
             if let Some(inf) = self.check_point_cache(name.index()) {
@@ -2867,7 +2858,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     check_point_cache_with!(pub infer_name_definition, Self::_infer_name_definition, NameDefinition);
-    fn _infer_name_definition(&mut self, name_def: NameDefinition) -> Inferred {
+    fn _infer_name_definition(&self, name_def: NameDefinition) -> Inferred {
         let stmt_like = name_def.expect_stmt_like_ancestor();
 
         if !self.file.points.get(stmt_like.index()).calculated() {
@@ -2891,7 +2882,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         self.infer_name_definition(name_def)
     }
 
-    fn infer_for_if_clauses(&mut self, for_if_clauses: ForIfClauses) {
+    fn infer_for_if_clauses(&self, for_if_clauses: ForIfClauses) {
         for clause in for_if_clauses.iter() {
             let mut needs_await = false;
             let (targets, expr_part, comp_ifs) = match clause {
@@ -2922,7 +2913,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     fn infer_dict_comprehension(
-        &mut self,
+        &self,
         dict_comp: DictComprehension,
         result_context: &mut ResultContext,
     ) -> Inferred {
@@ -2968,7 +2959,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     fn infer_comprehension_expr_with_context(
-        &mut self,
+        &self,
         result_context: &mut ResultContext,
         class: NodeRef,
         mut on_mismatch: impl FnMut(Box<str>, Box<str>) -> IssueKind,
@@ -3005,7 +2996,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     fn infer_list_comprehension(
-        &mut self,
+        &self,
         comp: Comprehension,
         result_context: &mut ResultContext,
     ) -> Inferred {
@@ -3022,7 +3013,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     fn infer_set_comprehension(
-        &mut self,
+        &self,
         comp: Comprehension,
         result_context: &mut ResultContext,
     ) -> Inferred {
@@ -3039,7 +3030,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 
     pub fn infer_generator_comprehension(
-        &mut self,
+        &self,
         comp: Comprehension,
         result_context: &mut ResultContext,
     ) -> Inferred {

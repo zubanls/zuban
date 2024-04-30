@@ -1676,7 +1676,7 @@ fn infer_decorator(
     had_first_annotation: bool,
 ) -> InferredDecorator {
     let node_ref = NodeRef::new(file, decorator.index());
-    let mut inference = file.inference(i_s);
+    let inference = file.inference(i_s);
     let redirect = if node_ref.point().calculated() {
         inference.check_point_cache(node_ref.node_index).unwrap()
     } else {

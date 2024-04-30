@@ -308,7 +308,7 @@ fn follow_name<'db>(
                 )));
             }
             TypeLike::Assignment(assignment) => {
-                let mut inference = node_ref.file.inference(i_s);
+                let inference = node_ref.file.inference(i_s);
                 let inf = inference.infer_name_of_definition(name);
                 if let Some(tv) = inf.maybe_type_var_like(i_s) {
                     return Ok(tv);

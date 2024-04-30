@@ -334,7 +334,7 @@ fn maybe_type_var(
         for arg in iterator {
             match arg.kind {
                 ArgKind::Positional(pos) => {
-                    let mut inference = pos.node_ref.file.inference(i_s);
+                    let inference = pos.node_ref.file.inference(i_s);
                     if let Some(t) = inference.compute_type_var_constraint(
                         pos.node_ref.as_named_expression().expression(),
                     ) {

@@ -186,19 +186,22 @@ pub struct StarImport {
 
 impl StarImport {
     #[inline]
-    pub(super) fn to_file<'db>(&self, inf: &mut Inference<'db, '_, '_>) -> Option<&'db PythonFile> {
-        let point = inf.file.points.get(self.star_node);
+    pub(super) fn to_file<'db>(
+        &self,
+        inference: &Inference<'db, '_, '_>,
+    ) -> Option<&'db PythonFile> {
+        let point = inference.file.points.get(self.star_node);
         if point.calculated() {
             return if point.maybe_specific() == Some(Specific::ModuleNotFound) {
                 None
             } else {
-                Some(inf.i_s.db.loaded_python_file(point.file_index()))
+                Some(inference.i_s.db.loaded_python_file(point.file_index()))
             };
         }
-        let import_from = NodeRef::new(inf.file, self.import_from_node).expect_import_from();
-        inf.cache_import_from(import_from);
-        debug_assert!(inf.file.points.get(self.star_node).calculated());
-        self.to_file(inf)
+        let import_from = NodeRef::new(inference.file, self.import_from_node).expect_import_from();
+        inference.cache_import_from(import_from);
+        debug_assert!(inference.file.points.get(self.star_node).calculated());
+        self.to_file(inference)
     }
 }
 

@@ -98,7 +98,7 @@ fn calculate_init_of_dataclass(db: &Database, dataclass: &Rc<Dataclass>) -> Init
     let i_s = &InferenceState::new(db);
     let cls_i_s = &i_s.with_class_context(&cls);
     let file = cls.node_ref.file;
-    let mut inference = file.inference(&cls_i_s);
+    let inference = file.inference(&cls_i_s);
 
     let mut params: Vec<CallableParam> = vec![];
     let mut post_init_params: Vec<CallableParam> = vec![];

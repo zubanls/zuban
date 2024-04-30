@@ -406,7 +406,7 @@ fn type_computation_for_variable_annotation(
 }
 
 pub struct TypeComputation<'db, 'file, 'i_s, 'c> {
-    inference: &'c mut Inference<'db, 'file, 'i_s>,
+    inference: &'c Inference<'db, 'file, 'i_s>,
     for_definition: PointLink,
     current_callable: Option<PointLink>,
     type_var_manager: TypeVarManager<PointLink>,
@@ -422,7 +422,7 @@ pub struct TypeComputation<'db, 'file, 'i_s, 'c> {
 
 impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c> {
     pub fn new(
-        inference: &'c mut Inference<'db, 'file, 'i_s>,
+        inference: &'c Inference<'db, 'file, 'i_s>,
         for_definition: PointLink,
         type_var_callback: TypeVarCallback<'db, 'c>,
         origin: TypeComputationOrigin,
@@ -1726,7 +1726,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeVarKind::Unrestricted => (),
             TypeVarKind::Bound(bound) => {
                 let actual = as_type(self);
-                let i_s = &mut self.inference.i_s;
+                let i_s = self.inference.i_s;
                 if !bound.is_simple_super_type_of(i_s, &actual).bool() {
                     node_ref.add_issue(
                         i_s,
@@ -1740,7 +1740,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             TypeVarKind::Constraints(constraints) => {
                 let t2 = as_type(self);
-                let i_s = &mut self.inference.i_s;
+                let i_s = self.inference.i_s;
                 if let Type::TypeVar(usage) = &t2 {
                     if let TypeVarKind::Constraints(constraints2) = &usage.type_var.kind {
                         if constraints2.iter().all(|t2| {
@@ -3309,12 +3309,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 }
 
 impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
-    pub fn ensure_cached_named_tuple_annotation(&mut self, annotation: Annotation) {
+    pub fn ensure_cached_named_tuple_annotation(&self, annotation: Annotation) {
         self.ensure_cached_annotation_internal(annotation, TypeComputationOrigin::NamedTupleMember)
     }
 
     fn ensure_cached_annotation_internal(
-        &mut self,
+        &self,
         annotation: Annotation,
         origin: TypeComputationOrigin,
     ) {
@@ -3333,7 +3333,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    pub fn ensure_cached_annotation(&mut self, annotation: Annotation, is_initialized: bool) {
+    pub fn ensure_cached_annotation(&self, annotation: Annotation, is_initialized: bool) {
         self.ensure_cached_annotation_internal(
             annotation,
             TypeComputationOrigin::AssignmentTypeCommentOrAnnotation { is_initialized },
@@ -3341,7 +3341,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
     }
 
     pub fn compute_type_application_on_class(
-        &mut self,
+        &self,
         class: Class,
         slice_type: SliceType,
         from_alias_definition: bool,
@@ -3355,7 +3355,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
     }
 
     pub fn compute_type_application_on_dataclass(
-        &mut self,
+        &self,
         dataclass: &Dataclass,
         slice_type: SliceType,
         from_alias_definition: bool,
@@ -3369,7 +3369,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
     }
 
     pub fn compute_type_application_on_named_tuple(
-        &mut self,
+        &self,
         named_tuple: Rc<NamedTuple>,
         slice_type: SliceType,
         from_alias_definition: bool,
@@ -3383,7 +3383,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
     }
 
     pub fn compute_type_application_on_typed_dict(
-        &mut self,
+        &self,
         typed_dict: &TypedDict,
         slice_type: SliceType,
         from_alias_definition: bool,
@@ -3397,7 +3397,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
     }
 
     pub fn compute_type_application_on_alias(
-        &mut self,
+        &self,
         alias: &TypeAlias,
         slice_type: SliceType,
         from_alias_definition: bool,
@@ -3417,7 +3417,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
     }
 
     pub fn compute_type_application_on_typing_class(
-        &mut self,
+        &self,
         specific: Specific,
         slice_type: SliceType,
         from_alias_definition: bool,
@@ -3486,7 +3486,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    pub(super) fn use_cached_param_annotation(&mut self, annotation: ParamAnnotation) -> Inferred {
+    pub(super) fn use_cached_param_annotation(&self, annotation: ParamAnnotation) -> Inferred {
         let point = self.file.points.get(annotation.index());
         debug_assert!(matches!(
             point.specific(),
@@ -3498,7 +3498,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         self.check_point_cache(annotation.index()).unwrap()
     }
 
-    pub(super) fn use_cached_annotation(&mut self, annotation: Annotation) -> Inferred {
+    pub(super) fn use_cached_annotation(&self, annotation: Annotation) -> Inferred {
         let point = self.file.points.get(annotation.index());
         debug_assert!(matches!(
             point.specific(),
@@ -3510,7 +3510,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         self.check_point_cache(annotation.index()).unwrap()
     }
 
-    pub fn use_cached_return_annotation(&mut self, annotation: ReturnAnnotation) -> Inferred {
+    pub fn use_cached_return_annotation(&self, annotation: ReturnAnnotation) -> Inferred {
         debug_assert!(matches!(
             self.file.points.get(annotation.index()).specific(),
             Specific::AnnotationOrTypeCommentWithTypeVars
@@ -3521,7 +3521,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
     }
 
     pub fn use_cached_return_annotation_type(
-        &mut self,
+        &self,
         annotation: ReturnAnnotation,
     ) -> Cow<'file, Type> {
         self.use_cached_annotation_or_type_comment_type_internal(
@@ -3530,7 +3530,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         )
     }
 
-    pub fn use_cached_annotation_type(&mut self, annotation: Annotation) -> Cow<'file, Type> {
+    pub fn use_cached_annotation_type(&self, annotation: Annotation) -> Cow<'file, Type> {
         self.use_cached_annotation_or_type_comment_type_internal(
             annotation.index(),
             annotation.expression(),
@@ -3538,7 +3538,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
     }
 
     pub fn use_cached_param_annotation_type(
-        &mut self,
+        &self,
         annotation: ParamAnnotation,
     ) -> Cow<'file, Type> {
         match annotation.maybe_starred() {
@@ -3557,7 +3557,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
     }
 
     fn use_cached_annotation_or_type_comment_type_internal(
-        &mut self,
+        &self,
         annotation_index: NodeIndex,
         expr: Expression,
     ) -> Cow<'file, Type> {
@@ -3580,10 +3580,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    fn use_cached_annotation_internal(
-        &mut self,
-        type_storage_index: NodeIndex,
-    ) -> Cow<'file, Type> {
+    fn use_cached_annotation_internal(&self, type_storage_index: NodeIndex) -> Cow<'file, Type> {
         let complex_index = self.file.points.get(type_storage_index).complex_index();
         match self.file.complex_points.get(complex_index) {
             ComplexPoint::TypeInstance(t) => Cow::Borrowed(t),
@@ -3615,7 +3612,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
     }
 
     fn compute_type_assignment(
-        &mut self,
+        &self,
         assignment: Assignment<'x>,
         is_explicit: bool,
     ) -> TypeNameLookup<'file, 'file> {
@@ -3675,10 +3672,9 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             }
             debug_assert!(file.points.get(name_def.index()).calculated() || annotation.is_some());
 
-            let check_for_alias = |self_: &mut Inference| {
+            let check_for_alias = || {
                 cached_type_node_ref.set_point(Point::new_calculating());
-                let type_var_likes =
-                    TypeVarFinder::find_alias_type_vars(self_.i_s, self.file, expr);
+                let type_var_likes = TypeVarFinder::find_alias_type_vars(self.i_s, self.file, expr);
 
                 let in_definition = cached_type_node_ref.as_link();
                 let alias = TypeAlias::new(
@@ -3703,7 +3699,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                     };
                 let p = file.points.get(expr.index());
                 let mut comp = TypeComputation::new(
-                    self_,
+                    self,
                     in_definition,
                     &mut type_var_callback,
                     TypeComputationOrigin::TypeAlias,
@@ -3777,7 +3773,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             };
 
             if is_explicit {
-                return check_for_alias(self);
+                return check_for_alias();
             }
 
             let inferred = self.check_point_cache(name_def.index()).unwrap();
@@ -3793,7 +3789,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             } else if let Some(t) = inferred.maybe_enum_definition(self.i_s) {
                 TypeNameLookup::Enum(t)
             } else {
-                check_for_alias(self)
+                check_for_alias()
             };
             debug!("Finished type alias calculation: {}", name_def.as_code());
             result
@@ -3808,12 +3804,12 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    pub(super) fn compute_explicit_type_assignment(&mut self, assignment: Assignment) -> Inferred {
+    pub(super) fn compute_explicit_type_assignment(&self, assignment: Assignment) -> Inferred {
         self.compute_type_assignment(assignment, true);
         Inferred::from_saved_node_ref(assignment_type_node_ref(self.file, assignment))
     }
 
-    pub(super) fn lookup_type_name(&mut self, name: Name<'x>) -> TypeNameLookup<'db, 'x> {
+    pub(super) fn lookup_type_name(&self, name: Name<'x>) -> TypeNameLookup<'db, 'x> {
         let point = self.file.points.get(name.index());
         debug_assert!(self.file.points.get(name.index()).calculated());
         match point.kind() {
@@ -3833,7 +3829,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
     }
 
     pub(super) fn compute_type_comment(
-        &mut self,
+        &self,
         start: CodeIndex,
         s: &str,
         assignment_node_ref: NodeRef,
@@ -3929,7 +3925,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
     }
 
     fn calc_type_comment_tuple<'s>(
-        &mut self,
+        &self,
         assignment_node_ref: NodeRef,
         iterator: impl Iterator<Item = StarLikeExpression<'s>>,
     ) -> Type {
@@ -3968,7 +3964,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
     }
 
     pub fn check_for_type_comment(
-        &mut self,
+        &self,
         assignment: Assignment,
     ) -> Option<TypeCommentDetails<'db>> {
         let suffix = assignment.suffix();
@@ -3993,7 +3989,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         }
         None
     }
-    pub fn compute_cast_target(&mut self, node_ref: NodeRef) -> Result<Inferred, ()> {
+    pub fn compute_cast_target(&self, node_ref: NodeRef) -> Result<Inferred, ()> {
         let named_expr = node_ref.as_named_expression();
         let mut x = type_computation_for_variable_annotation;
         let mut comp = TypeComputation::new(
@@ -4015,7 +4011,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
     }
 
     pub fn compute_class_typed_dict_member(
-        &mut self,
+        &self,
         name: StringSlice,
         annotation: Annotation,
         total: bool,
@@ -4037,7 +4033,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
     }
 
     fn within_type_var_like_definition<T>(
-        &mut self,
+        &self,
         node_ref: NodeRef,
         callback: impl FnOnce(TypeComputation) -> T,
     ) -> T {
@@ -4056,7 +4052,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         callback(comp)
     }
 
-    pub fn compute_type_var_constraint(&mut self, expr: Expression) -> Option<Type> {
+    pub fn compute_type_var_constraint(&self, expr: Expression) -> Option<Type> {
         let node_ref = NodeRef::new(self.file, expr.index());
         self.within_type_var_like_definition(node_ref, |mut comp| {
             match comp.compute_type(expr) {
@@ -4078,7 +4074,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         })
     }
 
-    pub fn compute_type_var_default(&mut self, expr: Expression) -> Option<Type> {
+    pub fn compute_type_var_default(&self, expr: Expression) -> Option<Type> {
         let node_ref = NodeRef::new(self.file, expr.index());
         self.within_type_var_like_definition(node_ref, |mut comp| {
             let tc = comp.compute_type(expr);
@@ -4086,14 +4082,14 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         })
     }
 
-    pub fn compute_param_spec_default(&mut self, expr: Expression) -> Option<CallableParams> {
+    pub fn compute_param_spec_default(&self, expr: Expression) -> Option<CallableParams> {
         let node_ref = NodeRef::new(self.file, expr.index());
         self.within_type_var_like_definition(node_ref, |mut comp| {
             comp.calculate_callable_params_for_expr(expr, false, false)
         })
     }
 
-    pub fn compute_type_var_tuple_default(&mut self, expr: Expression) -> Option<TypeArgs> {
+    pub fn compute_type_var_tuple_default(&self, expr: Expression) -> Option<TypeArgs> {
         let node_ref = NodeRef::new(self.file, expr.index());
         self.within_type_var_like_definition(node_ref, |mut comp| match comp.compute_type(expr) {
             TypeContent::Unpacked(unpacked) => Some(TypeArgs::new(
@@ -4103,7 +4099,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         })
     }
 
-    pub fn compute_new_type_constraint(&mut self, expr: Expression) -> Type {
+    pub fn compute_new_type_constraint(&self, expr: Expression) -> Type {
         let mut x = type_computation_for_variable_annotation;
         let node_ref = NodeRef::new(self.file, expr.index());
         let mut comp = TypeComputation::new(
@@ -4660,7 +4656,7 @@ pub(super) fn check_type_name<'db: 'file, 'file>(
                 .file
                 .points
                 .get(new_name.name_definition().unwrap().index());
-            let mut inference = name_node_ref.file.inference(i_s);
+            let inference = name_node_ref.file.inference(i_s);
             if !def_point.calculated() || def_point.maybe_specific() != Some(Specific::Cycle) {
                 inference.cache_assignment_nodes(assignment);
             }
@@ -4794,7 +4790,7 @@ pub fn use_cached_simple_generic_type<'db>(
 ) -> Cow<'db, Type> {
     // The context of inference state is not important, because this is only a simple generic type.
     let i_s = &InferenceState::new(db);
-    let mut inference = file.inference(i_s);
+    let inference = file.inference(i_s);
     debug_assert_eq!(
         inference.file.points.get(expr.index()).kind(),
         PointKind::Redirect

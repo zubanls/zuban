@@ -691,17 +691,17 @@ impl Inference<'_, '_, '_> {
         result
     }
 
-    pub fn maybe_lookup_narrowed_primary(&mut self, primary: Primary) -> Option<Inferred> {
+    pub fn maybe_lookup_narrowed_primary(&self, primary: Primary) -> Option<Inferred> {
         self.maybe_has_primary_entry(primary).map(|x| x.1)
     }
 
-    pub fn flow_analysis_for_assert(&mut self, expr: Expression) {
+    pub fn flow_analysis_for_assert(&self, expr: Expression) {
         let (_, true_frame, _) = self.find_guards_in_expr(expr);
         FLOW_ANALYSIS.with(|fa| fa.overwrite_frame(self.i_s.db, true_frame))
     }
 
     pub fn narrow_or_widen_name_target(
-        &mut self,
+        &self,
         first_name_index: NodeIndex,
         declaration_t: &Type,
         current_t: &Type,
@@ -720,13 +720,13 @@ impl Inference<'_, '_, '_> {
         true
     }
 
-    pub fn save_narrowed_primary_target(&mut self, primary_target: PrimaryTarget, t: &Type) {
+    pub fn save_narrowed_primary_target(&self, primary_target: PrimaryTarget, t: &Type) {
         if let Some(key) = self.key_from_primary_target(primary_target) {
             self.save_narrowed(key, t, false)
         }
     }
 
-    fn save_narrowed(&mut self, key: FlowKey, t: &Type, widens: bool) {
+    fn save_narrowed(&self, key: FlowKey, t: &Type, widens: bool) {
         FLOW_ANALYSIS.with(|fa| {
             fa.invalidate_child_entries_in_last_frame(self.i_s.db, &key);
             fa.overwrite_entry(
@@ -742,7 +742,7 @@ impl Inference<'_, '_, '_> {
     }
 
     pub fn flow_analysis_for_ternary(
-        &mut self,
+        &self,
         t: Ternary,
         result_context: &mut ResultContext,
     ) -> Inferred {
@@ -781,7 +781,7 @@ impl Inference<'_, '_, '_> {
     }
 
     pub fn flow_analysis_for_if_stmt(
-        &mut self,
+        &self,
         if_stmt: IfStmt,
         class: Option<Class>,
         func: Option<&Function>,
@@ -790,7 +790,7 @@ impl Inference<'_, '_, '_> {
     }
 
     pub fn flow_analysis_for_while_stmt(
-        &mut self,
+        &self,
         while_stmt: WhileStmt,
         class: Option<Class>,
         func: Option<&Function>,
@@ -800,7 +800,7 @@ impl Inference<'_, '_, '_> {
     }
 
     fn process_loop(
-        &mut self,
+        &self,
         if_expr: Option<NamedExpression>,
         block: Block,
         else_block: Option<ElseBlock>,
@@ -832,7 +832,7 @@ impl Inference<'_, '_, '_> {
         })
     }
 
-    pub fn flow_analysis_for_break_stmt(&mut self, while_stmt: BreakStmt) {
+    pub fn flow_analysis_for_break_stmt(&self, while_stmt: BreakStmt) {
         FLOW_ANALYSIS.with(|fa| {
             let Some(index) = fa.current_break_index.get() else {
                 self.add_issue(while_stmt.index(), IssueKind::BreakOutsideLoop);
@@ -842,7 +842,7 @@ impl Inference<'_, '_, '_> {
         });
     }
 
-    pub fn flow_analysis_for_continue_stmt(&mut self, while_stmt: ContinueStmt) {
+    pub fn flow_analysis_for_continue_stmt(&self, while_stmt: ContinueStmt) {
         FLOW_ANALYSIS.with(|fa| {
             let Some(index) = fa.current_break_index.get() else {
                 self.add_issue(while_stmt.index(), IssueKind::ContinueOutsideLoop);
@@ -853,7 +853,7 @@ impl Inference<'_, '_, '_> {
     }
 
     pub fn flow_analysis_for_for_stmt(
-        &mut self,
+        &self,
         for_stmt: ForStmt,
         class: Option<Class>,
         func: Option<&Function>,
@@ -865,7 +865,7 @@ impl Inference<'_, '_, '_> {
     }
 
     fn process_ifs(
-        &mut self,
+        &self,
         mut if_blocks: IfBlockIterator,
         class: Option<Class>,
         func: Option<&Function>,
@@ -890,12 +890,12 @@ impl Inference<'_, '_, '_> {
         }
     }
 
-    pub fn flow_analysis_for_conjunction(&mut self, and: Conjunction) -> Inferred {
+    pub fn flow_analysis_for_conjunction(&self, and: Conjunction) -> Inferred {
         self.check_conjunction(and).0
     }
 
     fn check_conjunction(
-        &mut self,
+        &self,
         and: Conjunction,
     ) -> (Inferred, FramesWithParentUnions, FramesWithParentUnions) {
         let (left, right) = and.unpack();
@@ -931,12 +931,12 @@ impl Inference<'_, '_, '_> {
         (inf, left_frames, right_frames)
     }
 
-    pub fn flow_analysis_for_disjunction(&mut self, or: Disjunction) -> Inferred {
+    pub fn flow_analysis_for_disjunction(&self, or: Disjunction) -> Inferred {
         self.check_disjunction(or).0
     }
 
     fn check_disjunction(
-        &mut self,
+        &self,
         or: Disjunction,
     ) -> (Inferred, FramesWithParentUnions, FramesWithParentUnions) {
         let (left, right) = or.unpack();
@@ -974,7 +974,7 @@ impl Inference<'_, '_, '_> {
 
     #[inline]
     fn maybe_propagate_parent_union(
-        &mut self,
+        &self,
         base_union: &UnionType,
         child_entry: &Entry,
     ) -> Option<Type> {
@@ -1008,11 +1008,7 @@ impl Inference<'_, '_, '_> {
             .then(|| Type::from_union_entries(matching_entries))
     }
 
-    fn propagate_parent_unions(
-        &mut self,
-        frame: &mut Frame,
-        parent_unions: &[(FlowKey, UnionType)],
-    ) {
+    fn propagate_parent_unions(&self, frame: &mut Frame, parent_unions: &[(FlowKey, UnionType)]) {
         for (key, parent_union) in parent_unions.iter().rev() {
             for entry in &frame.entries {
                 let (FlowKey::Member(base_key, _) | FlowKey::Index{base_key, ..}) = &entry.key else {
@@ -1036,10 +1032,7 @@ impl Inference<'_, '_, '_> {
         }
     }
 
-    fn find_guards_in_named_expr(
-        &mut self,
-        named_expr: NamedExpression,
-    ) -> (Inferred, Frame, Frame) {
+    fn find_guards_in_named_expr(&self, named_expr: NamedExpression) -> (Inferred, Frame, Frame) {
         match named_expr.unpack() {
             NamedExpressionContent::Expression(expr) => self.find_guards_in_expr(expr),
             NamedExpressionContent::Walrus(walrus) => {
@@ -1072,12 +1065,12 @@ impl Inference<'_, '_, '_> {
         }
     }
 
-    fn find_guards_in_expr(&mut self, expr: Expression) -> (Inferred, Frame, Frame) {
+    fn find_guards_in_expr(&self, expr: Expression) -> (Inferred, Frame, Frame) {
         self.find_guards_in_expr_with_context(expr, &mut ResultContext::Unknown)
     }
 
     fn find_guards_in_expr_with_context(
-        &mut self,
+        &self,
         expr: Expression,
         result_context: &mut ResultContext,
     ) -> (Inferred, Frame, Frame) {
@@ -1091,7 +1084,7 @@ impl Inference<'_, '_, '_> {
     }
 
     fn find_guards_in_expr_part(
-        &mut self,
+        &self,
         part: ExpressionPart,
         result_context: &mut ResultContext,
     ) -> (Inferred, Frame, Frame) {
@@ -1103,14 +1096,14 @@ impl Inference<'_, '_, '_> {
     }
 
     fn find_guards_in_expression_parts(
-        &mut self,
+        &self,
         part: ExpressionPart,
     ) -> (Inferred, FramesWithParentUnions) {
         self.find_guards_in_expression_parts_with_context(part, &mut ResultContext::Unknown)
     }
 
     fn find_guards_in_expression_parts_with_context(
-        &mut self,
+        &self,
         part: ExpressionPart,
         result_context: &mut ResultContext,
     ) -> (Inferred, FramesWithParentUnions) {
@@ -1142,7 +1135,7 @@ impl Inference<'_, '_, '_> {
     }
 
     fn find_guards_in_expression_parts_inner(
-        &mut self,
+        &self,
         part: ExpressionPart,
         result_context: &mut ResultContext,
     ) -> Result<(Inferred, FramesWithParentUnions), Inferred> {
@@ -1265,7 +1258,7 @@ impl Inference<'_, '_, '_> {
         Err(self.infer_expression_part_with_context(part, result_context))
     }
 
-    fn find_guards_in_comparisons(&mut self, comps: Comparisons) -> Option<FramesWithParentUnions> {
+    fn find_guards_in_comparisons(&self, comps: Comparisons) -> Option<FramesWithParentUnions> {
         let mut frames: Option<FramesWithParentUnions> = None;
         let mut iterator = comps.iter().peekable();
         let mut left_infos = self.comparison_part_infos(iterator.peek().unwrap().left());
@@ -1366,7 +1359,7 @@ impl Inference<'_, '_, '_> {
     }
 
     fn find_isinstance_or_issubclass_frames(
-        &mut self,
+        &self,
         args: Arguments,
         issubclass: bool,
     ) -> Option<FramesWithParentUnions> {
@@ -1436,7 +1429,7 @@ impl Inference<'_, '_, '_> {
     }
 
     pub fn check_isinstance_or_issubclass_type(
-        &mut self,
+        &self,
         arg: NamedExpression,
         issubclass: bool,
     ) -> Option<Type> {
@@ -1459,7 +1452,7 @@ impl Inference<'_, '_, '_> {
     }
 
     fn isinstance_or_issubclass_type(
-        &mut self,
+        &self,
         arg: NamedExpression,
         issubclass: bool,
     ) -> Option<Type> {
@@ -1482,12 +1475,12 @@ impl Inference<'_, '_, '_> {
     }
 
     fn isinstance_or_issubclass_type_for_expr_part(
-        &mut self,
+        &self,
         part: ExpressionPart,
         issubclass: bool,
     ) -> Option<Type> {
-        let cannot_use_with = |self_: &mut Self, with| {
-            self_.add_issue(
+        let cannot_use_with = |with| {
+            self.add_issue(
                 part.index(),
                 IssueKind::CannotUseIsinstanceWith {
                     func: match issubclass {
@@ -1510,7 +1503,7 @@ impl Inference<'_, '_, '_> {
                 let inf = self.infer_expression_part(part);
                 match inf.maybe_saved_specific(self.i_s.db) {
                     Some(Specific::TypingAny) => {
-                        return cannot_use_with(self, "Any");
+                        return cannot_use_with("Any");
                     }
                     Some(Specific::TypingType) => {
                         if issubclass {
@@ -1527,7 +1520,7 @@ impl Inference<'_, '_, '_> {
         }
     }
 
-    fn process_isinstance_type(&mut self, part: ExpressionPart, t: &Type) -> Option<Type> {
+    fn process_isinstance_type(&self, part: ExpressionPart, t: &Type) -> Option<Type> {
         match t {
             Type::Tuple(tup) => match &tup.args {
                 TupleArgs::FixedLen(ts) => {
@@ -1570,7 +1563,7 @@ impl Inference<'_, '_, '_> {
         }
     }
 
-    fn guard_hasattr(&mut self, args: Arguments) -> Option<FramesWithParentUnions> {
+    fn guard_hasattr(&self, args: Arguments) -> Option<FramesWithParentUnions> {
         let mut iterator = args.iter();
         let Argument::Positional(arg) = iterator.next()? else {
             return None
@@ -1621,7 +1614,7 @@ impl Inference<'_, '_, '_> {
     }
 
     fn guard_type_guard(
-        &mut self,
+        &self,
         args_details: ArgumentsDetails,
         args: Arguments,
         might_have_guard: CallableLike,
@@ -1643,14 +1636,14 @@ impl Inference<'_, '_, '_> {
     }
 
     fn check_type_guard_callable(
-        &mut self,
+        &self,
         args_details: ArgumentsDetails,
         args: Arguments,
         callable: &CallableContent,
         from_overload: bool,
     ) -> Option<FramesWithParentUnions> {
         let guard = callable.guard.as_ref()?;
-        let mut find_arg = || {
+        let find_arg = || {
             let CallableParams::Simple(c_params) = &callable.params else {
                 return None
             };
@@ -1720,7 +1713,7 @@ impl Inference<'_, '_, '_> {
     }
 
     fn guard_of_in_operator(
-        &mut self,
+        &self,
         op: Operand,
         left: ComparisonPartInfos,
         right: &ComparisonPartInfos,
@@ -1848,7 +1841,7 @@ impl Inference<'_, '_, '_> {
         None
     }
 
-    fn key_from_primary(&mut self, primary: Primary) -> KeyWithParentUnions {
+    fn key_from_primary(&self, primary: Primary) -> KeyWithParentUnions {
         let second = primary.second();
         if matches!(second, PrimaryContent::Execution(_)) {
             return KeyWithParentUnions::new(
@@ -1927,7 +1920,7 @@ impl Inference<'_, '_, '_> {
         base
     }
 
-    fn key_from_expr_part(&mut self, expr_part: ExpressionPart) -> KeyWithParentUnions {
+    fn key_from_expr_part(&self, expr_part: ExpressionPart) -> KeyWithParentUnions {
         match expr_part {
             ExpressionPart::Atom(atom) => KeyWithParentUnions::new(
                 self.infer_atom(atom, &mut ResultContext::Unknown),
@@ -1938,14 +1931,14 @@ impl Inference<'_, '_, '_> {
         }
     }
 
-    fn key_from_expression(&mut self, expr: Expression) -> KeyWithParentUnions {
+    fn key_from_expression(&self, expr: Expression) -> KeyWithParentUnions {
         match expr.unpack() {
             ExpressionContent::ExpressionPart(part) => self.key_from_expr_part(part),
             _ => KeyWithParentUnions::new(self.infer_expression(expr), None),
         }
     }
 
-    fn key_from_namedexpression(&mut self, named_expr: NamedExpression) -> KeyWithParentUnions {
+    fn key_from_namedexpression(&self, named_expr: NamedExpression) -> KeyWithParentUnions {
         match named_expr.unpack() {
             NamedExpressionContent::Expression(expr) => self.key_from_expression(expr),
             NamedExpressionContent::Walrus(walrus) => KeyWithParentUnions {
@@ -1956,7 +1949,7 @@ impl Inference<'_, '_, '_> {
         }
     }
 
-    fn key_from_slice_type(&mut self, slice_type: ASTSliceType) -> Option<FlowKeyIndex> {
+    fn key_from_slice_type(&self, slice_type: ASTSliceType) -> Option<FlowKeyIndex> {
         if let ASTSliceType::NamedExpression(ne) = slice_type {
             match self
                 .infer_expression(ne.expression())
@@ -1977,7 +1970,7 @@ impl Inference<'_, '_, '_> {
         }
     }
 
-    fn key_from_primary_target(&mut self, primary_target: PrimaryTarget) -> Option<FlowKey> {
+    fn key_from_primary_target(&self, primary_target: PrimaryTarget) -> Option<FlowKey> {
         let base_key = match primary_target.first() {
             PrimaryTargetOrAtom::PrimaryTarget(t) => self.key_from_primary_target(t),
             PrimaryTargetOrAtom::Atom(atom) => self.key_from_atom(atom),
@@ -1995,7 +1988,7 @@ impl Inference<'_, '_, '_> {
         }
     }
 
-    fn maybe_has_primary_entry(&mut self, primary: Primary) -> Option<(FlowKey, Inferred)> {
+    fn maybe_has_primary_entry(&self, primary: Primary) -> Option<(FlowKey, Inferred)> {
         FLOW_ANALYSIS.with(|fa| {
             for frame in fa.frames.borrow().iter().rev() {
                 for entry in &frame.entries {
@@ -2013,9 +2006,9 @@ impl Inference<'_, '_, '_> {
         })
     }
 
-    fn matches_primary_entry(&mut self, primary: Primary, key: &FlowKey) -> bool {
+    fn matches_primary_entry(&self, primary: Primary, key: &FlowKey) -> bool {
         let db = self.i_s.db;
-        let mut match_primary_first_part = |base_key: &Rc<_>| match primary.first() {
+        let match_primary_first_part = |base_key: &Rc<_>| match primary.first() {
             PrimaryOrAtom::Primary(primary) => self.matches_primary_entry(primary, base_key),
             PrimaryOrAtom::Atom(atom) => {
                 let FlowKey::Name(check_link) = base_key.as_ref() else {
@@ -2059,8 +2052,8 @@ impl Inference<'_, '_, '_> {
         }
     }
 
-    fn comparison_part_infos(&mut self, expr_part: ExpressionPart) -> ComparisonPartInfos {
-        let mut check_for_call = || {
+    fn comparison_part_infos(&self, expr_part: ExpressionPart) -> ComparisonPartInfos {
+        let check_for_call = || {
             let ExpressionPart::Primary(primary) = expr_part else {
                 return None
             };
@@ -2077,7 +2070,7 @@ impl Inference<'_, '_, '_> {
 
             let pre_exec = self.infer_primary_or_atom(primary.first());
             let db = self.i_s.db;
-            let mut as_infos = |is_len| {
+            let as_infos = |is_len| {
                 let with_key = self.key_from_namedexpression(first_arg);
                 with_key.key.map(|key| {
                     let full_inf = self.infer_expression_part(expr_part);
