@@ -599,7 +599,7 @@ impl<'db> Diagnostic<'db> {
                     )
                 } else {
                     format!(
-                        r#"Incompatible import of "{name}" (imported name has type {got}, local name has type "{expected}")"#,
+                        r#"Incompatible import of "{name}" (imported name has type "{got}", local name has type "{expected}")"#,
                     )
                 }
             }
