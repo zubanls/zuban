@@ -181,8 +181,8 @@ b: Foo[str] = Foo("")
 c: Foo[int] | int = Foo("") # E: Argument 1 to "Foo" has incompatible type "str"; expected "int"
 d: Foo[str] | str = Foo("")
 
-c: int | Foo[int] = Foo("") # E: Argument 1 to "Foo" has incompatible type "str"; expected "int"
-d: str | Foo[str] = Foo("")
+e: int | Foo[int] = Foo("") # E: Argument 1 to "Foo" has incompatible type "str"; expected "int"
+f: str | Foo[str] = Foo("")
 
 [case union_context_class_matching_with_any]
 from typing import TypeVar, Generic, Any
@@ -194,8 +194,8 @@ class Foo(Generic[T]):
 c: Foo[int] | Any = Foo("") # E: Argument 1 to "Foo" has incompatible type "str"; expected "int"
 d: Foo[str] | Any = Foo("")
 
-c: Any | Foo[int] = Foo("") # E: Argument 1 to "Foo" has incompatible type "str"; expected "int"
-d: Any | Foo[str] = Foo("")
+e: Any | Foo[int] = Foo("") # E: Argument 1 to "Foo" has incompatible type "str"; expected "int"
+f: Any | Foo[str] = Foo("")
 
 [case union_context_class_matching_with_overload]
 # flags: --mypy-compatible
@@ -496,7 +496,7 @@ c_inv: Invariant[C]
 
 b1: Iterable[A] = f(a_co, a_co)
 b2: Iterable[A] = f(b_co, b_co)
-b2: Iterable[A] = f(c_co, c_co)
+b3: Iterable[A] = f(c_co, c_co)
 b4: Iterable[B] = f(a_co, a_co) # E: Argument 1 to "f" has incompatible type "Co[A]"; expected "Co[B] | Contra[B] | Invariant[B]" \
                                 # E: Argument 2 to "f" has incompatible type "Co[A]"; expected "Co[B] | Contra[B] | Invariant[B]"
 b5: Iterable[B] = f(b_co, b_co)
@@ -556,8 +556,8 @@ c6: Iterable[A] = f(b_co, b_contra)
 
 d1: Iterable[A] = f(c_co, b_contra)
 d2: Iterable[A] = f(b_contra, c_co)
-d1: Iterable[A] = f(c_contra, b_co) # E: Argument 2 to "f" has incompatible type "Co[B]"; expected "Co[C] | Contra[C] | Invariant[C]"
-d2: Iterable[A] = f(b_co, c_contra) # E: Argument 2 to "f" has incompatible type "Contra[C]"; expected "Co[A] | Contra[A] | Invariant[A]"
+d3: Iterable[A] = f(c_contra, b_co) # E: Argument 2 to "f" has incompatible type "Co[B]"; expected "Co[C] | Contra[C] | Invariant[C]"
+d4: Iterable[A] = f(b_co, c_contra) # E: Argument 2 to "f" has incompatible type "Contra[C]"; expected "Co[A] | Contra[A] | Invariant[A]"
 
 [case class_generics_recursion]
 from typing import TypeVar
@@ -670,15 +670,15 @@ def f(x: T, y: T) -> list[T]:
 
 fi: Foo[int]
 fs: Foo[str]
-x: list[Foo[int]] = f(fi, fi)
-x: list[Foo[int]] = f(fi, fs) # E: Argument 2 to "f" has incompatible type "Foo[str]"; expected "Foo[int]"
-x: list[Foo[int]] = f(fs, fi) # E: Argument 1 to "f" has incompatible type "Foo[str]"; expected "Foo[int]"
-y: list[Foo[Any]] = f(fi, fi)
-y: list[Foo[Any]] = f(fs, fs)
+x1: list[Foo[int]] = f(fi, fi)
+x2: list[Foo[int]] = f(fi, fs) # E: Argument 2 to "f" has incompatible type "Foo[str]"; expected "Foo[int]"
+x3: list[Foo[int]] = f(fs, fi) # E: Argument 1 to "f" has incompatible type "Foo[str]"; expected "Foo[int]"
+y1: list[Foo[Any]] = f(fi, fi)
+y2: list[Foo[Any]] = f(fs, fs)
 f(fi, fs) # E: Argument 2 to "f" has incompatible type "Foo[str]"; expected "Foo[int]"
-y: list[Foo[Any]] = f(fi, fs) # E: Argument 2 to "f" has incompatible type "Foo[str]"; expected "Foo[int]"
+y3: list[Foo[Any]] = f(fi, fs) # E: Argument 2 to "f" has incompatible type "Foo[str]"; expected "Foo[int]"
 f(fs, fi) # E: Argument 2 to "f" has incompatible type "Foo[int]"; expected "Foo[str]"
-y: list[Foo[Any]] = f(fs, fi) # E: Argument 2 to "f" has incompatible type "Foo[int]"; expected "Foo[str]"
+y4: list[Foo[Any]] = f(fs, fi) # E: Argument 2 to "f" has incompatible type "Foo[int]"; expected "Foo[str]"
 
 [case generic_covariant_match]
 from typing import TypeVar, Sequence

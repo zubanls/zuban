@@ -1509,6 +1509,7 @@ testNamedTupleHasMatchArgs
 testNewAnalyzerNewTypeForwardClassAliasReversed
 testBanPathologicalRecursiveTuples
 testWalrusUsedBeforeDef
+testNewAnalyzerFirstVarDefinitionWins
 # --enable-error-code possibly-undefined "Name "x" may be undefined"
 testPossiblyUndefinedWithAssignmentExpr
 # undefined += 1 where undefined is a NameError
@@ -1537,15 +1538,11 @@ overloaded_property_not_possible
 # _ special case
 testMultipleUnderscoreFunctionsIsntError
 # Redefinition (Name "X" already defined on line X)
-testGlobalVarRedefinition
-testLocalVarRedefinition
-testClassVarRedefinition
 testRedefineVariableAsTypevar
 testRedefineTypevar
 testRedefineTypevar4
 testImportTwoModulesWithSameNameInFunction
 testImportTwoModulesWithSameNameInGlobalContext
-testTypeRedeclarationNoSpuriousWarnings
 testDuplicateDefOverload
 testNewAnalyzerRedefinitionAndDeferral1a
 testNewAnalyzerRedefinitionAndDeferral1b
@@ -1555,7 +1552,6 @@ testNewAnalyzerRedefinitionAndDeferral3
 testNewAnalyzerImportStarForwardRef*
 testNewAnalyzerImportOverExistingInCycleStar1
 testNewAnalyzerImportOverExistingInCycleStar2
-testNewAnalyzerMissingImportErrors
 testNewAnalyzerMissingImportErrorsRedefinition
 testNewAnalyzerDuplicateTypeVar
 testNewAnalyzerDuplicateTypeVarImportCycle
@@ -1573,28 +1569,26 @@ testMemberRedefinitionDefinedInClass
 testErrorCodeAlreadyDefined
 testNewAnalyzerEnumRedefinition
 testNewSyntaxBasics
-testDataclassesInheritingDuplicateField
 testPropertyAndFieldRedefinitionNoCrash
 testModuleLevelGetattrImportFromAsTwice
 testFinalClassVariableRedefinitionDoesNotCrash
-testNewAnalyzerFirstVarDefinitionWins
 # redefinition overload
 testRedefinedOverloadedFunction
 testFakeOverloadCrash2
 testOverloadNotImportedNoCrash
 testSingleOverload2
 testCustomRedefinitionDecorator
-# Cannot assign multiple types to name "b" without an explicit "Type[...]" annotation
+# "Cannot assign multiple types to name "b" without an explicit "Type[...]" annotation"
 testAliasesInClassBodyNormalVsSubscripted
-# Cannot assign multiple modules to name "..." without explicit "types.ModuleType" annotation
+# "Cannot assign multiple modules to name "..." without explicit "types.ModuleType" annotation"
 testModuleAliasRepeated
 testModuleAliasRepeatedComplex
 testModuleAliasToOtherModule
 testModuleAliasToQualifiedImport2
-# Incompatible redefinition (redefinition with type "Callable[[Any], Any]", original type "Callable[[], Any]")
+# "Incompatible redefinition (redefinition with type "Callable[[Any], Any]", original type "Callable[[], Any]")"
 testRedefineFunctionDefinedAsVariableWithInvalidSignature
 testRedefinedFunctionInTryWithElse
-# Incompatible redefinition
+# "incompatible redefinition"
 testRedefineFunctionDefinedAsVariableInitializedToEmptyList
 # NewType Redefinition
 testNewAnalyzerNewTypeRedefinition

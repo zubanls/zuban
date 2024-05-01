@@ -23,7 +23,6 @@ def foo(x: None, y: int | None) -> None:
 from typing import Any, Union, Tuple
 
 x: Union[Tuple[int, int], Tuple[int, int, int]]
-x: Any
 if 2 == len(x):
     reveal_type(x) # N: Revealed type is "Tuple[int, int]"
 else:

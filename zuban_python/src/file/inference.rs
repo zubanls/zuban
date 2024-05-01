@@ -939,6 +939,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let current_index = name_def.name_index();
         let i_s = self.i_s;
         if let Some(first_index) = first_defined_name_of_multi_def(self.file, current_index) {
+            if assign_kind == AssignKind::Annotation {
+                self.add_redefinition_issue(first_index, name_def.as_code(), |issue| {
+                    NodeRef::new(self.file, name_def.index()).add_issue(self.i_s, issue)
+                })
+            }
             if current_index == first_index {
                 /*
                 if matches!(value.as_cow_type(i_s).as_ref(), Type::None) {
@@ -1484,41 +1489,50 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let name_index = name_def.node_index + NAME_DEF_TO_NAME_DIFFERENCE;
         debug_assert_eq!(name_def.file_index(), self.file_index);
         if let Some(first) = first_defined_name_of_multi_def(self.file, name_index) {
-            let first_ref = NodeRef::new(self.file, first);
-            let mut line = first_ref.line();
-            let i_s = self.i_s;
-            if i_s.db.project.flags.mypy_compatible {
-                // Mypy uses the line of the first decorator as the definition line. This feels
-                // weird, because the name is what matters, so in our implementation we use a
-                // different line.
-                if let Some(decorated) = NodeRef::new(self.file, first - NAME_TO_FUNCTION_DIFF)
-                    .maybe_function()
-                    .and_then(|func| func.maybe_decorated())
-                {
-                    line = NodeRef::new(self.file, decorated.index()).line();
-                }
-            }
-            let first_name_def = first_ref.as_name().name_definition().unwrap();
-            let suffix = match first_name_def.maybe_import() {
-                Some(import_parent) => {
-                    let mut s = "(possibly by an import)";
-                    if matches!(
-                        self.infer_name_definition(first_name_def)
-                            .as_cow_type(i_s)
-                            .as_ref(),
-                        Type::Module(_)
-                    ) {
-                        s = "(by an import)";
-                    }
-                    Box::from(s)
-                }
-                None => format!("on line {line}").into(),
-            };
-            add_issue(IssueKind::Redefinition {
-                name: name_def.as_code().into(),
-                suffix,
-            })
+            self.add_redefinition_issue(first, name_def.as_code(), add_issue)
         }
+    }
+
+    fn add_redefinition_issue(
+        &self,
+        first: NodeIndex,
+        name: &str,
+        add_issue: impl FnOnce(IssueKind),
+    ) {
+        let first_ref = NodeRef::new(self.file, first);
+        let mut line = first_ref.line();
+        let i_s = self.i_s;
+        if i_s.db.project.flags.mypy_compatible {
+            // Mypy uses the line of the first decorator as the definition line. This feels
+            // weird, because the name is what matters, so in our implementation we use a
+            // different line.
+            if let Some(decorated) = NodeRef::new(self.file, first - NAME_TO_FUNCTION_DIFF)
+                .maybe_function()
+                .and_then(|func| func.maybe_decorated())
+            {
+                line = NodeRef::new(self.file, decorated.index()).line();
+            }
+        }
+        let first_name_def = first_ref.as_name().name_definition().unwrap();
+        let suffix = match first_name_def.maybe_import() {
+            Some(import_parent) => {
+                let mut s = "(possibly by an import)";
+                if matches!(
+                    self.infer_name_definition(first_name_def)
+                        .as_cow_type(i_s)
+                        .as_ref(),
+                    Type::Module(_)
+                ) {
+                    s = "(by an import)";
+                }
+                Box::from(s)
+            }
+            None => format!("on line {line}").into(),
+        };
+        add_issue(IssueKind::Redefinition {
+            name: name.into(),
+            suffix,
+        })
     }
 
     pub fn save_walrus(&self, name_def: NameDefinition, inf: Inferred) -> Inferred {
