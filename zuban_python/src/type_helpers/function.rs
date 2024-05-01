@@ -2,7 +2,7 @@ use std::{borrow::Cow, cell::Cell, fmt, rc::Rc};
 
 use parsa_python_cst::{
     BlockContent, Decorated, Decorator, ExpressionContent, ExpressionPart, FunctionDef,
-    FunctionParent, NodeIndex, Param as ASTParam, ParamAnnotation, ParamKind, PrimaryContent,
+    FunctionParent, NodeIndex, Param as CSTParam, ParamAnnotation, ParamKind, PrimaryContent,
     PrimaryOrAtom, ReturnAnnotation, ReturnOrYield, SimpleStmt, SimpleStmtContent, StmtOrError,
 };
 
@@ -1546,7 +1546,7 @@ impl<'a> Iterator for ReturnOrYieldIterator<'a> {
 #[derive(Clone, Copy, Debug)]
 pub struct FunctionParam<'x> {
     file: &'x PythonFile,
-    param: ASTParam<'x>,
+    param: CSTParam<'x>,
 }
 
 impl<'db: 'x, 'x> FunctionParam<'x> {

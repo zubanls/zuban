@@ -1,6 +1,6 @@
 use parsa_python_cst::{
-    NamedExpression, NodeIndex, Slice as ASTSlice, SliceContent, SliceIterator as ASTSliceIterator,
-    SliceType as ASTSliceType, Slices as ASTSlices, StarredExpression,
+    NamedExpression, NodeIndex, Slice as CSTSlice, SliceContent, SliceIterator as CSTSliceIterator,
+    SliceType as CSTSliceType, Slices as CSTSlices, StarredExpression,
 };
 
 use crate::{
@@ -19,7 +19,7 @@ use crate::{
 #[derive(Debug, Copy, Clone)]
 pub struct SliceType<'file> {
     pub file: &'file PythonFile,
-    pub ast_node: ASTSliceType<'file>,
+    pub cst_node: CSTSliceType<'file>,
     node_index: NodeIndex,
 }
 
@@ -34,11 +34,11 @@ impl<'db, 'file> SliceType<'file> {
     pub fn new(
         file: &'file PythonFile,
         node_index: NodeIndex,
-        ast_node: ASTSliceType<'file>,
+        cst_node: CSTSliceType<'file>,
     ) -> Self {
         Self {
             file,
-            ast_node,
+            cst_node,
             node_index,
         }
     }
@@ -48,7 +48,7 @@ impl<'db, 'file> SliceType<'file> {
     }
 
     pub fn as_argument_node_ref(&self) -> NodeRef<'file> {
-        NodeRef::new(self.file, self.ast_node.index())
+        NodeRef::new(self.file, self.cst_node.index())
     }
 
     pub fn as_args<'x>(&'x self, i_s: InferenceState<'db, 'x>) -> SliceArguments<'db, 'x> {
@@ -59,20 +59,20 @@ impl<'db, 'file> SliceType<'file> {
     }
 
     pub fn unpack(&self) -> SliceTypeContent<'file> {
-        match self.ast_node {
-            ASTSliceType::NamedExpression(named_expr) => SliceTypeContent::Simple(Simple {
+        match self.cst_node {
+            CSTSliceType::NamedExpression(named_expr) => SliceTypeContent::Simple(Simple {
                 file: self.file,
                 named_expr,
             }),
-            ASTSliceType::Slice(slice) => SliceTypeContent::Slice(Slice {
+            CSTSliceType::Slice(slice) => SliceTypeContent::Slice(Slice {
                 file: self.file,
                 slice,
             }),
-            ASTSliceType::Slices(slices) => SliceTypeContent::Slices(Slices {
+            CSTSliceType::Slices(slices) => SliceTypeContent::Slices(Slices {
                 file: self.file,
                 slices,
             }),
-            ASTSliceType::StarredExpression(starred_expr) => SliceTypeContent::Starred(Starred {
+            CSTSliceType::StarredExpression(starred_expr) => SliceTypeContent::Starred(Starred {
                 file: self.file,
                 starred_expr,
             }),
@@ -150,7 +150,7 @@ impl<'file> Starred<'file> {
 #[derive(Debug, Copy, Clone)]
 pub struct Slice<'file> {
     file: &'file PythonFile,
-    slice: ASTSlice<'file>,
+    slice: CSTSlice<'file>,
 }
 
 impl<'file> Slice<'file> {
@@ -220,7 +220,7 @@ impl<'file> Slice<'file> {
 #[derive(Debug, Copy, Clone)]
 pub struct Slices<'file> {
     pub file: &'file PythonFile,
-    slices: ASTSlices<'file>,
+    slices: CSTSlices<'file>,
 }
 
 impl<'file> Slices<'file> {
@@ -267,7 +267,7 @@ impl<'file> SliceOrSimple<'file> {
 }
 
 #[derive(Clone)]
-pub struct SliceIterator<'file>(&'file PythonFile, ASTSliceIterator<'file>);
+pub struct SliceIterator<'file>(&'file PythonFile, CSTSliceIterator<'file>);
 
 impl<'file> Iterator for SliceIterator<'file> {
     type Item = SliceOrSimple<'file>;

@@ -1,6 +1,6 @@
 use std::{borrow::Cow, cell::RefCell, rc::Rc};
 
-use parsa_python_cst::{NodeIndex, PrimaryContent, PythonString, SliceType as ASTSliceType};
+use parsa_python_cst::{NodeIndex, PrimaryContent, PythonString, SliceType as CSTSliceType};
 
 use crate::{
     arguments::{Args, CombinedArgs, InferredArg, KnownArgs, KnownArgsWithCustomAddIssue},
@@ -1489,11 +1489,11 @@ impl<'db: 'slf, 'slf> Inferred {
             unreachable!();
         };
         match slice_type {
-            ASTSliceType::NamedExpression(named) => ClassGenerics::ExpressionWithClassType(
+            CSTSliceType::NamedExpression(named) => ClassGenerics::ExpressionWithClassType(
                 PointLink::new(definition.file_index(), named.expression().index()),
             ),
-            ASTSliceType::Slice(_) | ASTSliceType::StarredExpression(_) => unreachable!(),
-            ASTSliceType::Slices(slices) => ClassGenerics::SlicesWithClassTypes(PointLink::new(
+            CSTSliceType::Slice(_) | CSTSliceType::StarredExpression(_) => unreachable!(),
+            CSTSliceType::Slices(slices) => ClassGenerics::SlicesWithClassTypes(PointLink::new(
                 definition.file_index(),
                 slices.index(),
             )),

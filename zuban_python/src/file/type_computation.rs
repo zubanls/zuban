@@ -1,6 +1,6 @@
 use std::{borrow::Cow, cell::Cell, rc::Rc};
 
-use parsa_python_cst::{SliceType as ASTSliceType, *};
+use parsa_python_cst::{SliceType as CSTSliceType, *};
 
 use super::TypeVarFinder;
 use crate::{
@@ -2019,15 +2019,15 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             node_ref.set_point(Point::new_specific(Specific::SimpleGeneric, Locality::Todo));
             Some((
                 node_ref,
-                match slice_type.ast_node {
-                    ASTSliceType::NamedExpression(n) => ClassGenerics::ExpressionWithClassType(
+                match slice_type.cst_node {
+                    CSTSliceType::NamedExpression(n) => ClassGenerics::ExpressionWithClassType(
                         PointLink::new(node_ref.file_index(), n.expression().index()),
                     ),
-                    ASTSliceType::Slices(slices) => ClassGenerics::SlicesWithClassTypes(
+                    CSTSliceType::Slices(slices) => ClassGenerics::SlicesWithClassTypes(
                         PointLink::new(node_ref.file_index(), slices.index()),
                     ),
-                    ASTSliceType::StarredExpression(_) => return None,
-                    ASTSliceType::Slice(_) => unreachable!(),
+                    CSTSliceType::StarredExpression(_) => return None,
+                    CSTSliceType::Slice(_) => unreachable!(),
                 },
             ))
         } else {
@@ -4323,7 +4323,7 @@ impl<'a, I: Clone + Iterator<Item = SliceOrSimple<'a>>> TypeArgIterator<'a, I> {
             }
         }
         let mut current = None;
-        // slices are not reversible, becuase of how the AST is structured. This is not used often,
+        // slices are not reversible, becuase of how the CST is structured. This is not used often,
         // just clone the iterator.
         for s in self.slices.clone() {
             if let Some(already_analyzed) = self.reverse_already_analyzed {

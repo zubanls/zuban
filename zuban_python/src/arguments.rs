@@ -1,7 +1,7 @@
 use std::{mem, rc::Rc};
 
 use parsa_python_cst::{
-    ArgsIterator, Argument as ASTArgument, ArgumentsDetails, Comprehension, Expression, NodeIndex,
+    ArgsIterator, Argument as CSTArgument, ArgumentsDetails, Comprehension, Expression, NodeIndex,
     Primary, PrimaryContent,
 };
 
@@ -106,8 +106,8 @@ impl<'db: 'a, 'a> Args<'db> for SimpleArgs<'db, 'a> {
                 iterator: arguments.iter().enumerate(),
                 kwargs_before_star_args: {
                     let mut iterator = arguments.iter();
-                    if iterator.any(|arg| matches!(arg, ASTArgument::Keyword(_))) {
-                        if iterator.any(|arg| matches!(arg, ASTArgument::Star(_))) {
+                    if iterator.any(|arg| matches!(arg, CSTArgument::Keyword(_))) {
+                        if iterator.any(|arg| matches!(arg, CSTArgument::Star(_))) {
                             Some(vec![])
                         } else {
                             None
@@ -606,7 +606,7 @@ enum ArgIteratorBase<'db, 'a> {
         i_s: InferenceState<'db, 'a>,
         file: &'a PythonFile,
         iterator: std::iter::Enumerate<ArgsIterator<'a>>,
-        kwargs_before_star_args: Option<Vec<ASTArgument<'a>>>,
+        kwargs_before_star_args: Option<Vec<CSTArgument<'a>>>,
     },
     Comprehension(InferenceState<'db, 'a>, &'a PythonFile, Comprehension<'a>),
     Inferred {
@@ -649,19 +649,19 @@ impl<'db, 'a> ArgIteratorBase<'db, 'a> {
                     let mut prefix = "".to_owned();
                     let inference = file.inference(&i_s);
                     let inf = match arg {
-                        ASTArgument::Positional(named_expr) => {
+                        CSTArgument::Positional(named_expr) => {
                             inference.infer_named_expression(named_expr)
                         }
-                        ASTArgument::Keyword(kwarg) => {
+                        CSTArgument::Keyword(kwarg) => {
                             let (name, expr) = kwarg.unpack();
                             prefix = format!("{}=", name.as_code());
                             inference.infer_expression(expr)
                         }
-                        ASTArgument::Star(starred_expr) => {
+                        CSTArgument::Star(starred_expr) => {
                             prefix = "*".to_owned();
                             inference.infer_expression(starred_expr.expression())
                         }
-                        ASTArgument::StarStar(double_starred_expr) => {
+                        CSTArgument::StarStar(double_starred_expr) => {
                             prefix = "*".to_owned();
                             inference.infer_expression(double_starred_expr.expression())
                         }
@@ -710,7 +710,7 @@ impl<'db, 'a> Iterator for ArgIteratorBase<'db, 'a> {
             } => {
                 for (i, arg) in iterator.by_ref() {
                     match arg {
-                        ASTArgument::Positional(named_expr) => {
+                        CSTArgument::Positional(named_expr) => {
                             return Some(ArgKind::new_positional_return(
                                 *i_s,
                                 i + 1,
@@ -718,7 +718,7 @@ impl<'db, 'a> Iterator for ArgIteratorBase<'db, 'a> {
                                 named_expr.index(),
                             ))
                         }
-                        ASTArgument::Keyword(kwarg) => {
+                        CSTArgument::Keyword(kwarg) => {
                             let (name, expression) = kwarg.unpack();
                             if let Some(kwargs_before_star_args) = kwargs_before_star_args {
                                 kwargs_before_star_args.push(arg);
@@ -732,7 +732,7 @@ impl<'db, 'a> Iterator for ArgIteratorBase<'db, 'a> {
                                 ));
                             }
                         }
-                        ASTArgument::Star(starred_expr) => {
+                        CSTArgument::Star(starred_expr) => {
                             let inf = file
                                 .inference(i_s)
                                 .infer_expression(starred_expr.expression());
@@ -754,7 +754,7 @@ impl<'db, 'a> Iterator for ArgIteratorBase<'db, 'a> {
                                 })),
                             };
                         }
-                        ASTArgument::StarStar(double_starred_expr) => {
+                        CSTArgument::StarStar(double_starred_expr) => {
                             let inf = file
                                 .inference(i_s)
                                 .infer_expression(double_starred_expr.expression());
@@ -808,7 +808,7 @@ impl<'db, 'a> Iterator for ArgIteratorBase<'db, 'a> {
                 if let Some(kwargs_before_star_args) = kwargs_before_star_args {
                     if let Some(kwarg_before_star_args) = kwargs_before_star_args.pop() {
                         match kwarg_before_star_args {
-                            ASTArgument::Keyword(kwarg) => {
+                            CSTArgument::Keyword(kwarg) => {
                                 let (name, expression) = kwarg.unpack();
                                 return Some(ArgKind::new_keyword_return(
                                     *i_s,

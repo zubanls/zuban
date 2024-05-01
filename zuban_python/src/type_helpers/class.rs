@@ -6,7 +6,7 @@ use std::{
 };
 
 use parsa_python_cst::{
-    Argument, Arguments as ASTArguments, AssignmentContent, AsyncStmtContent, BlockContent,
+    Argument, Arguments as CSTArguments, AssignmentContent, AsyncStmtContent, BlockContent,
     ClassDef, Decoratee, ExpressionContent, ExpressionPart, PrimaryContent, SimpleStmtContent,
     SimpleStmts, StmtContent, StmtOrError, Target, TypeLike,
 };
@@ -960,7 +960,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    fn check_total_typed_dict_argument(&self, i_s: &InferenceState, args: ASTArguments) -> bool {
+    fn check_total_typed_dict_argument(&self, i_s: &InferenceState, args: CSTArguments) -> bool {
         let mut total = true;
         let inference = self.node_ref.file.inference(i_s);
         for argument in args.iter() {

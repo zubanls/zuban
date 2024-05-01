@@ -8,7 +8,7 @@ use parsa_python_cst::{
     Comparisons, Conjunction, ContinueStmt, Disjunction, ElseBlock, Expression, ExpressionContent,
     ExpressionPart, ForStmt, IfBlockIterator, IfBlockType, IfStmt, Name, NameDefinition,
     NamedExpression, NamedExpressionContent, NodeIndex, Operand, Primary, PrimaryContent,
-    PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, SliceType as ASTSliceType, Ternary,
+    PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, SliceType as CSTSliceType, Ternary,
     WhileStmt,
 };
 
@@ -988,7 +988,7 @@ impl Inference<'_, '_, '_> {
                 &SliceType::new(
                     self.file,
                     *node_index,
-                    ASTSliceType::from_index(&self.file.tree, *node_index),
+                    CSTSliceType::from_index(&self.file.tree, *node_index),
                 ),
                 &mut ResultContext::Unknown,
             ),
@@ -1949,8 +1949,8 @@ impl Inference<'_, '_, '_> {
         }
     }
 
-    fn key_from_slice_type(&self, slice_type: ASTSliceType) -> Option<FlowKeyIndex> {
-        if let ASTSliceType::NamedExpression(ne) = slice_type {
+    fn key_from_slice_type(&self, slice_type: CSTSliceType) -> Option<FlowKeyIndex> {
+        if let CSTSliceType::NamedExpression(ne) = slice_type {
             match self
                 .infer_expression(ne.expression())
                 .maybe_literal(self.i_s.db)

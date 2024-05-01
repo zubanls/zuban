@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use parsa_python_cst::{CodeIndex, Name as ASTName};
+use parsa_python_cst::{CodeIndex, Name as CSTName};
 
 use crate::{
     database::Database,
@@ -83,10 +83,10 @@ pub trait Name<'db>: fmt::Debug {
 pub struct TreeName<'db, F: File, N> {
     db: &'db Database,
     file: &'db F,
-    ast_name: N,
+    cst_name: N,
 }
 
-impl<'db> fmt::Debug for TreeName<'db, PythonFile, ASTName<'db>> {
+impl<'db> fmt::Debug for TreeName<'db, PythonFile, CSTName<'db>> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("TreeName")
             .field("file", &self.file_path())
@@ -96,14 +96,14 @@ impl<'db> fmt::Debug for TreeName<'db, PythonFile, ASTName<'db>> {
 }
 
 impl<'db, F: File, N> TreeName<'db, F, N> {
-    pub fn new(db: &'db Database, file: &'db F, ast_name: N) -> Self {
-        Self { db, ast_name, file }
+    pub fn new(db: &'db Database, file: &'db F, cst_name: N) -> Self {
+        Self { db, cst_name, file }
     }
 }
 
-impl<'db> Name<'db> for TreeName<'db, PythonFile, ASTName<'db>> {
+impl<'db> Name<'db> for TreeName<'db, PythonFile, CSTName<'db>> {
     fn name(&self) -> &str {
-        self.ast_name.as_str()
+        self.cst_name.as_str()
     }
 
     fn file_path(&self) -> &str {
@@ -113,14 +113,14 @@ impl<'db> Name<'db> for TreeName<'db, PythonFile, ASTName<'db>> {
     fn start_position(&self) -> TreePosition<'db> {
         TreePosition {
             file: self.file,
-            position: self.ast_name.start(),
+            position: self.cst_name.start(),
         }
     }
 
     fn end_position(&self) -> TreePosition<'db> {
         TreePosition {
             file: self.file,
-            position: self.ast_name.end(),
+            position: self.cst_name.end(),
         }
     }
 
@@ -145,7 +145,7 @@ impl<'db> Name<'db> for TreeName<'db, PythonFile, ASTName<'db>> {
         let i_s = InferenceState::new(self.db);
         self.file
             .inference(&i_s)
-            .infer_name_of_definition(self.ast_name)
+            .infer_name_of_definition(self.cst_name)
     }
 
     fn goto(&self) -> Names<'db> {
