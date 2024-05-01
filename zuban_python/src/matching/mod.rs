@@ -141,6 +141,10 @@ pub struct ErrorStrs {
 
 impl ErrorTypes<'_> {
     pub fn as_boxed_strs(&self, i_s: &InferenceState) -> ErrorStrs {
+        // This is our own very limited implementation of formatting different types as small as
+        // possible, but still different if they are different. e.g. a.Foo is not b.Foo and should
+        // therefore not be formatted both as Foo. Mypy does a lot more here like subtype matching,
+        // but for now this should suffice.
         let mut fmt_got = FormatData::new_short(i_s.db);
         let mut fmt_expected = FormatData::with_matcher(i_s.db, self.matcher);
         if self.expected.is_literal_or_literal_in_tuple() {
@@ -158,8 +162,13 @@ impl ErrorTypes<'_> {
             if got.as_str() == expected.as_ref() {
                 fmt_got.style = FormatStyle::Qualified;
                 fmt_expected.style = FormatStyle::Qualified;
-                got = self.got.format(&fmt_got);
-                expected = self.expected.format(&fmt_expected);
+                let new_got = self.got.format(&fmt_got);
+                let new_expected = self.expected.format(&fmt_expected);
+                // If the types still look excactly the same they might actually just be the same.
+                if new_got != new_expected.as_ref() {
+                    got = new_got;
+                    expected = new_expected;
+                }
             }
         }
         ErrorStrs {

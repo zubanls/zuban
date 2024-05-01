@@ -14,7 +14,9 @@ use crate::{
     getitem::Simple,
     inference_state::InferenceState,
     inferred::UnionValue,
-    matching::{ErrorTypes, FormatData, Matcher, MismatchReason, ResultContext},
+    matching::{
+        ErrorStrs, ErrorTypes, FormatData, GotType, Match, Matcher, MismatchReason, ResultContext,
+    },
     new_class,
     node_ref::NodeRef,
     type_::{
@@ -238,32 +240,39 @@ impl<'db> Inference<'db, '_, '_> {
                 DictElement::KeyValue(key_value) => {
                     let key_inf = inference
                         .infer_expression_with_context(key_value.key(), &mut new_key_context);
+                    let got_key_t = key_inf.as_cow_type(i_s);
+                    let key_match = key_t.is_super_type_of(i_s, matcher, &got_key_t);
+
                     let value_inf = inference
                         .infer_expression_with_context(key_value.value(), &mut new_value_context);
-                    if !key_t
-                        .is_super_type_of(i_s, matcher, &key_inf.as_cow_type(i_s))
-                        .bool()
-                        || !value_t
-                            .is_super_type_of(i_s, matcher, &value_inf.as_cow_type(i_s))
-                            .bool()
-                    {
+                    let got_value_t = value_inf.as_cow_type(i_s);
+                    let value_match = value_t.is_super_type_of(i_s, matcher, &got_value_t);
+
+                    if !key_match.bool() || !value_match.bool() {
                         had_error = true;
+                        let format_errors = |expected, got, match_| {
+                            let error_types = ErrorTypes {
+                                expected,
+                                got: GotType::Type(got),
+                                matcher,
+                                reason: &match match_ {
+                                    Match::False { reason, .. } => reason,
+                                    Match::True { .. } => MismatchReason::None,
+                                },
+                            };
+                            let ErrorStrs { expected, got } = error_types.as_boxed_strs(i_s);
+                            (expected, got)
+                        };
+                        let (expected_key, got_key) = format_errors(key_t, &got_key_t, key_match);
+                        let (expected_value, got_value) =
+                            format_errors(value_t, &got_value_t, value_match);
                         NodeRef::new(self.file, key_value.index()).add_issue(
                             i_s,
                             IssueKind::DictMemberMismatch {
                                 item: i,
-                                got_pair: format!(
-                                    r#""{}": "{}""#,
-                                    key_inf.format_short(i_s),
-                                    value_inf.format_short(i_s)
-                                )
-                                .into(),
-                                expected_pair: format!(
-                                    r#""{}": "{}""#,
-                                    key_t.format_short(i_s.db),
-                                    value_t.format_short(i_s.db)
-                                )
-                                .into(),
+                                got_pair: format!(r#""{got_key}": "{got_value}""#).into(),
+                                expected_pair: format!(r#""{expected_key}": "{expected_value}""#)
+                                    .into(),
                             },
                         );
                     }
