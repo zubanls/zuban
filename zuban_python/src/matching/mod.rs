@@ -33,7 +33,7 @@ use crate::{
     diagnostics::IssueKind,
     inference_state::InferenceState,
     inferred::Inferred,
-    type_::{AnyCause, Tuple, TupleUnpack, Type, WithUnpack},
+    type_::{AnyCause, FormatStyle, Tuple, TupleUnpack, Type, WithUnpack},
     utils::debug_indent,
 };
 
@@ -154,6 +154,13 @@ impl ErrorTypes<'_> {
             fmt_expected.enable_verbose();
             got = self.got.format(&fmt_got);
             expected = self.expected.format(&fmt_expected);
+
+            if got.as_str() == expected.as_ref() {
+                fmt_got.style = FormatStyle::Qualified;
+                fmt_expected.style = FormatStyle::Qualified;
+                got = self.got.format(&fmt_got);
+                expected = self.expected.format(&fmt_expected);
+            }
         }
         ErrorStrs {
             got: got.into(),

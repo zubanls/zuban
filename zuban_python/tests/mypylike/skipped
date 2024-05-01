@@ -1567,7 +1567,6 @@ testProhibitReassigningSubscriptedAliases
 testProhibitReassigningGenericAliases
 testStarImportOverlappingMismatch
 testStarImportOverridingLocalImports
-testDifferentImportSameNameTwice
 testImportOnTopOfAlias1
 testMemberRedefinition
 testMemberRedefinitionDefinedInClass
@@ -1769,20 +1768,12 @@ testAnonymousFunctionalEnum
 testNewAnalyzerIncrementalMethodNamedTuple
 testNewAnalyzerNamedTupleClassNestedMethod
 testNoIncrementalCrashOnTypedDictMethod
-# qualified name for NewType for different module
-testNewTypeInMultipleFiles
-# qualified name for Enum for different module
-testLiteralWithEnumsSimilarDefinitions
 # qualified name for TypedDict for different module
 testGenericTypedDictWithError
 # qualified name for Type[cls] for different module (when format short)
 testProtocolWithNestedClass
 # NewType formatting instead of internal type
 testNewTypeDependencies3
-# Formatting C.__init__() call as "C" instead of "__init__" of "C"
-testInitMethodUnbound
-# Callable formatting varargs
-testUnionOfSimilarCallablesCrash
 # Nicer Callable Errors
 testCallableParsingFromExpr
 testCallableParsing
