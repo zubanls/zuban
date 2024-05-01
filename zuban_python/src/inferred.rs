@@ -1,6 +1,6 @@
 use std::{borrow::Cow, cell::RefCell, rc::Rc};
 
-use parsa_python_ast::{NodeIndex, PrimaryContent, PythonString, SliceType as ASTSliceType};
+use parsa_python_cst::{NodeIndex, PrimaryContent, PythonString, SliceType as ASTSliceType};
 
 use crate::{
     arguments::{Args, CombinedArgs, InferredArg, KnownArgs, KnownArgsWithCustomAddIssue},

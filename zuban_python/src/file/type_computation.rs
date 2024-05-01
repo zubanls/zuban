@@ -1,6 +1,6 @@
 use std::{borrow::Cow, cell::Cell, rc::Rc};
 
-use parsa_python_ast::{SliceType as ASTSliceType, *};
+use parsa_python_cst::{SliceType as ASTSliceType, *};
 
 use super::TypeVarFinder;
 use crate::{

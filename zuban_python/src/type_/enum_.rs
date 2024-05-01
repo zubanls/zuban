@@ -1,6 +1,6 @@
 use std::{cell::OnceCell, rc::Rc};
 
-use parsa_python_ast::{
+use parsa_python_cst::{
     AtomContent, CodeIndex, DictElement, Expression, ExpressionContent, ExpressionPart,
     StarLikeExpression, StarLikeExpressionIterator,
 };

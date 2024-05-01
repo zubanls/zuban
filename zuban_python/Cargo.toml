@@ -7,7 +7,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-parsa_python_ast = { path = "../parsa_python_ast" }
+parsa_python_cst = { path = "../parsa_python_cst" }
 lazy_static = "*"
 regex = "*"
 walkdir = "2"

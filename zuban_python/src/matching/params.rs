@@ -1,6 +1,6 @@
 use std::{borrow::Cow, iter::Peekable, rc::Rc};
 
-use parsa_python_ast::ParamKind;
+use parsa_python_cst::ParamKind;
 
 use super::{Match, Matcher};
 use crate::{

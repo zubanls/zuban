@@ -4,7 +4,7 @@ use std::{
     rc::Rc,
 };
 
-use parsa_python_ast::*;
+use parsa_python_cst::*;
 
 use super::{flow_analysis::FLOW_ANALYSIS, inference::await_, on_argument_type_error};
 use crate::{

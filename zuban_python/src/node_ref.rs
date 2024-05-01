@@ -1,6 +1,6 @@
 use std::fmt;
 
-use parsa_python_ast::{
+use parsa_python_cst::{
     Annotation, Assignment, Atom, AtomContent, Bytes, ClassDef, CodeIndex, Expression, Factor,
     FunctionDef, ImportFrom, Int, Name, NameDefinition, NamedExpression, NodeIndex, Primary,
     PythonString, Slices, StarStarExpression, StarredExpression, StringLiteral,

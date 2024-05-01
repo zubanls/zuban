@@ -1,6 +1,6 @@
 use std::cell::OnceCell;
 
-use parsa_python_ast::CodeIndex;
+use parsa_python_cst::CodeIndex;
 use regex::Regex;
 
 lazy_static::lazy_static! {

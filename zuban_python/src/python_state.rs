@@ -1,6 +1,6 @@
 use std::{ptr::null, rc::Rc};
 
-use parsa_python_ast::{FunctionDef, NodeIndex, NAME_DEF_TO_NAME_DIFFERENCE};
+use parsa_python_cst::{FunctionDef, NodeIndex, NAME_DEF_TO_NAME_DIFFERENCE};
 
 use crate::{
     database::{

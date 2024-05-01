@@ -5,7 +5,7 @@ use std::{
     rc::Rc,
 };
 
-use parsa_python_ast::*;
+use parsa_python_cst::*;
 
 use super::{
     file_state::{File, Leaf},

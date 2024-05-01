@@ -1,6 +1,6 @@
 use std::{borrow::Cow, cell::Cell, rc::Rc};
 
-use parsa_python_ast::ParamKind;
+use parsa_python_cst::ParamKind;
 
 use super::{
     super::{

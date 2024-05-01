@@ -5,7 +5,7 @@ use std::{
     rc::Rc,
 };
 
-use parsa_python_ast::{
+use parsa_python_cst::{
     Argument, Arguments as ASTArguments, AssignmentContent, AsyncStmtContent, BlockContent,
     ClassDef, Decoratee, ExpressionContent, ExpressionPart, PrimaryContent, SimpleStmtContent,
     SimpleStmts, StmtContent, StmtOrError, Target, TypeLike,

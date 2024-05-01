@@ -1,4 +1,4 @@
-use parsa_python_ast::*;
+use parsa_python_cst::*;
 
 use super::type_computation::cache_name_on_class;
 use crate::{

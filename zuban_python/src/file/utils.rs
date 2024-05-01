@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use parsa_python_ast::{
+use parsa_python_cst::{
     Dict, DictElement, DictElementIterator, Expression, Int, List, StarLikeExpression,
     StarLikeExpressionIterator,
 };

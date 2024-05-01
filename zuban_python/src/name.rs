@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use parsa_python_ast::{CodeIndex, Name as ASTName};
+use parsa_python_cst::{CodeIndex, Name as ASTName};
 
 use crate::{
     database::Database,

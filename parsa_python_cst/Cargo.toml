@@ -1,5 +1,5 @@
 [package]
-name = "parsa_python_ast"
+name = "parsa_python_cst"
 version = "0.1.0"
 edition = "2021"
 

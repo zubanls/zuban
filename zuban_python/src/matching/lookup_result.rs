@@ -1,4 +1,4 @@
-use parsa_python_ast::Name;
+use parsa_python_cst::Name;
 
 use crate::{
     database::{FileIndex, Locality, Point, PointLink},

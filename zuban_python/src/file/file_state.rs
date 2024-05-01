@@ -1,7 +1,7 @@
 #![allow(dead_code)] // TODO remove this
 use std::{any::Any, fmt, fs, pin::Pin, rc::Rc};
 
-use parsa_python_ast::{CodeIndex, Keyword, NodeIndex};
+use parsa_python_cst::{CodeIndex, Keyword, NodeIndex};
 
 use crate::{
     database::{Database, FileIndex},

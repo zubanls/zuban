@@ -1,6 +1,6 @@
 use std::{cell::OnceCell, rc::Rc};
 
-use parsa_python_ast::{AtomContent, CodeIndex, StarLikeExpression};
+use parsa_python_cst::{AtomContent, CodeIndex, StarLikeExpression};
 
 use super::{
     tuple::lookup_tuple_magic_methods, AnyCause, CallableContent, CallableParam, CallableParams,

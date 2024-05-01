@@ -1,6 +1,6 @@
 use std::{borrow::Cow, cell::Cell, fmt, rc::Rc};
 
-use parsa_python_ast::{
+use parsa_python_cst::{
     BlockContent, Decorated, Decorator, ExpressionContent, ExpressionPart, FunctionDef,
     FunctionParent, NodeIndex, Param as ASTParam, ParamAnnotation, ParamKind, PrimaryContent,
     PrimaryOrAtom, ReturnAnnotation, ReturnOrYield, SimpleStmt, SimpleStmtContent, StmtOrError,

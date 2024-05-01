@@ -3,7 +3,7 @@ use std::{
     rc::Rc,
 };
 
-use parsa_python_ast::{
+use parsa_python_cst::{
     Argument, Arguments, ArgumentsDetails, Atom, AtomContent, Block, BreakStmt, ComparisonContent,
     Comparisons, Conjunction, ContinueStmt, Disjunction, ElseBlock, Expression, ExpressionContent,
     ExpressionPart, ForStmt, IfBlockIterator, IfBlockType, IfStmt, Name, NameDefinition,

@@ -1,6 +1,6 @@
 use std::{cell::OnceCell, rc::Rc};
 
-use parsa_python_ast::{AtomContent, DictElement};
+use parsa_python_cst::{AtomContent, DictElement};
 
 use super::{
     replace::ReplaceTypeVarLike, utils::method_with_fallback, AnyCause, CallableParam,

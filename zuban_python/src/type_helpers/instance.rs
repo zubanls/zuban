@@ -1,6 +1,6 @@
 use std::{borrow::Cow, rc::Rc};
 
-use parsa_python_ast::Name;
+use parsa_python_cst::Name;
 
 use super::{class::TypeOrClass, Class, Function, MroIterator};
 use crate::{

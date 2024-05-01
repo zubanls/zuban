@@ -8,7 +8,7 @@ use std::{
     rc::Rc,
 };
 
-use parsa_python_ast::{Name, NodeIndex};
+use parsa_python_cst::{Name, NodeIndex};
 
 thread_local!(pub static DEBUG_INDENTATION: Cell<usize> = const { Cell::new(0) });
 

@@ -9,7 +9,7 @@ use std::{
     rc::Rc,
 };
 
-use parsa_python_ast::NodeIndex;
+use parsa_python_cst::NodeIndex;
 
 use crate::{
     debug,

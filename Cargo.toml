@@ -3,7 +3,7 @@
 members = [
     "parsa",
     "parsa_python",
-    "parsa_python_ast",
+    "parsa_python_cst",
     "zuban_python",
     "scripts",
 ]

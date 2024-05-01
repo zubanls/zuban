@@ -1,6 +1,6 @@
 use std::{cell::Cell, rc::Rc};
 
-use parsa_python_ast::*;
+use parsa_python_cst::*;
 
 use super::{
     diagnostics::await_aiter_and_next, on_argument_type_error, utils::infer_dict_like, File,

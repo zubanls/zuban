@@ -1,6 +1,6 @@
 use std::{mem, rc::Rc};
 
-use parsa_python_ast::{
+use parsa_python_cst::{
     ArgsIterator, Argument as ASTArgument, ArgumentsDetails, Comprehension, Expression, NodeIndex,
     Primary, PrimaryContent,
 };

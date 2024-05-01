@@ -16,7 +16,7 @@ mod utils;
 
 use std::{borrow::Cow, cell::OnceCell, fmt, mem, rc::Rc};
 
-use parsa_python_ast::{CodeIndex, Expression, Name, PythonString};
+use parsa_python_cst::{CodeIndex, Expression, Name, PythonString};
 
 pub(crate) use self::{
     callable::{

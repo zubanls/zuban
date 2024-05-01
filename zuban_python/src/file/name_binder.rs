@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 
-use parsa_python_ast::*;
+use parsa_python_cst::*;
 
 use crate::{
     database::{

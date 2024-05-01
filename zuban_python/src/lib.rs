@@ -27,7 +27,7 @@ use file::Leaf;
 use inference_state::InferenceState;
 use inferred::Inferred;
 use name::Names;
-use parsa_python_ast::CodeIndex;
+use parsa_python_cst::CodeIndex;
 
 pub struct Project {
     db: Database,

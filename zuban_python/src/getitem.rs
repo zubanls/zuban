@@ -1,4 +1,4 @@
-use parsa_python_ast::{
+use parsa_python_cst::{
     NamedExpression, NodeIndex, Slice as ASTSlice, SliceContent, SliceIterator as ASTSliceIterator,
     SliceType as ASTSliceType, Slices as ASTSlices, StarredExpression,
 };

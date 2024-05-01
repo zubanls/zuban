@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use parsa_python_ast::ParamKind;
+use parsa_python_cst::ParamKind;
 
 use super::{
     AnyCause, CallableContent, CallableParam, CallableParams, ParamType, StarParamType,

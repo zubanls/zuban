@@ -1,4 +1,4 @@
-use parsa_python_ast::{CodeIndex, NodeIndex, Tree};
+use parsa_python_cst::{CodeIndex, NodeIndex, Tree};
 
 use crate::{
     database::Database,

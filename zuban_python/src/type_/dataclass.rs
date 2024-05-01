@@ -1,6 +1,6 @@
 use std::{cell::OnceCell, iter::repeat_with, rc::Rc};
 
-use parsa_python_ast::{
+use parsa_python_cst::{
     AssignmentContent, AssignmentRightSide, ExpressionContent, ExpressionPart, NodeIndex,
     ParamKind, PrimaryContent, StarExpressionContent,
 };
