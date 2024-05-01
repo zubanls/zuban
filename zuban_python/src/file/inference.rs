@@ -942,7 +942,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             if assign_kind == AssignKind::Annotation {
                 self.add_redefinition_issue(first_index, name_def.as_code(), |issue| {
                     NodeRef::new(self.file, name_def.index()).add_issue(self.i_s, issue)
-                })
+                });
+                // Nothing needed to assign anymore, the original definition was already assigned.
+                return;
             }
             if current_index == first_index {
                 /*
