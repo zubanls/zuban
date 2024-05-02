@@ -1584,7 +1584,6 @@ testRedefinedFunctionInTryWithElse
 # "incompatible redefinition"
 testRedefineFunctionDefinedAsVariableInitializedToEmptyList
 # NewType Redefinition
-testNewAnalyzerNewTypeRedefinition
 testNewTypeRedefiningVariablesFails
 
 # "Value of type "A" must be used"

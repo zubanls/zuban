@@ -939,9 +939,20 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let current_index = name_def.name_index();
         let i_s = self.i_s;
         if let Some(first_index) = first_defined_name_of_multi_def(self.file, current_index) {
-            if assign_kind == AssignKind::Annotation {
+            let special_def = self.is_special_definition(first_index);
+            if assign_kind == AssignKind::Annotation || special_def.is_some() {
+                let name_def_ref = NodeRef::new(self.file, name_def.index());
+                if let Some(ComplexPoint::NewTypeDefinition(special_def)) = special_def {
+                    name_def_ref.add_issue(
+                        self.i_s,
+                        IssueKind::CannotRedifineAs {
+                            name: name_def.as_code().into(),
+                            as_: "a NewType",
+                        },
+                    )
+                }
                 self.add_redefinition_issue(first_index, name_def.as_code(), |issue| {
-                    NodeRef::new(self.file, name_def.index()).add_issue(self.i_s, issue)
+                    name_def_ref.add_issue(self.i_s, issue)
                 });
                 // Nothing needed to assign anymore, the original definition was already assigned.
                 return;
@@ -1535,6 +1546,20 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             name: name.into(),
             suffix,
         })
+    }
+
+    fn is_special_definition(&self, name_index: NodeIndex) -> Option<&ComplexPoint> {
+        if std::cfg!(debug_assertions) {
+            // Make sure it's a NameDef
+            let ref_ = NodeRef::new(self.file, name_index - NAME_DEF_TO_NAME_DIFFERENCE);
+            ref_.as_name_def();
+        }
+        self.check_point_cache(name_index - NAME_DEF_TO_NAME_DIFFERENCE)
+            .and_then(|inf| inf.maybe_saved_link())
+            .and_then(|link| NodeRef::from_link(self.i_s.db, link).complex())
+            .and_then(|complex| {
+                (!matches!(complex, ComplexPoint::TypeInstance(_))).then_some(complex)
+            })
     }
 
     pub fn save_walrus(&self, name_def: NameDefinition, inf: Inferred) -> Inferred {
