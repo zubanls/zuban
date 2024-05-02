@@ -1374,8 +1374,6 @@ testOptionalDescriptorsBinder
 testUnionDescriptorsBinder
 testSubclassDescriptorsBinder
 testPropertyGetterBody
-# All conditional function variants must have identical signatures (flow analysis)
-testUnionOrderEquivalence
 # self assignment validation
 testSlotsAssignmentWithMethodReassign
 testTypeVarTupleNewSyntaxGenerics
@@ -1412,28 +1410,9 @@ testAssignAndConditionalImport
 testAssignAndConditionalStarImport
 testImportedVariableViaImport
 
-# Conditional definitions
-testNewAnalyzerConditionalFunc
-testNewAnalyzerConditionalFuncDefer
-testNewAnalyzerConditionallyDefineFuncOverVar
-testRedefineFunctionDefinedAsVariableInitializedToNone
-testRedefineNestedFunctionDefinedAsVariableInitializedToNone
-testConditionalFunctionDefinitionUsingDecorator2
-testConditionalFunctionDefinitionUnreachable
-testConditionalExpressionAndTypeContext
-
 # ""async for" outside async function"
 testAsyncForOutsideCoroutine
 testAsyncWithOutsideCoroutine
-
-# "All conditional function variants must have identical signatures"
-testIncompatibleConditionalFunctionDefinition
-testIncompatibleConditionalFunctionDefinition2
-testIncompatibleConditionalFunctionDefinition3
-testConditionalRedefinitionOfAnUnconditionalFunctionDefinition1
-testConditionalRedefinitionOfAnUnconditionalFunctionDefinition2
-testIncompatibleConditionalMethodDefinition
-testRedefineImportedFunctionViaImport
 
 # TYPE_CHECKING / PY2 / PY3 / MYPY
 testIfTypeCheckingUnreachableClass
@@ -1551,6 +1530,8 @@ testFakeOverloadCrash2
 testOverloadNotImportedNoCrash
 testSingleOverload2
 testCustomRedefinitionDecorator
+# NewType Redefinition
+testNewTypeRedefiningVariablesFails
 # "Cannot assign multiple types to name "b" without an explicit "Type[...]" annotation"
 testAliasesInClassBodyNormalVsSubscripted
 # "Cannot assign multiple modules to name "..." without explicit "types.ModuleType" annotation"
@@ -1567,8 +1548,24 @@ testRedefineFunctionDefinedAsVariableInitializedToEmptyList
 testNewAnalyzerRedefineAsOverload
 testMultipleNestedFunctionDef
 testPropertyWithExtraMethod
-# NewType Redefinition
-testNewTypeRedefiningVariablesFails
+# Conditional definitions
+testNewAnalyzerConditionalFunc
+testNewAnalyzerConditionalFuncDefer
+testNewAnalyzerConditionallyDefineFuncOverVar
+testRedefineFunctionDefinedAsVariableInitializedToNone
+testRedefineNestedFunctionDefinedAsVariableInitializedToNone
+testConditionalFunctionDefinitionUsingDecorator2
+testConditionalFunctionDefinitionUnreachable
+testConditionalExpressionAndTypeContext
+# "All conditional function variants must have identical signatures"
+testIncompatibleConditionalFunctionDefinition
+testIncompatibleConditionalFunctionDefinition2
+testIncompatibleConditionalFunctionDefinition3
+testConditionalRedefinitionOfAnUnconditionalFunctionDefinition1
+testConditionalRedefinitionOfAnUnconditionalFunctionDefinition2
+testIncompatibleConditionalMethodDefinition
+testRedefineImportedFunctionViaImport
+testUnionOrderEquivalence
 
 # "Value of type "A" must be used"
 # "Value of type "Coroutine[Any, Any, None]" must be used"
