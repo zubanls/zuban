@@ -146,13 +146,14 @@ class C:
   def bar(cls) -> None: pass
 
 [case overloaded_property_not_possible]
+# flags: --mypy-compatible
 # There's also testOverloadedProperty, but it's not complete
 from typing import overload
 class A:
     @property  # E: An overload can not be a property
     @overload
     def f(self) -> int: pass
-    @property  # E: An overload can not be a property
+    @property  # E: An overload can not be a property # E: Name "f" already defined on line 5
     @overload
     def f(self) -> int: pass
 
@@ -160,10 +161,10 @@ class B:
     @property  # E: An overload can not be a property
     @overload
     def f(self) -> int: pass
-    @property  # E: An overload can not be a property
+    @property  # E: An overload can not be a property  # E: Name "f" already defined on line 13
     @overload
     def f(self) -> int: pass
-    @property
+    @property  # E: Name "f" already defined on line 13
     def f(self) -> int: pass
 
 reveal_type(A().f)  # N: Revealed type is "Any"

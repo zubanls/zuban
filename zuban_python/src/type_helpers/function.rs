@@ -521,12 +521,14 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 Locality::Todo,
             ));
             if self.node_ref.point().maybe_specific() != Some(Specific::OverloadUnreachable) {
-                name_def
-                    .file
-                    .inference(i_s)
-                    .check_for_redefinition(name_def, |issue| {
-                        self.add_issue_onto_start_including_decorator(i_s, issue)
-                    });
+                if !FLOW_ANALYSIS.with(|fa| fa.in_conditional()) {
+                    name_def
+                        .file
+                        .inference(i_s)
+                        .check_for_redefinition(name_def, |issue| {
+                            self.add_issue_onto_start_including_decorator(i_s, issue)
+                        });
+                }
             }
         }
     }

@@ -186,6 +186,10 @@ impl FlowAnalysis {
         None
     }
 
+    pub fn in_conditional(&self) -> bool {
+        self.frames.borrow().len() > 1
+    }
+
     pub fn is_unreachable(&self) -> bool {
         self.frames.borrow().last().unwrap().unreachable
     }
