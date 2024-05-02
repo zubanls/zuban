@@ -1517,8 +1517,6 @@ testOperatorAssignment
 inplace_operator_on_undefined_target
 testInvalidDel3
 
-# _ special case
-testMultipleUnderscoreFunctionsIsntError
 # Redefinition (Name "X" already defined on line X)
 testRedefineVariableAsTypevar
 testRedefineTypevar

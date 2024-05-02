@@ -1502,7 +1502,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let name_index = name_def.node_index + NAME_DEF_TO_NAME_DIFFERENCE;
         debug_assert_eq!(name_def.file_index(), self.file_index);
         if let Some(first) = first_defined_name_of_multi_def(self.file, name_index) {
-            self.add_redefinition_issue(first, name_def.as_code(), add_issue)
+            if name_def.as_code() != "_" {
+                self.add_redefinition_issue(first, name_def.as_code(), add_issue)
+            }
         }
     }
 
