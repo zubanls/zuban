@@ -548,7 +548,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             .infer_name_of_definition_by_index(first);
         let original_t = original.as_cow_type(i_s);
         let redefinition = Inferred::from_saved_node_ref(self.node_ref);
-        let redefinition_t = redefinition.as_cow_type(i_s);
         original_t.error_if_not_matches(
             i_s,
             &redefinition,
@@ -562,6 +561,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     let Type::Callable(original) = original_t.as_ref() else {
                         unreachable!()
                     };
+                    let redefinition_t = redefinition.as_cow_type(i_s);
                     let Type::Callable(redefinition) = redefinition_t.as_ref() else {
                         unreachable!()
                     };
@@ -572,8 +572,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     })
                 } else {
                     Some(IssueKind::IncompatibleConditionalFunctionSignature {
-                        original: original_t.format_short(i_s.db),
-                        redefinition: redefinition_t.format_short(i_s.db),
+                        original: expected,
+                        redefinition: got,
                     })
                 }
             },

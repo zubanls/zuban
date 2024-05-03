@@ -1541,20 +1541,16 @@ testModuleAliasToOtherModule
 testModuleAliasToQualifiedImport2
 # "Incompatible redefinition (redefinition with type "Callable[[Any], Any]", original type "Callable[[], Any]")"
 testRedefinedFunctionInTryWithElse
+testConditionalFunctionDefinitionUnreachable
 # "incompatible redefinition"
 testRedefineFunctionDefinedAsVariableInitializedToEmptyList
-# Function redefinitions that should not be ok
+# Conditional function redefinitions
 testNewAnalyzerRedefineAsOverload
 testMultipleNestedFunctionDef
 testPropertyWithExtraMethod
-# Conditional definitions
-testConditionalFunctionDefinitionUnreachable
-testIncompatibleConditionalFunctionDefinition3
-testConditionalFunctionDefinitionUsingDecorator3
-testNewAnalyzerConditionalDecoratedFunc
-testConditionalFunctionDefinitionUsingDecorator4
 # "All conditional function variants must have identical signatures"
 testIncompatibleConditionalFunctionDefinition
+testIncompatibleConditionalFunctionDefinition3
 testIncompatibleConditionalMethodDefinition
 testRedefineImportedFunctionViaImport
 testUnionOrderEquivalence
