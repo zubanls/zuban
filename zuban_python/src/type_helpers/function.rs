@@ -15,15 +15,15 @@ use crate::{
     debug,
     diagnostics::{Issue, IssueKind},
     file::{
-        first_defined_name, use_cached_param_annotation_type, PythonFile, TypeComputation,
-        TypeComputationOrigin, TypeVarCallbackReturn, FLOW_ANALYSIS,
+        first_defined_name, first_defined_name_of_multi_def, use_cached_param_annotation_type,
+        PythonFile, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn, FLOW_ANALYSIS,
     },
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{
         calculate_function_type_vars_and_return, maybe_class_usage,
         params::{InferrableParamIterator, Param, WrappedParamType, WrappedStar, WrappedStarStar},
-        CalculatedTypeArgs, Generic, LookupResult, OnTypeError, ResultContext,
+        CalculatedTypeArgs, FormatData, Generic, LookupResult, OnTypeError, ResultContext,
     },
     new_class,
     node_ref::NodeRef,
@@ -521,7 +521,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 Locality::Todo,
             ));
             if self.node_ref.point().maybe_specific() != Some(Specific::OverloadUnreachable) {
-                if !FLOW_ANALYSIS.with(|fa| fa.in_conditional()) {
+                if FLOW_ANALYSIS.with(|fa| fa.in_conditional()) {
+                    self.check_conditional_function_definition(i_s)
+                } else {
                     name_def
                         .file
                         .inference(i_s)
@@ -529,6 +531,47 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                             self.add_issue_onto_start_including_decorator(i_s, issue)
                         });
                 }
+            }
+        }
+    }
+
+    fn check_conditional_function_definition(&self, i_s: &InferenceState) {
+        let Some(first) = first_defined_name_of_multi_def(self.node_ref.file, self.node().name().index()) else {
+            return
+        };
+        // At this point we know it's a conditional redefinition and not just a singular def in an
+        // if.
+        let original = self
+            .node_ref
+            .file
+            .inference(i_s)
+            .infer_name_of_definition_by_index(first);
+        let original_t = original.as_cow_type(i_s);
+        let redefinition = Inferred::from_saved_node_ref(self.node_ref);
+        let redefinition_t = redefinition.as_cow_type(i_s);
+        if !redefinition_t
+            .is_simple_super_type_of(i_s, &original_t)
+            .bool()
+        {
+            if self.node().maybe_decorated().is_none()
+                && NodeRef::new(self.node_ref.file, first)
+                    .maybe_name_of_function()
+                    .is_some_and(|func| func.maybe_decorated().is_none())
+            {
+                let Type::Callable(original) = original_t.as_ref() else {
+                    unreachable!()
+                };
+                let Type::Callable(redefinition) = redefinition_t.as_ref() else {
+                    unreachable!()
+                };
+                self.add_issue_for_declaration(
+                    i_s,
+                    IssueKind::IncompatibleConditionalFunctionSignature {
+                        original: original.format_pretty(&FormatData::new_short(i_s.db)),
+                        redefinition: redefinition.format_pretty(&FormatData::new_short(i_s.db)),
+                    },
+                )
+            } else {
             }
         }
     }

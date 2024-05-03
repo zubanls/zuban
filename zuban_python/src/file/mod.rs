@@ -14,8 +14,8 @@ pub use file_state::{
     Vfs,
 };
 pub use flow_analysis::FLOW_ANALYSIS;
-pub use inference::first_defined_name;
 use inference::Inference;
+pub use inference::{first_defined_name, first_defined_name_of_multi_def};
 pub use python_file::{ComplexValues, PythonFile};
 pub use type_computation::{
     maybe_saved_annotation, use_cached_annotation_or_type_comment, use_cached_annotation_type,

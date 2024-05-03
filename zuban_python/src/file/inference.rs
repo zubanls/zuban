@@ -23,7 +23,6 @@ use crate::{
     },
     new_class,
     node_ref::NodeRef,
-    python_state::NAME_TO_FUNCTION_DIFF,
     type_::{
         AnyCause, CallableContent, CallableParam, CallableParams, FunctionKind, Literal,
         LiteralKind, Namespace, NeverCause, ParamType, StarParamType, StarStarParamType,
@@ -1521,8 +1520,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             // Mypy uses the line of the first decorator as the definition line. This feels
             // weird, because the name is what matters, so in our implementation we use a
             // different line.
-            if let Some(decorated) = NodeRef::new(self.file, first - NAME_TO_FUNCTION_DIFF)
-                .maybe_function()
+            if let Some(decorated) = first_ref
+                .maybe_name_of_function()
                 .and_then(|func| func.maybe_decorated())
             {
                 line = NodeRef::new(self.file, decorated.index()).line();

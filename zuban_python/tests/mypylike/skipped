@@ -1549,23 +1549,16 @@ testNewAnalyzerRedefineAsOverload
 testMultipleNestedFunctionDef
 testPropertyWithExtraMethod
 # Conditional definitions
-testNewAnalyzerConditionalFunc
-testNewAnalyzerConditionalFuncDefer
-testNewAnalyzerConditionallyDefineFuncOverVar
-testRedefineFunctionDefinedAsVariableInitializedToNone
-testRedefineNestedFunctionDefinedAsVariableInitializedToNone
 testConditionalFunctionDefinitionUsingDecorator2
 testConditionalFunctionDefinitionUnreachable
-testConditionalExpressionAndTypeContext
 # "All conditional function variants must have identical signatures"
 testIncompatibleConditionalFunctionDefinition
-testIncompatibleConditionalFunctionDefinition2
-testIncompatibleConditionalFunctionDefinition3
-testConditionalRedefinitionOfAnUnconditionalFunctionDefinition1
-testConditionalRedefinitionOfAnUnconditionalFunctionDefinition2
 testIncompatibleConditionalMethodDefinition
 testRedefineImportedFunctionViaImport
 testUnionOrderEquivalence
+# Mypy treats a None partial that is then assigned to a function as the function?? Wrong?
+testRedefineFunctionDefinedAsVariableInitializedToNone
+testRedefineNestedFunctionDefinedAsVariableInitializedToNone
 
 # "Value of type "A" must be used"
 # "Value of type "Coroutine[Any, Any, None]" must be used"

@@ -274,7 +274,9 @@ impl<'file> NodeRef<'file> {
     }
 
     pub fn maybe_name_of_function(&self) -> Option<FunctionDef<'file>> {
-        NodeRef::new(self.file, self.node_index - NAME_TO_FUNCTION_DIFF).maybe_function()
+        self.node_index
+            .checked_sub(NAME_TO_FUNCTION_DIFF)
+            .and_then(|node_index| NodeRef::new(self.file, node_index).maybe_function())
     }
 
     pub fn node_start_position(self) -> CodeIndex {
