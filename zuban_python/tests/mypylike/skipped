@@ -1549,9 +1549,7 @@ testNewAnalyzerRedefineAsOverload
 testMultipleNestedFunctionDef
 testPropertyWithExtraMethod
 # "All conditional function variants must have identical signatures"
-testIncompatibleConditionalFunctionDefinition
 testIncompatibleConditionalFunctionDefinition3
-testIncompatibleConditionalMethodDefinition
 testRedefineImportedFunctionViaImport
 testUnionOrderEquivalence
 # Mypy treats a None partial that is then assigned to a function as the function?? Wrong?

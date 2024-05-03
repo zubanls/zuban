@@ -548,36 +548,44 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             .infer_name_of_definition_by_index(first);
         let original_t = original.as_cow_type(i_s);
         let redefinition = Inferred::from_saved_node_ref(self.node_ref);
-        original_t.error_if_not_matches(
-            i_s,
-            &redefinition,
-            |issue| self.add_issue_for_declaration(i_s, issue),
-            |got, expected| {
-                if self.node().maybe_decorated().is_none()
-                    && NodeRef::new(self.node_ref.file, first)
-                        .maybe_name_of_function()
-                        .is_some_and(|func| func.maybe_decorated().is_none())
-                {
-                    let Type::Callable(original) = original_t.as_ref() else {
-                        unreachable!()
-                    };
-                    let redefinition_t = redefinition.as_cow_type(i_s);
-                    let Type::Callable(redefinition) = redefinition_t.as_ref() else {
-                        unreachable!()
-                    };
 
-                    Some(IssueKind::IncompatibleConditionalFunctionSignaturePretty {
+        if self.node().maybe_decorated().is_none()
+            && NodeRef::new(self.node_ref.file, first)
+                .maybe_name_of_function()
+                .is_some_and(|func| func.maybe_decorated().is_none())
+        {
+            let redefinition_t = redefinition.as_cow_type(i_s);
+            if !original_t
+                .is_simple_same_type(i_s, &redefinition_t)
+                .non_any_match()
+            {
+                let Type::Callable(original) = original_t.as_ref() else {
+                    unreachable!()
+                };
+                let Type::Callable(redefinition) = redefinition_t.as_ref() else {
+                    unreachable!()
+                };
+                self.add_issue_for_declaration(
+                    i_s,
+                    IssueKind::IncompatibleConditionalFunctionSignaturePretty {
                         original: original.format_pretty(&FormatData::new_short(i_s.db)),
                         redefinition: redefinition.format_pretty(&FormatData::new_short(i_s.db)),
-                    })
-                } else {
+                    },
+                )
+            }
+        } else {
+            original_t.error_if_not_matches(
+                i_s,
+                &redefinition,
+                |issue| self.add_issue_for_declaration(i_s, issue),
+                |got, expected| {
                     Some(IssueKind::IncompatibleConditionalFunctionSignature {
                         original: expected,
                         redefinition: got,
                     })
-                }
-            },
-        )
+                },
+            )
+        }
     }
 
     pub fn is_dunder_new(&self) -> bool {
