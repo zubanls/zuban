@@ -1540,11 +1540,6 @@ testCustomRedefinitionDecorator
 testNewTypeRedefiningVariablesFails
 # "Cannot assign multiple types to name "b" without an explicit "Type[...]" annotation"
 testAliasesInClassBodyNormalVsSubscripted
-# "Cannot assign multiple modules to name "..." without explicit "types.ModuleType" annotation"
-testModuleAliasRepeated
-testModuleAliasRepeatedComplex
-testModuleAliasToOtherModule
-testModuleAliasToQualifiedImport2
 # Mypy treats a None partial that is then assigned to a function as the function?? Wrong?
 testRedefineFunctionDefinedAsVariableInitializedToNone
 testRedefineNestedFunctionDefinedAsVariableInitializedToNone
@@ -2343,6 +2338,12 @@ testSuggestClassVarOnTooFewArgumentsMethod
 
 # Create a class with a base class based on Type[..] of self.foo
 testNewAnalyzerUnsupportedBaseClassInsideFunction
+
+# type checking ok, priority low "Cannot assign multiple modules to name "..." without explicit "types.ModuleType" annotation"
+testModuleAliasRepeated
+testModuleAliasRepeatedComplex
+testModuleAliasToOtherModule
+testModuleAliasToQualifiedImport2
 
 # My own hard/special tests
 class_context_super_class
