@@ -549,34 +549,35 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let original_t = original.as_cow_type(i_s);
         let redefinition = Inferred::from_saved_node_ref(self.node_ref);
         let redefinition_t = redefinition.as_cow_type(i_s);
-        if !original_t
-            .is_simple_super_type_of(i_s, &redefinition_t)
-            .bool()
-        {
-            let issue = if self.node().maybe_decorated().is_none()
-                && NodeRef::new(self.node_ref.file, first)
-                    .maybe_name_of_function()
-                    .is_some_and(|func| func.maybe_decorated().is_none())
-            {
-                let Type::Callable(original) = original_t.as_ref() else {
-                    unreachable!()
-                };
-                let Type::Callable(redefinition) = redefinition_t.as_ref() else {
-                    unreachable!()
-                };
+        original_t.error_if_not_matches(
+            i_s,
+            &redefinition,
+            |issue| self.add_issue_for_declaration(i_s, issue),
+            |got, expected| {
+                if self.node().maybe_decorated().is_none()
+                    && NodeRef::new(self.node_ref.file, first)
+                        .maybe_name_of_function()
+                        .is_some_and(|func| func.maybe_decorated().is_none())
+                {
+                    let Type::Callable(original) = original_t.as_ref() else {
+                        unreachable!()
+                    };
+                    let Type::Callable(redefinition) = redefinition_t.as_ref() else {
+                        unreachable!()
+                    };
 
-                IssueKind::IncompatibleConditionalFunctionSignaturePretty {
-                    original: original.format_pretty(&FormatData::new_short(i_s.db)),
-                    redefinition: redefinition.format_pretty(&FormatData::new_short(i_s.db)),
+                    Some(IssueKind::IncompatibleConditionalFunctionSignaturePretty {
+                        original: original.format_pretty(&FormatData::new_short(i_s.db)),
+                        redefinition: redefinition.format_pretty(&FormatData::new_short(i_s.db)),
+                    })
+                } else {
+                    Some(IssueKind::IncompatibleConditionalFunctionSignature {
+                        original: original_t.format_short(i_s.db),
+                        redefinition: redefinition_t.format_short(i_s.db),
+                    })
                 }
-            } else {
-                IssueKind::IncompatibleConditionalFunctionSignature {
-                    original: original_t.format_short(i_s.db),
-                    redefinition: redefinition_t.format_short(i_s.db),
-                }
-            };
-            self.add_issue_for_declaration(i_s, issue)
-        }
+            },
+        )
     }
 
     pub fn is_dunder_new(&self) -> bool {
