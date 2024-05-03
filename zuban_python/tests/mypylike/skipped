@@ -1219,6 +1219,7 @@ testUnionUnpackingDoubleBinder
 testNarrowTypeForDictKeys
 # try/except/finally
 testTryExceptFlow
+testRedefinedFunctionInTryWithElse
 testRedefineImportedFunctionViaImport
 testExceptionVariableReuseInDeferredNode4
 testExceptionVariableReuseInDeferredNode5
@@ -1281,6 +1282,8 @@ testIntentionallyEmptyGeneratorFunction_None
 # "Function "property_decorator_missing" could always be true in boolean context"
 testUnreachableFlagMiscTestCaseMissingMethod
 testWalrus
+# FlowAnalysis includes stack above nested function, instead of just the current
+testMultipleNestedFunctionDef
 
 # None late binding, because it's None (x = None; x = 3)
 testLocalPartialTypesWithInheritance3
@@ -1542,15 +1545,6 @@ testModuleAliasRepeated
 testModuleAliasRepeatedComplex
 testModuleAliasToOtherModule
 testModuleAliasToQualifiedImport2
-# "Incompatible redefinition (redefinition with type "Callable[[Any], Any]", original type "Callable[[], Any]")"
-testRedefinedFunctionInTryWithElse
-testConditionalFunctionDefinitionUnreachable
-# "incompatible redefinition"
-testRedefineFunctionDefinedAsVariableInitializedToEmptyList
-# Conditional function redefinitions
-testNewAnalyzerRedefineAsOverload
-testMultipleNestedFunctionDef
-testPropertyWithExtraMethod
 # Mypy treats a None partial that is then assigned to a function as the function?? Wrong?
 testRedefineFunctionDefinedAsVariableInitializedToNone
 testRedefineNestedFunctionDefinedAsVariableInitializedToNone
