@@ -551,20 +551,73 @@ impl<'db> NameBinder<'db> {
     fn index_if_stmt(&mut self, if_stmt: IfStmt<'db>, ordered: bool) -> NodeIndex {
         self.references_need_flow_analysis = true;
         let mut latest_return_or_yield = 0;
-        for if_block in if_stmt.iter_blocks() {
+        let mut block_iterator = if_stmt.iter_blocks();
+        for if_block in block_iterator.by_ref() {
             let latest = match if_block {
                 IfBlockType::If(expr, block) => {
                     let latest = self.index_non_block_node(&expr, ordered);
                     latest_return_or_yield =
                         self.merge_latest_return_or_yield(latest_return_or_yield, latest);
-                    self.index_block(block, ordered)
+                    let set_block_unreachable = |if_block: IfBlockType| {
+                        self.points.set(
+                            if_block.first_leaf_index(),
+                            Point::new_specific(
+                                Specific::IfBranchUnreachableInNameBinder,
+                                Locality::File,
+                            ),
+                        )
+                    };
+                    match self.is_branch_reachable_for_name_binder(expr) {
+                        Reachability::Reachable => {
+                            let latest = self.index_block(block, ordered);
+                            self.merge_latest_return_or_yield(latest_return_or_yield, latest);
+                            for other_block in block_iterator {
+                                set_block_unreachable(other_block);
+                            }
+                            break;
+                        }
+                        Reachability::Unreachable => {
+                            set_block_unreachable(if_block);
+                            0
+                        }
+                        Reachability::Unknown => self.index_block(block, ordered),
+                    }
                 }
-                IfBlockType::Else(block) => self.index_block(block, ordered),
+                IfBlockType::Else(else_block) => self.index_block(else_block.block(), ordered),
             };
             latest_return_or_yield =
                 self.merge_latest_return_or_yield(latest_return_or_yield, latest);
         }
         latest_return_or_yield
+    }
+
+    fn is_branch_reachable_for_name_binder(&mut self, expr: NamedExpression) -> Reachability {
+        match expr.expression().unpack() {
+            ExpressionContent::ExpressionPart(p) => self.is_expr_part_reachable(p),
+            _ => Reachability::Unknown,
+        }
+    }
+
+    fn is_expr_part_reachable(&mut self, expr_part: ExpressionPart) -> Reachability {
+        match expr_part {
+            ExpressionPart::Atom(atom) => match atom.unpack() {
+                AtomContent::Name(name) => {
+                    let n = name.as_code();
+                    if ["MYPY", "PY3"].contains(&n) {
+                        Reachability::Reachable
+                    } else if n == "PY2" {
+                        Reachability::Unreachable
+                    } else {
+                        Reachability::Unknown
+                    }
+                }
+                _ => Reachability::Unknown,
+            },
+            ExpressionPart::Inversion(inv) => {
+                self.is_expr_part_reachable(inv.expression()).invert()
+            }
+            _ => Reachability::Unknown,
+        }
     }
 
     fn index_try_stmt(&mut self, try_stmt: TryStmt<'db>, ordered: bool) -> NodeIndex {
@@ -1091,4 +1144,19 @@ fn try_to_process_reference_for_symbol_table(
     };
     points.set(name.index(), point);
     true
+}
+
+enum Reachability {
+    Reachable,
+    Unreachable,
+    Unknown,
+}
+impl Reachability {
+    fn invert(self) -> Reachability {
+        match self {
+            Self::Reachable => Self::Unreachable,
+            Self::Unreachable => Self::Reachable,
+            Self::Unknown => Self::Unknown,
+        }
+    }
 }

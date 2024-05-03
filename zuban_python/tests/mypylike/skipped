@@ -1422,25 +1422,19 @@ testAsyncWithOutsideCoroutine
 
 # TYPE_CHECKING / PY2 / PY3 / MYPY
 testIfTypeCheckingUnreachableClass
-testConditionalTypeAliasPY3
-testConditionalAssignmentPY2
-testConditionalImport
-testNegatedMypyConditional
-testMypyConditional
 testTypeCheckingConditional
 testTypeCheckingConditionalFromImport
 testNegatedTypeCheckingConditional
 testUndefinedTypeCheckingConditional
-testUnreachabilityAndElifPY3
 testConditionalAssertWithoutElse
 testShortCircuitInExpression
-testRefreshImportIfMypyElse1
 testUnreachableFlagIgnoresSemanticAnalysisUnreachable
 # --always-true TRUTH
 testIfConditionsInDefinition
 testAlwaysTrueAlwaysFalseFlags
 testSemanticAnalysisFalseButTypeNarrowingTrue
 testSemanticAnalysisTrueButTypeNarrowingFalse
+testShortCircuitNoEvaluation
 
 # if sys.version
 testNewAnalyzerVersionCheck

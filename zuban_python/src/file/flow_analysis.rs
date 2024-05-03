@@ -874,8 +874,18 @@ impl Inference<'_, '_, '_> {
         class: Option<Class>,
         func: Option<&Function>,
     ) {
-        match if_blocks.next() {
-            Some(IfBlockType::If(if_expr, block)) => {
+        let Some(if_block) = if_blocks.next() else {
+            return
+        };
+        let first_point = self.file.points.get(if_block.first_leaf_index());
+        let unreachable_in_name_binder = first_point.calculated()
+            && first_point.maybe_specific() == Some(Specific::IfBranchUnreachableInNameBinder);
+        if unreachable_in_name_binder {
+            return self.process_ifs(if_blocks, class, func);
+        }
+
+        match if_block {
+            IfBlockType::If(if_expr, block) => {
                 let (_, true_frame, false_frame) = self.find_guards_in_named_expr(if_expr);
 
                 FLOW_ANALYSIS.with(|fa| {
@@ -889,8 +899,9 @@ impl Inference<'_, '_, '_> {
                     fa.merge_conditional(self.i_s, true_frame, false_frame);
                 });
             }
-            Some(IfBlockType::Else(block)) => self.calc_block_diagnostics(block, class, func),
-            None => (),
+            IfBlockType::Else(else_block) => {
+                self.calc_block_diagnostics(else_block.block(), class, func)
+            }
         }
     }
 

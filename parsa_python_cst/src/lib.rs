@@ -1250,13 +1250,23 @@ impl<'db> IfStmt<'db> {
 
 pub enum IfBlockType<'db> {
     If(NamedExpression<'db>, Block<'db>),
-    Else(Block<'db>),
+    Else(ElseBlock<'db>),
 }
 
 impl<'db> IfBlockType<'db> {
     fn start_of_first_block_stmt(&self) -> CodeIndex {
         match self {
-            Self::If(_, block_) | Self::Else(block_) => block_.statements_start_and_end().0,
+            Self::If(_, block_) => *block_,
+            Self::Else(else_) => else_.block(),
+        }
+        .statements_start_and_end()
+        .0
+    }
+
+    pub fn first_leaf_index(&self) -> NodeIndex {
+        match self {
+            Self::If(named_expr, _) => named_expr.index() - 1, // The if/elif
+            Self::Else(else_) => else_.index(),
         }
     }
 }
@@ -1284,7 +1294,7 @@ impl<'db> Iterator for IfBlockIterator<'db> {
                 let block_ = self.0.next().unwrap();
                 return Some(Self::Item::If(NamedExpression::new(n), Block::new(block_)));
             } else if n.is_type(Nonterminal(else_block)) {
-                return Some(Self::Item::Else(Block::new(n.nth_child(2))));
+                return Some(Self::Item::Else(ElseBlock::new(n)));
             }
         }
         None

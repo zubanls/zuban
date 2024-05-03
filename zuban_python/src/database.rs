@@ -354,6 +354,7 @@ pub enum Specific {
     OverloadUnreachable,
     AnyDueToError,
     ModuleNotFound,
+    IfBranchUnreachableInNameBinder,
 
     String,
     Float,
