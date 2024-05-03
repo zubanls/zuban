@@ -549,8 +549,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let original_t = original.as_cow_type(i_s);
         let redefinition = Inferred::from_saved_node_ref(self.node_ref);
         let redefinition_t = redefinition.as_cow_type(i_s);
-        if !redefinition_t
-            .is_simple_super_type_of(i_s, &original_t)
+        if !original_t
+            .is_simple_super_type_of(i_s, &redefinition_t)
             .bool()
         {
             let issue = if self.node().maybe_decorated().is_none()
