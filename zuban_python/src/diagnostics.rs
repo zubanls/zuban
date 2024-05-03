@@ -57,6 +57,7 @@ pub(crate) enum IssueKind {
     Redefinition { name: Box<str>, suffix: Box<str> },
     CannotRedifineAs { name: Box<str>, as_: &'static str },
     IncompatibleConditionalFunctionSignature { original: Box<str>, redefinition: Box<str> },
+    IncompatibleConditionalFunctionSignaturePretty { original: Box<str>, redefinition: Box<str> },
     ModuleNotFound { module_name: Box<str> },
     NoParentModule,
     TypeNotFound,
@@ -673,7 +674,10 @@ impl<'db> Diagnostic<'db> {
 
             Redefinition{name, suffix} => format!(r#"Name "{name}" already defined {suffix}"#),
             CannotRedifineAs { name, as_ } => format!(r#"Cannot redefine "{name}" as {as_}"#),
-            IncompatibleConditionalFunctionSignature { original, redefinition } => {
+            IncompatibleConditionalFunctionSignature { original, redefinition } => format!(
+                r#"Incompatible redefinition (redefinition with type "{redefinition}", original type "{original}")"#
+            ),
+            IncompatibleConditionalFunctionSignaturePretty { original, redefinition } => {
                 additional_notes.push("Original:".into());
                 additional_notes.push(format!("    {original}"));
                 additional_notes.push("Redefinition:".into());

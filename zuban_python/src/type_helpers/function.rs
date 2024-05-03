@@ -553,7 +553,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             .is_simple_super_type_of(i_s, &original_t)
             .bool()
         {
-            if self.node().maybe_decorated().is_none()
+            let issue = if self.node().maybe_decorated().is_none()
                 && NodeRef::new(self.node_ref.file, first)
                     .maybe_name_of_function()
                     .is_some_and(|func| func.maybe_decorated().is_none())
@@ -564,15 +564,18 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 let Type::Callable(redefinition) = redefinition_t.as_ref() else {
                     unreachable!()
                 };
-                self.add_issue_for_declaration(
-                    i_s,
-                    IssueKind::IncompatibleConditionalFunctionSignature {
-                        original: original.format_pretty(&FormatData::new_short(i_s.db)),
-                        redefinition: redefinition.format_pretty(&FormatData::new_short(i_s.db)),
-                    },
-                )
+
+                IssueKind::IncompatibleConditionalFunctionSignaturePretty {
+                    original: original.format_pretty(&FormatData::new_short(i_s.db)),
+                    redefinition: redefinition.format_pretty(&FormatData::new_short(i_s.db)),
+                }
             } else {
-            }
+                IssueKind::IncompatibleConditionalFunctionSignature {
+                    original: original_t.format_short(i_s.db),
+                    redefinition: redefinition_t.format_short(i_s.db),
+                }
+            };
+            self.add_issue_for_declaration(i_s, issue)
         }
     }
 
