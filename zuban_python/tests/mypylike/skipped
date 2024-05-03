@@ -1421,20 +1421,16 @@ testAsyncForOutsideCoroutine
 testAsyncWithOutsideCoroutine
 
 # TYPE_CHECKING / PY2 / PY3 / MYPY
-testIfTypeCheckingUnreachableClass
-testTypeCheckingConditional
-testTypeCheckingConditionalFromImport
-testNegatedTypeCheckingConditional
 testUndefinedTypeCheckingConditional
 testConditionalAssertWithoutElse
 testShortCircuitInExpression
-testUnreachableFlagIgnoresSemanticAnalysisUnreachable
 # --always-true TRUTH
 testIfConditionsInDefinition
 testAlwaysTrueAlwaysFalseFlags
 testSemanticAnalysisFalseButTypeNarrowingTrue
 testSemanticAnalysisTrueButTypeNarrowingFalse
 testShortCircuitNoEvaluation
+testUnreachableFlagIgnoresSemanticAnalysisUnreachable
 
 # if sys.version
 testNewAnalyzerVersionCheck

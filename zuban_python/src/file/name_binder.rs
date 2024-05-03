@@ -603,21 +603,32 @@ impl<'db> NameBinder<'db> {
             ExpressionPart::Atom(atom) => match atom.unpack() {
                 AtomContent::Name(name) => {
                     let n = name.as_code();
-                    if ["MYPY", "PY3"].contains(&n) {
-                        Reachability::Reachable
+                    if ["MYPY", "PY3", "TYPE_CHECKING"].contains(&n) {
+                        return Reachability::Reachable;
                     } else if n == "PY2" {
-                        Reachability::Unreachable
-                    } else {
-                        Reachability::Unknown
+                        return Reachability::Unreachable;
                     }
                 }
-                _ => Reachability::Unknown,
+                _ => (),
             },
-            ExpressionPart::Inversion(inv) => {
-                self.is_expr_part_reachable(inv.expression()).invert()
+            ExpressionPart::Primary(primary) => {
+                if let PrimaryContent::Attribute(second) = primary.second() {
+                    let second = second.as_code();
+                    if second == "TYPE_CHECKING" {
+                        if let PrimaryOrAtom::Atom(atom) = primary.first() {
+                            if atom.as_code() == "typing" {
+                                return Reachability::Reachable;
+                            }
+                        }
+                    }
+                }
             }
-            _ => Reachability::Unknown,
+            ExpressionPart::Inversion(inv) => {
+                return self.is_expr_part_reachable(inv.expression()).invert()
+            }
+            _ => (),
         }
+        Reachability::Unknown
     }
 
     fn index_try_stmt(&mut self, try_stmt: TryStmt<'db>, ordered: bool) -> NodeIndex {
