@@ -11,6 +11,8 @@ testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
 testInferringLvarTypesUnpackedFromIterableClassObject
 testEllipsisDefaultArgValueInNonStubsOverload
 testOverloadTwoTypeArgs
+# callable matching regression
+testNoCrashOnNestedGenericCallable
 
 # mypy upgrade
 testMultilineQuotedAnnotation
@@ -1217,6 +1219,7 @@ testUnionUnpackingDoubleBinder
 testNarrowTypeForDictKeys
 # try/except/finally
 testTryExceptFlow
+testRedefineImportedFunctionViaImport
 testExceptionVariableReuseInDeferredNode4
 testExceptionVariableReuseInDeferredNode5
 testExceptionVariableReuseInDeferredNode6
@@ -1548,10 +1551,6 @@ testRedefineFunctionDefinedAsVariableInitializedToEmptyList
 testNewAnalyzerRedefineAsOverload
 testMultipleNestedFunctionDef
 testPropertyWithExtraMethod
-# "All conditional function variants must have identical signatures"
-testIncompatibleConditionalFunctionDefinition3
-testRedefineImportedFunctionViaImport
-testUnionOrderEquivalence
 # Mypy treats a None partial that is then assigned to a function as the function?? Wrong?
 testRedefineFunctionDefinedAsVariableInitializedToNone
 testRedefineNestedFunctionDefinedAsVariableInitializedToNone

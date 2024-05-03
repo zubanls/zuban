@@ -696,10 +696,16 @@ impl Type {
                 })
             }
             Type::Type(t2) if matches!(c1.params, CallableParams::Any(_)) => {
-                c1.return_type.is_super_type_of(i_s, matcher, t2)
+                c1.return_type.matches(i_s, matcher, t2, variance)
             }
             _ => match value_type.maybe_callable(i_s) {
-                Some(CallableLike::Callable(c2)) => matcher.matches_callable(i_s, c1, &c2),
+                Some(CallableLike::Callable(c2)) => {
+                    let mut m = matcher.matches_callable(i_s, c1, &c2);
+                    if variance == Variance::Invariant {
+                        m &= matcher.matches_callable(i_s, &c2, c1);
+                    }
+                    m
+                }
                 Some(CallableLike::Overload(overload)) if variance == Variance::Covariant => {
                     Self::matches_callable_against_arbitrary(
                         i_s,
