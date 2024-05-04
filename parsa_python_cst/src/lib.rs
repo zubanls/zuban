@@ -806,10 +806,8 @@ impl<'db> Expression<'db> {
     }
 
     pub fn maybe_single_string_literal(&self) -> Option<StringLiteral<'db>> {
-        match self.maybe_unpacked_atom() {
-            Some(AtomContent::Strings(s)) => s.maybe_single_string_literal(),
-            _ => None,
-        }
+        self.maybe_unpacked_atom()
+            .and_then(|a| a.maybe_single_string_literal())
     }
 
     pub fn is_ellipsis_literal(&self) -> bool {
@@ -3004,6 +3002,15 @@ pub enum PrimaryOrAtom<'db> {
     Atom(Atom<'db>),
 }
 
+impl<'db> PrimaryOrAtom<'db> {
+    pub fn as_code(&self) -> &'db str {
+        match self {
+            Self::Primary(p) => p.as_code(),
+            Self::Atom(a) => a.as_code(),
+        }
+    }
+}
+
 pub enum PrimaryTargetOrAtom<'db> {
     PrimaryTarget(PrimaryTarget<'db>),
     Atom(Atom<'db>),
@@ -3515,6 +3522,15 @@ pub enum AtomContent<'db> {
     GeneratorComprehension(Comprehension<'db>),
     YieldExpr(YieldExpr<'db>),
     NamedExpression(NamedExpression<'db>),
+}
+
+impl<'db> AtomContent<'db> {
+    pub fn maybe_single_string_literal(&self) -> Option<StringLiteral<'db>> {
+        match self {
+            AtomContent::Strings(s) => s.maybe_single_string_literal(),
+            _ => None,
+        }
+    }
 }
 
 impl<'db> Bytes<'db> {

@@ -626,6 +626,19 @@ impl<'db> NameBinder<'db> {
             ExpressionPart::Inversion(inv) => {
                 return self.is_expr_part_reachable(inv.expression()).invert()
             }
+            ExpressionPart::Comparisons(comps) => {
+                let mut iterator = comps.iter();
+                let first = iterator.next().unwrap();
+                if iterator.next().is_none() {
+                    let left = first.left();
+                    let right = first.right();
+                    let result = check_comparison_reachability(first, left, right);
+                    if result == Reachability::Unknown {
+                        return check_comparison_reachability(first, right, left);
+                    }
+                    return result;
+                }
+            }
             _ => (),
         }
         Reachability::Unknown
@@ -1157,6 +1170,7 @@ fn try_to_process_reference_for_symbol_table(
     true
 }
 
+#[derive(PartialEq)]
 enum Reachability {
     Reachable,
     Unreachable,
@@ -1170,4 +1184,43 @@ impl Reachability {
             Self::Unknown => Self::Unknown,
         }
     }
+}
+
+fn check_comparison_reachability(
+    comp: ComparisonContent,
+    check: ExpressionPart,
+    other: ExpressionPart,
+) -> Reachability {
+    if let ExpressionPart::Primary(primary) = check {
+        if let PrimaryContent::Attribute(attr) = primary.second() {
+            match attr.as_code() {
+                "platform"
+                    if matches!(
+                        comp,
+                        ComparisonContent::Equals(..) | ComparisonContent::NotEquals(..)
+                    ) =>
+                {
+                    if primary.first().as_code() == "sys" {
+                        if let ExpressionPart::Atom(a) = other {
+                            if let Some(s) = a.unpack().maybe_single_string_literal() {
+                                if let Some(to_compare) = s.as_python_string().as_str() {
+                                    let mut result = to_compare == "linux";
+                                    if matches!(comp, ComparisonContent::NotEquals(..)) {
+                                        result = !result;
+                                    }
+                                    if result {
+                                        return Reachability::Reachable;
+                                    } else {
+                                        return Reachability::Unreachable;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                _ => (),
+            }
+        }
+    }
+    Reachability::Unknown
 }
