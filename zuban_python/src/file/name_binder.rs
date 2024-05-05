@@ -1216,7 +1216,7 @@ fn check_comparison_reachability(
     other: ExpressionPart,
 ) -> Reachability {
     if let ExpressionPart::Primary(primary) = check {
-        if maybe_sys_platform(primary)
+        if maybe_sys_name(primary, "platform")
             && matches!(
                 comp,
                 ComparisonContent::Equals(..) | ComparisonContent::NotEquals(..)
@@ -1242,9 +1242,9 @@ fn check_comparison_reachability(
     Reachability::Unknown
 }
 
-fn maybe_sys_platform(primary: Primary) -> bool {
+fn maybe_sys_name(primary: Primary, name: &str) -> bool {
     if let PrimaryContent::Attribute(attr) = primary.second() {
-        attr.as_code() == "platform" && primary.first().as_code() == "sys"
+        attr.as_code() == name && primary.first().as_code() == "sys"
     } else {
         false
     }
@@ -1257,7 +1257,7 @@ fn maybe_sys_platform_startswith(
 ) -> Reachability {
     if let PrimaryContent::Attribute(attr) = before.second() {
         if let PrimaryOrAtom::Primary(prim) = before.first() {
-            if attr.as_code() == "startswith" && maybe_sys_platform(prim) {
+            if attr.as_code() == "startswith" && maybe_sys_name(prim, "platform") {
                 if let Some(named_expr) = arguments.maybe_single_named_expr() {
                     if let Some(s) = named_expr.maybe_single_string_literal() {
                         if let Some(to_compare) = s.as_python_string().as_str() {

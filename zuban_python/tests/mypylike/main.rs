@@ -112,6 +112,13 @@ impl<'name, 'code> TestCase<'name, 'code> {
             return false;
         }
         let extra_checks = steps.flags.contains(&"--extra-checks");
+
+        let arg_after = |after_name| {
+            let mut flag_iterator = steps.flags.iter();
+            (flag_iterator.any(|x| *x == after_name))
+                .then(|| flag_iterator.next().unwrap().to_string())
+        };
+
         let mut config = if steps.flags.contains(&"--strict") {
             TypeCheckerFlags {
                 extra_checks,
@@ -139,6 +146,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 warn_redundant_casts: steps.flags.contains(&"--warn-redundant-casts"),
                 warn_return_any: steps.flags.contains(&"--warn-return-any"),
                 local_partial_types: steps.flags.contains(&"--local-partial-types"),
+                platform: arg_after("--platform"),
                 extra_checks,
                 strict_optional: !steps.flags.contains(&"--no-strict-optional")
                     && !self.file_name.starts_with("semanal-"),
@@ -146,6 +154,13 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 ..Default::default()
             }
         };
+
+        if let Some(version) = arg_after("--python-version") {
+            let x = &version[..1];
+            let y = &version[2..];
+            let error = "Expected version X.Y like 3.10";
+            config.python_version = (x.parse().expect(error), y.parse().expect(error));
+        }
 
         {
             let mut flag_iterator = steps.flags.iter();
