@@ -609,6 +609,9 @@ impl<'project, 'db> NameBinder<'project, 'db> {
                         return Reachability::Unreachable;
                     }
                 }
+                AtomContent::NamedExpression(named_expr) => {
+                    return self.is_branch_reachable_for_name_binder(named_expr)
+                }
                 _ => (),
             },
             ExpressionPart::Primary(primary) => {

@@ -1451,7 +1451,6 @@ testSysVersionInfoSliced4
 testSysVersionInfoSliced5
 testSysVersionInfoSliced6
 testSysVersionInfoSliced7
-testSysPlatformNegated
 testSysVersionInfoClass
 testSysVersionInfoInClass
 testSysVersionInfoImport
