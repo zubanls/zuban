@@ -603,9 +603,23 @@ impl<'project, 'db> NameBinder<'project, 'db> {
             ExpressionPart::Atom(atom) => match atom.unpack() {
                 AtomContent::Name(name) => {
                     let n = name.as_code();
-                    if ["MYPY", "PY3", "TYPE_CHECKING"].contains(&n) {
+                    if ["MYPY", "PY3", "TYPE_CHECKING"].contains(&n)
+                        || self
+                            .project
+                            .flags
+                            .always_true_symbols
+                            .iter()
+                            .any(|s| s == n)
+                    {
                         return Reachability::Reachable;
-                    } else if n == "PY2" {
+                    } else if n == "PY2"
+                        || self
+                            .project
+                            .flags
+                            .always_false_symbols
+                            .iter()
+                            .any(|s| s == n)
+                    {
                         return Reachability::Unreachable;
                     }
                 }

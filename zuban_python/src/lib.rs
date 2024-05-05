@@ -63,6 +63,8 @@ pub struct TypeCheckerFlags {
     pub local_partial_types: bool,
 
     pub platform: Option<String>,
+    pub always_true_symbols: Vec<String>,
+    pub always_false_symbols: Vec<String>,
 
     pub extra_checks: bool,
     pub mypy_compatible: bool,
@@ -91,6 +93,8 @@ impl Default for TypeCheckerFlags {
             warn_return_any: false,
             local_partial_types: false,
             platform: None,
+            always_true_symbols: vec![],
+            always_false_symbols: vec![],
             extra_checks: false,
             mypy_compatible: false,
         }

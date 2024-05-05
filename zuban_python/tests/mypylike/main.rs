@@ -146,12 +146,28 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 ..Default::default()
             }
         };
+
         {
             let mut flag_iterator = steps.flags.iter();
             if flag_iterator.any(|x| *x == "--platform") {
                 config.platform = Some(flag_iterator.next().unwrap().to_string());
             }
         }
+
+        let gather_always_true_or_false = |push_to: &mut Vec<_>, wanted_flag: &str| {
+            let mut flag_iterator = steps.flags.iter();
+            while let Some(flag) = flag_iterator.next() {
+                if flag == &wanted_flag {
+                    push_to.push(flag_iterator.next().unwrap().to_string());
+                } else if let Some(rest) = flag.strip_prefix(wanted_flag) {
+                    if let Some(name) = rest.strip_prefix("=") {
+                        push_to.push(name.to_string())
+                    }
+                }
+            }
+        };
+        gather_always_true_or_false(&mut config.always_true_symbols, "--always-true");
+        gather_always_true_or_false(&mut config.always_false_symbols, "--always-false");
 
         let project = projects.get_mut(config);
 

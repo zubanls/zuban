@@ -1425,14 +1425,11 @@ testUndefinedTypeCheckingConditional
 testConditionalAssertWithoutElse
 testShortCircuitInExpression
 # --always-true TRUTH
-testIfConditionsInDefinition
-testAlwaysTrueAlwaysFalseFlags
 testSemanticAnalysisFalseButTypeNarrowingTrue
 testSemanticAnalysisTrueButTypeNarrowingFalse
 testShortCircuitNoEvaluation
+# sys.version
 testUnreachableFlagIgnoresSemanticAnalysisUnreachable
-
-# if sys.version
 testNewAnalyzerVersionCheck
 testNewAnalyzerVersionCheck2
 testPromoteMemoryviewToBytes
