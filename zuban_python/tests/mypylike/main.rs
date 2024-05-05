@@ -112,7 +112,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
             return false;
         }
         let extra_checks = steps.flags.contains(&"--extra-checks");
-        let config = if steps.flags.contains(&"--strict") {
+        let mut config = if steps.flags.contains(&"--strict") {
             TypeCheckerFlags {
                 extra_checks,
                 mypy_compatible,
@@ -146,6 +146,13 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 ..Default::default()
             }
         };
+        {
+            let mut flag_iterator = steps.flags.iter();
+            if flag_iterator.any(|x| *x == "--platform") {
+                config.platform = Some(flag_iterator.next().unwrap().to_string());
+            }
+        }
+
         let project = projects.get_mut(config);
 
         let is_parse_test = self.file_name.starts_with("parse");

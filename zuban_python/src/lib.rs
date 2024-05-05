@@ -62,6 +62,8 @@ pub struct TypeCheckerFlags {
     pub warn_return_any: bool,
     pub local_partial_types: bool,
 
+    pub platform: Option<String>,
+
     pub extra_checks: bool,
     pub mypy_compatible: bool,
 }
@@ -88,6 +90,7 @@ impl Default for TypeCheckerFlags {
             warn_redundant_casts: false,
             warn_return_any: false,
             local_partial_types: false,
+            platform: None,
             extra_checks: false,
             mypy_compatible: false,
         }
@@ -116,9 +119,14 @@ impl TypeCheckerFlags {
             warn_redundant_casts: true,
             warn_return_any: true,
             local_partial_types: false,
+            platform: None,
             extra_checks: false,
             mypy_compatible: false,
         }
+    }
+
+    fn computed_platform(&self) -> &str {
+        self.platform.as_deref().unwrap_or("posix")
     }
 }
 

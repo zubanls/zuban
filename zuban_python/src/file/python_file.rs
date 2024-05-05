@@ -234,11 +234,11 @@ impl<'db> PythonFile {
     fn with_global_binder(
         &'db self,
         project: &PythonProject,
-        func: impl FnOnce(&mut NameBinder<'db>),
+        func: impl FnOnce(&mut NameBinder<'_, 'db>),
     ) {
         self.symbol_table
             .set(NameBinder::with_global_binder(
-                project.flags.mypy_compatible,
+                project,
                 &self.tree,
                 &self.points,
                 &self.complex_points,

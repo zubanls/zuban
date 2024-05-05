@@ -5,7 +5,7 @@ use parsa_python_cst::*;
 use crate::{
     database::{
         ClassStorage, ComplexPoint, FileIndex, Locality, ParentScope, Point, PointKind, Points,
-        Specific,
+        PythonProject, Specific,
     },
     debug,
     diagnostics::{Diagnostics, Issue, IssueKind},
@@ -42,8 +42,8 @@ struct UnresolvedClass<'db> {
     class_symbol_table: SymbolTable,
 }
 
-pub(crate) struct NameBinder<'db> {
-    mypy_compatible: bool,
+pub(crate) struct NameBinder<'project, 'db> {
+    project: &'project PythonProject,
     tree: &'db Tree,
     kind: NameBinderKind,
     scope_node: NodeIndex,
@@ -60,12 +60,12 @@ pub(crate) struct NameBinder<'db> {
     file_index: FileIndex,
     references_need_flow_analysis: bool,
     #[allow(dead_code)] // TODO remove this
-    parent: Option<*mut NameBinder<'db>>,
+    parent: Option<*mut NameBinder<'project, 'db>>,
 }
 
-impl<'db> NameBinder<'db> {
+impl<'project, 'db> NameBinder<'project, 'db> {
     fn new(
-        mypy_compatible: bool,
+        project: &'project PythonProject,
         tree: &'db Tree,
         kind: NameBinderKind,
         scope_node: NodeIndex,
@@ -77,7 +77,7 @@ impl<'db> NameBinder<'db> {
         parent: Option<*mut Self>,
     ) -> Self {
         Self {
-            mypy_compatible,
+            project,
             tree,
             kind,
             scope_node,
@@ -98,17 +98,17 @@ impl<'db> NameBinder<'db> {
     }
 
     pub(crate) fn with_global_binder(
-        mypy_compatible: bool,
+        project: &'project PythonProject,
         tree: &'db Tree,
         points: &'db Points,
         complex_points: &'db ComplexValues,
         issues: &'db Diagnostics,
         star_imports: &'db RefCell<Vec<StarImport>>,
         file_index: FileIndex,
-        func: impl FnOnce(&mut NameBinder<'db>),
+        func: impl FnOnce(&mut NameBinder<'project, 'db>),
     ) -> SymbolTable {
         let mut binder = NameBinder::new(
-            mypy_compatible,
+            project,
             tree,
             NameBinderKind::Global,
             0,
@@ -166,10 +166,10 @@ impl<'db> NameBinder<'db> {
         &mut self,
         kind: NameBinderKind,
         scope_node: NodeIndex,
-        func: impl FnOnce(&mut NameBinder<'db>),
+        func: impl FnOnce(&mut NameBinder<'project, 'db>),
     ) -> SymbolTable {
         let mut name_binder = NameBinder::new(
-            self.mypy_compatible,
+            self.project,
             self.tree,
             kind,
             scope_node,
@@ -632,9 +632,9 @@ impl<'db> NameBinder<'db> {
                 if iterator.next().is_none() {
                     let left = first.left();
                     let right = first.right();
-                    let result = check_comparison_reachability(first, left, right);
+                    let result = check_comparison_reachability(self.project, first, left, right);
                     if result == Reachability::Unknown {
-                        return check_comparison_reachability(first, right, left);
+                        return check_comparison_reachability(self.project, first, right, left);
                     }
                     return result;
                 }
@@ -930,7 +930,7 @@ impl<'db> NameBinder<'db> {
         &mut self,
         clause: &ForIfClause<'db>,
         clauses: &mut ForIfClauseIterator<'db>,
-        on_expr: impl FnOnce(&mut NameBinder<'db>),
+        on_expr: impl FnOnce(&mut NameBinder<'_, 'db>),
     ) {
         let (targets, ifs) = match clause {
             ForIfClause::Sync(sync_for_if_clause) | ForIfClause::Async(sync_for_if_clause) => {
@@ -1043,7 +1043,7 @@ impl<'db> NameBinder<'db> {
 
     #[inline]
     fn maybe_add_reference(&mut self, name: Name<'db>, ordered: bool, needs_flow_analysis: bool) {
-        if !ordered || self.mypy_compatible && self.kind != NameBinderKind::Class {
+        if !ordered || self.project.flags.mypy_compatible && self.kind != NameBinderKind::Class {
             self.unordered_references.push((needs_flow_analysis, name));
         } else if !self.try_to_process_reference(name, needs_flow_analysis) {
             self.names_to_be_resolved_in_parent.push(name);
@@ -1187,6 +1187,7 @@ impl Reachability {
 }
 
 fn check_comparison_reachability(
+    project: &PythonProject,
     comp: ComparisonContent,
     check: ExpressionPart,
     other: ExpressionPart,
@@ -1204,7 +1205,8 @@ fn check_comparison_reachability(
                         if let ExpressionPart::Atom(a) = other {
                             if let Some(s) = a.unpack().maybe_single_string_literal() {
                                 if let Some(to_compare) = s.as_python_string().as_str() {
-                                    let mut result = to_compare == "linux";
+                                    let mut result =
+                                        to_compare == project.flags.computed_platform();
                                     if matches!(comp, ComparisonContent::NotEquals(..)) {
                                         result = !result;
                                     }
