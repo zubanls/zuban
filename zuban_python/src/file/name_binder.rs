@@ -614,8 +614,8 @@ impl<'project, 'db> NameBinder<'project, 'db> {
                 }
                 _ => (),
             },
-            ExpressionPart::Primary(primary) => {
-                if let PrimaryContent::Attribute(second) = primary.second() {
+            ExpressionPart::Primary(primary) => match primary.second() {
+                PrimaryContent::Attribute(second) => {
                     let second = second.as_code();
                     if second == "TYPE_CHECKING" {
                         if let PrimaryOrAtom::Atom(atom) = primary.first() {
@@ -625,7 +625,13 @@ impl<'project, 'db> NameBinder<'project, 'db> {
                         }
                     }
                 }
-            }
+                PrimaryContent::Execution(execution) => {
+                    if let PrimaryOrAtom::Primary(prim) = primary.first() {
+                        return maybe_sys_platform_startswith(self.project, prim, execution);
+                    }
+                }
+                _ => (),
+            },
             ExpressionPart::Inversion(inv) => {
                 return self.is_expr_part_reachable(inv.expression()).invert()
             }
@@ -1196,34 +1202,59 @@ fn check_comparison_reachability(
     other: ExpressionPart,
 ) -> Reachability {
     if let ExpressionPart::Primary(primary) = check {
-        if let PrimaryContent::Attribute(attr) = primary.second() {
-            match attr.as_code() {
-                "platform"
-                    if matches!(
-                        comp,
-                        ComparisonContent::Equals(..) | ComparisonContent::NotEquals(..)
-                    ) =>
-                {
-                    if primary.first().as_code() == "sys" {
-                        if let ExpressionPart::Atom(a) = other {
-                            if let Some(s) = a.unpack().maybe_single_string_literal() {
-                                if let Some(to_compare) = s.as_python_string().as_str() {
-                                    let mut result =
-                                        to_compare == project.flags.computed_platform();
-                                    if matches!(comp, ComparisonContent::NotEquals(..)) {
-                                        result = !result;
-                                    }
-                                    if result {
-                                        return Reachability::Reachable;
-                                    } else {
-                                        return Reachability::Unreachable;
-                                    }
-                                }
+        if maybe_sys_platform(primary)
+            && matches!(
+                comp,
+                ComparisonContent::Equals(..) | ComparisonContent::NotEquals(..)
+            )
+        {
+            if let ExpressionPart::Atom(a) = other {
+                if let Some(s) = a.unpack().maybe_single_string_literal() {
+                    if let Some(to_compare) = s.as_python_string().as_str() {
+                        let mut result = to_compare == project.flags.computed_platform();
+                        if matches!(comp, ComparisonContent::NotEquals(..)) {
+                            result = !result;
+                        }
+                        if result {
+                            return Reachability::Reachable;
+                        } else {
+                            return Reachability::Unreachable;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Reachability::Unknown
+}
+
+fn maybe_sys_platform(primary: Primary) -> bool {
+    if let PrimaryContent::Attribute(attr) = primary.second() {
+        attr.as_code() == "platform" && primary.first().as_code() == "sys"
+    } else {
+        false
+    }
+}
+
+fn maybe_sys_platform_startswith(
+    project: &PythonProject,
+    before: Primary,
+    arguments: ArgumentsDetails,
+) -> Reachability {
+    if let PrimaryContent::Attribute(attr) = before.second() {
+        if let PrimaryOrAtom::Primary(prim) = before.first() {
+            if attr.as_code() == "startswith" && maybe_sys_platform(prim) {
+                if let Some(named_expr) = arguments.maybe_single_named_expr() {
+                    if let Some(s) = named_expr.maybe_single_string_literal() {
+                        if let Some(to_compare) = s.as_python_string().as_str() {
+                            if project.flags.computed_platform().starts_with(to_compare) {
+                                return Reachability::Reachable;
+                            } else {
+                                return Reachability::Unreachable;
                             }
                         }
                     }
                 }
-                _ => (),
             }
         }
     }

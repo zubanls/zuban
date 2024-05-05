@@ -2144,12 +2144,27 @@ pub enum ArgumentsDetails<'db> {
     Node(Arguments<'db>),
 }
 
-impl ArgumentsDetails<'_> {
+impl<'db> ArgumentsDetails<'db> {
     pub fn index(&self) -> Option<NodeIndex> {
         match self {
             Self::None => None,
             Self::Comprehension(comp) => Some(comp.index()),
             Self::Node(arg) => Some(arg.index()),
+        }
+    }
+
+    pub fn maybe_single_named_expr(&self) -> Option<NamedExpression<'db>> {
+        match self {
+            Self::Node(args) => {
+                let mut iterator = args.iter();
+                let first = iterator.next().unwrap();
+                if let Argument::Positional(pos) = first {
+                    Some(pos).filter(|_| iterator.next().is_none())
+                } else {
+                    None
+                }
+            }
+            _ => None,
         }
     }
 }

@@ -1459,7 +1459,6 @@ testSysVersionInfoInFunction
 testSkippedClass4
 testCustomSysVersionInfo
 testCustomSysVersionInfo2
-testCustomSysPlatformStartsWith
 testUnreachableAfterToplevelAssert
 testUnreachableAfterToplevelAssert2
 testUnreachableAfterToplevelAssert3
