@@ -100,28 +100,18 @@ impl Default for TypeCheckerFlags {
 impl TypeCheckerFlags {
     pub fn strict() -> Self {
         Self {
-            strict_optional: true,
             implicit_optional: true,
             check_untyped_defs: true,
             disallow_untyped_defs: true,
             disallow_untyped_calls: true,
-            disallow_untyped_decorators: false,
             disallow_any_generics: true,
             disallow_any_decorated: true,
             disallow_any_explicit: true,
-            disallow_any_unimported: false,
-            disallow_any_expr: false,
             disallow_subclassing_any: true,
             disallow_incomplete_defs: true,
-            allow_untyped_globals: false,
-            allow_empty_bodies: false,
-            warn_unreachable: false,
             warn_redundant_casts: true,
             warn_return_any: true,
-            local_partial_types: false,
-            platform: None,
-            extra_checks: false,
-            mypy_compatible: false,
+            ..Self::default()
         }
     }
 
