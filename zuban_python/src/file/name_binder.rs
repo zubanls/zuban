@@ -1257,28 +1257,7 @@ fn check_comparison_reachability(
         if let PrimaryContent::GetItem(slice_type) = primary.second() {
             if let PrimaryOrAtom::Primary(first) = primary.first() {
                 if maybe_sys_name(first, "version_info") {
-                    match slice_type {
-                        SliceType::Slice(_) => {
-                            // TODO check sys.version_info[:1] >= (3, 9)
-                        }
-                        SliceType::NamedExpression(ne) => {
-                            if let Some(AtomContent::Int(nth)) =
-                                ne.expression().maybe_unpacked_atom()
-                            {
-                                if let Some(AtomContent::Int(wanted)) = other.maybe_unpacked_atom()
-                                {
-                                    if nth.parse() == Some(0) {
-                                        /*
-                                        return wanted.parse().is_some_and(
-                                            |x| x == project.flags.python_version.major as i64
-                                        ).into()
-                                        */
-                                    }
-                                }
-                            }
-                        }
-                        _ => (),
-                    }
+                    return python_version_matches_slice(project, comp, slice_type, other);
                 }
             }
         }
@@ -1322,6 +1301,34 @@ fn python_version_matches_tuple(
         }
     }
     Reachability::Reachable
+}
+
+fn python_version_matches_slice(
+    project: &PythonProject,
+    comp: ComparisonContent,
+    slice_type: SliceType,
+    other: ExpressionPart,
+) -> Reachability {
+    match slice_type {
+        SliceType::Slice(_) => {
+            // TODO check sys.version_info[:1] >= (3, 9)
+        }
+        SliceType::NamedExpression(ne) => {
+            if let Some(AtomContent::Int(nth)) = ne.expression().maybe_unpacked_atom() {
+                if let Some(AtomContent::Int(wanted)) = other.maybe_unpacked_atom() {
+                    if nth.parse() == Some(0) {
+                        if let Some(result) = wanted.parse().and_then(|x| {
+                            comp.compare_with_operand(project.flags.python_version.major as i64, x)
+                        }) {
+                            return result.into();
+                        }
+                    }
+                }
+            }
+        }
+        _ => (),
+    }
+    Reachability::Unknown
 }
 
 fn maybe_sys_name(primary: Primary, name: &str) -> bool {
