@@ -568,7 +568,7 @@ impl<'project, 'db> NameBinder<'project, 'db> {
                         )
                     };
                     match self.is_branch_reachable_for_name_binder(expr) {
-                        Reachability::Reachable => {
+                        Truthiness::True => {
                             let latest = self.index_block(block, ordered);
                             self.merge_latest_return_or_yield(latest_return_or_yield, latest);
                             for other_block in block_iterator {
@@ -576,11 +576,11 @@ impl<'project, 'db> NameBinder<'project, 'db> {
                             }
                             break;
                         }
-                        Reachability::Unreachable => {
+                        Truthiness::False => {
                             set_block_unreachable(if_block);
                             0
                         }
-                        Reachability::Unknown => self.index_block(block, ordered),
+                        Truthiness::Unknown => self.index_block(block, ordered),
                     }
                 }
                 IfBlockType::Else(else_block) => self.index_block(else_block.block(), ordered),
@@ -591,14 +591,14 @@ impl<'project, 'db> NameBinder<'project, 'db> {
         latest_return_or_yield
     }
 
-    fn is_branch_reachable_for_name_binder(&mut self, expr: NamedExpression) -> Reachability {
+    fn is_branch_reachable_for_name_binder(&mut self, expr: NamedExpression) -> Truthiness {
         match expr.expression().unpack() {
             ExpressionContent::ExpressionPart(p) => self.is_expr_part_reachable(p),
-            _ => Reachability::Unknown,
+            _ => Truthiness::Unknown,
         }
     }
 
-    fn is_expr_part_reachable(&mut self, expr_part: ExpressionPart) -> Reachability {
+    fn is_expr_part_reachable(&mut self, expr_part: ExpressionPart) -> Truthiness {
         match expr_part {
             ExpressionPart::Atom(atom) => match atom.unpack() {
                 AtomContent::Name(name) => {
@@ -611,7 +611,7 @@ impl<'project, 'db> NameBinder<'project, 'db> {
                             .iter()
                             .any(|s| s == n)
                     {
-                        return Reachability::Reachable;
+                        return Truthiness::True;
                     } else if n == "PY2"
                         || self
                             .project
@@ -620,7 +620,7 @@ impl<'project, 'db> NameBinder<'project, 'db> {
                             .iter()
                             .any(|s| s == n)
                     {
-                        return Reachability::Unreachable;
+                        return Truthiness::False;
                     }
                 }
                 AtomContent::NamedExpression(named_expr) => {
@@ -634,7 +634,7 @@ impl<'project, 'db> NameBinder<'project, 'db> {
                     if second == "TYPE_CHECKING" {
                         if let PrimaryOrAtom::Atom(atom) = primary.first() {
                             if atom.as_code() == "typing" {
-                                return Reachability::Reachable;
+                                return Truthiness::True;
                             }
                         }
                     }
@@ -656,7 +656,7 @@ impl<'project, 'db> NameBinder<'project, 'db> {
                     let left = first.left();
                     let right = first.right();
                     let result = check_comparison_reachability(self.project, first, left, right);
-                    if result == Reachability::Unknown {
+                    if result == Truthiness::Unknown {
                         return check_comparison_reachability(self.project, first, right, left);
                     }
                     return result;
@@ -664,7 +664,7 @@ impl<'project, 'db> NameBinder<'project, 'db> {
             }
             _ => (),
         }
-        Reachability::Unknown
+        Truthiness::Unknown
     }
 
     fn index_try_stmt(&mut self, try_stmt: TryStmt<'db>, ordered: bool) -> NodeIndex {
@@ -1194,26 +1194,26 @@ fn try_to_process_reference_for_symbol_table(
 }
 
 #[derive(PartialEq)]
-enum Reachability {
-    Reachable,
-    Unreachable,
+enum Truthiness {
+    True,
+    False,
     Unknown,
 }
 
-impl From<bool> for Reachability {
+impl From<bool> for Truthiness {
     fn from(item: bool) -> Self {
         match item {
-            false => Reachability::Unreachable,
-            true => Reachability::Reachable,
+            false => Truthiness::False,
+            true => Truthiness::True,
         }
     }
 }
 
-impl Reachability {
-    fn invert(self) -> Reachability {
+impl Truthiness {
+    fn invert(self) -> Truthiness {
         match self {
-            Self::Reachable => Self::Unreachable,
-            Self::Unreachable => Self::Reachable,
+            Self::True => Self::False,
+            Self::False => Self::True,
             Self::Unknown => Self::Unknown,
         }
     }
@@ -1224,7 +1224,7 @@ fn check_comparison_reachability(
     comp: ComparisonContent,
     check: ExpressionPart,
     other: ExpressionPart,
-) -> Reachability {
+) -> Truthiness {
     if let ExpressionPart::Primary(primary) = check {
         if maybe_sys_name(primary, "platform")
             && matches!(
@@ -1240,9 +1240,9 @@ fn check_comparison_reachability(
                             result = !result;
                         }
                         if result {
-                            return Reachability::Reachable;
+                            return Truthiness::True;
                         } else {
-                            return Reachability::Unreachable;
+                            return Truthiness::False;
                         }
                     }
                 }
@@ -1260,7 +1260,7 @@ fn check_comparison_reachability(
             }
         }
     }
-    Reachability::Unknown
+    Truthiness::Unknown
 }
 
 fn python_version_matches_tuple(
@@ -1268,13 +1268,13 @@ fn python_version_matches_tuple(
     comp: ComparisonContent,
     other: ExpressionPart,
     from: usize,
-) -> Reachability {
+) -> Truthiness {
     let Some(AtomContent::Tuple(tup)) = other.maybe_unpacked_atom() else {
-        return Reachability::Unknown
+        return Truthiness::Unknown
     };
     if tup.iter().count() + from > 2 {
         // (major, minor, bugfix) is currently not supported
-        return Reachability::Unknown;
+        return Truthiness::Unknown;
     }
     for (current, tup_entry) in [
         project.flags.python_version.major,
@@ -1286,10 +1286,10 @@ fn python_version_matches_tuple(
         let expr = match tup_entry {
             StarLikeExpression::Expression(expr) => expr,
             StarLikeExpression::NamedExpression(n) => n.expression(),
-            _ => return Reachability::Unknown,
+            _ => return Truthiness::Unknown,
         };
         let Some(AtomContent::Int(n)) = expr.maybe_unpacked_atom() else {
-            return Reachability::Unknown
+            return Truthiness::Unknown
         };
         if let Some(n_in_tup) = n
             .parse()
@@ -1297,16 +1297,16 @@ fn python_version_matches_tuple(
         {
             if let Some(result) = comp.compare_with_operand(*current, n_in_tup) {
                 if !result {
-                    return Reachability::Unreachable;
+                    return Truthiness::False;
                 }
             } else {
-                return Reachability::Unknown;
+                return Truthiness::Unknown;
             }
         } else {
-            return Reachability::Unknown;
+            return Truthiness::Unknown;
         }
     }
-    Reachability::Reachable
+    Truthiness::True
 }
 
 fn python_version_matches_slice(
@@ -1314,7 +1314,7 @@ fn python_version_matches_slice(
     comp: ComparisonContent,
     slice_type: SliceType,
     other: ExpressionPart,
-) -> Reachability {
+) -> Truthiness {
     match slice_type {
         SliceType::Slice(slice) => {
             let (first, second, third) = slice.unpack();
@@ -1345,7 +1345,7 @@ fn python_version_matches_slice(
         }
         _ => (),
     }
-    Reachability::Unknown
+    Truthiness::Unknown
 }
 
 fn maybe_sys_name(primary: Primary, name: &str) -> bool {
@@ -1360,7 +1360,7 @@ fn maybe_sys_platform_startswith(
     project: &PythonProject,
     before: Primary,
     arguments: ArgumentsDetails,
-) -> Reachability {
+) -> Truthiness {
     if let PrimaryContent::Attribute(attr) = before.second() {
         if let PrimaryOrAtom::Primary(prim) = before.first() {
             if attr.as_code() == "startswith" && maybe_sys_name(prim, "platform") {
@@ -1368,9 +1368,9 @@ fn maybe_sys_platform_startswith(
                     if let Some(s) = named_expr.maybe_single_string_literal() {
                         if let Some(to_compare) = s.as_python_string().as_str() {
                             if project.flags.computed_platform().starts_with(to_compare) {
-                                return Reachability::Reachable;
+                                return Truthiness::True;
                             } else {
-                                return Reachability::Unreachable;
+                                return Truthiness::False;
                             }
                         }
                     }
@@ -1378,5 +1378,5 @@ fn maybe_sys_platform_startswith(
             }
         }
     }
-    Reachability::Unknown
+    Truthiness::Unknown
 }
