@@ -802,6 +802,13 @@ impl<'db> Expression<'db> {
         }
     }
 
+    pub fn maybe_simple_int(&self) -> Option<usize> {
+        match self.maybe_unpacked_atom()? {
+            AtomContent::Int(i) => i.parse_as_usize(),
+            _ => None,
+        }
+    }
+
     pub fn maybe_tuple(&self) -> Option<Tuple<'db>> {
         match self.maybe_unpacked_atom() {
             Some(AtomContent::Tuple(t)) => Some(t),

@@ -1250,9 +1250,7 @@ fn check_comparison_reachability(
         }
 
         if maybe_sys_name(primary, "version_info") {
-            if let Some(AtomContent::Tuple(tup)) = other.maybe_unpacked_atom() {
-                return python_version_matches_tuple(project, comp, tup);
-            }
+            return python_version_matches_tuple(project, comp, other, 0);
         }
         if let PrimaryContent::GetItem(slice_type) = primary.second() {
             if let PrimaryOrAtom::Primary(first) = primary.first() {
@@ -1268,8 +1266,16 @@ fn check_comparison_reachability(
 fn python_version_matches_tuple(
     project: &PythonProject,
     comp: ComparisonContent,
-    tup: Tuple,
+    other: ExpressionPart,
+    from: usize,
 ) -> Reachability {
+    let Some(AtomContent::Tuple(tup)) = other.maybe_unpacked_atom() else {
+        return Reachability::Unknown
+    };
+    if tup.iter().count() + from > 2 {
+        // (major, minor, bugfix) is currently not supported
+        return Reachability::Unknown;
+    }
     for (current, tup_entry) in [
         project.flags.python_version.major,
         project.flags.python_version.minor,
@@ -1310,8 +1316,19 @@ fn python_version_matches_slice(
     other: ExpressionPart,
 ) -> Reachability {
     match slice_type {
-        SliceType::Slice(_) => {
-            // TODO check sys.version_info[:1] >= (3, 9)
+        SliceType::Slice(slice) => {
+            let (first, second, third) = slice.unpack();
+            if third.is_none() {
+                let from = first.map(|expr| expr.maybe_simple_int());
+                if from != Some(None) {
+                    return python_version_matches_tuple(
+                        project,
+                        comp,
+                        other,
+                        from.flatten().unwrap_or(0),
+                    );
+                }
+            }
         }
         SliceType::NamedExpression(ne) => {
             if let Some(AtomContent::Int(nth)) = ne.expression().maybe_unpacked_atom() {
