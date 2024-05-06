@@ -2934,6 +2934,24 @@ pub enum ComparisonContent<'db> {
 }
 
 impl<'db> ComparisonContent<'db> {
+    pub fn compare_with_operand<T: Eq + Ord>(&self, x: T, y: T) -> Option<bool> {
+        match self {
+            ComparisonContent::Equals(_, _, _) => Some(x == y),
+            ComparisonContent::NotEquals(_, _, _) => Some(x != y),
+            ComparisonContent::Is(_, _, _) => None,
+            ComparisonContent::IsNot(_, _, _) => None,
+            ComparisonContent::In(_, _, _) => None,
+            ComparisonContent::NotIn(_, _, _) => None,
+            ComparisonContent::Ordering(op) => match op.infos.operand {
+                "<" => Some(x < y),
+                ">" => Some(x > y),
+                "<=" => Some(x <= y),
+                ">=" => Some(x >= y),
+                _ => unreachable!(),
+            },
+        }
+    }
+
     pub fn left(&self) -> ExpressionPart<'db> {
         use ComparisonContent::*;
         match self {

@@ -1251,14 +1251,7 @@ fn check_comparison_reachability(
 
         if maybe_sys_name(primary, "version_info") {
             if let Some(AtomContent::Tuple(tup)) = other.maybe_unpacked_atom() {
-                if let ComparisonContent::Ordering(op) = comp {
-                    let lower_than = match op.infos.operand {
-                        "<=" | "<" => true,
-                        ">=" | ">" => false,
-                        _ => unreachable!(),
-                    };
-                    return python_version_matches_tuple(project, tup, lower_than);
-                }
+                return python_version_matches_tuple(project, comp, tup);
             }
         }
         if let PrimaryContent::GetItem(slice_type) = primary.second() {
@@ -1295,8 +1288,8 @@ fn check_comparison_reachability(
 
 fn python_version_matches_tuple(
     project: &PythonProject,
+    comp: ComparisonContent,
     tup: Tuple,
-    lower_than: bool,
 ) -> Reachability {
     for (current, tup_entry) in [
         project.flags.python_version.major,
@@ -1317,8 +1310,12 @@ fn python_version_matches_tuple(
             .parse()
             .and_then(|i| <i64 as TryInto<usize>>::try_into(i).ok())
         {
-            if (*current < n_in_tup) != lower_than {
-                return Reachability::Unreachable;
+            if let Some(result) = comp.compare_with_operand(*current, n_in_tup) {
+                if !result {
+                    return Reachability::Unreachable;
+                }
+            } else {
+                return Reachability::Unknown;
             }
         } else {
             return Reachability::Unknown;
