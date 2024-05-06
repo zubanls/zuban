@@ -793,7 +793,7 @@ impl<'db> Expression<'db> {
 
     pub fn maybe_unpacked_atom(&self) -> Option<AtomContent<'db>> {
         match self.unpack() {
-            ExpressionContent::ExpressionPart(ExpressionPart::Atom(a)) => Some(a.unpack()),
+            ExpressionContent::ExpressionPart(expr_part) => expr_part.maybe_unpacked_atom(),
             _ => None,
         }
     }
@@ -915,6 +915,13 @@ impl<'db> ExpressionPart<'db> {
             Self::Inversion(n) => n.as_code(),
             Self::Conjunction(n) => n.as_code(),
             Self::Disjunction(n) => n.as_code(),
+        }
+    }
+
+    pub fn maybe_unpacked_atom(&self) -> Option<AtomContent<'db>> {
+        match self {
+            Self::Atom(a) => Some(a.unpack()),
+            _ => None,
         }
     }
 }

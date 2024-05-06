@@ -1199,6 +1199,16 @@ enum Reachability {
     Unreachable,
     Unknown,
 }
+
+impl From<bool> for Reachability {
+    fn from(item: bool) -> Self {
+        match item {
+            false => Reachability::Unreachable,
+            true => Reachability::Reachable,
+        }
+    }
+}
+
 impl Reachability {
     fn invert(self) -> Reachability {
         match self {
@@ -1238,16 +1248,43 @@ fn check_comparison_reachability(
                 }
             }
         }
+
         if maybe_sys_name(primary, "version_info") {
-            if let ExpressionPart::Atom(atom) = other {
-                if let AtomContent::Tuple(tup) = atom.unpack() {
-                    if let ComparisonContent::Ordering(op) = comp {
-                        let lower_than = match op.infos.operand {
-                            "<=" | "<" => true,
-                            ">=" | ">" => false,
-                            _ => unreachable!(),
-                        };
-                        return python_version_matches_tuple(project, tup, lower_than);
+            if let Some(AtomContent::Tuple(tup)) = other.maybe_unpacked_atom() {
+                if let ComparisonContent::Ordering(op) = comp {
+                    let lower_than = match op.infos.operand {
+                        "<=" | "<" => true,
+                        ">=" | ">" => false,
+                        _ => unreachable!(),
+                    };
+                    return python_version_matches_tuple(project, tup, lower_than);
+                }
+            }
+        }
+        if let PrimaryContent::GetItem(slice_type) = primary.second() {
+            if let PrimaryOrAtom::Primary(first) = primary.first() {
+                if maybe_sys_name(first, "version_info") {
+                    match slice_type {
+                        SliceType::Slice(_) => {
+                            // TODO check sys.version_info[:1] >= (3, 9)
+                        }
+                        SliceType::NamedExpression(ne) => {
+                            if let Some(AtomContent::Int(nth)) =
+                                ne.expression().maybe_unpacked_atom()
+                            {
+                                if let Some(AtomContent::Int(wanted)) = other.maybe_unpacked_atom()
+                                {
+                                    if nth.parse() == Some(0) {
+                                        /*
+                                        return wanted.parse().is_some_and(
+                                            |x| x == project.flags.python_version.major as i64
+                                        ).into()
+                                        */
+                                    }
+                                }
+                            }
+                        }
+                        _ => (),
                     }
                 }
             }
