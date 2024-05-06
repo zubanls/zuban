@@ -136,6 +136,10 @@ impl PythonVersion {
     pub fn new(major: usize, minor: usize) -> Self {
         Self { major, minor }
     }
+
+    pub fn at_least_3_dot(&self, minor: usize) -> bool {
+        self.major >= 3 && self.minor >= minor
+    }
 }
 
 impl Project {

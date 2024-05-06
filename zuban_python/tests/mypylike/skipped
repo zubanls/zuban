@@ -1439,8 +1439,6 @@ testUnreachableAfterToplevelAssert4
 testUnreachableAfterToplevelAssertImport
 testShortCircuitAndWithConditionalAssignment
 testShortCircuitOrWithConditionalAssignment
-# NamedTuple magic attribute __match_args__ in py >= 3.10
-testNamedTupleHasMatchArgs
 
 # "Name "C" is used before definition"
 testNewAnalyzerNewTypeForwardClassAliasReversed

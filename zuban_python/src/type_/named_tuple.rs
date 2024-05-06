@@ -4,7 +4,7 @@ use parsa_python_cst::{AtomContent, CodeIndex, StarLikeExpression};
 
 use super::{
     tuple::lookup_tuple_magic_methods, AnyCause, CallableContent, CallableParam, CallableParams,
-    DbString, FormatStyle, FunctionKind, ParamType, StringSlice, Tuple, Type,
+    DbString, FormatStyle, FunctionKind, Literal, LiteralKind, ParamType, StringSlice, Tuple, Type,
 };
 use crate::{
     arguments::{ArgIterator, ArgKind, Args, KeywordArg},
@@ -250,6 +250,18 @@ impl NamedTuple {
             "_source" => i_s.db.python_state.str_type(),
             "__mul__" | "__rmul__" | "__add__" => {
                 return lookup_tuple_magic_methods(self.as_tuple(), name)
+            }
+            "__match_args__" if i_s.db.project.flags.python_version.at_least_3_dot(10) => {
+                Type::Tuple(Tuple::new_fixed_length(
+                    self.params()
+                        .iter()
+                        .map(|p| {
+                            Type::Literal(Literal::new(LiteralKind::String(
+                                p.name.as_ref().unwrap().clone(),
+                            )))
+                        })
+                        .collect(),
+                ))
             }
             _ => {
                 if let Some(param) = self.search_param(i_s.db, name) {
