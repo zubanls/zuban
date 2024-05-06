@@ -987,10 +987,9 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn is_base_exception_group(&self, db: &Database) -> bool {
-        self.class_link_in_mro(
-            db,
-            db.python_state.base_exception_group_node_ref().as_link(),
-        )
+        db.python_state
+            .base_exception_group_node_ref()
+            .is_some_and(|g| self.class_link_in_mro(db, g.as_link()))
     }
 
     pub fn is_base_exception(&self, db: &Database) -> bool {
@@ -1929,16 +1928,8 @@ impl<'db: 'a, 'a> Class<'a> {
                         .instance();
                 let call = metaclass
                     .type_lookup(i_s, |issue| args.add_issue(i_s, issue), "__call__")
-                    .into_inferred();
-                let Type::FunctionOverload(o) = call.as_type(i_s) else {
-                    todo!()
-                };
-                // Enum currently has multiple signatures that are not all relevant. Just pick the one
-                // that's relevant, because otherwise we would have very very ugly error messages with
-                // overload outputs.
-                let significant_call =
-                    Callable::new(o.iter_functions().nth(1).unwrap(), Some(metaclass.class));
-                significant_call.execute(i_s, args, on_type_error, result_context);
+                    .into_inferred()
+                    .execute_with_details(i_s, args, result_context, on_type_error);
                 if had_type_error.get() {
                     return ClassExecutionResult::Inferred(Inferred::new_any_from_error());
                 }

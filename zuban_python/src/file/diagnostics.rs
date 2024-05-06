@@ -635,7 +635,7 @@ impl<'db> Inference<'db, '_, '_> {
                             if let Some(redirect) =
                                 NodeRef::new(self.file, decorator.index()).maybe_redirect(db)
                             {
-                                if redirect == db.python_state.typing_override() {
+                                if Some(redirect) == db.python_state.typing_override() {
                                     has_override_decorator = true;
                                 }
                                 if redirect == db.python_state.typing_overload() {

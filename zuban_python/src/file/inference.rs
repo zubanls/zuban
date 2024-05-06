@@ -3136,11 +3136,17 @@ fn instantiate_except_star(i_s: &InferenceState, t: &Type) -> Type {
     let is_base_exception_group = has_base_exception(i_s.db, &result);
     new_class!(
         match is_base_exception_group {
-            false => i_s.db.python_state.exception_group_node_ref().as_link(),
+            false => i_s
+                .db
+                .python_state
+                .exception_group_node_ref()
+                .unwrap_or_else(|| todo!("Star syntax without stdlib valid symbol"))
+                .as_link(),
             true => i_s
                 .db
                 .python_state
                 .base_exception_group_node_ref()
+                .unwrap_or_else(|| todo!("Star syntax without stdlib valid symbol"))
                 .as_link(),
         },
         result,

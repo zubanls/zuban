@@ -36,12 +36,36 @@ macro_rules! attribute_node_ref {
     };
 }
 
+macro_rules! optional_attribute_node_ref {
+    ($module_name:ident, $vis:vis $name:ident, $attr:ident) => {
+        #[inline]
+        $vis fn $name(&self) -> Option<NodeRef> {
+            self.$attr.map(|attr| {
+                debug_assert!(attr != 0);
+                NodeRef::new(self.$module_name(), attr)
+            })
+        }
+    };
+}
+
 macro_rules! attribute_link {
     ($module_name:ident, $vis:vis $name:ident, $attr:ident) => {
         #[inline]
         $vis fn $name(&self) -> PointLink {
             debug_assert!(self.$attr != 0);
             NodeRef::new(self.$module_name(), self.$attr).as_link()
+        }
+    };
+}
+
+macro_rules! optional_attribute_link {
+    ($module_name:ident, $vis:vis $name:ident, $attr:ident) => {
+        #[inline]
+        $vis fn $name(&self) -> Option<PointLink> {
+            self.$attr.map(|attr| {
+                debug_assert!(attr != 0);
+                NodeRef::new(self.$module_name(), attr).as_link()
+            })
         }
     };
 }
@@ -90,8 +114,8 @@ pub struct PythonState {
     builtins_function_index: NodeIndex,
     builtins_base_exception_index: NodeIndex,
     builtins_exception_index: NodeIndex,
-    builtins_base_exception_group_index: NodeIndex,
-    builtins_exception_group_index: NodeIndex,
+    builtins_base_exception_group_index: Option<NodeIndex>,
+    builtins_exception_group_index: Option<NodeIndex>,
     builtins_str_index: NodeIndex,
     builtins_bytes_index: NodeIndex,
     builtins_bytearray_index: NodeIndex,
@@ -121,7 +145,7 @@ pub struct PythonState {
     typing_async_iterable_index: NodeIndex,
     typing_supports_index_index: NodeIndex,
     typing_overload_index: NodeIndex,
-    typing_override_index: NodeIndex,
+    typing_override_index: Option<NodeIndex>,
     typing_final_index: NodeIndex,
     typing_typed_dict_index: NodeIndex,
     typing_mapping_index: NodeIndex,
@@ -129,8 +153,8 @@ pub struct PythonState {
     typing_special_form_index: NodeIndex,
     pub typing_typed_dict_bases: Box<[BaseClass]>,
     types_module_type_index: NodeIndex,
-    types_none_type_index: NodeIndex,
-    types_ellipsis_type_index: NodeIndex,
+    types_none_type_index: Option<NodeIndex>,
+    types_ellipsis_type_index: Option<NodeIndex>,
     collections_namedtuple_index: NodeIndex,
     abc_abc_meta_index: NodeIndex,
     abc_abstractmethod_index: NodeIndex,
@@ -146,7 +170,7 @@ pub struct PythonState {
     mypy_extensions_kw_arg_func: NodeIndex,
     mypy_extensions_var_arg_func: NodeIndex,
     dataclasses_dataclass_index: NodeIndex,
-    dataclasses_kw_only_index: NodeIndex,
+    dataclasses_kw_only_index: Option<NodeIndex>,
     dataclasses_init_var_index: NodeIndex,
     dataclasses_field_index: NodeIndex,
     dataclasses_capital_field_index: NodeIndex,
@@ -195,8 +219,8 @@ impl PythonState {
             builtins_function_index: 0,
             builtins_base_exception_index: 0,
             builtins_exception_index: 0,
-            builtins_base_exception_group_index: 0,
-            builtins_exception_group_index: 0,
+            builtins_base_exception_group_index: None,
+            builtins_exception_group_index: None,
             builtins_str_index: 0,
             builtins_bytes_index: 0,
             builtins_bytearray_index: 0,
@@ -215,13 +239,13 @@ impl PythonState {
             builtins_str_mro: Box::new([]),   // will be set later
             builtins_bytes_mro: Box::new([]), // will be set later
             types_module_type_index: 0,
-            types_none_type_index: 0,
-            types_ellipsis_type_index: 0,
+            types_none_type_index: None,
+            types_ellipsis_type_index: None,
             typeshed_supports_keys_and_get_item_index: 0,
             typing_namedtuple_index: 0,
             typing_type_var: 0,
             typing_overload_index: 0,
-            typing_override_index: 0,
+            typing_override_index: None,
             typing_final_index: 0,
             typing_typed_dict_index: 0,
             typing_mapping_index: 0,
@@ -251,7 +275,7 @@ impl PythonState {
             mypy_extensions_kw_arg_func: 0,
             mypy_extensions_var_arg_func: 0,
             dataclasses_dataclass_index: 0,
-            dataclasses_kw_only_index: 0,
+            dataclasses_kw_only_index: None,
             dataclasses_init_var_index: 0,
             dataclasses_field_index: 0,
             dataclasses_capital_field_index: 0,
@@ -351,24 +375,61 @@ impl PythonState {
         // This needs to be done before it gets accessed, because we expect the MRO etc. to be
         // calculated when a class is accessed. Normally this happens on access, but here we access
         // classes randomly via db.python_state. Therefore do the calculation here.
+        fn cache_class_index(
+            db: &mut Database,
+            module: impl Fn(&Database) -> &PythonFile,
+            name: &str,
+            update: impl FnOnce(&mut Database, Option<NodeIndex>),
+        ) {
+            let class_index = module(db)
+                .symbol_table
+                .get()
+                .unwrap()
+                .lookup_symbol(name)
+                .map(|node_index| node_index - NAME_TO_CLASS_DIFF);
+            update(db, class_index);
+            if let Some(class_index) = class_index {
+                let class = Class::with_undefined_generics(NodeRef::new(module(db), class_index));
+                class.ensure_calculated_class_infos(
+                    &InferenceState::new(db),
+                    NodeRef::new(class.node_ref.file, class.node().name_definition().index()),
+                );
+            }
+        }
         macro_rules! cache_index {
             ($attr_name:ident, $module_name:ident, $name:literal) => {
-                let class_index = db
+                cache_class_index(
+                    db,
+                    |db| db.python_state.$module_name(),
+                    $name,
+                    |db, class_index| {
+                        db.python_state.$attr_name = class_index.unwrap();
+                    },
+                );
+            };
+        }
+        macro_rules! cache_optional_index {
+            ($attr_name:ident, $module_name:ident, $name:literal) => {
+                cache_class_index(
+                    db,
+                    |db| db.python_state.$module_name(),
+                    $name,
+                    |db, class_index| {
+                        db.python_state.$attr_name = class_index;
+                    },
+                );
+            };
+        }
+        macro_rules! cache_optional_func_index {
+            ($attr_name:ident, $module_name:ident, $name:literal) => {
+                db.python_state.$attr_name = db
                     .python_state
                     .$module_name()
                     .symbol_table
                     .get()
                     .unwrap()
                     .lookup_symbol($name)
-                    .unwrap()
-                    - NAME_TO_CLASS_DIFF;
-                db.python_state.$attr_name = class_index;
-                let module = db.python_state.$module_name();
-                let class = Class::with_undefined_generics(NodeRef::new(module, class_index));
-                class.ensure_calculated_class_infos(
-                    &InferenceState::new(db),
-                    NodeRef::new(class.node_ref.file, class.node().name_definition().index()),
-                );
+                    .map(|node_index| node_index - NAME_TO_FUNCTION_DIFF);
             };
         }
         macro_rules! cache_func_index {
@@ -407,12 +468,12 @@ impl PythonState {
         cache_index!(builtins_function_index, builtins, "function");
         cache_index!(builtins_base_exception_index, builtins, "BaseException");
         cache_index!(builtins_exception_index, builtins, "Exception");
-        cache_index!(
+        cache_optional_index!(
             builtins_base_exception_group_index,
             builtins,
             "BaseExceptionGroup"
         );
-        cache_index!(builtins_exception_group_index, builtins, "ExceptionGroup");
+        cache_optional_index!(builtins_exception_group_index, builtins, "ExceptionGroup");
         cache_index!(builtins_str_index, builtins, "str");
         cache_index!(builtins_bytes_index, builtins, "bytes");
         cache_index!(builtins_bytearray_index, builtins, "bytearray");
@@ -439,15 +500,15 @@ impl PythonState {
         cache_index!(typing_typed_dict_index, typing, "_TypedDict");
         cache_index!(typing_mapping_index, typing, "Mapping");
         cache_index!(typing_special_form_index, typing, "_SpecialForm");
-        cache_index!(types_none_type_index, types, "NoneType");
-        cache_index!(types_ellipsis_type_index, types, "EllipsisType");
+        cache_optional_index!(types_none_type_index, types, "NoneType");
+        cache_optional_index!(types_ellipsis_type_index, types, "EllipsisType");
         cache_index!(abc_abstractproperty_index, abc, "abstractproperty");
         cache_index!(
             functools_cached_property_index,
             functools,
             "cached_property"
         );
-        cache_index!(dataclasses_kw_only_index, dataclasses_file, "KW_ONLY");
+        cache_optional_index!(dataclasses_kw_only_index, dataclasses_file, "KW_ONLY");
         cache_index!(dataclasses_init_var_index, dataclasses_file, "InitVar");
         cache_index!(dataclasses_capital_field_index, dataclasses_file, "Field");
 
@@ -457,7 +518,7 @@ impl PythonState {
         cache_func_index!(builtins_hasattr_index, builtins, "hasattr");
         cache_func_index!(builtins_len_index, builtins, "len");
 
-        cache_func_index!(typing_override_index, typing, "override");
+        cache_optional_func_index!(typing_override_index, typing, "override");
 
         cache_func_index!(dataclasses_field_index, dataclasses_file, "field");
         cache_func_index!(dataclasses_replace_index, dataclasses_file, "replace");
@@ -662,12 +723,12 @@ impl PythonState {
         builtins_base_exception_index
     );
     attribute_node_ref!(builtins, pub exception_node_ref, builtins_exception_index);
-    attribute_node_ref!(
+    optional_attribute_node_ref!(
         builtins,
         pub base_exception_group_node_ref,
         builtins_base_exception_group_index
     );
-    attribute_node_ref!(
+    optional_attribute_node_ref!(
         builtins,
         pub exception_group_node_ref,
         builtins_exception_group_index
@@ -678,7 +739,7 @@ impl PythonState {
     attribute_node_ref!(typing, mapping_node_ref, typing_mapping_index);
     attribute_node_ref!(typing, mapping_get_node_ref, typing_mapping_get_index);
     attribute_node_ref!(typing, pub typing_overload, typing_overload_index);
-    attribute_node_ref!(typing, pub typing_override, typing_override_index);
+    optional_attribute_node_ref!(typing, pub typing_override, typing_override_index);
     attribute_node_ref!(typing, pub typing_final, typing_final_index);
     attribute_node_ref!(typing, pub generator_node_ref, typing_generator_index);
     attribute_node_ref!(typing, pub iterable_node_ref, typing_iterable_index);
@@ -688,9 +749,9 @@ impl PythonState {
         typing_special_form_node_ref,
         typing_special_form_index
     );
-    attribute_node_ref!(types, none_type_node_ref, types_none_type_index);
+    optional_attribute_node_ref!(types, none_type_node_ref, types_none_type_index);
     attribute_node_ref!(types, module_node_ref, types_module_type_index);
-    attribute_node_ref!(types, ellipsis_node_ref, types_ellipsis_type_index);
+    optional_attribute_node_ref!(types, pub ellipsis_node_ref, types_ellipsis_type_index);
     attribute_node_ref!(
         typeshed,
         pub supports_keys_and_get_item_node_ref,
@@ -717,7 +778,7 @@ impl PythonState {
     attribute_link!(typing, pub async_generator_link, typing_async_generator_index);
     attribute_link!(typing, pub async_iterator_link, typing_async_iterator_index);
     attribute_link!(typing, pub async_iterable_link, typing_async_iterable_index);
-    attribute_link!(dataclasses_file, pub dataclasses_kw_only_link, dataclasses_kw_only_index);
+    optional_attribute_link!(dataclasses_file, pub dataclasses_kw_only_link, dataclasses_kw_only_index);
     attribute_link!(dataclasses_file, pub dataclasses_init_var_link, dataclasses_init_var_index);
     attribute_link!(dataclasses_file, pub dataclasses_field_link, dataclasses_field_index);
     attribute_link!(dataclasses_file, pub dataclasses_capital_field_link, dataclasses_capital_field_index);
@@ -747,7 +808,6 @@ impl PythonState {
     node_ref_to_type_class_without_generic!(pub property_type, property_node_ref);
     node_ref_to_type_class_without_generic!(pub function_type, function_node_ref);
     node_ref_to_type_class_without_generic!(pub bare_type_type, bare_type_node_ref);
-    node_ref_to_type_class_without_generic!(pub ellipsis_type, ellipsis_node_ref);
     node_ref_to_type_class_without_generic!(pub typed_dict_type, typed_dict_node_ref);
     node_ref_to_type_class_without_generic!(pub typing_named_tuple_type, typing_named_tuple_node_ref);
     node_ref_to_type_class_without_generic!(pub typing_special_form_type, typing_special_form_node_ref);
@@ -756,9 +816,17 @@ impl PythonState {
 
     pub fn none_instance(&self) -> Instance {
         Instance::new(
-            Class::from_non_generic_node_ref(self.none_type_node_ref()),
+            Class::from_non_generic_node_ref(self.none_type_node_ref().unwrap_or_else(|| todo!())),
             None,
         )
+    }
+
+    pub fn ellipsis_type(&self) -> Type {
+        if let Some(ellipsis_node_ref) = self.ellipsis_node_ref() {
+            Type::new_class(ellipsis_node_ref.as_link(), ClassGenerics::None)
+        } else {
+            Type::Any(AnyCause::Internal)
+        }
     }
 
     pub fn supports_keys_and_get_item_class<'a>(&'a self, db: &'a Database) -> Class<'a> {
@@ -934,11 +1002,11 @@ fn typing_changes(
     set_typing_inference(t, "Protocol", Specific::TypingProtocol);
     set_typing_inference(t, "TypeGuard", Specific::TypingTypeGuard);
     set_typing_inference(t, "TypeIs", Specific::TypingTypeIs);
+    set_typing_inference(t, "Self", Specific::TypingSelf);
     setup_type_alias(typing_extensions, "final", typing, "final");
     // Not needed, because there's an import?
     //set_typing_inference(t, "Concatenate", Specific::TypingConcatenateClass);
     //set_typing_inference(t, "TypeAlias", Specific::TypingTypeAlias);
-    //set_typing_inference(t, "Self", Specific::TypingSelf);
     //set_typing_inference(t, "LiteralString", Specific::TypingLiteralString);
     //set_typing_inference(t, "NamedTuple", Specific::TypingNamedTuple);
     //set_typing_inference(t, "Unpack", Specific::TypingUnpack);

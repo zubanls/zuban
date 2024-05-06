@@ -1748,7 +1748,12 @@ fn infer_decorator(
         if saved_link == i_s.db.python_state.typing_final().as_link() {
             return InferredDecorator::Final;
         }
-        if saved_link == i_s.db.python_state.typing_override().as_link() {
+        if i_s
+            .db
+            .python_state
+            .typing_override()
+            .is_some_and(|o| saved_link == o.as_link())
+        {
             return InferredDecorator::Override;
         }
         // All these cases are classes.
