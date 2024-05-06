@@ -1279,9 +1279,9 @@ fn python_version_matches_tuple(
     for (current, tup_entry) in [
         project.flags.python_version.major,
         project.flags.python_version.minor,
-    ]
-    .iter()
-    .zip(tup.iter())
+    ][from..]
+        .iter()
+        .zip(tup.iter())
     {
         let expr = match tup_entry {
             StarLikeExpression::Expression(expr) => expr,
