@@ -1317,8 +1317,8 @@ fn python_version_matches_slice(
             if let Some(AtomContent::Int(nth)) = ne.expression().maybe_unpacked_atom() {
                 if let Some(AtomContent::Int(wanted)) = other.maybe_unpacked_atom() {
                     if nth.parse() == Some(0) {
-                        if let Some(result) = wanted.parse().and_then(|x| {
-                            comp.compare_with_operand(project.flags.python_version.major as i64, x)
+                        if let Some(result) = wanted.parse_as_usize().and_then(|x| {
+                            comp.compare_with_operand(project.flags.python_version.major, x)
                         }) {
                             return result.into();
                         }

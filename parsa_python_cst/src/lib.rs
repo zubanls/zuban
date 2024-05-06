@@ -519,6 +519,10 @@ impl<'db> Int<'db> {
     }
 
     pub fn parse(&self) -> Option<i64> {
+        self.parse_as_usize().and_then(|x| x.try_into().ok())
+    }
+
+    pub fn parse_as_usize(&self) -> Option<usize> {
         let mut to_be_parsed = self.as_code();
         let tmp;
         if to_be_parsed.contains('_') {
@@ -533,7 +537,7 @@ impl<'db> Int<'db> {
                 Some(b'b' | b'B') => 2,
                 _ => unreachable!(),
             };
-            i64::from_str_radix(&stripped[1..], base).ok()
+            usize::from_str_radix(&stripped[1..], base).ok()
         } else {
             to_be_parsed.parse().ok()
         }
