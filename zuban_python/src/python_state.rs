@@ -955,14 +955,10 @@ fn typing_changes(
 }
 
 fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
-    let node_index = file
-        .symbol_table
-        .get()
-        .unwrap()
-        .lookup_symbol(name)
-        .unwrap();
-    file.points
-        .set(node_index, Point::new_specific(specific, Locality::Stmt));
+    if let Some(node_index) = file.symbol_table.get().unwrap().lookup_symbol(name) {
+        file.points
+            .set(node_index, Point::new_specific(specific, Locality::Stmt));
+    }
 }
 
 fn set_custom_behavior(file: &PythonFile, name: &str, custom: CustomBehavior) {

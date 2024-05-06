@@ -1238,8 +1238,56 @@ fn check_comparison_reachability(
                 }
             }
         }
+        if maybe_sys_name(primary, "version_info") {
+            if let ExpressionPart::Atom(atom) = other {
+                if let AtomContent::Tuple(tup) = atom.unpack() {
+                    if let ComparisonContent::Ordering(op) = comp {
+                        let lower_than = match op.infos.operand {
+                            "<=" | "<" => true,
+                            ">=" | ">" => false,
+                            _ => unreachable!(),
+                        };
+                        return python_version_matches_tuple(project, tup, lower_than);
+                    }
+                }
+            }
+        }
     }
     Reachability::Unknown
+}
+
+fn python_version_matches_tuple(
+    project: &PythonProject,
+    tup: Tuple,
+    lower_than: bool,
+) -> Reachability {
+    for (current, tup_entry) in [
+        project.flags.python_version.major,
+        project.flags.python_version.minor,
+    ]
+    .iter()
+    .zip(tup.iter())
+    {
+        let expr = match tup_entry {
+            StarLikeExpression::Expression(expr) => expr,
+            StarLikeExpression::NamedExpression(n) => n.expression(),
+            _ => return Reachability::Unknown,
+        };
+        let Some(AtomContent::Int(n)) = expr.maybe_unpacked_atom() else {
+            return Reachability::Unknown
+        };
+        if let Some(n_in_tup) = n
+            .parse()
+            .and_then(|i| <i64 as TryInto<usize>>::try_into(i).ok())
+        {
+            if (*current < n_in_tup) != lower_than {
+                return Reachability::Unreachable;
+            }
+        } else {
+            return Reachability::Unknown;
+        }
+    }
+    Reachability::Reachable
 }
 
 fn maybe_sys_name(primary: Primary, name: &str) -> bool {

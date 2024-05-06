@@ -7,7 +7,7 @@ use std::{
 };
 
 use regex::{Captures, Regex, Replacer};
-use zuban_python::{DiagnosticConfig, Project, ProjectOptions, TypeCheckerFlags};
+use zuban_python::{DiagnosticConfig, Project, ProjectOptions, PythonVersion, TypeCheckerFlags};
 
 const SKIP_MYPY_TEST_FILES: [&str; 31] = [
     // Narrowing tests
@@ -159,7 +159,8 @@ impl<'name, 'code> TestCase<'name, 'code> {
             let x = &version[..1];
             let y = &version[2..];
             let error = "Expected version X.Y like 3.10";
-            config.python_version = (x.parse().expect(error), y.parse().expect(error));
+            config.python_version =
+                PythonVersion::new(x.parse().expect(error), y.parse().expect(error));
         }
 
         {

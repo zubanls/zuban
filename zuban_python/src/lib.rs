@@ -63,7 +63,7 @@ pub struct TypeCheckerFlags {
     pub local_partial_types: bool,
 
     pub platform: Option<String>,
-    pub python_version: (usize, usize),
+    pub python_version: PythonVersion,
     pub always_true_symbols: Vec<String>,
     pub always_false_symbols: Vec<String>,
 
@@ -94,7 +94,7 @@ impl Default for TypeCheckerFlags {
             warn_return_any: false,
             local_partial_types: false,
             platform: None,
-            python_version: (3, 12),
+            python_version: PythonVersion::new(3, 12),
             always_true_symbols: vec![],
             always_false_symbols: vec![],
             extra_checks: false,
@@ -123,6 +123,18 @@ impl TypeCheckerFlags {
 
     fn computed_platform(&self) -> &str {
         self.platform.as_deref().unwrap_or("posix")
+    }
+}
+
+#[derive(Clone, Hash, PartialEq, Eq)]
+pub struct PythonVersion {
+    major: usize,
+    minor: usize,
+}
+
+impl PythonVersion {
+    pub fn new(major: usize, minor: usize) -> Self {
+        Self { major, minor }
     }
 }
 
