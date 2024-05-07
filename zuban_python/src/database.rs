@@ -355,6 +355,7 @@ pub enum Specific {
     AnyDueToError,
     ModuleNotFound,
     IfBranchUnreachableInNameBinder,
+    AssertAlwaysFails,
 
     String,
     Float,

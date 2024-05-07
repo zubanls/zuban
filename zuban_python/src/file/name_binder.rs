@@ -567,7 +567,7 @@ impl<'project, 'db> NameBinder<'project, 'db> {
                             ),
                         )
                     };
-                    match self.is_branch_reachable_for_name_binder(expr) {
+                    match self.is_branch_reachable_for_name_binder(expr.expression()) {
                         Truthiness::True => {
                             let latest = self.index_block(block, ordered);
                             self.merge_latest_return_or_yield(latest_return_or_yield, latest);
@@ -591,8 +591,8 @@ impl<'project, 'db> NameBinder<'project, 'db> {
         latest_return_or_yield
     }
 
-    fn is_branch_reachable_for_name_binder(&mut self, expr: NamedExpression) -> Truthiness {
-        match expr.expression().unpack() {
+    fn is_branch_reachable_for_name_binder(&mut self, expr: Expression) -> Truthiness {
+        match expr.unpack() {
             ExpressionContent::ExpressionPart(p) => self.is_expr_part_reachable(p),
             _ => Truthiness::Unknown,
         }
@@ -624,7 +624,7 @@ impl<'project, 'db> NameBinder<'project, 'db> {
                     }
                 }
                 AtomContent::NamedExpression(named_expr) => {
-                    return self.is_branch_reachable_for_name_binder(named_expr)
+                    return self.is_branch_reachable_for_name_binder(named_expr.expression())
                 }
                 _ => (),
             },
@@ -887,6 +887,12 @@ impl<'project, 'db> NameBinder<'project, 'db> {
                     self.index_non_block_node_full(&assert_expr, ordered, from_annotation);
                     if let Some(error_expr) = error_expr {
                         self.index_non_block_node_full(&error_expr, ordered, from_annotation);
+                    }
+                    if self.is_branch_reachable_for_name_binder(assert_expr) == Truthiness::False {
+                        self.points.set(
+                            assert_stmt.index(),
+                            Point::new_specific(Specific::AssertAlwaysFails, Locality::File),
+                        )
                     }
                     self.references_need_flow_analysis = true;
                 }

@@ -4,12 +4,12 @@ use std::{
 };
 
 use parsa_python_cst::{
-    Argument, Arguments, ArgumentsDetails, Atom, AtomContent, Block, BreakStmt, ComparisonContent,
-    Comparisons, Conjunction, ContinueStmt, Disjunction, ElseBlock, Expression, ExpressionContent,
-    ExpressionPart, ForStmt, IfBlockIterator, IfBlockType, IfStmt, Name, NameDefinition,
-    NamedExpression, NamedExpressionContent, NodeIndex, Operand, Primary, PrimaryContent,
-    PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, SliceType as CSTSliceType, Ternary,
-    WhileStmt,
+    Argument, Arguments, ArgumentsDetails, AssertStmt, Atom, AtomContent, Block, BreakStmt,
+    ComparisonContent, Comparisons, Conjunction, ContinueStmt, Disjunction, ElseBlock, Expression,
+    ExpressionContent, ExpressionPart, ForStmt, IfBlockIterator, IfBlockType, IfStmt, Name,
+    NameDefinition, NamedExpression, NamedExpressionContent, NodeIndex, Operand, Primary,
+    PrimaryContent, PrimaryOrAtom, PrimaryTarget, PrimaryTargetOrAtom, SliceType as CSTSliceType,
+    Ternary, WhileStmt,
 };
 
 use crate::{
@@ -699,9 +699,16 @@ impl Inference<'_, '_, '_> {
         self.maybe_has_primary_entry(primary).map(|x| x.1)
     }
 
-    pub fn flow_analysis_for_assert(&self, expr: Expression) {
+    pub fn flow_analysis_for_assert(&self, assert_stmt: AssertStmt, expr: Expression) {
         let (_, true_frame, _) = self.find_guards_in_expr(expr);
-        FLOW_ANALYSIS.with(|fa| fa.overwrite_frame(self.i_s.db, true_frame))
+
+        FLOW_ANALYSIS.with(|fa| {
+            let assert_point = self.file.points.get(assert_stmt.index());
+            if assert_point.calculated() && assert_point.specific() == Specific::AssertAlwaysFails {
+                fa.mark_current_frame_unreachable()
+            }
+            fa.overwrite_frame(self.i_s.db, true_frame)
+        })
     }
 
     pub fn narrow_or_widen_name_target(

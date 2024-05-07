@@ -240,7 +240,7 @@ impl<'db> Inference<'db, '_, '_> {
                             IssueKind::AssertionAlwaysTrueBecauseOfParentheses,
                         );
                     }
-                    self.flow_analysis_for_assert(expr);
+                    self.flow_analysis_for_assert(assert_stmt, expr);
                     if let Some(message_expr) = message_expr {
                         self.infer_expression(message_expr);
                     }
