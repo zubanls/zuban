@@ -1,0 +1,12 @@
+[case unreachable_var_definition]
+import mod
+mod.foo  # E: Module has no attribute "foo"
+mod.bar  # E: Module has no attribute "bar"
+[file mod.py]
+import sys
+if sys.platform == 'lol':
+    foo = 3
+    def bar() -> None: ...
+
+foo  # E: Name "foo" is not defined
+bar  # E: Name "bar" is not defined
