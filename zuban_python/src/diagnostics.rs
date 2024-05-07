@@ -1494,6 +1494,7 @@ impl std::fmt::Debug for Diagnostic<'_> {
 
 #[derive(Default)]
 pub struct DiagnosticConfig {
+    pub disabled_error_codes: Vec<String>,
     pub ignore_missing_imports: bool,
     pub show_error_codes: bool,
     pub show_column_numbers: bool,
@@ -1501,6 +1502,13 @@ pub struct DiagnosticConfig {
 
 impl DiagnosticConfig {
     pub(crate) fn should_be_reported(&self, type_: &IssueKind) -> bool {
+        if !self.disabled_error_codes.is_empty() {
+            for disabled_code in &self.disabled_error_codes {
+                if type_.mypy_error_code() == Some(disabled_code) {
+                    return false;
+                }
+            }
+        }
         match type_ {
             IssueKind::ImportAttributeError { .. }
             | IssueKind::ModuleNotFound { .. }

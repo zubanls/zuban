@@ -170,7 +170,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
             }
         }
 
-        let gather_always_true_or_false = |push_to: &mut Vec<_>, wanted_flag: &str| {
+        let gather_list = |push_to: &mut Vec<_>, wanted_flag: &str| {
             let mut flag_iterator = steps.flags.iter();
             while let Some(flag) = flag_iterator.next() {
                 if flag == &wanted_flag {
@@ -182,8 +182,12 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 }
             }
         };
-        gather_always_true_or_false(&mut config.always_true_symbols, "--always-true");
-        gather_always_true_or_false(&mut config.always_false_symbols, "--always-false");
+        gather_list(&mut config.always_true_symbols, "--always-true");
+        gather_list(&mut config.always_false_symbols, "--always-false");
+        gather_list(
+            &mut diagnostics_config.disabled_error_codes,
+            "--disable-error-code",
+        );
 
         let project = projects.get_mut(config);
 
