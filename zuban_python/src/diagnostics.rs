@@ -58,6 +58,7 @@ pub(crate) enum IssueKind {
     CannotRedifineAs { name: Box<str>, as_: &'static str },
     IncompatibleConditionalFunctionSignature { original: Box<str>, redefinition: Box<str> },
     IncompatibleConditionalFunctionSignaturePretty { original: Box<str>, redefinition: Box<str> },
+    NameUsedBeforeDefinition { name: Box<str> },
     ModuleNotFound { module_name: Box<str> },
     NoParentModule,
     TypeNotFound,
@@ -373,6 +374,7 @@ impl IssueKind {
             | NotIterable { .. } => "attr-defined",
             NameError { .. } => "name-defined",
             Redefinition { .. } => "no-redef",
+            NameUsedBeforeDefinition { .. } => "used-before-def",
             UnionAttributeError { .. } | UnionAttributeErrorOfUpperBound(..) => "union-attr",
             ArgumentTypeIssue(_) | SuperArgument1MustBeTypeObject => "arg-type",
             ArgumentIssue { .. } | TooManyArguments { .. } | TooFewArguments { .. } => "call-arg",
@@ -684,6 +686,9 @@ impl<'db> Diagnostic<'db> {
                 additional_notes.push(format!("    {redefinition}"));
                 "All conditional function variants must have identical signatures".into()
             }
+            NameUsedBeforeDefinition { name } => format!(
+                r#"Name "{name}" is used before definition"#
+            ),
             ArgumentIssue(s) | ArgumentTypeIssue(s) | InvalidType(s) => s.clone().into(),
             TooManyArguments(rest) => format!("Too many arguments{rest}"),
             TooFewArguments(rest) => format!("Too few arguments{rest}"),

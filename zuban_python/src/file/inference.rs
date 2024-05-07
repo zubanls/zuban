@@ -2552,9 +2552,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         // If it's not inferred already through the name binder, it's either a star import, a
         // builtin or really missing.
         let name_str = name.as_str();
+        let name_index = name.index();
         if let Some(point_link) = self.lookup_from_star_import(name_str, true) {
             self.file.points.set(
-                name.index(),
+                name_index,
                 Point::new_redirect(point_link.file, point_link.node_index, Locality::Todo),
             );
             return self.infer_name_reference(name);
@@ -2565,7 +2566,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             "__builtins__" => Point::new_file_reference(builtins.file_index(), Locality::Todo),
             _ => {
                 if let Some(link) = builtins.lookup_global(name.as_str()) {
-                    debug_assert!(link.file != self.file_index || link.node_index != name.index());
+                    debug_assert!(link.file != self.file_index || link.node_index != name_index);
                     link.into_point_redirect()
                 } else {
                     // The builtin module should really not have any issues.
@@ -2577,9 +2578,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         .module_instance()
                         .type_lookup(
                             self.i_s,
-                            |issue| {
-                                NodeRef::new(self.file, name.index()).add_issue(self.i_s, issue)
-                            },
+                            |issue| NodeRef::new(self.file, name_index).add_issue(self.i_s, issue),
                             name.as_code(),
                         )
                         .save_name(self.i_s, self.file, name)
@@ -2588,7 +2587,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                     // TODO check star imports
                     self.add_issue(
-                        name.index(),
+                        name_index,
                         IssueKind::NameError {
                             name: Box::from(name.as_str()),
                         },
@@ -2603,7 +2602,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     {
                         // TODO what about underscore or other vars?
                         self.add_issue(
-                            name.index(),
+                            name_index,
                             IssueKind::Note(
                                 format!(
                                     "Did you forget to import it from \"typing\"? \
@@ -2617,8 +2616,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
             }
         };
-        self.file.points.set(name.index(), point);
-        debug_assert!(self.file.points.get(name.index()).calculated());
+        self.file.points.set(name_index, point);
+        debug_assert!(self.file.points.get(name_index).calculated());
         self.infer_name_reference(name)
     }
 
