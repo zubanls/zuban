@@ -481,6 +481,36 @@ impl<'project, 'db> NameBinder<'project, 'db> {
                         }
                     }
                 }
+                SimpleStmtContent::ReturnStmt(return_stmt) => {
+                    if !matches!(self.kind, NameBinderKind::Function { .. }) {
+                        self.add_issue(
+                            return_stmt.index(),
+                            IssueKind::StmtOutsideFunction { keyword: "return" },
+                        )
+                    }
+                    if let Some(return_expr) = return_stmt.star_expressions() {
+                        self.index_non_block_node_full(&return_expr, ordered, false);
+                    }
+                    self.index_return_or_yield(&mut latest_return_or_yield, return_stmt.index());
+                    0
+                }
+                SimpleStmtContent::AssertStmt(assert_stmt) => {
+                    let (assert_expr, error_expr) = assert_stmt.unpack();
+                    let latest = self.index_non_block_node_full(&assert_expr, ordered, false);
+                    if let Some(error_expr) = error_expr {
+                        self.index_non_block_node_full(&error_expr, ordered, false);
+                    }
+                    if is_expr_reachable_for_name_binder(self.project, assert_expr)
+                        == Truthiness::False
+                    {
+                        self.points.set(
+                            assert_stmt.index(),
+                            Point::new_specific(Specific::AssertAlwaysFails, Locality::File),
+                        )
+                    }
+                    self.references_need_flow_analysis = true;
+                    latest
+                }
                 SimpleStmtContent::ImportFrom(import) => {
                     match import.unpack_targets() {
                         ImportFromTargets::Star(star) => {
@@ -813,34 +843,6 @@ impl<'project, 'db> NameBinder<'project, 'db> {
                         _ => self.add_issue(n.index(), IssueKind::StmtOutsideFunction { keyword }),
                     }
                     self.index_return_or_yield(&mut latest_return_or_yield, n.index());
-                }
-                InterestingNode::ReturnStmt(n) => {
-                    if !matches!(self.kind, NameBinderKind::Function { .. }) {
-                        self.add_issue(
-                            n.index(),
-                            IssueKind::StmtOutsideFunction { keyword: "return" },
-                        )
-                    }
-                    if let Some(return_expr) = n.star_expressions() {
-                        self.index_non_block_node_full(&return_expr, ordered, from_annotation);
-                    }
-                    self.index_return_or_yield(&mut latest_return_or_yield, n.index());
-                }
-                InterestingNode::AssertStmt(assert_stmt) => {
-                    let (assert_expr, error_expr) = assert_stmt.unpack();
-                    self.index_non_block_node_full(&assert_expr, ordered, from_annotation);
-                    if let Some(error_expr) = error_expr {
-                        self.index_non_block_node_full(&error_expr, ordered, from_annotation);
-                    }
-                    if is_expr_reachable_for_name_binder(self.project, assert_expr)
-                        == Truthiness::False
-                    {
-                        self.points.set(
-                            assert_stmt.index(),
-                            Point::new_specific(Specific::AssertAlwaysFails, Locality::File),
-                        )
-                    }
-                    self.references_need_flow_analysis = true;
                 }
                 InterestingNode::Lambda(lambda) => {
                     self.index_lambda_param_defaults(lambda, ordered);

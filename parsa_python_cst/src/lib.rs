@@ -135,10 +135,8 @@ pub enum InterestingNode<'db> {
     Name(Name<'db>),
     Conjunction(Conjunction<'db>),
     Disjunction(Disjunction<'db>),
-    ReturnStmt(ReturnStmt<'db>),
     YieldExpr(YieldExpr<'db>),
     Lambda(Lambda<'db>),
-    AssertStmt(AssertStmt<'db>),
     Ternary(Ternary<'db>),
     Comprehension(Comprehension<'db>),
     DictComprehension(DictComprehension<'db>),
@@ -157,14 +155,10 @@ impl<'db> Iterator for InterestingNodes<'db> {
                 InterestingNode::Conjunction(Conjunction::new(n))
             } else if n.is_type(Nonterminal(disjunction)) {
                 InterestingNode::Disjunction(Disjunction::new(n))
-            } else if n.is_type(Nonterminal(return_stmt)) {
-                InterestingNode::ReturnStmt(ReturnStmt::new(n))
             } else if n.is_type(Nonterminal(yield_expr)) {
                 InterestingNode::YieldExpr(YieldExpr::new(n))
             } else if n.is_type(Nonterminal(lambda)) {
                 InterestingNode::Lambda(Lambda::new(n))
-            } else if n.is_type(Nonterminal(assert_stmt)) {
-                InterestingNode::AssertStmt(AssertStmt::new(n))
             } else if n.is_type(Nonterminal(ternary)) {
                 InterestingNode::Ternary(Ternary::new(n))
             } else if n.is_type(Nonterminal(comprehension)) {
@@ -241,10 +235,8 @@ macro_rules! create_struct {
                     Terminal(TerminalType::Name),
                     Nonterminal(conjunction),
                     Nonterminal(disjunction),
-                    Nonterminal(return_stmt),
                     Nonterminal(yield_expr),
                     Nonterminal(lambda),
-                    Nonterminal(assert_stmt),
                     Nonterminal(ternary),
                     Nonterminal(comprehension),
                     Nonterminal(dict_comprehension),
