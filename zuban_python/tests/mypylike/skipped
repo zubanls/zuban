@@ -1420,8 +1420,7 @@ testImportedVariableViaImport
 testAsyncForOutsideCoroutine
 testAsyncWithOutsideCoroutine
 
-# TYPE_CHECKING / PY2 / PY3 / MYPY / sys.version
-testConditionalAssertWithoutElse
+# `assert False` makes definition after it unimportable
 testUnreachableAfterToplevelAssertImport
 
 # "Name "C" is used before definition"

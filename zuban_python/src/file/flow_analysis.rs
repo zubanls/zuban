@@ -901,22 +901,27 @@ impl Inference<'_, '_, '_> {
         match if_block {
             IfBlockType::If(if_expr, block) => {
                 let (_, true_frame, false_frame) = self.find_guards_in_named_expr(if_expr);
-                if unreachable_in_name_binder
-                    == Some(Specific::IfBranchAlwaysUnreachableInNameBinder)
-                {
-                    return self.process_ifs(if_blocks, class, func);
-                }
-
-                FLOW_ANALYSIS.with(|fa| {
-                    let true_frame = fa.with_frame(self.i_s.db, true_frame, || {
-                        self.calc_block_diagnostics(block, class, func)
-                    });
-                    let false_frame = fa.with_frame(self.i_s.db, false_frame, || {
+                match unreachable_in_name_binder {
+                    Some(Specific::IfBranchAlwaysReachableInNameBinder) => {
+                        self.calc_block_diagnostics(block, class, func);
                         self.process_ifs(if_blocks, class, func)
-                    });
+                    }
+                    Some(Specific::IfBranchAlwaysUnreachableInNameBinder) => {
+                        self.process_ifs(if_blocks, class, func)
+                    }
+                    _ => {
+                        FLOW_ANALYSIS.with(|fa| {
+                            let true_frame = fa.with_frame(self.i_s.db, true_frame, || {
+                                self.calc_block_diagnostics(block, class, func)
+                            });
+                            let false_frame = fa.with_frame(self.i_s.db, false_frame, || {
+                                self.process_ifs(if_blocks, class, func)
+                            });
 
-                    fa.merge_conditional(self.i_s, true_frame, false_frame);
-                });
+                            fa.merge_conditional(self.i_s, true_frame, false_frame);
+                        });
+                    }
+                }
             }
             IfBlockType::Else(else_block) => {
                 self.calc_block_diagnostics(else_block.block(), class, func)

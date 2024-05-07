@@ -558,7 +558,7 @@ impl<'project, 'db> NameBinder<'project, 'db> {
                     let latest = self.index_non_block_node(&expr, ordered);
                     latest_return_or_yield =
                         self.merge_latest_return_or_yield(latest_return_or_yield, latest);
-                    let set_block_unreachable = |if_block: IfBlockType, specific| {
+                    let set_block_specific = |if_block: IfBlockType, specific| {
                         self.points.set(
                             if_block.first_leaf_index(),
                             Point::new_specific(specific, Locality::File),
@@ -568,8 +568,12 @@ impl<'project, 'db> NameBinder<'project, 'db> {
                         Truthiness::True => {
                             let latest = self.index_block(block, ordered);
                             self.merge_latest_return_or_yield(latest_return_or_yield, latest);
+                            set_block_specific(
+                                if_block,
+                                Specific::IfBranchAlwaysReachableInNameBinder,
+                            );
                             for other_block in block_iterator {
-                                set_block_unreachable(
+                                set_block_specific(
                                     other_block,
                                     Specific::IfBranchAfterAlwaysReachableInNameBinder,
                                 );
@@ -577,7 +581,7 @@ impl<'project, 'db> NameBinder<'project, 'db> {
                             break;
                         }
                         Truthiness::False => {
-                            set_block_unreachable(
+                            set_block_specific(
                                 if_block,
                                 Specific::IfBranchAlwaysUnreachableInNameBinder,
                             );
