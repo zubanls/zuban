@@ -1125,8 +1125,8 @@ fn try_to_process_reference_for_symbol_table(
     true
 }
 
-#[derive(PartialEq)]
-enum Truthiness {
+#[derive(PartialEq, Debug)]
+pub enum Truthiness {
     True,
     False,
     Unknown,
@@ -1338,7 +1338,7 @@ fn is_expr_reachable_for_name_binder(project: &PythonProject, expr: Expression) 
     }
 }
 
-fn is_expr_part_reachable_for_name_binder(
+pub fn is_expr_part_reachable_for_name_binder(
     project: &PythonProject,
     expr_part: ExpressionPart,
 ) -> Truthiness {

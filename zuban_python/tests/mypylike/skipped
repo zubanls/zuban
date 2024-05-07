@@ -1420,15 +1420,9 @@ testImportedVariableViaImport
 testAsyncForOutsideCoroutine
 testAsyncWithOutsideCoroutine
 
-# TYPE_CHECKING / PY2 / PY3 / MYPY
+# TYPE_CHECKING / PY2 / PY3 / MYPY / sys.version
 testUndefinedTypeCheckingConditional
 testConditionalAssertWithoutElse
-testShortCircuitInExpression
-# --always-true TRUTH
-testSemanticAnalysisFalseButTypeNarrowingTrue
-testSemanticAnalysisTrueButTypeNarrowingFalse
-testShortCircuitNoEvaluation
-# sys.version
 testUnreachableAfterToplevelAssertImport
 
 # "Name "C" is used before definition"

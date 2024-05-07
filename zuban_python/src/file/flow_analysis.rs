@@ -31,7 +31,12 @@ use crate::{
     type_helpers::{Callable, Class, Function},
 };
 
-use super::{first_defined_name, inference::Inference, on_argument_type_error, PythonFile};
+use super::{
+    first_defined_name,
+    inference::Inference,
+    name_binder::{is_expr_part_reachable_for_name_binder, Truthiness},
+    on_argument_type_error, PythonFile,
+};
 
 type Entries = Vec<Entry>;
 type ParentUnions = Vec<(FlowKey, UnionType)>;
@@ -921,6 +926,18 @@ impl Inference<'_, '_, '_> {
         and: Conjunction,
     ) -> (Inferred, FramesWithParentUnions, FramesWithParentUnions) {
         let (left, right) = and.unpack();
+        match is_expr_part_reachable_for_name_binder(&self.i_s.db.project, left) {
+            Truthiness::True => {
+                let (inf, r) = self.find_guards_in_expression_parts(right);
+                return (inf, FramesWithParentUnions::default(), r);
+            }
+            Truthiness::False => {
+                let (inf, l) = self.find_guards_in_expression_parts(left);
+                return (inf, l, FramesWithParentUnions::default());
+            }
+            Truthiness::Unknown => (),
+        }
+
         let (left_inf, mut left_frames) = self.find_guards_in_expression_parts(left);
         let mut right_infos = None;
         let had_first_left_entry = !left_frames.falsey.entries.is_empty();
@@ -930,6 +947,7 @@ impl Inference<'_, '_, '_> {
                 IssueKind::RightOperandIsNeverOperated { right: "and" },
             )
         } else {
+            //if !matches!(is_expr_part_reachable_for_name_binder(&self.i_s.db.project, left), Truthiness::False) {
             left_frames.truthy = FLOW_ANALYSIS.with(|fa| {
                 fa.with_frame(self.i_s.db, left_frames.truthy, || {
                     right_infos = Some(self.find_guards_in_expression_parts(right));
@@ -962,6 +980,18 @@ impl Inference<'_, '_, '_> {
         or: Disjunction,
     ) -> (Inferred, FramesWithParentUnions, FramesWithParentUnions) {
         let (left, right) = or.unpack();
+        match is_expr_part_reachable_for_name_binder(&self.i_s.db.project, left) {
+            Truthiness::False => {
+                let (inf, r) = self.find_guards_in_expression_parts(right);
+                return (inf, FramesWithParentUnions::default(), r);
+            }
+            Truthiness::True => {
+                let (inf, l) = self.find_guards_in_expression_parts(left);
+                return (inf, l, FramesWithParentUnions::default());
+            }
+            Truthiness::Unknown => (),
+        }
+
         let (left_inf, mut left_frames) = self.find_guards_in_expression_parts(left);
         let mut right_infos = None;
         if left_frames.falsey.unreachable {
