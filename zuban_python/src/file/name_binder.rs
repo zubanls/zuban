@@ -662,6 +662,10 @@ impl<'project, 'db> NameBinder<'project, 'db> {
                     return result;
                 }
             }
+            ExpressionPart::Conjunction(conjunction) => {
+                let (left, right) = conjunction.unpack();
+                return self.is_expr_part_reachable(left) & self.is_expr_part_reachable(right);
+            }
             _ => (),
         }
         Truthiness::Unknown
@@ -1211,6 +1215,17 @@ impl From<bool> for Truthiness {
         match item {
             false => Truthiness::False,
             true => Truthiness::True,
+        }
+    }
+}
+
+impl std::ops::BitAnd for Truthiness {
+    type Output = Self;
+    fn bitand(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (Self::True, Self::True) => Self::True,
+            (Self::Unknown, _) | (_, Self::Unknown) => Self::Unknown,
+            _ => Self::False,
         }
     }
 }

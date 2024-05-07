@@ -1432,8 +1432,8 @@ testShortCircuitNoEvaluation
 testDataclassesBadInit
 testDataclassFieldDoesNotFailOnKwargsUnpacking
 testUnreachableAfterToplevelAssertImport
-testShortCircuitAndWithConditionalAssignment
 testShortCircuitOrWithConditionalAssignment
+testUnreachableAfterToplevelAssertNotInsideIf
 
 # "Name "C" is used before definition"
 testNewAnalyzerNewTypeForwardClassAliasReversed
