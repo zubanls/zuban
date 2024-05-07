@@ -52,7 +52,7 @@ pub(crate) struct NameBinder<'project, 'db> {
     complex_points: &'db ComplexValues,
     issues: &'db Diagnostics,
     star_imports: &'db RefCell<Vec<StarImport>>,
-    unordered_references: Vec<(bool, Name<'db>)>,
+    unordered_references: Vec<UnorderedReference<'db>>,
     unresolved_nodes: Vec<Unresolved<'db>>,
     names_to_be_resolved_in_parent: Vec<Name<'db>>,
     unresolved_class_self_vars: Vec<UnresolvedClass<'db>>,
@@ -1034,10 +1034,15 @@ impl<'project, 'db> NameBinder<'project, 'db> {
 
     #[inline]
     fn maybe_add_reference(&mut self, name: Name<'db>, ordered: bool, needs_flow_analysis: bool) {
-        if !ordered || self.project.flags.mypy_compatible && self.kind != NameBinderKind::Class {
-            self.unordered_references.push((needs_flow_analysis, name));
-        } else if !self.try_to_process_reference(name, needs_flow_analysis) {
-            self.names_to_be_resolved_in_parent.push(name);
+        if !self.try_to_process_reference(name, needs_flow_analysis) {
+            if !ordered || self.kind != NameBinderKind::Class {
+                self.unordered_references.push(UnorderedReference {
+                    needs_flow_analysis,
+                    name,
+                });
+            } else {
+                self.names_to_be_resolved_in_parent.push(name);
+            }
         }
     }
 
@@ -1053,15 +1058,16 @@ impl<'project, 'db> NameBinder<'project, 'db> {
     }
 
     fn index_unordered_references(&mut self) {
-        for &(needs_flow_analysis, name) in &self.unordered_references {
+        for unordered_reference in &self.unordered_references {
             if !try_to_process_reference_for_symbol_table(
                 &mut self.symbol_table,
                 self.file_index,
                 self.points,
-                name,
-                needs_flow_analysis,
+                unordered_reference.name,
+                unordered_reference.needs_flow_analysis,
             ) {
-                self.names_to_be_resolved_in_parent.push(name);
+                self.names_to_be_resolved_in_parent
+                    .push(unordered_reference.name);
             }
         }
         self.unordered_references.truncate(0);
@@ -1442,4 +1448,9 @@ pub fn is_expr_part_reachable_for_name_binder(
         _ => (),
     }
     Truthiness::Unknown
+}
+
+struct UnorderedReference<'db> {
+    needs_flow_analysis: bool,
+    name: Name<'db>,
 }
