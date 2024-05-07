@@ -1610,26 +1610,12 @@ impl<'db> SimpleStmt<'db> {
         }
     }
 
-    pub fn maybe_assignment(&self) -> Option<Assignment<'db>> {
-        let child = self.node.nth_child(0);
-        child
-            .is_type(Nonterminal(assignment))
-            .then(|| Assignment::new(child))
-    }
-
     pub fn maybe_simple_expression(&self) -> Option<Expression<'db>> {
         let child = self.node.nth_child(0);
         child
             .is_type(Nonterminal(star_expressions))
             .then(|| StarExpressions::new(child).maybe_simple_expression())
             .flatten()
-    }
-
-    pub fn maybe_import_from(&self) -> Option<ImportFrom<'db>> {
-        let child = self.node.nth_child(0);
-        child
-            .is_type(Nonterminal(import_from))
-            .then(|| ImportFrom::new(child))
     }
 }
 
