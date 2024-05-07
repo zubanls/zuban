@@ -567,7 +567,7 @@ impl<'project, 'db> NameBinder<'project, 'db> {
                             ),
                         )
                     };
-                    match self.is_branch_reachable_for_name_binder(expr.expression()) {
+                    match is_expr_reachable_for_name_binder(self.project, expr.expression()) {
                         Truthiness::True => {
                             let latest = self.index_block(block, ordered);
                             self.merge_latest_return_or_yield(latest_return_or_yield, latest);
@@ -589,92 +589,6 @@ impl<'project, 'db> NameBinder<'project, 'db> {
                 self.merge_latest_return_or_yield(latest_return_or_yield, latest);
         }
         latest_return_or_yield
-    }
-
-    fn is_branch_reachable_for_name_binder(&mut self, expr: Expression) -> Truthiness {
-        match expr.unpack() {
-            ExpressionContent::ExpressionPart(p) => self.is_expr_part_reachable(p),
-            _ => Truthiness::Unknown,
-        }
-    }
-
-    fn is_expr_part_reachable(&mut self, expr_part: ExpressionPart) -> Truthiness {
-        match expr_part {
-            ExpressionPart::Atom(atom) => match atom.unpack() {
-                AtomContent::Name(name) => {
-                    let n = name.as_code();
-                    if ["MYPY", "PY3", "TYPE_CHECKING"].contains(&n)
-                        || self
-                            .project
-                            .flags
-                            .always_true_symbols
-                            .iter()
-                            .any(|s| s == n)
-                    {
-                        return Truthiness::True;
-                    } else if n == "PY2"
-                        || self
-                            .project
-                            .flags
-                            .always_false_symbols
-                            .iter()
-                            .any(|s| s == n)
-                    {
-                        return Truthiness::False;
-                    }
-                }
-                AtomContent::NamedExpression(named_expr) => {
-                    return self.is_branch_reachable_for_name_binder(named_expr.expression())
-                }
-                _ => (),
-            },
-            ExpressionPart::Primary(primary) => match primary.second() {
-                PrimaryContent::Attribute(second) => {
-                    let second = second.as_code();
-                    if second == "TYPE_CHECKING" {
-                        if let PrimaryOrAtom::Atom(atom) = primary.first() {
-                            if atom.as_code() == "typing" {
-                                return Truthiness::True;
-                            }
-                        }
-                    }
-                }
-                PrimaryContent::Execution(execution) => {
-                    if let PrimaryOrAtom::Primary(prim) = primary.first() {
-                        return maybe_sys_platform_startswith(self.project, prim, execution);
-                    }
-                }
-                _ => (),
-            },
-            ExpressionPart::Inversion(inv) => {
-                return self.is_expr_part_reachable(inv.expression()).invert()
-            }
-            ExpressionPart::Comparisons(comps) => {
-                let mut iterator = comps.iter();
-                let first = iterator.next().unwrap();
-                if iterator.next().is_none() {
-                    let left = first.left();
-                    let right = first.right();
-                    let result = check_comparison_reachability(self.project, first, left, right);
-                    if result == Truthiness::Unknown {
-                        return check_comparison_reachability(self.project, first, right, left);
-                    }
-                    return result;
-                }
-            }
-            ExpressionPart::Conjunction(conjunction) => {
-                let (left, right) = conjunction.unpack();
-                return self.is_expr_part_reachable(left) & self.is_expr_part_reachable(right);
-            }
-            ExpressionPart::Disjunction(disjunction) => {
-                let (left, right) = disjunction.unpack();
-                return self
-                    .is_expr_part_reachable(left)
-                    .or_else(|| self.is_expr_part_reachable(right));
-            }
-            _ => (),
-        }
-        Truthiness::Unknown
     }
 
     fn index_try_stmt(&mut self, try_stmt: TryStmt<'db>, ordered: bool) -> NodeIndex {
@@ -898,7 +812,9 @@ impl<'project, 'db> NameBinder<'project, 'db> {
                     if let Some(error_expr) = error_expr {
                         self.index_non_block_node_full(&error_expr, ordered, from_annotation);
                     }
-                    if self.is_branch_reachable_for_name_binder(assert_expr) == Truthiness::False {
+                    if is_expr_reachable_for_name_binder(self.project, assert_expr)
+                        == Truthiness::False
+                    {
                         self.points.set(
                             assert_stmt.index(),
                             Point::new_specific(Specific::AssertAlwaysFails, Locality::File),
@@ -1411,6 +1327,83 @@ fn maybe_sys_platform_startswith(
                 }
             }
         }
+    }
+    Truthiness::Unknown
+}
+
+fn is_expr_reachable_for_name_binder(project: &PythonProject, expr: Expression) -> Truthiness {
+    match expr.unpack() {
+        ExpressionContent::ExpressionPart(p) => is_expr_part_reachable_for_name_binder(project, p),
+        _ => Truthiness::Unknown,
+    }
+}
+
+fn is_expr_part_reachable_for_name_binder(
+    project: &PythonProject,
+    expr_part: ExpressionPart,
+) -> Truthiness {
+    match expr_part {
+        ExpressionPart::Atom(atom) => match atom.unpack() {
+            AtomContent::Name(name) => {
+                let n = name.as_code();
+                if ["MYPY", "PY3", "TYPE_CHECKING"].contains(&n)
+                    || project.flags.always_true_symbols.iter().any(|s| s == n)
+                {
+                    return Truthiness::True;
+                } else if n == "PY2" || project.flags.always_false_symbols.iter().any(|s| s == n) {
+                    return Truthiness::False;
+                }
+            }
+            AtomContent::NamedExpression(named_expr) => {
+                return is_expr_reachable_for_name_binder(project, named_expr.expression())
+            }
+            _ => (),
+        },
+        ExpressionPart::Primary(primary) => match primary.second() {
+            PrimaryContent::Attribute(second) => {
+                let second = second.as_code();
+                if second == "TYPE_CHECKING" {
+                    if let PrimaryOrAtom::Atom(atom) = primary.first() {
+                        if atom.as_code() == "typing" {
+                            return Truthiness::True;
+                        }
+                    }
+                }
+            }
+            PrimaryContent::Execution(execution) => {
+                if let PrimaryOrAtom::Primary(prim) = primary.first() {
+                    return maybe_sys_platform_startswith(project, prim, execution);
+                }
+            }
+            _ => (),
+        },
+        ExpressionPart::Inversion(inv) => {
+            return is_expr_part_reachable_for_name_binder(project, inv.expression()).invert()
+        }
+        ExpressionPart::Comparisons(comps) => {
+            let mut iterator = comps.iter();
+            let first = iterator.next().unwrap();
+            if iterator.next().is_none() {
+                let left = first.left();
+                let right = first.right();
+                let result = check_comparison_reachability(project, first, left, right);
+                if result == Truthiness::Unknown {
+                    return check_comparison_reachability(project, first, right, left);
+                }
+                return result;
+            }
+        }
+        ExpressionPart::Conjunction(conjunction) => {
+            let (left, right) = conjunction.unpack();
+            return is_expr_part_reachable_for_name_binder(project, left)
+                & is_expr_part_reachable_for_name_binder(project, right);
+        }
+        ExpressionPart::Disjunction(disjunction) => {
+            let (left, right) = disjunction.unpack();
+            return is_expr_part_reachable_for_name_binder(project, left)
+                .or_else(|| is_expr_part_reachable_for_name_binder(project, right));
+        }
+        _ => (),
     }
     Truthiness::Unknown
 }
