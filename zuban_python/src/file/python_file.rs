@@ -247,6 +247,7 @@ impl<'db> PythonFile {
                 &self.issues,
                 &self.star_imports,
                 self.file_index.get().unwrap(),
+                self.is_stub,
                 func,
             ))
             .unwrap()

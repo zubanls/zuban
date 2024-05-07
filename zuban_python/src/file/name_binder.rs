@@ -58,6 +58,7 @@ pub(crate) struct NameBinder<'project, 'db> {
     unresolved_class_self_vars: Vec<UnresolvedClass<'db>>,
     annotation_names: Vec<Name<'db>>,
     file_index: FileIndex,
+    is_stub: bool,
     references_need_flow_analysis: bool,
     #[allow(dead_code)] // TODO remove this
     parent: Option<*mut NameBinder<'project, 'db>>,
@@ -74,6 +75,7 @@ impl<'project, 'db> NameBinder<'project, 'db> {
         issues: &'db Diagnostics,
         star_imports: &'db RefCell<Vec<StarImport>>,
         file_index: FileIndex,
+        is_stub: bool,
         parent: Option<*mut Self>,
     ) -> Self {
         Self {
@@ -93,6 +95,7 @@ impl<'project, 'db> NameBinder<'project, 'db> {
             annotation_names: vec![],
             references_need_flow_analysis: false,
             file_index,
+            is_stub,
             parent,
         }
     }
@@ -105,6 +108,7 @@ impl<'project, 'db> NameBinder<'project, 'db> {
         issues: &'db Diagnostics,
         star_imports: &'db RefCell<Vec<StarImport>>,
         file_index: FileIndex,
+        is_stub: bool,
         func: impl FnOnce(&mut NameBinder<'project, 'db>),
     ) -> SymbolTable {
         let mut binder = NameBinder::new(
@@ -117,6 +121,7 @@ impl<'project, 'db> NameBinder<'project, 'db> {
             issues,
             star_imports,
             file_index,
+            is_stub,
             None,
         );
         func(&mut binder);
@@ -178,6 +183,7 @@ impl<'project, 'db> NameBinder<'project, 'db> {
             self.issues,
             self.star_imports,
             self.file_index,
+            self.is_stub,
             Some(self),
         );
         func(&mut name_binder);
@@ -1039,6 +1045,7 @@ impl<'project, 'db> NameBinder<'project, 'db> {
                 self.unordered_references.push(UnorderedReference {
                     needs_flow_analysis,
                     name,
+                    ordered,
                 });
             } else {
                 self.names_to_be_resolved_in_parent.push(name);
@@ -1059,13 +1066,22 @@ impl<'project, 'db> NameBinder<'project, 'db> {
 
     fn index_unordered_references(&mut self) {
         for unordered_reference in &self.unordered_references {
-            if !try_to_process_reference_for_symbol_table(
+            if try_to_process_reference_for_symbol_table(
                 &mut self.symbol_table,
                 self.file_index,
                 self.points,
                 unordered_reference.name,
                 unordered_reference.needs_flow_analysis,
             ) {
+                if unordered_reference.ordered && !self.is_stub {
+                    self.add_issue(
+                        unordered_reference.name.index(),
+                        IssueKind::NameUsedBeforeDefinition {
+                            name: unordered_reference.name.as_code().into(),
+                        },
+                    );
+                }
+            } else {
                 self.names_to_be_resolved_in_parent
                     .push(unordered_reference.name);
             }
@@ -1453,4 +1469,5 @@ pub fn is_expr_part_reachable_for_name_binder(
 struct UnorderedReference<'db> {
     needs_flow_analysis: bool,
     name: Name<'db>,
+    ordered: bool,
 }
