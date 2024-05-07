@@ -1422,6 +1422,8 @@ testAsyncWithOutsideCoroutine
 
 # `assert False` makes definition after it unimportable
 testUnreachableAfterToplevelAssertImport
+unreachable_var_definition_with_assert
+unreachable_var_definition_with_return
 
 # "Name "C" is used before definition"
 testNewAnalyzerNewTypeForwardClassAliasReversed

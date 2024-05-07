@@ -10,3 +10,32 @@ if sys.platform == 'lol':
 
 foo  # E: Name "foo" is not defined
 bar  # E: Name "bar" is not defined
+
+[case unreachable_var_definition_with_assert]
+# flags: --mypy-compatible
+import mod
+mod.foo  # E: Module has no attribute "foo"
+mod.bar  # E: Module has no attribute "bar"
+mod.undefined  # E: Module has no attribute "undefined"
+[file mod.py]
+import sys
+assert sys.platform == 'lol'
+foo = 3
+def bar() -> None: ...
+
+foo
+bar
+undefined
+
+[case unreachable_var_definition_with_return]
+# flags: --mypy-compatible
+import sys
+def func() -> None:
+    if bool():
+        return
+        foo = 3
+        def bar() -> None: ...
+
+    foo  # E: Name "foo" is not defined
+    bar
+    undefined  # E: Name "undefined" is not defined
