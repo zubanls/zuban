@@ -1421,7 +1421,6 @@ testAsyncForOutsideCoroutine
 testAsyncWithOutsideCoroutine
 
 # TYPE_CHECKING / PY2 / PY3 / MYPY / sys.version
-testUndefinedTypeCheckingConditional
 testConditionalAssertWithoutElse
 testUnreachableAfterToplevelAssertImport
 

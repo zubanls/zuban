@@ -889,16 +889,21 @@ impl Inference<'_, '_, '_> {
         let Some(if_block) = if_blocks.next() else {
             return
         };
-        let first_point = self.file.points.get(if_block.first_leaf_index());
-        let unreachable_in_name_binder = first_point.calculated()
-            && first_point.maybe_specific() == Some(Specific::IfBranchUnreachableInNameBinder);
-        if unreachable_in_name_binder {
+        let unreachable_in_name_binder = self
+            .file
+            .points
+            .get(if_block.first_leaf_index())
+            .maybe_calculated_and_specific();
+        if unreachable_in_name_binder == Some(Specific::IfBranchAfterReachableInNameBinder) {
             return self.process_ifs(if_blocks, class, func);
         }
 
         match if_block {
             IfBlockType::If(if_expr, block) => {
                 let (_, true_frame, false_frame) = self.find_guards_in_named_expr(if_expr);
+                if unreachable_in_name_binder == Some(Specific::IfBranchUnreachableInNameBinder) {
+                    return self.process_ifs(if_blocks, class, func);
+                }
 
                 FLOW_ANALYSIS.with(|fa| {
                     let true_frame = fa.with_frame(self.i_s.db, true_frame, || {

@@ -558,13 +558,10 @@ impl<'project, 'db> NameBinder<'project, 'db> {
                     let latest = self.index_non_block_node(&expr, ordered);
                     latest_return_or_yield =
                         self.merge_latest_return_or_yield(latest_return_or_yield, latest);
-                    let set_block_unreachable = |if_block: IfBlockType| {
+                    let set_block_unreachable = |if_block: IfBlockType, specific| {
                         self.points.set(
                             if_block.first_leaf_index(),
-                            Point::new_specific(
-                                Specific::IfBranchUnreachableInNameBinder,
-                                Locality::File,
-                            ),
+                            Point::new_specific(specific, Locality::File),
                         )
                     };
                     match is_expr_reachable_for_name_binder(self.project, expr.expression()) {
@@ -572,12 +569,18 @@ impl<'project, 'db> NameBinder<'project, 'db> {
                             let latest = self.index_block(block, ordered);
                             self.merge_latest_return_or_yield(latest_return_or_yield, latest);
                             for other_block in block_iterator {
-                                set_block_unreachable(other_block);
+                                set_block_unreachable(
+                                    other_block,
+                                    Specific::IfBranchAfterReachableInNameBinder,
+                                );
                             }
                             break;
                         }
                         Truthiness::False => {
-                            set_block_unreachable(if_block);
+                            set_block_unreachable(
+                                if_block,
+                                Specific::IfBranchUnreachableInNameBinder,
+                            );
                             0
                         }
                         Truthiness::Unknown => self.index_block(block, ordered),

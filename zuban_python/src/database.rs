@@ -222,6 +222,13 @@ impl Point {
         }
     }
 
+    pub fn maybe_calculated_and_specific(self) -> Option<Specific> {
+        if !self.calculated() {
+            return None;
+        }
+        self.maybe_specific()
+    }
+
     pub fn specific(self) -> Specific {
         debug_assert!(self.kind() == PointKind::Specific, "{:?}", self);
         unsafe { mem::transmute(self.flags & SPECIFIC_MASK) }
@@ -354,6 +361,7 @@ pub enum Specific {
     OverloadUnreachable,
     AnyDueToError,
     ModuleNotFound,
+    IfBranchAfterReachableInNameBinder,
     IfBranchUnreachableInNameBinder,
     AssertAlwaysFails,
 
