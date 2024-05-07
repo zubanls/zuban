@@ -666,6 +666,12 @@ impl<'project, 'db> NameBinder<'project, 'db> {
                 let (left, right) = conjunction.unpack();
                 return self.is_expr_part_reachable(left) & self.is_expr_part_reachable(right);
             }
+            ExpressionPart::Disjunction(disjunction) => {
+                let (left, right) = disjunction.unpack();
+                return self
+                    .is_expr_part_reachable(left)
+                    .or_else(|| self.is_expr_part_reachable(right));
+            }
             _ => (),
         }
         Truthiness::Unknown
@@ -1236,6 +1242,13 @@ impl Truthiness {
             Self::True => Self::False,
             Self::False => Self::True,
             Self::Unknown => Self::Unknown,
+        }
+    }
+    fn or_else(self, callback: impl FnOnce() -> Truthiness) -> Truthiness {
+        match self {
+            Self::False => callback(),
+            Self::Unknown if matches!(callback(), Self::True) => Self::True,
+            _ => self,
         }
     }
 }

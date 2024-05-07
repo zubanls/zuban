@@ -1429,11 +1429,7 @@ testSemanticAnalysisFalseButTypeNarrowingTrue
 testSemanticAnalysisTrueButTypeNarrowingFalse
 testShortCircuitNoEvaluation
 # sys.version
-testDataclassesBadInit
-testDataclassFieldDoesNotFailOnKwargsUnpacking
 testUnreachableAfterToplevelAssertImport
-testShortCircuitOrWithConditionalAssignment
-testUnreachableAfterToplevelAssertNotInsideIf
 
 # "Name "C" is used before definition"
 testNewAnalyzerNewTypeForwardClassAliasReversed
