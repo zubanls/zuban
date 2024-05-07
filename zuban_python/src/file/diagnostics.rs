@@ -167,6 +167,10 @@ impl<'db> Inference<'db, '_, '_> {
         func: Option<&Function>,
     ) {
         for simple_stmt in simple_stmts.iter() {
+            if self.is_unreachable() {
+                self.add_unreachable_error(simple_stmt.start(), simple_stmt.end());
+                break;
+            }
             match simple_stmt.unpack() {
                 SimpleStmtContent::Assignment(assignment) => {
                     // Check if protocol assignment is invalid
@@ -266,6 +270,23 @@ impl<'db> Inference<'db, '_, '_> {
         }
     }
 
+    fn add_unreachable_error(&self, start_position: CodeIndex, end_position: CodeIndex) {
+        if self.i_s.db.project.flags.warn_unreachable {
+            FLOW_ANALYSIS.with(|fa| {
+                fa.report_unreachable_if_not_reported_before(|| {
+                    self.file.add_issue(
+                        self.i_s,
+                        Issue {
+                            kind: IssueKind::UnreachableStatement,
+                            start_position,
+                            end_position,
+                        },
+                    )
+                })
+            });
+        }
+    }
+
     fn calc_stmts_diagnostics(
         &self,
         stmts: StmtIterator,
@@ -283,16 +304,7 @@ impl<'db> Inference<'db, '_, '_> {
                 continue;
             }
             if self.is_unreachable() {
-                if self.i_s.db.project.flags.warn_unreachable {
-                    self.file.add_issue(
-                        self.i_s,
-                        Issue {
-                            kind: IssueKind::UnreachableStatement,
-                            start_position: stmt.start(),
-                            end_position: stmt.end(),
-                        },
-                    )
-                }
+                self.add_unreachable_error(stmt.start(), stmt.end());
                 break;
                 /*
                 if self.i_s.db.project.flags.mypy_compatible {

@@ -109,6 +109,7 @@ struct Entry {
 struct Frame {
     entries: Entries,
     unreachable: bool,
+    reported_unreachable: bool,
 }
 
 impl Frame {
@@ -116,6 +117,7 @@ impl Frame {
         Self {
             entries,
             unreachable: false,
+            reported_unreachable: false,
         }
     }
 
@@ -123,6 +125,7 @@ impl Frame {
         Self {
             entries: Default::default(),
             unreachable: true,
+            reported_unreachable: false,
         }
     }
 
@@ -197,6 +200,15 @@ impl FlowAnalysis {
 
     pub fn is_unreachable(&self) -> bool {
         self.frames.borrow().last().unwrap().unreachable
+    }
+
+    pub fn report_unreachable_if_not_reported_before(&self, callback: impl FnOnce()) {
+        let mut frames = self.frames.borrow_mut();
+        let top_frame = frames.last_mut().unwrap();
+        if !top_frame.reported_unreachable {
+            top_frame.reported_unreachable = true;
+            callback()
+        }
     }
 
     fn merge_conditional(
