@@ -155,7 +155,7 @@ impl File for PythonFile {
         let mut vec: Vec<_> = unsafe {
             self.issues
                 .iter()
-                .filter(|i| config.should_be_reported(&i.kind))
+                .filter(|i| config.should_be_reported(&db.project, &i.kind))
                 .map(|i| Diagnostic::new(db, self, i))
                 .collect()
         };

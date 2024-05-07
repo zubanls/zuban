@@ -184,10 +184,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
         };
         gather_list(&mut config.always_true_symbols, "--always-true");
         gather_list(&mut config.always_false_symbols, "--always-false");
-        gather_list(
-            &mut diagnostics_config.disabled_error_codes,
-            "--disable-error-code",
-        );
+        gather_list(&mut config.disabled_error_codes, "--disable-error-code");
 
         let project = projects.get_mut(config);
 

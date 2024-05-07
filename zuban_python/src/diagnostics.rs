@@ -1,7 +1,7 @@
 use parsa_python_cst::{CodeIndex, NodeIndex, Tree};
 
 use crate::{
-    database::Database,
+    database::{Database, PythonProject},
     file::{File, GenericCounts, PythonFile, OVERLAPPING_REVERSE_TO_NORMAL_METHODS},
     name::TreePosition,
     type_::{FunctionKind, StringSlice, TypeVarLike, Variance},
@@ -1494,17 +1494,16 @@ impl std::fmt::Debug for Diagnostic<'_> {
 
 #[derive(Default)]
 pub struct DiagnosticConfig {
-    pub disabled_error_codes: Vec<String>,
     pub ignore_missing_imports: bool,
     pub show_error_codes: bool,
     pub show_column_numbers: bool,
 }
 
 impl DiagnosticConfig {
-    pub(crate) fn should_be_reported(&self, type_: &IssueKind) -> bool {
-        if !self.disabled_error_codes.is_empty() {
-            for disabled_code in &self.disabled_error_codes {
-                if type_.mypy_error_code() == Some(disabled_code) {
+    pub(crate) fn should_be_reported(&self, project: &PythonProject, type_: &IssueKind) -> bool {
+        if !project.flags.disabled_error_codes.is_empty() {
+            if let Some(code) = type_.mypy_error_code() {
+                if project.flags.disabled_error_codes.iter().any(|c| c == code) {
                     return false;
                 }
             }
