@@ -863,7 +863,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         is_initialized,
                     } = self.origin
                     {
-                        if !is_initialized && !self.inference.file.is_stub(i_s.db) {
+                        if !is_initialized && !self.inference.file.is_stub {
                             self.add_issue(
                                 type_storage_node_ref,
                                 IssueKind::FinalNameMustBeInitializedWithValue,

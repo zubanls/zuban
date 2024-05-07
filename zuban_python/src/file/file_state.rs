@@ -106,10 +106,11 @@ impl FileStateLoader for PythonFileLoader {
         path: Box<str>,
         code: Box<str>,
     ) -> Pin<Box<dyn FileState>> {
+        let is_stub = path.ends_with(".pyi");
         Box::pin(LanguageFileState::new_parsed(
             file_entry,
             path,
-            PythonFile::new(code),
+            PythonFile::new(code, is_stub),
         ))
     }
 }

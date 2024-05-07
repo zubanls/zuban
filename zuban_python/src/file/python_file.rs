@@ -72,6 +72,7 @@ pub struct PythonFile {
     pub star_imports: RefCell<Vec<StarImport>>,
     sub_files: RefCell<HashMap<CodeIndex, FileIndex>>,
     pub(crate) super_file: Option<FileIndex>,
+    pub is_stub: bool,
 
     newline_indices: NewlineIndices,
 }
@@ -214,7 +215,7 @@ impl fmt::Debug for PythonFile {
 }
 
 impl<'db> PythonFile {
-    pub fn new(code: Box<str>) -> Self {
+    pub fn new(code: Box<str>, is_stub: bool) -> Self {
         let tree = Tree::parse(code);
         let length = tree.length();
         Self {
@@ -228,6 +229,7 @@ impl<'db> PythonFile {
             newline_indices: NewlineIndices::new(),
             sub_files: Default::default(),
             super_file: None,
+            is_stub,
         }
     }
 
@@ -280,16 +282,12 @@ impl<'db> PythonFile {
         code: Box<str>, // TODO this should not be a string, but probably cow
     ) -> &'db Self {
         // TODO should probably not need a newline
-        let mut file = PythonFile::new(Box::from(code.into_string() + "\n"));
+        let mut file = PythonFile::new(Box::from(code.into_string() + "\n"), self.is_stub);
         file.super_file = Some(self.file_index());
         // TODO just saving this in the cache and forgetting about it is a bad idea
         let f = db.load_sub_file(self, file);
         self.sub_files.borrow_mut().insert(start, f.file_index());
         f
-    }
-
-    pub fn is_stub(&self, db: &Database) -> bool {
-        db.file_path(self.file_index()).ends_with(".pyi")
     }
 
     pub fn is_stub_or_in_protocol(&self, i_s: &InferenceState) -> bool {
@@ -298,7 +296,7 @@ impl<'db> PythonFile {
                 return true;
             }
         }
-        self.is_stub(i_s.db)
+        self.is_stub
     }
 
     pub fn file_entry(&self, db: &Database) -> Rc<FileEntry> {

@@ -1063,14 +1063,14 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             self.node_ref
                 .add_issue(i_s, IssueKind::OverloadSingleNotAllowed);
         } else if implementation.is_none()
-            && !file.is_stub(i_s.db)
+            && !file.is_stub
             && self.class.map(|c| !c.is_protocol(i_s.db)).unwrap_or(true)
         {
             name_def_node_ref(functions.last().unwrap().defined_at)
                 .add_issue(i_s, IssueKind::OverloadImplementationNeeded);
         }
         if let Some(implementation) = &implementation {
-            if file.is_stub(i_s.db) {
+            if file.is_stub {
                 name_def_node_ref(implementation.function_link)
                     .add_issue(i_s, IssueKind::OverloadStubImplementationNotAllowed);
             }
