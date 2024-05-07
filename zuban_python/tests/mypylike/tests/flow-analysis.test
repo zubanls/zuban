@@ -28,8 +28,6 @@ bar
 undefined
 
 [case unreachable_var_definition_with_return]
-# flags: --mypy-compatible
-import sys
 def func() -> None:
     if bool():
         return
@@ -37,5 +35,15 @@ def func() -> None:
         def bar() -> None: ...
 
     foo  # E: Name "foo" is not defined
-    bar
+    bar  # E: Name "bar" is not defined
+    undefined  # E: Name "undefined" is not defined
+
+[case unreachable_var_definition_with_raise]
+def func() -> None:
+    if bool():
+        raise; foo = 3
+        def bar() -> None: ...
+
+    foo  # E: Name "foo" is not defined
+    bar  # E: Name "bar" is not defined
     undefined  # E: Name "undefined" is not defined

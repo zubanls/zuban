@@ -1420,11 +1420,6 @@ testImportedVariableViaImport
 testAsyncForOutsideCoroutine
 testAsyncWithOutsideCoroutine
 
-# `assert False` makes definition after it unimportable
-testUnreachableAfterToplevelAssertImport
-unreachable_var_definition_with_assert
-unreachable_var_definition_with_return
-
 # "Name "C" is used before definition"
 testNewAnalyzerNewTypeForwardClassAliasReversed
 testBanPathologicalRecursiveTuples
@@ -2279,6 +2274,10 @@ testModuleAliasRepeated
 testModuleAliasRepeatedComplex
 testModuleAliasToOtherModule
 testModuleAliasToQualifiedImport2
+
+# NameBinder questionable unreachable usages
+testRaiseStatement
+reachability_no_mypy_compatible
 
 # My own hard/special tests
 class_context_super_class

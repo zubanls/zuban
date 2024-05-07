@@ -304,7 +304,11 @@ impl<'project, 'db> NameBinder<'project, 'db> {
             last_was_an_error = false;
             let return_or_yield = match stmt.unpack() {
                 StmtContent::SimpleStmts(s) => {
-                    let (return_or_yield, unreachable) = self.index_simple_stmts(s, ordered);
+                    let (return_or_yield, unreachable_after) = self.index_simple_stmts(s, ordered);
+                    if unreachable_after {
+                        return self
+                            .merge_latest_return_or_yield(latest_return_or_yield, return_or_yield);
+                    }
                     return_or_yield
                 }
                 StmtContent::FunctionDef(func) => {
@@ -492,7 +496,7 @@ impl<'project, 'db> NameBinder<'project, 'db> {
                         self.index_non_block_node_full(&return_expr, ordered, false);
                     }
                     self.index_return_or_yield(&mut latest_return_or_yield, return_stmt.index());
-                    0
+                    return (latest_return_or_yield, true);
                 }
                 SimpleStmtContent::AssertStmt(assert_stmt) => {
                     let (assert_expr, error_expr) = assert_stmt.unpack();
@@ -506,7 +510,11 @@ impl<'project, 'db> NameBinder<'project, 'db> {
                         self.points.set(
                             assert_stmt.index(),
                             Point::new_specific(Specific::AssertAlwaysFails, Locality::File),
-                        )
+                        );
+                        return (
+                            self.merge_latest_return_or_yield(latest_return_or_yield, latest),
+                            true,
+                        );
                     }
                     self.references_need_flow_analysis = true;
                     latest
@@ -527,6 +535,12 @@ impl<'project, 'db> NameBinder<'project, 'db> {
                         }
                     };
                     0
+                }
+                SimpleStmtContent::RaiseStmt(raise_stmt) => {
+                    return (self.index_non_block_node(&raise_stmt, ordered), true)
+                }
+                SimpleStmtContent::BreakStmt(_) | SimpleStmtContent::ContinueStmt(_) => {
+                    return (latest_return_or_yield, true)
                 }
                 _ => self.index_non_block_node(&simple_stmt, ordered),
             };

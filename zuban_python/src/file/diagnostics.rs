@@ -293,12 +293,15 @@ impl<'db> Inference<'db, '_, '_> {
                         },
                     )
                 }
+                break;
+                /*
                 if self.i_s.db.project.flags.mypy_compatible {
                     // Mypy does not analyze frames that are not reachable. However for normal interaction
                     // in an IDE you typically want to analyze those parts of code, even if they are
                     // unreachable.
                     break;
                 }
+                */
             }
 
             match stmt.unpack() {
