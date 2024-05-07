@@ -361,8 +361,8 @@ pub enum Specific {
     OverloadUnreachable,
     AnyDueToError,
     ModuleNotFound,
-    IfBranchAfterReachableInNameBinder,
-    IfBranchUnreachableInNameBinder,
+    IfBranchAfterAlwaysReachableInNameBinder,
+    IfBranchAlwaysUnreachableInNameBinder,
     AssertAlwaysFails,
 
     String,

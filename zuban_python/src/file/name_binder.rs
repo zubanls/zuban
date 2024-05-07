@@ -571,7 +571,7 @@ impl<'project, 'db> NameBinder<'project, 'db> {
                             for other_block in block_iterator {
                                 set_block_unreachable(
                                     other_block,
-                                    Specific::IfBranchAfterReachableInNameBinder,
+                                    Specific::IfBranchAfterAlwaysReachableInNameBinder,
                                 );
                             }
                             break;
@@ -579,7 +579,7 @@ impl<'project, 'db> NameBinder<'project, 'db> {
                         Truthiness::False => {
                             set_block_unreachable(
                                 if_block,
-                                Specific::IfBranchUnreachableInNameBinder,
+                                Specific::IfBranchAlwaysUnreachableInNameBinder,
                             );
                             0
                         }

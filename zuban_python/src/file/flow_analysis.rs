@@ -894,14 +894,16 @@ impl Inference<'_, '_, '_> {
             .points
             .get(if_block.first_leaf_index())
             .maybe_calculated_and_specific();
-        if unreachable_in_name_binder == Some(Specific::IfBranchAfterReachableInNameBinder) {
+        if unreachable_in_name_binder == Some(Specific::IfBranchAfterAlwaysReachableInNameBinder) {
             return self.process_ifs(if_blocks, class, func);
         }
 
         match if_block {
             IfBlockType::If(if_expr, block) => {
                 let (_, true_frame, false_frame) = self.find_guards_in_named_expr(if_expr);
-                if unreachable_in_name_binder == Some(Specific::IfBranchUnreachableInNameBinder) {
+                if unreachable_in_name_binder
+                    == Some(Specific::IfBranchAlwaysUnreachableInNameBinder)
+                {
                     return self.process_ifs(if_blocks, class, func);
                 }
 
