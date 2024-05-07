@@ -1503,7 +1503,9 @@ impl DiagnosticConfig {
     pub(crate) fn should_be_reported(&self, project: &PythonProject, type_: &IssueKind) -> bool {
         if !project.flags.disabled_error_codes.is_empty() {
             if let Some(code) = type_.mypy_error_code() {
-                if project.flags.disabled_error_codes.iter().any(|c| c == code) {
+                if project.flags.disabled_error_codes.iter().any(|c| c == code)
+                    && !project.flags.enabled_error_codes.iter().any(|c| c == code)
+                {
                     return false;
                 }
             }
