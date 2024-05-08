@@ -1424,10 +1424,6 @@ testAsyncWithOutsideCoroutine
 testBanPathologicalRecursiveTuples
 # --enable-error-code possibly-undefined "Name "x" may be undefined"
 testPossiblyUndefinedWithAssignmentExpr
-# undefined += 1 where undefined is a NameError
-testOperatorAssignment
-inplace_operator_on_undefined_target
-testInvalidDel3
 
 # Redefinition (Name "X" already defined on line X)
 testRedefineVariableAsTypevar
@@ -1493,6 +1489,7 @@ testDel
 testReuseTryExceptionVariable
 testReuseDefinedTryExceptionVariable
 testRaiseFromStatement
+testInvalidDel3
 
 # match statement
 testValuePattern

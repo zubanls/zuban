@@ -3747,7 +3747,7 @@ pub enum NameOrKeywordLookup<'db> {
     None,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Target<'db> {
     Tuple(TargetIterator<'db>),
     Name(NameDefinition<'db>),

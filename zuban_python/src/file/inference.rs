@@ -694,8 +694,21 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let (inplace_method, op_infos) = aug_assign.magic_methods();
                 let right =
                     self.infer_assignment_right_side(right_side, &mut ResultContext::Unknown);
-                let Some(left) = self.infer_target(target, true) else {
-                    todo!()
+                let Some(left) = self.infer_target(target.clone(), true) else {
+                    // This is essentially a bare `foo += 1` that does not have any definition and
+                    // leads to a NameError within Python.
+                    match target.clone() {
+                        Target::Name(name_def) => {
+                            self.assign_single_target(target, node_ref, &Inferred::new_any_from_error(), AssignKind::Normal, |index, value| {
+                                value.clone().save_redirect(self.i_s, self.file, name_def.index());
+                            });
+                            self.add_issue(name_def.index(), IssueKind::NameError {
+                                name: name_def.as_code().into(),
+                            })
+                        }
+                        _ => todo!(),
+                    }
+                    return
                 };
                 let had_lookup_error = Cell::new(false);
                 let mut result = left.type_lookup_and_execute(
@@ -711,9 +724,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         self.infer_detailed_operation(right_side.index(), op_infos, left, &right)
                 }
 
-                let AssignmentContent::AugAssign(target, ..) = assignment.unpack() else {
-                    unreachable!()
-                };
                 let n = NodeRef::new(self.file, right_side.index());
                 self.assign_single_target(target, n, &result, AssignKind::AugAssign, |index, _| {
                     // There is no need to save this, because it's never used
