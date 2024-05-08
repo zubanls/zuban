@@ -1502,12 +1502,21 @@ pub struct DiagnosticConfig {
 impl DiagnosticConfig {
     pub(crate) fn should_be_reported(&self, project: &PythonProject, type_: &IssueKind) -> bool {
         if !project.flags.disabled_error_codes.is_empty() {
-            if let Some(code) = type_.mypy_error_code() {
-                if project.flags.disabled_error_codes.iter().any(|c| c == code)
-                    && !project.flags.enabled_error_codes.iter().any(|c| c == code)
-                {
-                    return false;
+            let should_not_report = |code| {
+                if let Some(code) = code {
+                    if project.flags.disabled_error_codes.iter().any(|c| c == code)
+                        && !project.flags.enabled_error_codes.iter().any(|c| c == code)
+                    {
+                        return true;
+                    }
                 }
+                false
+            };
+            if should_not_report(type_.mypy_error_code()) {
+                return false;
+            }
+            if should_not_report(type_.mypy_error_supercode()) {
+                return false;
             }
         }
         match type_ {

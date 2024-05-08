@@ -1707,8 +1707,6 @@ testSerializeIgnoredInvalidType
 # bad type: ignore
 testErrorCodeBadIgnore
 testErrorCodeBadIgnoreNoExtraComment
-# --disable-error-code
-testMethodAssignCoveredByAssignmentFlag
 # --warn-unused-ignores
 # "Unused "type: ignore" comment"
 testErrorCodeWarnUnusedIgnores1
