@@ -1422,13 +1422,6 @@ testAsyncWithOutsideCoroutine
 
 # "Name "C" is used before definition"
 testBanPathologicalRecursiveTuples
-# used before definition regressions
-testImplicitMethodSignature
-testImplicitInheritedMethod
-testStrictEqualityWithRecursiveListTypes
-testParamSpecInTypeAliasRecursive
-testVariadicAliasRecursiveUnpack
-testArgumentInitializers
 # --enable-error-code possibly-undefined "Name "x" may be undefined"
 testPossiblyUndefinedWithAssignmentExpr
 # undefined += 1 where undefined is a NameError
