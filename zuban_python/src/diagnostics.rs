@@ -31,6 +31,7 @@ pub(crate) enum IssueKind {
     IncompatibleDefaultArgument{ argument_name: Box<str>, got: Box<str>, expected: Box<str> },
     InvalidCastTarget,
     IncompatibleReturn { got: Box<str>, expected: Box<str> },
+    ReturnValueExpected,
     IncompatibleTypes { cause: &'static str, got: Box<str>, expected: Box<str> },
     DoesNotReturnAValue(Box<str>),
     InvalidGeneratorReturnType,
@@ -379,7 +380,7 @@ impl IssueKind {
             ArgumentTypeIssue(_) | SuperArgument1MustBeTypeObject => "arg-type",
             ArgumentIssue { .. } | TooManyArguments { .. } | TooFewArguments { .. } => "call-arg",
             InvalidType(_) => "valid-type",
-            IncompatibleReturn { .. } => "return-value",
+            IncompatibleReturn { .. } | ReturnValueExpected => "return-value",
             IncompatibleDefaultArgument { .. }
             | IncompatibleAssignment { .. }
             | IncompatibleAssignmentInSubclass { .. }
@@ -610,6 +611,7 @@ impl<'db> Diagnostic<'db> {
             IncompatibleReturn{got, expected} => {
                 format!("Incompatible return value type (got {got:?}, expected {expected:?})")
             }
+            ReturnValueExpected => "Return value expected".to_string(),
             IncompatibleTypes{cause, got, expected} => {
                 format!(r#"Incompatible types in {cause} (actual type "{got}", expected type "{expected}")"#)
             }

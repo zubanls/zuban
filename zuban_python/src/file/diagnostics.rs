@@ -1086,8 +1086,10 @@ impl<'db> Inference<'db, '_, '_> {
                 } else if let Some(star_expressions) = return_stmt.star_expressions() {
                     if func.is_generator() {
                         if func.is_async() {
-                            NodeRef::new(self.file, star_expressions.index())
-                                .add_issue(i_s, IssueKind::ReturnInAsyncGenerator);
+                            self.add_issue(
+                                star_expressions.index(),
+                                IssueKind::ReturnInAsyncGenerator,
+                            );
                             return;
                         } else {
                             t = Cow::Owned(
@@ -1104,8 +1106,8 @@ impl<'db> Inference<'db, '_, '_> {
                         && t.as_ref() != &i_s.db.python_state.object_type()
                         && !t.is_any_or_any_in_union(i_s.db)
                     {
-                        NodeRef::new(self.file, star_expressions.index()).add_issue(
-                            i_s,
+                        self.add_issue(
+                            star_expressions.index(),
                             IssueKind::ReturnedAnyWarning {
                                 expected: t.format_short(i_s.db),
                             },
@@ -1114,13 +1116,14 @@ impl<'db> Inference<'db, '_, '_> {
                     t.error_if_not_matches(
                         i_s,
                         &inf,
-                        |issue| {
-                            NodeRef::new(self.file, star_expressions.index()).add_issue(i_s, issue)
-                        },
+                        |issue| self.add_issue(star_expressions.index(), issue),
                         |got, expected| Some(IssueKind::IncompatibleReturn { got, expected }),
                     );
-                } else {
-                    debug!("TODO what about an implicit None?");
+                } else if !t
+                    .iter_with_unpacked_unions(self.i_s.db)
+                    .any(|t| matches!(t, Type::None | Type::Any(_)))
+                {
+                    self.add_issue(return_stmt.index(), IssueKind::ReturnValueExpected);
                 }
             } else {
                 if let Some(star_expressions) = return_stmt.star_expressions() {
@@ -1146,8 +1149,7 @@ impl<'db> Inference<'db, '_, '_> {
         let element = if is_async {
             await_aiter_and_next(self.i_s, inf, from)
         } else {
-            inf.iter(self.i_s, NodeRef::new(self.file, star_exprs.index()))
-                .infer_all(self.i_s)
+            inf.iter(self.i_s, from).infer_all(self.i_s)
         };
         debug!("For loop input: {}", element.format_short(self.i_s));
         self.assign_targets(star_targets.as_target(), element, from, AssignKind::Normal);
