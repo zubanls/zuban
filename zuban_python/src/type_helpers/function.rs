@@ -2,8 +2,9 @@ use std::{borrow::Cow, cell::Cell, fmt, rc::Rc};
 
 use parsa_python_cst::{
     BlockContent, Decorated, Decorator, ExpressionContent, ExpressionPart, FunctionDef,
-    FunctionParent, NodeIndex, Param as CSTParam, ParamAnnotation, ParamKind, PrimaryContent,
-    PrimaryOrAtom, ReturnAnnotation, ReturnOrYield, SimpleStmt, SimpleStmtContent, StmtOrError,
+    FunctionParent, NodeIndex, Param as CSTParam, ParamAnnotation, ParamIterator, ParamKind,
+    PrimaryContent, PrimaryOrAtom, ReturnAnnotation, ReturnOrYield, SimpleStmt, SimpleStmtContent,
+    StmtOrError,
 };
 
 use crate::{
@@ -97,13 +98,23 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         })
     }
 
-    pub fn is_missing_param_annotations(&self, i_s: &InferenceState) -> bool {
+    fn iter_non_self_args(&self, i_s: &InferenceState) -> ParamIterator<'a> {
         let mut iterator = self.node().params().iter();
         if self.class.is_some() && self.kind(i_s) != FunctionKind::Staticmethod {
             // The param annotation is defined implicitly as Self or Type[Self]
             iterator.next();
         }
-        iterator.any(|p| p.annotation().is_none())
+        iterator
+    }
+
+    pub fn is_missing_param_annotations(&self, i_s: &InferenceState) -> bool {
+        self.iter_non_self_args(i_s)
+            .any(|p| p.annotation().is_none())
+    }
+
+    pub fn might_be_missing_none_return_annotation(&self, i_s: &InferenceState) -> bool {
+        dbg!(self.iter_return_or_yield().next().is_none())
+            && dbg!(self.iter_non_self_args(i_s).next().is_none())
     }
 
     pub fn has_trivial_body(&self, i_s: &InferenceState) -> bool {

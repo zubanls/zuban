@@ -339,7 +339,7 @@ pub(crate) enum IssueKind {
 
     // From --disallow-untyped-defs
     FunctionIsDynamic,
-    FunctionMissingReturnAnnotation, // Also from --disallow-incomplete-defs
+    FunctionMissingReturnAnnotation { hint_return_none: bool }, // Also from --disallow-incomplete-defs
     FunctionMissingParamAnnotations, // Also from --disallow-incomplete-defs
 
     CallToUntypedFunction { name: Box<str> }, // From --disallow-untyped-calls
@@ -416,7 +416,7 @@ impl IssueKind {
             | ReturnTypeIncompatibleWithSupertype { .. } => "override",
             IncorrectExitReturn => "exit-return",
             FunctionIsDynamic
-            | FunctionMissingReturnAnnotation
+            | FunctionMissingReturnAnnotation { .. }
             | FunctionMissingParamAnnotations => "no-untyped-def",
             DoesNotReturnAValue(_) => "func-returns-value",
             CallToUntypedFunction { .. } => "no-untyped-call",
@@ -884,8 +884,12 @@ impl<'db> Diagnostic<'db> {
             ),
 
             FunctionIsDynamic => "Function is missing a type annotation".to_string(),
-            FunctionMissingReturnAnnotation =>
-                "Function is missing a return type annotation".to_string(),
+            FunctionMissingReturnAnnotation { hint_return_none } => {
+                if *hint_return_none {
+                    additional_notes.push(r#"Use "-> None" if function does not return a value"#.into());
+                }
+                "Function is missing a return type annotation".to_string()
+            }
             FunctionMissingParamAnnotations =>
                 "Function is missing a type annotation for one or more arguments".to_string(),
             CallToUntypedFunction{name} => format!(

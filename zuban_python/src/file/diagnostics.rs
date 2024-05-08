@@ -898,9 +898,12 @@ impl<'db> Inference<'db, '_, '_> {
                 }
             }
         } else if flags.disallow_incomplete_defs {
-            function
-                .node_ref
-                .add_issue(i_s, IssueKind::FunctionMissingReturnAnnotation);
+            function.add_issue_for_declaration(
+                i_s,
+                IssueKind::FunctionMissingReturnAnnotation {
+                    hint_return_none: false,
+                },
+            )
         }
 
         let is_dynamic = function.is_dynamic();
@@ -922,8 +925,14 @@ impl<'db> Inference<'db, '_, '_> {
                 }
                 (true, false) => function
                     .add_issue_for_declaration(i_s, IssueKind::FunctionMissingParamAnnotations),
-                (false, true) => function
-                    .add_issue_for_declaration(i_s, IssueKind::FunctionMissingReturnAnnotation),
+                (false, true) => {
+                    function.add_issue_for_declaration(
+                        i_s,
+                        IssueKind::FunctionMissingReturnAnnotation {
+                            hint_return_none: function.might_be_missing_none_return_annotation(i_s),
+                        },
+                    );
+                }
                 (false, false) => (),
             }
         }

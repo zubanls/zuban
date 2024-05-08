@@ -34,3 +34,12 @@ from typing import cast
 x: list[int]
 cast(list[int], x) # E: Redundant cast to "list[int]"
 cast(list[Any], x)
+
+[case unannotated_return_in_method_with_disallow_untyped_defs]
+# flags: --disallow-untyped-defs
+# Like testUnannotatedReturnWithOnlySelfArgument, but fixed with context
+class Foo:
+    def f(self): pass
+[out]
+main:4: error: Function is missing a return type annotation
+main:4: note: Use "-> None" if function does not return a value

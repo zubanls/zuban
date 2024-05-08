@@ -1493,11 +1493,6 @@ testUnreachableWithStdlibContextManagers
 testNoReturn
 testNoReturnWhile
 testNoReturnExcept
-# "Use "-> None" if function does not return a value"
-testDecoratedFunctionLine
-testUntypedDef
-testUnannotatedReturnWithOnlySelfArgument
-testUntypedAsyncDef
 
 # The type "Type[type]" is not generic and not indexable
 testTypeApplicationCrash
@@ -2022,6 +2017,7 @@ check-possibly-undefined:testTryElse
 check-possibly-undefined:testDictComprehension
 check-possibly-undefined:testUntypedDefCheckUntypedDefs
 check-possibly-undefined:testClassBody
+check-possibly-undefined:testUntypedDef
 
 # `for ... in` type comment
 testRefreshForWithTypeComment1
