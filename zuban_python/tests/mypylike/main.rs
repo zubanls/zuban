@@ -9,10 +9,9 @@ use std::{
 use regex::{Captures, Regex, Replacer};
 use zuban_python::{DiagnosticConfig, Project, ProjectOptions, PythonVersion, TypeCheckerFlags};
 
-const SKIP_MYPY_TEST_FILES: [&str; 31] = [
+const SKIP_MYPY_TEST_FILES: [&str; 30] = [
     // Narrowing tests
     "check-redefine.test",
-    "check-possibly-undefined.test",
     "check-callable.test",
     // Python special features
     "check-formatting.test",

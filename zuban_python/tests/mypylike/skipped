@@ -1422,8 +1422,42 @@ testAsyncWithOutsideCoroutine
 
 # "Name "C" is used before definition"
 testBanPathologicalRecursiveTuples
+testDefinedDifferentBranchUsedBeforeDef
+testUsedBeforeDefBuiltinsGlobal
+testUsedBeforeDefBuiltinsMultipass
+testUsedBeforeDefImplicitModuleAttrs
 # --enable-error-code possibly-undefined "Name "x" may be undefined"
 testPossiblyUndefinedWithAssignmentExpr
+testDefinedInOneBranch
+testElif
+testUsedInIf
+testOmittedElse
+testUpdatedInIf
+testNestedIf
+testVeryNestedIf
+testTupleUnpack
+testIndexExpr
+testFunction
+testLambda
+testUsedBeforeDefClass
+testGenerator
+testScope
+testVarFromOuterScopeRedefined
+testWhile
+testForLoop
+testReturn
+testPossiblyUndefinedLoop
+testAssert
+testRaise
+testContinue
+testBreak
+testTryBasic
+testTryMultiExcept
+testTryFinally
+testTryElse
+testDictComprehension
+testUntypedDefCheckUntypedDefs
+testClassBody
 
 # Redefinition (Name "X" already defined on line X)
 testRedefineVariableAsTypevar
@@ -1588,6 +1622,7 @@ testNonePartialType1
 testNonePartialType2
 testNonePartialType3
 testNonePartialType4
+testVarDefinedInOuterScopeUpdated
 
 # Nonlocal
 testInvalidNonlocalDecl
@@ -1600,6 +1635,7 @@ testNewAnalyzerRedefinedNonlocal
 testTypeOfOuterMostNonlocalUsed
 testTypeOfNonlocalUsed
 testLocalPartialTypesWithNestedFunction3
+testNonlocalVar
 
 # __init__ None needed
 testInitReturnTypeError
