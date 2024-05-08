@@ -665,7 +665,7 @@ fn main() {
             }
             if skipped
                 .iter()
-                .any(|s| s.is_skip(&case.name) && !filters.contains(&case.name))
+                .any(|s| s.is_skip(case.file_name, &case.name) && !filters.contains(&case.name))
             {
                 println!("Skipped: {}", case.name);
                 full_count += 1;
@@ -768,12 +768,18 @@ fn find_mypy_style_files() -> Vec<(bool, PathBuf)> {
 #[derive(Debug)]
 struct Skipped {
     name: String,
+    only_for_file: Option<String>,
     start_star: bool,
     end_star: bool,
 }
 
 impl Skipped {
-    fn is_skip(&self, name: &str) -> bool {
+    fn is_skip(&self, file_name: &str, name: &str) -> bool {
+        if let Some(only_for_file) = self.only_for_file.as_ref() {
+            if file_name != only_for_file {
+                return false;
+            }
+        }
         if self.start_star && self.end_star {
             name.contains(&self.name)
         } else if self.start_star {
@@ -793,6 +799,7 @@ fn skipped() -> Box<[Skipped]> {
 
     file.trim()
         .split('\n')
+        .filter(|line| !line.starts_with("#"))
         .map(|mut x| {
             let start_star = x.starts_with('*');
             let end_star = x.ends_with('*');
@@ -802,8 +809,18 @@ fn skipped() -> Box<[Skipped]> {
             if end_star {
                 x = &x[..x.len() - 1]
             }
+            let mut split_by_colon = x.split(":");
+            let first = split_by_colon.next().unwrap();
+            let mut only_for_file = None;
+            if let Some(rest) = split_by_colon.next() {
+                assert_eq!(split_by_colon.next(), None);
+                only_for_file = Some(first.into());
+                x = rest;
+            }
+
             Skipped {
                 name: x.to_owned(),
+                only_for_file,
                 start_star,
                 end_star,
             }
