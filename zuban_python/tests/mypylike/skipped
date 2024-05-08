@@ -65,9 +65,6 @@ testSuperWithNew
 testSuperNew
 testMetaclassAndSuper
 
-# Flakey in --release
-testReturnInIterator
-
 # Uses function context but is in fact in module context
 testFunctionForwardRefAlias
 # Remove Mode from inference_state
@@ -1503,9 +1500,6 @@ testUntypedDef
 testUnannotatedReturnWithOnlySelfArgument
 testUntypedAsyncDef
 
-# "Cannot call function of unknown type"
-testUnknownFunctionNotCallable
-
 # "Return value expected"
 testReturnWithoutAValue
 testEmptyReturnInGenerator
@@ -1516,6 +1510,7 @@ testAsyncDefReturnWithoutValue
 # "No return value expected"
 testNonEmptyReturnInNoneTypedGenerator
 testErrorCodeReturnValueNotExpected
+testReturnInIterator
 
 # The type "Type[type]" is not generic and not indexable
 testTypeApplicationCrash

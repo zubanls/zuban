@@ -387,7 +387,7 @@ fn common_params_by_iterable<'x>(
         }
         Some(CallableParams::Simple(new_params.into()))
     } else {
-        todo!()
+        None
     }
 }
 
