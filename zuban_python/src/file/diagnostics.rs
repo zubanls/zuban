@@ -1099,26 +1099,35 @@ impl<'db> Inference<'db, '_, '_> {
                         );
                     }
                 }
-                if let Some(star_expressions) = return_stmt.star_expressions() {
-                    let inf = self
-                        .infer_star_expressions(star_expressions, &mut ResultContext::Known(&t));
+                if let Some(star_exprs) = return_stmt.star_expressions() {
+                    let inf =
+                        self.infer_star_expressions(star_exprs, &mut ResultContext::Known(&t));
                     if i_s.db.project.flags.warn_return_any
-                        && matches!(inf.as_cow_type(i_s).as_ref(), Type::Any(_))
+                        && inf.as_cow_type(i_s).is_any()
                         && t.as_ref() != &i_s.db.python_state.object_type()
                         && !t.is_any_or_any_in_union(i_s.db)
                     {
                         self.add_issue(
-                            star_expressions.index(),
+                            star_exprs.index(),
                             IssueKind::ReturnedAnyWarning {
                                 expected: t.format_short(i_s.db),
                             },
                         )
                     }
+
                     t.error_if_not_matches(
                         i_s,
                         &inf,
-                        |issue| self.add_issue(star_expressions.index(), issue),
-                        |got, expected| Some(IssueKind::IncompatibleReturn { got, expected }),
+                        |issue| self.add_issue(star_exprs.index(), issue),
+                        |got, expected| {
+                            Some({
+                                if matches!(t.as_ref(), Type::None) {
+                                    IssueKind::NoReturnValueExpected
+                                } else {
+                                    IssueKind::IncompatibleReturn { got, expected }
+                                }
+                            })
+                        },
                     );
                 } else if !t
                     .iter_with_unpacked_unions(self.i_s.db)
@@ -1127,8 +1136,8 @@ impl<'db> Inference<'db, '_, '_> {
                     self.add_issue(return_stmt.index(), IssueKind::ReturnValueExpected);
                 }
             } else {
-                if let Some(star_expressions) = return_stmt.star_expressions() {
-                    self.infer_star_expressions(star_expressions, &mut ResultContext::Unknown);
+                if let Some(star_exprs) = return_stmt.star_expressions() {
+                    self.infer_star_expressions(star_exprs, &mut ResultContext::Unknown);
                 }
             }
         }

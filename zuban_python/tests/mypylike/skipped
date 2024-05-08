@@ -26,7 +26,6 @@ testUnpackNewSyntaxInvalidCallableAlias
 testYieldFromUnionOfGenerators
 testYieldFromInvalidUnionReturn
 testYieldFromUnionOfGeneratorWithIterableStr
-testYieldIteratorReturn
 testAliasToCallableWithUnpackInvalid
 
 # 3.12 type var syntax
@@ -1499,11 +1498,6 @@ testDecoratedFunctionLine
 testUntypedDef
 testUnannotatedReturnWithOnlySelfArgument
 testUntypedAsyncDef
-
-# "No return value expected"
-testNonEmptyReturnInNoneTypedGenerator
-testErrorCodeReturnValueNotExpected
-testReturnInIterator
 
 # The type "Type[type]" is not generic and not indexable
 testTypeApplicationCrash
