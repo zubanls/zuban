@@ -98,6 +98,23 @@ testOverloadVarargsSelection
 testTypeVarTupleOverloadMatch
 # overload x should be preferred over an *x alternative
 testTupleOverloadZipAny
+# - Overload does not consistently use the "@classmethod" decorator on all function signatures
+# - Overload does not consistently use the "@staticmethod" decorator on all function signatures
+testOverloadWithInconsistentStaticMethods
+# - Condition cannot be inferred, unable to merge overloads
+testOverloadIf*
+# Overloads are detected in name binder (imports can not be there)
+testVeryBrokenOverload
+testVeryBrokenOverload2
+# - The implementation for an overloaded function must come last
+testInconsistentOverload
+testInconsistentOverload2
+# Non consecutive overloads
+testNonconsecutiveOverloads
+testNonconsecutiveOverloadsMissingFirstOverload
+testNonconsecutiveOverloadsMissingLaterOverload
+# Overload needs type var matcher probably (and maybe also overlapping)
+overload_class_type_var_implementation_match_and_mismatch
 
 # Union/addition of empty lists dicts sets with used ones
 testOrOperationWithGenericOperands
@@ -491,13 +508,6 @@ testTypedDictWith__or__method_error
 testTypedDictWith__ror__method
 testTypedDictWith__ior__method
 
-# typing.no_type_check
-testNoTypeCheckDecoratorOnMethod1
-testNoTypeCheckDecoratorOnMethod2
-testCallingNoTypeCheckFunction
-testCallingNoTypeCheckFunction2
-testNoTypeCheckDecoratorSemanticError
-
 # Protocol NamedTuple field issues
 testTypingNamedTupleAttributesAreReadOnly
 testNamedTupleWithNoArgsCallableField
@@ -565,31 +575,6 @@ testSixMetaclassGenericBase
 testIgnoreInsideClassDoesntAffectWhole
 # import of typeshed stubs
 testErrorFromGoogleCloud
-
-# ctypes
-testCtypesArrayStandardElementType
-testCtypesArrayCustomElementType
-testCtypesArrayUnionElementType
-testCtypesCharArrayAttrs
-testCtypesWcharArrayAttrs
-testCtypesCharUnionArrayAttrs
-testCtypesAnyUnionArrayAttrs
-testCtypesOtherUnionArrayAttrs
-testCtypesOtherArrayAttrs
-
-# singledispatch
-testIncorrectDispatchArgumentWhenDoesntMatchFallback
-testCheckNonDispatchArgumentsWithTypeAlwaysTheSame
-testImplementationHasSameDispatchTypeAsFallback-xfail
-testRegisterHasDifferentTypeThanTypeSignature-xfail
-testTypePassedAsArgumentToRegister
-testCustomClassPassedAsTypeToRegister
-testOnePartOfUnionDoesNotHaveCorrespondingImplementation
-testIncorrectArgumentsInSingledispatchFunctionDefinition
-testDispatchTypeIsNotASubtypeOfFallbackFirstArgument
-testAnyInConstructorArgsWithClassPassedToRegister
-testIncorrectArgumentTypeWhenCallingRegisteredImplDirectly
-testDontCrashWhenRegisteringAfterError
 
 # Override import cached files like typing types builtins etc.
 testNoCrashDoubleReexportFunctionEmpty
@@ -687,6 +672,45 @@ testNoImplicitReexport
 testNoImplicitReexportRespectsAll
 testNoImplicitReexportGetAttr
 textNoImplicitReexportSuggestions
+
+# "Incompatible import of "y" (imported name has type "str", local name has type "int")"
+testAssignAndConditionalImport
+testAssignAndConditionalStarImport
+testImportedVariableViaImport
+
+# Unsupported class scoped import
+testClassScopeImports
+testClassScopeImportModule
+testClassScopeImportAlias
+testClassScopeImportModuleStar
+testClassScopeImportFunctionNested
+testClassScopeImportUndefined
+testClassScopeImportWithFollowImports
+testClassScopeImportVarious
+testClassScopeImportWithError
+testClassScopeImportWithWrapperAndError
+testImportInClassBody
+testOverrideByBadVarClass
+testOverrideByBadVarClassAlias
+testIncrementalSilentImportsAndImportsInClass
+testImportStarAddMissingDependencyWithinClass
+
+# namespace multiple packages
+testTypedPkgSimple
+testTypedPkg_args_nositepackages
+testTypedPkgStubs
+testStubPrecedence
+testTypedPkgSimpleEgg
+testTypedPkgSimpleEditable
+testTypedPkgSimpleEditableEgg
+testTypedPkgNamespaceImportFrom
+testTypedPkgNamespaceImportAs
+testTypedPkgNamespaceRegImport
+testTypedPkgNamespaceRegFromImportTwice
+testNamespacePkgWStubs
+testNamespacePkgWStubsWithNamespacePackagesFlag
+testTypedPkgNamespaceRegFromImportTwiceMissing
+testTypedPkgNamespaceRegFromImportTwiceMissing2
 
 # Metaclass descriptor
 metaclass_descriptor
@@ -792,15 +816,6 @@ testProtocolClassObjectClassVarRejected
 testClassVarWithoutArguments
 testIncrementalClassVar
 
-# "Maybe you forgot to use "await"?"
-testErrorOneLessFutureInReturnType
-testAwaitMissingNote
-testAsyncForErrorNote
-
-# None as a default for class variables, even if not optional?
-testNoneClassVariableInInit
-testMultipleAssignmentNoneClassVariableInInit
-
 # More information needed
 # "Read-only property cannot override read-write property"
 testDataclassIncompatibleOverrides
@@ -840,10 +855,6 @@ testNewNamedTupleIllegalNames
 testNamedTupleFallback
 testNamedTupleIncompatibleRedefinition
 
-# Dynamic functions are ignored in classes and the super class is used?
-testInferringTypesFromIterable
-testMultipleAssignmentAndGenericSubtyping
-
 # __init_subclass__
 testOverride__init_subclass__WithDifferentSignature
 testInitSubclassWrongType
@@ -864,30 +875,6 @@ testAccessingInit
 testDecoratedConstructors
 # "Unsupported decorated constructor type"
 testDecoratedConstructorsBad
-
-# "Cannot assign to a type"
-testAssignToNestedClassViaClass
-testAssignToTypeDef
-
-# Unsupported class scoped import
-testClassScopeImports
-testClassScopeImportModule
-testClassScopeImportAlias
-testClassScopeImportModuleStar
-testClassScopeImportFunctionNested
-testClassScopeImportUndefined
-testClassScopeImportWithFollowImports
-testClassScopeImportVarious
-testClassScopeImportWithError
-testClassScopeImportWithWrapperAndError
-testImportInClassBody
-testOverrideByBadVarClass
-testOverrideByBadVarClassAlias
-testIncrementalSilentImportsAndImportsInClass
-testImportStarAddMissingDependencyWithinClass
-
-# OrderedDict = _Alias()
-testTypingExtensionsOrderedDictAlias
 
 # TypeVar Values in func
 testErrorCodeInvalidTypeArg
@@ -931,24 +918,6 @@ testTypeCheckOverloadImplementationTypeVarWithValueRestriction
 testOperatorContainsNarrowsTypedDicts_total
 testUnreachableFlagWithGenerics
 testNarrowOnSelfInGeneric
-
-# - Overload does not consistently use the "@classmethod" decorator on all function signatures
-# - Overload does not consistently use the "@staticmethod" decorator on all function signatures
-testOverloadWithInconsistentStaticMethods
-# - Condition cannot be inferred, unable to merge overloads
-testOverloadIf*
-# Overloads are detected in name binder (imports can not be there)
-testVeryBrokenOverload
-testVeryBrokenOverload2
-# - The implementation for an overloaded function must come last
-testInconsistentOverload
-testInconsistentOverload2
-# Non consecutive overloads
-testNonconsecutiveOverloads
-testNonconsecutiveOverloadsMissingFirstOverload
-testNonconsecutiveOverloadsMissingLaterOverload
-# Overload needs type var matcher probably (and maybe also overlapping)
-overload_class_type_var_implementation_match_and_mismatch
 
 # @final
 testFinalAddFinalMethodOverrideFine
@@ -1361,19 +1330,9 @@ testPartiallyInitializedToNoneAndThenToIncompleteType-skip
 testLiteralFinalErasureInMutableDatastructures2
 # error formatting?
 testMultipassAndPartialTypes4
-
-# Never not rewritten to Any for "Need type annotation for "X""
-testNewAnalyzerLessErrorsNeedAnnotationNested
-testUnderspecifiedInferenceResult
-testNeedAnnotationForCallable
-testTypeVarDefaultsClass1
-testTypeVarDefaultsClass2
-testTypeVarDefaultsClass3
-# "Perhaps you need a type annotation for "x"? Suggestion: "List[str | int]""
-testInferredTypeSubTypeOfReturnType
-# --disallow-any-generics
-testDisallowAnyGenericsForAliasesInRuntimeContext
-testGenericTypedDictAlias
+# None as a default for class variables, even if not optional?
+testNoneClassVariableInInit
+testMultipleAssignmentNoneClassVariableInInit
 
 # Function local self attribute name binding
 testOptionalDescriptorsBinder
@@ -1406,58 +1365,12 @@ testSetDescriptorOnClass
 testUseSupertypeAsInferenceContextConflict
 # supertype context regressions
 testNoneAnyFallbackDescriptor
-
 # "NamedTuple type as an attribute is not supported"
 testAssignNamedTupleAsAttribute
 testNoCrashUnsupportedNamedTuple
-
-# "Incompatible import of "y" (imported name has type "str", local name has type "int")"
-testAssignAndConditionalImport
-testAssignAndConditionalStarImport
-testImportedVariableViaImport
-
-# ""async for" outside async function"
-testAsyncForOutsideCoroutine
-testAsyncWithOutsideCoroutine
-
-# "Name "C" is used before definition"
-testBanPathologicalRecursiveTuples
-testDefinedDifferentBranchUsedBeforeDef
-testUsedBeforeDefBuiltinsGlobal
-testUsedBeforeDefBuiltinsMultipass
-testUsedBeforeDefImplicitModuleAttrs
-# --enable-error-code possibly-undefined "Name "x" may be undefined"
-testPossiblyUndefinedWithAssignmentExpr
-check-possibly-undefined:testDefinedInOneBranch
-check-possibly-undefined:testElif
-check-possibly-undefined:testUsedInIf
-check-possibly-undefined:testOmittedElse
-check-possibly-undefined:testUpdatedInIf
-check-possibly-undefined:testNestedIf
-check-possibly-undefined:testVeryNestedIf
-check-possibly-undefined:testTupleUnpack
-check-possibly-undefined:testIndexExpr
-check-possibly-undefined:testFunction
-check-possibly-undefined:testLambda
-check-possibly-undefined:testUsedBeforeDefClass
-check-possibly-undefined:testGenerator
-check-possibly-undefined:testScope
-check-possibly-undefined:testVarFromOuterScopeRedefined
-check-possibly-undefined:testWhile
-check-possibly-undefined:testForLoop
-check-possibly-undefined:testReturn
-check-possibly-undefined:testPossiblyUndefinedLoop
-check-possibly-undefined:testAssert
-check-possibly-undefined:testRaise
-check-possibly-undefined:testContinue
-check-possibly-undefined:testBreak
-check-possibly-undefined:testTryBasic
-check-possibly-undefined:testTryMultiExcept
-check-possibly-undefined:testTryFinally
-check-possibly-undefined:testTryElse
-check-possibly-undefined:testDictComprehension
-check-possibly-undefined:testUntypedDefCheckUntypedDefs
-check-possibly-undefined:testClassBody
+# Dynamic functions are ignored in classes and the super class is used?
+testInferringTypesFromIterable
+testMultipleAssignmentAndGenericSubtyping
 
 # Redefinition (Name "X" already defined on line X)
 testRedefineVariableAsTypevar
@@ -1500,6 +1413,9 @@ testAliasesInClassBodyNormalVsSubscripted
 # Mypy treats a None partial that is then assigned to a function as the function?? Wrong?
 testRedefineFunctionDefinedAsVariableInitializedToNone
 testRedefineNestedFunctionDefinedAsVariableInitializedToNone
+# "Cannot assign to a type"
+testAssignToNestedClassViaClass
+testAssignToTypeDef
 
 # "Value of type "A" must be used"
 # "Value of type "Coroutine[Any, Any, None]" must be used"
@@ -1512,6 +1428,13 @@ testAsyncGeneratorExpressionAwait
 testAsyncForComprehension
 # Crazy types.coroutine types
 testFullCoroutineMatrix
+# ""async for" outside async function"
+testAsyncForOutsideCoroutine
+testAsyncWithOutsideCoroutine
+# "Maybe you forgot to use "await"?"
+testErrorOneLessFutureInReturnType
+testAwaitMissingNote
+testAsyncForErrorNote
 
 # "Trying to read deleted variable "Foo""
 testDelStmtWithTypeInfo
@@ -1603,12 +1526,6 @@ testTypeEquivalentTypeAny2
 # Type[Any] is object
 testSimplifyingUnionWithTypeTypes2
 
-# typing.assert_type in untyped functions
-testAssertTypeUncheckedFunction
-testAssertTypeUncheckedFunctionWithUntypedCheck
-# function type mismatch when untyped
-testSubtypingFunctionsImplicitNames
-
 # Global
 testAssignToFuncDefViaGlobalDecl2
 testTypeOfGlobalUsed
@@ -1639,15 +1556,6 @@ testNonlocalVar
 
 # __init__ None needed
 testInitReturnTypeError
-
-# attrs
-testAttrs*
-updateMagicField
-magicAttributeConsistency
-magicAttributeConsistency2-only_when_cache
-testDisallowIncompleteDefsAttrsNoAnnotations
-testDisallowIncompleteDefsAttrsWithAnnotations
-testDisallowIncompleteDefsAttrsPartialAnnotations
 
 # Special case for assignment to '_'
 testUnusedTargetLocal
@@ -1705,9 +1613,16 @@ testEllipsisDefaultArgValueInNonStubsMethods
 testOperatorMethodAgainstSameType
 testReturnAnyForNotImplementedInNormalMethods
 
-# Probably fixed eventually by updating mypy or typeshed
-testDecoratorTypeAfterReprocessing
+# typing.no_type_check
+testNoTypeCheckDecoratorOnMethod1
+testNoTypeCheckDecoratorOnMethod2
+testCallingNoTypeCheckFunction
+testCallingNoTypeCheckFunction2
+testNoTypeCheckDecoratorSemanticError
 
+# Mypy inline config https://mypy.readthedocs.io/en/stable/inline_config.html
+testOptionalIterator
+testNoneVsProtocol
 # type ignore whole module
 testIgnoreWholeModule2
 testIgnoreWholeModule3
@@ -1788,7 +1703,6 @@ testNoImplicitReexportPyProjectTOML
 testDisallowSubclassingAnyPyProjectTOML
 testNoImplicitOptionalPerModulePyProjectTOML
 testModuleGetattrInit10PyProjectTOML
-
 # mypy.ini
 testRefreshIgnoreErrors1
 testRefreshIgnoreErrors2
@@ -1828,22 +1742,6 @@ testPerModuleErrorCodes
 testPerModuleErrorCodesOverride
 testNoCrashFollowImportsForStubs
 testModuleGetattrInit10
-# Uses an environment variable in mypy.ini files=$MYPY_CONFIG_FILE_DIR/good.py
-testEnvvar_MYPY_CONFIG_FILE_DIR
-
-# Mypy plugins
-testChangedPluginsInvalidateCache
-testChangedPluginsInvalidateCache2
-testAddedPluginsInvalidateCache
-testRemovedPluginsInvalidateCache
-testPluginConfigData
-testIncrementalAddClassMethodPlugin
-testIncrementalAddOverloadedMethodPlugin
-
-# Mypy inline config https://mypy.readthedocs.io/en/stable/inline_config.html
-testOptionalIterator
-testNoneVsProtocol
-
 # strict optional with config file
 testNewAnalyzerTypeArgBoundCheckWithStrictOptional
 testNewAnalyzerTypeArgBoundCheckWithStrictOptionalPyProjectTOML
@@ -1852,16 +1750,8 @@ testPerFileStrictOptionalModuleOnly
 testPerFileStrictOptionalFunction
 testPerFileStrictOptionalMethod
 testStrictOptionalCovarianceCrossModule
-
-# mypy extensions
-testFlexibleAlias1
-testFlexibleAlias2
-testFlexibleAlias3
-
-# enable-error-code="redundant-self"
-# "Redundant "Self" annotation for the first method argument"
-testTypingSelfRedundantWarning
-testTypingSelfRedundantWarning_pep585
+# Uses an environment variable in mypy.ini files=$MYPY_CONFIG_FILE_DIR/good.py
+testEnvvar_MYPY_CONFIG_FILE_DIR
 
 # if right operand is Any, fallback to Any in operation
 testBinaryOperationsWithDynamicAsRightOperand
@@ -1896,70 +1786,37 @@ testNarrowingEqualityDisabledForCustomEqualityChain
 testNarrowingEqualityFlipFlop
 testInferFromEmptyListWhenUsingInWithStrictEquality
 
-# --show-column-numbers and tuple targets
-testColumnsAssignment
-# --show-error-end
-testCheckEndColumnPositions
-
 # "type ignore with error code is not supported for modules; use `# mypy: disable-error-code="whatever"`"
 testNoteAboutChangedTypedDictErrorCode
 testRecommendErrorCode
 testRecommendErrorCode2
 
-# --show-error-context
-testNewAnalyzerTypeArgBoundCheckWithContext
-testShowErrorContextFunction
-testShowErrorContextClass
-testShowErrorContextMember
-testShowErrorContextModule
-testShowErrorContextTopLevel
-testShowErrorContextFromHere
+# Never not rewritten to Any for "Need type annotation for "X""
+testNewAnalyzerLessErrorsNeedAnnotationNested
+testUnderspecifiedInferenceResult
+testNeedAnnotationForCallable
+testTypeVarDefaultsClass1
+testTypeVarDefaultsClass2
+testTypeVarDefaultsClass3
+# "Perhaps you need a type annotation for "x"? Suggestion: "List[str | int]""
+testInferredTypeSubTypeOfReturnType
+# --disallow-any-generics
+testDisallowAnyGenericsForAliasesInRuntimeContext
+testGenericTypedDictAlias
+
+# --show-column-numbers and tuple targets
+testColumnsAssignment
+# --show-error-end
+testCheckEndColumnPositions
 
 # --allow-untyped-globals
 testPermissiveAttributeOverride1
-
-# --allow-redefinition
-testStarLvalues
-testRenameGlobalVariable
-testNoRenameGlobalVariable
-testCannotRenameExternalVarWithinClass
-
-# --disallow-any-expr
-testDoNotLimitErrorVolumeIfNotImportErrors
-testDisallowAnyExprIncremental
-testDisallowAnyExprUnannotatedFunction
-testDisallowAnyExprSimple
-testDisallowAnyExprExplicitAnyParam
-testDisallowAnyExprAllowsAnyInCast
-testDisallowAnyExprAllowsAnyInVariableAssignmentWithExplicitTypeAnnotation
-testDisallowAnyExprGeneric
-
-# --disallow-any-unimported
-testErrorCodeAnyFromUnfollowedImport
-testDisallowImplicitTypesIgnoreMissingTypes
-testDisallowImplicitTypes
-testDisallowImplicitAnyVariableDefinition
-testDisallowImplicitAnyGeneric
-testDisallowImplicitAnyInherit
-testDisallowImplicitAnyAlias
-testDisallowImplicitAnyCast
-testDisallowImplicitAnyNamedTuple
-testDisallowImplicitAnyTypeVarConstraints
-testDisallowImplicitAnyNewType
-testDisallowImplicitAnyCallableAndTuple
-testDisallowImplicitAnySubclassingExplicitAny
-testDisallowImplicitAnyVarDeclaration
-testDisallowUnimportedAnyTypedDictSimple
-testDisallowUnimportedAnyTypedDictGeneric
-testNoCrashOnUnImportedAnyNotRequired
 
 # --disallow-untyped-decorators
 testDisallowUntypedDecoratorsUnresolvedDecorator
 
 # --disallow-untyped-calls
 testDisallowUntypedCallsArgType
-# --untyped-calls-exclude=bar.A
-testDisallowUntypedCallsAllowListFlags
 
 # --no-warn-no-return
 testNoWarnNoReturn
@@ -1969,6 +1826,141 @@ testOverloadsAndNoReturnNarrowTypeNoStrictOptional2
 testOverloadsAndNoReturnNarrowTypeWithStrictOptional2
 testOverloadsAndNoReturnNarrowTypeNoStrictOptional3
 testOverloadsAndNoReturnNarrowTypeWithStrictOptional3
+
+# --enable-error-code redundant-self
+# "Redundant "Self" annotation for the first method argument"
+testTypingSelfRedundantWarning
+testTypingSelfRedundantWarning_pep585
+# --enable-error-code redundant-expr
+# "If condition is always false"
+testRedundantExpressions
+# flags: --enable-error-code truthy-bool
+testTruthyBool
+testTruthyFunctions
+testTruthyIterable
+# flags: --disable-error-code truthy-bool
+testDisableEnableErrorCodesIncremental
+# --enable-error-code=unimported-reveal
+testUnimportedRevealType
+testUnimportedRevealTypePy311
+testUnimportedRevealTypeInUncheckedFunc
+testUnimportedRevealLocals
+# --enable-error-code explicit-override "Method "prop" is not using @override but is overriding a method in class "__main__.A""
+requireExplicitOverrideMethod
+requireExplicitOverrideProperty
+requireExplicitOverrideOverload
+requireExplicitOverrideMultipleInheritance
+
+# "Incompatible types in string interpolation (expression has type "str", placeholder has type "int")"
+testErrorCodeFormatCall
+
+# tuple type is not initializable (though it probably should)
+testTypeUsingTypeCErrorUnsupportedType
+testTypeUsingTypeCTuple
+
+# ""break" outside loop" for untyped functions
+testBreakOutsideLoop
+testNoCrashOnBreakOutsideLoopFunction
+testNoCrashOnBreakOutsideLoopClass
+testContinueOutsideLoop
+
+# - (with type vars) Overloaded function signatures 2 and 3 overlap with incompatible return types
+#testOverloadMultipleVarargDefinitionComplex
+#testOverloadPartialOverlapWithUnrestrictedTypeVar
+#testOverloadPartialOverlapWithUnrestrictedTypeVarNested
+#testOverloadedPartiallyOverlappingTypeVarsAndUnion
+# Overlapping general
+#testManyUnionsInOverload
+#testOverloadInferUnionReturnFunctionsWithKwargs
+#testOverloadWithOverlappingItemsAndAnyArgument5
+#testIntersectionTypesAndVarArgs
+#testLiteralInferredInOverloadContextWithTypevars
+#testLiteralSubtypeOverlap
+#testOverloadsAndNoneWithoutStrictOptional
+#testOverloadsAndNoneWithStrictOptional
+#testTypeTypeOverlapsWithObjectAndType
+#testTypeOverlapsWithObject
+#testAccessingGenericDescriptorFromInferredClass
+#testAccessingGenericDescriptorFromClass
+#testOverloadWithNonGenericDescriptorLookalike
+#testOverloadWithGenericDescriptor
+#testUnpackIterableClassWithOverloadedIter2
+testErrorCodeUnsafeOverloadError
+
+# ------------------- priority? tests -----------------------
+
+# typing.assert_type in untyped functions
+testAssertTypeUncheckedFunction
+testAssertTypeUncheckedFunctionWithUntypedCheck
+# function type mismatch when untyped
+testSubtypingFunctionsImplicitNames
+
+# Probably fixed eventually by updating mypy or typeshed
+testDecoratorTypeAfterReprocessing
+
+# attrs
+testAttrs*
+updateMagicField
+magicAttributeConsistency
+magicAttributeConsistency2-only_when_cache
+testDisallowIncompleteDefsAttrsNoAnnotations
+testDisallowIncompleteDefsAttrsWithAnnotations
+testDisallowIncompleteDefsAttrsPartialAnnotations
+
+# ctypes
+testCtypesArrayStandardElementType
+testCtypesArrayCustomElementType
+testCtypesArrayUnionElementType
+testCtypesCharArrayAttrs
+testCtypesWcharArrayAttrs
+testCtypesCharUnionArrayAttrs
+testCtypesAnyUnionArrayAttrs
+testCtypesOtherUnionArrayAttrs
+testCtypesOtherArrayAttrs
+
+# singledispatch
+testIncorrectDispatchArgumentWhenDoesntMatchFallback
+testCheckNonDispatchArgumentsWithTypeAlwaysTheSame
+testImplementationHasSameDispatchTypeAsFallback-xfail
+testRegisterHasDifferentTypeThanTypeSignature-xfail
+testTypePassedAsArgumentToRegister
+testCustomClassPassedAsTypeToRegister
+testOnePartOfUnionDoesNotHaveCorrespondingImplementation
+testIncorrectArgumentsInSingledispatchFunctionDefinition
+testDispatchTypeIsNotASubtypeOfFallbackFirstArgument
+testAnyInConstructorArgsWithClassPassedToRegister
+testIncorrectArgumentTypeWhenCallingRegisteredImplDirectly
+testDontCrashWhenRegisteringAfterError
+
+# OrderedDict = _Alias()
+testTypingExtensionsOrderedDictAlias
+
+# --enable-incomplete-feature=PreciseTupleTypes
+testTupleWithStarExpr2Precise
+testTupleWithStarExpr3Precise
+testVariadicTupleConcatenation
+testPackingVariadicTuplesHomogeneous
+testVariadicTupleContextNoCrash
+testVariadicTupleInTupleContext
+
+# Not all modules are checked in mypy: `# cmd: mypy -m m`
+testTypeCheckNamedModule4
+testTypeCheckNamedModule5
+testTypeCheckNamedModuleWithImportCycle
+testStubImportNonStubWhileSilent
+# cmd: mypy a.py
+testErrorInReAddedModule
+testFollowImportsNormalPackageInitFileStub
+# Not all modules are checked even in default mypy
+testPreferPackageOverFile
+testPreferPackageOverFile2
+testNotPreferPackageOverFileCase
+testFollowImportsNormalDeleteFile4
+testFollowImportsNormalDeleteFile5
+testFollowImportsNormalDeleteFile6
+testFollowImportsNormalDeleteFile7
+testSubmoduleMixingImportFromAndImport
+testSubmoduleImportFromDoesNotAddParents
 
 # --follow-imports=error
 testImportSuppressedWhileAlmostSilent
@@ -2008,117 +2000,73 @@ testFollowImportsSkip
 testSubclassingAnySilentImports
 testSubclassingAnySilentImports2
 
-# --no-strict-optional details
-testUnreachableWithStdlibContextManagersNoStrictOptional
-testNestedListExpressions
-testInitializationWithMultipleValues
-testNoneAndGenericTypesOverlapNoStrictOptional
-testNamedTupleAsConditionalStrictOptionalDisabled
+# ------------------- start of low-prio/won't do tests -----------------------
 
-# --no-namespace-packages
-testClassicNotPackage
-testPackageWithoutInitFile
-testDeletePackage4
-testDeletePackage5
-testDeletePackage6
+# "Name "C" is used before definition"
+testBanPathologicalRecursiveTuples
+testDefinedDifferentBranchUsedBeforeDef
+testUsedBeforeDefBuiltinsGlobal
+testUsedBeforeDefBuiltinsMultipass
+testUsedBeforeDefImplicitModuleAttrs
+# --enable-error-code possibly-undefined "Name "x" may be undefined"
+testPossiblyUndefinedWithAssignmentExpr
+check-possibly-undefined:testDefinedInOneBranch
+check-possibly-undefined:testElif
+check-possibly-undefined:testUsedInIf
+check-possibly-undefined:testOmittedElse
+check-possibly-undefined:testUpdatedInIf
+check-possibly-undefined:testNestedIf
+check-possibly-undefined:testVeryNestedIf
+check-possibly-undefined:testTupleUnpack
+check-possibly-undefined:testIndexExpr
+check-possibly-undefined:testFunction
+check-possibly-undefined:testLambda
+check-possibly-undefined:testUsedBeforeDefClass
+check-possibly-undefined:testGenerator
+check-possibly-undefined:testScope
+check-possibly-undefined:testVarFromOuterScopeRedefined
+check-possibly-undefined:testWhile
+check-possibly-undefined:testForLoop
+check-possibly-undefined:testReturn
+check-possibly-undefined:testPossiblyUndefinedLoop
+check-possibly-undefined:testAssert
+check-possibly-undefined:testRaise
+check-possibly-undefined:testContinue
+check-possibly-undefined:testBreak
+check-possibly-undefined:testTryBasic
+check-possibly-undefined:testTryMultiExcept
+check-possibly-undefined:testTryFinally
+check-possibly-undefined:testTryElse
+check-possibly-undefined:testDictComprehension
+check-possibly-undefined:testUntypedDefCheckUntypedDefs
+check-possibly-undefined:testClassBody
 
-# namespace multiple packages
-testTypedPkgSimple
-testTypedPkg_args_nositepackages
-testTypedPkgStubs
-testStubPrecedence
-testTypedPkgSimpleEgg
-testTypedPkgSimpleEditable
-testTypedPkgSimpleEditableEgg
-testTypedPkgNamespaceImportFrom
-testTypedPkgNamespaceImportAs
-testTypedPkgNamespaceRegImport
-testTypedPkgNamespaceRegFromImportTwice
-testNamespacePkgWStubs
-testNamespacePkgWStubsWithNamespacePackagesFlag
-testTypedPkgNamespaceRegFromImportTwiceMissing
-testTypedPkgNamespaceRegFromImportTwiceMissing2
+# `for ... in` type comment
+testRefreshForWithTypeComment1
+testRefreshForWithTypeComment2
+testForStatementTypeComments
+testForStatementMultipleTypeComments
+testForIndex
+testForIndexInClassBody
+testErrorCodeSyntaxError3
+testAsyncForTypeComments
+# with type comment
+testWithStmt
+testWithStmtInClassBody
+testWithStmtTypeComment
+testWithStmtTupleTypeComment
+testWithStmtComplexTypeComment
+testAsyncWithTypeComments
+testNewAnalyzerTypeArgBoundCheckDifferentNodes
+testForwardRefsInWithStatement
 
-# --enable-incomplete-feature=PreciseTupleTypes
-testTupleWithStarExpr2Precise
-testTupleWithStarExpr3Precise
-testVariadicTupleConcatenation
-testPackingVariadicTuplesHomogeneous
-testVariadicTupleContextNoCrash
-testVariadicTupleInTupleContext
-
-# --enable-error-code redundant-expr
-# "If condition is always false"
-testRedundantExpressions
-
-# flags: --enable-error-code truthy-bool
-testTruthyBool
-testTruthyFunctions
-testTruthyIterable
-# flags: --disable-error-code truthy-bool
-testDisableEnableErrorCodesIncremental
-
-# --disable-bytearray-promotion
-testDisableBytearrayPromotion
-# --disable-memoryview-promotion
-testDisableMemoryviewPromotion
-
-# --enable-error-code=unimported-reveal
-testUnimportedRevealType
-testUnimportedRevealTypePy311
-testUnimportedRevealTypeInUncheckedFunc
-testUnimportedRevealLocals
-
-# --enable-error-code explicit-override "Method "prop" is not using @override but is overriding a method in class "__main__.A""
-requireExplicitOverrideMethod
-requireExplicitOverrideProperty
-requireExplicitOverrideOverload
-requireExplicitOverrideMultipleInheritance
-
-# Not all modules are checked in mypy: `# cmd: mypy -m m`
-testTypeCheckNamedModule4
-testTypeCheckNamedModule5
-testTypeCheckNamedModuleWithImportCycle
-testStubImportNonStubWhileSilent
-# cmd: mypy a.py
-testErrorInReAddedModule
-testFollowImportsNormalPackageInitFileStub
-# Not all modules are checked even in default mypy
-testPreferPackageOverFile
-testPreferPackageOverFile2
-testNotPreferPackageOverFileCase
-testFollowImportsNormalDeleteFile4
-testFollowImportsNormalDeleteFile5
-testFollowImportsNormalDeleteFile6
-testFollowImportsNormalDeleteFile7
-testSubmoduleMixingImportFromAndImport
-testSubmoduleImportFromDoesNotAddParents
-
-# --soft-error-limit
-testLimitLegacyStubErrorVolume
-
-# --pretty
-testReprocessMethodShowSource
-testGenericTypeAliasesWithNestedArgs
-testPrettyMessageSorting
-testParseErrorShowSource
-testDictExpressionErrorLocations
-
-# --no-silence-site-packages
-testAddFileWhichImportsLibModuleWithErrors
-
-# "Incompatible types in string interpolation (expression has type "str", placeholder has type "int")"
-testErrorCodeFormatCall
-
-# tuple type is not initializable (though it probably should)
-testTypeUsingTypeCErrorUnsupportedType
-testTypeUsingTypeCTuple
-
-# ""break" outside loop" for untyped functions
-testBreakOutsideLoop
-testNoCrashOnBreakOutsideLoopFunction
-testNoCrashOnBreakOutsideLoopClass
-testContinueOutsideLoop
+# Type Vars qualified names
+testQualifiedTypeVariableName
+testPartiallyQualifiedTypeVariableName
+testSerializeSimpleTypeVar
+testSerializeBoundedTypeVar
+testSerializeTypeVarWithValues
+testSerializeTypeVarInClassBody
 
 # "unknown encoding: uft-8"
 testInvalidEncoding
@@ -2217,29 +2165,6 @@ testFixingBlockingErrorBringsInAnotherModuleWithBlocker
 # "Not all union combinations were tried because there are too many unions"
 testTooManyUnionsException
 
-# - (with type vars) Overloaded function signatures 2 and 3 overlap with incompatible return types
-#testOverloadMultipleVarargDefinitionComplex
-#testOverloadPartialOverlapWithUnrestrictedTypeVar
-#testOverloadPartialOverlapWithUnrestrictedTypeVarNested
-#testOverloadedPartiallyOverlappingTypeVarsAndUnion
-# Overlapping general
-#testManyUnionsInOverload
-#testOverloadInferUnionReturnFunctionsWithKwargs
-#testOverloadWithOverlappingItemsAndAnyArgument5
-#testIntersectionTypesAndVarArgs
-#testLiteralInferredInOverloadContextWithTypevars
-#testLiteralSubtypeOverlap
-#testOverloadsAndNoneWithoutStrictOptional
-#testOverloadsAndNoneWithStrictOptional
-#testTypeTypeOverlapsWithObjectAndType
-#testTypeOverlapsWithObject
-#testAccessingGenericDescriptorFromInferredClass
-#testAccessingGenericDescriptorFromClass
-#testOverloadWithNonGenericDescriptorLookalike
-#testOverloadWithGenericDescriptor
-#testUnpackIterableClassWithOverloadedIter2
-testErrorCodeUnsafeOverloadError
-
 # Note ""<Foo>.__call__" has type "Callable[[Arg(str, 'x'), VarArg(int)], None]"
 # Curently ignored
 
@@ -2253,33 +2178,6 @@ testConstructorJoinsWithCustomMetaclass
 # Callable override https://github.com/python/mypy/issues/16549
 testClassSpec
 testClassSpecError
-
-# `for ... in` type comment
-testRefreshForWithTypeComment1
-testRefreshForWithTypeComment2
-testForStatementTypeComments
-testForStatementMultipleTypeComments
-testForIndex
-testForIndexInClassBody
-testErrorCodeSyntaxError3
-testAsyncForTypeComments
-# with type comment
-testWithStmt
-testWithStmtInClassBody
-testWithStmtTypeComment
-testWithStmtTupleTypeComment
-testWithStmtComplexTypeComment
-testAsyncWithTypeComments
-testNewAnalyzerTypeArgBoundCheckDifferentNodes
-testForwardRefsInWithStatement
-
-# Type Vars qualified names
-testQualifiedTypeVariableName
-testPartiallyQualifiedTypeVariableName
-testSerializeSimpleTypeVar
-testSerializeBoundedTypeVar
-testSerializeTypeVarWithValues
-testSerializeTypeVarInClassBody
 
 # "Access to generic class variables is ambiguous" (unimportant, because similar lint exists)
 testClassVarWithGeneric
@@ -2310,8 +2208,101 @@ type_type_alias_circular
 # Weird native types of mypy like `from mypy_extensions import i64, i32`
 testNativeIntTypes
 
+# Mypy plugins
+testChangedPluginsInvalidateCache
+testChangedPluginsInvalidateCache2
+testAddedPluginsInvalidateCache
+testRemovedPluginsInvalidateCache
+testPluginConfigData
+testIncrementalAddClassMethodPlugin
+testIncrementalAddOverloadedMethodPlugin
+
 # Won't support for now --show-error-code-links
 testShowErrorCodeLinks
+
+# --allow-redefinition
+testStarLvalues
+testRenameGlobalVariable
+testNoRenameGlobalVariable
+testCannotRenameExternalVarWithinClass
+
+# --no-strict-optional details
+testUnreachableWithStdlibContextManagersNoStrictOptional
+testNestedListExpressions
+testInitializationWithMultipleValues
+testNoneAndGenericTypesOverlapNoStrictOptional
+testNamedTupleAsConditionalStrictOptionalDisabled
+
+# --disable-bytearray-promotion
+testDisableBytearrayPromotion
+# --disable-memoryview-promotion
+testDisableMemoryviewPromotion
+
+# --untyped-calls-exclude=bar.A
+testDisallowUntypedCallsAllowListFlags
+
+# --disallow-any-expr
+testDoNotLimitErrorVolumeIfNotImportErrors
+testDisallowAnyExprIncremental
+testDisallowAnyExprUnannotatedFunction
+testDisallowAnyExprSimple
+testDisallowAnyExprExplicitAnyParam
+testDisallowAnyExprAllowsAnyInCast
+testDisallowAnyExprAllowsAnyInVariableAssignmentWithExplicitTypeAnnotation
+testDisallowAnyExprGeneric
+
+# --disallow-any-unimported
+testErrorCodeAnyFromUnfollowedImport
+testDisallowImplicitTypesIgnoreMissingTypes
+testDisallowImplicitTypes
+testDisallowImplicitAnyVariableDefinition
+testDisallowImplicitAnyGeneric
+testDisallowImplicitAnyInherit
+testDisallowImplicitAnyAlias
+testDisallowImplicitAnyCast
+testDisallowImplicitAnyNamedTuple
+testDisallowImplicitAnyTypeVarConstraints
+testDisallowImplicitAnyNewType
+testDisallowImplicitAnyCallableAndTuple
+testDisallowImplicitAnySubclassingExplicitAny
+testDisallowImplicitAnyVarDeclaration
+testDisallowUnimportedAnyTypedDictSimple
+testDisallowUnimportedAnyTypedDictGeneric
+testNoCrashOnUnImportedAnyNotRequired
+
+# --no-namespace-packages
+testClassicNotPackage
+testPackageWithoutInitFile
+testDeletePackage4
+testDeletePackage5
+testDeletePackage6
+
+# --soft-error-limit
+testLimitLegacyStubErrorVolume
+
+# --show-error-context
+testNewAnalyzerTypeArgBoundCheckWithContext
+testShowErrorContextFunction
+testShowErrorContextClass
+testShowErrorContextMember
+testShowErrorContextModule
+testShowErrorContextTopLevel
+testShowErrorContextFromHere
+
+# --pretty
+testReprocessMethodShowSource
+testGenericTypeAliasesWithNestedArgs
+testPrettyMessageSorting
+testParseErrorShowSource
+testDictExpressionErrorLocations
+
+# --no-silence-site-packages
+testAddFileWhichImportsLibModuleWithErrors
+
+# Probably won't support: Special mypy extensions
+testFlexibleAlias1
+testFlexibleAlias2
+testFlexibleAlias3
 
 # Won't support for now: "t" is a type variable and only valid in type context
 testExpressionRefersToTypeVariable
