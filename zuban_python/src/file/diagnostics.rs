@@ -1083,22 +1083,23 @@ impl<'db> Inference<'db, '_, '_> {
                         return_stmt.index(),
                         IssueKind::ReturnStmtInFunctionWithNeverReturn,
                     );
-                } else if let Some(star_expressions) = return_stmt.star_expressions() {
-                    if func.is_generator() {
-                        if func.is_async() {
-                            self.add_issue(
-                                star_expressions.index(),
-                                IssueKind::ReturnInAsyncGenerator,
-                            );
-                            return;
-                        } else {
-                            t = Cow::Owned(
-                                GeneratorType::from_type(i_s.db, t)
-                                    .map(|g| g.return_type.unwrap_or(Type::None))
-                                    .unwrap_or(Type::Any(AnyCause::Todo)),
-                            );
+                    return;
+                }
+                if func.is_generator() {
+                    if func.is_async() {
+                        if let Some(star_exprs) = return_stmt.star_expressions() {
+                            self.add_issue(star_exprs.index(), IssueKind::ReturnInAsyncGenerator);
                         }
+                        return;
+                    } else {
+                        t = Cow::Owned(
+                            GeneratorType::from_type(i_s.db, t)
+                                .map(|g| g.return_type.unwrap_or(Type::None))
+                                .unwrap_or(Type::Any(AnyCause::Todo)),
+                        );
                     }
+                }
+                if let Some(star_expressions) = return_stmt.star_expressions() {
                     let inf = self
                         .infer_star_expressions(star_expressions, &mut ResultContext::Known(&t));
                     if i_s.db.project.flags.warn_return_any

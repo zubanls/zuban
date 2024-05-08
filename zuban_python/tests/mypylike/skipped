@@ -14,11 +14,6 @@ testOverloadTwoTypeArgs
 # callable matching regression
 testNoCrashOnNestedGenericCallable
 
-# regressions for async/generators of "Return value expected"
-testAsyncGenerator
-testEmptyReturnInNoneTypedGenerator
-testYieldAndReturnWithoutValue
-
 # mypy upgrade
 testMultilineQuotedAnnotation
 testDataclassFieldWithPositionalArguments
