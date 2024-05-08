@@ -1477,19 +1477,6 @@ testWalrusUsedBeforeDef
 # "Cannot determine type of "X" in base class"
 testCannotDetermineTypeInMultipleInheritance
 
-# regression
-testPartialAttributeNoneType
-testPartialAttributeNoneTypeStrictOptional
-# "Missing return statement"
-testDedicatedErrorCodeForEmpty_no_empty
-testEmptyBodyProhibitedFunction
-testEmptyBodyProhibitedMethodNonAbstract
-testEmptyBodyProhibitedPropertyNonAbstract
-testEmptyBodyNoteABCMeta
-testUnreachableWithStdlibContextManagers
-testNoReturnWhile
-testNoReturnExcept
-
 # The type "Type[type]" is not generic and not indexable
 testTypeApplicationCrash
 # `class type` stuff
@@ -1800,6 +1787,18 @@ testOverloadsAndNoReturnNarrowTypeNoStrictOptional2
 testOverloadsAndNoReturnNarrowTypeWithStrictOptional2
 testOverloadsAndNoReturnNarrowTypeNoStrictOptional3
 testOverloadsAndNoReturnNarrowTypeWithStrictOptional3
+# regression
+testPartialAttributeNoneType
+testPartialAttributeNoneTypeStrictOptional
+# "Missing return statement"
+testDedicatedErrorCodeForEmpty_no_empty
+testEmptyBodyProhibitedFunction
+testEmptyBodyProhibitedMethodNonAbstract
+testEmptyBodyProhibitedPropertyNonAbstract
+testEmptyBodyNoteABCMeta
+testUnreachableWithStdlibContextManagers
+testNoReturnWhile
+testNoReturnExcept
 
 # --enable-error-code redundant-self
 # "Redundant "Self" annotation for the first method argument"
