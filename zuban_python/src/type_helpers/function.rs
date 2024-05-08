@@ -1524,6 +1524,21 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             .unwrap_or_else(|| Cow::Borrowed(&Type::Any(AnyCause::Unannotated)))
     }
 
+    pub fn expected_return_type_for_return_stmt(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+    ) -> Cow<'a, Type> {
+        let mut t = self.return_type(i_s);
+        if self.is_generator() {
+            t = Cow::Owned(
+                GeneratorType::from_type(i_s.db, t)
+                    .map(|g| g.return_type.unwrap_or(Type::None))
+                    .unwrap_or(Type::Any(AnyCause::Todo)),
+            );
+        }
+        t
+    }
+
     pub(crate) fn execute(
         &self,
         i_s: &InferenceState<'db, '_>,

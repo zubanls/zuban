@@ -1084,29 +1084,21 @@ impl<'db> Inference<'db, '_, '_> {
 
     fn calc_return_stmt_diagnostics(&self, func: Option<&Function>, return_stmt: ReturnStmt) {
         if let Some(func) = func {
-            if let Some(annotation) = func.return_annotation() {
+            if func.return_annotation().is_some() {
                 let i_s = self.i_s;
-                let mut t = self.use_cached_return_annotation_type(annotation);
+                let t = func.expected_return_type_for_return_stmt(i_s);
+                if func.is_async() && func.is_generator() {
+                    if let Some(star_exprs) = return_stmt.star_expressions() {
+                        self.add_issue(star_exprs.index(), IssueKind::ReturnInAsyncGenerator);
+                    }
+                    return;
+                }
                 if matches!(t.as_ref(), Type::Never(_)) {
                     self.add_issue(
                         return_stmt.index(),
                         IssueKind::ReturnStmtInFunctionWithNeverReturn,
                     );
                     return;
-                }
-                if func.is_generator() {
-                    if func.is_async() {
-                        if let Some(star_exprs) = return_stmt.star_expressions() {
-                            self.add_issue(star_exprs.index(), IssueKind::ReturnInAsyncGenerator);
-                        }
-                        return;
-                    } else {
-                        t = Cow::Owned(
-                            GeneratorType::from_type(i_s.db, t)
-                                .map(|g| g.return_type.unwrap_or(Type::None))
-                                .unwrap_or(Type::Any(AnyCause::Todo)),
-                        );
-                    }
                 }
                 if let Some(star_exprs) = return_stmt.star_expressions() {
                     let inf =
