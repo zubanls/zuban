@@ -113,8 +113,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     pub fn might_be_missing_none_return_annotation(&self, i_s: &InferenceState) -> bool {
-        dbg!(self.iter_return_or_yield().next().is_none())
-            && dbg!(self.iter_non_self_args(i_s).next().is_none())
+        self.iter_return_or_yield().next().is_none()
+            && self.iter_non_self_args(i_s).next().is_none()
     }
 
     pub fn has_trivial_body(&self, i_s: &InferenceState) -> bool {
@@ -133,8 +133,17 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             }
         };
         match self.node().body().unpack() {
-            BlockContent::OneLine(simple_stmt) => {
-                check_simple_stmt(simple_stmt.maybe_single_simple_stmt())
+            BlockContent::OneLine(simple_stmts) => {
+                let simple_stmt = simple_stmts.maybe_single_simple_stmt();
+                if simple_stmt.is_some_and(|simple_stmt| {
+                    simple_stmt
+                        .maybe_simple_expression()
+                        .is_some_and(|expr| expr.maybe_single_string_literal().is_some())
+                }) {
+                    // Basically a docstring
+                    return true;
+                }
+                check_simple_stmt(simple_stmt)
             }
             BlockContent::Indented(mut stmts) => {
                 let StmtOrError::Stmt(mut first_stmt) = stmts.next().unwrap() else {
@@ -142,10 +151,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 };
                 if first_stmt.maybe_single_string_literal().is_some() {
                     // Is a docstr, skip.
-                    let StmtOrError::Stmt(s) = stmts.next().unwrap() else {
-                        return false
-                    };
-                    first_stmt = s;
+                    match stmts.next() {
+                        Some(StmtOrError::Stmt(s)) => first_stmt = s,
+                        Some(_) => return false,
+                        None => return true,
+                    }
                 }
                 if stmts.next().is_some() {
                     return false;

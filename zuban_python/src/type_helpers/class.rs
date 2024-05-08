@@ -2666,11 +2666,11 @@ impl NewOrInitConstructor<'_> {
                             )))
                         }
                         CallableLike::Overload(overload) => CallableLike::Overload(FunctionOverload::new(overload.iter_functions().map(|c| {
-                            dbg!(c.merge_class_type_vars(
+                            c.merge_class_type_vars(
                                 i_s.db,
                                 class,
                                 class,
-                            ))
+                            )
                         }).collect()))
                     },
                     None => */callable_like, /*}*/

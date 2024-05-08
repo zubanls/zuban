@@ -32,8 +32,7 @@ use crate::{
         NeverCause, TupleArgs, Type, TypeVarLike, Variance,
     },
     type_helpers::{
-        is_private, Class, FirstParamProperties, Function, GeneratorType, Instance, LookupDetails,
-        TypeOrClass,
+        is_private, Class, FirstParamProperties, Function, Instance, LookupDetails, TypeOrClass,
     },
 };
 
@@ -725,15 +724,22 @@ impl<'db> Inference<'db, '_, '_> {
             let unreachable = fa.with_new_frame_and_return_unreachable(|| {
                 self.calc_function_diagnostics_internal(function, f, class)
             });
-            if matches!(function.return_type(self.i_s).as_ref(), Type::Never(_))
-                && !unreachable
+            if !unreachable
+                && function.return_annotation().is_some()
                 && !(self.i_s.db.project.flags.allow_empty_bodies
                     && function.has_trivial_body(self.i_s))
             {
-                self.add_issue(
-                    f.name().index(),
-                    IssueKind::ImplicitReturnInFunctionWithNeverReturn,
-                );
+                let ret_type = function.expected_return_type_for_return_stmt(self.i_s);
+                if !ret_type.is_any_none_or_in_union(self.i_s.db) {
+                    self.add_issue(
+                        f.name().index(),
+                        if matches!(ret_type.as_ref(), Type::Never(_)) {
+                            IssueKind::ImplicitReturnInFunctionWithNeverReturn
+                        } else {
+                            IssueKind::MissingReturnStatement
+                        },
+                    );
+                }
             }
         })
     }
@@ -1130,10 +1136,7 @@ impl<'db> Inference<'db, '_, '_> {
                             })
                         },
                     );
-                } else if !t
-                    .iter_with_unpacked_unions(self.i_s.db)
-                    .any(|t| matches!(t, Type::None | Type::Any(_)))
-                {
+                } else if !t.is_any_none_or_in_union(self.i_s.db) {
                     self.add_issue(return_stmt.index(), IssueKind::ReturnValueExpected);
                 }
             } else {

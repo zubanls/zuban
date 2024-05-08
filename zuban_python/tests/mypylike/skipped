@@ -1477,20 +1477,16 @@ testWalrusUsedBeforeDef
 # "Cannot determine type of "X" in base class"
 testCannotDetermineTypeInMultipleInheritance
 
+# regression
+testPartialAttributeNoneType
+testPartialAttributeNoneTypeStrictOptional
 # "Missing return statement"
-testWarnNoReturnWorksWithStrictOptional
-testAssertCurrentFrameIsNotUnreachable
-testNoReturnInGenerator
-testWithStmtBoolExitReturnOkay
-testErrorCodeMissingReturn
 testDedicatedErrorCodeForEmpty_no_empty
 testEmptyBodyProhibitedFunction
 testEmptyBodyProhibitedMethodNonAbstract
 testEmptyBodyProhibitedPropertyNonAbstract
 testEmptyBodyNoteABCMeta
-testAsyncDefMissingReturn
 testUnreachableWithStdlibContextManagers
-testNoReturn
 testNoReturnWhile
 testNoReturnExcept
 
@@ -1797,6 +1793,7 @@ testDisallowUntypedCallsArgType
 
 # --no-warn-no-return
 testNoWarnNoReturn
+testNoWarnNoReturnNoStrictOptional
 testOverloadsAndNoReturnNarrowTypeNoStrictOptional1
 testOverloadsAndNoReturnNarrowTypeWithStrictOptional1
 testOverloadsAndNoReturnNarrowTypeNoStrictOptional2
@@ -2018,6 +2015,7 @@ check-possibly-undefined:testDictComprehension
 check-possibly-undefined:testUntypedDefCheckUntypedDefs
 check-possibly-undefined:testClassBody
 check-possibly-undefined:testUntypedDef
+check-possibly-undefined:testNoReturn
 
 # `for ... in` type comment
 testRefreshForWithTypeComment1
