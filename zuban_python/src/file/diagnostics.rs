@@ -721,10 +721,13 @@ impl<'db> Inference<'db, '_, '_> {
         let function = Function::new(NodeRef::new(self.file, f.index()), class);
         function.cache_func(self.i_s);
         FLOW_ANALYSIS.with(|fa| {
+            let mut is_overload_member = false;
             let unreachable = fa.with_new_frame_and_return_unreachable(|| {
-                self.calc_function_diagnostics_internal(function, f, class)
+                is_overload_member = self
+                    .calc_function_diagnostics_internal_and_return_is_overload(function, f, class)
             });
             if !unreachable
+                && !is_overload_member
                 && function.return_annotation().is_some()
                 && !(self.i_s.db.project.flags.allow_empty_bodies
                     && function.has_trivial_body(self.i_s))
@@ -750,12 +753,12 @@ impl<'db> Inference<'db, '_, '_> {
         })
     }
 
-    fn calc_function_diagnostics_internal(
+    fn calc_function_diagnostics_internal_and_return_is_overload(
         &self,
         function: Function,
         f: FunctionDef,
         class: Option<Class>,
-    ) {
+    ) -> bool {
         let i_s = self.i_s;
         let mut is_overload_member = false;
         if let Some(ComplexPoint::FunctionOverload(o)) = function.node_ref.complex() {
@@ -791,7 +794,7 @@ impl<'db> Inference<'db, '_, '_> {
             }
         } else if function.node_ref.point().maybe_specific() == Some(Specific::OverloadUnreachable)
         {
-            is_overload_member = true;
+            is_overload_member = !function.is_overload_implementation();
         }
         if class.is_some()
             && function.node().params().iter().next().is_none()
@@ -1051,6 +1054,7 @@ impl<'db> Inference<'db, '_, '_> {
                 }
             }
         }
+        is_overload_member
     }
 
     fn calc_overload_implementation_diagnostics(

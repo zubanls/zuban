@@ -1103,6 +1103,24 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         })
     }
 
+    pub fn is_overload_implementation(&self) -> bool {
+        let file = self.node_ref.file;
+        if let Some(first_index) = first_defined_name_of_multi_def(file, self.node().name().index())
+        {
+            if let Some(func) = NodeRef::new(file, first_index).maybe_name_of_function() {
+                if let Some(ComplexPoint::FunctionOverload(o)) =
+                    NodeRef::new(self.node_ref.file, func.index()).complex()
+                {
+                    return o
+                        .implementation
+                        .as_ref()
+                        .is_some_and(|link| link.function_link == self.node_ref.as_link());
+                }
+            }
+        }
+        false
+    }
+
     pub(crate) fn add_issue_for_declaration(&self, i_s: &InferenceState, kind: IssueKind) {
         let node = self.node();
         self.node_ref.file.add_issue(

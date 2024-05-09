@@ -140,7 +140,9 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 disallow_subclassing_any: steps.flags.contains(&"--disallow-subclassing-any"),
                 disallow_incomplete_defs: steps.flags.contains(&"--disallow-incomplete-defs"),
                 allow_untyped_globals: steps.flags.contains(&"--allow-untyped-globals"),
-                allow_empty_bodies: !self.name.ends_with("_no_empty"), // This is simply for testing.
+                // This is simply for testing and mirrors how mypy does it.
+                allow_empty_bodies: !self.name.ends_with("_no_empty")
+                    && self.file_name != "check-abstract",
                 warn_unreachable: steps.flags.contains(&"--warn-unreachable"),
                 warn_redundant_casts: steps.flags.contains(&"--warn-redundant-casts"),
                 warn_return_any: steps.flags.contains(&"--warn-return-any"),
