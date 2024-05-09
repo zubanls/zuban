@@ -736,7 +736,13 @@ impl<'db> Inference<'db, '_, '_> {
                         if matches!(ret_type.as_ref(), Type::Never(_)) {
                             IssueKind::ImplicitReturnInFunctionWithNeverReturn
                         } else {
-                            IssueKind::MissingReturnStatement
+                            IssueKind::MissingReturnStatement {
+                                code: if function.has_trivial_body(self.i_s) {
+                                    "empty-body"
+                                } else {
+                                    "return"
+                                },
+                            }
                         },
                     );
                 }

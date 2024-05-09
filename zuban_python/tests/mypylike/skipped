@@ -1202,6 +1202,7 @@ testUnreachableTryExceptElse
 testUnreachableTryReturnFinally1
 testUnreachableTryReturnFinally2
 testUnreachableFlagTryBlocks
+testNoReturnExcept
 # while/for
 testModifyLoop
 testModifyLoop2
@@ -1216,6 +1217,7 @@ testUnreachableWhileTrue
 testComplicatedBlocks
 testIsInstanceSubClassMemberHard
 testUnreachableFlagWithBadControlFlow2
+testNoReturnWhile
 # with
 testUnreachableFlagContextManagersSuppressed
 testUnreachableFlagContextManagersSuppressedNoStrictOptional
@@ -1791,14 +1793,11 @@ testOverloadsAndNoReturnNarrowTypeWithStrictOptional3
 testPartialAttributeNoneType
 testPartialAttributeNoneTypeStrictOptional
 # "Missing return statement"
-testDedicatedErrorCodeForEmpty_no_empty
 testEmptyBodyProhibitedFunction
 testEmptyBodyProhibitedMethodNonAbstract
 testEmptyBodyProhibitedPropertyNonAbstract
 testEmptyBodyNoteABCMeta
 testUnreachableWithStdlibContextManagers
-testNoReturnWhile
-testNoReturnExcept
 
 # --enable-error-code redundant-self
 # "Redundant "Self" annotation for the first method argument"

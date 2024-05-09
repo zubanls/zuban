@@ -39,7 +39,7 @@ pub(crate) enum IssueKind {
     InvalidAsyncGeneratorReturnType,
     ReturnStmtInFunctionWithNeverReturn,
     ImplicitReturnInFunctionWithNeverReturn,
-    MissingReturnStatement,
+    MissingReturnStatement { code: &'static str },
     YieldFromCannotBeApplied { to: Box<str> },
     YieldValueExpected,
     IncompatibleAssignment { got: Box<str>, expected: Box<str> },
@@ -385,7 +385,7 @@ impl IssueKind {
             IncompatibleReturn { .. } | ReturnValueExpected | NoReturnValueExpected => {
                 "return-value"
             }
-            MissingReturnStatement => "return",
+            MissingReturnStatement { code } => code,
             IncompatibleDefaultArgument { .. }
             | IncompatibleAssignment { .. }
             | IncompatibleAssignmentInSubclass { .. }
@@ -632,7 +632,7 @@ impl<'db> Diagnostic<'db> {
                 "Return statement in function which does not return".to_string(),
             ImplicitReturnInFunctionWithNeverReturn =>
                 "Implicit return in function which does not return".to_string(),
-            MissingReturnStatement => "Missing return statement".to_string(),
+            MissingReturnStatement { .. } => "Missing return statement".to_string(),
             YieldFromCannotBeApplied { to } => format!(r#""yield from" can't be applied to "{to}""#),
             YieldValueExpected => "Yield value expected".to_string(),
             IncompatibleAssignment{got, expected} => format!(
