@@ -2197,7 +2197,6 @@ testCannotRenameExternalVarWithinClass
 
 # --no-strict-optional details
 testUnreachableWithStdlibContextManagersNoStrictOptional
-testNestedListExpressions
 testInitializationWithMultipleValues
 testNoneAndGenericTypesOverlapNoStrictOptional
 testNamedTupleAsConditionalStrictOptionalDisabled
