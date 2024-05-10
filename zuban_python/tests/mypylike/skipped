@@ -1795,7 +1795,6 @@ testPartialAttributeNoneType
 testPartialAttributeNoneTypeStrictOptional
 testEmptyBodyNoteABCMeta
 testReadWriteDeleteAbstractProperty
-testEmptyBodyAllowedMethodAbstract
 testEmptyBodyTypeCheckingOnly
 
 # --enable-error-code redundant-self

@@ -1108,28 +1108,41 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         })
     }
 
-    pub fn is_overload_implementation(&self) -> bool {
+    fn maybe_part_of_unreachable_overload(&self) -> Option<&OverloadDefinition> {
         let file = self.node_ref.file;
-        if let Some(first_index) = first_defined_name_of_multi_def(file, self.node().name().index())
-        {
-            if let Some(func) = NodeRef::new(file, first_index).maybe_name_of_function() {
-                if let Some(ComplexPoint::FunctionOverload(o)) =
-                    NodeRef::new(self.node_ref.file, func.index()).complex()
-                {
-                    return o
-                        .implementation
-                        .as_ref()
-                        .is_some_and(|link| link.function_link == self.node_ref.as_link());
+        if self.node_ref.point().maybe_specific() == Some(Specific::OverloadUnreachable) {
+            if let Some(first_index) =
+                first_defined_name_of_multi_def(file, self.node().name().index())
+            {
+                if let Some(func) = NodeRef::new(file, first_index).maybe_name_of_function() {
+                    if let Some(ComplexPoint::FunctionOverload(o)) =
+                        NodeRef::new(self.node_ref.file, func.index()).complex()
+                    {
+                        return Some(o);
+                    }
                 }
             }
         }
-        false
+        None
+    }
+
+    pub fn is_overload_implementation(&self) -> bool {
+        self.maybe_part_of_unreachable_overload()
+            .and_then(|overload| overload.implementation.as_ref())
+            .is_some_and(|link| link.function_link == self.node_ref.as_link())
     }
 
     pub fn is_abstract(&self) -> bool {
         match self.node_ref.complex() {
             Some(ComplexPoint::TypeInstance(Type::Callable(c))) => c.is_abstract,
-            _ => false,
+            Some(ComplexPoint::FunctionOverload(o)) => o.functions.is_abstract(),
+            _ => {
+                if let Some(overload) = self.maybe_part_of_unreachable_overload() {
+                    overload.functions.is_abstract()
+                } else {
+                    false
+                }
+            }
         }
     }
 
