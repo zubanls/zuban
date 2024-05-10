@@ -351,7 +351,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let import_file = self.i_s.db.loaded_python_file(*file_index);
                 Module::new(import_file).lookup_with_is_import(
                     self.i_s,
-                    |issue| NodeRef::new(self.file, import_name.index()).add_issue(self.i_s, issue),
+                    |issue| self.add_issue(import_name.index(), issue),
                     import_name.as_str(),
                     true,
                 )
@@ -419,7 +419,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         && module
                             .lookup(
                                 i_s,
-                                |issue| NodeRef::new(self.file, name.index()).add_issue(i_s, issue),
+                                |issue| self.add_issue(name.index(), issue),
                                 "__getattr__",
                             )
                             .is_some()
@@ -2589,7 +2589,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         .module_instance()
                         .type_lookup(
                             self.i_s,
-                            |issue| NodeRef::new(self.file, name_index).add_issue(self.i_s, issue),
+                            |issue| self.add_issue(name_index, issue),
                             name.as_code(),
                         )
                         .save_name(self.i_s, self.file, name)

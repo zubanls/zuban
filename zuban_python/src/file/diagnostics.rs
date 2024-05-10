@@ -148,8 +148,8 @@ impl<'db> Inference<'db, '_, '_> {
                 .is_simple_super_type_of(self.i_s, &actual)
                 .bool()
             {
-                NodeRef::new(self.file, link.node_index).add_issue(
-                    self.i_s,
+                self.add_issue(
+                    link.node_index,
                     IssueKind::InvalidSpecialMethodSignature {
                         type_: actual.format_short(self.i_s.db),
                         special_method: "__getattr__",
@@ -192,8 +192,8 @@ impl<'db> Inference<'db, '_, '_> {
                                 AssignmentContent::AugAssign(..) => true,
                             }
                     }) {
-                        NodeRef::new(self.file, assignment.index()).add_issue(
-                            self.i_s,
+                        self.add_issue(
+                            assignment.index(),
                             IssueKind::ProtocolMembersMustHaveExplicitlyDeclaredTypes,
                         );
                     }
@@ -574,7 +574,7 @@ impl<'db> Inference<'db, '_, '_> {
                             let index =
                                 c.node().arguments().unwrap().iter().nth(i).unwrap().index();
                             NodeRef::new(self.file, index).add_issue(
-                                self.i_s,
+                                &i_s,
                                 IssueKind::MultipleInheritanceIncompatibility {
                                     name: name.into(),
                                     class1: base1.name(db).into(),
@@ -836,7 +836,7 @@ impl<'db> Inference<'db, '_, '_> {
                         t.error_if_not_matches(
                             i_s,
                             &inf,
-                            |issue| NodeRef::new(self.file, default.index()).add_issue(i_s, issue),
+                            |issue| self.add_issue(default.index(), issue),
                             |got, expected| {
                                 if self.file.is_stub_or_in_protocol(i_s)
                                     && default.is_ellipsis_literal()
@@ -1233,8 +1233,8 @@ impl<'db> Inference<'db, '_, '_> {
                     match except_type(self.i_s, &inf.as_cow_type(self.i_s), true) {
                         ExceptType::ContainsOnlyBaseExceptions => (),
                         ExceptType::HasExceptionGroup => {
-                            NodeRef::new(self.file, expression.index()).add_issue(
-                                self.i_s,
+                            self.add_issue(
+                                expression.index(),
                                 IssueKind::ExceptStarIsNotAllowedToBeAnExceptionGroup,
                             );
                         }

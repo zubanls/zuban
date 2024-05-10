@@ -3234,10 +3234,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             let mut parts = match ne.expression().maybe_unpacked_atom() {
                 Some(AtomContent::Tuple(tup)) => tup.iter(),
                 _ => {
-                    NodeRef::new(self.inference.file, ne.index()).add_issue(
-                        self.inference.i_s,
-                        IssueKind::TupleExpectedAsNamedTupleField,
-                    );
+                    self.inference
+                        .add_issue(ne.index(), IssueKind::TupleExpectedAsNamedTupleField);
                     return None;
                 }
             };
@@ -3254,8 +3252,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 todo!()
             };
             let Some(name) = StringSlice::from_string_in_expression(file_index, name_expr.expression()) else {
-                NodeRef::new(self.inference.file, name_expr.index()).add_issue(
-                    self.inference.i_s,
+                self.inference.add_issue(
+                    name_expr.index(),
                     IssueKind::NamedTupleInvalidFieldName,
                 );
                 return None
