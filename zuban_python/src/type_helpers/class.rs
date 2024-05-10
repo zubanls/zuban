@@ -1655,6 +1655,7 @@ impl<'db: 'a, 'a> Class<'a> {
             },
             type_vars: self.use_cached_type_vars(i_s.db).clone(),
             guard: None,
+            is_abstract: false,
             params: CallableParams::Simple(Rc::from(vec)),
             return_type: Type::Self_,
         }

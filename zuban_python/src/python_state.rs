@@ -572,6 +572,7 @@ impl PythonState {
             },
             type_vars: s.empty_type_var_likes.clone(),
             guard: None,
+            is_abstract: false,
             params: CallableParams::Simple(Rc::new([
                 CallableParam::new_anonymous(ParamType::PositionalOnly(Type::Any(
                     AnyCause::Internal,

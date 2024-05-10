@@ -446,6 +446,7 @@ pub struct CallableContent {
     pub params: CallableParams,
     pub guard: Option<TypeGuardInfo>,
     pub return_type: Type,
+    pub is_abstract: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -488,6 +489,7 @@ impl CallableContent {
             type_vars,
             params: CallableParams::Any(cause),
             guard: None,
+            is_abstract: false,
             return_type: Type::Any(cause),
         }
     }

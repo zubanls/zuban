@@ -732,6 +732,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             had_first_self_or_class_annotation: had_first_annotation,
         };
         let mut is_overload = false;
+        let mut is_abstract = false;
         for decorator in decorated.decorators().iter_reverse() {
             let inferred_dec =
                 infer_decorator(i_s, self.node_ref.file, decorator, had_first_annotation);
@@ -747,7 +748,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             }
 
             match inferred_dec {
-                InferredDecorator::FunctionKind(k) => {
+                InferredDecorator::FunctionKind {
+                    kind: k,
+                    is_abstract: dec_is_abstract,
+                } => {
+                    is_abstract |= dec_is_abstract;
                     match k {
                         FunctionKind::Property { .. } => {
                             if is_overload {
@@ -819,15 +824,15 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     );
                 }
                 InferredDecorator::Overload => is_overload = true,
-                InferredDecorator::Abstractmethod
-                | InferredDecorator::Override
-                | InferredDecorator::Final => (),
+                InferredDecorator::Abstractmethod => is_abstract = true,
+                InferredDecorator::Override | InferredDecorator::Final => (),
             }
         }
         let overwrite_callable = |inferred: &mut _, mut callable: CallableContent| {
             callable.name = Some(DbString::StringSlice(self.name_string_slice()));
             callable.class_name = self.class.map(|c| c.name_string_slice());
             callable.kind = kind;
+            callable.is_abstract = is_abstract;
             self.avoid_invalid_typeguard_signatures(i_s, &mut callable);
             *inferred = Inferred::from_type(Type::Callable(Rc::new(callable)));
         };
@@ -1121,6 +1126,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         false
     }
 
+    pub fn is_abstract(&self) -> bool {
+        match self.node_ref.complex() {
+            Some(ComplexPoint::TypeInstance(Type::Callable(c))) => c.is_abstract,
+            _ => false,
+        }
+    }
+
     pub(crate) fn add_issue_for_declaration(&self, i_s: &InferenceState, kind: IssueKind) {
         let node = self.node();
         self.node_ref.file.add_issue(
@@ -1292,6 +1304,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 had_first_self_or_class_annotation: had_first_annotation,
             },
             guard: None,
+            is_abstract: false,
             params,
             type_vars: i_s.db.python_state.empty_type_var_likes.clone(),
             return_type,
@@ -1769,7 +1782,7 @@ fn kind_of_decorators(
     had_first_annotation: bool,
 ) -> FunctionKind {
     for decorator in decorated.decorators().iter() {
-        if let InferredDecorator::FunctionKind(kind) =
+        if let InferredDecorator::FunctionKind { kind, .. } =
             infer_decorator(i_s, file, decorator, had_first_annotation)
         {
             return kind;
@@ -1810,33 +1823,47 @@ fn infer_decorator(
         {
             return InferredDecorator::Override;
         }
+        if saved_link == i_s.db.python_state.abstractmethod_link() {
+            return InferredDecorator::Abstractmethod;
+        }
         // All these cases are classes.
         if let Some(class_def) = node_ref.maybe_class() {
             if saved_link == i_s.db.python_state.classmethod_node_ref().as_link() {
-                return InferredDecorator::FunctionKind(FunctionKind::Classmethod {
-                    had_first_self_or_class_annotation: had_first_annotation,
-                });
+                return InferredDecorator::FunctionKind {
+                    kind: FunctionKind::Classmethod {
+                        had_first_self_or_class_annotation: had_first_annotation,
+                    },
+                    is_abstract: false,
+                };
             }
             if saved_link == i_s.db.python_state.staticmethod_node_ref().as_link() {
-                return InferredDecorator::FunctionKind(FunctionKind::Staticmethod);
-            }
-            if saved_link == i_s.db.python_state.abstractmethod_link() {
-                return InferredDecorator::Abstractmethod;
+                return InferredDecorator::FunctionKind {
+                    kind: FunctionKind::Staticmethod,
+                    is_abstract: false,
+                };
             }
             let class = Class::from_non_generic_link(i_s.db, saved_link);
-            if class.class_link_in_mro(i_s.db, i_s.db.python_state.property_node_ref().as_link())
-                || saved_link == i_s.db.python_state.abstractproperty_link()
+            let is_abstract_property = saved_link == i_s.db.python_state.abstractproperty_link();
+            if is_abstract_property
+                || class
+                    .class_link_in_mro(i_s.db, i_s.db.python_state.property_node_ref().as_link())
             {
-                return InferredDecorator::FunctionKind(FunctionKind::Property {
-                    had_first_self_or_class_annotation: had_first_annotation,
-                    writable: false,
-                });
+                return InferredDecorator::FunctionKind {
+                    kind: FunctionKind::Property {
+                        had_first_self_or_class_annotation: had_first_annotation,
+                        writable: false,
+                    },
+                    is_abstract: is_abstract_property,
+                };
             }
             if class.class_link_in_mro(i_s.db, i_s.db.python_state.cached_property_link()) {
-                return InferredDecorator::FunctionKind(FunctionKind::Property {
-                    had_first_self_or_class_annotation: had_first_annotation,
-                    writable: true,
-                });
+                return InferredDecorator::FunctionKind {
+                    kind: FunctionKind::Property {
+                        had_first_self_or_class_annotation: had_first_annotation,
+                        writable: true,
+                    },
+                    is_abstract: false,
+                };
             }
         }
     }
@@ -1845,7 +1872,10 @@ fn infer_decorator(
 
 #[derive(Debug)]
 enum InferredDecorator {
-    FunctionKind(FunctionKind),
+    FunctionKind {
+        kind: FunctionKind,
+        is_abstract: bool,
+    },
     Inferred(Inferred),
     Overload,
     Abstractmethod,

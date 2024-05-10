@@ -2512,6 +2512,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     .empty_type_var_likes
                     .clone(),
                 guard,
+                is_abstract: false,
                 params,
                 return_type,
             })

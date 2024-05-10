@@ -319,6 +319,7 @@ impl CallableContent {
                 .guard
                 .as_ref()
                 .map(|g| g.replace_type_var_likes_and_self(db, callable, replace_self)),
+            is_abstract: self.is_abstract,
             params,
             return_type,
         }
@@ -362,6 +363,7 @@ fn rc_callable_rewrite_late_bound_callables<T: CallableId>(
             .guard
             .as_ref()
             .map(|g| g.rewrite_late_bound_callables(manager)),
+        is_abstract: slf.is_abstract,
         params: slf.params.rewrite_late_bound_callables(manager),
         return_type: slf.return_type.rewrite_late_bound_callables(manager),
     })

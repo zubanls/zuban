@@ -728,9 +728,11 @@ impl<'db> Inference<'db, '_, '_> {
             });
             if !unreachable
                 && !is_overload_member
+                && !self.file.is_stub
                 && function.return_annotation().is_some()
                 && !(self.i_s.db.project.flags.allow_empty_bodies
                     && function.has_trivial_body(self.i_s))
+                && !function.is_abstract()
             {
                 let ret_type = function.expected_return_type_for_return_stmt(self.i_s);
                 if !ret_type.is_any_none_or_in_union(self.i_s.db) {

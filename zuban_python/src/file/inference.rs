@@ -1945,6 +1945,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     },
                     type_vars: self.i_s.db.python_state.empty_type_var_likes.clone(),
                     guard: None,
+                    is_abstract: false,
                     params: CallableParams::Simple(params.map(to_callable_param).collect()),
                     return_type: result.as_type(self.i_s),
                 };
