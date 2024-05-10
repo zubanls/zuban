@@ -2370,6 +2370,13 @@ impl<'a> TypeOrClass<'a> {
         }
     }
 
+    pub fn format(&self, db: &FormatData) -> Box<str> {
+        match self {
+            Self::Class(class) => class.format(db),
+            Self::Type(t) => t.format(db),
+        }
+    }
+
     pub fn into_maybe_class(self) -> Option<Class<'a>> {
         match self {
             TypeOrClass::Class(c) => Some(c),

@@ -1246,6 +1246,12 @@ testIncompatibleInheritedAttributeNoStrictOptional
 testUnreachableFlagOkWithDeadStatements
 testUnreachableFlagWithTerminalBranchInDeferredNode
 testNoReturnInExpr
+testOverloadsAndNoReturnNarrowTypeNoStrictOptional1
+testOverloadsAndNoReturnNarrowTypeWithStrictOptional1
+testOverloadsAndNoReturnNarrowTypeNoStrictOptional2
+testOverloadsAndNoReturnNarrowTypeWithStrictOptional2
+testOverloadsAndNoReturnNarrowTypeNoStrictOptional3
+testOverloadsAndNoReturnNarrowTypeWithStrictOptional3
 # yield after return is sometimes ok.
 testIntentionallyEmptyGeneratorFunction
 testIntentionallyEmptyGeneratorFunction_None
@@ -1783,16 +1789,6 @@ testDisallowUntypedDecoratorsUnresolvedDecorator
 # --disallow-untyped-calls
 testDisallowUntypedCallsArgType
 
-# --no-warn-no-return
-testNoWarnNoReturn
-testNoWarnNoReturnNoStrictOptional
-testOverloadsAndNoReturnNarrowTypeNoStrictOptional1
-testOverloadsAndNoReturnNarrowTypeWithStrictOptional1
-testOverloadsAndNoReturnNarrowTypeNoStrictOptional2
-testOverloadsAndNoReturnNarrowTypeWithStrictOptional2
-testOverloadsAndNoReturnNarrowTypeNoStrictOptional3
-testOverloadsAndNoReturnNarrowTypeWithStrictOptional3
-
 # --enable-error-code redundant-self
 # "Redundant "Self" annotation for the first method argument"
 testTypingSelfRedundantWarning
@@ -1812,10 +1808,7 @@ testUnimportedRevealTypePy311
 testUnimportedRevealTypeInUncheckedFunc
 testUnimportedRevealLocals
 # --enable-error-code explicit-override "Method "prop" is not using @override but is overriding a method in class "__main__.A""
-requireExplicitOverrideMethod
-requireExplicitOverrideProperty
 requireExplicitOverrideOverload
-requireExplicitOverrideMultipleInheritance
 
 # "Incompatible types in string interpolation (expression has type "str", placeholder has type "int")"
 testErrorCodeFormatCall
@@ -1965,6 +1958,10 @@ testDoNotFollowImportToNonStubFile
 testFollowImportsSkip
 testSubclassingAnySilentImports
 testSubclassingAnySilentImports2
+
+# --no-warn-no-return
+testNoWarnNoReturn
+testNoWarnNoReturnNoStrictOptional
 
 # ------------------- start of low-prio/won't do tests -----------------------
 

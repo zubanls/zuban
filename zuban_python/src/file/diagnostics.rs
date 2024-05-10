@@ -28,8 +28,8 @@ use crate::{
     node_ref::NodeRef,
     type_::{
         format_callable_params, AnyCause, CallableContent, CallableParams, ClassGenerics, DbString,
-        FunctionKind, FunctionOverload, GenericItem, GenericsList, Literal, LiteralKind,
-        NeverCause, TupleArgs, Type, TypeVarLike, Variance,
+        FormatStyle, FunctionKind, FunctionOverload, GenericItem, GenericsList, Literal,
+        LiteralKind, NeverCause, TupleArgs, Type, TypeVarLike, Variance,
     },
     type_helpers::{
         is_private, Class, FirstParamProperties, Function, Instance, LookupDetails, TypeOrClass,
@@ -1687,6 +1687,25 @@ fn find_and_check_override(
             name,
             LookupKind::Normal,
         );
+        if !has_override_decorator
+            && i_s
+                .db
+                .project
+                .flags
+                .enabled_error_codes
+                .iter()
+                .any(|c| c == "explicit-override")
+        {
+            from.add_issue(
+                i_s,
+                IssueKind::ExplicitOverrideFlagRequiresOverride {
+                    method: name.into(),
+                    class: original_details
+                        .class
+                        .format(&FormatData::with_style(i_s.db, FormatStyle::Qualified)),
+                },
+            );
+        }
         check_override(
             i_s,
             from,
@@ -1695,7 +1714,7 @@ fn find_and_check_override(
             name,
             |db, c| c.name(db),
             None,
-        )
+        );
     } else if has_override_decorator {
         from.add_issue(i_s, IssueKind::MissingBaseForOverride { name: name.into() });
     }
