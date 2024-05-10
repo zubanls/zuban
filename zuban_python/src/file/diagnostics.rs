@@ -735,22 +735,8 @@ impl<'db> Inference<'db, '_, '_> {
                 && !function.is_abstract()
             {
                 let ret_type = function.expected_return_type_for_return_stmt(i_s);
-                if !ret_type.is_any_none_or_in_union(i_s.db) {
-                    let has_trivial_body = function.has_trivial_body(i_s);
-                    self.add_issue(
-                        f.name().index(),
-                        if matches!(ret_type.as_ref(), Type::Never(_)) {
-                            IssueKind::ImplicitReturnInFunctionWithNeverReturn
-                        } else {
-                            IssueKind::MissingReturnStatement {
-                                code: if has_trivial_body {
-                                    "empty-body"
-                                } else {
-                                    "return"
-                                },
-                            }
-                        },
-                    );
+                let has_trivial_body = function.has_trivial_body(i_s);
+                let maybe_add_async = || {
                     if has_trivial_body
                         && function
                             .class
@@ -767,6 +753,25 @@ impl<'db> Inference<'db, '_, '_> {
                             ),
                         );
                     }
+                };
+                if matches!(ret_type.as_ref(), Type::Never(_)) {
+                    self.add_issue(
+                        f.name().index(),
+                        IssueKind::ImplicitReturnInFunctionWithNeverReturn,
+                    );
+                    maybe_add_async()
+                } else if !ret_type.is_any_none_or_in_union(i_s.db) {
+                    self.add_issue(
+                        f.name().index(),
+                        IssueKind::MissingReturnStatement {
+                            code: if has_trivial_body {
+                                "empty-body"
+                            } else {
+                                "return"
+                            },
+                        },
+                    );
+                    maybe_add_async()
                 }
             }
         })
