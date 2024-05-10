@@ -628,12 +628,18 @@ impl<'project, 'db> NameBinder<'project, 'db> {
                         )
                     };
                     match is_expr_reachable_for_name_binder(self.project, expr.expression()) {
-                        Truthiness::True => {
+                        Truthiness::True {
+                            in_type_checking_block,
+                        } => {
                             let latest = self.index_block(block, ordered);
                             self.merge_latest_return_or_yield(latest_return_or_yield, latest);
                             set_block_specific(
                                 if_block,
-                                Specific::IfBranchAlwaysReachableInNameBinder,
+                                if in_type_checking_block {
+                                    Specific::IfBranchAlwaysReachableInTypeCheckingBlock
+                                } else {
+                                    Specific::IfBranchAlwaysReachableInNameBinder
+                                },
                             );
                             for other_block in block_iterator {
                                 set_block_specific(
@@ -1185,7 +1191,7 @@ fn try_to_process_reference_for_symbol_table(
 
 #[derive(PartialEq, Debug)]
 pub enum Truthiness {
-    True,
+    True { in_type_checking_block: bool }, // in_type_checking_block for `if TYPE_CHECKING:`
     False,
     Unknown,
 }
@@ -1194,7 +1200,9 @@ impl From<bool> for Truthiness {
     fn from(item: bool) -> Self {
         match item {
             false => Truthiness::False,
-            true => Truthiness::True,
+            true => Truthiness::True {
+                in_type_checking_block: false,
+            },
         }
     }
 }
@@ -1203,7 +1211,16 @@ impl std::ops::BitAnd for Truthiness {
     type Output = Self;
     fn bitand(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
-            (Self::True, Self::True) => Self::True,
+            (
+                Self::True {
+                    in_type_checking_block: in_type_checking_block1,
+                },
+                Self::True {
+                    in_type_checking_block: in_type_checking_block2,
+                },
+            ) => Self::True {
+                in_type_checking_block: in_type_checking_block1 && in_type_checking_block2,
+            },
             (Self::Unknown, _) | (_, Self::Unknown) => Self::Unknown,
             _ => Self::False,
         }
@@ -1213,15 +1230,24 @@ impl std::ops::BitAnd for Truthiness {
 impl Truthiness {
     fn invert(self) -> Truthiness {
         match self {
-            Self::True => Self::False,
-            Self::False => Self::True,
+            Self::True { .. } => Self::False,
+            Self::False => Self::True {
+                in_type_checking_block: false,
+            },
             Self::Unknown => Self::Unknown,
         }
     }
     fn or_else(self, callback: impl FnOnce() -> Truthiness) -> Truthiness {
         match self {
             Self::False => callback(),
-            Self::Unknown if matches!(callback(), Self::True) => Self::True,
+            Self::Unknown => {
+                let truthy = callback();
+                if matches!(truthy, Self::True { .. }) {
+                    truthy
+                } else {
+                    self
+                }
+            }
             _ => self,
         }
     }
@@ -1248,7 +1274,9 @@ fn check_comparison_reachability(
                             result = !result;
                         }
                         if result {
-                            return Truthiness::True;
+                            return Truthiness::True {
+                                in_type_checking_block: false,
+                            };
                         } else {
                             return Truthiness::False;
                         }
@@ -1314,7 +1342,9 @@ fn python_version_matches_tuple(
             return Truthiness::Unknown;
         }
     }
-    Truthiness::True
+    Truthiness::True {
+        in_type_checking_block: false,
+    }
 }
 
 fn python_version_matches_slice(
@@ -1376,7 +1406,9 @@ fn maybe_sys_platform_startswith(
                     if let Some(s) = named_expr.maybe_single_string_literal() {
                         if let Some(to_compare) = s.as_python_string().as_str() {
                             if project.flags.computed_platform().starts_with(to_compare) {
-                                return Truthiness::True;
+                                return Truthiness::True {
+                                    in_type_checking_block: false,
+                                };
                             } else {
                                 return Truthiness::False;
                             }
@@ -1404,10 +1436,14 @@ pub fn is_expr_part_reachable_for_name_binder(
         ExpressionPart::Atom(atom) => match atom.unpack() {
             AtomContent::Name(name) => {
                 let n = name.as_code();
-                if ["MYPY", "PY3", "TYPE_CHECKING"].contains(&n)
-                    || project.flags.always_true_symbols.iter().any(|s| s == n)
-                {
-                    return Truthiness::True;
+                if ["MYPY", "TYPE_CHECKING"].contains(&n) {
+                    return Truthiness::True {
+                        in_type_checking_block: true,
+                    };
+                } else if "PY3" == n || project.flags.always_true_symbols.iter().any(|s| s == n) {
+                    return Truthiness::True {
+                        in_type_checking_block: false,
+                    };
                 } else if n == "PY2" || project.flags.always_false_symbols.iter().any(|s| s == n) {
                     return Truthiness::False;
                 }
@@ -1423,7 +1459,9 @@ pub fn is_expr_part_reachable_for_name_binder(
                 if second == "TYPE_CHECKING" {
                     if let PrimaryOrAtom::Atom(atom) = primary.first() {
                         if atom.as_code() == "typing" {
-                            return Truthiness::True;
+                            return Truthiness::True {
+                                in_type_checking_block: true,
+                            };
                         }
                     }
                 }

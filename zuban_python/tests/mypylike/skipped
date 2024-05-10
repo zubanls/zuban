@@ -1792,8 +1792,6 @@ testOverloadsAndNoReturnNarrowTypeNoStrictOptional2
 testOverloadsAndNoReturnNarrowTypeWithStrictOptional2
 testOverloadsAndNoReturnNarrowTypeNoStrictOptional3
 testOverloadsAndNoReturnNarrowTypeWithStrictOptional3
-# "Missing return statement"
-testEmptyBodyTypeCheckingOnly
 
 # --enable-error-code redundant-self
 # "Redundant "Self" annotation for the first method argument"

@@ -362,6 +362,7 @@ pub enum Specific {
     AnyDueToError,
     ModuleNotFound,
     IfBranchAlwaysReachableInNameBinder,
+    IfBranchAlwaysReachableInTypeCheckingBlock, // For if TYPE_CHECKING:
     IfBranchAfterAlwaysReachableInNameBinder,
     IfBranchAlwaysUnreachableInNameBinder,
     AssertAlwaysFails,

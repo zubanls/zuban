@@ -182,6 +182,7 @@ pub struct FlowAnalysis {
     frames: RefCell<Vec<Frame>>,
     current_break_index: Cell<Option<usize>>,
     partials_in_module: RefCell<Vec<PointLink>>,
+    in_type_checking_only_block: Cell<bool>, // For stuff like if TYPE_CHECKING:
 }
 
 impl FlowAnalysis {
@@ -321,6 +322,13 @@ impl FlowAnalysis {
         self.frames.borrow_mut().push(frame);
         callable();
         self.frames.borrow_mut().pop().unwrap()
+    }
+
+    fn with_in_type_checking_only_block(&self, callable: impl FnOnce()) {
+        let old = self.in_type_checking_only_block.get();
+        self.in_type_checking_only_block.set(true);
+        callable();
+        self.in_type_checking_only_block.set(old);
     }
 
     pub fn mark_current_frame_unreachable(&self) {
@@ -694,6 +702,10 @@ impl Inference<'_, '_, '_> {
         FLOW_ANALYSIS.with(|fa| fa.is_unreachable())
     }
 
+    pub fn in_type_checking_only_block(&self) -> bool {
+        FLOW_ANALYSIS.with(|fa| fa.in_type_checking_only_block.get())
+    }
+
     pub fn mark_current_frame_unreachable(&self) {
         FLOW_ANALYSIS.with(|fa| fa.mark_current_frame_unreachable())
     }
@@ -914,6 +926,14 @@ impl Inference<'_, '_, '_> {
             IfBlockType::If(if_expr, block) => {
                 let (_, true_frame, false_frame) = self.find_guards_in_named_expr(if_expr);
                 match name_binder_check {
+                    Some(Specific::IfBranchAlwaysReachableInTypeCheckingBlock) => {
+                        FLOW_ANALYSIS.with(|fa| {
+                            fa.with_in_type_checking_only_block(|| {
+                                self.calc_block_diagnostics(block, class, func);
+                            })
+                        });
+                        self.process_ifs(if_blocks, class, func)
+                    }
                     Some(Specific::IfBranchAlwaysReachableInNameBinder) => {
                         self.calc_block_diagnostics(block, class, func);
                         self.process_ifs(if_blocks, class, func)
@@ -951,7 +971,7 @@ impl Inference<'_, '_, '_> {
     ) -> (Inferred, FramesWithParentUnions, FramesWithParentUnions) {
         let (left, right) = and.unpack();
         match is_expr_part_reachable_for_name_binder(&self.i_s.db.project, left) {
-            Truthiness::True => {
+            Truthiness::True { .. } => {
                 let (inf, r) = self.find_guards_in_expression_parts(right);
                 return (inf, FramesWithParentUnions::default(), r);
             }
@@ -1009,7 +1029,7 @@ impl Inference<'_, '_, '_> {
                 let (inf, r) = self.find_guards_in_expression_parts(right);
                 return (inf, FramesWithParentUnions::default(), r);
             }
-            Truthiness::True => {
+            Truthiness::True { .. } => {
                 let (inf, l) = self.find_guards_in_expression_parts(left);
                 return (inf, l, FramesWithParentUnions::default());
             }

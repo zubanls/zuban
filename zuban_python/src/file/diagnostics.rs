@@ -733,6 +733,7 @@ impl<'db> Inference<'db, '_, '_> {
                 && function.return_annotation().is_some()
                 && !(i_s.db.project.flags.allow_empty_bodies && function.has_trivial_body(i_s))
                 && !function.is_abstract()
+                && !self.in_type_checking_only_block()
             {
                 let ret_type = function.expected_return_type_for_return_stmt(i_s);
                 let has_trivial_body = function.has_trivial_body(i_s);
