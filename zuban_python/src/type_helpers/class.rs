@@ -986,6 +986,13 @@ impl<'db: 'a, 'a> Class<'a> {
             .any(|t| t.type_ == python_type)
     }
 
+    pub fn maybe_metaclass(&self, db: &Database) -> Option<PointLink> {
+        match self.use_cached_class_infos(db).metaclass {
+            MetaclassState::Some(link) => Some(link),
+            _ => None,
+        }
+    }
+
     pub fn is_base_exception_group(&self, db: &Database) -> bool {
         db.python_state
             .base_exception_group_node_ref()

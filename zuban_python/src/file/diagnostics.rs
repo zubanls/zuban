@@ -736,13 +736,14 @@ impl<'db> Inference<'db, '_, '_> {
             {
                 let ret_type = function.expected_return_type_for_return_stmt(self.i_s);
                 if !ret_type.is_any_none_or_in_union(self.i_s.db) {
+                    let has_trivial_body = function.has_trivial_body(self.i_s);
                     self.add_issue(
                         f.name().index(),
                         if matches!(ret_type.as_ref(), Type::Never(_)) {
                             IssueKind::ImplicitReturnInFunctionWithNeverReturn
                         } else {
                             IssueKind::MissingReturnStatement {
-                                code: if function.has_trivial_body(self.i_s) {
+                                code: if has_trivial_body {
                                     "empty-body"
                                 } else {
                                     "return"
@@ -750,6 +751,22 @@ impl<'db> Inference<'db, '_, '_> {
                             }
                         },
                     );
+                    if has_trivial_body
+                        && function
+                            .class
+                            .and_then(|c| c.maybe_metaclass(self.i_s.db))
+                            .is_some_and(|metaclass| {
+                                metaclass == self.i_s.db.python_state.abc_meta_link()
+                            })
+                    {
+                        self.add_issue(
+                            f.name().index(),
+                            IssueKind::Note(
+                                "If the method is meant to be abstract, use @abc.abstractmethod"
+                                    .into(),
+                            ),
+                        );
+                    }
                 }
             }
         })
