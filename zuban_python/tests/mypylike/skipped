@@ -1791,9 +1791,7 @@ testOverloadsAndNoReturnNarrowTypeWithStrictOptional2
 testOverloadsAndNoReturnNarrowTypeNoStrictOptional3
 testOverloadsAndNoReturnNarrowTypeWithStrictOptional3
 # "Missing return statement"
-testPartialAttributeNoneType
 testPartialAttributeNoneTypeStrictOptional
-testReadWriteDeleteAbstractProperty
 testEmptyBodyTypeCheckingOnly
 
 # --enable-error-code redundant-self

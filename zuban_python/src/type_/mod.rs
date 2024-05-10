@@ -489,11 +489,6 @@ impl Type {
             .any(|t| matches!(t, Type::Any(_)))
     }
 
-    pub fn is_any_none_or_in_union(&self, db: &Database) -> bool {
-        self.iter_with_unpacked_unions(db)
-            .any(|t| matches!(t, Type::Any(_) | Type::None))
-    }
-
     pub fn into_iter_with_unpacked_unions(self) -> impl Iterator<Item = UnionEntry> {
         match self {
             Type::Union(items) => TypeIterator::Union(items.entries.into_vec().into_iter()),

@@ -760,7 +760,7 @@ impl<'db> Inference<'db, '_, '_> {
                         IssueKind::ImplicitReturnInFunctionWithNeverReturn,
                     );
                     maybe_add_async()
-                } else if !ret_type.is_any_none_or_in_union(i_s.db) {
+                } else if !ret_type.is_simple_super_type_of(i_s, &Type::None).bool() {
                     self.add_issue(
                         f.name().index(),
                         IssueKind::MissingReturnStatement {
@@ -1170,7 +1170,7 @@ impl<'db> Inference<'db, '_, '_> {
                             })
                         },
                     );
-                } else if !t.is_any_none_or_in_union(self.i_s.db) {
+                } else if !t.is_simple_super_type_of(i_s, &Type::None).bool() {
                     self.add_issue(return_stmt.index(), IssueKind::ReturnValueExpected);
                 }
             } else {
