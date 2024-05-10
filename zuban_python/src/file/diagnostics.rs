@@ -719,7 +719,8 @@ impl<'db> Inference<'db, '_, '_> {
 
     fn calc_function_diagnostics(&self, f: FunctionDef, class: Option<Class>) {
         let function = Function::new(NodeRef::new(self.file, f.index()), class);
-        function.cache_func(self.i_s);
+        let i_s = self.i_s;
+        function.cache_func(i_s);
         FLOW_ANALYSIS.with(|fa| {
             let mut is_overload_member = false;
             let unreachable = fa.with_new_frame_and_return_unreachable(|| {
@@ -730,13 +731,12 @@ impl<'db> Inference<'db, '_, '_> {
                 && !is_overload_member
                 && !self.file.is_stub
                 && function.return_annotation().is_some()
-                && !(self.i_s.db.project.flags.allow_empty_bodies
-                    && function.has_trivial_body(self.i_s))
+                && !(i_s.db.project.flags.allow_empty_bodies && function.has_trivial_body(i_s))
                 && !function.is_abstract()
             {
-                let ret_type = function.expected_return_type_for_return_stmt(self.i_s);
-                if !ret_type.is_any_none_or_in_union(self.i_s.db) {
-                    let has_trivial_body = function.has_trivial_body(self.i_s);
+                let ret_type = function.expected_return_type_for_return_stmt(i_s);
+                if !ret_type.is_any_none_or_in_union(i_s.db) {
+                    let has_trivial_body = function.has_trivial_body(i_s);
                     self.add_issue(
                         f.name().index(),
                         if matches!(ret_type.as_ref(), Type::Never(_)) {
@@ -754,9 +754,9 @@ impl<'db> Inference<'db, '_, '_> {
                     if has_trivial_body
                         && function
                             .class
-                            .and_then(|c| c.maybe_metaclass(self.i_s.db))
+                            .and_then(|c| c.maybe_metaclass(i_s.db))
                             .is_some_and(|metaclass| {
-                                metaclass == self.i_s.db.python_state.abc_meta_link()
+                                metaclass == i_s.db.python_state.abc_meta_link()
                             })
                     {
                         self.add_issue(
