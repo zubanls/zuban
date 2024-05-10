@@ -901,19 +901,19 @@ impl Inference<'_, '_, '_> {
         let Some(if_block) = if_blocks.next() else {
             return
         };
-        let unreachable_in_name_binder = self
+        let name_binder_check = self
             .file
             .points
             .get(if_block.first_leaf_index())
             .maybe_calculated_and_specific();
-        if unreachable_in_name_binder == Some(Specific::IfBranchAfterAlwaysReachableInNameBinder) {
+        if name_binder_check == Some(Specific::IfBranchAfterAlwaysReachableInNameBinder) {
             return self.process_ifs(if_blocks, class, func);
         }
 
         match if_block {
             IfBlockType::If(if_expr, block) => {
                 let (_, true_frame, false_frame) = self.find_guards_in_named_expr(if_expr);
-                match unreachable_in_name_binder {
+                match name_binder_check {
                     Some(Specific::IfBranchAlwaysReachableInNameBinder) => {
                         self.calc_block_diagnostics(block, class, func);
                         self.process_ifs(if_blocks, class, func)

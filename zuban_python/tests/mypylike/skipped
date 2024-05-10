@@ -504,6 +504,8 @@ testTypedDictWith__or__method_error
 testTypedDictWith__ror__method
 testTypedDictWith__ior__method
 
+# Protocol invariant matching for attributes
+testPartialAttributeNoneTypeStrictOptional
 # Protocol NamedTuple field issues
 testTypingNamedTupleAttributesAreReadOnly
 testNamedTupleWithNoArgsCallableField
@@ -1791,7 +1793,6 @@ testOverloadsAndNoReturnNarrowTypeWithStrictOptional2
 testOverloadsAndNoReturnNarrowTypeNoStrictOptional3
 testOverloadsAndNoReturnNarrowTypeWithStrictOptional3
 # "Missing return statement"
-testPartialAttributeNoneTypeStrictOptional
 testEmptyBodyTypeCheckingOnly
 
 # --enable-error-code redundant-self
