@@ -60,7 +60,6 @@ pub(crate) struct NameBinder<'project, 'db> {
     file_index: FileIndex,
     is_stub: bool,
     references_need_flow_analysis: bool,
-    #[allow(dead_code)] // TODO remove this
     parent: Option<*mut NameBinder<'project, 'db>>,
 }
 
