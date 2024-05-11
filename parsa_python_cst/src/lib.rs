@@ -2437,9 +2437,17 @@ impl<'db> ImportFromAsName<'db> {
             (name_def.name(), name_def)
         } else {
             // foo as bar
+            debug_assert_eq!(first.type_(), Terminal(TerminalType::Name));
             let def = first.next_sibling().unwrap().next_sibling().unwrap();
             (Name::new(first), NameDefinition::new(def))
         }
+    }
+
+    fn is_stub_reexport(&self) -> bool {
+        // foo as foo
+        let (name, name_def) = self.unpack();
+        // foo as bar is not a stub re-export
+        name.index() != name_def.name_index() && name.as_code() == name_def.as_code()
     }
 
     pub fn import_from(&self) -> ImportFrom<'db> {
@@ -3444,9 +3452,19 @@ impl<'db> NameDefinition<'db> {
     }
 }
 
+#[derive(Debug)]
 pub enum NameImportParent<'db> {
     ImportFromAsName(ImportFromAsName<'db>),
     DottedAsName(DottedAsName<'db>),
+}
+
+impl<'db> NameImportParent<'db> {
+    pub fn is_stub_reexport(&self) -> bool {
+        match self {
+            Self::ImportFromAsName(imp) => imp.is_stub_reexport(),
+            Self::DottedAsName(_) => false,
+        }
+    }
 }
 
 impl<'db> Atom<'db> {

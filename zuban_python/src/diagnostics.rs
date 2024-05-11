@@ -22,6 +22,7 @@ pub(crate) enum IssueKind {
     // Mypy somehow has a different error here than the one for imports.
     ImportAttributeError { module_name: Box<str>, name: Box<str> },
     ModuleAttributeError { name: Box<str> },
+    ImportStubNoExplicitReexport { module_name: Box<str>, attribute: Box<str> },
     UnsupportedClassScopedImport,
     NameError { name: Box<str> },
     ArgumentIssue(Box<str>),
@@ -374,6 +375,7 @@ impl IssueKind {
             AttributeError { .. }
             | ImportAttributeError { .. }
             | ModuleAttributeError { .. }
+            | ImportStubNoExplicitReexport { .. }
             | AsyncNotIterable { .. }
             | NotIterable { .. } => "attr-defined",
             NameError { .. } => "name-defined",
@@ -613,6 +615,9 @@ impl<'db> Diagnostic<'db> {
             ModuleAttributeError{name} => {
                 format!("Module has no attribute {name:?}")
             }
+            ImportStubNoExplicitReexport { module_name, attribute } => format!(
+                r#"Module "{module_name}" does not explicitly export attribute "{attribute}""#
+            ),
             UnsupportedClassScopedImport =>
                 "Unsupported class scoped import".to_string(),
             NameError{name} => format!("Name {name:?} is not defined"),

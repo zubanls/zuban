@@ -61,6 +61,7 @@ pub struct TypeCheckerFlags {
     pub warn_redundant_casts: bool,
     pub warn_return_any: bool,
     pub local_partial_types: bool,
+    pub no_implicit_reexport: bool,
 
     pub platform: Option<String>,
     pub enabled_error_codes: Vec<String>,
@@ -95,6 +96,7 @@ impl Default for TypeCheckerFlags {
             warn_redundant_casts: false,
             warn_return_any: false,
             local_partial_types: false,
+            no_implicit_reexport: false,
             platform: None,
             python_version: PythonVersion::new(3, 12),
             always_true_symbols: vec![],

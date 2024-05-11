@@ -8,6 +8,7 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     matching::LookupResult,
+    node_ref::NodeRef,
     type_::{Namespace, Type},
     workspaces::{Directory, Parent},
 };
@@ -78,6 +79,21 @@ impl<'a> Module<'a> {
     ) -> LookupResult {
         if let Some(link) = self.file.lookup_global(name) {
             let link = link.into();
+            let check_reexport = self.file.is_stub || i_s.db.project.flags.no_implicit_reexport;
+            if check_reexport
+                && NodeRef::from_link(i_s.db, link)
+                    .maybe_name()
+                    .unwrap()
+                    .name_definition()
+                    .unwrap()
+                    .maybe_import()
+                    .is_some_and(|i| !i.is_stub_reexport())
+            {
+                add_issue(IssueKind::ImportStubNoExplicitReexport {
+                    module_name: self.qualified_name(i_s.db).into(),
+                    attribute: name.into(),
+                })
+            }
             LookupResult::GotoName {
                 name: link,
                 inf: if is_import {

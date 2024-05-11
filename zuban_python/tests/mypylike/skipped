@@ -577,6 +577,7 @@ testExportedValuesInImportAll
 testAllMustBeSequenceStr
 testUnderscoreExportedValuesInImportAll
 testReExportAllInStub
+testNoImplicitReexportRespectsAll
 
 # Module <M> has no attribute <missing_name>
 testRelativeImportFromSameModule
@@ -646,16 +647,9 @@ testReExportChildStubs
 testReExportChildStubs2
 
 # Stub Reexport
-testNoReExportFromStubs
 testNoReExportFromStubsMemberType
-testNoReExportFromStubsMemberVar
-testNoReExportChildStubs
-testNoReExportNestedStub
-testNoReExportFromMissingStubs
 testMissingGenericImport
 testStubFixupIssues
-testNoReExportUnrelatedModule
-testNoReExportUnrelatedSiblingPrefix
 testUnimportedHintAny
 testUnimportedHintAnyLower
 testFromImportAsInStub
@@ -666,11 +660,6 @@ testSpecialCaseEmptyListInitialization
 testSpecialCaseEmptyListInitialization2
 # underscore names are not exported in an import with stubs
 testInternalBuiltinDefinition
-# --no-implicit-reexport
-testNoImplicitReexport
-testNoImplicitReexportRespectsAll
-testNoImplicitReexportGetAttr
-textNoImplicitReexportSuggestions
 
 # "Incompatible import of "y" (imported name has type "str", local name has type "int")"
 testAssignAndConditionalImport
