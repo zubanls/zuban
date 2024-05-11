@@ -2576,10 +2576,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             "reveal_type" => Point::new_specific(Specific::RevealTypeFunction, Locality::Stmt),
             "__builtins__" => Point::new_file_reference(builtins.file_index(), Locality::Todo),
             _ => {
-                if let Some(link) = builtins
-                    .lookup_global(name.as_str())
-                    .filter(|link| !is_reexport(self.i_s.db, (*link).into()))
-                {
+                if let Some(link) = builtins.lookup_global(name.as_str()).filter(|link| {
+                    !name_str.starts_with('_') && !is_reexport(self.i_s.db, (*link).into())
+                }) {
                     debug_assert!(link.file != self.file_index || link.node_index != name_index);
                     link.into_point_redirect()
                 } else {
@@ -2606,13 +2605,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             name: Box::from(name.as_str()),
                         },
                     );
-                    if self
-                        .i_s
-                        .db
-                        .python_state
-                        .typing()
-                        .lookup_global(name_str)
-                        .is_some()
+                    if !name_str.starts_with('_')
+                        && self
+                            .i_s
+                            .db
+                            .python_state
+                            .typing()
+                            .lookup_global(name_str)
+                            .is_some()
                     {
                         // TODO what about underscore or other vars?
                         self.add_issue(

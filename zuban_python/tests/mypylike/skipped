@@ -648,14 +648,13 @@ testNewImportCycleTypedDict
 testReExportChildStubs
 testReExportChildStubs2
 
-# Stub Reexport
+# Stub Reexport for type computation
 testNoReExportFromStubsMemberType
+testNewSemanticAnalyzerModulePrivateRefInMiddleOfQualified
+# Star import stub reexport
 testStubFixupIssues
 testFromImportAsInStub
 testImportAsInStub
-testNewSemanticAnalyzerModulePrivateRefInMiddleOfQualified
-# underscore names are not exported in an import with stubs
-testInternalBuiltinDefinition
 
 # "Incompatible import of "y" (imported name has type "str", local name has type "int")"
 testAssignAndConditionalImport
