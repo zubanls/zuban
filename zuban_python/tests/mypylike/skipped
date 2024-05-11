@@ -68,7 +68,6 @@ testMetaclassAndSuper
 testFunctionForwardRefAlias
 # Class is still set in InferenceState
 testAsyncForComprehensionErrors
-# TODO ^ also clean up dataclass field calculation
 
 # functools.total_ordering
 testTotalOrderingEqLt
