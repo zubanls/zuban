@@ -648,9 +648,6 @@ testNewImportCycleTypedDict
 testReExportChildStubs
 testReExportChildStubs2
 
-# Star import stub reexport
-testImportAsInStub
-
 # "Incompatible import of "y" (imported name has type "str", local name has type "int")"
 testAssignAndConditionalImport
 testAssignAndConditionalStarImport

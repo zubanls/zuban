@@ -3462,7 +3462,12 @@ impl<'db> NameImportParent<'db> {
     pub fn is_stub_reexport(&self) -> bool {
         match self {
             Self::ImportFromAsName(imp) => imp.is_stub_reexport(),
-            Self::DottedAsName(_) => false,
+            Self::DottedAsName(dotted) => match dotted.unpack() {
+                DottedAsNameContent::Simple(..) => false,
+                DottedAsNameContent::WithAs(dotted, name_def) => {
+                    dotted.as_code() == name_def.as_code()
+                }
+            },
         }
     }
 }
