@@ -651,10 +651,8 @@ testReExportChildStubs2
 # Stub Reexport
 testNoReExportFromStubsMemberType
 testStubFixupIssues
-testUnimportedHintAnyLower
 testFromImportAsInStub
 testImportAsInStub
-testReExportChildStubs3
 testNewSemanticAnalyzerModulePrivateRefInMiddleOfQualified
 # underscore names are not exported in an import with stubs
 testInternalBuiltinDefinition
