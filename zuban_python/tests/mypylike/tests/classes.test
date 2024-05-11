@@ -58,7 +58,7 @@ class Try4(A, C): ...
 
 [case self_type_in_metaclass]
 # Similar to testTypingSelfMetaClassDisabled, but with additional tests
-from typing import Self
+from typing import Self, Any
 
 class Meta(type):
     def __new__(cls, *args: Any) -> Self:  # E: Self type cannot be used in a metaclass
@@ -128,7 +128,7 @@ def check_bound3(x: Type[V]) -> None:
         reveal_type(var)  # N: Revealed type is "builtins.str | Any"
 
 [case kwargs_base_class]
-from typing import Type
+from typing import Type, Any
 foo: dict[str, Type[Any]]
 
 class Bar(**foo): ...  # E: Invalid base class "**foo"
@@ -172,7 +172,7 @@ reveal_type(B().f)  # N: Revealed type is "Any"
 
 [case invalid_args_for_property]
 # Similar to testInvalidArgCountForProperty, but a few more cases
-from typing import Callable
+from typing import Callable, Any
 
 def any(f: Callable[[Any], int]) -> Callable[..., int]: ...
 
@@ -216,6 +216,8 @@ class C(B):
         return self
 
 [case class_var_in_method_annotation]
+from typing import ClassVar
+
 class Foo:
     def method1(self, x: ClassVar) -> None: ...  # E: ClassVar can only be used for assignments in class body
     def method2(self, x: ClassVar[int]) -> None: ...  # E: ClassVar can only be used for assignments in class body
@@ -223,6 +225,7 @@ class Foo:
     def method4(self) -> ClassVar[int]: ...  # E: ClassVar can only be used for assignments in class body
 
 [case self_callable]
+from typing import Callable
 class Foo:
     def __init__(self) -> None:
         o: Callable[[], Callable[[Foo, int], None]]
@@ -236,6 +239,7 @@ reveal_type(Foo().bla)  # N: Revealed type is "def (__main__.Foo, int)"
 Foo.foo  # E: "Type[Foo]" has no attribute "foo"
 
 [case callable_on_class_with_classvar]
+from typing import Callable, ClassVar
 class Foo:
     o: ClassVar[Callable[[], Callable[[Foo, int], None]]]
     foo: ClassVar[Callable[[Foo, int], str]]
@@ -251,6 +255,7 @@ reveal_type(Foo().bar)  # N: Revealed type is "def (int) -> str"
 reveal_type(Foo().bla)  # N: Revealed type is "def (int)"
 
 [case callable_on_class_without_classvar]
+from typing import Callable
 class Foo:
     o: Callable[[], Callable[[Foo, int], None]]
     foo: Callable[[Foo, int], str]
@@ -266,6 +271,7 @@ reveal_type(Foo().bar)  # N: Revealed type is "def (__main__.Foo, int) -> str"
 reveal_type(Foo().bla)  # N: Revealed type is "def (int)"
 
 [case callable_mapped_via_class1]
+from typing import Callable, ClassVar
 class Foo:
     foo: ClassVar[Callable[[Foo, Bar, int], None]]
 class Bar:
@@ -397,7 +403,7 @@ class A:
 A() + A()  # E: Unsupported operand types for + ("A" and "A")
 
 [case generic_class_as_callable]
-from typing import TypeVar, Generic
+from typing import TypeVar, Generic, Callable
 
 T = TypeVar('T')
 
@@ -412,7 +418,7 @@ foo(Foo)
 bar(Foo)  # E: Argument 1 to "bar" has incompatible type "Type[Foo]"; expected "Callable[[int], Foo[str]]"
 
 [case generic_class_as_callable_with_func_type_vars]
-from typing import TypeVar, Generic
+from typing import TypeVar, Generic, Callable
 
 T = TypeVar('T')
 S = TypeVar('S')
@@ -430,7 +436,7 @@ bar(Foo)
 baz(Foo)  # E: Argument 1 to "baz" has incompatible type "Type[Foo]"; expected "Callable[[str, str, float], Foo[int]]"
 
 [case generic_class_as_callable_with_func_type_vars_and_bounds]
-from typing import TypeVar, Generic
+from typing import TypeVar, Generic, Callable
 
 T = TypeVar('T')
 S = TypeVar('S', bound=int)
@@ -465,7 +471,7 @@ y = Bar(1.0)  # E: Invalid self type in __init__
 reveal_type(y)  # N: Revealed type is "__main__.Bar[float]"
 
 [case class_init_with_mismatching_self_type_vars_overload]
-from typing import Generic, TypeVar
+from typing import Generic, TypeVar, overload
 
 T = TypeVar("T")
 U = TypeVar("U")

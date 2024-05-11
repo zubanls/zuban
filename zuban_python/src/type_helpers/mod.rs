@@ -14,7 +14,7 @@ pub use function::{is_private, FirstParamKind, FirstParamProperties, Function, G
 pub(crate) use instance::{
     execute_isinstance, execute_issubclass, execute_super, Instance, LookupDetails,
 };
-pub use module::{dotted_path_from_dir, lookup_in_namespace, Module};
+pub use module::{dotted_path_from_dir, is_reexport, lookup_in_namespace, Module};
 pub use overload::OverloadedFunction;
 pub(crate) use typing::{
     execute_assert_type, execute_type, NewTypeClass, ParamSpecClass, RevealTypeFunction,

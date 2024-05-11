@@ -30,8 +30,8 @@ use crate::{
         WithUnpack,
     },
     type_helpers::{
-        lookup_in_namespace, Class, FirstParamKind, Function, GeneratorType, Instance, Module,
-        TypeOrClass,
+        is_reexport, lookup_in_namespace, Class, FirstParamKind, Function, GeneratorType, Instance,
+        Module, TypeOrClass,
     },
     utils::debug_indent,
 };
@@ -2576,7 +2576,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             "reveal_type" => Point::new_specific(Specific::RevealTypeFunction, Locality::Stmt),
             "__builtins__" => Point::new_file_reference(builtins.file_index(), Locality::Todo),
             _ => {
-                if let Some(link) = builtins.lookup_global(name.as_str()) {
+                if let Some(link) = builtins
+                    .lookup_global(name.as_str())
+                    .filter(|link| !is_reexport(self.i_s.db, (*link).into()))
+                {
                     debug_assert!(link.file != self.file_index || link.node_index != name_index);
                     link.into_point_redirect()
                 } else {

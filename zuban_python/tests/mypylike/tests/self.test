@@ -84,7 +84,7 @@ class Foo:
         return self.x
 
 [case self_instance_with_classvar]
-from typing import Self
+from typing import Self, ClassVar
 class Foo:
     x: ClassVar[Self]
     y: int
@@ -144,6 +144,7 @@ reveal_type(C().bar()) # E: Attribute function "foo" with type "Callable[[], Non
 reveal_type(C().foo3()) # N: Revealed type is "None"
 
 [case self_return_allowed]
+from typing import Self
 class Foo():
     def meth2(self: Self) -> Self:
         return self

@@ -111,6 +111,8 @@ testNonconsecutiveOverloadsMissingFirstOverload
 testNonconsecutiveOverloadsMissingLaterOverload
 # Overload needs type var matcher probably (and maybe also overlapping)
 overload_class_type_var_implementation_match_and_mismatch
+# overload variant formatting
+testSpecialCaseEmptyListInitialization2
 
 # Union/addition of empty lists dicts sets with used ones
 testOrOperationWithGenericOperands
@@ -648,16 +650,12 @@ testReExportChildStubs2
 
 # Stub Reexport
 testNoReExportFromStubsMemberType
-testMissingGenericImport
 testStubFixupIssues
-testUnimportedHintAny
 testUnimportedHintAnyLower
 testFromImportAsInStub
 testImportAsInStub
 testReExportChildStubs3
 testNewSemanticAnalyzerModulePrivateRefInMiddleOfQualified
-testSpecialCaseEmptyListInitialization
-testSpecialCaseEmptyListInitialization2
 # underscore names are not exported in an import with stubs
 testInternalBuiltinDefinition
 

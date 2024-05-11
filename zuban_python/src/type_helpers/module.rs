@@ -1,6 +1,6 @@
 use crate::{
     arguments::KnownArgsWithCustomAddIssue,
-    database::{Database, FileIndex},
+    database::{Database, FileIndex, PointLink},
     debug,
     diagnostics::IssueKind,
     file::{File, PythonFile},
@@ -80,15 +80,7 @@ impl<'a> Module<'a> {
         if let Some(link) = self.file.lookup_global(name) {
             let link = link.into();
             let check_reexport = self.file.is_stub || i_s.db.project.flags.no_implicit_reexport;
-            if check_reexport
-                && NodeRef::from_link(i_s.db, link)
-                    .maybe_name()
-                    .unwrap()
-                    .name_definition()
-                    .unwrap()
-                    .maybe_import()
-                    .is_some_and(|i| !i.is_stub_reexport())
-            {
+            if check_reexport && is_reexport(i_s.db, link) {
                 add_issue(IssueKind::ImportStubNoExplicitReexport {
                     module_name: self.qualified_name(i_s.db).into(),
                     attribute: name.into(),
@@ -184,4 +176,14 @@ pub fn dotted_path_from_dir(dir: &Directory) -> String {
     } else {
         dir.name.to_string()
     }
+}
+
+pub fn is_reexport(db: &Database, link: PointLink) -> bool {
+    NodeRef::from_link(db, link)
+        .maybe_name()
+        .unwrap()
+        .name_definition()
+        .unwrap()
+        .maybe_import()
+        .is_some_and(|i| !i.is_stub_reexport())
 }

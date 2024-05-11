@@ -123,7 +123,7 @@ def yield_send() -> Generator[bytes, str, float]:  # E: Missing return statement
         return 1.0
 
 [case yield_from_with_generator_subtype]
-from typing import Generator, Any
+from typing import Generator, Any, Self
 
 a: Any
 
@@ -150,7 +150,7 @@ a: 'int; str'  # E: Syntax error in type annotation
 b: 'int str'  # E: invalid syntax
 
 [case typing_extensions_assert_type]
-from typing_extensions import assert_type
+from typing_extensions import assert_type, Literal
 
 assert_type(1, Literal[1])
 assert_type(1, Literal[2])  # E: Expression is of type "Literal[1]", not "Literal[2]"

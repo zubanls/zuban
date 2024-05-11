@@ -660,7 +660,7 @@ x3: TupList[int, int] = f(g([((1, 1), (1, ""))])) # E: List item 0 has incompati
 x4: TupList[str, str] = f(g([((1, 1), (1, 1))])) # E: List item 0 has incompatible type "tuple[tuple[int, int], tuple[int, int]]"; expected "tuple[tuple[str, str], tuple[str, str]]"
 
 [case context_inference_with_any]
-from typing import TypeVar, Generic
+from typing import TypeVar, Generic, Any
 class Foo(Generic[U]): ...
 U = TypeVar('U')
 T = TypeVar('T', Foo[int], Foo[str])
@@ -829,6 +829,8 @@ if int():
     y = c_int # E: Incompatible types in assignment (expression has type "C[int]", variable has type "C[str]")
 
 [case self_type_property_with_generics]
+from typing import TypeVar, Generic
+
 T = TypeVar("T")
 class Foo(Generic[T]):
     @property
@@ -1078,7 +1080,7 @@ x = combine(id)
 reveal_type(x)  # N: Revealed type is "def (list[int]) -> list[int]"
 
 [case transitive_constraints_any_correctly_applied]
-from typing import TypeVar, Callable, List, Tuple
+from typing import TypeVar, Callable, List, Tuple, Any
 
 T1 = TypeVar("T1")
 T2 = TypeVar("T2")

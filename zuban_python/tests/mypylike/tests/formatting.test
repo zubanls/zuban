@@ -1,5 +1,5 @@
 [case format_method_with_type_var]
-from typing import TypeVar
+from typing import TypeVar, Generic
 
 T = TypeVar("T")
 

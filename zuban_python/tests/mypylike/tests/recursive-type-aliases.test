@@ -1,6 +1,6 @@
 [case recursive_alias_union_simplifying_with_generics]
 # flags: --mypy-compatible --disable-error-code=used-before-def
-from typing import TypeVar, Union
+from typing import TypeVar, Union, Sequence
 
 S = TypeVar("S")
 T = TypeVar("T")

@@ -1,6 +1,7 @@
 [case enum_ignore_deleted]
 # Similar to testEnumIgnoreIsDeleted, but additional cases
 from enum import Enum
+from typing import Literal
 
 class C(Enum):
     _ignore_ = 'X'

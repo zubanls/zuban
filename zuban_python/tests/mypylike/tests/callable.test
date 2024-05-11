@@ -178,7 +178,7 @@ reveal_type(x(1)("")) # N: Revealed type is "tuple[int, str]"
 reveal_type(y) # N: Revealed type is "str"
 
 [case callable_on_type_comment_tuple_with_parentheses]
-from typing import Callable, TypeVar, Tuple, Generic
+from typing import Callable, TypeVar, Tuple, Generic, Any
 
 T = TypeVar('T')
 U = TypeVar('U')
@@ -210,7 +210,7 @@ main:7: note: (Hint: Use "Generic[U]" or "Protocol[U]" base class to bind "U" in
 main:7: note: (Hint: Use "U" in function signature to bind "U" inside a function)
 
 [case callable_on_type_comment_tuple_with_unbound]
-from typing import Callable, TypeVar, Tuple, Generic
+from typing import Callable, TypeVar, Tuple, Generic, Any
 
 T = TypeVar('T')
 U = TypeVar('U')
@@ -297,6 +297,7 @@ def test(s: str) -> int:
 
 [case callable_with_keyword_errors]
 from mypy_extensions import Arg
+from typing import Callable
 
 def foo(x: int) -> None: ...
 
