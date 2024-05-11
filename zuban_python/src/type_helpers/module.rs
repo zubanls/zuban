@@ -79,8 +79,7 @@ impl<'a> Module<'a> {
     ) -> LookupResult {
         if let Some(link) = self.file.lookup_global(name) {
             let link = link.into();
-            let check_reexport = self.file.is_stub || i_s.db.project.flags.no_implicit_reexport;
-            if check_reexport && is_reexport(i_s.db, link) {
+            if is_reexport_if_check_needed(i_s.db, self.file, link) {
                 add_issue(IssueKind::ImportStubNoExplicitReexport {
                     module_name: self.qualified_name(i_s.db).into(),
                     attribute: name.into(),
@@ -176,6 +175,11 @@ pub fn dotted_path_from_dir(dir: &Directory) -> String {
     } else {
         dir.name.to_string()
     }
+}
+
+pub fn is_reexport_if_check_needed(db: &Database, file: &PythonFile, link: PointLink) -> bool {
+    let check_reexport = file.is_stub || db.project.flags.no_implicit_reexport;
+    check_reexport && is_reexport(db, link)
 }
 
 pub fn is_reexport(db: &Database, link: PointLink) -> bool {

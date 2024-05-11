@@ -648,9 +648,6 @@ testNewImportCycleTypedDict
 testReExportChildStubs
 testReExportChildStubs2
 
-# Stub Reexport for type computation
-testNoReExportFromStubsMemberType
-testNewSemanticAnalyzerModulePrivateRefInMiddleOfQualified
 # Star import stub reexport
 testStubFixupIssues
 testFromImportAsInStub
