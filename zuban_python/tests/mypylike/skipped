@@ -655,7 +655,6 @@ testImportedVariableViaImport
 
 # Unsupported class scoped import
 testClassScopeImports
-testClassScopeImportModule
 testClassScopeImportAlias
 testClassScopeImportModuleStar
 testClassScopeImportFunctionNested
@@ -663,10 +662,6 @@ testClassScopeImportUndefined
 testClassScopeImportWithFollowImports
 testClassScopeImportVarious
 testClassScopeImportWithError
-testClassScopeImportWithWrapperAndError
-testImportInClassBody
-testOverrideByBadVarClass
-testOverrideByBadVarClassAlias
 testIncrementalSilentImportsAndImportsInClass
 testImportStarAddMissingDependencyWithinClass
 
