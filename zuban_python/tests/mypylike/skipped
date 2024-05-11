@@ -66,8 +66,6 @@ testMetaclassAndSuper
 
 # Uses function context but is in fact in module context
 testFunctionForwardRefAlias
-# Remove Mode from inference_state
-testSelfTypeRestrictedMethodOverloadInitBadTypeNoCrash
 # Class is still set in InferenceState
 testAsyncForComprehensionErrors
 # TODO ^ also clean up dataclass field calculation
