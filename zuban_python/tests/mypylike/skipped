@@ -154,17 +154,6 @@ testRecursiveClassLevelAlias
 testRecursiveAliasImported
 # cycle for self.a = self.f(self.a) where f(T) -> T
 testGenericTypeBody1
-# import cycle
-testBoundGenericMethodParamSpecFine
-testCyclicUndefinedImportWithName
-testCyclicUndefinedImportWithStar1
-testCyclicUndefinedImportWithStar2
-testCyclicUndefinedImportWithStar3
-testNewAnalyzerTypeAnnotationCycle4
-testBoundGenericMethodFine
-testNewImportCycleTypeVarBound
-testNewImportCycleTupleBase
-testNewImportCycleTypedDict
 # C = C Cycle
 testOverrideByIdemAliasCorrectType
 testOverrideByIdemAliasCorrectTypeReversed
@@ -642,13 +631,25 @@ testIncrementalNestedBrokenCascade
 testMultiModuleAlias
 testModuleAliasWithExplicitAnnotation
 
+# import cycle
+testBoundGenericMethodParamSpecFine
+testCyclicUndefinedImportWithName
+testCyclicUndefinedImportWithStar1
+testCyclicUndefinedImportWithStar2
+testCyclicUndefinedImportWithStar3
+testNewAnalyzerTypeAnnotationCycle4
+testBoundGenericMethodFine
+testNewImportCycleTypeVarBound
+testNewImportCycleTupleBase
+testNewImportCycleTypedDict
+testReExportChildStubs
+testReExportChildStubs2
+
 # Stub Reexport
 testNoReExportFromStubs
 testNoReExportFromStubsMemberType
 testNoReExportFromStubsMemberVar
 testNoReExportChildStubs
-testReExportChildStubs
-testReExportChildStubs2
 testNoReExportNestedStub
 testNoReExportFromMissingStubs
 testMissingGenericImport
