@@ -489,10 +489,36 @@ impl Type {
             .any(|t| matches!(t, Type::Any(_)))
     }
 
-    pub fn into_iter_with_unpacked_unions(self) -> impl Iterator<Item = UnionEntry> {
+    fn is_none_or_none_in_union(&self, db: &Database) -> bool {
+        self.iter_with_unpacked_unions(db)
+            .any(|t| matches!(t, Type::None))
+    }
+
+    pub fn remove_none(&self, db: &Database) -> Cow<Type> {
+        if self.is_none_or_none_in_union(db) {
+            Cow::Owned(Type::from_union_entries(
+                self.clone()
+                    .into_iter_with_unpacked_unions(db, true)
+                    .filter(|union_entry| !matches!(&union_entry.type_, Type::None))
+                    .collect(),
+            ))
+        } else {
+            Cow::Borrowed(self)
+        }
+    }
+
+    pub fn into_iter_with_unpacked_unions(
+        self,
+        db: &Database,
+        unpack_recursive_type: bool,
+    ) -> impl Iterator<Item = UnionEntry> {
         match self {
             Type::Union(items) => TypeIterator::Union(items.entries.into_vec().into_iter()),
             Type::Never(_) => TypeIterator::Finished,
+            Type::RecursiveType(rec) if unpack_recursive_type => rec
+                .calculated_type(db)
+                .clone()
+                .into_iter_with_unpacked_unions(db, unpack_recursive_type),
             t => TypeIterator::Single(t),
         }
     }

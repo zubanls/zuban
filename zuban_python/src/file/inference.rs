@@ -1812,7 +1812,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             left_type: left_inf.format_short(self.i_s),
                             right_type: right_inf.format_short(self.i_s),
                         },
-                    )
+                    );
                 }
                 self.infer_in_operator(from, &left_inf, right_inf)
             }
@@ -1831,7 +1831,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         {
             return true;
         }
-        left_t.overlaps(self.i_s, right_t)
+        let left_t = left_t.remove_none(self.i_s.db);
+        let right_t = right_t.remove_none(self.i_s.db);
+        left_t.overlaps(self.i_s, &right_t)
     }
 
     pub fn infer_in_operator(

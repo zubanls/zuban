@@ -51,7 +51,7 @@ pub fn simplified_union_from_iterators_with_format_index(
     let mut result = merge_simplified_union_type(
         i_s,
         types.into_iter().flat_map(|(format_index, t)| {
-            t.into_iter_with_unpacked_unions()
+            t.into_iter_with_unpacked_unions(i_s.db, false)
                 .map(move |entry| UnionEntry {
                     format_index: format_index * multiply + entry.format_index,
                     type_: entry.type_,

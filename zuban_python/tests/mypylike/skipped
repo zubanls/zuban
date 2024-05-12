@@ -1701,13 +1701,15 @@ testStrictEqualitySequenceAndCustomEq
 testOverlappingClassCallables
 testDisableBytearrayMemoryviewPromotionStrictEquality
 testEnableBytearrayMemoryviewPromotionStrictEquality
+testStrictEqualityDisabledWithTypeVarRestrictions
+testStrictEqualityWithDifferentMapTypes
+testStrictEqualityWithRecursiveListTypes
 # if right operand is Any, fallback to Any in operation
 testBinaryOperationsWithDynamicAsRightOperand
 # --strict-equality strict equality "Non-overlapping equality check (left operand type: "int", right operand type: "str")"
 testStrictEqualityContains
 testStrictEqualityUnions
 testStrictEqualityNoPromotePy3
-testStrictEqualityEqNoOptionalOverlap
 testCustomEqCheckStrictEquality
 testCustomEqCheckStrictEqualityTuple
 testCustomEqCheckStrictEqualityMeta

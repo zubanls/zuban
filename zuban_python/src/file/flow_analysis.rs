@@ -1375,7 +1375,7 @@ impl Inference<'_, '_, '_> {
                         iterator.next();
                     }
                     if eq_chain.is_empty() {
-                        find_comparison_guards(self.i_s, left_infos, &right_infos, true)
+                        find_comparison_guards(self.i_s, &left_infos, &right_infos, true)
                     } else {
                         let result = find_comparison_chain_guards(self.i_s, &eq_chain, true);
                         right_infos = eq_chain.into_iter().last().unwrap();
@@ -1384,7 +1384,7 @@ impl Inference<'_, '_, '_> {
                 }
                 ComparisonContent::NotEquals(..) => {
                     invert = true;
-                    find_comparison_guards(self.i_s, left_infos, &right_infos, true)
+                    find_comparison_guards(self.i_s, &left_infos, &right_infos, true)
                 }
                 ComparisonContent::Is(..) => {
                     let mut is_chain = vec![];
@@ -1398,7 +1398,7 @@ impl Inference<'_, '_, '_> {
                         iterator.next();
                     }
                     if is_chain.is_empty() {
-                        find_comparison_guards(self.i_s, left_infos, &right_infos, false)
+                        find_comparison_guards(self.i_s, &left_infos, &right_infos, false)
                     } else {
                         let result = find_comparison_chain_guards(self.i_s, &is_chain, false);
                         right_infos = is_chain.into_iter().last().unwrap();
@@ -1407,10 +1407,10 @@ impl Inference<'_, '_, '_> {
                 }
                 ComparisonContent::IsNot(..) => {
                     invert = true;
-                    find_comparison_guards(self.i_s, left_infos, &right_infos, false)
+                    find_comparison_guards(self.i_s, &left_infos, &right_infos, false)
                 }
                 ComparisonContent::In(left, op, _) | ComparisonContent::NotIn(left, op, _) => {
-                    Some(self.guard_of_in_operator(op, left_infos, &right_infos))
+                    Some(self.guard_of_in_operator(op, &mut left_infos, &right_infos))
                 }
                 ComparisonContent::Ordering(operation) => {
                     let mut result = None;
@@ -1448,6 +1448,8 @@ impl Inference<'_, '_, '_> {
                     (new.falsey, new.truthy) = (new.truthy, new.falsey);
                 }
                 frames = Some(merge_conjunction(self.i_s, frames, new));
+            } else {
+                self.infer_comparison_part(comparison, left_infos.inf, &right_infos.inf);
             }
             left_infos = right_infos
         }
@@ -1811,7 +1813,7 @@ impl Inference<'_, '_, '_> {
     fn guard_of_in_operator(
         &self,
         op: Operand,
-        left: ComparisonPartInfos,
+        left: &mut ComparisonPartInfos,
         right: &ComparisonPartInfos,
     ) -> FramesWithParentUnions {
         self.infer_in_operator(NodeRef::new(self.file, op.index()), &left.inf, &right.inf);
@@ -1833,14 +1835,14 @@ impl Inference<'_, '_, '_> {
         let db = self.i_s.db;
         if let Some(item) = stdlib_container_item(db, &right.inf.as_cow_type(self.i_s)) {
             if !item.iter_with_unpacked_unions(db).any(|t| t == &Type::None) {
-                if let Some(ComparisonKey::Normal(left_key)) = left.key {
+                if let Some(ComparisonKey::Normal(left_key)) = &left.key {
                     let left_t = left.inf.as_cow_type(self.i_s);
                     if left_t.overlaps(self.i_s, &item) {
                         if let Some(t) = removed_optional(db, &left_t) {
                             return maybe_invert(
-                                Frame::from_type(left_key, t),
+                                Frame::from_type(left_key.clone(), t),
                                 Frame::default(),
-                                left.parent_unions.into_inner(),
+                                left.parent_unions.take(),
                             );
                         }
                     }
@@ -2325,7 +2327,7 @@ fn removed_optional(db: &Database, full: &Type) -> Option<Type> {
 
 fn find_comparison_guards(
     i_s: &InferenceState,
-    left: ComparisonPartInfos,
+    left: &ComparisonPartInfos,
     right: &ComparisonPartInfos,
     is_eq: bool,
 ) -> Option<FramesWithParentUnions> {
