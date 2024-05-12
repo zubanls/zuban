@@ -440,6 +440,16 @@ pub fn has_custom_special_method(i_s: &InferenceState, t: &Type, method: &str) -
             Type::Dataclass(dc) => dc.class(i_s.db),
             Type::Enum(enum_) => enum_.class(i_s.db),
             Type::EnumMember(member) => member.enum_.class(i_s.db),
+            Type::Type(t) => {
+                if let Some(link) = t
+                    .maybe_class(i_s.db)
+                    .and_then(|c| c.maybe_metaclass(i_s.db))
+                {
+                    Class::from_non_generic_link(i_s.db, link)
+                } else {
+                    return false;
+                }
+            }
             _ => return false,
         };
         let details = cls.lookup_without_descriptors_and_custom_add_issue(i_s, method, |_| ());
