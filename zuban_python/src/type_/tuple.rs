@@ -63,6 +63,13 @@ impl Tuple {
         })
     }
 
+    pub fn fallback_type(&self, db: &Database) -> &Type {
+        let GenericItem::TypeArg(t) = self.tuple_class_generics(db).nth(0.into()).unwrap() else {
+            unreachable!();
+        };
+        t
+    }
+
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
         self.format_with_fallback(format_data, "")
     }

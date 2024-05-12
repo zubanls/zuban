@@ -2305,12 +2305,7 @@ fn stdlib_container_item(db: &Database, t: &Type) -> Option<Type> {
                 }
             }
         }
-        Type::Tuple(tup) => {
-            let GenericItem::TypeArg(t) = tup.tuple_class_generics(db).nth(0.into()).unwrap() else {
-                unreachable!();
-            };
-            t.clone()
-        }
+        Type::Tuple(tup) => tup.fallback_type(db).clone(),
         Type::NamedTuple(named_tup) => {
             return stdlib_container_item(db, &Type::Tuple(named_tup.as_tuple()))
         }
