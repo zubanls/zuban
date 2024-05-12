@@ -149,6 +149,7 @@ pub struct PythonState {
     typing_final_index: NodeIndex,
     typing_typed_dict_index: NodeIndex,
     typing_mapping_index: NodeIndex,
+    typing_container_index: NodeIndex,
     typing_mapping_get_index: NodeIndex,
     typing_special_form_index: NodeIndex,
     pub typing_typed_dict_bases: Box<[BaseClass]>,
@@ -248,6 +249,7 @@ impl PythonState {
             typing_override_index: None,
             typing_final_index: 0,
             typing_typed_dict_index: 0,
+            typing_container_index: 0,
             typing_mapping_index: 0,
             typing_mapping_get_index: 0,
             typing_special_form_index: 0,
@@ -498,6 +500,7 @@ impl PythonState {
         cache_index!(typing_async_iterable_index, typing, "AsyncIterable");
         cache_index!(typing_supports_index_index, typing, "SupportsIndex");
         cache_index!(typing_typed_dict_index, typing, "_TypedDict");
+        cache_index!(typing_container_index, typing, "Container");
         cache_index!(typing_mapping_index, typing, "Mapping");
         cache_index!(typing_special_form_index, typing, "_SpecialForm");
         cache_optional_index!(types_none_type_index, types, "NoneType");
@@ -737,6 +740,7 @@ impl PythonState {
 
     attribute_node_ref!(typing, supports_index_node_ref, typing_supports_index_index);
     attribute_node_ref!(typing, typed_dict_node_ref, typing_typed_dict_index);
+    attribute_node_ref!(typing, pub container_node_ref, typing_container_index);
     attribute_node_ref!(typing, mapping_node_ref, typing_mapping_index);
     attribute_node_ref!(typing, mapping_get_node_ref, typing_mapping_get_index);
     attribute_node_ref!(typing, pub typing_overload, typing_overload_index);

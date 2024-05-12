@@ -360,7 +360,7 @@ pub(crate) enum IssueKind {
     ReturnedAnyWarning { expected: Box<str> }, // From --warn-return-any
     NonOverlappingEqualityCheck { left_type: Box<str>, right_type: Box<str> }, // From --strict-equality
     NonOverlappingIdentityCheck { left_type: Box<str>, right_type: Box<str> }, // From --strict-equality
-    NonOverlappingContainsCheck { left_type: Box<str>, right_type: Box<str> }, // From --strict-equality
+    NonOverlappingContainsCheck { element_type: Box<str>, container_type: Box<str> }, // From --strict-equality
 
     InvariantNote { actual: &'static str, maybe: &'static str },
     AnnotationInUntypedFunction,
@@ -949,8 +949,8 @@ impl<'db> Diagnostic<'db> {
             NonOverlappingIdentityCheck { left_type, right_type } => format!(
                 r#"Non-overlapping identity check (left operand type: "{left_type}", right operand type: "{right_type}")"#
             ),
-            NonOverlappingContainsCheck { left_type, right_type } => format!(
-                r#"Non-overlapping container check (element type: "{left_type}", container item type: "{right_type}")"#
+            NonOverlappingContainsCheck { element_type, container_type } => format!(
+                r#"Non-overlapping container check (element type: "{element_type}", container item type: "{container_type}")"#
             ),
 
             OnlyClassTypeApplication => {

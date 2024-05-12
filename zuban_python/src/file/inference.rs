@@ -1805,14 +1805,22 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
             ComparisonContent::In(_, op, _) | ComparisonContent::NotIn(_, op, _) => {
                 let from = NodeRef::new(self.file, op.index());
-                if needs_strict_equality_error(from) {
-                    from.add_issue(
-                        self.i_s,
-                        IssueKind::NonOverlappingContainsCheck {
-                            left_type: left_inf.format_short(self.i_s),
-                            right_type: right_inf.format_short(self.i_s),
-                        },
-                    );
+                if self.i_s.db.project.flags.strict_equality {
+                    // Now check --strict-equality
+                    let element_t = left_inf.as_cow_type(self.i_s);
+                    if let Some(container_t) =
+                        right_inf.as_cow_type(self.i_s).container_types(self.i_s.db)
+                    {
+                        if !self.is_strict_equality_comparison(from, &element_t, &container_t) {
+                            from.add_issue(
+                                self.i_s,
+                                IssueKind::NonOverlappingContainsCheck {
+                                    element_type: left_inf.format_short(self.i_s),
+                                    container_type: container_t.format_short(self.i_s.db),
+                                },
+                            );
+                        }
+                    }
                 }
                 self.infer_in_operator(from, &left_inf, right_inf)
             }

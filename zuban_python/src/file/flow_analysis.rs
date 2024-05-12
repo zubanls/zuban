@@ -24,9 +24,8 @@ use crate::{
     node_ref::NodeRef,
     type_::{
         simplified_union_from_iterators, AnyCause, CallableContent, CallableLike, CallableParams,
-        ClassGenerics, DbString, EnumMember, GenericItem, Literal, LiteralKind, NamedTuple,
-        NeverCause, StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarKind, UnionType,
-        WithUnpack,
+        ClassGenerics, DbString, EnumMember, Literal, LiteralKind, NamedTuple, NeverCause,
+        StringSlice, Tuple, TupleArgs, TupleUnpack, Type, TypeVarKind, UnionType, WithUnpack,
     },
     type_helpers::{Callable, Class, Function},
 };

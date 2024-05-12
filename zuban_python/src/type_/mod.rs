@@ -1443,6 +1443,30 @@ impl Type {
         }
         None
     }
+
+    pub fn container_types(&self, db: &Database) -> Option<Type> {
+        let mut result = Type::Never(NeverCause::Other);
+        for t in self.iter_with_unpacked_unions(db) {
+            match t {
+                Type::Tuple(tup) => result.union_in_place(tup.fallback_type(db).clone()),
+                Type::NamedTuple(named_tup) => todo!(),
+                _ => {
+                    for (_, base) in t.mro(db) {
+                        if let Some(cls) = base.into_maybe_class() {
+                            if cls.node_ref == db.python_state.container_node_ref() {
+                                result.union_in_place(cls.nth_type_argument(db, 0));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if matches!(result, Type::Never(NeverCause::Other)) {
+            return None;
+        } else {
+            Some(result)
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

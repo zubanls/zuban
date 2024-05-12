@@ -71,7 +71,7 @@ impl Type {
             },
             Type::Union(union) => union.iter().any(|t| t.overlaps(i_s, other)),
             Type::FunctionOverload(intersection) => todo!(),
-            Type::NewType(_) => todo!(),
+            Type::NewType(_) => self.is_simple_sub_type_of(i_s, other).bool(),
             Type::RecursiveType(_) => todo!(),
             Type::Self_ => false, // TODO this is wrong
             Type::ParamSpecArgs(usage) => todo!(),
