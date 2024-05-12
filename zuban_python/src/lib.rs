@@ -42,6 +42,7 @@ pub struct ProjectOptions {
 #[derive(Clone, Hash, PartialEq, Eq)]
 pub struct TypeCheckerFlags {
     pub strict_optional: bool,
+    pub strict_equality: bool,
     pub implicit_optional: bool,
     pub check_untyped_defs: bool,
 
@@ -78,6 +79,7 @@ impl Default for TypeCheckerFlags {
     fn default() -> Self {
         Self {
             strict_optional: true,
+            strict_equality: false,
             implicit_optional: false,
             check_untyped_defs: false,
             disallow_untyped_defs: false,

@@ -152,6 +152,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 extra_checks,
                 strict_optional: !steps.flags.contains(&"--no-strict-optional")
                     && !self.file_name.starts_with("semanal-"),
+                strict_equality: steps.flags.contains(&"--strict-equality"),
                 mypy_compatible,
                 ..Default::default()
             }

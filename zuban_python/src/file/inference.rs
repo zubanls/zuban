@@ -3,8 +3,8 @@ use std::{cell::Cell, rc::Rc};
 use parsa_python_cst::*;
 
 use super::{
-    diagnostics::await_aiter_and_next, on_argument_type_error, utils::infer_dict_like, File,
-    PythonFile, FLOW_ANALYSIS,
+    diagnostics::await_aiter_and_next, flow_analysis::has_custom_special_method,
+    on_argument_type_error, utils::infer_dict_like, File, PythonFile, FLOW_ANALYSIS,
 };
 use crate::{
     arguments::{Args, KnownArgs, NoArgs, SimpleArgs},
@@ -1761,11 +1761,27 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         left_inf: Inferred,
         right_inf: &Inferred,
     ) -> Inferred {
+        let needs_strict_equality_error = |from| {
+            if !self.i_s.db.project.flags.strict_equality {
+                return false;
+            }
+            // Now check --strict-equality
+            let left_t = left_inf.as_cow_type(self.i_s);
+            let right_t = right_inf.as_cow_type(self.i_s);
+            !self.is_strict_equality_comparison(from, &left_t, &right_t)
+        };
         match cmp {
-            ComparisonContent::Equals(first, op, second)
-            | ComparisonContent::NotEquals(first, op, second) => {
+            ComparisonContent::Equals(_, op, _) | ComparisonContent::NotEquals(_, op, _) => {
                 let from = NodeRef::new(self.file, op.index());
-                // TODO this does not implement __ne__ for NotEquals
+                if needs_strict_equality_error(from) {
+                    from.add_issue(
+                        self.i_s,
+                        IssueKind::NonOverlappingEqualityCheck {
+                            left_type: left_inf.format_short(self.i_s),
+                            right_type: right_inf.format_short(self.i_s),
+                        },
+                    )
+                }
                 left_inf.type_lookup_and_execute(
                     self.i_s,
                     from,
@@ -1774,19 +1790,48 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     &|_| todo!(),
                 )
             }
-            ComparisonContent::Is(first, _, second)
-            | ComparisonContent::IsNot(first, _, second) => {
+            ComparisonContent::Is(_, op, _) | ComparisonContent::IsNot(_, op, _) => {
+                let from = NodeRef::new(self.file, op.index());
+                if needs_strict_equality_error(from) {
+                    from.add_issue(
+                        self.i_s,
+                        IssueKind::NonOverlappingIdentityCheck {
+                            left_type: left_inf.format_short(self.i_s),
+                            right_type: right_inf.format_short(self.i_s),
+                        },
+                    )
+                }
                 Inferred::from_type(self.i_s.db.python_state.bool_type())
             }
-            ComparisonContent::In(first, op, second)
-            | ComparisonContent::NotIn(first, op, second) => {
+            ComparisonContent::In(_, op, _) | ComparisonContent::NotIn(_, op, _) => {
                 let from = NodeRef::new(self.file, op.index());
+                if needs_strict_equality_error(from) {
+                    from.add_issue(
+                        self.i_s,
+                        IssueKind::NonOverlappingContainsCheck {
+                            left_type: left_inf.format_short(self.i_s),
+                            right_type: right_inf.format_short(self.i_s),
+                        },
+                    )
+                }
                 self.infer_in_operator(from, &left_inf, right_inf)
             }
             ComparisonContent::Ordering(op) => {
                 self.infer_detailed_operation(op.index, op.infos, left_inf, &right_inf)
             }
         }
+    }
+
+    fn is_strict_equality_comparison(&self, from: NodeRef, left_t: &Type, right_t: &Type) -> bool {
+        // In mypy this is implemented as "def dangerous_comparison"
+        if matches!(left_t, Type::None)
+            || matches!(right_t, Type::None)
+            || has_custom_special_method(self.i_s, &left_t, "__eq__")
+            || has_custom_special_method(self.i_s, &right_t, "__eq__")
+        {
+            return true;
+        }
+        left_t.overlaps(self.i_s, right_t)
     }
 
     pub fn infer_in_operator(

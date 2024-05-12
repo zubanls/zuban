@@ -1693,11 +1693,17 @@ testStrictOptionalCovarianceCrossModule
 # Uses an environment variable in mypy.ini files=$MYPY_CONFIG_FILE_DIR/good.py
 testEnvvar_MYPY_CONFIG_FILE_DIR
 
+# --strict-equality regressions
+testStrictEqualityBytesSpecial
+testStrictEqualityByteArraySpecial
+testStrictEqualityOkPromote
+testStrictEqualitySequenceAndCustomEq
+testOverlappingClassCallables
+testDisableBytearrayMemoryviewPromotionStrictEquality
+testEnableBytearrayMemoryviewPromotionStrictEquality
 # if right operand is Any, fallback to Any in operation
 testBinaryOperationsWithDynamicAsRightOperand
 # --strict-equality strict equality "Non-overlapping equality check (left operand type: "int", right operand type: "str")"
-testStrictEqualityEq
-testStrictEqualityIs
 testStrictEqualityContains
 testStrictEqualityUnions
 testStrictEqualityNoPromotePy3

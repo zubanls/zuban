@@ -433,7 +433,7 @@ fn has_explicit_literal(db: &Database, t: &Type) -> bool {
     })
 }
 
-fn has_custom_special_method(i_s: &InferenceState, t: &Type, method: &str) -> bool {
+pub fn has_custom_special_method(i_s: &InferenceState, t: &Type, method: &str) -> bool {
     t.iter_with_unpacked_unions(i_s.db).any(|t| {
         let cls = match t {
             Type::Class(c) => c.class(i_s.db),

@@ -358,6 +358,9 @@ pub(crate) enum IssueKind {
     RightOperandIsNeverOperated { right: &'static str }, // From --warn-unreachable
     RedundantCast { to: Box<str> }, // From --warn-redundant-casts
     ReturnedAnyWarning { expected: Box<str> }, // From --warn-return-any
+    NonOverlappingEqualityCheck { left_type: Box<str>, right_type: Box<str> }, // From --strict-equality
+    NonOverlappingIdentityCheck { left_type: Box<str>, right_type: Box<str> }, // From --strict-equality
+    NonOverlappingContainsCheck { left_type: Box<str>, right_type: Box<str> }, // From --strict-equality
 
     InvariantNote { actual: &'static str, maybe: &'static str },
     AnnotationInUntypedFunction,
@@ -442,6 +445,9 @@ impl IssueKind {
             UnreachableStatement | RightOperandIsNeverOperated { .. } => "unreachable",
             RedundantCast { .. } => "redundant-cast",
             ReturnedAnyWarning { .. } => "no-any-return",
+            NonOverlappingEqualityCheck { .. }
+            | NonOverlappingContainsCheck { .. }
+            | NonOverlappingIdentityCheck { .. } => "comparison-overlap",
 
             _ => "misc",
         })
@@ -936,6 +942,15 @@ impl<'db> Diagnostic<'db> {
             RedundantCast { to } => format!(r#"Redundant cast to "{to}""#),
             ReturnedAnyWarning { expected } => format!(
                 r#"Returning Any from function declared to return "{expected}""#
+            ),
+            NonOverlappingEqualityCheck { left_type, right_type } => format!(
+                r#"Non-overlapping equality check (left operand type: "{left_type}", right operand type: "{right_type}")"#
+            ),
+            NonOverlappingIdentityCheck { left_type, right_type } => format!(
+                r#"Non-overlapping identity check (left operand type: "{left_type}", right operand type: "{right_type}")"#
+            ),
+            NonOverlappingContainsCheck { left_type, right_type } => format!(
+                r#"Non-overlapping container check (element type: "{left_type}", container item type: "{right_type}")"#
             ),
 
             OnlyClassTypeApplication => {

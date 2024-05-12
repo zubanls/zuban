@@ -24,7 +24,7 @@ use crate::{
     node_ref::NodeRef,
     python_state::NAME_TO_FUNCTION_DIFF,
     type_::{StarParamType, StarStarParamType},
-    type_helpers::{Callable, Class, Function, Instance, LookupDetails, TypeOrClass},
+    type_helpers::{Callable, Class, Instance, LookupDetails, TypeOrClass},
 };
 
 const ORDER_METHOD_NAMES: [&'static str; 4] = ["__lt__", "__gt__", "__le__", "__ge__"];
