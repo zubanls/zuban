@@ -8,9 +8,6 @@ testRecursiveAliasBasicGenericInference
 
 testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
 
-testInferringLvarTypesUnpackedFromIterableClassObject
-testEllipsisDefaultArgValueInNonStubsOverload
-testOverloadTwoTypeArgs
 # callable matching regression
 testNoCrashOnNestedGenericCallable
 
