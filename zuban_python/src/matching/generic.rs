@@ -1,9 +1,6 @@
 use std::borrow::Cow;
 
-use super::{
-    matches_params_with_variance, params::has_overlapping_params, FormatData, Match, Matcher,
-    ParamsStyle,
-};
+use super::{matches_params_with_variance, FormatData, Match, Matcher, ParamsStyle};
 use crate::{
     database::Database,
     inference_state::InferenceState,
@@ -106,10 +103,8 @@ impl<'a> Generic<'a> {
                 _ => unreachable!(),
             },
             Self::ParamSpecArg(spec_args1) => match other {
-                // TODO shouldn't we use spec_args1.type_vars here?
-                Self::ParamSpecArg(spec_args2) => {
-                    has_overlapping_params(i_s, matcher, &spec_args1.params, &spec_args2.params)
-                }
+                // I'm not sure why Mypy decided that ParamSpecs always overlap.
+                Self::ParamSpecArg(spec_args2) => true,
                 _ => unreachable!(),
             },
         }
