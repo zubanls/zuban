@@ -118,7 +118,7 @@ impl Default for TypeCheckerFlags {
 impl TypeCheckerFlags {
     pub fn strict() -> Self {
         Self {
-            implicit_optional: true,
+            strict_equality: true,
             check_untyped_defs: true,
             disallow_untyped_defs: true,
             disallow_untyped_calls: true,
