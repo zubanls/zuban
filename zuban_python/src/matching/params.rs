@@ -597,6 +597,7 @@ fn gather_unpack_args<'db: 'x, 'x, P: Param<'x>>(
 
 pub fn has_overlapping_params(
     i_s: &InferenceState,
+    matcher: &mut Matcher,
     params1: &CallableParams,
     params2: &CallableParams,
 ) -> bool {
@@ -604,9 +605,24 @@ pub fn has_overlapping_params(
         (CallableParams::Simple(params1), CallableParams::Simple(params2)) => {
             overload_has_overlapping_params(i_s, params1.iter(), params2.iter())
         }
-        (CallableParams::WithParamSpec(_, _), CallableParams::WithParamSpec(_, _)) => todo!(),
-        (CallableParams::Any(_), _) | (_, CallableParams::Any(_)) => todo!(),
-        _ => todo!(),
+        (CallableParams::WithParamSpec(pre1, _), CallableParams::WithParamSpec(pre2, _)) => {
+            pre1.len() == pre2.len()
+                && pre1
+                    .iter()
+                    .zip(pre2.iter())
+                    .all(|(t1, t2)| t1.overlaps(i_s, matcher, t2))
+        }
+        (CallableParams::Any(_), _) | (_, CallableParams::Any(_)) => true,
+        (CallableParams::Never(_), _) | (_, CallableParams::Never(_)) => true,
+        (CallableParams::WithParamSpec(pre, _), CallableParams::Simple(params))
+        | (CallableParams::Simple(params), CallableParams::WithParamSpec(pre, _)) => {
+            pre.len() <= params.len()
+                && params.iter().zip(pre.iter()).all(|(p1, t2)| {
+                    p1.type_
+                        .maybe_positional_type()
+                        .is_some_and(|t1| t1.overlaps(i_s, matcher, t2))
+                })
+        }
     }
 }
 
@@ -615,9 +631,6 @@ fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
     params1: impl Iterator<Item = P1>,
     params2: impl Iterator<Item = P2>,
 ) -> bool {
-    #![allow(unreachable_code)]
-    debug!("TODO this is not yet properly implemented and skipped in tests, see this commit");
-    return false;
     let to_type = |db: &'db _, p2: P2| match p2.specific(db) {
         WrappedParamType::PositionalOnly(t2)
         | WrappedParamType::PositionalOrKeyword(t2)

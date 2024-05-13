@@ -50,7 +50,7 @@ impl Type {
             Type::Callable(c1) => {
                 if let Type::Callable(c2) = other {
                     return c1.return_type.overlaps(i_s, matcher, &c2.return_type)
-                        && has_overlapping_params(i_s, &c1.params, &c2.params);
+                        && has_overlapping_params(i_s, matcher, &c1.params, &c2.params);
                 }
             }
             Type::Literal(literal1) => match other {

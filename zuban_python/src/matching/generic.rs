@@ -1,6 +1,9 @@
 use std::borrow::Cow;
 
-use super::{matches_params_with_variance, FormatData, Match, Matcher, ParamsStyle};
+use super::{
+    matches_params_with_variance, params::has_overlapping_params, FormatData, Match, Matcher,
+    ParamsStyle,
+};
 use crate::{
     database::Database,
     inference_state::InferenceState,
@@ -96,13 +99,19 @@ impl<'a> Generic<'a> {
         match self {
             Self::TypeArg(t1) => match other {
                 Self::TypeArg(ref t2) => t1.overlaps(i_s, matcher, t2),
-                _ => todo!(),
+                _ => unreachable!(),
             },
             Self::TypeArgs(_) => match other {
                 Self::TypeArgs(ref t2) => todo!(),
-                _ => todo!(),
+                _ => unreachable!(),
             },
-            Self::ParamSpecArg(params) => todo!(),
+            Self::ParamSpecArg(spec_args1) => match other {
+                // TODO shouldn't we use spec_args1.type_vars here?
+                Self::ParamSpecArg(spec_args2) => {
+                    has_overlapping_params(i_s, matcher, &spec_args1.params, &spec_args2.params)
+                }
+                _ => unreachable!(),
+            },
         }
     }
 

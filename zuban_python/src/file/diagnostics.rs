@@ -805,7 +805,12 @@ impl<'db> Inference<'db, '_, '_> {
                         .return_type
                         .is_simple_sub_type_of(i_s, &c2.return_type)
                         .bool()
-                        && has_overlapping_params(i_s, &c1.params, &c2.params)
+                        && has_overlapping_params(
+                            i_s,
+                            &mut Matcher::default(),
+                            &c1.params,
+                            &c2.params,
+                        )
                     {
                         NodeRef::from_link(i_s.db, c1.defined_at).add_issue(
                             i_s,
