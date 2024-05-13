@@ -1857,6 +1857,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     &c2.nth_type_argument(db, 0),
                 );
             }
+            let is_bytes_like = |c: Class| {
+                c.node_ref == db.python_state.bytes_node_ref()
+                    || c.node_ref == db.python_state.bytearray_node_ref()
+                    || c.node_ref == db.python_state.memoryview_node_ref()
+            };
+            if is_bytes_like(c1) && is_bytes_like(c2) {
+                return true;
+            }
         }
         if let Type::Tuple(tup1) = left_t.as_ref() {
             if let Type::Tuple(tup2) = right_t.as_ref() {

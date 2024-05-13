@@ -712,9 +712,9 @@ impl PythonState {
     attribute_node_ref!(builtins, float_node_ref, builtins_float_index);
     attribute_node_ref!(builtins, complex_node_ref, builtins_complex_index);
     attribute_node_ref!(builtins, pub str_node_ref, builtins_str_index);
-    attribute_node_ref!(builtins, bytes_node_ref, builtins_bytes_index);
-    attribute_node_ref!(builtins, bytearray_node_ref, builtins_bytearray_index);
-    attribute_node_ref!(builtins, memoryview_node_ref, builtins_memoryview_index);
+    attribute_node_ref!(builtins, pub bytes_node_ref, builtins_bytes_index);
+    attribute_node_ref!(builtins, pub bytearray_node_ref, builtins_bytearray_index);
+    attribute_node_ref!(builtins, pub memoryview_node_ref, builtins_memoryview_index);
     attribute_node_ref!(builtins, slice_node_ref, builtins_slice_index);
     attribute_node_ref!(builtins, pub classmethod_node_ref, builtins_classmethod_index);
     attribute_node_ref!(builtins, pub staticmethod_node_ref, builtins_staticmethod_index);
