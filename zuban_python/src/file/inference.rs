@@ -1807,12 +1807,22 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let from = NodeRef::new(self.file, op.index());
                 if self.i_s.db.project.flags.strict_equality {
                     // Now check --strict-equality
+
                     let overlaps_bytes_or_bytearray = |t: &Type| {
                         t.simple_overlaps(self.i_s, &self.i_s.db.python_state.bytes_type())
+                            || t.simple_overlaps(
+                                self.i_s,
+                                &self.i_s.db.python_state.bytearray_type(),
+                            )
+                            || t.simple_overlaps(
+                                self.i_s,
+                                &self.i_s.db.python_state.memoryview_type(),
+                            )
                     };
                     let element_t = left_inf.as_cow_type(self.i_s);
                     let right_t = right_inf.as_cow_type(self.i_s);
                     // bytes are a bit special, we just try to mimic Mypy here.
+                    // b'a' == bytesarray(b'a') is fine.
                     if !(overlaps_bytes_or_bytearray(&element_t)
                         && overlaps_bytes_or_bytearray(&right_t))
                     {

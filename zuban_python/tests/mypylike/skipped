@@ -1694,7 +1694,6 @@ testStrictOptionalCovarianceCrossModule
 testEnvvar_MYPY_CONFIG_FILE_DIR
 
 # --strict-equality regressions
-testDisableBytearrayMemoryviewPromotionStrictEquality
 testStrictEqualityDisabledWithTypeVarRestrictions
 testStrictEqualityWithDifferentMapTypes
 testStrictEqualityWithRecursiveListTypes

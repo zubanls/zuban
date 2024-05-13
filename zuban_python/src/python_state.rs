@@ -809,6 +809,8 @@ impl PythonState {
     node_ref_to_type_class_without_generic!(pub slice_type, slice_node_ref);
     node_ref_to_type_class_without_generic!(pub str_type, str_node_ref);
     node_ref_to_type_class_without_generic!(pub bytes_type, bytes_node_ref);
+    node_ref_to_type_class_without_generic!(pub bytearray_type, bytearray_node_ref);
+    node_ref_to_type_class_without_generic!(pub memoryview_type, memoryview_node_ref);
     node_ref_to_type_class_without_generic!(pub int_type, int_node_ref);
     node_ref_to_type_class_without_generic!(pub bool_type, bool_node_ref);
     node_ref_to_type_class_without_generic!(pub float_type, float_node_ref);
