@@ -1694,15 +1694,11 @@ testStrictOptionalCovarianceCrossModule
 testEnvvar_MYPY_CONFIG_FILE_DIR
 
 # --strict-equality regressions
-testStrictEqualityBytesSpecial
-testStrictEqualityByteArraySpecial
 testStrictEqualitySequenceAndCustomEq
-testDisableBytearrayMemoryviewPromotionStrictEquality
 testEnableBytearrayMemoryviewPromotionStrictEquality
 testStrictEqualityDisabledWithTypeVarRestrictions
 testStrictEqualityWithDifferentMapTypes
 testStrictEqualityWithRecursiveListTypes
-testStrictEqualityWithBytesContains
 # if right operand is Any, fallback to Any in operation
 testBinaryOperationsWithDynamicAsRightOperand
 # --strict-equality strict equality "Non-overlapping equality check (left operand type: "int", right operand type: "str")"
@@ -2169,6 +2165,7 @@ testNamedTupleAsConditionalStrictOptionalDisabled
 
 # --disable-bytearray-promotion
 testDisableBytearrayPromotion
+testDisableBytearrayMemoryviewPromotionStrictEquality
 # --disable-memoryview-promotion
 testDisableMemoryviewPromotion
 
