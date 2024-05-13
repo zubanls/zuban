@@ -22,15 +22,6 @@ impl Type {
 
     pub fn overlaps(&self, i_s: &InferenceState, matcher: &mut Matcher, other: &Self) -> bool {
         match other {
-            Type::TypeVar(t2_usage) => {
-                return match &t2_usage.type_var.kind {
-                    TypeVarKind::Unrestricted => true,
-                    TypeVarKind::Bound(bound) => self.overlaps(i_s, matcher, bound),
-                    TypeVarKind::Constraints(constraints) => {
-                        constraints.iter().all(|r2| self.overlaps(i_s, matcher, r2))
-                    }
-                }
-            }
             Type::Union(union_type2) => {
                 return union_type2.iter().any(|t| self.overlaps(i_s, matcher, t))
             }
@@ -69,18 +60,12 @@ impl Type {
                         .overlaps(i_s, matcher, other)
                 }
             },
-            Type::TypeVar(t1) => match &t1.type_var.kind {
-                TypeVarKind::Unrestricted => return true,
-                TypeVarKind::Bound(bound) => return bound.overlaps(i_s, matcher, other),
-                TypeVarKind::Constraints(constraints) => todo!("{other:?}"),
-            },
             Type::Tuple(t1) => {
                 if let Type::Tuple(t2) = other {
                     return Self::overlaps_tuple(i_s, matcher, t1, t2);
                 }
             }
             Type::Union(union) => return union.iter().any(|t| t.overlaps(i_s, matcher, other)),
-            Type::Self_ => return false, // TODO this is wrong
             _ => (),
         };
         self.is_sub_type_of(i_s, matcher, other).bool()
