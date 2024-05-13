@@ -260,6 +260,7 @@ impl<'a> Generics<'a> {
     pub fn overlaps(
         self,
         i_s: &InferenceState,
+        matcher: &mut Matcher,
         other_generics: Self,
         type_vars: &TypeVarLikes,
     ) -> bool {
@@ -271,7 +272,7 @@ impl<'a> Generics<'a> {
                 // TODO ?
             } else {
             };
-            matches &= t1.overlaps(i_s, t2);
+            matches &= t1.overlaps(i_s, matcher, t2);
         }
         matches
     }

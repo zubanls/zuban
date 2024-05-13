@@ -16,37 +16,45 @@ use crate::{
 };
 
 impl Type {
-    pub fn overlaps(&self, i_s: &InferenceState, other: &Self) -> bool {
+    pub fn simple_overlaps(&self, i_s: &InferenceState, other: &Self) -> bool {
+        self.overlaps(i_s, &mut Matcher::default(), other)
+    }
+
+    pub fn overlaps(&self, i_s: &InferenceState, matcher: &mut Matcher, other: &Self) -> bool {
         match other {
             Type::TypeVar(t2_usage) => {
                 return match &t2_usage.type_var.kind {
                     TypeVarKind::Unrestricted => true,
-                    TypeVarKind::Bound(bound) => self.overlaps(i_s, bound),
+                    TypeVarKind::Bound(bound) => self.overlaps(i_s, matcher, bound),
                     TypeVarKind::Constraints(constraints) => {
-                        constraints.iter().all(|r2| self.overlaps(i_s, r2))
+                        constraints.iter().all(|r2| self.overlaps(i_s, matcher, r2))
                     }
                 }
             }
-            Type::Union(union_type2) => return union_type2.iter().any(|t| self.overlaps(i_s, t)),
+            Type::Union(union_type2) => {
+                return union_type2.iter().any(|t| self.overlaps(i_s, matcher, t))
+            }
             Type::Any(_) => return true, // This is a fallback
             _ => (),
         }
 
         match self {
             Type::Class(c1) => match other {
-                Type::Class(c2) => Self::overlaps_class(i_s, c1.class(i_s.db), c2.class(i_s.db)),
+                Type::Class(c2) => {
+                    Self::overlaps_class(i_s, matcher, c1.class(i_s.db), c2.class(i_s.db))
+                }
                 _ => false,
             },
             Type::Type(t1) => match other {
-                Type::Type(t2) => t1.overlaps(i_s, t2),
+                Type::Type(t2) => t1.overlaps(i_s, matcher, t2),
                 _ => false,
             },
             Type::Callable(c1) => match other {
                 Type::Callable(c2) => {
-                    c1.return_type.overlaps(i_s, &c2.return_type)
+                    c1.return_type.overlaps(i_s, matcher, &c2.return_type)
                         && has_overlapping_params(i_s, &c1.params, &c2.params)
                 }
-                Type::Type(t2) => self.overlaps(i_s, &t2),
+                Type::Type(t2) => self.overlaps(i_s, matcher, &t2),
                 _ => false,
             },
             Type::Any(_) => true,
@@ -57,21 +65,21 @@ impl Type {
                     .db
                     .python_state
                     .literal_type(&literal1.kind)
-                    .overlaps(i_s, other),
+                    .overlaps(i_s, matcher, other),
             },
             Type::None => matches!(other, Type::None),
             Type::TypeVar(t1) => match &t1.type_var.kind {
                 TypeVarKind::Unrestricted => true,
-                TypeVarKind::Bound(bound) => bound.overlaps(i_s, other),
+                TypeVarKind::Bound(bound) => bound.overlaps(i_s, matcher, other),
                 TypeVarKind::Constraints(constraints) => todo!("{other:?}"),
             },
             Type::Tuple(t1) => match other {
-                Type::Tuple(t2) => Self::overlaps_tuple(i_s, t1, t2),
+                Type::Tuple(t2) => Self::overlaps_tuple(i_s, matcher, t1, t2),
                 _ => false,
             },
-            Type::Union(union) => union.iter().any(|t| t.overlaps(i_s, other)),
+            Type::Union(union) => union.iter().any(|t| t.overlaps(i_s, matcher, other)),
             Type::FunctionOverload(intersection) => todo!(),
-            Type::NewType(_) => self.is_simple_sub_type_of(i_s, other).bool(),
+            Type::NewType(_) => self.is_sub_type_of(i_s, matcher, other).bool(),
             Type::RecursiveType(_) => todo!(),
             Type::Self_ => false, // TODO this is wrong
             Type::ParamSpecArgs(usage) => todo!(),
@@ -80,12 +88,12 @@ impl Type {
             Type::Namespace(file_index) => todo!(),
             Type::Dataclass(_) => todo!(),
             Type::TypedDict(_) => {
-                self.is_simple_sub_type_of(i_s, other).bool()
-                    || self.is_simple_super_type_of(i_s, other).bool()
+                self.is_sub_type_of(i_s, matcher, other).bool()
+                    || self.is_super_type_of(i_s, matcher, other).bool()
             }
             Type::NamedTuple(_) => todo!(),
             Type::Enum(_) => todo!(),
-            Type::EnumMember(_) => self.is_simple_sub_type_of(i_s, other).bool(),
+            Type::EnumMember(_) => self.is_sub_type_of(i_s, matcher, other).bool(),
             Type::Super { .. } => todo!(),
             Type::CustomBehavior(_) => false,
         }
@@ -765,7 +773,7 @@ impl Type {
         match_tuple_type_arguments(i_s, matcher, &t1.args, &t2.args, variance)
     }
 
-    fn overlaps_tuple(i_s: &InferenceState, t1: &Tuple, t2: &Tuple) -> bool {
+    fn overlaps_tuple(i_s: &InferenceState, matcher: &mut Matcher, t1: &Tuple, t2: &Tuple) -> bool {
         use TupleArgs::*;
         match (&t1.args, &t2.args) {
             (FixedLen(ts1), FixedLen(ts2)) => {
@@ -783,7 +791,7 @@ impl Type {
                     }
                     */
                     if let Some(type2) = value_generics.next() {
-                        overlaps &= type1.overlaps(i_s, &type2);
+                        overlaps &= type1.overlaps(i_s, matcher, &type2);
                     } else {
                         overlaps = false;
                     }
@@ -793,21 +801,29 @@ impl Type {
                 }
                 overlaps
             }
-            (ArbitraryLen(t1), ArbitraryLen(t2)) => t1.overlaps(i_s, t2),
-            (ArbitraryLen(t1), FixedLen(ts2)) => ts2.iter().all(|t2| t1.overlaps(i_s, t2)),
-            (FixedLen(ts1), ArbitraryLen(t2)) => ts1.iter().all(|t1| t1.overlaps(i_s, &t2)),
+            (ArbitraryLen(t1), ArbitraryLen(t2)) => t1.overlaps(i_s, matcher, t2),
+            (ArbitraryLen(t1), FixedLen(ts2)) => ts2.iter().all(|t2| t1.overlaps(i_s, matcher, t2)),
+            (FixedLen(ts1), ArbitraryLen(t2)) => {
+                ts1.iter().all(|t1| t1.overlaps(i_s, matcher, &t2))
+            }
             (WithUnpack(_), _) => todo!(),
             (_, WithUnpack(_)) => todo!(),
         }
     }
 
-    pub fn overlaps_class(i_s: &InferenceState, class1: Class, class2: Class) -> bool {
-        let check = {
+    pub fn overlaps_class(
+        i_s: &InferenceState,
+        matcher: &mut Matcher,
+        class1: Class,
+        class2: Class,
+    ) -> bool {
+        let mut check = {
             #[inline]
             |i_s: &InferenceState, c1: Class, c2: Class| {
                 c1.node_ref == c2.node_ref && {
                     let type_vars = c1.type_vars(i_s);
-                    c1.generics().overlaps(i_s, c2.generics(), type_vars)
+                    c1.generics()
+                        .overlaps(i_s, matcher, c2.generics(), type_vars)
                 }
             }
         };

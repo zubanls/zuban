@@ -1104,7 +1104,7 @@ impl Inference<'_, '_, '_> {
         for union_entry in base_union.entries.iter() {
             if replay(&union_entry.type_)
                 .as_cow_type(self.i_s)
-                .overlaps(self.i_s, &child_entry.type_)
+                .simple_overlaps(self.i_s, &child_entry.type_)
             {
                 matching_entries.push(union_entry.clone());
             }
@@ -1846,7 +1846,7 @@ impl Inference<'_, '_, '_> {
             if !item.iter_with_unpacked_unions(db).any(|t| t == &Type::None) {
                 if let Some(ComparisonKey::Normal(left_key)) = &left.key {
                     let left_t = left.inf.as_cow_type(self.i_s);
-                    if left_t.overlaps(self.i_s, &item) {
+                    if left_t.simple_overlaps(self.i_s, &item) {
                         if let Some(t) = removed_optional(db, &left_t) {
                             return maybe_invert(
                                 Frame::from_type(left_key.clone(), t),

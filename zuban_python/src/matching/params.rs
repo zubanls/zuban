@@ -632,7 +632,7 @@ fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
     let check_type = |i_s: &InferenceState<'db, '_>, t1: Option<&Type>, p2: P2| {
         if let Some(t1) = t1 {
             if let Some(t2) = to_type(i_s.db, p2) {
-                return t1.overlaps(i_s, &t2);
+                return t1.simple_overlaps(i_s, &t2);
             }
         }
         true
