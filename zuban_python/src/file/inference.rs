@@ -1768,7 +1768,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             // Now check --strict-equality
             let left_t = left_inf.as_cow_type(self.i_s);
             let right_t = right_inf.as_cow_type(self.i_s);
-            !self.is_strict_equality_comparison(from, &left_t, &right_t)
+            !self.is_strict_equality_comparison(&left_t, &right_t)
         };
         match cmp {
             ComparisonContent::Equals(_, op, _) | ComparisonContent::NotEquals(_, op, _) => {
@@ -1817,7 +1817,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         && overlaps_bytes_or_bytearray(&right_t))
                     {
                         if let Some(container_t) = right_t.container_types(self.i_s.db) {
-                            if !self.is_strict_equality_comparison(from, &element_t, &container_t) {
+                            if !self.is_strict_equality_comparison(&element_t, &container_t) {
                                 from.add_issue(
                                     self.i_s,
                                     IssueKind::NonOverlappingContainsCheck {
@@ -1837,7 +1837,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    fn is_strict_equality_comparison(&self, from: NodeRef, left_t: &Type, right_t: &Type) -> bool {
+    fn is_strict_equality_comparison(&self, left_t: &Type, right_t: &Type) -> bool {
+        let db = self.i_s.db;
+        debug_assert!(db.project.flags.strict_equality);
         // In mypy this is implemented as "def dangerous_comparison"
         if matches!(left_t, Type::None)
             || matches!(right_t, Type::None)
@@ -1846,8 +1848,25 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         {
             return true;
         }
-        let left_t = left_t.remove_none(self.i_s.db);
-        let right_t = right_t.remove_none(self.i_s.db);
+        let left_t = left_t.remove_none(db);
+        let right_t = right_t.remove_none(db);
+        if let Some((c1, c2)) = left_t.maybe_class(db).zip(right_t.maybe_class(db)) {
+            if c1.node_ref == c2.node_ref && c1.node_ref == db.python_state.list_node_ref() {
+                return self.is_strict_equality_comparison(
+                    &c1.nth_type_argument(db, 0),
+                    &c2.nth_type_argument(db, 0),
+                );
+            }
+        }
+        if let Type::Tuple(tup1) = left_t.as_ref() {
+            if let Type::Tuple(tup2) = right_t.as_ref() {
+                if let TupleArgs::ArbitraryLen(inner1) = &tup1.args {
+                    if let TupleArgs::ArbitraryLen(inner2) = &tup2.args {
+                        return self.is_strict_equality_comparison(inner1, inner2);
+                    }
+                }
+            }
+        }
         left_t.simple_overlaps(self.i_s, &right_t)
     }
 
