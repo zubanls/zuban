@@ -21,6 +21,9 @@ impl Type {
     }
 
     pub fn overlaps(&self, i_s: &InferenceState, matcher: &mut Matcher, other: &Self) -> bool {
+        // In mypy this is called `is_overlapping_types` and it basically ignores variance and a
+        // lot of other concepts to tell use whether two types have any relationship at all.
+        // e.g. list[A | B] and list[B | C] overlap.
         match other {
             Type::Union(union_type2) => {
                 return union_type2.iter().any(|t| self.overlaps(i_s, matcher, t))
