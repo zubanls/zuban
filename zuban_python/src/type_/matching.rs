@@ -39,71 +39,52 @@ impl Type {
         }
 
         match self {
-            Type::Class(c1) => match other {
-                Type::Class(c2) => {
+            Type::Class(c1) => {
+                if let Type::Class(c2) = other {
                     if let Some(result) =
                         Self::overlaps_class(i_s, matcher, c1.class(i_s.db), c2.class(i_s.db))
                     {
                         return result;
-                    } else {
-                        self.is_sub_type_of(i_s, matcher, other).bool()
-                            || self.is_super_type_of(i_s, matcher, other).bool()
                     }
                 }
-                _ => false,
-            },
-            Type::Type(t1) => match other {
-                Type::Type(t2) => t1.overlaps(i_s, matcher, t2),
-                _ => false,
-            },
-            Type::Callable(c1) => match other {
-                Type::Callable(c2) => {
-                    c1.return_type.overlaps(i_s, matcher, &c2.return_type)
-                        && has_overlapping_params(i_s, &c1.params, &c2.params)
+            }
+            Type::Type(t1) => {
+                if let Type::Type(t2) = other {
+                    return t1.overlaps(i_s, matcher, t2);
                 }
-                Type::Type(t2) => self.overlaps(i_s, matcher, &t2),
-                _ => false,
-            },
-            Type::Any(_) => true,
-            Type::Never(_) => todo!(),
+            }
+            Type::Callable(c1) => {
+                if let Type::Callable(c2) = other {
+                    return c1.return_type.overlaps(i_s, matcher, &c2.return_type)
+                        && has_overlapping_params(i_s, &c1.params, &c2.params);
+                }
+            }
             Type::Literal(literal1) => match other {
-                Type::Literal(literal2) => literal1.value(i_s.db) == literal2.value(i_s.db),
-                _ => i_s
-                    .db
-                    .python_state
-                    .literal_type(&literal1.kind)
-                    .overlaps(i_s, matcher, other),
+                Type::Literal(literal2) => return literal1.value(i_s.db) == literal2.value(i_s.db),
+                _ => {
+                    return i_s
+                        .db
+                        .python_state
+                        .literal_type(&literal1.kind)
+                        .overlaps(i_s, matcher, other)
+                }
             },
-            Type::None => matches!(other, Type::None),
             Type::TypeVar(t1) => match &t1.type_var.kind {
-                TypeVarKind::Unrestricted => true,
-                TypeVarKind::Bound(bound) => bound.overlaps(i_s, matcher, other),
+                TypeVarKind::Unrestricted => return true,
+                TypeVarKind::Bound(bound) => return bound.overlaps(i_s, matcher, other),
                 TypeVarKind::Constraints(constraints) => todo!("{other:?}"),
             },
-            Type::Tuple(t1) => match other {
-                Type::Tuple(t2) => Self::overlaps_tuple(i_s, matcher, t1, t2),
-                _ => false,
-            },
-            Type::Union(union) => union.iter().any(|t| t.overlaps(i_s, matcher, other)),
-            Type::FunctionOverload(intersection) => todo!(),
-            Type::NewType(_) => self.is_sub_type_of(i_s, matcher, other).bool(),
-            Type::RecursiveType(_) => todo!(),
-            Type::Self_ => false, // TODO this is wrong
-            Type::ParamSpecArgs(usage) => todo!(),
-            Type::ParamSpecKwargs(usage) => todo!(),
-            Type::Module(file_index) => todo!(),
-            Type::Namespace(file_index) => todo!(),
-            Type::Dataclass(_) => todo!(),
-            Type::TypedDict(_) => {
-                self.is_sub_type_of(i_s, matcher, other).bool()
-                    || self.is_super_type_of(i_s, matcher, other).bool()
+            Type::Tuple(t1) => {
+                if let Type::Tuple(t2) = other {
+                    return Self::overlaps_tuple(i_s, matcher, t1, t2);
+                }
             }
-            Type::NamedTuple(_) => todo!(),
-            Type::Enum(_) => todo!(),
-            Type::EnumMember(_) => self.is_sub_type_of(i_s, matcher, other).bool(),
-            Type::Super { .. } => todo!(),
-            Type::CustomBehavior(_) => false,
-        }
+            Type::Union(union) => return union.iter().any(|t| t.overlaps(i_s, matcher, other)),
+            Type::Self_ => return false, // TODO this is wrong
+            _ => (),
+        };
+        self.is_sub_type_of(i_s, matcher, other).bool()
+            || self.is_super_type_of(i_s, matcher, other).bool()
     }
 
     fn matches_internal(

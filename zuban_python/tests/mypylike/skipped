@@ -1697,7 +1697,6 @@ testEnvvar_MYPY_CONFIG_FILE_DIR
 testStrictEqualityBytesSpecial
 testStrictEqualityByteArraySpecial
 testStrictEqualitySequenceAndCustomEq
-testOverlappingClassCallables
 testDisableBytearrayMemoryviewPromotionStrictEquality
 testEnableBytearrayMemoryviewPromotionStrictEquality
 testStrictEqualityDisabledWithTypeVarRestrictions
@@ -1708,7 +1707,6 @@ testStrictEqualityWithBytesContains
 testBinaryOperationsWithDynamicAsRightOperand
 # --strict-equality strict equality "Non-overlapping equality check (left operand type: "int", right operand type: "str")"
 testStrictEqualityNoPromotePy3
-testCustomEqCheckStrictEqualityTuple
 testStrictEqualityMetaclass
 testStrictEqualityWithALiteralNewType
 testStrictEqualityWithFixedLengthTupleInCheck
