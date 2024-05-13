@@ -1915,54 +1915,50 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             LookupKind::OnlyType,
             &mut |r_type, lookup_result| {
                 if let Some(method) = lookup_result.lookup.into_maybe_inferred() {
-                    let had_local_error = Cell::new(false);
-                    method.execute_with_details(
-                        i_s,
-                        &KnownArgs::new(&left_inf, from),
-                        &mut ResultContext::Unknown,
-                        OnTypeError::new(&|i_s, _, _, types| {
-                            had_local_error.set(true);
-                        }),
-                    );
-                    if !had_local_error.get() {
-                        had_union_member_passing = true;
+                    for l_type in left_inf.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
+                        let had_local_error = Cell::new(false);
+                        method.execute_with_details(
+                            i_s,
+                            &KnownArgs::new(&Inferred::from_type(l_type.clone()), from),
+                            &mut ResultContext::Unknown,
+                            OnTypeError::new(&|i_s, _, _, types| {
+                                had_local_error.set(true);
+                            }),
+                        );
+                        if !had_local_error.get() {
+                            had_union_member_passing = true;
+                        }
                     }
                 } else {
-                    let mut had_local_error = false;
-                    r_type
-                        .lookup(
-                            i_s,
-                            from.file_index(),
-                            "__iter__",
-                            LookupKind::OnlyType,
-                            &mut ResultContext::Unknown,
-                            &|issue| from.add_issue(i_s, issue),
-                            &|_| {
-                                let right = right_inf.format_short(i_s);
-                                from.add_issue(i_s, IssueKind::UnsupportedIn { right })
-                            },
-                        )
-                        .into_inferred()
-                        .execute(i_s, &NoArgs::new(from))
-                        .type_lookup_and_execute(
-                            i_s,
-                            from,
-                            "__next__",
-                            &NoArgs::new(from),
-                            &|_| todo!(),
-                        )
-                        .as_cow_type(i_s)
-                        .error_if_not_matches(
-                            i_s,
-                            &left_inf,
-                            |issue| unreachable!(),
-                            |got, _| {
-                                had_local_error = true;
-                                None
-                            },
-                        );
-                    if !had_local_error {
-                        had_union_member_passing = true;
+                    for l_type in left_inf.as_cow_type(i_s).iter_with_unpacked_unions(i_s.db) {
+                        if r_type
+                            .lookup(
+                                i_s,
+                                from.file_index(),
+                                "__iter__",
+                                LookupKind::OnlyType,
+                                &mut ResultContext::Unknown,
+                                &|issue| from.add_issue(i_s, issue),
+                                &|_| {
+                                    let right = right_inf.format_short(i_s);
+                                    from.add_issue(i_s, IssueKind::UnsupportedIn { right })
+                                },
+                            )
+                            .into_inferred()
+                            .execute(i_s, &NoArgs::new(from))
+                            .type_lookup_and_execute(
+                                i_s,
+                                from,
+                                "__next__",
+                                &NoArgs::new(from),
+                                &|_| todo!(),
+                            )
+                            .as_cow_type(i_s)
+                            .is_simple_super_type_of(i_s, l_type)
+                            .bool()
+                        {
+                            had_union_member_passing = true;
+                        }
                     }
                 }
             },
