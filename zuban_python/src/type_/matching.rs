@@ -782,8 +782,15 @@ impl Type {
             (FixedLen(ts1), ArbitraryLen(t2)) => {
                 ts1.iter().all(|t1| t1.overlaps(i_s, matcher, &t2))
             }
-            (WithUnpack(_), _) => todo!(),
-            (_, WithUnpack(_)) => todo!(),
+            (WithUnpack(unpack), ArbitraryLen(t1)) | (ArbitraryLen(t1), WithUnpack(unpack)) => {
+                unpack
+                    .before
+                    .iter()
+                    .chain(unpack.after.iter())
+                    .all(|t2| t1.overlaps(i_s, matcher, t1))
+            }
+            (WithUnpack(_), WithUnpack(_)) => todo!(),
+            (WithUnpack(_), FixedLen(_)) | (FixedLen(_), WithUnpack(_)) => todo!(),
         }
     }
 
