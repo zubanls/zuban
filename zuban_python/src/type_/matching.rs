@@ -41,7 +41,14 @@ impl Type {
         match self {
             Type::Class(c1) => match other {
                 Type::Class(c2) => {
-                    Self::overlaps_class(i_s, matcher, c1.class(i_s.db), c2.class(i_s.db))
+                    if let Some(result) =
+                        Self::overlaps_class(i_s, matcher, c1.class(i_s.db), c2.class(i_s.db))
+                    {
+                        return result;
+                    } else {
+                        self.is_sub_type_of(i_s, matcher, other).bool()
+                            || self.is_super_type_of(i_s, matcher, other).bool()
+                    }
                 }
                 _ => false,
             },
@@ -816,33 +823,33 @@ impl Type {
         matcher: &mut Matcher,
         class1: Class,
         class2: Class,
-    ) -> bool {
+    ) -> Option<bool> {
         let mut check = {
             #[inline]
             |i_s: &InferenceState, c1: Class, c2: Class| {
-                c1.node_ref == c2.node_ref && {
+                (c1.node_ref == c2.node_ref).then(|| {
                     let type_vars = c1.type_vars(i_s);
                     c1.generics()
                         .overlaps(i_s, matcher, c2.generics(), type_vars)
-                }
+                })
             }
         };
 
         for (_, c1) in class1.mro(i_s.db) {
             if let TypeOrClass::Class(c1) = c1 {
-                if check(i_s, c1, class2) {
-                    return true;
+                if let result @ Some(_) = check(i_s, c1, class2) {
+                    return result;
                 }
             }
         }
         for (_, c2) in class2.mro(i_s.db) {
             if let TypeOrClass::Class(c2) = c2 {
-                if check(i_s, class1, c2) {
-                    return true;
+                if let result @ Some(_) = check(i_s, class1, c2) {
+                    return result;
                 }
             }
         }
-        false
+        None
     }
 }
 

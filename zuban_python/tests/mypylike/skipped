@@ -1696,7 +1696,6 @@ testEnvvar_MYPY_CONFIG_FILE_DIR
 # --strict-equality regressions
 testStrictEqualityBytesSpecial
 testStrictEqualityByteArraySpecial
-testStrictEqualityOkPromote
 testStrictEqualitySequenceAndCustomEq
 testOverlappingClassCallables
 testDisableBytearrayMemoryviewPromotionStrictEquality
