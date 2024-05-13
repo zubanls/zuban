@@ -1709,15 +1709,11 @@ testStrictEqualityWithBytesContains
 testBinaryOperationsWithDynamicAsRightOperand
 # --strict-equality strict equality "Non-overlapping equality check (left operand type: "int", right operand type: "str")"
 testStrictEqualityNoPromotePy3
-testCustomEqCheckStrictEquality
 testCustomEqCheckStrictEqualityTuple
 testStrictEqualityMetaclass
-testStrictEqualityWithALiteral
 testStrictEqualityWithALiteralNewType
 testStrictEqualityWithFixedLengthTupleInCheck
 testStrictEqualityBytesSpecialUnion
-testColumnNonOverlappingEqualityCheck
-testStrictEqualityAndEnumWithCustomEq
 testStrictEqualityAllowlist
 testStrictEqualitywithParamSpec
 testTypedDictOverlapWithDictNonOverlapping
@@ -1728,6 +1724,11 @@ testStrictEqualityWithRecursiveMapTypes
 testNarrowingEqualityDisabledForCustomEqualityChain
 testNarrowingEqualityFlipFlop
 testInferFromEmptyListWhenUsingInWithStrictEquality
+# formatting differences
+testStrictEqualityAndEnumWithCustomEq
+testCustomEqCheckStrictEquality
+testStrictEqualityWithALiteral
+testColumnNonOverlappingEqualityCheck
 
 # "type ignore with error code is not supported for modules; use `# mypy: disable-error-code="whatever"`"
 testNoteAboutChangedTypedDictErrorCode
