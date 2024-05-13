@@ -20,3 +20,12 @@ T4 = T3 | int
 
 def bar(a: T4, b: T4) -> T4:
     return a + b
+
+[case in_operator_with_union_non_match]
+zz: str | bytes
+1.0 in zz  # E: Unsupported operand types for in ("float" and "Union[str, bytes]")
+
+[case in_operator_with_never]
+from typing import Never
+zz: Never
+1.0 in zz

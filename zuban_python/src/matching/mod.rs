@@ -114,10 +114,6 @@ pub enum GotType<'a> {
 }
 
 impl GotType<'_> {
-    pub fn as_string(&self, db: &Database) -> String {
-        self.format(&FormatData::new_short(db))
-    }
-
     pub fn format(&self, format_data: &FormatData) -> String {
         match self {
             GotType::Type(t) => t.format(format_data).into(),
