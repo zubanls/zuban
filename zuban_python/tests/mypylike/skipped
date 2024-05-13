@@ -1695,6 +1695,7 @@ testEnvvar_MYPY_CONFIG_FILE_DIR
 
 # --strict-equality regressions
 testStrictEqualitySequenceAndCustomEq
+testDisableBytearrayMemoryviewPromotionStrictEquality
 testEnableBytearrayMemoryviewPromotionStrictEquality
 testStrictEqualityDisabledWithTypeVarRestrictions
 testStrictEqualityWithDifferentMapTypes
@@ -2162,12 +2163,6 @@ testUnreachableWithStdlibContextManagersNoStrictOptional
 testInitializationWithMultipleValues
 testNoneAndGenericTypesOverlapNoStrictOptional
 testNamedTupleAsConditionalStrictOptionalDisabled
-
-# --disable-bytearray-promotion
-testDisableBytearrayPromotion
-testDisableBytearrayMemoryviewPromotionStrictEquality
-# --disable-memoryview-promotion
-testDisableMemoryviewPromotion
 
 # --untyped-calls-exclude=bar.A
 testDisallowUntypedCallsAllowListFlags

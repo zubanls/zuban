@@ -148,6 +148,10 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 warn_return_any: steps.flags.contains(&"--warn-return-any"),
                 local_partial_types: steps.flags.contains(&"--local-partial-types"),
                 no_implicit_reexport: steps.flags.contains(&"--no-implicit-reexport"),
+                disable_bytearray_promotion: steps.flags.contains(&"--disable-bytearray-promotion"),
+                disable_memoryview_promotion: steps
+                    .flags
+                    .contains(&"--disable-memoryview-promotion"),
                 platform: arg_after("--platform"),
                 extra_checks,
                 strict_optional: !steps.flags.contains(&"--no-strict-optional")

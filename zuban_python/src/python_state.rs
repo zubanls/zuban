@@ -595,14 +595,18 @@ impl PythonState {
             .class_storage
             .promote_to
             .set(Some(s.complex_node_ref().as_link()));
-        s.memoryview()
-            .class_storage
-            .promote_to
-            .set(Some(s.bytes_node_ref().as_link()));
-        s.bytearray()
-            .class_storage
-            .promote_to
-            .set(Some(s.bytes_node_ref().as_link()));
+        if !db.project.flags.disable_memoryview_promotion {
+            s.memoryview()
+                .class_storage
+                .promote_to
+                .set(Some(s.bytes_node_ref().as_link()));
+        }
+        if !db.project.flags.disable_bytearray_promotion {
+            s.bytearray()
+                .class_storage
+                .promote_to
+                .set(Some(s.bytes_node_ref().as_link()));
+        }
 
         s.dataclass_fields_type = new_class!(
             s.dict_node_ref().as_link(),

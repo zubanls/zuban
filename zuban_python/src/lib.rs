@@ -63,6 +63,8 @@ pub struct TypeCheckerFlags {
     pub warn_return_any: bool,
     pub local_partial_types: bool,
     pub no_implicit_reexport: bool,
+    pub disable_bytearray_promotion: bool,
+    pub disable_memoryview_promotion: bool,
 
     pub platform: Option<String>,
     pub enabled_error_codes: Vec<String>,
@@ -99,6 +101,8 @@ impl Default for TypeCheckerFlags {
             warn_return_any: false,
             local_partial_types: false,
             no_implicit_reexport: false,
+            disable_bytearray_promotion: false,
+            disable_memoryview_promotion: false,
             platform: None,
             python_version: PythonVersion::new(3, 12),
             always_true_symbols: vec![],
