@@ -787,6 +787,7 @@ impl PythonState {
     attribute_link!(typing, pub async_generator_link, typing_async_generator_index);
     attribute_link!(typing, pub async_iterator_link, typing_async_iterator_index);
     attribute_link!(typing, pub async_iterable_link, typing_async_iterable_index);
+    attribute_link!(typing, pub mapping_link, typing_mapping_index);
     optional_attribute_link!(dataclasses_file, pub dataclasses_kw_only_link, dataclasses_kw_only_index);
     attribute_link!(dataclasses_file, pub dataclasses_init_var_link, dataclasses_init_var_index);
     attribute_link!(dataclasses_file, pub dataclasses_field_link, dataclasses_field_index);
