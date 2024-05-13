@@ -1419,7 +1419,7 @@ impl Inference<'_, '_, '_> {
                     find_comparison_guards(self.i_s, &left_infos, &right_infos, false)
                 }
                 ComparisonContent::In(left, op, _) | ComparisonContent::NotIn(left, op, _) => {
-                    Some(self.guard_of_in_operator(op, &mut left_infos, &right_infos))
+                    self.guard_of_in_operator(op, &mut left_infos, &right_infos)
                 }
                 ComparisonContent::Ordering(operation) => {
                     let mut result = None;
@@ -1824,21 +1824,21 @@ impl Inference<'_, '_, '_> {
         op: Operand,
         left: &mut ComparisonPartInfos,
         right: &ComparisonPartInfos,
-    ) -> FramesWithParentUnions {
-        self.infer_in_operator(NodeRef::new(self.file, op.index()), &left.inf, &right.inf);
+    ) -> Option<FramesWithParentUnions> {
         let maybe_invert = |truthy, falsey, parent_unions| {
+            self.infer_in_operator(NodeRef::new(self.file, op.index()), &left.inf, &right.inf);
             if op.as_code() == "in" {
-                FramesWithParentUnions {
+                Some(FramesWithParentUnions {
                     truthy,
                     falsey,
                     parent_unions,
-                }
+                })
             } else {
-                FramesWithParentUnions {
+                Some(FramesWithParentUnions {
                     truthy: falsey,
                     falsey: truthy,
                     parent_unions,
-                }
+                })
             }
         };
         let db = self.i_s.db;
@@ -1918,7 +1918,7 @@ impl Inference<'_, '_, '_> {
                 }
             }
         }
-        FramesWithParentUnions::default()
+        None
     }
 
     fn key_from_name_def(&self, name_def: NameDefinition) -> FlowKey {
