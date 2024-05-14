@@ -13,6 +13,7 @@ use super::{
     name_binder::NameBinder,
 };
 use crate::{
+    config::set_flag,
     database::{
         ComplexPoint, Database, FileIndex, Locality, LocalityLink, Point, Points, PythonProject,
         Specific,
@@ -387,7 +388,7 @@ fn directives_to_flags<'x>(
             if flags.is_none() {
                 flags = Some(project.flags.clone());
             }
-            if let Err(err) = set_flag(&name, value, flags.as_mut().unwrap()) {
+            if let Err(err) = set_flag(flags.as_mut().unwrap(), &name, value) {
                 issues
                     .add_if_not_ignored(
                         Issue {
@@ -453,28 +454,4 @@ impl<'code> Iterator for DirectiveSplitter<'_, 'code> {
         self.rest = "";
         None
     }
-}
-
-fn set_flag<'x>(
-    name: &str,
-    value: Option<&str>,
-    flags: &mut TypeCheckerFlags,
-) -> Result<(), Box<str>> {
-    match name {
-        "disallow_any_generics" => flags.disallow_any_generics = true,
-        "always_true" => (),   // TODO
-        "ignore_errors" => (), // TODO
-        "strict_equality" => flags.strict_equality = true,
-        "strict_optional" => flags.strict_optional = true,
-        "no_warn_no_return" => flags.warn_no_return = false,
-        _ => {
-            return Err(format!(
-                "Unrecognized option: {} = {}",
-                name,
-                value.unwrap_or("True")
-            )
-            .into())
-        }
-    }
-    Ok(())
 }

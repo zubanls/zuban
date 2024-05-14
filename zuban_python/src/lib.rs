@@ -4,6 +4,7 @@
 #![allow(clippy::single_match)] // TODO this is probably just practical during development
 
 mod arguments;
+mod config;
 mod database;
 mod diagnostics;
 mod file;
