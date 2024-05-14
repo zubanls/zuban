@@ -28,7 +28,7 @@ impl Type {
             Type::Class(c1) => {
                 if let Type::Class(c2) = other {
                     if let Some(result) =
-                        Self::overlaps_class(i_s, matcher, c1.class(i_s.db), c2.class(i_s.db))
+                        overlaps_class(i_s, matcher, c1.class(i_s.db), c2.class(i_s.db))
                     {
                         return result;
                     }
@@ -57,7 +57,7 @@ impl Type {
             },
             Type::Tuple(t1) => {
                 if let Type::Tuple(t2) = other {
-                    return Self::overlaps_tuple(i_s, matcher, t1, t2);
+                    return t1.overlaps_tuple(i_s, matcher, t2);
                 }
             }
             Type::Union(union) => return union.iter().any(|t| t.overlaps(i_s, matcher, other)),
@@ -66,10 +66,12 @@ impl Type {
         self.is_sub_type_of(i_s, matcher, other).bool()
             || self.is_super_type_of(i_s, matcher, other).bool()
     }
+}
 
-    fn overlaps_tuple(i_s: &InferenceState, matcher: &mut Matcher, t1: &Tuple, t2: &Tuple) -> bool {
+impl Tuple {
+    fn overlaps_tuple(&self, i_s: &InferenceState, matcher: &mut Matcher, other: &Tuple) -> bool {
         use TupleArgs::*;
-        match (&t1.args, &t2.args) {
+        match (&self.args, &other.args) {
             (FixedLen(ts1), FixedLen(ts2)) => {
                 let mut value_generics = ts2.iter();
                 let mut overlaps = true;
@@ -111,38 +113,38 @@ impl Type {
             (WithUnpack(_), FixedLen(_)) | (FixedLen(_), WithUnpack(_)) => todo!(),
         }
     }
+}
 
-    pub fn overlaps_class(
-        i_s: &InferenceState,
-        matcher: &mut Matcher,
-        class1: Class,
-        class2: Class,
-    ) -> Option<bool> {
-        let mut check = {
-            #[inline]
-            |i_s: &InferenceState, c1: Class, c2: Class| {
-                (c1.node_ref == c2.node_ref).then(|| {
-                    let type_vars = c1.type_vars(i_s);
-                    c1.generics()
-                        .overlaps(i_s, matcher, c2.generics(), type_vars)
-                })
-            }
-        };
+fn overlaps_class(
+    i_s: &InferenceState,
+    matcher: &mut Matcher,
+    class1: Class,
+    class2: Class,
+) -> Option<bool> {
+    let mut check = {
+        #[inline]
+        |i_s: &InferenceState, c1: Class, c2: Class| {
+            (c1.node_ref == c2.node_ref).then(|| {
+                let type_vars = c1.type_vars(i_s);
+                c1.generics()
+                    .overlaps(i_s, matcher, c2.generics(), type_vars)
+            })
+        }
+    };
 
-        for (_, c1) in class1.mro(i_s.db) {
-            if let TypeOrClass::Class(c1) = c1 {
-                if let result @ Some(_) = check(i_s, c1, class2) {
-                    return result;
-                }
+    for (_, c1) in class1.mro(i_s.db) {
+        if let TypeOrClass::Class(c1) = c1 {
+            if let result @ Some(_) = check(i_s, c1, class2) {
+                return result;
             }
         }
-        for (_, c2) in class2.mro(i_s.db) {
-            if let TypeOrClass::Class(c2) = c2 {
-                if let result @ Some(_) = check(i_s, class1, c2) {
-                    return result;
-                }
-            }
-        }
-        None
     }
+    for (_, c2) in class2.mro(i_s.db) {
+        if let TypeOrClass::Class(c2) = c2 {
+            if let result @ Some(_) = check(i_s, class1, c2) {
+                return result;
+            }
+        }
+    }
+    None
 }
